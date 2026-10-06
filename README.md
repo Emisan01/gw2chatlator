@@ -1,138 +1,127 @@
 # GW2 Chat Translator
 
-Ein Fenster neben Guild Wars 2, das in beide Richtungen übersetzt: Der ganze GW2-Chat erscheint laufend in deiner Sprache, und was du schreibst – auf Deutsch, Arabisch, Chinesisch oder Latein – geht korrigiert und übersetzt in den Kanal deiner Wahl.
+A window next to (or over) the Guild Wars 2 chat that translates both ways. The whole GW2 chat appears in your language, and what you write, in German, Arabic, Chinese or Latin, goes into the channel you choose, corrected and translated.
 
-Kein Hook, kein Memory Reading, nichts wird ins Spiel injiziert. Das Tool sieht nur, was ohnehin auf dem Bildschirm steht, und sendet nur auf deinen eigenen Tastendruck.
+No hook, no memory reading, nothing injected into the game. The tool only looks at what is on the screen anyway, and it sends a line only when you press Enter yourself.
 
-## Was es kann
+The window is available in **English, Deutsch and العربية**. Use menu ≡ → **Language / Sprache / اللغة**. That entry has the same name in every language, so you can always find your way back.
 
-**Mitlesen**
-- Liest den GW2-Chat vom Bildschirm (Windows-Texterkennung, offline) und zeigt jede neue Nachricht in deiner Lesesprache, das Original klein darunter.
-- Erkennt Kanal (an der Textfarbe oder am Kanal-Kürzel), Sprecher, Gilden-Tags, Zeitstempel und umgebrochene Zeilen. Farben wie im Spiel: Sagen grün, Karte rosa, Gruppe blau, Trupp hellgrün, Team rot, Flüstern lila, Gilde gold.
-- **Tabs wie im GW2-Chat:** Jeder Tab zeigt nur die Kanäle, die du per **Rechtsklick auf den Tab** ankreuzt. Neue Tabs gibt es aus Vorlagen (Alles, Gruppe, Gilde, Karte, WvW, Flüstern), bis zu 8, mit Zähler für Ungelesenes. Zeigt ein Tab genau einen Kanal, schreibst du dort automatisch in diesen Kanal (im Tab „Gilde“ also mit `/g`).
-- **Flüstern** hat ab Werk einen eigenen Tab. Rechtsklick auf eine Flüsternachricht → „Antworten an …“.
-- Nachrichten in deiner eigenen Sprache werden nicht übersetzt, Wiederholungen kommen aus dem Speicher, deine eigenen Zeilen erscheinen nicht doppelt.
+## Install (one minute)
 
-**Schreiben**
-- Tippen in jeder Sprache und Schrift, Arabisch und Hebräisch von rechts nach links. Die Rechtschreibprüfung folgt deinem Tastaturlayout (Alt+Umschalt).
-- **Verbesserung beim Tippen:** rote Kringel, Vorschläge per Rechtsklick, Autokorrektur sicherer Tippfehler (Strg+Z macht sie rückgängig). GW2-Slang und offizielle Namen gelten nicht als Fehler.
-- **Senden als:** Englisch, Französisch, Arabisch, Chinesisch … oder „Original (nur Korrektur)“. Über „Weitere Sprachen“ sind 38 Sprachen wählbar.
-- **Vorschau** dessen, was im Spiel ankommt, dazu die **Rückübersetzung** (≈ …) in deine Sprache. So prüfst du auch eine Nachricht in einer Sprache, die du nicht lesen kannst.
-- **Kanal:** „Aktiver Kanal“ (wie in GW2 gewählt) oder fest Sagen, Karte, Gruppe, Trupp, Team, Gilde. Im Flüstern-Tab: `/r` an den letzten Flüsterer oder an einen bestimmten Namen.
-- Offizielle Spielnamen aus der GW2-API: „Löwenstein“ wird zu „Lion's Arch“ statt wörtlich übersetzt. Chat-Codes (`[&BDAEAAA=]`) und Kürzel (LFG, WvW, DPS …) bleiben unangetastet.
-- Länger als 199 Zeichen? Die Nachricht wird an Satzgrenzen geteilt, jedes Enter sendet einen Teil.
-- **Schriften, die GW2 nicht anzeigt:** Kommt die Übersetzung z. B. in arabischer Schrift heraus, warnt die Vorschau. **Strg+U** macht daraus Umschrift in lateinischen Buchstaben (Arabizi, Pinyin, Romaji …), so wie viele Spieler ohnehin schreiben.
+1. Download `GW2ChatTranslator.exe` and start it anywhere.
+2. The **guided setup** opens on the first start:
+   - **Language and installation.** Pick the window language and the language you want to read. GW2 is found on its own (registry, Steam libraries, usual folders). With one tick the tool copies itself into `Guild Wars 2\addons\GW2ChatTranslator\`, a clean folder of its own. Another tick starts it with Windows: it stays hidden and appears when GW2 runs.
+   - **Prepare the GW2 chat.** Keep the GW2 chat panel open (8–12 lines are enough). Use a chat tab with all channels, turn timestamps on, and choose text size medium or larger.
+   - **Mark the chat.** Draw a frame around the text lines of the GW2 chat. The window then lies exactly over the GW2 chat and replaces it. The real chat keeps being read underneath, because Windows leaves our window out of its own capture (Windows 10 version 2004 or newer).
+3. Optional: menu ≡ → Settings → Translator, to add a DeepL key or a local LLM.
 
-**Wie ein Teil des Spiels**
-- **Über den GW2-Chat legen** (Menü ≡): Das Fenster setzt sich genau auf das Chat-Panel von GW2 und ersetzt es. Gelesen wird weiter der echte Chat darunter, denn Windows nimmt unser Fenster aus der eigenen Aufnahme heraus (ab Windows 10 Version 2004). Der GW2-Chat muss dafür offen bleiben. Stell in GW2 einen Reiter auf alle Kanäle, die Aufteilung übernehmen unsere Tabs.
-- **An GW2 andocken** (Menü ≡): Das Fenster behält seinen Platz relativ zur linken unteren Ecke des Spiels und wandert mit, wenn du GW2 verschiebst oder die Größe änderst. Verschieben oder Größe ändern speichert den neuen Platz.
-- Erscheint, wenn GW2 oder das Fenster selbst vorne ist, und verschwindet, wenn du zu einer anderen Anwendung wechselst.
-- Die Vorschau nimmt nur Platz ein, während du tippst – sonst gehört die Fläche dem Chat.
-- Esc gibt die Tastatur ans Spiel zurück, das Fenster bleibt als Chat-Ansicht stehen.
+You can run the setup again at any time from menu ≡ → Setup. Every setting lives in menu ≡ → Settings, so you never need to edit the ini.
 
-## Übersetzer – Basis reicht, mehr geht
+**Start with GW2 without a hook:** the "start with Windows" option adds an entry to the Windows autostart (`HKCU\…\Run`, `--wait-for-gw2`). The tool then sits in the tray and checks every two seconds whether a GW2 window exists. Nothing is put into the game folder except our own subfolder, and nothing is loaded into the game.
 
-| | Kosten | Qualität | Hinweise |
+## What it does
+
+**Reading**
+- Reads the GW2 chat from the screen and shows every new message in your reading language, with the original in small text below it.
+- Text recognition uses **Tesseract** when it is installed. Tesseract is much more accurate on the small GW2 font: in our tests on real captures about 92–96 % of the words compared to ~56 %. Otherwise Windows' built-in recognition is used. Tesseract is free: install it with the [UB Mannheim installer](https://github.com/UB-Mannheim/tesseract/wiki) and tick English, German, French, Spanish (and Chinese Simplified if you want). The tool reads `eng+deu+fra+spa` by default; Chinese is optional. Arabic does not need to be read: you write it.
+- Recognizes the channel (text colour or channel tag), the speaker, guild tags, timestamps (including OCR-mangled ones such as `C9;17J`) and wrapped lines. It drops the tab bar and the input line, and puts yellow event notices into the system lines.
+- **Tabs like in GW2:** right-click a tab to choose its channels. New tabs come from templates (All, Party, Guild, Map, WvW, Whisper), with unread counters. A tab that shows exactly one channel writes to that channel.
+- **Whispers** have their own tab. Right-click a whisper → Reply to ….
+- Messages already in your language are not translated, repeated lines come from a cache, and your own lines do not show up twice.
+- With an LLM as translator, lines read from the screen also get obvious recognition errors repaired ("Mnuten" → "Minuten").
+
+**Writing**
+- Type in any language and script; Arabic and Hebrew run right to left. Spell checking follows your keyboard layout.
+- **Autocorrection like a phone keyboard** (Off / Safe / Phone):
+  - A typo is fixed when you finish the word (`komtm` → `kommt`).
+  - **Backspace right after the fix undoes it** and remembers the word.
+  - The **word bar** above the input offers completions, corrections and the next word. **Tab** takes the highlighted one.
+  - The tool **learns the words you send**, per language, in `learned\learned_<lang>.txt`.
+- **Optional grammar check with LanguageTool:** the public server (max. 20 checks per minute) or your own server. Grammar issues get blue marks, and right-click shows the suggestions.
+- **Send as:** English, French, Arabic, Chinese …, or Original (only corrected). 38 languages are available.
+- **Preview** of what arrives in the game, plus the **back-translation** into your language.
+- Official game names come from the GW2 API: "Löwenstein" becomes "Lion's Arch" instead of a literal translation. Chat codes and LFG/WvW/DPS stay untouched.
+- Longer than 199 characters: the message is split at sentence borders, and every Enter sends one part.
+- Scripts GW2 cannot show: the preview warns you. **Ctrl+U** writes the message in Latin letters instead (Arabizi, Pinyin, Romaji).
+
+## Translators: basic is enough, more is possible
+
+| | Cost | Quality | Notes |
 |---|---|---|---|
-| **Basis** (MyMemory) | kostenlos, ohne Anmeldung | ordentlich | 5.000 Zeichen/Tag, mit E-Mail in der ini 50.000. Für Flüstern und Gruppe genug, für dauernd übersetzten Kartenchat knapp. |
-| **DeepL** | eigener API-Key | sehr gut | Key in der ini unter `[DeepL]`. Arabisch und Latein werden unterstützt. |
-| **LLM lokal** (Ollama, LM Studio) | kostenlos, unbegrenzt, offline | gut bis sehr gut, je nach Modell | Versteht Slang und Umschrift (Arabizi), kann Strg+U für jede Schrift. Braucht eine Grafikkarte mit genug Speicher. |
-| **LLM Cloud** | je nach Anbieter | sehr gut | jede OpenAI-kompatible Adresse plus API-Key |
+| **Basic** (MyMemory) | free, no account | decent | 5,000 characters/day, 50,000 with an e-mail address |
+| **DeepL** | own API key | very good | Settings → Translator; the free keys end in `:fx` |
+| **Local LLM** (Ollama, LM Studio) | free, unlimited, offline | good to very good | "Load models" lists what your server has. Ollama + `qwen2.5:7b` works well |
+| **Cloud LLM** | depends on the provider | very good | any OpenAI-compatible address plus API key |
 
-„Automatisch“ (Standard) nimmt DeepL, wenn ein Key eingetragen ist, sonst ein eingetragenes LLM, sonst Basis. Wechseln geht jederzeit über das Menü ≡ → Übersetzer.
+The LLM receives chat lines strictly as data. Instructions someone writes into the chat get translated, not followed. Whatever the LLM returns is only displayed; it can never send anything.
 
-**Lokales LLM in zwei Minuten:** [Ollama](https://ollama.com) installieren, `ollama pull qwen2.5:7b` ausführen, in der ini unter `[LLM]` `Model=qwen2.5:7b` eintragen, Tool neu starten. Die Adresse `http://localhost:11434` ist schon voreingestellt; für LM Studio `http://localhost:1234`.
+## Keys
 
-Das LLM bekommt Chatnachrichten ausdrücklich als Daten: Anweisungen, die jemand in den Chat schreibt, werden übersetzt, nicht ausgeführt. Und was das LLM zurückgibt, wird nur angezeigt – es kann nichts senden.
-
-## Erste Schritte
-
-1. `GW2ChatTranslator.exe` in einen eigenen Ordner legen und starten. Daneben entsteht `gw2-chat-translator.ini` mit allen Einstellungen und Erklärungen.
-2. GW2 im **Fenstermodus oder Vollbild-Fenster** spielen. Über exklusivem Vollbild kann kein Fenster liegen.
-3. Einmalig auf den Hinweis im Chat-Tab klicken (oder Menü ≡ → „Chat-Bereich festlegen …“) und einen Rahmen um die **Textzeilen** des GW2-Chats ziehen – ohne Eingabezeile und Reiter. Der Bereich wird relativ zur linken unteren Ecke des Spiels gespeichert.
-4. Oben rechts „Lesen: …“ auf deine Sprache stellen, unten „→ …“ auf die Sprache, in der du senden willst.
-5. Optional: DeepL-Key oder lokales LLM eintragen (siehe oben).
-
-In GW2 muss **Enter** die Chat-Taste sein (Standard). Liegt die exe in einem schreibgeschützten Ordner, landen ini, Wortliste und Cache in `%LOCALAPPDATA%\GW2ChatTranslator`.
-
-## Bedienung
-
-| Taste | Wirkung |
+| Key | Does |
 |---|---|
-| Enter | senden bzw. im Modus „Nur kopieren“ kopieren (bei geteilten Nachrichten: den nächsten Teil) |
-| Strg+Enter | Original senden, ohne Übersetzung |
-| Strg+L | „Senden als“-Sprache weiterschalten |
-| Strg+U | Umschrift in lateinischen Buchstaben |
-| Strg+Tab | zum nächsten Tab |
-| Esc | zurück ins Spiel |
-| Strg+Alt+T (einstellbar) | Fenster holen / ausblenden, systemweit |
-| Rechtsklick auf Kringel | Vorschläge, eigenes Wort, ignorieren |
-| Rechtsklick auf eine Chatzeile | kopieren, antworten, Kanalfarbe zuordnen, Verlauf leeren |
-| Rechtsklick auf einen Tab | Kanäle des Tabs, neuer Tab, verschieben, schließen |
+| Enter | send (or copy in "only copy" mode); for split messages: the next part |
+| Ctrl+Enter | send the original without translation |
+| Tab | take the highlighted word of the word bar |
+| Backspace right after an autocorrection | undo it (and learn the word) |
+| Ctrl+L | next "send as" language |
+| Ctrl+U | Latin letters |
+| Ctrl+Tab | next tab |
+| Esc | back to the game |
+| Ctrl+Alt+T (changeable) | show / hide the window, system wide |
 
-Klickbar sind außerdem: die Tabs, „Lesen: …“, das Menü ≡, unten der Kanal und „→ Sprache“. Ziehen kannst du das Fenster an Kopf- oder Fußzeile, die Größe änderst du an den Rändern.
+## ArenaNet rules and account safety
 
-## Wenn der Chat nicht richtig gelesen wird
+ArenaNet forbids programs that give an unfair advantage, automate gameplay, allow unattended play or harm others. Supervised macros that trigger one action per key press are allowed. No third-party tool is checked or approved by ArenaNet, so using one is always at your own risk ([third-party policy](https://help.guildwars2.com/hc/en-us/articles/360013625034-Policy-Third-Party-Programs)). That is why this tool works like this:
 
-- **Kanal falsch erkannt:** Rechtsklick auf die Zeile → „Diese Zeilenfarbe gehört zu“ → richtigen Kanal wählen. Die Farbe wird gespeichert. Zurück auf Standard: Menü ≡ → „Kanalfarben zurücksetzen“.
-- **Zeilen fehlen oder sind verstümmelt:** Rahmen enger um die Textzeilen ziehen. Bei kleiner Interface-Größe in GW2 in der ini `OcrScale=3` probieren. Ein ruhiger, dunkler Hintergrund hinter dem Chat hilft.
-- **Diagnose:** Menü ≡ → „Diagnose-Aufnahmen speichern“. Im Ordner `captures` landen dann das aufgenommene Bild, das aufbereitete Bild und der erkannte Text. Diese Dateien bleiben auf deinem PC.
-- Die Texterkennung nutzt die Sprachpakete von Windows. Für kyrillische oder chinesische Chatzeilen muss das passende Paket mit Texterkennung installiert sein (`OcrLanguage=` in der ini wählt es aus).
+- **A separate exe, not a DLL.** Nothing is loaded into the GW2 process: no hook, no memory reading, no changed game files. Installing only creates our own folder `addons\GW2ChatTranslator`.
+- **It only reads what you see,** in the area you marked yourself. MumbleLink, GW2's official interface, tells it the character name and whether the chat line is open.
+- **It never sends on its own.** One line per Enter you press. A tool that reads chat and answers by itself would be a bot, and there is none of that here, LLM or not.
+- **"Only copy" mode:** Enter just copies the line. You paste it in GW2 yourself, so not a single synthetic key reaches the game.
 
-## ArenaNet-Regeln und Kontosicherheit
+## What leaves your PC
 
-ArenaNet verbietet Programme, die einen unfairen Vorteil verschaffen, Aktionen im Spiel automatisieren, Spielen ohne Anwesenheit ermöglichen oder anderen schaden. Erlaubt sind beaufsichtigte Makros, die pro Tastendruck genau eine Aktion auslösen. ArenaNet prüft oder genehmigt kein Drittprogramm, die Nutzung ist immer auf eigenes Risiko ([Third-Party-Policy](https://help.guildwars2.com/hc/en-us/articles/360013625034-Policy-Third-Party-Programs), [Makro-Policy](https://help.guildwars2.com/hc/en-us/articles/360013762153)). Das Tool ist deshalb so gebaut:
+Only text, and only to the services you chose:
+- MyMemory, DeepL or a cloud LLM receives the text to translate.
+- LanguageTool receives what you type, and only while the grammar check is on.
+- Official names come from `api.guildwars2.com`.
 
-- **Eine eigenständige exe, keine DLL.** Nichts wird in den GW2-Prozess geladen: kein Hook, kein Speicherlesen, keine veränderten Spieldateien. Auf den Spielprozess wird nur mit der Frage zugegriffen, ob er noch läuft – wie es auch der Task-Manager tut.
-- **Gelesen wird nur, was du ohnehin siehst:** der Bildschirmbereich, den du selbst festlegst. Charaktername und „Chatzeile offen“ liefert MumbleLink, die offizielle Schnittstelle von GW2.
-- **Es sendet nie von selbst.** Jede Zeile geht nur auf dein Enter raus, eine Nachricht pro Tastendruck. Ein Tool, das Chat liest und automatisch antwortet, wäre ein Bot – das gibt es hier nicht, auch nicht mit LLM.
-- **Modus „Nur kopieren“** (Menü ≡ oder `SendMode=copy` in der ini): Enter legt die fertige Zeile nur in die Zwischenablage und holt GW2 nach vorn. Einfügen und Abschicken machst du selbst (Enter, Strg+V, Enter). Dann erreicht keine einzige künstliche Taste das Spiel.
-- Kein Tastatur-Hook, nichts, was nach Keylogger aussieht. Eine unsignierte exe kann trotzdem die SmartScreen-Warnung „unbekannter Herausgeber“ auslösen.
+With a local LLM, nothing leaves the PC. Screenshots are never sent anywhere.
 
-## Was deinen PC verlässt
+## Files
 
-Nur Text, und nur an den Übersetzer, den du gewählt hast: Basis an MyMemory, DeepL an DeepL, ein Cloud-LLM an dessen Anbieter. Mit einem lokalen LLM verlässt nichts den PC. Bildschirmaufnahmen werden nie verschickt. Die offiziellen Spielnamen kommen von der GW2-API (`api.guildwars2.com`).
+Everything sits next to the exe, or in `%LOCALAPPDATA%\GW2ChatTranslator` if that folder is not writable.
 
-## Grenzen
-
-- Gelesen wird, was im **aktiven GW2-Chat-Reiter** steht. Was GW2 dort nicht zeigt, sieht auch das Tool nicht. Den GW2-Chat zu minimieren geht deshalb nicht – überdecken schon (siehe „Über den GW2-Chat legen“).
-- Ohne Hook gibt es keinen anderen Weg an *alle* Kanäle. arcdps mit „unofficial extras“ liefert exakten Text nur für Gruppe/Trupp und NPCs; eine optionale Nexus-Brücke dafür ist angedacht.
-- Unter Windows-Versionen vor 10 Version 2004 kann das Fenster nicht aus der Aufnahme ausgeblendet werden. Dann pausiert das Lesen, solange es den Chat verdeckt, und die Statuszeile sagt es dir.
-- Arabische Schrift zeigt der GW2-Chat sehr wahrscheinlich nicht an (kurz testen: `مرحبا` in den Chat einfügen). Deshalb die Warnung und Strg+U.
-- Flüster-Namen aus der Texterkennung können falsch gelesen sein – die Statuszeile erinnert daran. `/r` (Antwort an den letzten Flüsterer) ist immer sicher.
-- Die Rechtschreibprüfung braucht das Windows-Sprachpaket der jeweiligen Sprache. Ohne Paket bleibt die Prüfung für diese Sprache aus, statt jedes Wort anzustreichen.
-- Strg+Alt+T entspricht auf deutschen Tastaturen AltGr+T. Bei Bedarf in der ini ändern.
-
-## Dateien
-
-| Datei | Inhalt |
+| File | Content |
 |---|---|
-| `gw2-chat-translator.ini` | Einstellungen (kann deinen DeepL- oder LLM-Key enthalten – nicht weitergeben) |
-| `gw2-woerter.txt` | deine eigenen GW2-Wörter, ein Wort pro Zeile |
-| `cache/gw2names_<sprache>.tsv` | offizielle Namen aus der GW2-API, alle 14 Tage erneuert |
-| `captures/` | nur mit eingeschalteter Diagnose |
+| `gw2-chat-translator.ini` | settings (may contain your DeepL/LLM key – do not share it) |
+| `my-gw2-words.txt` | your own words that are never marked as errors |
+| `learned\learned_<lang>.txt` | words and word pairs learned from what you sent (safe to delete) |
+| `cache\gw2names_<lang>.tsv` | official names from the GW2 API, refreshed every 14 days |
+| `captures\` | diagnostics only. Switches itself off after 15 minutes, keeps at most 20 pictures, deletes them after 3 days |
 
-## Warum die Zwischenablage so vorsichtig behandelt wird
+Leftover temp files from interrupted writes are removed on start.
 
-Wenn das Tool die alte Zwischenablage zu früh zurückschreibt und GW2 gerade einen langsamen Frame hat, fügt GW2 den *alten* Inhalt ein – also das, was du zuletzt kopiert hast. Im Test mit festen Wartezeiten ist genau das passiert. Deshalb wartet das Tool nach jedem Schritt, bis GW2 seine Eingaben abgearbeitet hat, und prüft über MumbleLink, ob die Chatzeile wirklich zu ist. Bestätigt GW2 das nicht, bleibt die Übersetzung in der Zwischenablage stehen und die Statuszeile sagt es dir.
+## Limits
 
-## Bauen
+- Only what GW2 shows in its chat panel can be read. A minimized chat shows nothing. Whispers that only flash in a minimized chat can be missed, so keep the panel open and let our window lie over it.
+- Without a hook there is no other source for all channels. arcdps "unofficial extras" offers exact text only for party/squad (and needs a DLL in the game). An optional add-on for that is on the roadmap, off by default.
+- Names read by text recognition can contain errors. `/r` (reply to the last whisper) is always safe.
 
-**Visual Studio 2022:** *Datei → Öffnen → Ordner* auf das Projekt, CMake wird automatisch erkannt. Ziel `GW2ChatTranslator.exe` wählen und bauen.
+## Building
 
-**MinGW (auch von Linux aus):**
+**Visual Studio 2022:** File → Open → Folder; CMake is picked up automatically. Build `GW2ChatTranslator.exe`.
+
+**MinGW (also from Linux):**
 
 ```
 cmake -B build-win -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-w64.cmake -DCMAKE_BUILD_TYPE=Release
 cmake --build build-win
 ```
 
-**Tests:**
-- `core_tests` laufen auf jedem System (die Kernlogik hat kein Win32).
-- `fake_gw2.exe` ersetzt das Spiel: Fensterklasse wie GW2, Chat-Panel aus `fake_chat.txt` (`RRGGBB|Text` pro Zeile), MumbleLink-Block, Chatzeile, die nach `received.txt` schreibt.
-- `GW2ChatTranslator_fakes.exe` ist das Tool mit fester Test-Rechtschreibung und einer Texterkennung, die `fake_chat.txt` liest.
-- `tests/tools/mock_llm.py` spielt ein OpenAI-kompatibles LLM (`Url=http://127.0.0.1:11500`).
+**Tests:** `g++ -std=c++17 -I src tests/core_tests.cpp src/core/*.cpp && ./a.out` runs the core tests on any system. Run it from the repo root, because it reads `tests/data`. The Wine end-to-end harness is described in [CLAUDE.md](CLAUDE.md).
 
-## Herkunft
+**Translations:** all UI text is English in the code, wrapped in `Tr()`. The German and Arabic tables are `src/core/i18n_de.cpp` and `src/core/i18n_ar.cpp`. `python3 tools/i18n_check.py` lists missing entries.
 
-Die Idee eines schwebenden Eingabefensters, das in den GW2-Chat sendet, stammt aus [Grammarly-support-overlay-for-guild-wars-2](https://github.com/hazratali-uydevelopers/Grammarly-support-overlay-for-guild-wars-2) (ISC). Von dort wurde kein Code übernommen: Dieses Projekt ist eine native Neuentwicklung in C++/Win32.
+## Origin
+
+The idea of a floating input window that sends into the GW2 chat comes from [Grammarly-support-overlay-for-guild-wars-2](https://github.com/hazratali-uydevelopers/Grammarly-support-overlay-for-guild-wars-2) (ISC). No code was taken from it; this is a native rewrite in C++/Win32.
