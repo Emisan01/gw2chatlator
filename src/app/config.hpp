@@ -34,11 +34,15 @@ struct Config {
     std::vector<std::wstring> writeLangs{L"EN-GB", L"FR", L"ES", L"DE"};
     std::wstring chatLang = L"EN-GB";         // into the chat when the writing language has a script GW2 cannot show
     bool backTranslate = true;
+    ChannelMask autoTranslate = DefaultAutoTranslate();  // translated without a click (others: click a line)
+    std::vector<std::wstring> understoodLangs;            // never translated automatically ("EN"); plus readLang
     int debounceMs = 500;
 
     // [Basic] MyMemory
     std::wstring basicEmail;
     bool myMemoryNoticeShown = false;  // the one-time privacy notice was shown
+    std::wstring myMemoryDay;          // "20261006": the day myMemoryUsed counts for
+    int myMemoryUsed = 0;              // characters sent today (free: 5,000 a day, 50,000 with an e-mail)
     // [DeepL]
     std::wstring deeplKey;
     // [LLM]
@@ -50,6 +54,7 @@ struct Config {
     bool readerEnabled = true;
     int readerIntervalMs = 400;  // a look every 0.4 s; text recognition only runs when the picture changed
     OcrChoice ocr = OcrChoice::Auto;
+    int captureMode = 0;          // 0 auto, 1 window (WGC), 2 screen (DXGI, never a yellow frame)
     std::wstring tesseractPath;   // empty = search
     std::string tesseractLangs;   // empty = automatic ("eng+deu+fra+spa")
     bool readChinese = false;     // add Simplified Chinese to Tesseract

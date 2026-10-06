@@ -1,13 +1,16 @@
 // Icon (id 1) and manifest: common controls v6 (modern buttons, tabs),
-// no elevation. DPI awareness is set in code (main.cpp).
+// no elevation. DPI awareness is set in code (main.cpp). The version comes
+// from CMakeLists.txt (generated version.h).
 #include <winuser.h>
+
+#include "version.h"
 
 1 ICON "app.ico"
 CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "app.manifest"
 
 1 VERSIONINFO
-FILEVERSION 0,5,0,0
-PRODUCTVERSION 0,5,0,0
+FILEVERSION GCT_VER_MAJOR,GCT_VER_MINOR,GCT_VER_PATCH,0
+PRODUCTVERSION GCT_VER_MAJOR,GCT_VER_MINOR,GCT_VER_PATCH,0
 FILEOS 0x40004
 FILETYPE 0x1
 BEGIN
@@ -17,9 +20,9 @@ BEGIN
     BEGIN
       VALUE "CompanyName", "Emi"
       VALUE "FileDescription", "GW2 Chat Translator"
-      VALUE "FileVersion", "0.5.0"
+      VALUE "FileVersion", GCT_VERSION_STR
       VALUE "ProductName", "GW2 Chat Translator"
-      VALUE "ProductVersion", "0.5.0"
+      VALUE "ProductVersion", GCT_VERSION_STR
       VALUE "OriginalFilename", "GW2ChatTranslator.exe"
     END
   END

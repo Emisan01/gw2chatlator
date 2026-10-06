@@ -24,6 +24,8 @@ struct DialogResult {
 struct DialogContext {
     // Live text for "Connections": GW2 window, MumbleLink, add-ons, OCR, translator.
     std::function<std::wstring()> connectionStatus;
+    // Live text for the technical page: parameters and numbers (no chat text).
+    std::function<std::wstring()> technicalStatus;
     // Live preview while a slider moves: opacity (alpha 0..255), text size (percent).
     std::function<void(int opacity, int fontPercent)> preview;
     // True when GW2 is currently running.
@@ -32,7 +34,7 @@ struct DialogContext {
     std::function<void()> forgetLearned;
 };
 
-enum class SettingsPage { General = 0, Reading, Writing, Translator, Game };
+enum class SettingsPage { General = 0, Reading, Writing, Translator, Game, Technical };
 
 // Modal. `cfg` is changed only when the user confirms.
 DialogResult ShowSettingsDialog(HWND owner, HINSTANCE inst, Config& cfg, const DialogContext& ctx,

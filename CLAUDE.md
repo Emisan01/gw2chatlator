@@ -170,6 +170,17 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
   max `kMaxPersonTabs`); click an untranslated line → translated first; links (`FindLinks`) are never translated
   and open only after a yes (`OpenLinkAsking`, http/https only).
 - Settings → Translator: local models via Ollama (`LocalModelOffers`, `/api/pull`), with size and VRAM notes.
+- First start (0.6): one-page setup; no chat area is guessed. While `regionSet` is false, `PollGame` places the
+  window bottom left once and runs `StartChatDetection` every 1.5 s on a map: capture of the game's bottom-left
+  corner → `ChatOcr` → `LocateChatLines` (≥2 timestamp lines aligned on the left) → `SnapChatArea` →
+  `UseChatArea` + `CoverChat`. Our window is excluded from the capture while it overlaps the search area.
+- Capture: WGC only where its yellow frame can be switched off (Windows 11, `BorderlessWindowCapture`), else
+  DXGI; `[Reader] Capture=auto|window|screen`.
+- Translation scope: everything automatic except `[Translate] Understood=` languages and unticked
+  `AutoChannels`; skipped lines get "click to translate". MyMemory characters per day are counted
+  (`[Basic] UsedDay/UsedChars`, `CountMyMemory`) and shown in the footer.
+- Settings → Technical: `TechnicalStatus()` (parameters named like the ini keys, live `stats_`); "copy
+  diagnosis" holds no chat text. Version: `project(... VERSION)` → generated `version.h` → exe resource and UI.
 - A chat line half hidden under GW2's own tab bar is not a reading error: it was read when it appeared at the
   bottom; `ChatStream` keeps it from coming again.
 - `ocr.cpp` calls `RoInitialize(MTA)`: create `ChatOcr` on a worker thread, not on the UI (STA) thread.

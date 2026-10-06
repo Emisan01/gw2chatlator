@@ -82,6 +82,32 @@ Channel SoleSendChannel(ChannelMask m) {
     return Channel::Unknown;
 }
 
+std::wstring SerializeChannels(ChannelMask m) {
+    std::wstring s;
+    for (const Key& k : kKeys) {
+        if (!(m & ChannelBit(k.channel))) continue;
+        if (!s.empty()) s += L',';
+        s += k.key;
+    }
+    return s;
+}
+
+ChannelMask ParseChannels(const std::wstring& list) {
+    ChannelMask m = 0;
+    size_t start = 0;
+    while (start <= list.size()) {
+        size_t end = list.find(L',', start);
+        if (end == std::wstring::npos) end = list.size();
+        const std::wstring key = ToLowerAscii(Trim(list.substr(start, end - start)));
+        for (const Key& k : kKeys)
+            if (key == k.key) m |= ChannelBit(k.channel);
+        start = end + 1;
+    }
+    return m;
+}
+
+ChannelMask DefaultAutoTranslate() { return AllChannels() & ~ChannelBit(Channel::System); }
+
 std::wstring SerializeTab(const ChatTab& t) {
     std::wstring s;
     for (wchar_t c : t.name) s += (c == L'|' || c == L'\r' || c == L'\n') ? L' ' : c;

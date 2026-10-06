@@ -30,6 +30,7 @@ struct ReaderOptions {
     bool readChinese = false;
     std::wstring ocrLanguage;     // Windows OCR: empty = Windows languages
     int scale = 0;                // 0 = automatic from the line grid
+    bool windowCapture = true;    // WGC allowed (else screen capture: no yellow frame on Windows 10)
     std::wstring captureDir;      // diagnostics target
 };
 

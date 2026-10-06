@@ -56,6 +56,44 @@ Ein Fenster über dem GW2-Chat, das den nativen Chat **überflüssig** macht. Es
 | **Offen:** Arabizi und Translit-Russisch (lateinisch geschriebenes Arabisch/Russisch) erkennen und übersetzen | offen; ein LLM kann das, MyMemory nicht |
 | **Offen:** Menüs aufräumen | offen, niedrige Priorität |
 
+### Runde 3: Erlebnis bei der Erstinstallation (beschlossen 2026-10-06)
+
+Messlatte: **In unter einer Minute nach dem ersten Start liest man den ersten übersetzten Satz, ohne eine Einstellung zu öffnen.** Vorbilder: Discord- und Steam-Overlay (erscheint einfach), Google Lens (draufhalten, geht), Gboard/SwiftKey (Eingabehilfe).
+
+| Punkt | Stand |
+|---|---|
+| Gelber WGC-Rahmen (Windows 10): Farbe nicht änderbar → unter Windows 10 Bildschirmaufnahme (DXGI) ohne Rahmen, WGC nur unter Windows 11 (Rahmen dort abschaltbar); Auswahl in den Einstellungen | ✅ |
+| MyMemory sparsam → **geändert:** alles wird automatisch übersetzt, Ausnahmen per Häkchen (Kanäle, Sprachen); per Klick trotzdem | ✅ |
+| Sprachen, die man versteht (z. B. DE, EN), werden nicht übersetzt; per Klick trotzdem | ✅ Häkchen „Nicht übersetzen“ für EN/DE/FR/ES plus weitere Codes |
+| Kleine Anzeige, wie viel vom MyMemory-Kontingent heute übrig ist | ✅ Fußzeile |
+| Technik-Seite: alle Parameter an einer Stelle, Live-Werte (Lesedauer, Zeilen, verworfene Zeilen, Übersetzungsdauer), „Diagnose kopieren“ | ✅ Einstellungen → Technik |
+| Version im Fenster, CHANGELOG, später GitHub-Releases mit exe und freiwillige Update-Prüfung | ✅ 0.6.0 aus CMake, CHANGELOG; Releases und Update-Prüfung offen |
+| Einrichtung minimal: Sprache wählen → unser Fenster liegt unten links → „Öffne den GW2-Chat (Enter)“ → Chat wird an Zeitstempel-Zeilen erkannt → Rahmen setzt sich selbst, Fenster legt sich darüber. Manuelles Ziehen bleibt als Option | ✅ im Spiel zu testen |
+| Unser Fenster an den nativen Chat koppeln (öffnen/minimieren) | **zurückgestellt** (GW2 hat keine Taste zum Minimieren; simulierte Klicks widersprechen Regel 1) |
+| Modus „Beliebiges Fenster übersetzen“ (Browser, andere Spiele): Kern ist allgemein (Aufnahme, Erkennung, Übersetzung); GW2-spezifisch sind nur MumbleLink, Parser, Farben, Senden | später, in der Architektur mitdenken |
+
+### Was noch aussteht (Stand 0.6.0)
+
+**Im Spiel testen (braucht den Nutzer):**
+1. Senden: kommen Nachrichten jetzt an? Sonst `KeyHoldMs` (Technik-Seite) erhöhen.
+2. Erstinstallation: Einrichtung (eine Seite) → GW2-Chat öffnen → wird er gefunden, legt sich das Fenster darüber?
+3. Windows 10: ist der gelbe Rahmen weg (Aufnahme „Automatisch“ = Bildschirm)?
+4. Dropdown unter dem Wort, Flüster-Tabs per Namensklick, Links mit Abfrage, Klick zum Übersetzen.
+5. Lokales Modell per „Installieren“ (Ollama) und Übersetzungsgeschwindigkeit damit.
+6. Echte Aufnahmen bei 1080p/1440p in `local/bench` (Diagnosebilder einschalten) → Entscheidung über den Glyphen-Leser.
+
+**Bauen:**
+- Modus „Beliebiges Fenster übersetzen“ (Browser, andere Spiele, Videos): Fenster/Bereich wählen, mitlesen, übersetzen, nichts senden; pausiert, wenn das Fenster minimiert oder verdeckt ist. Parser im „Klartext“-Modus ohne GW2-Struktur.
+- GitHub-Releases mit fertiger exe, freiwillige Update-Prüfung (Releases-API), Version im Hauptmenü.
+- Kalibrierung erweitern: Kanalfarben einmessen per Klick (gibt es per Rechtsklick), Prüfbild/Testlauf auf der Technik-Seite („jetzt messen“: Erkennungsrate, Zeilen, Zeit).
+- Arabizi und lateinisch geschriebenes Russisch erkennen und übersetzen (LLM kann es, MyMemory nicht).
+- Kleines spezialisiertes Übersetzungsmodell (Opus-MT/NLLB über CTranslate2) als zweiter lokaler Weg neben Ollama.
+- Menüs aufräumen; `main_window.cpp` aufteilen (Leser, Docking, Menüs, Senden).
+
+**Zurückgestellt (Entscheidung des Nutzers):**
+- Unser Fenster an den nativen Chat koppeln (öffnen/minimieren gemeinsam).
+- Bereinigen der Git-Historie von alten Testnamen (nur mit ausdrücklichem OK, Force-Push).
+
 **Messung (4K, Fehler nach dem Parser, alt → neu):** Windows-OCR 15,8 / 48,5 / 21,8 % → **0,5 / 3,2 / 3,4 %**;
 Tesseract 12,3 / 23,9 / 16,6 % → **2,3 / 12,9 / 0,7 %**.
 

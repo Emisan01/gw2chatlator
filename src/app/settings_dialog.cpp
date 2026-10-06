@@ -6,11 +6,13 @@
 #include <shellapi.h>
 
 #include <algorithm>
+#include <cstring>
 #include <memory>
 #include <thread>
 #include <vector>
 
 #include "core/gw2_install.hpp"
+#include "core/langs.hpp"
 #include "core/i18n.hpp"
 #include "core/languages.hpp"
 #include "core/text.hpp"
@@ -31,9 +33,11 @@ constexpr wchar_t kTesseractUrl[] = L"https://github.com/UB-Mannheim/tesseract/w
 enum : int {
     kIdTab = 100,
     // General
-    kUiLang, kReadLang, kWriteLangs, kFontSize, kOpacity, kHotkey, kFontSizeValue, kOpacityValue,
+    kUiLang, kReadLang, kWriteLangs, kFontSize, kOpacity, kHotkey, kFontSizeValue, kOpacityValue, kUnderstood,
+    kSkipEn, kSkipDe, kSkipFr, kSkipEs,
+    kAutoWhisper, kAutoGroup, kAutoGuild, kAutoMap, kAutoTeam,
     // Reading
-    kReaderOn, kOcrEngine, kTessPath, kTessBrowse, kTessStatus, kTessGet, kChinese, kInterval, kShowSystem, kCaptures,
+    kReaderOn, kOcrEngine, kCapture, kTessPath, kTessBrowse, kTessStatus, kTessGet, kChinese, kInterval, kShowSystem, kCaptures,
     kPickRegion, kCover,
     // Writing
     kSpell, kAutoCorrect, kSuggest, kLearn, kForgetAll, kForgetStatus, kLt, kLtUrl, kBackTr, kSendMode, kReturnFocus,
@@ -42,6 +46,8 @@ enum : int {
     // Game & start
     kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kStatus, kRefresh, kSetup,
     // Wizard
+    // Technical
+    kOcrZoom, kKeyHold, kStepDelay, kTechText, kTechRefresh, kTechCopy, kTechStatus,
     kBack, kNext, kStepTitle, kStepText,
 };
 
@@ -304,8 +310,9 @@ private:
 
     void Build() override {
         tab_ = Add(WC_TABCONTROLW, L"", WS_TABSTOP | WS_CLIPSIBLINGS, 10, 10, kW - 20, 470, kIdTab);
-        const wchar_t* names[] = {L"General", L"Reading the chat", L"Writing", L"Translator", L"Game & start"};
-        for (int i = 0; i < 5; ++i) {
+        const wchar_t* names[] = {L"General", L"Reading the chat", L"Writing", L"Translator", L"Game & start",
+                                  L"Technical"};
+        for (int i = 0; i < 6; ++i) {
             std::wstring n;
             for (wchar_t c : Tr(names[i])) n += c == L'&' ? std::wstring(L"&&") : std::wstring(1, c);
             TCITEMW item{};
@@ -318,6 +325,7 @@ private:
         BuildWriting();
         BuildTranslator();
         BuildGame();
+        BuildTechnical();
         EndPages();
         Button(IDOK, Tr(L"OK"), kW - 220, 490, 100);
         Button(IDCANCEL, Tr(L"Cancel"), kW - 112, 490, 100);
@@ -348,6 +356,31 @@ private:
             if (!cfg_.readLang.empty() && FindLanguage(cfg_.readLang) == &Languages()[i]) readSel = static_cast<int>(i) + 1;
         }
         Combo(kReadLang, langs, readSel, kCtrlX, Y(r++), kCtrlW);
+
+        // Everything is translated; these are the exceptions (a click on a line still translates it).
+        Label(Tr(L"Do not translate"), kLabelX, Y(r), kLabelW);
+        auto has = [&](const wchar_t* code) {
+            for (const std::wstring& c : cfg_.understoodLangs)
+                if (PrimaryLang(c) == code) return true;
+            return false;
+        };
+        const wchar_t* quick[] = {L"EN", L"DE", L"FR", L"ES"};
+        for (int i = 0; i < 4; ++i) Check(kSkipEn + i, quick[i], has(quick[i]), kCtrlX + i * 60, Y(r), 56);
+        std::wstring others;
+        for (const std::wstring& c : cfg_.understoodLangs) {
+            const std::wstring p = PrimaryLang(c);
+            if (p != L"EN" && p != L"DE" && p != L"FR" && p != L"ES") others += (others.empty() ? L"" : L", ") + c;
+        }
+        HWND more = Edit(kUnderstood, others, kCtrlX + 245, Y(r++), 110);
+        SendMessageW(more, EM_SETCUEBANNER, TRUE, reinterpret_cast<LPARAM>(Tr(L"more: IT, PL …").c_str()));
+        Label(Tr(L"Translate in"), kLabelX, Y(r), kLabelW);
+        const ChannelMask a = cfg_.autoTranslate;
+        Check(kAutoWhisper, Tr(L"Whisper"), (a & ChannelBit(Channel::Whisper)) != 0, kCtrlX, Y(r), 110);
+        Check(kAutoGroup, Tr(L"Party & squad"), (a & ChannelBit(Channel::Party)) != 0, kCtrlX + 115, Y(r), 130);
+        Check(kAutoGuild, Tr(L"Guild"), (a & ChannelBit(Channel::Guild)) != 0, kCtrlX + 250, Y(r++), 100);
+        Check(kAutoMap, Tr(L"Map & say"), (a & ChannelBit(Channel::Map)) != 0, kCtrlX, Y(r) - 6, 110);
+        Check(kAutoTeam, Tr(L"Team (WvW)"), (a & ChannelBit(Channel::Team)) != 0, kCtrlX + 115, Y(r) - 6, 130);
+        Label(Tr(L"Unticked: click a line."), kCtrlX + 250, Y(r++) - 2, 110, 20);
 
         Label(Tr(L"“Send as” languages"), kLabelX, Y(r), kLabelW);
         std::wstring joined;
@@ -383,6 +416,11 @@ private:
               {Tr(L"Automatic (fastest: Windows; Tesseract only for very small text)"), L"Tesseract",
                Tr(L"Windows (built in)")},
               static_cast<int>(cfg_.ocr), kCtrlX, Y(r++), kCtrlW);
+        Label(Tr(L"Picture of the chat"), kLabelX, Y(r), kLabelW);
+        Combo(kCapture,
+              {Tr(L"Automatic (no yellow frame)"), Tr(L"Game window (Windows 10: yellow frame)"),
+               Tr(L"Screen (never a frame)")},
+              cfg_.captureMode, kCtrlX, Y(r++), kCtrlW);
         Label(Tr(L"Tesseract folder"), kLabelX, Y(r), kLabelW);
         Edit(kTessPath, cfg_.tesseractPath, kCtrlX, Y(r), kCtrlW - 96);
         Button(kTessBrowse, Tr(L"Browse…"), kCtrlX + kCtrlW - 90, Y(r++) - 1, 90);
@@ -500,6 +538,50 @@ private:
         }
     }
 
+    // Technical page: the parameters that matter for speed and recognition,
+    // the live numbers, and a diagnosis to copy (no chat text in it).
+    void BuildTechnical() {
+        BeginPage();
+        int r = 0;
+        Label(Tr(L"Enlargement for recognition"), kLabelX, Y(r), kLabelW);
+        Edit(kOcrZoom, std::to_wstring(cfg_.ocrScale), kCtrlX, Y(r), 60, ES_NUMBER);
+        Label(Tr(L"0 = automatic from the line spacing, 1–4 fixed"), kCtrlX + 70, Y(r++) + 4, kCtrlW - 70, 20);
+        Label(Tr(L"Key held when sending (ms)"), kLabelX, Y(r), kLabelW);
+        Edit(kKeyHold, std::to_wstring(cfg_.send.keyHoldMs), kCtrlX, Y(r), 60, ES_NUMBER);
+        Label(Tr(L"raise it at low FPS if messages do not arrive"), kCtrlX + 70, Y(r++) + 4, kCtrlW - 70, 20);
+        Label(Tr(L"Pause between keys (ms)"), kLabelX, Y(r), kLabelW);
+        Edit(kStepDelay, std::to_wstring(cfg_.send.stepDelayMs), kCtrlX, Y(r++), 60, ES_NUMBER);
+        Add(L"EDIT", L"", ES_MULTILINE | ES_READONLY | WS_VSCROLL | WS_HSCROLL | ES_AUTOVSCROLL | ES_AUTOHSCROLL, kLabelX,
+            Y(r) - 2, kW - 44, 250, kTechText, WS_EX_CLIENTEDGE);
+        r += 8;
+        Button(kTechRefresh, Tr(L"Refresh"), kLabelX, Y(r), 110);
+        Button(kTechCopy, Tr(L"Copy diagnosis"), kLabelX + 120, Y(r), 160);
+        Label(Tr(L"Numbers and settings only, no chat text."), kLabelX + 290, Y(r) + 4, kW - 330, 20, kTechStatus);
+        RefreshTechnical();
+    }
+
+    void RefreshTechnical() {
+        if (ctx_.technicalStatus) SetText(kTechText, ctx_.technicalStatus());
+    }
+
+    void CopyTechnical() {
+        const std::wstring text = Text(kTechText);
+        if (text.empty() || !OpenClipboard(hwnd_)) return;
+        EmptyClipboard();
+        const size_t bytes = (text.size() + 1) * sizeof(wchar_t);
+        if (HGLOBAL g = GlobalAlloc(GMEM_MOVEABLE, bytes)) {
+            if (void* p = GlobalLock(g)) {
+                std::memcpy(p, text.c_str(), bytes);
+                GlobalUnlock(g);
+                if (!SetClipboardData(CF_UNICODETEXT, g)) GlobalFree(g);
+            } else {
+                GlobalFree(g);
+            }
+        }
+        CloseClipboard();
+        SetText(kTechStatus, Tr(L"Copied – paste it where you report the problem."));
+    }
+
     std::wstring InstallStatusText() const {
         const std::wstring here = CurrentExeDir();
         const std::wstring dir = Trim(cfg_.gw2Dir.empty() ? FindGw2Dir() : cfg_.gw2Dir);
@@ -559,6 +641,12 @@ private:
                 break;
             case kEngine:
                 if (code == CBN_SELCHANGE) SetText(kEngineNote, EngineNote(static_cast<Engine>(std::max(0, Sel(kEngine)))));
+                break;
+            case kTechRefresh:
+                RefreshTechnical();
+                break;
+            case kTechCopy:
+                CopyTechnical();
                 break;
             case kLocalModel:
                 if (code == CBN_SELCHANGE && Sel(kLocalModel) >= 0)
@@ -773,6 +861,7 @@ private:
 
         c.readerEnabled = Checked(kReaderOn);
         if (Sel(kOcrEngine) >= 0) c.ocr = static_cast<OcrChoice>(Sel(kOcrEngine));
+        if (Sel(kCapture) >= 0) c.captureMode = Sel(kCapture);
         c.tesseractPath = Trim(Text(kTessPath));
         c.readChinese = Checked(kChinese);
         const int interval = _wtoi(Text(kInterval).c_str());
@@ -787,6 +876,21 @@ private:
         c.languageTool = Checked(kLt);
         if (!Trim(Text(kLtUrl)).empty()) c.languageToolUrl = Trim(Text(kLtUrl));
         c.backTranslate = Checked(kBackTr);
+        c.ocrScale = std::clamp(_wtoi(Text(kOcrZoom).c_str()), 0, 4);
+        c.send.keyHoldMs = std::clamp(_wtoi(Text(kKeyHold).c_str()), 5, 500);
+        c.send.stepDelayMs = std::clamp(_wtoi(Text(kStepDelay).c_str()), 20, 1000);
+        c.understoodLangs.clear();
+        const wchar_t* quick[] = {L"EN", L"DE", L"FR", L"ES"};
+        for (int i = 0; i < 4; ++i)
+            if (Checked(kSkipEn + i)) c.understoodLangs.push_back(quick[i]);
+        for (const std::wstring& l : ParseLangList(Text(kUnderstood))) c.understoodLangs.push_back(l);
+        ChannelMask a = 0;
+        if (Checked(kAutoWhisper)) a |= ChannelBit(Channel::Whisper);
+        if (Checked(kAutoGroup)) a |= ChannelBit(Channel::Party) | ChannelBit(Channel::Squad);
+        if (Checked(kAutoGuild)) a |= ChannelBit(Channel::Guild);
+        if (Checked(kAutoMap)) a |= ChannelBit(Channel::Map) | ChannelBit(Channel::Say);
+        if (Checked(kAutoTeam)) a |= ChannelBit(Channel::Team);
+        c.autoTranslate = a;
         c.copyOnly = Sel(kSendMode) == 1;
         c.returnFocus = Checked(kReturnFocus);
 
@@ -863,52 +967,19 @@ private:
         Check(kInstall, Tr(L"Install into the GW2 folder (addons\\GW2ChatTranslator)"), !found.empty(), 24, 178,
               kW - 48);
         Check(kAutostart, Tr(L"Start with Windows and appear when GW2 runs"), true, 24, 206, kW - 48);
+        Label(Tr(L"Then just open your GW2 chat: this window finds it by itself and lies over it. "
+                 L"Turn timestamps on in GW2 (Options → Chat); a large chat text reads best."),
+              24, 240, kW - 48, 44);
         Label(Tr(L"Nothing is put into the game itself: no DLL, no hook. The tool only looks at the screen and "
                  L"the clipboard, and sends a line only when you press Enter."),
-              24, 244, kW - 48, 54);
-
-        // Step 2
-        BeginPage();
-        Label(Tr(L"The tool reads what GW2 shows in its chat panel. Prepare it once:\n\n"
-                 L"1.  Keep the GW2 chat panel open. It may be small (8–12 lines are enough). A minimized "
-                 L"chat cannot be read.\n\n"
-                 L"2.  Use a chat tab that shows all channels (right-click the tab in GW2 → tick all channels). "
-                 L"Filter here with our own tabs instead.\n\n"
-                 L"3.  GW2 Options → Chat: turn timestamps on and choose a large text size. Our window lies over "
-                 L"the chat anyway, so large letters cost you nothing and are read much better.\n\n"
-                 L"4.  Whispers in a minimized chat only flash for a moment: with the panel open nothing is missed."),
-              24, 56, kW - 48, 260);
-
-        // Step 3
-        BeginPage();
-        Label(Tr(L"Last step: draw a frame around the text lines of the GW2 chat (without the tabs and the input "
-                 L"line). GW2 must be running.\n\nAfterwards this window can lie exactly over the GW2 chat and "
-                 L"replace it: the GW2 chat stays open underneath and keeps being read, you only see the "
-                 L"translated one."),
-              24, 56, kW - 48, 120);
-        Check(kCover, Tr(L"Lay this window over the GW2 chat afterwards"), true, 24, 190, kW - 48);
-        Button(kPickRegion, Tr(L"Mark the chat area now"), 24, 226, 240, 30);
-        Label(Tr(L"You can redo all of this later: menu ≡ → Setup."), 24, 276, kW - 48, 22);
+              24, 290, kW - 48, 34);
         EndPages();
 
-        Button(kBack, Tr(L"< Back"), kW - 330, 330, 100);
-        Button(kNext, Tr(L"Next >"), kW - 222, 330, 100);
-        Button(IDCANCEL, Tr(L"Close"), kW - 114, 330, 100);
-        Go(0);
-    }
-
-    void Go(int step) {
-        step_ = std::clamp(step, 0, 2);
-        static const wchar_t* titles[] = {L"1 / 3  –  Language and installation", L"2 / 3  –  Prepare the GW2 chat",
-                                          L"3 / 3  –  Mark the chat"};
-        SetText(kStepTitle, Tr(titles[step_]));
-        ShowPage(static_cast<size_t>(step_));
-        EnableWindow(Item(kBack), step_ > 0);
-        SetText(kNext, step_ == 2 ? Tr(L"Finish") : Tr(L"Next >"));
-        if (step_ == 2) {
-            const bool running = ctx_.isGw2Running ? ctx_.isGw2Running() : false;
-            EnableWindow(Item(kPickRegion), running);
-        }
+        // One page: the chat itself is found later, when it is open.
+        Button(kNext, Tr(L"Finish"), kW - 222, 336, 100);
+        Button(IDCANCEL, Tr(L"Close"), kW - 114, 336, 100);
+        SetText(kStepTitle, Tr(L"Setup – one step"));
+        ShowPage(0);
     }
 
     bool ApplyStep1() {
@@ -944,27 +1015,15 @@ private:
         return true;
     }
 
-    void Finish(bool pick) {
-        const bool running = ctx_.isGw2Running ? ctx_.isGw2Running() : false;
-        if (!running) pick = false;
-        if (!cfg_.regionSet) {
-            cfg_.regionSet = true;
-            cfg_.regionLeft = 10;
-            cfg_.regionFromBottom = 300;
-            cfg_.regionWidth = 460;
-            cfg_.regionHeight = 260;
-        }
+    // No chat area is guessed here: while none is set, the main window looks
+    // for the open GW2 chat and lies over it.
+    void Finish() {
         cfg_.setupDone = true;
         cfg_.SaveAll();
         result.saved = true;
-        if (!installedExe_.empty()) {
-            // The installed copy marks the chat with its own (copied) settings file.
+        if (!installedExe_.empty()) {  // the installed copy goes on with its own (copied) settings file
             result.action = DialogResult::Action::RestartInto;
             result.restartExe = installedExe_;
-            result.markChatAfterRestart = pick;
-            result.coverAfterRestart = Checked(kCover);
-        } else if (pick) {
-            result.action = Checked(kCover) ? DialogResult::Action::CoverChat : DialogResult::Action::PickRegion;
         }
         Close();
     }
@@ -987,24 +1046,9 @@ private:
                     }
                 }
                 break;
-            case kBack:
-                Go(step_ - 1);
-                break;
             case kNext:
-                if (step_ == 0 && !ApplyStep1()) break;
-                if (step_ == 2) Finish(false);
-                else Go(step_ + 1);
+                if (ApplyStep1()) Finish();
                 break;
-            case kPickRegion: {
-                const bool running = ctx_.isGw2Running ? ctx_.isGw2Running() : false;
-                if (!running) {
-                    MessageBoxW(hwnd_, Tr(L"GW2 window not found (start the game)").c_str(),
-                                L"GW2 Chat Translator", MB_OK | MB_ICONINFORMATION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0));
-                    break;
-                }
-                Finish(true);
-                break;
-            }
             case kGw2Browse: {
                 const std::wstring dir = PickFolder(hwnd_, Tr(L"Guild Wars 2 folder"), Text(kGw2Dir));
                 if (!dir.empty()) {
@@ -1024,7 +1068,7 @@ private:
     Config& cfg_;
     const DialogContext& ctx_;
     UiLang startLang_;
-    int step_ = 0;
+
     std::wstring installedExe_;
 };
 

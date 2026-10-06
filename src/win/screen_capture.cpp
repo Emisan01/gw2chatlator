@@ -558,9 +558,29 @@ const wchar_t* ScreenCapture::Method() const {
     return L"GDI";
 }
 
+void ScreenCapture::SetUseWindowCapture(bool on) {
+    if (useWgc_ == on) return;
+    useWgc_ = on;
+    usingWgc_ = false;
+    if (wgc_) wgc_->Reset();
+}
+
+bool ScreenCapture::BorderlessWindowCapture() {
+    // GetVersionEx reports an old version to unmanifested callers; ntdll does not.
+    using Fn = LONG(WINAPI*)(OSVERSIONINFOW*);
+    static const DWORD build = [] {
+        OSVERSIONINFOW v{};
+        v.dwOSVersionInfoSize = sizeof(v);
+        auto fn = reinterpret_cast<Fn>(
+            reinterpret_cast<void*>(GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlGetVersion")));
+        return fn && fn(&v) == 0 ? v.dwBuildNumber : 0ul;
+    }();
+    return build >= 22000;  // Windows 11
+}
+
 bool ScreenCapture::Grab(const RECT& area, Image& out) {
     if (area.right <= area.left || area.bottom <= area.top) return false;
-    if (targetHwnd_ && IsWindow(targetHwnd_) && wgcFailures_ < 3) {
+    if (useWgc_ && targetHwnd_ && IsWindow(targetHwnd_) && wgcFailures_ < 3) {
         if (!wgc_) wgc_ = std::make_unique<Wgc>();
         switch (wgc_->Grab(targetHwnd_, area, out)) {
             case Wgc::Result::Ok:

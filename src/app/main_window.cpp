@@ -12,6 +12,7 @@
 #include "app/region_picker.hpp"
 #include "app/settings_dialog.hpp"
 #include "core/chat_geometry.hpp"
+#include "version.h"
 #include "core/gw2_install.hpp"
 #include "core/gw2_text.hpp"
 #include "core/housekeeping.hpp"
@@ -63,6 +64,7 @@ struct IncomingMsg {
     std::vector<std::wstring> texts;
     std::wstring lang;
     std::vector<TranslateResult> results;
+    ULONGLONG started = 0;  // for the technical page: how long translating takes
 };
 
 namespace {
@@ -78,6 +80,7 @@ constexpr UINT WM_APP_GRAMMAR = WM_APP + 5;
 constexpr UINT WM_APP_TRAY = WM_APP + 6;
 constexpr UINT WM_APP_FIRSTRUN = WM_APP + 7;
 constexpr UINT WM_APP_MYMEMORY_NOTICE = WM_APP + 8;
+constexpr UINT WM_APP_CHATFOUND = WM_APP + 9;   // lParam: RECT* (owned), empty = no chat seen yet
 constexpr UINT_PTR kTimerDebounce = 1;
 constexpr UINT_PTR kTimerStatus = 2;
 constexpr UINT_PTR kTimerGame = 3;
@@ -85,6 +88,7 @@ constexpr UINT_PTR kTimerCaptures = 4;
 constexpr UINT_PTR kTimerGrammar = 5;
 constexpr UINT_PTR kTimerConfirm = 9;  // double scan: read again to confirm new lines
 constexpr UINT kConfirmDelayMs = 200;  // second look at new lines (not the same frame)
+constexpr ULONGLONG kDetectEveryMs = 1500;  // no chat area yet: look for the GW2 chat this often
 constexpr UINT kCaptureMinutes = 15;  // diagnostic pictures switch themselves off
 constexpr int kHotkeyId = 1;
 constexpr size_t kBatchMax = 12;             // incoming lines per translation request
@@ -482,6 +486,7 @@ void MainWindow::StartReader() {
     o.readChinese = cfg_.readChinese;
     o.ocrLanguage = cfg_.ocrLanguage;
     o.scale = cfg_.ocrScale;
+    o.windowCapture = WindowCaptureAllowed();
     o.captureDir = cfg_.CaptureDir();
     reader_.SetSaveCaptures(cfg_.saveCaptures);
     reader_.Start(hwnd_, WM_APP_SNAPSHOT, o);
@@ -721,6 +726,8 @@ void MainWindow::Paint() {
             } else if (readingActive_) {
                 text = Tr(L"\u25cf reading the chat");
                 color = Theme::kOk;
+                const std::wstring quota = MyMemoryQuotaText();  // small and quiet, only with MyMemory
+                if (!quota.empty()) text += L"  \u00b7  " + quota;
             } else if (!gw2_) {
                 text = Tr(L"GW2 not found");
             } else {
@@ -1395,6 +1402,56 @@ void MainWindow::SetEngine(Engine e) {
     StartTranslation();
 }
 
+bool MainWindow::Understood(const std::wstring& lang) const {
+    if (lang.empty()) return false;
+    const std::wstring p = PrimaryLang(lang);
+    for (const std::wstring& u : cfg_.understoodLangs)
+        if (PrimaryLang(u) == p) return true;
+    return false;
+}
+
+// What MyMemory gets is counted per day (its free contingent: 5,000
+// characters, 50,000 with an e-mail address), shown small in the footer.
+void MainWindow::CountMyMemory(size_t chars) {
+    if (engine_ != Engine::Basic || chars == 0) return;
+    SYSTEMTIME st;
+    GetLocalTime(&st);
+    wchar_t day[16];
+    swprintf(day, 16, L"%04u%02u%02u", st.wYear, st.wMonth, st.wDay);
+    if (cfg_.myMemoryDay != day) {
+        cfg_.myMemoryDay = day;
+        cfg_.myMemoryUsed = 0;
+        cfg_.SaveValue(L"Basic", L"UsedDay", day);
+    }
+    cfg_.myMemoryUsed += static_cast<int>(chars);
+    cfg_.SaveValue(L"Basic", L"UsedChars", std::to_wstring(cfg_.myMemoryUsed));
+    InvalidateChrome();
+}
+
+// "MyMemory 3.2k / 5k" — only while MyMemory is the translator.
+std::wstring MainWindow::MyMemoryQuotaText() const {
+    if (engine_ != Engine::Basic) return {};
+    SYSTEMTIME st;
+    GetLocalTime(&st);
+    wchar_t day[16];
+    swprintf(day, 16, L"%04u%02u%02u", st.wYear, st.wMonth, st.wDay);
+    const int used = cfg_.myMemoryDay == day ? cfg_.myMemoryUsed : 0;
+    const int limit = Trim(cfg_.basicEmail).empty() ? 5000 : 50000;
+    auto k = [](int v) {
+        wchar_t b[16];
+        if (v < 1000) swprintf(b, 16, L"%d", v);
+        else swprintf(b, 16, L"%.1fk", v / 1000.0);
+        return std::wstring(b);
+    };
+    return TrF(L"MyMemory {1} / {2} today", {k(std::min(used, limit)), k(limit)});
+}
+
+// Window capture (WGC) only where Windows lets us switch its yellow frame off
+// (Windows 11), unless the player chose otherwise.
+bool MainWindow::WindowCaptureAllowed() const {
+    return cfg_.captureMode == 1 || (cfg_.captureMode == 0 && ScreenCapture::BorderlessWindowCapture());
+}
+
 void MainWindow::ShowMyMemoryNotice() {
     if (cfg_.myMemoryNoticeShown || engine_ != Engine::Basic) return;
     cfg_.myMemoryNoticeShown = true;
@@ -1613,6 +1670,7 @@ void MainWindow::StartTranslation() {
         if (source.empty()) source = PrimaryLang(kbdLocale_);
     }
     inflightGen_ = inputGen_;
+    CountMyMemory(CodePointCount(JoinSegments(p.segments)));
     UpdatePreview();
     std::thread([hwnd = hwnd_, gen = inputGen_, translator = translator_, segments = std::move(p.segments), source,
                  target = SendLang()] {
@@ -1676,6 +1734,7 @@ void MainWindow::StartBackTranslation() {
     if (PrimaryLang(SendLang()) == PrimaryLang(backTarget)) return;  // you can read it anyway
     ProtectedText p = ProtectForTranslation(previewBody_, nullptr, &BuiltinKeepWords(), &speakers_);
     if (!HasTranslatableText(p.segments)) return;
+    CountMyMemory(CodePointCount(previewBody_));
     std::thread([hwnd = hwnd_, gen = inputGen_, translator = translator_, segments = std::move(p.segments),
                  source = SourceCode(SendLang()), target = backTarget] {
         auto msg = std::make_unique<TranslatedMsg>();
@@ -1909,9 +1968,19 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
     // same way twice in a row (double scan): a window dragged over the chat, a
     // scrolling chat or half-drawn text never produce output.
     std::vector<ChatMessage> msgs;
-    for (ChatMessage& m : BuildMessages(s->lines, cfg_.palette))
+    std::vector<ChatMessage> built = BuildMessages(s->lines, cfg_.palette);
+    for (ChatMessage& m : built)
         if (LooksLikeChatText(m.text)) msgs.push_back(std::move(m));
     std::vector<ChatMessage> fresh = stream_.Feed(msgs, true);
+    // For the technical page.
+    if (!stats_.since) stats_.since = GetTickCount64();
+    ++stats_.pictures;
+    stats_.lastMs = s->milliseconds;
+    stats_.avgMs = stats_.avgMs == 0 ? s->milliseconds : stats_.avgMs * 0.9 + s->milliseconds * 0.1;
+    stats_.lastLines = s->lines.size();
+    stats_.messages += built.size();
+    stats_.dropped += built.size() - msgs.size();
+    stats_.confirmed += fresh.size();
     if (stream_.HasPending()) SetTimer(hwnd_, kTimerConfirm, kConfirmDelayMs, nullptr);
     // The first picture shows the whole chat history: only the last few lines
     // are worth translating, the rest is old (all lines are remembered, so
@@ -1997,7 +2066,12 @@ void MainWindow::HandleIncoming(const ChatMessage& m) {
 
     bool pending = false;
     std::wstring detected;
-    if (!system && NeedsTranslation(m.text, &detected)) {
+    // Translated without a click: another language than yours (and not one you
+    // understand), in a channel meant for you (whisper, party, squad, guild by
+    // default). Everything else: a click on the line translates it.
+    const bool foreign = !system && NeedsTranslation(m.text, &detected) && !Understood(detected);
+    const bool automatic = (cfg_.autoTranslate & ChannelBit(m.channel)) != 0;
+    if (foreign) {
         std::wstring cached;
         if (cache_.Get(m.text, readLang_, cached)) {
             if (NormalizeForCompare(cached) != NormalizeForCompare(m.text)) {
@@ -2005,6 +2079,8 @@ void MainWindow::HandleIncoming(const ChatMessage& m) {
                 e.main = cached;
                 e.original = m.text;
             }
+        } else if (!automatic) {
+            e.note = Tr(L"click to translate");
         } else if (GetTickCount64() + 60000 < inPauseUntil_) {
             e.note = Tr(L"not translated \u2013 translator paused");  // long pause (contingent): don't pile up
         } else {
@@ -2058,12 +2134,14 @@ void MainWindow::PumpIncoming() {
     while (inFlight_ < maxJobs && !inQueue_.empty()) {
         auto msg = std::make_unique<IncomingMsg>();
         msg->lang = readLang_;
+        msg->started = GetTickCount64();
         std::vector<std::vector<Segment>> items;
         size_t chars = 0;
         while (!inQueue_.empty() && items.size() < perJob && chars < kBatchChars) {
             PendingLine pl = std::move(inQueue_.back());  // the newest line first
             inQueue_.pop_back();
             chars += pl.text.size();
+            CountMyMemory(CodePointCount(pl.text));
             items.push_back(ProtectForTranslation(pl.text, nullptr, &BuiltinKeepWords(), &speakers_).segments);
             msg->ids.push_back(pl.entryId);
             msg->texts.push_back(std::move(pl.text));
@@ -2083,6 +2161,11 @@ void MainWindow::PumpIncoming() {
 void MainWindow::OnIncomingTranslated(IncomingMsg* raw) {
     std::unique_ptr<IncomingMsg> m(raw);
     if (inFlight_ > 0) --inFlight_;
+    if (m->started) {
+        const double ms = static_cast<double>(GetTickCount64() - m->started);
+        stats_.avgTranslateMs = stats_.avgTranslateMs == 0 ? ms : stats_.avgTranslateMs * 0.8 + ms * 0.2;
+    }
+    for (const TranslateResult& r : m->results) (r.ok ? stats_.translated : stats_.failed)++;
     size_t ok = 0;
     bool quota = false;
     std::wstring firstError;
@@ -2148,9 +2231,11 @@ void MainWindow::UpdateHint() {
     else if (!readerError_.empty())
         log_.SetEmptyHint(TrF(L"Text recognition not available:\n{1}", {readerError_}), false);
     else if (!cfg_.regionSet)
-        log_.SetEmptyHint(Tr(L"One-time setup: click here and draw a frame around the GW2 chat.\nAfter that the "
-                             L"whole chat appears here in your language."),
-                          true);
+        log_.SetEmptyHint(
+            !gw2_ ? Tr(L"Start Guild Wars 2 – the chat is found by itself.\n(Or click here to draw the frame yourself.)")
+                  : Tr(L"Open your GW2 chat (Enter) – it is found by itself and this window lies over it.\n"
+                       L"Timestamps must be on (GW2 options → Chat). Or click here to draw the frame yourself."),
+            true);
     else if (!gw2_)
         log_.SetEmptyHint(Tr(L"Waiting for Guild Wars 2 \u2026"), false);
     else if (!wasInMap_)
@@ -2211,6 +2296,19 @@ void MainWindow::PollGame() {
     }
     if (picking_) return;
 
+    // First start with the game running: lie where the GW2 chat usually is
+    // (bottom left), so its own hint "open your GW2 chat" sits right there.
+    if (!cfg_.regionSet && !cfg_.dockSet && !placedForSetup_ && gw2_ && !IsIconic(gw2_)) {
+        placedForSetup_ = true;
+        const RECT c = GameClientRect();
+        if (!IsRectEmpty(&c)) {
+            const int cw = c.right - c.left, ch = c.bottom - c.top;
+            const int w = std::max(theme_.S(420), cw * 28 / 100), h = std::max(theme_.S(300), ch * 30 / 100);
+            SetWindowPos(hwnd_, nullptr, c.left + cw / 100, c.bottom - h - ch * 6 / 100, w, h,
+                         SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+    }
+
     // Docked: keep our place relative to the game's bottom-left corner.
     if (cfg_.dock && cfg_.dockSet && gw2_ && !IsIconic(gw2_) && !moving_) {
         const RECT want = DockTarget();
@@ -2259,12 +2357,18 @@ void MainWindow::PollGame() {
         UpdateHint();
     }
     if (canRead) area = ChatArea();
+    // No chat area yet: look for the GW2 chat by itself now and then.
+    const bool searching = cfg_.readerEnabled && !cfg_.regionSet && gw2_ && !IsIconic(gw2_) && (gameFront || ours) &&
+                           inMap && !moving_ && !picking_;
+    const RECT watch = !IsRectEmpty(&area) ? area : searching ? ChatSearchArea() : RECT{};
     bool overlap = false;
-    if (!IsRectEmpty(&area) && IsWindowVisible(hwnd_)) {
+    if (!IsRectEmpty(&watch) && IsWindowVisible(hwnd_)) {
         RECT me{}, both{};
         GetWindowRect(hwnd_, &me);
-        overlap = IntersectRect(&both, &me, &area) != FALSE;
+        overlap = IntersectRect(&both, &me, &watch) != FALSE;
     }
+    if (searching && !detecting_ && now - lastDetect_ > kDetectEveryMs && (excludedFromCapture_ || !overlap))
+        StartChatDetection();
     // Covering the chat: hide this window from captures (Windows 10 2004+).
     // Otherwise lift it again, so screenshots and recordings show the window.
     if (overlap != excludedFromCapture_ && !(overlap && affinityUnsupported_)) {
@@ -2312,6 +2416,7 @@ void MainWindow::PickRegion() {
     auto still = std::make_shared<Image>();
     {
         ScreenCapture cap;
+        cap.SetUseWindowCapture(WindowCaptureAllowed());
         cap.SetTarget(gw2_);
         for (int i = 0; i < 12 && still->Empty(); ++i) {
             if (!cap.Grab(stillRect, *still)) Sleep(40);  // the first frame may take a moment
@@ -2376,8 +2481,16 @@ void MainWindow::PickRegion() {
         SetStatus(Tr(L"Chat area not changed"), Tone::Muted, 3000);
         return;
     }
-    // Store relative to the bottom-left corner of the game (the chat sits
-    // there), so it survives moving the window or another resolution.
+    UseChatArea(r);
+    SetStatus(gw2_ ? Tr(L"Chat area saved – reading …")
+                   : Tr(L"Chat area saved (GW2 not found – relative to the screen)"),
+              gw2_ ? Tone::Ok : Tone::Warn, 6000);
+}
+
+// A chat area (screen pixels), drawn or found: stored relative to the
+// bottom-left corner of the game (the chat sits there), so it survives moving
+// the window or another resolution; reading starts.
+void MainWindow::UseChatArea(const RECT& r) {
     RECT ref = GameClientRect();
     if (IsRectEmpty(&ref)) {
         MONITORINFO mi{};
@@ -2400,9 +2513,66 @@ void MainWindow::PickRegion() {
         StartReader();
     }
     UpdateHint();
-    SetStatus(gw2_ ? Tr(L"Chat area saved \u2013 reading \u2026")
-                   : Tr(L"Chat area saved (GW2 not found \u2013 relative to the screen)"),
-              gw2_ ? Tone::Ok : Tone::Warn, 6000);
+}
+
+// ===========================================================================
+// Finding the GW2 chat by itself: while no chat area is set, the game's
+// bottom-left corner is read now and then; the chat shows as several lines
+// that start with a timestamp, aligned on the left. Found: the area is set
+// and this window lies over the chat. Drawing the frame stays possible.
+// ===========================================================================
+RECT MainWindow::ChatSearchArea() const {
+    const RECT c = GameClientRect();
+    if (IsRectEmpty(&c)) return {};
+    const LONG w = c.right - c.left, h = c.bottom - c.top;
+    return {c.left, c.top + h * 35 / 100, c.left + w * 55 / 100, c.bottom};
+}
+
+void MainWindow::StartChatDetection() {
+    const RECT search = ChatSearchArea();
+    if (IsRectEmpty(&search) || detecting_) return;
+    detecting_ = true;
+    lastDetect_ = GetTickCount64();
+    ReaderOptions o;
+    o.ocrChoice = static_cast<int>(cfg_.ocr);
+    o.tesseractPath = cfg_.tesseractPath;
+    o.tesseractLangs = cfg_.tesseractLangs;
+    o.readChinese = cfg_.readChinese;
+    o.ocrLanguage = cfg_.ocrLanguage;
+    std::thread([hwnd = hwnd_, gw2 = gw2_, search, o, windowCapture = WindowCaptureAllowed()] {
+        auto found = std::make_unique<RECT>();
+        *found = {};
+        Image img;
+        {
+            ScreenCapture cap;
+            cap.SetUseWindowCapture(windowCapture);
+            cap.SetTarget(gw2);
+            for (int i = 0; i < 12 && img.Empty(); ++i)
+                if (!cap.Grab(search, img)) Sleep(40);
+        }
+        ChatOcr ocr;
+        std::wstring err;
+        std::vector<OcrLine> lines;
+        ChatBlock b;
+        if (!img.Empty() && ocr.Init(o, &err) && ocr.Read(img, 0, lines, nullptr, &err) && LocateChatLines(lines, &b)) {
+            // Snap to the text lines (whole lines, no tab bar, no input line).
+            const int pad = 4;
+            const SnapResult snap = SnapChatArea(img, {std::max(0, b.left - pad), std::max(0, b.top - pad),
+                                                       b.right - b.left + 2 * pad, b.bottom - b.top + 2 * pad});
+            *found = {search.left + snap.area.x, search.top + snap.area.y, search.left + snap.area.x + snap.area.w,
+                      search.top + snap.area.y + snap.area.h};
+        }
+        if (PostMessageW(hwnd, WM_APP_CHATFOUND, 0, reinterpret_cast<LPARAM>(found.get()))) found.release();
+    }).detach();
+}
+
+void MainWindow::OnChatFound(RECT* raw) {
+    std::unique_ptr<RECT> r(raw);
+    detecting_ = false;
+    if (cfg_.regionSet || IsRectEmpty(r.get())) return;  // set meanwhile, or not open yet: try again later
+    UseChatArea(*r);
+    CoverChat();
+    SetStatus(Tr(L"GW2 chat found \u2013 this window now lies over it and translates it."), Tone::Ok, 9000);
 }
 
 // ===========================================================================
@@ -2559,10 +2729,71 @@ std::wstring MainWindow::ConnectionStatus() {
     return s;
 }
 
+// The technical page: every parameter (named like in the ini) and live
+// numbers. No chat text in here, so it can be shared as a diagnosis.
+std::wstring MainWindow::TechnicalStatus() {
+    std::wstring s;
+    auto line = [&](const std::wstring& l) { s += l + L"\r\n"; };
+    auto num = [](double v, int digits = 0) {
+        wchar_t b[32];
+        swprintf(b, 32, digits ? L"%.1f" : L"%.0f", v);
+        return std::wstring(b);
+    };
+    line(L"GW2 Chat Translator " GCT_VERSION_WSTR);
+    line(TrF(L"Picture: {1} · text recognition: {2} · translator: {3}",
+             {lastCaptureMethod_.empty() ? std::wstring(L"-") : lastCaptureMethod_,
+              lastOcrEngine_.empty() ? std::wstring(L"-") : lastOcrEngine_,
+              translator_ ? translator_->Name() : std::wstring(L"-")}));
+    line(L"");
+    line(Tr(L"Live (since reading started)"));
+    const double minutes = stats_.since ? (GetTickCount64() - stats_.since) / 60000.0 : 0;
+    line(TrF(L"  Pictures read: {1} ({2} per minute) · last {3} ms, average {4} ms · lines in the last one: {5}",
+             {std::to_wstring(stats_.pictures), num(minutes > 0 ? stats_.pictures / minutes : 0, 1),
+              std::to_wstring(stats_.lastMs), num(stats_.avgMs), std::to_wstring(stats_.lastLines)}));
+    const double dropped = stats_.messages ? 100.0 * stats_.dropped / stats_.messages : 0;
+    line(TrF(L"  Messages found: {1} · dropped as noise: {2} ({3} %) · new after the double scan: {4}",
+             {std::to_wstring(stats_.messages), std::to_wstring(stats_.dropped), num(dropped, 1),
+              std::to_wstring(stats_.confirmed)}));
+    line(TrF(L"  Translated: {1} · failed: {2} · average {3} ms · waiting: {4} · on their way: {5}",
+             {std::to_wstring(stats_.translated), std::to_wstring(stats_.failed), num(stats_.avgTranslateMs),
+              std::to_wstring(inQueue_.size()), std::to_wstring(inFlight_)}));
+    if (const std::wstring q = MyMemoryQuotaText(); !q.empty()) line(L"  " + q);
+    line(TrF(L"  Learned words: {1}", {std::to_wstring(spell_.Model().Size())}));
+    line(L"");
+    line(Tr(L"Parameters (as in the settings file)"));
+    std::wstring understood;
+    for (const std::wstring& l : cfg_.understoodLangs) understood += (understood.empty() ? L"" : L",") + l;
+    line(L"  [Reader] Enabled=" + std::to_wstring(cfg_.readerEnabled) + L"  IntervalMs=" +
+         std::to_wstring(cfg_.readerIntervalMs) + L"  OcrEngine=" + OcrKey(cfg_.ocr) + L"  OcrZoom=" +
+         std::to_wstring(cfg_.ocrScale) + L"  Capture=" +
+         (cfg_.captureMode == 1 ? L"window" : cfg_.captureMode == 2 ? L"screen" : L"auto") + L"  ConfirmMs=" +
+         std::to_wstring(kConfirmDelayMs) + L"  ShowSystemLines=" + std::to_wstring(cfg_.showSystemLines));
+    line(L"  [Reader] Region=" + std::to_wstring(cfg_.regionLeft) + L"," + std::to_wstring(cfg_.regionFromBottom) +
+         L" " + std::to_wstring(cfg_.regionWidth) + L"x" + std::to_wstring(cfg_.regionHeight) + L"  RegionSet=" +
+         std::to_wstring(cfg_.regionSet) + L"  WindowCapture=" + std::to_wstring(WindowCaptureAllowed()));
+    line(L"  [Translate] Engine=" + std::wstring(EngineKey(cfg_.engine)) + L"  ReadLang=" +
+         (cfg_.readLang.empty() ? std::wstring(L"(Windows)") : cfg_.readLang) + L"  AutoChannels=" +
+         SerializeChannels(cfg_.autoTranslate) + L"  Understood=" + understood + L"  BackTranslate=" +
+         std::to_wstring(cfg_.backTranslate) + L"  DebounceMs=" + std::to_wstring(cfg_.debounceMs));
+    line(L"  [Chat] SendMode=" + std::wstring(cfg_.copyOnly ? L"copy" : L"send") + L"  StepDelayMs=" +
+         std::to_wstring(cfg_.send.stepDelayMs) + L"  KeyHoldMs=" + std::to_wstring(cfg_.send.keyHoldMs) +
+         L"  RestoreDelayMs=" + std::to_wstring(cfg_.send.restoreDelayMs) + L"  MaxLength=" +
+         std::to_wstring(cfg_.maxLength));
+    line(L"  [Spelling] Enabled=" + std::to_wstring(cfg_.spellEnabled) + L"  AutoCorrect=" +
+         std::to_wstring(static_cast<int>(cfg_.autoCorrect)) + L"  Suggestions=" + std::to_wstring(cfg_.suggestions) +
+         L"  Learn=" + std::to_wstring(cfg_.learnWords) + L"  LanguageTool=" + std::to_wstring(cfg_.languageTool));
+    line(L"  [Window] FontPercent=" + std::to_wstring(cfg_.fontPercent) + L"  Opacity=" + std::to_wstring(cfg_.opacity) +
+         L"  Dock=" + std::to_wstring(cfg_.dock) + L"  FollowGame=" + std::to_wstring(cfg_.followGame));
+    line(L"");
+    line(TrF(L"Settings file: {1}", {cfg_.iniPath}));
+    return s;
+}
+
 void MainWindow::OpenSettings(SettingsPage page) {
     Config edited = cfg_;
     DialogContext ctx;
     ctx.connectionStatus = [this] { return ConnectionStatus(); };
+    ctx.technicalStatus = [this] { return TechnicalStatus(); };
     ctx.isGw2Running = [this] { return gw2_ != nullptr || mumbleState_.live; };
     ctx.preview = [this](int opacity, int fontPercent) {
         SetLayeredWindowAttributes(hwnd_, 0, static_cast<BYTE>(opacity), LWA_ALPHA);
@@ -2586,6 +2817,7 @@ void MainWindow::RunSetup() {
     Config edited = cfg_;
     DialogContext ctx;
     ctx.connectionStatus = [this] { return ConnectionStatus(); };
+    ctx.technicalStatus = [this] { return TechnicalStatus(); };
     ctx.isGw2Running = [this] { return gw2_ != nullptr || mumbleState_.live; };
     const DialogResult r = ShowSetupWizard(hwnd_, inst_, edited, ctx);
     if (r.saved) ApplySettings(edited);
@@ -2673,7 +2905,8 @@ void MainWindow::ApplySettings(const Config& next) {
     }
     if (prev.saveCaptures != cfg_.saveCaptures) SetSaveCaptures(cfg_.saveCaptures);
     if (prev.readerEnabled != cfg_.readerEnabled || prev.ocr != cfg_.ocr || prev.tesseractPath != cfg_.tesseractPath ||
-        prev.readChinese != cfg_.readChinese || prev.readerIntervalMs != cfg_.readerIntervalMs)
+        prev.readChinese != cfg_.readChinese || prev.readerIntervalMs != cfg_.readerIntervalMs ||
+        prev.captureMode != cfg_.captureMode || prev.ocrScale != cfg_.ocrScale)
         RestartReader();
     if (prev.dock != cfg_.dock) SetDock(cfg_.dock);
     if (!cfg_.followGame && autoHidden_) {
@@ -2880,6 +3113,9 @@ LRESULT MainWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             } else if (LOWORD(lp) == WM_RBUTTONUP || LOWORD(lp) == WM_CONTEXTMENU) {
                 ShowTrayMenu();
             }
+            return 0;
+        case WM_APP_CHATFOUND:
+            OnChatFound(reinterpret_cast<RECT*>(lp));
             return 0;
         case WM_APP_MYMEMORY_NOTICE:
             ShowMyMemoryNotice();

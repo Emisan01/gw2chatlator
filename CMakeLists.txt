@@ -1,11 +1,15 @@
 cmake_minimum_required(VERSION 3.20)
-project(GW2ChatTranslator VERSION 0.5.0 LANGUAGES CXX)
+project(GW2ChatTranslator VERSION 0.6.0 LANGUAGES CXX)
 if(WIN32)
     enable_language(RC)
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# The version lives here only: version.h for the code and the exe resource.
+configure_file(cmake/version.h.in ${CMAKE_BINARY_DIR}/generated/version.h)
+include_directories(${CMAKE_BINARY_DIR}/generated)
 
 # ---- core: portable logic, no Win32 (text, JSON, chat parsing, glossary, protocols)
 add_library(gct_core STATIC
