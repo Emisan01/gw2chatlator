@@ -5,6 +5,8 @@
 
 #include <algorithm>
 
+#include "core/i18n.hpp"
+
 namespace gct {
 namespace {
 
@@ -16,11 +18,12 @@ bool IsWordBoundary(wchar_t c) {
 
 }  // namespace
 
-bool InputBox::Create(HWND parent, HINSTANCE inst, const Theme* theme, SpellService* spell, bool autoCorrect,
-                      Callbacks cb) {
+bool InputBox::Create(HWND parent, HINSTANCE inst, const Theme* theme, SpellService* spell, AutoCorrectMode mode,
+                      bool suggestions, Callbacks cb) {
     theme_ = theme;
     spell_ = spell;
-    autoCorrect_ = autoCorrect;
+    mode_ = mode;
+    suggestOn_ = suggestions;
     cb_ = std::move(cb);
     hwnd_ = CreateWindowExW(0, L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE | ES_AUTOVSCROLL, 0, 0,
                             10, 10, parent, nullptr, inst, nullptr);
@@ -42,17 +45,60 @@ std::wstring InputBox::Text() const {
 
 void InputBox::Clear() {
     issues_.clear();
+    grammar_.clear();
+    lastFix_.valid = false;
     KillTimer(hwnd_, kSpellTimer);
     SetWindowTextW(hwnd_, L"");
     InvalidateRect(hwnd_, nullptr, TRUE);  // squiggles live outside the text the EDIT repaints
 }
 
 void InputBox::OnTextChanged() {
-    if (!issues_.empty()) {
+    if (!issues_.empty() || !grammar_.empty()) {
         issues_.clear();  // positions are stale now
+        grammar_.clear();
         InvalidateRect(hwnd_, nullptr, TRUE);
     }
     if (spell_ && spell_->Ready()) SetTimer(hwnd_, kSpellTimer, kSpellDelayMs, nullptr);
+    if (suggestOn_) SetTimer(hwnd_, kSuggestTimer, kSuggestDelayMs, nullptr);
+}
+
+void InputBox::SetSuggestions(bool on) {
+    suggestOn_ = on;
+    suggestions_ = WordSuggestions();
+    if (cb_.onSuggestions) cb_.onSuggestions(suggestions_);
+    if (on) UpdateSuggestions();
+}
+
+void InputBox::UpdateSuggestions() {
+    KillTimer(hwnd_, kSuggestTimer);
+    WordSuggestions s;
+    if (suggestOn_ && spell_) s = spell_->Suggestions(Text(), Caret(), mode_);
+    const bool same = s.kind == suggestions_.kind && s.words == suggestions_.words &&
+                      s.autoIndex == suggestions_.autoIndex && s.replace.start == suggestions_.replace.start &&
+                      s.replace.length == suggestions_.replace.length;
+    suggestions_ = std::move(s);
+    if (!same && cb_.onSuggestions) cb_.onSuggestions(suggestions_);
+}
+
+void InputBox::AcceptSuggestion(size_t index) {
+    if (index >= suggestions_.words.size()) return;
+    const WordSuggestions s = suggestions_;
+    const std::wstring text = Text();
+    if (s.replace.end() > text.size()) return;
+    std::wstring word = s.words[index];
+    // Completions and next words are followed by a space, like on a phone.
+    const bool spaceAfter = s.replace.end() >= text.size() || text[s.replace.end()] != L' ';
+    ReplaceRange(s.replace, word + (spaceAfter ? L" " : L""));
+    const size_t caret = s.replace.start + word.size() + 1;
+    SendMessageW(hwnd_, EM_SETSEL, caret, caret);
+    lastFix_.valid = false;
+    UpdateSuggestions();
+}
+
+void InputBox::SetGrammarIssues(const std::wstring& forText, std::vector<SpellIssue> issues) {
+    if (forText != Text()) return;  // typed on meanwhile
+    grammar_ = std::move(issues);
+    InvalidateRect(hwnd_, nullptr, TRUE);
 }
 
 void InputBox::ApplyPadding() {
@@ -118,7 +164,9 @@ void InputBox::RunSpellCheck(size_t caret) {
 }
 
 void InputBox::DrawSquiggles(HDC dc) const {
-    if (issues_.empty()) return;
+    if (issues_.empty() && grammar_.empty()) return;
+    std::vector<SpellIssue> all = issues_;
+    all.insert(all.end(), grammar_.begin(), grammar_.end());
     const std::wstring text = Text();
     RECT clip;
     GetClientRect(hwnd_, &clip);
@@ -140,9 +188,10 @@ void InputBox::DrawSquiggles(HDC dc) const {
         return static_cast<int>(pj.x + sz.cx);
     };
 
-    for (const SpellIssue& issue : issues_) {
+    for (const SpellIssue& issue : all) {
         if (issue.span.end() > text.size()) continue;
-        const COLORREF color = issue.kind == SpellIssue::Kind::Delete ? Theme::kSquiggleSoft : Theme::kSquiggle;
+        const COLORREF color =
+            (issue.kind == SpellIssue::Kind::Delete || issue.grammar) ? Theme::kSquiggleSoft : Theme::kSquiggle;
         HPEN pen = CreatePen(PS_SOLID, std::max(1, theme_->S(1)), color);
         HGDIOBJ oldPen = SelectObject(dc, pen);
 
@@ -179,7 +228,7 @@ void InputBox::ReplaceRange(Span span, const std::wstring& text) {
 }
 
 bool InputBox::ShowSpellMenu(LPARAM lp) {
-    if (issues_.empty() || !spell_) return false;
+    if ((issues_.empty() && grammar_.empty()) || !spell_) return false;
     const std::wstring text = Text();
     POINT screen{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)};
     size_t idx;
@@ -200,6 +249,9 @@ bool InputBox::ShowSpellMenu(LPARAM lp) {
     const SpellIssue* hit = nullptr;
     for (const SpellIssue& is : issues_)
         if (idx >= is.span.start && idx <= is.span.end()) { hit = &is; break; }
+    if (!hit)
+        for (const SpellIssue& is : grammar_)
+            if (idx >= is.span.start && idx <= is.span.end()) { hit = &is; break; }
     if (!hit || hit->span.end() > text.size()) return false;
     const SpellIssue issue = *hit;  // issues_ may change while the menu is open
     const std::wstring word = text.substr(issue.span.start, issue.span.length);
@@ -207,10 +259,22 @@ bool InputBox::ShowSpellMenu(LPARAM lp) {
     enum : UINT { kDelete = 1, kAdd = 2, kIgnore = 3, kSuggestBase = 10 };
     HMENU menu = CreatePopupMenu();
     std::vector<std::wstring> suggestions;
-    if (issue.kind == SpellIssue::Kind::Delete) {
-        AppendMenuW(menu, MF_STRING, kDelete, L"Doppeltes Wort entfernen");
+    if (issue.grammar) {
+        std::wstring msg = issue.message.size() > 90 ? issue.message.substr(0, 88) + L"\u2026" : issue.message;
+        if (!msg.empty()) {
+            AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, msg.c_str());
+            AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+        }
+        suggestions = issue.suggestions;
+        for (size_t k = 0; k < suggestions.size(); ++k)
+            AppendMenuW(menu, MF_STRING, kSuggestBase + static_cast<UINT>(k), suggestions[k].c_str());
+        if (suggestions.empty()) AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, Tr(L"(no suggestions)").c_str());
         AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-        AppendMenuW(menu, MF_STRING, kIgnore, L"Hier ignorieren");
+        AppendMenuW(menu, MF_STRING, kIgnore, Tr(L"Ignore here").c_str());
+    } else if (issue.kind == SpellIssue::Kind::Delete) {
+        AppendMenuW(menu, MF_STRING, kDelete, Tr(L"Remove the doubled word").c_str());
+        AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+        AppendMenuW(menu, MF_STRING, kIgnore, Tr(L"Ignore here").c_str());
     } else {
         suggestions = spell_->Suggest(word);
         if (issue.kind == SpellIssue::Kind::Replace &&
@@ -218,15 +282,24 @@ bool InputBox::ShowSpellMenu(LPARAM lp) {
             suggestions.insert(suggestions.begin(), issue.replacement);
         for (size_t k = 0; k < suggestions.size(); ++k)
             AppendMenuW(menu, MF_STRING, kSuggestBase + static_cast<UINT>(k), suggestions[k].c_str());
-        if (suggestions.empty()) AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, L"(keine Vorschl\u00e4ge)");
+        if (suggestions.empty()) AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, Tr(L"(no suggestions)").c_str());
         AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-        AppendMenuW(menu, MF_STRING, kAdd, L"Zu meinen GW2-W\u00f6rtern hinzuf\u00fcgen");
-        AppendMenuW(menu, MF_STRING, kIgnore, L"Hier ignorieren");
+        AppendMenuW(menu, MF_STRING, kAdd, Tr(L"Add to my GW2 words").c_str());
+        AppendMenuW(menu, MF_STRING, kIgnore, Tr(L"Ignore here").c_str());
     }
-    const UINT cmd = static_cast<UINT>(
-        TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_NONOTIFY, screen.x, screen.y, 0, hwnd_, nullptr));
+    const UINT cmd = static_cast<UINT>(TrackPopupMenu(menu,
+                                                      TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_NONOTIFY |
+                                                          (UiRtl() ? TPM_LAYOUTRTL : 0),
+                                                      screen.x, screen.y, 0, hwnd_, nullptr));
     DestroyMenu(menu);
 
+    if (cmd == kIgnore && issue.grammar) {
+        grammar_.erase(std::remove_if(grammar_.begin(), grammar_.end(),
+                                      [&](const SpellIssue& g) { return g.span.start == issue.span.start; }),
+                       grammar_.end());
+        InvalidateRect(hwnd_, nullptr, TRUE);
+        return true;
+    }
     if (cmd == kDelete) {
         Span s = issue.span;
         while (s.start > 0 && text[s.start - 1] == L' ') { --s.start; ++s.length; }
@@ -244,11 +317,13 @@ bool InputBox::ShowSpellMenu(LPARAM lp) {
 }
 
 // ---------------------------------------------------------------------------
-// Autocorrection: only what Windows itself marks as a safe replacement
-// (its autocorrect list), never a guess from the suggestion list.
+// Autocorrection when a word is finished. Safe: only what Windows itself
+// marks as a sure replacement. Phone: also the most likely meant word for a
+// typo (see ChooseCorrection). Backspace right after it undoes it.
 // ---------------------------------------------------------------------------
 void InputBox::TryAutoCorrect() {
-    if (!spell_ || !spell_->Ready()) return;
+    lastFix_.valid = false;
+    if (!spell_ || mode_ == AutoCorrectMode::Off) return;
     const size_t caret = Caret();
     const std::wstring text = Text();
     if (caret < 3 || caret > text.size()) return;
@@ -263,13 +338,33 @@ void InputBox::TryAutoCorrect() {
 
     const std::wstring word = text.substr(start, end - start);
     if (std::any_of(word.begin(), word.end(), [](wchar_t c) { return c >= L'0' && c <= L'9'; })) return;
-    const auto replacement = spell_->AutoCorrection(word);
+    const auto replacement = spell_->AutoCorrection(word, mode_);
     if (!replacement) return;
 
-    ReplaceRange(span, *replacement);  // undoable with Ctrl+Z
+    ReplaceRange(span, *replacement);
     const size_t newCaret = caret + replacement->size() - word.size();
     SendMessageW(hwnd_, EM_SETSEL, newCaret, newCaret);
+    lastFix_ = {true, start, word, *replacement, text[end]};
     if (cb_.onAutoCorrected) cb_.onAutoCorrected(word, *replacement);
+}
+
+bool InputBox::UndoAutoCorrect() {
+    if (!lastFix_.valid) return false;
+    lastFix_.valid = false;
+    const std::wstring text = Text();
+    const size_t fixEnd = lastFix_.start + lastFix_.corrected.size();
+    DWORD a = 0, b = 0;
+    SendMessageW(hwnd_, EM_GETSEL, reinterpret_cast<WPARAM>(&a), reinterpret_cast<LPARAM>(&b));
+    // Only directly after the correction and its boundary character.
+    if (a != b || b != fixEnd + 1 || fixEnd >= text.size() || text[fixEnd] != lastFix_.boundary ||
+        text.compare(lastFix_.start, lastFix_.corrected.size(), lastFix_.corrected) != 0)
+        return false;
+    ReplaceRange({lastFix_.start, lastFix_.corrected.size() + 1}, lastFix_.original + lastFix_.boundary);
+    const size_t caret = lastFix_.start + lastFix_.original.size() + 1;
+    SendMessageW(hwnd_, EM_SETSEL, caret, caret);
+    if (spell_) spell_->RejectCorrection(lastFix_.original);
+    if (cb_.onCorrectionUndone) cb_.onCorrectionUndone(lastFix_.original);
+    return true;
 }
 
 void InputBox::DeletePreviousWord() {
@@ -327,24 +422,46 @@ LRESULT InputBox::Handle(UINT msg, WPARAM wp, LPARAM lp) {
                 if (cb_.onSwitchTab) cb_.onSwitchTab();
                 return 0;
             }
+            if (!ctrl && wp == VK_TAB) {  // take the highlighted (else the first) word of the bar
+                if (!suggestions_.words.empty())
+                    AcceptSuggestion(suggestions_.autoIndex >= 0 ? static_cast<size_t>(suggestions_.autoIndex) : 0);
+                return 0;
+            }
             if (ctrl && wp == VK_BACK) {
                 DeletePreviousWord();
                 return 0;
             }
+            if (wp == VK_BACK && !shift && UndoAutoCorrect()) {
+                swallowBackspaceChar_ = true;  // the WM_CHAR of this Backspace must not delete anything
+                return 0;
+            }
+            if (wp != VK_SHIFT && wp != VK_CONTROL && wp != VK_MENU) lastFix_.valid = lastFix_.valid && wp == VK_BACK;
             break;
         }
         case WM_CHAR: {
+            if (wp == 0x08 && swallowBackspaceChar_) {
+                swallowBackspaceChar_ = false;
+                return 0;
+            }
             // Characters produced by the shortcuts above: no beeps, no newlines.
             if (wp == L'\r' || wp == L'\n' || wp == 0x1B || wp == 0x01 || wp == 0x0C || wp == 0x15 || wp == 0x7F)
                 return 0;
             if (wp == L'\t') return 0;  // Ctrl+Tab / Tab: no tab characters in a chat line
             const LRESULT r = CallWindowProcW(orig_, hwnd_, msg, wp, lp);
-            if (autoCorrect_ && IsWordBoundary(static_cast<wchar_t>(wp))) TryAutoCorrect();
+            if (IsWordBoundary(static_cast<wchar_t>(wp))) TryAutoCorrect();
+            else if (wp != 0x08) lastFix_.valid = false;
+            return r;
+        }
+        case WM_KEYUP:
+        case WM_LBUTTONUP: {  // the caret moved: the word bar follows it
+            const LRESULT r = CallWindowProcW(orig_, hwnd_, msg, wp, lp);
+            if (suggestOn_ && (msg == WM_LBUTTONUP || wp == VK_LEFT || wp == VK_RIGHT || wp == VK_HOME || wp == VK_END))
+                SetTimer(hwnd_, kSuggestTimer, kSuggestDelayMs, nullptr);
             return r;
         }
         case WM_PAINT: {
             const LRESULT r = CallWindowProcW(orig_, hwnd_, msg, wp, lp);
-            if (!issues_.empty()) {
+            if (!issues_.empty() || !grammar_.empty()) {
                 HDC dc = GetDC(hwnd_);
                 DrawSquiggles(dc);
                 ReleaseDC(hwnd_, dc);
@@ -354,6 +471,10 @@ LRESULT InputBox::Handle(UINT msg, WPARAM wp, LPARAM lp) {
         case WM_TIMER:
             if (wp == kSpellTimer) {
                 RunSpellCheck(Caret());
+                return 0;
+            }
+            if (wp == kSuggestTimer) {
+                UpdateSuggestions();
                 return 0;
             }
             break;

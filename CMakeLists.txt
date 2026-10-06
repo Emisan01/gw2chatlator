@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
-project(GW2ChatTranslator VERSION 0.4.0 LANGUAGES CXX)
+project(GW2ChatTranslator VERSION 0.5.0 LANGUAGES CXX)
+if(WIN32)
+    enable_language(RC)
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -22,7 +25,15 @@ add_library(gct_core STATIC
     src/core/chat_tabs.cpp
     src/core/image.cpp
     src/core/gw2_text.cpp
-    src/core/mumble.cpp)
+    src/core/mumble.cpp
+    src/core/i18n.cpp
+    src/core/i18n_de.cpp
+    src/core/i18n_ar.cpp
+    src/core/word_model.cpp
+    src/core/tesseract_tsv.cpp
+    src/core/languagetool_protocol.cpp
+    src/core/gw2_install.cpp
+    src/core/housekeeping.cpp)
 target_include_directories(gct_core PUBLIC src)
 
 option(GCT_BUILD_TESTS "Build the core unit tests and the Windows test doubles" ON)
@@ -45,8 +56,11 @@ if(WIN32)
         src/win/gw2_api.cpp
         src/win/gw2_sender.cpp
         src/win/mumble_link.cpp
-        src/win/screen_capture.cpp)
-    target_link_libraries(gct_win PUBLIC gct_core winhttp ole32 user32 gdi32 d3d11 dxgi)
+        src/win/screen_capture.cpp
+        src/win/tesseract_ocr.cpp
+        src/win/gw2_locate.cpp
+        src/win/folder_cleanup.cpp)
+    target_link_libraries(gct_win PUBLIC gct_core winhttp ole32 user32 gdi32 d3d11 dxgi shell32 advapi32 version uuid)
 
     # ---- app: the window
     set(GCT_APP_SOURCES
@@ -58,9 +72,12 @@ if(WIN32)
         src/app/chat_reader.cpp
         src/app/region_picker.cpp
         src/app/spell_service.cpp
-        src/app/config.cpp)
+        src/app/suggestion_bar.cpp
+        src/app/settings_dialog.cpp
+        src/app/config.cpp
+        res/app.rc)
     add_executable(GW2ChatTranslator WIN32 ${GCT_APP_SOURCES} src/win/spellcheck.cpp src/win/ocr.cpp)
-    target_link_libraries(GW2ChatTranslator PRIVATE gct_win shell32 runtimeobject)
+    target_link_libraries(GW2ChatTranslator PRIVATE gct_win shell32 comctl32 runtimeobject)
     set(GCT_APP_TARGETS GW2ChatTranslator)
 
     if(GCT_BUILD_TESTS)
@@ -75,7 +92,7 @@ if(WIN32)
         # fake_chat.txt instead of pixels (for Wine / UI tests).
         add_executable(GW2ChatTranslator_fakes WIN32 ${GCT_APP_SOURCES} tests/tools/fake_spellcheck.cpp
                        tests/tools/fake_ocr.cpp)
-        target_link_libraries(GW2ChatTranslator_fakes PRIVATE gct_win shell32)
+        target_link_libraries(GW2ChatTranslator_fakes PRIVATE gct_win shell32 comctl32)
         list(APPEND GCT_APP_TARGETS GW2ChatTranslator_fakes)
     endif()
 
@@ -86,7 +103,7 @@ if(WIN32)
     if(MSVC)
         # Sources are UTF-8; static CRT so the exe runs without the VC++ redistributable.
         foreach(t gct_core gct_win ${GCT_APP_TARGETS})
-            target_compile_options(${t} PRIVATE /utf-8 /W4 /permissive-)
+            target_compile_options(${t} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/utf-8 /W4 /permissive->)
         endforeach()
         set_property(TARGET gct_core gct_win ${GCT_APP_TARGETS} PROPERTY
             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -96,7 +113,7 @@ if(WIN32)
         endif()
     else()
         foreach(t gct_core gct_win ${GCT_APP_TARGETS})
-            target_compile_options(${t} PRIVATE -Wall -Wextra)
+            target_compile_options(${t} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra>)
         endforeach()
         # wWinMain entry point; static runtime so no MinGW DLLs are needed.
         foreach(t ${GCT_APP_TARGETS})

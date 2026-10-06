@@ -3,21 +3,24 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cwchar>
 
+#include "i18n.hpp"
 #include "text.hpp"
+#include "word_model.hpp"
 
 namespace gct {
 
-const wchar_t* ChannelLabel(Channel c) {
+std::wstring ChannelLabel(Channel c) {
     switch (c) {
-        case Channel::Say: return L"Sagen";
-        case Channel::Map: return L"Karte";
-        case Channel::Party: return L"Gruppe";
-        case Channel::Squad: return L"Trupp";
-        case Channel::Team: return L"Team";
-        case Channel::Whisper: return L"Fl\u00fcstern";
-        case Channel::Guild: return L"Gilde";
-        case Channel::System: return L"System";
+        case Channel::Say: return Tr(L"Say");
+        case Channel::Map: return Tr(L"Map");
+        case Channel::Party: return Tr(L"Party");
+        case Channel::Squad: return Tr(L"Squad");
+        case Channel::Team: return Tr(L"Team");
+        case Channel::Whisper: return Tr(L"Whisper");
+        case Channel::Guild: return Tr(L"Guild");
+        case Channel::System: return Tr(L"System");
         default: return L"";
     }
 }
@@ -73,6 +76,9 @@ std::vector<ChannelColor> DefaultChannelColors() {
         {Channel::Whisper, {200, 140, 255}}, // purple
         {Channel::Guild, {245, 200, 80}},    // gold
         {Channel::Guild, {235, 215, 160}},   // pale gold (guild you don't represent)
+        {Channel::Squad, {223, 245, 226}},   // squad as sampled from real captures (very pale)
+        {Channel::Map, {250, 219, 206}},     // map as sampled from real captures (peach)
+        {Channel::System, {247, 249, 46}},   // yellow event / system notices
     };
 }
 
@@ -90,7 +96,7 @@ Chroma ToChroma(Rgb c) {
     const int mn = std::min({c.r, c.g, c.b});
     if (mx < 50) return {0, 0, 0, true};
     const double sat = (mx - mn) / static_cast<double>(mx);
-    return {c.r / static_cast<double>(mx), c.g / static_cast<double>(mx), c.b / static_cast<double>(mx), sat < 0.12};
+    return {c.r / static_cast<double>(mx), c.g / static_cast<double>(mx), c.b / static_cast<double>(mx), sat < 0.07};
 }
 
 double ChromaDistance(const Chroma& a, const Chroma& b) {
@@ -150,7 +156,39 @@ Channel TagChannel(const std::wstring& tagIn) {
     for (const auto& [name, ch] : tags)
         if (t == name) return ch;
     if (t.size() == 2 && t[0] == L'g' && t[1] >= L'1' && t[1] <= L'6') return Channel::Guild;  // [G1]..[G6]
+    // Notices of the contact list ("[Kontakte] X hat sich angemeldet") and similar.
+    static const wchar_t* systemTags[] = {L"kontakte", L"contacts", L"freunde", L"friends", L"contactos",
+                                          L"amis", L"system", L"kampf", L"combat"};
+    for (const wchar_t* name : systemTags)
+        if (t == name) return Channel::System;
+    // OCR slips in longer tags: "Sagcn", "Kontakle".
+    if (t.size() >= 4) {
+        for (const auto& [name, ch] : tags)
+            if (std::wcslen(name) >= 4 && EditDistance(t, name, 1) <= 1) return ch;
+        for (const wchar_t* name : systemTags)
+            if (EditDistance(t, name, 1) <= 1) return Channel::System;
+    }
     return Channel::Unknown;
+}
+
+bool IsOpener(wchar_t c) {
+    return c == L'[' || c == L'(' || c == L'{' || c == L'C' || c == L'c' || c == L't' || c == L'I' || c == L'l' ||
+           c == L'|' || c == L'L' || c == L'<';
+}
+
+bool IsCloser(wchar_t c) {
+    return c == L']' || c == L')' || c == L'}' || c == L'J' || c == L'j' || c == L'|' || c == L'I' || c == L'l' ||
+           c == L'>';
+}
+
+// Characters OCR puts in place of digits inside a timestamp.
+bool DigitLike(wchar_t c) {
+    return c == L'O' || c == L'o' || c == L'l' || c == L'I' || c == L'i' || c == L'f' || c == L'S' || c == L'B' ||
+           c == L'Z' || c == L'z';
+}
+
+bool TimestampSep(wchar_t c) {
+    return c == L':' || c == L';' || c == L'.' || c == L',' || c == 0x2022 || c == 0x00B7 || c == L'\'';
 }
 
 bool IsGuildTag(const std::wstring& t) {
@@ -188,6 +226,106 @@ void StripWhisperPrefix(ChatMessage& m) {
 
 }  // namespace
 
+size_t OcrTimestampLength(const std::wstring& s) {
+    const size_t strict = TimestampLength(s);
+    if (strict > 0) {
+        // "19:35)" / "19:37 J": a strict time followed by a mangled closing bracket.
+        size_t j = strict;
+        if (j < s.size() && s[j] == L' ' && j + 1 < s.size() && IsCloser(s[j + 1]) &&
+            (j + 2 == s.size() || s[j + 2] == L' ' || IsOpener(s[j + 2])))
+            return j + 2;
+        if (j < s.size() && IsCloser(s[j]) && (j + 1 == s.size() || s[j + 1] == L' ' || IsOpener(s[j + 1])))
+            return j + 1;
+        if (strict == s.size() || s[strict] == L' ') return strict;
+    }
+    size_t i = 0;
+    bool opener = false;
+    if (i < s.size() && IsOpener(s[i])) {
+        opener = true;
+        ++i;
+    }
+    const size_t start = i;
+    int digits = 0, real = 0, seps = 0, spaces = 0;
+    while (i < s.size() && i - start < 8) {
+        const wchar_t c = s[i];
+        if (IsDigit(c)) {
+            ++digits;
+            ++real;
+        } else if (DigitLike(c) && digits > 0 && i + 1 < s.size() && (IsDigit(s[i + 1]) || TimestampSep(s[i + 1]))) {
+            ++digits;
+        } else if (TimestampSep(c) && digits > 0 && seps == 0) {
+            ++seps;
+        } else if (c == L' ' && digits > 0 && spaces == 0 && seps == 0 && i + 1 < s.size() && IsDigit(s[i + 1])) {
+            ++spaces;
+        } else {
+            break;
+        }
+        ++i;
+    }
+    if (real < 2 || digits < 3 || digits > 4) return 0;
+    size_t end = i;
+    size_t j = i;
+    if (j < s.size() && s[j] == L' ') ++j;
+    const bool closer = j < s.size() && IsCloser(s[j]);
+    if (closer) {
+        const size_t after = j + 1;
+        if (after == s.size() || s[after] == L' ' || IsOpener(s[after])) end = after;
+        else if (!opener && seps == 0) return 0;
+    }
+    if (!opener && end == i && seps == 0) return 0;  // "1234 text" is a number, not a time
+    if (!opener && end == i && (end < s.size() && s[end] != L' ')) return 0;
+    if (opener && end == i && !(end == s.size() || s[end] == L' ')) return 0;
+    return end;
+}
+
+size_t FuzzyTagLength(const std::wstring& s, Channel* channel) {
+    if (s.size() < 3 || !IsOpener(s[0])) return 0;
+    for (size_t k = 2; k < s.size() && k <= 14; ++k) {
+        if (!IsCloser(s[k])) {
+            if (!IsWordChar(s[k]) || (s[k] >= L'0' && s[k] <= L'9')) {
+                if (!(s[k] >= L'1' && s[k] <= L'6')) break;  // "[G3]"
+            }
+            continue;
+        }
+        const std::wstring inner = s.substr(1, k - 1);
+        const bool followOk = k + 1 == s.size() || s[k + 1] == L' ' || IsOpener(s[k + 1]);
+        if (!followOk) continue;
+        Channel c = TagChannel(inner);
+        if (c == Channel::Unknown) continue;
+        // A one-letter tag needs a real bracket on at least one side ("CSJ" is fine,
+        // "lMl" is not enough evidence) unless it is a known GW2 letter.
+        if (channel) *channel = c;
+        return k + 1;
+    }
+    return 0;
+}
+
+Rgb LeadColor(const OcrLine& line) {
+    if (line.words.empty()) return line.color;
+    // Skip the words that make up the timestamp, then take the first coloured words.
+    const size_t ts = OcrTimestampLength(Trim(line.text));
+    size_t consumed = 0, idx = 0;
+    while (idx < line.words.size() && consumed < ts) {
+        consumed += line.words[idx].text.size() + 1;
+        ++idx;
+    }
+    int r = 0, g = 0, b = 0, n = 0;
+    for (size_t i = idx; i < line.words.size() && n < 3; ++i) {
+        const OcrWord& w = line.words[i];
+        if (!w.hasColor) continue;
+        const int mx = std::max({w.color.r, w.color.g, w.color.b});
+        const int mn = std::min({w.color.r, w.color.g, w.color.b});
+        if (mx < 60) continue;
+        if (n > 0 && mx > 0 && (mx - mn) * 100 / mx < 7) continue;  // a grey word after a coloured one
+        r += w.color.r;
+        g += w.color.g;
+        b += w.color.b;
+        ++n;
+    }
+    if (n == 0) return line.color;
+    return {static_cast<uint8_t>(r / n), static_cast<uint8_t>(g / n), static_cast<uint8_t>(b / n)};
+}
+
 Channel ClassifyColor(Rgb c, const std::vector<ChannelColor>& palette) {
     const Chroma x = ToChroma(c);
     if (x.grey) return Channel::Unknown;
@@ -210,28 +348,49 @@ ChatMessage ParseChatLine(const std::wstring& line, Channel* tagChannel) {
     m.raw = line;
     std::wstring t = Trim(line);
     Channel tag = Channel::Unknown;
+    bool sawTag = false;
 
     for (int round = 0; round < 4 && !t.empty(); ++round) {
         if (t[0] == L'[') {
             const size_t close = t.find(L']');
-            if (close == std::wstring::npos || close > 30) break;
-            const std::wstring inner = Trim(t.substr(1, close - 1));
-            if (TimestampLength(inner) == inner.size() && !inner.empty()) {
-                t = Trim(t.substr(close + 1));
-            } else if (Channel c = TagChannel(inner); c != Channel::Unknown) {
-                tag = c;
-                t = Trim(t.substr(close + 1));
-            } else if (IsGuildTag(inner)) {
-                t = Trim(t.substr(close + 1));
-            } else {
-                break;
+            if (close != std::wstring::npos && close <= 30) {
+                const std::wstring inner = Trim(t.substr(1, close - 1));
+                if (!inner.empty() && TimestampLength(inner) == inner.size()) {
+                    t = Trim(t.substr(close + 1));
+                    m.stamped = true;
+                    continue;
+                }
+                if (Channel c = TagChannel(inner); c != Channel::Unknown) {
+                    tag = c;
+                    sawTag = true;
+                    t = Trim(t.substr(close + 1));
+                    continue;
+                }
+                if (IsGuildTag(inner) && round > 0) {  // a guild tag follows a timestamp or channel tag
+                    t = Trim(t.substr(close + 1));
+                    continue;
+                }
             }
-        } else if (const size_t ts = TimestampLength(t); ts > 0 && (ts == t.size() || t[ts] == L' ')) {
-            t = Trim(t.substr(ts));
-        } else {
-            break;
         }
+        if (!m.stamped) {
+            if (const size_t ts = OcrTimestampLength(t); ts > 0) {
+                t = Trim(t.substr(ts));
+                m.stamped = true;
+                continue;
+            }
+        }
+        if (!sawTag) {
+            Channel c = Channel::Unknown;
+            if (const size_t tl = FuzzyTagLength(t, &c); tl > 0) {
+                tag = c;
+                sawTag = true;
+                t = Trim(t.substr(tl));
+                continue;
+            }
+        }
+        break;
     }
+    m.tagOnly = (m.stamped || sawTag) && t.empty();
 
     const size_t colon = t.find(L':');
     const bool url = colon != std::wstring::npos && colon + 1 < t.size() && t[colon + 1] == L'/';
@@ -250,28 +409,62 @@ std::vector<ChatMessage> BuildMessages(const std::vector<OcrLine>& lines, const 
     Rgb prevColor;
     int prevBottom = -100000;
 
+    struct Parsed {
+        ChatMessage m;
+        Channel tag;
+    };
+    std::vector<Parsed> parsed;
+    parsed.reserve(lines.size());
+    bool anyStamped = false;
     for (const OcrLine& line : lines) {
+        Parsed p;
+        p.tag = Channel::Unknown;
+        p.m = ParseChatLine(line.text, &p.tag);
+        anyStamped = anyStamped || p.m.stamped;
+        parsed.push_back(std::move(p));
+    }
+    // With timestamps on, a chat message always starts with one: whatever is
+    // above the first stamped line (tab bar, a message cut off at the top)
+    // cannot be read reliably.
+    bool started = !anyStamped;
+
+    for (size_t i = 0; i < lines.size(); ++i) {
+        const OcrLine& line = lines[i];
+        ChatMessage& m = parsed[i].m;
+        const Channel tag = parsed[i].tag;
         if (Trim(line.text).empty()) continue;
-        Channel tag = Channel::Unknown;
-        ChatMessage m = ParseChatLine(line.text, &tag);
+        if (!started) {
+            if (!m.stamped) continue;
+            started = true;
+        }
+        if (m.tagOnly) continue;  // the input line's channel marker
 
         const int gap = line.top - prevBottom;
         const bool below = gap >= -std::max(2, line.height / 2) && gap <= std::max(6, line.height);
-        if (m.speaker.empty() && tag == Channel::Unknown && !out.empty() && below && ColorsClose(line.color, prevColor)) {
+        const Rgb lead = LeadColor(line);
+        if (m.speaker.empty() && tag == Channel::Unknown && !m.stamped && !out.empty() && below &&
+            ColorsClose(lead, prevColor)) {
             out.back().text += L" " + m.text;
             out.back().raw += L" " + Trim(line.text);
             prevBottom = line.top + line.height;
             continue;
         }
 
-        m.color = line.color;
-        m.channel = tag != Channel::Unknown ? tag : ClassifyColor(line.color, palette);
+        m.color = lead;
+        m.channel = tag != Channel::Unknown ? tag : ClassifyColor(lead, palette);
         if (m.channel == Channel::Unknown && m.speaker.empty()) m.channel = Channel::System;
         if (m.channel == Channel::Whisper) StripWhisperPrefix(m);
-        out.push_back(std::move(m));
-        prevColor = line.color;
+        if (m.channel == Channel::System && !m.speaker.empty()) {  // "Event: ..." in system yellow
+            m.text = m.speaker + L": " + m.text;
+            m.speaker.clear();
+        }
+        prevColor = lead;
         prevBottom = line.top + line.height;
+        out.push_back(std::move(m));
     }
+    // A speaker with nothing said ("Name:" cut at the bottom) is not a message.
+    out.erase(std::remove_if(out.begin(), out.end(), [](const ChatMessage& x) { return Trim(x.text).empty(); }),
+              out.end());
     return out;
 }
 

@@ -13,116 +13,142 @@ namespace {
 
 // ASCII only, so GetPrivateProfileString reads it the same in every locale.
 const char kHeader[] =
-    "; GW2 Chat Translator - Einstellungen\r\n"
-    "; Die meisten Punkte lassen sich auch im Fenster ueber das Menue (=) aendern.\r\n"
-    "; Aenderungen hier gelten ab dem naechsten Start.\r\n"
+    "; GW2 Chat Translator - settings\r\n"
+    "; Everything here can also be changed in the window: menu (=) -> Settings.\r\n"
+    "; Changes made in this file apply on the next start.\r\n"
+    "\r\n"
+    "[General]\r\n"
+    "; Language of the window: en (English), de (Deutsch), ar (Arabic)\r\n"
+    "UiLanguage=en\r\n"
+    "; Guild Wars 2 folder (found automatically; used for the install and the add-on check)\r\n"
+    "Gw2Dir=\r\n"
     "\r\n";
 
 const char kTranslateSections[] =
     "[Translate]\r\n"
-    "; Uebersetzer: auto | basic | deepl | llm\r\n"
-    ";   auto  = DeepL, wenn ein Key eingetragen ist, sonst LLM, wenn ein Modell eingetragen ist, sonst Basis\r\n"
-    ";   basic = MyMemory: kostenlos, ohne Anmeldung, begrenztes Tageskontingent\r\n"
+    "; Translator: auto | basic | deepl | llm\r\n"
+    ";   auto  = DeepL if a key is set, else the LLM if a model is set, else basic\r\n"
+    ";   basic = MyMemory: free, no account, limited daily quota\r\n"
     "Engine=auto\r\n"
-    "; Deine Lesesprache: in diese Sprache wird der GW2-Chat uebersetzt. Leer = Windows-Sprache.\r\n"
+    "; Your reading language: the GW2 chat is translated into it. Empty = Windows language.\r\n"
     "; Codes: DE, EN-GB, EN-US, FR, ES, IT, PT-BR, NL, PL, TR, RU, UK, AR, HE, ZH-HANS, ZH-HANT, JA, KO, LA ...\r\n"
     "ReadLang=\r\n"
-    "; Sprachen fuer \"Senden als\" (Strg+L schaltet durch; am Ende kommt immer \"Original\").\r\n"
+    "; Languages for \"Send as\" (Ctrl+L cycles; \"Original\" always comes last).\r\n"
     "WriteLangs=EN-GB,FR,ES,DE\r\n"
-    "; Deine Nachricht zur Kontrolle in deine Sprache zurueckuebersetzen (1/0)\r\n"
+    "; Translate your message back into your language as a check (1/0)\r\n"
     "BackTranslate=1\r\n"
-    "; Wartezeit nach dem Tippen, bevor uebersetzt wird (ms)\r\n"
+    "; Wait after typing before translating (ms)\r\n"
     "DebounceMs=500\r\n"
     "\r\n"
     "[Basic]\r\n"
-    "; Optional: deine E-Mail-Adresse erhoeht das freie MyMemory-Kontingent (5.000 -> 50.000 Zeichen/Tag).\r\n"
+    "; Optional: your e-mail address raises the free MyMemory quota (5,000 -> 50,000 characters/day).\r\n"
     "Email=\r\n"
     "\r\n"
     "[LLM]\r\n"
-    "; Optional: jedes OpenAI-kompatible Sprachmodell.\r\n"
-    "; Lokal und kostenlos: Ollama (http://localhost:11434) oder LM Studio (http://localhost:1234)\r\n"
-    "; Cloud: Adresse des Anbieters + ApiKey. Leer lassen = kein LLM.\r\n"
+    "; Optional: any OpenAI-compatible language model.\r\n"
+    "; Local and free: Ollama (http://localhost:11434) or LM Studio (http://localhost:1234)\r\n"
+    "; Cloud: the provider's address + ApiKey. Leave the model empty = no LLM.\r\n"
     "Url=http://localhost:11434\r\n"
-    "; z.B. qwen2.5:7b, llama3.1:8b, gemma2:9b - ohne Modell ist das LLM aus\r\n"
+    "; e.g. qwen2.5:7b, llama3.1:8b, gemma2:9b\r\n"
     "Model=\r\n"
     "ApiKey=\r\n"
     "TimeoutSec=60\r\n"
+    "; Repair text-recognition errors in chat lines while translating (1/0)\r\n"
+    "FixOcr=1\r\n"
     "\r\n"
     "[Reader]\r\n"
-    "; Den GW2-Chat mitlesen und dauerhaft uebersetzen (Texterkennung von Windows, offline)\r\n"
+    "; Read the GW2 chat from the screen and translate it permanently\r\n"
     "Enabled=1\r\n"
-    "; Wie oft der Chat gelesen wird (ms)\r\n"
+    "; How often the chat is read (ms)\r\n"
     "IntervalMs=900\r\n"
-    "; Sprache der Texterkennung, z.B. de-DE, en-US. Leer = Windows-Sprachen.\r\n"
+    "; Text recognition: auto (Tesseract if installed, else Windows) | tesseract | windows\r\n"
+    "OcrEngine=auto\r\n"
+    "; Tesseract: folder or tesseract.exe (empty = search Program Files, PATH, .\\tesseract)\r\n"
+    "TesseractPath=\r\n"
+    "; Tesseract languages, e.g. eng+deu (empty = English, German, French, Spanish where installed)\r\n"
+    "TesseractLang=\r\n"
+    "; Also read Simplified Chinese (needs chi_sim, a bit slower)\r\n"
+    "ReadChinese=0\r\n"
+    "; Windows text recognition language, e.g. de-DE, en-US. Empty = Windows languages.\r\n"
     "OcrLanguage=\r\n"
-    "; Vergroesserung vor der Texterkennung (1-4). Kleine UI-Groesse in GW2: 3 probieren.\r\n"
+    "; Enlargement before text recognition (1-4). Small GW2 interface size: try 3.\r\n"
     "OcrScale=2\r\n"
-    "; Systemzeilen (ohne Sprecher) anzeigen\r\n"
+    "; Show system lines (without a speaker)\r\n"
     "ShowSystem=0\r\n"
-    "; Diagnose: Aufnahmen und erkannten Text im Ordner captures speichern\r\n"
+    "; Diagnostics: save pictures and recognized text in the captures folder\r\n"
+    "; (switches itself off after 15 minutes; old files are cleaned up)\r\n"
     "SaveCaptures=0\r\n"
-    "; Chat-Bereich relativ zur linken unteren Ecke des GW2-Fensters.\r\n"
-    "; Wird im Fenster mit \"Chat-Bereich festlegen\" gesetzt.\r\n"
+    "; Chat area relative to the bottom-left corner of the GW2 window.\r\n"
+    "; Set in the window with \"Set chat area\".\r\n"
     "RegionLeft=\r\n"
     "RegionFromBottom=\r\n"
     "RegionWidth=\r\n"
     "RegionHeight=\r\n"
-    "; Kanalfarben (RRGGBB). Rechtsklick auf eine Chatzeile -> \"Farbe gehoert zu ...\" kalibriert sie.\r\n"
-    "; ColorSay= ColorMap= ColorParty= ColorSquad= ColorTeam= ColorWhisper= ColorGuild=\r\n"
+    "; Channel colours (RRGGBB). Right-click a chat line -> \"This line colour is\" calibrates them.\r\n"
+    "; ColorSay= ColorMap= ColorParty= ColorSquad= ColorTeam= ColorWhisper= ColorGuild= ColorSystem=\r\n"
     "\r\n";
 
 const char kRestSections[] =
     "[DeepL]\r\n"
-    "; Optional, beste Qualitaet: https://www.deepl.com/pro-api  (Free-Keys enden auf :fx)\r\n"
+    "; Optional, best quality: https://www.deepl.com/pro-api  (free keys end in :fx)\r\n"
     "ApiKey=\r\n"
     "\r\n"
     "[Spelling]\r\n"
-    "; Rechtschreibpruefung von Windows (offline). Sie folgt deinem Tastaturlayout.\r\n"
+    "; Windows spell checking (offline). It follows your keyboard layout.\r\n"
     "Enabled=1\r\n"
-    "; Sichere Tippfehler beim Tippen automatisch korrigieren (Strg+Z macht es rueckgaengig)\r\n"
-    "AutoCorrect=1\r\n"
+    "; Autocorrection while typing: off | safe (only Windows' sure fixes) | phone (like a phone keyboard)\r\n"
+    "AutoCorrectMode=phone\r\n"
+    "; Word bar above the input: completions and the next word (Tab takes the highlighted one)\r\n"
+    "Suggestions=1\r\n"
+    "; Learn the words you send (saved per language in the learned folder)\r\n"
+    "Learn=1\r\n"
+    "; Optional grammar check with LanguageTool (public server: max. 20 checks per minute)\r\n"
+    "LanguageTool=0\r\n"
+    "LanguageToolUrl=https://api.languagetool.org\r\n"
     "\r\n"
     "[Glossary]\r\n"
-    "; Offizielle GW2-Namen (Karten, Klassen, Elite-Spezialisierungen, WvW-Ziele, Reittiere)\r\n"
-    "; aus der GW2-API: Loewenstein wird zu Lion's Arch statt woertlich uebersetzt.\r\n"
+    "; Official GW2 names (maps, professions, elite specializations, WvW objectives, mounts)\r\n"
+    "; from the GW2 API: Loewenstein becomes Lion's Arch instead of a literal translation.\r\n"
     "Enabled=1\r\n"
     "RefreshDays=14\r\n"
     "\r\n"
     "[Hotkey]\r\n"
-    "; Fenster holen bzw. ausblenden. Beispiele: Ctrl+Alt+T, Ctrl+Shift+F9, F10\r\n"
+    "; Show / hide the window. Examples: Ctrl+Alt+T, Ctrl+Shift+F9, F10\r\n"
     "Toggle=Ctrl+Alt+T\r\n"
     "\r\n"
     "[Chat]\r\n"
-    "; So kommt deine Nachricht in den Chat:\r\n"
-    ";   send = Enter im Fenster holt GW2 nach vorn und sendet die Zeile (Enter, Einfuegen, Enter)\r\n"
-    ";   copy = Enter kopiert nur; du fuegst sie in GW2 selbst ein. Keine einzige Taste geht ans Spiel.\r\n"
+    "; How your message gets into the chat:\r\n"
+    ";   send = Enter in the window brings GW2 to the front and sends the line (Enter, paste, Enter)\r\n"
+    ";   copy = Enter only copies; you paste it in GW2 yourself. Not a single key goes to the game.\r\n"
     "SendMode=send\r\n"
-    "; GW2 erlaubt 199 Zeichen pro Chatzeile; laengere Nachrichten werden aufgeteilt\r\n"
+    "; GW2 allows 199 characters per chat line; longer messages are split\r\n"
     "MaxLength=199\r\n"
-    "; 1 = nach dem Senden zurueck ins Uebersetzerfenster, 0 = im Spiel bleiben\r\n"
+    "; 1 = back to the translator window after sending, 0 = stay in the game\r\n"
     "ReturnFocus=0\r\n"
-    "; Pause zwischen den Tastendruecken an GW2 (ms). Bei niedriger FPS erhoehen.\r\n"
+    "; Pause between the key presses to GW2 (ms). Raise it at low FPS.\r\n"
     "StepDelayMs=80\r\n"
     "RestoreDelayMs=250\r\n"
     "\r\n"
     "[Window]\r\n"
-    "; Position leer = automatisch. Wird beim Verschieben gespeichert.\r\n"
+    "; Position empty = automatic. Saved when you move the window.\r\n"
     "X=\r\n"
     "Y=\r\n"
     "Width=520\r\n"
     "Height=460\r\n"
-    "; 120 (sehr durchsichtig) bis 255 (deckend)\r\n"
+    "; 120 (very transparent) to 255 (opaque)\r\n"
     "Opacity=238\r\n"
-    "; Mit dem Spiel ein- und ausblenden (1/0)\r\n"
+    "; Text size in percent (90, 100, 115, 135)\r\n"
+    "FontPercent=100\r\n"
+    "; Show and hide together with the game (1/0)\r\n"
     "FollowGame=1\r\n"
-    "; An GW2 andocken: das Fenster wandert mit dem Spielfenster (Menue im Fenster)\r\n"
+    "; Dock to GW2: the window moves with the game window\r\n"
     "Dock=0\r\n"
     "\r\n"
     "[Tabs]\r\n"
-    "; Tabs wie im GW2-Chat, am einfachsten per Rechtsklick auf einen Tab einstellen.\r\n"
-    "; TabN=Name|Kanaele  (say, map, party, squad, team, guild, whisper, system, other)\r\n"
+    "; Tabs like in the GW2 chat; easiest to change by right-clicking a tab.\r\n"
+    "; TabN=Name|channels  (say, map, party, squad, team, guild, whisper, system, other)\r\n"
     "Tab1=Chat|say,map,party,squad,team,guild,whisper,system,other\r\n"
-    "Tab2=Fl\\u00fcstern|whisper\r\n"
+    "Tab2=Whisper|whisper\r\n"
     "Active=1\r\n";
 
 struct ColorKey {
@@ -132,7 +158,7 @@ struct ColorKey {
 constexpr ColorKey kColorKeys[] = {
     {Channel::Say, L"ColorSay"},     {Channel::Map, L"ColorMap"},         {Channel::Party, L"ColorParty"},
     {Channel::Squad, L"ColorSquad"}, {Channel::Team, L"ColorTeam"},       {Channel::Whisper, L"ColorWhisper"},
-    {Channel::Guild, L"ColorGuild"},
+    {Channel::Guild, L"ColorGuild"},  {Channel::System, L"ColorSystem"},
 };
 
 class Ini {
@@ -176,6 +202,21 @@ private:
     std::wstring path_;
 };
 
+OcrChoice ParseOcr(const std::wstring& s) {
+    const std::wstring v = ToLowerAscii(s);
+    if (v == L"tesseract") return OcrChoice::Tesseract;
+    if (v == L"windows") return OcrChoice::Windows;
+    return OcrChoice::Auto;
+}
+
+AutoCorrectMode ParseAutoCorrect(const std::wstring& s, AutoCorrectMode def) {
+    const std::wstring v = ToLowerAscii(s);
+    if (v == L"off" || v == L"0") return AutoCorrectMode::Off;
+    if (v == L"safe") return AutoCorrectMode::Safe;
+    if (v == L"phone") return AutoCorrectMode::Phone;
+    return def;
+}
+
 Engine ParseEngine(const std::wstring& s) {
     const std::wstring v = ToLowerAscii(s);
     if (v == L"basic" || v == L"basis" || v == L"mymemory") return Engine::Basic;
@@ -185,6 +226,29 @@ Engine ParseEngine(const std::wstring& s) {
 }
 
 }  // namespace
+
+const wchar_t* OcrKey(OcrChoice o) {
+    switch (o) {
+        case OcrChoice::Tesseract: return L"tesseract";
+        case OcrChoice::Windows: return L"windows";
+        default: return L"auto";
+    }
+}
+
+const wchar_t* AutoCorrectKey(AutoCorrectMode m) {
+    switch (m) {
+        case AutoCorrectMode::Off: return L"off";
+        case AutoCorrectMode::Safe: return L"safe";
+        default: return L"phone";
+    }
+}
+
+std::wstring Config::UserWordsPath() const {
+    // v0.4 called it gw2-woerter.txt; keep using an existing one.
+    const std::wstring old = dataDir + L"\\gw2-woerter.txt";
+    if (GetFileAttributesW(old.c_str()) != INVALID_FILE_ATTRIBUTES) return old;
+    return dataDir + L"\\my-gw2-words.txt";
+}
 
 const wchar_t* EngineKey(Engine e) {
     switch (e) {
@@ -202,10 +266,13 @@ void Config::Load(const std::wstring& dir) {
         WriteFileAtomic(iniPath, std::string(kHeader) + kTranslateSections + kRestSections);
     } else if (!Ini(iniPath).HasSection(L"Reader")) {
         // INI from v0.2: append the new sections so the options are visible.
-        AppendFileBytes(iniPath, std::string("\r\n; --- neu in v0.3 ---\r\n") + kTranslateSections);
+        AppendFileBytes(iniPath, std::string("\r\n; --- new in v0.3 ---\r\n") + kTranslateSections);
     }
 
     const Ini ini(iniPath);
+    uiLang = UiLangFromCode(ini.Str(L"General", L"UiLanguage", L"en"), UiLang::En);
+    setupDone = ini.Bool(L"General", L"SetupDone", false);
+    gw2Dir = AsciiUnescape(ini.Str(L"General", L"Gw2Dir", L""));
     engine = ParseEngine(ini.Str(L"Translate", L"Engine", L"auto"));
     // v0.2 had SourceLang/TargetLangs under [DeepL]; used as fallbacks.
     readLang = ToUpperAscii(ini.Has(L"Translate", L"ReadLang") ? ini.Str(L"Translate", L"ReadLang", L"")
@@ -216,15 +283,20 @@ void Config::Load(const std::wstring& dir) {
     backTranslate = ini.Bool(L"Translate", L"BackTranslate", true);
     debounceMs = ini.Int(L"Translate", L"DebounceMs", ini.Int(L"DeepL", L"DebounceMs", 500, 150, 5000), 150, 5000);
 
-    basicEmail = ini.Str(L"Basic", L"Email", L"");
-    deeplKey = ini.Str(L"DeepL", L"ApiKey", L"");
-    llmUrl = ini.Str(L"LLM", L"Url", L"http://localhost:11434");
-    llmModel = ini.Str(L"LLM", L"Model", L"");
-    llmKey = ini.Str(L"LLM", L"ApiKey", L"");
+    basicEmail = AsciiUnescape(ini.Str(L"Basic", L"Email", L""));
+    deeplKey = AsciiUnescape(ini.Str(L"DeepL", L"ApiKey", L""));
+    llmUrl = AsciiUnescape(ini.Str(L"LLM", L"Url", L"http://localhost:11434"));
+    llmModel = AsciiUnescape(ini.Str(L"LLM", L"Model", L""));
+    llmKey = AsciiUnescape(ini.Str(L"LLM", L"ApiKey", L""));
     llmTimeoutSec = ini.Int(L"LLM", L"TimeoutSec", 60, 5, 600);
+    llmFixOcr = ini.Bool(L"LLM", L"FixOcr", true);
 
     readerEnabled = ini.Bool(L"Reader", L"Enabled", true);
     readerIntervalMs = ini.Int(L"Reader", L"IntervalMs", 900, 250, 10000);
+    ocr = ParseOcr(ini.Str(L"Reader", L"OcrEngine", L"auto"));
+    tesseractPath = AsciiUnescape(ini.Str(L"Reader", L"TesseractPath", L""));
+    tesseractLangs = ToUtf8(ini.Str(L"Reader", L"TesseractLang", L""));
+    readChinese = ini.Bool(L"Reader", L"ReadChinese", false);
     ocrLanguage = ini.Str(L"Reader", L"OcrLanguage", L"");
     ocrScale = ini.Int(L"Reader", L"OcrScale", 2, 1, 4);
     showSystemLines = ini.Bool(L"Reader", L"ShowSystem", false);
@@ -244,7 +316,14 @@ void Config::Load(const std::wstring& dir) {
     }
 
     spellEnabled = ini.Bool(L"Spelling", L"Enabled", true);
-    autoCorrect = ini.Bool(L"Spelling", L"AutoCorrect", true);
+    // v0.4 had AutoCorrect=1/0 (Windows' sure fixes only).
+    autoCorrect = ParseAutoCorrect(ini.Str(L"Spelling", L"AutoCorrectMode", L""),
+                                   ini.Bool(L"Spelling", L"AutoCorrect", true) ? AutoCorrectMode::Phone
+                                                                               : AutoCorrectMode::Off);
+    suggestions = ini.Bool(L"Spelling", L"Suggestions", true);
+    learnWords = ini.Bool(L"Spelling", L"Learn", true);
+    languageTool = ini.Bool(L"Spelling", L"LanguageTool", false);
+    languageToolUrl = ini.Str(L"Spelling", L"LanguageToolUrl", L"https://api.languagetool.org");
 
     glossaryEnabled = ini.Bool(L"Glossary", L"Enabled", true);
     glossaryRefreshDays = ini.Int(L"Glossary", L"RefreshDays", 14, 1, 365);
@@ -262,6 +341,7 @@ void Config::Load(const std::wstring& dir) {
     w = ini.Int(L"Window", L"Width", 520, 380, 4000);
     h = ini.Int(L"Window", L"Height", 460, 300, 4000);
     opacity = ini.Int(L"Window", L"Opacity", 238, 120, 255);
+    fontPercent = ini.Int(L"Window", L"FontPercent", 100, 80, 160);
     followGame = ini.Bool(L"Window", L"FollowGame", true);
     dock = ini.Bool(L"Window", L"Dock", false);
     dockLeft = ini.Int(L"Window", L"DockLeft", 0, -20000, 20000);
@@ -322,6 +402,45 @@ void Config::SaveDock() const {
     SaveValue(L"Window", L"DockFromBottom", std::to_wstring(dockFromBottom));
     SaveValue(L"Window", L"DockWidth", std::to_wstring(dockWidth));
     SaveValue(L"Window", L"DockHeight", std::to_wstring(dockHeight));
+}
+
+void Config::SaveAll() const {
+    SaveValue(L"General", L"UiLanguage", UiLangCode(uiLang));
+    SaveBool(L"General", L"SetupDone", setupDone);
+    SaveValue(L"General", L"Gw2Dir", AsciiEscape(gw2Dir));
+    SaveValue(L"Translate", L"Engine", EngineKey(engine));
+    SaveValue(L"Translate", L"ReadLang", readLang);
+    std::wstring joined;
+    for (const std::wstring& c : writeLangs) joined += (joined.empty() ? L"" : L",") + c;
+    SaveValue(L"Translate", L"WriteLangs", joined);
+    SaveBool(L"Translate", L"BackTranslate", backTranslate);
+    SaveValue(L"Basic", L"Email", AsciiEscape(basicEmail));
+    SaveValue(L"DeepL", L"ApiKey", AsciiEscape(deeplKey));
+    SaveValue(L"LLM", L"Url", AsciiEscape(llmUrl));
+    SaveValue(L"LLM", L"Model", AsciiEscape(llmModel));
+    SaveValue(L"LLM", L"ApiKey", AsciiEscape(llmKey));
+    SaveBool(L"LLM", L"FixOcr", llmFixOcr);
+    SaveBool(L"Reader", L"Enabled", readerEnabled);
+    SaveValue(L"Reader", L"IntervalMs", std::to_wstring(readerIntervalMs));
+    SaveValue(L"Reader", L"OcrEngine", OcrKey(ocr));
+    SaveValue(L"Reader", L"TesseractPath", AsciiEscape(tesseractPath));
+    SaveValue(L"Reader", L"TesseractLang", FromUtf8(tesseractLangs));
+    SaveBool(L"Reader", L"ReadChinese", readChinese);
+    SaveBool(L"Reader", L"ShowSystem", showSystemLines);
+    SaveBool(L"Reader", L"SaveCaptures", saveCaptures);
+    SaveBool(L"Spelling", L"Enabled", spellEnabled);
+    SaveValue(L"Spelling", L"AutoCorrectMode", AutoCorrectKey(autoCorrect));
+    SaveBool(L"Spelling", L"Suggestions", suggestions);
+    SaveBool(L"Spelling", L"Learn", learnWords);
+    SaveBool(L"Spelling", L"LanguageTool", languageTool);
+    SaveValue(L"Spelling", L"LanguageToolUrl", AsciiEscape(languageToolUrl));
+    SaveValue(L"Hotkey", L"Toggle", hotkey);
+    SaveValue(L"Chat", L"SendMode", copyOnly ? L"copy" : L"send");
+    SaveBool(L"Chat", L"ReturnFocus", returnFocus);
+    SaveValue(L"Window", L"Opacity", std::to_wstring(opacity));
+    SaveValue(L"Window", L"FontPercent", std::to_wstring(fontPercent));
+    SaveBool(L"Window", L"FollowGame", followGame);
+    SaveBool(L"Window", L"Dock", dock);
 }
 
 void Config::ResetColors() {

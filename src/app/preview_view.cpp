@@ -1,4 +1,5 @@
 // preview_view.cpp
+#include "core/i18n.hpp"
 #include "preview_view.hpp"
 
 #include <windowsx.h>
@@ -145,8 +146,8 @@ LRESULT PreviewView::Handle(UINT msg, WPARAM wp, LPARAM lp) {
                 ClientToScreen(hwnd_, &pt);
             }
             HMENU menu = CreatePopupMenu();
-            AppendMenuW(menu, MF_STRING, 1, L"Vorschau kopieren");
-            if (!c_.back.empty()) AppendMenuW(menu, MF_STRING, 2, L"R\u00fcck\u00fcbersetzung kopieren");
+            AppendMenuW(menu, MF_STRING, 1, Tr(L"Copy the preview").c_str());
+            if (!c_.back.empty()) AppendMenuW(menu, MF_STRING, 2, Tr(L"Copy the back-translation").c_str());
             const UINT cmd = static_cast<UINT>(
                 TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_NONOTIFY, pt.x, pt.y, 0, hwnd_, nullptr));
             DestroyMenu(menu);

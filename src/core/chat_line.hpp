@@ -10,7 +10,7 @@ namespace gct {
 
 enum class Channel : uint8_t { Unknown, Say, Map, Party, Squad, Team, Whisper, Guild, System };
 
-const wchar_t* ChannelLabel(Channel c);    // German UI label: "Karte", "Gruppe" ...
+std::wstring ChannelLabel(Channel c);      // UI label in the UI language: "Map", "Party" ...
 const wchar_t* ChannelCommand(Channel c);  // "/m", "/p" ... or nullptr
 
 struct Rgb {
@@ -34,12 +34,23 @@ std::vector<ChannelColor> DefaultChannelColors();
 // Nearest palette colour; Unknown if nothing is close (e.g. white system text).
 Channel ClassifyColor(Rgb c, const std::vector<ChannelColor>& palette);
 
+struct OcrWord {
+    std::wstring text;
+    Rgb color;            // colour of this word's text pixels
+    bool hasColor = false;
+};
+
 struct OcrLine {
     std::wstring text;
     Rgb color;      // average colour of the text pixels
     int top = 0;    // position inside the captured area (pixels)
     int height = 0;
+    std::vector<OcrWord> words{};  // optional: per-word colours (the channel tag / name colour wins)
 };
+
+// Colour that decides the channel: the first coloured words after the
+// timestamp (tag and speaker name), else the line average.
+Rgb LeadColor(const OcrLine& line);
 
 struct ChatMessage {
     Channel channel = Channel::Unknown;
@@ -48,7 +59,18 @@ struct ChatMessage {
     std::wstring text;             // the message itself
     std::wstring raw;              // the full line(s) as read
     Rgb color;                     // text colour of its first line (for calibration)
+    bool stamped = false;          // started with a timestamp (OCR-tolerant)
+    bool tagOnly = false;          // only a timestamp / channel tag, no text (the input line)
 };
+
+// Length of an OCR-mangled timestamp at the start of `s` ("[19:17]" read as
+// "C9;17J", "1927 J", "19:17)", "t9\u202220J" ...), 0 if none.
+size_t OcrTimestampLength(const std::wstring& s);
+
+// Length of a (possibly OCR-mangled) channel tag at the start of `s`
+// ("[M]", "CSJ", "[Sagen)", "CKontakteJ"), 0 if none. `channel` receives the
+// channel (System for contact/friend notices).
+size_t FuzzyTagLength(const std::wstring& s, Channel* channel);
 
 // One visual line: optional timestamp, optional channel tag ([Map], [M] ...),
 // optional guild tag, "Speaker: text". Lines without a speaker (system
@@ -57,9 +79,12 @@ struct ChatMessage {
 ChatMessage ParseChatLine(const std::wstring& line, Channel* tagChannel = nullptr);
 
 // All lines of one capture, top to bottom -> messages. Continuation lines
-// (no speaker, same colour, directly below) are appended to the message
-// above. Whisper prefixes ("From"/"To", "Von"/"An", "De"/"À" ...) are
-// removed from the speaker.
+// (no timestamp, no tag, no speaker, same colour, directly below) are
+// appended to the message above. Whisper prefixes ("From"/"To", "Von"/"An",
+// "De"/"\u00c0" ...) are removed from the speaker. When the capture shows
+// timestamps, everything above the first stamped line (the tab bar, a
+// message cut off at the top) is skipped; lines that are only a tag (the
+// input line) and messages without text are dropped.
 std::vector<ChatMessage> BuildMessages(const std::vector<OcrLine>& lines, const std::vector<ChannelColor>& palette);
 
 }  // namespace gct

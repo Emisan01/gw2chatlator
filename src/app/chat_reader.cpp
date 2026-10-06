@@ -6,15 +6,19 @@
 #include <climits>
 #include <memory>
 
+#include "core/i18n.hpp"
+#include "core/tesseract_tsv.hpp"
 #include "core/text.hpp"
 #include "win/files.hpp"
+#include "win/folder_cleanup.hpp"
 #include "win/ocr.hpp"
 #include "win/screen_capture.hpp"
+#include "win/tesseract_ocr.hpp"
 
 namespace gct {
 
 namespace {
-constexpr int kMaxCaptures = 20;          // diagnostics files rotate
+constexpr int kMaxCaptures = 20;          // diagnostics files rotate (3 files each)
 constexpr ULONGLONG kForceRereadMs = 20000;  // re-read an unchanged picture now and then
 }  // namespace
 
@@ -67,9 +71,21 @@ void ChatReader::Loop() {
         if (PostMessageW(notify_, message_, 0, reinterpret_cast<LPARAM>(s.get()))) s.release();
     };
 
-    OcrEngine ocr;
+    // Tesseract if wanted and installed, else Windows' own text recognition.
+    OcrEngine winOcr;
+    TesseractOcr tess;
     std::wstring err;
-    if (!ocr.Init(opt_.ocrLanguage, &err)) {
+    bool useTess = false;
+    if (opt_.ocrChoice != 2) {
+        TesseractInfo info;
+        if (FindTesseract(opt_.tesseractPath, &info)) {
+            const std::string langs = ChooseTesseractLangs(opt_.tesseractLangs, info.models, opt_.readChinese);
+            useTess = tess.Init(info, langs, &err);
+        } else if (opt_.ocrChoice == 1) {
+            err = Tr(L"Tesseract not found \u2013 using Windows text recognition");
+        }
+    }
+    if (!useTess && !winOcr.Init(opt_.ocrLanguage, &err)) {
         auto s = std::make_unique<ReaderSnapshot>();
         s->error = err;
         post(std::move(s));
@@ -102,26 +118,68 @@ void ChatReader::Loop() {
         lastOcr = t0;
 
         int scale = std::clamp(opt_.scale, 1, 4);
-        const int maxDim = ocr.MaxImageDimension();
+        // Tesseract likes ~25 px high letters; Windows OCR has a size limit.
+        if (useTess) scale = std::max(scale, 2);
+        const int maxDim = useTess ? 6000 : winOcr.MaxImageDimension();
         while (scale > 1 && maxDim > 0 && (raw.width * scale > maxDim || raw.height * scale > maxDim)) --scale;
         const Image prepared = PrepareForOcr(raw, scale);
 
         auto snap = std::make_unique<ReaderSnapshot>();
-        std::vector<OcrTextLine> textLines;
-        if (!ocr.Recognize(prepared, textLines, &err)) {
+        // One line of words with their boxes (in `prepared` pixels).
+        struct Word {
+            std::wstring text;
+            RectI rect;
+        };
+        struct Line {
+            std::wstring text;
+            std::vector<Word> words;
+            bool hasColor = false;
+            Rgb color;
+        };
+        std::vector<Line> found;
+        bool ok = false;
+        if (useTess) {
+            std::vector<TsvLine> tl;
+            ok = tess.Recognize(prepared, tl, &err);
+            for (TsvLine& l : tl) {
+                Line x;
+                x.text = std::move(l.text);
+                for (TsvWord& w : l.words) x.words.push_back({std::move(w.text), w.rect});
+                found.push_back(std::move(x));
+            }
+        } else {
+            std::vector<OcrTextLine> tl;
+            ok = winOcr.Recognize(prepared, tl, &err);
+            for (OcrTextLine& l : tl) {
+                Line x;
+                x.text = std::move(l.text);
+                x.hasColor = l.hasColor;
+                x.color = l.color;
+                for (OcrWordBox& w : l.words) x.words.push_back({std::move(w.text), w.rect});
+                found.push_back(std::move(x));
+            }
+        }
+        if (!ok) {
             snap->error = err;
         } else {
-            for (const OcrTextLine& tl : textLines) {
+            for (const Line& tl : found) {
                 OcrLine line;
                 line.text = tl.text;
                 std::vector<RectI> rects;
                 int top = INT_MAX, bottom = 0;
-                for (const OcrWordBox& w : tl.words) {
+                for (const Word& w : tl.words) {
                     const RectI r{w.rect.x / scale, w.rect.y / scale, std::max(1, w.rect.w / scale),
                                   std::max(1, w.rect.h / scale)};
                     rects.push_back(r);
                     top = std::min(top, r.y);
                     bottom = std::max(bottom, r.y + r.h);
+                    OcrWord ow;
+                    ow.text = w.text;
+                    if (!tl.hasColor) {
+                        ow.color = SampleTextColor(raw, {r});
+                        ow.hasColor = true;
+                    }
+                    line.words.push_back(std::move(ow));
                 }
                 if (rects.empty()) top = bottom = 0;
                 line.top = top;
@@ -134,7 +192,8 @@ void ChatReader::Loop() {
         }
         snap->captureTick = t0;
         snap->method = capture.Method();
-        snap->language = ocr.Language();
+        snap->engine = useTess ? L"Tesseract" : L"Windows OCR";
+        snap->language = useTess ? tess.Language() : winOcr.Language();
         snap->milliseconds = static_cast<int>(GetTickCount64() - t0);
         if (save) SaveDiagnostics(raw, prepared, snap->lines);
         post(std::move(snap));
@@ -143,13 +202,15 @@ void ChatReader::Loop() {
 
 void ChatReader::SaveDiagnostics(const Image& raw, const Image& prepared, const std::vector<OcrLine>& lines) {
     if (opt_.captureDir.empty() || !EnsureDir(opt_.captureDir)) return;
+    // Never more than the rotation (also cleans up files of older versions).
+    if (captureIndex_ == 0) CleanFolder(opt_.captureDir, {kMaxCaptures * 3, 150ull << 20, 3 * 86400}, IsCaptureFile);
     wchar_t name[32];
     swprintf(name, 32, L"\\capture_%02d", captureIndex_);
     captureIndex_ = (captureIndex_ + 1) % kMaxCaptures;
     const std::wstring base = opt_.captureDir + name;
     WriteFileAtomic(base + L"_raw.bmp", EncodeBmp(raw));
     WriteFileAtomic(base + L"_ocr.bmp", EncodeBmp(prepared));
-    std::string txt = "# Farbe | Oben | Hoehe | erkannter Text\r\n";
+    std::string txt = "# colour | top | height | recognized text\r\n";
     for (const OcrLine& l : lines)
         txt += ToUtf8(RgbToHex(l.color)) + " | " + std::to_string(l.top) + " | " + std::to_string(l.height) + " | " +
                ToUtf8(l.text) + "\r\n";

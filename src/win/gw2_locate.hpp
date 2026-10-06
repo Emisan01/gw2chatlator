@@ -1,0 +1,53 @@
+#pragma once
+// Finding the GW2 installation, installing the tool into a clean subfolder
+// next to the game, and the optional "start with Windows, show with GW2"
+// autostart. Hook-free: only the registry, Steam's library list and the file
+// system are read. The game process is never opened.
+
+#include <string>
+
+#include "core/gw2_install.hpp"
+
+namespace gct {
+
+// First directory that contains Gw2-64.exe: registry (ArenaNet key and the
+// uninstall entry, 64- and 32-bit views, HKLM and HKCU), Steam libraries,
+// Program Files and "<drive>:\Guild Wars 2" / "<drive>:\Games\Guild Wars 2".
+// Empty if nothing was found; the caller then lets the user pick the folder.
+std::wstring FindGw2Dir();
+
+bool IsGw2Dir(const std::wstring& dir);
+
+// Version-resource text of a DLL/EXE: FileDescription, ProductName and
+// CompanyName joined with " / ". Empty if the file has no version resource.
+std::wstring FileDescription(const std::wstring& path);
+
+AddonEnvironment ScanAddons(const std::wstring& gameDir);
+
+std::wstring CurrentExePath();
+std::wstring CurrentExeDir();
+
+struct InstallResult {
+    bool ok = false;
+    bool alreadyThere = false;   // we already run from the target folder
+    std::wstring exePath;        // installed exe
+    std::wstring error;          // user-facing reason when !ok
+};
+
+// Copies the running exe (and the ini next to it, when the target has none)
+// to `targetDir`. Creates the folder. Never overwrites a newer ini.
+InstallResult InstallTo(const std::wstring& targetDir);
+
+// Fallback when the game folder is not writable: %LOCALAPPDATA%\Programs\GW2ChatTranslator.
+std::wstring UserInstallDir();
+
+// HKCU\...\Run entry "GW2ChatTranslator" -> "<exe>" --wait-for-gw2.
+bool SetAutostart(bool enable, const std::wstring& exePath);
+bool IsAutostartEnabled();
+// The exe the Run entry points to (empty if none).
+std::wstring AutostartTarget();
+
+// Folder picker (IFileOpenDialog with FOS_PICKFOLDERS). Empty if cancelled.
+std::wstring PickFolder(void* owner, const std::wstring& title, const std::wstring& initial);
+
+}  // namespace gct

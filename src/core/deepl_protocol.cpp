@@ -1,4 +1,5 @@
 // deepl_protocol.cpp
+#include "i18n.hpp"
 #include "deepl_protocol.hpp"
 
 #include "json.hpp"
@@ -98,16 +99,16 @@ std::vector<DeepLParsed> ParseDeepLResponseBatch(const std::string& body, bool x
         return out;
     };
     JsonValue root;
-    if (!ParseJson(body, root)) return failAll(L"Antwort von DeepL nicht lesbar");
+    if (!ParseJson(body, root)) return failAll(Tr(L"Answer from DeepL not readable"));
     const JsonValue* tr = root.Get("translations");
     if (!tr || !tr->IsArray() || tr->arr.size() != expected) {
         const std::string msg = root.GetString("message");
-        return failAll(msg.empty() ? L"Unerwartete Antwort von DeepL" : FromUtf8(msg));
+        return failAll(msg.empty() ? Tr(L"Unexpected answer from DeepL") : FromUtf8(msg));
     }
     for (size_t i = 0; i < expected; ++i) {
         const JsonValue* text = tr->arr[i].Get("text");
         if (!text || text->type != JsonValue::Type::String) {
-            out[i].error = L"Unerwartete Antwort von DeepL";
+            out[i].error = Tr(L"Unexpected answer from DeepL");
             continue;
         }
         out[i].ok = true;

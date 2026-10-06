@@ -12,3 +12,7 @@ cache/
 captures/
 received.txt
 *.tmp
+my-gw2-words.txt
+learned/
+gelernt_*.txt
+learned_*.txt

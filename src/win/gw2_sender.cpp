@@ -1,4 +1,5 @@
 // gw2_sender.cpp — clipboard round-trip + key injection into the GW2 chat.
+#include "core/i18n.hpp"
 #include "gw2_sender.hpp"
 
 #include <cstring>
@@ -190,22 +191,22 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
     MumbleState ms = mumble ? mumble->Read() : MumbleState{};
     HWND gw2 = FindGw2Window(ms.live ? ms.processId : 0);
     if (!gw2) {
-        r.error = L"GW2-Fenster nicht gefunden";
+        r.error = Tr(L"GW2 window not found");
         return r;
     }
     if (!WaitForKeysReleased(1500)) {
-        r.error = L"Taste noch gedr\u00fcckt \u2013 nichts gesendet";
+        r.error = Tr(L"A key is still held down – nothing sent");
         return r;
     }
 
     std::vector<SavedFormat> saved;
     if (!SaveClipboard(owner, saved)) {
-        r.error = L"Zwischenablage ist blockiert";
+        r.error = Tr(L"The clipboard is blocked");
         return r;
     }
     if (!SetClipboardText(owner, text)) {
         RestoreClipboard(owner, saved);
-        r.error = L"Zwischenablage ist blockiert";
+        r.error = Tr(L"The clipboard is blocked");
         return r;
     }
 
@@ -227,23 +228,23 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
     // the user had copied) into the chat. If GW2 does not confirm, the
     // translation simply stays on the clipboard.
     bool injected = false;
-    auto finish = [&](const wchar_t* error) {
+    auto finish = [&](const std::wstring& error) {
         const bool drained = !injected || WaitForTargetToDrain(gw2, 2000);
         if (drained) {
             if (injected) Sleep(opt.restoreDelayMs);
             r.clipboardRestored = RestoreClipboard(owner, saved);
         }
-        r.ok = (error == nullptr);
-        if (error) r.error = error;
+        r.ok = error.empty();
+        if (!error.empty()) r.error = error;
         return r;
     };
 
-    if (!BringToFront(gw2)) return finish(L"GW2 l\u00e4sst sich nicht in den Vordergrund holen");
+    if (!BringToFront(gw2)) return finish(Tr(L"GW2 cannot be brought to the front"));
     Sleep(opt.stepDelayMs);
 
     // Never type into the wrong window: re-check focus before every step,
     // and let GW2 work through each step before the next one.
-    if (GetForegroundWindow() != gw2) return finish(L"Fokus verloren \u2013 abgebrochen");
+    if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – cancelled"));
     injected = true;
     const bool alreadyOpen = ms.live && mumble->Read().TextboxHasFocus();
     if (!alreadyOpen) {
@@ -252,16 +253,16 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
         if (!textbox(true, 600)) Sleep(opt.stepDelayMs);
     }
 
-    if (GetForegroundWindow() != gw2) return finish(L"Fokus verloren \u2013 abgebrochen");
+    if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – cancelled"));
     Send({Key(VK_CONTROL, false), Key('V', false), Key('V', true), Key(VK_CONTROL, true)});  // paste
     WaitForTargetToDrain(gw2, 1000);
     Sleep(opt.stepDelayMs);
 
-    if (GetForegroundWindow() != gw2) return finish(L"Fokus verloren \u2013 Text steht evtl. noch im Chatfeld");
+    if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – the text may still be in the chat line"));
     Send({Key(VK_RETURN, false), Key(VK_RETURN, true)});  // send
     r.confirmedByGame = textbox(false, 1000);              // input closed = message went out
     if (!r.confirmedByGame) Sleep(opt.stepDelayMs);
-    return finish(nullptr);
+    return finish(std::wstring());
 }
 
 }  // namespace gct

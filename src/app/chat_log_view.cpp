@@ -1,4 +1,5 @@
 // chat_log_view.cpp
+#include "core/i18n.hpp"
 #include "chat_log_view.hpp"
 
 #include <windowsx.h>
@@ -130,25 +131,25 @@ std::wstring ChatLogView::MainLine(const ChatEntry& e) const {
     std::wstring who;
     if (e.channel == Channel::Whisper) {
         if (e.kind == ChatEntry::Kind::Outgoing || e.whisperOut)
-            who = e.speaker.empty() ? L"An \u2026" : L"An " + e.speaker;
+            who = e.speaker.empty() ? Tr(L"To \u2026") : TrF(L"To {1}", {e.speaker});
         else
-            who = e.speaker.empty() ? L"Fl\u00fcstern" : L"Von " + e.speaker;
+            who = e.speaker.empty() ? Tr(L"Whisper") : TrF(L"From {1}", {e.speaker});
         return who + L": " + e.main;
     }
     std::wstring s;
     if (e.channel != Channel::Unknown && e.channel != Channel::System)
-        s = L"[" + std::wstring(ChannelLabel(e.channel)) + L"] ";
-    if (e.kind == ChatEntry::Kind::Outgoing) who = L"Du";
+        s = L"[" + ChannelLabel(e.channel) + L"] ";
+    if (e.kind == ChatEntry::Kind::Outgoing) who = Tr(L"You");
     else who = e.speaker;
     if (!who.empty()) s += who + L": ";
     return s + e.main;
 }
 
 std::wstring ChatLogView::SecondaryLine(const ChatEntry& e) const {
-    if (e.state == ChatEntry::State::Pending) return L"\u00fcbersetze \u2026";
+    if (e.state == ChatEntry::State::Pending) return Tr(L"translating \u2026");
     if (!e.note.empty()) return e.note;
     if (e.original.empty() || e.original == e.main) return {};
-    if (e.kind == ChatEntry::Kind::Outgoing) return L"Original: " + e.original;
+    if (e.kind == ChatEntry::Kind::Outgoing) return TrF(L"Original: {1}", {e.original});
     return e.lang.empty() ? e.original : e.lang + L": " + e.original;
 }
 
@@ -225,11 +226,12 @@ void ChatLogView::Paint() {
         RECT r = rc;
         InflateRect(&r, -pad * 2, -pad);
         RECT calc = r;
-        DrawTextW(dc, hint_.c_str(), -1, &calc, kTextFlags | DT_CENTER | DT_CALCRECT);
+        const UINT rtl = UiRtl() ? DT_RTLREADING : 0;
+        DrawTextW(dc, hint_.c_str(), -1, &calc, kTextFlags | DT_CENTER | DT_CALCRECT | rtl);
         const int h = calc.bottom - calc.top;
         r.top += std::max(0, static_cast<int>(r.bottom - r.top - h) / 2);
         r.bottom = r.top + h;
-        DrawTextW(dc, hint_.c_str(), -1, &r, kTextFlags | DT_CENTER);
+        DrawTextW(dc, hint_.c_str(), -1, &r, kTextFlags | DT_CENTER | rtl);
         hintRect_ = r;
     }
 
@@ -302,36 +304,37 @@ void ChatLogView::ShowMenu(POINT screen) {
     HMENU colors = nullptr;
     if (e) {
         const bool hasOriginal = !e->original.empty() && e->original != e->main;
-        AppendMenuW(menu, MF_STRING, kCopyMain, hasOriginal ? L"\u00dcbersetzung kopieren" : L"Text kopieren");
-        if (hasOriginal) AppendMenuW(menu, MF_STRING, kCopyOriginal, L"Original kopieren");
+        AppendMenuW(menu, MF_STRING, kCopyMain, (hasOriginal ? Tr(L"Copy the translation") : Tr(L"Copy the text")).c_str());
+        if (hasOriginal) AppendMenuW(menu, MF_STRING, kCopyOriginal, Tr(L"Copy the original").c_str());
         if (e->kind == ChatEntry::Kind::Incoming && e->channel == Channel::Whisper && !e->whisperOut &&
             !e->speaker.empty()) {
             AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-            AppendMenuW(menu, MF_STRING, kReply, (L"Antworten an " + e->speaker).c_str());
+            AppendMenuW(menu, MF_STRING, kReply, TrF(L"Reply to {1}", {e->speaker}).c_str());
         } else if (e->kind == ChatEntry::Kind::Incoming && ChannelCommand(e->channel) &&
                    e->channel != Channel::Whisper) {
             AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
             AppendMenuW(menu, MF_STRING, kUseChannel,
-                        (L"Im Kanal \u201e" + std::wstring(ChannelLabel(e->channel)) + L"\u201c antworten").c_str());
+                        TrF(L"Answer in \u201c{1}\u201d", {ChannelLabel(e->channel)}).c_str());
         }
         if (e->kind == ChatEntry::Kind::Incoming && e->hasColor) {
             colors = CreatePopupMenu();
             for (size_t i = 0; i < std::size(kCalibratable); ++i) {
                 const Channel ch = kCalibratable[i];
                 AppendMenuW(colors, MF_STRING | (ch == e->channel ? MF_CHECKED : 0), kCalibrateBase + i,
-                            ChannelLabel(ch));
+                            ChannelLabel(ch).c_str());
             }
             AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
             AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(colors),
-                        L"Diese Zeilenfarbe geh\u00f6rt zu");
+                        Tr(L"This line colour is").c_str());
         }
         AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     }
-    AppendMenuW(menu, MF_STRING | (entries_.empty() ? MF_GRAYED : 0), kClear, L"Verlauf leeren");
+    AppendMenuW(menu, MF_STRING | (entries_.empty() ? MF_GRAYED : 0), kClear, Tr(L"Clear the history").c_str());
 
     const uint64_t id = e ? e->id : 0;
     const UINT cmd = static_cast<UINT>(
-        TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_NONOTIFY, screen.x, screen.y, 0, hwnd_, nullptr));
+        TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_NONOTIFY | (UiRtl() ? TPM_LAYOUTRTL : 0), screen.x,
+                       screen.y, 0, hwnd_, nullptr));
     DestroyMenu(menu);  // also destroys the submenu
 
     // The entry may have been dropped while the menu was open: look it up again.

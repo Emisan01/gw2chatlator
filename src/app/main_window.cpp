@@ -9,7 +9,11 @@
 #include <thread>
 
 #include "app/region_picker.hpp"
+#include "app/settings_dialog.hpp"
+#include "core/gw2_install.hpp"
 #include "core/gw2_text.hpp"
+#include "core/housekeeping.hpp"
+#include "core/i18n.hpp"
 #include "core/hotkey.hpp"
 #include "core/langs.hpp"
 #include "core/languages.hpp"
@@ -19,8 +23,11 @@
 #include "win/deepl_translator.hpp"
 #include "win/els.hpp"
 #include "win/files.hpp"
+#include "win/folder_cleanup.hpp"
 #include "win/gw2_api.hpp"
+#include "win/gw2_locate.hpp"
 #include "win/gw2_sender.hpp"
+#include "win/tesseract_ocr.hpp"
 
 #ifndef MOD_NOREPEAT
 #define MOD_NOREPEAT 0x4000
@@ -43,6 +50,11 @@ struct NamesMsg {
     NameFetchResult result;
 };
 
+struct GrammarMsg {
+    std::wstring text;
+    LtResult result;
+};
+
 struct IncomingMsg {
     std::vector<uint64_t> ids;
     std::vector<std::wstring> texts;
@@ -59,9 +71,15 @@ constexpr UINT WM_APP_TRANSLATED = WM_APP + 1;
 constexpr UINT WM_APP_NAMES = WM_APP + 2;
 constexpr UINT WM_APP_SNAPSHOT = WM_APP + 3;
 constexpr UINT WM_APP_INCOMING = WM_APP + 4;
+constexpr UINT WM_APP_GRAMMAR = WM_APP + 5;
+constexpr UINT WM_APP_TRAY = WM_APP + 6;
+constexpr UINT WM_APP_FIRSTRUN = WM_APP + 7;
 constexpr UINT_PTR kTimerDebounce = 1;
 constexpr UINT_PTR kTimerStatus = 2;
 constexpr UINT_PTR kTimerGame = 3;
+constexpr UINT_PTR kTimerCaptures = 4;
+constexpr UINT_PTR kTimerGrammar = 5;
+constexpr UINT kCaptureMinutes = 15;  // diagnostic pictures switch themselves off
 constexpr int kHotkeyId = 1;
 constexpr size_t kBatchMax = 12;             // incoming lines per translation request
 constexpr size_t kBatchChars = 2500;
@@ -139,7 +157,7 @@ std::wstring HitsText(const std::vector<GlossaryMatch>& hits) {
         s += hits[i].source + L" \u2192 " + hits[i].target;
     }
     if (hits.size() > 2) s += L" \u2026";
-    return s.empty() ? s : L"Spielnamen: " + s;
+    return s.empty() ? s : TrF(L"Game names: {1}", {s});
 }
 
 COLORREF ToColorRef(Rgb c) { return RGB(c.r, c.g, c.b); }
@@ -198,19 +216,26 @@ RECT DrawChip(HDC dc, const Theme& t, int x, int top, int bottom, const std::wst
 
 std::wstring LangMenuLabel(const LangInfo& l) { return std::wstring(l.native) + L"\t" + l.code; }
 
+// Menus open mirrored for a right-to-left UI language.
+UINT MenuFlags(UINT flags) { return flags | (UiRtl() ? TPM_LAYOUTRTL : 0); }
+
 }  // namespace
 
 // ===========================================================================
 // Setup
 // ===========================================================================
-int MainWindow::Run(HINSTANCE inst) {
+int MainWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
     inst_ = inst;
     cfg_.Load(DataDir());
+    SetUiLang(cfg_.uiLang);
+    waitForGame_ = HasSwitch(cmdLine, kWaitForGw2Switch);
+    const bool markChat = HasSwitch(cmdLine, L"--mark-chat"), coverChat = HasSwitch(cmdLine, L"--cover-chat");
+    CleanUpFiles();
 
     HDC screen = GetDC(nullptr);
     const int dpi = GetDeviceCaps(screen, LOGPIXELSY);
     ReleaseDC(nullptr, screen);
-    theme_.Create(dpi);
+    theme_.Create(dpi, cfg_.fontPercent);
     InitServices();
 
     WNDCLASSEXW wc{};
@@ -219,11 +244,13 @@ int MainWindow::Run(HINSTANCE inst) {
     wc.lpfnWndProc = Proc;
     wc.hInstance = inst;
     wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-    wc.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
+    wc.hIcon = LoadIconW(inst, MAKEINTRESOURCEW(1));
+    if (!wc.hIcon) wc.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
     wc.lpszClassName = kClassName;
     RegisterClassExW(&wc);
     ChatLogView::Register(inst);
     PreviewView::Register(inst);
+    SuggestionBar::Register(inst);
 
     int w = theme_.S(cfg_.w), h = theme_.S(cfg_.h), x = cfg_.x, y = cfg_.y;
     PlaceWindow(x, y, w, h);
@@ -251,14 +278,13 @@ int MainWindow::Run(HINSTANCE inst) {
         hotkeyOk_ = RegisterHotKey(hwnd_, kHotkeyId, hk->mods | MOD_NOREPEAT, hk->vk) != FALSE;
 
     if (engine_ == Engine::Basic)
-        SetStatus(L"\u00dcbersetzer: Basis (MyMemory, kostenlos) \u00b7 beste Qualit\u00e4t: DeepL-Key oder lokales LLM in "
-                  L"der ini",
+        SetStatus(Tr(L"Translator: basic (MyMemory, free) \u00b7 best quality: DeepL key or a local LLM (\u2261 \u2192 "
+                     L"Settings)"),
                   Tone::Muted, 9000);
     else
-        SetStatus(L"\u00dcbersetzer: " + translator_->Name(), Tone::Ok, 5000);
+        SetStatus(TrF(L"Translator: {1}", {translator_->Name()}), Tone::Ok, 5000);
     if (cfg_.spellEnabled && !spell_.Ready())
-        SetStatus(L"Rechtschreibpr\u00fcfung f\u00fcr " + kbdLocale_ + L" nicht installiert (Windows-Sprachpakete)",
-                  Tone::Warn, 8000);
+        SetStatus(TrF(L"No spell checking installed for {1} (Windows language packs)", {kbdLocale_}), Tone::Warn, 8000);
 
     EnsureDir(cfg_.CacheDir());
     RefreshGlossary();
@@ -268,9 +294,14 @@ int MainWindow::Run(HINSTANCE inst) {
     UpdateHint();
     UpdatePreview();
 
-    ShowWindow(hwnd_, SW_SHOW);
-    SetForegroundWindow(hwnd_);
-    SetFocus(input_.Hwnd());
+    AddTrayIcon();
+    if (!waitForGame_) {
+        ShowWindow(hwnd_, SW_SHOW);
+        SetForegroundWindow(hwnd_);
+        SetFocus(input_.Hwnd());
+    }
+    if (markChat || coverChat) PostMessageW(hwnd_, WM_APP_FIRSTRUN, markChat ? 1 : 0, coverChat ? 1 : 0);
+    else if (!cfg_.setupDone && !waitForGame_) PostMessageW(hwnd_, WM_APP_FIRSTRUN, 2, 0);
 
     MSG m;
     while (GetMessageW(&m, nullptr, 0, 0) > 0) {
@@ -278,8 +309,22 @@ int MainWindow::Run(HINSTANCE inst) {
         DispatchMessageW(&m);
     }
     reader_.Stop();
+    spell_.SaveLearned();
     theme_.Destroy();
     return static_cast<int>(m.wParam);
+}
+
+// Diagnostic pictures, leftovers of interrupted writes, old caches: keep the
+// folders small without asking.
+void MainWindow::CleanUpFiles() {
+    CleanFolder(cfg_.dataDir, {0, 0, 86400}, IsStaleTempFile);
+    CleanFolder(cfg_.CacheDir(), {0, 0, 86400}, IsStaleTempFile);
+    CleanFolder(cfg_.LearnedDir(), {0, 0, 86400}, IsStaleTempFile);
+    CleanFolder(cfg_.CaptureDir(), {60, 150ull << 20, 3 * 86400}, IsCaptureFile);
+    if (cfg_.saveCaptures) {  // diagnostics never stay on across restarts
+        cfg_.saveCaptures = false;
+        cfg_.SaveBool(L"Reader", L"SaveCaptures", false);
+    }
 }
 
 void MainWindow::InitServices() {
@@ -304,6 +349,7 @@ void MainWindow::InitServices() {
     }
     tab_ = std::min(static_cast<size_t>(std::max(cfg_.activeTab, 0)), cfg_.tabs.size() - 1);
 
+    llm_.reset();
     if (!cfg_.llmModel.empty()) {
         LlmSettings s;
         s.url = cfg_.llmUrl;
@@ -319,6 +365,7 @@ void MainWindow::InitServices() {
         for (const std::wstring& t : SpellTagCandidates(PrimaryLang(locale), locale)) tags.push_back(t);
         spell_.Init(tags, cfg_.UserWordsPath());
     }
+    spell_.UseLearnedLanguage(PrimaryLang(kbdLocale_), cfg_.LearnedDir());
 }
 
 void MainWindow::ChooseEngine(bool announce) {
@@ -328,11 +375,11 @@ void MainWindow::ChooseEngine(bool announce) {
     if (e == Engine::Auto) e = haveDeepL ? Engine::DeepL : haveLlm ? Engine::Llm : Engine::Basic;
     if (e == Engine::DeepL && !haveDeepL) {
         e = Engine::Basic;
-        note = L"Kein DeepL-Key in der ini \u2013 nutze Basis (MyMemory)";
+        note = Tr(L"No DeepL key set \u2013 using basic (MyMemory)");
     }
     if (e == Engine::Llm && !haveLlm) {
         e = Engine::Basic;
-        note = L"Kein LLM-Modell in der ini \u2013 nutze Basis (MyMemory)";
+        note = Tr(L"No LLM model set \u2013 using basic (MyMemory)");
     }
     engine_ = e;
     if (e == Engine::DeepL) translator_ = MakeDeepLTranslator(cfg_.deeplKey);
@@ -340,7 +387,7 @@ void MainWindow::ChooseEngine(bool announce) {
     else translator_ = MakeMyMemoryTranslator(cfg_.basicEmail);
     inPauseUntil_ = 0;
     if (announce) {
-        if (note.empty()) SetStatus(L"\u00dcbersetzer: " + translator_->Name(), Tone::Ok, 4000);
+        if (note.empty()) SetStatus(TrF(L"Translator: {1}", {translator_->Name()}), Tone::Ok, 4000);
         else SetStatus(note, Tone::Warn, 6000);
     }
 }
@@ -356,7 +403,7 @@ void MainWindow::CreateChildren() {
                 if (SoleSendChannel(cfg_.tabs[i].channels) == Channel::Whisper) target = i;
         SwitchTab(target);
         SetSendChannel(Channel::Whisper);
-        SetStatus(L"Antwort an " + speaker + L" \u2013 Name stammt aus der Texterkennung, bitte pr\u00fcfen",
+        SetStatus(TrF(L"Reply to {1} \u2013 the name comes from text recognition, please check it", {speaker}),
                   Tone::Muted, 6000);
         ShowOverlay();
     };
@@ -367,8 +414,7 @@ void MainWindow::CreateChildren() {
     lcb.onCalibrate = [this](Channel ch, Rgb rgb) {
         cfg_.SaveColor(ch, rgb);
         log_.SetPalette(cfg_.palette);
-        SetStatus(L"Farbe #" + RgbToHex(rgb) + L" geh\u00f6rt jetzt zu \u201e" + ChannelLabel(ch) + L"\u201c",
-                  Tone::Ok, 5000);
+        SetStatus(TrF(L"Colour #{1} now belongs to \u201c{2}\u201d", {RgbToHex(rgb), ChannelLabel(ch)}), Tone::Ok, 5000);
     };
     lcb.onHintClick = [this] { PickRegion(); };
     log_.Create(hwnd_, inst_, &theme_, std::move(lcb));
@@ -376,6 +422,10 @@ void MainWindow::CreateChildren() {
     ApplyTabFilter();
 
     preview_.Create(hwnd_, inst_, &theme_, [this] { SetFocus(input_.Hwnd()); });
+    words_.Create(hwnd_, inst_, &theme_, [this](size_t i) {
+        input_.AcceptSuggestion(i);
+        SetFocus(input_.Hwnd());
+    });
 
     InputBox::Callbacks cb;
     cb.onEnter = [this](bool original) { OnEnter(original); };
@@ -384,10 +434,14 @@ void MainWindow::CreateChildren() {
     cb.onRomanize = [this] { Romanize(); };
     cb.onSwitchTab = [this] { SwitchTab((tab_ + 1) % cfg_.tabs.size()); };
     cb.onAutoCorrected = [this](const std::wstring& from, const std::wstring& to) {
-        SetStatus(L"Autokorrektur: " + from + L" \u2192 " + to + L"  \u00b7  Strg+Z: r\u00fcckg\u00e4ngig", Tone::Muted, 4000);
+        SetStatus(TrF(L"Corrected: {1} \u2192 {2}  \u00b7  Backspace: undo", {from, to}), Tone::Muted, 4000);
     };
+    cb.onCorrectionUndone = [this](const std::wstring& original) {
+        SetStatus(TrF(L"Kept \u201c{1}\u201d \u2013 learned", {original}), Tone::Muted, 3000);
+    };
+    cb.onSuggestions = [this](const WordSuggestions& s) { words_.Set(s); };
     cb.onKeyboardLanguage = [this](const std::wstring& locale) { OnKeyboardLanguage(locale); };
-    input_.Create(hwnd_, inst_, &theme_, &spell_, cfg_.autoCorrect, std::move(cb));
+    input_.Create(hwnd_, inst_, &theme_, &spell_, cfg_.autoCorrect, cfg_.suggestions, std::move(cb));
     input_.SetRtl(kbdRtl_);
     Layout();
 }
@@ -396,6 +450,10 @@ void MainWindow::StartReader() {
     if (!cfg_.readerEnabled) return;
     ReaderOptions o;
     o.intervalMs = cfg_.readerIntervalMs;
+    o.ocrChoice = static_cast<int>(cfg_.ocr);
+    o.tesseractPath = cfg_.tesseractPath;
+    o.tesseractLangs = cfg_.tesseractLangs;
+    o.readChinese = cfg_.readChinese;
     o.ocrLanguage = cfg_.ocrLanguage;
     o.scale = cfg_.ocrScale;
     o.captureDir = cfg_.CaptureDir();
@@ -423,20 +481,25 @@ void MainWindow::Layout() {
     const int w = std::max(10, static_cast<int>(rc.right) - 2 * m.pad);
     // Like the GW2 chat: the log takes the space; the preview appears while you type.
     const int previewH = previewVisible_ ? preview_.PreferredHeight() : 0;
+    const bool bar = cfg_.suggestions;
+    const int barH = bar ? words_.PreferredHeight() : 0;
     const int inputY = rc.bottom - m.foot - m.inputH;
-    const int previewY = inputY - (previewVisible_ ? m.gap + previewH : 0);
+    const int barY = inputY - barH;
+    const int previewY = barY - (previewVisible_ ? m.gap + previewH : 0);
     const int logH = std::max(theme_.S(40), previewY - m.gap - m.head);
 
     MoveWindow(log_.Hwnd(), m.pad, m.head, w, logH, TRUE);
     MoveWindow(preview_.Hwnd(), m.pad, previewY, w, std::max(1, previewH), TRUE);
     ShowWindow(preview_.Hwnd(), previewVisible_ ? SW_SHOWNA : SW_HIDE);
+    MoveWindow(words_.Hwnd(), m.pad, barY, w, std::max(1, barH), TRUE);
+    ShowWindow(words_.Hwnd(), bar ? SW_SHOWNA : SW_HIDE);
     MoveWindow(input_.Hwnd(), m.pad, inputY, w, m.inputH, TRUE);
     input_.ApplyPadding();
 }
 
 void MainWindow::ApplyDpi(int dpi, const RECT* suggested) {
     theme_.Destroy();
-    theme_.Create(dpi);
+    theme_.Create(dpi, cfg_.fontPercent);
     input_.ApplyTheme();
     log_.ThemeChanged();
     if (suggested)
@@ -445,6 +508,7 @@ void MainWindow::ApplyDpi(int dpi, const RECT* suggested) {
     Layout();
     InvalidateRect(hwnd_, nullptr, FALSE);
     InvalidateRect(preview_.Hwnd(), nullptr, FALSE);
+    InvalidateRect(words_.Hwnd(), nullptr, FALSE);
 }
 
 void MainWindow::InvalidateChrome() {
@@ -460,14 +524,14 @@ void MainWindow::InvalidateChrome() {
 
 std::wstring MainWindow::ChannelChipText() const {
     const std::wstring text = SanitizeChatText(input_.Hwnd() ? input_.Text() : L"");
-    if (!text.empty() && text[0] == L'/') return L"Befehl";
+    if (!text.empty() && text[0] == L'/') return Tr(L"Command");
     const Channel c = SendChannel();
-    if (c == Channel::Whisper) return whisperTarget_.empty() ? L"Antwort (/r)" : L"An " + whisperTarget_;
-    return c == Channel::Unknown ? L"Aktiver Kanal" : ChannelLabel(c);
+    if (c == Channel::Whisper) return whisperTarget_.empty() ? Tr(L"Reply (/r)") : TrF(L"To {1}", {whisperTarget_});
+    return c == Channel::Unknown ? Tr(L"Active channel") : ChannelLabel(c);
 }
 
 std::wstring MainWindow::WriteChipText() const {
-    if (WriteOriginal()) return L"Original";
+    if (WriteOriginal()) return Tr(L"Original");
     const LangInfo* l = FindLanguage(WriteLang());
     return L"\u2192 " + (l ? std::wstring(l->native) : WriteLang());
 }
@@ -496,7 +560,7 @@ void MainWindow::Paint() {
     // Short form when space is tight (several tabs or a narrow window).
     const bool roomy = rc.right >= t.S(470) && cfg_.tabs.size() <= 3;
     readRect_ = DrawChip(dc, t, menuRect_.left - t.S(4), t.S(6), m.head - t.S(6),
-                         roomy ? L"Lesen: " + readName : readName, Theme::kAccent, true);
+                         roomy ? TrF(L"Read: {1}", {readName}) : readName, Theme::kAccent, true);
 
     const int badgeD = t.S(15), gap = t.S(16);
     const int tabsLeft = m.pad + t.S(2), tabsRight = static_cast<int>(readRect_.left) - t.S(10);
@@ -561,7 +625,7 @@ void MainWindow::Paint() {
     std::wstring counter;
     COLORREF counterColor = Theme::kMuted;
     if (PreviewIsCurrent() && parts_.size() > 1) {
-        counter = std::to_wstring(parts_.size()) + L" Teile";
+        counter = TrF(L"{1} parts", {std::to_wstring(parts_.size())});
         counterColor = Theme::kWarn;
     } else {
         const std::wstring line = PreviewIsCurrent() && !parts_.empty()
@@ -585,18 +649,18 @@ void MainWindow::Paint() {
     }
     if (text.empty()) {
         if (!hotkeyOk_) {
-            text = L"Hotkey \u201e" + cfg_.hotkey + L"\u201c belegt \u2013 in der ini \u00e4ndern";
+            text = TrF(L"Hotkey \u201c{1}\u201d is taken \u2013 change it in the settings", {cfg_.hotkey});
             color = Theme::kWarn;
         } else if (readingActive_) {
-            text = L"\u25cf liest den Chat";
+            text = Tr(L"\u25cf reading the chat");
             color = Theme::kOk;
         } else if (!gw2_) {
-            text = L"GW2 nicht gefunden";
+            text = Tr(L"GW2 not found");
         } else {
-            text = cfg_.copyOnly ? L"Nur kopieren \u00b7 Esc: zur\u00fcck ins Spiel" : L"Esc: zur\u00fcck ins Spiel";
+            text = cfg_.copyOnly ? Tr(L"Copy only \u00b7 Esc: back to the game") : Tr(L"Esc: back to the game");
         }
     }
-    DrawLine(dc, text, fr, color, t.fontUi, DT_RIGHT | DT_END_ELLIPSIS);
+    DrawLine(dc, text, fr, color, t.fontUi, DT_RIGHT | DT_END_ELLIPSIS | (IsRtlText(text) ? DT_RTLREADING : 0));
 
     BitBlt(wdc, 0, 0, rc.right, rc.bottom, dc, 0, 0, SRCCOPY);
     SelectObject(dc, oldFont);
@@ -691,7 +755,7 @@ void MainWindow::SetReadLang(const std::wstring& code) {
     if (code == readLang_) return;
     readLang_ = code;
     cfg_.SaveValue(L"Translate", L"ReadLang", code);
-    SetStatus(L"Neue Chatzeilen werden in " + LanguageLabel(code) + L" \u00fcbersetzt", Tone::Ok, 4000);
+    SetStatus(TrF(L"New chat lines are translated into {1}", {LanguageLabel(code)}), Tone::Ok, 4000);
     InvalidateChrome();
     if (PreviewIsCurrent()) {
         backText_.clear();
@@ -728,7 +792,7 @@ Channel MainWindow::SendChannel() const { return tabState_.empty() ? Channel::Un
 
 void MainWindow::SetSendChannel(Channel c) {
     if (partIdx_ > 0) {
-        SetStatus(L"Erst die restlichen Teile senden \u2013 oder den Text \u00e4ndern", Tone::Warn, 4000);
+        SetStatus(Tr(L"Send the remaining parts first \u2013 or change the text"), Tone::Warn, 4000);
         return;
     }
     tabState_[tab_].send = c;
@@ -751,7 +815,7 @@ void MainWindow::OnTabsChanged() {
 
 void MainWindow::AddTab(const ChatTab& preset) {
     if (cfg_.tabs.size() >= 8) {
-        SetStatus(L"H\u00f6chstens 8 Tabs", Tone::Warn, 3000);
+        SetStatus(Tr(L"At most 8 tabs"), Tone::Warn, 3000);
         return;
     }
     ChatTab t = preset;
@@ -801,31 +865,32 @@ void MainWindow::ShowTabMenu(size_t idx, POINT screen) {
     enum : UINT { kChannelBase = 100, kPresetBase = 200, kLeft = 300, kRight, kClose, kReset };
     const ChatTab& tab = cfg_.tabs[idx];
     HMENU menu = CreatePopupMenu();
-    AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, (L"Tab \u201e" + tab.name + L"\u201c zeigt:").c_str());
+    AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, TrF(L"Tab \u201c{1}\u201d shows:", {tab.name}).c_str());
     const auto& channels = TabChannels();
     for (size_t i = 0; i < channels.size(); ++i)
         AppendMenuW(menu, MF_STRING | (TabShows(tab, channels[i]) ? MF_CHECKED : 0), kChannelBase + i,
-                    TabChannelLabel(channels[i]));
+                    TabChannelLabel(channels[i]).c_str());
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     HMENU presets = CreatePopupMenu();
-    for (size_t i = 0; i < TabPresets().size(); ++i)
-        AppendMenuW(presets, MF_STRING, kPresetBase + i, TabPresets()[i].name.c_str());
+    const std::vector<ChatTab> presetList = TabPresets();
+    for (size_t i = 0; i < presetList.size(); ++i)
+        AppendMenuW(presets, MF_STRING, kPresetBase + i, presetList[i].name.c_str());
     AppendMenuW(menu, MF_POPUP | (cfg_.tabs.size() >= 8 ? MF_GRAYED : 0), reinterpret_cast<UINT_PTR>(presets),
-                L"Neuer Tab");
-    AppendMenuW(menu, MF_STRING | (idx == 0 ? MF_GRAYED : 0), kLeft, L"Nach links");
-    AppendMenuW(menu, MF_STRING | (idx + 1 >= cfg_.tabs.size() ? MF_GRAYED : 0), kRight, L"Nach rechts");
-    AppendMenuW(menu, MF_STRING | (cfg_.tabs.size() <= 1 ? MF_GRAYED : 0), kClose, L"Tab schlie\u00dfen");
+                Tr(L"New tab").c_str());
+    AppendMenuW(menu, MF_STRING | (idx == 0 ? MF_GRAYED : 0), kLeft, Tr(L"Move left").c_str());
+    AppendMenuW(menu, MF_STRING | (idx + 1 >= cfg_.tabs.size() ? MF_GRAYED : 0), kRight, Tr(L"Move right").c_str());
+    AppendMenuW(menu, MF_STRING | (cfg_.tabs.size() <= 1 ? MF_GRAYED : 0), kClose, Tr(L"Close tab").c_str());
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(menu, MF_STRING, kReset, L"Tabs zur\u00fccksetzen");
-    const UINT cmd = static_cast<UINT>(
-        TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_NONOTIFY, screen.x, screen.y, 0, hwnd_, nullptr));
+    AppendMenuW(menu, MF_STRING, kReset, Tr(L"Reset tabs").c_str());
+    const UINT cmd = static_cast<UINT>(TrackPopupMenu(menu, MenuFlags(TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_NONOTIFY),
+                                                      screen.x, screen.y, 0, hwnd_, nullptr));
     DestroyMenu(menu);
 
     if (cmd >= kChannelBase && cmd - kChannelBase < channels.size()) {
         ChatTab& t = cfg_.tabs[idx];
         const ChannelMask bit = ChannelBit(channels[cmd - kChannelBase]);
         if ((t.channels & ~bit) == 0) {
-            SetStatus(L"Ein Tab braucht mindestens einen Kanal", Tone::Warn, 3000);
+            SetStatus(Tr(L"A tab needs at least one channel"), Tone::Warn, 3000);
             return;
         }
         const Channel before = SoleSendChannel(t.channels);
@@ -833,8 +898,8 @@ void MainWindow::ShowTabMenu(size_t idx, POINT screen) {
         // The chip follows the tab unless you picked something else yourself.
         if (tabState_[idx].send == before) tabState_[idx].send = SoleSendChannel(t.channels);
         OnTabsChanged();
-    } else if (cmd >= kPresetBase && cmd - kPresetBase < TabPresets().size()) {
-        AddTab(TabPresets()[cmd - kPresetBase]);
+    } else if (cmd >= kPresetBase && cmd - kPresetBase < presetList.size()) {
+        AddTab(presetList[cmd - kPresetBase]);
     } else if (cmd == kLeft || cmd == kRight) {
         MoveTab(idx, cmd == kLeft ? -1 : 1);
     } else if (cmd == kClose) {
@@ -846,7 +911,7 @@ void MainWindow::ShowTabMenu(size_t idx, POINT screen) {
 
 void MainWindow::ShowReadMenu() {
     HMENU menu = CreatePopupMenu();
-    AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, L"Chat \u00fcbersetzen in:");
+    AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, Tr(L"Translate the chat into:").c_str());
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     const auto& langs = Languages();
     for (size_t i = 0; i < langs.size(); ++i) {
@@ -857,14 +922,14 @@ void MainWindow::ShowReadMenu() {
     POINT pt{readRect_.left, readRect_.bottom};
     ClientToScreen(hwnd_, &pt);
     const UINT cmd =
-        static_cast<UINT>(TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY, pt.x, pt.y, 0, hwnd_, nullptr));
+        static_cast<UINT>(TrackPopupMenu(menu, MenuFlags(TPM_RETURNCMD | TPM_NONOTIFY), pt.x, pt.y, 0, hwnd_, nullptr));
     DestroyMenu(menu);
     if (cmd >= kCmdLangBase && cmd - kCmdLangBase < langs.size()) SetReadLang(langs[cmd - kCmdLangBase].code);
 }
 
 void MainWindow::ShowWriteMenu() {
     HMENU menu = CreatePopupMenu();
-    AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, L"Senden als:");
+    AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, Tr(L"Send as:").c_str());
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     for (size_t i = 0; i < writeLangs_.size(); ++i) {
         const LangInfo* l = FindLanguage(writeLangs_[i]);
@@ -872,7 +937,7 @@ void MainWindow::ShowWriteMenu() {
         AppendMenuW(menu, MF_STRING | (i == writeIdx_ ? MF_CHECKED : 0), kCmdFavBase + i, label.c_str());
     }
     AppendMenuW(menu, MF_STRING | (WriteOriginal() ? MF_CHECKED : 0), kCmdOriginal,
-                L"Original (nur Korrektur)\tStrg+Enter");
+                Tr(L"Original (only corrected)\tCtrl+Enter").c_str());
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     HMENU more = CreatePopupMenu();
     const auto& langs = Languages();
@@ -881,11 +946,11 @@ void MainWindow::ShowWriteMenu() {
         if (i > 0 && i % 20 == 0) flags |= MF_MENUBARBREAK;
         AppendMenuW(more, flags, kCmdMoreBase + i, LangMenuLabel(langs[i]).c_str());
     }
-    AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(more), L"Weitere Sprachen");
+    AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(more), Tr(L"More languages").c_str());
     POINT pt{writeRect_.left, writeRect_.top};
     ClientToScreen(hwnd_, &pt);
-    const UINT cmd = static_cast<UINT>(
-        TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_BOTTOMALIGN, pt.x, pt.y, 0, hwnd_, nullptr));
+    const UINT cmd = static_cast<UINT>(TrackPopupMenu(menu, MenuFlags(TPM_RETURNCMD | TPM_NONOTIFY | TPM_BOTTOMALIGN),
+                                                      pt.x, pt.y, 0, hwnd_, nullptr));
     DestroyMenu(menu);
 
     if (cmd == kCmdOriginal) {
@@ -909,7 +974,7 @@ void MainWindow::ShowWriteMenu() {
 
 void MainWindow::ShowChannelMenu() {
     if (partIdx_ > 0) {
-        SetStatus(L"Erst die restlichen Teile senden \u2013 oder den Text \u00e4ndern", Tone::Warn, 4000);
+        SetStatus(Tr(L"Send the remaining parts first \u2013 or change the text"), Tone::Warn, 4000);
         return;
     }
     enum : UINT { kActive = 1, kReply = 2, kChannelBase = 10 };
@@ -918,23 +983,23 @@ void MainWindow::ShowChannelMenu() {
     const Channel cur = SendChannel();
     HMENU menu = CreatePopupMenu();
     AppendMenuW(menu, MF_STRING | (cur == Channel::Unknown ? MF_CHECKED : 0), kActive,
-                L"Aktiver Kanal (wie in GW2 gew\u00e4hlt)");
+                Tr(L"Active channel (as chosen in GW2)").c_str());
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     for (size_t i = 0; i < std::size(kChannels); ++i) {
-        const std::wstring label = std::wstring(ChannelLabel(kChannels[i])) + L"\t" + ChannelCommand(kChannels[i]);
+        const std::wstring label = ChannelLabel(kChannels[i]) + L"\t" + ChannelCommand(kChannels[i]);
         AppendMenuW(menu, MF_STRING | (cur == kChannels[i] ? MF_CHECKED : 0), kChannelBase + i, label.c_str());
     }
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     const bool whisper = cur == Channel::Whisper;
     AppendMenuW(menu, MF_STRING | (whisper && whisperTarget_.empty() ? MF_CHECKED : 0), kReply,
-                L"Fl\u00fcstern: Antwort an den Letzten\t/r");
+                Tr(L"Whisper: reply to the last one\t/r").c_str());
     for (size_t i = 0; i < whisperers_.size(); ++i)
         AppendMenuW(menu, MF_STRING | (whisper && whisperTarget_ == whisperers_[i] ? MF_CHECKED : 0),
-                    kCmdPartnerBase + i, (L"Fl\u00fcstern an " + whisperers_[i]).c_str());
+                    kCmdPartnerBase + i, TrF(L"Whisper to {1}", {whisperers_[i]}).c_str());
     POINT pt{channelRect_.left, channelRect_.top};
     ClientToScreen(hwnd_, &pt);
-    const UINT cmd = static_cast<UINT>(
-        TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_BOTTOMALIGN, pt.x, pt.y, 0, hwnd_, nullptr));
+    const UINT cmd = static_cast<UINT>(TrackPopupMenu(menu, MenuFlags(TPM_RETURNCMD | TPM_NONOTIFY | TPM_BOTTOMALIGN),
+                                                      pt.x, pt.y, 0, hwnd_, nullptr));
     DestroyMenu(menu);
     if (cmd == kActive) {
         SetSendChannel(Channel::Unknown);
@@ -952,65 +1017,126 @@ void MainWindow::ShowChannelMenu() {
 
 void MainWindow::ShowMainMenu() {
     enum : UINT {
-        kRegion = 1, kReader, kBack, kCopyOnly, kFollow, kDock, kCover, kSystem, kCaptures, kResetColors, kOpenIni,
-        kOpenDir, kQuit,
-        kEngineAuto = 50, kEngineBasic, kEngineDeepL, kEngineLlm
+        kSetup = 1, kSettings, kRegion, kReader, kCover, kSystem, kCaptures, kResetColors, kBack, kCopyOnly, kSuggest,
+        kLearn, kSpell, kLanguageTool, kDock, kFollow, kOpenDir, kOpenIni, kQuit,
+        kEngineAuto = 50, kEngineBasic, kEngineDeepL, kEngineLlm, kEngineSetup,
+        kAcOff = 60, kAcSafe, kAcPhone,
+        kOcrAuto = 70, kOcrTess, kOcrWin,
+        kFontBase = 80,      // + index into kFontSizes
+        kOpacityBase = 90,   // + index into kOpacities
+        kUiLangBase = 100,   // + index into UiLanguages()
     };
+    static const int kFontSizes[] = {90, 100, 115, 135};
+    static const int kOpacities[] = {178, 204, 230, 255};
     auto check = [](bool on) { return static_cast<UINT>(on ? MF_CHECKED : MF_UNCHECKED); };
+    auto add = [](HMENU m, UINT flags, UINT id, const std::wstring& text) { AppendMenuW(m, flags, id, text.c_str()); };
+    auto sub = [](HMENU m, HMENU child, const std::wstring& text) {
+        AppendMenuW(m, MF_POPUP, reinterpret_cast<UINT_PTR>(child), text.c_str());
+    };
     HMENU menu = CreatePopupMenu();
-    AppendMenuW(menu, MF_STRING, kRegion, L"Chat-Bereich festlegen \u2026");
-    AppendMenuW(menu, MF_STRING | check(cfg_.readerEnabled), kReader, L"Chat dauerhaft \u00fcbersetzen");
+    add(menu, MF_STRING, kSetup, Tr(L"Setup (install, mark the chat) …"));
+    add(menu, MF_STRING, kSettings, Tr(L"Settings …"));
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+
+    HMENU read = CreatePopupMenu();
+    add(read, MF_STRING | check(cfg_.readerEnabled), kReader, Tr(L"Translate the chat permanently"));
+    add(read, MF_STRING, kRegion, Tr(L"Set the chat area …"));
+    add(read, MF_STRING | (cfg_.regionSet ? 0 : MF_GRAYED), kCover, Tr(L"Lay over the GW2 chat (replaces it)"));
+    AppendMenuW(read, MF_SEPARATOR, 0, nullptr);
+    add(read, MF_STRING | (cfg_.ocr == OcrChoice::Auto ? MF_CHECKED : 0), kOcrAuto,
+        Tr(L"Text recognition: automatic"));
+    add(read, MF_STRING | (cfg_.ocr == OcrChoice::Tesseract ? MF_CHECKED : 0), kOcrTess,
+        Tr(L"Text recognition: Tesseract"));
+    add(read, MF_STRING | (cfg_.ocr == OcrChoice::Windows ? MF_CHECKED : 0), kOcrWin,
+        Tr(L"Text recognition: Windows"));
+    AppendMenuW(read, MF_SEPARATOR, 0, nullptr);
+    add(read, MF_STRING | check(cfg_.showSystemLines), kSystem, Tr(L"Show system lines"));
+    add(read, MF_STRING | check(cfg_.saveCaptures), kCaptures, Tr(L"Save diagnostic pictures (15 min)"));
+    add(read, MF_STRING, kResetColors, Tr(L"Reset channel colours"));
+    sub(menu, read, Tr(L"Reading the chat"));
+
+    HMENU write = CreatePopupMenu();
+    add(write, MF_STRING | (cfg_.autoCorrect == AutoCorrectMode::Off ? MF_CHECKED : 0), kAcOff,
+        Tr(L"Autocorrection: off"));
+    add(write, MF_STRING | (cfg_.autoCorrect == AutoCorrectMode::Safe ? MF_CHECKED : 0), kAcSafe,
+        Tr(L"Autocorrection: safe"));
+    add(write, MF_STRING | (cfg_.autoCorrect == AutoCorrectMode::Phone ? MF_CHECKED : 0), kAcPhone,
+        Tr(L"Autocorrection: like a phone"));
+    AppendMenuW(write, MF_SEPARATOR, 0, nullptr);
+    add(write, MF_STRING | check(cfg_.suggestions), kSuggest, Tr(L"Word bar (Tab takes the word)"));
+    add(write, MF_STRING | check(cfg_.learnWords), kLearn, Tr(L"Learn my words"));
+    add(write, MF_STRING | check(cfg_.spellEnabled), kSpell, Tr(L"Spell checking"));
+    add(write, MF_STRING | check(cfg_.languageTool), kLanguageTool, Tr(L"Grammar check (LanguageTool)"));
+    add(write, MF_STRING | check(cfg_.backTranslate), kBack, Tr(L"Show the back-translation"));
+    add(write, MF_STRING | check(cfg_.copyOnly), kCopyOnly, Tr(L"Only copy – no keys to GW2"));
+    sub(menu, write, Tr(L"Writing"));
+
     HMENU engines = CreatePopupMenu();
-    AppendMenuW(engines, MF_STRING | check(cfg_.engine == Engine::Auto), kEngineAuto, L"Automatisch (bester verf\u00fcgbarer)");
+    add(engines, MF_STRING | check(cfg_.engine == Engine::Auto), kEngineAuto, Tr(L"Automatic (best available)"));
     AppendMenuW(engines, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(engines, MF_STRING | check(cfg_.engine == Engine::Basic), kEngineBasic,
-                L"Basis \u2013 MyMemory (kostenlos, ohne Anmeldung)");
-    AppendMenuW(engines, MF_STRING | check(cfg_.engine == Engine::DeepL) | (cfg_.deeplKey.empty() ? MF_GRAYED : 0),
-                kEngineDeepL, cfg_.deeplKey.empty() ? L"DeepL (Key in der ini fehlt)" : L"DeepL");
-    AppendMenuW(engines, MF_STRING | check(cfg_.engine == Engine::Llm) | (llm_ ? 0 : MF_GRAYED), kEngineLlm,
-                llm_ ? (L"LLM \u2013 " + cfg_.llmModel).c_str() : L"LLM (Modell in der ini fehlt)");
-    AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(engines),
-                (L"\u00dcbersetzer: " + translator_->Name()).c_str());
-    AppendMenuW(menu, MF_STRING | check(cfg_.backTranslate), kBack, L"R\u00fcck\u00fcbersetzung zeigen");
-    AppendMenuW(menu, MF_STRING | check(cfg_.copyOnly), kCopyOnly,
-                L"Nur kopieren \u2013 keine Tasten an GW2 (selbst einf\u00fcgen)");
+    add(engines, MF_STRING | check(cfg_.engine == Engine::Basic), kEngineBasic,
+        Tr(L"Basic – MyMemory (free, no account)"));
+    add(engines, MF_STRING | check(cfg_.engine == Engine::DeepL) | (cfg_.deeplKey.empty() ? MF_GRAYED : 0), kEngineDeepL,
+        cfg_.deeplKey.empty() ? Tr(L"DeepL (no key yet)") : std::wstring(L"DeepL"));
+    add(engines, MF_STRING | check(cfg_.engine == Engine::Llm) | (llm_ ? 0 : MF_GRAYED), kEngineLlm,
+        llm_ ? L"LLM – " + cfg_.llmModel : Tr(L"LLM (no model yet)"));
+    AppendMenuW(engines, MF_SEPARATOR, 0, nullptr);
+    add(engines, MF_STRING, kEngineSetup, Tr(L"Set up translators …"));
+    sub(menu, engines, TrF(L"Translator: {1}", {translator_->Name()}));
+
+    HMENU window = CreatePopupMenu();
+    add(window, MF_STRING | check(cfg_.dock), kDock, Tr(L"Dock to GW2 (moves with it)"));
+    add(window, MF_STRING | check(cfg_.followGame), kFollow, Tr(L"Show and hide with the game"));
+    HMENU sizes = CreatePopupMenu();
+    for (size_t i = 0; i < std::size(kFontSizes); ++i)
+        add(sizes, MF_STRING | check(cfg_.fontPercent == kFontSizes[i]), kFontBase + static_cast<UINT>(i),
+            std::to_wstring(kFontSizes[i]) + L" %");
+    sub(window, sizes, Tr(L"Text size"));
+    HMENU opac = CreatePopupMenu();
+    for (size_t i = 0; i < std::size(kOpacities); ++i)
+        add(opac, MF_STRING | check(std::abs(cfg_.opacity - kOpacities[i]) < 13), kOpacityBase + static_cast<UINT>(i),
+            std::to_wstring(kOpacities[i] * 100 / 255) + L" %");
+    sub(window, opac, Tr(L"Opacity"));
+    sub(menu, window, Tr(L"Window"));
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(menu, MF_STRING | (cfg_.regionSet ? 0 : MF_GRAYED), kCover,
-                L"\u00dcber den GW2-Chat legen (ersetzt ihn)");
-    AppendMenuW(menu, MF_STRING | check(cfg_.dock), kDock, L"An GW2 andocken (wandert mit)");
-    AppendMenuW(menu, MF_STRING | check(cfg_.followGame), kFollow, L"Mit dem Spiel ein-/ausblenden");
-    AppendMenuW(menu, MF_STRING | check(cfg_.showSystemLines), kSystem, L"Systemzeilen anzeigen");
-    AppendMenuW(menu, MF_STRING | check(cfg_.saveCaptures), kCaptures, L"Diagnose-Aufnahmen speichern");
-    AppendMenuW(menu, MF_STRING, kResetColors, L"Kanalfarben zur\u00fccksetzen");
+
+    // Always findable, in every language: the name of the menu is in all of them.
+    HMENU ui = CreatePopupMenu();
+    for (size_t i = 0; i < UiLanguages().size(); ++i)
+        add(ui, MF_STRING | check(UiLanguages()[i].lang == cfg_.uiLang), kUiLangBase + static_cast<UINT>(i),
+            UiLanguages()[i].native);
+    sub(menu, ui, L"Language / Sprache / اللغة");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(menu, MF_STRING, kOpenIni, L"Einstellungen (ini) \u00f6ffnen");
-    AppendMenuW(menu, MF_STRING, kOpenDir, L"Datenordner \u00f6ffnen");
-    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(menu, MF_STRING, kQuit, L"Beenden");
+    add(menu, MF_STRING, kOpenDir, Tr(L"Open the data folder"));
+    add(menu, MF_STRING, kOpenIni, Tr(L"Open the settings file"));
+    add(menu, MF_STRING, kQuit, Tr(L"Quit"));
 
     POINT pt{menuRect_.left, menuRect_.bottom};
     ClientToScreen(hwnd_, &pt);
     const UINT cmd =
-        static_cast<UINT>(TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY, pt.x, pt.y, 0, hwnd_, nullptr));
+        static_cast<UINT>(TrackPopupMenu(menu, MenuFlags(TPM_RETURNCMD | TPM_NONOTIFY), pt.x, pt.y, 0, hwnd_, nullptr));
     DestroyMenu(menu);
 
-    auto saveBool = [this](const wchar_t* sec, const wchar_t* key, bool v) { cfg_.SaveValue(sec, key, v ? L"1" : L"0"); };
     switch (cmd) {
-        case kRegion:
-            PickRegion();
-            break;
+        case kSetup: RunSetup(); break;
+        case kSettings: OpenSettings(SettingsPage::General); break;
+        case kEngineSetup: OpenSettings(SettingsPage::Translator); break;
+        case kRegion: PickRegion(); break;
         case kReader:
             cfg_.readerEnabled = !cfg_.readerEnabled;
-            saveBool(L"Reader", L"Enabled", cfg_.readerEnabled);
-            if (cfg_.readerEnabled) StartReader();
-            else reader_.Stop();
-            readingActive_ = false;
-            UpdateHint();
-            InvalidateChrome();
+            cfg_.SaveBool(L"Reader", L"Enabled", cfg_.readerEnabled);
+            RestartReader();
+            break;
+        case kOcrAuto:
+        case kOcrTess:
+        case kOcrWin:
+            cfg_.ocr = static_cast<OcrChoice>(cmd - kOcrAuto);
+            cfg_.SaveValue(L"Reader", L"OcrEngine", OcrKey(cfg_.ocr));
+            RestartReader();
             break;
         case kBack:
             cfg_.backTranslate = !cfg_.backTranslate;
-            saveBool(L"Translate", L"BackTranslate", cfg_.backTranslate);
+            cfg_.SaveBool(L"Translate", L"BackTranslate", cfg_.backTranslate);
             backText_.clear();
             StartBackTranslation();
             UpdatePreview();
@@ -1018,22 +1144,45 @@ void MainWindow::ShowMainMenu() {
         case kCopyOnly:
             cfg_.copyOnly = !cfg_.copyOnly;
             cfg_.SaveValue(L"Chat", L"SendMode", cfg_.copyOnly ? L"copy" : L"send");
-            SetStatus(cfg_.copyOnly ? L"Nur kopieren: Enter legt die Zeile in die Zwischenablage, du f\u00fcgst sie in "
-                                      L"GW2 selbst ein"
-                                    : L"Senden: Enter schickt die Zeile direkt in den GW2-Chat",
+            SetStatus(cfg_.copyOnly ? Tr(L"Only copy: Enter puts the line on the clipboard, you paste it in GW2 yourself")
+                                    : Tr(L"Send: Enter puts the line straight into the GW2 chat"),
                       Tone::Ok, 7000);
             UpdatePreview();
             InvalidateChrome();
             break;
-        case kDock:
-            SetDock(!cfg_.dock);
+        case kAcOff:
+        case kAcSafe:
+        case kAcPhone:
+            cfg_.autoCorrect = static_cast<AutoCorrectMode>(cmd - kAcOff);
+            cfg_.SaveValue(L"Spelling", L"AutoCorrectMode", AutoCorrectKey(cfg_.autoCorrect));
+            input_.SetAutoCorrect(cfg_.autoCorrect);
             break;
-        case kCover:
-            CoverChat();
+        case kSuggest:
+            cfg_.suggestions = !cfg_.suggestions;
+            cfg_.SaveBool(L"Spelling", L"Suggestions", cfg_.suggestions);
+            input_.SetSuggestions(cfg_.suggestions);
+            Layout();
             break;
+        case kLearn:
+            cfg_.learnWords = !cfg_.learnWords;
+            cfg_.SaveBool(L"Spelling", L"Learn", cfg_.learnWords);
+            break;
+        case kSpell:
+            cfg_.spellEnabled = !cfg_.spellEnabled;
+            cfg_.SaveBool(L"Spelling", L"Enabled", cfg_.spellEnabled);
+            SetStatus(Tr(L"Takes effect after a restart"), Tone::Muted, 4000);
+            break;
+        case kLanguageTool:
+            cfg_.languageTool = !cfg_.languageTool;
+            cfg_.SaveBool(L"Spelling", L"LanguageTool", cfg_.languageTool);
+            if (cfg_.languageTool)
+                SetStatus(Tr(L"Grammar check on: your text is sent to the LanguageTool server"), Tone::Ok, 6000);
+            break;
+        case kDock: SetDock(!cfg_.dock); break;
+        case kCover: CoverChat(); break;
         case kFollow:
             cfg_.followGame = !cfg_.followGame;
-            saveBool(L"Window", L"FollowGame", cfg_.followGame);
+            cfg_.SaveBool(L"Window", L"FollowGame", cfg_.followGame);
             if (!cfg_.followGame && autoHidden_) {
                 autoHidden_ = false;
                 ShowWindow(hwnd_, SW_SHOWNOACTIVATE);
@@ -1041,21 +1190,15 @@ void MainWindow::ShowMainMenu() {
             break;
         case kSystem:
             cfg_.showSystemLines = !cfg_.showSystemLines;
-            saveBool(L"Reader", L"ShowSystem", cfg_.showSystemLines);
+            cfg_.SaveBool(L"Reader", L"ShowSystem", cfg_.showSystemLines);
             break;
         case kCaptures:
-            cfg_.saveCaptures = !cfg_.saveCaptures;
-            saveBool(L"Reader", L"SaveCaptures", cfg_.saveCaptures);
-            reader_.SetSaveCaptures(cfg_.saveCaptures);
-            if (cfg_.saveCaptures) {
-                reader_.Rescan();
-                SetStatus(L"Aufnahmen landen in " + cfg_.CaptureDir(), Tone::Ok, 8000);
-            }
+            SetSaveCaptures(!cfg_.saveCaptures);
             break;
         case kResetColors:
             cfg_.ResetColors();
             log_.SetPalette(cfg_.palette);
-            SetStatus(L"Kanalfarben auf GW2-Standard zur\u00fcckgesetzt", Tone::Ok, 4000);
+            SetStatus(Tr(L"Channel colours reset to the GW2 defaults"), Tone::Ok, 4000);
             break;
         case kOpenIni:
             ShellExecuteW(hwnd_, L"open", L"notepad.exe", (L"\"" + cfg_.iniPath + L"\"").c_str(), nullptr, SW_SHOWNORMAL);
@@ -1070,8 +1213,56 @@ void MainWindow::ShowMainMenu() {
         case kEngineBasic: SetEngine(Engine::Basic); break;
         case kEngineDeepL: SetEngine(Engine::DeepL); break;
         case kEngineLlm: SetEngine(Engine::Llm); break;
-        default: break;
+        default:
+            if (cmd >= kFontBase && cmd < kFontBase + std::size(kFontSizes)) {
+                cfg_.fontPercent = kFontSizes[cmd - kFontBase];
+                cfg_.SaveValue(L"Window", L"FontPercent", std::to_wstring(cfg_.fontPercent));
+                ApplyDpi(theme_.dpi, nullptr);
+            } else if (cmd >= kOpacityBase && cmd < kOpacityBase + std::size(kOpacities)) {
+                cfg_.opacity = kOpacities[cmd - kOpacityBase];
+                cfg_.SaveValue(L"Window", L"Opacity", std::to_wstring(cfg_.opacity));
+                SetLayeredWindowAttributes(hwnd_, 0, static_cast<BYTE>(cfg_.opacity), LWA_ALPHA);
+            } else if (cmd >= kUiLangBase && cmd < kUiLangBase + UiLanguages().size()) {
+                SetUiLanguage(UiLanguages()[cmd - kUiLangBase].lang);
+            }
+            break;
     }
+}
+
+void MainWindow::SetUiLanguage(UiLang lang) {
+    cfg_.uiLang = lang;
+    cfg_.SaveValue(L"General", L"UiLanguage", UiLangCode(lang));
+    SetUiLang(lang);
+    // Default tab names follow the language as long as you did not rename them.
+    UpdateHint();
+    UpdatePreview();
+    InvalidateRect(hwnd_, nullptr, FALSE);
+    InvalidateRect(log_.Hwnd(), nullptr, FALSE);
+    log_.ThemeChanged();
+    UpdateTrayTip();
+    SetStatus(Tr(L"Language changed"), Tone::Ok, 3000);
+}
+
+void MainWindow::SetSaveCaptures(bool on) {
+    cfg_.saveCaptures = on;
+    cfg_.SaveBool(L"Reader", L"SaveCaptures", on);
+    reader_.SetSaveCaptures(on);
+    KillTimer(hwnd_, kTimerCaptures);
+    if (on) {
+        SetTimer(hwnd_, kTimerCaptures, kCaptureMinutes * 60000, nullptr);
+        reader_.Rescan();
+        SetStatus(TrF(L"Pictures go to {1} (off again after 15 minutes)", {cfg_.CaptureDir()}), Tone::Ok, 8000);
+    }
+}
+
+void MainWindow::RestartReader() {
+    reader_.Stop();
+    readingActive_ = false;
+    readerError_.clear();
+    readerReported_ = false;
+    if (cfg_.readerEnabled) StartReader();
+    UpdateHint();
+    InvalidateChrome();
 }
 
 void MainWindow::SetEngine(Engine e) {
@@ -1095,11 +1286,11 @@ void MainWindow::OnKeyboardLanguage(const std::wstring& locale) {
     if (cfg_.spellEnabled) {
         const bool ok = spell_.SwitchLanguage(SpellTagCandidates(primary, locale));
         input_.RecheckSpelling();
-        if (ok) SetStatus(L"Rechtschreibung: " + spell_.Tag(), Tone::Muted, 2500);
+        if (ok) SetStatus(TrF(L"Spelling: {1}", {spell_.Tag()}), Tone::Muted, 2500);
         else
-            SetStatus(L"Keine Rechtschreibpr\u00fcfung f\u00fcr " + LanguageLabel(primary) + L" installiert", Tone::Muted,
-                      4000);
+            SetStatus(TrF(L"No spell checking installed for {1}", {LanguageLabel(primary)}), Tone::Muted, 4000);
     }
+    spell_.UseLearnedLanguage(primary, cfg_.LearnedDir());
     RefreshGlossary();
 }
 
@@ -1143,8 +1334,10 @@ bool MainWindow::EnsureNames(const std::string& lang) {
 void MainWindow::StartNameFetch(const std::string& lang) {
     if (fetching_.count(lang) || fetchFailed_.count(lang)) return;
     fetching_.insert(lang);
-    if (!names_.count(lang) && BackgroundNoticeAllowed())
-        SetStatus(L"Lade offizielle GW2-Namen (" + FromUtf8(lang) + L")\u2026", Tone::Muted);
+    if (!names_.count(lang) && BackgroundNoticeAllowed()) {
+        SetStatus(TrF(L"Loading official GW2 names ({1})\u2026", {FromUtf8(lang)}), Tone::Muted);
+        loadingNames_ = true;
+    }
     std::thread([hwnd = hwnd_, lang] {
         auto msg = std::make_unique<NamesMsg>();
         msg->lang = lang;
@@ -1160,9 +1353,9 @@ void MainWindow::OnNamesFetched(NamesMsg* raw) {
         fetchFailed_.insert(m->lang);
         if (!BackgroundNoticeAllowed()) return;
         if (names_.count(m->lang))
-            SetStatus(L"GW2-API nicht erreichbar \u2013 nutze gespeicherte Namen", Tone::Muted, 5000);
+            SetStatus(Tr(L"GW2 API not reachable \u2013 using the saved names"), Tone::Muted, 5000);
         else
-            SetStatus(L"GW2-Namen nicht geladen: " + m->result.error, Tone::Warn, 8000);
+            SetStatus(TrF(L"GW2 names not loaded: {1}", {m->result.error}), Tone::Warn, 8000);
         return;
     }
     WriteFileAtomic(NameCachePath(cfg_, m->lang), SerializeNameTable(m->result.names));
@@ -1173,9 +1366,10 @@ void MainWindow::OnNamesFetched(NamesMsg* raw) {
     UpdateSpellWords();
     if (!BackgroundNoticeAllowed()) return;
     if (!hadGlossary && !glossary_.Empty())
-        SetStatus(L"GW2-Glossar bereit: " + std::to_wstring(glossary_.Size()) + L" offizielle Namen", Tone::Ok, 5000);
-    else if (fetching_.empty() && status_.rfind(L"Lade offizielle", 0) == 0)
+        SetStatus(TrF(L"GW2 glossary ready: {1} official names", {std::to_wstring(glossary_.Size())}), Tone::Ok, 5000);
+    else if (fetching_.empty() && loadingNames_)
         SetStatus(L"", Tone::Muted);
+    if (fetching_.empty()) loadingNames_ = false;
 }
 
 void MainWindow::UpdateSpellWords() {
@@ -1327,7 +1521,7 @@ void MainWindow::OnTranslated(TranslatedMsg* raw) {
                 return;
             }
             SetPreviewBody(previewPrefix_, SanitizeChatText(m->result.text));
-            SetStatus(L"Umschrift in lateinischen Buchstaben \u2013 Enter sendet sie", Tone::Ok, 4000);
+            SetStatus(Tr(L"In Latin letters \u2013 Enter sends it"), Tone::Ok, 4000);
             return;
     }
 }
@@ -1352,25 +1546,26 @@ void MainWindow::StartBackTranslation() {
 // Devanagari offline; everything else needs the optional LLM.
 void MainWindow::Romanize() {
     if (!PreviewIsCurrent() || previewBody_.empty()) {
-        SetStatus(L"Erst tippen, dann Strg+U f\u00fcr die Umschrift", Tone::Muted, 3000);
+        SetStatus(Tr(L"Type first, then Ctrl+U for Latin letters"), Tone::Muted, 3000);
         return;
     }
     const std::wstring script = UnsupportedScript(previewBody_);
     if (script.empty()) {
-        SetStatus(L"Schon in lateinischer Schrift", Tone::Muted, 2500);
+        SetStatus(Tr(L"Already in Latin letters"), Tone::Muted, 2500);
         return;
     }
     const std::wstring t = TransliterateToLatin(previewBody_);
     if (t != previewBody_ && UnsupportedScript(t).empty()) {
         SetPreviewBody(previewPrefix_, t);
-        SetStatus(L"Umschrift in lateinischen Buchstaben \u2013 Enter sendet sie", Tone::Ok, 4000);
+        SetStatus(Tr(L"In Latin letters \u2013 Enter sends it"), Tone::Ok, 4000);
         return;
     }
     if (!llm_) {
-        SetStatus(L"Umschrift f\u00fcr " + script + L" braucht das optionale LLM ([LLM] in der ini)", Tone::Warn, 7000);
+        SetStatus(TrF(L"Latin letters for {1} need the optional LLM (\u2261 \u2192 Settings \u2192 Translator)", {script}),
+                  Tone::Warn, 7000);
         return;
     }
-    SetStatus(L"Umschrift l\u00e4uft (LLM) \u2026", Tone::Muted);
+    SetStatus(Tr(L"Writing it in Latin letters (LLM) \u2026"), Tone::Muted);
     std::thread([hwnd = hwnd_, gen = inputGen_, llm = llm_, text = previewBody_] {
         auto msg = std::make_unique<TranslatedMsg>();
         msg->kind = TranslatedMsg::Kind::Romanize;
@@ -1382,9 +1577,9 @@ void MainWindow::Romanize() {
 
 void MainWindow::UpdatePreview() {
     PreviewView::Content c;
-    c.placeholder = std::wstring(L"Schreib in deiner Sprache \u2013 hier steht, was im GW2-Chat ankommt.  ") +
-                    (cfg_.copyOnly ? L"Enter kopiert" : L"Enter sendet") +
-                    L" \u00b7 Strg+Enter das Original \u00b7 Strg+L Sprache \u00b7 Strg+Tab Fl\u00fcstern";
+    c.placeholder = Tr(L"Write in your language \u2013 here you see what arrives in the GW2 chat.") + L"  " +
+                    (cfg_.copyOnly ? Tr(L"Enter copies") : Tr(L"Enter sends")) + L" \u00b7 " +
+                    Tr(L"Ctrl+Enter the original \u00b7 Ctrl+L language \u00b7 Ctrl+Tab next tab");
     const std::wstring text = SanitizeChatText(input_.Hwnd() ? input_.Text() : L"");
     if (text.empty()) {
         preview_.Set(std::move(c));
@@ -1397,12 +1592,12 @@ void MainWindow::UpdatePreview() {
         if (backGen_ == inputGen_) c.back = backText_;
         const std::wstring script = UnsupportedScript(previewBody_);
         if (parts_.size() > 1) {
-            c.note = L"Teil " + std::to_wstring(idx + 1) + L"/" + std::to_wstring(parts_.size()) +
-                     L" \u2013 jedes Enter sendet einen Teil";
+            c.note = TrF(L"Part {1}/{2} \u2013 every Enter sends one part",
+                         {std::to_wstring(idx + 1), std::to_wstring(parts_.size())});
         }
         if (!script.empty()) {
-            c.note = (c.note.empty() ? L"" : c.note + L"  \u00b7  ") + L"GW2 zeigt " + script +
-                     L" vermutlich nicht an \u2013 Strg+U: Umschrift";
+            c.note = (c.note.empty() ? L"" : c.note + L"  \u00b7  ") +
+                     TrF(L"GW2 probably cannot show {1} \u2013 Ctrl+U: Latin letters", {script});
             c.warn = true;
         } else if (c.note.empty()) {
             c.note = HitsText(lastHits_);
@@ -1410,7 +1605,7 @@ void MainWindow::UpdatePreview() {
     } else {
         c.text = previewBody_.empty() ? ComposePrefix() + text : previewPrefix_ + previewBody_;
         c.current = false;
-        if (inflightGen_ == inputGen_) c.note = L"\u00fcbersetze \u2026";
+        if (inflightGen_ == inputGen_) c.note = Tr(L"translating \u2026");
     }
     preview_.Set(std::move(c));
 }
@@ -1432,7 +1627,7 @@ void MainWindow::OnEnter(bool sendOriginal) {
     }
     sendPending_ = true;
     StartTranslation();
-    if (sendPending_ && inflightGen_ == inputGen_) SetStatus(L"\u00fcbersetze und sende \u2026", Tone::Muted);
+    if (sendPending_ && inflightGen_ == inputGen_) SetStatus(Tr(L"translating and sending \u2026"), Tone::Muted);
 }
 
 void MainWindow::SendNextPart() {
@@ -1440,8 +1635,8 @@ void MainWindow::SendNextPart() {
     const std::wstring line = parts_[partIdx_];
     const size_t n = CodePointCount(line);
     if (n > static_cast<size_t>(cfg_.maxLength)) {
-        SetStatus(L"Zu lang f\u00fcr den GW2-Chat (" + std::to_wstring(n) + L"/" + std::to_wstring(cfg_.maxLength) +
-                      L") \u2013 bitte k\u00fcrzen",
+        SetStatus(TrF(L"Too long for the GW2 chat ({1}/{2}) \u2013 please shorten it",
+                      {std::to_wstring(n), std::to_wstring(cfg_.maxLength)}),
                   Tone::Warn);
         return;
     }
@@ -1452,6 +1647,12 @@ void MainWindow::SendNextPart() {
         original = split.prefix.empty() ? text : split.body;
     }
     if (!DoSend(line, original)) return;
+    if (partIdx_ == 0 && cfg_.learnWords) {
+        // Learn what you write in your own language (the original), like a phone keyboard.
+        const std::wstring typed = SanitizeChatText(input_.Text());
+        const ChatSplit split = SplitChatCommand(typed);
+        spell_.Learn(split.prefix.empty() ? typed : split.body);
+    }
     ++partIdx_;
     if (partIdx_ >= parts_.size()) {
         input_.Clear();
@@ -1461,14 +1662,14 @@ void MainWindow::SendNextPart() {
     UpdatePreview();
     InvalidateChrome();
     if (cfg_.copyOnly) {  // you paste it in GW2, then come back for the next part
-        SetStatus(L"Teil " + std::to_wstring(partIdx_) + L"/" + std::to_wstring(parts_.size()) +
-                      L" kopiert \u2013 in GW2 einf\u00fcgen, dann hier Enter f\u00fcr den n\u00e4chsten",
+        SetStatus(TrF(L"Part {1}/{2} copied \u2013 paste it in GW2, then Enter here for the next one",
+                      {std::to_wstring(partIdx_), std::to_wstring(parts_.size())}),
                   Tone::Ok);
         return;
     }
     // More to come: back to our window so the next Enter (your key press) sends the next part.
-    SetStatus(L"Teil " + std::to_wstring(partIdx_) + L"/" + std::to_wstring(parts_.size()) +
-                  L" gesendet \u2013 Enter sendet den n\u00e4chsten",
+    SetStatus(TrF(L"Part {1}/{2} sent \u2013 Enter sends the next one",
+                  {std::to_wstring(partIdx_), std::to_wstring(parts_.size())}),
               Tone::Ok);
     if (Front(hwnd_)) SetFocus(input_.Hwnd());
 }
@@ -1481,11 +1682,11 @@ bool MainWindow::DoSend(const std::wstring& line, const std::wstring& original) 
         // Copy only: not a single key goes to the game; you paste it yourself.
         out.ok = CopyTextToClipboard(hwnd_, line);
         if (!out.ok) {
-            SetStatus(L"Zwischenablage gerade blockiert \u2013 nochmal Enter", Tone::Error);
+            SetStatus(Tr(L"The clipboard is busy \u2013 press Enter again"), Tone::Error);
             return false;
         }
     } else {
-        SetStatus(L"sende \u2026", Tone::Muted);
+        SetStatus(Tr(L"sending \u2026"), Tone::Muted);
         UpdateWindow(hwnd_);  // sending blocks for a moment; show the status first
         out = SendToGw2Chat(hwnd_, line, cfg_.send, mumbleState_.live ? &mumble_ : nullptr);
         if (!out.ok) {
@@ -1510,16 +1711,15 @@ bool MainWindow::DoSend(const std::wstring& line, const std::wstring& original) 
     while (recentSent_.size() > 40) recentSent_.pop_front();
 
     if (cfg_.copyOnly) {
-        SetStatus(L"Kopiert \u2013 in GW2: Enter \u00b7 Strg+V \u00b7 Enter", Tone::Ok, 8000);
+        SetStatus(Tr(L"Copied \u2013 in GW2: Enter \u00b7 Ctrl+V \u00b7 Enter"), Tone::Ok, 8000);
         if (gw2_ && IsWindow(gw2_)) Front(gw2_);  // window switch only, no keys
         return true;
     }
     if (out.clipboardRestored)
-        SetStatus(L"Gesendet.", Tone::Ok, 3000);
+        SetStatus(Tr(L"Sent."), Tone::Ok, 3000);
     else
-        SetStatus(L"Gesendet \u2013 GW2 hat nicht best\u00e4tigt, deine alte Zwischenablage wurde zur Sicherheit nicht "
-                  L"zur\u00fcckgeschrieben",
-                  Tone::Warn, 8000);
+        SetStatus(Tr(L"Sent \u2013 GW2 did not confirm, so your old clipboard was not put back (to be safe)"), Tone::Warn,
+                  8000);
     if (cfg_.returnFocus && Front(hwnd_)) SetFocus(input_.Hwnd());
     return true;
 }
@@ -1535,7 +1735,7 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
     if (!s->error.empty()) {
         if (readerError_ != s->error) {
             readerError_ = s->error;
-            SetStatus(L"Chat lesen: " + s->error, Tone::Warn, 10000);
+            SetStatus(TrF(L"Reading the chat: {1}", {s->error}), Tone::Warn, 10000);
             UpdateHint();
         }
         return;
@@ -1546,9 +1746,11 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
     }
     if (!readerReported_ && BackgroundNoticeAllowed()) {
         readerReported_ = true;
-        SetStatus(L"Chat erkannt: " + std::to_wstring(s->lines.size()) + L" Zeilen \u00b7 " + s->method + L" \u00b7 " +
-                      s->language + L" \u00b7 " + std::to_wstring(s->milliseconds) + L" ms",
+        SetStatus(TrF(L"Chat found: {1} lines \u00b7 {2} \u00b7 {3} \u00b7 {4} ms",
+                      {std::to_wstring(s->lines.size()), s->engine + L" " + s->language, s->method,
+                       std::to_wstring(s->milliseconds)}),
                   Tone::Ok, 6000);
+        lastOcrEngine_ = s->engine + L" (" + s->language + L")";
     }
     const std::vector<ChatMessage> msgs = BuildMessages(s->lines, cfg_.palette);
     for (const ChatMessage& m : stream_.Feed(msgs)) HandleIncoming(m);
@@ -1634,7 +1836,7 @@ void MainWindow::HandleIncoming(const ChatMessage& m) {
                 e.original = m.text;
             }
         } else if (GetTickCount64() + 60000 < inPauseUntil_) {
-            e.note = L"nicht \u00fcbersetzt \u2013 \u00dcbersetzer pausiert";  // long pause (contingent): don't pile up
+            e.note = Tr(L"not translated \u2013 translator paused");  // long pause (contingent): don't pile up
         } else {
             e.state = ChatEntry::State::Pending;
             pending = true;
@@ -1647,7 +1849,7 @@ void MainWindow::HandleIncoming(const ChatMessage& m) {
         while (inQueue_.size() > kQueueMax) {  // a busy chat outruns the translator: skip the oldest
             log_.Update(inQueue_.front().entryId, [](ChatEntry& x) {
                 x.state = ChatEntry::State::Plain;
-                x.note = L"\u00fcbersprungen \u2013 zu viel auf einmal";
+                x.note = Tr(L"skipped \u2013 too much at once");
             });
             inQueue_.pop_front();
         }
@@ -1686,8 +1888,10 @@ void MainWindow::PumpIncoming() {
         msg->texts.push_back(std::move(pl.text));
     }
     inFlight_ = true;
-    std::thread([hwnd = hwnd_, translator = translator_, items = std::move(items), m = std::move(msg)]() mutable {
-        m->results = translator->TranslateBatch(items, L"", m->lang);
+    // With an LLM, chat lines read from the screen get their OCR errors repaired too.
+    std::shared_ptr<LlmTranslator> ocrLlm = (engine_ == Engine::Llm && cfg_.llmFixOcr) ? llm_ : nullptr;
+    std::thread([hwnd = hwnd_, translator = translator_, ocrLlm, items = std::move(items), m = std::move(msg)]() mutable {
+        m->results = ocrLlm ? ocrLlm->TranslateOcrBatch(items, m->lang) : translator->TranslateBatch(items, L"", m->lang);
         if (PostMessageW(hwnd, WM_APP_INCOMING, 0, reinterpret_cast<LPARAM>(m.get()))) m.release();
     }).detach();
 }
@@ -1701,7 +1905,7 @@ void MainWindow::OnIncomingTranslated(IncomingMsg* raw) {
     for (size_t i = 0; i < m->ids.size(); ++i) {
         TranslateResult r;
         if (i < m->results.size()) r = m->results[i];
-        else r.error = L"keine Antwort";
+        else r.error = Tr(L"no answer");
         quota = quota || r.quotaExceeded;
         const std::wstring& original = m->texts[i];
         if (r.ok) {
@@ -1727,20 +1931,20 @@ void MainWindow::OnIncomingTranslated(IncomingMsg* raw) {
             if (firstError.empty()) firstError = r.error;
             log_.Update(m->ids[i], [&](ChatEntry& e) {
                 e.state = ChatEntry::State::Failed;
-                e.note = L"nicht \u00fcbersetzt";
+                e.note = Tr(L"not translated");
             });
         }
     }
     if (ok == 0 && !firstError.empty()) {
         inPauseUntil_ = GetTickCount64() + (quota ? kQuotaPauseMs : kErrorPauseMs);
-        SetStatus(std::wstring(quota ? L"Chat-\u00dcbersetzung pausiert (20 min): " : L"Chat-\u00dcbersetzung pausiert (30 s): ") +
-                      firstError,
+        SetStatus((quota ? TrF(L"Chat translation paused (20 min): {1}", {firstError})
+                         : TrF(L"Chat translation paused (30 s): {1}", {firstError})),
                   Tone::Warn, quota ? 30000 : 12000);
         if (quota) {  // the waiting lines will not get a translation in time
             for (const PendingLine& pl : inQueue_)
                 log_.Update(pl.entryId, [](ChatEntry& x) {
                     x.state = ChatEntry::State::Plain;
-                    x.note = L"nicht \u00fcbersetzt \u2013 Kontingent aufgebraucht";
+                    x.note = Tr(L"not translated \u2013 quota used up");
                 });
             inQueue_.clear();
         }
@@ -1750,26 +1954,26 @@ void MainWindow::OnIncomingTranslated(IncomingMsg* raw) {
 
 void MainWindow::UpdateHint() {
     if (SoleSendChannel(cfg_.tabs[tab_].channels) == Channel::Whisper) {
-        log_.SetEmptyHint(L"Fl\u00fcsternachrichten erscheinen hier \u00fcbersetzt.\nRechtsklick auf eine Nachricht \u2192 "
-                          L"Antworten. Strg+Tab wechselt den Tab.",
+        log_.SetEmptyHint(Tr(L"Whispers appear here, translated.\nRight-click a message \u2192 Reply. Ctrl+Tab "
+                             L"switches the tab."),
                           false);
         return;
     }
     if (!cfg_.readerEnabled)
-        log_.SetEmptyHint(L"Chat-Lesen ist aus (Men\u00fc \u2261 \u2192 Chat dauerhaft \u00fcbersetzen).", false);
+        log_.SetEmptyHint(Tr(L"Reading the chat is off (menu \u2261 \u2192 Reading the chat)."), false);
     else if (!readerError_.empty())
-        log_.SetEmptyHint(L"Texterkennung nicht verf\u00fcgbar:\n" + readerError_, false);
+        log_.SetEmptyHint(TrF(L"Text recognition not available:\n{1}", {readerError_}), false);
     else if (!cfg_.regionSet)
-        log_.SetEmptyHint(L"Einmalig einrichten: hier klicken und einen Rahmen um den GW2-Chat ziehen.\nDanach erscheint "
-                          L"hier der ganze Chat in deiner Sprache.",
+        log_.SetEmptyHint(Tr(L"One-time setup: click here and draw a frame around the GW2 chat.\nAfter that the "
+                             L"whole chat appears here in your language."),
                           true);
     else if (!gw2_)
-        log_.SetEmptyHint(L"Warte auf Guild Wars 2 \u2026", false);
+        log_.SetEmptyHint(Tr(L"Waiting for Guild Wars 2 \u2026"), false);
     else if (overlapsChat_)
-        log_.SetEmptyHint(L"Dieses Fenster \u00fcberdeckt den Chat-Bereich \u2013 bitte daneben schieben.", false);
+        log_.SetEmptyHint(Tr(L"This window covers the chat area \u2013 please move it beside the chat."), false);
     else
-        log_.SetEmptyHint(L"Lese den Chat \u2026 neue Nachrichten erscheinen hier in deiner Sprache.\n(Bereich "
-                          L"anpassen: Men\u00fc \u2261 \u2192 Chat-Bereich festlegen)",
+        log_.SetEmptyHint(Tr(L"Reading the chat \u2026 new messages appear here in your language.\n(Adjust the "
+                             L"area: menu \u2261 \u2192 Reading the chat \u2192 Set the chat area)"),
                           false);
 }
 
@@ -1799,10 +2003,21 @@ void MainWindow::PollGame() {
     mumbleState_ = mumble_.Read();
     if (gw2_ && !IsWindow(gw2_)) gw2_ = nullptr;
     const ULONGLONG now = GetTickCount64();
+    const bool hadGame = gw2_ != nullptr;
     if (!gw2_ && now - lastFind_ > 2000) {
         lastFind_ = now;
         gw2_ = FindGw2Window(mumbleState_.live ? mumbleState_.processId : 0);
         if (gw2_) UpdateHint();
+    }
+    // Started with Windows: appear with the game, disappear when it closes.
+    if (waitForGame_ && hadGame != (gw2_ != nullptr)) {
+        UpdateTrayTip();
+        if (gw2_ && !userHidden_) {
+            ShowWindow(hwnd_, SW_SHOWNOACTIVATE);
+            autoHidden_ = false;
+        } else if (!gw2_) {
+            ShowWindow(hwnd_, SW_HIDE);
+        }
     }
     if (picking_) return;
 
@@ -1878,14 +2093,14 @@ void MainWindow::PickRegion() {
     if (gw2_) Front(gw2_);
     RECT r{};
     const bool ok = PickScreenRegion(inst_, theme_,
-                                     L"Ziehe einen Rahmen um die Textzeilen des GW2-Chats\n(ohne Eingabezeile und "
-                                     L"Reiter).  Esc bricht ab.",
+                                     Tr(L"Draw a frame around the text lines of the GW2 chat\n(without the input "
+                                        L"line and the tabs).  Esc cancels."),
                                      &r);
     picking_ = false;
     ignoreSnapshotsBefore_ = GetTickCount64() + 150;
     if (wasVisible) ShowOverlay();
     if (!ok) {
-        SetStatus(L"Chat-Bereich nicht ge\u00e4ndert", Tone::Muted, 3000);
+        SetStatus(Tr(L"Chat area not changed"), Tone::Muted, 3000);
         return;
     }
     // Store relative to the bottom-left corner of the game (the chat sits
@@ -1912,8 +2127,8 @@ void MainWindow::PickRegion() {
         StartReader();
     }
     UpdateHint();
-    SetStatus(gw2_ ? L"Chat-Bereich gespeichert \u2013 lese \u2026"
-                   : L"Chat-Bereich gespeichert (GW2 nicht gefunden \u2013 relativ zum Bildschirm)",
+    SetStatus(gw2_ ? Tr(L"Chat area saved \u2013 reading \u2026")
+                   : Tr(L"Chat area saved (GW2 not found \u2013 relative to the screen)"),
               gw2_ ? Tone::Ok : Tone::Warn, 6000);
 }
 
@@ -1956,17 +2171,17 @@ void MainWindow::UpdateDockFromWindow() {
 void MainWindow::SetDock(bool on) {
     if (on && !gw2_) gw2_ = FindGw2Window(mumbleState_.live ? mumbleState_.processId : 0);
     if (on && !gw2_) {
-        SetStatus(L"GW2 nicht gefunden \u2013 andocken geht, sobald das Spiel l\u00e4uft", Tone::Warn, 5000);
+        SetStatus(Tr(L"GW2 not found \u2013 docking works once the game runs"), Tone::Warn, 5000);
         return;
     }
     cfg_.dock = on;
     if (on) {
         UpdateDockFromWindow();  // where it is now, relative to the game
-        SetStatus(L"Angedockt \u2013 das Fenster wandert mit GW2 mit", Tone::Ok, 4000);
+        SetStatus(Tr(L"Docked \u2013 the window moves with GW2"), Tone::Ok, 4000);
     } else {
         cfg_.SaveDock();
         cfg_.SaveWindowRect(hwnd_, theme_.scale);
-        SetStatus(L"Abgedockt", Tone::Muted, 2500);
+        SetStatus(Tr(L"Undocked"), Tone::Muted, 2500);
     }
 }
 
@@ -1977,7 +2192,7 @@ void MainWindow::CoverChat() {
     const RECT area = ChatArea();
     const RECT client = GameClientRect();
     if (!cfg_.regionSet || IsRectEmpty(&area) || IsRectEmpty(&client)) {
-        SetStatus(L"Erst den Chat-Bereich festlegen (GW2 muss laufen)", Tone::Warn, 5000);
+        SetStatus(Tr(L"Set the chat area first (GW2 must be running)"), Tone::Warn, 5000);
         return;
     }
     // The GW2 panel: its tabs above the text lines, the input line below.
@@ -1994,12 +2209,12 @@ void MainWindow::CoverChat() {
     UpdateDockFromWindow();
     PollGame();  // switch the capture exclusion on right away
     if (affinityUnsupported_)
-        SetStatus(L"Dieses Windows kann das Fenster nicht aus der Aufnahme ausblenden \u2013 bitte neben den Chat "
-                  L"legen (ab Windows 10 Version 2004 geht es)",
+        SetStatus(Tr(L"This Windows cannot keep the window out of the capture \u2013 please put it beside the chat "
+                     L"(works from Windows 10 version 2004)"),
                   Tone::Warn, 12000);
     else
-        SetStatus(L"Liegt \u00fcber dem GW2-Chat und liest ihn darunter weiter. Der GW2-Chat muss offen bleiben.",
-                  Tone::Ok, 9000);
+        SetStatus(Tr(L"Lies over the GW2 chat and keeps reading it underneath. Keep the GW2 chat open."), Tone::Ok,
+                  9000);
 }
 
 void MainWindow::OnSelfRead() {
@@ -2011,8 +2226,7 @@ void MainWindow::OnSelfRead() {
     excludedFromCapture_ = false;
     SetWindowDisplayAffinity(hwnd_, WDA_NONE);
     ignoreSnapshotsBefore_ = now + 150;
-    SetStatus(L"Windows nimmt dieses Fenster mit auf \u2013 Lesen pausiert, solange es den Chat verdeckt", Tone::Warn,
-              12000);
+    SetStatus(Tr(L"Windows captures this window too \u2013 reading pauses while it covers the chat"), Tone::Warn, 12000);
     PollGame();
 }
 
@@ -2033,6 +2247,245 @@ void MainWindow::HideOverlay() {
 void MainWindow::ReturnToGame() {
     if (gw2_ && IsWindow(gw2_)) Front(gw2_);
     else HideOverlay();
+}
+
+// ===========================================================================
+// Settings, setup, tray, grammar check
+// ===========================================================================
+std::wstring MainWindow::ConnectionStatus() {
+    std::wstring s;
+    auto line = [&](const std::wstring& t) { s += t + L"\r\n"; };
+    line(gw2_ ? Tr(L"✔ GW2 window found") : Tr(L"✖ GW2 window not found (start the game)"));
+    if (mumbleState_.live)
+        line(TrF(L"✔ MumbleLink: {1} (map {2})",
+                 {mumbleState_.identity.name.empty() ? L"?" : mumbleState_.identity.name,
+                  std::to_wstring(mumbleState_.identity.mapId)}));
+    else
+        line(Tr(L"✖ MumbleLink: no data (GW2 not running or in the character select)"));
+    const std::wstring dir = cfg_.gw2Dir.empty() ? FindGw2Dir() : cfg_.gw2Dir;
+    if (dir.empty()) {
+        line(Tr(L"? GW2 folder unknown"));
+    } else {
+        const AddonEnvironment env = ScanAddons(dir);
+        line(TrF(L"GW2 folder: {1}", {dir}));
+        line(std::wstring(env.nexus ? L"✔ " : L"– ") + L"Nexus" + (env.nexus ? L"" : L" " + Tr(L"not installed")));
+        line(std::wstring(env.arcdps ? L"✔ " : L"– ") + L"arcdps" +
+             (env.arcdps ? L"" : L" " + Tr(L"not installed")));
+        line(std::wstring(env.unofficialExtras ? L"✔ " : L"– ") + L"arcdps unofficial extras" +
+             (env.unofficialExtras ? L"" : L" " + Tr(L"not installed")));
+        if (env.unofficialExtras)
+            line(Tr(L"   (could deliver squad/party chat as exact text later – optional add-on, not used now)"));
+    }
+    TesseractInfo tess;
+    if (FindTesseract(cfg_.tesseractPath, &tess)) line(TrF(L"✔ Tesseract: {1}", {tess.exe}));
+    else line(Tr(L"– Tesseract not installed (Windows text recognition is used)"));
+    if (!lastOcrEngine_.empty()) line(TrF(L"Reading with: {1}", {lastOcrEngine_}));
+    line(TrF(L"Translator: {1}", {translator_ ? translator_->Name() : std::wstring(L"-")}));
+    line(TrF(L"Settings: {1}", {cfg_.iniPath}));
+    return s;
+}
+
+void MainWindow::OpenSettings(SettingsPage page) {
+    Config edited = cfg_;
+    DialogContext ctx;
+    ctx.connectionStatus = [this] { return ConnectionStatus(); };
+    const DialogResult r = ShowSettingsDialog(hwnd_, inst_, edited, ctx, page);
+    if (r.saved) ApplySettings(edited);
+    HandleDialogAction(r);
+}
+
+void MainWindow::RunSetup() {
+    Config edited = cfg_;
+    DialogContext ctx;
+    ctx.connectionStatus = [this] { return ConnectionStatus(); };
+    const DialogResult r = ShowSetupWizard(hwnd_, inst_, edited, ctx);
+    if (r.saved) ApplySettings(edited);
+    HandleDialogAction(r);
+}
+
+void MainWindow::HandleDialogAction(const DialogResult& r) {
+    switch (r.action) {
+        case DialogResult::Action::PickRegion:
+            PickRegion();
+            break;
+        case DialogResult::Action::CoverChat:
+            if (!cfg_.regionSet) PickRegion();
+            if (cfg_.regionSet) CoverChat();
+            break;
+        case DialogResult::Action::RunSetup:
+            RunSetup();
+            break;
+        case DialogResult::Action::RestartInto: {
+            restartCommand_ = L"\"" + r.restartExe + L"\" --restarted";
+            if (r.markChatAfterRestart) restartCommand_ += L" --mark-chat";
+            if (r.coverAfterRestart) restartCommand_ += L" --cover-chat";
+            PostMessageW(hwnd_, WM_CLOSE, 0, 0);
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+// Takes over what the settings dialog changed and restarts only what needs it.
+void MainWindow::ApplySettings(const Config& next) {
+    const Config prev = cfg_;
+    // Things the window manages itself stay as they are.
+    Config c = next;
+    c.tabs = prev.tabs;
+    c.activeTab = prev.activeTab;
+    c.x = prev.x, c.y = prev.y, c.w = prev.w, c.h = prev.h;
+    cfg_ = c;
+
+    if (prev.uiLang != cfg_.uiLang) SetUiLanguage(cfg_.uiLang);
+    if (prev.fontPercent != cfg_.fontPercent) ApplyDpi(theme_.dpi, nullptr);
+    if (prev.opacity != cfg_.opacity) SetLayeredWindowAttributes(hwnd_, 0, static_cast<BYTE>(cfg_.opacity), LWA_ALPHA);
+    if (prev.hotkey != cfg_.hotkey) {
+        if (hotkeyOk_) UnregisterHotKey(hwnd_, kHotkeyId);
+        hotkeyOk_ = false;
+        if (auto hk = ParseHotkey(cfg_.hotkey))
+            hotkeyOk_ = RegisterHotKey(hwnd_, kHotkeyId, hk->mods | MOD_NOREPEAT, hk->vk) != FALSE;
+    }
+    if (prev.readLang != cfg_.readLang) {
+        wchar_t locale[LOCALE_NAME_MAX_LENGTH] = {};
+        GetUserDefaultLocaleName(locale, LOCALE_NAME_MAX_LENGTH);
+        const LangInfo* read = FindLanguage(cfg_.readLang.empty() ? std::wstring(locale) : cfg_.readLang);
+        readLang_ = read ? read->code : L"EN-GB";
+    }
+    if (prev.writeLangs != cfg_.writeLangs) {
+        writeLangs_.clear();
+        for (const std::wstring& code : cfg_.writeLangs)
+            if (const LangInfo* l = FindLanguage(code)) writeLangs_.push_back(l->code);
+        if (writeLangs_.empty()) writeLangs_ = {L"EN-GB"};
+        writeIdx_ = 0;
+    }
+    const bool engineChanged = prev.engine != cfg_.engine || prev.deeplKey != cfg_.deeplKey ||
+                               prev.basicEmail != cfg_.basicEmail || prev.llmUrl != cfg_.llmUrl ||
+                               prev.llmModel != cfg_.llmModel || prev.llmKey != cfg_.llmKey;
+    if (engineChanged) {
+        llm_.reset();
+        if (!cfg_.llmModel.empty()) {
+            LlmSettings ls;
+            ls.url = cfg_.llmUrl;
+            ls.model = cfg_.llmModel;
+            ls.apiKey = cfg_.llmKey;
+            ls.timeoutMs = cfg_.llmTimeoutSec * 1000;
+            llm_ = MakeLlmTranslator(ls);
+        }
+        ChooseEngine(true);
+        ++inputGen_;
+        ResetCompose();
+        StartTranslation();
+    }
+    input_.SetAutoCorrect(cfg_.autoCorrect);
+    if (prev.suggestions != cfg_.suggestions) {
+        input_.SetSuggestions(cfg_.suggestions);
+        Layout();
+    }
+    if (prev.saveCaptures != cfg_.saveCaptures) SetSaveCaptures(cfg_.saveCaptures);
+    if (prev.readerEnabled != cfg_.readerEnabled || prev.ocr != cfg_.ocr || prev.tesseractPath != cfg_.tesseractPath ||
+        prev.readChinese != cfg_.readChinese || prev.readerIntervalMs != cfg_.readerIntervalMs)
+        RestartReader();
+    if (prev.dock != cfg_.dock) SetDock(cfg_.dock);
+    if (!cfg_.followGame && autoHidden_) {
+        autoHidden_ = false;
+        ShowWindow(hwnd_, SW_SHOWNOACTIVATE);
+    }
+    UpdateHint();
+    UpdatePreview();
+    InvalidateRect(hwnd_, nullptr, FALSE);
+}
+
+void MainWindow::AddTrayIcon() {
+    NOTIFYICONDATAW nid{};
+    nid.cbSize = sizeof(nid);
+    nid.hWnd = hwnd_;
+    nid.uID = 1;
+    nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
+    nid.uCallbackMessage = WM_APP_TRAY;
+    nid.hIcon = LoadIconW(inst_, MAKEINTRESOURCEW(1));
+    if (!nid.hIcon) nid.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
+    const std::wstring tip = waitForGame_ ? Tr(L"GW2 Chat Translator – waits for GW2") : std::wstring(kTitle);
+    wcsncpy(nid.szTip, tip.c_str(), std::size(nid.szTip) - 1);
+    trayOk_ = Shell_NotifyIconW(NIM_ADD, &nid) != FALSE;
+}
+
+void MainWindow::UpdateTrayTip() {
+    if (!trayOk_) return;
+    NOTIFYICONDATAW nid{};
+    nid.cbSize = sizeof(nid);
+    nid.hWnd = hwnd_;
+    nid.uID = 1;
+    nid.uFlags = NIF_TIP;
+    const std::wstring tip = gw2_ ? std::wstring(kTitle) : Tr(L"GW2 Chat Translator – waits for GW2");
+    wcsncpy(nid.szTip, tip.c_str(), std::size(nid.szTip) - 1);
+    Shell_NotifyIconW(NIM_MODIFY, &nid);
+}
+
+void MainWindow::RemoveTrayIcon() {
+    if (!trayOk_) return;
+    NOTIFYICONDATAW nid{};
+    nid.cbSize = sizeof(nid);
+    nid.hWnd = hwnd_;
+    nid.uID = 1;
+    Shell_NotifyIconW(NIM_DELETE, &nid);
+    trayOk_ = false;
+}
+
+void MainWindow::ShowTrayMenu() {
+    enum : UINT { kShow = 1, kSettings, kQuit };
+    HMENU menu = CreatePopupMenu();
+    AppendMenuW(menu, MF_STRING, kShow, Tr(L"Show").c_str());
+    AppendMenuW(menu, MF_STRING, kSettings, Tr(L"Settings …").c_str());
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(menu, MF_STRING, kQuit, Tr(L"Quit").c_str());
+    POINT pt;
+    GetCursorPos(&pt);
+    SetForegroundWindow(hwnd_);  // so the menu closes when clicking elsewhere
+    const UINT cmd = static_cast<UINT>(
+        TrackPopupMenu(menu, MenuFlags(TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON), pt.x, pt.y, 0, hwnd_, nullptr));
+    DestroyMenu(menu);
+    if (cmd == kShow) ShowOverlay();
+    else if (cmd == kSettings) OpenSettings(SettingsPage::General);
+    else if (cmd == kQuit) PostMessageW(hwnd_, WM_CLOSE, 0, 0);
+}
+
+// Optional LanguageTool check of what you typed (in your language), a moment
+// after you stop typing. Results only mark words; nothing is changed by itself.
+void MainWindow::StartGrammarCheck() {
+    KillTimer(hwnd_, kTimerGrammar);
+    if (!cfg_.languageTool || grammarInFlight_) return;
+    const std::wstring text = input_.Text();
+    const std::wstring clean = SanitizeChatText(text);
+    if (CodePointCount(clean) < 8) return;
+    if (!grammarLimiter_.Allow(GetTickCount64())) return;  // public server: max. 20 per minute
+    grammarInFlight_ = true;
+    std::thread([hwnd = hwnd_, url = cfg_.languageToolUrl, text, lang = kbdLocale_] {
+        auto msg = std::make_unique<GrammarMsg>();
+        msg->text = text;
+        msg->result = CheckWithLanguageTool(url, text, lang, L"");
+        if (PostMessageW(hwnd, WM_APP_GRAMMAR, 0, reinterpret_cast<LPARAM>(msg.get()))) msg.release();
+    }).detach();
+}
+
+void MainWindow::OnGrammar(GrammarMsg* raw) {
+    std::unique_ptr<GrammarMsg> m(raw);
+    grammarInFlight_ = false;
+    if (!m->result.ok) {
+        if (BackgroundNoticeAllowed()) SetStatus(m->result.error, Tone::Muted, 5000);
+        return;
+    }
+    std::vector<SpellIssue> issues;
+    for (const LtMatch& x : m->result.matches) {
+        if (x.Spelling()) continue;  // the Windows checker and our word model handle spelling
+        SpellIssue is;
+        is.span = x.span;
+        is.grammar = true;
+        is.suggestions = x.replacements;
+        is.message = x.message;
+        issues.push_back(std::move(is));
+    }
+    input_.SetGrammarIssues(m->text, std::move(issues));
 }
 
 // ===========================================================================
@@ -2088,8 +2541,18 @@ LRESULT MainWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             if (HIWORD(wp) == EN_CHANGE && reinterpret_cast<HWND>(lp) == input_.Hwnd()) OnInputChanged();
             return 0;
         case WM_TIMER:
-            if (wp == kTimerDebounce) StartTranslation();
-            else if (wp == kTimerGame) PollGame();
+            if (wp == kTimerDebounce) {
+                StartTranslation();
+                if (cfg_.languageTool) SetTimer(hwnd_, kTimerGrammar, 900, nullptr);
+            } else if (wp == kTimerGame) PollGame();
+            else if (wp == kTimerGrammar) StartGrammarCheck();
+            else if (wp == kTimerCaptures) {
+                KillTimer(hwnd_, kTimerCaptures);
+                if (cfg_.saveCaptures) {
+                    SetSaveCaptures(false);
+                    SetStatus(Tr(L"Diagnostic pictures switched off again"), Tone::Muted, 5000);
+                }
+            }
             else if (wp == kTimerStatus) {
                 KillTimer(hwnd_, kTimerStatus);
                 status_.clear();
@@ -2108,6 +2571,25 @@ LRESULT MainWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             return 0;
         case WM_APP_INCOMING:
             OnIncomingTranslated(reinterpret_cast<IncomingMsg*>(lp));
+            return 0;
+        case WM_APP_GRAMMAR:
+            OnGrammar(reinterpret_cast<GrammarMsg*>(lp));
+            return 0;
+        case WM_APP_TRAY:
+            if (LOWORD(lp) == WM_LBUTTONUP || LOWORD(lp) == WM_LBUTTONDBLCLK) {
+                if (IsWindowVisible(hwnd_) && GetForegroundWindow() == hwnd_) HideOverlay();
+                else ShowOverlay();
+            } else if (LOWORD(lp) == WM_RBUTTONUP || LOWORD(lp) == WM_CONTEXTMENU) {
+                ShowTrayMenu();
+            }
+            return 0;
+        case WM_APP_FIRSTRUN:
+            if (wp == 2) {
+                RunSetup();
+            } else {
+                if (wp == 1 || !cfg_.regionSet) PickRegion();
+                if (lp == 1 && cfg_.regionSet) CoverChat();
+            }
             return 0;
         case WM_LBUTTONUP:
             OnClick({GET_X_LPARAM(lp), GET_Y_LPARAM(lp)});
@@ -2164,6 +2646,7 @@ LRESULT MainWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             return 0;
         case WM_DESTROY:
             reader_.Stop();
+            RemoveTrayIcon();
             cfg_.SaveWindowRect(hwnd_, theme_.scale);
             if (hotkeyOk_) UnregisterHotKey(hwnd_, kHotkeyId);
             PostQuitMessage(0);

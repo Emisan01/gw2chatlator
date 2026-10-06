@@ -13,9 +13,12 @@
 
 namespace gct {
 
+// `fromOcr`: the lines were read from the screen and may contain recognition
+// errors ("Mnuten", "Ricåmond"); the model is asked to repair obvious ones
+// while translating, never to invent content.
 std::string BuildLlmRequest(const std::vector<std::vector<Segment>>& items,
                             const std::wstring& targetLangName,  // "German", "Chinese (Simplified)"
-                            const std::wstring& model);
+                            const std::wstring& model, bool fromOcr = false);
 
 // Same text in Latin letters as people write it in chat (Arabizi, Pinyin,
 // Romaji ...), not translated — for scripts the GW2 chat cannot display.
@@ -32,5 +35,9 @@ struct LlmParsed {
 // <think>…</think> blocks of reasoning models. For a single item a plain
 // text answer is accepted as well.
 LlmParsed ParseLlmResponse(const std::string& body, size_t expected);
+
+// Model names from GET <base>/v1/models (OpenAI style: data[].id) or Ollama's
+// GET /api/tags (models[].name). Sorted, without duplicates.
+std::vector<std::wstring> ParseModelList(const std::string& body);
 
 }  // namespace gct

@@ -1,4 +1,5 @@
 // region_picker.cpp
+#include "core/i18n.hpp"
 #include "region_picker.hpp"
 
 #include <windowsx.h>
@@ -158,7 +159,7 @@ bool PickScreenRegion(HINSTANCE inst, const Theme& theme, const std::wstring& hi
     s.hint = hint;
     s.origin = {GetSystemMetrics(SM_XVIRTUALSCREEN), GetSystemMetrics(SM_YVIRTUALSCREEN)};
     const int w = GetSystemMetrics(SM_CXVIRTUALSCREEN), h = GetSystemMetrics(SM_CYVIRTUALSCREEN);
-    HWND wnd = CreateWindowExW(WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_LAYERED, kClass, L"Chat-Bereich", WS_POPUP,
+    HWND wnd = CreateWindowExW(WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_LAYERED, kClass, Tr(L"Chat area").c_str(), WS_POPUP,
                                s.origin.x, s.origin.y, w, h, nullptr, nullptr, inst, &s);
     if (!wnd) return false;
     SetLayeredWindowAttributes(wnd, kKey, 150, LWA_ALPHA | LWA_COLORKEY);

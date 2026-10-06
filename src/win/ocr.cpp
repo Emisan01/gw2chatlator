@@ -1,6 +1,7 @@
 // ocr.cpp — Windows.Media.Ocr through the raw WinRT ABI (no C++/WinRT, so
 // MSVC and MinGW both build it). Interface IDs and vtable order follow the
 // Windows metadata (cross-checked against the windows-rs bindings).
+#include "core/i18n.hpp"
 #include "ocr.hpp"
 
 #include <windows.h>
@@ -193,7 +194,7 @@ std::wstring OcrEngine::Language() const { return impl_->language; }
 int OcrEngine::MaxImageDimension() const { return static_cast<int>(impl_->maxDimension); }
 
 bool OcrEngine::Init(const std::wstring& languageTag, std::wstring* error) {
-    auto fail = [&](const wchar_t* msg) {
+    auto fail = [&](const std::wstring& msg) {
         if (error) *error = msg;
         return false;
     };
@@ -202,7 +203,7 @@ bool OcrEngine::Init(const std::wstring& languageTag, std::wstring* error) {
 
     Ptr<abi::IOcrEngineStatics> statics;
     if (!Factory(L"Windows.Media.Ocr.OcrEngine", abi::IID_IOcrEngineStatics, statics))
-        return fail(L"Windows-Texterkennung nicht verf\u00fcgbar (ab Windows 10)");
+        return fail(Tr(L"Windows text recognition is not available (Windows 10 or newer)"));
     statics->get_MaxImageDimension(&impl_->maxDimension);
 
     if (languageTag.empty()) {
@@ -220,7 +221,7 @@ bool OcrEngine::Init(const std::wstring& languageTag, std::wstring* error) {
         }
     }
     if (!impl_->engine)
-        return fail(L"Keine Texterkennung f\u00fcr diese Sprache installiert (Windows-Einstellungen \u2192 Sprache)");
+        return fail(Tr(L"No text recognition installed for this language (Windows Settings → Language)"));
 
     Ptr<IInspectable> langObj;
     Ptr<abi::ILanguage> lang;
@@ -229,28 +230,28 @@ bool OcrEngine::Init(const std::wstring& languageTag, std::wstring* error) {
         if (SUCCEEDED(lang->get_LanguageTag(&h))) impl_->language = TakeString(h);
     }
     if (!Factory(L"Windows.Graphics.Imaging.SoftwareBitmap", abi::IID_ISoftwareBitmapFactory, impl_->bitmaps))
-        return fail(L"SoftwareBitmap nicht verf\u00fcgbar");
+        return fail(Tr(L"SoftwareBitmap not available"));
     return true;
 }
 
 bool OcrEngine::Recognize(const Image& img, std::vector<OcrTextLine>& out, std::wstring* error) {
     out.clear();
-    auto fail = [&](const wchar_t* msg) {
+    auto fail = [&](const std::wstring& msg) {
         if (error) *error = msg;
         return false;
     };
-    if (!Ready()) return fail(L"Texterkennung nicht bereit");
-    if (img.Empty()) return fail(L"Leeres Bild");
+    if (!Ready()) return fail(Tr(L"Text recognition not ready"));
+    if (img.Empty()) return fail(Tr(L"Empty image"));
     if (impl_->maxDimension && (img.width > static_cast<int>(impl_->maxDimension) ||
                                 img.height > static_cast<int>(impl_->maxDimension)))
-        return fail(L"Chat-Bereich zu gro\u00df f\u00fcr die Texterkennung");
+        return fail(Tr(L"Chat area too large for text recognition"));
 
     // 1. Pixels into a SoftwareBitmap.
     Ptr<IInspectable> bitmapObj;
     Ptr<abi::ISoftwareBitmap> bitmap;
     if (FAILED(impl_->bitmaps->Create(abi::kPixelFormatBgra8, img.width, img.height, bitmapObj.Out())) ||
         !As(bitmapObj.p, abi::IID_ISoftwareBitmap, bitmap))
-        return fail(L"Bild konnte nicht angelegt werden");
+        return fail(Tr(L"Could not create the image"));
     {
         Ptr<IInspectable> bufferObj;
         Ptr<abi::IBitmapBuffer> buffer;
@@ -265,7 +266,7 @@ bool OcrEngine::Recognize(const Image& img, std::vector<OcrTextLine>& out, std::
             !As(bufferObj.p, abi::IID_IMemoryBuffer, memory) || FAILED(memory->CreateReference(reference.Out())) ||
             !As(reference.p, abi::IID_IMemoryBufferByteAccess, bytes) || FAILED(bytes->GetBuffer(&data, &capacity)) ||
             !data)
-            return fail(L"Bildpuffer nicht verf\u00fcgbar");
+            return fail(Tr(L"Image buffer not available"));
         const size_t rowBytes = static_cast<size_t>(img.width) * 4;
         for (int y = 0; y < img.height; ++y) {
             const size_t offset = static_cast<size_t>(plane.StartIndex) + static_cast<size_t>(y) * plane.Stride;
@@ -280,9 +281,9 @@ bool OcrEngine::Recognize(const Image& img, std::vector<OcrTextLine>& out, std::
 
     // 2. Recognize (async operation, polled — we are on a worker thread).
     Ptr<abi::IAsyncOperationRaw> op;
-    if (FAILED(impl_->engine->RecognizeAsync(bitmap.p, op.Out())) || !op) return fail(L"Texterkennung fehlgeschlagen");
+    if (FAILED(impl_->engine->RecognizeAsync(bitmap.p, op.Out())) || !op) return fail(Tr(L"Text recognition failed"));
     Ptr<abi::IAsyncInfoRaw> info;
-    if (!As(op.p, abi::IID_IAsyncInfo, info)) return fail(L"Texterkennung fehlgeschlagen");
+    if (!As(op.p, abi::IID_IAsyncInfo, info)) return fail(Tr(L"Text recognition failed"));
     INT32 status = 0;
     for (int waited = 0; waited < 5000; waited += 5) {
         if (FAILED(info->get_Status(&status)) || status != 0) break;
@@ -290,10 +291,10 @@ bool OcrEngine::Recognize(const Image& img, std::vector<OcrTextLine>& out, std::
     }
     if (status != 1) {
         info->Cancel();
-        return fail(L"Texterkennung hat nicht geantwortet");
+        return fail(Tr(L"Text recognition did not answer"));
     }
     Ptr<abi::IOcrResult> result;
-    if (FAILED(op->GetResults(result.OutVoid())) || !result) return fail(L"Texterkennung ohne Ergebnis");
+    if (FAILED(op->GetResults(result.OutVoid())) || !result) return fail(Tr(L"Text recognition gave no result"));
 
     // 3. Lines and word boxes.
     Ptr<abi::IVectorViewRaw> lines;

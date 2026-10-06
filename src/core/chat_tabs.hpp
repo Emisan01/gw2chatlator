@@ -23,16 +23,16 @@ struct ChatTab {
     ChannelMask channels = 0;
 };
 
-// "Chat" (everything) and "Flüstern".
+// "Chat" (everything) and "Whisper" (names in the UI language).
 std::vector<ChatTab> DefaultTabs();
 
-// Templates for "Neuer Tab": Alles, Gruppe & Trupp, Gilde, Karte & Sagen, Team (WvW), Flüstern.
-const std::vector<ChatTab>& TabPresets();
+// Templates for "New tab": All, Party & Squad, Guild, Map & Say, Team (WvW), Whisper.
+std::vector<ChatTab> TabPresets();
 
 // The channels a user can tick for a tab, in menu order.
 const std::vector<Channel>& TabChannels();
-// Menu label: like ChannelLabel, but "Systemzeilen" / "Sonstige" for System / Unknown.
-const wchar_t* TabChannelLabel(Channel c);
+// Menu label: like ChannelLabel, but "System lines" / "Other" for System / Unknown.
+std::wstring TabChannelLabel(Channel c);
 
 inline bool TabShows(const ChatTab& t, Channel c) { return (t.channels & ChannelBit(c)) != 0; }
 
@@ -40,7 +40,7 @@ inline bool TabShows(const ChatTab& t, Channel c) { return (t.channels & Channel
 // (Whisper included); Unknown otherwise — then "the active channel" is used.
 Channel SoleSendChannel(ChannelMask m);
 
-// "Gruppe|party,squad". Names may not contain '|'. Unknown channel keys are
+// "Party|party,squad". Names may not contain '|'. Unknown channel keys are
 // ignored; a tab without any known channel is rejected.
 std::wstring SerializeTab(const ChatTab& t);
 bool ParseTab(const std::wstring& s, ChatTab& out);
