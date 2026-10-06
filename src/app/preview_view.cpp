@@ -78,7 +78,7 @@ void PreviewView::Paint() {
     int y = text.bottom;
     SelectObject(dc, theme_->fontSmall);
     if (!c_.back.empty()) {
-        const std::wstring s = L"\u2248 " + c_.back;
+        const std::wstring s = c_.backPrefix + c_.back;
         RECT b{r.left, y, r.right, y + theme_->smallLineHeight};
         SetTextColor(dc, c_.current ? Theme::kMuted : Theme::kFaint);
         DrawTextW(dc, s.c_str(), static_cast<int>(s.size()), &b,

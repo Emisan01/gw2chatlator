@@ -476,10 +476,8 @@ static void TestBatchQuota() {
 
 static void TestTabs() {
     const auto tabs = DefaultTabs();
-    CHECK(tabs.size() == 2);
+    CHECK(tabs.size() == 1);
     CHECK(TabShows(tabs[0], Channel::Map) && TabShows(tabs[0], Channel::System) && TabShows(tabs[0], Channel::Unknown));
-    CHECK(TabShows(tabs[1], Channel::Whisper) && !TabShows(tabs[1], Channel::Map));
-    CHECK(SoleSendChannel(tabs[1].channels) == Channel::Whisper);
     CHECK(SoleSendChannel(tabs[0].channels) == Channel::Unknown);
     // System / unknown lines do not count as a channel you can write to.
     CHECK(SoleSendChannel(ChannelBit(Channel::Guild) | ChannelBit(Channel::System)) == Channel::Guild);
@@ -765,6 +763,15 @@ static void TestHousekeeping() {
     CHECK(del.size() == 1 && del[0] == L"x.tmp");
 }
 
+static void TestChatTextFilter() {
+    CHECK(LooksLikeChatText(L"wer kommt mit zum Tequatl?"));
+    CHECK(LooksLikeChatText(L"gg"));
+    CHECK(LooksLikeChatText(L"\u0645\u0631\u062d\u0628\u0627"));
+    CHECK(!LooksLikeChatText(L"\u00a7\u00b0^~ |l \u00a6\u00ac"));
+    CHECK(!LooksLikeChatText(L"~~ ** =="));
+    CHECK(!LooksLikeChatText(L"123 456"));
+}
+
 static void TestModelList() {
     auto a = ParseModelList(R"({"object":"list","data":[{"id":"qwen2.5:7b"},{"id":"llama3.1:8b"}]})");
     CHECK(a.size() == 2 && a[0] == L"llama3.1:8b");
@@ -810,6 +817,7 @@ int main() {
     TestGw2Install();
     TestHousekeeping();
     TestModelList();
+    TestChatTextFilter();
     std::printf("%d passed, %d failed\n", g_pass, g_fail);
     return g_fail == 0 ? 0 : 1;
 }

@@ -665,6 +665,16 @@ extern const I18nEntry kGermanStrings[] = {
      L"Sprachen für „Senden als“"},
     {L"● reading the chat",
      L"● liest den Chat"},
+    {L"0 % = not transparent at all.",
+     L"0 % = gar nicht durchsichtig."},
+    {L"Chat: {1}",
+     L"Chat: {1}"},
+    {L"Into the chat ({1}): {2}",
+     L"In den Chat ({1}): {2}"},
+    {L"Send into the chat in:",
+     L"In den Chat senden auf:"},
+    {L"Transparency",
+     L"Transparenz"},
 };
 extern const size_t kGermanCount = sizeof(kGermanStrings) / sizeof(kGermanStrings[0]);
 

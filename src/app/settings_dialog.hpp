@@ -24,6 +24,8 @@ struct DialogResult {
 struct DialogContext {
     // Live text for "Connections": GW2 window, MumbleLink, add-ons, OCR, translator.
     std::function<std::wstring()> connectionStatus;
+    // Live preview while a slider moves: opacity (alpha 0..255), text size (percent).
+    std::function<void(int opacity, int fontPercent)> preview;
     // True when GW2 is currently running.
     std::function<bool()> isGw2Running;
 };

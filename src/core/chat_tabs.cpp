@@ -42,7 +42,7 @@ std::vector<ChatTab> DefaultTabs() {
     all.name = L"Chat";
     all.channels = AllChannels();
     // Stored in English; the window shows default names in the UI language.
-    return {all, Tab(L"Whisper", {Channel::Whisper})};
+    return {all};  // one tab with everything; more via right-click on the tab
 }
 
 std::vector<ChatTab> TabPresets() {

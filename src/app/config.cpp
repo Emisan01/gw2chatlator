@@ -135,8 +135,8 @@ const char kRestSections[] =
     "Y=\r\n"
     "Width=520\r\n"
     "Height=460\r\n"
-    "; 120 (very transparent) to 255 (opaque)\r\n"
-    "Opacity=238\r\n"
+    "; 60 (very transparent) to 255 (not transparent at all)\r\n"
+    "Opacity=255\r\n"
     "; Text size in percent (90, 100, 115, 135)\r\n"
     "FontPercent=100\r\n"
     "; Show and hide together with the game (1/0)\r\n"
@@ -148,8 +148,7 @@ const char kRestSections[] =
     "; Tabs like in the GW2 chat; easiest to change by right-clicking a tab.\r\n"
     "; TabN=Name|channels  (say, map, party, squad, team, guild, whisper, system, other)\r\n"
     "Tab1=Chat|say,map,party,squad,team,guild,whisper,system,other\r\n"
-    "Tab2=Whisper|whisper\r\n"
-    "Active=1\r\n";
+        "Active=1\r\n";
 
 struct ColorKey {
     Channel channel;
@@ -281,6 +280,7 @@ void Config::Load(const std::wstring& dir) {
     if (langs.empty()) langs = ini.Str(L"DeepL", L"TargetLangs", L"");
     if (auto t = ParseLangList(langs); !t.empty()) writeLangs = t;
     backTranslate = ini.Bool(L"Translate", L"BackTranslate", true);
+    chatLang = ToUpperAscii(ini.Str(L"Translate", L"ChatLang", L"EN-GB"));
     debounceMs = ini.Int(L"Translate", L"DebounceMs", ini.Int(L"DeepL", L"DebounceMs", 500, 150, 5000), 150, 5000);
 
     basicEmail = AsciiUnescape(ini.Str(L"Basic", L"Email", L""));
@@ -340,7 +340,7 @@ void Config::Load(const std::wstring& dir) {
     y = ini.Int(L"Window", L"Y", kAutoPos, kAutoPos, 32000);
     w = ini.Int(L"Window", L"Width", 520, 380, 4000);
     h = ini.Int(L"Window", L"Height", 460, 300, 4000);
-    opacity = ini.Int(L"Window", L"Opacity", 238, 120, 255);
+    opacity = ini.Int(L"Window", L"Opacity", 255, 60, 255);
     fontPercent = ini.Int(L"Window", L"FontPercent", 100, 80, 160);
     followGame = ini.Bool(L"Window", L"FollowGame", true);
     focusOnGameChat = ini.Bool(L"Window", L"FocusOnGameChat", false);
@@ -357,6 +357,9 @@ void Config::Load(const std::wstring& dir) {
         if (ParseTab(AsciiUnescape(ini.Str(L"Tabs", (L"Tab" + std::to_wstring(i)).c_str(), L"")), t)) tabs.push_back(t);
     }
     if (tabs.empty()) tabs = DefaultTabs();
+    // The old default "Whisper" tab (everything + whispers only) is gone: one tab, colours tell the channel.
+    if (tabs.size() == 2 && tabs[0].channels == AllChannels() && tabs[1].channels == ChannelBit(Channel::Whisper))
+        tabs.pop_back();
     for (size_t i = 0; i < tabs.size(); ++i) tabs[i].id = static_cast<uint32_t>(i + 1);
     activeTab = ini.Int(L"Tabs", L"Active", 1, 1, static_cast<int>(tabs.size())) - 1;
 }

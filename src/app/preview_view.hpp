@@ -18,6 +18,7 @@ public:
     struct Content {
         std::wstring text;      // the chat line (or the next part of it)
         std::wstring back;      // back-translation, shown as "≈ ..." (≈ is in every Windows UI font)
+        std::wstring backPrefix = L"\u2248 ";
         std::wstring note;      // "Teil 1/2", warnings ...
         bool current = false;   // false: greyed out (text changed, translation pending)
         bool warn = false;      // note in warning colour

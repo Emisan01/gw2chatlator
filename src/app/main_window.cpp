@@ -79,6 +79,7 @@ constexpr UINT_PTR kTimerStatus = 2;
 constexpr UINT_PTR kTimerGame = 3;
 constexpr UINT_PTR kTimerCaptures = 4;
 constexpr UINT_PTR kTimerGrammar = 5;
+constexpr UINT_PTR kTimerConfirm = 9;  // read again to confirm new lines
 constexpr UINT kCaptureMinutes = 15;  // diagnostic pictures switch themselves off
 constexpr int kHotkeyId = 1;
 constexpr size_t kBatchMax = 12;             // incoming lines per translation request
@@ -344,6 +345,7 @@ void MainWindow::InitServices() {
         if (const LangInfo* l = FindLanguage(code)) writeLangs_.push_back(l->code);
     if (writeLangs_.empty()) writeLangs_ = {L"EN-GB"};
     writeIdx_ = 0;
+    if (const LangInfo* cl = FindLanguage(cfg_.chatLang); cl && cl->latinScript) chatLang_ = cl->code;
 
     for (const ChatTab& t : cfg_.tabs) {
         TabState st;
@@ -659,6 +661,12 @@ void MainWindow::Paint() {
                                 ChannelColorRef(cfg_.palette, chipChannel, Theme::kText), false);
         writeRect_ = DrawChip(dc, t, channelRect_.right + t.S(6), fy0, fy1, WriteChipText(),
                               WriteOriginal() ? Theme::kMuted : Theme::kAccent, false);
+        chatRect_ = {};
+        if (WriteNeedsChatLang()) {  // second drop-down: the language that goes into the GW2 chat
+            const LangInfo* cl = FindLanguage(chatLang_);
+            chatRect_ = DrawChip(dc, t, writeRect_.right + t.S(6), fy0, fy1,
+                                 TrF(L"Chat: {1}", {cl ? std::wstring(cl->native) : chatLang_}), Theme::kText, false);
+        }
 
         std::wstring counter;
         COLORREF counterColor = Theme::kMuted;
@@ -673,7 +681,8 @@ void MainWindow::Paint() {
             counter = std::to_wstring(charCount) + L"/" + std::to_wstring(cfg_.maxLength);
             if (charCount > static_cast<size_t>(cfg_.maxLength)) counterColor = Theme::kWarn;
         }
-        RECT fr{writeRect_.right + t.S(10), rc.bottom - m.foot, rc.right - m.pad, rc.bottom};
+        const LONG chipsRight = IsRectEmpty(&chatRect_) ? writeRect_.right : chatRect_.right;
+        RECT fr{chipsRight + t.S(10), rc.bottom - m.foot, rc.right - m.pad, rc.bottom};
         DrawLine(dc, counter, fr, counterColor, t.fontUi, DT_LEFT);
         fr.left += TextWidth(dc, counter, t.fontUi) + t.S(10);
 
@@ -710,7 +719,7 @@ void MainWindow::Paint() {
 }
 
 bool MainWindow::IsClickable(POINT pt) const {
-    for (const RECT* r : {&readRect_, &menuRect_, &collapseRect_, &closeRect_, &channelRect_, &writeRect_})
+    for (const RECT* r : {&readRect_, &menuRect_, &collapseRect_, &closeRect_, &channelRect_, &writeRect_, &chatRect_})
         if (PtInRect(r, pt)) return true;
     for (const RECT& r : tabRects_)
         if (PtInRect(&r, pt)) return true;
@@ -750,6 +759,7 @@ void MainWindow::OnClick(POINT pt) {
     else if (PtInRect(&menuRect_, pt)) ShowMainMenu();
     else if (PtInRect(&readRect_, pt)) ShowReadMenu();
     else if (PtInRect(&channelRect_, pt)) ShowChannelMenu();
+    else if (PtInRect(&chatRect_, pt)) ShowChatLangMenu();
     else if (PtInRect(&writeRect_, pt)) ShowWriteMenu();
     else
         for (size_t i = 0; i < tabRects_.size(); ++i)
@@ -779,6 +789,46 @@ bool MainWindow::BackgroundNoticeAllowed() const {
 bool MainWindow::WriteOriginal() const { return writeIdx_ >= writeLangs_.size(); }
 
 std::wstring MainWindow::WriteLang() const { return WriteOriginal() ? std::wstring() : writeLangs_[writeIdx_]; }
+
+// GW2 cannot show every script. Writing in Arabic, Chinese ... means: you see
+// your message in that language, but the chat gets it in the chat language.
+bool MainWindow::WriteNeedsChatLang() const {
+    if (WriteOriginal()) return false;
+    const LangInfo* l = FindLanguage(WriteLang());
+    return l && !l->latinScript;
+}
+
+std::wstring MainWindow::SendLang() const {
+    if (WriteOriginal()) return std::wstring();
+    return WriteNeedsChatLang() ? chatLang_ : WriteLang();
+}
+
+void MainWindow::ShowChatLangMenu() {
+    HMENU menu = CreatePopupMenu();
+    AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, Tr(L"Send into the chat in:").c_str());
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    const auto& langs = Languages();
+    std::vector<size_t> idx;
+    for (size_t i = 0; i < langs.size(); ++i) {
+        if (!langs[i].latinScript) continue;
+        idx.push_back(i);
+        UINT flags = MF_STRING | (chatLang_ == langs[i].code ? MF_CHECKED : 0);
+        if (idx.size() > 1 && (idx.size() - 1) % 20 == 0) flags |= MF_MENUBARBREAK;
+        AppendMenuW(menu, flags, kCmdLangBase + i, LangMenuLabel(langs[i]).c_str());
+    }
+    POINT pt{chatRect_.left, chatRect_.top};
+    ClientToScreen(hwnd_, &pt);
+    const UINT cmd = static_cast<UINT>(TrackPopupMenu(menu, MenuFlags(TPM_RETURNCMD | TPM_NONOTIFY | TPM_BOTTOMALIGN),
+                                                      pt.x, pt.y, 0, hwnd_, nullptr));
+    DestroyMenu(menu);
+    if (cmd >= kCmdLangBase && cmd - kCmdLangBase < langs.size()) {
+        chatLang_ = langs[cmd - kCmdLangBase].code;
+        cfg_.chatLang = chatLang_;
+        cfg_.SaveValue(L"Translate", L"ChatLang", chatLang_);
+        SetWriteIndex(writeIdx_);  // translate again
+    }
+    SetFocus(input_.Hwnd());
+}
 
 void MainWindow::CycleWrite() { SetWriteIndex((writeIdx_ + 1) % (writeLangs_.size() + 1)); }
 
@@ -1079,82 +1129,24 @@ void MainWindow::ShowMainMenu() {
     auto sub = [](HMENU m, HMENU child, const std::wstring& text) {
         AppendMenuW(m, MF_POPUP, reinterpret_cast<UINT_PTR>(child), text.c_str());
     };
+    // Short and flat: the everyday actions. Everything else is in Settings.
+    (void)kFontSizes;
+    (void)kOpacities;
+    (void)sub;
     HMENU menu = CreatePopupMenu();
-    add(menu, MF_STRING, kSetup, Tr(L"Setup (install, mark the chat) …"));
+    add(menu, MF_STRING | check(cfg_.readerEnabled), kReader, Tr(L"Translate the chat permanently"));
+    add(menu, MF_STRING, kRegion, Tr(L"Set the chat area …"));
+    add(menu, MF_STRING | (cfg_.regionSet ? 0 : MF_GRAYED), kCover, Tr(L"Lay over the GW2 chat (replaces it)"));
+    add(menu, MF_STRING | check(cfg_.dock), kDock, Tr(L"Dock to GW2 (moves with it)"));
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     add(menu, MF_STRING, kSettings, Tr(L"Settings …"));
-    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-
-    HMENU read = CreatePopupMenu();
-    add(read, MF_STRING | check(cfg_.readerEnabled), kReader, Tr(L"Translate the chat permanently"));
-    add(read, MF_STRING, kRegion, Tr(L"Set the chat area …"));
-    add(read, MF_STRING | (cfg_.regionSet ? 0 : MF_GRAYED), kCover, Tr(L"Lay over the GW2 chat (replaces it)"));
-    AppendMenuW(read, MF_SEPARATOR, 0, nullptr);
-    add(read, MF_STRING | (cfg_.ocr == OcrChoice::Auto ? MF_CHECKED : 0), kOcrAuto,
-        Tr(L"Text recognition: automatic"));
-    add(read, MF_STRING | (cfg_.ocr == OcrChoice::Tesseract ? MF_CHECKED : 0), kOcrTess,
-        Tr(L"Text recognition: Tesseract"));
-    add(read, MF_STRING | (cfg_.ocr == OcrChoice::Windows ? MF_CHECKED : 0), kOcrWin,
-        Tr(L"Text recognition: Windows"));
-    AppendMenuW(read, MF_SEPARATOR, 0, nullptr);
-    add(read, MF_STRING | check(cfg_.showSystemLines), kSystem, Tr(L"Show system lines"));
-    add(read, MF_STRING | check(cfg_.saveCaptures), kCaptures, Tr(L"Save diagnostic pictures (15 min)"));
-    add(read, MF_STRING, kResetColors, Tr(L"Reset channel colours"));
-    sub(menu, read, Tr(L"Reading the chat"));
-
-    HMENU write = CreatePopupMenu();
-    add(write, MF_STRING | (cfg_.autoCorrect == AutoCorrectMode::Off ? MF_CHECKED : 0), kAcOff,
-        Tr(L"Autocorrection: off"));
-    add(write, MF_STRING | (cfg_.autoCorrect == AutoCorrectMode::Safe ? MF_CHECKED : 0), kAcSafe,
-        Tr(L"Autocorrection: safe"));
-    add(write, MF_STRING | (cfg_.autoCorrect == AutoCorrectMode::Phone ? MF_CHECKED : 0), kAcPhone,
-        Tr(L"Autocorrection: like a phone"));
-    AppendMenuW(write, MF_SEPARATOR, 0, nullptr);
-    add(write, MF_STRING | check(cfg_.suggestions), kSuggest, Tr(L"Word bar (Tab takes the word)"));
-    add(write, MF_STRING | check(cfg_.learnWords), kLearn, Tr(L"Learn my words"));
-    add(write, MF_STRING | check(cfg_.spellEnabled), kSpell, Tr(L"Spell checking"));
-    add(write, MF_STRING | check(cfg_.languageTool), kLanguageTool, Tr(L"Grammar check (LanguageTool)"));
-    add(write, MF_STRING | check(cfg_.backTranslate), kBack, Tr(L"Show the back-translation"));
-    add(write, MF_STRING | check(cfg_.copyOnly), kCopyOnly, Tr(L"Only copy – no keys to GW2"));
-    sub(menu, write, Tr(L"Writing"));
-
-    HMENU engines = CreatePopupMenu();
-    add(engines, MF_STRING | check(cfg_.engine == Engine::Auto), kEngineAuto, Tr(L"Automatic (best available)"));
-    AppendMenuW(engines, MF_SEPARATOR, 0, nullptr);
-    add(engines, MF_STRING | check(cfg_.engine == Engine::Basic), kEngineBasic,
-        Tr(L"Basic – MyMemory (free, no account)"));
-    add(engines, MF_STRING | check(cfg_.engine == Engine::DeepL) | (cfg_.deeplKey.empty() ? MF_GRAYED : 0), kEngineDeepL,
-        cfg_.deeplKey.empty() ? Tr(L"DeepL (no key yet)") : std::wstring(L"DeepL"));
-    add(engines, MF_STRING | check(cfg_.engine == Engine::Llm) | (llm_ ? 0 : MF_GRAYED), kEngineLlm,
-        llm_ ? L"LLM – " + cfg_.llmModel : Tr(L"LLM (no model yet)"));
-    AppendMenuW(engines, MF_SEPARATOR, 0, nullptr);
-    add(engines, MF_STRING, kEngineSetup, Tr(L"Set up translators …"));
-    sub(menu, engines, TrF(L"Translator: {1}", {translator_->Name()}));
-
-    HMENU window = CreatePopupMenu();
-    add(window, MF_STRING | check(cfg_.dock), kDock, Tr(L"Dock to GW2 (moves with it)"));
-    add(window, MF_STRING | check(cfg_.followGame), kFollow, Tr(L"Show and hide with the game"));
-    HMENU sizes = CreatePopupMenu();
-    for (size_t i = 0; i < std::size(kFontSizes); ++i)
-        add(sizes, MF_STRING | check(cfg_.fontPercent == kFontSizes[i]), kFontBase + static_cast<UINT>(i),
-            std::to_wstring(kFontSizes[i]) + L" %");
-    sub(window, sizes, Tr(L"Text size"));
-    HMENU opac = CreatePopupMenu();
-    for (size_t i = 0; i < std::size(kOpacities); ++i)
-        add(opac, MF_STRING | check(std::abs(cfg_.opacity - kOpacities[i]) < 13), kOpacityBase + static_cast<UINT>(i),
-            std::to_wstring(kOpacities[i] * 100 / 255) + L" %");
-    sub(window, opac, Tr(L"Opacity"));
-    sub(menu, window, Tr(L"Window"));
-    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-
-    // Always findable, in every language: the name of the menu is in all of them.
+    add(menu, MF_STRING, kSetup, Tr(L"Setup (install, mark the chat) …"));
     HMENU ui = CreatePopupMenu();
     for (size_t i = 0; i < UiLanguages().size(); ++i)
         add(ui, MF_STRING | check(UiLanguages()[i].lang == cfg_.uiLang), kUiLangBase + static_cast<UINT>(i),
             UiLanguages()[i].native);
-    sub(menu, ui, L"Language / Sprache / اللغة");
+    AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(ui), L"Language / Sprache / \u0627\u0644\u0644\u063a\u0629");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    add(menu, MF_STRING, kOpenDir, Tr(L"Open the data folder"));
-    add(menu, MF_STRING, kOpenIni, Tr(L"Open the settings file"));
     add(menu, MF_STRING, kQuit, Tr(L"Quit"));
 
     POINT pt{menuRect_.left, menuRect_.bottom};
@@ -1356,7 +1348,7 @@ void MainWindow::RefreshGlossary() {
     if (src.empty()) return;
     const bool haveSrc = EnsureNames(src);
     if (WriteOriginal()) return;
-    const std::string tgt = Gw2ApiLang(WriteLang());
+    const std::string tgt = Gw2ApiLang(SendLang());
     if (tgt.empty() || tgt == src) return;
     const bool haveTgt = EnsureNames(tgt);
     if (haveSrc && haveTgt) glossary_ = Glossary::Build(names_.at(src), names_.at(tgt));
@@ -1521,7 +1513,7 @@ void MainWindow::StartTranslation() {
     inflightGen_ = inputGen_;
     UpdatePreview();
     std::thread([hwnd = hwnd_, gen = inputGen_, translator = translator_, segments = std::move(p.segments), source,
-                 target = WriteLang()] {
+                 target = SendLang()] {
         auto msg = std::make_unique<TranslatedMsg>();
         msg->kind = TranslatedMsg::Kind::Forward;
         msg->gen = gen;
@@ -1573,12 +1565,17 @@ void MainWindow::OnTranslated(TranslatedMsg* raw) {
 }
 
 void MainWindow::StartBackTranslation() {
-    if (!cfg_.backTranslate || !PreviewIsCurrent() || WriteOriginal() || previewBody_.empty()) return;
-    if (PrimaryLang(WriteLang()) == PrimaryLang(readLang_)) return;  // you can read it anyway
+    if ((!cfg_.backTranslate && !WriteNeedsChatLang()) || !PreviewIsCurrent() || WriteOriginal() ||
+        previewBody_.empty())
+        return;
+    // Writing in a language GW2 cannot show: the "back" text is your message in that
+    // language (shown big); otherwise it is the check in your reading language.
+    const std::wstring backTarget = WriteNeedsChatLang() ? WriteLang() : readLang_;
+    if (PrimaryLang(SendLang()) == PrimaryLang(backTarget)) return;  // you can read it anyway
     ProtectedText p = ProtectForTranslation(previewBody_, nullptr, &BuiltinKeepWords());
     if (!HasTranslatableText(p.segments)) return;
     std::thread([hwnd = hwnd_, gen = inputGen_, translator = translator_, segments = std::move(p.segments),
-                 source = SourceCode(WriteLang()), target = readLang_] {
+                 source = SourceCode(SendLang()), target = backTarget] {
         auto msg = std::make_unique<TranslatedMsg>();
         msg->kind = TranslatedMsg::Kind::Back;
         msg->gen = gen;
@@ -1636,6 +1633,13 @@ void MainWindow::UpdatePreview() {
         c.text = parts_[idx];
         c.current = true;
         if (backGen_ == inputGen_) c.back = backText_;
+        if (WriteNeedsChatLang()) {
+            // Big: the message in your writing language; small: what the chat gets.
+            const LangInfo* cl = FindLanguage(chatLang_);
+            c.back = TrF(L"Into the chat ({1}): {2}", {cl ? std::wstring(cl->native) : chatLang_, parts_[idx]});
+            c.backPrefix = L"";
+            c.text = backGen_ == inputGen_ && !backText_.empty() ? backText_ : Tr(L"translating …");
+        }
         const std::wstring script = UnsupportedScript(previewBody_);
         if (parts_.size() > 1) {
             c.note = TrF(L"Part {1}/{2} \u2013 every Enter sends one part",
@@ -1799,8 +1803,26 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
                   Tone::Ok, 6000);
         lastOcrEngine_ = s->engine + L" (" + s->language + L")";
     }
-    const std::vector<ChatMessage> msgs = BuildMessages(s->lines, cfg_.palette);
-    for (const ChatMessage& m : stream_.Feed(msgs)) HandleIncoming(m);
+    // Only lines read the same way twice in a row get through: a window dragged
+    // over the chat, a scrolling chat or half-drawn text never produce output.
+    std::vector<ChatMessage> msgs;
+    for (ChatMessage& m : BuildMessages(s->lines, cfg_.palette))
+        if (LooksLikeChatText(m.text)) msgs.push_back(std::move(m));
+    std::vector<ChatMessage> confirmed;
+    bool waiting = false;
+    for (const ChatMessage& m : msgs) {
+        bool seen = false;
+        for (const ChatMessage& p : lastRead_)
+            if (p.speaker == m.speaker && DiceSimilarity(p.text, m.text) >= 0.85) {
+                seen = true;
+                break;
+            }
+        if (seen) confirmed.push_back(m);
+        else waiting = true;
+    }
+    lastRead_ = std::move(msgs);
+    for (const ChatMessage& m : stream_.Feed(confirmed)) HandleIncoming(m);
+    if (waiting) SetTimer(hwnd_, kTimerConfirm, 350, nullptr);
     PumpIncoming();
     UpdateHint();
 }
@@ -2347,6 +2369,15 @@ void MainWindow::OpenSettings(SettingsPage page) {
     DialogContext ctx;
     ctx.connectionStatus = [this] { return ConnectionStatus(); };
     ctx.isGw2Running = [this] { return gw2_ != nullptr || mumbleState_.live; };
+    ctx.preview = [this](int opacity, int fontPercent) {
+        SetLayeredWindowAttributes(hwnd_, 0, static_cast<BYTE>(opacity), LWA_ALPHA);
+        if (fontPercent != theme_.textPercent) {
+            const int keep = cfg_.fontPercent;
+            cfg_.fontPercent = fontPercent;
+            ApplyDpi(theme_.dpi, nullptr);
+            cfg_.fontPercent = keep;
+        }
+    };
     const DialogResult r = ShowSettingsDialog(hwnd_, inst_, edited, ctx, page);
     if (r.saved) ApplySettings(edited);
     HandleDialogAction(r);
@@ -2397,7 +2428,7 @@ void MainWindow::ApplySettings(const Config& next) {
     cfg_ = c;
 
     if (prev.uiLang != cfg_.uiLang) SetUiLanguage(cfg_.uiLang);
-    if (prev.fontPercent != cfg_.fontPercent) ApplyDpi(theme_.dpi, nullptr);
+    if (prev.fontPercent != cfg_.fontPercent || theme_.textPercent != cfg_.fontPercent) ApplyDpi(theme_.dpi, nullptr);
     if (prev.opacity != cfg_.opacity) SetLayeredWindowAttributes(hwnd_, 0, static_cast<BYTE>(cfg_.opacity), LWA_ALPHA);
     if (prev.hotkey != cfg_.hotkey) {
         if (hotkeyOk_) UnregisterHotKey(hwnd_, kHotkeyId);
@@ -2610,6 +2641,10 @@ LRESULT MainWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
                 if (cfg_.languageTool) SetTimer(hwnd_, kTimerGrammar, 900, nullptr);
             } else if (wp == kTimerGame) PollGame();
             else if (wp == kTimerGrammar) StartGrammarCheck();
+            else if (wp == kTimerConfirm) {
+                KillTimer(hwnd_, kTimerConfirm);
+                reader_.Rescan();
+            }
             else if (wp == kTimerCaptures) {
                 KillTimer(hwnd_, kTimerCaptures);
                 if (cfg_.saveCaptures) {

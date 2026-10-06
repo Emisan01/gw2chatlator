@@ -63,6 +63,10 @@ struct ChatMessage {
     bool tagOnly = false;          // only a timestamp / channel tag, no text (the input line)
 };
 
+// False for OCR noise: mostly symbols, no real word (e.g. a window being
+// dragged over the chat, half-covered letters).
+bool LooksLikeChatText(const std::wstring& text);
+
 // Length of an OCR-mangled timestamp at the start of `s` ("[19:17]" read as
 // "C9;17J", "1927 J", "19:17)", "t9\u202220J" ...), 0 if none.
 size_t OcrTimestampLength(const std::wstring& s);

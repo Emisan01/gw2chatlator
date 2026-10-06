@@ -126,23 +126,19 @@ void ChatLogView::SetEmptyHint(const std::wstring& text, bool clickable) {
 }
 
 // ---------------------------------------------------------------------------
+// Like the GW2 chat, but calmer: no timestamps, no channel tags. The channel
+// shows only as the colour of the line.
 std::wstring ChatLogView::MainLine(const ChatEntry& e) const {
     if (e.kind == ChatEntry::Kind::System) return e.main;
     std::wstring who;
-    if (e.channel == Channel::Whisper) {
-        if (e.kind == ChatEntry::Kind::Outgoing || e.whisperOut)
-            who = e.speaker.empty() ? Tr(L"To \u2026") : TrF(L"To {1}", {e.speaker});
-        else
-            who = e.speaker.empty() ? Tr(L"Whisper") : TrF(L"From {1}", {e.speaker});
-        return who + L": " + e.main;
+    if (e.kind == ChatEntry::Kind::Outgoing) {
+        who = Tr(L"You");
+        if (e.channel == Channel::Whisper && !e.speaker.empty()) who += L" \u2192 " + e.speaker;
+    } else {
+        who = e.speaker;
+        if (e.whisperOut && !e.speaker.empty()) who = Tr(L"You") + L" \u2192 " + e.speaker;
     }
-    std::wstring s;
-    if (e.channel != Channel::Unknown && e.channel != Channel::System)
-        s = L"[" + ChannelLabel(e.channel) + L"] ";
-    if (e.kind == ChatEntry::Kind::Outgoing) who = Tr(L"You");
-    else who = e.speaker;
-    if (!who.empty()) s += who + L": ";
-    return s + e.main;
+    return who.empty() ? e.main : who + L": " + e.main;
 }
 
 std::wstring ChatLogView::SecondaryLine(const ChatEntry& e) const {
