@@ -14,7 +14,7 @@
 namespace gct {
 
 // `fromOcr`: the lines were read from the screen and may contain recognition
-// errors ("Mnuten", "Ricåmond"); the model is asked to repair obvious ones
+// errors ("Mnuten", "Haåwick"); the model is asked to repair obvious ones
 // while translating, never to invent content.
 std::string BuildLlmRequest(const std::vector<std::vector<Segment>>& items,
                             const std::wstring& targetLangName,  // "German", "Chinese (Simplified)"

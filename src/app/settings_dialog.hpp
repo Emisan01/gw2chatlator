@@ -26,6 +26,8 @@ struct DialogContext {
     std::function<std::wstring()> connectionStatus;
     // True when GW2 is currently running.
     std::function<bool()> isGw2Running;
+    // Deletes everything learned from sent messages (all languages).
+    std::function<void()> forgetLearned;
 };
 
 enum class SettingsPage { General = 0, Reading, Writing, Translator, Game };

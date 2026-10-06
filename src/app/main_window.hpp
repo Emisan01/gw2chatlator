@@ -31,6 +31,7 @@
 #include "core/languagetool_protocol.hpp"
 #include "app/theme.hpp"
 #include "core/chat_stream.hpp"
+#include "core/names.hpp"
 #include "core/glossary.hpp"
 #include "core/translator.hpp"
 #include "win/mumble_link.hpp"
@@ -120,6 +121,10 @@ private:
     void OnGrammar(GrammarMsg* msg);
     void SetEngine(Engine e);
     void OnKeyboardLanguage(const std::wstring& locale);
+    void OnWordForgotten(const std::wstring& word);
+    void OpenWhisperTab(const std::wstring& name);
+    void Retranslate(uint64_t id, const std::wstring& text);
+    void ShowMyMemoryNotice();
     std::wstring ChannelChipText() const;
     std::wstring WriteChipText() const;
 
@@ -241,13 +246,17 @@ private:
     // incoming state
     ChatReader reader_;
     ChatStream stream_;
+    NameList speakers_;  // speakers seen in the chat: their names are never translated
+    bool streamPrimed_ = false;  // the first picture was fed (old history skipped)
+    bool wasInMap_ = false;      // MumbleLink: on a map (reading allowed)
+    static constexpr std::ptrdiff_t kStartLines = 3;  // of the history shown at the start, translate the last ...
     TranslationCache cache_;
     struct PendingLine {
         uint64_t entryId;
         std::wstring text;
     };
     std::deque<PendingLine> inQueue_;
-    bool inFlight_ = false;
+    int inFlight_ = 0;  // translation requests on their way (incoming chat)
     ULONGLONG inPauseUntil_ = 0;
     std::wstring readerError_;
     bool readerReported_ = false;

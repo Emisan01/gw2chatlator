@@ -42,6 +42,11 @@ def used_keys():
         for m in re.finditer(pat, text, re.S):
             for lit in LIT.findall(m.group(0)) if '{' in m.group(0)[:2] or 'names' in m.group(0) or 'titles' in m.group(0) else [m.group(1)]:
                 keys.setdefault(unescape(lit), path)
+    # Local model offers {L"gemma3:1b", L"summary" L"..."}: the summary goes through Tr().
+    path = "src/win/online_translators.cpp"
+    text = (ROOT / path).read_text(encoding="utf-8")
+    for m in re.finditer(r'\{L"[^"]+",\s*((?:L"(?:[^"\\]|\\.)*"\s*)+)\}', text):
+        keys.setdefault("".join(unescape(x) for x in LIT.findall(m.group(1))), path)
     return keys
 
 def table(lang):

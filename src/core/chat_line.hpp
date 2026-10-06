@@ -51,6 +51,8 @@ struct OcrLine {
 // Colour that decides the channel: the first coloured words after the
 // timestamp (tag and speaker name), else the line average.
 Rgb LeadColor(const OcrLine& line);
+// Colour of the message text: the last coloured words, else the line average.
+Rgb TailColor(const OcrLine& line);
 
 struct ChatMessage {
     Channel channel = Channel::Unknown;
@@ -71,6 +73,10 @@ size_t OcrTimestampLength(const std::wstring& s);
 // ("[M]", "CSJ", "[Sagen)", "CKontakteJ"), 0 if none. `channel` receives the
 // channel (System for contact/friend notices).
 size_t FuzzyTagLength(const std::wstring& s, Channel* channel);
+
+// Length of a timestamp with misread brackets plus a one-letter channel tag
+// at the start of `s` ("117:46J[M]", "(17-46)(M)", "[17:48J1IWJ]"), 0 if none.
+size_t MangledStampAndTagLength(const std::wstring& s, Channel* channel);
 
 // One visual line: optional timestamp, optional channel tag ([Map], [M] ...),
 // optional guild tag, "Speaker: text". Lines without a speaker (system

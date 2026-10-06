@@ -133,14 +133,15 @@ std::string ChooseTesseractLangs(const std::string& configured, const std::vecto
     return out;
 }
 
-std::string EncodePgm(const Image& img) {
+std::string EncodePgm(const Image& img, bool invert) {
     if (img.Empty()) return {};
     std::string out = "P5\n" + std::to_string(img.width) + " " + std::to_string(img.height) + "\n255\n";
     const size_t header = out.size();
     out.resize(header + static_cast<size_t>(img.width) * img.height);
     for (size_t i = 0, n = static_cast<size_t>(img.width) * img.height; i < n; ++i) {
         const uint8_t b = img.bgra[i * 4], g = img.bgra[i * 4 + 1], r = img.bgra[i * 4 + 2];
-        out[header + i] = static_cast<char>((r * 77 + g * 150 + b * 29) >> 8);
+        const int v = (r * 77 + g * 150 + b * 29) >> 8;
+        out[header + i] = static_cast<char>(invert ? 255 - v : v);
     }
     return out;
 }

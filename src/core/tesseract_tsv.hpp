@@ -39,6 +39,8 @@ std::string ChooseTesseractLangs(const std::string& configured, const std::vecto
                                  bool chinese);
 
 // Binary PGM (P5) of the image's brightness: the format Tesseract reads from stdin.
-std::string EncodePgm(const Image& img);
+// `invert`: light text on dark (the GW2 chat) becomes dark text on light,
+// which Tesseract reads without trying each line both ways.
+std::string EncodePgm(const Image& img, bool invert = false);
 
 }  // namespace gct

@@ -1,5 +1,6 @@
 // Portable unit tests for src/core — no Windows needed:
 //   g++ -std=c++17 -I src tests/core_tests.cpp src/core/*.cpp -o core_tests && ./core_tests
+#include <chrono>
 #include <cstdio>
 #include <fstream>
 #include <set>
@@ -11,6 +12,8 @@
 #include "core/chat_tabs.hpp"
 #include "core/deepl_protocol.hpp"
 #include "core/gw2_text.hpp"
+#include "core/chat_geometry.hpp"
+#include "core/names.hpp"
 #include "core/image.hpp"
 #include "core/languages.hpp"
 #include "core/llm_protocol.hpp"
@@ -308,6 +311,64 @@ static void TestBuildMessages() {
     }
 }
 
+// German QWERTZ letter rows as KeyLayout (what keyboard_layout.cpp builds from Windows).
+static KeyLayout Qwertz() {
+    KeyLayout k;
+    const wchar_t* rows[] = {L"qwertzuiopü", L"asdfghjklöä", L"yxcvbnm"};
+    const float offset[] = {0.0f, 0.25f, 0.75f};
+    for (int r = 0; r < 3; ++r)
+        for (size_t i = 0; rows[r][i]; ++i) k.Set(rows[r][i], r, static_cast<float>(i) + offset[r]);
+    return k;
+}
+
+static void TestGuessLanguage() {
+    CHECK(GuessLanguageByLetters(L"nasılsın kardeş") == L"TR");      // nasılsın kardeş
+    CHECK(GuessLanguageByLetters(L"¿qué tal, mañana?") == L"ES");     // ¿qué tal, mañana?
+    CHECK(GuessLanguageByLetters(L"cześć, jak się masz") == L"PL");   // cześć, jak się masz
+    CHECK(GuessLanguageByLetters(L"grüße euch") == L"DE");
+    CHECK(GuessLanguageByLetters(L"привет") == L"RU");  // привет
+    CHECK(GuessLanguageByLetters(L"привіт") == L"UK");  // привіт
+    CHECK(GuessLanguageByLetters(L"مرحبا") == L"AR");
+    CHECK(GuessLanguageByLetters(L"안녕") == L"KO");
+    CHECK(GuessLanguageByLetters(L"hello there").empty());
+}
+
+static void TestTypingSlips() {
+    const KeyLayout k = Qwertz();
+    CHECK(k.Neighbors(L'a', L's') && k.Neighbors(L'g', L'z') && !k.Neighbors(L'a', L'l'));
+    CHECK(k.Shifted(L'h', 1) == L'j' && k.Shifted(L'l', 1) == L'ö' && k.Shifted(L'q', -1) == 0);
+    // The whole hand one key to the right: "hallo" came out as "jsööp".
+    const auto v = HandShiftVariants(L"jsööp", k);
+    CHECK(std::find(v.begin(), v.end(), L"hallo") != v.end());
+    // Slips on the key next door are cheap, other mistakes are not.
+    CHECK(SlipDistance(L"hsllo", L"hallo", k, 3) == 0.5);
+    CHECK(SlipDistance(L"hzllo", L"hallo", k, 3) == 1.0);
+    CHECK(SlipDistance(L"gsööo", L"hallo", k, 3) > 1.5);  // four slips: too far for a 5-letter word
+    WordModel m;
+    for (int i = 0; i < 3; ++i) m.Learn(L"hallo zusammen wer kommt mit zum Tequatl");
+    // Two slips in one word still find it ("zusammen" typed "zusamnwn").
+    auto near = m.NearSlip(L"zusamnwn", k, 3);
+    CHECK(!near.empty() && near[0] == L"zusammen");
+    near = m.NearSlip(L"Teqiatl", k, 3);
+    CHECK(!near.empty() && near[0] == L"Tequatl");
+    CHECK(m.NearSlip(L"zum", k, 3).empty());  // a known word needs no correction from itself
+}
+
+static void TestDoubleScan() {
+    ChatStream s;
+    const ChatMessage a{Channel::Map, false, L"Tamsin", L"wer kommt mit zum Tequatl", L"", {}};
+    const ChatMessage flash{Channel::Map, false, L"", L"Kiste geoeffnet: 3 Truhen", L"", {}};
+    CHECK(s.Feed({a, flash}, true).empty() && s.HasPending());  // first look: nothing yet
+    auto second = s.Feed({a}, true);                            // the tooltip is gone, the line stays
+    CHECK(second.size() == 1 && second[0].speaker == L"Tamsin" && !s.HasPending());
+    CHECK(s.Feed({a}, true).empty());                           // known now
+    // Read a little differently the second time: still the same line.
+    const ChatMessage b{Channel::Map, false, L"Kiro Vale", L"bin in fuenf Minuten da", L"", {}};
+    const ChatMessage b2{Channel::Map, false, L"Kiro Vale", L"bin in fuenf Minuten da.", L"", {}};
+    CHECK(s.Feed({a, b}, true).empty());
+    CHECK(s.Feed({a, b2}, true).size() == 1);
+}
+
 static void TestStream() {
     ChatStream s;
     std::vector<ChatMessage> a = {{Channel::Map, false, L"Alice", L"hello everyone", L"", {}},
@@ -493,6 +554,12 @@ static void TestTabs() {
     ChatTab back;
     CHECK(ParseTab(SerializeTab(tabs[0]), back) && back.channels == AllChannels() && back.name == L"Chat");
     CHECK(!ParseTab(L"Leer|bogus", t));
+    ChatTab rook;
+    rook.name = L"Rook";
+    rook.channels = ChannelBit(Channel::Whisper);
+    rook.person = L"Rook Vale";
+    CHECK(SerializeTab(rook) == L"Rook|whisper|@Rook Vale");
+    CHECK(ParseTab(SerializeTab(rook), back) && back.person == L"Rook Vale" && back.channels == rook.channels);
     CHECK(!ParseTab(L"|party", t));
     CHECK(!ParseTab(L"kein trenner", t));
     ChatTab odd;
@@ -577,9 +644,336 @@ static void TestWordModel() {
     CHECK(back.Count(L"kommt") == m.Count(L"kommt"));
     CHECK(back.Complete(L"Teq", L"", 1).size() == 1);
 
+    // Completion with one typo in what was typed so far.
+    m.Learn(L"hello hello hello");
+    auto fz = m.CompleteFuzzy(L"helo", L"", 3);
+    CHECK(!fz.empty() && fz[0] == L"hello");
+    CHECK(m.CompleteFuzzy(L"komt", L"", 3).size() >= 1 && m.CompleteFuzzy(L"komt", L"", 3)[0] == L"kommt");
+    CHECK(m.CompleteFuzzy(L"Teq", L"", 3).empty());   // exact completions are Complete()'s job
+    CHECK(m.CompleteFuzzy(L"ke", L"", 3).empty());    // too short to guess
+    m.Learn(L"sagen sagen sahen sahen");  // "sajen": one typo from both, j sits next to h
+    CHECK(m.CompleteFuzzy(L"sajen", L"", 3)[0] == L"sagen");  // without layout: equal, alphabetical
+    auto nb = m.CompleteFuzzy(L"sajen", L"", 3, [](wchar_t a, wchar_t b) {
+        return (a == L'h' && b == L'j') || (a == L'j' && b == L'h');
+    });
+    CHECK(!nb.empty() && nb[0] == L"sahen");
+
+    // Forget: a word taught by mistake disappears with its pairs.
+    CHECK(m.Forget(L"Jemand"));
+    CHECK(m.Count(L"jemand") == 0 && m.Next(L"kommt", 3).empty());
+    CHECK(!m.Forget(L"jemand"));
+    CHECK(m.Dirty());
+    WordModel cleared = m;
+    cleared.Clear();
+    CHECK(cleared.Size() == 0 && cleared.PairCount() == 0);
+
+    // Arabic: spelling variants and harakat count as the same word.
+    CHECK(WordKey(L"أحمد") == WordKey(L"احمد"));           // أحمد / احمد
+    CHECK(WordKey(L"مدرسة") == WordKey(L"مدرسه")); // مدرسة / مدرسه
+    CHECK(WordKey(L"على") == WordKey(L"علي"));                         // على / علي
+    CHECK(WordKey(L"مَرْحَبا") == WordKey(L"مرحبا"));
+    WordModel ar;
+    for (int i = 0; i < 2; ++i) ar.Learn(L"مرحبا أصدقائي");
+    CHECK(ar.Knows(L"اصدقائي"));  // typed without hamza
+    auto arc = ar.Complete(L"اصد", L"", 1);          // "اصد" completes "أصدقائي"
+    CHECK(arc.size() == 1 && arc[0] == L"أصدقائي");
+    auto arf = ar.CompleteFuzzy(L"مرخب", L"", 1);  // مرخب: خ for ح
+    CHECK(arf.size() == 1 && arf[0] == L"مرحبا");
+    CHECK(!IsWordChar(L'؟') && !IsWordChar(L'،'));         // ؟ and ، end a word
+
     WordModel big;  // pruning keeps the size bounded
     for (size_t i = 0; i < WordModel::kMaxWords + 50; ++i) big.AddWord(L"wort" + std::wstring(1, L'a' + i % 26) + std::to_wstring(i), 1);
     CHECK(big.Size() <= WordModel::kMaxWords);
+    // Speed: the word bar runs on every key press. Full model, worst case.
+    auto letters = [](size_t i) {  // 0 -> "aaaa", 1 -> "aaab" ... (letters only, digits are not learned)
+        std::wstring s(4, L'a');
+        for (int k = 3; k >= 0; --k, i /= 26) s[k] = static_cast<wchar_t>(L'a' + i % 26);
+        return s;
+    };
+    WordModel full;
+    for (size_t i = 0; i < WordModel::kMaxWords - 10; ++i) full.AddWord(L"wort" + letters(i), 2);
+    const auto t0 = std::chrono::steady_clock::now();
+    size_t hits = 0;
+    for (int i = 0; i < 20; ++i) {
+        hits += full.Complete(L"worta", L"", 3).size();
+        hits += full.CompleteFuzzy(L"wotra", L"", 3).size();
+    }
+    const double perKeyMs =
+        std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count() / 20.0;
+    std::printf("word bar, %zu words: %.3f ms per key press (%zu hits)\n", full.Size(), perKeyMs, hits);
+    CHECK(hits == 120);
+    CHECK(perKeyMs < 15.0);
+}
+
+// A synthetic chat panel: dark background, "letters" as bright stripes.
+static Image FakeChat(int w, int h, int firstTop, int pitch, int textH, int lines) {
+    Image img;
+    img.width = w;
+    img.height = h;
+    img.bgra.assign(static_cast<size_t>(w) * h * 4, 0);
+    for (size_t i = 0; i < img.bgra.size(); i += 4) {
+        img.bgra[i] = 40;
+        img.bgra[i + 1] = 34;
+        img.bgra[i + 2] = 30;
+        img.bgra[i + 3] = 255;
+    }
+    auto ink = [&](int x, int y) {
+        if (x < 0 || y < 0 || x >= w || y >= h) return;
+        uint8_t* p = &img.bgra[(static_cast<size_t>(y) * w + x) * 4];
+        p[0] = 225;
+        p[1] = 230;
+        p[2] = 235;
+    };
+    for (int l = 0; l < lines; ++l)
+        for (int y = firstTop + l * pitch; y < firstTop + l * pitch + textH; ++y)
+            for (int x = 20; x < w - 20; ++x)
+                if ((x / 3) % 2 == 0) ink(x, y);
+    return img;
+}
+
+static void TestChatGeometry() {
+    // 4K-like: lines 20 px apart, ink 14 px high.
+    Image img = FakeChat(400, 260, 30, 20, 14, 10);
+    LineGrid g = FindLineGrid(img, {0, 0, 400, 260});
+    CHECK(g.rows.size() == 10 && g.pitch == 20 && g.textHeight == 14);
+    CHECK(OcrScaleFor(g) == 2);
+    LineGrid small;
+    small.pitch = 10;
+    small.textHeight = 7;
+    CHECK(OcrScaleFor(small) == 3);
+    small.pitch = 31;
+    CHECK(OcrScaleFor(small) == 1);
+
+    // Two lines whose descenders touch read as one run: split again.
+    Image joined = FakeChat(400, 200, 20, 20, 14, 6);
+    for (int x = 20; x < 380; ++x)
+        for (int y = 34; y < 40; ++y) {  // fill the gap between line 1 and 2
+            uint8_t* p = &joined.bgra[(static_cast<size_t>(y) * 400 + x) * 4];
+            if ((x / 3) % 2 == 0) p[0] = p[1] = p[2] = 230;
+        }
+    CHECK(FindLineGrid(joined, {0, 0, 400, 200}).rows.size() == 6);
+
+    // Snapping: the frame cuts the first line mostly away (left out) and the
+    // last line only a little (taken in).
+    SnapResult s = SnapChatArea(img, {0, 40, 400, 165});  // lines at 30,50,...,210
+    CHECK(s.grid.rows.size() == 8);
+    CHECK(s.area.y > 30 && s.area.y <= 50 && s.area.y + s.area.h >= 204);
+    CHECK(RateArea(s) == AreaQuality::Good);
+
+    // Tab bar above and input line below, set apart by wider gaps: dropped.
+    Image panel = FakeChat(400, 300, 60, 20, 14, 8);  // lines 60..200
+    for (int x = 20; x < 380; ++x)
+        for (int y = 20; y < 34; ++y)
+            if ((x / 3) % 2 == 0) panel.bgra[(static_cast<size_t>(y) * 400 + x) * 4 + 1] = 230;  // tab bar at 20
+    for (int x = 20; x < 380; ++x)
+        for (int y = 250; y < 264; ++y)
+            if ((x / 3) % 2 == 0) panel.bgra[(static_cast<size_t>(y) * 400 + x) * 4 + 1] = 230;  // input line at 250
+    s = SnapChatArea(panel, {0, 10, 400, 270});
+    CHECK(s.grid.rows.size() == 8);
+    CHECK(s.area.y >= 34 && s.area.y + s.area.h <= 250);
+
+    // Scroll bar: a narrow bright column at the left edge, apart from the text.
+    Image bar = FakeChat(400, 260, 30, 20, 14, 10);
+    for (int y = 25; y < 235; ++y)
+        for (int x = 4; x < 9; ++x) bar.bgra[(static_cast<size_t>(y) * 400 + x) * 4 + 2] = 230;
+    s = SnapChatArea(bar, {0, 25, 400, 210});
+    std::printf("bar snap: x=%d y=%d w=%d h=%d rows=%zu pitch=%d th=%d\n", s.area.x, s.area.y, s.area.w, s.area.h,
+                s.grid.rows.size(), s.grid.pitch, s.grid.textHeight);
+    CHECK(s.area.x > 9 && s.area.x < 20);
+
+    CHECK(RateArea(SnapChatArea(FakeChat(200, 100, 0, 20, 14, 0), {0, 0, 200, 100})) == AreaQuality::None);
+    // Words of three chat lines reported as one line come apart again, in order.
+    LineGrid three;
+    three.rows = {{10, 14}, {30, 14}, {50, 14}};
+    three.pitch = 20;
+    three.textHeight = 14;
+    auto groups = GroupWordsByRows({{L"c2", {90, 31, 20, 12}}, {L"a1", {5, 11, 20, 12}}, {L"b1", {40, 52, 20, 12}},
+                                    {L"a2", {40, 10, 20, 13}}, {L"b0", {5, 50, 30, 14}}, {L"far", {5, 200, 20, 12}}},
+                                   three);
+    CHECK(groups.size() == 3);
+    if (groups.size() == 3) {
+        CHECK(groups[0].size() == 2 && groups[0][0].text == L"a1" && groups[0][1].text == L"a2");
+        CHECK(groups[1].size() == 1 && groups[1][0].text == L"c2");
+        CHECK(groups[2].size() == 2 && groups[2][0].text == L"b0" && groups[2][1].text == L"b1");
+    }
+
+    const Image up = UpscaleForOcr(Crop(img, {0, 0, 50, 40}), 3);
+    CHECK(up.width == 150 && up.height == 120 && !up.Empty());
+}
+
+static void TestMangledStamps() {
+    // Timestamps whose brackets text recognition misread, as seen on real 4K captures.
+    struct Case {
+        const wchar_t* line;
+        Channel channel;
+        const wchar_t* speaker;
+        const wchar_t* text;
+    };
+    const Case cases[] = {
+        {L"117:46J[M] Kiro Vale: wer kommt mit", Channel::Map, L"Kiro Vale", L"wer kommt mit"},
+        {L"(17-46)(M) Pell Brand: gleich da >", Channel::Map, L"Pell Brand", L"gleich da >"},
+        {L"(17: 46)(M) Tamsin: hallo", Channel::Map, L"Tamsin", L"hallo"},
+        {L"(17-471(M) Kiro Vale: bin weg", Channel::Map, L"Kiro Vale", L"bin weg"},
+        {L"[17:48J1IWJ] An Rook: ich warte", Channel::Whisper, L"Rook", L"ich warte"},
+        {L"[7:571[M] Sivo Dahl: anyone for the meta", Channel::Map, L"Sivo Dahl", L"anyone for the meta"},
+        {L"10M] Tamsin: gute Nacht", Channel::Map, L"Tamsin", L"gute Nacht"},
+        {L"[(W] An Rook: ich", Channel::Whisper, L"Rook", L"ich"},
+        {L"[10:12][P] Kiro Vale: komm", Channel::Party, L"Kiro Vale", L"komm"},
+        {L"tO:13JtPJ Kiro Vale: danke", Channel::Party, L"Kiro Vale", L"danke"},          // Windows OCR
+        {L"(17:47 10M] Tamsin: gute Nacht", Channel::Map, L"Tamsin", L"gute Nacht"},
+        {L"[10:12JtPJ Kiro Vale; [Wegmarke Felder]", Channel::Party, L"Kiro Vale", L"[Wegmarke Felder]"},
+    };
+    for (const Case& c : cases) {
+        std::vector<OcrLine> one(1);
+        one[0].text = c.line;
+        one[0].height = 15;
+        const auto msgs = BuildMessages(one, DefaultChannelColors());
+        CHECK(msgs.size() == 1);
+        if (msgs.size() != 1) continue;
+        if (!msgs[0].stamped || msgs[0].channel != c.channel || msgs[0].speaker != c.speaker)
+            std::printf("case: %ls -> [%ls] [%ls]\n", c.line, msgs[0].speaker.c_str(), msgs[0].text.c_str());
+        CHECK(msgs[0].stamped && msgs[0].channel == c.channel);
+        CHECK(msgs[0].speaker == c.speaker);
+        CHECK(msgs[0].text == c.text);
+    }
+    // Lone misread brackets before a name.
+    CHECK(ParseChatLine(L") Kiro Vale: bis gleich").speaker == L"Kiro Vale");
+    CHECK(ParseChatLine(L"J Von Rook: in was").speaker == L"Von Rook");
+    // Not a stamp: plain text and names that start with tag letters.
+    Channel ch = Channel::Unknown;
+    CHECK(MangledStampAndTagLength(L"[7:50] Bedrohung entdeckt!", &ch) == 0);
+    CHECK(MangledStampAndTagLength(L"[10:13] Mad ist nicht mehr", &ch) == 0);
+    CHECK(MangledStampAndTagLength(L"Mad Kiro: hallo", &ch) == 0);
+    CHECK(MangledStampAndTagLength(L"2 Pakete (P) bitte", &ch) == 0);
+
+    // A wrapped line continues the text even when the speaker's name has another colour.
+    std::vector<OcrLine> wrap(2);
+    wrap[0].text = L"[7:57][M] Sivo Dahl: our guild is looking for new players";
+    wrap[0].top = 0;
+    wrap[0].height = 15;
+    wrap[0].words = {{L"[7:57][M]", {200, 200, 200}, true}, {L"Sivo", {240, 110, 100}, true},
+                     {L"Dahl:", {240, 110, 100}, true},     {L"looking", {250, 220, 205}, true},
+                     {L"new", {250, 220, 205}, true},       {L"players", {250, 220, 205}, true}};
+    wrap[1].text = L"for raids and fractals, whisper me";
+    wrap[1].top = 20;
+    wrap[1].height = 15;
+    wrap[1].words = {{L"for", {248, 221, 207}, true}, {L"raids", {248, 221, 207}, true}, {L"and", {248, 221, 207}, true}};
+    const auto wm = BuildMessages(wrap, DefaultChannelColors());
+    CHECK(wm.size() == 1 && wm[0].text.find(L"raids and fractals") != std::wstring::npos);
+}
+
+static void TestStarterWords() {
+    const auto& v = Gw2StarterWords();
+    CHECK(v.size() > 60);
+    CHECK(std::find(v.begin(), v.end(), L"Tequatl") != v.end());
+    std::set<std::wstring> keys;
+    for (const std::wstring& w : v) keys.insert(WordKey(w));
+    CHECK(keys.size() == v.size());  // no duplicates
+}
+
+static void TestEmoticons() {
+    auto kept = [](const std::wstring& text) {
+        std::vector<std::wstring> k;
+        for (const Segment& s : ProtectForTranslation(text, nullptr, nullptr).segments)
+            if (s.keep) k.push_back(s.text);
+        return k;
+    };
+    CHECK((kept(L"bin gleich da :D") == std::vector<std::wstring>{L":D"}));
+    CHECK((kept(L"^^ danke <3 xD") == std::vector<std::wstring>{L"^^", L"<3", L"xD"}));
+    CHECK((kept(L"hallo :-) und ;P und :3") == std::vector<std::wstring>{L":-)", L";P", L":3"}));
+    CHECK(kept(L"12:30 am Tor, Uhrzeit: 8").empty());  // times and colons are no smileys
+    CHECK(kept(L"Notiz: D und P").empty());
+}
+
+static void TestLinks() {
+    const std::wstring t = L"schau mal https://wiki.guildwars2.com/wiki/Tequatl, und www.gw2efficiency.com! "
+                           L"oder (discord.gg/abc12) bzw. http://x.y";
+    const auto links = FindLinks(t);
+    CHECK(links.size() == 4);
+    if (links.size() == 4) {
+        CHECK(t.substr(links[0].start, links[0].length) == L"https://wiki.guildwars2.com/wiki/Tequatl");
+        CHECK(t.substr(links[1].start, links[1].length) == L"www.gw2efficiency.com");
+        CHECK(t.substr(links[2].start, links[2].length) == L"discord.gg/abc12");
+        CHECK(t.substr(links[3].start, links[3].length) == L"http://x.y");
+    }
+    CHECK(LinkTarget(L"www.gw2efficiency.com") == L"https://www.gw2efficiency.com");
+    CHECK(LinkTarget(L"http://x.y") == L"http://x.y");
+    CHECK(FindLinks(L"wer kommt mit? www. ist kein link").empty());
+    // Not translated.
+    const ProtectedText p = ProtectForTranslation(L"guck hier www.gw2efficiency.com bitte", nullptr, nullptr);
+    CHECK(p.segments.size() == 3 && p.segments[1].keep && p.segments[1].text == L"www.gw2efficiency.com");
+}
+
+static void TestNotChat() {
+    // The character selection shows character data where the chat is: no
+    // timestamp, no tag, no "Name:" -> nothing is read.
+    const wchar_t* selection[] = {L"Kiro Vale", L"Stufe 80 Schnitterin (Mensch)", L"54% der Karte erforscht",
+                                  L"@ Löwenstein", L"Weltname [DE]", L"80 t"};
+    std::vector<OcrLine> lines;
+    int top = 0;
+    for (const wchar_t* t : selection) {
+        OcrLine l;
+        l.text = t;
+        l.top = top;
+        l.height = 15;
+        l.color = {240, 200, 120};
+        top += 20;
+        lines.push_back(l);
+    }
+    CHECK(BuildMessages(lines, DefaultChannelColors()).empty());
+    // Real chat in the same frame still comes through; fragments without letters do not.
+    lines[2].text = L"[19:20][M] Tamsin: wer kommt mit zum Tequatl";
+    lines[4].text = L"[19:21] Bedrohung entdeckt! Tequatl greift an";
+    lines[5].text = L"[19:22] 80 t";
+    const auto msgs = BuildMessages(lines, DefaultChannelColors());
+    CHECK(msgs.size() == 2);
+    if (msgs.size() == 2) {
+        CHECK(msgs[0].speaker == L"Tamsin");
+        CHECK(msgs[1].text.find(L"Bedrohung") == 0);
+    }
+    // Read down to the window edge: the input line with what you are typing
+    // and the number row below it are no messages.
+    std::vector<OcrLine> bottom(4);
+    const wchar_t* texts[] = {L"[19:20][P] Tamsin: kommt ihr", L"[19:21][P] Rook: gleich", L"[Gruppe] bin gleich da",
+                              L"621"};
+    for (int i = 0; i < 4; ++i) {
+        bottom[i].text = texts[i];
+        bottom[i].top = i * 20;
+        bottom[i].height = 15;
+    }
+    const auto b = BuildMessages(bottom, DefaultChannelColors());
+    CHECK(b.size() == 2 && b.back().speaker == L"Rook");
+}
+
+static void TestNames() {
+    NameList names;
+    names.Add(L"Kiro Vale");
+    names.Add(L"Mad Kiro");
+    names.Add(L"B E L A");
+    names.Add(L"Tamsin");
+    names.Add(L"Wanderer");
+    names.Add(L"Al");  // too short to protect as a single word
+    auto has = [&](const std::wstring& text, const std::wstring& name) {
+        for (const Span& s : names.Find(text))
+            if (text.substr(s.start, s.length) == name) return true;
+        return false;
+    };
+    CHECK(has(L"helo du med kiro wie gehts", L"med kiro"));     // one typo in a short word, other word exact
+    CHECK(has(L"frag Kiro Vale mal", L"Kiro Vale"));
+    CHECK(has(L"ich warte auf b e l a", L"b e l a"));
+    CHECK(has(L"wo ist tamsin?", L"tamsin"));
+    CHECK(!has(L"med kiru ist da", L"med kiru"));               // no word exact
+    names.Add(L"Rook");
+    CHECK(!has(L"rouk ist da", L"rouk"));                       // one-word names: typo only from 6 letters
+    CHECK(has(L"tamsen ist da", L"tamsen"));
+    CHECK(has(L"der wandrer kommt", L"wandrer"));
+    CHECK(names.Find(L"al ist da").empty());
+    // The translator leaves the name alone.
+    const ProtectedText p = ProtectForTranslation(L"helo du med kiro", nullptr, nullptr, &names);
+    CHECK(p.segments.size() == 2 && !p.segments[0].keep && p.segments[1].keep && p.segments[1].text == L"med kiro");
+    for (int i = 0; i < 400; ++i) names.Add(L"Spieler" + std::wstring(1, static_cast<wchar_t>(L'a' + i % 26)) +
+                                            std::wstring(1, static_cast<wchar_t>(L'a' + i / 26)));
+    CHECK(names.Size() == NameList::kMax);
 }
 
 static void TestTesseract() {
@@ -653,11 +1047,11 @@ static void TestOcrTimestamps() {
         {L"C920J entdeckt! Modr", L"entdeckt! Modr"},
         {L"[92 9J Es kommen Berichte", L"Es kommen Berichte"},
         {L"19:35) entdeckt! Der", L"entdeckt! Der"},
-        {L"19:37 JIM) Dr Richmond: x", L"IM) Dr Richmond: x"},
+        {L"19:37 JIM) Dr Hamwick: x", L"IM) Dr Hamwick: x"},
         {L"1927 J Bob: hey", L"Bob: hey"},
         {L"t9\u202220J Text", L"Text"},
         {L"C9;f7J Text", L"Text"},
-        {L"19:42 JCSJ Zapp: Thanks!", L"CSJ Zapp: Thanks!"},
+        {L"19:42 JCSJ Pell: Thanks!", L"CSJ Pell: Thanks!"},
         {L"1234 Gold fehlen noch", nullptr},
         {L"Jemand da?", nullptr},
         {L"C4 ist kaputt", nullptr},
@@ -675,14 +1069,14 @@ static void TestOcrTimestamps() {
         }
     }
     Channel ch = Channel::Unknown;
-    CHECK(FuzzyTagLength(L"CSJ Zapp", &ch) == 3 && ch == Channel::Say);
+    CHECK(FuzzyTagLength(L"CSJ Pell", &ch) == 3 && ch == Channel::Say);
     CHECK(FuzzyTagLength(L"IM) Dr", &ch) == 3 && ch == Channel::Map);
     CHECK(FuzzyTagLength(L"[Sagen) Bob: x", &ch) == 7 && ch == Channel::Say);
     CHECK(FuzzyTagLength(L"CKontakteJ Emi ist online", &ch) == 10 && ch == Channel::System);
     CHECK(FuzzyTagLength(L"[Gilde] Carl: x", &ch) == 7 && ch == Channel::Guild);
     CHECK(FuzzyTagLength(L"Couch: x", &ch) == 0);
-    auto m = ParseChatLine(L"19:42 JCSJ Zapp The Nameless: Thanks!");
-    CHECK(m.stamped && m.speaker == L"Zapp The Nameless" && m.text == L"Thanks!");
+    auto m = ParseChatLine(L"19:42 JCSJ Pell The Unnamed: Thanks!");
+    CHECK(m.stamped && m.speaker == L"Pell The Unnamed" && m.text == L"Thanks!");
     m = ParseChatLine(L"[Sagen]");
     CHECK(m.tagOnly);
     m = ParseChatLine(L"C9;19J Krypts hecken etwas Gro\u00dfes");
@@ -731,8 +1125,8 @@ static void TestRealCapture() {
     bool tabBar = false, inputLine = false, zapp = false, system = false;
     for (const ChatMessage& m : msgs) {
         if (m.text.find(L"cbt") != std::wstring::npos || m.text.find(L"Febt") != std::wstring::npos) tabBar = true;
-        if (m.text.find(L"CSA T U") != std::wstring::npos) inputLine = true;
-        if (m.speaker == L"Zapp The Nameless" && m.text == L"Thanks!") zapp = true;
+        if (m.text.find(L"CK L N") != std::wstring::npos) inputLine = true;
+        if (m.speaker == L"Pell The Unnamed" && m.text == L"Thanks!") zapp = true;
         if (m.channel == Channel::System && m.text.find(L"Krypts") != std::wstring::npos &&
             m.text.find(L"Konvergenz") != std::wstring::npos)
             system = true;  // the wrapped yellow notice is one message
@@ -803,6 +1197,16 @@ int main() {
     TestAsciiEscape();
     TestI18n();
     TestWordModel();
+    TestChatGeometry();
+    TestMangledStamps();
+    TestNames();
+    TestNotChat();
+    TestEmoticons();
+    TestDoubleScan();
+    TestTypingSlips();
+    TestGuessLanguage();
+    TestLinks();
+    TestStarterWords();
     TestTesseract();
     TestLanguageTool();
     TestOcrTimestamps();

@@ -44,28 +44,37 @@ double DiceSimilarity(const std::wstring& a, const std::wstring& b) {
     return DiceSorted(Bigrams(NormalizeForCompare(a)), Bigrams(NormalizeForCompare(b)));
 }
 
+bool ChatStream::Similar(const Seen& a, const Seen& b) {
+    if (a.key == b.key) return true;
+    const size_t la = a.key.size(), lb = b.key.size();
+    if (std::max(la, lb) > 0 && std::min(la, lb) * 10 < std::max(la, lb) * 7) return false;  // lengths too different
+    return DiceSorted(a.grams, b.grams) >= 0.82;
+}
+
 bool ChatStream::IsKnown(const Seen& s) const {
-    for (const Seen& r : recent_) {
-        if (r.key == s.key) return true;
-        const size_t la = r.key.size(), lb = s.key.size();
-        if (std::max(la, lb) > 0 && std::min(la, lb) * 10 < std::max(la, lb) * 7) continue;  // lengths too different
-        if (DiceSorted(r.grams, s.grams) >= 0.82) return true;
-    }
+    for (const Seen& r : recent_)
+        if (Similar(r, s)) return true;
     return false;
 }
 
-std::vector<ChatMessage> ChatStream::Feed(const std::vector<ChatMessage>& snapshot) {
+std::vector<ChatMessage> ChatStream::Feed(const std::vector<ChatMessage>& snapshot, bool confirm) {
     std::vector<ChatMessage> fresh;
+    std::vector<Seen> waiting;
     for (const ChatMessage& m : snapshot) {
         Seen s;
         s.key = NormalizeForCompare(m.speaker + L":" + m.text);
         if (s.key.empty()) continue;
         s.grams = Bigrams(s.key);
         if (IsKnown(s)) continue;
+        if (confirm && std::none_of(pending_.begin(), pending_.end(), [&](const Seen& p) { return Similar(p, s); })) {
+            waiting.push_back(std::move(s));  // first look: wait for the second
+            continue;
+        }
         fresh.push_back(m);
         recent_.push_back(std::move(s));
         while (recent_.size() > memory_) recent_.pop_front();
     }
+    pending_ = std::move(waiting);
     return fresh;
 }
 

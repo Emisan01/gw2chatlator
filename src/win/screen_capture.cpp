@@ -2,6 +2,7 @@
 #include "screen_capture.hpp"
 
 #include <d3d11.h>
+#include <dwmapi.h>
 #include <dxgi1_2.h>
 
 #include <inspectable.h>
@@ -13,6 +14,7 @@
 #ifdef _MSC_VER
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "dwmapi.lib")
 #endif
 
 namespace gct {
@@ -338,8 +340,12 @@ struct ScreenCapture::Wgc {
             return Result::Error;
         }
 
+        // WGC delivers the window as it is seen: the extended frame bounds.
+        // GetWindowRect also counts the invisible resize borders (about 7 px
+        // left/right/bottom on Windows 10), which shifted the area in windowed mode.
         RECT winRect{};
-        GetWindowRect(hwnd, &winRect);
+        if (FAILED(DwmGetWindowAttribute(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, &winRect, sizeof(winRect))))
+            GetWindowRect(hwnd, &winRect);
         const bool ok = CopyArea(frameTexture, winRect, area, out);
         SafeRelease(frameTexture);
         SafeRelease(frame);

@@ -1,7 +1,9 @@
 #include "core/word_model.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cwctype>
+#include <memory>
 
 #include "core/text.hpp"
 
@@ -60,10 +62,122 @@ bool FirstTwoSwapped(const std::wstring& a, const std::wstring& b) {
 
 int AllowedDistance(size_t letters) { return letters <= 6 ? 1 : 2; }
 
+// True if `typed` is the start of `key` with exactly one typo: a wrong, an
+// extra, a missing or two swapped letters. The first letter must be right,
+// unless it was swapped with the second. No allocations: runs for every
+// learned word on every key press.
+bool OneTypoPrefix(const std::wstring& key, const std::wstring& typed) {
+    const size_t m = typed.size(), n = key.size();
+    size_t i = 0;
+    while (i < m && i < n && key[i] == typed[i]) ++i;
+    if (i == m) return false;  // no typo: an exact prefix
+    auto same = [&](size_t keyAt, size_t typedAt) {  // rest of `typed` from typedAt matches key from keyAt
+        const size_t len = m - typedAt;
+        return keyAt + len <= n && key.compare(keyAt, len, typed, typedAt, len) == 0;
+    };
+    if (i + 1 < m && i + 1 < n && key[i] == typed[i + 1] && key[i + 1] == typed[i] && same(i + 2, i + 2))
+        return true;  // swapped
+    if (i == 0) return false;
+    return (i < n && same(i + 1, i + 1))  // wrong letter
+           || same(i, i + 1)              // extra letter typed
+           || (i < n && same(i + 1, i));  // letter missed
+}
+
 }  // namespace
 
+// ---------------------------------------------------------------------------
+void KeyLayout::Set(wchar_t c, int row, float x) {
+    pos_[c] = {row, x};
+    at_[row * 1000 + static_cast<int>(std::lround(x * 4))] = c;
+}
+
+bool KeyLayout::Neighbors(wchar_t a, wchar_t b) const {
+    if (a == b) return false;
+    const auto ia = pos_.find(a), ib = pos_.find(b);
+    if (ia == pos_.end() || ib == pos_.end()) return false;
+    const int dy = std::abs(ia->second.row - ib->second.row);
+    const float dx = std::fabs(ia->second.x - ib->second.x);
+    return dy == 0 ? dx <= 1.01f : dy == 1 && dx <= 1.01f;
+}
+
+wchar_t KeyLayout::Shifted(wchar_t c, int dx) const {
+    const auto it = pos_.find(c);
+    if (it == pos_.end()) return 0;
+    const auto at = at_.find(it->second.row * 1000 + static_cast<int>(std::lround((it->second.x + dx) * 4)));
+    return at == at_.end() ? 0 : at->second;
+}
+
+KeyNeighbors KeyLayout::AsNeighbors() const {
+    if (Empty()) return nullptr;
+    auto copy = std::make_shared<KeyLayout>(*this);
+    return [copy](wchar_t a, wchar_t b) { return copy->Neighbors(a, b); };
+}
+
+std::vector<std::wstring> HandShiftVariants(const std::wstring& word, const KeyLayout& layout) {
+    std::vector<std::wstring> out;
+    const std::wstring key = WordKey(word);
+    if (key.size() < 3 || layout.Empty()) return out;
+    for (int dx : {-1, 1}) {
+        std::wstring v;
+        for (wchar_t c : key) {
+            const wchar_t s = layout.Shifted(c, dx);
+            if (!s) break;
+            v += s;
+        }
+        if (v.size() == key.size()) out.push_back(v);
+    }
+    return out;
+}
+
+double SlipDistance(const std::wstring& a0, const std::wstring& b0, const KeyLayout& layout, double limit) {
+    const std::wstring a = WordKey(a0), b = WordKey(b0);
+    const size_t n = a.size(), m = b.size();
+    if ((n > m ? n - m : m - n) > limit) return limit + 1;
+    std::vector<double> prev2(m + 1), prev(m + 1), cur(m + 1);
+    for (size_t j = 0; j <= m; ++j) prev[j] = static_cast<double>(j);
+    for (size_t i = 1; i <= n; ++i) {
+        cur[0] = static_cast<double>(i);
+        double rowMin = cur[0];
+        for (size_t j = 1; j <= m; ++j) {
+            const double sub = a[i - 1] == b[j - 1] ? 0.0 : layout.Neighbors(a[i - 1], b[j - 1]) ? 0.5 : 1.0;
+            double v = std::min({prev[j] + 1.0, cur[j - 1] + 1.0, prev[j - 1] + sub});
+            if (i > 1 && j > 1 && a[i - 1] == b[j - 2] && a[i - 2] == b[j - 1]) v = std::min(v, prev2[j - 2] + 0.7);
+            cur[j] = v;
+            rowMin = std::min(rowMin, v);
+        }
+        if (rowMin > limit) return limit + 1;
+        prev2.swap(prev);
+        prev.swap(cur);
+    }
+    return std::min(prev[m], limit + 1);
+}
+
+std::wstring WordKey(const std::wstring& word) {
+    std::wstring out;
+    out.reserve(word.size());
+    for (wchar_t c : word) {
+        const uint32_t u = static_cast<uint32_t>(c);
+        if (u >= 0x0600 && u <= 0x06FF) {
+            if (u == 0x0640 || (u >= 0x064B && u <= 0x065F) || u == 0x0670 || (u >= 0x06D6 && u <= 0x06ED))
+                continue;  // tatweel, harakat, Quranic marks
+            switch (u) {
+                case 0x0622: case 0x0623: case 0x0625: case 0x0671: c = 0x0627; break;  // alef forms
+                case 0x0649: case 0x0626: case 0x06CC: c = 0x064A; break;              // alef maqsura, yeh forms
+                case 0x0629: c = 0x0647; break;                                        // teh marbuta
+                case 0x0624: c = 0x0648; break;                                        // waw with hamza
+                case 0x06A9: c = 0x0643; break;                                        // Persian keheh
+                default: break;
+            }
+            out += c;
+            continue;
+        }
+        out += CaseFoldChar(c);
+    }
+    return out;
+}
+
 int EditDistance(const std::wstring& a0, const std::wstring& b0, int limit) {
-    const std::wstring a = CaseFold(a0), b = CaseFold(b0);
+    const std::wstring a = WordKey(a0), b = WordKey(b0);
     const int n = static_cast<int>(a.size()), m = static_cast<int>(b.size());
     if (std::abs(n - m) > limit) return limit + 1;
     std::vector<int> prev2(m + 1), prev(m + 1), cur(m + 1);
@@ -100,7 +214,7 @@ std::wstring MatchCase(const std::wstring& typed, const std::wstring& candidate)
 // ---------------------------------------------------------------------------
 void WordModel::AddWord(const std::wstring& word, double weight) {
     if (!Learnable(word)) return;
-    const std::wstring key = CaseFold(word);
+    const std::wstring key = WordKey(word);
     Word& w = words_[key];
     w.form = word;  // Learn() passes the mid-sentence form for a message's first word
     w.count += weight;
@@ -129,27 +243,27 @@ void WordModel::Learn(const std::wstring& text, double weight) {
         // First word of a message: do not learn its sentence capitalisation as the form.
         std::wstring form = w;
         if (i == 0 && w.size() > 1 && IsUpper(w[0]) && !IsUpper(w[1])) {
-            const std::wstring key = CaseFold(w);
+            const std::wstring key = WordKey(w);
             auto it = words_.find(key);
             form = it != words_.end() ? it->second.form : std::wstring(1, CaseFoldChar(w[0])) + w.substr(1);
         }
         AddWord(form, weight);
-        const std::wstring key = CaseFold(w);
+        const std::wstring key = WordKey(w);
         if (!prevKey.empty()) AddPair(prevKey, key, weight);
         prevKey = key;
     }
 }
 
 double WordModel::Count(const std::wstring& word) const {
-    auto it = words_.find(CaseFold(word));
+    auto it = words_.find(WordKey(word));
     return it == words_.end() ? 0.0 : it->second.count;
 }
 
 std::vector<std::wstring> WordModel::Complete(const std::wstring& prefix, const std::wstring& prev, size_t n) const {
     std::vector<std::wstring> out;
     if (prefix.empty() || n == 0) return out;
-    const std::wstring p = CaseFold(prefix);
-    const auto pit = prev.empty() ? pairs_.end() : pairs_.find(CaseFold(prev));
+    const std::wstring p = WordKey(prefix);
+    const auto pit = prev.empty() ? pairs_.end() : pairs_.find(WordKey(prev));
     std::vector<std::pair<double, const Word*>> scored;
     for (const auto& [key, w] : words_) {
         if (key.size() <= p.size() || key.compare(0, p.size(), p) != 0) continue;
@@ -160,7 +274,8 @@ std::vector<std::wstring> WordModel::Complete(const std::wstring& prefix, const 
         }
         scored.push_back({score, &w});
     }
-    std::sort(scored.begin(), scored.end(), [](const auto& a, const auto& b) {
+    const auto top = scored.begin() + static_cast<std::ptrdiff_t>(std::min(n, scored.size()));
+    std::partial_sort(scored.begin(), top, scored.end(), [](const auto& a, const auto& b) {
         if (a.first != b.first) return a.first > b.first;
         return a.second->form < b.second->form;
     });
@@ -173,9 +288,77 @@ std::vector<std::wstring> WordModel::Complete(const std::wstring& prefix, const 
     return out;
 }
 
+std::vector<std::wstring> WordModel::CompleteFuzzy(const std::wstring& prefix, const std::wstring& prev, size_t n,
+                                                   const KeyNeighbors& neighbors) const {
+    std::vector<std::wstring> out;
+    const std::wstring p = WordKey(prefix);
+    if (p.size() < 3 || n == 0 || std::any_of(p.begin(), p.end(), IsDigitChar)) return out;
+    const auto pit = prev.empty() ? pairs_.end() : pairs_.find(WordKey(prev));
+    const size_t m = p.size();
+    std::vector<std::pair<double, const Word*>> scored;
+    for (const auto& [key, w] : words_) {
+        if (w.count < 2.0 || key.size() < m || key == p) continue;
+        if (!OneTypoPrefix(key, p)) continue;
+        double score = w.count;
+        if (pit != pairs_.end()) {
+            auto nit = pit->second.find(key);
+            if (nit != pit->second.end()) score += nit->second * 6.0;
+        }
+        if (neighbors) {  // a slip to the key next door is the most likely typo
+            size_t diff = 0, at = 0;
+            for (size_t i = 0; i < m; ++i)
+                if (key[i] != p[i]) {
+                    ++diff;
+                    at = i;
+                }
+            if (diff == 1 && neighbors(key[at], p[at])) score *= 2.0;
+        }
+        scored.push_back({score, &w});
+    }
+    const auto top = scored.begin() + static_cast<std::ptrdiff_t>(std::min(n, scored.size()));
+    std::partial_sort(scored.begin(), top, scored.end(), [](const auto& a, const auto& b) {
+        if (a.first != b.first) return a.first > b.first;
+        return a.second->form < b.second->form;
+    });
+    for (size_t i = 0; i < scored.size() && out.size() < n; ++i) {
+        std::wstring form = scored[i].second->form;
+        if (IsUpper(prefix[0])) form = MatchCase(prefix, form);
+        out.push_back(form);
+    }
+    return out;
+}
+
+bool WordModel::Forget(const std::wstring& word) {
+    const std::wstring key = WordKey(word);
+    bool found = words_.erase(key) > 0;
+    if (auto pit = pairs_.find(key); pit != pairs_.end()) {
+        pairTotal_ -= pit->second.size();
+        pairs_.erase(pit);
+        found = true;
+    }
+    for (auto pit = pairs_.begin(); pit != pairs_.end();) {
+        if (pit->second.erase(key)) {
+            --pairTotal_;
+            found = true;
+        }
+        if (pit->second.empty()) pit = pairs_.erase(pit);
+        else ++pit;
+    }
+    if (found) dirty_ = true;
+    return found;
+}
+
+void WordModel::Clear() {
+    const bool had = !words_.empty() || !pairs_.empty();
+    words_.clear();
+    pairs_.clear();
+    pairTotal_ = 0;
+    if (had) dirty_ = true;
+}
+
 std::vector<std::wstring> WordModel::Next(const std::wstring& prev, size_t n) const {
     std::vector<std::wstring> out;
-    auto pit = pairs_.find(CaseFold(prev));
+    auto pit = pairs_.find(WordKey(prev));
     if (pit == pairs_.end() || n == 0) return out;
     std::vector<std::pair<double, std::wstring>> scored;
     for (const auto& [key, count] : pit->second) {
@@ -193,7 +376,7 @@ std::vector<std::wstring> WordModel::Next(const std::wstring& prev, size_t n) co
 
 std::vector<std::wstring> WordModel::Near(const std::wstring& word, size_t n) const {
     std::vector<std::wstring> out;
-    const std::wstring key = CaseFold(word);
+    const std::wstring key = WordKey(word);
     if (key.size() < 2 || n == 0) return out;
     const int allowed = AllowedDistance(Letters(word));
     struct Hit {
@@ -215,6 +398,35 @@ std::vector<std::wstring> WordModel::Near(const std::wstring& word, size_t n) co
         return *a.form < *b.form;
     });
     for (size_t i = 0; i < hits.size() && out.size() < n; ++i) out.push_back(MatchCase(word, *hits[i].form));
+    return out;
+}
+
+std::vector<std::wstring> WordModel::NearSlip(const std::wstring& word, const KeyLayout& layout, size_t n) const {
+    std::vector<std::wstring> out;
+    const std::wstring key = WordKey(word);
+    if (key.size() < 3 || n == 0) return out;
+    const double limit = key.size() <= 4 ? 1.0 : key.size() <= 7 ? 1.5 : 2.5;
+    struct Hit {
+        double dist;
+        double count;
+        const std::wstring* form;
+    };
+    std::vector<Hit> hits;
+    for (const auto& [k, w] : words_) {
+        if (k == key || w.count < 2.0) continue;
+        // The first letter right, on the key next door, or swapped with the second.
+        if (k[0] != key[0] && !layout.Neighbors(k[0], key[0]) && !FirstTwoSwapped(k, key)) continue;
+        const double d = SlipDistance(k, key, layout, limit);
+        if (d > limit) continue;
+        hits.push_back({d, w.count, &w.form});
+    }
+    const auto top = hits.begin() + static_cast<std::ptrdiff_t>(std::min(n, hits.size()));
+    std::partial_sort(hits.begin(), top, hits.end(), [](const Hit& a, const Hit& b) {
+        if (a.dist != b.dist) return a.dist < b.dist;
+        if (a.count != b.count) return a.count > b.count;
+        return *a.form < *b.form;
+    });
+    for (auto it = hits.begin(); it != top; ++it) out.push_back(MatchCase(word, *it->form));
     return out;
 }
 
@@ -306,13 +518,13 @@ void WordModel::Parse(const std::string& utf8) {
         if (f[0] == "w" && f.size() == 3) {
             const std::wstring form = FromUtf8(f[1]);
             if (!Learnable(form)) continue;
-            Word& w = words_[CaseFold(form)];
+            Word& w = words_[WordKey(form)];
             w.form = form;
             w.count += count(f[2]);
         } else if (f[0] == "n" && f.size() == 4) {
             const double c = count(f[3]);
             if (c <= 0) continue;
-            auto [it, inserted] = pairs_[CaseFold(FromUtf8(f[1]))].emplace(CaseFold(FromUtf8(f[2])), 0.0);
+            auto [it, inserted] = pairs_[WordKey(FromUtf8(f[1]))].emplace(WordKey(FromUtf8(f[2])), 0.0);
             it->second += c;
             if (inserted) ++pairTotal_;
         }
@@ -328,7 +540,7 @@ std::wstring ChooseCorrection(const std::wstring& word, const std::vector<std::w
     if (AllUpper(word) || model.Knows(word)) return {};
     if (std::any_of(word.begin(), word.end(), IsDigitChar)) return {};
     const int allowed = AllowedDistance(letters);
-    const std::wstring key = CaseFold(word);
+    const std::wstring key = WordKey(word);
 
     struct Cand {
         std::wstring text;
@@ -339,13 +551,13 @@ std::wstring ChooseCorrection(const std::wstring& word, const std::vector<std::w
     std::vector<Cand> cands;
     auto consider = [&](const std::wstring& c, int rank) {
         if (c.empty() || c.find(L' ') != std::wstring::npos || c.find(L'-') != std::wstring::npos) return;
-        const std::wstring ck = CaseFold(c);
+        const std::wstring ck = WordKey(c);
         if (ck == key) return;
         if (ck[0] != key[0] && !FirstTwoSwapped(ck, key)) return;
         const int d = EditDistance(ck, key, allowed);
         if (d > allowed) return;
         for (Cand& x : cands)
-            if (CaseFold(x.text) == ck) {
+            if (WordKey(x.text) == ck) {
                 x.rank = std::min(x.rank, rank);
                 return;
             }

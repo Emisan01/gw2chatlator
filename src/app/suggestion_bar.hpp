@@ -20,6 +20,13 @@ public:
     HWND Hwnd() const { return hwnd_; }
     void Set(const WordSuggestions& s);
     int PreferredHeight() const;
+    // Right-click on a learned word offers "Forget": `isLearned` decides,
+    // `onForget` does it.
+    void SetForget(std::function<bool(const std::wstring&)> isLearned,
+                   std::function<void(const std::wstring&)> onForget) {
+        isLearned_ = std::move(isLearned);
+        onForget_ = std::move(onForget);
+    }
 
 private:
     static LRESULT CALLBACK Proc(HWND h, UINT msg, WPARAM wp, LPARAM lp);
@@ -30,6 +37,8 @@ private:
     HWND hwnd_ = nullptr;
     const Theme* theme_ = nullptr;
     std::function<void(size_t)> onPick_;
+    std::function<bool(const std::wstring&)> isLearned_;
+    std::function<void(const std::wstring&)> onForget_;
     WordSuggestions s_;
     int hot_ = -1;
 };

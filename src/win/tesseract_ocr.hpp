@@ -35,10 +35,15 @@ public:
     bool Ready() const { return !info_.exe.empty(); }
     std::wstring Language() const;  // "eng+deu"
     bool Recognize(const Image& img, std::vector<TsvLine>& out, std::wstring* error);
+    // Pictures come as light text on dark (the chat as captured, only
+    // enlarged): sent inverted, and Tesseract's own second try on inverted
+    // lines is switched off (it doubled the time).
+    void SetLightText(bool on) { lightText_ = on; }
 
 private:
     TesseractInfo info_;
     std::string langs_;
+    bool lightText_ = false;
 };
 
 }  // namespace gct

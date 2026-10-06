@@ -21,10 +21,10 @@ struct RectI {
     int x = 0, y = 0, w = 0, h = 0;
 };
 
-// OCR wants dark text on a light background at a decent size. GW2 chat is
-// small light text on a dark, half-transparent panel: scale up (bilinear),
-// take the brightest channel (coloured text stays bright), stretch the
-// contrast between background and text, invert.
+// The old preparation (scale up bilinear, brightest channel, contrast
+// stretch, invert). No longer used by the reader: measured on real 4K
+// captures it made Tesseract read 2-3x worse than the dynamic enlargement
+// (chat_geometry.hpp). Kept as the baseline of tests/tools/ocr_bench.
 Image PrepareForOcr(const Image& src, int scale);
 
 // Average colour of the text pixels (clearly brighter than the background) inside `rects`.
