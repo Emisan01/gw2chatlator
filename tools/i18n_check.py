@@ -20,8 +20,11 @@ def unescape(s):
     s = re.sub(r'\\U([0-9a-fA-F]{8})', lambda m: chr(int(m.group(1), 16)), s)
     return s.replace('\\n', '\n').replace('\\t', '\t').replace('\\"', '"').replace('\\\\', '\\')
 
+# Texts translated at run time without a literal Tr() call (default tab names).
+EXTRA_KEYS = ["Chat"]
+
 def used_keys():
-    keys = {}
+    keys = {k: "default tab names" for k in EXTRA_KEYS}
     for p in SRC.rglob("*.cpp"):
         if p.name.startswith("i18n_"):
             continue

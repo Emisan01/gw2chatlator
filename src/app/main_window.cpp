@@ -216,6 +216,10 @@ RECT DrawChip(HDC dc, const Theme& t, int x, int top, int bottom, const std::wst
 
 std::wstring LangMenuLabel(const LangInfo& l) { return std::wstring(l.native) + L"\t" + l.code; }
 
+// Default tab names ("Whisper", "Party" ...) follow the UI language; names
+// you typed yourself stay as they are.
+std::wstring TabLabel(const ChatTab& t) { return Tr(t.name.c_str()); }
+
 // Menus open mirrored for a right-to-left UI language.
 UINT MenuFlags(UINT flags) { return flags | (UiRtl() ? TPM_LAYOUTRTL : 0); }
 
@@ -568,7 +572,7 @@ void MainWindow::Paint() {
     std::vector<int> natural(n);
     int total = 0;
     for (size_t i = 0; i < n; ++i) {
-        natural[i] = TextWidth(dc, cfg_.tabs[i].name, i == tab_ ? t.fontUiBold : t.fontUi) +
+        natural[i] = TextWidth(dc, TabLabel(cfg_.tabs[i]), i == tab_ ? t.fontUiBold : t.fontUi) +
                      (tabState_[i].unread > 0 ? badgeD + t.S(5) : 0);
         total += natural[i] + (i + 1 < n ? gap : 0);
     }
@@ -584,7 +588,7 @@ void MainWindow::Paint() {
         const int textW = std::max(t.S(8), w - (unread > 0 ? badgeD + t.S(5) : 0));
         HFONT font = active ? t.fontUiBold : t.fontUi;
         RECT r{x, 0, x + textW, m.head};
-        DrawLine(dc, cfg_.tabs[i].name, r, active ? Theme::kText : Theme::kMuted, font, DT_LEFT | DT_END_ELLIPSIS);
+        DrawLine(dc, TabLabel(cfg_.tabs[i]), r, active ? Theme::kText : Theme::kMuted, font, DT_LEFT | DT_END_ELLIPSIS);
         int right = x + textW;
         if (unread > 0) {
             const std::wstring num = unread > 9 ? L"9+" : std::to_wstring(unread);
@@ -865,7 +869,7 @@ void MainWindow::ShowTabMenu(size_t idx, POINT screen) {
     enum : UINT { kChannelBase = 100, kPresetBase = 200, kLeft = 300, kRight, kClose, kReset };
     const ChatTab& tab = cfg_.tabs[idx];
     HMENU menu = CreatePopupMenu();
-    AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, TrF(L"Tab \u201c{1}\u201d shows:", {tab.name}).c_str());
+    AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, TrF(L"Tab \u201c{1}\u201d shows:", {TabLabel(tab)}).c_str());
     const auto& channels = TabChannels();
     for (size_t i = 0; i < channels.size(); ++i)
         AppendMenuW(menu, MF_STRING | (TabShows(tab, channels[i]) ? MF_CHECKED : 0), kChannelBase + i,
@@ -2255,30 +2259,30 @@ void MainWindow::ReturnToGame() {
 std::wstring MainWindow::ConnectionStatus() {
     std::wstring s;
     auto line = [&](const std::wstring& t) { s += t + L"\r\n"; };
-    line(gw2_ ? Tr(L"✔ GW2 window found") : Tr(L"✖ GW2 window not found (start the game)"));
+    line(gw2_ ? L"[OK] " + Tr(L"GW2 window found") : L"[--] " + Tr(L"GW2 window not found (start the game)"));
     if (mumbleState_.live)
-        line(TrF(L"✔ MumbleLink: {1} (map {2})",
+        line(L"[OK] " + TrF(L"MumbleLink: {1} (map {2})",
                  {mumbleState_.identity.name.empty() ? L"?" : mumbleState_.identity.name,
                   std::to_wstring(mumbleState_.identity.mapId)}));
     else
-        line(Tr(L"✖ MumbleLink: no data (GW2 not running or in the character select)"));
+        line(L"[--] " + Tr(L"MumbleLink: no data (GW2 not running or in the character select)"));
     const std::wstring dir = cfg_.gw2Dir.empty() ? FindGw2Dir() : cfg_.gw2Dir;
     if (dir.empty()) {
-        line(Tr(L"? GW2 folder unknown"));
+        line(L"[?]  " + Tr(L"GW2 folder unknown"));
     } else {
         const AddonEnvironment env = ScanAddons(dir);
         line(TrF(L"GW2 folder: {1}", {dir}));
-        line(std::wstring(env.nexus ? L"✔ " : L"– ") + L"Nexus" + (env.nexus ? L"" : L" " + Tr(L"not installed")));
-        line(std::wstring(env.arcdps ? L"✔ " : L"– ") + L"arcdps" +
+        line(std::wstring(env.nexus ? L"[OK] " : L"[--] ") + L"Nexus" + (env.nexus ? L"" : L" " + Tr(L"not installed")));
+        line(std::wstring(env.arcdps ? L"[OK] " : L"[--] ") + L"arcdps" +
              (env.arcdps ? L"" : L" " + Tr(L"not installed")));
-        line(std::wstring(env.unofficialExtras ? L"✔ " : L"– ") + L"arcdps unofficial extras" +
+        line(std::wstring(env.unofficialExtras ? L"[OK] " : L"[--] ") + L"arcdps unofficial extras" +
              (env.unofficialExtras ? L"" : L" " + Tr(L"not installed")));
         if (env.unofficialExtras)
             line(Tr(L"   (could deliver squad/party chat as exact text later – optional add-on, not used now)"));
     }
     TesseractInfo tess;
-    if (FindTesseract(cfg_.tesseractPath, &tess)) line(TrF(L"✔ Tesseract: {1}", {tess.exe}));
-    else line(Tr(L"– Tesseract not installed (Windows text recognition is used)"));
+    if (FindTesseract(cfg_.tesseractPath, &tess)) line(L"[OK] Tesseract: " + tess.exe);
+    else line(L"[--] " + Tr(L"Tesseract not installed (Windows text recognition is used)"));
     if (!lastOcrEngine_.empty()) line(TrF(L"Reading with: {1}", {lastOcrEngine_}));
     line(TrF(L"Translator: {1}", {translator_ ? translator_->Name() : std::wstring(L"-")}));
     line(TrF(L"Settings: {1}", {cfg_.iniPath}));

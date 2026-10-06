@@ -100,7 +100,7 @@ public:
             wc.lpfnWndProc = Proc;
             wc.hInstance = inst;
             wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-            wc.hbrBackground = GetSysColorBrush(COLOR_BTNFACE);
+            wc.hbrBackground = GetSysColorBrush(COLOR_WINDOW);
             wc.hIcon = LoadIconW(inst, MAKEINTRESOURCEW(1));
             wc.lpszClassName = kDialogClass;
             RegisterClassExW(&wc);
@@ -198,6 +198,19 @@ protected:
     std::wstring Text(int id) const { return WindowText(Item(id)); }
     void SetText(int id, const std::wstring& t) { SetWindowTextW(Item(id), t.c_str()); }
 
+    // Recreates every control (after the UI language changed; mirrored for RTL).
+    void RebuildAll(const std::wstring& title) {
+        while (HWND c = GetWindow(hwnd_, GW_CHILD)) DestroyWindow(c);
+        pages_.clear();
+        page_ = -1;
+        LONG_PTR ex = GetWindowLongPtrW(hwnd_, GWL_EXSTYLE);
+        ex = UiRtl() ? (ex | WS_EX_LAYOUTRTL) : (ex & ~static_cast<LONG_PTR>(WS_EX_LAYOUTRTL));
+        SetWindowLongPtrW(hwnd_, GWL_EXSTYLE, ex);
+        SetWindowTextW(hwnd_, title.c_str());
+        Build();
+        InvalidateRect(hwnd_, nullptr, TRUE);
+    }
+
     void BeginPage() {
         pages_.emplace_back();
         page_ = static_cast<int>(pages_.size()) - 1;
@@ -239,6 +252,13 @@ private:
             case WM_CLOSE:
                 self->OnCommand(IDCANCEL, 0);
                 return 0;
+            case WM_CTLCOLORSTATIC:
+            case WM_CTLCOLORBTN: {  // labels and check boxes on the white page
+                HDC dc = reinterpret_cast<HDC>(wp);
+                SetBkColor(dc, GetSysColor(COLOR_WINDOW));
+                SetTextColor(dc, GetSysColor(COLOR_WINDOWTEXT));
+                return reinterpret_cast<LRESULT>(GetSysColorBrush(COLOR_WINDOW));
+            }
             case WM_NCDESTROY:
                 SetWindowLongPtrW(h, GWLP_USERDATA, 0);
                 self->hwnd_ = nullptr;
@@ -274,7 +294,8 @@ private:
         tab_ = Add(WC_TABCONTROLW, L"", WS_TABSTOP | WS_CLIPSIBLINGS, 10, 10, kW - 20, 470, kIdTab);
         const wchar_t* names[] = {L"General", L"Reading the chat", L"Writing", L"Translator", L"Game & start"};
         for (int i = 0; i < 5; ++i) {
-            const std::wstring n = Tr(names[i]);
+            std::wstring n;
+            for (wchar_t c : Tr(names[i])) n += c == L'&' ? std::wstring(L"&&") : std::wstring(1, c);
             TCITEMW item{};
             item.mask = TCIF_TEXT;
             item.pszText = const_cast<wchar_t*>(n.c_str());
@@ -578,7 +599,7 @@ private:
         if (msg == WM_APP_TEST) {
             std::unique_ptr<std::wstring> text(reinterpret_cast<std::wstring*>(lp));
             EnableWindow(Item(kTest), TRUE);
-            SetText(kTestStatus, (wp ? L"✔ " : L"✖ ") + *text);
+            SetText(kTestStatus, (wp ? L"[OK] " : L"[!] ") + *text);
             return 0;
         }
         return 0;
@@ -694,7 +715,10 @@ private:
 // ---------------------------------------------------------------------------
 class SetupWizard final : public NativeDialog {
 public:
-    SetupWizard(Config& cfg, const DialogContext& ctx) : cfg_(cfg), ctx_(ctx) {}
+    SetupWizard(Config& cfg, const DialogContext& ctx) : cfg_(cfg), ctx_(ctx), startLang_(GetUiLang()) {}
+    ~SetupWizard() override {
+        if (!result.saved) SetUiLang(startLang_);  // cancelled: the language stays as it was
+    }
     DialogResult result;
 
 private:
@@ -819,8 +843,24 @@ private:
         Close();
     }
 
-    void OnCommand(int id, int) override {
+    void OnCommand(int id, int code) override {
         switch (id) {
+            case kUiLang:
+                // Switch the language right away, so the next steps are readable.
+                if (code == CBN_SELCHANGE) {
+                    const int ui = Sel(kUiLang);
+                    if (ui >= 0 && static_cast<size_t>(ui) < UiLanguages().size()) {
+                        const int read = Sel(kReadLang);
+                        if (read == 0) cfg_.readLang.clear();
+                        else if (read > 0 && static_cast<size_t>(read - 1) < Languages().size())
+                            cfg_.readLang = Languages()[read - 1].code;
+                        if (!Trim(Text(kGw2Dir)).empty()) cfg_.gw2Dir = Trim(Text(kGw2Dir));
+                        cfg_.uiLang = UiLanguages()[ui].lang;
+                        SetUiLang(cfg_.uiLang);
+                        RebuildAll(Tr(L"Setup") + L" \u2013 GW2 Chat Translator");
+                    }
+                }
+                break;
             case kBack:
                 Go(step_ - 1);
                 break;
@@ -847,6 +887,7 @@ private:
 
     Config& cfg_;
     const DialogContext& ctx_;
+    UiLang startLang_;
     int step_ = 0;
     std::wstring installedExe_;
 };
