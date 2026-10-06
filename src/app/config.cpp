@@ -343,6 +343,7 @@ void Config::Load(const std::wstring& dir) {
     opacity = ini.Int(L"Window", L"Opacity", 238, 120, 255);
     fontPercent = ini.Int(L"Window", L"FontPercent", 100, 80, 160);
     followGame = ini.Bool(L"Window", L"FollowGame", true);
+    focusOnGameChat = ini.Bool(L"Window", L"FocusOnGameChat", false);
     dock = ini.Bool(L"Window", L"Dock", false);
     dockLeft = ini.Int(L"Window", L"DockLeft", 0, -20000, 20000);
     dockFromBottom = ini.Int(L"Window", L"DockFromBottom", 0, -20000, 20000);
@@ -440,6 +441,7 @@ void Config::SaveAll() const {
     SaveValue(L"Window", L"Opacity", std::to_wstring(opacity));
     SaveValue(L"Window", L"FontPercent", std::to_wstring(fontPercent));
     SaveBool(L"Window", L"FollowGame", followGame);
+    SaveBool(L"Window", L"FocusOnGameChat", focusOnGameChat);
     SaveBool(L"Window", L"Dock", dock);
 }
 

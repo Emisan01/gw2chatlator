@@ -171,6 +171,8 @@ extern const I18nEntry kGermanStrings[] = {
      L"Fokus verloren – abgebrochen"},
     {L"Focus lost – the text may still be in the chat line",
      L"Fokus verloren – Text steht evtl. noch im Chatfeld"},
+    {L"Focus translator when in-game chat is opened",
+     L"Übersetzer fokussieren, wenn der Chat im Spiel geöffnet wird"},
     {L"Found: {1}  ({2})",
      L"Gefunden: {1}  ({2})"},
     {L"From {1}",

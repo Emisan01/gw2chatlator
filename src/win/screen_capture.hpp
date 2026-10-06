@@ -20,18 +20,27 @@ public:
     ScreenCapture(const ScreenCapture&) = delete;
     ScreenCapture& operator=(const ScreenCapture&) = delete;
 
+    // Sets the window to capture (e.g. GW2 window). When set and supported,
+    // WGC captures the window's DirectX backbuffer directly, ignoring overlays.
+    void SetTarget(HWND hwnd);
+
     // `area` in physical virtual-screen pixels. On success `out` holds BGRA.
     bool Grab(const RECT& area, Image& out);
 
-    // "DXGI" or "GDI" — for the diagnostics line.
-    const wchar_t* Method() const { return usingDxgi_ ? L"DXGI" : L"GDI"; }
+    // "WGC", "DXGI" or "GDI" — for the diagnostics line.
+    const wchar_t* Method() const;
 
 private:
+    struct Wgc;
     struct Dxgi;
     bool GrabGdi(const RECT& area, Image& out);
 
+    HWND targetHwnd_ = nullptr;
+    std::unique_ptr<Wgc> wgc_;
     std::unique_ptr<Dxgi> dxgi_;
+    bool usingWgc_ = false;
     bool usingDxgi_ = false;
+    int wgcFailures_ = 0;
     int dxgiFailures_ = 0;
 };
 

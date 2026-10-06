@@ -102,8 +102,67 @@ bool IsGw2Dir(const std::wstring& dir) {
     return !dir.empty() && (Exists(JoinPath(dir, L"Gw2-64.exe")) || Exists(JoinPath(dir, L"Gw2.exe")));
 }
 
+std::wstring ResolveGw2Dir(const std::wstring& path) {
+    if (path.empty()) return {};
+    std::wstring p = path;
+    for (auto& c : p)
+        if (c == L'/') c = L'\\';
+    while (p.size() > 3 && p.back() == L'\\') p.pop_back();
+
+    // If pointing directly to an executable:
+    if (p.size() > 4 && _wcsicmp(p.c_str() + p.size() - 4, L".exe") == 0) {
+        size_t slash = p.find_last_of(L'\\');
+        if (slash != std::wstring::npos) p = p.substr(0, slash);
+    }
+    if (IsGw2Dir(p)) return p;
+
+    // If pointing to a subfolder (e.g. "addons", "addons\GW2ChatTranslator", "bin64"):
+    std::wstring cur = p;
+    for (int depth = 0; depth < 3; ++depth) {
+        size_t slash = cur.find_last_of(L'\\');
+        if (slash == std::wstring::npos || slash < 2) break;
+        cur = cur.substr(0, slash);
+        if (IsGw2Dir(cur)) return cur;
+    }
+    return {};
+}
+
+void ScanShortcuts(std::vector<std::wstring>& out) {
+    const KNOWNFOLDERID folders[] = {FOLDERID_Desktop, FOLDERID_PublicDesktop, FOLDERID_Programs, FOLDERID_CommonPrograms};
+    for (const auto& fid : folders) {
+        std::wstring dir = KnownFolder(fid);
+        if (dir.empty()) continue;
+        WIN32_FIND_DATAW fd{};
+        HANDLE h = FindFirstFileW(JoinPath(dir, L"*.lnk").c_str(), &fd);
+        if (h == INVALID_HANDLE_VALUE) continue;
+        do {
+            std::wstring name = fd.cFileName;
+            for (auto& c : name) c = static_cast<wchar_t>(towlower(c));
+            if (name.find(L"guild wars 2") != std::wstring::npos || name.find(L"gw2") != std::wstring::npos) {
+                IShellLinkW* link = nullptr;
+                if (SUCCEEDED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&link)))) {
+                    IPersistFile* pf = nullptr;
+                    if (SUCCEEDED(link->QueryInterface(IID_PPV_ARGS(&pf)))) {
+                        if (SUCCEEDED(pf->Load(JoinPath(dir, fd.cFileName).c_str(), STGM_READ))) {
+                            wchar_t target[MAX_PATH * 2] = {};
+                            if (SUCCEEDED(link->GetPath(target, static_cast<int>(std::size(target)), nullptr, 0)) && target[0]) {
+                                std::wstring gameDir = GameDirFromRegistryValue(target);
+                                if (!gameDir.empty()) out.push_back(gameDir);
+                            }
+                        }
+                        pf->Release();
+                    }
+                    link->Release();
+                }
+            }
+        } while (FindNextFileW(h, &fd));
+        FindClose(h);
+    }
+}
+
 std::wstring FindGw2Dir() {
     std::vector<std::wstring> registry;
+    ScanShortcuts(registry);
     const REGSAM views[] = {KEY_WOW64_64KEY, KEY_WOW64_32KEY};
     for (REGSAM view : views) {
         for (HKEY root : {HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER}) {

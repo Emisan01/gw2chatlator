@@ -16,6 +16,11 @@ namespace gct {
 // Empty if nothing was found; the caller then lets the user pick the folder.
 std::wstring FindGw2Dir();
 
+// Resolves a directory or file path to the root GW2 installation folder.
+// Handles subfolders like "addons" or "bin64", directly selected "Gw2-64.exe",
+// and trailing slashes. Returns empty if no GW2 installation is found.
+std::wstring ResolveGw2Dir(const std::wstring& path);
+
 bool IsGw2Dir(const std::wstring& dir);
 
 // Version-resource text of a DLL/EXE: FileDescription, ProductName and

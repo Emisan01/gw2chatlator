@@ -54,6 +54,8 @@ public:
 
     // Screen area to read; an empty rect pauses reading.
     void SetArea(const RECT& area);
+    // Sets the target window for window-targeted capture (e.g. WGC).
+    void SetTarget(HWND hwnd);
     void SetSaveCaptures(bool on);
     // Read again at once, even if the picture did not change.
     void Rescan();
@@ -69,6 +71,7 @@ private:
     bool force_ = false;
     bool save_ = false;
     RECT area_{};
+    HWND target_ = nullptr;
     HWND notify_ = nullptr;
     UINT message_ = 0;
     ReaderOptions opt_;

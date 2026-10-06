@@ -166,8 +166,8 @@ std::vector<std::wstring> Gw2DirCandidates(const std::wstring& running,
     };
     add(GameDirFromRegistryValue(running.empty() ? std::wstring() : JoinPath(running, L"Gw2-64.exe")));
     for (const auto& v : registryValues) add(GameDirFromRegistryValue(v));
-    for (const auto& lib : steamLibraries) add(JoinPath(JoinPath(JoinPath(lib, L"steamapps"), L"common"), L"Guild Wars 2"));
     for (const auto& pf : programFilesDirs) add(JoinPath(pf, L"Guild Wars 2"));
+    for (const auto& lib : steamLibraries) add(JoinPath(JoinPath(JoinPath(lib, L"steamapps"), L"common"), L"Guild Wars 2"));
     return out;
 }
 

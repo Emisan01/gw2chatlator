@@ -692,6 +692,13 @@ static void TestOcrTimestamps() {
 static std::vector<OcrLine> LoadCapture(const char* path) {
     std::vector<OcrLine> out;
     std::ifstream f(path, std::ios::binary);
+    if (!f.is_open()) {
+        std::string fallback = std::string("../") + path;
+        f.open(fallback, std::ios::binary);
+        if (!f.is_open()) {
+            f.open(std::string("../../") + path, std::ios::binary);
+        }
+    }
     std::string line;
     while (std::getline(f, line)) {
         if (!line.empty() && line.back() == '\r') line.pop_back();

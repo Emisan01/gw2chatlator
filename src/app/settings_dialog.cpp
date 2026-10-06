@@ -39,7 +39,7 @@ enum : int {
     // Translator
     kEngine, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
     // Game & start
-    kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kStatus, kRefresh, kSetup,
+    kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kStatus, kRefresh, kSetup,
     // Wizard
     kBack, kNext, kStepTitle, kStepText,
 };
@@ -455,6 +455,8 @@ private:
               Y(r++), kW - 50);
         Check(kDock, Tr(L"Dock to the GW2 window (moves with it)"), cfg_.dock, kLabelX, Y(r++), kW - 50);
         Check(kFollow, Tr(L"Show and hide together with the game"), cfg_.followGame, kLabelX, Y(r++), kW - 50);
+        Check(kFocusGameChat, Tr(L"Focus translator when in-game chat is opened"), cfg_.focusOnGameChat, kLabelX,
+              Y(r++), kW - 50);
         Label(Tr(L"Connections (read only, nothing is hooked)"), kLabelX, Y(r++), kW - 50);
         Add(L"EDIT", L"", ES_MULTILINE | ES_READONLY | WS_VSCROLL | ES_AUTOVSCROLL, kLabelX, Y(r) - 4, kW - 44, 120,
             kStatus, WS_EX_CLIENTEDGE);
@@ -522,7 +524,10 @@ private:
             }
             case kGw2Browse: {
                 const std::wstring dir = PickFolder(hwnd_, Tr(L"Guild Wars 2 folder"), Text(kGw2Dir));
-                if (!dir.empty()) SetText(kGw2Dir, dir);
+                if (!dir.empty()) {
+                    const std::wstring resolved = ResolveGw2Dir(dir);
+                    SetText(kGw2Dir, resolved.empty() ? dir : resolved);
+                }
                 break;
             }
             case kInstall:
@@ -606,7 +611,9 @@ private:
     }
 
     void Install() {
-        const std::wstring dir = Trim(Text(kGw2Dir));
+        const std::wstring rawDir = Trim(Text(kGw2Dir));
+        const std::wstring resolved = ResolveGw2Dir(rawDir);
+        const std::wstring dir = resolved.empty() ? rawDir : resolved;
         std::wstring target;
         if (IsGw2Dir(dir)) {
             target = InstallDirFor(dir);
@@ -691,9 +698,12 @@ private:
         c.llmKey = Trim(Text(kLlmKey));
         c.llmFixOcr = Checked(kFixOcr);
 
-        c.gw2Dir = Trim(Text(kGw2Dir));
+        const std::wstring rawDir = Trim(Text(kGw2Dir));
+        const std::wstring resolved = ResolveGw2Dir(rawDir);
+        c.gw2Dir = resolved.empty() ? rawDir : resolved;
         c.dock = Checked(kDock);
         c.followGame = Checked(kFollow);
+        c.focusOnGameChat = Checked(kFocusGameChat);
     }
 
     void Save() {
@@ -794,6 +804,10 @@ private:
         ShowPage(static_cast<size_t>(step_));
         EnableWindow(Item(kBack), step_ > 0);
         SetText(kNext, step_ == 2 ? Tr(L"Finish") : Tr(L"Next >"));
+        if (step_ == 2) {
+            const bool running = ctx_.isGw2Running ? ctx_.isGw2Running() : false;
+            EnableWindow(Item(kPickRegion), running);
+        }
     }
 
     bool ApplyStep1() {
@@ -802,7 +816,9 @@ private:
         const int read = Sel(kReadLang);
         if (read == 0) cfg_.readLang.clear();
         else if (read > 0 && static_cast<size_t>(read - 1) < Languages().size()) cfg_.readLang = Languages()[read - 1].code;
-        const std::wstring dir = Trim(Text(kGw2Dir));
+        const std::wstring rawDir = Trim(Text(kGw2Dir));
+        const std::wstring resolved = ResolveGw2Dir(rawDir);
+        const std::wstring dir = resolved.empty() ? rawDir : resolved;
         if (!dir.empty()) cfg_.gw2Dir = dir;
         // Saved before installing: the installed copy takes this settings file along.
         cfg_.setupDone = true;
@@ -828,6 +844,15 @@ private:
     }
 
     void Finish(bool pick) {
+        const bool running = ctx_.isGw2Running ? ctx_.isGw2Running() : false;
+        if (!running) pick = false;
+        if (!cfg_.regionSet) {
+            cfg_.regionSet = true;
+            cfg_.regionLeft = 10;
+            cfg_.regionFromBottom = 300;
+            cfg_.regionWidth = 460;
+            cfg_.regionHeight = 260;
+        }
         cfg_.setupDone = true;
         cfg_.SaveAll();
         result.saved = true;
@@ -869,12 +894,22 @@ private:
                 if (step_ == 2) Finish(false);
                 else Go(step_ + 1);
                 break;
-            case kPickRegion:
+            case kPickRegion: {
+                const bool running = ctx_.isGw2Running ? ctx_.isGw2Running() : false;
+                if (!running) {
+                    MessageBoxW(hwnd_, Tr(L"GW2 window not found (start the game)").c_str(),
+                                L"GW2 Chat Translator", MB_OK | MB_ICONINFORMATION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0));
+                    break;
+                }
                 Finish(true);
                 break;
+            }
             case kGw2Browse: {
                 const std::wstring dir = PickFolder(hwnd_, Tr(L"Guild Wars 2 folder"), Text(kGw2Dir));
-                if (!dir.empty()) SetText(kGw2Dir, dir);
+                if (!dir.empty()) {
+                    const std::wstring resolved = ResolveGw2Dir(dir);
+                    SetText(kGw2Dir, resolved.empty() ? dir : resolved);
+                }
                 break;
             }
             case IDCANCEL:

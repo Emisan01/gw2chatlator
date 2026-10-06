@@ -174,6 +174,7 @@ private:
     void ShowOverlay();
     void HideOverlay();
     void ReturnToGame();
+    void ToggleCollapse();
     // Foreground switch; in copy-only mode without the synthetic Alt fallback.
     bool Front(HWND h);
 
@@ -263,8 +264,10 @@ private:
     // chrome
     std::wstring status_;
     Tone tone_ = Tone::Muted;
-    RECT readRect_{}, menuRect_{}, closeRect_{}, channelRect_{}, writeRect_{};
+    RECT readRect_{}, menuRect_{}, closeRect_{}, collapseRect_{}, channelRect_{}, writeRect_{};
     bool previewVisible_ = false;  // the preview only takes space while you type
+    bool collapsed_ = false;
+    int expandedHeight_ = 0;
 
     // self-read guard
     ULONGLONG selfReadTick_ = 0;
@@ -276,6 +279,8 @@ private:
     bool loadingNames_ = false;
     std::wstring restartCommand_;
     std::wstring lastOcrEngine_;
+    std::wstring lastCaptureMethod_;
+    bool lastTextboxFocus_ = false;
     bool grammarInFlight_ = false;
     RateLimiter grammarLimiter_{18};
 };
