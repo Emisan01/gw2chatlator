@@ -1,5 +1,6 @@
 // chat_log_view.cpp
 #include "core/i18n.hpp"
+#include "core/text.hpp"
 #include "chat_log_view.hpp"
 
 #include <windowsx.h>
@@ -52,8 +53,11 @@ bool ChatLogView::Create(HWND parent, HINSTANCE inst, const Theme* theme, Callba
     return hwnd_ != nullptr;
 }
 
-bool ChatLogView::Matches(const ChatEntry& e, ChannelMask channels, uint32_t tabId) {
-    return (channels & ChannelBit(e.channel)) != 0 || (e.tabId != 0 && e.tabId == tabId);
+bool ChatLogView::Matches(const ChatEntry& e, ChannelMask channels, uint32_t tabId, const std::wstring& person) {
+    if (e.tabId != 0 && e.tabId == tabId) return true;
+    if ((channels & ChannelBit(e.channel)) == 0) return false;
+    // A whisper tab for one person: their whispers and yours to them.
+    return person.empty() || (e.channel == Channel::Whisper && CaseFold(Trim(e.speaker)) == CaseFold(person));
 }
 
 bool ChatLogView::ShowsTranslation(const std::wstring& text) const {
@@ -97,10 +101,11 @@ void ChatLogView::Clear() {
     InvalidateRect(hwnd_, nullptr, FALSE);
 }
 
-void ChatLogView::SetFilter(ChannelMask channels, uint32_t tabId) {
-    if (channels == filterChannels_ && tabId == filterTab_) return;
+void ChatLogView::SetFilter(ChannelMask channels, uint32_t tabId, const std::wstring& person) {
+    if (channels == filterChannels_ && tabId == filterTab_ && person == filterPerson_) return;
     filterChannels_ = channels;
     filterTab_ = tabId;
+    filterPerson_ = person;
     stickToBottom_ = true;
     layoutDirty_ = true;
     Relayout();
@@ -167,7 +172,7 @@ void ChatLogView::Relayout() {
         int y = pad;
         for (size_t i = 0; i < entries_.size(); ++i) {
             const ChatEntry& e = entries_[i];
-            if (!Matches(e, filterChannels_, filterTab_)) continue;
+            if (!Matches(e, filterChannels_, filterTab_, filterPerson_)) continue;
             int h = MeasureText(dc, theme_->fontText, MainLine(e), width, DirFlags(e.main));
             const std::wstring sec = SecondaryLine(e);
             if (!sec.empty()) h += theme_->S(1) + MeasureText(dc, theme_->fontSmall, sec, width, DirFlags(sec));
@@ -231,7 +236,8 @@ void ChatLogView::Paint() {
         hintRect_ = r;
     }
 
-    for (const Row& row : rows_) {
+    for (Row& row : rows_) {
+        row.name = {};
         const int top = row.top - scroll_;
         if (top > rc.bottom || top + row.height < 0) continue;
         const ChatEntry& e = entries_[row.index];
@@ -243,6 +249,21 @@ void ChatLogView::Paint() {
         SetTextColor(dc, MainColor(e));
         RECT t = r;
         DrawTextW(dc, main.c_str(), static_cast<int>(main.size()), &t, kTextFlags | dir);
+        // The name in neutral white like in GW2, the text in its channel's
+        // colour. Left-to-right lines only (the name stands at the start).
+        const size_t colon = main.find(L": ");
+        if (!(dir & DT_RTLREADING) && e.kind != ChatEntry::Kind::System && !e.speaker.empty() &&
+            colon != std::wstring::npos && colon < 60) {
+            const std::wstring who = main.substr(0, colon + 1);
+            SIZE sz{};
+            GetTextExtentPoint32W(dc, who.c_str(), static_cast<int>(who.size()), &sz);
+            RECT nameRect{r.left, r.top, std::min(r.right, r.left + sz.cx), r.top + theme_->textLineHeight};
+            FillRect(dc, &nameRect, theme_->panel);
+            SetTextColor(dc, e.kind == ChatEntry::Kind::Outgoing ? Theme::kMuted : Theme::kText);
+            DrawTextW(dc, who.c_str(), static_cast<int>(who.size()), &nameRect, DT_SINGLELINE | DT_NOPREFIX);
+            if (e.kind == ChatEntry::Kind::Incoming)
+                row.name = {nameRect.left, nameRect.top + scroll_, nameRect.right, nameRect.bottom + scroll_};
+        }
         r.top += MeasureText(dc, theme_->fontText, main, layoutWidth_, dir) + theme_->S(1);
 
         const std::wstring sec = SecondaryLine(e);
@@ -273,6 +294,75 @@ void ChatLogView::Paint() {
     EndPaint(hwnd_, &ps);
 }
 
+// A name opens the whisper tab for that person; a line that was not
+// translated (language not recognized, skipped, failed) gets translated now.
+void ChatLogView::OnClick(POINT client) {
+    const POINT content{client.x, client.y + scroll_};
+    for (const Row& row : rows_) {
+        const ChatEntry& e = entries_[row.index];
+        if (PtInRect(&row.name, content)) {
+            if (cb_.onSpeakerClick && !e.speaker.empty()) cb_.onSpeakerClick(e.speaker);
+            return;
+        }
+    }
+    const int r = RowAt(client.y);
+    if (r < 0) return;
+    ChatEntry& e = entries_[rows_[static_cast<size_t>(r)].index];
+    if (!EntryLinks(e).empty()) {  // a message with a link: offer to open it (asks first)
+        POINT screen = client;
+        ClientToScreen(hwnd_, &screen);
+        OfferLinks(e, screen);
+        return;
+    }
+    if (e.kind != ChatEntry::Kind::Incoming || e.state == ChatEntry::State::Translated ||
+        e.state == ChatEntry::State::Pending)
+        return;
+    if (cb_.onRetranslate) cb_.onRetranslate(e.id, e.original.empty() ? e.main : e.original);
+}
+
+// Links of a message, from the text as written (links are never translated).
+std::vector<std::wstring> ChatLogView::EntryLinks(const ChatEntry& e) {
+    const std::wstring& text = e.original.empty() ? e.main : e.original;
+    std::vector<std::wstring> out;
+    for (const Span& s : FindLinks(text)) out.push_back(text.substr(s.start, s.length));
+    return out;
+}
+
+// Like Discord: the full address is shown and nothing opens without a yes.
+// The address was read from the screen and may be misread, and it comes from
+// someone in the chat: the browser takes care of the rest.
+void ChatLogView::OpenLinkAsking(const std::wstring& link) {
+    const std::wstring target = LinkTarget(link);
+    if (target.find_first_of(L" \t\r\n\"<>") != std::wstring::npos) return;
+    const int answer = MessageBoxW(
+        hwnd_,
+        TrF(L"Open this link in your browser?\n\n{1}\n\nIt was read from the chat by text recognition and may be "
+            L"misread. Only open links from people you trust.",
+            {target})
+            .c_str(),
+        Tr(L"Open link").c_str(),
+        MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2 | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0));
+    if (answer == IDYES) ShellExecuteW(hwnd_, L"open", target.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+}
+
+void ChatLogView::OfferLinks(const ChatEntry& e, POINT screen) {
+    const std::vector<std::wstring> links = EntryLinks(e);
+    if (links.empty()) return;
+    enum : UINT { kOpenBase = 1, kCopyBase = 100 };
+    HMENU menu = CreatePopupMenu();
+    for (size_t i = 0; i < links.size() && i < 20; ++i) {
+        std::wstring shown = links[i].size() > 70 ? links[i].substr(0, 68) + L"…" : links[i];
+        AppendMenuW(menu, MF_STRING, kOpenBase + i, TrF(L"Open link: {1}", {shown}).c_str());
+        AppendMenuW(menu, MF_STRING, kCopyBase + i, TrF(L"Copy link: {1}", {shown}).c_str());
+    }
+    const UINT cmd = static_cast<UINT>(TrackPopupMenu(
+        menu, TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_NONOTIFY | (UiRtl() ? TPM_LAYOUTRTL : 0), screen.x, screen.y, 0,
+        hwnd_, nullptr));
+    DestroyMenu(menu);
+    if (cmd >= kCopyBase && cmd - kCopyBase < links.size()) CopyText(links[cmd - kCopyBase]);
+    else if (cmd >= kOpenBase && cmd - kOpenBase < links.size()) OpenLinkAsking(links[cmd - kOpenBase]);
+}
+
 void ChatLogView::CopyText(const std::wstring& s) {
     if (!OpenClipboard(hwnd_)) return;
     EmptyClipboard();
@@ -295,13 +385,14 @@ void ChatLogView::ShowMenu(POINT screen) {
     const int r = RowAt(client.y);
     const ChatEntry* e = r >= 0 ? &entries_[rows_[static_cast<size_t>(r)].index] : nullptr;
 
-    enum : UINT { kCopyMain = 1, kCopyOriginal, kReply, kUseChannel, kClear, kCalibrateBase = 100 };
+    enum : UINT { kCopyMain = 1, kCopyOriginal, kReply, kUseChannel, kClear, kLinks, kCalibrateBase = 100 };
     HMENU menu = CreatePopupMenu();
     HMENU colors = nullptr;
     if (e) {
         const bool hasOriginal = !e->original.empty() && e->original != e->main;
         AppendMenuW(menu, MF_STRING, kCopyMain, (hasOriginal ? Tr(L"Copy the translation") : Tr(L"Copy the text")).c_str());
         if (hasOriginal) AppendMenuW(menu, MF_STRING, kCopyOriginal, Tr(L"Copy the original").c_str());
+        if (!EntryLinks(*e).empty()) AppendMenuW(menu, MF_STRING, kLinks, Tr(L"Links in this message…").c_str());
         if (e->kind == ChatEntry::Kind::Incoming && e->channel == Channel::Whisper && !e->whisperOut &&
             !e->speaker.empty()) {
             AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
@@ -344,6 +435,10 @@ void ChatLogView::ShowMenu(POINT screen) {
     if (!now) return;
     if (cmd == kCopyMain) CopyText(now->main);
     else if (cmd == kCopyOriginal) CopyText(now->original);
+    else if (cmd == kLinks) {
+        const ChatEntry copy = *now;  // the menu below may outlive changes to the list
+        OfferLinks(copy, screen);
+    }
     else if (cmd == kReply && cb_.onReply) cb_.onReply(now->speaker);
     else if (cmd == kUseChannel && cb_.onUseChannel) cb_.onUseChannel(now->channel);
     else if (cmd >= kCalibrateBase && cmd - kCalibrateBase < std::size(kCalibratable) && cb_.onCalibrate)
@@ -383,13 +478,19 @@ LRESULT ChatLogView::Handle(UINT msg, WPARAM wp, LPARAM lp) {
         case WM_LBUTTONUP: {
             const POINT pt{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)};
             if (hintClickable_ && rows_.empty() && PtInRect(&hintRect_, pt) && cb_.onHintClick) cb_.onHintClick();
+            else OnClick(pt);
             return 0;
         }
         case WM_SETCURSOR: {
             POINT pt;
             GetCursorPos(&pt);
             ScreenToClient(hwnd_, &pt);
-            if (LOWORD(lp) == HTCLIENT && hintClickable_ && rows_.empty() && PtInRect(&hintRect_, pt)) {
+            if (LOWORD(lp) != HTCLIENT) break;
+            bool hand = hintClickable_ && rows_.empty() && PtInRect(&hintRect_, pt);
+            const POINT content{pt.x, pt.y + scroll_};
+            for (const Row& row : rows_)
+                if (PtInRect(&row.name, content)) hand = true;  // a name: whisper tab
+            if (hand) {
                 SetCursor(LoadCursorW(nullptr, IDC_HAND));
                 return TRUE;
             }

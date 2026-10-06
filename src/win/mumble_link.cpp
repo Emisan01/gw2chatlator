@@ -48,6 +48,26 @@ static_assert(sizeof(wchar_t) == 2, "MumbleLink uses UTF-16");
 static_assert(offsetof(MumbleContext, uiState) == 48, "context layout");
 static_assert(offsetof(MumbleContext, processId) == 80, "context layout");
 
+bool HasTopLevelWindow(DWORD pid) {
+    struct Find {
+        DWORD pid;
+        bool found;
+    } f{pid, false};
+    EnumWindows(
+        [](HWND h, LPARAM lp) -> BOOL {
+            auto* f = reinterpret_cast<Find*>(lp);
+            DWORD owner = 0;
+            GetWindowThreadProcessId(h, &owner);
+            if (owner == f->pid) {
+                f->found = true;
+                return FALSE;
+            }
+            return TRUE;
+        },
+        reinterpret_cast<LPARAM>(&f));
+    return f.found;
+}
+
 }  // namespace
 
 MumbleLink::~MumbleLink() {
@@ -94,11 +114,8 @@ MumbleState MumbleLink::Read() {
     st.processId = ctx.processId;
 
     if (!fresh && ctx.processId) {  // distinguish "loading screen" from "game closed"
-        HANDLE p = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, ctx.processId);
-        DWORD code = 0;
-        const bool running = p && GetExitCodeProcess(p, &code) && code == STILL_ACTIVE;
-        if (p) CloseHandle(p);
-        if (!running) {  // drop the stale block so a new GW2 start is picked up
+        // By its windows, never by a handle to the game process (invariant 1).
+        if (!HasTopLevelWindow(ctx.processId)) {  // drop the stale block so a new GW2 start is picked up
             UnmapViewOfFile(view_);
             CloseHandle(map_);
             view_ = nullptr;
@@ -107,6 +124,7 @@ MumbleState MumbleLink::Read() {
         }
     }
     st.live = !st.identity.name.empty();
+    st.inMap = st.live && fresh;
     return st;
 }
 

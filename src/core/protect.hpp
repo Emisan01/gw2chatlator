@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "glossary.hpp"
+#include "names.hpp"
 #include "text.hpp"
 
 namespace gct {
@@ -23,8 +24,10 @@ struct ProtectedText {
 // Protected, in this order of priority:
 //   1. chat codes [&...]             -> unchanged
 //   2. official game names            -> official name in the target language
-//   3. keep-words (LFG, WvW, DPS ...) -> unchanged
-ProtectedText ProtectForTranslation(const std::wstring& body, const Glossary* glossary, const WordSet* keepWords);
+//   3. names of people in the chat    -> unchanged
+//   4. keep-words (LFG, WvW, DPS ...) -> unchanged
+ProtectedText ProtectForTranslation(const std::wstring& body, const Glossary* glossary, const WordSet* keepWords,
+                                    const NameList* names = nullptr);
 
 std::wstring JoinSegments(const std::vector<Segment>& segments);
 bool HasProtected(const std::vector<Segment>& segments);

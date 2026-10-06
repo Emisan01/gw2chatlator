@@ -36,7 +36,10 @@ You can run the setup again at any time from menu ≡ → Setup. Every setting l
   - A typo is fixed when you finish the word (`komtm` → `kommt`).
   - **Backspace right after the fix undoes it** and remembers the word.
   - The **word bar** above the input offers completions, corrections and the next word. **Tab** takes the highlighted one.
-  - The tool **learns the words you send**, per language, in `learned\learned_<lang>.txt`.
+  - Typos in the middle of a word are caught while you type: `helo` already offers `hello`, a slip to the neighbouring key of your keyboard layout ranks first. The rest of a completion appears in grey after the cursor.
+  - Enter finishes the last word like a space would, so the last word is corrected too.
+  - Arabic: spelling variants such as أ/إ/آ/ا, ى/ي and ة/ه and the harakat count as the same word.
+  - The tool **learns the words you send**, per language, in `learned\learned_<lang>.txt`. Taught a wrong word? Right-click it in the word bar or the input and choose *Forget*.
 - **Optional grammar check with LanguageTool:** the public server (max. 20 checks per minute) or your own server. Grammar issues get blue marks, and right-click shows the suggestions.
 - **Send as:** English, French, Arabic, Chinese …, or Original (only corrected). 38 languages are available.
 - **Preview** of what arrives in the game, plus the **back-translation** into your language.
@@ -78,14 +81,24 @@ ArenaNet forbids programs that give an unfair advantage, automate gameplay, allo
 - **It never sends on its own.** One line per Enter you press. A tool that reads chat and answers by itself would be a bot, and there is none of that here, LLM or not.
 - **"Only copy" mode:** Enter just copies the line. You paste it in GW2 yourself, so not a single synthetic key reaches the game.
 
-## What leaves your PC
+## Privacy: what leaves your PC
 
-Only text, and only to the services you chose:
-- MyMemory, DeepL or a cloud LLM receives the text to translate.
-- LanguageTool receives what you type, and only while the grammar check is on.
-- Official names come from `api.guildwars2.com`.
+**Pictures never leave your PC.** The chat is read from the screen and recognized locally; screenshots are not sent anywhere. Diagnostic pictures (`captures\`) are off by default, switch themselves off after 15 minutes and are deleted after 3 days. They show other players' chat, so do not share them.
 
-With a local LLM, nothing leaves the PC. Screenshots are never sent anywhere.
+**Text goes only to the translator you chose:**
+
+| Translator | Who receives the text |
+|---|---|
+| Local LLM (Ollama, LM Studio) | nobody, everything stays on your PC |
+| MyMemory (free) | mymemory.translated.net, a **public translation memory** that may store what it receives |
+| DeepL | deepl.com |
+| Cloud LLM | the address you entered |
+
+That includes the chat lines of **other players** that you have translated, not only your own messages. When MyMemory is used for the first time, the tool says so once. You can keep it or pick another translator; for incoming chat a local LLM is the choice that keeps everything on your PC.
+
+Also online, only when you switch it on: LanguageTool receives what you type while the grammar check is on. Official names come from `api.guildwars2.com` (nothing is sent there except the request for the name list).
+
+**What the tool learns stays local.** The word bar learns only from the messages *you* send, never from other players' chat, and stores it in `learned\learned_<lang>.txt` next to the exe. Right-click a word to forget it; Settings → Writing → *Delete everything learned* starts from scratch.
 
 ## Files
 

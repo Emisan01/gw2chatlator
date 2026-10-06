@@ -45,6 +45,9 @@ public:
         std::function<void(Channel)> onUseChannel;                    // answer in that channel
         std::function<void(Channel, Rgb)> onCalibrate;                // "this colour is ..."
         std::function<void()> onHintClick;                            // click on the empty-state hint
+        std::function<void(const std::wstring& speaker)> onSpeakerClick;  // click on a name: whisper tab
+        // Click on a line that was not translated: translate it now.
+        std::function<void(uint64_t id, const std::wstring& text)> onRetranslate;
     };
 
     static bool Register(HINSTANCE inst);
@@ -56,8 +59,9 @@ public:
     void Update(uint64_t id, const std::function<void(ChatEntry&)>& change);
     void Clear();
 
-    // Show the entries of these channels plus those written in tab `tabId`.
-    void SetFilter(ChannelMask channels, uint32_t tabId);
+    // Show the entries of these channels plus those written in tab `tabId`;
+    // with `person`, only whispers from and to that person (a whisper tab).
+    void SetFilter(ChannelMask channels, uint32_t tabId, const std::wstring& person = std::wstring());
     void SetPalette(const std::vector<ChannelColor>& palette);
     void SetEmptyHint(const std::wstring& text, bool clickable);
     void ThemeChanged();  // fonts changed: measure everything again
@@ -66,7 +70,7 @@ public:
     // the chat reader is reading our own window.
     bool ShowsTranslation(const std::wstring& text) const;
 
-    static bool Matches(const ChatEntry& e, ChannelMask channels, uint32_t tabId);
+    static bool Matches(const ChatEntry& e, ChannelMask channels, uint32_t tabId, const std::wstring& person);
 
 private:
     static LRESULT CALLBACK Proc(HWND h, UINT msg, WPARAM wp, LPARAM lp);
@@ -75,7 +79,9 @@ private:
     struct Row {
         size_t index;  // into entries_
         int top, height;
+        RECT name{};   // where "Name: " is drawn (content coordinates), for clicks
     };
+    void OnClick(POINT client);
 
     std::wstring MainLine(const ChatEntry& e) const;
     std::wstring SecondaryLine(const ChatEntry& e) const;
@@ -87,6 +93,9 @@ private:
     int RowAt(int clientY) const;
     void ShowMenu(POINT screen);
     void CopyText(const std::wstring& s);
+    static std::vector<std::wstring> EntryLinks(const ChatEntry& e);
+    void OpenLinkAsking(const std::wstring& link);
+    void OfferLinks(const ChatEntry& e, POINT screen);
 
     static constexpr size_t kMaxEntries = 500;
 
@@ -97,6 +106,7 @@ private:
     uint64_t nextId_ = 1;
     ChannelMask filterChannels_ = 0xFFFF;
     uint32_t filterTab_ = 0;
+    std::wstring filterPerson_;
     std::vector<ChannelColor> palette_;
     std::wstring hint_;
     bool hintClickable_ = false;

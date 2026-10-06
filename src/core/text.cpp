@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cwchar>
 
 namespace gct {
 
@@ -220,6 +221,8 @@ bool IsWordChar(wchar_t c) {
     if ((u >= '0' && u <= '9') || (u >= 'A' && u <= 'Z') || (u >= 'a' && u <= 'z')) return true;
     if (u < 0xC0) return u == 0xAA || u == 0xB5 || u == 0xBA;
     if (u == 0xD7 || u == 0xF7) return false;
+    // Arabic comma, semicolon, question mark, percent/decimal/thousands signs, full stop.
+    if (u == 0x060C || u == 0x061B || u == 0x061F || (u >= 0x066A && u <= 0x066D) || u == 0x06D4) return false;
     if (u >= 0x2000 && u <= 0x2BFF) return false;  // punctuation, symbols, arrows, shapes
     if (u >= 0x3000 && u <= 0x303F) return false;  // CJK punctuation
     if (u >= 0xFF00 && u <= 0xFF0F) return false;  // full-width punctuation
@@ -325,6 +328,38 @@ ChatSplit SplitChatCommand(const std::wstring& text) {
 static bool IsChatCodeChar(wchar_t c) {
     return (c >= L'A' && c <= L'Z') || (c >= L'a' && c <= L'z') || (c >= L'0' && c <= L'9') || c == L'+' ||
            c == L'/' || c == L'=';
+}
+
+std::vector<Span> FindLinks(const std::wstring& s) {
+    std::vector<Span> out;
+    size_t i = 0;
+    while (i < s.size()) {
+        while (i < s.size() && s[i] == L' ') ++i;
+        size_t j = i;
+        while (j < s.size() && s[j] != L' ') ++j;
+        if (j > i) {
+            std::wstring token = CaseFold(s.substr(i, j - i));
+            size_t start = 0;
+            while (start < token.size() && (token[start] == L'(' || token[start] == L'<' || token[start] == L'"'))
+                ++start;
+            const std::wstring t = token.substr(start);
+            const bool link = t.rfind(L"http://", 0) == 0 || t.rfind(L"https://", 0) == 0 ||
+                              (t.rfind(L"www.", 0) == 0 && t.size() > 8) || t.rfind(L"discord.gg/", 0) == 0;
+            if (link) {
+                size_t end = j;  // trailing punctuation belongs to the sentence
+                while (end > i + start && std::wcschr(L".,!?;:)]>\"'", s[end - 1])) --end;
+                out.push_back({i + start, end - (i + start)});
+            }
+        }
+        i = j;
+    }
+    return out;
+}
+
+std::wstring LinkTarget(const std::wstring& link) {
+    const std::wstring f = CaseFold(link);
+    if (f.rfind(L"http://", 0) == 0 || f.rfind(L"https://", 0) == 0) return link;
+    return L"https://" + link;
 }
 
 std::vector<Span> FindChatCodes(const std::wstring& s) {

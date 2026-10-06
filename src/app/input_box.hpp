@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "app/choice_popup.hpp"
 #include "app/spell_service.hpp"
 #include "app/theme.hpp"
 
@@ -25,6 +26,7 @@ public:
         std::function<void()> onSwitchTab;        // Ctrl+Tab
         std::function<void(const std::wstring& from, const std::wstring& to)> onAutoCorrected;
         std::function<void(const std::wstring& original)> onCorrectionUndone;
+        std::function<void(const std::wstring& word)> onForgotten;  // "Forget word" in a menu
         std::function<void(const WordSuggestions&)> onSuggestions;  // the word bar changed
         // Keyboard layout changed; locale name like "ar-SA".
         std::function<void(const std::wstring& locale)> onKeyboardLanguage;
@@ -36,6 +38,8 @@ public:
     void SetSuggestions(bool on);
     // Puts the word of the bar into the text (slot 0..2).
     void AcceptSuggestion(size_t index);
+    // The word bar again (after a word was forgotten).
+    void RefreshSuggestions() { UpdateSuggestions(); }
     const WordSuggestions& CurrentSuggestions() const { return suggestions_; }
     // Grammar marks from LanguageTool for exactly this text (dropped when the text changes).
     void SetGrammarIssues(const std::wstring& forText, std::vector<SpellIssue> issues);
@@ -69,9 +73,19 @@ private:
     POINT PosFromChar(size_t i) const;
     void RunSpellCheck(size_t caret);
     void DrawSquiggles(HDC dc) const;
+    void DrawGhost(HDC dc) const;
     bool ShowSpellMenu(LPARAM lp);
+    bool ShowWordMenu(LPARAM lp);
     void ReplaceRange(Span span, const std::wstring& text);
     void TryAutoCorrect();
+    void FinishWordAtCaret();
+    void UpdateChoices();
+    const WordChoices& CurrentChoices();
+    bool ApplyChoice(wchar_t boundary);
+    void CycleChoice(int step);
+    // Autocorrects the word ending at `end` (exclusive). `boundaryTyped`: the
+    // character at `end` was just typed (space ...) and Backspace may undo.
+    void CorrectWordEndingAt(size_t end, bool boundaryTyped);
     bool UndoAutoCorrect();
     void DeletePreviousWord();
     void UpdateSuggestions();
@@ -79,7 +93,7 @@ private:
     static constexpr UINT_PTR kSpellTimer = 0x4743;
     static constexpr UINT_PTR kSuggestTimer = 0x4744;
     static constexpr UINT kSpellDelayMs = 350;
-    static constexpr UINT kSuggestDelayMs = 35;
+    static constexpr UINT kSuggestDelayMs = 10;  // word bar: next message loop turn (the timer minimum)
 
     HWND hwnd_ = nullptr;
     WNDPROC orig_ = nullptr;
@@ -92,6 +106,12 @@ private:
     std::vector<SpellIssue> issues_;
     std::vector<SpellIssue> grammar_;
     WordSuggestions suggestions_;
+    ChoicePopup popup_;          // the dropdown under the word
+    WordChoices choices_;
+    std::wstring choicesText_;   // text and caret `choices_` was worked out for
+    size_t choicesCaret_ = static_cast<size_t>(-1);
+    std::wstring dismissedText_; // Esc closed the dropdown for this text
+    POINT popupPos_{};
     // The last autocorrection, for Backspace-undo: text after the fix.
     struct Fix {
         bool valid = false;

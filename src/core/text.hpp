@@ -73,6 +73,13 @@ ChatSplit SplitChatCommand(const std::wstring& text);
 // Chat links such as [&AgH1WQAA] (waypoints, items, skills ...).
 std::vector<Span> FindChatCodes(const std::wstring& s);
 
+// Web links: "https://...", "http://...", "www.example.com", "discord.gg/..."
+// (trailing punctuation of the sentence not included). Never translated;
+// the chat window lets you open them after asking.
+std::vector<Span> FindLinks(const std::wstring& s);
+// What the browser gets: "www.x.de" -> "https://www.x.de"; http(s) as is.
+std::wstring LinkTarget(const std::wstring& link);
+
 // Account names like "Emi.1234".
 bool IsAccountName(const std::wstring& token);
 

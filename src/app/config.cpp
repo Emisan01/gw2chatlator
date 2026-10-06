@@ -60,7 +60,7 @@ const char kTranslateSections[] =
     "; Read the GW2 chat from the screen and translate it permanently\r\n"
     "Enabled=1\r\n"
     "; How often the chat is read (ms)\r\n"
-    "IntervalMs=900\r\n"
+    "IntervalMs=400\r\n"
     "; Text recognition: auto (Tesseract if installed, else Windows) | tesseract | windows\r\n"
     "OcrEngine=auto\r\n"
     "; Tesseract: folder or tesseract.exe (empty = search Program Files, PATH, .\\tesseract)\r\n"
@@ -71,8 +71,8 @@ const char kTranslateSections[] =
     "ReadChinese=0\r\n"
     "; Windows text recognition language, e.g. de-DE, en-US. Empty = Windows languages.\r\n"
     "OcrLanguage=\r\n"
-    "; Enlargement before text recognition (1-4). Small GW2 interface size: try 3.\r\n"
-    "OcrScale=2\r\n"
+    "; Enlargement before text recognition: 0 = automatic from the measured line spacing, 1-4 = fixed\r\n"
+    "OcrZoom=0\r\n"
     "; Show system lines (without a speaker)\r\n"
     "ShowSystem=0\r\n"
     "; Diagnostics: save pictures and recognized text in the captures folder\r\n"
@@ -127,6 +127,8 @@ const char kRestSections[] =
     "ReturnFocus=0\r\n"
     "; Pause between the key presses to GW2 (ms). Raise it at low FPS.\r\n"
     "StepDelayMs=80\r\n"
+    "; How long each key is held (ms): GW2 reads the keyboard once per frame. Raise it at low FPS.\r\n"
+    "KeyHoldMs=30\r\n"
     "RestoreDelayMs=250\r\n"
     "\r\n"
     "[Window]\r\n"
@@ -271,6 +273,7 @@ void Config::Load(const std::wstring& dir) {
     const Ini ini(iniPath);
     uiLang = UiLangFromCode(ini.Str(L"General", L"UiLanguage", L"en"), UiLang::En);
     setupDone = ini.Bool(L"General", L"SetupDone", false);
+    myMemoryNoticeShown = ini.Bool(L"Basic", L"NoticeShown", false);
     gw2Dir = AsciiUnescape(ini.Str(L"General", L"Gw2Dir", L""));
     engine = ParseEngine(ini.Str(L"Translate", L"Engine", L"auto"));
     // v0.2 had SourceLang/TargetLangs under [DeepL]; used as fallbacks.
@@ -292,13 +295,14 @@ void Config::Load(const std::wstring& dir) {
     llmFixOcr = ini.Bool(L"LLM", L"FixOcr", true);
 
     readerEnabled = ini.Bool(L"Reader", L"Enabled", true);
-    readerIntervalMs = ini.Int(L"Reader", L"IntervalMs", 900, 250, 10000);
+    readerIntervalMs = ini.Int(L"Reader", L"IntervalMs", 400, 150, 10000);
     ocr = ParseOcr(ini.Str(L"Reader", L"OcrEngine", L"auto"));
     tesseractPath = AsciiUnescape(ini.Str(L"Reader", L"TesseractPath", L""));
     tesseractLangs = ToUtf8(ini.Str(L"Reader", L"TesseractLang", L""));
     readChinese = ini.Bool(L"Reader", L"ReadChinese", false);
     ocrLanguage = ini.Str(L"Reader", L"OcrLanguage", L"");
-    ocrScale = ini.Int(L"Reader", L"OcrScale", 2, 1, 4);
+    // "OcrZoom" replaced "OcrScale" (fixed 2 by default) when the enlargement became automatic.
+    ocrScale = ini.Int(L"Reader", L"OcrZoom", 0, 0, 4);
     showSystemLines = ini.Bool(L"Reader", L"ShowSystem", false);
     saveCaptures = ini.Bool(L"Reader", L"SaveCaptures", false);
     regionLeft = ini.Int(L"Reader", L"RegionLeft", 0, -20000, 20000);
@@ -334,6 +338,7 @@ void Config::Load(const std::wstring& dir) {
     returnFocus = ini.Bool(L"Chat", L"ReturnFocus", false);
     copyOnly = ToLowerAscii(ini.Str(L"Chat", L"SendMode", L"send")) == L"copy";
     send.stepDelayMs = ini.Int(L"Chat", L"StepDelayMs", 80, 20, 1000);
+    send.keyHoldMs = ini.Int(L"Chat", L"KeyHoldMs", 30, 5, 500);
     send.restoreDelayMs = ini.Int(L"Chat", L"RestoreDelayMs", 250, 50, 3000);
 
     x = ini.Int(L"Window", L"X", kAutoPos, kAutoPos, 32000);
@@ -358,7 +363,9 @@ void Config::Load(const std::wstring& dir) {
     }
     if (tabs.empty()) tabs = DefaultTabs();
     // The old default "Whisper" tab (everything + whispers only) is gone: one tab, colours tell the channel.
-    if (tabs.size() == 2 && tabs[0].channels == AllChannels() && tabs[1].channels == ChannelBit(Channel::Whisper))
+    // A player's own whisper tab (opened by clicking a name) stays.
+    if (tabs.size() == 2 && tabs[0].channels == AllChannels() && tabs[1].channels == ChannelBit(Channel::Whisper) &&
+        tabs[1].person.empty())
         tabs.pop_back();
     for (size_t i = 0; i < tabs.size(); ++i) tabs[i].id = static_cast<uint32_t>(i + 1);
     activeTab = ini.Int(L"Tabs", L"Active", 1, 1, static_cast<int>(tabs.size())) - 1;

@@ -93,6 +93,10 @@ std::wstring SerializeTab(const ChatTab& t) {
         s += k.key;
         first = false;
     }
+    if (!t.person.empty()) {
+        s += L"|@";
+        for (wchar_t c : t.person) s += (c == L'|' || c == L'\r' || c == L'\n') ? L' ' : c;
+    }
     return s;
 }
 
@@ -103,6 +107,10 @@ bool ParseTab(const std::wstring& s, ChatTab& out) {
     t.name = Trim(s.substr(0, bar));
     if (t.name.empty()) return false;
     std::wstring list = s.substr(bar + 1);
+    if (const size_t at = list.find(L"|@"); at != std::wstring::npos) {
+        t.person = Trim(list.substr(at + 2));
+        list.erase(at);
+    }
     size_t start = 0;
     while (start <= list.size()) {
         size_t end = list.find(L',', start);

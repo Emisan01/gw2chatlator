@@ -23,6 +23,8 @@ add_library(gct_core STATIC
     src/core/chat_line.cpp
     src/core/chat_stream.cpp
     src/core/chat_tabs.cpp
+    src/core/chat_geometry.cpp
+    src/core/names.cpp
     src/core/image.cpp
     src/core/gw2_text.cpp
     src/core/mumble.cpp
@@ -59,8 +61,9 @@ if(WIN32)
         src/win/screen_capture.cpp
         src/win/tesseract_ocr.cpp
         src/win/gw2_locate.cpp
-        src/win/folder_cleanup.cpp)
-    target_link_libraries(gct_win PUBLIC gct_core winhttp ole32 user32 gdi32 d3d11 dxgi shell32 advapi32 version uuid)
+        src/win/folder_cleanup.cpp
+        src/win/keyboard_layout.cpp)
+    target_link_libraries(gct_win PUBLIC gct_core winhttp ole32 user32 gdi32 d3d11 dxgi dwmapi shell32 advapi32 version uuid)
 
     # ---- app: the window
     set(GCT_APP_SOURCES
@@ -73,6 +76,7 @@ if(WIN32)
         src/app/region_picker.cpp
         src/app/spell_service.cpp
         src/app/suggestion_bar.cpp
+        src/app/choice_popup.cpp
         src/app/settings_dialog.cpp
         src/app/config.cpp
         res/app.rc)
@@ -94,6 +98,13 @@ if(WIN32)
                        tests/tools/fake_ocr.cpp)
         target_link_libraries(GW2ChatTranslator_fakes PRIVATE gct_win shell32 comctl32)
         list(APPEND GCT_APP_TARGETS GW2ChatTranslator_fakes)
+        # Measures text recognition on real chat pictures (local\bench, never committed).
+        add_executable(ocr_bench tests/tools/ocr_bench.cpp src/win/ocr.cpp)
+        target_link_libraries(ocr_bench PRIVATE gct_win windowscodecs runtimeobject)
+        if(NOT MSVC)
+            target_link_options(ocr_bench PRIVATE -municode)
+        endif()
+        list(APPEND GCT_APP_TARGETS ocr_bench)
     endif()
 
     foreach(t gct_core gct_win ${GCT_APP_TARGETS})

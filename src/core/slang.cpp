@@ -37,6 +37,28 @@ const wchar_t* const kSpellOnly[] = {
     L"sigil", L"sigils", L"infusion", L"infusionen", L"karma", L"hp", L"stats", L"build", L"builds",
 };
 
+const wchar_t* const kStarter[] = {
+    // content
+    L"LFG", L"LFM", L"Tequatl", L"Fraktal", L"Fraktale", L"Fractal", L"Fractals", L"Dungeon", L"Raid", L"Strike",
+    L"Meta", L"Worldboss", L"Event", L"Champion", L"Achievement", L"Erfolg", L"Dailies", L"Weekly", L"Commander",
+    L"Kommandeur", L"Squad", L"Trupp", L"Gruppe", L"Party", L"Guild", L"Gilde", L"Gildenhalle", L"Guild Hall",
+    // places
+    L"Lion's Arch", L"Löwenstein", L"Götterfels", L"Divinity's Reach", L"Rata Sum", L"Hoelbrak", L"Schwarzzitadelle",
+    L"Black Citadel", L"Waypoint", L"Wegmarke", L"Drachensturm", L"Dragonstorm", L"Drakkar", L"Silverwastes",
+    L"Silberwüste",
+    // combat
+    L"Quickness", L"Alacrity", L"Might", L"Boons", L"Healer", L"Heal", L"Tank", L"DPS", L"Condi", L"Revive",
+    L"Stack", L"Stacken", L"Breakbar", L"Wipe",
+    // items
+    L"Legendary", L"Legendär", L"Ascended", L"Aufgestiegen", L"Exotic", L"Exotisch", L"Mystic Forge",
+    L"Mystische Schmiede", L"Ectoplasm", L"Ektoplasma", L"Karma", L"Gold", L"Gems", L"Edelsteine", L"Infusion",
+    // mounts
+    L"Skyscale", L"Himmelsschuppe", L"Griffon", L"Greif", L"Raptor", L"Springer", L"Jackal", L"Schakal",
+    L"Beetle", L"Käfer", L"Warclaw", L"Kriegsklaue",
+    // chat
+    L"Danke", L"Thanks", L"Bitte", L"Please", L"Sorry", L"Gerne", L"Willkommen", L"Welcome",
+};
+
 WordSet Make(std::initializer_list<const wchar_t* const*> lists, std::initializer_list<size_t> sizes) {
     WordSet s;
     auto size = sizes.begin();
@@ -57,6 +79,11 @@ const WordSet& BuiltinKeepWords() {
 const WordSet& BuiltinSpellIgnore() {
     static const WordSet s = Make({kKeep, kSpellOnly}, {std::size(kKeep), std::size(kSpellOnly)});
     return s;
+}
+
+const std::vector<std::wstring>& Gw2StarterWords() {
+    static const std::vector<std::wstring> v(std::begin(kStarter), std::end(kStarter));
+    return v;
 }
 
 }  // namespace gct
