@@ -1,0 +1,37 @@
+// suggestion_bar.hpp — the word bar above the input, like on a phone
+// keyboard: three slots with completions, corrections or the next word.
+// The highlighted slot is what Tab (or the space after a typo) takes.
+// Clicking a slot never takes the focus away from the input.
+#pragma once
+
+#include <windows.h>
+
+#include <functional>
+
+#include "app/spell_service.hpp"
+#include "app/theme.hpp"
+
+namespace gct {
+
+class SuggestionBar {
+public:
+    static bool Register(HINSTANCE inst);
+    bool Create(HWND parent, HINSTANCE inst, const Theme* theme, std::function<void(size_t)> onPick);
+    HWND Hwnd() const { return hwnd_; }
+    void Set(const WordSuggestions& s);
+    int PreferredHeight() const;
+
+private:
+    static LRESULT CALLBACK Proc(HWND h, UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT Handle(UINT msg, WPARAM wp, LPARAM lp);
+    void Paint();
+    int SlotAt(int x) const;
+
+    HWND hwnd_ = nullptr;
+    const Theme* theme_ = nullptr;
+    std::function<void(size_t)> onPick_;
+    WordSuggestions s_;
+    int hot_ = -1;
+};
+
+}  // namespace gct

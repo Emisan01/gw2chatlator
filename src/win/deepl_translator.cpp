@@ -1,4 +1,5 @@
 // deepl_translator.cpp — POST /v2/translate (single texts and batches).
+#include "core/i18n.hpp"
 #include "deepl_translator.hpp"
 
 #include "core/deepl_protocol.hpp"
@@ -52,14 +53,14 @@ public:
         const std::wstring code = L" (HTTP " + std::to_wstring(http.status) + L")";
         switch (http.status) {
             case 401:
-            case 403: return failAll(L"DeepL-Key ung\u00fcltig");
+            case 403: return failAll(Tr(L"DeepL key is invalid"));
             case 456:
                 for (auto& r : out) r.quotaExceeded = true;
-                return failAll(L"DeepL-Kontingent f\u00fcr diesen Monat aufgebraucht");
-            case 429: return failAll(L"DeepL: zu viele Anfragen \u2013 kurz warten");
-            case 400: return failAll(L"DeepL lehnt ab: " + msg);
+                return failAll(Tr(L"DeepL quota for this month is used up"));
+            case 429: return failAll(Tr(L"DeepL: too many requests – wait a moment"));
+            case 400: return failAll(TrF(L"DeepL refused: {1}", {msg}));
             default:
-                return failAll(http.status >= 500 ? L"DeepL gerade gest\u00f6rt" + code : L"DeepL: " + msg + code);
+                return failAll(http.status >= 500 ? Tr(L"DeepL is having problems") + code : L"DeepL: " + msg + code);
         }
     }
 

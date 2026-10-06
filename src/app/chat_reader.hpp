@@ -1,8 +1,8 @@
 // chat_reader.hpp — reads the GW2 chat panel from the screen.
 //
 // Worker thread: grab the area (DXGI / GDI) -> skip if unchanged -> enlarge
-// and invert -> Windows OCR -> lines with their text colour -> post a
-// snapshot to the window. Nothing here touches the game process; it only
+// and invert -> OCR (Tesseract when installed, else Windows' own) -> lines
+// with their text colours -> post a snapshot to the window. Nothing here touches the game process; it only
 // looks at pixels that are on the screen anyway.
 #pragma once
 
@@ -21,9 +21,13 @@ namespace gct {
 
 struct ReaderOptions {
     int intervalMs = 900;
-    std::wstring ocrLanguage;  // empty = Windows languages
+    int ocrChoice = 0;            // 0 auto, 1 tesseract, 2 windows (see OcrChoice)
+    std::wstring tesseractPath;   // empty = search
+    std::string tesseractLangs;   // empty = automatic
+    bool readChinese = false;
+    std::wstring ocrLanguage;     // Windows OCR: empty = Windows languages
     int scale = 2;
-    std::wstring captureDir;   // diagnostics target
+    std::wstring captureDir;      // diagnostics target
 };
 
 // Posted as LPARAM of the notify message; the receiver deletes it.
@@ -31,7 +35,8 @@ struct ReaderSnapshot {
     std::vector<OcrLine> lines;  // top to bottom
     std::wstring error;          // OCR unavailable etc. (lines empty)
     std::wstring method;         // "DXGI" / "GDI"
-    std::wstring language;       // OCR language tag
+    std::wstring engine;         // "Tesseract" / "Windows OCR"
+    std::wstring language;       // OCR language tag(s)
     int milliseconds = 0;        // capture + OCR time
     ULONGLONG captureTick = 0;   // GetTickCount64() when the picture was taken
 };

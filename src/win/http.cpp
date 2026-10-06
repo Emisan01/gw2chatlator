@@ -1,4 +1,5 @@
 // http.cpp
+#include "core/i18n.hpp"
 #include "http.hpp"
 
 #include <windows.h>
@@ -23,10 +24,10 @@ std::once_flag g_sessionOnce;
 HINTERNET Session() {
     std::call_once(g_sessionOnce, [] {
         // AUTOMATIC_PROXY (Windows 8.1+) honours system/PAC proxies; fall back for older systems.
-        g_session = WinHttpOpen(L"GW2ChatTranslator/0.3", WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,
+        g_session = WinHttpOpen(L"GW2ChatTranslator/0.5", WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,
                                 WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
         if (!g_session)
-            g_session = WinHttpOpen(L"GW2ChatTranslator/0.3", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+            g_session = WinHttpOpen(L"GW2ChatTranslator/0.5", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
                                     WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
         if (g_session) WinHttpSetTimeouts(g_session, 5000, 5000, 10000, 15000);
     });
@@ -42,11 +43,11 @@ struct Handle {
 
 std::wstring TransportError(DWORD code) {
     switch (code) {
-        case ERROR_WINHTTP_TIMEOUT: return L"Zeit\u00fcberschreitung \u2013 Server antwortet nicht";
-        case ERROR_WINHTTP_NAME_NOT_RESOLVED: return L"Server nicht gefunden \u2013 Internetverbindung?";
-        case ERROR_WINHTTP_CANNOT_CONNECT: return L"Keine Verbindung zum Server";
-        case ERROR_WINHTTP_SECURE_FAILURE: return L"TLS-Fehler bei der Verbindung";
-        default: return L"Netzwerkfehler (" + std::to_wstring(code) + L")";
+        case ERROR_WINHTTP_TIMEOUT: return Tr(L"Timeout – the server does not answer");
+        case ERROR_WINHTTP_NAME_NOT_RESOLVED: return Tr(L"Server not found – internet connection?");
+        case ERROR_WINHTTP_CANNOT_CONNECT: return Tr(L"No connection to the server");
+        case ERROR_WINHTTP_SECURE_FAILURE: return Tr(L"TLS error on the connection");
+        default: return TrF(L"Network error ({1})", {std::to_wstring(code)});
     }
 }
 
@@ -99,7 +100,7 @@ HttpResponse Request(const wchar_t* method, const std::wstring& host, INTERNET_P
         if (!WinHttpQueryDataAvailable(request.h, &avail)) return fail(GetLastError());
         if (avail == 0) break;
         if (r.body.size() + avail > maxBytes) {
-            r.error = L"Antwort zu gro\u00df";
+            r.error = Tr(L"Answer too large");
             return r;
         }
         const size_t old = r.body.size();
@@ -134,7 +135,7 @@ HttpResponse HttpRequestUrl(const wchar_t* method, const std::wstring& url, cons
     uc.dwExtraInfoLength = 2048;
     if (!WinHttpCrackUrl(url.c_str(), 0, 0, &uc)) {
         HttpResponse r;
-        r.error = L"Ung\u00fcltige Adresse: " + url;
+        r.error = TrF(L"Invalid address: {1}", {url});
         return r;
     }
     const bool secure = uc.nScheme == INTERNET_SCHEME_HTTPS;

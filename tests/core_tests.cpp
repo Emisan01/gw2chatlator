@@ -1,6 +1,9 @@
 // Portable unit tests for src/core — no Windows needed:
 //   g++ -std=c++17 -I src tests/core_tests.cpp src/core/*.cpp -o core_tests && ./core_tests
 #include <cstdio>
+#include <fstream>
+#include <set>
+#include <sstream>
 #include <string>
 
 #include "core/chat_line.hpp"
@@ -14,6 +17,12 @@
 #include "core/mumble.hpp"
 #include "core/mymemory_protocol.hpp"
 #include "core/glossary.hpp"
+#include "core/gw2_install.hpp"
+#include "core/housekeeping.hpp"
+#include "core/i18n.hpp"
+#include "core/languagetool_protocol.hpp"
+#include "core/tesseract_tsv.hpp"
+#include "core/word_model.hpp"
 #include "core/hotkey.hpp"
 #include "core/json.hpp"
 #include "core/langs.hpp"
@@ -354,9 +363,9 @@ static void TestImage() {
 
 static void TestGw2Text() {
     CHECK(UnsupportedScript(L"Hallöchen ça va? Łódź").empty());
-    CHECK(UnsupportedScript(L"hi مرحبا") == L"Arabisch");
-    CHECK(UnsupportedScript(L"你好") == L"Chinesisch");
-    CHECK(UnsupportedScript(L"Привет") == L"Kyrillisch");
+    CHECK(UnsupportedScript(L"hi مرحبا") == L"Arabic");
+    CHECK(UnsupportedScript(L"你好") == L"Chinese");
+    CHECK(UnsupportedScript(L"Привет") == L"Cyrillic");
     CHECK(IsRtlText(L"  مرحبا hi"));
     CHECK(!IsRtlText(L"hi مرحبا"));
 
@@ -490,7 +499,7 @@ static void TestTabs() {
     odd.name = L"a|b";
     odd.channels = ChannelBit(Channel::Map);
     CHECK(SerializeTab(odd) == L"a b|map");
-    CHECK(TabPresets().size() == 6 && TabPresets()[1].name == L"Gruppe");
+    CHECK(TabPresets().size() == 6 && TabPresets()[1].name == L"Party");
 }
 
 static void TestAsciiEscape() {
@@ -504,6 +513,260 @@ static void TestAsciiEscape() {
     CHECK(AsciiUnescape(L"C:\\temp \\uZZZZ") == L"C:\\temp \\uZZZZ");  // stray backslashes stay
     const std::wstring emoji = FromUtf8("x\xF0\x9F\x98\x80y");      // outside the BMP
     CHECK(AsciiUnescape(AsciiEscape(emoji)) == emoji);
+}
+
+// ---------------------------------------------------------------------------
+static void TestI18n() {
+    SetUiLang(UiLang::En);
+    CHECK(Tr(L"Map") == L"Map");
+    CHECK(TrF(L"Sent {1} of {2}", {L"1", L"3"}) == L"Sent 1 of 3");
+    CHECK(FormatArgs(L"{1}{1}{3}", {L"a"}) == L"aa{3}");
+    CHECK(UiLangFromCode(L"de-AT") == UiLang::De && UiLangFromCode(L"AR") == UiLang::Ar);
+    CHECK(UiLangFromCode(L"fr", UiLang::En) == UiLang::En);
+    SetUiLang(UiLang::De);
+    CHECK(Tr(L"Map") == L"Karte");
+    CHECK(Tr(L"no such text, falls back") == L"no such text, falls back");
+    SetUiLang(UiLang::Ar);
+    CHECK(UiRtl());
+    CHECK(Tr(L"Map") != L"Map");
+    SetUiLang(UiLang::En);
+    CHECK(!UiRtl());
+    CHECK(TranslationCount(UiLang::De) > 50 && TranslationCount(UiLang::Ar) > 50);
+}
+
+static void TestWordModel() {
+    CHECK(EditDistance(L"kommt", L"komtm", 2) == 1);   // swap
+    CHECK(EditDistance(L"hallo", L"halo", 2) == 1);
+    CHECK(EditDistance(L"abc", L"xyz", 1) == 2);        // limit + 1
+    CHECK(MatchCase(L"Hallo", L"hello") == L"Hello");
+    CHECK(MatchCase(L"HALLO", L"hello") == L"HELLO");
+    CHECK(MatchCase(L"hallo", L"Lion's") == L"Lion's");
+
+    WordModel m;
+    for (int i = 0; i < 3; ++i) m.Learn(L"Wir gehen zum Tequatl, kommt jemand mit?");
+    m.Learn(L"/g wir brauchen noch Leute");
+    CHECK(m.Knows(L"tequatl") && m.Knows(L"kommt"));
+    CHECK(m.Count(L"g") == 0);                         // command prefix not learned
+    CHECK(m.Count(L"wir") >= 4);
+    auto c = m.Complete(L"Teq", L"zum", 3);
+    CHECK(!c.empty() && c[0] == L"Tequatl");
+    auto n = m.Next(L"kommt", 3);
+    CHECK(!n.empty() && n[0] == L"jemand");
+    auto near = m.Near(L"komtm", 3);
+    CHECK(!near.empty() && near[0] == L"kommt");
+    // First word of a message keeps the mid-sentence form.
+    m.Learn(L"Lion's Arch ist voll");
+    m.Learn(L"in Lion's Arch");
+    CHECK(m.Complete(L"lio", L"", 1).size() == 1 && m.Complete(L"lio", L"", 1)[0] == L"Lion's");
+
+    // Phone-style correction.
+    CHECK(ChooseCorrection(L"komtm", {L"kommt", L"komm"}, m) == L"kommt");
+    CHECK(ChooseCorrection(L"Komtm", {}, m) == L"Kommt");
+    CHECK(ChooseCorrection(L"LFG", {L"LG"}, m).empty());          // all caps
+    CHECK(ChooseCorrection(L"dsa", {L"das"}, m).empty());         // too short
+    CHECK(ChooseCorrection(L"kommt", {L"komm"}, m).empty());      // a word you use
+    CHECK(ChooseCorrection(L"fraktal", {L"Fraktal"}, m).empty()); // same word
+    CHECK(ChooseCorrection(L"hause", {L"Haus mit"}, m).empty());  // no multi-word
+    CHECK(ChooseCorrection(L"wollte", {L"sollte"}, m).empty());   // other first letter
+    CHECK(ChooseCorrection(L"Tequalt", {}, m) == L"Tequatl");
+
+    const std::string saved = m.Serialize();
+    WordModel back;
+    back.Parse(saved);
+    CHECK(back.Size() == m.Size() && back.PairCount() == m.PairCount());
+    CHECK(back.Count(L"kommt") == m.Count(L"kommt"));
+    CHECK(back.Complete(L"Teq", L"", 1).size() == 1);
+
+    WordModel big;  // pruning keeps the size bounded
+    for (size_t i = 0; i < WordModel::kMaxWords + 50; ++i) big.AddWord(L"wort" + std::wstring(1, L'a' + i % 26) + std::to_wstring(i), 1);
+    CHECK(big.Size() <= WordModel::kMaxWords);
+}
+
+static void TestTesseract() {
+    const std::string tsv =
+        "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"
+        "1\t1\t0\t0\t0\t0\t0\t0\t600\t200\t-1\t\n"
+        "4\t1\t1\t1\t1\t0\t10\t10\t300\t20\t-1\t\n"
+        "5\t1\t1\t1\t1\t1\t10\t10\t60\t20\t95.5\t[19:17]\n"
+        "5\t1\t1\t1\t1\t2\t80\t10\t60\t20\t91.0\tEmi:\n"
+        "5\t1\t1\t1\t1\t3\t150\t10\t60\t20\t12.0\tHallo\n"
+        "5\t1\t1\t1\t2\t1\t10\t40\t60\t20\t5.0\t~~\n"
+        "5\t1\t2\t1\t1\t1\t10\t70\t60\t20\t88.0\tZweite\n"
+        "5\t1\t2\t1\t1\t2\t80\t70\t60\t20\t87.0\tZeile\n";
+    const auto lines = ParseTesseractTsv(tsv, 30);
+    CHECK(lines.size() == 2);
+    if (lines.size() == 2) {
+        CHECK(lines[0].text == L"[19:17] Emi: Hallo");
+        CHECK(lines[0].words.size() == 3 && lines[0].words[1].rect.x == 80);
+        CHECK(lines[1].text == L"Zweite Zeile");
+    }
+    CHECK(TesseractModel(L"DE") == "deu" && TesseractModel(L"EN-GB") == "eng" && TesseractModel(L"ZH-HANS") == "chi_sim");
+    CHECK(TesseractModel(L"ZH-HANT") == "chi_tra" && TesseractModel(L"PT-BR") == "por" && TesseractModel(L"XX").empty());
+    const std::vector<std::string> installed = {"eng", "deu", "osd", "chi_sim", "fra"};
+    CHECK(ChooseTesseractLangs("", installed, false) == "eng+deu+fra");
+    CHECK(ChooseTesseractLangs("", installed, true) == "eng+deu+fra+chi_sim");
+    CHECK(ChooseTesseractLangs("deu+spa", installed, false) == "deu");
+    CHECK(ChooseTesseractLangs("", {"osd", "jpn"}, false) == "jpn");
+    Image img;
+    img.width = 2;
+    img.height = 1;
+    img.bgra = {255, 255, 255, 255, 0, 0, 0, 255};
+    const std::string pgm = EncodePgm(img);
+    CHECK(pgm.rfind("P5\n2 1\n255\n", 0) == 0 && pgm.size() == 11 + 2);
+    CHECK(static_cast<unsigned char>(pgm[11]) >= 254 && pgm[12] == 0);
+}
+
+static void TestLanguageTool() {
+    CHECK(LanguageToolLang(L"DE") == L"de-DE" && LanguageToolLang(L"en-GB") == L"en-GB" && LanguageToolLang(L"") == L"auto");
+    CHECK(LanguageToolLang(L"AR") == L"ar" && LanguageToolLang(L"ZH-HANS") == L"zh-CN" && LanguageToolLang(L"fr_FR") == L"fr-FR");
+    const std::string form = BuildLanguageToolForm(L"Ich komme morgn", L"DE", L"");
+    CHECK(form.find("text=Ich%20komme%20morgn") != std::string::npos || form.find("text=Ich+komme+morgn") != std::string::npos);
+    CHECK(form.find("language=de-DE") != std::string::npos);
+    const std::wstring text = L"Ich komme morgn \U0001F600 dann";
+    const std::string body = R"({"software":{},"language":{"code":"de-DE"},"matches":[
+        {"message":"Möglicher Tippfehler","shortMessage":"Tippfehler","replacements":[{"value":"morgen"},{"value":"Morgen"}],
+         "offset":10,"length":5,"rule":{"id":"GERMAN_SPELLER_RULE","issueType":"misspelling"}},
+        {"message":"x","replacements":[],"offset":19,"length":4,"rule":{"id":"R","issueType":"grammar"}}]})";
+    const LtResult r = ParseLanguageToolResponse(body, text);
+    CHECK(r.ok && r.language == L"de-DE" && r.matches.size() == 2);
+    if (r.matches.size() == 2) {
+        CHECK(text.substr(r.matches[0].span.start, r.matches[0].span.length) == L"morgn");
+        CHECK(r.matches[0].Spelling() && r.matches[0].replacements.size() == 2 && r.matches[0].replacements[0] == L"morgen");
+        CHECK(text.substr(r.matches[1].span.start, r.matches[1].span.length) == L"dann");  // after an emoji (2 UTF-16 units)
+    }
+    CHECK(!ParseLanguageToolResponse("Too many requests", text).ok);
+    CHECK(NormalizeLanguageToolUrl(L"") == L"https://api.languagetool.org/v2/check");
+    CHECK(NormalizeLanguageToolUrl(L"http://localhost:8081/") == L"http://localhost:8081/v2/check");
+    CHECK(NormalizeLanguageToolUrl(L"http://x/v2") == L"http://x/v2/check");
+    RateLimiter rl(2);
+    CHECK(rl.Allow(0) && rl.Allow(1000) && !rl.Allow(2000) && rl.Allow(61000));
+}
+
+static void TestOcrTimestamps() {
+    struct Case {
+        const wchar_t* line;
+        const wchar_t* rest;  // what remains after the timestamp, nullptr = no timestamp
+    };
+    const Case cases[] = {
+        {L"[19:17] Emi: hi", L"Emi: hi"},
+        {L"C9;19J Krypts hecken etwas", L"Krypts hecken etwas"},
+        {L"C920J entdeckt! Modr", L"entdeckt! Modr"},
+        {L"[92 9J Es kommen Berichte", L"Es kommen Berichte"},
+        {L"19:35) entdeckt! Der", L"entdeckt! Der"},
+        {L"19:37 JIM) Dr Richmond: x", L"IM) Dr Richmond: x"},
+        {L"1927 J Bob: hey", L"Bob: hey"},
+        {L"t9\u202220J Text", L"Text"},
+        {L"C9;f7J Text", L"Text"},
+        {L"19:42 JCSJ Zapp: Thanks!", L"CSJ Zapp: Thanks!"},
+        {L"1234 Gold fehlen noch", nullptr},
+        {L"Jemand da?", nullptr},
+        {L"C4 ist kaputt", nullptr},
+        {L"12 Leute fehlen", nullptr},
+    };
+    for (const Case& c : cases) {
+        const std::wstring s = c.line;
+        const size_t n = OcrTimestampLength(s);
+        if (!c.rest) {
+            CHECK(n == 0);
+            if (n != 0) std::printf("   unexpected timestamp in: %ls\n", c.line);
+        } else {
+            CHECK(n > 0 && Trim(s.substr(n)) == c.rest);
+            if (!(n > 0 && Trim(s.substr(n)) == c.rest)) std::printf("   timestamp case: %ls -> %zu\n", c.line, n);
+        }
+    }
+    Channel ch = Channel::Unknown;
+    CHECK(FuzzyTagLength(L"CSJ Zapp", &ch) == 3 && ch == Channel::Say);
+    CHECK(FuzzyTagLength(L"IM) Dr", &ch) == 3 && ch == Channel::Map);
+    CHECK(FuzzyTagLength(L"[Sagen) Bob: x", &ch) == 7 && ch == Channel::Say);
+    CHECK(FuzzyTagLength(L"CKontakteJ Emi ist online", &ch) == 10 && ch == Channel::System);
+    CHECK(FuzzyTagLength(L"[Gilde] Carl: x", &ch) == 7 && ch == Channel::Guild);
+    CHECK(FuzzyTagLength(L"Couch: x", &ch) == 0);
+    auto m = ParseChatLine(L"19:42 JCSJ Zapp The Nameless: Thanks!");
+    CHECK(m.stamped && m.speaker == L"Zapp The Nameless" && m.text == L"Thanks!");
+    m = ParseChatLine(L"[Sagen]");
+    CHECK(m.tagOnly);
+    m = ParseChatLine(L"C9;19J Krypts hecken etwas Gro\u00dfes");
+    CHECK(m.stamped && m.speaker.empty() && m.text == L"Krypts hecken etwas Gro\u00dfes");
+}
+
+static std::vector<OcrLine> LoadCapture(const char* path) {
+    std::vector<OcrLine> out;
+    std::ifstream f(path, std::ios::binary);
+    std::string line;
+    while (std::getline(f, line)) {
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (line.empty() || line[0] == '#') continue;
+        // "f6f93a | 95 | 18 | text"
+        std::vector<std::string> parts;
+        size_t s = 0;
+        for (int i = 0; i < 3; ++i) {
+            size_t bar = line.find(" | ", s);
+            if (bar == std::string::npos) break;
+            parts.push_back(line.substr(s, bar - s));
+            s = bar + 3;
+        }
+        if (parts.size() != 3) continue;
+        OcrLine l;
+        RgbFromHex(FromUtf8(parts[0]), l.color);
+        l.top = std::atoi(parts[1].c_str());
+        l.height = std::atoi(parts[2].c_str());
+        l.text = FromUtf8(line.substr(s));
+        out.push_back(l);
+    }
+    return out;
+}
+
+static void TestRealCapture() {
+    // A real capture of the German client read by Windows OCR (lots of errors).
+    const auto lines = LoadCapture("tests/data/real_capture_win_ocr.txt");
+    CHECK(lines.size() == 17);
+    const auto msgs = BuildMessages(lines, DefaultChannelColors());
+    bool tabBar = false, inputLine = false, zapp = false, system = false;
+    for (const ChatMessage& m : msgs) {
+        if (m.text.find(L"cbt") != std::wstring::npos || m.text.find(L"Febt") != std::wstring::npos) tabBar = true;
+        if (m.text.find(L"CSA T U") != std::wstring::npos) inputLine = true;
+        if (m.speaker == L"Zapp The Nameless" && m.text == L"Thanks!") zapp = true;
+        if (m.channel == Channel::System && m.text.find(L"Krypts") != std::wstring::npos &&
+            m.text.find(L"Konvergenz") != std::wstring::npos)
+            system = true;  // the wrapped yellow notice is one message
+    }
+    CHECK(!tabBar);
+    CHECK(zapp);
+    CHECK(system);
+    (void)inputLine;
+    for (const ChatMessage& m : msgs) CHECK(!m.text.empty());
+}
+
+static void TestGw2Install() {
+    auto libs = ParseSteamLibraryPaths("\"libraryfolders\"\n{\n\t\"0\"\n\t{\n\t\t\"path\"\t\t\"D:\\\\SteamLibrary\"\n\t}\n}\n");
+    CHECK(libs.size() == 1 && libs[0] == L"D:\\SteamLibrary");
+    CHECK(GameDirFromRegistryValue(L"\"C:\\Games\\GW2\\Gw2-64.exe\" -maploadinfo") == L"C:\\Games\\GW2");
+    CHECK(InstallDirFor(L"C:\\GW2") == L"C:\\GW2\\addons\\GW2ChatTranslator");
+    std::set<std::wstring> files{L"d3d11.dll", L"addons\\Nexus", L"arcdps_unofficial_extras.dll"};
+    auto env = DetectAddons([&](const std::wstring& r) { return files.count(r) > 0; },
+                            [](const std::wstring&) { return std::wstring(L"Nexus"); });
+    CHECK(env.nexus && env.unofficialExtras && env.proxyDll && !env.arcdps);
+    CHECK(HasSwitch(L"\"x.exe\" --wait-for-gw2", L"--wait-for-gw2") && !HasSwitch(L"--wait-for-gw2x", L"--wait-for-gw2"));
+}
+
+static void TestHousekeeping() {
+    std::vector<FileEntry> f = {{L"capture_00.txt", 1000, 100}, {L"capture_00_raw.bmp", 5000, 100},
+                                {L"capture_01.txt", 1000, 200}, {L"keep.ini", 50, 1}, {L"x.tmp", 10, 1}};
+    auto del = SelectForCleanup(f, {2, 0, 0}, 300, IsCaptureFile);
+    CHECK(del.size() == 1 && del[0] == L"capture_00.txt");
+    del = SelectForCleanup(f, {0, 0, 150}, 300, IsStaleTempFile);
+    CHECK(del.size() == 1 && del[0] == L"x.tmp");
+}
+
+static void TestModelList() {
+    auto a = ParseModelList(R"({"object":"list","data":[{"id":"qwen2.5:7b"},{"id":"llama3.1:8b"}]})");
+    CHECK(a.size() == 2 && a[0] == L"llama3.1:8b");
+    auto b = ParseModelList(R"({"models":[{"name":"qwen2.5:7b","size":1},{"name":"gemma2:9b"}]})");
+    CHECK(b.size() == 2 && b[0] == L"gemma2:9b");
+    CHECK(ParseModelList("nope").empty());
+    const std::string req = BuildLlmRequest({{{L"Hallo Lête", false}}}, L"English", L"m", true);
+    CHECK(req.find("recognition errors") != std::string::npos);
+    CHECK(BuildLlmRequest({{{L"x", false}}}, L"English", L"m").find("recognition errors") == std::string::npos);
 }
 
 int main() {
@@ -531,6 +794,15 @@ int main() {
     TestBatchQuota();
     TestTabs();
     TestAsciiEscape();
+    TestI18n();
+    TestWordModel();
+    TestTesseract();
+    TestLanguageTool();
+    TestOcrTimestamps();
+    TestRealCapture();
+    TestGw2Install();
+    TestHousekeeping();
+    TestModelList();
     std::printf("%d passed, %d failed\n", g_pass, g_fail);
     return g_fail == 0 ? 0 : 1;
 }

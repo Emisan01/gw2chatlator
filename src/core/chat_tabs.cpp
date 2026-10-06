@@ -1,6 +1,7 @@
 // chat_tabs.cpp
 #include "chat_tabs.hpp"
 
+#include "i18n.hpp"
 #include "text.hpp"
 
 namespace gct {
@@ -21,7 +22,7 @@ constexpr ChannelMask kSendable = ChannelBit(Channel::Say) | ChannelBit(Channel:
                                   ChannelBit(Channel::Squad) | ChannelBit(Channel::Team) |
                                   ChannelBit(Channel::Guild) | ChannelBit(Channel::Whisper);
 
-ChatTab Tab(const wchar_t* name, std::initializer_list<Channel> channels) {
+ChatTab Tab(const std::wstring& name, std::initializer_list<Channel> channels) {
     ChatTab t;
     t.name = name;
     for (Channel c : channels) t.channels |= ChannelBit(c);
@@ -40,24 +41,21 @@ std::vector<ChatTab> DefaultTabs() {
     ChatTab all;
     all.name = L"Chat";
     all.channels = AllChannels();
-    return {all, Tab(L"Fl\u00fcstern", {Channel::Whisper})};
+    return {all, Tab(Tr(L"Whisper"), {Channel::Whisper})};
 }
 
-const std::vector<ChatTab>& TabPresets() {
-    static const std::vector<ChatTab> presets = [] {
-        ChatTab all;
-        all.name = L"Alles";
-        all.channels = AllChannels();
-        return std::vector<ChatTab>{
-            all,
-            Tab(L"Gruppe", {Channel::Party, Channel::Squad}),
-            Tab(L"Gilde", {Channel::Guild}),
-            Tab(L"Karte", {Channel::Map, Channel::Say}),
-            Tab(L"WvW", {Channel::Team, Channel::Squad}),
-            Tab(L"Fl\u00fcstern", {Channel::Whisper}),
-        };
-    }();
-    return presets;
+std::vector<ChatTab> TabPresets() {
+    ChatTab all;
+    all.name = Tr(L"All");
+    all.channels = AllChannels();
+    return {
+        all,
+        Tab(Tr(L"Party"), {Channel::Party, Channel::Squad}),
+        Tab(Tr(L"Guild"), {Channel::Guild}),
+        Tab(Tr(L"Map"), {Channel::Map, Channel::Say}),
+        Tab(L"WvW", {Channel::Team, Channel::Squad}),
+        Tab(Tr(L"Whisper"), {Channel::Whisper}),
+    };
 }
 
 const std::vector<Channel>& TabChannels() {
@@ -69,9 +67,9 @@ const std::vector<Channel>& TabChannels() {
     return channels;
 }
 
-const wchar_t* TabChannelLabel(Channel c) {
-    if (c == Channel::System) return L"Systemzeilen";
-    if (c == Channel::Unknown) return L"Sonstige (Farbe unbekannt)";
+std::wstring TabChannelLabel(Channel c) {
+    if (c == Channel::System) return Tr(L"System lines");
+    if (c == Channel::Unknown) return Tr(L"Other (unknown colour)");
     return ChannelLabel(c);
 }
 

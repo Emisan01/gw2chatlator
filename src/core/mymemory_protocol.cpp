@@ -1,4 +1,5 @@
 // mymemory_protocol.cpp
+#include "i18n.hpp"
 #include "mymemory_protocol.hpp"
 
 #include <cstdlib>
@@ -49,7 +50,7 @@ MyMemoryParsed ParseMyMemoryResponse(const std::string& body) {
     MyMemoryParsed r;
     JsonValue root;
     if (!ParseJson(body, root) || !root.IsObject()) {
-        r.error = L"Antwort von MyMemory nicht lesbar";
+        r.error = Tr(L"Answer from MyMemory not readable");
         return r;
     }
     int status = 0;
@@ -64,11 +65,11 @@ MyMemoryParsed ParseMyMemoryResponse(const std::string& body) {
 
     if (root.GetBool("quotaFinished") || status == 429 || warning) {
         r.quotaExceeded = true;
-        r.error = L"Tageskontingent von MyMemory aufgebraucht";
+        r.error = Tr(L"MyMemory daily quota is used up");
         return r;
     }
     if (status != 200 || text.empty()) {
-        r.error = L"MyMemory: " + (details.empty() ? L"Fehler " + std::to_wstring(status) : details);
+        r.error = L"MyMemory: " + (details.empty() ? TrF(L"error {1}", {std::to_wstring(status)}) : details);
         return r;
     }
     r.ok = true;

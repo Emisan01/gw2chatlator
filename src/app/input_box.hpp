@@ -1,6 +1,7 @@
 // input_box.hpp — the message field: a multi-line EDIT with spell marks
-// (red squiggles), a suggestion menu on right-click and Windows'
-// autocorrection when a word is finished.
+// (red squiggles, blue for grammar), a suggestion menu on right-click,
+// autocorrection when a word is finished (Backspace right after it undoes
+// it) and the word bar (Tab takes the highlighted word).
 #pragma once
 
 #include <windows.h>
@@ -23,11 +24,21 @@ public:
         std::function<void()> onRomanize;         // Ctrl+U
         std::function<void()> onSwitchTab;        // Ctrl+Tab
         std::function<void(const std::wstring& from, const std::wstring& to)> onAutoCorrected;
+        std::function<void(const std::wstring& original)> onCorrectionUndone;
+        std::function<void(const WordSuggestions&)> onSuggestions;  // the word bar changed
         // Keyboard layout changed; locale name like "ar-SA".
         std::function<void(const std::wstring& locale)> onKeyboardLanguage;
     };
 
-    bool Create(HWND parent, HINSTANCE inst, const Theme* theme, SpellService* spell, bool autoCorrect, Callbacks cb);
+    bool Create(HWND parent, HINSTANCE inst, const Theme* theme, SpellService* spell, AutoCorrectMode mode,
+                bool suggestions, Callbacks cb);
+    void SetAutoCorrect(AutoCorrectMode mode) { mode_ = mode; }
+    void SetSuggestions(bool on);
+    // Puts the word of the bar into the text (slot 0..2).
+    void AcceptSuggestion(size_t index);
+    const WordSuggestions& CurrentSuggestions() const { return suggestions_; }
+    // Grammar marks from LanguageTool for exactly this text (dropped when the text changes).
+    void SetGrammarIssues(const std::wstring& forText, std::vector<SpellIssue> issues);
     HWND Hwnd() const { return hwnd_; }
 
     std::wstring Text() const;
@@ -61,19 +72,35 @@ private:
     bool ShowSpellMenu(LPARAM lp);
     void ReplaceRange(Span span, const std::wstring& text);
     void TryAutoCorrect();
+    bool UndoAutoCorrect();
     void DeletePreviousWord();
+    void UpdateSuggestions();
 
     static constexpr UINT_PTR kSpellTimer = 0x4743;
+    static constexpr UINT_PTR kSuggestTimer = 0x4744;
     static constexpr UINT kSpellDelayMs = 350;
+    static constexpr UINT kSuggestDelayMs = 35;
 
     HWND hwnd_ = nullptr;
     WNDPROC orig_ = nullptr;
     const Theme* theme_ = nullptr;
     SpellService* spell_ = nullptr;
-    bool autoCorrect_ = true;
+    AutoCorrectMode mode_ = AutoCorrectMode::Phone;
+    bool suggestOn_ = true;
     bool rtl_ = false;
     Callbacks cb_;
     std::vector<SpellIssue> issues_;
+    std::vector<SpellIssue> grammar_;
+    WordSuggestions suggestions_;
+    // The last autocorrection, for Backspace-undo: text after the fix.
+    struct Fix {
+        bool valid = false;
+        size_t start = 0;       // where the corrected word starts
+        std::wstring original;  // as typed
+        std::wstring corrected;
+        wchar_t boundary = 0;   // the character that finished the word
+    } lastFix_;
+    bool swallowBackspaceChar_ = false;
 };
 
 }  // namespace gct

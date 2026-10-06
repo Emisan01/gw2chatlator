@@ -25,7 +25,10 @@
 #include "app/config.hpp"
 #include "app/input_box.hpp"
 #include "app/preview_view.hpp"
+#include "app/settings_dialog.hpp"
 #include "app/spell_service.hpp"
+#include "app/suggestion_bar.hpp"
+#include "core/languagetool_protocol.hpp"
 #include "app/theme.hpp"
 #include "core/chat_stream.hpp"
 #include "core/glossary.hpp"
@@ -38,10 +41,15 @@ namespace gct {
 struct NamesMsg;
 struct TranslatedMsg;
 struct IncomingMsg;
+struct GrammarMsg;
 
 class MainWindow {
 public:
-    int Run(HINSTANCE inst);
+    // `cmdLine`: --wait-for-gw2 (autostart: hidden until GW2 runs),
+    // --mark-chat / --cover-chat (continue the setup after installing).
+    int Run(HINSTANCE inst, const std::wstring& cmdLine);
+    // After Run(): a command line to start (the installed copy), or empty.
+    const std::wstring& RestartCommand() const { return restartCommand_; }
 
 private:
     enum class Tone { Muted, Ok, Warn, Error };
@@ -51,6 +59,7 @@ private:
 
     // ---- setup
     void InitServices();
+    void CleanUpFiles();
     void ChooseEngine(bool announce);
     void CreateChildren();
     void StartReader();
@@ -93,6 +102,22 @@ private:
     void ShowWriteMenu();
     void ShowChannelMenu();
     void ShowMainMenu();
+    void SetUiLanguage(UiLang lang);
+    void SetSaveCaptures(bool on);
+    void RestartReader();
+
+    // ---- settings, setup, tray, grammar
+    std::wstring ConnectionStatus();
+    void OpenSettings(SettingsPage page);
+    void RunSetup();
+    void HandleDialogAction(const DialogResult& r);
+    void ApplySettings(const Config& next);
+    void AddTrayIcon();
+    void UpdateTrayTip();
+    void RemoveTrayIcon();
+    void ShowTrayMenu();
+    void StartGrammarCheck();
+    void OnGrammar(GrammarMsg* msg);
     void SetEngine(Engine e);
     void OnKeyboardLanguage(const std::wstring& locale);
     std::wstring ChannelChipText() const;
@@ -159,6 +184,7 @@ private:
     SpellService spell_;
     InputBox input_;
     PreviewView preview_;
+    SuggestionBar words_;
     ChatLogView log_;
     bool hotkeyOk_ = false;
     // Hidden from screen captures only while covering the chat area, so the
@@ -243,6 +269,15 @@ private:
     // self-read guard
     ULONGLONG selfReadTick_ = 0;
     int selfReadHits_ = 0;
+
+    // start / tray / misc
+    bool waitForGame_ = false;      // started by the autostart: hidden until GW2 runs
+    bool trayOk_ = false;
+    bool loadingNames_ = false;
+    std::wstring restartCommand_;
+    std::wstring lastOcrEngine_;
+    bool grammarInFlight_ = false;
+    RateLimiter grammarLimiter_{18};
 };
 
 }  // namespace gct

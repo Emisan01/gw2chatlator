@@ -1,4 +1,5 @@
 // gw2_api.cpp
+#include "core/i18n.hpp"
 #include "gw2_api.hpp"
 
 #include <cwchar>
@@ -43,7 +44,7 @@ std::wstring FetchCategory(const Category& c, const std::string& lang, NameTable
         if (http.status != 200) return L"GW2-API " + std::wstring(c.path) + L": HTTP " + std::to_wstring(http.status);
 
         JsonValue root;
-        if (!ParseJson(http.body, root) || !root.IsArray()) return L"GW2-API: Antwort nicht lesbar";
+        if (!ParseJson(http.body, root) || !root.IsArray()) return L"GW2 API: " + Tr(L"answer not readable");
         for (const JsonValue& item : root.arr) {
             if (c.eliteOnly && !item.GetBool("elite")) continue;
             const std::string id = IdToString(item.Get("id"));

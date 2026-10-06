@@ -3,6 +3,7 @@
 
 #include <cstdint>
 
+#include "i18n.hpp"
 #include "text.hpp"
 
 namespace gct {
@@ -15,12 +16,12 @@ struct ScriptRange {
 };
 
 const ScriptRange kScripts[] = {
-    {0x0370, 0x03FF, L"Griechisch"},   {0x0400, 0x052F, L"Kyrillisch"},   {0x0590, 0x05FF, L"Hebr\u00e4isch"},
-    {0x0600, 0x06FF, L"Arabisch"},     {0x0750, 0x077F, L"Arabisch"},     {0x08A0, 0x08FF, L"Arabisch"},
-    {0x0900, 0x097F, L"Devanagari"},   {0x0E00, 0x0E7F, L"Thai"},         {0x1100, 0x11FF, L"Koreanisch"},
-    {0x3040, 0x30FF, L"Japanisch"},    {0x3400, 0x4DBF, L"Chinesisch"},   {0x4E00, 0x9FFF, L"Chinesisch"},
-    {0xAC00, 0xD7AF, L"Koreanisch"},   {0xFB1D, 0xFB4F, L"Hebr\u00e4isch"}, {0xFB50, 0xFDFF, L"Arabisch"},
-    {0xFE70, 0xFEFF, L"Arabisch"},
+    {0x0370, 0x03FF, L"Greek"},   {0x0400, 0x052F, L"Cyrillic"},   {0x0590, 0x05FF, L"Hebrew"},
+    {0x0600, 0x06FF, L"Arabic"},     {0x0750, 0x077F, L"Arabic"},     {0x08A0, 0x08FF, L"Arabic"},
+    {0x0900, 0x097F, L"Devanagari"},   {0x0E00, 0x0E7F, L"Thai"},         {0x1100, 0x11FF, L"Korean"},
+    {0x3040, 0x30FF, L"Japanese"},    {0x3400, 0x4DBF, L"Chinese"},   {0x4E00, 0x9FFF, L"Chinese"},
+    {0xAC00, 0xD7AF, L"Korean"},   {0xFB1D, 0xFB4F, L"Hebrew"}, {0xFB50, 0xFDFF, L"Arabic"},
+    {0xFE70, 0xFEFF, L"Arabic"},
 };
 
 bool IsRtlChar(uint32_t c) {
@@ -42,7 +43,7 @@ std::wstring UnsupportedScript(const std::wstring& text) {
         const uint32_t c = static_cast<uint32_t>(ch);
         if (c < 0x0370) continue;  // Latin, Latin-1, Extended-A/B, IPA
         for (const ScriptRange& r : kScripts)
-            if (c >= r.from && c <= r.to) return r.name;
+            if (c >= r.from && c <= r.to) return Tr(r.name);
     }
     return {};
 }
