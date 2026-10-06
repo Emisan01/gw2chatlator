@@ -143,7 +143,8 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
 3. ✅ Tabs with channel sets, docking, cover the GW2 chat
 4. ✅ v0.5: English/German/Arabic UI, settings dialog, guided setup, installer + autostart (no hook),
    Tesseract, OCR-tolerant parsing, phone keyboard + learning, LanguageTool, temp-file hygiene
-5. Real-GW2 test round with Tesseract: tune `PrepareForOcr`, colours (`DefaultChannelColors`), tags
-6. Windows Graphics Capture of the GW2 window (sees the chat under any overlay)
+5. ✅ v0.5.1: Smart GW2 path resolution (folder/exe/shortcuts), non-blocking setup wizard when game OFF,
+   raid collapse mode (32 px bar with tabs/badges), optional focus transfer on game chat focus
+6. ✅ Windows Graphics Capture (WGC) of the GW2 window (DirectX backbuffer capture beneath overlays)
 7. Optional, off by default, user's decision: Nexus add-on that forwards unofficial-extras party/squad chat
    as exact text to the exe (named pipe). It lives in the game process — keep it a separate download.

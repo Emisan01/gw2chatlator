@@ -482,6 +482,13 @@ void MainWindow::Layout() {
     RECT rc;
     GetClientRect(hwnd_, &rc);
     const Metrics m = MetricsFor(theme_);
+    if (collapsed_) {
+        ShowWindow(log_.Hwnd(), SW_HIDE);
+        ShowWindow(preview_.Hwnd(), SW_HIDE);
+        ShowWindow(words_.Hwnd(), SW_HIDE);
+        ShowWindow(input_.Hwnd(), SW_HIDE);
+        return;
+    }
     const int w = std::max(10, static_cast<int>(rc.right) - 2 * m.pad);
     // Like the GW2 chat: the log takes the space; the preview appears while you type.
     const int previewH = previewVisible_ ? preview_.PreferredHeight() : 0;
@@ -493,12 +500,33 @@ void MainWindow::Layout() {
     const int logH = std::max(theme_.S(40), previewY - m.gap - m.head);
 
     MoveWindow(log_.Hwnd(), m.pad, m.head, w, logH, TRUE);
+    ShowWindow(log_.Hwnd(), SW_SHOW);
     MoveWindow(preview_.Hwnd(), m.pad, previewY, w, std::max(1, previewH), TRUE);
     ShowWindow(preview_.Hwnd(), previewVisible_ ? SW_SHOWNA : SW_HIDE);
     MoveWindow(words_.Hwnd(), m.pad, barY, w, std::max(1, barH), TRUE);
     ShowWindow(words_.Hwnd(), bar ? SW_SHOWNA : SW_HIDE);
     MoveWindow(input_.Hwnd(), m.pad, inputY, w, m.inputH, TRUE);
+    ShowWindow(input_.Hwnd(), SW_SHOW);
     input_.ApplyPadding();
+}
+
+void MainWindow::ToggleCollapse() {
+    collapsed_ = !collapsed_;
+    RECT r{};
+    GetWindowRect(hwnd_, &r);
+    const Metrics m = MetricsFor(theme_);
+    if (collapsed_) {
+        expandedHeight_ = r.bottom - r.top;
+        const int newH = m.head;
+        SetWindowPos(hwnd_, nullptr, r.left, r.bottom - newH, r.right - r.left, newH,
+                     SWP_NOZORDER | SWP_NOACTIVATE);
+    } else {
+        const int targetH = expandedHeight_ > m.head ? expandedHeight_ : theme_.S(320);
+        SetWindowPos(hwnd_, nullptr, r.left, r.bottom - targetH, r.right - r.left, targetH,
+                     SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+    Layout();
+    InvalidateRect(hwnd_, nullptr, TRUE);
 }
 
 void MainWindow::ApplyDpi(int dpi, const RECT* suggested) {
@@ -554,10 +582,12 @@ void MainWindow::Paint() {
     const Metrics m = MetricsFor(theme_);
     const Theme& t = theme_;
 
-    // ---- header: right side first (close, menu, reading language), tabs in the rest
+    // ---- header: right side first (close, collapse, menu, reading language), tabs in the rest
     closeRect_ = {rc.right - t.S(30), 0, rc.right, m.head};
     DrawLine(dc, L"\u00d7", closeRect_, Theme::kMuted, t.fontText, DT_CENTER);
-    menuRect_ = {closeRect_.left - t.S(28), 0, closeRect_.left, m.head};
+    collapseRect_ = {closeRect_.left - t.S(28), 0, closeRect_.left, m.head};
+    DrawLine(dc, collapsed_ ? L"\u25bc" : L"\u25b2", collapseRect_, collapsed_ ? Theme::kAccent : Theme::kMuted, t.fontSmall, DT_CENTER);
+    menuRect_ = {collapseRect_.left - t.S(28), 0, collapseRect_.left, m.head};
     DrawLine(dc, L"\u2261", menuRect_, Theme::kMuted, t.fontText, DT_CENTER);
     const LangInfo* rl = FindLanguage(readLang_);
     const std::wstring readName = rl ? rl->native : readLang_;
@@ -618,53 +648,58 @@ void MainWindow::Paint() {
         x = right + gap;
     }
 
-    // ---- footer: channel | send-as | counter | status
-    const int fy0 = rc.bottom - m.foot + t.S(4), fy1 = rc.bottom - t.S(4);
-    const Channel chipChannel = SendChannel();
-    channelRect_ = DrawChip(dc, t, m.pad, fy0, fy1, ChannelChipText(),
-                            ChannelColorRef(cfg_.palette, chipChannel, Theme::kText), false);
-    writeRect_ = DrawChip(dc, t, channelRect_.right + t.S(6), fy0, fy1, WriteChipText(),
-                          WriteOriginal() ? Theme::kMuted : Theme::kAccent, false);
-
-    std::wstring counter;
-    COLORREF counterColor = Theme::kMuted;
-    if (PreviewIsCurrent() && parts_.size() > 1) {
-        counter = TrF(L"{1} parts", {std::to_wstring(parts_.size())});
-        counterColor = Theme::kWarn;
+    // ---- footer: channel | send-as | counter | status (hidden when collapsed)
+    if (collapsed_) {
+        channelRect_ = {};
+        writeRect_ = {};
     } else {
-        const std::wstring line = PreviewIsCurrent() && !parts_.empty()
-                                      ? parts_[std::min(partIdx_, parts_.size() - 1)]
-                                      : ComposePrefix() + SanitizeChatText(input_.Text());
-        const size_t n = CodePointCount(line);
-        counter = std::to_wstring(n) + L"/" + std::to_wstring(cfg_.maxLength);
-        if (n > static_cast<size_t>(cfg_.maxLength)) counterColor = Theme::kWarn;
-    }
-    RECT fr{writeRect_.right + t.S(10), rc.bottom - m.foot, rc.right - m.pad, rc.bottom};
-    DrawLine(dc, counter, fr, counterColor, t.fontUi, DT_LEFT);
-    fr.left += TextWidth(dc, counter, t.fontUi) + t.S(10);
+        const int fy0 = rc.bottom - m.foot + t.S(4), fy1 = rc.bottom - t.S(4);
+        const Channel chipChannel = SendChannel();
+        channelRect_ = DrawChip(dc, t, m.pad, fy0, fy1, ChannelChipText(),
+                                ChannelColorRef(cfg_.palette, chipChannel, Theme::kText), false);
+        writeRect_ = DrawChip(dc, t, channelRect_.right + t.S(6), fy0, fy1, WriteChipText(),
+                              WriteOriginal() ? Theme::kMuted : Theme::kAccent, false);
 
-    std::wstring text = status_;
-    COLORREF color = Theme::kMuted;
-    switch (tone_) {
-        case Tone::Ok: color = Theme::kOk; break;
-        case Tone::Warn: color = Theme::kWarn; break;
-        case Tone::Error: color = Theme::kError; break;
-        default: break;
-    }
-    if (text.empty()) {
-        if (!hotkeyOk_) {
-            text = TrF(L"Hotkey \u201c{1}\u201d is taken \u2013 change it in the settings", {cfg_.hotkey});
-            color = Theme::kWarn;
-        } else if (readingActive_) {
-            text = Tr(L"\u25cf reading the chat");
-            color = Theme::kOk;
-        } else if (!gw2_) {
-            text = Tr(L"GW2 not found");
+        std::wstring counter;
+        COLORREF counterColor = Theme::kMuted;
+        if (PreviewIsCurrent() && parts_.size() > 1) {
+            counter = TrF(L"{1} parts", {std::to_wstring(parts_.size())});
+            counterColor = Theme::kWarn;
         } else {
-            text = cfg_.copyOnly ? Tr(L"Copy only \u00b7 Esc: back to the game") : Tr(L"Esc: back to the game");
+            const std::wstring line = PreviewIsCurrent() && !parts_.empty()
+                                          ? parts_[std::min(partIdx_, parts_.size() - 1)]
+                                          : ComposePrefix() + SanitizeChatText(input_.Text());
+            const size_t charCount = CodePointCount(line);
+            counter = std::to_wstring(charCount) + L"/" + std::to_wstring(cfg_.maxLength);
+            if (charCount > static_cast<size_t>(cfg_.maxLength)) counterColor = Theme::kWarn;
         }
+        RECT fr{writeRect_.right + t.S(10), rc.bottom - m.foot, rc.right - m.pad, rc.bottom};
+        DrawLine(dc, counter, fr, counterColor, t.fontUi, DT_LEFT);
+        fr.left += TextWidth(dc, counter, t.fontUi) + t.S(10);
+
+        std::wstring text = status_;
+        COLORREF color = Theme::kMuted;
+        switch (tone_) {
+            case Tone::Ok: color = Theme::kOk; break;
+            case Tone::Warn: color = Theme::kWarn; break;
+            case Tone::Error: color = Theme::kError; break;
+            default: break;
+        }
+        if (text.empty()) {
+            if (!hotkeyOk_) {
+                text = TrF(L"Hotkey \u201c{1}\u201d is taken \u2013 change it in the settings", {cfg_.hotkey});
+                color = Theme::kWarn;
+            } else if (readingActive_) {
+                text = Tr(L"\u25cf reading the chat");
+                color = Theme::kOk;
+            } else if (!gw2_) {
+                text = Tr(L"GW2 not found");
+            } else {
+                text = cfg_.copyOnly ? Tr(L"Copy only \u00b7 Esc: back to the game") : Tr(L"Esc: back to the game");
+            }
+        }
+        DrawLine(dc, text, fr, color, t.fontUi, DT_RIGHT | DT_END_ELLIPSIS | (IsRtlText(text) ? DT_RTLREADING : 0));
     }
-    DrawLine(dc, text, fr, color, t.fontUi, DT_RIGHT | DT_END_ELLIPSIS | (IsRtlText(text) ? DT_RTLREADING : 0));
 
     BitBlt(wdc, 0, 0, rc.right, rc.bottom, dc, 0, 0, SRCCOPY);
     SelectObject(dc, oldFont);
@@ -675,7 +710,7 @@ void MainWindow::Paint() {
 }
 
 bool MainWindow::IsClickable(POINT pt) const {
-    for (const RECT* r : {&readRect_, &menuRect_, &closeRect_, &channelRect_, &writeRect_})
+    for (const RECT* r : {&readRect_, &menuRect_, &collapseRect_, &closeRect_, &channelRect_, &writeRect_})
         if (PtInRect(r, pt)) return true;
     for (const RECT& r : tabRects_)
         if (PtInRect(&r, pt)) return true;
@@ -687,8 +722,15 @@ LRESULT MainWindow::HitTest(LPARAM lp) const {
     ScreenToClient(hwnd_, &pt);
     RECT rc;
     GetClientRect(hwnd_, &rc);
+    if (IsClickable(pt)) return HTCLIENT;
     const int b = theme_.S(6);
-    const bool left = pt.x < b, right = pt.x >= rc.right - b, top = pt.y < b, bottom = pt.y >= rc.bottom - b;
+    const bool left = pt.x < b, right = pt.x >= rc.right - b;
+    if (collapsed_) {
+        if (left) return HTLEFT;
+        if (right) return HTRIGHT;
+        return HTCAPTION;
+    }
+    const bool top = pt.y < b, bottom = pt.y >= rc.bottom - b;
     if (top && left) return HTTOPLEFT;
     if (top && right) return HTTOPRIGHT;
     if (bottom && left) return HTBOTTOMLEFT;
@@ -697,7 +739,6 @@ LRESULT MainWindow::HitTest(LPARAM lp) const {
     if (right) return HTRIGHT;
     if (top) return HTTOP;
     if (bottom) return HTBOTTOM;
-    if (IsClickable(pt)) return HTCLIENT;
     const Metrics m = MetricsFor(theme_);
     if (pt.y < m.head || pt.y >= rc.bottom - m.foot) return HTCAPTION;  // drag by header/footer
     return HTCLIENT;
@@ -705,6 +746,7 @@ LRESULT MainWindow::HitTest(LPARAM lp) const {
 
 void MainWindow::OnClick(POINT pt) {
     if (PtInRect(&closeRect_, pt)) PostMessageW(hwnd_, WM_CLOSE, 0, 0);
+    else if (PtInRect(&collapseRect_, pt)) ToggleCollapse();
     else if (PtInRect(&menuRect_, pt)) ShowMainMenu();
     else if (PtInRect(&readRect_, pt)) ShowReadMenu();
     else if (PtInRect(&channelRect_, pt)) ShowChannelMenu();
@@ -1748,6 +1790,7 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
         readerError_.clear();
         UpdateHint();
     }
+    lastCaptureMethod_ = s->method;
     if (!readerReported_ && BackgroundNoticeAllowed()) {
         readerReported_ = true;
         SetStatus(TrF(L"Chat found: {1} lines \u00b7 {2} \u00b7 {3} \u00b7 {4} ms",
@@ -2041,6 +2084,13 @@ void MainWindow::PollGame() {
     const bool ours = fgPid == GetCurrentProcessId();
     const bool gameFront = gw2_ && fg == gw2_;
 
+    // Optional focus transfer: when in-game chat box is opened, bring translator to front.
+    const bool textboxFocus = mumbleState_.TextboxHasFocus();
+    if (cfg_.focusOnGameChat && textboxFocus && !lastTextboxFocus_ && gw2_ && (gameFront || ours)) {
+        ShowOverlay();
+    }
+    lastTextboxFocus_ = textboxFocus;
+
     // Behave like part of the game: visible while GW2 or this window is in front.
     if (cfg_.followGame && gw2_ && !userHidden_) {
         if (gameFront || ours) {
@@ -2075,8 +2125,10 @@ void MainWindow::PollGame() {
             affinityUnsupported_ = true;
         }
     }
-    const bool blocked = overlap && !excludedFromCapture_;
+    // WGC captures the GW2 DirectX backbuffer directly beneath overlays.
+    const bool blocked = overlap && !excludedFromCapture_ && lastCaptureMethod_ != L"WGC";
     if (blocked) area = {};  // would read our own window
+    reader_.SetTarget(gw2_);
     reader_.SetArea(area);
     const bool active = !IsRectEmpty(&area) && reader_.Running();
     if (active != readingActive_ || blocked != overlapsChat_) {
@@ -2237,6 +2289,7 @@ void MainWindow::OnSelfRead() {
 void MainWindow::ShowOverlay() {
     userHidden_ = false;
     autoHidden_ = false;
+    if (collapsed_) ToggleCollapse();
     ShowWindow(hwnd_, SW_SHOW);
     Front(hwnd_);
     SetFocus(input_.Hwnd());
@@ -2293,6 +2346,7 @@ void MainWindow::OpenSettings(SettingsPage page) {
     Config edited = cfg_;
     DialogContext ctx;
     ctx.connectionStatus = [this] { return ConnectionStatus(); };
+    ctx.isGw2Running = [this] { return gw2_ != nullptr || mumbleState_.live; };
     const DialogResult r = ShowSettingsDialog(hwnd_, inst_, edited, ctx, page);
     if (r.saved) ApplySettings(edited);
     HandleDialogAction(r);
@@ -2302,6 +2356,7 @@ void MainWindow::RunSetup() {
     Config edited = cfg_;
     DialogContext ctx;
     ctx.connectionStatus = [this] { return ConnectionStatus(); };
+    ctx.isGw2Running = [this] { return gw2_ != nullptr || mumbleState_.live; };
     const DialogResult r = ShowSetupWizard(hwnd_, inst_, edited, ctx);
     if (r.saved) ApplySettings(edited);
     HandleDialogAction(r);
@@ -2410,7 +2465,7 @@ void MainWindow::AddTrayIcon() {
     nid.hIcon = LoadIconW(inst_, MAKEINTRESOURCEW(1));
     if (!nid.hIcon) nid.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
     const std::wstring tip = waitForGame_ ? Tr(L"GW2 Chat Translator – waits for GW2") : std::wstring(kTitle);
-    wcsncpy(nid.szTip, tip.c_str(), std::size(nid.szTip) - 1);
+    wcsncpy_s(nid.szTip, tip.c_str(), _TRUNCATE);
     trayOk_ = Shell_NotifyIconW(NIM_ADD, &nid) != FALSE;
 }
 
@@ -2422,7 +2477,7 @@ void MainWindow::UpdateTrayTip() {
     nid.uID = 1;
     nid.uFlags = NIF_TIP;
     const std::wstring tip = gw2_ ? std::wstring(kTitle) : Tr(L"GW2 Chat Translator – waits for GW2");
-    wcsncpy(nid.szTip, tip.c_str(), std::size(nid.szTip) - 1);
+    wcsncpy_s(nid.szTip, tip.c_str(), _TRUNCATE);
     Shell_NotifyIconW(NIM_MODIFY, &nid);
 }
 
@@ -2519,8 +2574,13 @@ LRESULT MainWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
         case WM_GETMINMAXINFO: {
             const Metrics m = MetricsFor(theme_);
             auto* mmi = reinterpret_cast<MINMAXINFO*>(lp);
-            const int previewH = theme_.textLineHeight * 2 + theme_.smallLineHeight * 2 + theme_.S(14);
-            mmi->ptMinTrackSize = {theme_.S(360), m.head + theme_.S(40) + previewH + m.inputH + 2 * m.gap + m.foot};
+            if (collapsed_) {
+                mmi->ptMinTrackSize = {theme_.S(240), m.head};
+                mmi->ptMaxTrackSize.y = m.head;
+            } else {
+                const int previewH = theme_.textLineHeight * 2 + theme_.smallLineHeight * 2 + theme_.S(14);
+                mmi->ptMinTrackSize = {theme_.S(360), m.head + theme_.S(40) + previewH + m.inputH + 2 * m.gap + m.foot};
+            }
             return 0;
         }
         case WM_NCHITTEST:

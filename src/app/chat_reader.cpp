@@ -53,6 +53,14 @@ void ChatReader::SetArea(const RECT& area) {
     cv_.notify_all();
 }
 
+void ChatReader::SetTarget(HWND hwnd) {
+    std::lock_guard<std::mutex> lk(mu_);
+    if (target_ == hwnd) return;
+    target_ = hwnd;
+    force_ = true;
+    cv_.notify_all();
+}
+
 void ChatReader::SetSaveCaptures(bool on) {
     std::lock_guard<std::mutex> lk(mu_);
     save_ = on;
@@ -97,18 +105,21 @@ void ChatReader::Loop() {
 
     for (;;) {
         RECT area;
+        HWND target;
         bool force, save;
         {
             std::unique_lock<std::mutex> lk(mu_);
             cv_.wait_for(lk, std::chrono::milliseconds(opt_.intervalMs), [this] { return stop_ || force_; });
             if (stop_) return;
             area = area_;
+            target = target_;
             force = force_;
             force_ = false;
             save = save_;
         }
         if (IsRectEmpty(&area)) continue;
 
+        capture.SetTarget(target);
         const ULONGLONG t0 = GetTickCount64();
         Image raw;
         if (!capture.Grab(area, raw)) continue;

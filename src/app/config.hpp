@@ -93,6 +93,7 @@ struct Config {
     int opacity = 238;
     int fontPercent = 100;
     bool followGame = true;
+    bool focusOnGameChat = false;  // focus input when in-game chat box gains focus
     // Docked: position kept relative to the bottom-left corner of the GW2
     // client area (physical pixels), follows the game window.
     bool dock = false;

@@ -24,6 +24,8 @@ struct DialogResult {
 struct DialogContext {
     // Live text for "Connections": GW2 window, MumbleLink, add-ons, OCR, translator.
     std::function<std::wstring()> connectionStatus;
+    // True when GW2 is currently running.
+    std::function<bool()> isGw2Running;
 };
 
 enum class SettingsPage { General = 0, Reading, Writing, Translator, Game };
