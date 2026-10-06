@@ -30,7 +30,7 @@ constexpr wchar_t kTesseractUrl[] = L"https://github.com/UB-Mannheim/tesseract/w
 enum : int {
     kIdTab = 100,
     // General
-    kUiLang, kReadLang, kWriteLangs, kFontSize, kOpacity, kHotkey,
+    kUiLang, kReadLang, kWriteLangs, kFontSize, kOpacity, kHotkey, kFontSizeValue, kOpacityValue,
     // Reading
     kReaderOn, kOcrEngine, kTessPath, kTessBrowse, kTessStatus, kTessGet, kChinese, kInterval, kShowSystem, kCaptures,
     kPickRegion, kCover,
@@ -44,8 +44,9 @@ enum : int {
     kBack, kNext, kStepTitle, kStepText,
 };
 
-const int kFontSizes[] = {90, 100, 115, 135};
-const int kOpacities[] = {178, 204, 230, 255};
+// Transparency in percent (0 = opaque) <-> layered-window alpha.
+int TransparencyOf(int opacity) { return std::clamp((255 - opacity) * 100 / 255, 0, 75); }
+int OpacityOf(int transparency) { return 255 - std::clamp(transparency, 0, 75) * 255 / 100; }
 
 std::wstring WindowText(HWND h) {
     const int n = GetWindowTextLengthW(h);
@@ -157,6 +158,7 @@ protected:
     virtual void Build() = 0;
     virtual void OnCommand(int id, int code) = 0;
     virtual void OnTabChanged() {}
+    virtual void OnSlider() {}
     virtual LRESULT OnApp(UINT, WPARAM, LPARAM) { return 0; }
     void Close() { done_ = true; }
 
@@ -243,6 +245,9 @@ private:
         switch (msg) {
             case WM_COMMAND:
                 self->OnCommand(LOWORD(wp), HIWORD(wp));
+                return 0;
+            case WM_HSCROLL:
+                self->OnSlider();
                 return 0;
             case WM_NOTIFY: {
                 const NMHDR* n = reinterpret_cast<const NMHDR*>(lp);
@@ -344,23 +349,18 @@ private:
         Label(Tr(L"Codes like EN-GB, FR, ES, DE, AR, ZH-HANS. Ctrl+L switches while typing."), kCtrlX, Y(r++) - 6,
               kCtrlW, 30);
 
+        // Sliders with a live preview on the window behind.
         Label(Tr(L"Text size"), kLabelX, Y(r), kLabelW);
-        std::vector<std::wstring> sizes;
-        int sizeSel = 1;
-        for (size_t i = 0; i < std::size(kFontSizes); ++i) {
-            sizes.push_back(std::to_wstring(kFontSizes[i]) + L" %");
-            if (kFontSizes[i] == cfg_.fontPercent) sizeSel = static_cast<int>(i);
-        }
-        Combo(kFontSize, sizes, sizeSel, kCtrlX, Y(r++), 120);
-
-        Label(Tr(L"Opacity"), kLabelX, Y(r), kLabelW);
-        std::vector<std::wstring> ops;
-        int opSel = 2;
-        for (size_t i = 0; i < std::size(kOpacities); ++i) {
-            ops.push_back(std::to_wstring(kOpacities[i] * 100 / 255) + L" %");
-            if (std::abs(kOpacities[i] - cfg_.opacity) < 13) opSel = static_cast<int>(i);
-        }
-        Combo(kOpacity, ops, opSel, kCtrlX, Y(r++), 120);
+        HWND size = Add(TRACKBAR_CLASSW, L"", TBS_HORZ | TBS_NOTICKS | WS_TABSTOP, kCtrlX, Y(r), kCtrlW - 60, 26, kFontSize);
+        SendMessageW(size, TBM_SETRANGE, TRUE, MAKELPARAM(80, 160));
+        SendMessageW(size, TBM_SETPOS, TRUE, cfg_.fontPercent);
+        Label(std::to_wstring(cfg_.fontPercent) + L" %", kCtrlX + kCtrlW - 54, Y(r++), 54, 18, kFontSizeValue);
+        Label(Tr(L"Transparency"), kLabelX, Y(r), kLabelW);
+        HWND tr = Add(TRACKBAR_CLASSW, L"", TBS_HORZ | TBS_NOTICKS | WS_TABSTOP, kCtrlX, Y(r), kCtrlW - 60, 26, kOpacity);
+        SendMessageW(tr, TBM_SETRANGE, TRUE, MAKELPARAM(0, 75));
+        SendMessageW(tr, TBM_SETPOS, TRUE, TransparencyOf(cfg_.opacity));
+        Label(std::to_wstring(TransparencyOf(cfg_.opacity)) + L" %", kCtrlX + kCtrlW - 54, Y(r++), 54, 18, kOpacityValue);
+        Label(Tr(L"0 % = not transparent at all."), kCtrlX, Y(r++) - 8, kCtrlW, 20);
 
         Label(Tr(L"Show / hide hotkey"), kLabelX, Y(r), kLabelW);
         Edit(kHotkey, cfg_.hotkey, kCtrlX, Y(r++), 160);
@@ -479,6 +479,14 @@ private:
 
     void OnTabChanged() override { ShowPage(static_cast<size_t>(SendMessageW(tab_, TCM_GETCURSEL, 0, 0))); }
 
+    void OnSlider() override {
+        const int size = static_cast<int>(SendMessageW(Item(kFontSize), TBM_GETPOS, 0, 0));
+        const int transparency = static_cast<int>(SendMessageW(Item(kOpacity), TBM_GETPOS, 0, 0));
+        SetText(kFontSizeValue, std::to_wstring(size) + L" %");
+        SetText(kOpacityValue, std::to_wstring(transparency) + L" %");
+        if (ctx_.preview) ctx_.preview(OpacityOf(transparency), size);
+    }
+
     void OnCommand(int id, int code) override {
         switch (id) {
             case IDOK:
@@ -487,6 +495,7 @@ private:
                 Close();
                 break;
             case IDCANCEL:
+                if (ctx_.preview) ctx_.preview(cfg_.opacity, cfg_.fontPercent);  // undo the live preview
                 Close();
                 break;
             case kTessBrowse: {
@@ -667,8 +676,8 @@ private:
         for (const std::wstring& code : ParseLangList(Text(kWriteLangs)))
             if (const LangInfo* l = FindLanguage(code)) writes.push_back(l->code);
         if (!writes.empty()) c.writeLangs = writes;
-        if (Sel(kFontSize) >= 0) c.fontPercent = kFontSizes[Sel(kFontSize)];
-        if (Sel(kOpacity) >= 0) c.opacity = kOpacities[Sel(kOpacity)];
+        c.fontPercent = static_cast<int>(SendMessageW(Item(kFontSize), TBM_GETPOS, 0, 0));
+        c.opacity = OpacityOf(static_cast<int>(SendMessageW(Item(kOpacity), TBM_GETPOS, 0, 0)));
         if (!Trim(Text(kHotkey)).empty()) c.hotkey = Trim(Text(kHotkey));
 
         c.readerEnabled = Checked(kReaderOn);

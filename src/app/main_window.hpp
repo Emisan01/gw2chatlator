@@ -81,6 +81,9 @@ private:
     // ---- languages, tabs, menus
     bool WriteOriginal() const;
     std::wstring WriteLang() const;  // empty when sending the original
+    bool WriteNeedsChatLang() const;  // writing language GW2 cannot show (Arabic ...)
+    std::wstring SendLang() const;    // what goes into the chat: WriteLang or chatLang_
+    void ShowChatLangMenu();
     void CycleWrite();
     void SetWriteIndex(size_t idx);
     void SetReadLang(const std::wstring& code);
@@ -202,7 +205,8 @@ private:
     // languages
     std::wstring readLang_;                 // "DE" — incoming chat is translated into this
     std::vector<std::wstring> writeLangs_;  // "Senden als" favourites
-    size_t writeIdx_ = 0;                   // == writeLangs_.size(): send the original
+    size_t writeIdx_ = 0;
+    std::wstring chatLang_ = L"EN-GB";      // sent when the writing language is not shown by GW2
     std::wstring kbdLocale_;                // active keyboard layout, "de-DE"
     bool kbdRtl_ = false;
 
@@ -241,6 +245,7 @@ private:
     // incoming state
     ChatReader reader_;
     ChatStream stream_;
+    std::vector<ChatMessage> lastRead_;  // previous snapshot, to confirm new lines
     TranslationCache cache_;
     struct PendingLine {
         uint64_t entryId;
@@ -264,6 +269,7 @@ private:
     // chrome
     std::wstring status_;
     Tone tone_ = Tone::Muted;
+    RECT chatRect_{};
     RECT readRect_{}, menuRect_{}, closeRect_{}, collapseRect_{}, channelRect_{}, writeRect_{};
     bool previewVisible_ = false;  // the preview only takes space while you type
     bool collapsed_ = false;

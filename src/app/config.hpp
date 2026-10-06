@@ -32,6 +32,7 @@ struct Config {
     Engine engine = Engine::Auto;
     std::wstring readLang;                    // empty = Windows language
     std::vector<std::wstring> writeLangs{L"EN-GB", L"FR", L"ES", L"DE"};
+    std::wstring chatLang = L"EN-GB";         // into the chat when the writing language has a script GW2 cannot show
     bool backTranslate = true;
     int debounceMs = 500;
 
@@ -90,7 +91,7 @@ struct Config {
     // size in 96-dpi pixels
     static constexpr int kAutoPos = -100000;
     int x = kAutoPos, y = kAutoPos, w = 520, h = 460;
-    int opacity = 238;
+    int opacity = 255;
     int fontPercent = 100;
     bool followGame = true;
     bool focusOnGameChat = false;  // focus input when in-game chat box gains focus

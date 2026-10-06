@@ -665,6 +665,16 @@ extern const I18nEntry kArabicStrings[] = {
      L"لغات «الإرسال بلغة»"},
     {L"● reading the chat",
      L"● جارٍ قراءة المحادثة"},
+    {L"0 % = not transparent at all.",
+     L"0 % = غير شفاف إطلاقًا."},
+    {L"Chat: {1}",
+     L"المحادثة: {1}"},
+    {L"Into the chat ({1}): {2}",
+     L"إلى المحادثة ({1}): {2}"},
+    {L"Send into the chat in:",
+     L"الإرسال إلى المحادثة بلغة:"},
+    {L"Transparency",
+     L"الشفافية"},
 };
 extern const size_t kArabicCount = sizeof(kArabicStrings) / sizeof(kArabicStrings[0]);
 

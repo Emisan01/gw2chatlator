@@ -300,6 +300,26 @@ size_t FuzzyTagLength(const std::wstring& s, Channel* channel) {
     return 0;
 }
 
+bool LooksLikeChatText(const std::wstring& text) {
+    size_t letters = 0, other = 0, longest = 0, run = 0;
+    for (wchar_t c : text) {
+        if (c == L' ') {
+            run = 0;
+            continue;
+        }
+        if (IsWordChar(c) && !IsDigit(c)) {
+            ++letters;
+            longest = std::max(longest, ++run);
+        } else {
+            run = 0;
+            if (!IsDigit(c) && !std::wcschr(L".,!?:;'\"()-/&+%#[]", c)) ++other;
+        }
+    }
+    if (letters == 0) return false;
+    if (longest < 2 && letters < 3) return false;          // "l |" ...
+    return other * 100 <= (letters + other) * 25;           // at most a quarter odd symbols
+}
+
 Rgb LeadColor(const OcrLine& line) {
     if (line.words.empty()) return line.color;
     // Skip the words that make up the timestamp, then take the first coloured words.
