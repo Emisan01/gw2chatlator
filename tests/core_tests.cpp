@@ -552,6 +552,9 @@ static void TestTabs() {
     ChatTab back;
     CHECK(ParseTab(SerializeTab(tabs[0]), back) && back.channels == AllChannels() && back.name == L"Chat");
     CHECK(!ParseTab(L"Leer|bogus", t));
+    CHECK(SerializeChannels(DefaultAutoTranslate()) == L"say,map,party,squad,team,guild,whisper,other");
+    CHECK(ParseChannels(L" Whisper ,map,bogus") == (ChannelBit(Channel::Whisper) | ChannelBit(Channel::Map)));
+    CHECK(ParseChannels(SerializeChannels(DefaultAutoTranslate())) == DefaultAutoTranslate());
     ChatTab rook;
     rook.name = L"Rook";
     rook.channels = ChannelBit(Channel::Whisper);
@@ -943,6 +946,38 @@ static void TestNotChat() {
     CHECK(b.size() == 2 && b.back().speaker == L"Rook");
 }
 
+static void TestLocateChat() {
+    // The game's corner: a health number, then the chat (timestamps aligned at x=40), the input line.
+    struct L {
+        const wchar_t* text;
+        int left, top, width;
+    };
+    const L in[] = {
+        {L"12.345", 600, 10, 60},
+        {L"[19:20][M] Tamsin: wer kommt mit zum", 40, 100, 380},
+        {L"Tequatl heute abend", 40, 120, 200},
+        {L"[19:21][P] Rook: ich", 41, 140, 160},
+        {L"[19:22] Bedrohung entdeckt!", 39, 160, 300},
+        {L"[Gruppe]", 40, 200, 80},
+    };
+    std::vector<OcrLine> lines;
+    for (const L& l : in) {
+        OcrLine o;
+        o.text = l.text;
+        o.left = l.left;
+        o.top = l.top;
+        o.width = l.width;
+        o.height = 15;
+        lines.push_back(o);
+    }
+    ChatBlock b;
+    CHECK(LocateChatLines(lines, &b));
+    CHECK(b.stamped == 3 && b.top == 100 && b.bottom == 175 && b.left == 39 && b.right == 420);
+    // Only one timestamp: not sure enough.
+    std::vector<OcrLine> one(lines.begin(), lines.begin() + 3);
+    CHECK(!LocateChatLines(one, &b));
+}
+
 static void TestNames() {
     NameList names;
     names.Add(L"Kiro Vale");
@@ -1207,6 +1242,7 @@ int main() {
     TestChatGeometry();
     TestMangledStamps();
     TestNames();
+    TestLocateChat();
     TestNotChat();
     TestEmoticons();
     TestDoubleScan();

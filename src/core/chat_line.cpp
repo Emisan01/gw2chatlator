@@ -517,6 +517,65 @@ ChatMessage ParseChatLine(const std::wstring& line, Channel* tagChannel) {
     return m;
 }
 
+bool LocateChatLines(const std::vector<OcrLine>& lines, ChatBlock* area) {
+    struct Stamp {
+        size_t index;
+        int left;
+    };
+    std::vector<Stamp> stamps;
+    for (size_t i = 0; i < lines.size(); ++i) {
+        const OcrLine& l = lines[i];
+        if (l.width <= 0) continue;
+        if (ParseChatLine(l.text).stamped) stamps.push_back({i, l.left});
+    }
+    if (stamps.size() < 2) return false;
+    // The biggest group of timestamp lines that start at the same place.
+    size_t bestCount = 0;
+    int bestLeft = 0;
+    for (const Stamp& s : stamps) {
+        const int tolerance = std::max(6, lines[s.index].height);
+        size_t count = 0;
+        for (const Stamp& o : stamps)
+            if (std::abs(o.left - s.left) <= tolerance) ++count;
+        if (count > bestCount) {
+            bestCount = count;
+            bestLeft = s.left;
+        }
+    }
+    if (bestCount < 2) return false;
+    size_t first = lines.size(), last = 0;
+    for (const Stamp& s : stamps) {
+        if (std::abs(s.left - bestLeft) > std::max(6, lines[s.index].height)) continue;
+        first = std::min(first, s.index);
+        last = std::max(last, s.index);
+    }
+    // Wrapped lines below the last timestamp line belong to the chat too, as
+    // long as they follow on the line spacing and start near the same place.
+    const int pitch = std::max(1, (lines[last].top - lines[first].top) / std::max<int>(1, static_cast<int>(last - first)));
+    while (last + 1 < lines.size()) {
+        const OcrLine& n = lines[last + 1];
+        if (n.width <= 0 || n.top - lines[last].top > pitch * 3 / 2 || n.left < bestLeft - pitch ||
+            n.left > bestLeft + pitch * 4 || ParseChatLine(n.text).tagOnly)
+            break;
+        ++last;
+    }
+    ChatBlock b;
+    b.left = bestLeft;
+    b.top = lines[first].top;
+    b.right = bestLeft;
+    b.bottom = 0;
+    for (size_t i = first; i <= last; ++i) {
+        const OcrLine& l = lines[i];
+        if (l.width <= 0) continue;
+        b.left = std::min(b.left, l.left);
+        b.right = std::max(b.right, l.left + l.width);
+        b.bottom = std::max(b.bottom, l.top + l.height);
+    }
+    b.stamped = static_cast<int>(bestCount);
+    if (area) *area = b;
+    return true;
+}
+
 std::vector<ChatMessage> BuildMessages(const std::vector<OcrLine>& lines, const std::vector<ChannelColor>& palette) {
     std::vector<ChatMessage> out;
     Rgb prevColor;

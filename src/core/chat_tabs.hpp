@@ -48,6 +48,15 @@ Channel SoleSendChannel(ChannelMask m);
 // not contain '|'. Unknown channel keys are ignored; a tab without any known
 // channel is rejected.
 std::wstring SerializeTab(const ChatTab& t);
+
+// "whisper,party,squad" <-> mask (the keys of SerializeTab; unknown keys ignored).
+std::wstring SerializeChannels(ChannelMask m);
+ChannelMask ParseChannels(const std::wstring& list);
+
+// What is translated without a click: every chat channel (system lines are
+// game notices). Exceptions are chosen by the player: languages not to
+// translate, channels unticked; a click on a line still translates it.
+ChannelMask DefaultAutoTranslate();
 bool ParseTab(const std::wstring& s, ChatTab& out);
 
 }  // namespace gct

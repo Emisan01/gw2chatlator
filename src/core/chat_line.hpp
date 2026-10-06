@@ -45,6 +45,8 @@ struct OcrLine {
     Rgb color;      // average colour of the text pixels
     int top = 0;    // position inside the captured area (pixels)
     int height = 0;
+    int left = 0;   // horizontal extent of the recognized words (0/0 = unknown)
+    int width = 0;
     std::vector<OcrWord> words{};  // optional: per-word colours (the channel tag / name colour wins)
 };
 
@@ -87,6 +89,16 @@ size_t MangledStampAndTagLength(const std::wstring& s, Channel* channel);
 // messages, emotes, wrapped continuations) have an empty speaker.
 // `tagChannel` receives the channel from a tag, Unknown if none.
 ChatMessage ParseChatLine(const std::wstring& line, Channel* tagChannel = nullptr);
+
+// Where the GW2 chat is in a picture of the game's corner: several lines that
+// start with a timestamp, aligned on the left (the chat's lines begin at the
+// same place), followed by their wrapped lines. `area` gets the block of
+// chat lines in the picture's pixels. Needs the lines' left/width.
+struct ChatBlock {
+    int left = 0, top = 0, right = 0, bottom = 0;
+    int stamped = 0;  // how many timestamp lines were found
+};
+bool LocateChatLines(const std::vector<OcrLine>& lines, ChatBlock* area);
 
 // All lines of one capture, top to bottom -> messages. Continuation lines
 // (no timestamp, no tag, no speaker, same colour, directly below) are

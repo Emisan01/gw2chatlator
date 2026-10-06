@@ -37,6 +37,10 @@ const char kTranslateSections[] =
     "WriteLangs=EN-GB,FR,ES,DE\r\n"
     "; Translate your message back into your language as a check (1/0)\r\n"
     "BackTranslate=1\r\n"
+    "; Channels translated without a click: default = all (others: click a line)\r\n"
+    "AutoChannels=default\r\n"
+    "; Languages NOT to translate (your reading language never is), e.g. EN,DE. A click still translates.\r\n"
+    "Understood=\r\n"
     "; Wait after typing before translating (ms)\r\n"
     "DebounceMs=500\r\n"
     "\r\n"
@@ -61,8 +65,10 @@ const char kTranslateSections[] =
     "Enabled=1\r\n"
     "; How often the chat is read (ms)\r\n"
     "IntervalMs=400\r\n"
-    "; Text recognition: auto (Tesseract if installed, else Windows) | tesseract | windows\r\n"
+    "; Text recognition: auto (Windows; Tesseract for very small text) | tesseract | windows\r\n"
     "OcrEngine=auto\r\n"
+    "; Picture: auto (window on Windows 11, screen on Windows 10: no yellow frame) | window | screen\r\n"
+    "Capture=auto\r\n"
     "; Tesseract: folder or tesseract.exe (empty = search Program Files, PATH, .\\tesseract)\r\n"
     "TesseractPath=\r\n"
     "; Tesseract languages, e.g. eng+deu (empty = English, German, French, Spanish where installed)\r\n"
@@ -274,6 +280,8 @@ void Config::Load(const std::wstring& dir) {
     uiLang = UiLangFromCode(ini.Str(L"General", L"UiLanguage", L"en"), UiLang::En);
     setupDone = ini.Bool(L"General", L"SetupDone", false);
     myMemoryNoticeShown = ini.Bool(L"Basic", L"NoticeShown", false);
+    myMemoryDay = ini.Str(L"Basic", L"UsedDay", L"");
+    myMemoryUsed = ini.Int(L"Basic", L"UsedChars", 0, 0, 10000000);
     gw2Dir = AsciiUnescape(ini.Str(L"General", L"Gw2Dir", L""));
     engine = ParseEngine(ini.Str(L"Translate", L"Engine", L"auto"));
     // v0.2 had SourceLang/TargetLangs under [DeepL]; used as fallbacks.
@@ -283,6 +291,11 @@ void Config::Load(const std::wstring& dir) {
     if (langs.empty()) langs = ini.Str(L"DeepL", L"TargetLangs", L"");
     if (auto t = ParseLangList(langs); !t.empty()) writeLangs = t;
     backTranslate = ini.Bool(L"Translate", L"BackTranslate", true);
+    {
+        const std::wstring autoList = ini.Str(L"Translate", L"AutoChannels", L"default");
+        autoTranslate = autoList == L"default" ? DefaultAutoTranslate() : ParseChannels(autoList);
+        understoodLangs = ParseLangList(ini.Str(L"Translate", L"Understood", L""));
+    }
     chatLang = ToUpperAscii(ini.Str(L"Translate", L"ChatLang", L"EN-GB"));
     debounceMs = ini.Int(L"Translate", L"DebounceMs", ini.Int(L"DeepL", L"DebounceMs", 500, 150, 5000), 150, 5000);
 
@@ -297,6 +310,10 @@ void Config::Load(const std::wstring& dir) {
     readerEnabled = ini.Bool(L"Reader", L"Enabled", true);
     readerIntervalMs = ini.Int(L"Reader", L"IntervalMs", 400, 150, 10000);
     ocr = ParseOcr(ini.Str(L"Reader", L"OcrEngine", L"auto"));
+    {
+        const std::wstring c = ToLowerAscii(ini.Str(L"Reader", L"Capture", L"auto"));
+        captureMode = c == L"window" ? 1 : c == L"screen" ? 2 : 0;
+    }
     tesseractPath = AsciiUnescape(ini.Str(L"Reader", L"TesseractPath", L""));
     tesseractLangs = ToUtf8(ini.Str(L"Reader", L"TesseractLang", L""));
     readChinese = ini.Bool(L"Reader", L"ReadChinese", false);
@@ -425,6 +442,12 @@ void Config::SaveAll() const {
     for (const std::wstring& c : writeLangs) joined += (joined.empty() ? L"" : L",") + c;
     SaveValue(L"Translate", L"WriteLangs", joined);
     SaveBool(L"Translate", L"BackTranslate", backTranslate);
+    SaveValue(L"Translate", L"AutoChannels", SerializeChannels(autoTranslate));
+    {
+        std::wstring list;
+        for (const std::wstring& l : understoodLangs) list += (list.empty() ? L"" : L",") + l;
+        SaveValue(L"Translate", L"Understood", list);
+    }
     SaveValue(L"Basic", L"Email", AsciiEscape(basicEmail));
     SaveValue(L"DeepL", L"ApiKey", AsciiEscape(deeplKey));
     SaveValue(L"LLM", L"Url", AsciiEscape(llmUrl));
@@ -434,6 +457,10 @@ void Config::SaveAll() const {
     SaveBool(L"Reader", L"Enabled", readerEnabled);
     SaveValue(L"Reader", L"IntervalMs", std::to_wstring(readerIntervalMs));
     SaveValue(L"Reader", L"OcrEngine", OcrKey(ocr));
+    SaveValue(L"Reader", L"Capture", captureMode == 1 ? L"window" : captureMode == 2 ? L"screen" : L"auto");
+    SaveValue(L"Reader", L"OcrZoom", std::to_wstring(ocrScale));
+    SaveValue(L"Chat", L"KeyHoldMs", std::to_wstring(send.keyHoldMs));
+    SaveValue(L"Chat", L"StepDelayMs", std::to_wstring(send.stepDelayMs));
     SaveValue(L"Reader", L"TesseractPath", AsciiEscape(tesseractPath));
     SaveValue(L"Reader", L"TesseractLang", FromUtf8(tesseractLangs));
     SaveBool(L"Reader", L"ReadChinese", readChinese);

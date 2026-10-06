@@ -141,6 +141,15 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
         if (rects.empty()) top = bottom = 0;
         line.top = top;
         line.height = bottom - top;
+        if (!rects.empty()) {
+            int l = INT_MAX, r = 0;
+            for (const RectI& x : rects) {
+                l = std::min(l, x.x);
+                r = std::max(r, x.x + x.w);
+            }
+            line.left = l;
+            line.width = r - l;
+        }
         line.color = tl.hasColor ? tl.color : SampleTextColor(raw, rects);
         out.push_back(std::move(line));
     }
@@ -235,6 +244,7 @@ void ChatReader::Loop() {
         }
         if (IsRectEmpty(&area)) continue;
 
+        capture.SetUseWindowCapture(opt_.windowCapture);
         capture.SetTarget(target);
         const ULONGLONG t0 = GetTickCount64();
         Image raw;

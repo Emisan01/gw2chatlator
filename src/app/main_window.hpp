@@ -128,6 +128,15 @@ private:
     void OpenWhisperTab(const std::wstring& name);
     void Retranslate(uint64_t id, const std::wstring& text);
     void ShowMyMemoryNotice();
+    void UseChatArea(const RECT& r);
+    RECT ChatSearchArea() const;
+    void StartChatDetection();
+    void OnChatFound(RECT* r);
+    bool WindowCaptureAllowed() const;
+    bool Understood(const std::wstring& lang) const;
+    void CountMyMemory(size_t chars);
+    std::wstring MyMemoryQuotaText() const;
+    std::wstring TechnicalStatus();
     std::wstring ChannelChipText() const;
     std::wstring WriteChipText() const;
 
@@ -253,6 +262,9 @@ private:
     NameList speakers_;  // speakers seen in the chat: their names are never translated
     bool streamPrimed_ = false;  // the first picture was fed (old history skipped)
     bool wasInMap_ = false;      // MumbleLink: on a map (reading allowed)
+    bool detecting_ = false;     // looking for the GW2 chat (no area set yet)
+    bool placedForSetup_ = false;  // first start: put at the usual chat place once
+    ULONGLONG lastDetect_ = 0;
     static constexpr std::ptrdiff_t kStartLines = 3;  // of the history shown at the start, translate the last ...
     TranslationCache cache_;
     struct PendingLine {
@@ -261,6 +273,13 @@ private:
     };
     std::deque<PendingLine> inQueue_;
     int inFlight_ = 0;  // translation requests on their way (incoming chat)
+    struct Stats {      // for the technical page (no chat text in here)
+        ULONGLONG since = 0;
+        uint64_t pictures = 0, messages = 0, dropped = 0, confirmed = 0, translated = 0, failed = 0;
+        int lastMs = 0;
+        double avgMs = 0, avgTranslateMs = 0;
+        size_t lastLines = 0;
+    } stats_;
     ULONGLONG inPauseUntil_ = 0;
     std::wstring readerError_;
     bool readerReported_ = false;
