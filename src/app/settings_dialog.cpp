@@ -25,6 +25,7 @@ namespace {
 constexpr wchar_t kDialogClass[] = L"GW2ChatTranslatorDialog";
 constexpr UINT WM_APP_MODELS = WM_APP + 50;
 constexpr UINT WM_APP_TEST = WM_APP + 51;
+constexpr UINT WM_APP_PULL = WM_APP + 52;
 constexpr wchar_t kTesseractUrl[] = L"https://github.com/UB-Mannheim/tesseract/wiki";
 
 enum : int {
@@ -35,9 +36,9 @@ enum : int {
     kReaderOn, kOcrEngine, kTessPath, kTessBrowse, kTessStatus, kTessGet, kChinese, kInterval, kShowSystem, kCaptures,
     kPickRegion, kCover,
     // Writing
-    kSpell, kAutoCorrect, kSuggest, kLearn, kLt, kLtUrl, kBackTr, kSendMode, kReturnFocus,
+    kSpell, kAutoCorrect, kSuggest, kLearn, kForgetAll, kForgetStatus, kLt, kLtUrl, kBackTr, kSendMode, kReturnFocus,
     // Translator
-    kEngine, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
+    kEngine, kEngineNote, kLocalModel, kPull, kLocalInfo, kGetOllama, kPullStatus, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
     // Game & start
     kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kStatus, kRefresh, kSetup,
     // Wizard
@@ -278,6 +279,12 @@ struct ModelsMsg {
     std::wstring error;
 };
 
+struct PullMsg {
+    std::wstring model;
+    bool ok = false;
+    std::wstring error;
+};
+
 // ---------------------------------------------------------------------------
 // Settings
 // ---------------------------------------------------------------------------
@@ -372,7 +379,9 @@ private:
         Check(kReaderOn, Tr(L"Read the GW2 chat and translate it permanently"), cfg_.readerEnabled, kLabelX, Y(r++),
               kW - 50);
         Label(Tr(L"Text recognition"), kLabelX, Y(r), kLabelW);
-        Combo(kOcrEngine, {Tr(L"Automatic (Tesseract if installed)"), L"Tesseract", Tr(L"Windows (built in)")},
+        Combo(kOcrEngine,
+              {Tr(L"Automatic (fastest: Windows; Tesseract only for very small text)"), L"Tesseract",
+               Tr(L"Windows (built in)")},
               static_cast<int>(cfg_.ocr), kCtrlX, Y(r++), kCtrlW);
         Label(Tr(L"Tesseract folder"), kLabelX, Y(r), kLabelW);
         Edit(kTessPath, cfg_.tesseractPath, kCtrlX, Y(r), kCtrlW - 96);
@@ -401,7 +410,10 @@ private:
               static_cast<int>(cfg_.autoCorrect), kCtrlX, Y(r++), kCtrlW);
         Check(kSuggest, Tr(L"Word bar with suggestions (Tab takes the highlighted word)"), cfg_.suggestions, kLabelX,
               Y(r++), kW - 50);
-        Check(kLearn, Tr(L"Learn the words I send"), cfg_.learnWords, kLabelX, Y(r++), kW - 50);
+        Check(kLearn, Tr(L"Learn the words I send"), cfg_.learnWords, kLabelX, Y(r), 260);
+        Button(kForgetAll, Tr(L"Delete everything learned…"), kCtrlX + 80, Y(r) - 2, 220);
+        Label(Tr(L"Stays on this PC. Right-click a word to forget just that one."), kCtrlX + 80, Y(r++) + 24, kCtrlW - 80,
+              20, kForgetStatus);
         Check(kLt, Tr(L"Grammar check with LanguageTool (online)"), cfg_.languageTool, kLabelX, Y(r++), kW - 50);
         Label(Tr(L"LanguageTool server"), kLabelX, Y(r), kLabelW);
         Edit(kLtUrl, cfg_.languageToolUrl, kCtrlX, Y(r++), kCtrlW);
@@ -422,6 +434,7 @@ private:
               {Tr(L"Automatic (best available)"), Tr(L"Basic – MyMemory (free, no account)"), L"DeepL",
                Tr(L"LLM (local or cloud)")},
               static_cast<int>(cfg_.engine), kCtrlX, Y(r++), kCtrlW);
+        Label(EngineNote(cfg_.engine), kCtrlX, Y(r++) - 6, kCtrlW, 30, kEngineNote);
         Label(Tr(L"DeepL API key"), kLabelX, Y(r), kLabelW);
         Edit(kDeepL, cfg_.deeplKey, kCtrlX, Y(r++), kCtrlW);
         Label(Tr(L"MyMemory e-mail (optional)"), kLabelX, Y(r), kLabelW);
@@ -436,8 +449,16 @@ private:
         Edit(kLlmKey, cfg_.llmKey, kCtrlX, Y(r++), kCtrlW, ES_PASSWORD);
         Check(kFixOcr, Tr(L"LLM repairs text-recognition errors in chat lines"), cfg_.llmFixOcr, kLabelX, Y(r++),
               kW - 50);
-        Label(Tr(L"Local and free: Ollama (http://localhost:11434) or LM Studio (http://localhost:1234)."), kLabelX,
-              Y(r++), kW - 50, 30);
+        // Local translation, prominent: nothing leaves the PC.
+        Label(Tr(L"Translate locally (nothing leaves this PC)"), kLabelX, Y(r), kLabelW, 30);
+        std::vector<std::wstring> models;
+        for (const LocalModelOffer& m : LocalModelOffers()) models.push_back(m.id);
+        Combo(kLocalModel, models, 0, kCtrlX, Y(r), kCtrlW - 126);
+        Button(kPull, Tr(L"Install"), kCtrlX + kCtrlW - 120, Y(r++) - 1, 120);
+        Label(Tr(LocalModelOffers()[0].summary), kCtrlX, Y(r++) - 4, kCtrlW, 30, kLocalInfo);
+        Button(kGetOllama, Tr(L"Get Ollama (free)…"), kCtrlX, Y(r) - 2, 170);
+        Label(Tr(L"Runs the models; LM Studio works too (http://localhost:1234)."), kCtrlX + 180, Y(r++) - 2,
+              kCtrlW - 180, 30, kPullStatus);
         Button(kTest, Tr(L"Test the translator"), kLabelX, Y(r), 180);
         Label(L"", kLabelX + 190, Y(r++), kW - 230, 40, kTestStatus);
     }
@@ -463,6 +484,20 @@ private:
         r += 4;
         Button(kRefresh, Tr(L"Refresh"), kLabelX, Y(r), 110);
         Button(kSetup, Tr(L"Guided setup…"), kLabelX + 120, Y(r++), 160);
+    }
+
+    // Who receives the text with the chosen translator (privacy, one line).
+    static std::wstring EngineNote(Engine e) {
+        switch (e) {
+            case Engine::Basic:
+                return Tr(L"MyMemory is a public translation memory: texts are sent to mymemory.translated.net and may be stored.");
+            case Engine::DeepL:
+                return Tr(L"Texts are sent to DeepL (deepl.com).");
+            case Engine::Llm:
+                return Tr(L"A local LLM keeps everything on this PC; a cloud address sends the texts there.");
+            default:
+                return Tr(L"Uses DeepL or the LLM when set up, otherwise MyMemory (texts leave this PC).");
+        }
     }
 
     std::wstring InstallStatusText() const {
@@ -513,6 +548,28 @@ private:
             case kLlmLoad:
                 LoadModels();
                 break;
+            case kEngine:
+                if (code == CBN_SELCHANGE) SetText(kEngineNote, EngineNote(static_cast<Engine>(std::max(0, Sel(kEngine)))));
+                break;
+            case kLocalModel:
+                if (code == CBN_SELCHANGE && Sel(kLocalModel) >= 0)
+                    SetText(kLocalInfo, Tr(LocalModelOffers()[static_cast<size_t>(Sel(kLocalModel))].summary));
+                break;
+            case kGetOllama:
+                ShellExecuteW(hwnd_, L"open", L"https://ollama.com/download", nullptr, nullptr, SW_SHOWNORMAL);
+                break;
+            case kPull:
+                PullModel();
+                break;
+            case kForgetAll:
+                if (ctx_.forgetLearned &&
+                    MessageBoxW(hwnd_, Tr(L"Delete every word the tool has learned from your messages, in all languages?").c_str(),
+                                Tr(L"Delete everything learned").c_str(),
+                                MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2 | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0)) == IDYES) {
+                    ctx_.forgetLearned();
+                    SetText(kForgetStatus, Tr(L"Deleted. The word bar starts from scratch."));
+                }
+                break;
             case kTest:
                 TestTranslator();
                 break;
@@ -545,6 +602,25 @@ private:
             default:
                 break;
         }
+    }
+
+    // Ollama downloads the chosen model; then it is set as the translator.
+    void PullModel() {
+        const int sel = Sel(kLocalModel);
+        if (sel < 0) return;
+        const std::wstring model = LocalModelOffers()[static_cast<size_t>(sel)].id;
+        SetText(kPullStatus, TrF(L"Installing {1} … (a few minutes for gigabytes)", {model}));
+        EnableWindow(Item(kPull), FALSE);
+        std::thread([h = hwnd_, url = Text(kLlmUrl), model] {
+            auto msg = std::make_unique<PullMsg>();
+            msg->model = model;
+            if (!OllamaReachable(url)) {
+                msg->error = Tr(L"Ollama is not running – install it first (button on the left), then try again.");
+            } else {
+                msg->ok = PullOllamaModel(url, model, &msg->error);
+            }
+            if (PostMessageW(h, WM_APP_PULL, 0, reinterpret_cast<LPARAM>(msg.get()))) msg.release();
+        }).detach();
     }
 
     void LoadModels() {
@@ -585,6 +661,21 @@ private:
     }
 
     LRESULT OnApp(UINT msg, WPARAM wp, LPARAM lp) override {
+        if (msg == WM_APP_PULL) {
+            std::unique_ptr<PullMsg> m(reinterpret_cast<PullMsg*>(lp));
+            EnableWindow(Item(kPull), TRUE);
+            if (!m->ok) {
+                SetText(kPullStatus, TrF(L"Not installed: {1}", {m->error}));
+                return 0;
+            }
+            // Ready: the local model becomes the translator (saved with OK).
+            if (Trim(Text(kLlmUrl)).empty()) SetText(kLlmUrl, L"http://localhost:11434");
+            SetWindowTextW(Item(kLlmModel), m->model.c_str());
+            SendMessageW(Item(kEngine), CB_SETCURSEL, static_cast<WPARAM>(Engine::Llm), 0);
+            SetText(kEngineNote, EngineNote(Engine::Llm));
+            SetText(kPullStatus, TrF(L"{1} is installed and set as translator – OK saves it.", {m->model}));
+            return 0;
+        }
         if (msg == WM_APP_MODELS) {
             std::unique_ptr<ModelsMsg> m(reinterpret_cast<ModelsMsg*>(lp));
             EnableWindow(Item(kLlmLoad), TRUE);
@@ -774,7 +865,8 @@ private:
                  L"chat cannot be read.\n\n"
                  L"2.  Use a chat tab that shows all channels (right-click the tab in GW2 → tick all channels). "
                  L"Filter here with our own tabs instead.\n\n"
-                 L"3.  GW2 Options → Chat: turn timestamps on. Text size medium or larger reads best.\n\n"
+                 L"3.  GW2 Options → Chat: turn timestamps on and choose a large text size. Our window lies over "
+                 L"the chat anyway, so large letters cost you nothing and are read much better.\n\n"
                  L"4.  Whispers in a minimized chat only flash for a moment: with the panel open nothing is missed."),
               24, 56, kW - 48, 260);
 

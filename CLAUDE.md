@@ -15,12 +15,16 @@ src/win   Windows services (no UI)      http (WinHTTP), deepl_translator, online
                                         model list, LanguageTool call), els (language detection, transliteration),
                                         ocr (Windows.Media.Ocr, raw WinRT ABI), tesseract_ocr (subprocess),
                                         screen_capture (DXGI + GDI), mumble_link, gw2_sender, gw2_api, spellcheck,
-                                        gw2_locate (find GW2, install, autostart, add-on scan), folder_cleanup, files
+                                        gw2_locate (find GW2, install, autostart, add-on scan), folder_cleanup, files,
+                                        keyboard_layout (neighbouring keys of the active layout for the word bar)
 src/core  portable logic, NO windows.h  text, json, i18n (+ i18n_de / i18n_ar tables), hotkey, langs, languages,
-                                        glossary, protect, slang, chat_line (OCR-tolerant parsing), chat_stream,
-                                        chat_tabs, image, gw2_text, mumble, word_model (phone keyboard),
-                                        tesseract_tsv, languagetool_protocol, gw2_install, housekeeping,
-                                        deepl/mymemory/llm_protocol, translator.hpp
+                                        glossary, protect, slang (+ word-bar starter list), chat_line (OCR-tolerant
+                                        parsing), chat_stream, chat_tabs, image, chat_geometry (line grid, dynamic
+                                        enlargement, snapping the chat frame, words -> lines), names (speakers seen,
+                                        protected from translation), gw2_text, mumble, word_model (phone keyboard,
+                                        fuzzy completion, Arabic folding, forget), tesseract_tsv,
+                                        languagetool_protocol, gw2_install, housekeeping, deepl/mymemory/llm_protocol,
+                                        translator.hpp
 res/      app.rc (icon id 1, manifest: common controls v6, version info), app.ico, app.manifest
 tools/    i18n_check.py (missing/unused translations)
 ```
@@ -35,22 +39,37 @@ tools/    i18n_check.py (missing/unused translations)
 
 ## Data flow
 
-Incoming: `ChatReader` (worker: capture → fingerprint → `PrepareForOcr` → Tesseract (`FindTesseract`,
-`ChooseTesseractLangs`, PGM via stdin, TSV via stdout) or Windows OCR → lines with per-word colours) →
-`WM_APP_SNAPSHOT` → `BuildMessages` (timestamps incl. OCR-mangled ones, fuzzy channel tags, "anchored" start
+Incoming: `ChatReader` (worker: capture → fingerprint → `ChatOcr::Read`: `FindLineGrid` → `OcrScaleFor` (~30 px line
+spacing) → `UpscaleForOcr` (bicubic, no contrast tricks) → Tesseract (`FindTesseract`, `ChooseTesseractLangs`, PGM
+inverted via stdin with `tessedit_do_invert=0`, TSV via stdout) or Windows OCR → `GroupWordsByRows` (words into the
+measured lines) → lines with per-word colours) →
+`WM_APP_SNAPSHOT` → `BuildMessages` (timestamps incl. OCR-mangled ones and `MangledStampAndTagLength` for
+"117:46J[M]", "tO:13JtPJ"; fuzzy channel tags; "anchored" start
 at the first stamped line, tag-only input line dropped, channel by `LeadColor`/tag, speaker, continuation
-merge, whisper prefixes) → `ChatStream::Feed` (fuzzy novelty) → `ClassifyOwn` → `NeedsTranslation` (ELS) →
+merge compares with the *text* colour of the line above (`TailColor`), whisper prefixes) → `ChatStream::Feed` (fuzzy
+novelty; on the very first picture only the last 3 messages) → speakers into `NameList` → `ClassifyOwn` →
+`NeedsTranslation` (ELS) →
 `TranslationCache` → batched `TranslateBatch` (or `LlmTranslator::TranslateOcrBatch` = translate + repair OCR
 errors) → `ChatLogView::Update`. Tabs are filters (channel mask + the tab id outgoing lines were written in).
 
-Outgoing: InputBox → `SanitizeChatText` → `SplitChatCommand` → `ProtectForTranslation` → worker `Translate`
+Setting the chat area: `PickRegion` takes a still of the game (WGC/DXGI) → the player drags roughly →
+`SnapChatArea` (line grid, half lines, tab bar / input line by their wider gap, scroll bar) → traffic light +
+preview of the first lines (`ChatOcr` on a worker thread) → Enter takes the snapped frame.
+
+Outgoing: InputBox → `SanitizeChatText` → `SplitChatCommand` → `ProtectForTranslation` (chat codes, glossary, names
+of people in the chat, keep-words) → worker `Translate`
 → `WM_APP_TRANSLATED` (generation-checked) → `SplitForChat` (199) → preview + back-translation → Enter →
 `SendToGw2Chat` → log entry → `SpellService::Learn` (word model). Optional: debounce → LanguageTool
 (`StartGrammarCheck`, rate limited) → blue marks via `InputBox::SetGrammarIssues`.
 
-Typing help: `SpellService::Suggestions` (completion from the learned `WordModel`, correction via
-`ChooseCorrection`, next word from word pairs) → `SuggestionBar`; `InputBox::TryAutoCorrect` on a word
-boundary (`AutoCorrectMode` Off/Safe/Phone); Backspace right after it → `UndoAutoCorrect` → `RejectCorrection`.
+Typing help: `SpellService::Suggestions` (completion from the learned `WordModel`, then `Gw2StarterWords`, then
+`CompleteFuzzy` = one typo in the prefix, neighbouring keys of the layout rank first; correction via
+`ChooseCorrection`, next word from word pairs) → `SuggestionBar` + grey rest of the completion after the caret
+(`InputBox::DrawGhost`, LTR only); `InputBox::TryAutoCorrect` on a word boundary (incl. Arabic ، ؟ ؛) and
+`FinishWordAtCaret` on Enter (`AutoCorrectMode` Off/Safe/Phone); Backspace right after it → `UndoAutoCorrect` →
+`RejectCorrection`. Right-click a learned word (word bar or input) → `SpellService::Forget`; Settings → Writing →
+`ForgetAll` deletes every `learned_*.txt`. Word keys go through `WordKey` (case fold + Arabic variants أإآٱ→ا,
+ى→ي, ة→ه, harakat dropped). The Windows spell checker answers are cached per word (COM call per key press).
 
 Generations: `inputGen_` increments on every edit, language, channel or engine change; results
 for older generations are dropped. `sendPending_` = Enter pressed before the translation arrived.
@@ -83,6 +102,10 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
    touched; the GW2 folder is found via registry/Steam/folders, never via the game process.
 9. Files stay small: captures rotate (20 × 3 files), switch off after 15 minutes, are deleted after 3 days;
    stale `*.tmp` are removed on start; the word model is capped (20k words, 60k pairs).
+10. Privacy: pictures never leave the PC. The word model learns only from what the user sends, never from other
+    players' chat. MyMemory shows a one-time notice (`[Basic] NoticeShown`). **Never commit real screenshots,
+    captures, OCR output or other players' names/messages** — the repo is public. Real test pictures live in
+    `local/` (git-ignored); fixtures in `tests/` use invented names.
 
 ## Conventions
 
@@ -115,9 +138,50 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
   eaten, hotkeys are not delivered, `WDA_EXCLUDEFROMCAPTURE` fails (cover-chat pauses reading), bidi in
   STATIC controls is weak. Not bugs of the app.
 - Nexus has no chat event. The only chat callback around is arcdps unofficial extras: party/squad + NPC.
+  In-process tools that read all channels exist (CatBridge, Better Chat), but via the game process — not us.
+- Text recognition, measured with `ocr_bench` on real 4K captures (2026-10-06), error after the parser:
+  Windows OCR ~0.5–3.4 % at ~90 ms, Tesseract ~0.7–13 % at ~1.5–3.5 s (process start + 4 models). The old
+  `PrepareForOcr` made both 2–3× worse. Simulated 1080p (downscaled) is bad for Windows OCR — check with real
+  1080p captures before building anything for it. Tesseract light-on-dark: invert + `tessedit_do_invert=0`
+  (else it tries every line twice).
+- Words of several chat lines reported as one line (Tesseract) or lines out of order (Windows OCR): always
+  regroup by the measured grid (`GroupWordsByRows`). Most "merged" messages were the parser treating a line
+  with a mangled timestamp as a continuation — extend `MangledStampAndTagLength` with real examples.
+- Only chat is read: (1) reading runs only while MumbleLink ticks (`MumbleState::inMap`; character selection
+  and loading screens show character data where the chat is), (2) `BuildMessages` starts a message only with a
+  timestamp, a channel tag or "Name: text" (plain notices only in timestamp-less frames that mostly look like
+  chat), (3) speaker-less fragments with < 3 letters or < 50 % letters are dropped, (4) double scan:
+  `ChatStream::Feed(..., confirm=true)` takes a new line only when the next read (200 ms later) shows it again.
+- The log shows no timestamps and no channel tags, only "Name: text" in the channel colour.
+- Smileys (`:D`, `^^`, `<3`, `xD` ...) and names are protected from translation (`ProtectForTranslation`).
+- MumbleLink "game closed?" is checked by the game's windows (`EnumWindows`), never `OpenProcess` (invariant 1).
+- Sending: every key is held `KeyHoldMs` (30 ms) and Ctrl+V is staggered — GW2 reads the keyboard once per frame;
+  down+up in one `SendInput` batch got lost (messages did not arrive).
+- Incoming translation: up to 4 requests at once (an LLM: 1), newest line first (`inQueue_` back); the log stays
+  chronological. MyMemory gets one line per request. Short lines: `GuessLanguageByLetters` when ELS says nothing.
+- OCR "automatic" = Windows OCR (faster and, measured, better at normal size); Tesseract only below
+  `ChatOcr::kSmallTextPitch`. Reading interval default 400 ms (OCR runs only when the picture changed).
+- The reading area goes ~1/3 below the frame (at most to the window edge) so the newest line is never cut; the
+  input line (tag, no timestamp, below the last stamped line) and the number row are dropped by the parser.
+- Typing: the dropdown under the word (`ChoicePopup`, `SpellService::Choices`): Space/punctuation take the
+  highlight, Tab/arrows move, Esc closes, Backspace undoes. Slips: `SlipDistance` (key next door 0.5, swap 0.7),
+  `HandShiftVariants` (whole hand one key off), `KeyLayout` from the active keyboard layout.
+- Log: names white, text in the channel colour; click a name → whisper tab for that player (`ChatTab::person`,
+  max `kMaxPersonTabs`); click an untranslated line → translated first; links (`FindLinks`) are never translated
+  and open only after a yes (`OpenLinkAsking`, http/https only).
+- Settings → Translator: local models via Ollama (`LocalModelOffers`, `/api/pull`), with size and VRAM notes.
+- A chat line half hidden under GW2's own tab bar is not a reading error: it was read when it appeared at the
+  bottom; `ChatStream` keeps it from coming again.
+- `ocr.cpp` calls `RoInitialize(MTA)`: create `ChatOcr` on a worker thread, not on the UI (STA) thread.
+- WGC frames match `DWMWA_EXTENDED_FRAME_BOUNDS`, not `GetWindowRect` (invisible resize borders).
 
 ## Testing
 
+- Native Windows (Visual Studio 2022+): `cmake -S . -B build && cmake --build build --config Release`, then
+  `build\Release\core_tests.exe` (prints the word-bar time per key press for a full 20k model; must stay < 15 ms).
+- `build\Release\ocr_bench.exe local\bench`: real chat crops `name.png` + `name.txt` (what really stands there) →
+  error rate before/after the parser and time, old vs new preparation, Tesseract vs Windows OCR. `BENCH_DUMP=1`
+  prints recognized/parsed/truth text. Pictures stay in `local\` (never committed).
 - `core_tests` (any OS; also as .exe under Wine for 16-bit `wchar_t`); ASan/UBSan on Linux:
   `g++ -std=c++17 -g -fsanitize=address,undefined -I src tests/core_tests.cpp src/core/*.cpp -o t && ./t`
 - Windows build from Linux: `cmake -B build-win -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-w64.cmake
@@ -146,5 +210,10 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
 5. ✅ v0.5.1: Smart GW2 path resolution (folder/exe/shortcuts), non-blocking setup wizard when game OFF,
    raid collapse mode (32 px bar with tabs/badges), optional focus transfer on game chat focus
 6. ✅ Windows Graphics Capture (WGC) of the GW2 window (DirectX backbuffer capture beneath overlays)
-7. Optional, off by default, user's decision: Nexus add-on that forwards unofficial-extras party/squad chat
-   as exact text to the exe (named pipe). It lives in the game process — keep it a separate download.
+7. ✅ (2026-10-06, see docs/PLAN.md) Fast typing help (forget words, fuzzy mid-word completion with layout
+   neighbours, Arabic folding, Enter finishes the last word, grey completion, starter list), privacy (README,
+   MyMemory notice), reading rebuilt on measurements (line grid, dynamic enlargement, regrouping, snapping
+   frame with traffic light + preview, hardened timestamp parsing, names protected), `ocr_bench`.
+8. Next: live test in the game (incl. real 1080p/1440p captures for `ocr_bench`), then decide on an own glyph
+   reader. Optional, off by default, user's decision: Nexus add-on that forwards unofficial-extras party/squad
+   chat as exact text to the exe (named pipe). It lives in the game process — keep it a separate download.

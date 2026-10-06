@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "core/gw2_text.hpp"
+#include "core/i18n.hpp"
 
 namespace gct {
 namespace {
@@ -131,6 +132,22 @@ LRESULT SuggestionBar::Handle(UINT msg, WPARAM wp, LPARAM lp) {
         case WM_LBUTTONUP: {
             const int slot = SlotAt(GET_X_LPARAM(lp));
             if (slot >= 0 && onPick_) onPick_(static_cast<size_t>(slot));
+            return 0;
+        }
+        case WM_RBUTTONUP: {
+            const int slot = SlotAt(GET_X_LPARAM(lp));
+            if (slot < 0 || !onForget_) return 0;
+            const std::wstring word = s_.words[static_cast<size_t>(slot)];
+            if (isLearned_ && !isLearned_(word)) return 0;
+            POINT pt{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)};
+            ClientToScreen(hwnd_, &pt);
+            HMENU menu = CreatePopupMenu();
+            AppendMenuW(menu, MF_STRING, 1, TrF(L"Forget “{1}”", {word}).c_str());
+            const UINT cmd = static_cast<UINT>(TrackPopupMenu(
+                menu, TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_NONOTIFY | (UiRtl() ? TPM_LAYOUTRTL : 0), pt.x, pt.y, 0,
+                hwnd_, nullptr));
+            DestroyMenu(menu);
+            if (cmd == 1) onForget_(word);
             return 0;
         }
         case WM_NCDESTROY:

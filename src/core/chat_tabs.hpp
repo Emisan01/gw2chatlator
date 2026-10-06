@@ -21,7 +21,11 @@ struct ChatTab {
     uint32_t id = 0;  // stable while the program runs (lines sent from a tab stay in it)
     std::wstring name;
     ChannelMask channels = 0;
+    std::wstring person;  // a whisper tab for one player (opened by clicking the name); empty otherwise
 };
+
+// At most this many whisper tabs for single players; the oldest is reused.
+constexpr size_t kMaxPersonTabs = 5;
 
 // "Chat" (everything) and "Whisper" (names in the UI language).
 std::vector<ChatTab> DefaultTabs();
@@ -40,8 +44,9 @@ inline bool TabShows(const ChatTab& t, Channel c) { return (t.channels & Channel
 // (Whisper included); Unknown otherwise — then "the active channel" is used.
 Channel SoleSendChannel(ChannelMask m);
 
-// "Party|party,squad". Names may not contain '|'. Unknown channel keys are
-// ignored; a tab without any known channel is rejected.
+// "Party|party,squad", a player's whisper tab "Rook|whisper|@Rook". Names may
+// not contain '|'. Unknown channel keys are ignored; a tab without any known
+// channel is rejected.
 std::wstring SerializeTab(const ChatTab& t);
 bool ParseTab(const std::wstring& s, ChatTab& out);
 

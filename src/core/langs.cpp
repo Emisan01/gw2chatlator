@@ -2,10 +2,63 @@
 #include "langs.hpp"
 
 #include <algorithm>
+#include <cstdint>
+#include <cwchar>
+#include <iterator>
 
 #include "text.hpp"
 
 namespace gct {
+
+std::wstring GuessLanguageByLetters(const std::wstring& text) {
+    // Scripts first: one script, one language (most likely in GW2 chat).
+    int cyr = 0, ukr = 0, greek = 0, arabic = 0, hebrew = 0, hangul = 0, kana = 0, han = 0, thai = 0;
+    struct Marker {
+        const wchar_t* letters;
+        const wchar_t* lang;
+    };
+    static const Marker markers[] = {
+        {L"ığşİĞŞ", L"TR"},                              // ı ğ ş İ Ğ Ş
+        {L"ñÑ¿¡", L"ES"},                                          // ñ ¿ ¡
+        {L"ąęłżźńśĄĘŁŻŹ", L"PL"},  // ą ę ł ż ź ń ś
+        {L"ßäöüÄÖÜ", L"DE"},                        // ß ä ö ü
+        {L"çœêèàâîûÇ", L"FR"},             // ç œ ê è à â î û
+        {L"ãõÃÕ", L"PT"},                                          // ã õ
+        {L"őűŐŰ", L"HU"},                                          // ő ű
+        {L"åøæÅØÆ", L"NB"},                              // å ø æ
+        {L"ěřůčžĚŘŮ", L"CS"},                  // ě ř ů č ž
+        {L"ățșĂȚȘ", L"RO"},                              // ă ț ș
+    };
+    int counts[std::size(markers)] = {};
+    for (wchar_t c : text) {
+        const uint32_t u = static_cast<uint32_t>(c);
+        if (u >= 0x0400 && u <= 0x04FF) {
+            ++cyr;
+            if (u == 0x0456 || u == 0x0457 || u == 0x0454 || u == 0x0491) ++ukr;  // і ї є ґ
+        } else if (u >= 0x0370 && u <= 0x03FF) ++greek;
+        else if (u >= 0x0600 && u <= 0x06FF) ++arabic;
+        else if (u >= 0x0590 && u <= 0x05FF) ++hebrew;
+        else if (u >= 0xAC00 && u <= 0xD7AF) ++hangul;
+        else if (u >= 0x3040 && u <= 0x30FF) ++kana;
+        else if (u >= 0x4E00 && u <= 0x9FFF) ++han;
+        else if (u >= 0x0E00 && u <= 0x0E7F) ++thai;
+        else
+            for (size_t m = 0; m < std::size(markers); ++m)
+                if (std::wcschr(markers[m].letters, c)) ++counts[m];
+    }
+    if (hangul) return L"KO";
+    if (kana) return L"JA";  // Japanese mixes Kanji in; Kana decides
+    if (han) return L"ZH";
+    if (cyr) return ukr ? L"UK" : L"RU";
+    if (arabic) return L"AR";
+    if (hebrew) return L"HE";
+    if (greek) return L"EL";
+    if (thai) return L"TH";
+    size_t best = std::size(markers);
+    for (size_t m = 0; m < std::size(markers); ++m)
+        if (counts[m] > 0 && (best == std::size(markers) || counts[m] > counts[best])) best = m;
+    return best == std::size(markers) ? std::wstring() : markers[best].lang;
+}
 
 std::wstring PrimaryLang(const std::wstring& code) {
     const std::wstring t = Trim(code);

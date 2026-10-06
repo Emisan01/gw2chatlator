@@ -32,7 +32,10 @@ public:
         TranslateResult r;
         const std::wstring text = JoinSegments(segments);
         std::wstring source = sourceLang.empty() ? DetectLanguage(text) : PrimaryLang(sourceLang);
-        if (source.empty()) source = L"EN";  // most common in GW2 chat
+        // Windows refuses short lines: then telltale letters (ı ğ ş -> Turkish ...),
+        // and only without any hint English, the most common in GW2 chat.
+        if (source.empty()) source = GuessLanguageByLetters(text);
+        if (source.empty()) source = L"EN";
         if (source == PrimaryLang(targetLang)) {  // nothing to do
             r.ok = true;
             r.text = text;
@@ -240,6 +243,42 @@ std::vector<std::wstring> FetchLlmModels(const std::wstring& url, const std::wst
     }
     if (error) *error = lastError.empty() ? Tr(L"not reachable") : lastError;
     return {};
+}
+
+// Sizes are what Ollama downloads; memory needs are rough (the model plus its
+// working memory) and the game wants the graphics card too.
+const std::vector<LocalModelOffer>& LocalModelOffers() {
+    static const std::vector<LocalModelOffer> offers = {
+        {L"gemma3:1b", L"Very fast · 0.8 GB download · runs on the CPU or with ~2 GB VRAM · good for short chat lines"},
+        {L"gemma3:4b", L"Balanced · 3.3 GB download · ~4–6 GB VRAM · 140 languages"},
+        {L"aya-expanse:8b", L"Best translations · 5 GB download · 8 GB VRAM recommended · made for translating, "
+                            L"23 languages incl. Arabic, Turkish, Russian"},
+    };
+    return offers;
+}
+
+static std::wstring OllamaRoot(const std::wstring& llmUrl) {
+    return Trim(llmUrl).empty() ? std::wstring(L"http://localhost:11434") : HostRoot(NormalizeLlmUrl(llmUrl));
+}
+
+bool OllamaReachable(const std::wstring& llmUrl) {
+    const HttpResponse http = HttpRequestUrl(L"GET", OllamaRoot(llmUrl) + L"/api/version", L"", "", 3000);
+    return http.transportOk && http.status == 200;
+}
+
+bool PullOllamaModel(const std::wstring& llmUrl, const std::wstring& model, std::wstring* error) {
+    const std::string body = "{\"model\":\"" + ToUtf8(model) + "\",\"stream\":false}";
+    const HttpResponse http = HttpRequestUrl(L"POST", OllamaRoot(llmUrl) + L"/api/pull",
+                                             L"Content-Type: application/json\r\n", body, 60 * 60 * 1000);
+    if (!http.transportOk) {
+        if (error) *error = http.error;
+        return false;
+    }
+    if (http.status != 200 || http.body.find("success") == std::string::npos) {
+        if (error) *error = L"HTTP " + std::to_wstring(http.status) + L": " + FromUtf8(http.body.substr(0, 200));
+        return false;
+    }
+    return true;
 }
 
 LtResult CheckWithLanguageTool(const std::wstring& serverUrl, const std::wstring& text, const std::wstring& lang,

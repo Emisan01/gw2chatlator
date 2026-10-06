@@ -1,9 +1,10 @@
 // chat_reader.hpp — reads the GW2 chat panel from the screen.
 //
-// Worker thread: grab the area (DXGI / GDI) -> skip if unchanged -> enlarge
-// and invert -> OCR (Tesseract when installed, else Windows' own) -> lines
-// with their text colours -> post a snapshot to the window. Nothing here touches the game process; it only
-// looks at pixels that are on the screen anyway.
+// Worker thread: grab the area (WGC / DXGI / GDI) -> skip if unchanged ->
+// measure the line grid and enlarge to ~30 px line spacing -> OCR (Tesseract
+// when installed, else Windows' own) -> words sorted into the measured lines,
+// with their text colours -> post a snapshot to the window. Nothing here
+// touches the game process; it only looks at pixels that are on the screen anyway.
 #pragma once
 
 #include <windows.h>
@@ -16,17 +17,19 @@
 
 #include "core/chat_line.hpp"
 #include "core/image.hpp"
+#include "win/ocr.hpp"
+#include "win/tesseract_ocr.hpp"
 
 namespace gct {
 
 struct ReaderOptions {
-    int intervalMs = 900;
+    int intervalMs = 400;
     int ocrChoice = 0;            // 0 auto, 1 tesseract, 2 windows (see OcrChoice)
     std::wstring tesseractPath;   // empty = search
     std::string tesseractLangs;   // empty = automatic
     bool readChinese = false;
     std::wstring ocrLanguage;     // Windows OCR: empty = Windows languages
-    int scale = 2;
+    int scale = 0;                // 0 = automatic from the line grid
     std::wstring captureDir;      // diagnostics target
 };
 
@@ -39,6 +42,29 @@ struct ReaderSnapshot {
     std::wstring language;       // OCR language tag(s)
     int milliseconds = 0;        // capture + OCR time
     ULONGLONG captureTick = 0;   // GetTickCount64() when the picture was taken
+};
+
+// Text recognition of one chat picture, as the reader does it (also used by
+// the setup's preview). Init and Read on the same thread.
+class ChatOcr {
+public:
+    // Tesseract when wanted and installed, else Windows OCR. False if neither works.
+    bool Init(const ReaderOptions& o, std::wstring* error);
+    // Picture of the chat lines -> lines with colours, top to bottom.
+    // `fixedScale` 0 = automatic. `prepared` (optional) gets what was recognized.
+    bool Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, Image* prepared, std::wstring* error);
+    std::wstring EngineName() const;
+    std::wstring Language() const;
+
+    // Line spacing (px) below which "automatic" prefers Tesseract (if installed).
+    static constexpr int kSmallTextPitch = 14;
+
+private:
+    OcrEngine win_;
+    TesseractOcr tess_;
+    int choice_ = 0;  // 0 auto, 1 Tesseract, 2 Windows
+    bool haveTess_ = false, haveWin_ = false;
+    bool useTess_ = false;  // the engine of the last picture
 };
 
 class ChatReader {

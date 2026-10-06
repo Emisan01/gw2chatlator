@@ -5,13 +5,50 @@
 // Portable, no windows.h.
 
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 namespace gct {
 
-// Damerau-Levenshtein (optimal string alignment) on case-folded text.
+// How words are compared: case-folded, and Arabic spelling variants that
+// typists mix up count as the same letter (أ إ آ ٱ -> ا, ى -> ي, ة -> ه,
+// ؤ -> و, ئ -> ي, Persian ک/ی); tatweel and harakat are dropped.
+std::wstring WordKey(const std::wstring& word);
+
+// True if two letters sit next to each other on the active keyboard layout.
+using KeyNeighbors = std::function<bool(wchar_t, wchar_t)>;
+
+// Where the letters sit on the keyboard: three rows of keys, each row shifted
+// a bit to the right like on a real keyboard. Letters are WordKey'd.
+class KeyLayout {
+public:
+    void Set(wchar_t c, int row, float x);
+    bool Empty() const { return pos_.empty(); }
+    bool Neighbors(wchar_t a, wchar_t b) const;
+    // The letter one key to the left (dx = -1) or right (+1) in the same row; 0 if none.
+    wchar_t Shifted(wchar_t c, int dx) const;
+    KeyNeighbors AsNeighbors() const;
+
+private:
+    struct Pos {
+        int row;
+        float x;
+    };
+    std::unordered_map<wchar_t, Pos> pos_;
+    std::unordered_map<int, wchar_t> at_;  // row * 1000 + column -> letter
+};
+
+// The word typed with the whole hand one key off ("jsööp" for "hallo" on
+// QWERTZ): the word moved back left and right. Only complete moves count.
+std::vector<std::wstring> HandShiftVariants(const std::wstring& word, const KeyLayout& layout);
+
+// Edit distance for typing slips: a wrong key next door costs 0.5, two
+// swapped letters 0.7, anything else 1. Returns limit + 1 once above `limit`.
+double SlipDistance(const std::wstring& a, const std::wstring& b, const KeyLayout& layout, double limit);
+
+// Damerau-Levenshtein (optimal string alignment) on WordKey text.
 // Returns limit + 1 as soon as the distance is known to exceed `limit`.
 int EditDistance(const std::wstring& a, const std::wstring& b, int limit);
 
@@ -27,6 +64,9 @@ public:
     void AddWord(const std::wstring& word, double weight);
     // The user undid an autocorrection: `word` is meant as written.
     void Confirm(const std::wstring& word) { AddWord(word, 2.0); }
+    // Removes a word and every pair it is part of. False if it was unknown.
+    bool Forget(const std::wstring& word);
+    void Clear();
 
     double Count(const std::wstring& word) const;
     bool Knows(const std::wstring& word) const { return Count(word) >= 2.0; }
@@ -34,11 +74,20 @@ public:
     // Words starting with `prefix` (longer than it), best first; a word that
     // often follows `prev` ranks higher. Case follows the typed prefix.
     std::vector<std::wstring> Complete(const std::wstring& prefix, const std::wstring& prev, size_t n) const;
+    // Like Complete, but the typed prefix may hold one typo ("helo" -> "hello",
+    // "komt" -> "kommt"): 3+ letters, same first letter (or the first two
+    // swapped), only words used at least twice. A typo on a neighbouring key
+    // ranks higher. Exact completions are not repeated here.
+    std::vector<std::wstring> CompleteFuzzy(const std::wstring& prefix, const std::wstring& prev, size_t n,
+                                            const KeyNeighbors& neighbors = nullptr) const;
     // Words that often follow `prev`.
     std::vector<std::wstring> Next(const std::wstring& prev, size_t n) const;
     // Known words one or two typos away from `word` (same first letter or the
     // first two swapped), closest and most used first.
     std::vector<std::wstring> Near(const std::wstring& word, size_t n) const;
+    // Known words a typing slip away (SlipDistance: up to 1 for short words,
+    // 1.5 up to 7 letters, 2.5 above), closest and most used first.
+    std::vector<std::wstring> NearSlip(const std::wstring& word, const KeyLayout& layout, size_t n) const;
 
     size_t Size() const { return words_.size(); }
     size_t PairCount() const { return pairs_.size(); }

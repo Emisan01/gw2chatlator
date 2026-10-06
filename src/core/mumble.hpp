@@ -26,6 +26,10 @@ MumbleIdentity ParseMumbleIdentity(const std::wstring& json);
 
 struct MumbleState {
     bool live = false;          // GW2 is running and updating the block
+    // GW2 writes the block every frame only while you are on a map: the tick
+    // stands still in the character selection and on loading screens. The
+    // chat reader runs only then (that screen shows character data, no chat).
+    bool inMap = false;
     MumbleIdentity identity;
     uint32_t uiState = 0;
     uint32_t processId = 0;

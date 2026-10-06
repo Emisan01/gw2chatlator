@@ -13,4 +13,8 @@ const WordSet& BuiltinKeepWords();
 // fine to translate but not in any dictionary (Kommi, stacken, Fraktale ...).
 const WordSet& BuiltinSpellIgnore();
 
+// What the word bar offers before it has learned anything: GW2 words as
+// they are written (English and German forms), for completions only.
+const std::vector<std::wstring>& Gw2StarterWords();
+
 }  // namespace gct

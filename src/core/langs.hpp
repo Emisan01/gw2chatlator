@@ -14,6 +14,14 @@ std::wstring PrimaryLang(const std::wstring& code);
 // the game has no such language (then there is no glossary for it).
 std::string Gw2ApiLang(const std::wstring& deeplCode);
 
+// A guess from letters only one language (or script) uses: ı ğ ş -> TR,
+// ñ ¿ ¡ -> ES, ą ę ł ż -> PL, ß/ä ö ü -> DE, ç œ ê -> FR, ã õ -> PT, ő ű -> HU,
+// å ø æ -> DA/NO/SV family (NB), Cyrillic -> RU (і ї є -> UK), Greek -> EL,
+// Arabic -> AR, Hebrew -> HE, Hangul -> KO, Kana -> JA, Han -> ZH, Thai -> TH.
+// "" when the letters say nothing (plain a-z). For short chat lines the
+// Windows language detection refuses.
+std::wstring GuessLanguageByLetters(const std::wstring& text);
+
 // Spell-checker tags to try, best first. `lang` is a DeepL-style code
 // ("DE", "EN-GB"), `userLocale` the Windows user locale ("de-AT").
 std::vector<std::wstring> SpellTagCandidates(const std::wstring& lang, const std::wstring& userLocale);

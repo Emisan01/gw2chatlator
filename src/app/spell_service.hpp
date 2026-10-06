@@ -8,6 +8,7 @@
 
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "app/config.hpp"
@@ -25,6 +26,18 @@ struct WordSuggestions {
     Span replace;                     // the part of the text a pick replaces (empty = insert at caret)
 };
 
+// The dropdown under the word being typed, like on a phone keyboard: Space
+// takes the highlighted entry, Tab moves through the list.
+struct WordChoices {
+    std::vector<std::wstring> words;  // up to 5
+    int highlight = -1;               // what Space takes; -1: Space is just a space
+    bool firstIsTyped = false;        // words[0] is the word as typed (a valid word: Space keeps it)
+    Span replace;                     // the word being typed
+    bool Empty() const { return words.empty(); }
+    // Space would change the text.
+    bool Changes() const { return highlight >= 0 && !(firstIsTyped && highlight == 0); }
+};
+
 class SpellService {
 public:
     // `tags` from SpellTagCandidates; `userWordsPath` is created on first add.
@@ -33,7 +46,10 @@ public:
     // Another language (the keyboard layout changed). False if Windows has
     // no checker for it — spelling is then off until the next switch, rather
     // than marking every word of a foreign language as wrong.
-    bool SwitchLanguage(const std::vector<std::wstring>& tags) { return checker_.Init(tags); }
+    bool SwitchLanguage(const std::vector<std::wstring>& tags) {
+        ClearCache();
+        return checker_.Init(tags);
+    }
     const std::wstring& Tag() const { return checker_.Tag(); }
 
     void SetGameWords(WordSet words) { game_ = std::move(words); }
@@ -45,6 +61,11 @@ public:
     // Backspace right after an autocorrection: the word was meant as typed.
     void RejectCorrection(const std::wstring& original);
     const WordModel& Model() const { return model_; }
+    bool IsLearned(const std::wstring& word) const { return model_.Count(word) > 0; }
+    // A word taught by mistake: gone from the word bar and autocorrection.
+    bool Forget(const std::wstring& word);
+    // Deletes everything learned, in every language (learned_*.txt).
+    void ForgetAll();
 
     // Issues worth showing. Skips GW2 words, anything with digits, chat
     // codes, the chat-command prefix and the word the caret is touching
@@ -59,6 +80,12 @@ public:
 
     // The word bar for the text and caret position.
     WordSuggestions Suggestions(const std::wstring& text, size_t caret, AutoCorrectMode mode) const;
+    // The dropdown for the word ending at the caret: the word itself if it is
+    // valid, completions, then corrections for typing slips (key next door,
+    // the whole hand one key off, the dictionary's ideas). Phone mode
+    // highlights the best change for a word that is not valid; Safe mode
+    // highlights nothing (Tab chooses).
+    WordChoices Choices(const std::wstring& text, size_t caret, AutoCorrectMode mode) const;
 
     void AddUserWord(const std::wstring& word);    // persists
     void IgnoreForSession(const std::wstring& word);
@@ -69,8 +96,17 @@ public:
 private:
     bool IsKnown(const std::wstring& word) const;
     bool IsMisspelled(const std::wstring& word) const;
+    // The Windows spell checker is a COM call; the word bar asks on every key
+    // press, so answers per word are kept until the language changes.
+    bool CheckerRejects(const std::wstring& word) const;
+    const std::vector<std::wstring>& CheckerSuggest(const std::wstring& word) const;
+    void ClearCache() const;
 
     SpellChecker checker_;
+    KeyLayout layout_;
+    KeyNeighbors neighbors_;
+    mutable std::unordered_map<std::wstring, bool> rejectCache_;
+    mutable std::unordered_map<std::wstring, std::vector<std::wstring>> suggestCache_;
     WordSet game_, user_, session_;
     std::wstring userPath_;
     WordModel model_;

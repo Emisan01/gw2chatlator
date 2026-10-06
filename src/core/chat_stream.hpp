@@ -27,18 +27,28 @@ public:
     explicit ChatStream(size_t memory = 150) : memory_(memory) {}
 
     // Messages of `snapshot` that were not seen recently, in order.
-    std::vector<ChatMessage> Feed(const std::vector<ChatMessage>& snapshot);
-    void Reset() { recent_.clear(); }
+    // `confirm` (the double scan): a new message only counts once the next
+    // snapshot shows it again; things seen only once (half drawn while
+    // scrolling, a tooltip, a fading animation) never get through.
+    std::vector<ChatMessage> Feed(const std::vector<ChatMessage>& snapshot, bool confirm = false);
+    // New messages are waiting for their second look: read again soon.
+    bool HasPending() const { return !pending_.empty(); }
+    void Reset() {
+        recent_.clear();
+        pending_.clear();
+    }
 
 private:
     struct Seen {
         std::wstring key;
         std::vector<uint32_t> grams;
     };
+    static bool Similar(const Seen& a, const Seen& b);
     bool IsKnown(const Seen& s) const;
 
     size_t memory_;
     std::deque<Seen> recent_;
+    std::vector<Seen> pending_;  // seen once in the last snapshot
 };
 
 // Small LRU cache: normalized source text + target language -> translation.
