@@ -1,0 +1,109 @@
+cmake_minimum_required(VERSION 3.20)
+project(GW2ChatTranslator VERSION 0.4.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# ---- core: portable logic, no Win32 (text, JSON, chat parsing, glossary, protocols)
+add_library(gct_core STATIC
+    src/core/text.cpp
+    src/core/json.cpp
+    src/core/hotkey.cpp
+    src/core/langs.cpp
+    src/core/languages.cpp
+    src/core/glossary.cpp
+    src/core/protect.cpp
+    src/core/slang.cpp
+    src/core/deepl_protocol.cpp
+    src/core/mymemory_protocol.cpp
+    src/core/llm_protocol.cpp
+    src/core/chat_line.cpp
+    src/core/chat_stream.cpp
+    src/core/chat_tabs.cpp
+    src/core/image.cpp
+    src/core/gw2_text.cpp
+    src/core/mumble.cpp)
+target_include_directories(gct_core PUBLIC src)
+
+option(GCT_BUILD_TESTS "Build the core unit tests and the Windows test doubles" ON)
+if(GCT_BUILD_TESTS)
+    enable_testing()
+    add_executable(core_tests tests/core_tests.cpp)
+    target_link_libraries(core_tests PRIVATE gct_core)
+    add_test(NAME core_tests COMMAND core_tests)
+endif()
+
+if(WIN32)
+    # ---- win: Windows services without UI. spellcheck.cpp and ocr.cpp are
+    # linked per executable so the test build can swap in deterministic fakes.
+    add_library(gct_win STATIC
+        src/win/files.cpp
+        src/win/http.cpp
+        src/win/deepl_translator.cpp
+        src/win/online_translators.cpp
+        src/win/els.cpp
+        src/win/gw2_api.cpp
+        src/win/gw2_sender.cpp
+        src/win/mumble_link.cpp
+        src/win/screen_capture.cpp)
+    target_link_libraries(gct_win PUBLIC gct_core winhttp ole32 user32 gdi32 d3d11 dxgi)
+
+    # ---- app: the window
+    set(GCT_APP_SOURCES
+        src/app/main.cpp
+        src/app/main_window.cpp
+        src/app/input_box.cpp
+        src/app/chat_log_view.cpp
+        src/app/preview_view.cpp
+        src/app/chat_reader.cpp
+        src/app/region_picker.cpp
+        src/app/spell_service.cpp
+        src/app/config.cpp)
+    add_executable(GW2ChatTranslator WIN32 ${GCT_APP_SOURCES} src/win/spellcheck.cpp src/win/ocr.cpp)
+    target_link_libraries(GW2ChatTranslator PRIVATE gct_win shell32 runtimeobject)
+    set(GCT_APP_TARGETS GW2ChatTranslator)
+
+    if(GCT_BUILD_TESTS)
+        # Stand-in game: GW2 window class, chat panel fed from fake_chat.txt,
+        # MumbleLink block, chat line that logs to received.txt.
+        add_executable(fake_gw2 WIN32 tests/tools/fake_gw2.cpp)
+        target_compile_definitions(fake_gw2 PRIVATE UNICODE _UNICODE)
+        if(NOT MSVC)
+            target_link_options(fake_gw2 PRIVATE -municode -static)
+        endif()
+        # Same app with a deterministic spell checker and an OCR that reads
+        # fake_chat.txt instead of pixels (for Wine / UI tests).
+        add_executable(GW2ChatTranslator_fakes WIN32 ${GCT_APP_SOURCES} tests/tools/fake_spellcheck.cpp
+                       tests/tools/fake_ocr.cpp)
+        target_link_libraries(GW2ChatTranslator_fakes PRIVATE gct_win shell32)
+        list(APPEND GCT_APP_TARGETS GW2ChatTranslator_fakes)
+    endif()
+
+    foreach(t gct_core gct_win ${GCT_APP_TARGETS})
+        target_compile_definitions(${t} PRIVATE UNICODE _UNICODE _WIN32_WINNT=0x0A00 WINVER=0x0A00 NOMINMAX)
+    endforeach()
+
+    if(MSVC)
+        # Sources are UTF-8; static CRT so the exe runs without the VC++ redistributable.
+        foreach(t gct_core gct_win ${GCT_APP_TARGETS})
+            target_compile_options(${t} PRIVATE /utf-8 /W4 /permissive-)
+        endforeach()
+        set_property(TARGET gct_core gct_win ${GCT_APP_TARGETS} PROPERTY
+            MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        if(GCT_BUILD_TESTS)
+            target_compile_options(core_tests PRIVATE /utf-8)
+            set_property(TARGET core_tests PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        endif()
+    else()
+        foreach(t gct_core gct_win ${GCT_APP_TARGETS})
+            target_compile_options(${t} PRIVATE -Wall -Wextra)
+        endforeach()
+        # wWinMain entry point; static runtime so no MinGW DLLs are needed.
+        foreach(t ${GCT_APP_TARGETS})
+            target_link_options(${t} PRIVATE -municode -static -static-libgcc -static-libstdc++)
+        endforeach()
+        if(GCT_BUILD_TESTS)
+            target_link_options(core_tests PRIVATE -static -static-libgcc -static-libstdc++)
+        endif()
+    endif()
+endif()
