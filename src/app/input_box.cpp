@@ -12,8 +12,15 @@ namespace {
 
 constexpr wchar_t kProp[] = L"gct.InputBox";
 
+// Characters that take the dropdown's choice (not ':' and ')': names, smileys).
+bool IsChoiceAccept(wchar_t c) {
+    return c == L' ' || c == L'.' || c == L',' || c == L'!' || c == L'?' || c == L';' || c == 0x060C || c == 0x061B ||
+           c == 0x061F || c == 0x06D4;
+}
+
 bool IsWordBoundary(wchar_t c) {
-    return c == L' ' || c == L'.' || c == L',' || c == L'!' || c == L'?' || c == L';' || c == L':' || c == L')';
+    return c == L' ' || c == L'.' || c == L',' || c == L'!' || c == L'?' || c == L';' || c == L':' || c == L')' ||
+           c == 0x060C || c == 0x061B || c == 0x061F || c == 0x06D4;  // Arabic comma, semicolon, ?, full stop
 }
 
 }  // namespace
@@ -32,7 +39,89 @@ bool InputBox::Create(HWND parent, HINSTANCE inst, const Theme* theme, SpellServ
     SendMessageW(hwnd_, EM_SETLIMITTEXT, 2000, 0);
     SetPropW(hwnd_, kProp, this);
     orig_ = reinterpret_cast<WNDPROC>(SetWindowLongPtrW(hwnd_, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(Proc)));
+    popup_.Create(GetAncestor(parent, GA_ROOT), inst, theme_, [this](size_t i) {
+        if (i < choices_.words.size()) {
+            choices_.highlight = static_cast<int>(i);
+            ApplyChoice(L' ');
+        }
+    });
     return true;
+}
+
+// ---------------------------------------------------------------------------
+// The dropdown under the word being typed
+// ---------------------------------------------------------------------------
+void InputBox::UpdateChoices() {
+    if (!suggestOn_ || !spell_ || GetFocus() != hwnd_) {
+        popup_.Hide();
+        return;
+    }
+    const std::wstring text = Text();
+    const size_t caret = Caret();
+    if (text == choicesText_ && caret == choicesCaret_ && (popup_.Visible() || choices_.Empty())) return;
+    WordChoices c = spell_->Choices(text, caret, mode_);
+    const bool dismissed = text == dismissedText_;  // Esc closed it for exactly this text
+    choicesText_ = text;
+    choicesCaret_ = caret;
+    choices_ = std::move(c);
+    if (choices_.Empty() || dismissed) {
+        popup_.Hide();
+        return;
+    }
+    POINT p = PosFromChar(choices_.replace.start);
+    if (p.x == -32768) {
+        popup_.Hide();
+        return;
+    }
+    p.y += theme_->textLineHeight + theme_->S(4);
+    ClientToScreen(hwnd_, &p);
+    popupPos_ = p;
+    popup_.Show(choices_, p);
+}
+
+// The choice for exactly the current text (typing can be faster than the
+// dropdown's update: then it is worked out right now).
+const WordChoices& InputBox::CurrentChoices() {
+    const std::wstring text = Text();
+    const size_t caret = Caret();
+    if (!spell_ || text != choicesText_ || caret != choicesCaret_) {
+        choices_ = spell_ ? spell_->Choices(text, caret, mode_) : WordChoices{};
+        choicesText_ = text;
+        choicesCaret_ = caret;
+    }
+    if (text == dismissedText_) choices_ = WordChoices{};
+    return choices_;
+}
+
+// Puts the highlighted entry in place of the typed word, followed by
+// `boundary` (the space or punctuation that finished it; 0 = nothing).
+// Backspace right after it brings the typed word back.
+bool InputBox::ApplyChoice(wchar_t boundary) {
+    const WordChoices c = choices_;
+    if (c.highlight < 0 || static_cast<size_t>(c.highlight) >= c.words.size()) return false;
+    const std::wstring text = Text();
+    if (c.replace.end() > text.size()) return false;
+    const std::wstring typed = text.substr(c.replace.start, c.replace.length);
+    const std::wstring& word = c.words[static_cast<size_t>(c.highlight)];
+    const std::wstring tail = boundary ? std::wstring(1, boundary) : std::wstring();
+    ReplaceRange(c.replace, word + tail);
+    const size_t caret = c.replace.start + word.size() + tail.size();
+    SendMessageW(hwnd_, EM_SETSEL, caret, caret);
+    lastFix_.valid = false;
+    if (word != typed) {
+        if (boundary) lastFix_ = {true, c.replace.start, typed, word, boundary};
+        if (cb_.onAutoCorrected) cb_.onAutoCorrected(typed, word);
+    }
+    popup_.Hide();
+    UpdateSuggestions();
+    return true;
+}
+
+void InputBox::CycleChoice(int step) {
+    const int n = static_cast<int>(choices_.words.size());
+    if (n == 0) return;
+    choices_.highlight = choices_.highlight < 0 ? (step > 0 ? 0 : n - 1) : (choices_.highlight + step + n) % n;
+    popup_.Show(choices_, popupPos_);
 }
 
 std::wstring InputBox::Text() const {
@@ -48,6 +137,9 @@ void InputBox::Clear() {
     grammar_.clear();
     lastFix_.valid = false;
     KillTimer(hwnd_, kSpellTimer);
+    popup_.Hide();
+    choices_ = WordChoices{};
+    dismissedText_.clear();
     SetWindowTextW(hwnd_, L"");
     InvalidateRect(hwnd_, nullptr, TRUE);  // squiggles live outside the text the EDIT repaints
 }
@@ -77,7 +169,11 @@ void InputBox::UpdateSuggestions() {
                       s.autoIndex == suggestions_.autoIndex && s.replace.start == suggestions_.replace.start &&
                       s.replace.length == suggestions_.replace.length;
     suggestions_ = std::move(s);
-    if (!same && cb_.onSuggestions) cb_.onSuggestions(suggestions_);
+    if (!same) {
+        if (cb_.onSuggestions) cb_.onSuggestions(suggestions_);
+        InvalidateRect(hwnd_, nullptr, TRUE);  // the grey completion after the caret
+    }
+    UpdateChoices();
 }
 
 void InputBox::AcceptSuggestion(size_t index) {
@@ -222,6 +318,42 @@ void InputBox::DrawSquiggles(HDC dc) const {
     RestoreDC(dc, saved);
 }
 
+// The rest of the highlighted completion, greyed out right after the caret
+// ("Teq|uatl"); Tab takes it. Left-to-right text only: in RTL the EDIT's
+// caret geometry does not tell where the ghost would have to go.
+void InputBox::DrawGhost(HDC dc) const {
+    const WordSuggestions& s = suggestions_;
+    if (popup_.Visible()) return;  // the dropdown shows the completion
+    if (!suggestOn_ || rtl_ || s.kind != WordSuggestions::Kind::Completion || s.autoIndex < 0 ||
+        static_cast<size_t>(s.autoIndex) >= s.words.size() || GetFocus() != hwnd_)
+        return;
+    const std::wstring text = Text();
+    const size_t caret = Caret();
+    if (caret == 0 || caret > text.size() || caret != s.replace.end() || s.replace.start >= caret) return;
+    if (caret < text.size() && text[caret] != L' ') return;
+    const std::wstring typed = text.substr(s.replace.start, caret - s.replace.start);
+    const std::wstring& word = s.words[static_cast<size_t>(s.autoIndex)];
+    if (word.size() <= typed.size() || CaseFold(word.substr(0, typed.size())) != CaseFold(typed)) return;
+    const std::wstring rest = word.substr(typed.size());
+
+    const int saved = SaveDC(dc);
+    SelectObject(dc, theme_->fontText);
+    const POINT last = PosFromChar(caret - 1);
+    if (last.x == -32768) {
+        RestoreDC(dc, saved);
+        return;
+    }
+    SIZE sz{};
+    GetTextExtentPoint32W(dc, &text[caret - 1], 1, &sz);
+    RECT clip;
+    SendMessageW(hwnd_, EM_GETRECT, 0, reinterpret_cast<LPARAM>(&clip));
+    IntersectClipRect(dc, clip.left, clip.top, clip.right, clip.bottom);
+    SetBkMode(dc, TRANSPARENT);
+    SetTextColor(dc, Theme::kMuted);
+    TextOutW(dc, last.x + sz.cx, last.y, rest.c_str(), static_cast<int>(rest.size()));
+    RestoreDC(dc, saved);
+}
+
 void InputBox::ReplaceRange(Span span, const std::wstring& text) {
     SendMessageW(hwnd_, EM_SETSEL, span.start, span.end());
     SendMessageW(hwnd_, EM_REPLACESEL, TRUE, reinterpret_cast<LPARAM>(text.c_str()));
@@ -316,6 +448,61 @@ bool InputBox::ShowSpellMenu(LPARAM lp) {
     return true;
 }
 
+// Right-click on a word you taught the tool (no spell mark there): forget it,
+// plus the usual clipboard commands the EDIT's own menu would have offered.
+bool InputBox::ShowWordMenu(LPARAM lp) {
+    if (!spell_) return false;
+    const std::wstring text = Text();
+    POINT screen{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)};
+    size_t idx;
+    if (screen.x == -1 && screen.y == -1) {
+        idx = Caret();
+        POINT p = PosFromChar(idx > 0 ? idx - 1 : 0);
+        if (p.x == -32768) p = {0, 0};
+        p.y += theme_->textLineHeight;
+        screen = p;
+        ClientToScreen(hwnd_, &screen);
+    } else {
+        POINT client = screen;
+        ScreenToClient(hwnd_, &client);
+        idx = LOWORD(SendMessageW(hwnd_, EM_CHARFROMPOS, 0, MAKELPARAM(client.x, client.y)));
+    }
+    size_t start = std::min(idx, text.size()), end = start;
+    while (start > 0 && IsWordChar(text[start - 1])) --start;
+    while (end < text.size() && IsWordChar(text[end])) ++end;
+    const std::wstring word = text.substr(start, end - start);
+    if (word.empty() || !spell_->IsLearned(word)) return false;
+
+    enum : UINT { kForget = 1, kCut, kCopy, kPaste, kAll };
+    DWORD a = 0, b = 0;
+    SendMessageW(hwnd_, EM_GETSEL, reinterpret_cast<WPARAM>(&a), reinterpret_cast<LPARAM>(&b));
+    const UINT sel = a != b ? MF_STRING : MF_STRING | MF_GRAYED;
+    HMENU menu = CreatePopupMenu();
+    AppendMenuW(menu, MF_STRING, kForget, TrF(L"Forget “{1}”", {word}).c_str());
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(menu, sel, kCut, Tr(L"Cut").c_str());
+    AppendMenuW(menu, sel, kCopy, Tr(L"Copy").c_str());
+    AppendMenuW(menu, IsClipboardFormatAvailable(CF_UNICODETEXT) ? MF_STRING : MF_STRING | MF_GRAYED, kPaste,
+                Tr(L"Paste").c_str());
+    AppendMenuW(menu, MF_STRING, kAll, Tr(L"Select all").c_str());
+    const UINT cmd = static_cast<UINT>(TrackPopupMenu(
+        menu, TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_NONOTIFY | (UiRtl() ? TPM_LAYOUTRTL : 0), screen.x, screen.y, 0,
+        hwnd_, nullptr));
+    DestroyMenu(menu);
+    switch (cmd) {
+        case kForget:
+            spell_->Forget(word);
+            UpdateSuggestions();
+            if (cb_.onForgotten) cb_.onForgotten(word);
+            break;
+        case kCut: SendMessageW(hwnd_, WM_CUT, 0, 0); break;
+        case kCopy: SendMessageW(hwnd_, WM_COPY, 0, 0); break;
+        case kPaste: SendMessageW(hwnd_, WM_PASTE, 0, 0); break;
+        case kAll: SendMessageW(hwnd_, EM_SETSEL, 0, -1); break;
+    }
+    return true;
+}
+
 // ---------------------------------------------------------------------------
 // Autocorrection when a word is finished. Safe: only what Windows itself
 // marks as a sure replacement. Phone: also the most likely meant word for a
@@ -323,12 +510,25 @@ bool InputBox::ShowSpellMenu(LPARAM lp) {
 // ---------------------------------------------------------------------------
 void InputBox::TryAutoCorrect() {
     lastFix_.valid = false;
+    const size_t caret = Caret();
+    if (caret < 3) return;
+    CorrectWordEndingAt(caret - 1, true);  // the boundary character just typed sits at caret - 1
+}
+
+// Enter finishes the last word like a space would (no undo: it is sent).
+void InputBox::FinishWordAtCaret() {
+    lastFix_.valid = false;
+    const size_t caret = Caret();
+    const std::wstring text = Text();
+    if (caret < 2 || caret > text.size() || (caret < text.size() && IsWordChar(text[caret]))) return;
+    CorrectWordEndingAt(caret, false);
+}
+
+void InputBox::CorrectWordEndingAt(size_t end, bool boundaryTyped) {
     if (!spell_ || mode_ == AutoCorrectMode::Off) return;
     const size_t caret = Caret();
     const std::wstring text = Text();
-    if (caret < 3 || caret > text.size()) return;
-
-    const size_t end = caret - 1;  // the boundary character just typed
+    if (end > text.size() || caret > text.size()) return;
     size_t start = end;
     while (start > 0 && IsWordChar(text[start - 1])) --start;
     if (end - start < 2) return;
@@ -344,7 +544,7 @@ void InputBox::TryAutoCorrect() {
     ReplaceRange(span, *replacement);
     const size_t newCaret = caret + replacement->size() - word.size();
     SendMessageW(hwnd_, EM_SETSEL, newCaret, newCaret);
-    lastFix_ = {true, start, word, *replacement, text[end]};
+    if (boundaryTyped) lastFix_ = {true, start, word, *replacement, text[end]};
     if (cb_.onAutoCorrected) cb_.onAutoCorrected(word, *replacement);
 }
 
@@ -399,11 +599,26 @@ LRESULT InputBox::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             const bool ctrl = GetKeyState(VK_CONTROL) < 0;
             const bool shift = GetKeyState(VK_SHIFT) < 0;
             if (wp == VK_RETURN) {
-                if (!shift && cb_.onEnter) cb_.onEnter(ctrl);
+                if (!shift) {
+                    // Enter finishes the word too: the dropdown's choice, else autocorrection.
+                    if (CurrentChoices().Changes()) ApplyChoice(0);
+                    else FinishWordAtCaret();
+                    popup_.Hide();
+                    if (cb_.onEnter) cb_.onEnter(ctrl);
+                }
                 return 0;
             }
             if (wp == VK_ESCAPE) {
+                if (popup_.Visible()) {  // first Esc only closes the dropdown
+                    popup_.Hide();
+                    dismissedText_ = Text();
+                    return 0;
+                }
                 if (cb_.onEscape) cb_.onEscape();
+                return 0;
+            }
+            if (popup_.Visible() && !ctrl && (wp == VK_TAB || wp == VK_DOWN || wp == VK_UP)) {
+                CycleChoice(wp == VK_UP || (wp == VK_TAB && shift) ? -1 : 1);  // Tab moves through the list
                 return 0;
             }
             if (ctrl && wp == 'A') {
@@ -447,6 +662,12 @@ LRESULT InputBox::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             if (wp == L'\r' || wp == L'\n' || wp == 0x1B || wp == 0x01 || wp == 0x0C || wp == 0x15 || wp == 0x7F)
                 return 0;
             if (wp == L'\t') return 0;  // Ctrl+Tab / Tab: no tab characters in a chat line
+            // Space or punctuation finishes the word: the dropdown's highlighted
+            // entry goes in (a valid word as typed stays as it is).
+            if (IsChoiceAccept(static_cast<wchar_t>(wp)) && mode_ != AutoCorrectMode::Off && CurrentChoices().Changes()) {
+                ApplyChoice(static_cast<wchar_t>(wp));
+                return 0;
+            }
             const LRESULT r = CallWindowProcW(orig_, hwnd_, msg, wp, lp);
             if (IsWordBoundary(static_cast<wchar_t>(wp))) TryAutoCorrect();
             else if (wp != 0x08) lastFix_.valid = false;
@@ -461,11 +682,10 @@ LRESULT InputBox::Handle(UINT msg, WPARAM wp, LPARAM lp) {
         }
         case WM_PAINT: {
             const LRESULT r = CallWindowProcW(orig_, hwnd_, msg, wp, lp);
-            if (!issues_.empty() || !grammar_.empty()) {
-                HDC dc = GetDC(hwnd_);
-                DrawSquiggles(dc);
-                ReleaseDC(hwnd_, dc);
-            }
+            HDC dc = GetDC(hwnd_);
+            if (!issues_.empty() || !grammar_.empty()) DrawSquiggles(dc);
+            DrawGhost(dc);
+            ReleaseDC(hwnd_, dc);
             return r;
         }
         case WM_TIMER:
@@ -481,10 +701,12 @@ LRESULT InputBox::Handle(UINT msg, WPARAM wp, LPARAM lp) {
         case WM_KILLFOCUS: {
             const LRESULT r = CallWindowProcW(orig_, hwnd_, msg, wp, lp);
             RunSpellCheck(std::wstring::npos);  // the last word counts as finished
+            InvalidateRect(hwnd_, nullptr, TRUE);  // no grey completion without focus
+            if (reinterpret_cast<HWND>(wp) != popup_.Hwnd()) popup_.Hide();
             return r;
         }
         case WM_CONTEXTMENU:
-            if (ShowSpellMenu(lp)) return 0;
+            if (ShowSpellMenu(lp) || ShowWordMenu(lp)) return 0;
             break;
         case WM_INPUTLANGCHANGE: {
             const LRESULT r = CallWindowProcW(orig_, hwnd_, msg, wp, lp);

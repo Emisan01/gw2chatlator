@@ -109,6 +109,25 @@ bool Send(std::initializer_list<INPUT> keys) {
     return SendInput(static_cast<UINT>(v.size()), v.data(), sizeof(INPUT)) == v.size();
 }
 
+// GW2 looks at the keyboard once per frame. A key pressed and released in the
+// same batch can fall between two frames and is lost; for Ctrl+V the game may
+// even see V after Ctrl is already up. So keys are held for a few frames.
+void Tap(WORD vk, int holdMs) {
+    Send({Key(vk, false)});
+    Sleep(holdMs);
+    Send({Key(vk, true)});
+}
+
+void CtrlTap(WORD vk, int holdMs) {
+    Send({Key(VK_CONTROL, false)});
+    Sleep(holdMs);
+    Send({Key(vk, false)});
+    Sleep(holdMs);
+    Send({Key(vk, true)});
+    Sleep(holdMs);
+    Send({Key(VK_CONTROL, true)});
+}
+
 bool AnyKeyHeld() {
     static const int keys[] = {VK_RETURN, VK_CONTROL, VK_SHIFT, VK_MENU, VK_LWIN, VK_RWIN};
     for (int k : keys)
@@ -248,18 +267,19 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
     injected = true;
     const bool alreadyOpen = ms.live && mumble->Read().TextboxHasFocus();
     if (!alreadyOpen) {
-        Send({Key(VK_RETURN, false), Key(VK_RETURN, true)});  // open chat
+        Tap(VK_RETURN, opt.keyHoldMs);  // open chat
         WaitForTargetToDrain(gw2, 1000);
         if (!textbox(true, 600)) Sleep(opt.stepDelayMs);
+        else Sleep(opt.keyHoldMs);  // the line is open; one more frame before typing into it
     }
 
     if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – cancelled"));
-    Send({Key(VK_CONTROL, false), Key('V', false), Key('V', true), Key(VK_CONTROL, true)});  // paste
+    CtrlTap('V', opt.keyHoldMs);  // paste
     WaitForTargetToDrain(gw2, 1000);
-    Sleep(opt.stepDelayMs);
+    Sleep(opt.stepDelayMs);  // the pasted text must be in the line before Enter
 
     if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – the text may still be in the chat line"));
-    Send({Key(VK_RETURN, false), Key(VK_RETURN, true)});  // send
+    Tap(VK_RETURN, opt.keyHoldMs);  // send
     r.confirmedByGame = textbox(false, 1000);              // input closed = message went out
     if (!r.confirmedByGame) Sleep(opt.stepDelayMs);
     return finish(std::wstring());

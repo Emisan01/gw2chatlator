@@ -16,3 +16,11 @@ my-gw2-words.txt
 learned/
 gelernt_*.txt
 learned_*.txt
+
+# real screenshots, chat captures and their transcripts: other players' names and messages,
+# never committed (use synthetic test data in tests/data instead)
+local/
+*.jpg
+*.png
+!res/*.png
+!tests/data/synthetic/*.png

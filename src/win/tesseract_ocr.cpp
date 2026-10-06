@@ -107,7 +107,7 @@ bool TesseractOcr::Recognize(const Image& img, std::vector<TsvLine>& out, std::w
         return false;
     };
     if (!Ready()) return fail(Tr(L"Tesseract not found"));
-    const std::string pgm = EncodePgm(img);
+    const std::string pgm = EncodePgm(img, lightText_);
     if (pgm.empty()) return fail(Tr(L"Empty image"));
 
     SECURITY_ATTRIBUTES sa{sizeof(sa), nullptr, TRUE};
@@ -130,7 +130,8 @@ bool TesseractOcr::Recognize(const Image& img, std::vector<TsvLine>& out, std::w
     si.hStdOutput = outWrite;
     si.hStdError = nul != INVALID_HANDLE_VALUE ? nul : outWrite;
     std::wstring cmd = L"\"" + info_.exe + L"\" stdin stdout --tessdata-dir \"" + info_.tessdata +
-                       L"\" --psm 6 -l " + FromUtf8(langs_) + L" -c tessedit_create_tsv=1";
+                       L"\" --psm 6 -l " + FromUtf8(langs_) + L" -c tessedit_create_tsv=1" +
+                       (lightText_ ? L" -c tessedit_do_invert=0" : L"");
     // One thread per process: several cores fighting over a tiny picture only makes it slower.
     std::wstring env;
     if (wchar_t* block = GetEnvironmentStringsW()) {

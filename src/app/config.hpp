@@ -38,6 +38,7 @@ struct Config {
 
     // [Basic] MyMemory
     std::wstring basicEmail;
+    bool myMemoryNoticeShown = false;  // the one-time privacy notice was shown
     // [DeepL]
     std::wstring deeplKey;
     // [LLM]
@@ -47,13 +48,13 @@ struct Config {
 
     // [Reader]
     bool readerEnabled = true;
-    int readerIntervalMs = 900;
+    int readerIntervalMs = 400;  // a look every 0.4 s; text recognition only runs when the picture changed
     OcrChoice ocr = OcrChoice::Auto;
     std::wstring tesseractPath;   // empty = search
     std::string tesseractLangs;   // empty = automatic ("eng+deu+fra+spa")
     bool readChinese = false;     // add Simplified Chinese to Tesseract
     std::wstring ocrLanguage;     // Windows OCR: empty = Windows languages
-    int ocrScale = 2;
+    int ocrScale = 0;             // 0 = automatic (line spacing), 1-4 fixed
     bool showSystemLines = false;
     bool saveCaptures = false;
     bool regionSet = false;
