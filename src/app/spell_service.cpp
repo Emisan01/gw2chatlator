@@ -170,6 +170,27 @@ std::optional<std::wstring> SpellService::AutoCorrection(const std::wstring& wor
     return fix;
 }
 
+// The two words before `pos` in the same sentence ("kommst du |" -> "du", "kommst"); empty after . ! ?
+void WordsBefore(const std::wstring& text, size_t pos, std::wstring* prev, std::wstring* prev2) {
+    auto back = [&](size_t& e) -> std::wstring {
+        while (e > 0 && !IsWordChar(text[e - 1])) {
+            if (text[e - 1] == L'.' || text[e - 1] == L'!' || text[e - 1] == L'?') {
+                e = 0;
+                return {};
+            }
+            --e;
+        }
+        size_t b = e;
+        while (b > 0 && IsWordChar(text[b - 1])) --b;
+        std::wstring w = text.substr(b, e - b);
+        e = b;
+        return w;
+    };
+    size_t e = std::min(pos, text.size());
+    *prev = back(e);
+    *prev2 = prev->empty() ? std::wstring() : back(e);
+}
+
 // Words of the recent chat that start like `typed` ("Teq" -> "Tequatl", "Ki" -> "Kiro"), after what is already there.
 void SpellService::AddContextCompletions(const std::wstring& typed, std::vector<std::wstring>& out, size_t max) const {
     if (typed.size() < 2) return;
@@ -210,7 +231,9 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
         if (caret == 0 || (caret > 0 && text[caret - 1] != L' ')) return s;
         const std::wstring prev = wordBefore(caret);
         if (prev.empty()) return s;
-        s.words = model_.Next(prev, 3);
+        std::wstring p1, p2;
+        WordsBefore(text, caret, &p1, &p2);
+        s.words = model_.Next(prev, 3, p2);
         if (!s.words.empty()) {
             s.kind = WordSuggestions::Kind::Next;
             s.replace = {caret, 0};
@@ -223,7 +246,9 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
     const std::wstring prev = wordBefore(start);
     s.replace = {start, end - start};
 
-    std::vector<std::wstring> words = model_.Complete(partial, prev, 3);
+    std::wstring p1, p2;
+    WordsBefore(text, start, &p1, &p2);
+    std::vector<std::wstring> words = model_.Complete(partial, prev, 3, p2);
     AddContextCompletions(partial, words, 3);  // what the chat is talking about right now
     // Before much is learned: GW2 words fill the bar ("Teq" -> "Tequatl").
     if (words.size() < 3 && partial.size() >= 2) {
@@ -295,7 +320,9 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
     const std::wstring prev = text.substr(b, e - b);
 
     const bool valid = IsKnown(typed) || (checker_.Ready() ? !CheckerRejects(typed) : model_.Knows(typed));
-    std::vector<std::wstring> completions = model_.Complete(typed, prev, 3);
+    std::wstring p1, p2;
+    WordsBefore(text, start, &p1, &p2);
+    std::vector<std::wstring> completions = model_.Complete(typed, prev, 3, p2);
     AddContextCompletions(typed, completions, 3);
     const std::wstring p = WordKey(typed);
     for (const std::wstring& w : Gw2StarterWords(learnedLang_)) {
