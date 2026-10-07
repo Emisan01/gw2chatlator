@@ -249,6 +249,10 @@ int MainWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
     waitForGame_ = HasSwitch(cmdLine, kWaitForGw2Switch);
     const bool markChat = HasSwitch(cmdLine, L"--mark-chat"), coverChat = HasSwitch(cmdLine, L"--cover-chat");
     CleanUpFiles();
+    // Autostart belongs to the installed copy: an entry left pointing elsewhere (an old download folder) is moved here.
+    if (RunningInstalledCopy() && !AutostartTarget().empty() &&  // also when the old exe is gone
+        CompareStringOrdinal(AutostartTarget().c_str(), -1, CurrentExePath().c_str(), -1, TRUE) != CSTR_EQUAL)
+        SetAutostart(true, CurrentExePath());
     LoadCorrections();
     LoadMyWords();
 
