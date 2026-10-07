@@ -1443,6 +1443,13 @@ static void TestSureLanguage() {
     CHECK(SureLanguage(L"Kiro Vale", L"").empty());           // a name
     CHECK(SureLanguage(L"mañana", L"").find(L"ES") == 0); // ñ says Spanish
     CHECK(SureLanguage(L"wer kommt mit", L"").empty());       // three words but no detection, no telltale letters
+    // Short lines: words of one language only.
+    CHECK(SureLanguage(L"merci", L"") == L"FR");
+    CHECK(SureLanguage(L"gracias amigo!", L"") == L"ES");
+    CHECK(SureLanguage(L"Grazie mille", L"") == L"IT");
+    CHECK(SureLanguage(L"c'est bon", L"") == L"FR");
+    CHECK(SureLanguage(L"thanks merci", L"").empty());       // two languages: unsure
+    CHECK(SureLanguage(L"ty", L"").empty());
 }
 
 static void TestFreeText() {

@@ -91,7 +91,7 @@ constexpr UINT_PTR kTimerCaptures = 4;
 constexpr UINT_PTR kTimerGrammar = 5;
 constexpr UINT_PTR kTimerConfirm = 9;  // double scan: read again to confirm new lines
 constexpr UINT_PTR kTimerOnce = 11;    // "translate once" ends
-constexpr UINT kOnceMs = 3500;          // a few pictures incl. the double scan
+constexpr UINT kOnceMs = 10000;         // at most; it ends as soon as the pictures are read (slow OCR: Tesseract)
 constexpr UINT kConfirmDelayMs = 200;  // second look at new lines (not the same frame)
 constexpr ULONGLONG kDetectEveryMs = 1500;  // no chat area yet: look for the GW2 chat this often
 constexpr UINT kCaptureMinutes = 15;  // diagnostic pictures switch themselves off
@@ -1062,10 +1062,11 @@ void MainWindow::TranslateOnce() {
     if (cfg_.readerEnabled || once_) return;
     once_ = true;
     onceFound_ = 0;
+    onceShots_ = 0;
     streamPrimed_ = true;  // everything visible is wanted, not only the last lines
     RestartReader();
     SetTimer(hwnd_, kTimerOnce, kOnceMs, nullptr);
-    SetStatus(Tr(L"Translating what is visible now …"), Tone::Muted, kOnceMs);
+    SetStatus(Tr(L"Translating what is visible now …"), Tone::Muted, 4000);
 }
 
 void MainWindow::EndTranslateOnce() {
@@ -2245,6 +2246,9 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
     for (const ChatMessage& m : fresh) HandleIncoming(m);
     PumpIncoming();
     UpdateHint();
+    // "Translate once": done after the first picture when nothing waits for its confirmation, else after the second
+    // (the double scan) – however long the text recognition needs.
+    if (once_ && (++onceShots_ >= 2 || !stream_.HasPending())) EndTranslateOnce();
 }
 
 bool MainWindow::NeedsTranslation(const std::wstring& text, std::wstring* detected) const {
@@ -2318,7 +2322,7 @@ void MainWindow::HandleIncoming(const ChatMessage& m) {
         case Own::SentHere:  // already in the log as "Du: ..."
             return;
         case Own::TypedInGame: {  // typed in GW2 itself: show it for context, untranslated
-            if (cfg_.onlyTranslations) return;
+            if (cfg_.onlyTranslations && !(excludedFromCapture_ && !cfg_.freeArea)) return;  // shown when covering
             ChatEntry e;
             e.kind = ChatEntry::Kind::Outgoing;
             e.channel = m.channel == Channel::System ? Channel::Unknown : m.channel;
@@ -2352,7 +2356,9 @@ void MainWindow::HandleIncoming(const ChatMessage& m) {
     const bool automatic = m.freeText || (cfg_.autoTranslate & ChannelBit(m.channel)) != 0;
     // "Show only translations": what is not foreign (your languages, unsure lines, system lines) does not appear.
     if (!system && !foreign) NoteChatWords(m.text);  // your language: words you may answer with (foreign: its translation)
-    if (!foreign && cfg_.onlyTranslations) return;
+    // Lying over the GW2 chat, this window *is* the chat for you then: every line stays.
+    const bool coversChat = excludedFromCapture_ && !cfg_.freeArea;
+    if (!foreign && cfg_.onlyTranslations && !coversChat) return;
     if (foreign) {
         std::wstring cached;
         if (corrections_.Lookup(m.text, readLang_, &cached)) {  // you corrected this text once
