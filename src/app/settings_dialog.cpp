@@ -46,7 +46,7 @@ enum : int {
     // Translator
     kEngine, kEngineNote, kLocalModel, kPull, kLocalInfo, kGetOllama, kPullStatus, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
     kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
-    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop,
+    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook,
     // Game & start
     kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kStatus, kRefresh, kSetup,
     // Wizard
@@ -500,6 +500,8 @@ private:
         Label(Tr(L"Read every (ms)"), kLabelX, Y(r), kLabelW);
         Edit(kInterval, std::to_wstring(cfg_.readerIntervalMs), kCtrlX, Y(r++), 90, ES_NUMBER);
         Check(kShowSystem, Tr(L"Show system lines (events, notices)"), cfg_.showSystemLines, kLabelX, Y(r++), kW - 50);
+        Check(kSecondLook, Tr(L"Second look: read unknown words once more, enlarged (taken only if then a real word)"),
+              cfg_.secondLook, kLabelX, Y(r++), kW - 50);
         Check(kCaptures, Tr(L"Save diagnostic pictures (switches off after 15 minutes)"), cfg_.saveCaptures, kLabelX,
               Y(r++), kW - 50);
         Button(kPickRegion, Tr(L"Set the chat area…"), kLabelX, Y(r) + 4, 200);
@@ -1252,6 +1254,7 @@ private:
         const int interval = _wtoi(Text(kInterval).c_str());
         if (interval >= 250 && interval <= 10000) c.readerIntervalMs = interval;
         c.showSystemLines = Checked(kShowSystem);
+        c.secondLook = Checked(kSecondLook);
         c.saveCaptures = Checked(kCaptures);
 
         c.spellEnabled = Checked(kSpell);

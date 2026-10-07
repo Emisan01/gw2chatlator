@@ -23,6 +23,7 @@ add_library(gct_core STATIC
     src/core/slang.cpp
     src/core/cloud_mt_protocol.cpp
     src/core/corrections.cpp
+    src/core/second_look.cpp
     src/core/deepl_protocol.cpp
     src/core/mymemory_protocol.cpp
     src/core/llm_protocol.cpp
@@ -106,7 +107,7 @@ if(WIN32)
         target_link_libraries(GW2ChatTranslator_fakes PRIVATE gct_win shell32 comctl32)
         list(APPEND GCT_APP_TARGETS GW2ChatTranslator_fakes)
         # Measures text recognition on real chat pictures (local\bench, never committed).
-        add_executable(ocr_bench tests/tools/ocr_bench.cpp src/win/ocr.cpp)
+        add_executable(ocr_bench tests/tools/ocr_bench.cpp src/win/ocr.cpp src/app/chat_reader.cpp src/win/spellcheck.cpp)
         target_link_libraries(ocr_bench PRIVATE gct_win windowscodecs runtimeobject)
         if(NOT MSVC)
             target_link_options(ocr_bench PRIVATE -municode)

@@ -191,6 +191,13 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
   the whole first picture is translated. Chat detection does not run in this mode. `ReaderOptions::freeText`: no
   `GroupWordsByRows` (it merges side-by-side columns), scale ≥ 2; `BuildFreeTextMessages` assigns each line to the
   open block above it in its column; `recentFree_` + `SameFreeParagraph`: a grown paragraph updates its entry.
+- Second look (`ChatOcr::Read`, `core/second_look`, `[Reader] SecondLook=1`): words the Windows spell checkers
+  (OCR language + read/write/chat languages + English, created on the reader thread) do not know are cropped with
+  room around them, enlarged more (`scale + 2`, max 4) and read again with Windows OCR; the new reading replaces the
+  old only if it is a real word and close (`PlausibleRereading`: 1 edit ≤ 4 letters, 2 for 5, 3 above). Decided once
+  per word-in-line (`decided_`), max 6 looks per picture. Measured on the 4K GW2 bench (2026-10-07): no change in
+  error rate (what it looks at there is names/slang), +~0.2 s on the first picture only. Meant for small app fonts
+  in the free area; `ocr_bench` shows "app plain" vs "app 2nd look".
 - `FindInk` handles both polarities: bright background (median ≥ 160) = dark text.
 - Translators (`Engine`): Auto order = DeepL → Google → Microsoft → own LibreTranslate server → LLM → MyMemory. Google
   key goes in the `X-Goog-Api-Key` header (never the URL). Protected segments: `<span translate="no"

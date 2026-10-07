@@ -69,6 +69,7 @@ struct Config {
     bool readChinese = false;     // add Simplified Chinese to Tesseract
     std::wstring ocrLanguage;     // Windows OCR: empty = Windows languages
     int ocrScale = 0;             // 0 = automatic (line spacing), 1-4 fixed
+    bool secondLook = true;       // unknown words are read once more, enlarged more (taken only if then a real word)
     bool showSystemLines = false;
     bool saveCaptures = false;
     bool regionSet = false;

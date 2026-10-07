@@ -8,6 +8,7 @@
 
 #include "core/chat_geometry.hpp"
 #include "core/i18n.hpp"
+#include "core/second_look.hpp"
 #include "core/tesseract_tsv.hpp"
 #include "core/text.hpp"
 #include "win/files.hpp"
@@ -48,7 +49,39 @@ bool ChatOcr::Init(const ReaderOptions& o, std::wstring* error) {
     }
     if (!(o.ocrChoice == 1 && haveTess_)) haveWin_ = win_.Init(o.ocrLanguage, error);
     useTess_ = haveTess_ && !haveWin_;
+    // Dictionaries for the second look: the OCR language plus the languages of the chat you read and write.
+    checkers_.clear();
+    wordOk_.clear();
+    decided_.clear();
+    if (o.secondLook && haveWin_) {
+        std::vector<std::wstring> langs = o.wordLangs;
+        langs.insert(langs.begin(), win_.Language());
+        langs.push_back(L"EN");
+        std::vector<std::wstring> done;
+        for (const std::wstring& l : langs) {
+            std::wstring primary = CaseFold(Trim(l));
+            primary = primary.substr(0, primary.find_first_of(L"-_"));
+            if (primary.size() < 2 || std::find(done.begin(), done.end(), primary) != done.end()) continue;
+            done.push_back(primary);
+            std::wstring region = ToUpperAscii(primary);
+            if (primary == L"en") region = L"US";
+            auto checker = std::make_unique<SpellChecker>();
+            if (checker->Init({primary + L"-" + region, primary})) checkers_.push_back(std::move(checker));
+            if (checkers_.size() >= 4) break;
+        }
+    }
     return haveTess_ || haveWin_;
+}
+
+bool ChatOcr::IsWord(const std::wstring& core) {
+    if (checkers_.empty()) return true;  // no dictionary: nothing is suspicious
+    const std::wstring key = CaseFold(core);
+    if (const auto it = wordOk_.find(key); it != wordOk_.end()) return it->second;
+    bool ok = false;
+    for (const auto& c : checkers_) ok = ok || c->Check(core).empty();
+    if (wordOk_.size() > 20000) wordOk_.clear();
+    wordOk_[key] = ok;
+    return ok;
 }
 
 std::wstring ChatOcr::EngineName() const { return useTess_ ? L"Tesseract" : L"Windows OCR"; }
@@ -122,6 +155,76 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
                 x.words.push_back({w.text, w.rect});
             }
             found.push_back(std::move(x));
+        }
+    }
+    // Second look: a word the dictionaries do not know is read once more – cut out with some room around it and
+    // enlarged more than the first time. Taken only when the new reading is a real word and close to the first
+    // ("*ain" -> "main"); otherwise the first stays (people write odd words, names, slang). Each word in its line
+    // is decided once (the same line comes in every picture), at most a few new words per picture.
+    lastLooks_ = lastFixes_ = 0;
+    if (haveWin_ && !checkers_.empty() && !found.empty() && !found.front().hasColor) {
+        constexpr int kMaxLooksPerPicture = 6;
+        const int altScale = scale >= 3 ? 4 : scale + 2;  // clearly larger than the first reading
+        for (Line& line : found) {
+            bool changed = false;
+            for (Word& w : line.words) {
+                size_t at = 0;
+                const std::wstring core = WordCore(w.text, &at);
+                if (!WorthSecondLook(core)) continue;
+                const std::wstring key = core + L'\x1f' + line.text;
+                if (const auto it = decided_.find(key); it != decided_.end()) {
+                    if (it->second != w.text) {
+                        w.text = it->second;
+                        changed = true;
+                    }
+                    continue;
+                }
+                if (IsWord(core)) continue;
+                if (lastLooks_ >= kMaxLooksPerPicture) continue;  // the rest next picture
+                ++lastLooks_;
+                // The word in the picture (raw pixels) with half a line height above/below and some room aside.
+                const int h = std::max(1, w.rect.h / scale);
+                RectI r{w.rect.x / scale - h, w.rect.y / scale - h / 2, w.rect.w / scale + 2 * h, h * 2};
+                r.x = std::max(0, r.x);
+                r.y = std::max(0, r.y);
+                r.w = std::min(r.w, raw.width - r.x);
+                r.h = std::min(r.h, raw.height - r.y);
+                std::wstring decision = w.text;
+                std::vector<OcrTextLine> again;
+                std::wstring ignored;
+                if (r.w > 4 && r.h > 4 && win_.Recognize(UpscaleForOcr(Crop(raw, r), altScale), again, &ignored)) {
+                    // The word whose middle is closest to where the first one was.
+                    const double want = (w.rect.x / static_cast<double>(scale) + w.rect.w / (2.0 * scale) - r.x) * altScale;
+                    const OcrWordBox* best = nullptr;
+                    double bestDist = 1e18;
+                    for (const OcrTextLine& l : again)
+                        for (const OcrWordBox& b : l.words) {
+                            const double d = std::abs(b.rect.x + b.rect.w / 2.0 - want);
+                            if (d < bestDist) {
+                                bestDist = d;
+                                best = &b;
+                            }
+                        }
+                    if (best) {
+                        const std::wstring second = WordCore(best->text);
+                        if (PlausibleRereading(core, second) && IsWord(second)) {
+                            // The whole second token: a stray mark read in place of a letter ("*ain") goes too.
+                            decision = best->text;
+                            ++lastFixes_;
+                        }
+                    }
+                }
+                if (decided_.size() > 5000) decided_.clear();
+                decided_[key] = decision;
+                if (decision != w.text) {
+                    w.text = decision;
+                    changed = true;
+                }
+            }
+            if (changed) {
+                line.text.clear();
+                for (const Word& w : line.words) line.text += (line.text.empty() ? L"" : L" ") + w.text;
+            }
         }
     }
     for (const Line& tl : found) {
@@ -266,6 +369,8 @@ void ChatReader::Loop() {
         snap->engine = ocr.EngineName();
         snap->language = ocr.Language();
         snap->milliseconds = static_cast<int>(GetTickCount64() - t0);
+        snap->secondLooks = ocr.SecondLooks();
+        snap->secondFixes = ocr.SecondFixes();
         if (save) SaveDiagnostics(raw, prepared, snap->lines);
         post(std::move(snap));
     }
