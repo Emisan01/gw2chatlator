@@ -29,6 +29,7 @@ struct Config {
     std::wstring uiLangCode;
     UiLang uiLang = UiLang::En;
     bool setupDone = false;     // the guided setup ran once
+    bool startMenu = true;      // the installed copy keeps a start-menu entry (re-created if missing)
     std::wstring gw2Dir;        // found or chosen game folder
 
     // [Translate]

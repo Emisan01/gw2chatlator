@@ -67,6 +67,8 @@ bool CreateDesktopShortcut(const std::wstring& exePath);
 bool CreateStartMenuShortcut(const std::wstring& exePath);
 // Creates the start-menu entry only when it is missing (an install from before 0.7.1, or deleted by hand).
 void EnsureStartMenuShortcut(const std::wstring& exePath);
+bool StartMenuShortcutExists();
+void RemoveStartMenuShortcut();
 // The exe the Run entry points to (empty if none).
 std::wstring AutostartTarget();
 
