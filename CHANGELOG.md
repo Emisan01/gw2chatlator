@@ -15,6 +15,15 @@ diagnosis show it.
 - MyMemory: shorter, clearer privacy notice; the e-mail field explains 50,000 instead of 5,000 characters a day.
 - The UI language starts in the Windows language (German, Arabic), else English.
 - Fixed: the hint under "Delete everything learned" ran into the next line.
+- **Correction memory**: right-click a translated line → "Correct this translation…". That text gets your
+  translation from then on (with every translator); a few changed words are also corrected in later translations.
+  Export / import in Settings → Writing (share it with friends). Stays on this PC.
+- **Safety** on the technical page: what the tool does and does not do, and where texts go right now. API keys are
+  stored encrypted for your Windows account (DPAPI) instead of plain text.
+- **Compare translators** (technical page): the same invented chat lines through every translator that is set up,
+  with the time – judge yourself which reads naturally.
+- **Small local translator with only your languages**: "Set up on this PC…" (own server) prepares LibreTranslate with
+  `--load-only` for your reading, writing and chat languages (about 100 MB each, CPU only).
 
 ## 0.6.0 — 2026-10-06
 

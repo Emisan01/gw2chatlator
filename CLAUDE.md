@@ -197,6 +197,12 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
   field is cleared when the provider changes. `tools/i18n_check.py` reads preset names and notes.
 - The Translator settings page shows one section per engine (`group_` collects controls, `UpdateTranslatorView`
   after every `ShowPage`); sections share the same rows.
+- Correction memory (`core/corrections`, `<data>\corrections.txt`): exact line per target language (case and
+  spacing ignored) → used instead of any translator (incoming in `HandleIncoming`, outgoing in `StartTranslation`);
+  phrases (few changed words, `ChangedPhrase`) → `Apply` on every fresh translation. Right-click "Correct this
+  translation…" (`AskCorrection`); not offered for messages split over several chat lines (`splitSend`).
+- API keys in the ini: `ProtectSecret`/`UnprotectSecret` (win/secret, DPAPI, "dpapi:" + base64); old plain values
+  are still read. A key encrypted on another account/PC reads as empty.
 - `ocr.cpp` calls `RoInitialize(MTA)`: create `ChatOcr` on a worker thread, not on the UI (STA) thread.
 - WGC frames match `DWMWA_EXTENDED_FRAME_BOUNDS`, not `GetWindowRect` (invisible resize borders).
 

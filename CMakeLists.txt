@@ -22,6 +22,7 @@ add_library(gct_core STATIC
     src/core/protect.cpp
     src/core/slang.cpp
     src/core/cloud_mt_protocol.cpp
+    src/core/corrections.cpp
     src/core/deepl_protocol.cpp
     src/core/mymemory_protocol.cpp
     src/core/llm_protocol.cpp
@@ -67,8 +68,9 @@ if(WIN32)
         src/win/tesseract_ocr.cpp
         src/win/gw2_locate.cpp
         src/win/folder_cleanup.cpp
-        src/win/keyboard_layout.cpp)
-    target_link_libraries(gct_win PUBLIC gct_core winhttp ole32 user32 gdi32 d3d11 dxgi dwmapi shell32 advapi32 version uuid)
+        src/win/keyboard_layout.cpp
+        src/win/secret.cpp)
+    target_link_libraries(gct_win PUBLIC gct_core winhttp ole32 user32 gdi32 d3d11 dxgi dwmapi shell32 advapi32 version uuid crypt32)
 
     # ---- app: the window
     set(GCT_APP_SOURCES

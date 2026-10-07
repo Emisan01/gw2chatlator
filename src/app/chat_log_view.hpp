@@ -34,6 +34,7 @@ struct ChatEntry {
     std::wstring main;        // translation, or the text itself
     std::wstring original;    // what was written, when `main` is a translation
     std::wstring note;        // error or info shown in place of the original
+    bool splitSend = false;   // outgoing: only the first of several chat lines (not correctable as a whole)
     bool hasColor = false;    // sampled text colour (incoming), for calibration
     Rgb color;
 };
@@ -48,6 +49,8 @@ public:
         std::function<void(const std::wstring& speaker)> onSpeakerClick;  // click on a name: whisper tab
         // Click on a line that was not translated: translate it now.
         std::function<void(uint64_t id, const std::wstring& text)> onRetranslate;
+        // "Correct this translation": the entry as it is now (correction memory).
+        std::function<void(const ChatEntry& entry)> onCorrect;
     };
 
     static bool Register(HINSTANCE inst);

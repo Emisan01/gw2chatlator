@@ -385,13 +385,14 @@ void ChatLogView::ShowMenu(POINT screen) {
     const int r = RowAt(client.y);
     const ChatEntry* e = r >= 0 ? &entries_[rows_[static_cast<size_t>(r)].index] : nullptr;
 
-    enum : UINT { kCopyMain = 1, kCopyOriginal, kReply, kUseChannel, kClear, kLinks, kCalibrateBase = 100 };
+    enum : UINT { kCopyMain = 1, kCopyOriginal, kReply, kUseChannel, kClear, kLinks, kCorrect, kCalibrateBase = 100 };
     HMENU menu = CreatePopupMenu();
     HMENU colors = nullptr;
     if (e) {
         const bool hasOriginal = !e->original.empty() && e->original != e->main;
         AppendMenuW(menu, MF_STRING, kCopyMain, (hasOriginal ? Tr(L"Copy the translation") : Tr(L"Copy the text")).c_str());
         if (hasOriginal) AppendMenuW(menu, MF_STRING, kCopyOriginal, Tr(L"Copy the original").c_str());
+        if (hasOriginal && !e->splitSend && cb_.onCorrect) AppendMenuW(menu, MF_STRING, kCorrect, Tr(L"Correct this translation…").c_str());
         if (!EntryLinks(*e).empty()) AppendMenuW(menu, MF_STRING, kLinks, Tr(L"Links in this message…").c_str());
         if (e->kind == ChatEntry::Kind::Incoming && e->channel == Channel::Whisper && !e->whisperOut &&
             !e->speaker.empty()) {
@@ -438,6 +439,10 @@ void ChatLogView::ShowMenu(POINT screen) {
     else if (cmd == kLinks) {
         const ChatEntry copy = *now;  // the menu below may outlive changes to the list
         OfferLinks(copy, screen);
+    }
+    else if (cmd == kCorrect && cb_.onCorrect) {
+        const ChatEntry copy = *now;  // the dialog may outlive changes to the list
+        cb_.onCorrect(copy);
     }
     else if (cmd == kReply && cb_.onReply) cb_.onReply(now->speaker);
     else if (cmd == kUseChannel && cb_.onUseChannel) cb_.onUseChannel(now->channel);

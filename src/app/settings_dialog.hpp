@@ -32,6 +32,11 @@ struct DialogContext {
     std::function<bool()> isGw2Running;
     // Deletes everything learned from sent messages (all languages).
     std::function<void()> forgetLearned;
+    // Correction memory: "12 lines, 3 phrases"; delete all; export / import (merge) a file. Return a status text.
+    std::function<std::wstring()> correctionsInfo;
+    std::function<void()> clearCorrections;
+    std::function<std::wstring(const std::wstring& path)> exportCorrections;
+    std::function<std::wstring(const std::wstring& path)> importCorrections;
 };
 
 enum class SettingsPage { General = 0, Reading, Writing, Translator, Game, Technical };
@@ -43,5 +48,8 @@ DialogResult ShowSettingsDialog(HWND owner, HINSTANCE inst, Config& cfg, const D
 // Modal three-step setup: language & install, preparing the GW2 chat,
 // marking the chat area. Sets cfg.setupDone.
 DialogResult ShowSetupWizard(HWND owner, HINSTANCE inst, Config& cfg, const DialogContext& ctx);
+
+// Modal: shows the original, lets you edit the translation. True when you confirmed a non-empty text.
+bool AskCorrection(HWND owner, HINSTANCE inst, const std::wstring& original, std::wstring* translation);
 
 }  // namespace gct

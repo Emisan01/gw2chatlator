@@ -11,6 +11,7 @@
 #include <thread>
 #include <vector>
 
+#include "core/cloud_mt_protocol.hpp"
 #include "core/gw2_install.hpp"
 #include "core/langs.hpp"
 #include "core/i18n.hpp"
@@ -28,6 +29,7 @@ constexpr wchar_t kDialogClass[] = L"GW2ChatTranslatorDialog";
 constexpr UINT WM_APP_MODELS = WM_APP + 50;
 constexpr UINT WM_APP_TEST = WM_APP + 51;
 constexpr UINT WM_APP_PULL = WM_APP + 52;
+constexpr UINT WM_APP_COMPARE = WM_APP + 53;
 constexpr wchar_t kTesseractUrl[] = L"https://github.com/UB-Mannheim/tesseract/wiki";
 
 enum : int {
@@ -44,6 +46,7 @@ enum : int {
     // Translator
     kEngine, kEngineNote, kLocalModel, kPull, kLocalInfo, kGetOllama, kPullStatus, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
     kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
+    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal,
     // Game & start
     kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kStatus, kRefresh, kSetup,
     // Wizard
@@ -526,6 +529,12 @@ private:
         Combo(kSendMode, {Tr(L"Send into the GW2 chat"), Tr(L"Only copy (not a single key reaches the game)")},
               cfg_.copyOnly ? 1 : 0, kCtrlX, Y(r++), kCtrlW);
         Check(kReturnFocus, Tr(L"Back to this window after sending"), cfg_.returnFocus, kLabelX, Y(r++), kW - 50);
+        // Correction memory (right-click a translated line → "Correct this translation").
+        Label(Tr(L"Corrected translations"), kLabelX, Y(r), kLabelW);
+        Label(ctx_.correctionsInfo ? ctx_.correctionsInfo() : L"", kCtrlX, Y(r++), kCtrlW, 18, kCorrInfo);
+        Button(kCorrExport, Tr(L"Export…"), kCtrlX, Y(r) - 4, 110);
+        Button(kCorrImport, Tr(L"Import…"), kCtrlX + 118, Y(r) - 4, 110);
+        Button(kCorrClear, Tr(L"Delete all…"), kCtrlX + 236, Y(r++) - 4, 120);
     }
 
     void BuildTranslator() {
@@ -598,7 +607,8 @@ private:
         Edit(kLibreUrl, cfg_.libreUrl, kCtrlX, Y(r++), kCtrlW);
         Label(Tr(L"API key (if needed)"), kLabelX, Y(r), kLabelW);
         Edit(kLibreKey, cfg_.libreKey, kCtrlX, Y(r++), kCtrlW, ES_PASSWORD);
-        Button(kLibreGet, Tr(L"What is LibreTranslate?…"), kCtrlX, Y(r++), 200);
+        Button(kLibreGet, Tr(L"What is LibreTranslate?…"), kCtrlX, Y(r), 172);
+        Button(kLibreLocal, Tr(L"Set up on this PC…"), kCtrlX + 180, Y(r++), 176);
         Label(Tr(L"Any LibreTranslate-compatible server, e.g. one you run yourself (free, unlimited, nothing leaves "
                  L"your network: http://localhost:5000) or an instance you have access to."),
               kCtrlX, Y(r++), kCtrlW, 60);
@@ -733,9 +743,10 @@ private:
         Add(L"EDIT", L"", ES_MULTILINE | ES_READONLY | WS_VSCROLL | WS_HSCROLL | ES_AUTOVSCROLL | ES_AUTOHSCROLL, kLabelX,
             Y(r) - 2, kW - 44, 250, kTechText, WS_EX_CLIENTEDGE);
         r += 8;
-        Button(kTechRefresh, Tr(L"Refresh"), kLabelX, Y(r), 110);
-        Button(kTechCopy, Tr(L"Copy diagnosis"), kLabelX + 120, Y(r), 160);
-        Label(Tr(L"Numbers and settings only, no chat text."), kLabelX + 290, Y(r) + 4, kW - 330, 20, kTechStatus);
+        Button(kTechRefresh, Tr(L"Refresh"), kLabelX, Y(r), 100);
+        Button(kTechCopy, Tr(L"Copy diagnosis"), kLabelX + 108, Y(r), 140);
+        Button(kTechCompare, Tr(L"Compare translators"), kLabelX + 256, Y(r), 170);
+        Label(Tr(L"Numbers and settings only, no chat text."), kLabelX, Y(r) + 30, kW - 44, 20, kTechStatus);
         RefreshTechnical();
     }
 
@@ -850,6 +861,29 @@ private:
                 ShellExecuteW(hwnd_, L"open", L"https://portal.azure.com/#create/Microsoft.CognitiveServicesTextTranslation",
                               nullptr, nullptr, SW_SHOWNORMAL);
                 break;
+            case kCorrExport:
+                if (ctx_.exportCorrections) {
+                    const std::wstring path = PickTextFile(hwnd_, Tr(L"Export corrections"), true, L"gw2-corrections.txt");
+                    if (!path.empty()) SetText(kCorrInfo, ctx_.exportCorrections(path));
+                }
+                break;
+            case kCorrImport:
+                if (ctx_.importCorrections) {
+                    const std::wstring path = PickTextFile(hwnd_, Tr(L"Import corrections"), false, L"");
+                    if (!path.empty()) SetText(kCorrInfo, ctx_.importCorrections(path));
+                }
+                break;
+            case kCorrClear:
+                if (ctx_.clearCorrections &&
+                    MessageBoxW(hwnd_, Tr(L"Delete every corrected translation?").c_str(), Tr(L"Corrected translations").c_str(),
+                                MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2 | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0)) == IDYES) {
+                    ctx_.clearCorrections();
+                    SetText(kCorrInfo, ctx_.correctionsInfo ? ctx_.correctionsInfo() : L"");
+                }
+                break;
+            case kLibreLocal:
+                SetUpLocalLibre();
+                break;
             case kLibreGet:
                 ShellExecuteW(hwnd_, L"open", L"https://github.com/LibreTranslate/LibreTranslate", nullptr, nullptr,
                               SW_SHOWNORMAL);
@@ -862,6 +896,9 @@ private:
                 break;
             case kTechCopy:
                 CopyTechnical();
+                break;
+            case kTechCompare:
+                CompareTranslators();
                 break;
             case kLocalModel:
                 if (code == CBN_SELCHANGE && Sel(kLocalModel) >= 0)
@@ -945,6 +982,120 @@ private:
         }).detach();
     }
 
+    // The translator for one engine with the settings as they are in the dialog (nullptr: not set up).
+    static std::shared_ptr<Translator> MakeFor(const Config& probe, Engine e) {
+        switch (e) {
+            case Engine::Basic: return MakeMyMemoryTranslator(probe.basicEmail);
+            case Engine::DeepL: return probe.deeplKey.empty() ? nullptr : MakeDeepLTranslator(probe.deeplKey);
+            case Engine::Google: return probe.googleKey.empty() ? nullptr : MakeGoogleTranslator(probe.googleKey);
+            case Engine::Microsoft:
+                return probe.msKey.empty() ? nullptr : MakeMicrosoftTranslator(probe.msKey, probe.msRegion);
+            case Engine::Libre: return probe.libreUrl.empty() ? nullptr : MakeLibreTranslator(probe.libreUrl, probe.libreKey);
+            case Engine::Llm: {
+                if (probe.llmModel.empty()) return nullptr;
+                LlmSettings s;
+                s.url = probe.llmUrl;
+                s.model = probe.llmModel;
+                s.apiKey = probe.llmKey;
+                s.timeoutMs = probe.llmTimeoutSec * 1000;
+                return MakeLlmTranslator(s);
+            }
+            default: return nullptr;
+        }
+    }
+
+    // A small local translator with only your languages: LibreTranslate (Argos
+    // models, CPU, ~100 MB per language) started with --load-only. We do not
+    // install anything ourselves: the commands go to the clipboard, the address
+    // is set, "Test the translator" checks it.
+    void SetUpLocalLibre() {
+        Config probe = cfg_;
+        Collect(probe);
+        std::vector<std::wstring> codes{L"en"};  // English is the bridge between the packs
+        auto add = [&](const std::wstring& lang) {
+            const std::wstring c = LibreLang(lang);
+            if (c != L"auto" && std::find(codes.begin(), codes.end(), c) == codes.end()) codes.push_back(c);
+        };
+        if (probe.readLang.empty()) {
+            wchar_t iso[16] = {};
+            if (GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_SISO639LANGNAME, iso, 16)) add(iso);
+        } else {
+            add(probe.readLang);
+        }
+        for (const std::wstring& l : probe.writeLangs) add(l);
+        add(probe.chatLang);
+        std::wstring list;
+        for (const std::wstring& c : codes) list += (list.empty() ? L"" : L",") + c;
+        const std::wstring cmd = L"pip install libretranslate\r\nlibretranslate --load-only " + list;
+        if (OpenClipboard(hwnd_)) {
+            EmptyClipboard();
+            const size_t bytes = (cmd.size() + 1) * sizeof(wchar_t);
+            if (HGLOBAL g = GlobalAlloc(GMEM_MOVEABLE, bytes)) {
+                if (void* p = GlobalLock(g)) {
+                    std::memcpy(p, cmd.c_str(), bytes);
+                    GlobalUnlock(g);
+                    if (!SetClipboardData(CF_UNICODETEXT, g)) GlobalFree(g);
+                } else {
+                    GlobalFree(g);
+                }
+            }
+            CloseClipboard();
+        }
+        SetText(kLibreUrl, L"http://localhost:5000");
+        MessageBoxW(hwnd_,
+                    TrF(L"A small translator on this PC, only with your languages: {1} (about 100 MB each, no graphics "
+                        L"card needed, nothing leaves the PC).\n\n"
+                        L"1. Install Python 3 (python.org) if you do not have it.\n"
+                        L"2. Open a command window and run:\n\n{2}\n\n"
+                        L"   (with Docker instead: docker run -p 5000:5000 libretranslate/libretranslate --load-only {1})\n"
+                        L"3. The first start downloads the language packs, then it answers at http://localhost:5000.\n\n"
+                        L"The commands are in the clipboard and the address is filled in. Then press \"Test the "
+                        L"translator\".",
+                        {list, cmd})
+                        .c_str(),
+                    Tr(L"Set up on this PC").c_str(), MB_OK | MB_ICONINFORMATION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0));
+    }
+
+    // Quality test: the same invented chat lines through every translator that is set up,
+    // with the time each took. You judge which reads naturally.
+    void CompareTranslators() {
+        Config probe = cfg_;
+        Collect(probe);
+        std::vector<std::shared_ptr<Translator>> list;
+        for (Engine e : {Engine::Basic, Engine::Google, Engine::Microsoft, Engine::DeepL, Engine::Libre, Engine::Llm})
+            if (auto t = MakeFor(probe, e)) list.push_back(t);
+        const std::wstring target = probe.readLang.empty() ? std::wstring(L"DE") : probe.readLang;
+        EnableWindow(Item(kTechCompare), FALSE);
+        SetText(kTechText, TrF(L"Comparing {1} translators into {2} … (each line goes to every one of them)",
+                               {std::to_wstring(list.size()), LanguageLabel(target)}));
+        std::thread([h = hwnd_, list, target] {
+            // Invented lines in the style of the GW2 chat: slang, typos, several languages.
+            static const wchar_t* kLines[] = {
+                L"anyone up for the world boss in 5 min? need 2 more",
+                L"kann mir jemand bei der fraktale helfen bin neu xD",
+                L"alguien para la mazmorra? necesito ayuda con el jefe",
+                L"merci pour l'aide, on se revoit au portail !",
+                L"انا جديد في اللعبة، من يساعدني؟",
+                L"ty all gg wp, see u tomorrow at the same time",
+            };
+            std::wstring out;
+            for (const auto& t : list) {
+                std::vector<std::vector<Segment>> items;
+                for (const wchar_t* l : kLines) items.push_back({{l, false}});
+                const ULONGLONG t0 = GetTickCount64();
+                const std::vector<TranslateResult> rs = t->TranslateBatch(items, L"", target);
+                const ULONGLONG ms = GetTickCount64() - t0;
+                out += L"== " + t->Name() + L"  (" + std::to_wstring(ms) + L" ms) ==\r\n";
+                for (size_t i = 0; i < rs.size() && i < items.size(); ++i)
+                    out += std::wstring(L"  ") + kLines[i] + L"\r\n    → " +
+                           (rs[i].ok ? rs[i].text : L"[!] " + rs[i].error) + L"\r\n";
+                out += L"\r\n";
+            }
+            auto* text = new std::wstring(std::move(out));
+            if (!PostMessageW(h, WM_APP_COMPARE, 0, reinterpret_cast<LPARAM>(text))) delete text;
+        }).detach();
+    }
+
     void TestTranslator() {
         Config probe = cfg_;
         Collect(probe);
@@ -1012,6 +1163,12 @@ private:
                 if (Trim(current).empty()) SendMessageW(combo, CB_SETCURSEL, 0, 0);
                 SendMessageW(combo, CB_SHOWDROPDOWN, TRUE, 0);
             }
+            return 0;
+        }
+        if (msg == WM_APP_COMPARE) {
+            std::unique_ptr<std::wstring> text(reinterpret_cast<std::wstring*>(lp));
+            EnableWindow(Item(kTechCompare), TRUE);
+            SetText(kTechText, *text + Tr(L"Which reads naturally? The time is for all six lines together."));
             return 0;
         }
         if (msg == WM_APP_TEST) {
@@ -1305,7 +1462,57 @@ private:
     std::wstring installedExe_;
 };
 
+// ---------------------------------------------------------------------------
+// Correcting one translation (correction memory)
+// ---------------------------------------------------------------------------
+class CorrectionDialog final : public NativeDialog {
+public:
+    CorrectionDialog(std::wstring original, std::wstring translation)
+        : original_(std::move(original)), text_(std::move(translation)) {}
+    bool ok = false;
+    std::wstring text;
+
+private:
+    static constexpr int kW = 520;
+    enum : int { kOrig = 300, kText };
+
+    void Build() override {
+        Label(Tr(L"Original"), 16, 12, kW - 32);
+        Edit(kOrig, original_, 16, 34, kW - 32, ES_MULTILINE | ES_READONLY | WS_VSCROLL | ES_AUTOVSCROLL, 54);
+        Label(Tr(L"Your translation (remembered for this text and similar wording)"), 16, 98, kW - 32);
+        HWND t = Edit(kText, text_, 16, 120, kW - 32, ES_MULTILINE | WS_VSCROLL | ES_AUTOVSCROLL, 64);
+        Label(Tr(L"Stays on this PC. Applies to every translator; changed words are also corrected in later "
+                 L"translations."),
+              16, 190, kW - 32, 34);
+        Button(IDOK, Tr(L"Remember"), kW - 228, 232, 104);
+        Button(IDCANCEL, Tr(L"Cancel"), kW - 116, 232, 100);
+        SetFocus(t);
+        SendMessageW(t, EM_SETSEL, 0, -1);
+    }
+
+    void OnCommand(int id, int) override {
+        if (id == IDOK) {
+            text = Trim(Text(kText));
+            for (wchar_t& c : text)
+                if (c == L'\r' || c == L'\n') c = L' ';
+            ok = !text.empty();
+            Close();
+        } else if (id == IDCANCEL) {
+            Close();
+        }
+    }
+
+    std::wstring original_, text_;
+};
+
 }  // namespace
+
+bool AskCorrection(HWND owner, HINSTANCE inst, const std::wstring& original, std::wstring* translation) {
+    CorrectionDialog dlg(original, *translation);
+    dlg.Run(owner, inst, Tr(L"Correct the translation"), 520, 272);
+    if (dlg.ok) *translation = dlg.text;
+    return dlg.ok;
+}
 
 DialogResult ShowSettingsDialog(HWND owner, HINSTANCE inst, Config& cfg, const DialogContext& ctx, SettingsPage start) {
     SettingsDialog dlg(cfg, ctx, start);

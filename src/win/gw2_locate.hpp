@@ -54,5 +54,7 @@ std::wstring AutostartTarget();
 
 // Folder picker (IFileOpenDialog with FOS_PICKFOLDERS). Empty if cancelled.
 std::wstring PickFolder(void* owner, const std::wstring& title, const std::wstring& initial);
+// A text file to open (`save` = false) or to save as (`save` = true, suggested `name`). Empty when cancelled.
+std::wstring PickTextFile(void* owner, const std::wstring& title, bool save, const std::wstring& name);
 
 }  // namespace gct
