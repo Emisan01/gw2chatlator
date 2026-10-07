@@ -315,8 +315,7 @@ void ChatLogView::OnClick(POINT client) {
         OfferLinks(e, screen);
         return;
     }
-    if (e.kind != ChatEntry::Kind::Incoming || e.state == ChatEntry::State::Pending) return;
-    if (cb_.onRetranslate) cb_.onRetranslate(e.id, e.original.empty() ? e.main : e.original);
+    TranslateAgain(e);
 }
 
 // Links of a message, from the text as written (links are never translated).
@@ -349,19 +348,35 @@ void ChatLogView::OfferLinks(const ChatEntry& e, POINT screen) {
     const ModalScope modal;
     const std::vector<std::wstring> links = EntryLinks(e);
     if (links.empty()) return;
-    enum : UINT { kOpenBase = 1, kCopyBase = 100 };
+    enum : UINT { kOpenBase = 1, kCopyBase = 100, kAgain = 200 };
     HMENU menu = CreatePopupMenu();
     for (size_t i = 0; i < links.size() && i < 20; ++i) {
         std::wstring shown = links[i].size() > 70 ? links[i].substr(0, 68) + L"…" : links[i];
         AppendMenuW(menu, MF_STRING, kOpenBase + i, TrF(L"Open link: {1}", {shown}).c_str());
         AppendMenuW(menu, MF_STRING, kCopyBase + i, TrF(L"Copy link: {1}", {shown}).c_str());
     }
+    // A message with a link can be translated again too (a click on it opens this menu instead).
+    const bool again = CanTranslateAgain(e);
+    if (again) {
+        AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+        AppendMenuW(menu, MF_STRING, kAgain, Tr(L"Translate again").c_str());
+    }
     const UINT cmd = static_cast<UINT>(TrackPopupMenu(
         menu, TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_NONOTIFY | (UiRtl() ? TPM_LAYOUTRTL : 0), screen.x, screen.y, 0,
         hwnd_, nullptr));
     DestroyMenu(menu);
-    if (cmd >= kCopyBase && cmd - kCopyBase < links.size()) CopyText(links[cmd - kCopyBase]);
+    if (cmd == kAgain && again) TranslateAgain(e);
+    else if (cmd >= kCopyBase && cmd - kCopyBase < links.size()) CopyText(links[cmd - kCopyBase]);
     else if (cmd >= kOpenBase && cmd - kOpenBase < links.size()) OpenLinkAsking(links[cmd - kOpenBase]);
+}
+
+// A message from someone else that is not waiting for its translation right now.
+bool ChatLogView::CanTranslateAgain(const ChatEntry& e) const {
+    return cb_.onRetranslate && e.kind == ChatEntry::Kind::Incoming && e.state != ChatEntry::State::Pending;
+}
+
+void ChatLogView::TranslateAgain(const ChatEntry& e) {
+    if (CanTranslateAgain(e)) cb_.onRetranslate(e.id, e.original.empty() ? e.main : e.original);
 }
 
 void ChatLogView::CopyText(const std::wstring& s) {
@@ -387,13 +402,15 @@ void ChatLogView::ShowMenu(POINT screen) {
     const int r = RowAt(client.y);
     const ChatEntry* e = r >= 0 ? &entries_[rows_[static_cast<size_t>(r)].index] : nullptr;
 
-    enum : UINT { kCopyMain = 1, kCopyOriginal, kReply, kUseChannel, kClear, kLinks, kCorrect, kResetColors, kCalibrateBase = 100 };
+    enum : UINT { kCopyMain = 1, kCopyOriginal, kReply, kUseChannel, kClear, kLinks, kCorrect, kResetColors, kAgain,
+                  kCalibrateBase = 100 };
     HMENU menu = CreatePopupMenu();
     HMENU colors = nullptr;
     if (e) {
         const bool hasOriginal = !e->original.empty() && e->original != e->main;
         AppendMenuW(menu, MF_STRING, kCopyMain, (hasOriginal ? Tr(L"Copy the translation") : Tr(L"Copy the text")).c_str());
         if (hasOriginal) AppendMenuW(menu, MF_STRING, kCopyOriginal, Tr(L"Copy the original").c_str());
+        if (CanTranslateAgain(*e)) AppendMenuW(menu, MF_STRING, kAgain, Tr(L"Translate again").c_str());
         if (hasOriginal && !e->splitSend && cb_.onCorrect) AppendMenuW(menu, MF_STRING, kCorrect, Tr(L"Correct this translation…").c_str());
         if (!EntryLinks(*e).empty()) AppendMenuW(menu, MF_STRING, kLinks, Tr(L"Links in this message…").c_str());
         if (e->kind == ChatEntry::Kind::Incoming && e->channel == Channel::Whisper && !e->whisperOut &&
@@ -444,7 +461,11 @@ void ChatLogView::ShowMenu(POINT screen) {
         return;
     }
     if (!now) return;
-    if (cmd == kCopyMain) CopyText(now->main);
+    if (cmd == kAgain) {
+        const ChatEntry copy = *now;
+        TranslateAgain(copy);
+    }
+    else if (cmd == kCopyMain) CopyText(now->main);
     else if (cmd == kCopyOriginal) CopyText(now->original);
     else if (cmd == kLinks) {
         const ChatEntry copy = *now;  // the menu below may outlive changes to the list
@@ -507,10 +528,7 @@ LRESULT ChatLogView::Handle(UINT msg, WPARAM wp, LPARAM lp) {
                 if (PtInRect(&row.name, content)) hand = true;  // a name: whisper tab
             if (!hand) {  // the text of a message from someone: translate (again)
                 const int r = RowAt(pt.y);
-                if (r >= 0) {
-                    const ChatEntry& e = entries_[rows_[static_cast<size_t>(r)].index];
-                    hand = e.kind == ChatEntry::Kind::Incoming && e.state != ChatEntry::State::Pending;
-                }
+                if (r >= 0) hand = CanTranslateAgain(entries_[rows_[static_cast<size_t>(r)].index]);
             }
             if (hand) {
                 SetCursor(LoadCursorW(nullptr, IDC_HAND));

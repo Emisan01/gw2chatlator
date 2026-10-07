@@ -95,6 +95,8 @@ private:
     void ScrollTo(int y);
     void Paint();
     int RowAt(int clientY) const;
+    bool CanTranslateAgain(const ChatEntry& e) const;
+    void TranslateAgain(const ChatEntry& e);
     void ShowMenu(POINT screen);
     void CopyText(const std::wstring& s);
     static std::vector<std::wstring> EntryLinks(const ChatEntry& e);
