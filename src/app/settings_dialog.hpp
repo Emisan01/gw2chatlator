@@ -37,6 +37,9 @@ struct DialogContext {
     std::function<void()> clearCorrections;
     std::function<std::wstring(const std::wstring& path)> exportCorrections;
     std::function<std::wstring(const std::wstring& path)> importCorrections;
+    // "My words" (slang with its meaning): the list as text, and storing an edited one.
+    std::function<std::wstring()> myWordsText;
+    std::function<void(const std::wstring&)> setMyWords;
 };
 
 enum class SettingsPage { General = 0, Reading, Writing, Translator, Game, Technical };
@@ -51,5 +54,9 @@ DialogResult ShowSetupWizard(HWND owner, HINSTANCE inst, Config& cfg, const Dial
 
 // Modal: shows the original, lets you edit the translation. True when you confirmed a non-empty text.
 bool AskCorrection(HWND owner, HINSTANCE inst, const std::wstring& original, std::wstring* translation);
+// Modal: what one of your words means ("finds" -> "finde es"). True when confirmed (meaning may be empty).
+bool AskWordMeaning(HWND owner, HINSTANCE inst, const std::wstring& word, std::wstring* meaning);
+// Modal: the whole list of your words, "word = meaning" per line. True when confirmed.
+bool EditMyWords(HWND owner, HINSTANCE inst, std::wstring* text);
 
 }  // namespace gct

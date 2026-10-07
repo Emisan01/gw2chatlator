@@ -53,6 +53,7 @@ bool ChatOcr::Init(const ReaderOptions& o, std::wstring* error) {
     checkers_.clear();
     wordOk_.clear();
     decided_.clear();
+    for (const std::wstring& w : o.knownWords) wordOk_[CaseFold(w)] = true;
     if (o.secondLook && haveWin_) {
         std::vector<std::wstring> langs = o.wordLangs;
         langs.insert(langs.begin(), win_.Language());
@@ -74,9 +75,9 @@ bool ChatOcr::Init(const ReaderOptions& o, std::wstring* error) {
 }
 
 bool ChatOcr::IsWord(const std::wstring& core) {
-    if (checkers_.empty()) return true;  // no dictionary: nothing is suspicious
     const std::wstring key = CaseFold(core);
     if (const auto it = wordOk_.find(key); it != wordOk_.end()) return it->second;
+    if (checkers_.empty()) return true;  // no dictionary: nothing is suspicious
     bool ok = false;
     for (const auto& c : checkers_) ok = ok || c->Check(core).empty();
     if (wordOk_.size() > 20000) wordOk_.clear();

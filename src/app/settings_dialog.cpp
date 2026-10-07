@@ -46,7 +46,7 @@ enum : int {
     // Translator
     kEngine, kEngineNote, kLocalModel, kPull, kLocalInfo, kGetOllama, kPullStatus, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
     kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
-    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook,
+    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords,
     // Game & start
     kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kStatus, kRefresh, kSetup,
     // Wizard
@@ -522,8 +522,9 @@ private:
         Check(kLearn, Tr(L"Learn the words I send"), cfg_.learnWords, kLabelX, Y(r), 260);
         Button(kForgetAll, Tr(L"Delete everything learned…"), kCtrlX + 80, Y(r++) - 2, 220);
         // Own row: below the button it used to run into the next line.
-        Label(Tr(L"Stays on this PC. Right-click a word to forget just that one."), kLabelX + 20, Y(r++) - 8,
-              kW - 70, 20, kForgetStatus);
+        Label(Tr(L"Stays on this PC. Right-click a word to forget just that one."), kLabelX + 20, Y(r) - 8,
+              kCtrlX + 50 - kLabelX, 34, kForgetStatus);
+        Button(kMyWords, Tr(L"My words…"), kCtrlX + 80, Y(r++) - 6, 220);
         Check(kLt, Tr(L"Grammar check with LanguageTool (online)"), cfg_.languageTool, kLabelX, Y(r++), kW - 50);
         Label(Tr(L"LanguageTool server"), kLabelX, Y(r), kLabelW);
         Edit(kLtUrl, cfg_.languageToolUrl, kCtrlX, Y(r++), kCtrlW);
@@ -865,6 +866,12 @@ private:
             case kMsGet:
                 ShellExecuteW(hwnd_, L"open", L"https://portal.azure.com/#create/Microsoft.CognitiveServicesTextTranslation",
                               nullptr, nullptr, SW_SHOWNORMAL);
+                break;
+            case kMyWords:
+                if (ctx_.myWordsText && ctx_.setMyWords) {
+                    std::wstring text = ctx_.myWordsText();
+                    if (EditMyWords(hwnd_, inst_, &text)) ctx_.setMyWords(text);
+                }
                 break;
             case kCorrExport:
                 if (ctx_.exportCorrections) {
@@ -1491,7 +1498,66 @@ private:
     std::wstring original_, text_;
 };
 
+// A small text editor: one line (a word's meaning) or many (the list of your words).
+class TextDialog final : public NativeDialog {
+public:
+    TextDialog(std::wstring label, std::wstring hint, std::wstring text, bool multiline)
+        : label_(std::move(label)), hint_(std::move(hint)), text_(std::move(text)), multi_(multiline) {}
+    bool ok = false;
+    std::wstring text;
+    int Height() const { return multi_ ? 380 : 180; }
+
+private:
+    static constexpr int kW = 480;
+    enum : int { kEditText = 300 };
+
+    void Build() override {
+        Label(label_, 16, 12, kW - 32, 34);
+        const int h = multi_ ? 230 : 26;
+        HWND e = Edit(kEditText, text_, 16, 50, kW - 32,
+                      multi_ ? ES_MULTILINE | ES_WANTRETURN | WS_VSCROLL | ES_AUTOVSCROLL : 0, h);
+        Label(hint_, 16, 58 + h, kW - 32, 36);
+        Button(IDOK, Tr(L"OK"), kW - 228, Height() - 40, 104);
+        Button(IDCANCEL, Tr(L"Cancel"), kW - 116, Height() - 40, 100);
+        SetFocus(e);
+        SendMessageW(e, EM_SETSEL, 0, -1);
+    }
+
+    void OnCommand(int id, int) override {
+        if (id == IDOK) {
+            text = Text(kEditText);
+            ok = true;
+            Close();
+        } else if (id == IDCANCEL) {
+            Close();
+        }
+    }
+
+    std::wstring label_, hint_, text_;
+    bool multi_;
+};
+
 }  // namespace
+
+bool AskWordMeaning(HWND owner, HINSTANCE inst, const std::wstring& word, std::wstring* meaning) {
+    TextDialog dlg(TrF(L"What does “{1}” mean? (in plain words of the same language)", {word}),
+                   Tr(L"Example: finds = finde es. Before translating, the word is replaced by this; it also counts as "
+                      L"correct. Empty = only mark the word as correct."),
+                   *meaning, false);
+    dlg.Run(owner, inst, Tr(L"Explain a word"), 480, dlg.Height());
+    if (dlg.ok) *meaning = Trim(dlg.text);
+    return dlg.ok;
+}
+
+bool EditMyWords(HWND owner, HINSTANCE inst, std::wstring* text) {
+    TextDialog dlg(Tr(L"Your words: slang, abbreviations, mixed language – one per line as “word = meaning”."),
+                   Tr(L"Before translating, each word is replaced by its meaning (your text stays as written). A line "
+                      L"without “=” only marks the word as correct. Stays on this PC."),
+                   *text, true);
+    dlg.Run(owner, inst, Tr(L"My words"), 480, dlg.Height());
+    if (dlg.ok) *text = dlg.text;
+    return dlg.ok;
+}
 
 bool AskCorrection(HWND owner, HINSTANCE inst, const std::wstring& original, std::wstring* translation) {
     CorrectionDialog dlg(original, *translation);

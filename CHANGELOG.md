@@ -26,6 +26,10 @@ diagnosis show it.
   lines and side-by-side columns (sidebar, text, picture) become separate paragraphs; at least double enlargement for
   small app fonts; a paragraph that grows (someone types, text streams in) updates its entry instead of adding new
   ones, a slightly different reading of the same text is ignored.
+- **My words**: teach the tool your slang ("finds = finde es"): right-click a word in the input box → "Explain …",
+  or the list in Settings → Writing → "My words…". Before translating (your messages and incoming lines) the word is
+  replaced by its meaning, so every translator gets plain language; it is never underlined or autocorrected and the
+  second look leaves it alone. Stays on this PC (`my-words.txt`).
 - **Second look** at words that make no sense: a word the dictionaries do not know is read once more, cut out and
   enlarged more; the new reading is taken only if it is then a real word close to the first ("*ain" -> "main"),
   otherwise the text stays as written (names, slang). Counters on the technical page; switch in Settings → Reading.

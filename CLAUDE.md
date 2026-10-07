@@ -212,6 +212,10 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
   spacing ignored) → used instead of any translator (incoming in `HandleIncoming`, outgoing in `StartTranslation`);
   phrases (few changed words, `ChangedPhrase`) → `Apply` on every fresh translation. Right-click "Correct this
   translation…" (`AskCorrection`); not offered for messages split over several chat lines (`splitSend`).
+- My words (`core/my_words`, `<data>\my-words.txt`, "word = meaning"): `Expand` runs on the text that goes to the
+  translator (outgoing `StartTranslation`, incoming `PumpIncoming`), never on what is shown or used as cache/correction
+  key. Explained words also go to `SpellService::AddUserWord` and to `ReaderOptions::knownWords` (second look).
+  Source side on purpose: a phrase correction on the target side ("finds" -> "I think") would break "he finds".
 - API keys in the ini: `ProtectSecret`/`UnprotectSecret` (win/secret, DPAPI, "dpapi:" + base64); old plain values
   are still read. A key encrypted on another account/PC reads as empty.
 - `ocr.cpp` calls `RoInitialize(MTA)`: create `ChatOcr` on a worker thread, not on the UI (STA) thread.
