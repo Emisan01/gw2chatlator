@@ -565,6 +565,7 @@ private:
         Label(Tr(L"RapidOCR (optional)"), kLabelX, Y(r), kLabelW);
         Label(RapidStatus(), kCtrlX, Y(r) - 2, kCtrlW - 150, 34, kRapidStatus);
         Button(kRapidGet, Tr(L"Install…"), kCtrlX + kCtrlW - 140, Y(r++) - 2, 140);
+        EnableWindow(Item(kRapidGet), RapidMissing());  // only when something for your languages is missing
         Label(Tr(L"Read every"), kLabelX, Y(r), kLabelW);
         Edit(kInterval, std::to_wstring(cfg_.readerIntervalMs), kCtrlX, Y(r), 60, ES_NUMBER);
         Label(Tr(L"ms (200–2000, 400 recommended; shorter only reacts sooner, it does not read more exactly)"),
@@ -1224,6 +1225,14 @@ private:
         return RapidGroupsFor(langs);
     }
 
+    // Something for your languages is not there yet (and could be downloaded).
+    bool RapidMissing() const {
+        if (!RapidRecognizer::RuntimeAvailable(nullptr)) return false;
+        for (const std::wstring& id : RapidGroupsNeeded())
+            if (const RapidModelGroup* g = FindRapidGroup(id); g && RapidGroupDir(*g, cfg_.RapidDir()).empty()) return true;
+        return false;
+    }
+
     std::wstring RapidStatus() const {
         if (!RapidRecognizer::RuntimeAvailable(nullptr))
             return Tr(L"[--] Not available in this build (onnxruntime.dll missing next to the program).");
@@ -1392,7 +1401,7 @@ private:
         }
         if (msg == WM_APP_RAPID) {
             std::unique_ptr<std::wstring> err(reinterpret_cast<std::wstring*>(lp));
-            EnableWindow(Item(kRapidGet), TRUE);
+            EnableWindow(Item(kRapidGet), RapidMissing());
             SetText(kRapidStatus, err->empty() ? RapidStatus() : TrF(L"[!] Not installed: {1}", {*err}));
             if (err->empty()) SendMessageW(Item(kOcrEngine), CB_SETCURSEL, 0, 0);  // automatic uses it from now on
             return 0;
