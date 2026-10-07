@@ -6,9 +6,15 @@ No hook, no memory reading, nothing injected into the game. The tool only looks 
 
 The window is available in **English, Deutsch and العربية**. Use menu ≡ → **Language / Sprache / اللغة**. That entry has the same name in every language, so you can always find your way back.
 
+## Download
+
+**[⬇ Latest version (Windows, ZIP)](https://github.com/Emisan01/gw2chatlator/releases/latest)** – unpack it anywhere and
+start `GW2ChatTranslator.exe`. Keep `onnxruntime.dll` and the `rapid` folder next to it (RapidOCR text recognition).
+What changed: [CHANGELOG.md](CHANGELOG.md).
+
 ## Install (one minute)
 
-1. Download `GW2ChatTranslator.exe` and start it anywhere.
+1. Download the ZIP above, unpack it and start `GW2ChatTranslator.exe`.
 2. The **guided setup** opens on the first start:
    - **Language and installation.** Pick the window language and the language you want to read. GW2 is found on its own (registry, Steam libraries, usual folders). With one tick the tool copies itself into `Guild Wars 2\addons\GW2ChatTranslator\`, a clean folder of its own. Another tick starts it with Windows: it stays hidden and appears when GW2 runs.
    - **Prepare the GW2 chat.** Keep the GW2 chat panel open (8–12 lines are enough). Use a chat tab with all channels, turn timestamps on, and choose text size medium or larger.

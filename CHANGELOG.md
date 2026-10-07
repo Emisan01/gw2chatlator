@@ -3,7 +3,7 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## Unreleased
+## 0.7.0 — 2026-10-07
 
 - **Translate any screen area** (menu ≡): frame any text – a website, a document, another game – and everything in
   it is translated; no chat rules, works without GW2. "Read the GW2 chat" switches back.
