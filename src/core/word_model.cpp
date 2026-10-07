@@ -475,6 +475,24 @@ std::wstring WordModel::NextSure(const std::wstring& prev, const std::wstring& p
     return decide(WordKey(prev));
 }
 
+std::vector<std::wstring> WordModel::ContinueSure(const std::wstring& prev, const std::wstring& prev2,
+                                                 size_t maxWords) const {
+    std::vector<std::wstring> out;
+    std::wstring p1 = prev, p2 = prev2;
+    std::vector<std::wstring> seen{WordKey(prev), WordKey(prev2)};
+    while (out.size() < maxWords) {
+        const std::wstring next = NextSure(p1, p2);
+        if (next.empty()) break;
+        const std::wstring key = WordKey(next);
+        if (std::find(seen.begin(), seen.end(), key) != seen.end()) break;  // would go round in circles
+        seen.push_back(key);
+        out.push_back(next);
+        p2 = p1;
+        p1 = next;
+    }
+    return out;
+}
+
 std::vector<std::wstring> WordModel::Near(const std::wstring& word, size_t n) const {
     std::vector<std::wstring> out;
     const std::wstring key = WordKey(word);

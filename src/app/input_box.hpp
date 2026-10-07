@@ -38,6 +38,7 @@ public:
     void SetSuggestions(bool on);
     // Puts the word of the bar into the text (slot 0..2).
     void AcceptSuggestion(size_t index);
+    void AcceptPhrase();
     // The word bar again (after a word was forgotten).
     void RefreshSuggestions() { UpdateSuggestions(); }
     const WordSuggestions& CurrentSuggestions() const { return suggestions_; }

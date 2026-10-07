@@ -1422,6 +1422,22 @@ static void TestWordModelWeights() {
     CHECK(f.Next(L"alpha", 3).empty());       // the old pair has faded
 }
 
+static void TestPhraseMemory() {
+    WordModel m;
+    for (int i = 0; i < 4; ++i) m.Learn(L"gute nacht bis morgen mit micro");
+    m.Learn(L"gute nacht allerseits");
+    // After "gute nacht" the whole rest you always write.
+    CHECK((m.ContinueSure(L"nacht", L"gute") == std::vector<std::wstring>{L"bis", L"morgen", L"mit", L"micro"}));
+    // Never round in circles, even when the phrase leads back to its start.
+    WordModel loop;
+    for (int i = 0; i < 5; ++i) loop.Learn(L"go go go");
+    CHECK(loop.ContinueSure(L"go", L"go").empty());
+    // At most maxWords.
+    CHECK(m.ContinueSure(L"nacht", L"gute", 2).size() == 2);
+    // Nothing sure: nothing offered.
+    CHECK(m.ContinueSure(L"irgendwas", L"").empty());
+}
+
 static void TestActiveBottom() {
     // Ten text lines 20 px apart; two paragraphs (gap after line 3).
     std::vector<OcrLine> lines;
@@ -1558,6 +1574,7 @@ int main() {
     TestActiveBottom();
     TestWordTriples();
     TestWordModelWeights();
+    TestPhraseMemory();
     TestRapidRec();
     TestText();
     TestChat();

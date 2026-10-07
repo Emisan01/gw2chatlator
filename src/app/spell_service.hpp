@@ -24,6 +24,7 @@ struct WordSuggestions {
     std::vector<std::wstring> words;  // up to 3
     int autoIndex = -1;               // what Tab takes (highlighted); -1 = none
     Span replace;                     // the part of the text a pick replaces (empty = insert at caret)
+    std::wstring phrase;              // Next: the sure rest of a phrase ("bis morgen mit micro"), Tab takes it all
 };
 
 // The dropdown under the word being typed, like on a phone keyboard: Space

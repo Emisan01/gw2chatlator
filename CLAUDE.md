@@ -75,7 +75,8 @@ choices are learned when taken: `InputBox::ApplyChoice` / `AcceptSuggestion` →
 `ChooseCorrection`, next word from word pairs) → `SuggestionBar` + grey rest of the completion after the caret
 (`InputBox::DrawGhost`, Latin script only by the user's decision – no instant suggestion for
 Arabic/Cyrillic/CJK without a proven model; the sure next word `WordModel::NextSure` – 3+ seen, ≥60 % – is drawn by
-`DrawNextGhost` after a trailing space, Tab/→ take it); `InputBox::TryAutoCorrect` on a word boundary (incl. Arabic ، ؟ ؛) and
+`DrawNextGhost` after a trailing space, Tab/→ take it; `ContinueSure` chains sure words into a phrase –
+`WordSuggestions::phrase`, 2–6 words, no word twice – Tab = `AcceptPhrase` takes it all, → one word); `InputBox::TryAutoCorrect` on a word boundary (incl. Arabic ، ؟ ؛) and
 `FinishWordAtCaret` on Enter (`AutoCorrectMode` Off/Safe/Phone); Backspace right after it → `UndoAutoCorrect` →
 `RejectCorrection`. Right-click a learned word (word bar or input) → `SpellService::Forget`; Settings → Writing →
 `ForgetAll` deletes every `learned_*.txt`. Word keys go through `WordKey` (case fold + Arabic variants أإآٱ→ا,

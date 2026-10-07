@@ -246,7 +246,13 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
             s.replace = {caret, 0};
             // Almost always this word here: it is offered grey after the caret (Tab or → takes it).
             const std::wstring sure = model_.NextSure(prev, p2);
-            if (!sure.empty() && WordKey(sure) == WordKey(s.words[0])) s.autoIndex = 0;
+            if (!sure.empty() && WordKey(sure) == WordKey(s.words[0])) {
+                s.autoIndex = 0;
+                // A phrase you write again and again: the whole sure rest.
+                const std::vector<std::wstring> rest = model_.ContinueSure(prev, p2);
+                if (rest.size() >= 2)
+                    for (const std::wstring& w : rest) s.phrase += (s.phrase.empty() ? L"" : L" ") + w;
+            }
         }
         return s;
     }

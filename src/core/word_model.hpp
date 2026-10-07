@@ -90,6 +90,11 @@ public:
     // The next word when it is (almost) always the same: seen 3+ times there and at least 60 % of what followed –
     // worth offering before you type a letter. Else "".
     std::wstring NextSure(const std::wstring& prev, const std::wstring& prev2 = std::wstring()) const;
+    // The rest of a phrase you write again and again ("gute nacht" -> "bis morgen mit micro"): NextSure word by word,
+    // each step sure on its own, at most `maxWords`, never a word twice (no loops). Empty when not even the first is
+    // sure.
+    std::vector<std::wstring> ContinueSure(const std::wstring& prev, const std::wstring& prev2,
+                                           size_t maxWords = 6) const;
     // Known words one or two typos away from `word` (same first letter or the
     // first two swapped), closest and most used first.
     std::vector<std::wstring> Near(const std::wstring& word, size_t n) const;

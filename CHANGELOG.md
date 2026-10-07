@@ -3,6 +3,12 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## Unreleased
+
+- **Phrase memory:** a phrase you write again and again is offered whole – after "gute nacht " the grey rest
+  "bis morgen mit micro" appears, **Tab takes all of it**, → one word at a time, typing on ignores it. Only when every
+  word of the rest is sure on its own (seen 3+ times, 60 %+), at most 6 words, never going round in circles.
+
 ## 0.8.2 — 2026-10-07
 
 - **Translate again:** click the text of a message (or right-click → "Translate again") and it is translated anew –
