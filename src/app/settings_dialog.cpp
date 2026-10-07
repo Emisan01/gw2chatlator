@@ -644,7 +644,27 @@ private:
         Button(kCorrExport, Tr(L"Export…"), kCtrlX, Y(r) + 2, 110);
         Button(kCorrImport, Tr(L"Import…"), kCtrlX + 118, Y(r) + 2, 110);
         Button(kCorrClear, Tr(L"Delete all…"), kCtrlX + 236, Y(r++) + 2, 120);
+        // What the word help saves: key presses compared with the letters sent.
+        Label(Tr(L"Key presses saved"), kLabelX, Y(r) + 8, kLabelW);
+        Label(TypingSavings(), kCtrlX, Y(r++) + 8, kCtrlW, 34);
         UpdateLtFields();
+    }
+
+    // "today 38 % (120 keys for 195 letters) · in total 31 % in 412 messages"; negative when you corrected a lot.
+    std::wstring TypingSavings() const {
+        auto pct = [](int keys, int chars) {
+            return std::to_wstring(chars > 0 ? 100 - static_cast<long long>(keys) * 100 / chars : 0);
+        };
+        SYSTEMTIME st;
+        GetLocalTime(&st);
+        const bool today = cfg_.typingDay == st.wYear * 10000 + st.wMonth * 100 + st.wDay && cfg_.dayChars > 0;
+        if (cfg_.totalChars <= 0) return Tr(L"Counted from your next message (letters you send vs. keys you press).");
+        return (today ? TrF(L"Today {1} % ({2} keys for {3} letters)",
+                            {pct(cfg_.dayKeys, cfg_.dayChars), std::to_wstring(cfg_.dayKeys), std::to_wstring(cfg_.dayChars)}) +
+                            L" · "
+                      : std::wstring()) +
+               TrF(L"in total {1} % in {2} messages",
+                   {pct(cfg_.totalKeys, cfg_.totalChars), std::to_wstring(cfg_.totalMessages)});
     }
 
     // Grammar provider: the address follows the choice; your own server keeps what you typed.

@@ -262,6 +262,7 @@ private:
     std::deque<std::wstring> whisperers_;   // recent partners, newest first
     std::deque<std::wstring> chatWords_;    // words of the recent chat for completions, newest first
     void NoteChatWords(const std::wstring& text);
+    void CountTyping();
 
     // glossary
     std::map<std::string, NameTable> names_;

@@ -120,6 +120,9 @@ struct Config {
     std::wstring fontFace = L"Segoe UI";
     bool followGame = true;
     bool focusOnGameChat = false;  // focus input when in-game chat box gains focus
+    // Key presses vs. letters sent (the word help's benefit): today and in total.
+    int typingDay = 0;  // yyyymmdd
+    int dayKeys = 0, dayChars = 0, totalKeys = 0, totalChars = 0, totalMessages = 0;
     // Docked: position kept relative to the bottom-left corner of the GW2
     // client area (physical pixels), follows the game window.
     bool dock = false;

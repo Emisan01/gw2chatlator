@@ -1114,6 +1114,33 @@ void MainWindow::NoteChatWords(const std::wstring& text) {
     spell_.SetContext({chatWords_.begin(), chatWords_.end()});
 }
 
+// The word help's benefit, measured: key presses for this message vs. the letters it has (what you would have
+// typed without help). Pasted or programmatically set texts are not counted. Today and in total, in the ini.
+void MainWindow::CountTyping() {
+    if (input_.Pasted() || input_.KeyPresses() <= 0) return;
+    const ChatSplit split = SplitChatCommand(SanitizeChatText(input_.Text()));
+    const int chars = static_cast<int>((split.prefix.empty() ? split.body.empty() ? input_.Text() : split.body : split.body).size());
+    if (chars <= 0) return;
+    SYSTEMTIME st;
+    GetLocalTime(&st);
+    const int day = st.wYear * 10000 + st.wMonth * 100 + st.wDay;
+    if (cfg_.typingDay != day) {
+        cfg_.typingDay = day;
+        cfg_.dayKeys = cfg_.dayChars = 0;
+    }
+    cfg_.dayKeys += input_.KeyPresses();
+    cfg_.dayChars += chars;
+    cfg_.totalKeys += input_.KeyPresses();
+    cfg_.totalChars += chars;
+    ++cfg_.totalMessages;
+    cfg_.SaveValue(L"Typing", L"Day", std::to_wstring(cfg_.typingDay));
+    cfg_.SaveValue(L"Typing", L"DayKeys", std::to_wstring(cfg_.dayKeys));
+    cfg_.SaveValue(L"Typing", L"DayChars", std::to_wstring(cfg_.dayChars));
+    cfg_.SaveValue(L"Typing", L"TotalKeys", std::to_wstring(cfg_.totalKeys));
+    cfg_.SaveValue(L"Typing", L"TotalChars", std::to_wstring(cfg_.totalChars));
+    cfg_.SaveValue(L"Typing", L"TotalMessages", std::to_wstring(cfg_.totalMessages));
+}
+
 void MainWindow::Retranslate(uint64_t id, const std::wstring& text) {
     if (!translator_ || Trim(text).empty()) return;
     log_.Update(id, [](ChatEntry& e) {
@@ -2097,6 +2124,7 @@ void MainWindow::SendNextPart() {
         original = split.prefix.empty() ? text : split.body;
     }
     if (!DoSend(line, original)) return;
+    if (partIdx_ == 0) CountTyping();
     if (partIdx_ == 0 && cfg_.learnWords) {
         // Learn what you write in your own language (the original), like a phone keyboard.
         const std::wstring typed = SanitizeChatText(input_.Text());

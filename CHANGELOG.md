@@ -5,6 +5,8 @@ diagnosis show it.
 
 ## Unreleased
 
+- **Key presses saved** (Settings → Writing): the word help is measured – keys you press compared with the letters
+  you send, today and in total ("Today 38 % (120 keys for 195 letters)"). Pasted text is not counted.
 - Short foreign lines are recognized by their words: "merci", "gracias amigo", "grazie mille", "obrigado" are
   translated again (two languages in one line: left alone).
 - While this window lies over the GW2 chat it shows every line, also with "Show only translations" – it is your chat
