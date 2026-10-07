@@ -461,7 +461,7 @@ std::wstring WordModel::NextSure(const std::wstring& prev, const std::wstring& p
                 bestKey = &key;
             }
         }
-        if (!bestKey || best < 3.0 || best < total * 0.6) return {};
+        if (!bestKey || best < 2.5 || best < total * 0.6) return {};
         auto wit = words_.find(*bestKey);
         return wit != words_.end() ? wit->second.form : *bestKey;
     };
@@ -470,7 +470,7 @@ std::wstring WordModel::NextSure(const std::wstring& prev, const std::wstring& p
         if (auto it = pairs_.find(WordKey(prev2) + L'\x1f' + WordKey(prev)); it != pairs_.end()) {
             double total = 0;
             for (const auto& kv : it->second) total += kv.second;
-            if (total >= 3.0) return decide(it->first);  // enough seen with two words: they decide alone
+            if (total >= 2.5) return decide(it->first);  // enough seen with two words: they decide alone
         }
     return decide(WordKey(prev));
 }

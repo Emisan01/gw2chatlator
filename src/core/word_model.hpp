@@ -87,7 +87,8 @@ public:
                                             const KeyNeighbors& neighbors = nullptr) const;
     // Words that often follow `prev2 prev` ("kommst du" -> "mit"), then those that follow `prev`.
     std::vector<std::wstring> Next(const std::wstring& prev, size_t n, const std::wstring& prev2 = std::wstring()) const;
-    // The next word when it is (almost) always the same: seen 3+ times there and at least 60 % of what followed –
+    // The next word when it is (almost) always the same: seen 3+ times there (2.5 after slow fading) and at least
+    // 60 % of what followed –
     // worth offering before you type a letter. Else "".
     std::wstring NextSure(const std::wstring& prev, const std::wstring& prev2 = std::wstring()) const;
     // The rest of a phrase you write again and again ("gute nacht" -> "bis morgen mit micro"): NextSure word by word,
@@ -117,8 +118,10 @@ public:
     // Forgetting by use (like the forgetting curve of Android's keyboard, but counted in messages, not days – nothing
     // fades while you do not write): every kDecayEvery learned messages all counts shrink by kDecay. Old habits make
     // room for new ones; a word stays "known" (count 2) once you used it twice.
-    static constexpr int kDecayEvery = 200;
-    static constexpr double kDecay = 0.9;
+    // Slow on purpose: learning is for months (at ~50 messages a day one step every ~10 days; a phrase written three
+    // times stays offered for over a month without being used again).
+    static constexpr int kDecayEvery = 500;
+    static constexpr double kDecay = 0.95;
     void Decay();
 
 private:

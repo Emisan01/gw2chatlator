@@ -5,6 +5,8 @@ diagnosis show it.
 
 ## Unreleased
 
+- **Learning for the long run:** old habits fade much more slowly now (every 500 messages by 5 %): a phrase you wrote
+  three times stays offered for over a month (at ~50 messages a day), even if you do not use it in between.
 - **Phrase memory:** a phrase you write again and again is offered whole – after "gute nacht " the grey rest
   "bis morgen mit micro" appears, **Tab takes all of it**, → one word at a time, typing on ignores it. Only when every
   word of the rest is sure on its own (seen 3+ times, 60 %+), at most 6 words, never going round in circles.
