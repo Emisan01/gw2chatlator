@@ -11,7 +11,10 @@
 
 #include <string>
 
+#include "app/config.hpp"
 #include "app/main_window.hpp"
+#include "core/i18n.hpp"
+#include "win/gw2_locate.hpp"
 
 namespace {
 
@@ -38,8 +41,61 @@ void EnableDpiAwareness() {
 
 }  // namespace
 
+// A downloaded copy started while the program is installed: start the installed one instead, or – when this one
+// is newer – update the installed copy first (settings and learned words stay; they live next to it). Like Discord or
+// VS Code: the download folder is never where the program keeps running. True when this process should end.
+bool HandOverToInstalledCopy(const std::wstring& args) {
+    if (args.find(L"--restarted") != std::wstring::npos || args.find(L"--portable") != std::wstring::npos) return false;
+    if (gct::RunningInstalledCopy()) return false;
+    const std::wstring installed = gct::FindInstalledExe();
+    if (installed.empty()) return false;
+    const std::wstring mine = gct::ExeVersion(gct::CurrentExePath()), theirs = gct::ExeVersion(installed);
+    std::wstring target = installed;
+    // Newer: a higher version, or the same version built later (a fresh build being tested).
+    const int cmp = gct::CompareVersions(mine, theirs);
+    if (cmp > 0 || (cmp == 0 && gct::FileNewer(gct::CurrentExePath(), installed))) {
+        gct::SetUiLang(gct::EffectiveUiLang(L""));
+        const int answer = MessageBoxW(
+            nullptr,
+            gct::TrF(L"GW2 Chat Translator {1} is installed. Update it to {2} and start it from there?\n\nYour settings, "
+                     L"learned words and corrections stay.",
+                     {theirs.empty() ? std::wstring(L"?") : theirs, mine})
+                .c_str(),
+            L"GW2 Chat Translator", MB_YESNO | MB_ICONQUESTION);
+        if (answer != IDYES) return false;  // runs from here this time
+        // A running old copy ends first (its files are in use while it runs).
+        if (HWND other = FindWindowW(kClassName, nullptr)) PostMessageW(other, WM_CLOSE, 0, 0);
+        for (int i = 0; i < 50; ++i) {
+            HANDLE m = OpenMutexW(SYNCHRONIZE, FALSE, kMutexName);
+            if (!m) break;
+            CloseHandle(m);
+            Sleep(100);
+        }
+        const size_t slash = installed.find_last_of(L"\\/");
+        const gct::InstallResult r = gct::InstallTo(installed.substr(0, slash));
+        if (!r.ok) {
+            MessageBoxW(nullptr, r.error.c_str(), L"GW2 Chat Translator", MB_OK | MB_ICONWARNING);
+            return false;
+        }
+        target = r.exePath;
+    } else if (HWND other = FindWindowW(kClassName, nullptr)) {  // already running: bring it forward
+        ShowWindow(other, SW_SHOW);
+        SetForegroundWindow(other);
+        return true;
+    }
+    std::wstring cmd = L"\"" + target + L"\" --restarted";
+    STARTUPINFOW si{};
+    si.cb = sizeof(si);
+    PROCESS_INFORMATION pi{};
+    if (!CreateProcessW(nullptr, cmd.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi)) return false;
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
+    return true;
+}
+
 int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmdLine, int) {
     const std::wstring args = cmdLine ? cmdLine : L"";
+    if (HandOverToInstalledCopy(args)) return 0;
     // One instance only; a second start just brings the first one forward.
     // A restart into the installed copy waits a moment for the old one to end.
     HANDLE mutex = CreateMutexW(nullptr, TRUE, kMutexName);

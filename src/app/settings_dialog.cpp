@@ -822,8 +822,8 @@ private:
         Edit(kGw2Dir, cfg_.gw2Dir.empty() ? FindGw2Dir() : cfg_.gw2Dir, kCtrlX, Y(r), kCtrlW - 182);
         Button(kGw2Find, Tr(L"Find"), kCtrlX + kCtrlW - 176, Y(r) - 1, 70);
         Button(kGw2Browse, Tr(L"Browse…"), kCtrlX + kCtrlW - 102, Y(r++) - 1, 102);
-        Button(kInstall, Tr(L"Install into the GW2 folder"), kLabelX, Y(r), 220);
-        Label(InstallStatusText(), kLabelX + 230, Y(r++) - 2, kW - 270, 34, kInstallStatus);
+        Button(kInstall, Tr(L"Install for this Windows user"), kLabelX, Y(r), 240);
+        Label(InstallStatusText(), kLabelX + 250, Y(r++) - 2, kW - 290, 34, kInstallStatus);
         Check(kAutostart, Tr(L"Start with Windows (stays hidden until GW2 runs)"), IsAutostartEnabled(), kLabelX,
               Y(r++), kW - 50);
         Check(kDock, Tr(L"Dock to the GW2 window (moves with it)"), cfg_.dock, kLabelX, Y(r++), kW - 50);
@@ -1489,30 +1489,15 @@ private:
         const std::wstring rawDir = Trim(Text(kGw2Dir));
         const std::wstring resolved = ResolveGw2Dir(rawDir);
         const std::wstring dir = resolved.empty() ? rawDir : resolved;
-        std::wstring target;
-        if (IsGw2Dir(dir)) {
-            target = InstallDirFor(dir);
-        } else {
-            SetText(kInstallStatus, Tr(L"That is not a Guild Wars 2 folder (Gw2-64.exe missing)."));
-            return;
-        }
+        const std::wstring existing = FindInstalledExe();
+        const std::wstring target =
+            existing.empty() ? UserInstallDir() : existing.substr(0, existing.find_last_of(L"\\/"));
         InstallResult r = InstallTo(target);
         if (!r.ok) {
-            const std::wstring fallback = UserInstallDir();
-            const int answer = MessageBoxW(
-                hwnd_,
-                TrF(L"The GW2 folder is not writable ({1}).\n\nInstall into your user folder instead?\n{2}",
-                    {r.error, fallback})
-                    .c_str(),
-                L"GW2 Chat Translator", MB_YESNO | MB_ICONQUESTION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0));
-            if (answer != IDYES) return;
-            r = InstallTo(fallback);
-            if (!r.ok) {
-                SetText(kInstallStatus, r.error);
-                return;
-            }
+            SetText(kInstallStatus, r.error);
+            return;
         }
-        cfg_.gw2Dir = dir;
+        if (!dir.empty()) cfg_.gw2Dir = dir;
         if (r.alreadyThere) {
             SetText(kInstallStatus, Tr(L"Installed here."));
             return;
@@ -1661,8 +1646,9 @@ private:
         const std::wstring found = cfg_.gw2Dir.empty() ? FindGw2Dir() : cfg_.gw2Dir;
         Edit(kGw2Dir, found, 220, 140, 196);
         Button(kGw2Browse, Tr(L"Browse…"), 420, 139, 100);
-        Check(kInstall, Tr(L"Install into the GW2 folder (addons\\GW2ChatTranslator)"), !found.empty(), 24, 178,
-              kW - 48);
+        // Installed for this Windows user (%LOCALAPPDATA%\\Programs), like Discord or VS Code: the download folder is
+        // never where it keeps running. Unticked = it stays where it is (portable).
+        Check(kInstall, Tr(L"Install for this Windows user (recommended)"), true, 24, 178, kW - 48);
         Check(kDesktop, Tr(L"Shortcut on the desktop"), true, 24, 206, kW - 48);
         Check(kAutostart, Tr(L"Start with Windows and appear when GW2 runs"), true, 24, 234, kW - 48);
         EndPages();
@@ -1687,13 +1673,11 @@ private:
         cfg_.SaveAll();
         std::wstring exe = CurrentExePath();
         if (Checked(kInstall)) {
-            if (!IsGw2Dir(dir)) {
-                MessageBoxW(hwnd_, Tr(L"That is not a Guild Wars 2 folder (Gw2-64.exe missing).").c_str(),
-                            L"GW2 Chat Translator", MB_OK | MB_ICONWARNING | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0));
-                return false;
-            }
-            InstallResult r = InstallTo(InstallDirFor(dir));
-            if (!r.ok) r = InstallTo(UserInstallDir());
+            // An older install in the game folder is updated where it is; otherwise the user folder.
+            const std::wstring existing = FindInstalledExe();
+            const std::wstring target =
+                existing.empty() ? UserInstallDir() : existing.substr(0, existing.find_last_of(L"\\/"));
+            InstallResult r = InstallTo(target);
             if (!r.ok) {
                 MessageBoxW(hwnd_, r.error.c_str(), L"GW2 Chat Translator", MB_OK | MB_ICONWARNING);
                 return false;
@@ -1701,8 +1685,9 @@ private:
             if (!r.alreadyThere) installedExe_ = r.exePath;
             exe = r.exePath;
         }
+        // Autostart and the shortcut always point to the copy that keeps running: the installed one.
         SetAutostart(Checked(kAutostart), exe);
-        if (Checked(kDesktop)) CreateDesktopShortcut(exe);  // the installed copy, so it is found after setup
+        if (Checked(kDesktop)) CreateDesktopShortcut(exe);
         return true;
     }
 

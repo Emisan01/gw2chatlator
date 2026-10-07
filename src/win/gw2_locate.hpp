@@ -43,8 +43,19 @@ struct InstallResult {
 // to `targetDir`. Creates the folder. Never overwrites a newer ini.
 InstallResult InstallTo(const std::wstring& targetDir);
 
-// Fallback when the game folder is not writable: %LOCALAPPDATA%\Programs\GW2ChatTranslator.
+// Where the program is installed: %LOCALAPPDATA%\Programs\GW2ChatTranslator (per user, no admin rights).
 std::wstring UserInstallDir();
+
+// An installed copy other than the running exe: the user install folder, else an older install in
+// <GW2>\addons\GW2ChatTranslator. Empty if none (or if we are that copy).
+std::wstring FindInstalledExe();
+// True when the running exe is the installed copy (one of the folders above).
+bool RunningInstalledCopy();
+// "0.7.0" from the exe's version resource (empty if none); CompareVersions: <0, 0, >0.
+std::wstring ExeVersion(const std::wstring& path);
+int CompareVersions(const std::wstring& a, const std::wstring& b);
+// `a` was written more than a minute after `b`.
+bool FileNewer(const std::wstring& a, const std::wstring& b);
 
 // HKCU\...\Run entry "GW2ChatTranslator" -> "<exe>" --wait-for-gw2.
 bool SetAutostart(bool enable, const std::wstring& exePath);
