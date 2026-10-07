@@ -45,6 +45,7 @@ public:
         std::function<void(const std::wstring& speaker)> onReply;    // whisper back
         std::function<void(Channel)> onUseChannel;                    // answer in that channel
         std::function<void(Channel, Rgb)> onCalibrate;                // "this colour is ..."
+        std::function<void()> onResetColors;                          // back to the GW2 channel colours
         std::function<void()> onHintClick;                            // click on the empty-state hint
         std::function<void(const std::wstring& speaker)> onSpeakerClick;  // click on a name: whisper tab
         // Click on a line that was not translated: translate it now.

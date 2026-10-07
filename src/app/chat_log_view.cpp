@@ -389,7 +389,7 @@ void ChatLogView::ShowMenu(POINT screen) {
     const int r = RowAt(client.y);
     const ChatEntry* e = r >= 0 ? &entries_[rows_[static_cast<size_t>(r)].index] : nullptr;
 
-    enum : UINT { kCopyMain = 1, kCopyOriginal, kReply, kUseChannel, kClear, kLinks, kCorrect, kCalibrateBase = 100 };
+    enum : UINT { kCopyMain = 1, kCopyOriginal, kReply, kUseChannel, kClear, kLinks, kCorrect, kResetColors, kCalibrateBase = 100 };
     HMENU menu = CreatePopupMenu();
     HMENU colors = nullptr;
     if (e) {
@@ -415,6 +415,10 @@ void ChatLogView::ShowMenu(POINT screen) {
                 AppendMenuW(colors, MF_STRING | (ch == e->channel ? MF_CHECKED : 0), kCalibrateBase + i,
                             ChannelLabel(ch).c_str());
             }
+            if (cb_.onResetColors) {
+                AppendMenuW(colors, MF_SEPARATOR, 0, nullptr);
+                AppendMenuW(colors, MF_STRING, kResetColors, Tr(L"Reset all to the GW2 colours").c_str());
+            }
             AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
             AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(colors),
                         Tr(L"This line colour is").c_str());
@@ -435,6 +439,10 @@ void ChatLogView::ShowMenu(POINT screen) {
         if (x.id == id) now = &x;
     if (cmd == kClear) {
         Clear();
+        return;
+    }
+    if (cmd == kResetColors && cb_.onResetColors) {
+        cb_.onResetColors();
         return;
     }
     if (!now) return;
