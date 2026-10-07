@@ -1649,8 +1649,11 @@ private:
         // Installed for this Windows user (%LOCALAPPDATA%\\Programs), like Discord or VS Code: the download folder is
         // never where it keeps running. Unticked = it stays where it is (portable).
         Check(kInstall, Tr(L"Install for this Windows user (recommended)"), true, 24, 178, kW - 48);
-        Check(kDesktop, Tr(L"Shortcut on the desktop"), true, 24, 206, kW - 48);
-        Check(kAutostart, Tr(L"Start with Windows and appear when GW2 runs"), true, 24, 234, kW - 48);
+        // Either way the tool can be found again: without autostart the desktop shortcut is fixed (ticked, greyed).
+        // Starting by hand is the default; autostart keeps it running in the background until GW2 appears.
+        Check(kAutostart, Tr(L"Start with Windows and appear when GW2 runs"), false, 24, 206, kW - 48);
+        Check(kDesktop, Tr(L"Shortcut on the desktop"), true, 24, 234, kW - 48);
+        UpdateShortcutBox();
         EndPages();
 
         // One page: the chat itself is found later, when it is open.
@@ -1658,6 +1661,13 @@ private:
         Button(IDCANCEL, Tr(L"Close"), kW - 114, 276, 100);
         SetText(kStepTitle, Tr(L"Setup – one step"));
         ShowPage(0);
+    }
+
+    // Without autostart the shortcut is the only way back to the tool: then it is ticked and fixed.
+    void UpdateShortcutBox() {
+        const bool autostart = Checked(kAutostart);
+        if (!autostart) SendMessageW(Item(kDesktop), BM_SETCHECK, BST_CHECKED, 0);
+        EnableWindow(Item(kDesktop), autostart);
     }
 
     bool ApplyStep1() {
@@ -1687,7 +1697,7 @@ private:
         }
         // Autostart and the shortcut always point to the copy that keeps running: the installed one.
         SetAutostart(Checked(kAutostart), exe);
-        if (Checked(kDesktop)) CreateDesktopShortcut(exe);
+        if (Checked(kDesktop) || !Checked(kAutostart)) CreateDesktopShortcut(exe);
         return true;
     }
 
@@ -1718,6 +1728,9 @@ private:
                         RebuildAll(Tr(L"Setup") + L" \u2013 GW2 Chat Translator");
                     }
                 }
+                break;
+            case kAutostart:
+                UpdateShortcutBox();
                 break;
             case kNext:
                 if (ApplyStep1()) Finish();

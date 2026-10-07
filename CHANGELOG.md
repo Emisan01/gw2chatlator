@@ -8,6 +8,8 @@ diagnosis show it.
 - **Installing like other programs:** the setup installs for your Windows user (`%LOCALAPPDATA%\Programs`, no admin
   rights; ticked by default), then the downloaded copy ends and the installed one starts. Autostart and the desktop
   shortcut always point to the installed copy, so settings and learned words never end up in the download folder.
+- Setup: starting by hand is the default. Without autostart the desktop shortcut is fixed (ticked, greyed), so the
+  tool can always be found again; with autostart the shortcut is optional.
 - **Updating:** start a newer downloaded version and it offers to update the installed copy (a running old copy is
   closed; settings, learned words and corrections stay); the same or an older download simply starts the installed one.
 
