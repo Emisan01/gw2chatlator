@@ -171,8 +171,8 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
 - Sending: every key is held `KeyHoldMs` (30 ms) and Ctrl+V is staggered — GW2 reads the keyboard once per frame;
   down+up in one `SendInput` batch got lost (messages did not arrive).
 - Incoming translation: up to 4 requests at once (an LLM: 1), newest line first (`inQueue_` back); the log stays
-  chronological. MyMemory gets one line per request. Short lines: `GuessLanguageByLetters` when ELS says nothing.
-- OCR "automatic" = Windows OCR (faster and, measured, better at normal size); Tesseract only below
+  chronological. MyMemory gets one line per request. Language: `SureLanguage` (see "Translation scope").
+- OCR "automatic" = Windows OCR (faster and, measured, better at normal size); RapidOCR (else Tesseract) only below
   `ChatOcr::kSmallTextPitch`. Reading interval default 400 ms (OCR runs only when the picture changed).
 - The reading area goes ~1/3 below the frame (at most to the window edge) so the newest line is never cut; the
   input line (tag, no timestamp, below the last stamped line) and the number row are dropped by the parser.
@@ -193,8 +193,10 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
 - Capture: WGC only where its yellow frame can be switched off (Windows 11, `BorderlessWindowCapture`), else
   DXGI; `[Reader] Capture=auto|window|screen`.
 - Translation scope: only lines whose language is sure (`SureLanguage`: other script, or ≥3 words + ELS, or telltale
-  letters); `[Reader] OnlyTranslations=1` (default) hides everything not foreign in the log. "Translate once"
-  (`once_`, `ReadingWanted()`, `kTimerOnce` 3.5 s) reads without `readerEnabled`. Everything automatic except
+  letters, or telltale words like "merci"/"gracias" – two languages = unsure); `[Reader] OnlyTranslations=1` (default)
+  hides everything not foreign in the log, except while our window covers the GW2 chat (`HideUntranslated`).
+  "Translate once" (`once_`, `ReadingWanted()`) reads without `readerEnabled` and ends after the first picture with
+  nothing pending, else the second (double scan); `kTimerOnce` 10 s is only the limit. Everything automatic except
   `[Translate] Understood=` languages and unticked `AutoChannels`; skipped lines get "click to translate". MyMemory characters per day are counted
   (`[Basic] UsedDay/UsedChars`, `CountMyMemory`) and shown in the footer.
 - Settings → Technical: `TechnicalStatus()` (parameters named like the ini keys, live `stats_`); "copy
