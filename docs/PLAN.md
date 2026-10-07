@@ -119,6 +119,9 @@ Export/Import der Korrekturdatei; Bewertungen im Vergleich speichern.
 - Gemeinsame Fehlerlisten (`ocr-fixes.txt`, `my-words.txt`, Korrekturen) zum Teilen: Datei-Austausch geht schon;
   eine Gemeinschafts-Sammlung braucht einen Ort (z. B. ein GitHub-Repo mit Listen) und eine Prüfung.
 
+**Offen (Installation):** Deinstallieren (Ordner, Startmenü- und Desktop-Verknüpfung, Autostart-Eintrag entfernen;
+Einstellungen auf Wunsch behalten) – als Knopf unter „Spiel & Start“ und als Eintrag in „Apps & Features“.
+
 **Ursprünglich überlegt:**
 - **Sicherheitsstufe** (eine Zeile auf der Technik-Seite, nachprüfbar): kein Hook/keine DLL/kein Handle zum Spiel ✔,
   Senden nur auf Tastendruck ✔, Bilder verlassen den PC nie ✔, Netz nur zum gewählten Übersetzer (+ LanguageTool,

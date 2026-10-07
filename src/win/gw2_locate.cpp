@@ -457,11 +457,14 @@ std::wstring PickFolder(void* owner, const std::wstring& title, const std::wstri
     return out;
 }
 
-bool CreateDesktopShortcut(const std::wstring& exePath) {
-    PWSTR desktop = nullptr;
-    if (FAILED(SHGetKnownFolderPath(FOLDERID_Desktop, 0, nullptr, &desktop)) || !desktop) return false;
-    const std::wstring link = std::wstring(desktop) + L"\\GW2 Chat Translator.lnk";
-    CoTaskMemFree(desktop);
+namespace {
+
+// "GW2 Chat Translator.lnk" in a known folder (desktop, start menu), pointing to `exePath`; replaced if there.
+bool CreateShortcutIn(REFKNOWNFOLDERID folder, const std::wstring& exePath) {
+    PWSTR base = nullptr;
+    if (FAILED(SHGetKnownFolderPath(folder, 0, nullptr, &base)) || !base) return false;
+    const std::wstring link = std::wstring(base) + L"\\GW2 Chat Translator.lnk";
+    CoTaskMemFree(base);
     IShellLinkW* sl = nullptr;
     if (FAILED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&sl))) || !sl) return false;
     sl->SetPath(exePath.c_str());
@@ -477,6 +480,20 @@ bool CreateDesktopShortcut(const std::wstring& exePath) {
     }
     sl->Release();
     return ok;
+}
+
+}  // namespace
+
+bool CreateDesktopShortcut(const std::wstring& exePath) { return CreateShortcutIn(FOLDERID_Desktop, exePath); }
+
+bool CreateStartMenuShortcut(const std::wstring& exePath) { return CreateShortcutIn(FOLDERID_Programs, exePath); }
+
+void EnsureStartMenuShortcut(const std::wstring& exePath) {
+    PWSTR base = nullptr;
+    if (FAILED(SHGetKnownFolderPath(FOLDERID_Programs, 0, nullptr, &base)) || !base) return;
+    const std::wstring link = std::wstring(base) + L"\\GW2 Chat Translator.lnk";
+    CoTaskMemFree(base);
+    if (!Exists(link)) CreateStartMenuShortcut(exePath);
 }
 
 std::wstring PickTextFile(void* owner, const std::wstring& title, bool save, const std::wstring& name) {
