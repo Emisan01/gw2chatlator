@@ -3,45 +3,46 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## Unreleased
+## 0.8.0 — 2026-10-07
 
+**Writing**
 - **The sentence so far counts:** the next word and completions look at the last *two* words you typed, not only
   the last one ("kommst du" -> "mit", while "du" alone would offer "da"). Learned from your messages like before;
   older word files keep working.
+- **Suggestions know the conversation:** names of the people in the chat and the words of the last lines (foreign
+  lines through their translation, in your language) are offered right after your own words – "Ki" -> "Kiro",
+  "Teq" -> "Tequatl" when someone just asked for it. Only offered, never learned.
 - **Key presses saved** (Settings → Writing): the word help is measured – keys you press compared with the letters
   you send, today and in total ("Today 38 % (120 keys for 195 letters)"). Pasted text is not counted.
-- Short foreign lines are recognized by their words: "merci", "gracias amigo", "grazie mille", "obrigado" are
-  translated again (two languages in one line: left alone).
-- While this window lies over the GW2 chat it shows every line, also with "Show only translations" – it is your chat
-  then.
-- A frame drawn tightly around a text column no longer loses the first word of each line (only a single word cut at
-  the edge is left out).
-- "Translate once now" ends as soon as the pictures are read (up to 10 s with slow text recognition) instead of after
-  a fixed 3.5 s.
-- **Suggestions know the conversation:** names of the people in the chat and the words of the last lines (the
-  translation, in your language) are offered right after your own words – "Ki" -> "Kiro", "Teq" -> "Tequatl" when
-  someone just asked for it. Only offered, never learned (the tool learns only from what you send).
-- Fixed: a folded, docked window jumped to the top of its place several times a second.
-- **No more word salad:** words nobody types ("syn!ax", "g9danken", "!raining", "9QEine") are now always checked:
+
+**Translating**
+- **"Translate once now"** (menu ≡): one look at the chat or screen area, what is foreign is translated, then reading
+  stops again – scroll the GW2 chat up and translate something older. It ends as soon as the pictures are read. The
+  first menu entry is now called "Automatic translation (permanent)".
+- **Only what needs translating:** a line is translated only when its language is clear (another script, at least
+  three words the Windows language detection is sure about, telltale letters like ñ, ß, ç, or words of one language
+  only like "merci", "gracias", "grazie mille"). Short or unclear lines ("ok np", names) cost nothing.
+- **"Show only translations"** (menu ≡ and Settings → Reading, on by default): lines in your languages, unclear ones
+  and system lines no longer appear. While the window lies over the GW2 chat it shows every line – it is your chat then.
+- **No more word salad:** words nobody types ("syn!ax", "g9danken", "!raining", "9QEine") are always checked:
   characters the recognition confuses are tried (! -> t, 9 -> g/e, 0 -> o, p <-> o, rn <-> m …) and the Windows
   dictionaries pick the real word ("syntax", "gedanken", "training", "putput" -> "output"); else the word is read once
-  more, enlarged, or the dictionary's suggestion is taken. What is still garbage after that is left out instead of
-  shown. In a screen area, an unknown word cut off at the left or right edge is left out too. Repairs are learned.
-- **Screen area: only the active part.** The whole area is read once; after that only the lowest 6 lines count
-  (where new text appears). Typing below no longer brings back old fragments from further up.
-- **Only what needs translating:** a line is translated only when its language is clear (another script, or at least
-  three words the Windows language detection is sure about, or telltale letters like ñ, ß, ç). Short or unclear lines
-  ("ok np", names) cost nothing. **"Show only translations"** (menu ≡, on by default): lines in your languages, unclear
-  ones and system lines no longer appear in the window.
-- **"Translate once now"** (menu ≡): one look at the chat or screen area, what is foreign is translated, then reading
-  stops again. The first entry is now called "Automatic translation (permanent)".
+  more, enlarged, or the dictionary's suggestion is taken. What is still garbage is left out instead of shown; repairs
+  are learned. Measured on real GW2 captures: no loss.
+- **Screen area: only the active part.** The whole area is read once; after that only the lowest 6 lines count (where
+  new text appears), so typing below no longer brings back old fragments from further up. A word cut off at the edge
+  of the area is left out – but a frame drawn tightly around a text column keeps the first word of each line.
+
+**Installing and updating**
 - **Installing like other programs:** the setup installs for your Windows user (`%LOCALAPPDATA%\Programs`, no admin
-  rights; ticked by default), then the downloaded copy ends and the installed one starts. Autostart and the desktop
-  shortcut always point to the installed copy, so settings and learned words never end up in the download folder.
+  rights; ticked by default), then the downloaded copy ends and the installed one starts. Autostart and shortcuts
+  always point to the installed copy, so settings and learned words never end up in the download folder.
 - Setup: desktop shortcut, **start-menu entry** (also found by Windows search) and autostart are three free choices;
   starting by hand is the default. The start-menu entry comes back by itself if it goes missing, unless you untick it.
 - **Updating:** start a newer downloaded version and it offers to update the installed copy (a running old copy is
   closed; settings, learned words and corrections stay); the same or an older download simply starts the installed one.
+- Fixed: a folded, docked window jumped to the top of its place several times a second.
+- README rewritten for the current state (install, keys, translators, files).
 
 ## 0.7.0 — 2026-10-07
 
