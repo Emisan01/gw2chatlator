@@ -80,8 +80,9 @@ The writing helpers learn only from what you write and run on this PC in a few m
   for small text) or Tesseract.
 - **Correction memory:** right-click a translated line → *Correct this translation…* – that text gets your translation
   from then on, with every translator.
-- Tabs like in GW2 (channel sets, unread counters), a tab per whisper partner (click a name), links open only after a
-  question.
+- **A calm chat view:** no timestamps, no channel tags – the channel shows by the text colour taken from the game.
+  Click a **name** → a whisper tab for that person; click the **text** → translated (again, if a translation did not
+  fit). Tabs like in GW2 (channel sets, unread counters); links open only after a question.
 
 ## Translators: free is enough, better is possible
 

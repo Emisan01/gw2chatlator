@@ -42,7 +42,7 @@ Pflicht. Bei 4K reicht fast der Rohtext.
 
 1. ✅ (Einstellungen → Schreiben) **Kein Beweis für den Nutzen.** Es fehlt die Zahl „gesparte Tastendrücke“: 1 − Tastendrücke ÷ gesendete
    Zeichen. Ohne sie wissen wir nicht, ob die Engine hilft.
-2. ✅ (gemessen: RTL-Zeichen melden ihre rechte Kante; live mit Arabisch prüfen) **Graue Vervollständigung nur links-nach-rechts** → der arabische Freund (Hauptnutzer 2!) sieht sie nicht; er hat
+2. ✗ (Entscheidung 2026-10-07: grauer Vorschlag nur für lateinische Schrift; Arabisch lief gut mit Wortleiste) **Graue Vervollständigung nur links-nach-rechts** → der arabische Freund (Hauptnutzer 2!) sieht sie nicht; er hat
    nur die Wortleiste. Größte Lücke für ihn.
 3. ✅ (Dreierfolgen) **Nächstes Wort nur aus Wortpaaren**; Dreierfolgen („kommst du *mit*“) fehlen. Mathe: Paare kennen nur das letzte
    Wort – bei häufigen Wörtern („du“, „ich“) ist das fast Raten.
