@@ -144,3 +144,8 @@ cmake --build build-win
 ## Origin
 
 The idea of a floating input window that sends into the GW2 chat comes from [Grammarly-support-overlay-for-guild-wars-2](https://github.com/hazratali-uydevelopers/Grammarly-support-overlay-for-guild-wars-2) (ISC). No code was taken from it; this is a native rewrite in C++/Win32.
+
+## License
+
+MIT, see [LICENSE](LICENSE). Third-party components shipped with the program (ONNX Runtime, the RapidOCR /
+PaddleOCR recognition model) keep their own licences: [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt).
