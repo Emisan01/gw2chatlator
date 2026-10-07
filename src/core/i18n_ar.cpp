@@ -845,6 +845,8 @@ extern const I18nEntry kArabicStrings[] = {
      L"طويل جدًا لمحادثة GW2 ‏({1}/{2}) – يرجى تقصيره"},
     {L"Translate a screen area (any text) …",
      L"ترجمة منطقة من الشاشة (أي نص) …"},
+    {L"Translate again",
+     L"ترجم مرة أخرى"},
     {L"Translate once now",
      L"ترجم الآن مرة واحدة"},
     {L"Translate the chat into",

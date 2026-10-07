@@ -3,10 +3,11 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## Unreleased
+## 0.8.2 — 2026-10-07
 
-- Click on the text of a message: it is translated again – also when it was already translated and did not fit (the
-  name still opens the whisper tab).
+- **Translate again:** click the text of a message (or right-click → "Translate again") and it is translated anew –
+  also when it was already translated and did not fit. The name still opens the whisper tab; a message with a link
+  offers "Translate again" next to opening the link.
 - The grey suggestion is back to Latin script only (the languages GW2 itself shows). Arabic, Cyrillic, Chinese keep
   the word bar and the spell checker as before – the right-to-left grey suggestion of 0.8.1 is removed.
 

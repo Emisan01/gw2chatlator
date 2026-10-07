@@ -845,6 +845,8 @@ extern const I18nEntry kGermanStrings[] = {
      L"Zu lang für den GW2-Chat ({1}/{2}) – bitte kürzen"},
     {L"Translate a screen area (any text) …",
      L"Bildschirmbereich übersetzen (beliebiger Text) …"},
+    {L"Translate again",
+     L"Erneut übersetzen"},
     {L"Translate once now",
      L"Jetzt einmal übersetzen"},
     {L"Translate the chat into",
