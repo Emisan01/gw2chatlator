@@ -93,7 +93,10 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
    translator (LLM included) can trigger an action.
 5. The reader must never read our own window: capture exclusion while the window overlaps the chat
    area (`PollGame`), reading pauses during move/resize and the region picker, snapshots older than
-   `ignoreSnapshotsBefore_` are dropped, `ShowsTranslation`/`OnSelfRead` as last line of defence.
+   `ignoreSnapshotsBefore_` are dropped, `ShowsTranslation`/`OnSelfRead` as last line of defence. Every dialog
+   (`NativeDialog::Run`) and the word dropdown are `WDA_EXCLUDEFROMCAPTURE`; while any dialog, menu or message box
+   of ours is open (`ModalScope`, app/modal_scope.hpp) and 400 ms after, pictures are dropped and reading pauses –
+   the free area once read the settings dialog incl. the MyMemory e-mail and sent it to the translator.
 6. Autocorrection never surprises: Phone mode only touches words the dictionary rejects (or, without a
    dictionary, words you never used), 4+ letters, never all-caps, never a word you use, 1 edit up to 6
    letters / 2 above, same first letter (or first two swapped), single words only. Backspace undoes it.

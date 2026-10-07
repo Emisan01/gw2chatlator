@@ -1362,6 +1362,13 @@ static void TestFreeText() {
                             L"when scanning it seems to read the lines mixed up not line by line"));
     CHECK(SameFreeParagraph(L"the window gets the same long list as before", L"the windovv gets the same long list as before"));
     CHECK(!SameFreeParagraph(L"Who wants to join the world boss?", L"Thanks for the help, see you later"));
+    // Noise from UI icons and half-hidden letters is not translated; normal text is.
+    CHECK(!LooksLikeFreeText(L"s•ch c:em'•"));
+    CHECK(!LooksLikeFreeText(L"not-y •st öffent •ches Lloersetzungsgeciächtn•s:"));
+    CHECK(!LooksLikeFreeText(L"VyVemory -3as•s: o:"));
+    CHECK(LooksLikeFreeText(L"Ohne Konto 5.000 Zeichen am Tag. Mit deiner E-Mail-Adresse 50.000 am Tag – keine Anmeldung."));
+    CHECK(LooksLikeFreeText(L"(Hallo, wer kommt mit?)"));
+    CHECK(!LooksLikeFreeText(L"123 456"));
 }
 
 int main() {

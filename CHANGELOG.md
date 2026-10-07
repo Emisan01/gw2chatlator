@@ -26,6 +26,11 @@ diagnosis show it.
   lines and side-by-side columns (sidebar, text, picture) become separate paragraphs; at least double enlargement for
   small app fonts; a paragraph that grows (someone types, text streams in) updates its entry instead of adding new
   ones, a slightly different reading of the same text is ignored.
+- **Fixed (privacy):** the free screen area could read our own settings dialog (including the MyMemory e-mail field)
+  and send it to the translator; on Windows 10 a dialog over the GW2 chat could be read too. All our dialogs and the
+  word dropdown are now excluded from screen capture, and reading pauses while any dialog, menu or message box of
+  ours is open.
+- Free area: stricter noise filter (UI icons and half-hidden letters are no longer translated).
 - **My words**: teach the tool your slang ("finds = finde es"): right-click a word in the input box → "Explain …",
   or the list in Settings → Writing → "My words…". Before translating (your messages and incoming lines) the word is
   replaced by its meaning, so every translator gets plain language; it is never underlined or autocorrected and the

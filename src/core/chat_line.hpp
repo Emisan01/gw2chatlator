@@ -117,5 +117,8 @@ std::vector<ChatMessage> BuildMessages(const std::vector<OcrLine>& lines, const 
 std::vector<ChatMessage> BuildFreeTextMessages(const std::vector<OcrLine>& lines, size_t maxChars = 450);
 // Two readings of the same paragraph: it grew (someone types, a text streams in) or was read a little differently.
 bool SameFreeParagraph(const std::wstring& a, const std::wstring& b);
+// Free text worth translating: most tokens are clean words or numbers (UI icons and half-hidden letters read as
+// "s•ch c:em'•" are not), and at least one real word.
+bool LooksLikeFreeText(const std::wstring& text);
 
 }  // namespace gct

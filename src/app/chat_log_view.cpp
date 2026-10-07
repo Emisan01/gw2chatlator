@@ -1,4 +1,5 @@
 // chat_log_view.cpp
+#include "app/modal_scope.hpp"
 #include "core/i18n.hpp"
 #include "core/text.hpp"
 #include "chat_log_view.hpp"
@@ -334,6 +335,7 @@ std::vector<std::wstring> ChatLogView::EntryLinks(const ChatEntry& e) {
 void ChatLogView::OpenLinkAsking(const std::wstring& link) {
     const std::wstring target = LinkTarget(link);
     if (target.find_first_of(L" \t\r\n\"<>") != std::wstring::npos) return;
+    const ModalScope modal;
     const int answer = MessageBoxW(
         hwnd_,
         TrF(L"Open this link in your browser?\n\n{1}\n\nIt was read from the chat by text recognition and may be "
@@ -346,6 +348,7 @@ void ChatLogView::OpenLinkAsking(const std::wstring& link) {
 }
 
 void ChatLogView::OfferLinks(const ChatEntry& e, POINT screen) {
+    const ModalScope modal;
     const std::vector<std::wstring> links = EntryLinks(e);
     if (links.empty()) return;
     enum : UINT { kOpenBase = 1, kCopyBase = 100 };
@@ -380,6 +383,7 @@ void ChatLogView::CopyText(const std::wstring& s) {
 }
 
 void ChatLogView::ShowMenu(POINT screen) {
+    const ModalScope modal;  // our menu must not be read as chat
     POINT client = screen;
     ScreenToClient(hwnd_, &client);
     const int r = RowAt(client.y);

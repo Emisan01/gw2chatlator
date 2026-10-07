@@ -29,6 +29,7 @@ bool ChoicePopup::Create(HWND owner, HINSTANCE inst, const Theme* theme, std::fu
     onPick_ = std::move(onPick);
     hwnd_ = CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE, kClass, L"", WS_POPUP, 0, 0, 10, 10,
                             owner, nullptr, inst, this);
+    if (hwnd_) SetWindowDisplayAffinity(hwnd_, WDA_EXCLUDEFROMCAPTURE);  // never read by our own reader
     return hwnd_ != nullptr;
 }
 
