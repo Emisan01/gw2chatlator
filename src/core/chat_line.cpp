@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <cwchar>
 
 #include "i18n.hpp"
@@ -354,6 +355,48 @@ size_t FuzzyTagLength(const std::wstring& s, Channel* channel) {
         return k + 1;
     }
     return 0;
+}
+
+std::vector<ChatMessage> BuildFreeTextMessages(const std::vector<OcrLine>& lines, size_t maxChars) {
+    std::vector<ChatMessage> out;
+    ChatMessage cur;
+    int lastBottom = 0, lastHeight = 0, lastLeft = 0;
+    auto flush = [&] {
+        cur.text = Trim(cur.text);
+        if (!cur.text.empty()) {
+            cur.freeText = true;
+            cur.raw = cur.text;
+            out.push_back(std::move(cur));
+        }
+        cur = ChatMessage{};
+    };
+    auto endsSentence = [](const std::wstring& t) {
+        const std::wstring x = Trim(t);
+        return !x.empty() && std::wcschr(L".!?:;。！？؟", x.back()) != nullptr;
+    };
+    for (const OcrLine& l : lines) {
+        const std::wstring t = Trim(l.text);
+        if (t.empty()) continue;
+        if (!cur.text.empty()) {
+            const int h = std::max(1, std::max(lastHeight, l.height));
+            const int gap = l.top - lastBottom;
+            const bool indentJump = l.width > 0 && lastLeft > 0 && std::abs(l.left - lastLeft) > h * 2;
+            const bool tooLong = cur.text.size() + t.size() > maxChars && endsSentence(cur.text);
+            if (gap > h * 7 / 10 || indentJump || tooLong || cur.text.size() > maxChars * 2) flush();
+        }
+        if (cur.text.empty()) cur.color = l.color;
+        // A word broken with a hyphen at the line end is joined again.
+        if (!cur.text.empty() && cur.text.back() == L'-' && cur.text.size() > 1 && IsWordChar(cur.text[cur.text.size() - 2]))
+            cur.text.pop_back();
+        else if (!cur.text.empty())
+            cur.text += L' ';
+        cur.text += t;
+        lastBottom = l.top + l.height;
+        lastHeight = l.height;
+        if (l.width > 0) lastLeft = l.left;
+    }
+    flush();
+    return out;
 }
 
 bool LooksLikeChatText(const std::wstring& text) {

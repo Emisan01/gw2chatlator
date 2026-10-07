@@ -1201,7 +1201,7 @@ void MainWindow::ShowChannelMenu() {
 void MainWindow::ShowMainMenu() {
     enum : UINT {
         kSetup = 1, kSettings, kRegion, kReader, kCover, kSystem, kCaptures, kResetColors, kBack, kCopyOnly, kSuggest,
-        kLearn, kSpell, kLanguageTool, kDock, kFollow, kOpenDir, kOpenIni, kQuit,
+        kLearn, kSpell, kLanguageTool, kDock, kFollow, kOpenDir, kOpenIni, kQuit, kGw2Chat, kFreeArea,
         kEngineAuto = 50, kEngineBasic, kEngineDeepL, kEngineLlm, kEngineSetup,
         kAcOff = 60, kAcSafe, kAcPhone,
         kOcrAuto = 70, kOcrTess, kOcrWin,
@@ -1222,6 +1222,8 @@ void MainWindow::ShowMainMenu() {
     (void)sub;
     HMENU menu = CreatePopupMenu();
     add(menu, MF_STRING | check(cfg_.readerEnabled), kReader, Tr(L"Translate the chat permanently"));
+    add(menu, MF_STRING | (cfg_.freeArea ? MF_UNCHECKED : MF_CHECKED), kGw2Chat, Tr(L"Read the GW2 chat"));
+    add(menu, MF_STRING | check(cfg_.freeArea), kFreeArea, Tr(L"Translate a screen area (any text) …"));
     add(menu, MF_STRING, kRegion, Tr(L"Set the chat area …"));
     add(menu, MF_STRING | (cfg_.regionSet ? 0 : MF_GRAYED), kCover, Tr(L"Lay over the GW2 chat (replaces it)"));
     add(menu, MF_STRING | check(cfg_.dock), kDock, Tr(L"Dock to GW2 (moves with it)"));
@@ -1246,7 +1248,12 @@ void MainWindow::ShowMainMenu() {
         case kSetup: RunSetup(); break;
         case kSettings: OpenSettings(SettingsPage::General); break;
         case kEngineSetup: OpenSettings(SettingsPage::Translator); break;
-        case kRegion: PickRegion(); break;
+        case kRegion:
+            SetFreeArea(false);
+            PickRegion();
+            break;
+        case kGw2Chat: SetFreeArea(false); break;
+        case kFreeArea: PickFreeArea(); break;
         case kReader:
             cfg_.readerEnabled = !cfg_.readerEnabled;
             cfg_.SaveBool(L"Reader", L"Enabled", cfg_.readerEnabled);
@@ -1968,7 +1975,8 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
     // same way twice in a row (double scan): a window dragged over the chat, a
     // scrolling chat or half-drawn text never produce output.
     std::vector<ChatMessage> msgs;
-    std::vector<ChatMessage> built = BuildMessages(s->lines, cfg_.palette);
+    std::vector<ChatMessage> built =
+        cfg_.freeArea ? BuildFreeTextMessages(s->lines) : BuildMessages(s->lines, cfg_.palette);
     for (ChatMessage& m : built)
         if (LooksLikeChatText(m.text)) msgs.push_back(std::move(m));
     std::vector<ChatMessage> fresh = stream_.Feed(msgs, true);
@@ -1987,7 +1995,8 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
     // they do not come again later).
     if (!streamPrimed_ && !fresh.empty()) {
         streamPrimed_ = true;
-        if (fresh.size() > kStartLines) fresh.erase(fresh.begin(), fresh.end() - kStartLines);
+        if (fresh.size() > kStartLines && !cfg_.freeArea)  // a free area: all of its text is wanted
+            fresh.erase(fresh.begin(), fresh.end() - kStartLines);
     }
     for (const ChatMessage& m : fresh) HandleIncoming(m);
     PumpIncoming();
@@ -2031,13 +2040,14 @@ MainWindow::Own MainWindow::ClassifyOwn(const ChatMessage& m) {
 }
 
 void MainWindow::HandleIncoming(const ChatMessage& m) {
-    const bool system = m.channel == Channel::System || (m.channel == Channel::Unknown && m.speaker.empty());
+    const bool system =
+        !m.freeText && (m.channel == Channel::System || (m.channel == Channel::Unknown && m.speaker.empty()));
     if (system && !cfg_.showSystemLines) return;
     if (log_.ShowsTranslation(m.text)) {  // our own window, read back: never translate it again
         OnSelfRead();
         return;
     }
-    switch (ClassifyOwn(m)) {
+    switch (m.freeText ? Own::No : ClassifyOwn(m)) {
         case Own::SentHere:  // already in the log as "Du: ..."
             return;
         case Own::TypedInGame: {  // typed in GW2 itself: show it for context, untranslated
@@ -2070,7 +2080,7 @@ void MainWindow::HandleIncoming(const ChatMessage& m) {
     // understand), in a channel meant for you (whisper, party, squad, guild by
     // default). Everything else: a click on the line translates it.
     const bool foreign = !system && NeedsTranslation(m.text, &detected) && !Understood(detected);
-    const bool automatic = (cfg_.autoTranslate & ChannelBit(m.channel)) != 0;
+    const bool automatic = m.freeText || (cfg_.autoTranslate & ChannelBit(m.channel)) != 0;
     if (foreign) {
         std::wstring cached;
         if (cache_.Get(m.text, readLang_, cached)) {
@@ -2230,6 +2240,11 @@ void MainWindow::UpdateHint() {
         log_.SetEmptyHint(Tr(L"Reading the chat is off (menu \u2261 \u2192 Reading the chat)."), false);
     else if (!readerError_.empty())
         log_.SetEmptyHint(TrF(L"Text recognition not available:\n{1}", {readerError_}), false);
+    else if (cfg_.freeArea)
+        log_.SetEmptyHint(overlapsChat_ ? Tr(L"This window covers the chat area – please move it beside the chat.")
+                                        : Tr(L"Translating everything in the screen area you marked …\n(Back to "
+                                             L"the GW2 chat: menu ≡ → Read the GW2 chat)"),
+                          false);
     else if (!cfg_.regionSet)
         log_.SetEmptyHint(
             !gw2_ ? Tr(L"Start Guild Wars 2 – the chat is found by itself.\n(Or click here to draw the frame yourself.)")
@@ -2261,6 +2276,14 @@ RECT MainWindow::GameClientRect() const {
 }
 
 RECT MainWindow::ChatArea() const {
+    if (cfg_.freeArea) {
+        const RECT screen{GetSystemMetrics(SM_XVIRTUALSCREEN), GetSystemMetrics(SM_YVIRTUALSCREEN),
+                          GetSystemMetrics(SM_XVIRTUALSCREEN) + GetSystemMetrics(SM_CXVIRTUALSCREEN),
+                          GetSystemMetrics(SM_YVIRTUALSCREEN) + GetSystemMetrics(SM_CYVIRTUALSCREEN)};
+        RECT clipped{};
+        IntersectRect(&clipped, &cfg_.freeRect, &screen);
+        return clipped;
+    }
     const RECT client = GameClientRect();
     if (IsRectEmpty(&client)) return {};
     RECT area{client.left + cfg_.regionLeft, client.bottom - cfg_.regionFromBottom - cfg_.regionHeight,
@@ -2333,7 +2356,7 @@ void MainWindow::PollGame() {
     lastTextboxFocus_ = textboxFocus;
 
     // Behave like part of the game: visible while GW2 or this window is in front.
-    if (cfg_.followGame && gw2_ && !userHidden_) {
+    if (cfg_.followGame && gw2_ && !userHidden_ && !cfg_.freeArea) {
         if (gameFront || ours) {
             if (autoHidden_) {
                 autoHidden_ = false;
@@ -2350,15 +2373,17 @@ void MainWindow::PollGame() {
     // Only on a map: the character selection and loading screens show other
     // text where the chat is (character name, level, map progress ...).
     const bool inMap = mumbleState_.inMap;
-    const bool canRead = cfg_.readerEnabled && cfg_.regionSet && gw2_ && !IsIconic(gw2_) && (gameFront || ours) &&
-                         !moving_ && inMap;
+    // Free screen area: any text, also without GW2.
+    const bool canRead = cfg_.freeArea ? cfg_.readerEnabled && !moving_ && !picking_
+                                       : cfg_.readerEnabled && cfg_.regionSet && gw2_ && !IsIconic(gw2_) &&
+                                             (gameFront || ours) && !moving_ && inMap;
     if (inMap != wasInMap_) {
         wasInMap_ = inMap;
         UpdateHint();
     }
     if (canRead) area = ChatArea();
     // No chat area yet: look for the GW2 chat by itself now and then.
-    const bool searching = cfg_.readerEnabled && !cfg_.regionSet && gw2_ && !IsIconic(gw2_) && (gameFront || ours) &&
+    const bool searching = cfg_.readerEnabled && !cfg_.freeArea && !cfg_.regionSet && gw2_ && !IsIconic(gw2_) && (gameFront || ours) &&
                            inMap && !moving_ && !picking_;
     const RECT watch = !IsRectEmpty(&area) ? area : searching ? ChatSearchArea() : RECT{};
     bool overlap = false;
@@ -2382,7 +2407,7 @@ void MainWindow::PollGame() {
     // WGC captures the GW2 DirectX backbuffer directly beneath overlays.
     const bool blocked = overlap && !excludedFromCapture_ && lastCaptureMethod_ != L"WGC";
     if (blocked) area = {};  // would read our own window
-    reader_.SetTarget(gw2_);
+    reader_.SetTarget(cfg_.freeArea ? nullptr : gw2_);  // free area: the screen as you see it
     reader_.SetArea(area);
     const bool active = !IsRectEmpty(&area) && reader_.Running();
     if (active != readingActive_ || blocked != overlapsChat_) {
@@ -2485,6 +2510,95 @@ void MainWindow::PickRegion() {
     SetStatus(gw2_ ? Tr(L"Chat area saved – reading …")
                    : Tr(L"Chat area saved (GW2 not found – relative to the screen)"),
               gw2_ ? Tone::Ok : Tone::Warn, 6000);
+}
+
+// Free screen area: frame any text on the screen (a website, a document,
+// another game). No chat rules, no snapping, read also without GW2.
+void MainWindow::PickFreeArea() {
+    picking_ = true;
+    reader_.SetArea({});
+    const bool wasVisible = IsWindowVisible(hwnd_) != FALSE;
+    ShowWindow(hwnd_, SW_HIDE);
+
+    POINT cursor;
+    GetCursorPos(&cursor);
+    MONITORINFO mi{};
+    mi.cbSize = sizeof(mi);
+    GetMonitorInfoW(MonitorFromPoint(cursor, MONITOR_DEFAULTTOPRIMARY), &mi);
+    const RECT stillRect = mi.rcMonitor;
+    Sleep(120);  // our window is gone from the screen
+    auto still = std::make_shared<Image>();
+    {
+        ScreenCapture cap;
+        cap.SetUseWindowCapture(false);
+        for (int i = 0; i < 12 && still->Empty(); ++i)
+            if (!cap.Grab(stillRect, *still)) Sleep(40);
+    }
+    PickAnalyzer analyze;
+    PickPreview preview;
+    if (!still->Empty()) {
+        analyze = [](const RECT& rough) {
+            PickCheck c;
+            c.snapped = rough;
+            c.quality = 2;
+            c.summary = Tr(L"Everything in this frame is translated (no chat rules).");
+            return c;
+        };
+        ReaderOptions o;
+        o.ocrChoice = static_cast<int>(cfg_.ocr);
+        o.tesseractPath = cfg_.tesseractPath;
+        o.tesseractLangs = cfg_.tesseractLangs;
+        o.readChinese = cfg_.readChinese;
+        o.ocrLanguage = cfg_.ocrLanguage;
+        preview = [still, stillRect, o](const RECT& r) {
+            ChatOcr ocr;
+            std::wstring err;
+            std::vector<OcrLine> lines;
+            const Image crop =
+                Crop(*still, {r.left - stillRect.left, r.top - stillRect.top, r.right - r.left, r.bottom - r.top});
+            if (!ocr.Init(o, &err) || !ocr.Read(crop, o.scale, lines, nullptr, &err)) return err;
+            std::wstring text;
+            int shown = 0;
+            for (const ChatMessage& m : BuildFreeTextMessages(lines)) {
+                std::wstring line = m.text;
+                if (line.size() > 70) line = line.substr(0, 68) + L"…";
+                text += (text.empty() ? L"" : L"\n") + line;
+                if (++shown == 3) break;
+            }
+            return text;
+        };
+    }
+    RECT r{};
+    const bool ok = PickScreenRegion(inst_, theme_,
+                                     Tr(L"Draw a frame around the text you want translated (any window).  Esc "
+                                        L"cancels."),
+                                     &r, analyze, preview);
+    picking_ = false;
+    ignoreSnapshotsBefore_ = GetTickCount64() + 150;
+    if (wasVisible) ShowOverlay();
+    if (!ok) {
+        SetStatus(Tr(L"Screen area not changed"), Tone::Muted, 3000);
+        return;
+    }
+    cfg_.freeRect = r;
+    SetFreeArea(true);
+    SetStatus(Tr(L"Screen area saved – translating everything in it …"), Tone::Ok, 6000);
+}
+
+void MainWindow::SetFreeArea(bool on) {
+    if (on && !cfg_.FreeSet()) on = false;
+    if (on == cfg_.freeArea && !on) return;
+    cfg_.freeArea = on;
+    cfg_.SaveFreeArea();
+    streamPrimed_ = false;
+    readerReported_ = false;
+    reader_.Rescan();
+    if (!cfg_.readerEnabled) {
+        cfg_.readerEnabled = true;
+        cfg_.SaveValue(L"Reader", L"Enabled", L"1");
+        StartReader();
+    }
+    UpdateHint();
 }
 
 // A chat area (screen pixels), drawn or found: stored relative to the

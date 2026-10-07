@@ -65,6 +65,7 @@ struct ChatMessage {
     Rgb color;                     // text colour of its first line (for calibration)
     bool stamped = false;          // started with a timestamp (OCR-tolerant)
     bool tagOnly = false;          // only a timestamp / channel tag, no text (the input line)
+    bool freeText = false;         // from a free screen area: a paragraph, no chat rules
 };
 
 // False for OCR noise: mostly symbols, no real word (e.g. a window being
@@ -108,5 +109,11 @@ bool LocateChatLines(const std::vector<OcrLine>& lines, ChatBlock* area);
 // message cut off at the top) is skipped; lines that are only a tag (the
 // input line) and messages without text are dropped.
 std::vector<ChatMessage> BuildMessages(const std::vector<OcrLine>& lines, const std::vector<ChannelColor>& palette);
+
+// Free screen area (any text, not a chat): lines that follow closely are one
+// paragraph; a larger gap or a clearly different indent starts a new one.
+// Long paragraphs are cut after a sentence (translators take ~450 characters
+// well). No timestamps, names or channels are looked for.
+std::vector<ChatMessage> BuildFreeTextMessages(const std::vector<OcrLine>& lines, size_t maxChars = 450);
 
 }  // namespace gct
