@@ -99,7 +99,8 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
    letters / 2 above, same first letter (or first two swapped), single words only. Backspace undoes it.
 7. Docking keeps our window a separate top-level window. No owner/parent link to the game window.
 8. Installing only writes our own folder (`<GW2>\addons\GW2ChatTranslator`, fallback
-   `%LOCALAPPDATA%\Programs\GW2ChatTranslator`) and, if chosen, one `HKCU\...\Run` value. No game file is
+   `%LOCALAPPDATA%\Programs\GW2ChatTranslator`) and, if chosen, one `HKCU\...\Run` value and one desktop shortcut
+   ("GW2 Chat Translator.lnk"). No game file is
    touched; the GW2 folder is found via registry/Steam/folders, never via the game process.
 9. Files stay small: captures rotate (20 × 3 files), switch off after 15 minutes, are deleted after 3 days;
    stale `*.tmp` are removed on start; the word model is capped (20k words, 60k pairs).

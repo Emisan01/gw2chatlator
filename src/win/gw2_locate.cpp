@@ -372,6 +372,28 @@ std::wstring PickFolder(void* owner, const std::wstring& title, const std::wstri
     return out;
 }
 
+bool CreateDesktopShortcut(const std::wstring& exePath) {
+    PWSTR desktop = nullptr;
+    if (FAILED(SHGetKnownFolderPath(FOLDERID_Desktop, 0, nullptr, &desktop)) || !desktop) return false;
+    const std::wstring link = std::wstring(desktop) + L"\\GW2 Chat Translator.lnk";
+    CoTaskMemFree(desktop);
+    IShellLinkW* sl = nullptr;
+    if (FAILED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&sl))) || !sl) return false;
+    sl->SetPath(exePath.c_str());
+    const size_t slash = exePath.find_last_of(L"\\/");
+    if (slash != std::wstring::npos) sl->SetWorkingDirectory(exePath.substr(0, slash).c_str());
+    sl->SetIconLocation(exePath.c_str(), 0);
+    sl->SetDescription(L"GW2 Chat Translator");
+    bool ok = false;
+    IPersistFile* pf = nullptr;
+    if (SUCCEEDED(sl->QueryInterface(IID_PPV_ARGS(&pf))) && pf) {
+        ok = SUCCEEDED(pf->Save(link.c_str(), TRUE));
+        pf->Release();
+    }
+    sl->Release();
+    return ok;
+}
+
 std::wstring PickTextFile(void* owner, const std::wstring& title, bool save, const std::wstring& name) {
     std::wstring out;
     IFileDialog* dlg = nullptr;

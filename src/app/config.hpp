@@ -24,6 +24,9 @@ struct Config {
     std::wstring iniPath;
 
     // [General]
+    // Language of this window as chosen ("" = Windows language, else a code like "FR" or "de"); `uiLang` is the one
+    // the window can show (English, German, Arabic – other choices show English until they are translated).
+    std::wstring uiLangCode;
     UiLang uiLang = UiLang::En;
     bool setupDone = false;     // the guided setup ran once
     std::wstring gw2Dir;        // found or chosen game folder
@@ -137,6 +140,8 @@ struct Config {
     std::wstring CaptureDir() const { return dataDir + L"\\captures"; }
 };
 
+// The window language for a choice ("" = Windows display language): German, Arabic, else English.
+UiLang EffectiveUiLang(const std::wstring& code);
 const wchar_t* EngineKey(Engine e);        // "auto", "basic", "deepl", "llm"
 const wchar_t* OcrKey(OcrChoice o);        // "auto", "tesseract", "windows"
 const wchar_t* AutoCorrectKey(AutoCorrectMode m);  // "off", "safe", "phone"

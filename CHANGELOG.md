@@ -22,6 +22,9 @@ diagnosis show it.
   stored encrypted for your Windows account (DPAPI) instead of plain text.
 - **Compare translators** (technical page): the same invented chat lines through every translator that is set up,
   with the time – judge yourself which reads naturally.
+- Setup: "Language of this window" offers the same full list as "Translate the chat into", both starting with
+  "Windows language" (the window itself shows English, German or Arabic; other choices show English for now).
+  New: shortcut on the desktop. The two text paragraphs are gone.
 - **Small local translator with only your languages**: "Set up on this PC…" (own server) prepares LibreTranslate with
   `--load-only` for your reading, writing and chat languages (about 100 MB each, CPU only).
 

@@ -49,6 +49,8 @@ std::wstring UserInstallDir();
 // HKCU\...\Run entry "GW2ChatTranslator" -> "<exe>" --wait-for-gw2.
 bool SetAutostart(bool enable, const std::wstring& exePath);
 bool IsAutostartEnabled();
+// "GW2 Chat Translator" shortcut on the desktop pointing to `exePath` (replaced if there). The user's choice.
+bool CreateDesktopShortcut(const std::wstring& exePath);
 // The exe the Run entry points to (empty if none).
 std::wstring AutostartTarget();
 
