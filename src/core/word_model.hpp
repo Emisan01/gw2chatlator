@@ -87,6 +87,9 @@ public:
                                             const KeyNeighbors& neighbors = nullptr) const;
     // Words that often follow `prev2 prev` ("kommst du" -> "mit"), then those that follow `prev`.
     std::vector<std::wstring> Next(const std::wstring& prev, size_t n, const std::wstring& prev2 = std::wstring()) const;
+    // The next word when it is (almost) always the same: seen 3+ times there and at least 60 % of what followed –
+    // worth offering before you type a letter. Else "".
+    std::wstring NextSure(const std::wstring& prev, const std::wstring& prev2 = std::wstring()) const;
     // Known words one or two typos away from `word` (same first letter or the
     // first two swapped), closest and most used first.
     std::vector<std::wstring> Near(const std::wstring& word, size_t n) const;

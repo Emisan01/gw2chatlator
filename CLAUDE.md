@@ -71,7 +71,9 @@ pair whose first word is `prev2prev`, sharing the 60k pair cap; `WordsBefore` g
 80 newest; offered, never learned – invariant 10), then `Gw2StarterWords`, then
 `CompleteFuzzy` = one typo in the prefix, neighbouring keys of the layout rank first; correction via
 `ChooseCorrection`, next word from word pairs) → `SuggestionBar` + grey rest of the completion after the caret
-(`InputBox::DrawGhost`, LTR only); `InputBox::TryAutoCorrect` on a word boundary (incl. Arabic ، ؟ ؛) and
+(`InputBox::DrawGhost`; RTL letters: the EDIT reports their right edge, the ghost goes left of
+it; the sure next word `WordModel::NextSure` – 3+ seen, ≥60 % – is drawn by `DrawNextGhost` after a trailing space,
+Tab/→ take it, LTR only); `InputBox::TryAutoCorrect` on a word boundary (incl. Arabic ، ؟ ؛) and
 `FinishWordAtCaret` on Enter (`AutoCorrectMode` Off/Safe/Phone); Backspace right after it → `UndoAutoCorrect` →
 `RejectCorrection`. Right-click a learned word (word bar or input) → `SpellService::Forget`; Settings → Writing →
 `ForgetAll` deletes every `learned_*.txt`. Word keys go through `WordKey` (case fold + Arabic variants أإآٱ→ا,

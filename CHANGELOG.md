@@ -8,6 +8,10 @@ diagnosis show it.
 - **Learns when you choose:** a word you take from the word bar, or a grey suggestion you take (Space, →, or Tab to
   another one), gets stronger right there – at exactly this place in the sentence. Picking on purpose (a click, Tab to
   the second suggestion) counts more than going on with the first. What you do not take simply falls back.
+- **The next word before you type it:** when your last words are (almost) always followed by the same word – seen 3+
+  times and at least 60 % of the time – it appears grey after the space ("kommst du |mit"). Tab or → takes it; just
+  type on to ignore it.
+- **Grey suggestion for Arabic and Hebrew** too (right to left: it appears left of the last letter).
 - Cleaned up: main-menu commands that were no longer in the menu, and their texts.
 
 ## 0.8.0 — 2026-10-07

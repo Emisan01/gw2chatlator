@@ -1380,6 +1380,10 @@ static void TestWordTriples() {
     CHECK(!m.Next(L"du", 3).empty() && m.Next(L"du", 3)[0] == L"da");      // one word: the most frequent
     CHECK(!m.Next(L"du", 3, L"kommst").empty() && m.Next(L"du", 3, L"kommst")[0] == L"mit");  // two words: the sentence
     CHECK(m.Complete(L"m", L"du", 1, L"kommst") == std::vector<std::wstring>{L"mit"});
+    // Sure enough to offer before a letter is typed: only where one word clearly wins.
+    CHECK(m.NextSure(L"du", L"bist") == L"da");     // 5 of 5 after "bist du"
+    CHECK(m.NextSure(L"du").empty());              // after "du" alone: da 5, zeit 4, mit 2 – no clear winner
+    CHECK(m.NextSure(L"du", L"kommst").empty());   // seen only twice
     // Saved and loaded again (triples are pairs with "a\x1fb" as their first word).
     WordModel back;
     back.Parse(m.Serialize());
