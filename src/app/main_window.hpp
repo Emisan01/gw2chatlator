@@ -129,6 +129,8 @@ private:
     void OnWordForgotten(const std::wstring& word);
     void OpenWhisperTab(const std::wstring& name);
     void Retranslate(uint64_t id, const std::wstring& text);
+    void ToggleReading();
+    std::wstring ReadingAdvice() const;  // resolution and the text recognition that fits it
     // Correction memory: right-click "Correct this translation" -> remembered for that text and target language.
     void CorrectEntry(const ChatEntry& e);
     void LoadCorrections();
@@ -139,6 +141,7 @@ private:
     void ExplainWord(const std::wstring& word);
     void LoadMyWords();
     void SaveMyWords();
+    void SaveOcrFixes();
     void ShowMyMemoryNotice();
     void UseChatArea(const RECT& r);
     RECT ChatSearchArea() const;
@@ -283,6 +286,7 @@ private:
     TranslationCache cache_;
     CorrectionMemory corrections_;  // your corrected translations (all translators)
     MyWords myWords_;               // your slang with its meaning ("finds = finde es"), replaced before translating
+    MyWords ocrFixes_;              // learned recognition errors ("rnain = main"), fixed right after reading
     // Free screen area: the last paragraphs shown, so a paragraph that grows (typing, streaming text) updates its
     // entry instead of adding a new one each time.
     struct FreeParagraph {
@@ -322,6 +326,7 @@ private:
     Tone tone_ = Tone::Muted;
     RECT chatRect_{};
     RECT readRect_{}, menuRect_{}, closeRect_{}, collapseRect_{}, channelRect_{}, writeRect_{};
+    RECT readDotRect_{};  // small dot in the header: reading on (grey) / off (black)
     bool previewVisible_ = false;  // the preview only takes space while you type
     bool collapsed_ = false;
     int expandedHeight_ = 0;

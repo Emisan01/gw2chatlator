@@ -38,6 +38,8 @@ struct ReaderOptions {
     bool secondLook = true;       // words the dictionary does not know are read once more, enlarged more
     std::vector<std::wstring> wordLangs;  // dictionaries for that ("DE", "EN-GB"); the OCR language is added
     std::vector<std::wstring> knownWords; // your own words: always correct for the second look
+    // Learned recognition fixes ("rnain" -> "main"): applied at once, without reading the word again.
+    std::vector<std::pair<std::wstring, std::wstring>> ocrFixes;
     std::wstring captureDir;      // diagnostics target
 };
 
@@ -51,6 +53,7 @@ struct ReaderSnapshot {
     int milliseconds = 0;        // capture + OCR time
     int secondLooks = 0;         // words read a second time in this picture
     int secondFixes = 0;         // ... of which the second reading was taken
+    std::vector<std::pair<std::wstring, std::wstring>> newFixes;  // learned in this picture (to be remembered)
     ULONGLONG captureTick = 0;   // GetTickCount64() when the picture was taken
 };
 
@@ -68,6 +71,8 @@ public:
     // Second look in the last picture: words read again / taken from the second reading.
     int SecondLooks() const { return lastLooks_; }
     int SecondFixes() const { return lastFixes_; }
+    // Fixes the second look found in the last picture (wrong reading -> word), to be stored.
+    const std::vector<std::pair<std::wstring, std::wstring>>& NewFixes() const { return newFixes_; }
 
     // Line spacing (px) below which "automatic" prefers Tesseract (if installed).
     static constexpr int kSmallTextPitch = 14;
@@ -86,6 +91,8 @@ private:
     std::vector<std::unique_ptr<SpellChecker>> checkers_;
     std::unordered_map<std::wstring, bool> wordOk_;
     std::unordered_map<std::wstring, std::wstring> decided_;
+    std::unordered_map<std::wstring, std::wstring> fixes_;  // folded wrong reading -> word (learned, persistent)
+    std::vector<std::pair<std::wstring, std::wstring>> newFixes_;
     int lastLooks_ = 0, lastFixes_ = 0;
 };
 

@@ -201,6 +201,9 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
   per word-in-line (`decided_`), max 6 looks per picture. Measured on the 4K GW2 bench (2026-10-07): no change in
   error rate (what it looks at there is names/slang), +~0.2 s on the first picture only. Meant for small app fonts
   in the free area; `ocr_bench` shows "app plain" vs "app 2nd look".
+- Learned recognition fixes (`<data>\ocr-fixes.txt`, a `MyWords` list "as read = correct"): second-look successes
+  arrive as `ReaderSnapshot::newFixes`, are stored by `MainWindow`, and reach `ChatOcr` as `ReaderOptions::ocrFixes`
+  (applied before the dictionary check, no re-read).
 - `FindInk` handles both polarities: bright background (median ≥ 160) = dark text.
 - Translators (`Engine`): Auto order = DeepL → Google → Microsoft → own LibreTranslate server → LLM → MyMemory. Google
   key goes in the `X-Goog-Api-Key` header (never the URL). Protected segments: `<span translate="no"

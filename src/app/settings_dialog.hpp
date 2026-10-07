@@ -40,6 +40,11 @@ struct DialogContext {
     // "My words" (slang with its meaning): the list as text, and storing an edited one.
     std::function<std::wstring()> myWordsText;
     std::function<void(const std::wstring&)> setMyWords;
+    // Learned recognition fixes ("rnain = main") as text, and storing an edited list.
+    std::function<std::wstring()> ocrFixesText;
+    std::function<void(const std::wstring&)> setOcrFixes;
+    // Game / screen resolution and which text recognition fits it (for the reading page).
+    std::function<std::wstring()> readingAdvice;
 };
 
 enum class SettingsPage { General = 0, Reading, Writing, Translator, Game, Technical };
@@ -58,5 +63,7 @@ bool AskCorrection(HWND owner, HINSTANCE inst, const std::wstring& original, std
 bool AskWordMeaning(HWND owner, HINSTANCE inst, const std::wstring& word, std::wstring* meaning);
 // Modal: the whole list of your words, "word = meaning" per line. True when confirmed.
 bool EditMyWords(HWND owner, HINSTANCE inst, std::wstring* text);
+// Modal: the learned recognition fixes, "as read = correct" per line. True when confirmed.
+bool EditOcrFixes(HWND owner, HINSTANCE inst, std::wstring* text);
 
 }  // namespace gct

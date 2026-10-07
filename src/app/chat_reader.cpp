@@ -54,6 +54,8 @@ bool ChatOcr::Init(const ReaderOptions& o, std::wstring* error) {
     wordOk_.clear();
     decided_.clear();
     for (const std::wstring& w : o.knownWords) wordOk_[CaseFold(w)] = true;
+    fixes_.clear();
+    for (const auto& [wrong, right] : o.ocrFixes) fixes_[CaseFold(wrong)] = right;
     if (o.secondLook && haveWin_) {
         std::vector<std::wstring> langs = o.wordLangs;
         langs.insert(langs.begin(), win_.Language());
@@ -163,6 +165,7 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
     // ("*ain" -> "main"); otherwise the first stays (people write odd words, names, slang). Each word in its line
     // is decided once (the same line comes in every picture), at most a few new words per picture.
     lastLooks_ = lastFixes_ = 0;
+    newFixes_.clear();
     if (haveWin_ && !checkers_.empty() && !found.empty() && !found.front().hasColor) {
         constexpr int kMaxLooksPerPicture = 6;
         const int altScale = scale >= 3 ? 4 : scale + 2;  // clearly larger than the first reading
@@ -178,6 +181,14 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
                         w.text = it->second;
                         changed = true;
                     }
+                    continue;
+                }
+                // A recognition error seen before: fixed at once, no second reading needed.
+                if (const auto fx = fixes_.find(CaseFold(core)); fx != fixes_.end()) {
+                    const std::wstring decision = w.text.substr(0, at) + fx->second + w.text.substr(at + core.size());
+                    decided_[key] = decision;
+                    w.text = decision;
+                    changed = true;
                     continue;
                 }
                 if (IsWord(core)) continue;
@@ -212,6 +223,8 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
                             // The whole second token: a stray mark read in place of a letter ("*ain") goes too.
                             decision = best->text;
                             ++lastFixes_;
+                            fixes_[CaseFold(core)] = second;  // learned: next time without reading again
+                            newFixes_.push_back({core, second});
                         }
                     }
                 }
@@ -372,6 +385,7 @@ void ChatReader::Loop() {
         snap->milliseconds = static_cast<int>(GetTickCount64() - t0);
         snap->secondLooks = ocr.SecondLooks();
         snap->secondFixes = ocr.SecondFixes();
+        snap->newFixes = ocr.NewFixes();
         if (save) SaveDiagnostics(raw, prepared, snap->lines);
         post(std::move(snap));
     }
