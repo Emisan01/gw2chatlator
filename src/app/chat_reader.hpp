@@ -20,6 +20,7 @@
 #include "core/chat_line.hpp"
 #include "core/image.hpp"
 #include "win/ocr.hpp"
+#include "win/rapid_ocr.hpp"
 #include "win/spellcheck.hpp"
 #include "win/tesseract_ocr.hpp"
 
@@ -27,7 +28,9 @@ namespace gct {
 
 struct ReaderOptions {
     int intervalMs = 400;
-    int ocrChoice = 0;            // 0 auto, 1 tesseract, 2 windows (see OcrChoice)
+    int ocrChoice = 0;            // 0 auto, 1 tesseract, 2 windows, 3 RapidOCR (see OcrChoice)
+    std::wstring rapidDir;        // RapidOCR models folder (<data>\rapid)
+    std::vector<std::wstring> rapidGroups;  // model groups for the user's languages, Latin first
     std::wstring tesseractPath;   // empty = search
     std::string tesseractLangs;   // empty = automatic
     bool readChinese = false;
@@ -80,10 +83,21 @@ public:
 private:
     OcrEngine win_;
     TesseractOcr tess_;
-    int choice_ = 0;  // 0 auto, 1 Tesseract, 2 Windows
+    int choice_ = 0;  // 0 auto, 1 Tesseract, 2 Windows, 3 RapidOCR
     bool haveTess_ = false, haveWin_ = false;
     bool useTess_ = false;  // the engine of the last picture
     bool keepEngineLines_ = false;  // free text: no regrouping by rows (it would merge side-by-side columns)
+
+    // RapidOCR: one recognizer per installed model group; a line that looks exactly as before is not
+    // recognized again (the chat mostly only scrolls), its text comes from the cache.
+    struct RapidLine {
+        std::wstring text;
+        std::vector<RecWord> words;  // x/w in raw pixels relative to the line's left edge
+    };
+    bool ReadRapidLine(const Image& crop, RapidLine* out);
+    std::vector<std::unique_ptr<RapidRecognizer>> rapid_;
+    std::unordered_map<uint64_t, RapidLine> rapidCache_;
+    bool useRapid_ = false;
 
     // Second look: dictionaries (Windows spell checker), answers cached per word, and per word in its line
     // what the second look decided (the same line comes again in every picture: it is looked at once).

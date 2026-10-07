@@ -204,6 +204,15 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
 - Learned recognition fixes (`<data>\ocr-fixes.txt`, a `MyWords` list "as read = correct"): second-look successes
   arrive as `ReaderSnapshot::newFixes`, are stored by `MainWindow`, and reach `ChatOcr` as `ReaderOptions::ocrFixes`
   (applied before the dictionary check, no re-read).
+- RapidOCR (`win/rapid_ocr`, `core/rapid_rec`, `core/rapid_models`, `ReaderOptions::rapidDir/rapidGroups`,
+  `OcrChoice::Rapid`): recognition-only (no detection model, no OpenCV): each measured grid row (chat) or each Windows
+  OCR line box (free text) is cut out with 25 % margin (measured best; more pulls in neighbour lines), scaled to 48 px
+  height, CTC-decoded; word boxes from the CTC steps (colours). `rapidCache_` keys rows by an FNV hash of their pixels:
+  a scrolling chat costs 1–11 ms per picture. ONNX Runtime 1.30 comes via CMake FetchContent (SHA-256 checked),
+  `/DELAYLOAD:onnxruntime.dll`, `ORT_API_MANUAL_INIT` + `RuntimeAvailable()` loads the DLL from the exe folder first;
+  the Latin model is downloaded at configure time and copied to `<exe>apid`; other groups download into
+  `<data>apid` (`DownloadRapidGroup`, SHA-256). Measured (ocr_bench, parsed error): 4K Windows 0.5–3.4 % vs Rapid
+  5–17 %; simulated 1080p Windows 63–81 % vs Rapid 8–31 %. Auto = Rapid only for small text (pitch < 14 px).
 - `FindInk` handles both polarities: bright background (median ≥ 160) = dark text.
 - Translators (`Engine`): Auto order = DeepL → Google → Microsoft → own LibreTranslate server → LLM → MyMemory. Google
   key goes in the `X-Goog-Api-Key` header (never the URL). Protected segments: `<span translate="no"

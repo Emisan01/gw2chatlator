@@ -25,6 +25,8 @@ add_library(gct_core STATIC
     src/core/corrections.cpp
     src/core/second_look.cpp
     src/core/my_words.cpp
+    src/core/rapid_rec.cpp
+    src/core/rapid_models.cpp
     src/core/deepl_protocol.cpp
     src/core/mymemory_protocol.cpp
     src/core/llm_protocol.cpp
@@ -71,8 +73,39 @@ if(WIN32)
         src/win/gw2_locate.cpp
         src/win/folder_cleanup.cpp
         src/win/keyboard_layout.cpp
-        src/win/secret.cpp)
-    target_link_libraries(gct_win PUBLIC gct_core winhttp ole32 user32 gdi32 d3d11 dxgi dwmapi shell32 advapi32 version uuid crypt32)
+        src/win/secret.cpp
+        src/win/rapid_ocr.cpp)
+    target_link_libraries(gct_win PUBLIC gct_core winhttp ole32 user32 gdi32 d3d11 dxgi dwmapi shell32 advapi32 version uuid crypt32 bcrypt)
+
+    # ---- RapidOCR (optional, open source): PaddleOCR recognition models on ONNX Runtime (MIT, Microsoft).
+    # The runtime is downloaded at configure time (checksum checked) and loaded only when RapidOCR is used
+    # (delay load): without onnxruntime.dll next to the exe everything else works as before.
+    option(GCT_RAPIDOCR "Build the RapidOCR text recognition (downloads ONNX Runtime)" ON)
+    if(GCT_RAPIDOCR AND MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+        include(FetchContent)
+        FetchContent_Declare(onnxruntime
+            URL https://github.com/microsoft/onnxruntime/releases/download/v1.30.0/onnxruntime-win-x64-1.30.0.zip
+            URL_HASH SHA256=c6ba983baf5681af108599675d2a89c2d145512d02de28aed0bff177cd0ba949
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+        FetchContent_MakeAvailable(onnxruntime)
+        set(GCT_ORT_DIR ${onnxruntime_SOURCE_DIR})
+        target_include_directories(gct_win PRIVATE ${GCT_ORT_DIR}/include)
+        target_compile_definitions(gct_win PRIVATE GCT_HAVE_RAPIDOCR=1)
+        target_link_libraries(gct_win PUBLIC ${GCT_ORT_DIR}/lib/onnxruntime.lib delayimp)
+        set(GCT_ORT_DLL ${GCT_ORT_DIR}/lib/onnxruntime.dll)
+        # The Latin model ships with the program (no install step): English, German, French, Spanish, Turkish …
+        # Other script groups are downloaded in the settings when one of your languages needs them.
+        set(GCT_RAPID_BASE https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2)
+        set(GCT_RAPID_DIR ${CMAKE_BINARY_DIR}/rapid)
+        if(NOT EXISTS ${GCT_RAPID_DIR}/latin_rec.onnx)
+            file(DOWNLOAD ${GCT_RAPID_BASE}/onnx/PP-OCRv5/rec/latin_PP-OCRv5_rec_mobile.onnx ${GCT_RAPID_DIR}/latin_rec.onnx
+                 EXPECTED_HASH SHA256=b20bd37c168a570f583afbc8cd7925603890efbcdc000a59e22c269d160b5f5a)
+        endif()
+        if(NOT EXISTS ${GCT_RAPID_DIR}/latin_dict.txt)
+            file(DOWNLOAD ${GCT_RAPID_BASE}/paddle/PP-OCRv5/rec/latin_PP-OCRv5_rec_mobile/ppocrv5_latin_dict.txt
+                 ${GCT_RAPID_DIR}/latin_dict.txt)
+        endif()
+    endif()
 
     # ---- app: the window
     set(GCT_APP_SOURCES
@@ -145,5 +178,16 @@ if(WIN32)
         if(GCT_BUILD_TESTS)
             target_link_options(core_tests PRIVATE -static -static-libgcc -static-libstdc++)
         endif()
+    endif()
+
+    if(GCT_ORT_DLL)
+        foreach(t ${GCT_APP_TARGETS})
+            target_link_options(${t} PRIVATE /DELAYLOAD:onnxruntime.dll)
+            add_custom_command(TARGET ${t} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different ${GCT_ORT_DLL} $<TARGET_FILE_DIR:${t}>
+                COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${t}>/rapid
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different ${GCT_RAPID_DIR}/latin_rec.onnx ${GCT_RAPID_DIR}/latin_dict.txt
+                        $<TARGET_FILE_DIR:${t}>/rapid)
+        endforeach()
     endif()
 endif()

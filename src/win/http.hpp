@@ -21,6 +21,6 @@ HttpResponse HttpsRequest(const wchar_t* method, const std::wstring& host, const
 // (http://localhost:11434/v1/chat/completions). `receiveTimeoutMs` covers
 // slow answers (local models loading).
 HttpResponse HttpRequestUrl(const wchar_t* method, const std::wstring& url, const std::wstring& headers,
-                            const std::string& body, int receiveTimeoutMs = 15000);
+                            const std::string& body, int receiveTimeoutMs = 15000, size_t maxBytes = 16u << 20);
 
 }  // namespace gct

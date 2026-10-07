@@ -130,6 +130,9 @@ private:
     void OpenWhisperTab(const std::wstring& name);
     void Retranslate(uint64_t id, const std::wstring& text);
     void ToggleReading();
+    ReaderOptions MakeReaderOptions() const;
+    // Settings -> Technical: one picture of the chat area through every text recognition, side by side.
+    void CompareRecognition(HWND notify, UINT message);
     std::wstring ReadingAdvice() const;  // resolution and the text recognition that fits it
     // Correction memory: right-click "Correct this translation" -> remembered for that text and target language.
     void CorrectEntry(const ChatEntry& e);

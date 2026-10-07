@@ -14,6 +14,8 @@
 #include "app/modal_scope.hpp"
 #include "core/cloud_mt_protocol.hpp"
 #include "core/hotkey.hpp"
+#include "core/rapid_models.hpp"
+#include "win/rapid_ocr.hpp"
 #include "core/gw2_install.hpp"
 #include "core/langs.hpp"
 #include "core/i18n.hpp"
@@ -32,6 +34,8 @@ constexpr UINT WM_APP_MODELS = WM_APP + 50;
 constexpr UINT WM_APP_TEST = WM_APP + 51;
 constexpr UINT WM_APP_PULL = WM_APP + 52;
 constexpr UINT WM_APP_COMPARE = WM_APP + 53;
+constexpr UINT WM_APP_RAPID = WM_APP + 54;
+constexpr UINT WM_APP_OCRCMP = WM_APP + 55;
 constexpr wchar_t kTesseractUrl[] = L"https://github.com/UB-Mannheim/tesseract/wiki";
 
 enum : int {
@@ -48,7 +52,7 @@ enum : int {
     // Translator
     kEngine, kEngineNote, kLocalModel, kPull, kLocalInfo, kGetOllama, kPullStatus, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
     kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
-    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kHelpOcr, kHelpCapture, kOcrFixes,
+    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare,
     // Game & start
     kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kStatus, kRefresh, kSetup,
     // Wizard
@@ -540,8 +544,8 @@ private:
         // Reading on/off lives in the main window (dot in the header, first menu entry).
         Label(Tr(L"Text recognition"), kLabelX, Y(r), kLabelW);
         Combo(kOcrEngine,
-              {Tr(L"Automatic (Windows OCR; Tesseract only for very small text)"), Tr(L"Tesseract (separate install)"),
-               Tr(L"Windows OCR (built in, fast)")},
+              {Tr(L"Automatic (Windows OCR; RapidOCR or Tesseract for small text)"), Tr(L"Tesseract (separate install)"),
+               Tr(L"Windows OCR (built in, fast)"), Tr(L"RapidOCR (open source, best with small text)")},
               static_cast<int>(cfg_.ocr), kCtrlX, Y(r), kCtrlW - 30);
         Button(kHelpOcr, L"?", kCtrlX + kCtrlW - 24, Y(r++) - 1, 24);
         Label(ctx_.readingAdvice ? ctx_.readingAdvice() : L"", kCtrlX, Y(r++) - 6, kCtrlW, 34);
@@ -557,6 +561,10 @@ private:
         Button(kTessBrowse, Tr(L"Browse…"), kCtrlX + kCtrlW - 90, Y(r++) - 1, 90);
         Label(TesseractStatus(cfg_.tesseractPath), kCtrlX, Y(r) - 4, kCtrlW - 150, 34, kTessStatus);
         Button(kTessGet, Tr(L"Get Tesseract…"), kCtrlX + kCtrlW - 140, Y(r++) - 4, 140);
+        // RapidOCR: open-source models (PaddleOCR) that run on this PC; only the groups for your languages.
+        Label(Tr(L"RapidOCR (optional)"), kLabelX, Y(r), kLabelW);
+        Label(RapidStatus(), kCtrlX, Y(r) - 2, kCtrlW - 150, 34, kRapidStatus);
+        Button(kRapidGet, Tr(L"Install…"), kCtrlX + kCtrlW - 140, Y(r++) - 2, 140);
         Label(Tr(L"Read every"), kLabelX, Y(r), kLabelW);
         Edit(kInterval, std::to_wstring(cfg_.readerIntervalMs), kCtrlX, Y(r), 60, ES_NUMBER);
         Label(Tr(L"ms (200–2000, 400 recommended; shorter only reacts sooner, it does not read more exactly)"),
@@ -815,7 +823,8 @@ private:
         r += 8;
         Button(kTechRefresh, Tr(L"Refresh"), kLabelX, Y(r), 100);
         Button(kTechCopy, Tr(L"Copy diagnosis"), kLabelX + 108, Y(r), 140);
-        Button(kTechCompare, Tr(L"Compare translators"), kLabelX + 256, Y(r), 170);
+        Button(kTechCompare, Tr(L"Compare translators"), kLabelX + 256, Y(r), 140);
+        Button(kTechOcrCompare, Tr(L"Compare recognition"), kLabelX + 402, Y(r), 130);
         Label(Tr(L"Numbers and settings only, no chat text."), kLabelX, Y(r) + 30, kW - 44, 20, kTechStatus);
         RefreshTechnical();
     }
@@ -825,7 +834,8 @@ private:
     }
 
     void CopyTechnical() {
-        const std::wstring text = Text(kTechText);
+        // Always the numbers and settings – never chat text a comparison may have put into the box.
+        const std::wstring text = ctx_.technicalStatus ? ctx_.technicalStatus() : Text(kTechText);
         if (text.empty() || !OpenClipboard(hwnd_)) return;
         EmptyClipboard();
         const size_t bytes = (text.size() + 1) * sizeof(wchar_t);
@@ -969,10 +979,16 @@ private:
                                L"chat: about 0.1 s per picture, 0.5–3 % errors. Best with normal and large text.\n\n"
                                L"Tesseract: free open-source recognition, separate install. About 1.5–3.5 s per picture "
                                L"(it starts each time and loads its language models), more exact with very small text.\n\n"
-                               L"Automatic: Windows OCR, Tesseract only when the chat text is very small.\n\n"
+                               L"RapidOCR: open-source deep-learning recognition (PaddleOCR models), runs on this PC. "
+                               L"Measured on small (1080p) chat: 8–31 % errors where Windows OCR had 63–81 %. About 1 s "
+                               L"for the first picture, then ~0.1 s (unchanged lines are not read again).\n\n"
+                               L"Automatic: Windows OCR; for very small text RapidOCR (if installed), else Tesseract.\n\n"
                                L"What helps both most: a larger chat font in GW2 – more pixels per letter.")
                                 .c_str(),
                             Tr(L"Text recognition").c_str(), MB_OK | MB_ICONINFORMATION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0));
+                break;
+            case kRapidGet:
+                InstallRapid();
                 break;
             case kHelpCapture:
                 MessageBoxW(hwnd_,
@@ -1036,6 +1052,13 @@ private:
                 break;
             case kTechCompare:
                 CompareTranslators();
+                break;
+            case kTechOcrCompare:
+                if (ctx_.compareOcr) {
+                    EnableWindow(Item(kTechOcrCompare), FALSE);
+                    SetText(kTechText, Tr(L"Reading one picture of the chat with every text recognition …"));
+                    ctx_.compareOcr(hwnd_, WM_APP_OCRCMP);
+                }
                 break;
             case kLocalModel:
                 if (code == CBN_SELCHANGE && Sel(kLocalModel) >= 0)
@@ -1193,6 +1216,65 @@ private:
                     Tr(L"Set up on this PC").c_str(), MB_OK | MB_ICONINFORMATION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0));
     }
 
+    // The RapidOCR model groups your languages need (Latin always).
+    std::vector<std::wstring> RapidGroupsNeeded() const {
+        std::vector<std::wstring> langs = cfg_.writeLangs;
+        langs.push_back(cfg_.readLang);
+        langs.push_back(cfg_.chatLang);
+        return RapidGroupsFor(langs);
+    }
+
+    std::wstring RapidStatus() const {
+        if (!RapidRecognizer::RuntimeAvailable(nullptr))
+            return Tr(L"[--] Not available in this build (onnxruntime.dll missing next to the program).");
+        std::wstring have, missing;
+        int mb = 0;
+        for (const std::wstring& id : RapidGroupsNeeded()) {
+            const RapidModelGroup* g = FindRapidGroup(id);
+            if (!g) continue;
+            if (!RapidGroupDir(*g, cfg_.RapidDir()).empty()) have += (have.empty() ? L"" : L", ") + std::wstring(g->id);
+            else {
+                missing += (missing.empty() ? L"" : L", ") + std::wstring(g->id);
+                mb += g->sizeMb;
+            }
+        }
+        if (missing.empty()) return TrF(L"[OK] Installed for your languages ({1}).", {have});
+        return TrF(L"[--] Not installed – about {1} MB for your languages ({2}).", {std::to_wstring(mb), missing});
+    }
+
+    // Downloads the model groups for your languages (official RapidOCR files, checksums checked).
+    void InstallRapid() {
+        if (!RapidRecognizer::RuntimeAvailable(nullptr)) return;
+        std::vector<const RapidModelGroup*> todo;
+        int mb = 0;
+        for (const std::wstring& id : RapidGroupsNeeded())
+            if (const RapidModelGroup* g = FindRapidGroup(id); g && RapidGroupDir(*g, cfg_.RapidDir()).empty()) {
+                todo.push_back(g);
+                mb += g->sizeMb;
+            }
+        if (todo.empty()) {
+            SetText(kRapidStatus, RapidStatus());
+            return;
+        }
+        if (MessageBoxW(hwnd_,
+                        TrF(L"Download the open-source RapidOCR models for your languages (about {1} MB, from the "
+                            L"RapidAI project on ModelScope)?\n\nThey read the chat on this PC only; nothing is sent "
+                            L"anywhere. Licence: Apache-2.0.",
+                            {std::to_wstring(mb)})
+                            .c_str(),
+                        L"RapidOCR", MB_YESNO | MB_ICONQUESTION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0)) != IDYES)
+            return;
+        EnableWindow(Item(kRapidGet), FALSE);
+        SetText(kRapidStatus, Tr(L"Downloading …"));
+        std::thread([h = hwnd_, todo, dir = cfg_.RapidDir()] {
+            std::wstring error;
+            for (const RapidModelGroup* g : todo)
+                if (!DownloadRapidGroup(*g, dir, &error)) break;
+            auto* msg = new std::wstring(error);
+            if (!PostMessageW(h, WM_APP_RAPID, 0, reinterpret_cast<LPARAM>(msg))) delete msg;
+        }).detach();
+    }
+
     // Quality test: the same invented chat lines through every translator that is set up,
     // with the time each took. You judge which reads naturally.
     void CompareTranslators() {
@@ -1300,6 +1382,19 @@ private:
                 if (Trim(current).empty()) SendMessageW(combo, CB_SETCURSEL, 0, 0);
                 SendMessageW(combo, CB_SHOWDROPDOWN, TRUE, 0);
             }
+            return 0;
+        }
+        if (msg == WM_APP_OCRCMP) {
+            std::unique_ptr<std::wstring> text(reinterpret_cast<std::wstring*>(lp));
+            EnableWindow(Item(kTechOcrCompare), TRUE);
+            SetText(kTechText, *text);
+            return 0;
+        }
+        if (msg == WM_APP_RAPID) {
+            std::unique_ptr<std::wstring> err(reinterpret_cast<std::wstring*>(lp));
+            EnableWindow(Item(kRapidGet), TRUE);
+            SetText(kRapidStatus, err->empty() ? RapidStatus() : TrF(L"[!] Not installed: {1}", {*err}));
+            if (err->empty()) SendMessageW(Item(kOcrEngine), CB_SETCURSEL, 0, 0);  // automatic uses it from now on
             return 0;
         }
         if (msg == WM_APP_COMPARE) {

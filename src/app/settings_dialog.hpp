@@ -45,6 +45,9 @@ struct DialogContext {
     std::function<void(const std::wstring&)> setOcrFixes;
     // Game / screen resolution and which text recognition fits it (for the reading page).
     std::function<std::wstring()> readingAdvice;
+    // One picture of the chat through every text recognition; the result (text) is posted to `notify` as
+    // LPARAM = new std::wstring.
+    std::function<void(HWND notify, UINT message)> compareOcr;
 };
 
 enum class SettingsPage { General = 0, Reading, Writing, Translator, Game, Technical };
