@@ -4,6 +4,7 @@
 
 #include <algorithm>
 
+#include "core/cloud_mt_protocol.hpp"
 #include "core/json.hpp"
 #include "core/langs.hpp"
 #include "core/languagetool_protocol.hpp"
@@ -98,6 +99,142 @@ private:
 
 std::shared_ptr<Translator> MakeMyMemoryTranslator(const std::wstring& email) {
     return std::make_shared<MyMemoryTranslator>(email);
+}
+
+// ===========================================================================
+// Google Cloud Translation (v2, API key) and Microsoft Translator (v3)
+// ===========================================================================
+namespace {
+
+TranslateResult FromParsed(const CloudMtParsed& p) {
+    TranslateResult r;
+    r.ok = p.ok;
+    r.text = p.text;
+    r.detectedSource = p.detectedSource;
+    r.error = p.error;
+    return r;
+}
+
+// Shared HTTP status handling of both services.
+std::vector<TranslateResult> CloudFailure(const wchar_t* service, int status, const std::wstring& parsedError,
+                                          size_t n) {
+    std::vector<TranslateResult> out(n);
+    std::wstring e;
+    if (status == 400 && parsedError.find(L"key") != std::wstring::npos) e = TrF(L"{1}: API key is invalid", {service});
+    else if (status == 401 || status == 403) e = TrF(L"{1}: API key is invalid", {service});
+    else if (status == 429) e = TrF(L"{1}: free contingent used up or too many requests", {service});
+    else e = parsedError.empty() ? std::wstring(service) + L": HTTP " + std::to_wstring(status) : parsedError;
+    for (auto& r : out) {
+        r.error = e;
+        r.quotaExceeded = status == 429;
+    }
+    return out;
+}
+
+class GoogleTranslator final : public Translator {
+public:
+    explicit GoogleTranslator(std::wstring key) : key_(Trim(key)) {}
+    std::wstring Name() const override { return L"Google"; }
+
+    TranslateResult Translate(const std::vector<Segment>& segments, const std::wstring& sourceLang,
+                              const std::wstring& targetLang) override {
+        return TranslateBatch({segments}, sourceLang, targetLang)[0];
+    }
+
+    std::vector<TranslateResult> TranslateBatch(const std::vector<std::vector<Segment>>& items,
+                                                const std::wstring& sourceLang,
+                                                const std::wstring& targetLang) override {
+        if (items.empty()) return {};
+        const CloudMtPayload p = BuildGooglePayload(items, sourceLang, targetLang);
+        // The key goes in a header, never into the address.
+        const std::wstring headers = L"X-Goog-Api-Key: " + key_ + L"\r\nContent-Type: application/json\r\n";
+        const HttpResponse http =
+            HttpsRequest(L"POST", L"translation.googleapis.com", L"/language/translate/v2", headers, p.json);
+        if (!http.transportOk) return CloudFailure(L"Google", 0, L"Google: " + http.error, items.size());
+        const auto parsed = ParseGoogleResponse(http.body, p.html, items.size());
+        if (http.status != 200) return CloudFailure(L"Google", http.status, parsed[0].error, items.size());
+        std::vector<TranslateResult> out;
+        for (const auto& x : parsed) out.push_back(FromParsed(x));
+        return out;
+    }
+
+private:
+    const std::wstring key_;
+};
+
+class MicrosoftTranslator final : public Translator {
+public:
+    MicrosoftTranslator(std::wstring key, std::wstring region) : key_(Trim(key)), region_(Trim(region)) {}
+    std::wstring Name() const override { return L"Microsoft"; }
+
+    TranslateResult Translate(const std::vector<Segment>& segments, const std::wstring& sourceLang,
+                              const std::wstring& targetLang) override {
+        return TranslateBatch({segments}, sourceLang, targetLang)[0];
+    }
+
+    std::vector<TranslateResult> TranslateBatch(const std::vector<std::vector<Segment>>& items,
+                                                const std::wstring& sourceLang,
+                                                const std::wstring& targetLang) override {
+        if (items.empty()) return {};
+        const CloudMtPayload p = BuildMicrosoftPayload(items);
+        std::wstring headers = L"Ocp-Apim-Subscription-Key: " + key_ + L"\r\nContent-Type: application/json\r\n";
+        if (!region_.empty()) headers += L"Ocp-Apim-Subscription-Region: " + region_ + L"\r\n";
+        const HttpResponse http = HttpsRequest(L"POST", L"api.cognitive.microsofttranslator.com",
+                                               MicrosoftQuery(sourceLang, targetLang, p.html), headers, p.json);
+        if (!http.transportOk) return CloudFailure(L"Microsoft", 0, L"Microsoft: " + http.error, items.size());
+        const auto parsed = ParseMicrosoftResponse(http.body, p.html, items.size());
+        if (http.status != 200) return CloudFailure(L"Microsoft", http.status, parsed[0].error, items.size());
+        std::vector<TranslateResult> out;
+        for (const auto& x : parsed) out.push_back(FromParsed(x));
+        return out;
+    }
+
+private:
+    const std::wstring key_, region_;
+};
+
+class LibreTranslator final : public Translator {
+public:
+    LibreTranslator(std::wstring url, std::wstring key) : url_(LibreTranslateUrl(url)), key_(Trim(key)) {}
+    std::wstring Name() const override { return L"LibreTranslate"; }
+
+    TranslateResult Translate(const std::vector<Segment>& segments, const std::wstring& sourceLang,
+                              const std::wstring& targetLang) override {
+        return TranslateBatch({segments}, sourceLang, targetLang)[0];
+    }
+
+    std::vector<TranslateResult> TranslateBatch(const std::vector<std::vector<Segment>>& items,
+                                                const std::wstring& sourceLang,
+                                                const std::wstring& targetLang) override {
+        if (items.empty()) return {};
+        const CloudMtPayload p = BuildLibrePayload(items, sourceLang, targetLang, key_);
+        const HttpResponse http = HttpRequestUrl(L"POST", url_, L"Content-Type: application/json\r\n", p.json, 20000);
+        if (!http.transportOk)
+            return CloudFailure(L"LibreTranslate", 0, TrF(L"Server not reachable ({1}): {2}", {url_, http.error}),
+                                items.size());
+        const auto parsed = ParseLibreResponse(http.body, p.html, items.size());
+        if (http.status != 200) return CloudFailure(L"LibreTranslate", http.status, parsed[0].error, items.size());
+        std::vector<TranslateResult> out;
+        for (const auto& x : parsed) out.push_back(FromParsed(x));
+        return out;
+    }
+
+private:
+    const std::wstring url_, key_;
+};
+
+}  // namespace
+
+std::shared_ptr<Translator> MakeLibreTranslator(const std::wstring& url, const std::wstring& apiKey) {
+    return std::make_shared<LibreTranslator>(url, apiKey);
+}
+
+std::shared_ptr<Translator> MakeGoogleTranslator(const std::wstring& apiKey) {
+    return std::make_shared<GoogleTranslator>(apiKey);
+}
+
+std::shared_ptr<Translator> MakeMicrosoftTranslator(const std::wstring& apiKey, const std::wstring& region) {
+    return std::make_shared<MicrosoftTranslator>(apiKey, region);
 }
 
 // ===========================================================================

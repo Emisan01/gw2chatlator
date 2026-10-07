@@ -72,6 +72,40 @@ Messlatte: **In unter einer Minute nach dem ersten Start liest man den ersten ü
 | Unser Fenster an den nativen Chat koppeln (öffnen/minimieren) | **zurückgestellt** (GW2 hat keine Taste zum Minimieren; simulierte Klicks widersprechen Regel 1) |
 | Modus „Beliebiges Fenster übersetzen“ (Browser, andere Spiele): Kern ist allgemein (Aufnahme, Erkennung, Übersetzung); GW2-spezifisch sind nur MumbleLink, Parser, Farben, Senden | später, in der Architektur mitdenken |
 
+### Runde 4: Übersetzer-Auswahl und freier Bildschirmbereich (2026-10-07)
+
+**Reihenfolge der Bausteine (so ist auch die Priorität):**
+1. Autokorrektur bei der Eingabe (lokal, sofort, Windows-Rechtschreibung + Tippfehler-Modell).
+2. Wortgedächtnis (lokal, lernt nur aus dem, was man selbst sendet).
+3. Online-Übersetzer: MyMemory (gratis, ohne Konto) → Google / Microsoft / DeepL (Gratiskontingent mit Schlüssel)
+   → **eigener Server** (LibreTranslate-kompatibel, beliebige Adresse).
+4. KI-Modell: Cloud-Anbieter mit eigenem Konto (Claude, Gemini, GPT, Mistral, Groq, OpenRouter) oder **andere Adresse**;
+   lokal nur, wenn das Modell wirklich klein ist (gemma3:1b …).
+
+| Punkt | Stand |
+|---|---|
+| Freier Bildschirmbereich: beliebigen Text übersetzen (Website, Dokument, anderes Spiel), ohne Chat-Regeln, auch ohne GW2; Zeilen → Absätze (`BuildFreeTextMessages`) | ✅ Menü ≡ |
+| Übersetzer-Seite zeigt nur den gewählten Übersetzer; jeder mit „Schlüssel holen“-Knopf | ✅ |
+| Google Cloud Translation (500.000 Zeichen/Monat), Microsoft Translator (F0: 2 Mio./Monat), eigener LibreTranslate-Server | ✅ im Netz zu testen |
+| KI-Anbieter als Vorlagen (Adresse + Modell + Schlüssel-Seite); Schlüssel wird beim Anbieterwechsel geleert (nie an einen anderen Anbieter schicken) | ✅ |
+| Cloud-Modelle bekommen kein `temperature` (Reasoning-Modelle lehnen es ab) | ✅ |
+| LLM-Modell und „repariert Erkennungsfehler“ zusammengelegt (ein Modell, ein Häkchen darunter) | ✅ |
+| MyMemory-Hinweis einfacher, E-Mail-Vorteil (50.000 statt 5.000 Zeichen/Tag) am Feld erklärt | ✅ |
+| Oberflächensprache startet mit der Windows-Sprache (sonst Englisch) | ✅ |
+| „Alles Gelernte löschen“: Hinweis lief in die nächste Zeile | ✅ |
+
+**Als Nächstes überlegt:**
+- **Sicherheitsstufe** (eine Zeile auf der Technik-Seite, nachprüfbar): kein Hook/keine DLL/kein Handle zum Spiel ✔,
+  Senden nur auf Tastendruck ✔, Bilder verlassen den PC nie ✔, Netz nur zum gewählten Übersetzer (+ LanguageTool,
+  wenn an) ✔, eingehender Text nur Daten ✔. Offen: API-Schlüssel mit Windows DPAPI verschlüsselt statt im Klartext
+  in der INI; Liste „wohin geht was“ live aus der Konfiguration.
+- **Korrekturgedächtnis:** eine Übersetzung per Rechtsklick korrigieren → lokal gespeichert (Satz/Wendung → eigene
+  Übersetzung), wird vor jedem Übersetzer angewandt; dieselbe falsche Übersetzung kommt nie wieder.
+- **Kleines lokales Übersetzungsmodell** (Opus-MT/NLLB über CTranslate2, ~300 MB je Sprachpaar, CPU) für 3–4
+  Sprachen als „Mini-DeepL“, kombiniert mit Korrekturgedächtnis und Glossar. Eigenes Modell trainieren: nein.
+- **Qualitätstest:** fester Satz Test-Chatzeilen (erfunden), jeder Übersetzer übersetzt sie, der Nutzer bewertet
+  „brauchbar / falsch“ → kleine Tabelle auf der Technik-Seite; Zeit je Zeile gemessen.
+
 ### Was noch aussteht (Stand 0.6.0)
 
 **Im Spiel testen (braucht den Nutzer):**
@@ -83,7 +117,8 @@ Messlatte: **In unter einer Minute nach dem ersten Start liest man den ersten ü
 6. Echte Aufnahmen bei 1080p/1440p in `local/bench` (Diagnosebilder einschalten) → Entscheidung über den Glyphen-Leser.
 
 **Bauen:**
-- Modus „Beliebiges Fenster übersetzen“ (Browser, andere Spiele, Videos): Fenster/Bereich wählen, mitlesen, übersetzen, nichts senden; pausiert, wenn das Fenster minimiert oder verdeckt ist. Parser im „Klartext“-Modus ohne GW2-Struktur.
+- ~~Modus „Beliebiges Fenster übersetzen“~~ → als freier Bildschirmbereich gebaut (Runde 4). Offen: an ein Fenster
+  binden und pausieren, wenn es minimiert oder verdeckt ist.
 - GitHub-Releases mit fertiger exe, freiwillige Update-Prüfung (Releases-API), Version im Hauptmenü.
 - Kalibrierung erweitern: Kanalfarben einmessen per Klick (gibt es per Rechtsklick), Prüfbild/Testlauf auf der Technik-Seite („jetzt messen“: Erkennungsrate, Zeilen, Zeit).
 - Arabizi und lateinisch geschriebenes Russisch erkennen und übersetzen (LLM kann es, MyMemory nicht).

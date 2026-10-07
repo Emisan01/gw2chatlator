@@ -11,8 +11,8 @@ src/app   window + views (UI thread)   main_window (menus, tray, wait-for-GW2), 
                                         word bar, Backspace undo), suggestion_bar, chat_log_view, preview_view,
                                         settings_dialog (settings + guided setup, native controls), chat_reader
                                         (worker), region_picker, spell_service, config, theme
-src/win   Windows services (no UI)      http (WinHTTP), deepl_translator, online_translators (MyMemory, LLM,
-                                        model list, LanguageTool call), els (language detection, transliteration),
+src/win   Windows services (no UI)      http (WinHTTP), deepl_translator, online_translators (MyMemory, Google,
+                                        Microsoft, LibreTranslate, LLM, model list, LanguageTool call), els (language detection, transliteration),
                                         ocr (Windows.Media.Ocr, raw WinRT ABI), tesseract_ocr (subprocess),
                                         screen_capture (DXGI + GDI), mumble_link, gw2_sender, gw2_api, spellcheck,
                                         gw2_locate (find GW2, install, autostart, add-on scan), folder_cleanup, files,
@@ -24,6 +24,7 @@ src/core  portable logic, NO windows.h  text, json, i18n (+ i18n_de / i18n_ar ta
                                         protected from translation), gw2_text, mumble, word_model (phone keyboard,
                                         fuzzy completion, Arabic folding, forget), tesseract_tsv,
                                         languagetool_protocol, gw2_install, housekeeping, deepl/mymemory/llm_protocol,
+                                        cloud_mt_protocol (Google v2, Microsoft v3, LibreTranslate),
                                         translator.hpp
 res/      app.rc (icon id 1, manifest: common controls v6, version info), app.ico, app.manifest
 tools/    i18n_check.py (missing/unused translations)
@@ -183,6 +184,19 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
   diagnosis" holds no chat text. Version: `project(... VERSION)` → generated `version.h` → exe resource and UI.
 - A chat line half hidden under GW2's own tab bar is not a reading error: it was read when it appeared at the
   bottom; `ChatStream` keeps it from coming again.
+- Free screen area (`[Reader] FreeArea=1`, `FreeRect` in screen pixels, menu ≡): no MumbleLink gate, no game
+  window needed, capture target = screen, `BuildFreeTextMessages` (lines → paragraphs, ≤ ~450 chars) instead of
+  `BuildMessages`, messages carry `freeText` (never "system", always translated unless the language is understood),
+  the whole first picture is translated. Chat detection does not run in this mode.
+- Translators (`Engine`): Auto order = DeepL → Google → Microsoft → own LibreTranslate server → LLM → MyMemory. Google
+  key goes in the `X-Goog-Api-Key` header (never the URL). Protected segments: `<span translate="no"
+  class="notranslate">` (HTML mode only when something is protected). The settings combo order differs from the enum:
+  `kEngineOrder` / `EngineIndex` / `EngineAt` in settings_dialog.cpp.
+- LLM presets (`kLlmPresets`, settings_dialog.cpp): all OpenAI-compatible (Anthropic `https://api.anthropic.com/v1`,
+  Gemini `…/v1beta/openai`). Cloud URLs (`!IsLocalLlmUrl`) get no `temperature` (reasoning models reject it). The key
+  field is cleared when the provider changes. `tools/i18n_check.py` reads preset names and notes.
+- The Translator settings page shows one section per engine (`group_` collects controls, `UpdateTranslatorView`
+  after every `ShowPage`); sections share the same rows.
 - `ocr.cpp` calls `RoInitialize(MTA)`: create `ChatOcr` on a worker thread, not on the UI (STA) thread.
 - WGC frames match `DWMWA_EXTENDED_FRAME_BOUNDS`, not `GetWindowRect` (invisible resize borders).
 
