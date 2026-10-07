@@ -1,6 +1,8 @@
 // config.cpp
 #include "config.hpp"
 
+#include "win/secret.hpp"
+
 #include <algorithm>
 #include <cwchar>
 #include <iterator>
@@ -327,15 +329,15 @@ void Config::Load(const std::wstring& dir) {
     debounceMs = ini.Int(L"Translate", L"DebounceMs", ini.Int(L"DeepL", L"DebounceMs", 500, 150, 5000), 150, 5000);
 
     basicEmail = AsciiUnescape(ini.Str(L"Basic", L"Email", L""));
-    deeplKey = AsciiUnescape(ini.Str(L"DeepL", L"ApiKey", L""));
-    googleKey = AsciiUnescape(ini.Str(L"Google", L"ApiKey", L""));
-    msKey = AsciiUnescape(ini.Str(L"Microsoft", L"ApiKey", L""));
+    deeplKey = UnprotectSecret(ini.Str(L"DeepL", L"ApiKey", L""));
+    googleKey = UnprotectSecret(ini.Str(L"Google", L"ApiKey", L""));
+    msKey = UnprotectSecret(ini.Str(L"Microsoft", L"ApiKey", L""));
     msRegion = AsciiUnescape(ini.Str(L"Microsoft", L"Region", L""));
     libreUrl = AsciiUnescape(ini.Str(L"Libre", L"Url", L""));
-    libreKey = AsciiUnescape(ini.Str(L"Libre", L"ApiKey", L""));
+    libreKey = UnprotectSecret(ini.Str(L"Libre", L"ApiKey", L""));
     llmUrl = AsciiUnescape(ini.Str(L"LLM", L"Url", L"http://localhost:11434"));
     llmModel = AsciiUnescape(ini.Str(L"LLM", L"Model", L""));
-    llmKey = AsciiUnescape(ini.Str(L"LLM", L"ApiKey", L""));
+    llmKey = UnprotectSecret(ini.Str(L"LLM", L"ApiKey", L""));
     llmTimeoutSec = ini.Int(L"LLM", L"TimeoutSec", 60, 5, 600);
     llmFixOcr = ini.Bool(L"LLM", L"FixOcr", true);
 
@@ -496,15 +498,15 @@ void Config::SaveAll() const {
         SaveValue(L"Translate", L"Understood", list);
     }
     SaveValue(L"Basic", L"Email", AsciiEscape(basicEmail));
-    SaveValue(L"DeepL", L"ApiKey", AsciiEscape(deeplKey));
-    SaveValue(L"Google", L"ApiKey", AsciiEscape(googleKey));
-    SaveValue(L"Microsoft", L"ApiKey", AsciiEscape(msKey));
+    SaveValue(L"DeepL", L"ApiKey", ProtectSecret(deeplKey));
+    SaveValue(L"Google", L"ApiKey", ProtectSecret(googleKey));
+    SaveValue(L"Microsoft", L"ApiKey", ProtectSecret(msKey));
     SaveValue(L"Microsoft", L"Region", AsciiEscape(msRegion));
     SaveValue(L"Libre", L"Url", AsciiEscape(libreUrl));
-    SaveValue(L"Libre", L"ApiKey", AsciiEscape(libreKey));
+    SaveValue(L"Libre", L"ApiKey", ProtectSecret(libreKey));
     SaveValue(L"LLM", L"Url", AsciiEscape(llmUrl));
     SaveValue(L"LLM", L"Model", AsciiEscape(llmModel));
-    SaveValue(L"LLM", L"ApiKey", AsciiEscape(llmKey));
+    SaveValue(L"LLM", L"ApiKey", ProtectSecret(llmKey));
     SaveBool(L"LLM", L"FixOcr", llmFixOcr);
     SaveBool(L"Reader", L"Enabled", readerEnabled);
     SaveValue(L"Reader", L"IntervalMs", std::to_wstring(readerIntervalMs));

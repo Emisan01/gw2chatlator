@@ -12,6 +12,7 @@
 #include "app/region_picker.hpp"
 #include "app/settings_dialog.hpp"
 #include "core/chat_geometry.hpp"
+#include "core/deepl_protocol.hpp"
 #include "version.h"
 #include "core/gw2_install.hpp"
 #include "core/gw2_text.hpp"
@@ -246,6 +247,7 @@ int MainWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
     waitForGame_ = HasSwitch(cmdLine, kWaitForGw2Switch);
     const bool markChat = HasSwitch(cmdLine, L"--mark-chat"), coverChat = HasSwitch(cmdLine, L"--cover-chat");
     CleanUpFiles();
+    LoadCorrections();
 
     HDC screen = GetDC(nullptr);
     const int dpi = GetDeviceCaps(screen, LOGPIXELSY);
@@ -453,6 +455,7 @@ void MainWindow::CreateChildren() {
     lcb.onHintClick = [this] { PickRegion(); };
     lcb.onSpeakerClick = [this](const std::wstring& speaker) { OpenWhisperTab(speaker); };
     lcb.onRetranslate = [this](uint64_t id, const std::wstring& text) { Retranslate(id, text); };
+    lcb.onCorrect = [this](const ChatEntry& e) { CorrectEntry(e); };
     log_.Create(hwnd_, inst_, &theme_, std::move(lcb));
     log_.SetPalette(cfg_.palette);
     ApplyTabFilter();
@@ -1491,6 +1494,33 @@ void MainWindow::ShowMyMemoryNotice() {
     if (answer == IDNO) OpenSettings(SettingsPage::Translator);
 }
 
+std::wstring MainWindow::CorrectionsPath() const { return cfg_.dataDir + L"\\corrections.txt"; }
+
+void MainWindow::LoadCorrections() {
+    std::string data;
+    if (ReadFileBytes(CorrectionsPath(), data)) corrections_.Parse(data);
+}
+
+void MainWindow::SaveCorrections() { WriteFileAtomic(CorrectionsPath(), corrections_.Serialize()); }
+
+std::wstring MainWindow::CorrectionsInfo() const {
+    return TrF(L"{1} lines, {2} phrases", {std::to_wstring(corrections_.Lines()), std::to_wstring(corrections_.Phrases())});
+}
+
+void MainWindow::CorrectEntry(const ChatEntry& e) {
+    if (e.original.empty()) return;
+    std::wstring text = e.main;
+    if (!AskCorrection(hwnd_, inst_, e.original, &text) || text == e.main) return;
+    // Incoming lines are translated into your reading language, your messages into the chat language.
+    const bool outgoing = e.kind == ChatEntry::Kind::Outgoing;
+    const std::wstring lang = outgoing ? SendLang() : readLang_;
+    corrections_.Add(e.original, lang, e.main, text);
+    SaveCorrections();
+    if (!outgoing) cache_.Put(e.original, lang, text);
+    log_.Update(e.id, [&](ChatEntry& x) { x.main = text; });
+    SetStatus(Tr(L"Remembered – this text gets your translation from now on"), Tone::Ok, 4000);
+}
+
 void MainWindow::OnWordForgotten(const std::wstring& word) {
     SetStatus(TrF(L"Forgot “{1}” – it will no longer be suggested", {word}), Tone::Muted, 4000);
 }
@@ -1685,6 +1715,11 @@ void MainWindow::StartTranslation() {
         return;
     }
 
+    // You corrected this message once: your translation, no translator needed.
+    if (std::wstring fixed; corrections_.Lookup(body, SendLang(), &fixed)) {
+        finish(fixed);
+        return;
+    }
     // MyMemory needs a source language; DeepL and LLMs detect it better themselves.
     std::wstring source;
     if (engine_ == Engine::Basic) {
@@ -1720,7 +1755,8 @@ void MainWindow::OnTranslated(TranslatedMsg* raw) {
             const std::wstring text = SanitizeChatText(input_.Text());
             const ChatSplit split = SplitChatCommand(text);
             if (tone_ == Tone::Error) SetStatus(L"", Tone::Muted);
-            SetPreviewBody(split.prefix.empty() ? ComposePrefix() : split.prefix, SanitizeChatText(m->result.text));
+            SetPreviewBody(split.prefix.empty() ? ComposePrefix() : split.prefix,
+                           corrections_.Apply(SanitizeChatText(m->result.text), SendLang()));
             StartBackTranslation();
             if (sendPending_) {
                 sendPending_ = false;
@@ -1938,6 +1974,7 @@ bool MainWindow::DoSend(const std::wstring& line, const std::wstring& original) 
     e.speaker = whisperTo;
     e.main = body.empty() ? line : body;
     if (!original.empty() && original != e.main) e.original = original;
+    e.splitSend = parts_.size() > 1;
     e.tabId = cfg_.tabs[tab_].id;  // stays visible in the tab it was written in
     const uint64_t id = log_.Add(std::move(e));
     recentSent_.push_back({NormalizeForCompare(body), GetTickCount64(), id, false});
@@ -2098,7 +2135,11 @@ void MainWindow::HandleIncoming(const ChatMessage& m) {
     const bool automatic = m.freeText || (cfg_.autoTranslate & ChannelBit(m.channel)) != 0;
     if (foreign) {
         std::wstring cached;
-        if (cache_.Get(m.text, readLang_, cached)) {
+        if (corrections_.Lookup(m.text, readLang_, &cached)) {  // you corrected this text once
+            e.state = ChatEntry::State::Translated;
+            e.main = cached;
+            e.original = m.text;
+        } else if (cache_.Get(m.text, readLang_, cached)) {
             if (NormalizeForCompare(cached) != NormalizeForCompare(m.text)) {
                 e.state = ChatEntry::State::Translated;
                 e.main = cached;
@@ -2202,7 +2243,7 @@ void MainWindow::OnIncomingTranslated(IncomingMsg* raw) {
         const std::wstring& original = m->texts[i];
         if (r.ok) {
             ++ok;
-            const std::wstring t = SanitizeChatText(r.text);
+            const std::wstring t = corrections_.Apply(SanitizeChatText(r.text), m->lang);
             cache_.Put(original, m->lang, t);
             const std::wstring det = ToUpperAscii(PrimaryLang(r.detectedSource));
             const bool same = NormalizeForCompare(t) == NormalizeForCompare(original) ||
@@ -2874,6 +2915,40 @@ std::wstring MainWindow::TechnicalStatus() {
               lastOcrEngine_.empty() ? std::wstring(L"-") : lastOcrEngine_,
               translator_ ? translator_->Name() : std::wstring(L"-")}));
     line(L"");
+    // Safety: what the tool does and does not do, and where texts go right now.
+    auto host = [](const std::wstring& url) {
+        const size_t scheme = url.find(L"://");
+        const size_t start = scheme == std::wstring::npos ? 0 : scheme + 3;
+        return url.substr(start, url.find_first_of(L"/?", start) - start);
+    };
+    std::wstring dest;
+    switch (engine_) {
+        case Engine::Basic: dest = L"api.mymemory.translated.net"; break;
+        case Engine::DeepL: dest = IsDeepLFreeKey(cfg_.deeplKey) ? L"api-free.deepl.com" : L"api.deepl.com"; break;
+        case Engine::Google: dest = L"translation.googleapis.com"; break;
+        case Engine::Microsoft: dest = L"api.cognitive.microsofttranslator.com"; break;
+        case Engine::Libre: dest = host(cfg_.libreUrl); break;
+        case Engine::Llm: dest = host(cfg_.llmUrl.empty() ? L"http://localhost:11434" : cfg_.llmUrl); break;
+        default: break;
+    }
+    const bool local = engine_ == Engine::Llm ? IsLocalLlmUrl(cfg_.llmUrl) : engine_ == Engine::Libre && IsLocalLlmUrl(cfg_.libreUrl);
+    line(Tr(L"Safety"));
+    line(L"  [OK] " + Tr(L"Nothing runs inside the game: no DLL, no hook, no memory reading, no handle to the game process."));
+    line(L"  [OK] " + (cfg_.copyOnly ? Tr(L"Sending is off: Enter only copies, not a single key reaches the game.")
+                                     : Tr(L"A line goes to the game only when you press Enter, never by itself.")));
+    line(L"  [OK] " + Tr(L"Pictures of the screen never leave this PC; incoming chat is only shown, never obeyed."));
+    line(L"  " + std::wstring(local ? L"[OK] " : L"[i]  ") +
+         (local ? TrF(L"Texts to translate stay in your network ({1}).", {dest})
+                : TrF(L"Texts to translate go to: {1}", {dest.empty() ? std::wstring(L"-") : dest})));
+    if (cfg_.languageTool)
+        line(L"  [i]  " + TrF(L"Grammar check sends what you type to: {1}", {host(cfg_.languageToolUrl.empty()
+                                                                                      ? L"https://api.languagetool.org"
+                                                                                      : cfg_.languageToolUrl)}));
+    const bool anyKey = !cfg_.deeplKey.empty() || !cfg_.googleKey.empty() || !cfg_.msKey.empty() ||
+                        !cfg_.libreKey.empty() || !cfg_.llmKey.empty();
+    if (anyKey) line(L"  [OK] " + Tr(L"API keys are stored encrypted for your Windows account (DPAPI)."));
+    line(L"  [OK] " + TrF(L"Learned words and corrections stay on this PC ({1}).", {CorrectionsInfo()}));
+    line(L"");
     line(Tr(L"Live (since reading started)"));
     const double minutes = stats_.since ? (GetTickCount64() - stats_.since) / 60000.0 : 0;
     line(TrF(L"  Pictures read: {1} ({2} per minute) · last {3} ms, average {4} ms · lines in the last one: {5}",
@@ -2899,7 +2974,8 @@ std::wstring MainWindow::TechnicalStatus() {
          std::to_wstring(kConfirmDelayMs) + L"  ShowSystemLines=" + std::to_wstring(cfg_.showSystemLines));
     line(L"  [Reader] Region=" + std::to_wstring(cfg_.regionLeft) + L"," + std::to_wstring(cfg_.regionFromBottom) +
          L" " + std::to_wstring(cfg_.regionWidth) + L"x" + std::to_wstring(cfg_.regionHeight) + L"  RegionSet=" +
-         std::to_wstring(cfg_.regionSet) + L"  WindowCapture=" + std::to_wstring(WindowCaptureAllowed()));
+         std::to_wstring(cfg_.regionSet) + L"  WindowCapture=" + std::to_wstring(WindowCaptureAllowed()) +
+         L"  FreeArea=" + std::to_wstring(cfg_.freeArea));
     line(L"  [Translate] Engine=" + std::wstring(EngineKey(cfg_.engine)) + L"  ReadLang=" +
          (cfg_.readLang.empty() ? std::wstring(L"(Windows)") : cfg_.readLang) + L"  AutoChannels=" +
          SerializeChannels(cfg_.autoTranslate) + L"  Understood=" + understood + L"  BackTranslate=" +
@@ -2936,6 +3012,22 @@ void MainWindow::OpenSettings(SettingsPage page) {
     ctx.forgetLearned = [this] {
         spell_.ForgetAll();
         input_.RefreshSuggestions();
+    };
+    ctx.correctionsInfo = [this] { return CorrectionsInfo(); };
+    ctx.clearCorrections = [this] {
+        corrections_.Clear();
+        SaveCorrections();
+    };
+    ctx.exportCorrections = [this](const std::wstring& path) {
+        return WriteFileAtomic(path, corrections_.Serialize()) ? CorrectionsInfo() + L" – " + Tr(L"exported")
+                                                               : Tr(L"Could not write the file.");
+    };
+    ctx.importCorrections = [this](const std::wstring& path) {
+        std::string data;
+        if (!ReadFileBytes(path, data)) return Tr(L"Could not read the file.");
+        const size_t added = corrections_.Merge(data);
+        SaveCorrections();
+        return TrF(L"{1} new entries added", {std::to_wstring(added)}) + L" – " + CorrectionsInfo();
     };
     const DialogResult r = ShowSettingsDialog(hwnd_, inst_, edited, ctx, page);
     if (r.saved) ApplySettings(edited);
@@ -3011,7 +3103,10 @@ void MainWindow::ApplySettings(const Config& next) {
     }
     const bool engineChanged = prev.engine != cfg_.engine || prev.deeplKey != cfg_.deeplKey ||
                                prev.basicEmail != cfg_.basicEmail || prev.llmUrl != cfg_.llmUrl ||
-                               prev.llmModel != cfg_.llmModel || prev.llmKey != cfg_.llmKey;
+                               prev.llmModel != cfg_.llmModel || prev.llmKey != cfg_.llmKey ||
+                               prev.googleKey != cfg_.googleKey || prev.msKey != cfg_.msKey ||
+                               prev.msRegion != cfg_.msRegion || prev.libreUrl != cfg_.libreUrl ||
+                               prev.libreKey != cfg_.libreKey;
     if (engineChanged) {
         llm_.reset();
         if (!cfg_.llmModel.empty()) {

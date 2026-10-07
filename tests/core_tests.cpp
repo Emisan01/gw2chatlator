@@ -11,6 +11,7 @@
 #include "core/chat_stream.hpp"
 #include "core/chat_tabs.hpp"
 #include "core/cloud_mt_protocol.hpp"
+#include "core/corrections.hpp"
 #include "core/deepl_protocol.hpp"
 #include "core/gw2_text.hpp"
 #include "core/chat_geometry.hpp"
@@ -1249,6 +1250,36 @@ static void TestCloudMt() {
     CHECK(!ParseLibreResponse(R"({"error":"Invalid API key"})", false, 1)[0].ok);
 }
 
+static void TestCorrections() {
+    CorrectionMemory c;
+    // A corrected line comes back exactly, case and spacing of the source ignored.
+    c.Add(L"wer kommt mit zum Weltboss?", L"EN-GB", L"who comes with to the world boss?", L"Who wants to join the world boss?");
+    std::wstring out;
+    CHECK(c.Lookup(L"Wer  kommt mit zum weltboss?", L"EN-US", &out) && out == L"Who wants to join the world boss?");
+    CHECK(!c.Lookup(L"wer kommt mit zum Weltboss?", L"DE", &out));
+    // Only a few words changed: that phrase is learned and applied to new translations.
+    CHECK(c.Phrases() == 1);  // "who comes with to" -> "Who wants to join" (the end stayed the same)
+    c.Add(L"Weltboss in 5 Minuten", L"EN", L"World Boss in 5 minutes", L"world boss in 5 minutes");
+    CHECK(c.Phrases() == 1);  // only the case changed: no phrase
+    c.Add(L"brauche Hilfe bei der Fraktale", L"EN", L"need help with the fractal", L"need help with the fractals");
+    CHECK(c.Phrases() == 2);
+    CHECK(c.Apply(L"The fractal starts now.", L"EN") == L"The fractals starts now.");
+    CHECK(c.Apply(L"fractalist", L"EN") == L"fractalist");    // whole words only
+    CHECK(c.Apply(L"The fractal", L"DE") == L"The fractal");  // other language untouched
+    std::wstring from, to;
+    CHECK(CorrectionMemory::ChangedPhrase(L"Let's go to Lion's Arc now!", L"Let's go to Lion's Arch now!", &from, &to));
+    CHECK(from == L"Arc" && to == L"Arch");
+    CHECK(!CorrectionMemory::ChangedPhrase(L"a b c d e f", L"u v w x y z", &from, &to));  // everything changed
+    // Saved and loaded again, including tabs and backslashes.
+    c.Add(L"tab\there \\ x", L"EN", L"a", L"b\tc");
+    CorrectionMemory d;
+    d.Parse(c.Serialize());
+    CHECK(d.Lines() == c.Lines() && d.Phrases() == c.Phrases());
+    CHECK(d.Lookup(L"tab\there \\ x", L"EN", &out) && out == L"b\tc");
+    d.Clear();
+    CHECK(d.Lines() == 0 && d.Phrases() == 0);
+}
+
 static void TestFreeText() {
     auto line = [](const wchar_t* t, int top, int left = 10) {
         OcrLine l;
@@ -1278,6 +1309,7 @@ int main() {
     TestUtf();
     TestFreeText();
     TestCloudMt();
+    TestCorrections();
     TestText();
     TestChat();
     TestHotkey();

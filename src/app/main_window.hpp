@@ -31,6 +31,7 @@
 #include "core/languagetool_protocol.hpp"
 #include "app/theme.hpp"
 #include "core/chat_stream.hpp"
+#include "core/corrections.hpp"
 #include "core/names.hpp"
 #include "core/glossary.hpp"
 #include "core/translator.hpp"
@@ -127,6 +128,12 @@ private:
     void OnWordForgotten(const std::wstring& word);
     void OpenWhisperTab(const std::wstring& name);
     void Retranslate(uint64_t id, const std::wstring& text);
+    // Correction memory: right-click "Correct this translation" -> remembered for that text and target language.
+    void CorrectEntry(const ChatEntry& e);
+    void LoadCorrections();
+    void SaveCorrections();
+    std::wstring CorrectionsPath() const;
+    std::wstring CorrectionsInfo() const;
     void ShowMyMemoryNotice();
     void UseChatArea(const RECT& r);
     RECT ChatSearchArea() const;
@@ -269,6 +276,7 @@ private:
     ULONGLONG lastDetect_ = 0;
     static constexpr std::ptrdiff_t kStartLines = 3;  // of the history shown at the start, translate the last ...
     TranslationCache cache_;
+    CorrectionMemory corrections_;  // your corrected translations (all translators)
     struct PendingLine {
         uint64_t entryId;
         std::wstring text;

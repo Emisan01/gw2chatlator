@@ -94,7 +94,19 @@ Messlatte: **In unter einer Minute nach dem ersten Start liest man den ersten ü
 | Oberflächensprache startet mit der Windows-Sprache (sonst Englisch) | ✅ |
 | „Alles Gelernte löschen“: Hinweis lief in die nächste Zeile | ✅ |
 
-**Als Nächstes überlegt:**
+**Gebaut (2026-10-07, zweiter Teil):** Korrekturgedächtnis (Zeile + Wendung, Export/Import zum Teilen),
+Sicherheitsliste auf der Technik-Seite, API-Schlüssel mit DPAPI verschlüsselt, „Übersetzer vergleichen“,
+kleiner lokaler Übersetzer nur mit den eigenen Sprachen (LibreTranslate `--load-only`, Befehl + Adresse per Knopf).
+
+**Lohnt das kleine lokale Modell neben der Online-Basis?** Für die Qualität nicht (Google/DeepL/Claude sind
+besser). Es lohnt für: Datenschutz (nichts verlässt den PC), kein Kontingent, offline. Deshalb optional, nur mit
+den eigenen Sprachen, damit es klein bleibt. Ein eigenes CTranslate2/Opus-MT im Programm bleibt ein späterer
+Schritt (große Abhängigkeit); LibreTranslate nutzt dieselbe Art Modelle (Argos/OpenNMT).
+
+**Offen:** gemeinsame Wörterdatenbank online für alle (eigener Server, Datenschutz, Missbrauch) – vorerst
+Export/Import der Korrekturdatei; Bewertungen im Vergleich speichern.
+
+**Ursprünglich überlegt:**
 - **Sicherheitsstufe** (eine Zeile auf der Technik-Seite, nachprüfbar): kein Hook/keine DLL/kein Handle zum Spiel ✔,
   Senden nur auf Tastendruck ✔, Bilder verlassen den PC nie ✔, Netz nur zum gewählten Übersetzer (+ LanguageTool,
   wenn an) ✔, eingehender Text nur Daten ✔. Offen: API-Schlüssel mit Windows DPAPI verschlüsselt statt im Klartext

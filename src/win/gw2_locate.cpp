@@ -372,4 +372,32 @@ std::wstring PickFolder(void* owner, const std::wstring& title, const std::wstri
     return out;
 }
 
+std::wstring PickTextFile(void* owner, const std::wstring& title, bool save, const std::wstring& name) {
+    std::wstring out;
+    IFileDialog* dlg = nullptr;
+    if (FAILED(CoCreateInstance(save ? CLSID_FileSaveDialog : CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER,
+                                IID_PPV_ARGS(&dlg))) ||
+        !dlg)
+        return out;
+    DWORD opts = 0;
+    dlg->GetOptions(&opts);
+    dlg->SetOptions(opts | FOS_FORCEFILESYSTEM | (save ? FOS_OVERWRITEPROMPT : FOS_FILEMUSTEXIST));
+    const COMDLG_FILTERSPEC types[] = {{L"Text", L"*.txt"}, {L"*", L"*.*"}};
+    dlg->SetFileTypes(2, types);
+    dlg->SetDefaultExtension(L"txt");
+    if (!title.empty()) dlg->SetTitle(title.c_str());
+    if (save && !name.empty()) dlg->SetFileName(name.c_str());
+    if (SUCCEEDED(dlg->Show(static_cast<HWND>(owner)))) {
+        IShellItem* result = nullptr;
+        if (SUCCEEDED(dlg->GetResult(&result)) && result) {
+            PWSTR path = nullptr;
+            if (SUCCEEDED(result->GetDisplayName(SIGDN_FILESYSPATH, &path)) && path) out = path;
+            CoTaskMemFree(path);
+            result->Release();
+        }
+    }
+    dlg->Release();
+    return out;
+}
+
 }  // namespace gct
