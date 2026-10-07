@@ -265,6 +265,84 @@ std::wstring UserInstallDir() {
     return JoinPath(JoinPath(local, L"Programs"), kInstallFolderName);
 }
 
+namespace {
+
+std::vector<std::wstring> InstallDirCandidates() {
+    std::vector<std::wstring> dirs;
+    const std::wstring user = UserInstallDir();
+    if (!user.empty()) dirs.push_back(user);
+    const std::wstring game = FindGw2Dir();
+    if (!game.empty()) dirs.push_back(InstallDirFor(game));  // installs of 0.6 went into the game folder
+    return dirs;
+}
+
+bool SameDir(const std::wstring& a, const std::wstring& b) {
+    return CompareStringOrdinal(a.c_str(), -1, b.c_str(), -1, TRUE) == CSTR_EQUAL;
+}
+
+}  // namespace
+
+std::wstring FindInstalledExe() {
+    const std::wstring self = CurrentExePath(), selfDir = CurrentExeDir();
+    const size_t slash = self.find_last_of(L"\\/");
+    const std::wstring exeName = slash == std::wstring::npos ? self : self.substr(slash + 1);
+    for (const std::wstring& dir : InstallDirCandidates()) {
+        if (SameDir(dir, selfDir)) return {};
+        for (const std::wstring& name : {exeName, std::wstring(L"GW2ChatTranslator.exe")}) {
+            const std::wstring exe = JoinPath(dir, name);
+            if (Exists(exe)) return exe;
+        }
+    }
+    return {};
+}
+
+bool RunningInstalledCopy() {
+    const std::wstring selfDir = CurrentExeDir();
+    for (const std::wstring& dir : InstallDirCandidates())
+        if (SameDir(dir, selfDir)) return true;
+    return false;
+}
+
+std::wstring ExeVersion(const std::wstring& path) {
+    DWORD handle = 0;
+    const DWORD size = GetFileVersionInfoSizeW(path.c_str(), &handle);
+    if (!size) return {};
+    std::vector<BYTE> data(size);
+    if (!GetFileVersionInfoW(path.c_str(), 0, size, data.data())) return {};
+    VS_FIXEDFILEINFO* info = nullptr;
+    UINT len = 0;
+    if (!VerQueryValueW(data.data(), L"\\", reinterpret_cast<void**>(&info), &len) || !info) return {};
+    return std::to_wstring(HIWORD(info->dwFileVersionMS)) + L"." + std::to_wstring(LOWORD(info->dwFileVersionMS)) + L"." +
+           std::to_wstring(HIWORD(info->dwFileVersionLS));
+}
+
+bool FileNewer(const std::wstring& a, const std::wstring& b) {
+    WIN32_FILE_ATTRIBUTE_DATA fa{}, fb{};
+    if (!GetFileAttributesExW(a.c_str(), GetFileExInfoStandard, &fa) || !GetFileAttributesExW(b.c_str(), GetFileExInfoStandard, &fb))
+        return false;
+    const auto ticks = [](const FILETIME& t) { return (static_cast<unsigned long long>(t.dwHighDateTime) << 32) | t.dwLowDateTime; };
+    return ticks(fa.ftLastWriteTime) > ticks(fb.ftLastWriteTime) + 60ull * 10000000ull;
+}
+
+int CompareVersions(const std::wstring& a, const std::wstring& b) {
+    auto parts = [](const std::wstring& v) {
+        std::vector<int> p;
+        size_t i = 0;
+        while (i <= v.size()) {
+            const size_t dot = v.find(L'.', i);
+            p.push_back(_wtoi(v.substr(i, dot == std::wstring::npos ? std::wstring::npos : dot - i).c_str()));
+            if (dot == std::wstring::npos) break;
+            i = dot + 1;
+        }
+        while (p.size() < 3) p.push_back(0);
+        return p;
+    };
+    const std::vector<int> x = parts(a), y = parts(b);
+    for (size_t i = 0; i < 3; ++i)
+        if (x[i] != y[i]) return x[i] < y[i] ? -1 : 1;
+    return 0;
+}
+
 InstallResult InstallTo(const std::wstring& targetDir) {
     InstallResult r;
     std::wstring self = CurrentExePath();
