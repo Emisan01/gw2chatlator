@@ -66,7 +66,13 @@ struct ChatMessage {
     bool stamped = false;          // started with a timestamp (OCR-tolerant)
     bool tagOnly = false;          // only a timestamp / channel tag, no text (the input line)
     bool freeText = false;         // from a free screen area: a paragraph, no chat rules
+    int bottom = 0;                // free text: lower edge of its last line in the picture (pixels)
 };
+
+// Free screen area after the first picture: only what reaches into the lowest `lines` text lines is new (people
+// write at the bottom; text further up was read before, a fresh reading of it only adds fragments).
+std::vector<ChatMessage> KeepActiveBottom(std::vector<ChatMessage> msgs, const std::vector<OcrLine>& lines,
+                                          int count);
 
 // False for OCR noise: mostly symbols, no real word (e.g. a window being
 // dragged over the chat, half-covered letters).

@@ -2,6 +2,7 @@
 #include "chat_line.hpp"
 
 #include <algorithm>
+#include <functional>
 #include <iterator>
 #include <cmath>
 #include <cstdlib>
@@ -358,6 +359,25 @@ size_t FuzzyTagLength(const std::wstring& s, Channel* channel) {
     return 0;
 }
 
+std::vector<ChatMessage> KeepActiveBottom(std::vector<ChatMessage> msgs, const std::vector<OcrLine>& lines,
+                                          int count) {
+    // The lower edges of the text lines, bottom first; the count-th one is the limit.
+    std::vector<int> bottoms;
+    for (const OcrLine& l : lines)
+        if (!Trim(l.text).empty() && l.height > 0) bottoms.push_back(l.top + l.height);
+    if (count <= 0 || static_cast<int>(bottoms.size()) <= count) return msgs;
+    std::sort(bottoms.begin(), bottoms.end(), std::greater<int>());
+    // Lines side by side (columns) share a height: count heights, not lines.
+    std::vector<int> rows;
+    for (int b : bottoms)
+        if (rows.empty() || rows.back() - b > 3) rows.push_back(b);
+    if (static_cast<int>(rows.size()) <= count) return msgs;
+    const int limit = rows[static_cast<size_t>(count)];  // the bottom of the first line above the active part
+    msgs.erase(std::remove_if(msgs.begin(), msgs.end(), [&](const ChatMessage& m) { return m.bottom <= limit; }),
+               msgs.end());
+    return msgs;
+}
+
 std::vector<ChatMessage> BuildFreeTextMessages(const std::vector<OcrLine>& lines, size_t maxChars) {
     // A screen area often has several columns side by side (a sidebar, the
     // text, a picture): lines sorted top to bottom alternate between them.
@@ -441,6 +461,7 @@ std::vector<ChatMessage> BuildFreeTextMessages(const std::vector<OcrLine>& lines
         if (b.msg.text.empty()) continue;
         b.msg.freeText = true;
         b.msg.raw = b.msg.text;
+        b.msg.bottom = b.lastBottom;
         out.push_back(std::move(b.msg));
     }
     return out;

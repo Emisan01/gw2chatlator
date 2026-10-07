@@ -102,6 +102,10 @@ private:
     // Second look: dictionaries (Windows spell checker), answers cached per word, and per word in its line
     // what the second look decided (the same line comes again in every picture: it is looked at once).
     bool IsWord(const std::wstring& core);
+    // A confusion-repaired reading the dictionaries know ("syn!ax" -> "syntax", "putput" -> "output"), or "".
+    std::wstring PickConfusion(const std::wstring& core, bool garbled);
+    // For a garbled word: a dictionary suggestion close to it with marks read as letters, or "".
+    std::wstring SuggestFor(const std::wstring& core);
     std::vector<std::unique_ptr<SpellChecker>> checkers_;
     std::unordered_map<std::wstring, bool> wordOk_;
     std::unordered_map<std::wstring, std::wstring> decided_;

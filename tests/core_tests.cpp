@@ -1371,6 +1371,68 @@ static void TestRapidRec() {
     CHECK(ParseRecDictionary("a\r\nb\nc").size() == 3);
 }
 
+static void TestActiveBottom() {
+    // Ten text lines 20 px apart; two paragraphs (gap after line 3).
+    std::vector<OcrLine> lines;
+    for (int i = 0; i < 10; ++i) {
+        OcrLine l;
+        l.text = L"line number " + std::to_wstring(i) + (i == 3 ? L"." : L"");
+        l.top = i * 20 + (i >= 4 ? 30 : 0);
+        l.height = 14;
+        l.left = 10;
+        l.width = 200;
+        lines.push_back(l);
+    }
+    const std::vector<ChatMessage> all = BuildFreeTextMessages(lines);
+    CHECK(all.size() == 2);
+    // Only what reaches into the lowest 6 lines: the old paragraph above is left out, the lower one stays.
+    const std::vector<ChatMessage> active = KeepActiveBottom(all, lines, 6);
+    CHECK(active.size() == 1 && active[0].text.find(L"line number 9") != std::wstring::npos);
+    // Few lines: everything stays.
+    CHECK(KeepActiveBottom(all, lines, 20).size() == 2);
+}
+
+static void TestGarbled() {
+    auto has = [](const std::vector<std::wstring>& v, const std::wstring& w) {
+        return std::find(v.begin(), v.end(), w) != v.end();
+    };
+    // Artifacts nobody types.
+    CHECK(LooksGarbled(L"syn!ax"));
+    CHECK(LooksGarbled(L"g9danken"));
+    CHECK(LooksGarbled(L"Plövdsi0Q"));
+    CHECK(LooksGarbled(L"!raining"));
+    CHECK(LooksGarbled(L"9QEine"));
+    CHECK(LooksGarbled(L"pvg!pyt"));
+    CHECK(LooksGarbled(L"sshrei>weisq"));
+    // Ordinary chat.
+    CHECK(!LooksGarbled(L"help!"));
+    CHECK(!LooksGarbled(L"10er"));
+    CHECK(!LooksGarbled(L"4k"));
+    CHECK(!LooksGarbled(L"2nd"));
+    CHECK(!LooksGarbled(L"gw2"));
+    CHECK(!LooksGarbled(L"x2"));
+    CHECK(!LooksGarbled(L"1v1"));
+    CHECK(!LooksGarbled(L"[12:34]"));
+    CHECK(!LooksGarbled(L"Kiro.1234"));
+    CHECK(!LooksGarbled(L"https://x.org/a1b"));
+    CHECK(!LooksGarbled(L"<3"));
+    CHECK(!LooksGarbled(L"output"));
+    CHECK(!LooksGarbled(L"\"Hallo\","));
+    // The part to repair keeps a mark in front.
+    size_t at = 9;
+    CHECK(GarbledCore(L"(!raining,", &at) == L"!raining" && at == 1);
+    // What a dictionary may pick from.
+    CHECK(has(ConfusionCandidates(L"syn!ax"), L"syntax"));
+    CHECK(has(ConfusionCandidates(L"!raining"), L"training"));
+    CHECK(has(ConfusionCandidates(L"g9danken"), L"gedanken"));
+    CHECK(has(ConfusionCandidates(L"putput"), L"output"));
+    CHECK(has(ConfusionCandidates(L"rnain"), L"main"));
+    CHECK(!has(ConfusionCandidates(L"putput"), L"putput"));
+    CHECK(ConfusionCandidates(L"x9y9z9w9q9", 80).size() <= 80);
+    CHECK(MarksToLetters(L"g9danken") == L"ggdanken");
+    CHECK(MarksToLetters(L"syn!ax") == L"syntax");
+}
+
 static void TestSureLanguage() {
     // Another script decides at once, even short.
     CHECK(SureLanguage(L"привет", L"") == L"RU");
@@ -1434,6 +1496,8 @@ int main() {
     TestSecondLook();
     TestMyWords();
     TestSureLanguage();
+    TestGarbled();
+    TestActiveBottom();
     TestRapidRec();
     TestText();
     TestChat();

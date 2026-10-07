@@ -2187,6 +2187,9 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
     std::vector<ChatMessage> msgs;
     std::vector<ChatMessage> built =
         cfg_.freeArea ? BuildFreeTextMessages(s->lines) : BuildMessages(s->lines, cfg_.palette);
+    // Free area: the whole area once, then only the lowest lines (where new text appears). Typing below made the
+    // reading of old text further up flicker, and every slightly different reading came out as a new fragment.
+    if (cfg_.freeArea && streamPrimed_ && !once_) built = KeepActiveBottom(std::move(built), s->lines, kFreeActiveLines);
     for (ChatMessage& m : built)
         if (cfg_.freeArea ? LooksLikeFreeText(m.text) : LooksLikeChatText(m.text)) msgs.push_back(std::move(m));
     std::vector<ChatMessage> fresh = stream_.Feed(msgs, true);

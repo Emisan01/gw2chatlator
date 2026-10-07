@@ -292,6 +292,7 @@ private:
     bool detecting_ = false;     // looking for the GW2 chat (no area set yet)
     bool placedForSetup_ = false;  // first start: put at the usual chat place once
     ULONGLONG lastDetect_ = 0;
+    static constexpr int kFreeActiveLines = 6;  // free area after the first picture: 3 people × 2 lines per look
     static constexpr std::ptrdiff_t kStartLines = 3;  // of the history shown at the start, translate the last ...
     TranslationCache cache_;
     CorrectionMemory corrections_;  // your corrected translations (all translators)
