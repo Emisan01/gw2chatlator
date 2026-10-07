@@ -22,6 +22,10 @@ diagnosis show it.
   stored encrypted for your Windows account (DPAPI) instead of plain text.
 - **Compare translators** (technical page): the same invented chat lines through every translator that is set up,
   with the time – judge yourself which reads naturally.
+- Free screen area reads better: dark text on light backgrounds is measured too, the text recognition keeps its own
+  lines and side-by-side columns (sidebar, text, picture) become separate paragraphs; at least double enlargement for
+  small app fonts; a paragraph that grows (someone types, text streams in) updates its entry instead of adding new
+  ones, a slightly different reading of the same text is ignored.
 - Setup: "Language of this window" offers the same full list as "Translate the chat into", both starting with
   "Windows language" (the window itself shows English, German or Arabic; other choices show English for now).
   New: shortcut on the desktop. The two text paragraphs are gone.

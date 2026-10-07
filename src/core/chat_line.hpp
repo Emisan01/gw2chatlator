@@ -115,5 +115,7 @@ std::vector<ChatMessage> BuildMessages(const std::vector<OcrLine>& lines, const 
 // Long paragraphs are cut after a sentence (translators take ~450 characters
 // well). No timestamps, names or channels are looked for.
 std::vector<ChatMessage> BuildFreeTextMessages(const std::vector<OcrLine>& lines, size_t maxChars = 450);
+// Two readings of the same paragraph: it grew (someone types, a text streams in) or was read a little differently.
+bool SameFreeParagraph(const std::wstring& a, const std::wstring& b);
 
 }  // namespace gct

@@ -504,6 +504,7 @@ void MainWindow::StartReader() {
     o.ocrLanguage = cfg_.ocrLanguage;
     o.scale = cfg_.ocrScale;
     o.windowCapture = WindowCaptureAllowed();
+    o.freeText = cfg_.freeArea;
     o.captureDir = cfg_.CaptureDir();
     reader_.SetSaveCaptures(cfg_.saveCaptures);
     reader_.Start(hwnd_, WM_APP_SNAPSHOT, o);
@@ -2100,6 +2101,29 @@ void MainWindow::HandleIncoming(const ChatMessage& m) {
         OnSelfRead();
         return;
     }
+    if (m.freeText) {
+        for (FreeParagraph& fp : recentFree_) {
+            if (!SameFreeParagraph(fp.text, m.text)) continue;
+            // The same paragraph again: only a longer version (it grew) replaces it; a slightly different
+            // reading of the same text is ignored, so the translator is not asked again and again.
+            if (m.text.size() < fp.text.size() + 3) return;
+            fp.text = m.text;
+            inQueue_.erase(std::remove_if(inQueue_.begin(), inQueue_.end(),
+                                          [&](const PendingLine& pl) { return pl.entryId == fp.id; }),
+                           inQueue_.end());
+            std::wstring detected;
+            const bool foreign = NeedsTranslation(m.text, &detected) && !Understood(detected);
+            log_.Update(fp.id, [&](ChatEntry& e) {
+                e.main = m.text;
+                e.original.clear();
+                e.note.clear();
+                e.state = ChatEntry::State::Plain;
+                e.lang = detected;
+            });
+            if (foreign) Retranslate(fp.id, m.text);
+            return;
+        }
+    }
     switch (m.freeText ? Own::No : ClassifyOwn(m)) {
         case Own::SentHere:  // already in the log as "Du: ..."
             return;
@@ -2157,6 +2181,10 @@ void MainWindow::HandleIncoming(const ChatMessage& m) {
     }
     e.lang = detected;
     const uint64_t id = log_.Add(std::move(e));
+    if (m.freeText) {
+        recentFree_.push_back({id, m.text});
+        while (recentFree_.size() > 40) recentFree_.pop_front();
+    }
     if (pending) {
         inQueue_.push_back({id, m.text});
         while (inQueue_.size() > kQueueMax) {  // a busy chat outruns the translator: skip the oldest
@@ -2607,6 +2635,7 @@ void MainWindow::PickFreeArea() {
         o.tesseractLangs = cfg_.tesseractLangs;
         o.readChinese = cfg_.readChinese;
         o.ocrLanguage = cfg_.ocrLanguage;
+        o.freeText = true;
         preview = [still, stillRect, o](const RECT& r) {
             ChatOcr ocr;
             std::wstring err;
@@ -2649,12 +2678,12 @@ void MainWindow::SetFreeArea(bool on) {
     cfg_.SaveFreeArea();
     streamPrimed_ = false;
     readerReported_ = false;
-    reader_.Rescan();
+    recentFree_.clear();
     if (!cfg_.readerEnabled) {
         cfg_.readerEnabled = true;
         cfg_.SaveValue(L"Reader", L"Enabled", L"1");
-        StartReader();
     }
+    RestartReader();  // the text recognition works differently for free text
     UpdateHint();
 }
 
