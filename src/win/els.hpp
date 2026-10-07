@@ -15,6 +15,5 @@ std::wstring DetectLanguage(const std::wstring& text);
 // nothing applies or ELS is unavailable.
 std::wstring TransliterateToLatin(const std::wstring& text);
 
-bool ElsAvailable();
 
 }  // namespace gct

@@ -81,7 +81,6 @@ Els& Instance() {
 
 }  // namespace
 
-bool ElsAvailable() { return Instance().detect != nullptr; }
 
 std::wstring DetectLanguage(const std::wstring& text) {
     const std::wstring t = Trim(text);

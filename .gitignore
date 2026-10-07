@@ -1,4 +1,6 @@
 # build output
+__pycache__/
+*.pyc
 build*/
 out/
 .vs/
@@ -16,6 +18,10 @@ my-gw2-words.txt
 learned/
 gelernt_*.txt
 learned_*.txt
+my-words.txt
+corrections.txt
+ocr-fixes.txt
+rapid/
 
 # real screenshots, chat captures and their transcripts: other players' names and messages,
 # never committed (use synthetic test data in tests/data instead)

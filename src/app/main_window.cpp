@@ -465,6 +465,11 @@ void MainWindow::CreateChildren() {
         log_.SetPalette(cfg_.palette);
         SetStatus(TrF(L"Colour #{1} now belongs to \u201c{2}\u201d", {RgbToHex(rgb), ChannelLabel(ch)}), Tone::Ok, 5000);
     };
+    lcb.onResetColors = [this] {
+        cfg_.ResetColors();
+        log_.SetPalette(cfg_.palette);
+        SetStatus(Tr(L"Channel colours reset to the GW2 defaults"), Tone::Ok, 4000);
+    };
     lcb.onHintClick = [this] { PickRegion(); };
     lcb.onSpeakerClick = [this](const std::wstring& speaker) { OpenWhisperTab(speaker); };
     lcb.onRetranslate = [this](uint64_t id, const std::wstring& text) { Retranslate(id, text); };
