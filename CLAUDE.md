@@ -189,8 +189,10 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
   `UseChatArea` + `CoverChat`. Our window is excluded from the capture while it overlaps the search area.
 - Capture: WGC only where its yellow frame can be switched off (Windows 11, `BorderlessWindowCapture`), else
   DXGI; `[Reader] Capture=auto|window|screen`.
-- Translation scope: everything automatic except `[Translate] Understood=` languages and unticked
-  `AutoChannels`; skipped lines get "click to translate". MyMemory characters per day are counted
+- Translation scope: only lines whose language is sure (`SureLanguage`: other script, or ≥3 words + ELS, or telltale
+  letters); `[Reader] OnlyTranslations=1` (default) hides everything not foreign in the log. "Translate once"
+  (`once_`, `ReadingWanted()`, `kTimerOnce` 3.5 s) reads without `readerEnabled`. Everything automatic except
+  `[Translate] Understood=` languages and unticked `AutoChannels`; skipped lines get "click to translate". MyMemory characters per day are counted
   (`[Basic] UsedDay/UsedChars`, `CountMyMemory`) and shown in the footer.
 - Settings → Technical: `TechnicalStatus()` (parameters named like the ini keys, live `stats_`); "copy
   diagnosis" holds no chat text. Version: `project(... VERSION)` → generated `version.h` → exe resource and UI.

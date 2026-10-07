@@ -53,7 +53,7 @@ enum : int {
     // Translator
     kEngine, kEngineNote, kLocalModel, kPull, kLocalInfo, kGetOllama, kPullStatus, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
     kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
-    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kStartMenu, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare, kWriteIn, kLtProvider, kLtTest, kLtStatus,
+    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kStartMenu, kOnlyTr, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare, kWriteIn, kLtProvider, kLtTest, kLtStatus,
     // Game & start
     kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kStatus, kRefresh, kSetup,
     // Wizard
@@ -586,6 +586,8 @@ private:
               kCtrlX + 68, Y(r++) - 4, kCtrlW - 68, 34);
         Check(kShowSystem, Tr(L"Filter system messages (events, notices)"), !cfg_.showSystemLines, kLabelX, Y(r++),
               kW - 50);
+        Check(kOnlyTr, Tr(L"Show only translations (lines in your languages and unclear ones stay hidden)"),
+              cfg_.onlyTranslations, kLabelX, Y(r++), kW - 50);
         Check(kSecondLook, Tr(L"Smart artifact correction (misread words are read again and learned)"),
               cfg_.secondLook, kLabelX, Y(r), 380);
         Button(kOcrFixes, Tr(L"Learned…"), kCtrlX + kCtrlW - 110, Y(r++) - 2, 110);
@@ -1542,6 +1544,7 @@ private:
                                     [](const std::wstring& l) { return PrimaryLang(l) == L"ZH"; });
         const int interval = _wtoi(Text(kInterval).c_str());
         if (interval > 0) c.readerIntervalMs = std::clamp(interval, 200, 2000);
+        c.onlyTranslations = Checked(kOnlyTr);
         c.showSystemLines = !Checked(kShowSystem);  // the box says "filter
         c.secondLook = Checked(kSecondLook);
         c.saveCaptures = Checked(kCaptures);

@@ -364,6 +364,7 @@ void Config::Load(const std::wstring& dir) {
     // "OcrZoom" replaced "OcrScale" (fixed 2 by default) when the enlargement became automatic.
     ocrScale = ini.Int(L"Reader", L"OcrZoom", 0, 0, 4);
     showSystemLines = ini.Bool(L"Reader", L"ShowSystem", false);
+    onlyTranslations = ini.Bool(L"Reader", L"OnlyTranslations", true);
     saveCaptures = ini.Bool(L"Reader", L"SaveCaptures", false);
     regionLeft = ini.Int(L"Reader", L"RegionLeft", 0, -20000, 20000);
     regionFromBottom = ini.Int(L"Reader", L"RegionFromBottom", 0, -20000, 20000);
@@ -533,6 +534,7 @@ void Config::SaveAll() const {
     SaveValue(L"Reader", L"TesseractLang", FromUtf8(tesseractLangs));
     SaveBool(L"Reader", L"ReadChinese", readChinese);
     SaveBool(L"Reader", L"ShowSystem", showSystemLines);
+    SaveBool(L"Reader", L"OnlyTranslations", onlyTranslations);
     SaveBool(L"Reader", L"SaveCaptures", saveCaptures);
     SaveBool(L"Spelling", L"Enabled", spellEnabled);
     SaveValue(L"Spelling", L"AutoCorrectMode", AutoCorrectKey(autoCorrect));
