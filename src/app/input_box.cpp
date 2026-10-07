@@ -150,7 +150,7 @@ void InputBox::UpdateSuggestions() {
     if (suggestOn_ && spell_) s = spell_->Suggestions(Text(), Caret(), mode_);
     const bool same = s.kind == suggestions_.kind && s.words == suggestions_.words &&
                       s.autoIndex == suggestions_.autoIndex && s.replace.start == suggestions_.replace.start &&
-                      s.replace.length == suggestions_.replace.length;
+                      s.replace.length == suggestions_.replace.length && s.phrase == suggestions_.phrase;
     suggestions_ = std::move(s);
     if (!same) {
         if (cb_.onSuggestions) cb_.onSuggestions(suggestions_);
@@ -171,6 +171,19 @@ void InputBox::AcceptSuggestion(size_t index) {
     const size_t caret = s.replace.start + word.size() + 1;
     SendMessageW(hwnd_, EM_SETSEL, caret, caret);
     if (spell_) spell_->Chose(Text(), s.replace.start, word, true);  // picked from the word bar
+    lastFix_.valid = false;
+    UpdateSuggestions();
+}
+
+// The grey phrase at the end of the text, all words at once, followed by a space.
+void InputBox::AcceptPhrase() {
+    const WordSuggestions s = suggestions_;
+    const std::wstring text = Text();
+    if (s.phrase.empty() || s.replace.start != text.size()) return;
+    ReplaceRange({text.size(), 0}, s.phrase + L" ");
+    const size_t caret = text.size() + s.phrase.size() + 1;
+    SendMessageW(hwnd_, EM_SETSEL, caret, caret);
+    if (spell_ && !s.words.empty()) spell_->Chose(Text(), text.size(), s.words[0], true);
     lastFix_.valid = false;
     UpdateSuggestions();
 }
@@ -352,15 +365,17 @@ void InputBox::DrawGhost(HDC dc) const {
     RestoreDC(dc, saved);
 }
 
-// The next word when it is (almost) always the same ("kommst du |mit"), grey after the space at the end of the
-// text; Tab or → takes it, typing goes on as usual. Latin script only.
+// The next word when it is (almost) always the same ("kommst du |mit") – or the whole rest of a phrase you write
+// again and again ("gute nacht |bis morgen mit micro") – grey after the space at the end of the text. Tab takes all
+// of it, → one word, typing goes on as usual. Latin script only.
 void InputBox::DrawNextGhost(HDC dc) const {
     const WordSuggestions& s = suggestions_;
     if (s.kind != WordSuggestions::Kind::Next || s.autoIndex != 0 || s.words.empty()) return;
     const std::wstring text = Text();
     const size_t caret = Caret();
     if (caret < 2 || caret != text.size() || text[caret - 1] != L' ' || s.replace.start != caret) return;
-    if (!LatinOnly(text) || !LatinOnly(s.words[0])) return;
+    const std::wstring& shown = s.phrase.empty() ? s.words[0] : s.phrase;
+    if (!LatinOnly(text) || !LatinOnly(shown)) return;
     const POINT last = PosFromChar(caret - 1);
     if (last.x == -32768) return;
     const int saved = SaveDC(dc);
@@ -372,7 +387,7 @@ void InputBox::DrawNextGhost(HDC dc) const {
     IntersectClipRect(dc, clip.left, clip.top, clip.right, clip.bottom);
     SetBkMode(dc, TRANSPARENT);
     SetTextColor(dc, Theme::kMuted);
-    TextOutW(dc, last.x + sz.cx, last.y, s.words[0].c_str(), static_cast<int>(s.words[0].size()));
+    TextOutW(dc, last.x + sz.cx, last.y, shown.c_str(), static_cast<int>(shown.size()));
     RestoreDC(dc, saved);
 }
 
@@ -688,6 +703,11 @@ LRESULT InputBox::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             }
             if (ctrl && wp == VK_TAB) {
                 if (cb_.onSwitchTab) cb_.onSwitchTab();
+                return 0;
+            }
+            if (!ctrl && wp == VK_TAB && !suggestions_.phrase.empty() && suggestions_.autoIndex == 0 &&
+                Caret() == Text().size()) {  // the grey phrase: all of it
+                AcceptPhrase();
                 return 0;
             }
             if (!ctrl && wp == VK_TAB) {  // take the highlighted (else the first) word of the bar

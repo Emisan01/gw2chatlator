@@ -103,7 +103,7 @@ followed. Whatever comes back is only displayed; it can never send anything.
 |---|---|
 | Enter | send (or copy in "only copy" mode); for split messages: the next part |
 | Ctrl+Enter | send the original without translation |
-| Space / Tab / → | write the grey suggestion / next suggestion / take it without a space (after a space: Tab or → takes the grey next word) |
+| Space / Tab / → | write the grey suggestion / next suggestion / take it without a space (after a space: Tab takes the grey next word or phrase, → one word) |
 | Backspace right after an autocorrection | undo it (and learn the word) |
 | Ctrl+L | next language to write in |
 | Ctrl+U | Latin letters |
