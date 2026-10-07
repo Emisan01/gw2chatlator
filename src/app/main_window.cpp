@@ -1380,7 +1380,8 @@ void MainWindow::ShowMainMenu() {
 
 void MainWindow::SetUiLanguage(UiLang lang) {
     cfg_.uiLang = lang;
-    cfg_.SaveValue(L"General", L"UiLanguage", UiLangCode(lang));
+    cfg_.uiLangCode = UiLangCode(lang);
+    cfg_.SaveValue(L"General", L"UiLanguage", cfg_.uiLangCode);
     SetUiLang(lang);
     // Default tab names follow the language as long as you did not rename them.
     UpdateHint();

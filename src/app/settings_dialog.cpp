@@ -46,7 +46,7 @@ enum : int {
     // Translator
     kEngine, kEngineNote, kLocalModel, kPull, kLocalInfo, kGetOllama, kPullStatus, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
     kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
-    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal,
+    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop,
     // Game & start
     kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kStatus, kRefresh, kSetup,
     // Wizard
@@ -305,6 +305,22 @@ struct PullMsg {
     std::wstring error;
 };
 
+// The language lists ("Language of this window", "Translate the chat into"): Windows language first, then all.
+std::vector<std::wstring> LanguageChoices() {
+    std::vector<std::wstring> l{Tr(L"Windows language")};
+    for (const LangInfo& x : Languages()) l.push_back(std::wstring(x.native) + L"  (" + x.code + L")");
+    return l;
+}
+int LanguageChoiceOf(const std::wstring& code) {
+    if (Trim(code).empty()) return 0;
+    for (size_t i = 0; i < Languages().size(); ++i)
+        if (FindLanguage(code) == &Languages()[i]) return static_cast<int>(i) + 1;
+    return 0;
+}
+std::wstring LanguageAt(int choice) {  // "" = Windows language
+    return choice > 0 && static_cast<size_t>(choice - 1) < Languages().size() ? Languages()[choice - 1].code : L"";
+}
+
 // Translators in the order of the list (the ini key stays the enum).
 constexpr Engine kEngineOrder[] = {Engine::Auto,  Engine::Basic, Engine::Google, Engine::Microsoft,
                                    Engine::DeepL, Engine::Libre, Engine::Llm};
@@ -405,23 +421,10 @@ private:
     void BuildGeneral() {
         BeginPage();
         int r = 0;
-        Label(Tr(L"Language / Sprache / اللغة"), kLabelX, Y(r), kLabelW);
-        std::vector<std::wstring> ui;
-        int uiSel = 0;
-        for (size_t i = 0; i < UiLanguages().size(); ++i) {
-            ui.push_back(UiLanguages()[i].native);
-            if (UiLanguages()[i].lang == cfg_.uiLang) uiSel = static_cast<int>(i);
-        }
-        Combo(kUiLang, ui, uiSel, kCtrlX, Y(r++), kCtrlW);
-
+        Label(Tr(L"Language of this window"), kLabelX, Y(r), kLabelW);
+        Combo(kUiLang, LanguageChoices(), LanguageChoiceOf(cfg_.uiLangCode), kCtrlX, Y(r++), kCtrlW);
         Label(Tr(L"Translate the chat into"), kLabelX, Y(r), kLabelW);
-        std::vector<std::wstring> langs{Tr(L"Windows language")};
-        int readSel = 0;
-        for (size_t i = 0; i < Languages().size(); ++i) {
-            langs.push_back(std::wstring(Languages()[i].native) + L"  (" + Languages()[i].code + L")");
-            if (!cfg_.readLang.empty() && FindLanguage(cfg_.readLang) == &Languages()[i]) readSel = static_cast<int>(i) + 1;
-        }
-        Combo(kReadLang, langs, readSel, kCtrlX, Y(r++), kCtrlW);
+        Combo(kReadLang, LanguageChoices(), LanguageChoiceOf(cfg_.readLang), kCtrlX, Y(r++), kCtrlW);
 
         // Everything is translated; these are the exceptions (a click on a line still translates it).
         Label(Tr(L"Do not translate"), kLabelX, Y(r), kLabelW);
@@ -1228,11 +1231,11 @@ private:
 
     // Reads every control into `c`.
     void Collect(Config& c) const {
-        const int ui = Sel(kUiLang);
-        if (ui >= 0 && static_cast<size_t>(ui) < UiLanguages().size()) c.uiLang = UiLanguages()[ui].lang;
-        const int read = Sel(kReadLang);
-        if (read == 0) c.readLang.clear();
-        else if (read > 0 && static_cast<size_t>(read - 1) < Languages().size()) c.readLang = Languages()[read - 1].code;
+        if (Sel(kUiLang) >= 0) {
+            c.uiLangCode = LanguageAt(Sel(kUiLang));
+            c.uiLang = EffectiveUiLang(c.uiLangCode);
+        }
+        if (Sel(kReadLang) >= 0) c.readLang = LanguageAt(Sel(kReadLang));
         std::vector<std::wstring> writes;
         for (const std::wstring& code : ParseLangList(Text(kWriteLangs)))
             if (const LangInfo* l = FindLanguage(code)) writes.push_back(l->code);
@@ -1334,50 +1337,32 @@ private:
 
         // Step 1
         BeginPage();
+        // Both language lists are the same: "Windows language" first, then every language.
         Label(Tr(L"Language of this window"), 24, 60, 190);
-        std::vector<std::wstring> ui;
-        int uiSel = 0;
-        for (size_t i = 0; i < UiLanguages().size(); ++i) {
-            ui.push_back(UiLanguages()[i].native);
-            if (UiLanguages()[i].lang == cfg_.uiLang) uiSel = static_cast<int>(i);
-        }
-        Combo(kUiLang, ui, uiSel, 220, 60, 300);
+        Combo(kUiLang, LanguageChoices(), LanguageChoiceOf(cfg_.uiLangCode), 220, 60, 300);
         Label(Tr(L"Translate the chat into"), 24, 96, 190);
-        std::vector<std::wstring> langs{Tr(L"Windows language")};
-        int readSel = 0;
-        for (size_t i = 0; i < Languages().size(); ++i) {
-            langs.push_back(std::wstring(Languages()[i].native) + L"  (" + Languages()[i].code + L")");
-            if (!cfg_.readLang.empty() && FindLanguage(cfg_.readLang) == &Languages()[i]) readSel = static_cast<int>(i) + 1;
-        }
-        Combo(kReadLang, langs, readSel, 220, 96, 300);
+        Combo(kReadLang, LanguageChoices(), LanguageChoiceOf(cfg_.readLang), 220, 96, 300);
         Label(Tr(L"Guild Wars 2 folder"), 24, 140, 190);
         const std::wstring found = cfg_.gw2Dir.empty() ? FindGw2Dir() : cfg_.gw2Dir;
         Edit(kGw2Dir, found, 220, 140, 214);
         Button(kGw2Browse, Tr(L"Browse…"), 440, 139, 80);
         Check(kInstall, Tr(L"Install into the GW2 folder (addons\\GW2ChatTranslator)"), !found.empty(), 24, 178,
               kW - 48);
-        Check(kAutostart, Tr(L"Start with Windows and appear when GW2 runs"), true, 24, 206, kW - 48);
-        Label(Tr(L"Then just open your GW2 chat: this window finds it by itself and lies over it. "
-                 L"Turn timestamps on in GW2 (Options → Chat); a large chat text reads best."),
-              24, 240, kW - 48, 44);
-        Label(Tr(L"Nothing is put into the game itself: no DLL, no hook. The tool only looks at the screen and "
-                 L"the clipboard, and sends a line only when you press Enter."),
-              24, 290, kW - 48, 34);
+        Check(kDesktop, Tr(L"Shortcut on the desktop"), true, 24, 206, kW - 48);
+        Check(kAutostart, Tr(L"Start with Windows and appear when GW2 runs"), true, 24, 234, kW - 48);
         EndPages();
 
         // One page: the chat itself is found later, when it is open.
-        Button(kNext, Tr(L"Finish"), kW - 222, 336, 100);
-        Button(IDCANCEL, Tr(L"Close"), kW - 114, 336, 100);
+        Button(kNext, Tr(L"Finish"), kW - 222, 276, 100);
+        Button(IDCANCEL, Tr(L"Close"), kW - 114, 276, 100);
         SetText(kStepTitle, Tr(L"Setup – one step"));
         ShowPage(0);
     }
 
     bool ApplyStep1() {
-        const int ui = Sel(kUiLang);
-        if (ui >= 0 && static_cast<size_t>(ui) < UiLanguages().size()) cfg_.uiLang = UiLanguages()[ui].lang;
-        const int read = Sel(kReadLang);
-        if (read == 0) cfg_.readLang.clear();
-        else if (read > 0 && static_cast<size_t>(read - 1) < Languages().size()) cfg_.readLang = Languages()[read - 1].code;
+        cfg_.uiLangCode = LanguageAt(Sel(kUiLang));
+        cfg_.uiLang = EffectiveUiLang(cfg_.uiLangCode);
+        cfg_.readLang = LanguageAt(Sel(kReadLang));
         const std::wstring rawDir = Trim(Text(kGw2Dir));
         const std::wstring resolved = ResolveGw2Dir(rawDir);
         const std::wstring dir = resolved.empty() ? rawDir : resolved;
@@ -1402,6 +1387,7 @@ private:
             exe = r.exePath;
         }
         SetAutostart(Checked(kAutostart), exe);
+        if (Checked(kDesktop)) CreateDesktopShortcut(exe);  // the installed copy, so it is found after setup
         return true;
     }
 
@@ -1423,14 +1409,11 @@ private:
             case kUiLang:
                 // Switch the language right away, so the next steps are readable.
                 if (code == CBN_SELCHANGE) {
-                    const int ui = Sel(kUiLang);
-                    if (ui >= 0 && static_cast<size_t>(ui) < UiLanguages().size()) {
-                        const int read = Sel(kReadLang);
-                        if (read == 0) cfg_.readLang.clear();
-                        else if (read > 0 && static_cast<size_t>(read - 1) < Languages().size())
-                            cfg_.readLang = Languages()[read - 1].code;
+                    if (Sel(kUiLang) >= 0) {
+                        cfg_.readLang = LanguageAt(Sel(kReadLang));
                         if (!Trim(Text(kGw2Dir)).empty()) cfg_.gw2Dir = Trim(Text(kGw2Dir));
-                        cfg_.uiLang = UiLanguages()[ui].lang;
+                        cfg_.uiLangCode = LanguageAt(Sel(kUiLang));
+                        cfg_.uiLang = EffectiveUiLang(cfg_.uiLangCode);
                         SetUiLang(cfg_.uiLang);
                         RebuildAll(Tr(L"Setup") + L" \u2013 GW2 Chat Translator");
                     }
@@ -1522,7 +1505,7 @@ DialogResult ShowSettingsDialog(HWND owner, HINSTANCE inst, Config& cfg, const D
 
 DialogResult ShowSetupWizard(HWND owner, HINSTANCE inst, Config& cfg, const DialogContext& ctx) {
     SetupWizard dlg(cfg, ctx);
-    dlg.Run(owner, inst, Tr(L"Setup") + L" – GW2 Chat Translator", 560, 372);
+    dlg.Run(owner, inst, Tr(L"Setup") + L" – GW2 Chat Translator", 560, 314);
     return dlg.result;
 }
 

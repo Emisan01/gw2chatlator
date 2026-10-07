@@ -292,6 +292,12 @@ const wchar_t* EngineKey(Engine e) {
     }
 }
 
+UiLang EffectiveUiLang(const std::wstring& code) {
+    if (!Trim(code).empty()) return UiLangFromCode(code, UiLang::En);
+    const LANGID winUi = PRIMARYLANGID(GetUserDefaultUILanguage());
+    return winUi == LANG_GERMAN ? UiLang::De : winUi == LANG_ARABIC ? UiLang::Ar : UiLang::En;
+}
+
 void Config::Load(const std::wstring& dir) {
     dataDir = dir;
     iniPath = dir + L"\\gw2-chat-translator.ini";
@@ -303,10 +309,8 @@ void Config::Load(const std::wstring& dir) {
     }
 
     const Ini ini(iniPath);
-    // First start: the Windows display language when we have it (German, Arabic), else English.
-    const LANGID winUi = PRIMARYLANGID(GetUserDefaultUILanguage());
-    const UiLang winDefault = winUi == LANG_GERMAN ? UiLang::De : winUi == LANG_ARABIC ? UiLang::Ar : UiLang::En;
-    uiLang = UiLangFromCode(ini.Str(L"General", L"UiLanguage", L""), winDefault);
+    uiLangCode = ini.Str(L"General", L"UiLanguage", L"");
+    uiLang = EffectiveUiLang(uiLangCode);
     setupDone = ini.Bool(L"General", L"SetupDone", false);
     myMemoryNoticeShown = ini.Bool(L"Basic", L"NoticeShown", false);
     myMemoryDay = ini.Str(L"Basic", L"UsedDay", L"");
@@ -482,7 +486,7 @@ void Config::SaveDock() const {
 }
 
 void Config::SaveAll() const {
-    SaveValue(L"General", L"UiLanguage", UiLangCode(uiLang));
+    SaveValue(L"General", L"UiLanguage", uiLangCode);
     SaveBool(L"General", L"SetupDone", setupDone);
     SaveValue(L"General", L"Gw2Dir", AsciiEscape(gw2Dir));
     SaveValue(L"Translate", L"Engine", EngineKey(engine));
