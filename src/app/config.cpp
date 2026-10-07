@@ -26,8 +26,8 @@ const char kHeader[] =
 
 const char kTranslateSections[] =
     "[Translate]\r\n"
-    "; Translator: auto | basic | deepl | llm\r\n"
-    ";   auto  = DeepL if a key is set, else the LLM if a model is set, else basic\r\n"
+    "; Translator: auto | basic | deepl | google | microsoft | libre | llm\r\n"
+    ";   auto  = DeepL, Google, Microsoft or your server if set, else the LLM if a model is set, else basic\r\n"
     ";   basic = MyMemory: free, no account, limited daily quota\r\n"
     "Engine=auto\r\n"
     "; Your reading language: the GW2 chat is translated into it. Empty = Windows language.\r\n"
@@ -101,6 +101,20 @@ const char kTranslateSections[] =
 const char kRestSections[] =
     "[DeepL]\r\n"
     "; Optional, best quality: https://www.deepl.com/pro-api  (free keys end in :fx)\r\n"
+    "ApiKey=\r\n"
+    "\r\n"
+    "[Google]\r\n"
+    "; Optional: Google Cloud Translation, 500,000 characters a month free (Engine=google)\r\n"
+    "ApiKey=\r\n"
+    "\r\n"
+    "[Microsoft]\r\n"
+    "; Optional: Microsoft Translator, free tier F0 (Engine=microsoft). Region e.g. westeurope\r\n"
+    "ApiKey=\r\n"
+    "Region=\r\n"
+    "\r\n"
+    "[Libre]\r\n"
+    "; Optional: own LibreTranslate-compatible server, e.g. http://localhost:5000 (Engine=libre)\r\n"
+    "Url=\r\n"
     "ApiKey=\r\n"
     "\r\n"
     "[Spelling]\r\n"
@@ -233,6 +247,9 @@ Engine ParseEngine(const std::wstring& s) {
     if (v == L"basic" || v == L"basis" || v == L"mymemory") return Engine::Basic;
     if (v == L"deepl") return Engine::DeepL;
     if (v == L"llm") return Engine::Llm;
+    if (v == L"google") return Engine::Google;
+    if (v == L"microsoft") return Engine::Microsoft;
+    if (v == L"libre" || v == L"libretranslate") return Engine::Libre;
     return Engine::Auto;
 }
 
@@ -266,6 +283,9 @@ const wchar_t* EngineKey(Engine e) {
         case Engine::Basic: return L"basic";
         case Engine::DeepL: return L"deepl";
         case Engine::Llm: return L"llm";
+        case Engine::Google: return L"google";
+        case Engine::Microsoft: return L"microsoft";
+        case Engine::Libre: return L"libre";
         default: return L"auto";
     }
 }
@@ -281,7 +301,10 @@ void Config::Load(const std::wstring& dir) {
     }
 
     const Ini ini(iniPath);
-    uiLang = UiLangFromCode(ini.Str(L"General", L"UiLanguage", L"en"), UiLang::En);
+    // First start: the Windows display language when we have it (German, Arabic), else English.
+    const LANGID winUi = PRIMARYLANGID(GetUserDefaultUILanguage());
+    const UiLang winDefault = winUi == LANG_GERMAN ? UiLang::De : winUi == LANG_ARABIC ? UiLang::Ar : UiLang::En;
+    uiLang = UiLangFromCode(ini.Str(L"General", L"UiLanguage", L""), winDefault);
     setupDone = ini.Bool(L"General", L"SetupDone", false);
     myMemoryNoticeShown = ini.Bool(L"Basic", L"NoticeShown", false);
     myMemoryDay = ini.Str(L"Basic", L"UsedDay", L"");
@@ -305,6 +328,11 @@ void Config::Load(const std::wstring& dir) {
 
     basicEmail = AsciiUnescape(ini.Str(L"Basic", L"Email", L""));
     deeplKey = AsciiUnescape(ini.Str(L"DeepL", L"ApiKey", L""));
+    googleKey = AsciiUnescape(ini.Str(L"Google", L"ApiKey", L""));
+    msKey = AsciiUnescape(ini.Str(L"Microsoft", L"ApiKey", L""));
+    msRegion = AsciiUnescape(ini.Str(L"Microsoft", L"Region", L""));
+    libreUrl = AsciiUnescape(ini.Str(L"Libre", L"Url", L""));
+    libreKey = AsciiUnescape(ini.Str(L"Libre", L"ApiKey", L""));
     llmUrl = AsciiUnescape(ini.Str(L"LLM", L"Url", L"http://localhost:11434"));
     llmModel = AsciiUnescape(ini.Str(L"LLM", L"Model", L""));
     llmKey = AsciiUnescape(ini.Str(L"LLM", L"ApiKey", L""));
@@ -469,6 +497,11 @@ void Config::SaveAll() const {
     }
     SaveValue(L"Basic", L"Email", AsciiEscape(basicEmail));
     SaveValue(L"DeepL", L"ApiKey", AsciiEscape(deeplKey));
+    SaveValue(L"Google", L"ApiKey", AsciiEscape(googleKey));
+    SaveValue(L"Microsoft", L"ApiKey", AsciiEscape(msKey));
+    SaveValue(L"Microsoft", L"Region", AsciiEscape(msRegion));
+    SaveValue(L"Libre", L"Url", AsciiEscape(libreUrl));
+    SaveValue(L"Libre", L"ApiKey", AsciiEscape(libreKey));
     SaveValue(L"LLM", L"Url", AsciiEscape(llmUrl));
     SaveValue(L"LLM", L"Model", AsciiEscape(llmModel));
     SaveValue(L"LLM", L"ApiKey", AsciiEscape(llmKey));

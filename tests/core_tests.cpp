@@ -10,6 +10,7 @@
 #include "core/chat_line.hpp"
 #include "core/chat_stream.hpp"
 #include "core/chat_tabs.hpp"
+#include "core/cloud_mt_protocol.hpp"
 #include "core/deepl_protocol.hpp"
 #include "core/gw2_text.hpp"
 #include "core/chat_geometry.hpp"
@@ -1215,6 +1216,39 @@ static void TestModelList() {
     CHECK(BuildLlmRequest({{{L"x", false}}}, L"English", L"m", false, false).find("temperature") == std::string::npos);
 }
 
+static void TestCloudMt() {
+    CHECK(GoogleLang(L"EN-GB") == L"en" && GoogleLang(L"ZH-HANS") == L"zh-CN" && GoogleLang(L"ZH-HANT") == L"zh-TW");
+    CHECK(GoogleLang(L"PT-PT") == L"pt-PT" && GoogleLang(L"PT-BR") == L"pt" && GoogleLang(L"NB") == L"no");
+    CHECK(MicrosoftLang(L"ZH-HANS") == L"zh-Hans" && MicrosoftLang(L"DE") == L"de" && MicrosoftLang(L"") == L"");
+    // Plain text without protected parts; HTML with them.
+    const CloudMtPayload plain = BuildGooglePayload({{{L"hello", false}}}, L"", L"DE");
+    CHECK(!plain.html && plain.json.find("\"format\":\"text\"") != std::string::npos);
+    CHECK(plain.json.find("\"source\"") == std::string::npos && plain.json.find("\"target\":\"de\"") != std::string::npos);
+    const CloudMtPayload prot = BuildGooglePayload({{{L"hi ", false}, {L"Kiro Vale", true}, {L" & bye", false}}}, L"EN-GB", L"DE");
+    CHECK(prot.html && prot.json.find("translate=") != std::string::npos && prot.json.find("&amp; bye") != std::string::npos);
+    const auto g = ParseGoogleResponse(
+        R"({"data":{"translations":[{"translatedText":"hallo <span translate=\"no\" class=\"notranslate\">Kiro Vale</span> &amp; tsch&#252;ss","detectedSourceLanguage":"en"}]}})",
+        true, 1);
+    CHECK(g.size() == 1 && g[0].ok && g[0].text == L"hallo Kiro Vale & tschüss" && g[0].detectedSource == L"EN");
+    const auto ge = ParseGoogleResponse(R"({"error":{"code":400,"message":"API key not valid."}})", false, 2);
+    CHECK(ge.size() == 2 && !ge[1].ok && ge[1].error.find(L"API key not valid") != std::wstring::npos);
+    CHECK(MicrosoftQuery(L"", L"ZH-HANS", true) == L"/translate?api-version=3.0&to=zh-Hans&textType=html");
+    CHECK(BuildMicrosoftPayload({{{L"a", false}}, {{L"b", false}}}).json == "[{\"Text\":\"a\"},{\"Text\":\"b\"}]");
+    const auto m = ParseMicrosoftResponse(
+        R"([{"detectedLanguage":{"language":"fr","score":1.0},"translations":[{"text":"Hallo","to":"de"}]}])", false, 1);
+    CHECK(m.size() == 1 && m[0].ok && m[0].text == L"Hallo" && m[0].detectedSource == L"FR");
+    CHECK(!ParseMicrosoftResponse(R"({"error":{"code":401000,"message":"bad key"}})", false, 1)[0].ok);
+    // LibreTranslate: any address, arrays in and out.
+    CHECK(LibreTranslateUrl(L"http://localhost:5000/") == L"http://localhost:5000/translate");
+    CHECK(LibreTranslateUrl(L"https://x.example/translate") == L"https://x.example/translate");
+    CHECK(LibreLang(L"") == L"auto" && LibreLang(L"ZH-HANT") == L"zt" && LibreLang(L"EN-GB") == L"en");
+    const CloudMtPayload lp = BuildLibrePayload({{{L"hola", false}}}, L"", L"DE", L"k1");
+    CHECK(lp.json.find("\"source\":\"auto\"") != std::string::npos && lp.json.find("\"api_key\":\"k1\"") != std::string::npos);
+    const auto lr = ParseLibreResponse(R"({"translatedText":["hallo"],"detectedLanguage":[{"confidence":90,"language":"es"}]})", false, 1);
+    CHECK(lr.size() == 1 && lr[0].ok && lr[0].text == L"hallo" && lr[0].detectedSource == L"ES");
+    CHECK(!ParseLibreResponse(R"({"error":"Invalid API key"})", false, 1)[0].ok);
+}
+
 static void TestFreeText() {
     auto line = [](const wchar_t* t, int top, int left = 10) {
         OcrLine l;
@@ -1243,6 +1277,7 @@ static void TestFreeText() {
 int main() {
     TestUtf();
     TestFreeText();
+    TestCloudMt();
     TestText();
     TestChat();
     TestHotkey();

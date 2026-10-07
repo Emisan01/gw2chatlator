@@ -15,7 +15,7 @@
 
 namespace gct {
 
-enum class Engine { Auto, Basic, DeepL, Llm };
+enum class Engine { Auto, Basic, DeepL, Llm, Google, Microsoft, Libre };
 enum class OcrChoice { Auto, Tesseract, Windows };
 enum class AutoCorrectMode { Off, Safe, Phone };
 
@@ -45,6 +45,12 @@ struct Config {
     int myMemoryUsed = 0;              // characters sent today (free: 5,000 a day, 50,000 with an e-mail)
     // [DeepL]
     std::wstring deeplKey;
+    // [Google] Cloud Translation (500,000 characters a month free)
+    std::wstring googleKey;
+    // [Microsoft] Translator (2 million characters a month free, key + Azure region)
+    std::wstring msKey, msRegion;
+    // [Libre] own translation server (LibreTranslate-compatible), any address
+    std::wstring libreUrl, libreKey;
     // [LLM]
     std::wstring llmUrl, llmModel, llmKey;
     int llmTimeoutSec = 60;

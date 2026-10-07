@@ -21,6 +21,7 @@ add_library(gct_core STATIC
     src/core/glossary.cpp
     src/core/protect.cpp
     src/core/slang.cpp
+    src/core/cloud_mt_protocol.cpp
     src/core/deepl_protocol.cpp
     src/core/mymemory_protocol.cpp
     src/core/llm_protocol.cpp

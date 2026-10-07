@@ -3,6 +3,19 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## Unreleased
+
+- **Translate any screen area** (menu ≡): frame any text – a website, a document, another game – and everything in
+  it is translated; no chat rules, works without GW2. "Read the GW2 chat" switches back.
+- **More translators**, each with a "get key" button: Google Translate and Microsoft Translator (free monthly
+  contingent with a key), your own LibreTranslate-compatible server (any address). DeepL stays.
+- **AI models as presets**: Claude, Gemini (free key), GPT, Mistral, Groq, OpenRouter, local (Ollama) or any other
+  address. The key is cleared when the provider changes. Cloud models no longer get a `temperature` they reject.
+- The translator page shows only the chosen translator; the AI model and "repairs recognition errors" are one section.
+- MyMemory: shorter, clearer privacy notice; the e-mail field explains 50,000 instead of 5,000 characters a day.
+- The UI language starts in the Windows language (German, Arabic), else English.
+- Fixed: the hint under "Delete everything learned" ran into the next line.
+
 ## 0.6.0 — 2026-10-06
 
 **First start**

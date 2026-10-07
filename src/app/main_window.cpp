@@ -387,9 +387,20 @@ void MainWindow::InitServices() {
 
 void MainWindow::ChooseEngine(bool announce) {
     const bool haveDeepL = !cfg_.deeplKey.empty(), haveLlm = llm_ != nullptr;
+    const bool haveGoogle = !cfg_.googleKey.empty(), haveMs = !cfg_.msKey.empty(), haveLibre = !cfg_.libreUrl.empty();
     Engine e = cfg_.engine;
     std::wstring note;
-    if (e == Engine::Auto) e = haveDeepL ? Engine::DeepL : haveLlm ? Engine::Llm : Engine::Basic;
+    if (e == Engine::Auto)
+        e = haveDeepL    ? Engine::DeepL
+            : haveGoogle ? Engine::Google
+            : haveMs     ? Engine::Microsoft
+            : haveLibre  ? Engine::Libre
+            : haveLlm    ? Engine::Llm
+                         : Engine::Basic;
+    if ((e == Engine::Google && !haveGoogle) || (e == Engine::Microsoft && !haveMs) || (e == Engine::Libre && !haveLibre)) {
+        e = Engine::Basic;
+        note = Tr(L"No API key set – using basic (MyMemory)");
+    }
     if (e == Engine::DeepL && !haveDeepL) {
         e = Engine::Basic;
         note = Tr(L"No DeepL key set \u2013 using basic (MyMemory)");
@@ -400,6 +411,9 @@ void MainWindow::ChooseEngine(bool announce) {
     }
     engine_ = e;
     if (e == Engine::DeepL) translator_ = MakeDeepLTranslator(cfg_.deeplKey);
+    else if (e == Engine::Google) translator_ = MakeGoogleTranslator(cfg_.googleKey);
+    else if (e == Engine::Microsoft) translator_ = MakeMicrosoftTranslator(cfg_.msKey, cfg_.msRegion);
+    else if (e == Engine::Libre) translator_ = MakeLibreTranslator(cfg_.libreUrl, cfg_.libreKey);
     else if (e == Engine::Llm) translator_ = llm_;
     else translator_ = MakeMyMemoryTranslator(cfg_.basicEmail);
     inPauseUntil_ = 0;
@@ -1465,11 +1479,12 @@ void MainWindow::ShowMyMemoryNotice() {
     cfg_.SaveBool(L"Basic", L"NoticeShown", true);
     const int answer = MessageBoxW(
         hwnd_,
-        Tr(L"The free translator MyMemory is in use.\n\n"
-           L"Everything that is translated – your messages and the chat lines of other players – is sent to "
-           L"mymemory.translated.net, a public translation memory that may store it.\n\n"
-           L"Keep MyMemory? “No” opens the translator settings (DeepL, or a local LLM that keeps everything "
-           L"on this PC).")
+        Tr(L"Translating with MyMemory (free).\n\n"
+           L"What goes there: only the lines being translated. MyMemory may keep them in its public translation "
+           L"memory.\n"
+           L"What stays here: pictures of the screen, your learned words, your settings.\n\n"
+           L"Keep MyMemory? “No” opens the translator settings (Google, Microsoft, DeepL, an AI model – or a "
+           L"local one, then nothing leaves this PC).")
             .c_str(),
         Tr(L"Privacy notice").c_str(),
         MB_YESNO | MB_ICONINFORMATION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0));

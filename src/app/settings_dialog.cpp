@@ -43,6 +43,7 @@ enum : int {
     kSpell, kAutoCorrect, kSuggest, kLearn, kForgetAll, kForgetStatus, kLt, kLtUrl, kBackTr, kSendMode, kReturnFocus,
     // Translator
     kEngine, kEngineNote, kLocalModel, kPull, kLocalInfo, kGetOllama, kPullStatus, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
+    kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
     // Game & start
     kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kStatus, kRefresh, kSetup,
     // Wizard
@@ -165,6 +166,7 @@ protected:
     virtual void Build() = 0;
     virtual void OnCommand(int id, int code) = 0;
     virtual void OnTabChanged() {}
+    virtual void OnRebuild() {}
     virtual void OnSlider() {}
     virtual LRESULT OnApp(UINT, WPARAM, LPARAM) { return 0; }
     void Close() { done_ = true; }
@@ -177,6 +179,7 @@ protected:
                                  reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)), inst_, nullptr);
         SendMessageW(c, WM_SETFONT, reinterpret_cast<WPARAM>(font_), FALSE);
         if (page_ >= 0) pages_[static_cast<size_t>(page_)].push_back(c);
+        if (group_) group_->push_back(c);
         return c;
     }
     HWND Label(const std::wstring& t, int x, int y, int w, int h = 18, int id = 0) {
@@ -212,6 +215,8 @@ protected:
         while (HWND c = GetWindow(hwnd_, GW_CHILD)) DestroyWindow(c);
         pages_.clear();
         page_ = -1;
+        group_ = nullptr;
+        OnRebuild();
         LONG_PTR ex = GetWindowLongPtrW(hwnd_, GWL_EXSTYLE);
         ex = UiRtl() ? (ex | WS_EX_LAYOUTRTL) : (ex & ~static_cast<LONG_PTR>(WS_EX_LAYOUTRTL));
         SetWindowLongPtrW(hwnd_, GWL_EXSTYLE, ex);
@@ -237,6 +242,7 @@ protected:
     int dpi_ = 96;
     std::vector<std::vector<HWND>> pages_;
     int page_ = -1;
+    std::vector<HWND>* group_ = nullptr;  // controls created now also go here (sections shown on demand)
 
 private:
     static LRESULT CALLBACK Proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
@@ -296,6 +302,61 @@ struct PullMsg {
     std::wstring error;
 };
 
+// Translators in the order of the list (the ini key stays the enum).
+constexpr Engine kEngineOrder[] = {Engine::Auto,  Engine::Basic, Engine::Google, Engine::Microsoft,
+                                   Engine::DeepL, Engine::Libre, Engine::Llm};
+constexpr int kEngineCount = static_cast<int>(sizeof(kEngineOrder) / sizeof(kEngineOrder[0]));
+int EngineIndex(Engine e) {
+    for (int i = 0; i < kEngineCount; ++i)
+        if (kEngineOrder[i] == e) return i;
+    return 0;
+}
+Engine EngineAt(int index) { return index >= 0 && index < kEngineCount ? kEngineOrder[index] : Engine::Auto; }
+
+// AI models: one click fills address and model; the button opens the page
+// where the key is made. All speak the OpenAI chat format.
+struct LlmPreset {
+    const wchar_t* name;
+    const wchar_t* url;     // empty = keep what is there (custom)
+    const wchar_t* model;   // empty = keep / pick with "Load models"
+    const wchar_t* keyUrl;  // nullptr = no key needed
+    const wchar_t* note;    // English UI text (Tr)
+};
+const LlmPreset kLlmPresets[] = {
+    {L"Local (Ollama / LM Studio)", L"http://localhost:11434", L"", nullptr,
+     L"Runs on this PC: nothing leaves it, no costs. Needs a graphics card for good speed."},
+    {L"Claude (Anthropic)", L"https://api.anthropic.com/v1", L"claude-haiku-4-5",
+     L"https://console.anthropic.com/settings/keys",
+     L"Very good and fast. Paid by use: roughly 1 $ per 1,000 chat lines with Haiku."},
+    {L"Gemini (Google, free key)", L"https://generativelanguage.googleapis.com/v1beta/openai", L"gemini-flash-latest",
+     L"https://aistudio.google.com/apikey",
+     L"Free key without a credit card (daily limits). On the free tier Google may use the texts to improve its "
+     L"products."},
+    {L"GPT (OpenAI)", L"https://api.openai.com/v1", L"gpt-5-mini", L"https://platform.openai.com/api-keys",
+     L"Very good. Paid by use; \"Load models\" shows the current models."},
+    {L"Mistral (free tier)", L"https://api.mistral.ai/v1", L"mistral-small-latest",
+     L"https://console.mistral.ai/api-keys", L"European provider with a free experiment tier (limits per minute)."},
+    {L"Groq (free key, very fast)", L"https://api.groq.com/openai/v1", L"llama-3.3-70b-versatile",
+     L"https://console.groq.com/keys", L"Free key with daily limits, answers in a fraction of a second."},
+    {L"OpenRouter (many models)", L"https://openrouter.ai/api/v1", L"", L"https://openrouter.ai/settings/keys",
+     L"One key for many providers, some models free. Pick one with \"Load models\"."},
+    {L"Other address", L"", L"", nullptr, L"Any OpenAI-compatible address."},
+};
+constexpr int kPresetCount = static_cast<int>(sizeof(kLlmPresets) / sizeof(kLlmPresets[0]));
+constexpr int kPresetLocal = 0, kPresetOther = kPresetCount - 1;
+
+// Which preset an address belongs to (by host).
+int PresetOf(const std::wstring& url) {
+    const std::wstring u = CaseFold(Trim(url));
+    if (u.empty() || IsLocalLlmUrl(u)) return kPresetLocal;
+    for (int i = 1; i < kPresetOther; ++i) {
+        std::wstring host = CaseFold(kLlmPresets[i].url);
+        host = host.substr(0, host.find(L'/', 8));
+        if (u.rfind(host, 0) == 0) return i;
+    }
+    return kPresetOther;
+}
+
 // ---------------------------------------------------------------------------
 // Settings
 // ---------------------------------------------------------------------------
@@ -331,6 +392,8 @@ private:
         Button(IDCANCEL, Tr(L"Cancel"), kW - 112, 490, 100);
         SendMessageW(tab_, TCM_SETCURSEL, static_cast<WPARAM>(start_), 0);
         ShowPage(static_cast<size_t>(start_));
+        UpdateTranslatorView();
+        lastPreset_ = Sel(kLlmPreset);
         RefreshStatus();
     }
 
@@ -449,9 +512,10 @@ private:
         Check(kSuggest, Tr(L"Word bar with suggestions (Tab takes the highlighted word)"), cfg_.suggestions, kLabelX,
               Y(r++), kW - 50);
         Check(kLearn, Tr(L"Learn the words I send"), cfg_.learnWords, kLabelX, Y(r), 260);
-        Button(kForgetAll, Tr(L"Delete everything learned…"), kCtrlX + 80, Y(r) - 2, 220);
-        Label(Tr(L"Stays on this PC. Right-click a word to forget just that one."), kCtrlX + 80, Y(r++) + 24, kCtrlW - 80,
-              20, kForgetStatus);
+        Button(kForgetAll, Tr(L"Delete everything learned…"), kCtrlX + 80, Y(r++) - 2, 220);
+        // Own row: below the button it used to run into the next line.
+        Label(Tr(L"Stays on this PC. Right-click a word to forget just that one."), kLabelX + 20, Y(r++) - 8,
+              kW - 70, 20, kForgetStatus);
         Check(kLt, Tr(L"Grammar check with LanguageTool (online)"), cfg_.languageTool, kLabelX, Y(r++), kW - 50);
         Label(Tr(L"LanguageTool server"), kLabelX, Y(r), kLabelW);
         Edit(kLtUrl, cfg_.languageToolUrl, kCtrlX, Y(r++), kCtrlW);
@@ -469,36 +533,145 @@ private:
         int r = 0;
         Label(Tr(L"Translator"), kLabelX, Y(r), kLabelW);
         Combo(kEngine,
-              {Tr(L"Automatic (best available)"), Tr(L"Basic – MyMemory (free, no account)"), L"DeepL",
-               Tr(L"LLM (local or cloud)")},
-              static_cast<int>(cfg_.engine), kCtrlX, Y(r++), kCtrlW);
+              {Tr(L"Automatic (the first one set up)"), Tr(L"MyMemory (free, no account)"),
+               Tr(L"Google Translate (free contingent, key)"), Tr(L"Microsoft Translator (free contingent, key)"),
+               Tr(L"DeepL (free contingent, key)"), Tr(L"Own translation server (any address)"),
+               Tr(L"AI model (local or cloud)")},
+              EngineIndex(cfg_.engine), kCtrlX, Y(r++), kCtrlW);
         Label(EngineNote(cfg_.engine), kCtrlX, Y(r++) - 6, kCtrlW, 30, kEngineNote);
-        Label(Tr(L"DeepL API key"), kLabelX, Y(r), kLabelW);
-        Edit(kDeepL, cfg_.deeplKey, kCtrlX, Y(r++), kCtrlW);
-        Label(Tr(L"MyMemory e-mail (optional)"), kLabelX, Y(r), kLabelW);
+        const int top = r;  // the sections below share the same rows; only the chosen one is shown
+
+        // Automatic
+        group_ = &secAuto_;
+        Label(Tr(L"Automatic takes the first translator that is set up: DeepL, Google, Microsoft, your own server, "
+                 L"then the AI model; without any, MyMemory. Choose one in the list to enter its key."),
+              kCtrlX, Y(top), kCtrlW, 60);
+
+        // MyMemory
+        group_ = &secBasic_;
+        r = top;
+        Label(Tr(L"E-mail (optional)"), kLabelX, Y(r), kLabelW);
         Edit(kEmail, cfg_.basicEmail, kCtrlX, Y(r++), kCtrlW);
-        Label(Tr(L"LLM address"), kLabelX, Y(r), kLabelW);
+        Label(Tr(L"Without an account 5,000 characters a day. With your e-mail address 50,000 a day – no sign-up, "
+                 L"the address is only sent along with each request."),
+              kCtrlX, Y(r++) - 6, kCtrlW, 44);
+        Label(Tr(L"What MyMemory does: it translates the lines it gets and keeps them in its public translation "
+                 L"memory. Your learned words stay on this PC. With another translator MyMemory is not used at all."),
+              kCtrlX, Y(r++) + 8, kCtrlW, 60);
+
+        // Google
+        group_ = &secGoogle_;
+        r = top;
+        Label(Tr(L"API key"), kLabelX, Y(r), kLabelW);
+        Edit(kGoogleKey, cfg_.googleKey, kCtrlX, Y(r++), kCtrlW, ES_PASSWORD);
+        Button(kGoogleGet, Tr(L"Get a Google key…"), kCtrlX, Y(r++), 200);
+        Label(Tr(L"500,000 characters a month free. Needs a Google Cloud project with the Cloud Translation API "
+                 L"switched on and billing set up (the free part costs nothing). Texts go to Google."),
+              kCtrlX, Y(r++), kCtrlW, 60);
+
+        // Microsoft
+        group_ = &secMicrosoft_;
+        r = top;
+        Label(Tr(L"API key"), kLabelX, Y(r), kLabelW);
+        Edit(kMsKey, cfg_.msKey, kCtrlX, Y(r++), kCtrlW, ES_PASSWORD);
+        Label(Tr(L"Region"), kLabelX, Y(r), kLabelW);
+        Edit(kMsRegion, cfg_.msRegion, kCtrlX, Y(r++), 160);
+        Button(kMsGet, Tr(L"Get a Microsoft key…"), kCtrlX, Y(r++), 200);
+        Label(Tr(L"Free tier F0: 2 million characters a month. In Azure create a \"Translator\" resource, copy key 1 "
+                 L"and its region (e.g. westeurope). Texts go to Microsoft."),
+              kCtrlX, Y(r++), kCtrlW, 60);
+
+        // DeepL
+        group_ = &secDeepL_;
+        r = top;
+        Label(Tr(L"API key"), kLabelX, Y(r), kLabelW);
+        Edit(kDeepL, cfg_.deeplKey, kCtrlX, Y(r++), kCtrlW, ES_PASSWORD);
+        Button(kDeepLGet, Tr(L"Get a DeepL key…"), kCtrlX, Y(r++), 200);
+        Label(Tr(L"DeepL API Free: 500,000 characters a month, very good quality. DeepL asks for a credit card to "
+                 L"verify you (the free plan is not charged). Texts go to DeepL."),
+              kCtrlX, Y(r++), kCtrlW, 60);
+
+        // Own server (LibreTranslate-compatible): anything not in the list
+        group_ = &secLibre_;
+        r = top;
+        Label(Tr(L"Address"), kLabelX, Y(r), kLabelW);
+        Edit(kLibreUrl, cfg_.libreUrl, kCtrlX, Y(r++), kCtrlW);
+        Label(Tr(L"API key (if needed)"), kLabelX, Y(r), kLabelW);
+        Edit(kLibreKey, cfg_.libreKey, kCtrlX, Y(r++), kCtrlW, ES_PASSWORD);
+        Button(kLibreGet, Tr(L"What is LibreTranslate?…"), kCtrlX, Y(r++), 200);
+        Label(Tr(L"Any LibreTranslate-compatible server, e.g. one you run yourself (free, unlimited, nothing leaves "
+                 L"your network: http://localhost:5000) or an instance you have access to."),
+              kCtrlX, Y(r++), kCtrlW, 60);
+
+        // AI model (the same model translates and, if ticked, repairs recognition errors)
+        group_ = &secLlm_;
+        r = top;
+        Label(Tr(L"Provider"), kLabelX, Y(r), kLabelW);
+        std::vector<std::wstring> presets;
+        for (const LlmPreset& p : kLlmPresets) presets.push_back(Tr(p.name));
+        const int preset = PresetOf(cfg_.llmUrl);
+        Combo(kLlmPreset, presets, preset, kCtrlX, Y(r), kCtrlW - 136);
+        Button(kLlmGetKey, Tr(L"Get API key…"), kCtrlX + kCtrlW - 130, Y(r++) - 1, 130);
+        Label(Tr(L"Address"), kLabelX, Y(r), kLabelW);
         Edit(kLlmUrl, cfg_.llmUrl, kCtrlX, Y(r++), kCtrlW);
-        Label(Tr(L"LLM model"), kLabelX, Y(r), kLabelW);
+        Label(Tr(L"Model"), kLabelX, Y(r), kLabelW);
         HWND model = Combo(kLlmModel, {}, -1, kCtrlX, Y(r), kCtrlW - 126, true);
         SetWindowTextW(model, cfg_.llmModel.c_str());
         Button(kLlmLoad, Tr(L"Load models"), kCtrlX + kCtrlW - 120, Y(r++) - 1, 120);
-        Label(Tr(L"LLM API key (cloud only)"), kLabelX, Y(r), kLabelW);
+        Label(Tr(L"API key"), kLabelX, Y(r), kLabelW);
         Edit(kLlmKey, cfg_.llmKey, kCtrlX, Y(r++), kCtrlW, ES_PASSWORD);
-        Check(kFixOcr, Tr(L"LLM repairs text-recognition errors in chat lines"), cfg_.llmFixOcr, kLabelX, Y(r++),
-              kW - 50);
-        // Local translation, prominent: nothing leaves the PC.
-        Label(Tr(L"Translate locally (nothing leaves this PC)"), kLabelX, Y(r), kLabelW, 30);
+        Check(kFixOcr, Tr(L"The same model also repairs recognition errors in incoming lines"), cfg_.llmFixOcr,
+              kCtrlX, Y(r++), kCtrlW);
+        Label(Tr(kLlmPresets[preset].note), kCtrlX, Y(r++) - 4, kCtrlW, 30, kLlmNote);
+        // Local models, with an install button (only for the local provider).
+        group_ = &secLocal_;
         std::vector<std::wstring> models;
         for (const LocalModelOffer& m : LocalModelOffers()) models.push_back(m.id);
+        Label(Tr(L"Install a model"), kLabelX, Y(r), kLabelW);
         Combo(kLocalModel, models, 0, kCtrlX, Y(r), kCtrlW - 126);
         Button(kPull, Tr(L"Install"), kCtrlX + kCtrlW - 120, Y(r++) - 1, 120);
         Label(Tr(LocalModelOffers()[0].summary), kCtrlX, Y(r++) - 4, kCtrlW, 30, kLocalInfo);
         Button(kGetOllama, Tr(L"Get Ollama (free)…"), kCtrlX, Y(r) - 2, 170);
         Label(Tr(L"Runs the models; LM Studio works too (http://localhost:1234)."), kCtrlX + 180, Y(r++) - 2,
               kCtrlW - 180, 30, kPullStatus);
-        Button(kTest, Tr(L"Test the translator"), kLabelX, Y(r), 180);
-        Label(L"", kLabelX + 190, Y(r++), kW - 230, 40, kTestStatus);
+        group_ = nullptr;
+
+        Button(kTest, Tr(L"Test the translator"), kLabelX, Y(12), 180);
+        Label(L"", kLabelX + 190, Y(12), kW - 230, 40, kTestStatus);
+    }
+
+    // Only the section of the chosen translator is visible (all keep their values).
+    void UpdateTranslatorView() {
+        const bool page = SendMessageW(tab_, TCM_GETCURSEL, 0, 0) == static_cast<LRESULT>(SettingsPage::Translator);
+        const Engine e = EngineAt(Sel(kEngine));
+        const bool local = Sel(kLlmPreset) == kPresetLocal;
+        auto show = [&](const std::vector<HWND>& g, bool on) {
+            for (HWND h : g) ShowWindow(h, page && on ? SW_SHOW : SW_HIDE);
+        };
+        show(secAuto_, e == Engine::Auto);
+        show(secBasic_, e == Engine::Basic);
+        show(secGoogle_, e == Engine::Google);
+        show(secMicrosoft_, e == Engine::Microsoft);
+        show(secDeepL_, e == Engine::DeepL);
+        show(secLibre_, e == Engine::Libre);
+        show(secLlm_, e == Engine::Llm);
+        show(secLocal_, e == Engine::Llm && local);
+        EnableWindow(Item(kLlmGetKey), kLlmPresets[std::max(0, Sel(kLlmPreset))].keyUrl != nullptr);
+    }
+
+    void ApplyPreset() {
+        const int i = Sel(kLlmPreset);
+        if (i < 0) return;
+        const LlmPreset& p = kLlmPresets[i];
+        if (*p.url) SetText(kLlmUrl, p.url);
+        // A model of another provider makes no sense here: preset model, else empty (pick with "Load models").
+        bool cloudModel = false;
+        for (const LlmPreset& q : kLlmPresets)
+            cloudModel = cloudModel || (*q.model && WindowText(Item(kLlmModel)) == q.model);
+        if (*p.model) SetWindowTextW(Item(kLlmModel), p.model);
+        else if (i != kPresetOther && cloudModel) SetWindowTextW(Item(kLlmModel), L"");
+        SetText(kLlmNote, Tr(p.note));
+        UpdateTranslatorView();
     }
 
     void BuildGame() {
@@ -531,10 +704,16 @@ private:
                 return Tr(L"MyMemory is a public translation memory: texts are sent to mymemory.translated.net and may be stored.");
             case Engine::DeepL:
                 return Tr(L"Texts are sent to DeepL (deepl.com).");
+            case Engine::Google:
+                return Tr(L"Texts are sent to Google (Cloud Translation).");
+            case Engine::Microsoft:
+                return Tr(L"Texts are sent to Microsoft (Azure Translator).");
+            case Engine::Libre:
+                return Tr(L"Texts are sent to the server you enter (your own one keeps them in your network).");
             case Engine::Llm:
-                return Tr(L"A local LLM keeps everything on this PC; a cloud address sends the texts there.");
+                return Tr(L"A local model keeps everything on this PC; a cloud provider receives the texts.");
             default:
-                return Tr(L"Uses DeepL or the LLM when set up, otherwise MyMemory (texts leave this PC).");
+                return Tr(L"The translator with a key is used, otherwise MyMemory (texts leave this PC).");
         }
     }
 
@@ -594,7 +773,13 @@ private:
         if (ctx_.connectionStatus) SetText(kStatus, ctx_.connectionStatus());
     }
 
-    void OnTabChanged() override { ShowPage(static_cast<size_t>(SendMessageW(tab_, TCM_GETCURSEL, 0, 0))); }
+    void OnTabChanged() override {
+        ShowPage(static_cast<size_t>(SendMessageW(tab_, TCM_GETCURSEL, 0, 0)));
+        UpdateTranslatorView();
+    }
+    void OnRebuild() override {
+        for (auto* g : {&secAuto_, &secBasic_, &secGoogle_, &secMicrosoft_, &secDeepL_, &secLibre_, &secLlm_, &secLocal_}) g->clear();
+    }
 
     void OnSlider() override {
         const int size = static_cast<int>(SendMessageW(Item(kFontSize), TBM_GETPOS, 0, 0));
@@ -640,7 +825,37 @@ private:
                 LoadModels();
                 break;
             case kEngine:
-                if (code == CBN_SELCHANGE) SetText(kEngineNote, EngineNote(static_cast<Engine>(std::max(0, Sel(kEngine)))));
+                if (code == CBN_SELCHANGE) {
+                    SetText(kEngineNote, EngineNote(EngineAt(Sel(kEngine))));
+                    UpdateTranslatorView();
+                }
+                break;
+            case kLlmPreset:
+                if (code == CBN_SELCHANGE) {
+                    // A key belongs to one provider: never send it to another one.
+                    if (Sel(kLlmPreset) != lastPreset_) SetText(kLlmKey, L"");
+                    lastPreset_ = Sel(kLlmPreset);
+                    ApplyPreset();
+                }
+                break;
+            case kLlmGetKey:
+                if (const int i = Sel(kLlmPreset); i >= 0 && kLlmPresets[i].keyUrl)
+                    ShellExecuteW(hwnd_, L"open", kLlmPresets[i].keyUrl, nullptr, nullptr, SW_SHOWNORMAL);
+                break;
+            case kGoogleGet:
+                ShellExecuteW(hwnd_, L"open", L"https://console.cloud.google.com/apis/library/translate.googleapis.com",
+                              nullptr, nullptr, SW_SHOWNORMAL);
+                break;
+            case kMsGet:
+                ShellExecuteW(hwnd_, L"open", L"https://portal.azure.com/#create/Microsoft.CognitiveServicesTextTranslation",
+                              nullptr, nullptr, SW_SHOWNORMAL);
+                break;
+            case kLibreGet:
+                ShellExecuteW(hwnd_, L"open", L"https://github.com/LibreTranslate/LibreTranslate", nullptr, nullptr,
+                              SW_SHOWNORMAL);
+                break;
+            case kDeepLGet:
+                ShellExecuteW(hwnd_, L"open", L"https://www.deepl.com/pro-api", nullptr, nullptr, SW_SHOWNORMAL);
                 break;
             case kTechRefresh:
                 RefreshTechnical();
@@ -737,8 +952,17 @@ private:
         EnableWindow(Item(kTest), FALSE);
         std::shared_ptr<Translator> t;
         Engine e = probe.engine;
-        if (e == Engine::Auto) e = !probe.deeplKey.empty() ? Engine::DeepL : !probe.llmModel.empty() ? Engine::Llm : Engine::Basic;
+        if (e == Engine::Auto)
+            e = !probe.deeplKey.empty()    ? Engine::DeepL
+                : !probe.googleKey.empty() ? Engine::Google
+                : !probe.msKey.empty()     ? Engine::Microsoft
+                : !probe.libreUrl.empty()  ? Engine::Libre
+                : !probe.llmModel.empty()  ? Engine::Llm
+                                           : Engine::Basic;
         if (e == Engine::DeepL) t = MakeDeepLTranslator(probe.deeplKey);
+        else if (e == Engine::Google) t = MakeGoogleTranslator(probe.googleKey);
+        else if (e == Engine::Microsoft) t = MakeMicrosoftTranslator(probe.msKey, probe.msRegion);
+        else if (e == Engine::Libre) t = MakeLibreTranslator(probe.libreUrl, probe.libreKey);
         else if (e == Engine::Llm) {
             LlmSettings s;
             s.url = probe.llmUrl;
@@ -768,8 +992,9 @@ private:
             // Ready: the local model becomes the translator (saved with OK).
             if (Trim(Text(kLlmUrl)).empty()) SetText(kLlmUrl, L"http://localhost:11434");
             SetWindowTextW(Item(kLlmModel), m->model.c_str());
-            SendMessageW(Item(kEngine), CB_SETCURSEL, static_cast<WPARAM>(Engine::Llm), 0);
+            SendMessageW(Item(kEngine), CB_SETCURSEL, static_cast<WPARAM>(EngineIndex(Engine::Llm)), 0);
             SetText(kEngineNote, EngineNote(Engine::Llm));
+            UpdateTranslatorView();
             SetText(kPullStatus, TrF(L"{1} is installed and set as translator – OK saves it.", {m->model}));
             return 0;
         }
@@ -894,8 +1119,13 @@ private:
         c.copyOnly = Sel(kSendMode) == 1;
         c.returnFocus = Checked(kReturnFocus);
 
-        if (Sel(kEngine) >= 0) c.engine = static_cast<Engine>(Sel(kEngine));
+        if (Sel(kEngine) >= 0) c.engine = EngineAt(Sel(kEngine));
         c.deeplKey = Trim(Text(kDeepL));
+        c.googleKey = Trim(Text(kGoogleKey));
+        c.msKey = Trim(Text(kMsKey));
+        c.msRegion = Trim(Text(kMsRegion));
+        c.libreUrl = Trim(Text(kLibreUrl));
+        c.libreKey = Trim(Text(kLibreKey));
         c.basicEmail = Trim(Text(kEmail));
         c.llmUrl = Trim(Text(kLlmUrl));
         c.llmModel = Trim(WindowText(Item(kLlmModel)));
@@ -922,6 +1152,9 @@ private:
     const DialogContext& ctx_;
     SettingsPage start_;
     HWND tab_ = nullptr;
+    // Translator page: one section per translator, only the chosen one is visible.
+    std::vector<HWND> secAuto_, secBasic_, secGoogle_, secMicrosoft_, secDeepL_, secLibre_, secLlm_, secLocal_;
+    int lastPreset_ = -1;
 };
 
 // ---------------------------------------------------------------------------
@@ -944,7 +1177,7 @@ private:
 
         // Step 1
         BeginPage();
-        Label(Tr(L"Language / Sprache / اللغة"), 24, 60, 190);
+        Label(Tr(L"Language of this window"), 24, 60, 190);
         std::vector<std::wstring> ui;
         int uiSel = 0;
         for (size_t i = 0; i < UiLanguages().size(); ++i) {

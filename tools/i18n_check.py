@@ -47,6 +47,26 @@ def used_keys():
     text = (ROOT / path).read_text(encoding="utf-8")
     for m in re.finditer(r'\{L"[^"]+",\s*((?:L"(?:[^"\\]|\\.)*"\s*)+)\}', text):
         keys.setdefault("".join(unescape(x) for x in LIT.findall(m.group(1))), path)
+    # AI model presets {name, url, model, keyUrl, note}: name and note go through Tr().
+    path = "src/app/settings_dialog.cpp"
+    text = (ROOT / path).read_text(encoding="utf-8")
+    block = re.search(r'kLlmPresets\[\]\s*=\s*\{(.*?)\n\};', text, re.S)
+    if block:
+        for entry in re.finditer(r'\{((?:L"(?:[^"\\]|\\.)*"|[^{}"])*)\}', block.group(1)):
+            parts, cur, quoted, prev = [], "", False, ""
+            for ch in entry.group(1):
+                if ch == '"' and prev != "\\":
+                    quoted = not quoted
+                if ch == "," and not quoted:
+                    parts.append(cur)
+                    cur = ""
+                else:
+                    cur += ch
+                prev = ch
+            parts.append(cur)
+            if len(parts) == 5:
+                for part in (parts[0], parts[4]):
+                    keys.setdefault("".join(unescape(x) for x in LIT.findall(part)), path)
     return keys
 
 def table(lang):
