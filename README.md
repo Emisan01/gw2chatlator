@@ -8,9 +8,12 @@ The window is available in **English, Deutsch and العربية**. Use menu ≡
 
 ## Download
 
-**[⬇ Latest version (Windows, ZIP)](https://github.com/Emisan01/gw2chatlator/releases/latest)** – unpack it anywhere and
-start `GW2ChatTranslator.exe`. Keep `onnxruntime.dll` and the `rapid` folder next to it (RapidOCR text recognition).
-What changed: [CHANGELOG.md](CHANGELOG.md).
+**[⬇ Download the latest version (Windows, ZIP, ~14 MB)](https://github.com/Emisan01/gw2chatlator/releases/latest/download/GW2ChatTranslator-win64.zip)**
+– unpack it anywhere and start `GW2ChatTranslator.exe`. Keep `onnxruntime.dll` and the `rapid` folder next to it
+(RapidOCR text recognition). All versions: [Releases](https://github.com/Emisan01/gw2chatlator/releases) · what
+changed: [CHANGELOG.md](CHANGELOG.md).
+
+> The green **Code → Download ZIP** button only contains the source code, not the program – use the link above.
 
 ## Install (one minute)
 
