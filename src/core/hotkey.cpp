@@ -70,4 +70,27 @@ std::optional<Hotkey> ParseHotkey(const std::wstring& s) {
     return hk;
 }
 
+std::wstring FormatHotkey(const Hotkey& hk) {
+    std::wstring key;
+    if (hk.vk >= 0x41 && hk.vk <= 0x5A) key = std::wstring(1, static_cast<wchar_t>(L'A' + (hk.vk - 0x41)));
+    else if (hk.vk >= 0x30 && hk.vk <= 0x39) key = std::wstring(1, static_cast<wchar_t>(L'0' + (hk.vk - 0x30)));
+    else if (hk.vk >= 0x70 && hk.vk <= 0x87) key = L"F" + std::to_wstring(hk.vk - 0x70 + 1);
+    else if (hk.vk >= 0x60 && hk.vk <= 0x69) key = L"Numpad" + std::to_wstring(hk.vk - 0x60);
+    else if (hk.vk == 0x20) key = L"Space";
+    else if (hk.vk == 0x2D) key = L"Insert";
+    else if (hk.vk == 0x24) key = L"Home";
+    else if (hk.vk == 0x23) key = L"End";
+    else if (hk.vk == 0x21) key = L"PageUp";
+    else if (hk.vk == 0x22) key = L"PageDown";
+    else if (hk.vk == 0x13) key = L"Pause";
+    else if (hk.vk == 0x91) key = L"ScrollLock";
+    else return L"";
+    std::wstring s;
+    if (hk.mods & kModCtrl) s += L"Ctrl+";
+    if (hk.mods & kModAlt) s += L"Alt+";
+    if (hk.mods & kModShift) s += L"Shift+";
+    if (hk.mods & kModWin) s += L"Win+";
+    return s + key;
+}
+
 }  // namespace gct

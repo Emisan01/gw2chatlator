@@ -18,5 +18,7 @@ struct Hotkey {
 // Letters, digits and Space require a modifier — they would otherwise be
 // taken away from every program, GW2 included.
 std::optional<Hotkey> ParseHotkey(const std::wstring& s);
+// The same string back ("Ctrl+Alt+Shift+T"); empty for keys ParseHotkey does not know.
+std::wstring FormatHotkey(const Hotkey& hk);
 
 }  // namespace gct

@@ -26,7 +26,8 @@ struct Theme {
 
     int dpi = 96;
     float scale = 1.0f;
-    int textPercent = 100;  // user's text size (90 / 100 / 115 / 135 %)
+    int textPercent = 100;  // user's text size (100 % = 11 pt chat text)
+    std::wstring fontFace = L"Segoe UI";  // user's choice among a few well readable Windows fonts
     // Note: not called "small" — rpcndr.h #defines small as char.
     HFONT fontText = nullptr;    // input, preview, log body
     HFONT fontUi = nullptr;      // header/footer
@@ -38,10 +39,11 @@ struct Theme {
 
     int S(int v) const { return static_cast<int>(v * scale + 0.5f); }
 
-    void Create(int systemDpi, int percent = 100) {
+    void Create(int systemDpi, int percent = 100, const std::wstring& face = L"Segoe UI") {
         dpi = systemDpi;
         scale = dpi / 96.0f;
-        textPercent = percent < 70 ? 70 : (percent > 200 ? 200 : percent);
+        textPercent = percent < 70 ? 70 : (percent > 300 ? 300 : percent);
+        fontFace = face.empty() ? std::wstring(L"Segoe UI") : face;
         fontText = MakeFont(11, FW_NORMAL);
         fontUi = MakeFont(9, FW_NORMAL);
         fontUiBold = MakeFont(9, FW_SEMIBOLD);
@@ -74,7 +76,7 @@ struct Theme {
 private:
     HFONT MakeFont(int pt, int weight) const {
         return CreateFontW(-MulDiv(pt * textPercent, dpi, 72 * 100), 0, 0, 0, weight, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-                           OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
+                           OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, fontFace.c_str());
     }
 };
 
