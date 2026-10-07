@@ -21,16 +21,16 @@ Pflicht. Bei 4K reicht fast der Rohtext.
 
 1. ★ **1080p-Erkennung** (8–31 % Fehler mit RapidOCR). Gemessen nur mit *simuliertem* 1080p. Echte Aufnahmen fehlen.
    Größter Qualitätshebel.
-2. ★ **Kurze fremde Zeilen gehen verloren.** `SureLanguage` braucht 3 Wörter oder verräterische Buchstaben → „merci“,
+2. ✅ (Kurzwort-Liste) **Kurze fremde Zeilen gingen verloren.** `SureLanguage` braucht 3 Wörter oder verräterische Buchstaben → „merci“,
    „gracias“, „grazie mille“ werden nie übersetzt. Logik: Wir sparen Arbeit, verlieren aber genau die Höflichkeiten.
    Lösung: kleine Liste typischer Kurzwörter je Sprache (merci, gracias, bitte, obrigado …) als sicheres Merkmal.
-3. ★ **„Nur Übersetzungen“ + „über den Chat legen“ widersprechen sich.** Liegt unser Fenster über dem GW2-Chat und
+3. ✅ (beim Überdecken alles zeigen) **„Nur Übersetzungen“ + „über den Chat legen“ widersprachen sich.** Liegt unser Fenster über dem GW2-Chat und
    zeigt nur Übersetzungen, sieht man deutsche/englische Zeilen gar nicht mehr. Logik-Kreis offen. Lösung: beim
    Überdecken zählt „alles zeigen“ (oder Hinweis beim Einschalten).
-4. ★ **Rand-Filter kann zu viel wegwerfen.** Unbekannte Wörter ≤ 3 px am Rand des Bildbereichs fallen weg – rahmt man
+4. ✅ (eng gerahmt = kein Schnitt) **Rand-Filter konnte zu viel wegwerfen.** Unbekannte Wörter ≤ 3 px am Rand des Bildbereichs fallen weg – rahmt man
    eng, steht das erste Wort *jeder* Zeile am Rand (Namen, Slang). Lösung: nur wegwerfen, wenn andere Zeilen nicht an
    derselben Kante beginnen (dann ist es abgeschnitten, nicht nur eng gerahmt).
-5. **„Jetzt einmal übersetzen“ endet nach festen 3,5 s.** Mathe: Doppelscan braucht 2 Bilder; Tesseract 1,5–3,5 s pro
+5. ✅ **„Jetzt einmal übersetzen“ endete nach festen 3,5 s.** Mathe: Doppelscan braucht 2 Bilder; Tesseract 1,5–3,5 s pro
    Bild, RapidOCR erstes Bild 1–2 s → kann zu früh enden. Lösung: Ende nach 2 erfolgreichen Bildern, 10 s als Grenze.
 6. **„Nur die untersten 6 Zeilen“** stimmt für Chats, nicht für Seiten, die man scrollt (neuer Text oben). Bei einem
    Dokument: „Jetzt einmal übersetzen“ benutzen. Mathe: 6 Zeilen / 0,4 s = 15 Zeilen/s – reicht für jeden Chat.

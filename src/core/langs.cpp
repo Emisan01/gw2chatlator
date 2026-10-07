@@ -25,7 +25,44 @@ std::wstring SureLanguage(const std::wstring& text, const std::wstring& els) {
     }
     if (!latinOnly && !byLetters.empty()) return byLetters;  // the script says it
     if (words >= 3 && !els.empty()) return els;
-    return byLetters;  // telltale letters, or "" (unsure)
+    if (!byLetters.empty()) return byLetters;  // telltale letters
+    // Short lines: words that belong to one language only ("merci", "gracias amigo", "grazie mille"). Two languages
+    // seen: unsure.
+    struct Telltale {
+        const wchar_t* lang;
+        const wchar_t* word;
+    };
+    static const Telltale kWords[] = {
+        {L"FR", L"merci"},    {L"FR", L"bonjour"},   {L"FR", L"salut"},     {L"FR", L"oui"},       {L"FR", L"pourquoi"},
+        {L"FR", L"beaucoup"}, {L"FR", L"avec"},      {L"FR", L"aussi"},     {L"FR", L"je"},        {L"FR", L"suis"},
+        {L"FR", L"c'est"},    {L"FR", L"bonsoir"},   {L"ES", L"gracias"},   {L"ES", L"hola"},      {L"ES", L"vamos"},
+        {L"ES", L"amigo"},    {L"ES", L"bueno"},     {L"ES", L"donde"},     {L"ES", L"también"},   {L"ES", L"tambien"},
+        {L"ES", L"quien"},    {L"ES", L"porque"},    {L"IT", L"grazie"},    {L"IT", L"prego"},     {L"IT", L"andiamo"},
+        {L"IT", L"perché"},   {L"IT", L"anche"},     {L"IT", L"buongiorno"},{L"IT", L"mille"},     {L"PT", L"obrigado"},
+        {L"PT", L"obrigada"}, {L"PT", L"você"},      {L"PT", L"voce"},      {L"PT", L"valeu"},     {L"PT", L"tudo"},
+        {L"NL", L"bedankt"},  {L"NL", L"dankjewel"}, {L"NL", L"niet"},      {L"NL", L"ook"},       {L"PL", L"dzięki"},
+        {L"PL", L"dzieki"},   {L"PL", L"dziękuję"},  {L"PL", L"cześć"},     {L"PL", L"czesc"},     {L"TR", L"teşekkürler"},
+        {L"TR", L"tesekkurler"}, {L"TR", L"merhaba"}, {L"TR", L"evet"},     {L"DE", L"danke"},     {L"DE", L"bitte"},
+        {L"DE", L"nicht"},    {L"EN", L"thanks"},    {L"EN", L"thank"},     {L"EN", L"please"},    {L"EN", L"anyone"},
+    };
+    std::wstring found, word;
+    bool clash = false;
+    auto check = [&] {
+        if (word.empty()) return;
+        const std::wstring w = CaseFold(word);
+        for (const Telltale& t : kWords)
+            if (w == t.word) {
+                if (!found.empty() && found != t.lang) clash = true;
+                found = t.lang;
+            }
+        word.clear();
+    };
+    for (wchar_t c : text) {
+        if (IsWordChar(c) || c == L'\'') word += c;
+        else check();
+    }
+    check();
+    return clash ? std::wstring() : found;
 }
 
 std::wstring GuessLanguageByLetters(const std::wstring& text) {

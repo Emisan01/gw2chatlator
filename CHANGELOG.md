@@ -5,6 +5,14 @@ diagnosis show it.
 
 ## Unreleased
 
+- Short foreign lines are recognized by their words: "merci", "gracias amigo", "grazie mille", "obrigado" are
+  translated again (two languages in one line: left alone).
+- While this window lies over the GW2 chat it shows every line, also with "Show only translations" – it is your chat
+  then.
+- A frame drawn tightly around a text column no longer loses the first word of each line (only a single word cut at
+  the edge is left out).
+- "Translate once now" ends as soon as the pictures are read (up to 10 s with slow text recognition) instead of after
+  a fixed 3.5 s.
 - **Suggestions know the conversation:** names of the people in the chat and the words of the last lines (the
   translation, in your language) are offered right after your own words – "Ki" -> "Kiro", "Teq" -> "Tequatl" when
   someone just asked for it. Only offered, never learned (the tool learns only from what you send).

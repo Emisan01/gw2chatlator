@@ -290,6 +290,7 @@ private:
     bool streamPrimed_ = false;  // the first picture was fed (old history skipped)
     bool once_ = false;          // "translate once": reading runs for one look, then stops again
     size_t onceFound_ = 0;       // lines that look brought
+    int onceShots_ = 0;          // pictures read during that look
     bool wasInMap_ = false;      // MumbleLink: on a map (reading allowed)
     bool detecting_ = false;     // looking for the GW2 chat (no area set yet)
     bool placedForSetup_ = false;  // first start: put at the usual chat place once

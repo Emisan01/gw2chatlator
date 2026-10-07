@@ -298,6 +298,12 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
         constexpr int kMaxLooksPerPicture = 6;
         const bool dict = !checkers_.empty();
         const int altScale = scale >= 3 ? 4 : scale + 2;  // clearly larger than the first reading
+        // A frame drawn tightly around a text column touches the first word of most lines: that is not a cut. Only
+        // when few lines start at the left edge is a word there a cut-off piece.
+        size_t atLeftEdge = 0;
+        for (const Line& l : found)
+            if (!l.words.empty() && l.words.front().rect.x / scale <= 3) ++atLeftEdge;
+        const bool tightLeft = atLeftEdge * 2 >= found.size() && atLeftEdge >= 2;
         for (Line& line : found) {
             bool changed = false;
             for (Word& w : line.words) {
@@ -370,7 +376,7 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
                 } else if (keepEngineLines_) {
                     // An unknown word at the left or right edge of the free area: cut off by the frame ("berc").
                     const int x0 = w.rect.x / scale, x1 = (w.rect.x + w.rect.w) / scale;
-                    if (x0 <= 3 || x1 >= raw.width - 3) decision.clear();
+                    if ((x0 <= 3 && !tightLeft) || x1 >= raw.width - 3) decision.clear();
                 }
                 if (decided_.size() > 5000) decided_.clear();
                 decided_[key] = decision;
