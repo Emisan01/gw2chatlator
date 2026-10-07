@@ -349,26 +349,39 @@ std::vector<std::wstring> WordModel::CompleteFuzzy(const std::wstring& prefix, c
     if (p.size() < 3 || n == 0 || std::any_of(p.begin(), p.end(), IsDigitChar)) return out;
     const auto pit = prev.empty() ? pairs_.end() : pairs_.find(WordKey(prev));
     const size_t m = p.size();
-    std::vector<std::pair<double, const Word*>> scored;
+    // The same shares as Complete (word and pair, the pair weighted by how often it was seen), times 2 for a slip to
+    // the key next door – the most likely typo.
+    struct Cand {
+        const Word* w;
+        double c1, c2, slip;
+    };
+    std::vector<Cand> cands;
+    double s1 = 0, s2 = 0;
     for (const auto& [key, w] : words_) {
         if (w.count < 2.0 || key.size() < m || key == p) continue;
         if (!OneTypoPrefix(key, p)) continue;
-        double score = w.count;
-        if (pit != pairs_.end()) {
-            auto nit = pit->second.find(key);
-            if (nit != pit->second.end()) score += nit->second * 6.0;
-        }
-        if (neighbors) {  // a slip to the key next door is the most likely typo
+        double c2 = 0;
+        if (pit != pairs_.end())
+            if (auto nit = pit->second.find(key); nit != pit->second.end()) c2 = nit->second;
+        double slip = 1.0;
+        if (neighbors) {
             size_t diff = 0, at = 0;
             for (size_t i = 0; i < m; ++i)
                 if (key[i] != p[i]) {
                     ++diff;
                     at = i;
                 }
-            if (diff == 1 && neighbors(key[at], p[at])) score *= 2.0;
+            if (diff == 1 && neighbors(key[at], p[at])) slip = 2.0;
         }
-        scored.push_back({score, &w});
+        cands.push_back({&w, w.count, c2, slip});
+        s1 += w.count;
+        s2 += c2;
     }
+    const double l2 = 0.3 * s2 / (s2 + 1.0), l1 = 1.0 - l2;
+    std::vector<std::pair<double, const Word*>> scored;
+    scored.reserve(cands.size());
+    for (const Cand& c : cands)
+        scored.push_back({c.slip * ((s2 > 0 ? l2 * c.c2 / s2 : 0) + (s1 > 0 ? l1 * c.c1 / s1 : 0)), c.w});
     const auto top = scored.begin() + static_cast<std::ptrdiff_t>(std::min(n, scored.size()));
     std::partial_sort(scored.begin(), top, scored.end(), [](const auto& a, const auto& b) {
         if (a.first != b.first) return a.first > b.first;

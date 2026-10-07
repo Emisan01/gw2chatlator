@@ -1515,6 +1515,9 @@ static void TestGarbled() {
     CHECK(!LooksGarbled(L"<3"));
     CHECK(!LooksGarbled(L"output"));
     CHECK(!LooksGarbled(L"\"Hallo\","));
+    // Chat slang and emotes are no artifacts.
+    CHECK(!LooksGarbled(L"2day") && !LooksGarbled(L"4ever") && !LooksGarbled(L"2nite") && !LooksGarbled(L"2ND"));
+    CHECK(!LooksGarbled(L"*grins*") && !LooksGarbled(L"#lfg") && !LooksGarbled(L"~hi"));
     // The part to repair keeps a mark in front.
     size_t at = 9;
     CHECK(GarbledCore(L"(!raining,", &at) == L"!raining" && at == 1);

@@ -24,8 +24,9 @@ bool WorthSecondLook(const std::wstring& core);
 bool PlausibleRereading(const std::wstring& first, const std::wstring& second);
 
 // A token no person types – a recognition artifact: a digit or a mark (! | > $ ...) between letters ("syn!ax",
-// "g9danken", "Plövdsi0Q"), a mark glued before a word ("!raining"), digits before letters that are no usual suffix
-// ("9QEine"; "10er", "4k", "2nd" are fine). Times, levels, "gw2", links, chat codes and account names are not.
+// "g9danken", "Plövdsi0Q"), "!" or "|" glued before a word ("!raining"), digits before letters
+// with a capital among small letters ("9QEine"; "10er", "4k", "2nd", "2day" are fine). Times, levels, "gw2", links,
+// chat codes, account names, emotes ("*grins*") are not.
 bool LooksGarbled(const std::wstring& token);
 
 // The part of a garbled token to repair: like WordCore, but a single mark in front of the letters belongs to it

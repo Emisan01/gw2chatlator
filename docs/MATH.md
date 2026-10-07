@@ -43,9 +43,12 @@ halbes Gewicht, 10× → 91 %.
 **Satzrest:** dasselbe wiederholt, Kontext rückt nach, höchstens 6 Wörter, kein Wort doppelt (sonst Kreis).
 Eigenschaft: Jedes Glied ist für sich sicher – die Kette ist nie sicherer als ihr schwächstes Glied.
 
-⚠ *Offen:* Die Vervollständigung mit Tippfehler (`CompleteFuzzy`) rechnet noch nach der alten Formel
-`c₁ + 6·c₂` (rohe Zahlen). Sie mischt sich nicht mit der obigen Liste (eigene Liste, nur wenn nichts passt), sollte
-aber dieselben Anteile nutzen.
+**Vervollständigung mit Tippfehler** (nur wenn nichts genau passt; Kandidaten = Wörter mit `c₁ ≥ 2`, deren Anfang
+`p` mit einem Tippfehler trifft):
+
+    fuzzy(w) = slip(w) · (λ₂·c₂(b,w)/S₂ + λ₁·c₁(w)/S₁),   λ₂ = 0,3·S₂/(S₂+1),  slip = 2 bei Nachbartaste, sonst 1
+
+✅ Rechnete vorher mit rohen Zahlen `c₁ + 6·c₂` – jetzt dieselben Anteile wie oben.
 
 **Was die Leertaste schreibt** (`Choices`): Ist das getippte Wort gültig (Wörterbuch oder `c₁ ≥ 2`), bleibt es –
 außer Tab hat ein anderes gewählt. Sonst das erste aus [Vervollständigungen, dann Korrekturen]. Korrekturen kommen nur
@@ -71,13 +74,29 @@ mehrdeutige nur mit ≥ 2 Großbuchstaben).
 
 **Anzeigen?** `zeigen = fremd ∨ ¬„nur Übersetzungen“ ∨ Fenster liegt über dem GW2-Chat`.
 
-## 3 Lesen (als Nächstes durchrechnen)
+## 3 Lesen
 
-- Wortsalat `garbled(w)`: Ziffer/Zeichen zwischen Buchstaben, Zeichen vor dem Wort, Ziffern + unübliche Endung.
-- Reparatur: Kandidaten = Kombinationen der Verwechslungen (höchstens 80), das Wörterbuch wählt; mehrere → Rangfolge
-  der Rechtschreibprüfung.
-- Zweitlesung angenommen, wenn Editierabstand ≤ 1 (≤ 4 Buchstaben), ≤ 2 (5), ≤ 3 (länger) und echtes Wort.
-- Bildbereich: nach dem ersten Bild nur Absätze, deren Unterkante in die untersten 6 Textzeilen reicht.
-- Doppelte Prüfung: eine neue Zeile zählt erst, wenn das nächste Bild sie wieder zeigt.
+**Wortsalat** `garbled(t)` (t ohne Satzzeichen außen) ist wahr, wenn eines gilt:
+1. Ziffer oder Zeichen (! | > $ …) **zwischen zwei Buchstaben** („syn!ax“, „g9danken“);
+2. **„!“ oder „|“ direkt vor einem Wort** – die Zeichen, die die Erkennung für l, I, t hält („!raining“);
+3. **Ziffern, dann Buchstaben mit einem Großbuchstaben mitten zwischen kleinen** („9QEine“).
 
-⚠ Diese Formeln werden im nächsten Schritt genauso auf Fehler und Abkürzungen geprüft.
+Ausgenommen: Links, Codes, Kontonamen (`/ @ [ & . : =`), weniger als 2 Buchstaben.
+✅ *Gefunden:* Regel 3 lautete „Ziffern + unübliche Endung“ und traf Chat-Slang („2day“, „4ever“, „2nite“) – der
+wurde mangels Wörterbuchwort weggeworfen. Regel 2 galt für jedes Zeichen und zerlegte Emotes („\*grins\*“ →
+„grins\*“), „#lfg“, „~hi“. Beides enger gefasst, Tests dazu.
+
+**Reparatur** eines Worts `w`: Kandidaten `K(w)` = alle Kombinationen der Zeichen-Verwechslungen (höchstens 80), dann
+eine Buchstaben-Verwechslung; gültig = Wörterbuch kennt es. `|gültig| = 1` → nehmen; `> 1` → Rangfolge der
+Rechtschreibprüfung; bei normalen Wörtern (kein Salat) nur ab 5 Buchstaben und nur eindeutig.
+✅ *Gefunden:* Der **Sprecher** („Marco:“) lief mit durch und hätte zu einem Wörterbuchwort werden können. Das erste
+Wort einer Chatzeile mit Doppelpunkt bleibt jetzt unangetastet (außer echter Wortsalat – Namen haben keine Ziffern).
+
+**Zweitlesung** angenommen ⇔ echtes Wort ∧ Editierabstand ≤ 1 (≤ 4 Buchstaben), ≤ 2 (5), ≤ 3 (länger).
+**Unreparierbarer Salat** → weggelassen. **Unbekanntes Wort am Rand** des Bildbereichs → weggelassen, außer die
+Mehrheit der Zeilen beginnt am linken Rand (dann ist eng gerahmt, nicht abgeschnitten).
+
+**Bildbereich:** nach dem ersten Bild zählen nur Absätze, deren Unterkante in die untersten 6 Textzeilen reicht
+(Zeilen gleicher Höhe ±3 px = eine Zeile). Mathe: 6 Zeilen / 0,4 s = 15 Zeilen/s – mehr schreibt kein Chat.
+**Doppelte Prüfung:** eine neue Zeile zählt erst, wenn das nächste Bild (200 ms später) sie wieder zeigt.
+Messung nach den Korrekturen (ocr_bench, echte 4K-Aufnahmen): unverändert 30,3 % / 30,4 % – kein Schaden.
