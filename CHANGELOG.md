@@ -3,6 +3,14 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## Unreleased
+
+- **Core logic written down as mathematics** (`docs/MATH.md`), and two mistakes found that way are fixed:
+  - one accidental word triple no longer outweighs a word you use all the time – a context now weighs by how often
+    it has been seen (S/(S+1)), for completions and the next word;
+  - the telltale words that recognize short foreign lines overlapped between languages ("je" is Dutch too, "mille"
+    French, "porque", "amigo", "vamos" Portuguese) – removed.
+
 ## 0.8.3 — 2026-10-07
 
 **Writing**

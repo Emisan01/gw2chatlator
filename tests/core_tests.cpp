@@ -1408,6 +1408,11 @@ static void TestWordModelWeights() {
     for (int i = 0; i < 2; ++i) m.Learn(L"kommst du mit");
     CHECK(m.Complete(L"m", L"", 1) == std::vector<std::wstring>{L"mal"});
     CHECK(m.Complete(L"m", L"du", 1, L"kommst") == std::vector<std::wstring>{L"mit"});
+    // One accidental triple does not beat a word you use all the time.
+    WordModel one;
+    for (int i = 0; i < 30; ++i) one.Learn(L"mal");
+    one.Learn(L"kommst du mit");
+    CHECK(one.Complete(L"m", L"du", 1, L"kommst") == std::vector<std::wstring>{L"mal"});
     // Forgetting by use: counts shrink, a word used twice stays known, a pair seen once long ago goes.
     WordModel f;
     f.Learn(L"alpha beta");
@@ -1541,6 +1546,11 @@ static void TestSureLanguage() {
     CHECK(SureLanguage(L"Grazie mille", L"") == L"IT");
     CHECK(SureLanguage(L"c'est bon", L"") == L"FR");
     CHECK(SureLanguage(L"thanks merci", L"").empty());       // two languages: unsure
+    // The telltale words of different languages never overlap: "je" is Dutch too, "mille" French, "porque",
+    // "amigo", "vamos" Portuguese.
+    CHECK(SureLanguage(L"je bent", L"").empty());
+    CHECK(SureLanguage(L"mille", L"").empty());
+    CHECK(SureLanguage(L"vamos amigo", L"").empty());
     CHECK(SureLanguage(L"ty", L"").empty());
 }
 

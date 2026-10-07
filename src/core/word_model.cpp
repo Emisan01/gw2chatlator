@@ -320,7 +320,10 @@ std::vector<std::wstring> WordModel::Complete(const std::wstring& prefix, const 
         s2 += c2;
         s3 += c3;
     }
-    const double l3 = s3 > 0 ? 0.5 : 0.0, l2 = s2 > 0 ? 0.3 : 0.0, l1 = 1.0 - l3 - l2;
+    // A context weighs by how much it has been seen (Witten-Bell-like): S/(S+1). One accidental triple (S = 1) gets
+    // half its weight, a context seen often nearly all – before, a single triple took the full 0.5 and beat a word
+    // used a hundred times.
+    const double l3 = 0.5 * s3 / (s3 + 1.0), l2 = 0.3 * s2 / (s2 + 1.0), l1 = 1.0 - l3 - l2;
     std::vector<std::pair<double, const Word*>> scored;
     scored.reserve(cands.size());
     for (const Cand& c : cands)
@@ -431,7 +434,10 @@ std::vector<std::wstring> WordModel::Next(const std::wstring& prev, size_t n, co
     };
     const auto tit = prev2.empty() ? pairs_.end() : pairs_.find(WordKey(prev2) + L'\x1f' + WordKey(prev));
     const auto pit = pairs_.find(WordKey(prev));
-    const double w3 = tit != pairs_.end() ? 0.6 : 0.0;
+    double t3 = 0;  // how often the two words were seen at all: their weight grows with it (see Complete)
+    if (tit != pairs_.end())
+        for (const auto& kv : tit->second) t3 += kv.second;
+    const double w3 = 0.6 * t3 / (t3 + 1.0);
     if (tit != pairs_.end()) add(tit->second, w3);
     if (pit != pairs_.end()) add(pit->second, 1.0 - w3);
     std::vector<std::pair<double, std::wstring>> scored;
