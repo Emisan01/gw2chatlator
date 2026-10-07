@@ -1382,26 +1382,12 @@ void MainWindow::ShowChannelMenu() {
 void MainWindow::ShowMainMenu() {
     const ModalScope modal;
     enum : UINT {
-        kSetup = 1, kSettings, kRegion, kReader, kCover, kSystem, kCaptures, kResetColors, kBack, kCopyOnly, kSuggest,
-        kLearn, kSpell, kLanguageTool, kDock, kFollow, kOpenDir, kOpenIni, kQuit, kGw2Chat, kFreeArea, kOnce, kOnlyTr,
-        kEngineAuto = 50, kEngineBasic, kEngineDeepL, kEngineLlm, kEngineSetup,
-        kAcOff = 60, kAcSafe, kAcPhone,
-        kOcrAuto = 70, kOcrTess, kOcrWin,
-        kFontBase = 80,      // + index into kFontSizes
-        kOpacityBase = 90,   // + index into kOpacities
-        kUiLangBase = 100,   // + index into UiLanguages()
+        kSetup = 1, kSettings, kRegion, kReader, kCover, kDock, kQuit, kGw2Chat, kFreeArea, kOnce, kOnlyTr,
+        kUiLangBase = 100,  // + index into UiLanguages()
     };
-    static const int kFontSizes[] = {90, 100, 115, 135};
-    static const int kOpacities[] = {178, 204, 230, 255};
     auto check = [](bool on) { return static_cast<UINT>(on ? MF_CHECKED : MF_UNCHECKED); };
     auto add = [](HMENU m, UINT flags, UINT id, const std::wstring& text) { AppendMenuW(m, flags, id, text.c_str()); };
-    auto sub = [](HMENU m, HMENU child, const std::wstring& text) {
-        AppendMenuW(m, MF_POPUP, reinterpret_cast<UINT_PTR>(child), text.c_str());
-    };
     // Short and flat: the everyday actions. Everything else is in Settings.
-    (void)kFontSizes;
-    (void)kOpacities;
-    (void)sub;
     HMENU menu = CreatePopupMenu();
     add(menu, MF_STRING | check(cfg_.readerEnabled), kReader, Tr(L"Automatic translation (permanent)"));
     add(menu, MF_STRING | (cfg_.readerEnabled || once_ ? MF_GRAYED : 0), kOnce, Tr(L"Translate once now"));
@@ -1432,7 +1418,6 @@ void MainWindow::ShowMainMenu() {
     switch (cmd) {
         case kSetup: RunSetup(); break;
         case kSettings: OpenSettings(SettingsPage::General); break;
-        case kEngineSetup: OpenSettings(SettingsPage::Translator); break;
         case kRegion:
             SetFreeArea(false);
             PickRegion();
@@ -1448,104 +1433,12 @@ void MainWindow::ShowMainMenu() {
                                             : Tr(L"From now on every chat line appears"),
                       Tone::Muted, 3500);
             break;
-        case kOcrAuto:
-        case kOcrTess:
-        case kOcrWin:
-            cfg_.ocr = static_cast<OcrChoice>(cmd - kOcrAuto);
-            cfg_.SaveValue(L"Reader", L"OcrEngine", OcrKey(cfg_.ocr));
-            RestartReader();
-            break;
-        case kBack:
-            cfg_.backTranslate = !cfg_.backTranslate;
-            cfg_.SaveBool(L"Translate", L"BackTranslate", cfg_.backTranslate);
-            backText_.clear();
-            StartBackTranslation();
-            UpdatePreview();
-            break;
-        case kCopyOnly:
-            cfg_.copyOnly = !cfg_.copyOnly;
-            cfg_.SaveValue(L"Chat", L"SendMode", cfg_.copyOnly ? L"copy" : L"send");
-            SetStatus(cfg_.copyOnly ? Tr(L"Only copy: Enter puts the line on the clipboard, you paste it in GW2 yourself")
-                                    : Tr(L"Send: Enter puts the line straight into the GW2 chat"),
-                      Tone::Ok, 7000);
-            UpdatePreview();
-            InvalidateChrome();
-            break;
-        case kAcOff:
-        case kAcSafe:
-        case kAcPhone:
-            cfg_.autoCorrect = static_cast<AutoCorrectMode>(cmd - kAcOff);
-            cfg_.SaveValue(L"Spelling", L"AutoCorrectMode", AutoCorrectKey(cfg_.autoCorrect));
-            input_.SetAutoCorrect(cfg_.autoCorrect);
-            break;
-        case kSuggest:
-            cfg_.suggestions = !cfg_.suggestions;
-            cfg_.SaveBool(L"Spelling", L"Suggestions", cfg_.suggestions);
-            input_.SetSuggestions(cfg_.suggestions);
-            Layout();
-            break;
-        case kLearn:
-            cfg_.learnWords = !cfg_.learnWords;
-            cfg_.SaveBool(L"Spelling", L"Learn", cfg_.learnWords);
-            break;
-        case kSpell:
-            cfg_.spellEnabled = !cfg_.spellEnabled;
-            cfg_.SaveBool(L"Spelling", L"Enabled", cfg_.spellEnabled);
-            SetStatus(Tr(L"Takes effect after a restart"), Tone::Muted, 4000);
-            break;
-        case kLanguageTool:
-            cfg_.languageTool = !cfg_.languageTool;
-            cfg_.SaveBool(L"Spelling", L"LanguageTool", cfg_.languageTool);
-            if (cfg_.languageTool)
-                SetStatus(Tr(L"Grammar check on: your text is sent to the LanguageTool server"), Tone::Ok, 6000);
-            break;
         case kDock: SetDock(!cfg_.dock); break;
         case kCover: CoverChat(); break;
-        case kFollow:
-            cfg_.followGame = !cfg_.followGame;
-            cfg_.SaveBool(L"Window", L"FollowGame", cfg_.followGame);
-            if (!cfg_.followGame && autoHidden_) {
-                autoHidden_ = false;
-                ShowWindow(hwnd_, SW_SHOWNOACTIVATE);
-            }
-            break;
-        case kSystem:
-            cfg_.showSystemLines = !cfg_.showSystemLines;
-            cfg_.SaveBool(L"Reader", L"ShowSystem", cfg_.showSystemLines);
-            break;
-        case kCaptures:
-            SetSaveCaptures(!cfg_.saveCaptures);
-            break;
-        case kResetColors:
-            cfg_.ResetColors();
-            log_.SetPalette(cfg_.palette);
-            SetStatus(Tr(L"Channel colours reset to the GW2 defaults"), Tone::Ok, 4000);
-            break;
-        case kOpenIni:
-            ShellExecuteW(hwnd_, L"open", L"notepad.exe", (L"\"" + cfg_.iniPath + L"\"").c_str(), nullptr, SW_SHOWNORMAL);
-            break;
-        case kOpenDir:
-            ShellExecuteW(hwnd_, L"open", cfg_.dataDir.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-            break;
-        case kQuit:
-            PostMessageW(hwnd_, WM_CLOSE, 0, 0);
-            break;
-        case kEngineAuto: SetEngine(Engine::Auto); break;
-        case kEngineBasic: SetEngine(Engine::Basic); break;
-        case kEngineDeepL: SetEngine(Engine::DeepL); break;
-        case kEngineLlm: SetEngine(Engine::Llm); break;
+        case kQuit: PostMessageW(hwnd_, WM_CLOSE, 0, 0); break;
         default:
-            if (cmd >= kFontBase && cmd < kFontBase + std::size(kFontSizes)) {
-                cfg_.fontPercent = kFontSizes[cmd - kFontBase];
-                cfg_.SaveValue(L"Window", L"FontPercent", std::to_wstring(cfg_.fontPercent));
-                ApplyDpi(theme_.dpi, nullptr);
-            } else if (cmd >= kOpacityBase && cmd < kOpacityBase + std::size(kOpacities)) {
-                cfg_.opacity = kOpacities[cmd - kOpacityBase];
-                cfg_.SaveValue(L"Window", L"Opacity", std::to_wstring(cfg_.opacity));
-                SetLayeredWindowAttributes(hwnd_, 0, static_cast<BYTE>(cfg_.opacity), LWA_ALPHA);
-            } else if (cmd >= kUiLangBase && cmd < kUiLangBase + UiLanguages().size()) {
+            if (cmd >= kUiLangBase && cmd < kUiLangBase + UiLanguages().size())
                 SetUiLanguage(UiLanguages()[cmd - kUiLangBase].lang);
-            }
             break;
     }
 }
@@ -1587,17 +1480,6 @@ void MainWindow::RestartReader() {
     InvalidateChrome();
 }
 
-void MainWindow::SetEngine(Engine e) {
-    cfg_.engine = e;
-    cfg_.SaveValue(L"Translate", L"Engine", EngineKey(e));
-    ChooseEngine(true);
-    ++inputGen_;
-    previewOk_ = false;
-    parts_.clear();
-    partIdx_ = 0;
-    UpdatePreview();
-    StartTranslation();
-}
 
 bool MainWindow::Understood(const std::wstring& lang) const {
     if (lang.empty()) return false;
@@ -2350,7 +2232,7 @@ void MainWindow::HandleIncoming(const ChatMessage& m) {
         case Own::SentHere:  // already in the log as "Du: ..."
             return;
         case Own::TypedInGame: {  // typed in GW2 itself: show it for context, untranslated
-            if (cfg_.onlyTranslations && !(excludedFromCapture_ && !cfg_.freeArea)) return;  // shown when covering
+            if (HideUntranslated()) return;
             ChatEntry e;
             e.kind = ChatEntry::Kind::Outgoing;
             e.channel = m.channel == Channel::System ? Channel::Unknown : m.channel;
@@ -2384,9 +2266,7 @@ void MainWindow::HandleIncoming(const ChatMessage& m) {
     const bool automatic = m.freeText || (cfg_.autoTranslate & ChannelBit(m.channel)) != 0;
     // "Show only translations": what is not foreign (your languages, unsure lines, system lines) does not appear.
     if (!system && !foreign) NoteChatWords(m.text);  // your language: words you may answer with (foreign: its translation)
-    // Lying over the GW2 chat, this window *is* the chat for you then: every line stays.
-    const bool coversChat = excludedFromCapture_ && !cfg_.freeArea;
-    if (!foreign && cfg_.onlyTranslations && !coversChat) return;
+    if (!foreign && HideUntranslated()) return;
     if (foreign) {
         std::wstring cached;
         if (corrections_.Lookup(m.text, readLang_, &cached)) {  // you corrected this text once
