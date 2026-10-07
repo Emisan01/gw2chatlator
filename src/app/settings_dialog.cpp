@@ -13,6 +13,7 @@
 
 #include "app/modal_scope.hpp"
 #include "core/cloud_mt_protocol.hpp"
+#include "core/hotkey.hpp"
 #include "core/gw2_install.hpp"
 #include "core/langs.hpp"
 #include "core/i18n.hpp"
@@ -47,7 +48,7 @@ enum : int {
     // Translator
     kEngine, kEngineNote, kLocalModel, kPull, kLocalInfo, kGetOllama, kPullStatus, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
     kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
-    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords,
+    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus,
     // Game & start
     kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kStatus, kRefresh, kSetup,
     // Wizard
@@ -425,10 +426,12 @@ private:
     void BuildGeneral() {
         BeginPage();
         int r = 0;
-        Label(Tr(L"Language of this window"), kLabelX, Y(r), kLabelW);
-        Combo(kUiLang, LanguageChoices(), LanguageChoiceOf(cfg_.uiLangCode), kCtrlX, Y(r++), kCtrlW);
-        Label(Tr(L"Translate the chat into"), kLabelX, Y(r), kLabelW);
-        Combo(kReadLang, LanguageChoices(), LanguageChoiceOf(cfg_.readLang), kCtrlX, Y(r++), kCtrlW);
+        // The two language lists side by side, the same list in both.
+        constexpr int kHalf = (kW - 2 * kLabelX - 16) / 2;
+        Label(Tr(L"Language of this window"), kLabelX, Y(r) - 4, kHalf);
+        Label(Tr(L"Translate the chat into"), kLabelX + kHalf + 16, Y(r++) - 4, kHalf);
+        Combo(kUiLang, LanguageChoices(), LanguageChoiceOf(cfg_.uiLangCode), kLabelX, Y(r) - 10, kHalf);
+        Combo(kReadLang, LanguageChoices(), LanguageChoiceOf(cfg_.readLang), kLabelX + kHalf + 16, Y(r++) - 10, kHalf);
 
         // Everything is translated; these are the exceptions (a click on a line still translates it).
         Label(Tr(L"Do not translate"), kLabelX, Y(r), kLabelW);
@@ -438,45 +441,96 @@ private:
             return false;
         };
         const wchar_t* quick[] = {L"EN", L"DE", L"FR", L"ES"};
-        for (int i = 0; i < 4; ++i) Check(kSkipEn + i, quick[i], has(quick[i]), kCtrlX + i * 60, Y(r), 56);
-        std::wstring others;
+        for (int i = 0; i < 4; ++i) Check(kSkipEn + i, quick[i], has(quick[i]), kCtrlX + i * 52, Y(r), 50);
+        // One more language of your choice (other codes from the settings file are kept).
+        std::wstring other;
         for (const std::wstring& c : cfg_.understoodLangs) {
             const std::wstring p = PrimaryLang(c);
-            if (p != L"EN" && p != L"DE" && p != L"FR" && p != L"ES") others += (others.empty() ? L"" : L", ") + c;
+            if (other.empty() && p != L"EN" && p != L"DE" && p != L"FR" && p != L"ES") other = c;
         }
-        HWND more = Edit(kUnderstood, others, kCtrlX + 245, Y(r++), 110);
-        SendMessageW(more, EM_SETCUEBANNER, TRUE, reinterpret_cast<LPARAM>(Tr(L"more: IT, PL …").c_str()));
-        Label(Tr(L"Translate in"), kLabelX, Y(r), kLabelW);
-        const ChannelMask a = cfg_.autoTranslate;
-        Check(kAutoWhisper, Tr(L"Whisper"), (a & ChannelBit(Channel::Whisper)) != 0, kCtrlX, Y(r), 110);
-        Check(kAutoGroup, Tr(L"Party & squad"), (a & ChannelBit(Channel::Party)) != 0, kCtrlX + 115, Y(r), 130);
-        Check(kAutoGuild, Tr(L"Guild"), (a & ChannelBit(Channel::Guild)) != 0, kCtrlX + 250, Y(r++), 100);
-        Check(kAutoMap, Tr(L"Map & say"), (a & ChannelBit(Channel::Map)) != 0, kCtrlX, Y(r) - 6, 110);
-        Check(kAutoTeam, Tr(L"Team (WvW)"), (a & ChannelBit(Channel::Team)) != 0, kCtrlX + 115, Y(r) - 6, 130);
-        Label(Tr(L"Unticked: click a line."), kCtrlX + 250, Y(r++) - 2, 110, 20);
+        Check(kSkipMore, L"", !other.empty(), kCtrlX + 4 * 52, Y(r), 20);
+        std::vector<std::wstring> langs;
+        for (const LangInfo& l : Languages()) langs.push_back(std::wstring(l.native) + L"  (" + l.code + L")");
+        Combo(kUnderstood, langs, std::max(0, LanguageChoiceOf(other.empty() ? L"IT" : other) - 1), kCtrlX + 4 * 52 + 22,
+              Y(r++), kCtrlW - 4 * 52 - 22);
 
-        Label(Tr(L"“Send as” languages"), kLabelX, Y(r), kLabelW);
-        std::wstring joined;
-        for (const std::wstring& c : cfg_.writeLangs) joined += (joined.empty() ? L"" : L", ") + c;
-        Edit(kWriteLangs, joined, kCtrlX, Y(r++), kCtrlW);
-        Label(Tr(L"Codes like EN-GB, FR, ES, DE, AR, ZH-HANS. Ctrl+L switches while typing."), kCtrlX, Y(r++) - 6,
-              kCtrlW, 30);
-
-        // Sliders with a live preview on the window behind.
+        // Text: size in points (slider or typed) and a few well readable Windows fonts; live preview behind.
         Label(Tr(L"Text size"), kLabelX, Y(r), kLabelW);
-        HWND size = Add(TRACKBAR_CLASSW, L"", TBS_HORZ | TBS_NOTICKS | WS_TABSTOP, kCtrlX, Y(r), kCtrlW - 60, 26, kFontSize);
-        SendMessageW(size, TBM_SETRANGE, TRUE, MAKELPARAM(80, 160));
-        SendMessageW(size, TBM_SETPOS, TRUE, cfg_.fontPercent);
-        Label(std::to_wstring(cfg_.fontPercent) + L" %", kCtrlX + kCtrlW - 54, Y(r++), 54, 18, kFontSizeValue);
+        HWND size = Add(TRACKBAR_CLASSW, L"", TBS_HORZ | TBS_NOTICKS | WS_TABSTOP, kCtrlX, Y(r), kCtrlW - 100, 26, kFontSize);
+        SendMessageW(size, TBM_SETRANGE, TRUE, MAKELPARAM(kMinPt, kMaxPt));
+        SendMessageW(size, TBM_SETPOS, TRUE, PtOf(cfg_.fontPercent));
+        Edit(kFontSizeValue, std::to_wstring(PtOf(cfg_.fontPercent)), kCtrlX + kCtrlW - 94, Y(r), 50, ES_NUMBER);
+        Label(L"pt", kCtrlX + kCtrlW - 38, Y(r++), 30);
+        Label(Tr(L"Font"), kLabelX, Y(r), kLabelW);
+        int faceSel = 0;
+        std::vector<std::wstring> faces;
+        for (size_t i = 0; i < std::size(kFonts); ++i) {
+            faces.push_back(kFonts[i]);
+            if (cfg_.fontFace == kFonts[i]) faceSel = static_cast<int>(i);
+        }
+        Combo(kFontFace, faces, faceSel, kCtrlX, Y(r++), 200);
         Label(Tr(L"Transparency"), kLabelX, Y(r), kLabelW);
-        HWND tr = Add(TRACKBAR_CLASSW, L"", TBS_HORZ | TBS_NOTICKS | WS_TABSTOP, kCtrlX, Y(r), kCtrlW - 60, 26, kOpacity);
+        HWND tr = Add(TRACKBAR_CLASSW, L"", TBS_HORZ | TBS_NOTICKS | WS_TABSTOP, kCtrlX, Y(r), kCtrlW - 100, 26, kOpacity);
         SendMessageW(tr, TBM_SETRANGE, TRUE, MAKELPARAM(0, 75));
         SendMessageW(tr, TBM_SETPOS, TRUE, TransparencyOf(cfg_.opacity));
-        Label(std::to_wstring(TransparencyOf(cfg_.opacity)) + L" %", kCtrlX + kCtrlW - 54, Y(r++), 54, 18, kOpacityValue);
-        Label(Tr(L"0 % = not transparent at all."), kCtrlX, Y(r++) - 8, kCtrlW, 20);
+        Label(std::to_wstring(TransparencyOf(cfg_.opacity)) + L" %", kCtrlX + kCtrlW - 94, Y(r++), 60, 18, kOpacityValue);
 
+        // Hotkey: a Windows-wide one (also outside the game). Optional; three keys clash least.
+        r++;
         Label(Tr(L"Show / hide hotkey"), kLabelX, Y(r), kLabelW);
-        Edit(kHotkey, cfg_.hotkey, kCtrlX, Y(r++), 160);
+        HWND hk = Add(HOTKEY_CLASSW, L"", WS_TABSTOP, kCtrlX, Y(r), 180, 24, kHotkey, WS_EX_CLIENTEDGE);
+        // Letters alone would be taken from every program: at least one of Ctrl / Alt is required.
+        SendMessageW(hk, HKM_SETRULES, HKCOMB_NONE | HKCOMB_S, MAKELPARAM(HOTKEYF_CONTROL | HOTKEYF_ALT, 0));
+        if (const auto cur = ParseHotkey(cfg_.hotkey)) {
+            BYTE f = 0;
+            if (cur->mods & kModCtrl) f |= HOTKEYF_CONTROL;
+            if (cur->mods & kModAlt) f |= HOTKEYF_ALT;
+            if (cur->mods & kModShift) f |= HOTKEYF_SHIFT;
+            SendMessageW(hk, HKM_SETHOTKEY, MAKEWORD(static_cast<BYTE>(cur->vk), f), 0);
+        }
+        Button(kHotkeyClear, Tr(L"None"), kCtrlX + 188, Y(r) - 1, 80);
+        Label(L"", kCtrlX, Y(r++) + 28, kCtrlW, 34, kHotkeyStatus);
+        UpdateHotkeyStatus();
+    }
+
+    static constexpr int kMinPt = 8, kMaxPt = 32;     // chat text size in points (100 % = 11 pt)
+    static constexpr const wchar_t* kFonts[] = {L"Segoe UI", L"Verdana", L"Tahoma", L"Arial", L"Calibri",
+                                                L"Trebuchet MS", L"Consolas"};
+    static int PtOf(int percent) { return std::clamp((percent * 11 + 50) / 100, kMinPt, kMaxPt); }
+    static int PercentOf(int pt) { return std::clamp((pt * 100 + 5) / 11, 70, 300); }
+
+    // The hotkey in the control as "Ctrl+Alt+Shift+T" (empty = none).
+    std::wstring HotkeyText() const {
+        const WORD v = static_cast<WORD>(SendMessageW(Item(kHotkey), HKM_GETHOTKEY, 0, 0));
+        Hotkey hk;
+        hk.vk = LOBYTE(v);
+        const BYTE f = HIBYTE(v);
+        if (f & HOTKEYF_CONTROL) hk.mods |= kModCtrl;
+        if (f & HOTKEYF_ALT) hk.mods |= kModAlt;
+        if (f & HOTKEYF_SHIFT) hk.mods |= kModShift;
+        return hk.vk ? FormatHotkey(hk) : L"";
+    }
+
+    // Free or taken? Windows tells us for hotkeys of other programs; keys a game or add-on (arcdps) reads
+    // itself cannot be seen from outside.
+    void UpdateHotkeyStatus() {
+        const std::wstring text = HotkeyText();
+        std::wstring status;
+        if (text.empty()) {
+            status = Tr(L"No hotkey: show the window from the tray icon.");
+        } else if (const auto hk = ParseHotkey(text); !hk) {
+            status = Tr(L"[!] This key cannot be used – take a letter, digit or F-key with Ctrl or Alt.");
+        } else if (const auto mine = ParseHotkey(cfg_.hotkey); mine && mine->vk == hk->vk && mine->mods == hk->mods) {
+            status = Tr(L"[OK] In use by this tool. Keys of the game and its add-ons (e.g. arcdps) cannot be checked – "
+                        L"three keys clash least.");
+        } else if (RegisterHotKey(hwnd_, 0x7FFF, hk->mods | MOD_NOREPEAT, hk->vk)) {
+            UnregisterHotKey(hwnd_, 0x7FFF);
+            status = Tr(L"[OK] Free in Windows. Keys of the game and its add-ons (e.g. arcdps) cannot be checked – "
+                        L"three keys clash least.");
+        } else {
+            status = Tr(L"[!] Already taken by another program – choose another one.");
+        }
+        SetText(kHotkeyStatus, status);
     }
 
     void BuildReading() {
@@ -803,11 +857,22 @@ private:
     }
 
     void OnSlider() override {
-        const int size = static_cast<int>(SendMessageW(Item(kFontSize), TBM_GETPOS, 0, 0));
+        const int pt = static_cast<int>(SendMessageW(Item(kFontSize), TBM_GETPOS, 0, 0));
         const int transparency = static_cast<int>(SendMessageW(Item(kOpacity), TBM_GETPOS, 0, 0));
-        SetText(kFontSizeValue, std::to_wstring(size) + L" %");
+        syncing_ = true;
+        if (_wtoi(Text(kFontSizeValue).c_str()) != pt) SetText(kFontSizeValue, std::to_wstring(pt));
+        syncing_ = false;
         SetText(kOpacityValue, std::to_wstring(transparency) + L" %");
-        if (ctx_.preview) ctx_.preview(OpacityOf(transparency), size);
+        Preview();
+    }
+
+    // Live preview of size, font and transparency on the window behind the dialog.
+    void Preview() {
+        if (!ctx_.preview) return;
+        const int pt = static_cast<int>(SendMessageW(Item(kFontSize), TBM_GETPOS, 0, 0));
+        const int transparency = static_cast<int>(SendMessageW(Item(kOpacity), TBM_GETPOS, 0, 0));
+        const int face = std::max(0, Sel(kFontFace));
+        ctx_.preview(OpacityOf(transparency), PercentOf(pt), kFonts[static_cast<size_t>(face) % std::size(kFonts)]);
     }
 
     void OnCommand(int id, int code) override {
@@ -818,7 +883,7 @@ private:
                 Close();
                 break;
             case IDCANCEL:
-                if (ctx_.preview) ctx_.preview(cfg_.opacity, cfg_.fontPercent);  // undo the live preview
+                if (ctx_.preview) ctx_.preview(cfg_.opacity, cfg_.fontPercent, cfg_.fontFace);  // undo the live preview
                 Close();
                 break;
             case kTessBrowse: {
@@ -870,6 +935,25 @@ private:
             case kMsGet:
                 ShellExecuteW(hwnd_, L"open", L"https://portal.azure.com/#create/Microsoft.CognitiveServicesTextTranslation",
                               nullptr, nullptr, SW_SHOWNORMAL);
+                break;
+            case kFontSizeValue:  // typed size: the slider follows (only whole, sensible values)
+                if (code == EN_CHANGE && !syncing_) {
+                    const int pt = _wtoi(Text(kFontSizeValue).c_str());
+                    if (pt >= kMinPt && pt <= kMaxPt) {
+                        SendMessageW(Item(kFontSize), TBM_SETPOS, TRUE, pt);
+                        Preview();
+                    }
+                }
+                break;
+            case kFontFace:
+                if (code == CBN_SELCHANGE) Preview();
+                break;
+            case kHotkey:
+                if (code == EN_CHANGE) UpdateHotkeyStatus();
+                break;
+            case kHotkeyClear:
+                SendMessageW(Item(kHotkey), HKM_SETHOTKEY, 0, 0);
+                UpdateHotkeyStatus();
                 break;
             case kMyWords:
                 if (ctx_.myWordsText && ctx_.setMyWords) {
@@ -1249,13 +1333,11 @@ private:
             c.uiLang = EffectiveUiLang(c.uiLangCode);
         }
         if (Sel(kReadLang) >= 0) c.readLang = LanguageAt(Sel(kReadLang));
-        std::vector<std::wstring> writes;
-        for (const std::wstring& code : ParseLangList(Text(kWriteLangs)))
-            if (const LangInfo* l = FindLanguage(code)) writes.push_back(l->code);
-        if (!writes.empty()) c.writeLangs = writes;
-        c.fontPercent = static_cast<int>(SendMessageW(Item(kFontSize), TBM_GETPOS, 0, 0));
+        // "Send as" languages are no longer set here: the window offers every language and remembers the used ones.
+        c.fontPercent = PercentOf(static_cast<int>(SendMessageW(Item(kFontSize), TBM_GETPOS, 0, 0)));
+        c.fontFace = kFonts[static_cast<size_t>(std::max(0, Sel(kFontFace))) % std::size(kFonts)];
         c.opacity = OpacityOf(static_cast<int>(SendMessageW(Item(kOpacity), TBM_GETPOS, 0, 0)));
-        if (!Trim(Text(kHotkey)).empty()) c.hotkey = Trim(Text(kHotkey));
+        c.hotkey = HotkeyText();  // empty = no hotkey
 
         c.readerEnabled = Checked(kReaderOn);
         if (Sel(kOcrEngine) >= 0) c.ocr = static_cast<OcrChoice>(Sel(kOcrEngine));
@@ -1282,14 +1364,22 @@ private:
         const wchar_t* quick[] = {L"EN", L"DE", L"FR", L"ES"};
         for (int i = 0; i < 4; ++i)
             if (Checked(kSkipEn + i)) c.understoodLangs.push_back(quick[i]);
-        for (const std::wstring& l : ParseLangList(Text(kUnderstood))) c.understoodLangs.push_back(l);
-        ChannelMask a = 0;
-        if (Checked(kAutoWhisper)) a |= ChannelBit(Channel::Whisper);
-        if (Checked(kAutoGroup)) a |= ChannelBit(Channel::Party) | ChannelBit(Channel::Squad);
-        if (Checked(kAutoGuild)) a |= ChannelBit(Channel::Guild);
-        if (Checked(kAutoMap)) a |= ChannelBit(Channel::Map) | ChannelBit(Channel::Say);
-        if (Checked(kAutoTeam)) a |= ChannelBit(Channel::Team);
-        c.autoTranslate = a;
+        if (Checked(kSkipMore) && Sel(kUnderstood) >= 0)
+            c.understoodLangs.push_back(PrimaryLang(Languages()[static_cast<size_t>(Sel(kUnderstood))].code));
+        // Further codes from the settings file (not shown here) stay.
+        bool firstOther = true;
+        for (const std::wstring& l : cfg_.understoodLangs) {
+            const std::wstring p = PrimaryLang(l);
+            if (p == L"EN" || p == L"DE" || p == L"FR" || p == L"ES") continue;
+            if (firstOther) {
+                firstOther = false;
+                continue;
+            }
+            if (std::find(c.understoodLangs.begin(), c.understoodLangs.end(), l) == c.understoodLangs.end())
+                c.understoodLangs.push_back(l);
+        }
+        // Everything that is read is translated (the channel choice is gone); a click translates the rest.
+        c.autoTranslate = DefaultAutoTranslate();
         c.copyOnly = Sel(kSendMode) == 1;
         c.returnFocus = Checked(kReturnFocus);
 
@@ -1329,6 +1419,7 @@ private:
     // Translator page: one section per translator, only the chosen one is visible.
     std::vector<HWND> secAuto_, secBasic_, secGoogle_, secMicrosoft_, secDeepL_, secLibre_, secLlm_, secLocal_;
     int lastPreset_ = -1;
+    bool syncing_ = false;  // slider and size field update each other
 };
 
 // ---------------------------------------------------------------------------

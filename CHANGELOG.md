@@ -26,6 +26,12 @@ diagnosis show it.
   lines and side-by-side columns (sidebar, text, picture) become separate paragraphs; at least double enlargement for
   small app fonts; a paragraph that grows (someone types, text streams in) updates its entry instead of adding new
   ones, a slightly different reading of the same text is ignored.
+- Settings → General tidied up: both language lists in one row; "do not translate" gets a language list instead of
+  a text field; the channel choice ("translate in") and the "send as" list are gone (everything read is translated;
+  the window's write menu offers every language and shows "Chat: …" by itself for scripts GW2 cannot show). Text
+  size in points (8–32, slider or typed) and a choice of readable Windows fonts. The hotkey is picked with a key
+  field, can be "None", and says whether Windows already gives it to another program; new default
+  Ctrl+Alt+Shift+T.
 - **Fixed (privacy):** the free screen area could read our own settings dialog (including the MyMemory e-mail field)
   and send it to the translator; on Windows 10 a dialog over the GW2 chat could be read too. All our dialogs and the
   word dropdown are now excluded from screen capture, and reading pauses while any dialog, menu or message box of

@@ -396,7 +396,8 @@ void Config::Load(const std::wstring& dir) {
     glossaryEnabled = ini.Bool(L"Glossary", L"Enabled", true);
     glossaryRefreshDays = ini.Int(L"Glossary", L"RefreshDays", 14, 1, 365);
 
-    hotkey = ini.Str(L"Hotkey", L"Toggle", L"Ctrl+Alt+T");
+    // Three keys by default: fewer clashes with other programs and game add-ons. Empty = no hotkey.
+    hotkey = ini.Str(L"Hotkey", L"Toggle", L"Ctrl+Alt+Shift+T");
 
     maxLength = ini.Int(L"Chat", L"MaxLength", 199, 20, 2000);
     returnFocus = ini.Bool(L"Chat", L"ReturnFocus", false);
@@ -410,7 +411,8 @@ void Config::Load(const std::wstring& dir) {
     w = ini.Int(L"Window", L"Width", 520, 380, 4000);
     h = ini.Int(L"Window", L"Height", 460, 300, 4000);
     opacity = ini.Int(L"Window", L"Opacity", 255, 60, 255);
-    fontPercent = ini.Int(L"Window", L"FontPercent", 100, 80, 160);
+    fontPercent = ini.Int(L"Window", L"FontPercent", 100, 70, 300);
+    fontFace = ini.Str(L"Window", L"Font", L"Segoe UI");
     followGame = ini.Bool(L"Window", L"FollowGame", true);
     focusOnGameChat = ini.Bool(L"Window", L"FocusOnGameChat", false);
     dock = ini.Bool(L"Window", L"Dock", false);
@@ -537,6 +539,7 @@ void Config::SaveAll() const {
     SaveBool(L"Chat", L"ReturnFocus", returnFocus);
     SaveValue(L"Window", L"Opacity", std::to_wstring(opacity));
     SaveValue(L"Window", L"FontPercent", std::to_wstring(fontPercent));
+    SaveValue(L"Window", L"Font", fontFace);
     SaveBool(L"Window", L"FollowGame", followGame);
     SaveBool(L"Window", L"FocusOnGameChat", focusOnGameChat);
     SaveBool(L"Window", L"Dock", dock);

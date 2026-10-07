@@ -254,7 +254,7 @@ int MainWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
     HDC screen = GetDC(nullptr);
     const int dpi = GetDeviceCaps(screen, LOGPIXELSY);
     ReleaseDC(nullptr, screen);
-    theme_.Create(dpi, cfg_.fontPercent);
+    theme_.Create(dpi, cfg_.fontPercent, cfg_.fontFace);
     InitServices();
 
     WNDCLASSEXW wc{};
@@ -585,7 +585,7 @@ void MainWindow::ToggleCollapse() {
 
 void MainWindow::ApplyDpi(int dpi, const RECT* suggested) {
     theme_.Destroy();
-    theme_.Create(dpi, cfg_.fontPercent);
+    theme_.Create(dpi, cfg_.fontPercent, cfg_.fontFace);
     input_.ApplyTheme();
     log_.ThemeChanged();
     if (suggested)
@@ -747,7 +747,7 @@ void MainWindow::Paint() {
             default: break;
         }
         if (text.empty()) {
-            if (!hotkeyOk_) {
+            if (!hotkeyOk_ && !Trim(cfg_.hotkey).empty()) {  // no hotkey chosen: nothing to warn about
                 text = TrF(L"Hotkey \u201c{1}\u201d is taken \u2013 change it in the settings", {cfg_.hotkey});
                 color = Theme::kWarn;
             } else if (readingActive_) {
@@ -3074,13 +3074,16 @@ void MainWindow::OpenSettings(SettingsPage page) {
     ctx.connectionStatus = [this] { return ConnectionStatus(); };
     ctx.technicalStatus = [this] { return TechnicalStatus(); };
     ctx.isGw2Running = [this] { return gw2_ != nullptr || mumbleState_.live; };
-    ctx.preview = [this](int opacity, int fontPercent) {
+    ctx.preview = [this](int opacity, int fontPercent, const std::wstring& face) {
         SetLayeredWindowAttributes(hwnd_, 0, static_cast<BYTE>(opacity), LWA_ALPHA);
-        if (fontPercent != theme_.textPercent) {
-            const int keep = cfg_.fontPercent;
+        if (fontPercent != theme_.textPercent || face != theme_.fontFace) {
+            const int keepSize = cfg_.fontPercent;
+            const std::wstring keepFace = cfg_.fontFace;
             cfg_.fontPercent = fontPercent;
+            cfg_.fontFace = face;
             ApplyDpi(theme_.dpi, nullptr);
-            cfg_.fontPercent = keep;
+            cfg_.fontPercent = keepSize;
+            cfg_.fontFace = keepFace;
         }
     };
     ctx.forgetLearned = [this] {
@@ -3160,7 +3163,9 @@ void MainWindow::ApplySettings(const Config& next) {
     cfg_ = c;
 
     if (prev.uiLang != cfg_.uiLang) SetUiLanguage(cfg_.uiLang);
-    if (prev.fontPercent != cfg_.fontPercent || theme_.textPercent != cfg_.fontPercent) ApplyDpi(theme_.dpi, nullptr);
+    if (prev.fontPercent != cfg_.fontPercent || theme_.textPercent != cfg_.fontPercent || prev.fontFace != cfg_.fontFace ||
+        theme_.fontFace != cfg_.fontFace)
+        ApplyDpi(theme_.dpi, nullptr);
     if (prev.opacity != cfg_.opacity) SetLayeredWindowAttributes(hwnd_, 0, static_cast<BYTE>(cfg_.opacity), LWA_ALPHA);
     if (prev.hotkey != cfg_.hotkey) {
         if (hotkeyOk_) UnregisterHotKey(hwnd_, kHotkeyId);

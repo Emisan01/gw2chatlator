@@ -27,7 +27,7 @@ struct DialogContext {
     // Live text for the technical page: parameters and numbers (no chat text).
     std::function<std::wstring()> technicalStatus;
     // Live preview while a slider moves: opacity (alpha 0..255), text size (percent).
-    std::function<void(int opacity, int fontPercent)> preview;
+    std::function<void(int opacity, int fontPercent, const std::wstring& fontFace)> preview;
     // True when GW2 is currently running.
     std::function<bool()> isGw2Running;
     // Deletes everything learned from sent messages (all languages).

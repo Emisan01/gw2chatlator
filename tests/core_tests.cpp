@@ -109,6 +109,12 @@ static void TestChat() {
 }
 
 static void TestHotkey() {
+    // What the settings' hotkey field stores reads back the same.
+    for (const wchar_t* k : {L"Ctrl+Alt+Shift+T", L"Ctrl+F9", L"Alt+Numpad5", L"Ctrl+Shift+PageUp"}) {
+        const auto hk = ParseHotkey(k);
+        CHECK(hk && FormatHotkey(*hk) == k);
+    }
+    CHECK(FormatHotkey(Hotkey{kModCtrl, 0xBA}).empty());  // a key the parser does not know
     auto h = ParseHotkey(L"Ctrl+Alt+T");
     CHECK(h && h->mods == (kModCtrl | kModAlt) && h->vk == 0x54);
     h = ParseHotkey(L"strg + umschalt + 1");

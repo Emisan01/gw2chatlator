@@ -94,7 +94,7 @@ struct Config {
     int glossaryRefreshDays = 14;
 
     // [Hotkey]
-    std::wstring hotkey = L"Ctrl+Alt+T";
+    std::wstring hotkey = L"Ctrl+Alt+Shift+T";  // empty = none
 
     // [Chat]
     int maxLength = 199;
@@ -113,7 +113,8 @@ struct Config {
     static constexpr int kAutoPos = -100000;
     int x = kAutoPos, y = kAutoPos, w = 520, h = 460;
     int opacity = 255;
-    int fontPercent = 100;
+    int fontPercent = 100;            // chat text: 100 % = 11 pt
+    std::wstring fontFace = L"Segoe UI";
     bool followGame = true;
     bool focusOnGameChat = false;  // focus input when in-game chat box gains focus
     // Docked: position kept relative to the bottom-left corner of the GW2
