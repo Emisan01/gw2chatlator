@@ -514,6 +514,8 @@ void MainWindow::StartReader() {
     o.wordLangs.insert(o.wordLangs.begin(), readLang_);
     o.wordLangs.push_back(cfg_.chatLang);
     for (const auto& e : myWords_.Entries()) o.knownWords.push_back(e.first);
+    for (const auto& e : ocrFixes_.Entries())
+        if (!e.second.empty()) o.ocrFixes.push_back(e);
     o.captureDir = cfg_.CaptureDir();
     reader_.SetSaveCaptures(cfg_.saveCaptures);
     reader_.Start(hwnd_, WM_APP_SNAPSHOT, o);
@@ -643,11 +645,25 @@ void MainWindow::Paint() {
     DrawLine(dc, collapsed_ ? L"\u25bc" : L"\u25b2", collapseRect_, collapsed_ ? Theme::kAccent : Theme::kMuted, t.fontSmall, DT_CENTER);
     menuRect_ = {collapseRect_.left - t.S(28), 0, collapseRect_.left, m.head};
     DrawLine(dc, L"\u2261", menuRect_, Theme::kMuted, t.fontText, DT_CENTER);
+    // Reading on/off: a small dot, quiet grey while reading, black when off.
+    readDotRect_ = {menuRect_.left - t.S(20), 0, menuRect_.left, m.head};
+    {
+        const int d = t.S(9);
+        const int cx = (readDotRect_.left + readDotRect_.right) / 2, cy = m.head / 2;
+        HBRUSH fill = CreateSolidBrush(cfg_.readerEnabled ? RGB(150, 155, 165) : RGB(0, 0, 0));
+        HPEN ring = CreatePen(PS_SOLID, std::max(1, t.S(1)), RGB(120, 125, 135));
+        HGDIOBJ oldB = SelectObject(dc, fill), oldP = SelectObject(dc, ring);
+        Ellipse(dc, cx - d / 2, cy - d / 2, cx + d / 2 + 1, cy + d / 2 + 1);
+        SelectObject(dc, oldB);
+        SelectObject(dc, oldP);
+        DeleteObject(fill);
+        DeleteObject(ring);
+    }
     const LangInfo* rl = FindLanguage(readLang_);
     const std::wstring readName = rl ? rl->native : readLang_;
     // Short form when space is tight (several tabs or a narrow window).
     const bool roomy = rc.right >= t.S(470) && cfg_.tabs.size() <= 3;
-    readRect_ = DrawChip(dc, t, menuRect_.left - t.S(4), t.S(6), m.head - t.S(6),
+    readRect_ = DrawChip(dc, t, readDotRect_.left - t.S(2), t.S(6), m.head - t.S(6),
                          roomy ? TrF(L"Read: {1}", {readName}) : readName, Theme::kAccent, true);
 
     const int badgeD = t.S(15), gap = t.S(16);
@@ -773,7 +789,8 @@ void MainWindow::Paint() {
 }
 
 bool MainWindow::IsClickable(POINT pt) const {
-    for (const RECT* r : {&readRect_, &menuRect_, &collapseRect_, &closeRect_, &channelRect_, &writeRect_, &chatRect_})
+    for (const RECT* r : {&readRect_, &readDotRect_, &menuRect_, &collapseRect_, &closeRect_, &channelRect_, &writeRect_,
+                          &chatRect_})
         if (PtInRect(r, pt)) return true;
     for (const RECT& r : tabRects_)
         if (PtInRect(&r, pt)) return true;
@@ -811,6 +828,7 @@ void MainWindow::OnClick(POINT pt) {
     if (PtInRect(&closeRect_, pt)) PostMessageW(hwnd_, WM_CLOSE, 0, 0);
     else if (PtInRect(&collapseRect_, pt)) ToggleCollapse();
     else if (PtInRect(&menuRect_, pt)) ShowMainMenu();
+    else if (PtInRect(&readDotRect_, pt)) ToggleReading();
     else if (PtInRect(&readRect_, pt)) ShowReadMenu();
     else if (PtInRect(&channelRect_, pt)) ShowChannelMenu();
     else if (PtInRect(&chatRect_, pt)) ShowChatLangMenu();
@@ -987,6 +1005,36 @@ void MainWindow::OpenWhisperTab(const std::wstring& name) {
 }
 
 // Click on a line that stayed untranslated: translate it now, before anything else.
+// Measured (ocr_bench, real captures): Windows OCR ~90 ms and best at normal/large text; Tesseract 1.5-3.5 s,
+// better only with very small letters (1080p with a small chat font).
+std::wstring MainWindow::ReadingAdvice() const {
+    RECT r = GameClientRect();
+    std::wstring what = L"GW2";
+    if (IsRectEmpty(&r)) {
+        MONITORINFO mi{};
+        mi.cbSize = sizeof(mi);
+        GetMonitorInfoW(MonitorFromWindow(hwnd_, MONITOR_DEFAULTTOPRIMARY), &mi);
+        r = mi.rcMonitor;
+        what = Tr(L"Screen");
+    }
+    const std::wstring size = std::to_wstring(r.right - r.left) + L" × " + std::to_wstring(r.bottom - r.top);
+    if (r.bottom - r.top > 1200)
+        return TrF(L"{1}: {2} → Windows OCR fits (about 0.1 s per picture). Tesseract only helps with very small "
+                   L"text.",
+                   {what, size});
+    return TrF(L"{1}: {2} → small letters possible. If words are misread, try Tesseract (more exact with small "
+               L"text, but about 2 s per picture) – or a larger chat font in GW2.",
+               {what, size});
+}
+
+void MainWindow::ToggleReading() {
+    cfg_.readerEnabled = !cfg_.readerEnabled;
+    cfg_.SaveBool(L"Reader", L"Enabled", cfg_.readerEnabled);
+    RestartReader();
+    SetStatus(cfg_.readerEnabled ? Tr(L"Reading the chat: on") : Tr(L"Reading the chat: off"), Tone::Muted, 2500);
+    InvalidateChrome();
+}
+
 void MainWindow::Retranslate(uint64_t id, const std::wstring& text) {
     if (!translator_ || Trim(text).empty()) return;
     log_.Update(id, [](ChatEntry& e) {
@@ -1282,11 +1330,7 @@ void MainWindow::ShowMainMenu() {
             break;
         case kGw2Chat: SetFreeArea(false); break;
         case kFreeArea: PickFreeArea(); break;
-        case kReader:
-            cfg_.readerEnabled = !cfg_.readerEnabled;
-            cfg_.SaveBool(L"Reader", L"Enabled", cfg_.readerEnabled);
-            RestartReader();
-            break;
+        case kReader: ToggleReading(); break;
         case kOcrAuto:
         case kOcrTess:
         case kOcrWin:
@@ -1519,6 +1563,14 @@ void MainWindow::SaveCorrections() { WriteFileAtomic(CorrectionsPath(), correcti
 void MainWindow::LoadMyWords() {
     std::string data;
     if (ReadFileBytes(cfg_.dataDir + L"\\my-words.txt", data)) myWords_.Parse(FromUtf8(data));
+    data.clear();
+    if (ReadFileBytes(cfg_.dataDir + L"\\ocr-fixes.txt", data)) ocrFixes_.Parse(FromUtf8(data));
+}
+
+void MainWindow::SaveOcrFixes() {
+    WriteFileAtomic(cfg_.dataDir + L"\\ocr-fixes.txt",
+                    ToUtf8(L"# GW2 Chat Translator: learned recognition errors, \"as read = correct\" per line\r\n" +
+                           ocrFixes_.Serialize()));
 }
 
 void MainWindow::SaveMyWords() {
@@ -2083,6 +2135,10 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
     stats_.confirmed += fresh.size();
     stats_.secondLooks += static_cast<uint64_t>(s->secondLooks);
     stats_.secondFixes += static_cast<uint64_t>(s->secondFixes);
+    if (!s->newFixes.empty()) {  // learned: from now on fixed at once, also after a restart
+        for (const auto& [wrong, right] : s->newFixes) ocrFixes_.Set(wrong, right);
+        SaveOcrFixes();
+    }
     if (stream_.HasPending()) SetTimer(hwnd_, kTimerConfirm, kConfirmDelayMs, nullptr);
     // The first picture shows the whole chat history: only the last few lines
     // are worth translating, the rest is old (all lines are remembered, so
@@ -3092,6 +3148,13 @@ void MainWindow::OpenSettings(SettingsPage page) {
     };
     ctx.correctionsInfo = [this] { return CorrectionsInfo(); };
     ctx.myWordsText = [this] { return myWords_.Serialize(); };
+    ctx.ocrFixesText = [this] { return ocrFixes_.Serialize(); };
+    ctx.setOcrFixes = [this](const std::wstring& text) {
+        ocrFixes_.Parse(text);
+        SaveOcrFixes();
+        RestartReader();  // the reader works with the new list
+    };
+    ctx.readingAdvice = [this] { return ReadingAdvice(); };
     ctx.setMyWords = [this](const std::wstring& text) {
         myWords_.Parse(text);
         for (const auto& e : myWords_.Entries()) spell_.AddUserWord(e.first);

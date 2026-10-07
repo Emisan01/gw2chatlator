@@ -48,7 +48,7 @@ enum : int {
     // Translator
     kEngine, kEngineNote, kLocalModel, kPull, kLocalInfo, kGetOllama, kPullStatus, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
     kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
-    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus,
+    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kHelpOcr, kHelpCapture, kOcrFixes,
     // Game & start
     kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kStatus, kRefresh, kSetup,
     // Wizard
@@ -85,11 +85,12 @@ int DpiOf(HWND h) {
 
 std::wstring TesseractStatus(const std::wstring& configured) {
     TesseractInfo info;
-    if (!FindTesseract(configured, &info)) return Tr(L"Not installed – Windows text recognition is used.");
-    std::wstring models;
+    if (!FindTesseract(configured, &info)) return Tr(L"[--] Not installed – Windows OCR is used (enough for most).");
+    size_t models = 0;
     for (const std::string& m : info.models)
-        if (m != "osd") models += (models.empty() ? L"" : L", ") + FromUtf8(m);
-    return TrF(L"Found: {1}  ({2})", {info.exe, models});
+        if (m != "osd") ++models;
+    // Only the packs for your languages are loaded; all installed ones are not a problem.
+    return TrF(L"[OK] Found, {1} language packs installed.", {std::to_wstring(models)});
 }
 
 // ---------------------------------------------------------------------------
@@ -536,30 +537,35 @@ private:
     void BuildReading() {
         BeginPage();
         int r = 0;
-        Check(kReaderOn, Tr(L"Read the GW2 chat and translate it permanently"), cfg_.readerEnabled, kLabelX, Y(r++),
-              kW - 50);
+        // Reading on/off lives in the main window (dot in the header, first menu entry).
         Label(Tr(L"Text recognition"), kLabelX, Y(r), kLabelW);
         Combo(kOcrEngine,
-              {Tr(L"Automatic (fastest: Windows; Tesseract only for very small text)"), L"Tesseract",
-               Tr(L"Windows (built in)")},
-              static_cast<int>(cfg_.ocr), kCtrlX, Y(r++), kCtrlW);
+              {Tr(L"Automatic (Windows OCR; Tesseract only for very small text)"), Tr(L"Tesseract (separate install)"),
+               Tr(L"Windows OCR (built in, fast)")},
+              static_cast<int>(cfg_.ocr), kCtrlX, Y(r), kCtrlW - 30);
+        Button(kHelpOcr, L"?", kCtrlX + kCtrlW - 24, Y(r++) - 1, 24);
+        Label(ctx_.readingAdvice ? ctx_.readingAdvice() : L"", kCtrlX, Y(r++) - 6, kCtrlW, 34);
         Label(Tr(L"Picture of the chat"), kLabelX, Y(r), kLabelW);
         Combo(kCapture,
               {Tr(L"Automatic (no yellow frame)"), Tr(L"Game window (Windows 10: yellow frame)"),
                Tr(L"Screen (never a frame)")},
-              cfg_.captureMode, kCtrlX, Y(r++), kCtrlW);
-        Label(Tr(L"Tesseract folder"), kLabelX, Y(r), kLabelW);
+              cfg_.captureMode, kCtrlX, Y(r), kCtrlW - 30);
+        Button(kHelpCapture, L"?", kCtrlX + kCtrlW - 24, Y(r++) - 1, 24);
+        // Tesseract: an optional second recognition for small letters.
+        Label(Tr(L"Tesseract (optional)"), kLabelX, Y(r), kLabelW);
         Edit(kTessPath, cfg_.tesseractPath, kCtrlX, Y(r), kCtrlW - 96);
         Button(kTessBrowse, Tr(L"Browse…"), kCtrlX + kCtrlW - 90, Y(r++) - 1, 90);
-        Label(TesseractStatus(cfg_.tesseractPath), kCtrlX, Y(r++) - 6, kCtrlW, 34, kTessStatus);
-        Button(kTessGet, Tr(L"Get Tesseract (free)…"), kCtrlX, Y(r++) - 4, 200);
-        Check(kChinese, Tr(L"Also read Chinese (Simplified, needs chi_sim)"), cfg_.readChinese, kLabelX, Y(r++),
+        Label(TesseractStatus(cfg_.tesseractPath), kCtrlX, Y(r) - 4, kCtrlW - 150, 34, kTessStatus);
+        Button(kTessGet, Tr(L"Get Tesseract…"), kCtrlX + kCtrlW - 140, Y(r++) - 4, 140);
+        Label(Tr(L"Read every"), kLabelX, Y(r), kLabelW);
+        Edit(kInterval, std::to_wstring(cfg_.readerIntervalMs), kCtrlX, Y(r), 60, ES_NUMBER);
+        Label(Tr(L"ms (200–2000, 400 recommended; shorter only reacts sooner, it does not read more exactly)"),
+              kCtrlX + 68, Y(r++) - 4, kCtrlW - 68, 34);
+        Check(kShowSystem, Tr(L"Filter system messages (events, notices)"), !cfg_.showSystemLines, kLabelX, Y(r++),
               kW - 50);
-        Label(Tr(L"Read every (ms)"), kLabelX, Y(r), kLabelW);
-        Edit(kInterval, std::to_wstring(cfg_.readerIntervalMs), kCtrlX, Y(r++), 90, ES_NUMBER);
-        Check(kShowSystem, Tr(L"Show system lines (events, notices)"), cfg_.showSystemLines, kLabelX, Y(r++), kW - 50);
-        Check(kSecondLook, Tr(L"Second look: read unknown words once more, enlarged (taken only if then a real word)"),
-              cfg_.secondLook, kLabelX, Y(r++), kW - 50);
+        Check(kSecondLook, Tr(L"Smart artifact correction (misread words are read again and learned)"),
+              cfg_.secondLook, kLabelX, Y(r), 380);
+        Button(kOcrFixes, Tr(L"Learned…"), kCtrlX + kCtrlW - 110, Y(r++) - 2, 110);
         Check(kCaptures, Tr(L"Save diagnostic pictures (switches off after 15 minutes)"), cfg_.saveCaptures, kLabelX,
               Y(r++), kW - 50);
         Button(kPickRegion, Tr(L"Set the chat area…"), kLabelX, Y(r) + 4, 200);
@@ -955,6 +961,37 @@ private:
                 SendMessageW(Item(kHotkey), HKM_SETHOTKEY, 0, 0);
                 UpdateHotkeyStatus();
                 break;
+            case kHelpOcr:
+                MessageBoxW(hwnd_,
+                            Tr(L"Text recognition (OCR, optical character recognition) turns the picture of the chat into "
+                               L"text.\n\n"
+                               L"Windows OCR: built into Windows (Windows.Media.Ocr), nothing to install. Measured on 4K "
+                               L"chat: about 0.1 s per picture, 0.5–3 % errors. Best with normal and large text.\n\n"
+                               L"Tesseract: free open-source recognition, separate install. About 1.5–3.5 s per picture "
+                               L"(it starts each time and loads its language models), more exact with very small text.\n\n"
+                               L"Automatic: Windows OCR, Tesseract only when the chat text is very small.\n\n"
+                               L"What helps both most: a larger chat font in GW2 – more pixels per letter.")
+                                .c_str(),
+                            Tr(L"Text recognition").c_str(), MB_OK | MB_ICONINFORMATION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0));
+                break;
+            case kHelpCapture:
+                MessageBoxW(hwnd_,
+                            Tr(L"How the picture of the chat is taken:\n\n"
+                               L"Game window (WGC, Windows Graphics Capture): Windows hands over the content of the GW2 "
+                               L"window itself, even under our window. On Windows 10 Windows then draws a yellow frame "
+                               L"around the game (it cannot be switched off there).\n\n"
+                               L"Screen (DXGI, DirectX desktop duplication): a picture of the screen as you see it, never a "
+                               L"frame. Our own windows are hidden from it.\n\n"
+                               L"Automatic: game window on Windows 11 (frame switched off), screen on Windows 10.")
+                                .c_str(),
+                            Tr(L"Picture of the chat").c_str(), MB_OK | MB_ICONINFORMATION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0));
+                break;
+            case kOcrFixes:
+                if (ctx_.ocrFixesText && ctx_.setOcrFixes) {
+                    std::wstring text = ctx_.ocrFixesText();
+                    if (EditOcrFixes(hwnd_, inst_, &text)) ctx_.setOcrFixes(text);
+                }
+                break;
             case kMyWords:
                 if (ctx_.myWordsText && ctx_.setMyWords) {
                     std::wstring text = ctx_.myWordsText();
@@ -1339,14 +1376,17 @@ private:
         c.opacity = OpacityOf(static_cast<int>(SendMessageW(Item(kOpacity), TBM_GETPOS, 0, 0)));
         c.hotkey = HotkeyText();  // empty = no hotkey
 
-        c.readerEnabled = Checked(kReaderOn);
+        // Reading on/off is switched in the main window.
         if (Sel(kOcrEngine) >= 0) c.ocr = static_cast<OcrChoice>(Sel(kOcrEngine));
         if (Sel(kCapture) >= 0) c.captureMode = Sel(kCapture);
         c.tesseractPath = Trim(Text(kTessPath));
-        c.readChinese = Checked(kChinese);
+        // Chinese for Tesseract by itself, when one of your languages is Chinese (it makes Tesseract slower).
+        c.readChinese = PrimaryLang(c.readLang) == L"ZH" || PrimaryLang(c.chatLang) == L"ZH" ||
+                        std::any_of(c.writeLangs.begin(), c.writeLangs.end(),
+                                    [](const std::wstring& l) { return PrimaryLang(l) == L"ZH"; });
         const int interval = _wtoi(Text(kInterval).c_str());
-        if (interval >= 250 && interval <= 10000) c.readerIntervalMs = interval;
-        c.showSystemLines = Checked(kShowSystem);
+        if (interval > 0) c.readerIntervalMs = std::clamp(interval, 200, 2000);
+        c.showSystemLines = !Checked(kShowSystem);  // the box says "filter
         c.secondLook = Checked(kSecondLook);
         c.saveCaptures = Checked(kCaptures);
 
@@ -1650,6 +1690,17 @@ bool EditMyWords(HWND owner, HINSTANCE inst, std::wstring* text) {
                       L"without “=” only marks the word as correct. Stays on this PC."),
                    *text, true);
     dlg.Run(owner, inst, Tr(L"My words"), 480, dlg.Height());
+    if (dlg.ok) *text = dlg.text;
+    return dlg.ok;
+}
+
+bool EditOcrFixes(HWND owner, HINSTANCE inst, std::wstring* text) {
+    TextDialog dlg(Tr(L"Recognition errors the smart artifact correction has learned – one per line as "
+                      L"“as read = correct”."),
+                   Tr(L"They are fixed right after reading, without reading the word again. Delete a line if a fix is "
+                      L"wrong; add your own. Stays on this PC (ocr-fixes.txt) – you can share the file."),
+                   *text, true);
+    dlg.Run(owner, inst, Tr(L"Learned recognition fixes"), 480, dlg.Height());
     if (dlg.ok) *text = dlg.text;
     return dlg.ok;
 }

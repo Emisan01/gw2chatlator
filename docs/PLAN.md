@@ -106,6 +106,18 @@ Schritt (große Abhängigkeit); LibreTranslate nutzt dieselbe Art Modelle (Argos
 **Offen:** gemeinsame Wörterdatenbank online für alle (eigener Server, Datenschutz, Missbrauch) – vorerst
 Export/Import der Korrekturdatei; Bewertungen im Vergleich speichern.
 
+**Texterkennung, weitere Kandidaten (Recherche 2026-10-07):**
+- **RapidOCR** = PaddleOCR-Modelle (Baidu, Deep Learning) auf ONNX Runtime: CPU, ~50–80 MB, robust bei kleiner und
+  bunter Schrift. Kandidat für eine dritte, eingebaute Erkennung (ONNX Runtime als DLL, kein Python). Gegen
+  `ocr_bench` messen, bevor er eingebaut wird.
+- **Windows AI TextRecognizer** (Windows App SDK): Nachfolger von Windows.Media.Ocr, auf Copilot+ PCs mit NPU
+  schneller und genauer; auf normalen PCs nicht verfügbar. Später als Zusatz, wenn erkannt.
+- Mehrere Bilder kurz nacheinander übereinanderlegen bringt bei UI-Text nichts (die Pixel sind identisch, keine
+  Subpixel-Verschiebung); mehrere *Aufbereitungen* desselben Bildes per Wort abstimmen ist das, was der Zweitblick
+  gezielt tut. Größere Chatschrift in GW2 bleibt der stärkste Hebel.
+- Gemeinsame Fehlerlisten (`ocr-fixes.txt`, `my-words.txt`, Korrekturen) zum Teilen: Datei-Austausch geht schon;
+  eine Gemeinschafts-Sammlung braucht einen Ort (z. B. ein GitHub-Repo mit Listen) und eine Prüfung.
+
 **Ursprünglich überlegt:**
 - **Sicherheitsstufe** (eine Zeile auf der Technik-Seite, nachprüfbar): kein Hook/keine DLL/kein Handle zum Spiel ✔,
   Senden nur auf Tastendruck ✔, Bilder verlassen den PC nie ✔, Netz nur zum gewählten Übersetzer (+ LanguageTool,

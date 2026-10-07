@@ -26,6 +26,13 @@ diagnosis show it.
   lines and side-by-side columns (sidebar, text, picture) become separate paragraphs; at least double enlargement for
   small app fonts; a paragraph that grows (someone types, text streams in) updates its entry instead of adding new
   ones, a slightly different reading of the same text is ignored.
+- Settings → Reading the chat tidied up: reading on/off is a small dot in the window header (grey = on, black =
+  off) instead of a checkbox here; text recognition and picture modes explained ("?"), with your resolution and
+  which recognition fits it; Tesseract shows only whether it is found; Chinese for Tesseract follows your languages;
+  reading interval 200–2000 ms with a hint; "filter system messages" (on by default) instead of "show".
+- **Smart artifact correction** (was "second look") now **learns**: a recognition error it fixed once
+  ("rnain" -> "main") is fixed at once next time, also after a restart (`ocr-fixes.txt`, editable and shareable
+  under "Learned…").
 - Settings → General tidied up: both language lists in one row; "do not translate" gets a language list instead of
   a text field; the channel choice ("translate in") and the "send as" list are gone (everything read is translated;
   the window's write menu offers every language and shows "Chat: …" by itself for scripts GW2 cannot show). Text
