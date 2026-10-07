@@ -248,6 +248,7 @@ int MainWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
     const bool markChat = HasSwitch(cmdLine, L"--mark-chat"), coverChat = HasSwitch(cmdLine, L"--cover-chat");
     CleanUpFiles();
     LoadCorrections();
+    LoadMyWords();
 
     HDC screen = GetDC(nullptr);
     const int dpi = GetDeviceCaps(screen, LOGPIXELSY);
@@ -486,6 +487,7 @@ void MainWindow::CreateChildren() {
         SetStatus(TrF(L"Kept \u201c{1}\u201d \u2013 learned", {original}), Tone::Muted, 3000);
     };
     cb.onForgotten = [this](const std::wstring& w) { OnWordForgotten(w); };
+    cb.onExplain = [this](const std::wstring& w) { ExplainWord(w); };
     cb.onSuggestions = [this](const WordSuggestions& s) { words_.Set(s); };
     cb.onKeyboardLanguage = [this](const std::wstring& locale) { OnKeyboardLanguage(locale); };
     input_.Create(hwnd_, inst_, &theme_, &spell_, cfg_.autoCorrect, cfg_.suggestions, std::move(cb));
@@ -510,6 +512,7 @@ void MainWindow::StartReader() {
     o.wordLangs = cfg_.writeLangs;
     o.wordLangs.insert(o.wordLangs.begin(), readLang_);
     o.wordLangs.push_back(cfg_.chatLang);
+    for (const auto& e : myWords_.Entries()) o.knownWords.push_back(e.first);
     o.captureDir = cfg_.CaptureDir();
     reader_.SetSaveCaptures(cfg_.saveCaptures);
     reader_.Start(hwnd_, WM_APP_SNAPSHOT, o);
@@ -1510,6 +1513,30 @@ void MainWindow::LoadCorrections() {
 
 void MainWindow::SaveCorrections() { WriteFileAtomic(CorrectionsPath(), corrections_.Serialize()); }
 
+void MainWindow::LoadMyWords() {
+    std::string data;
+    if (ReadFileBytes(cfg_.dataDir + L"\\my-words.txt", data)) myWords_.Parse(FromUtf8(data));
+}
+
+void MainWindow::SaveMyWords() {
+    WriteFileAtomic(cfg_.dataDir + L"\\my-words.txt",
+                    ToUtf8(L"# GW2 Chat Translator: your words, \"word = meaning\" per line (replaced before translating)\r\n" +
+                           myWords_.Serialize()));
+}
+
+void MainWindow::ExplainWord(const std::wstring& word) {
+    std::wstring meaning = myWords_.MeaningOf(word);
+    if (!AskWordMeaning(hwnd_, inst_, word, &meaning)) return;
+    myWords_.Set(word, meaning);
+    spell_.AddUserWord(word);  // never underlined or autocorrected again
+    SaveMyWords();
+    ++inputGen_;  // the preview is translated again with the meaning
+    StartTranslation();
+    SetStatus(meaning.empty() ? TrF(L"“{1}” is now a correct word", {word})
+                              : TrF(L"Got it: “{1}” means “{2}” – used before translating", {word, meaning}),
+              Tone::Ok, 5000);
+}
+
 std::wstring MainWindow::CorrectionsInfo() const {
     return TrF(L"{1} lines, {2} phrases", {std::to_wstring(corrections_.Lines()), std::to_wstring(corrections_.Phrases())});
 }
@@ -1714,8 +1741,9 @@ void MainWindow::StartTranslation() {
     }
     if (inflightGen_ == inputGen_) return;  // already on its way
 
-    ProtectedText p =
-        ProtectForTranslation(body, glossary_.Empty() ? nullptr : &glossary_, &BuiltinKeepWords(), &speakers_);
+    // Your words ("finds") go to the translator as what they mean ("finde es").
+    ProtectedText p = ProtectForTranslation(myWords_.Expand(body), glossary_.Empty() ? nullptr : &glossary_,
+                                            &BuiltinKeepWords(), &speakers_);
     lastHits_ = p.glossaryHits;
     if (!HasTranslatableText(p.segments)) {  // only names, codes, keep-words
         finish(JoinSegments(p.segments));
@@ -2244,7 +2272,8 @@ void MainWindow::PumpIncoming() {
             inQueue_.pop_back();
             chars += pl.text.size();
             CountMyMemory(CodePointCount(pl.text));
-            items.push_back(ProtectForTranslation(pl.text, nullptr, &BuiltinKeepWords(), &speakers_).segments);
+            items.push_back(
+                ProtectForTranslation(myWords_.Expand(pl.text), nullptr, &BuiltinKeepWords(), &speakers_).segments);
             msg->ids.push_back(pl.entryId);
             msg->texts.push_back(std::move(pl.text));
         }
@@ -3053,6 +3082,12 @@ void MainWindow::OpenSettings(SettingsPage page) {
         input_.RefreshSuggestions();
     };
     ctx.correctionsInfo = [this] { return CorrectionsInfo(); };
+    ctx.myWordsText = [this] { return myWords_.Serialize(); };
+    ctx.setMyWords = [this](const std::wstring& text) {
+        myWords_.Parse(text);
+        for (const auto& e : myWords_.Entries()) spell_.AddUserWord(e.first);
+        SaveMyWords();
+    };
     ctx.clearCorrections = [this] {
         corrections_.Clear();
         SaveCorrections();

@@ -388,7 +388,7 @@ bool InputBox::ShowSpellMenu(LPARAM lp) {
     const SpellIssue issue = *hit;  // issues_ may change while the menu is open
     const std::wstring word = text.substr(issue.span.start, issue.span.length);
 
-    enum : UINT { kDelete = 1, kAdd = 2, kIgnore = 3, kSuggestBase = 10 };
+    enum : UINT { kDelete = 1, kAdd = 2, kIgnore = 3, kExplain = 4, kSuggestBase = 10 };
     HMENU menu = CreatePopupMenu();
     std::vector<std::wstring> suggestions;
     if (issue.grammar) {
@@ -417,6 +417,7 @@ bool InputBox::ShowSpellMenu(LPARAM lp) {
         if (suggestions.empty()) AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, Tr(L"(no suggestions)").c_str());
         AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
         AppendMenuW(menu, MF_STRING, kAdd, Tr(L"Add to my GW2 words").c_str());
+        if (cb_.onExplain) AppendMenuW(menu, MF_STRING, kExplain, TrF(L"Explain “{1}” (slang, abbreviation) …", {word}).c_str());
         AppendMenuW(menu, MF_STRING, kIgnore, Tr(L"Ignore here").c_str());
     }
     const UINT cmd = static_cast<UINT>(TrackPopupMenu(menu,
@@ -438,6 +439,9 @@ bool InputBox::ShowSpellMenu(LPARAM lp) {
         ReplaceRange(s, L"");
     } else if (cmd == kAdd) {
         spell_->AddUserWord(word);
+        RunSpellCheck(std::wstring::npos);
+    } else if (cmd == kExplain) {
+        cb_.onExplain(word);  // stores the word (and its meaning) and marks it correct
         RunSpellCheck(std::wstring::npos);
     } else if (cmd == kIgnore) {
         spell_->IgnoreForSession(word);
@@ -471,14 +475,17 @@ bool InputBox::ShowWordMenu(LPARAM lp) {
     while (start > 0 && IsWordChar(text[start - 1])) --start;
     while (end < text.size() && IsWordChar(text[end])) ++end;
     const std::wstring word = text.substr(start, end - start);
-    if (word.empty() || !spell_->IsLearned(word)) return false;
+    if (word.empty() || (!spell_->IsLearned(word) && !cb_.onExplain)) return false;
+    const bool learned = spell_->IsLearned(word);
 
-    enum : UINT { kForget = 1, kCut, kCopy, kPaste, kAll };
+    enum : UINT { kForget = 1, kCut, kCopy, kPaste, kAll, kExplain };
     DWORD a = 0, b = 0;
     SendMessageW(hwnd_, EM_GETSEL, reinterpret_cast<WPARAM>(&a), reinterpret_cast<LPARAM>(&b));
     const UINT sel = a != b ? MF_STRING : MF_STRING | MF_GRAYED;
     HMENU menu = CreatePopupMenu();
-    AppendMenuW(menu, MF_STRING, kForget, TrF(L"Forget “{1}”", {word}).c_str());
+    if (learned) AppendMenuW(menu, MF_STRING, kForget, TrF(L"Forget “{1}”", {word}).c_str());
+    if (cb_.onExplain)
+        AppendMenuW(menu, MF_STRING, kExplain, TrF(L"Explain “{1}” (slang, abbreviation) …", {word}).c_str());
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, sel, kCut, Tr(L"Cut").c_str());
     AppendMenuW(menu, sel, kCopy, Tr(L"Copy").c_str());
@@ -490,6 +497,10 @@ bool InputBox::ShowWordMenu(LPARAM lp) {
         hwnd_, nullptr));
     DestroyMenu(menu);
     switch (cmd) {
+        case kExplain:
+            cb_.onExplain(word);
+            RunSpellCheck(std::wstring::npos);
+            break;
         case kForget:
             spell_->Forget(word);
             UpdateSuggestions();

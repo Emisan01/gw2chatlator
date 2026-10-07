@@ -13,6 +13,7 @@
 #include "core/cloud_mt_protocol.hpp"
 #include "core/corrections.hpp"
 #include "core/second_look.hpp"
+#include "core/my_words.hpp"
 #include "core/deepl_protocol.hpp"
 #include "core/gw2_text.hpp"
 #include "core/chat_geometry.hpp"
@@ -1309,6 +1310,24 @@ static void TestSecondLook() {
     CHECK(!PlausibleRereading(L"tbe", L"thy"));              // short word: one character only
 }
 
+static void TestMyWords() {
+    MyWords w;
+    w.Parse(L"# comment\nfinds = finde es\r\nbrb = bin gleich zurück\nKiro\n bad line with spaces = x\n");
+    CHECK(w.Size() == 3);
+    CHECK(w.MeaningOf(L"FINDS") == L"finde es" && w.Knows(L"kiro") && w.MeaningOf(L"kiro").empty());
+    // Before translating: whole words only, the capital at the start kept, the rest untouched.
+    CHECK(w.Expand(L"ich finds schön") == L"ich finde es schön");
+    CHECK(w.Expand(L"Finds super, brb!") == L"Finde es super, bin gleich zurück!");
+    CHECK(w.Expand(L"findest du") == L"findest du");
+    CHECK(w.Expand(L"Kiro kommt") == L"Kiro kommt");  // only marked as correct: stays
+    w.Set(L"finds", L"finde es halt");
+    CHECK(w.Size() == 3 && w.MeaningOf(L"finds") == L"finde es halt");
+    MyWords again;
+    again.Parse(w.Serialize());
+    CHECK(again.Size() == 3 && again.MeaningOf(L"brb") == L"bin gleich zurück");
+    CHECK(again.Remove(L"BRB") && again.Size() == 2);
+}
+
 static void TestFreeText() {
     auto line = [](const wchar_t* t, int top, int left = 10) {
         OcrLine l;
@@ -1351,6 +1370,7 @@ int main() {
     TestCloudMt();
     TestCorrections();
     TestSecondLook();
+    TestMyWords();
     TestText();
     TestChat();
     TestHotkey();

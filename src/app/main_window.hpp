@@ -32,6 +32,7 @@
 #include "app/theme.hpp"
 #include "core/chat_stream.hpp"
 #include "core/corrections.hpp"
+#include "core/my_words.hpp"
 #include "core/names.hpp"
 #include "core/glossary.hpp"
 #include "core/translator.hpp"
@@ -134,6 +135,10 @@ private:
     void SaveCorrections();
     std::wstring CorrectionsPath() const;
     std::wstring CorrectionsInfo() const;
+    // My words: right-click "Explain this word" in the input box; the list in Settings -> Writing.
+    void ExplainWord(const std::wstring& word);
+    void LoadMyWords();
+    void SaveMyWords();
     void ShowMyMemoryNotice();
     void UseChatArea(const RECT& r);
     RECT ChatSearchArea() const;
@@ -277,6 +282,7 @@ private:
     static constexpr std::ptrdiff_t kStartLines = 3;  // of the history shown at the start, translate the last ...
     TranslationCache cache_;
     CorrectionMemory corrections_;  // your corrected translations (all translators)
+    MyWords myWords_;               // your slang with its meaning ("finds = finde es"), replaced before translating
     // Free screen area: the last paragraphs shown, so a paragraph that grows (typing, streaming text) updates its
     // entry instead of adding a new one each time.
     struct FreeParagraph {

@@ -37,6 +37,7 @@ struct ReaderOptions {
     bool freeText = false;        // free screen area: keep the lines of the text recognition (columns stay apart)
     bool secondLook = true;       // words the dictionary does not know are read once more, enlarged more
     std::vector<std::wstring> wordLangs;  // dictionaries for that ("DE", "EN-GB"); the OCR language is added
+    std::vector<std::wstring> knownWords; // your own words: always correct for the second look
     std::wstring captureDir;      // diagnostics target
 };
 

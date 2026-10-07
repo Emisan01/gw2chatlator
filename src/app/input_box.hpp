@@ -27,6 +27,7 @@ public:
         std::function<void(const std::wstring& from, const std::wstring& to)> onAutoCorrected;
         std::function<void(const std::wstring& original)> onCorrectionUndone;
         std::function<void(const std::wstring& word)> onForgotten;  // "Forget word" in a menu
+        std::function<void(const std::wstring& word)> onExplain;    // "Explain this word" (my words: slang + meaning)
         std::function<void(const WordSuggestions&)> onSuggestions;  // the word bar changed
         // Keyboard layout changed; locale name like "ar-SA".
         std::function<void(const std::wstring& locale)> onKeyboardLanguage;
