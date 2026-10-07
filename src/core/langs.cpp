@@ -34,11 +34,11 @@ std::wstring SureLanguage(const std::wstring& text, const std::wstring& els) {
     };
     static const Telltale kWords[] = {
         {L"FR", L"merci"},    {L"FR", L"bonjour"},   {L"FR", L"salut"},     {L"FR", L"oui"},       {L"FR", L"pourquoi"},
-        {L"FR", L"beaucoup"}, {L"FR", L"avec"},      {L"FR", L"aussi"},     {L"FR", L"je"},        {L"FR", L"suis"},
-        {L"FR", L"c'est"},    {L"FR", L"bonsoir"},   {L"ES", L"gracias"},   {L"ES", L"hola"},      {L"ES", L"vamos"},
-        {L"ES", L"amigo"},    {L"ES", L"bueno"},     {L"ES", L"donde"},     {L"ES", L"también"},   {L"ES", L"tambien"},
-        {L"ES", L"quien"},    {L"ES", L"porque"},    {L"IT", L"grazie"},    {L"IT", L"prego"},     {L"IT", L"andiamo"},
-        {L"IT", L"perché"},   {L"IT", L"anche"},     {L"IT", L"buongiorno"},{L"IT", L"mille"},     {L"PT", L"obrigado"},
+        {L"FR", L"beaucoup"}, {L"FR", L"avec"},      {L"FR", L"aussi"},     {L"FR", L"suis"},
+        {L"FR", L"c'est"},    {L"FR", L"bonsoir"},   {L"ES", L"gracias"},   {L"ES", L"hola"},
+        {L"ES", L"bueno"},     {L"ES", L"donde"},     {L"ES", L"también"},   {L"ES", L"tambien"},
+        {L"ES", L"quien"},    {L"IT", L"grazie"},    {L"IT", L"prego"},     {L"IT", L"andiamo"},
+        {L"IT", L"perché"},   {L"IT", L"anche"},     {L"IT", L"buongiorno"},     {L"PT", L"obrigado"},
         {L"PT", L"obrigada"}, {L"PT", L"você"},      {L"PT", L"voce"},      {L"PT", L"valeu"},     {L"PT", L"tudo"},
         {L"NL", L"bedankt"},  {L"NL", L"dankjewel"}, {L"NL", L"niet"},      {L"NL", L"ook"},       {L"PL", L"dzięki"},
         {L"PL", L"dzieki"},   {L"PL", L"dziękuję"},  {L"PL", L"cześć"},     {L"PL", L"czesc"},     {L"TR", L"teşekkürler"},
