@@ -1089,6 +1089,30 @@ void MainWindow::ToggleReading() {
     InvalidateChrome();
 }
 
+// The words of a chat line for the completions (4+ letters, no numbers); never learned, only offered.
+void MainWindow::NoteChatWords(const std::wstring& text) {
+    std::wstring word;
+    auto flush = [&] {
+        bool digit = false;
+        for (wchar_t c : word) digit = digit || (c >= L'0' && c <= L'9');
+        if (word.size() >= 4 && !digit) {
+            const std::wstring k = CaseFold(word);
+            chatWords_.erase(std::remove_if(chatWords_.begin(), chatWords_.end(),
+                                            [&](const std::wstring& x) { return CaseFold(x) == k; }),
+                             chatWords_.end());
+            chatWords_.push_front(word);
+        }
+        word.clear();
+    };
+    for (wchar_t c : text) {
+        if (IsWordChar(c)) word += c;
+        else flush();
+    }
+    flush();
+    while (chatWords_.size() > 80) chatWords_.pop_back();
+    spell_.SetContext({chatWords_.begin(), chatWords_.end()});
+}
+
 void MainWindow::Retranslate(uint64_t id, const std::wstring& text) {
     if (!translator_ || Trim(text).empty()) return;
     log_.Update(id, [](ChatEntry& e) {
@@ -2308,6 +2332,7 @@ void MainWindow::HandleIncoming(const ChatMessage& m) {
     }
 
     if (!system && !m.speaker.empty()) speakers_.Add(m.speaker);
+    if (!system) NoteChatWords(m.speaker + L" " + m.text);  // completions: names and what is talked about
 
     ChatEntry e;
     e.kind = system ? ChatEntry::Kind::System : ChatEntry::Kind::Incoming;
@@ -2457,6 +2482,7 @@ void MainWindow::OnIncomingTranslated(IncomingMsg* raw) {
                     e.state = ChatEntry::State::Translated;
                     e.main = t;
                     e.original = original;
+                    NoteChatWords(t);  // in your language: the words you may answer with
                 }
             });
         } else {
@@ -2589,7 +2615,8 @@ void MainWindow::PollGame() {
 
     // Docked: keep our place relative to the game's bottom-left corner.
     if (cfg_.dock && cfg_.dockSet && gw2_ && !IsIconic(gw2_) && !moving_) {
-        const RECT want = DockTarget();
+        RECT want = DockTarget();
+        if (collapsed_ && !IsRectEmpty(&want)) want.top = want.bottom - MetricsFor(theme_).head;  // the bar sits low
         RECT cur{};
         GetWindowRect(hwnd_, &cur);
         if (!IsRectEmpty(&want) && !EqualRect(&want, &cur))

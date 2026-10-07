@@ -87,6 +87,9 @@ public:
     // highlights nothing (Tab chooses).
     WordChoices Choices(const std::wstring& text, size_t caret, AutoCorrectMode mode) const;
 
+    // Words of the chat right now (names, places, what was just asked), newest first: completions offer them right
+    // after your own words. Never learned – the word model learns only from what you send.
+    void SetContext(std::vector<std::wstring> words) { context_ = std::move(words); }
     void AddUserWord(const std::wstring& word);    // persists
     void IgnoreForSession(const std::wstring& word);
 
@@ -112,6 +115,8 @@ private:
     WordModel model_;
     std::wstring learnedPath_;
     std::wstring learnedLang_;  // "de": the language of the learned words and the starter list
+    std::vector<std::wstring> context_;  // words of the recent chat, newest first (SetContext)
+    void AddContextCompletions(const std::wstring& typed, std::vector<std::wstring>& out, size_t max) const;
 };
 
 }  // namespace gct
