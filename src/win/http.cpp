@@ -123,7 +123,7 @@ HttpResponse HttpsRequest(const wchar_t* method, const std::wstring& host, const
 }
 
 HttpResponse HttpRequestUrl(const wchar_t* method, const std::wstring& url, const std::wstring& headers,
-                            const std::string& body, int receiveTimeoutMs) {
+                            const std::string& body, int receiveTimeoutMs, size_t maxBytes) {
     URL_COMPONENTS uc{};
     uc.dwStructSize = sizeof(uc);
     wchar_t host[256] = {}, path[2048] = {}, extra[2048] = {};
@@ -141,7 +141,7 @@ HttpResponse HttpRequestUrl(const wchar_t* method, const std::wstring& url, cons
     const bool secure = uc.nScheme == INTERNET_SCHEME_HTTPS;
     std::wstring p = std::wstring(path) + extra;
     if (p.empty()) p = L"/";
-    return Request(method, host, uc.nPort, secure, p, headers, body, nullptr, 16u << 20, receiveTimeoutMs);
+    return Request(method, host, uc.nPort, secure, p, headers, body, nullptr, maxBytes, receiveTimeoutMs);
 }
 
 }  // namespace gct

@@ -12,6 +12,7 @@
 #include <wincodec.h>
 
 #include "app/chat_reader.hpp"
+#include "win/rapid_ocr.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -286,10 +287,12 @@ int wmain(int argc, wchar_t** argv) {
             }
         }
         // The app's own pipeline (ChatOcr, Windows OCR) without and with the second look at unknown words.
-        for (int look = 0; look < 2 && haveWin; ++look) {
+        for (int look = 0; look < 3 && haveWin; ++look) {
             ReaderOptions o;
-            o.ocrChoice = 2;
+            o.ocrChoice = look == 2 ? 3 : 2;  // 3 = RapidOCR
             o.secondLook = look == 1;
+            o.rapidDir = L"local\\rapid";
+            o.rapidGroups = {L"latin"};
             o.wordLangs = {L"DE", L"EN-GB"};
             ChatOcr co;
             std::wstring e2;
@@ -301,7 +304,14 @@ int wmain(int argc, wchar_t** argv) {
             std::wstring all;
             for (const OcrLine& l : lines) all += l.text + L"\n";
             const double cer = Cer(truthText, all), parsed = Cer(truthParsed, Parsed(lines));
-            const std::string kind = look ? "2nd look" : "plain";
+            if (look == 2) {  // the same picture again: lines that did not change come from the cache
+                std::vector<OcrLine> again;
+                const auto t1 = std::chrono::steady_clock::now();
+                co.Read(raw, 0, again, nullptr, &e2);
+                std::printf("    rapid, same picture again: %.0f ms\n",
+                            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t1).count());
+            }
+            const std::string kind = look == 2 ? "rapid" : look ? "2nd look" : "plain";
             std::printf("%-28ls %-6s %-12s %6.1f %8.1f %7.0f  (second look: %d read again, %d taken)\n", name.c_str(),
                         "app", kind.c_str(), cer, parsed, ms, co.SecondLooks(), co.SecondFixes());
             if (GetEnvironmentVariableW(L"BENCH_DUMP", nullptr, 0) > 0)
@@ -311,6 +321,51 @@ int wmain(int argc, wchar_t** argv) {
             s.parsedCer += parsed;
             s.ms += ms;
             ++s.n;
+        }
+        // RapidOCR (PaddleOCR line recognition on ONNX Runtime): each measured line cut out and recognized.
+        static RapidRecognizer rapid;
+        static bool rapidTried = false;
+        if (!rapidTried) {
+            rapidTried = true;
+            std::wstring e3;
+            const std::wstring dirR = L"local\\rapid\\";
+            if (!rapid.Load(dirR + L"latin_v5_rec.onnx", dirR + L"latin_v5_dict.txt", &e3))
+                std::printf("RapidOCR not available: %ls\n", e3.c_str());
+        }
+        for (int inv = 0; inv < 2 && rapid.Ready(); ++inv) {
+            const auto t0 = std::chrono::steady_clock::now();
+            std::vector<OcrLine> lines;
+            for (const TextRow& row : snap.grid.rows) {
+                // Experiment knobs: BENCH_RAPID_PAD = margin in percent of the line height (default 25),
+                // BENCH_RAPID_PRE = enlarge the crop first with the bicubic upscaler (default 1 = off).
+                wchar_t knob[16] = {};
+                const int padPct = GetEnvironmentVariableW(L"BENCH_RAPID_PAD", knob, 16) ? _wtoi(knob) : 25;
+                const int pre = GetEnvironmentVariableW(L"BENCH_RAPID_PRE", knob, 16) ? std::max(1, _wtoi(knob)) : 1;
+                const int pad = std::max(2, row.height * padPct / 100);
+                const RectI rr{0, std::max(0, row.top - pad), raw.width,
+                               std::min(raw.height, row.top + row.height + pad) - std::max(0, row.top - pad)};
+                std::wstring e4;
+                const RecResult rec = rapid.Recognize(UpscaleForOcr(Crop(raw, rr), pre), inv == 1, &e4);
+                OcrLine l;
+                l.text = rec.text;
+                l.top = rr.y;
+                l.height = rr.h;
+                l.color = SampleTextColor(raw, {rr});
+                lines.push_back(l);
+            }
+            const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+            std::wstring all;
+            for (const OcrLine& l : lines) all += l.text + L"\n";
+            const double cer = Cer(truthText, all), parsed = Cer(truthParsed, Parsed(lines));
+            const std::string kind = inv ? "lines inv" : "lines";
+            std::printf("%-28ls %-6s %-12s %6.1f %8.1f %7.0f\n", name.c_str(), "rapid", kind.c_str(), cer, parsed, ms);
+            if (GetEnvironmentVariableW(L"BENCH_DUMP", nullptr, 0) > 0)
+                std::printf("--- rapid %s:\n%s\n", kind.c_str(), ToUtf8(all).c_str());
+            Score& sc = total["rapid " + kind];
+            sc.cer += cer;
+            sc.parsedCer += parsed;
+            sc.ms += ms;
+            ++sc.n;
         }
     } while (FindNextFileW(h, &fd));
     FindClose(h);

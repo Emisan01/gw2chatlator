@@ -16,7 +16,7 @@
 namespace gct {
 
 enum class Engine { Auto, Basic, DeepL, Llm, Google, Microsoft, Libre };
-enum class OcrChoice { Auto, Tesseract, Windows };
+enum class OcrChoice { Auto, Tesseract, Windows, Rapid };
 enum class AutoCorrectMode { Off, Safe, Phone };
 
 struct Config {
@@ -127,6 +127,7 @@ struct Config {
     void SaveWindowRect(HWND wnd, float scale) const;
     void SaveRegion() const;
     void SaveFreeArea() const;
+    std::wstring RapidDir() const { return dataDir + L"\\rapid"; }  // RapidOCR models
     void SaveColor(Channel ch, Rgb rgb);
     void ResetColors();
     void SaveTabs() const;

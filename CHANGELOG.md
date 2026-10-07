@@ -26,6 +26,15 @@ diagnosis show it.
   lines and side-by-side columns (sidebar, text, picture) become separate paragraphs; at least double enlargement for
   small app fonts; a paragraph that grows (someone types, text streams in) updates its entry instead of adding new
   ones, a slightly different reading of the same text is ignored.
+- **RapidOCR**, a third text recognition (open source: PaddleOCR models, Apache-2.0, on ONNX Runtime, MIT),
+  running only on this PC. The Latin model (EN, DE, FR, ES, IT, PT, NL, PL, TR …) ships with the program; other
+  scripts (Cyrillic, Arabic, Korean, Chinese/Japanese) are downloaded for your languages in Settings → Reading
+  (official files, checksum checked). Measured: clearly better than Windows OCR with small text (1080p: 8–31 %
+  errors instead of 63–81 %), Windows OCR stays better at 4K. Lines that did not change are not read again: after the
+  first picture (~1–2 s) it needs only a few milliseconds. "Automatic" uses it for small text.
+- **Compare recognition** (Settings → Technical): one picture of your chat read by every recognition, with the
+  time – see yourself which reads your chat best.
+- The installed copy takes your words, corrections, learned fixes and the RapidOCR files along.
 - Settings → Reading the chat tidied up: reading on/off is a small dot in the window header (grey = on, black =
   off) instead of a checkbox here; text recognition and picture modes explained ("?"), with your resolution and
   which recognition fits it; Tesseract shows only whether it is found; Chinese for Tesseract follows your languages;

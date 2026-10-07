@@ -8,6 +8,7 @@
 
 #include "core/chat_geometry.hpp"
 #include "core/i18n.hpp"
+#include "core/rapid_models.hpp"
 #include "core/second_look.hpp"
 #include "core/tesseract_tsv.hpp"
 #include "core/text.hpp"
@@ -49,6 +50,22 @@ bool ChatOcr::Init(const ReaderOptions& o, std::wstring* error) {
     }
     if (!(o.ocrChoice == 1 && haveTess_)) haveWin_ = win_.Init(o.ocrLanguage, error);
     useTess_ = haveTess_ && !haveWin_;
+    // RapidOCR (open source, local): the installed model groups for your languages, Latin first.
+    rapid_.clear();
+    rapidCache_.clear();
+    useRapid_ = false;
+    if ((o.ocrChoice == 0 || o.ocrChoice == 3) && RapidRecognizer::RuntimeAvailable(nullptr)) {
+        for (const std::wstring& id : o.rapidGroups) {
+            const RapidModelGroup* g = FindRapidGroup(id);
+            const std::wstring dir = g ? RapidGroupDir(*g, o.rapidDir) : L"";
+            if (dir.empty()) continue;
+            auto r = std::make_unique<RapidRecognizer>();
+            if (r->Load(dir + L"\\" + RapidModelFile(*g), dir + L"\\" + RapidDictFile(*g), nullptr))
+                rapid_.push_back(std::move(r));
+        }
+    }
+    if (o.ocrChoice == 3 && rapid_.empty() && error)
+        *error = Tr(L"RapidOCR is not installed – using Windows text recognition");
     // Dictionaries for the second look: the OCR language plus the languages of the chat you read and write.
     checkers_.clear();
     wordOk_.clear();
@@ -73,7 +90,39 @@ bool ChatOcr::Init(const ReaderOptions& o, std::wstring* error) {
             if (checkers_.size() >= 4) break;
         }
     }
-    return haveTess_ || haveWin_;
+    return haveTess_ || haveWin_ || !rapid_.empty();
+}
+
+// One line with RapidOCR: from the cache when the pixels are the same as before; otherwise the first model
+// group, and the other groups only when it was unsure (another script).
+bool ChatOcr::ReadRapidLine(const Image& crop, RapidLine* out) {
+    uint64_t h = 1469598103934665603ull;  // FNV-1a over the pixels
+    for (uint8_t b : crop.bgra) h = (h ^ b) * 1099511628211ull;
+    h ^= static_cast<uint64_t>(crop.width) << 32 | static_cast<uint32_t>(crop.height);
+    if (const auto it = rapidCache_.find(h); it != rapidCache_.end()) {
+        *out = it->second;
+        return true;
+    }
+    RecResult best;
+    for (const auto& r : rapid_) {
+        RecResult res = r->Recognize(crop, false, nullptr);
+        if (res.confidence > best.confidence) best = std::move(res);
+        if (best.confidence >= 0.8f) break;
+    }
+    RapidLine line;
+    // Below RapidOCR's own default score (0.5) a line is mostly noise: a half-hidden line under the tab bar,
+    // an icon, a frame edge.
+    if (best.confidence >= 0.5f) line.text = best.text;
+    const double toRaw = static_cast<double>(crop.height) / kRecHeight;
+    for (RecWord w : RecWords(best, best.inputWidth)) {
+        w.x = static_cast<int>(w.x * toRaw);
+        w.w = std::max(1, static_cast<int>(w.w * toRaw));
+        line.words.push_back(std::move(w));
+    }
+    if (rapidCache_.size() > 2000) rapidCache_.clear();
+    rapidCache_[h] = line;
+    *out = std::move(line);
+    return true;
 }
 
 bool ChatOcr::IsWord(const std::wstring& core) {
@@ -87,9 +136,13 @@ bool ChatOcr::IsWord(const std::wstring& core) {
     return ok;
 }
 
-std::wstring ChatOcr::EngineName() const { return useTess_ ? L"Tesseract" : L"Windows OCR"; }
+std::wstring ChatOcr::EngineName() const {
+    return useRapid_ ? L"RapidOCR" : useTess_ ? L"Tesseract" : L"Windows OCR";
+}
 
-std::wstring ChatOcr::Language() const { return useTess_ ? tess_.Language() : win_.Language(); }
+std::wstring ChatOcr::Language() const {
+    return useRapid_ ? std::to_wstring(rapid_.size()) + L" model(s)" : useTess_ ? tess_.Language() : win_.Language();
+}
 
 bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, Image* preparedOut, std::wstring* error) {
     out.clear();
@@ -97,16 +150,25 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
     // much to enlarge (about 30 px line spacing reads best; 4K needs ~2x,
     // 1080p ~3x) and later sort the recognized words into these lines.
     const LineGrid grid = FindLineGrid(raw, {0, 0, raw.width, raw.height});
-    if (choice_ == 1) useTess_ = haveTess_;
-    else if (choice_ == 2) useTess_ = false;
-    else useTess_ = haveTess_ && (!haveWin_ || (grid.pitch > 0 && grid.pitch < kSmallTextPitch));
+    // Measured (ocr_bench): Windows OCR is best at normal/large chat text, RapidOCR clearly best at small text
+    // (1080p), Tesseract in between and slowest. Automatic: RapidOCR (if installed) or Tesseract for small text.
+    const bool smallText = grid.pitch > 0 && grid.pitch < kSmallTextPitch;
+    useRapid_ = !rapid_.empty() && (choice_ == 3 || (choice_ == 0 && (smallText || !haveWin_)));
+    if (useRapid_ && !keepEngineLines_ && !grid.Found()) useRapid_ = false;  // no lines measured: nothing to cut out
+    if (useRapid_ && keepEngineLines_ && !haveWin_) useRapid_ = false;       // free text needs the line boxes
+    if (useRapid_) useTess_ = false;
+    else if (choice_ == 1) useTess_ = haveTess_;
+    else if (choice_ == 2 || choice_ == 3) useTess_ = false;
+    else useTess_ = haveTess_ && (!haveWin_ || smallText);
     int scale = fixedScale > 0 ? std::clamp(fixedScale, 1, 4) : OcrScaleFor(grid);
     // Free text (apps, websites): small UI fonts with thin strokes ("w" read as "uv", "ü" as "j") read clearly
     // better at least doubled.
     if (keepEngineLines_ && fixedScale <= 0 && (grid.pitch == 0 || grid.pitch < 40)) scale = std::max(scale, 2);
     const int maxDim = useTess_ ? 6000 : win_.MaxImageDimension();
     while (scale > 1 && maxDim > 0 && (raw.width * scale > maxDim || raw.height * scale > maxDim)) --scale;
-    const Image prepared = UpscaleForOcr(raw, scale);
+    // RapidOCR on the measured chat rows cuts its lines from the raw picture: no enlarged copy needed.
+    Image prepared;
+    if (!(useRapid_ && !keepEngineLines_) || preparedOut) prepared = UpscaleForOcr(raw, scale);
     if (preparedOut) *preparedOut = prepared;
 
     // One line of words with their boxes (in `prepared` pixels).
@@ -121,7 +183,43 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
         Rgb color;
     };
     std::vector<Line> found;
-    if (useTess_) {
+    if (useRapid_) {
+        // RapidOCR reads single lines: the measured rows of the chat, or for free text the line boxes
+        // Windows OCR finds (columns stay apart). Rectangles in raw pixels with a little room above/below.
+        std::vector<RectI> rows;
+        auto addRow = [&](int x, int y, int w, int h) {
+            const int pad = std::max(2, h / 4);
+            const int top = std::max(0, y - pad), bottom = std::min(raw.height, y + h + pad);
+            const int left = std::max(0, x), right = std::min(raw.width, x + w);
+            if (right - left > 4 && bottom - top > 4) rows.push_back({left, top, right - left, bottom - top});
+        };
+        if (keepEngineLines_) {
+            std::vector<OcrTextLine> tl;
+            if (!win_.Recognize(prepared, tl, error)) return false;
+            for (const OcrTextLine& l : tl) {
+                int x0 = INT_MAX, y0 = INT_MAX, x1 = 0, y1 = 0;
+                for (const OcrWordBox& w : l.words) {
+                    x0 = std::min(x0, w.rect.x);
+                    y0 = std::min(y0, w.rect.y);
+                    x1 = std::max(x1, w.rect.x + w.rect.w);
+                    y1 = std::max(y1, w.rect.y + w.rect.h);
+                }
+                if (x1 > x0 && y1 > y0) addRow(x0 / scale - 4, y0 / scale, (x1 - x0) / scale + 8, (y1 - y0) / scale);
+            }
+        } else {
+            for (const TextRow& row : grid.rows) addRow(0, row.top, raw.width, row.height);
+        }
+        for (const RectI& rr : rows) {
+            RapidLine rl;
+            ReadRapidLine(Crop(raw, rr), &rl);
+            if (rl.text.empty()) continue;
+            Line x;
+            x.text = rl.text;
+            for (const RecWord& w : rl.words)
+                x.words.push_back({w.text, RectI{(rr.x + w.x) * scale, rr.y * scale, w.w * scale, rr.h * scale}});
+            found.push_back(std::move(x));
+        }
+    } else if (useTess_) {
         std::vector<TsvLine> tl;
         if (!tess_.Recognize(prepared, tl, error)) return false;
         for (TsvLine& l : tl) {
@@ -145,7 +243,7 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
     // Words into the measured lines: text recognition sometimes merges several
     // chat lines into one or reports them out of order. (Test doubles deliver
     // their own colours per line and are kept as they are.)
-    if (!keepEngineLines_ && grid.Found() && !found.empty() && !found.front().hasColor) {
+    if (!useRapid_ && !keepEngineLines_ && grid.Found() && !found.empty() && !found.front().hasColor) {
         std::vector<BoxWord> words;
         for (const Line& l : found)
             for (const Word& w : l.words) words.push_back({w.text, w.rect});

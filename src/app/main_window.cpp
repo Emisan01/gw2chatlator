@@ -14,6 +14,7 @@
 #include "app/settings_dialog.hpp"
 #include "core/chat_geometry.hpp"
 #include "core/deepl_protocol.hpp"
+#include "core/rapid_models.hpp"
 #include "version.h"
 #include "core/gw2_install.hpp"
 #include "core/gw2_text.hpp"
@@ -498,6 +499,12 @@ void MainWindow::CreateChildren() {
 
 void MainWindow::StartReader() {
     if (!cfg_.readerEnabled) return;
+    reader_.SetSaveCaptures(cfg_.saveCaptures);
+    reader_.Start(hwnd_, WM_APP_SNAPSHOT, MakeReaderOptions());
+}
+
+// Everything the text recognition needs, from the settings (reader, previews, the comparison).
+ReaderOptions MainWindow::MakeReaderOptions() const {
     ReaderOptions o;
     o.intervalMs = cfg_.readerIntervalMs;
     o.ocrChoice = static_cast<int>(cfg_.ocr);
@@ -514,11 +521,13 @@ void MainWindow::StartReader() {
     o.wordLangs.insert(o.wordLangs.begin(), readLang_);
     o.wordLangs.push_back(cfg_.chatLang);
     for (const auto& e : myWords_.Entries()) o.knownWords.push_back(e.first);
+    // RapidOCR: the models in <data>\rapid for the languages you read and write.
+    o.rapidDir = cfg_.RapidDir();
+    o.rapidGroups = RapidGroupsFor(o.wordLangs);
     for (const auto& e : ocrFixes_.Entries())
         if (!e.second.empty()) o.ocrFixes.push_back(e);
     o.captureDir = cfg_.CaptureDir();
-    reader_.SetSaveCaptures(cfg_.saveCaptures);
-    reader_.Start(hwnd_, WM_APP_SNAPSHOT, o);
+    return o;
 }
 
 // ===========================================================================
@@ -1022,8 +1031,8 @@ std::wstring MainWindow::ReadingAdvice() const {
         return TrF(L"{1}: {2} → Windows OCR fits (about 0.1 s per picture). Tesseract only helps with very small "
                    L"text.",
                    {what, size});
-    return TrF(L"{1}: {2} → small letters possible. If words are misread, try Tesseract (more exact with small "
-               L"text, but about 2 s per picture) – or a larger chat font in GW2.",
+    return TrF(L"{1}: {2} → small letters possible. If words are misread, install RapidOCR (measured clearly more "
+               L"exact with small text; about 1 s for the first picture, then ~0.1 s) – or use a larger chat font in GW2.",
                {what, size});
 }
 
@@ -2697,6 +2706,58 @@ void MainWindow::PickRegion() {
 
 // Free screen area: frame any text on the screen (a website, a document,
 // another game). No chat rules, no snapping, read also without GW2.
+// One picture of the chat (or the free area) read by every text recognition that is available, with the time
+// each took – so you can see yourself which one reads your chat best. The text stays in the settings window.
+void MainWindow::CompareRecognition(HWND notify, UINT message) {
+    const RECT area = ChatArea();
+    auto still = std::make_shared<Image>();
+    if (!IsRectEmpty(&area)) {
+        ScreenCapture cap;
+        cap.SetUseWindowCapture(WindowCaptureAllowed());
+        cap.SetTarget(cfg_.freeArea ? nullptr : gw2_);
+        for (int i = 0; i < 12 && still->Empty(); ++i)
+            if (!cap.Grab(area, *still)) Sleep(40);
+    }
+    if (still->Empty()) {
+        auto* text = new std::wstring(Tr(L"No picture: open the GW2 chat (or set a screen area) and try again."));
+        if (!PostMessageW(notify, message, 0, reinterpret_cast<LPARAM>(text))) delete text;
+        return;
+    }
+    const ReaderOptions base = MakeReaderOptions();
+    std::thread([notify, message, still, base, palette = cfg_.palette, freeText = cfg_.freeArea] {
+        std::wstring out = TrF(L"Picture: {1} × {2} px", {std::to_wstring(still->width), std::to_wstring(still->height)}) +
+                           L"\r\n\r\n";
+        const struct {
+            int choice;
+            const wchar_t* name;
+        } engines[] = {{2, L"Windows OCR"}, {3, L"RapidOCR"}, {1, L"Tesseract"}};
+        for (const auto& e : engines) {
+            ReaderOptions o = base;
+            o.ocrChoice = e.choice;
+            o.secondLook = false;  // the recognition itself, without corrections
+            ChatOcr ocr;
+            std::wstring err;
+            std::vector<OcrLine> lines;
+            const ULONGLONG t0 = GetTickCount64();
+            // Not installed: the recognition falls back to another one – that is "not available" here.
+            const bool ok = ocr.Init(o, &err) && ocr.Read(*still, o.scale, lines, nullptr, &err) && ocr.EngineName() == e.name;
+            const ULONGLONG ms = GetTickCount64() - t0;
+            out += L"== " + std::wstring(e.name);
+            if (!ok) {
+                out += L": " + Tr(L"not available") + L"\r\n\r\n";
+                continue;
+            }
+            out += L"  (" + std::to_wstring(ms) + L" ms) ==\r\n";
+            const std::vector<ChatMessage> msgs = freeText ? BuildFreeTextMessages(lines) : BuildMessages(lines, palette);
+            for (const ChatMessage& m : msgs) out += L"  " + (m.speaker.empty() ? L"" : m.speaker + L": ") + m.text + L"\r\n";
+            out += L"\r\n";
+        }
+        out += Tr(L"Which one reads your chat best? Choose it under “Reading the chat” → Text recognition.");
+        auto* text = new std::wstring(std::move(out));
+        if (!PostMessageW(notify, message, 0, reinterpret_cast<LPARAM>(text))) delete text;
+    }).detach();
+}
+
 void MainWindow::PickFreeArea() {
     picking_ = true;
     reader_.SetArea({});
@@ -3155,6 +3216,7 @@ void MainWindow::OpenSettings(SettingsPage page) {
         RestartReader();  // the reader works with the new list
     };
     ctx.readingAdvice = [this] { return ReadingAdvice(); };
+    ctx.compareOcr = [this](HWND notify, UINT message) { CompareRecognition(notify, message); };
     ctx.setMyWords = [this](const std::wstring& text) {
         myWords_.Parse(text);
         for (const auto& e : myWords_.Entries()) spell_.AddUserWord(e.first);

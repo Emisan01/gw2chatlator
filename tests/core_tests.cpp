@@ -14,6 +14,7 @@
 #include "core/corrections.hpp"
 #include "core/second_look.hpp"
 #include "core/my_words.hpp"
+#include "core/rapid_rec.hpp"
 #include "core/deepl_protocol.hpp"
 #include "core/gw2_text.hpp"
 #include "core/chat_geometry.hpp"
@@ -1334,6 +1335,32 @@ static void TestMyWords() {
     CHECK(again.Remove(L"BRB") && again.Size() == 2);
 }
 
+static void TestRapidRec() {
+    // CTC: best class per step, repeats merged, blanks (0) dropped; the last class is a space.
+    const std::vector<std::wstring> dict = {L"a", L"b", L"c"};
+    // steps: a a _ b space c c  (classes: 0 blank, 1 a, 2 b, 3 c, 4 space)
+    const int best[] = {1, 1, 0, 2, 4, 3, 3};
+    std::vector<float> probs(7 * 5, 0.01f);
+    for (int t = 0; t < 7; ++t) probs[static_cast<size_t>(t) * 5 + best[t]] = 0.9f;
+    const RecResult r = CtcDecode(probs.data(), 7, 5, dict);
+    CHECK(r.text == L"ab c" && r.charStep.size() == 4 && r.charStep[0] == 0 && r.charStep[3] == 5);
+    CHECK(r.confidence > 0.89f && r.confidence < 0.91f);
+    RecResult rr = r;
+    rr.inputWidth = 70;  // 10 model pixels per step
+    const std::vector<RecWord> w = RecWords(rr, rr.inputWidth);
+    CHECK(w.size() == 2 && w[0].text == L"ab" && w[1].text == L"c" && w[1].x >= 45 && w[1].x <= 55);
+    // Picture preparation: height 48, at least 320 wide, normalised to -1..1, invert flips.
+    Image img;
+    img.width = 20;
+    img.height = 10;
+    img.bgra.assign(20 * 10 * 4, 255);
+    const RecInput in = PrepareRecInput(img, false);
+    CHECK(in.width == 320 && in.data.size() == static_cast<size_t>(3) * 48 * 320);
+    CHECK(in.data[0] > 0.99f && in.data[200] == 0.0f);  // white pixel; padding at the right stays 0
+    CHECK(PrepareRecInput(img, true).data[0] < -0.99f);
+    CHECK(ParseRecDictionary("a\r\nb\nc").size() == 3);
+}
+
 static void TestFreeText() {
     auto line = [](const wchar_t* t, int top, int left = 10) {
         OcrLine l;
@@ -1384,6 +1411,7 @@ int main() {
     TestCorrections();
     TestSecondLook();
     TestMyWords();
+    TestRapidRec();
     TestText();
     TestChat();
     TestHotkey();

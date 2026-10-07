@@ -290,18 +290,25 @@ InstallResult InstallTo(const std::wstring& targetDir) {
         return r;
     }
     // Take the settings and your words along, but never overwrite files already there.
-    for (const wchar_t* name : {kIniName, L"my-gw2-words.txt", L"gw2-woerter.txt"}) {
+    for (const wchar_t* name : {kIniName, L"my-gw2-words.txt", L"gw2-woerter.txt", L"my-words.txt", L"ocr-fixes.txt",
+                                L"corrections.txt"}) {
         const std::wstring from = JoinPath(selfDir, name), to = JoinPath(targetDir, name);
         if (Exists(from) && !Exists(to)) CopyFileW(from.c_str(), to.c_str(), TRUE);
     }
-    const std::wstring learnedFrom = JoinPath(selfDir, L"learned"), learnedTo = JoinPath(targetDir, L"learned");
-    WIN32_FIND_DATAW fd;
-    HANDLE h = FindFirstFileW(JoinPath(learnedFrom, L"*.txt").c_str(), &fd);
-    if (h != INVALID_HANDLE_VALUE) {
-        CreateDirs(learnedTo);
+    // RapidOCR's runtime goes along (replaced by a newer one); without it RapidOCR is simply not offered.
+    const std::wstring ortFrom = JoinPath(selfDir, L"onnxruntime.dll");
+    if (Exists(ortFrom)) CopyFileW(ortFrom.c_str(), JoinPath(targetDir, L"onnxruntime.dll").c_str(), FALSE);
+    // Learned words and the RapidOCR models (folders of files, never overwritten).
+    for (const wchar_t* folder : {L"learned", L"rapid"}) {
+        const std::wstring dirFrom = JoinPath(selfDir, folder), dirTo = JoinPath(targetDir, folder);
+        WIN32_FIND_DATAW fd;
+        HANDLE h = FindFirstFileW(JoinPath(dirFrom, L"*.*").c_str(), &fd);
+        if (h == INVALID_HANDLE_VALUE) continue;
+        CreateDirs(dirTo);
         do {
-            const std::wstring to = JoinPath(learnedTo, fd.cFileName);
-            if (!Exists(to)) CopyFileW(JoinPath(learnedFrom, fd.cFileName).c_str(), to.c_str(), TRUE);
+            if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+            const std::wstring to = JoinPath(dirTo, fd.cFileName);
+            if (!Exists(to)) CopyFileW(JoinPath(dirFrom, fd.cFileName).c_str(), to.c_str(), TRUE);
         } while (FindNextFileW(h, &fd));
         FindClose(h);
     }
