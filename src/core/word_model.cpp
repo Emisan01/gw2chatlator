@@ -410,6 +410,34 @@ std::vector<std::wstring> WordModel::Next(const std::wstring& prev, size_t n, co
     return out;
 }
 
+std::wstring WordModel::NextSure(const std::wstring& prev, const std::wstring& prev2) const {
+    // The most specific context that has been seen often enough decides: two words, else one.
+    auto decide = [&](const std::wstring& ctx) -> std::wstring {
+        auto it = pairs_.find(ctx);
+        if (it == pairs_.end()) return {};
+        double total = 0, best = 0;
+        const std::wstring* bestKey = nullptr;
+        for (const auto& [key, count] : it->second) {
+            total += count;
+            if (count > best) {
+                best = count;
+                bestKey = &key;
+            }
+        }
+        if (!bestKey || best < 3.0 || best < total * 0.6) return {};
+        auto wit = words_.find(*bestKey);
+        return wit != words_.end() ? wit->second.form : *bestKey;
+    };
+    if (prev.empty()) return {};
+    if (!prev2.empty())
+        if (auto it = pairs_.find(WordKey(prev2) + L'\x1f' + WordKey(prev)); it != pairs_.end()) {
+            double total = 0;
+            for (const auto& kv : it->second) total += kv.second;
+            if (total >= 3.0) return decide(it->first);  // enough seen with two words: they decide alone
+        }
+    return decide(WordKey(prev));
+}
+
 std::vector<std::wstring> WordModel::Near(const std::wstring& word, size_t n) const {
     std::vector<std::wstring> out;
     const std::wstring key = WordKey(word);

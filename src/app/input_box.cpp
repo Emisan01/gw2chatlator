@@ -309,6 +309,7 @@ void InputBox::DrawSquiggles(HDC dc) const {
 // left of the last letter.
 void InputBox::DrawGhost(HDC dc) const {
     const WordChoices& c = choices_;
+    if (suggestOn_ && GetFocus() == hwnd_ && !c.Changes()) DrawNextGhost(dc);
     if (!suggestOn_ || !c.Changes() || static_cast<size_t>(c.highlight) >= c.words.size() ||
         GetFocus() != hwnd_)
         return;
@@ -347,6 +348,30 @@ void InputBox::DrawGhost(HDC dc) const {
     } else {
         TextOutW(dc, last.x + sz.cx, last.y, rest.c_str(), static_cast<int>(rest.size()));
     }
+    RestoreDC(dc, saved);
+}
+
+// The next word when it is (almost) always the same ("kommst du |mit"), grey after the space at the end of the
+// text; Tab or → takes it, typing goes on as usual. Left-to-right text only.
+void InputBox::DrawNextGhost(HDC dc) const {
+    const WordSuggestions& s = suggestions_;
+    if (s.kind != WordSuggestions::Kind::Next || s.autoIndex != 0 || s.words.empty()) return;
+    const std::wstring text = Text();
+    const size_t caret = Caret();
+    if (caret < 2 || caret != text.size() || text[caret - 1] != L' ' || s.replace.start != caret) return;
+    if (IsRtlText(text)) return;
+    const POINT last = PosFromChar(caret - 1);
+    if (last.x == -32768) return;
+    const int saved = SaveDC(dc);
+    SelectObject(dc, theme_->fontText);
+    SIZE sz{};
+    GetTextExtentPoint32W(dc, L" ", 1, &sz);
+    RECT clip;
+    SendMessageW(hwnd_, EM_GETRECT, 0, reinterpret_cast<LPARAM>(&clip));
+    IntersectClipRect(dc, clip.left, clip.top, clip.right, clip.bottom);
+    SetBkMode(dc, TRANSPARENT);
+    SetTextColor(dc, Theme::kMuted);
+    TextOutW(dc, last.x + sz.cx, last.y, s.words[0].c_str(), static_cast<int>(s.words[0].size()));
     RestoreDC(dc, saved);
 }
 
@@ -639,6 +664,13 @@ LRESULT InputBox::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             // Right arrow at the end of the word: take the grey word without a space.
             if (!ctrl && !shift && wp == VK_RIGHT && Caret() == Text().size() && CurrentChoices().Changes()) {
                 ApplyChoice(0);
+                return 0;
+            }
+            // Right arrow at the end after a space: take the grey next word.
+            if (!ctrl && !shift && wp == VK_RIGHT && Caret() == Text().size() &&
+                suggestions_.kind == WordSuggestions::Kind::Next && suggestions_.autoIndex == 0 &&
+                !suggestions_.words.empty()) {
+                AcceptSuggestion(0);
                 return 0;
             }
             if (ctrl && wp == 'A') {

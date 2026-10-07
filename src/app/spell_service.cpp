@@ -244,6 +244,9 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
         if (!s.words.empty()) {
             s.kind = WordSuggestions::Kind::Next;
             s.replace = {caret, 0};
+            // Almost always this word here: it is offered grey after the caret (Tab or → takes it).
+            const std::wstring sure = model_.NextSure(prev, p2);
+            if (!sure.empty() && WordKey(sure) == WordKey(s.words[0])) s.autoIndex = 0;
         }
         return s;
     }

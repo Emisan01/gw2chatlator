@@ -86,6 +86,7 @@ private:
     void UpdateChoices();
     const WordChoices& CurrentChoices();
     bool ApplyChoice(wchar_t boundary);
+    void DrawNextGhost(HDC dc) const;
     void CycleChoice(int step);
     // Autocorrects the word ending at `end` (exclusive). `boundaryTyped`: the
     // character at `end` was just typed (space ...) and Backspace may undo.
