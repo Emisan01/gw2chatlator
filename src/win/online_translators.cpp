@@ -118,7 +118,10 @@ namespace {
 
 class OpenAiCompatibleTranslator final : public LlmTranslator {
 public:
-    explicit OpenAiCompatibleTranslator(LlmSettings s) : s_(std::move(s)) { s_.url = NormalizeLlmUrl(s_.url); }
+    explicit OpenAiCompatibleTranslator(LlmSettings s) : s_(std::move(s)) {
+        s_.url = NormalizeLlmUrl(s_.url);
+        local_ = IsLocalLlmUrl(s_.url);
+    }
 
     std::wstring Name() const override { return L"LLM (" + s_.model + L")"; }
 
@@ -145,13 +148,13 @@ public:
             const size_t end = std::min(items.size(), begin + kChunk);
             const std::vector<std::vector<Segment>> part(items.begin() + begin, items.begin() + end);
             const LlmParsed p =
-                Call(BuildLlmRequest(part, LanguageEnglishName(targetLang), s_.model, fromOcr), part.size());
+                Call(BuildLlmRequest(part, LanguageEnglishName(targetLang), s_.model, fromOcr, local_), part.size());
             if (!p.ok && p.formatError && part.size() > 1) {
                 // Small local models sometimes merge or drop lines in a batch:
                 // ask once per line instead of losing the whole batch.
                 for (size_t i = begin; i < end; ++i) {
                     const LlmParsed one =
-                        Call(BuildLlmRequest({items[i]}, LanguageEnglishName(targetLang), s_.model, fromOcr), 1);
+                        Call(BuildLlmRequest({items[i]}, LanguageEnglishName(targetLang), s_.model, fromOcr, local_), 1);
                     out[i].ok = one.ok;
                     if (one.ok) out[i].text = one.texts[0];
                     else out[i].error = one.error;
@@ -169,7 +172,7 @@ public:
 
     TranslateResult Romanize(const std::wstring& text) override {
         TranslateResult r;
-        const LlmParsed p = Call(BuildLlmRomanizeRequest(text, s_.model), 1);
+        const LlmParsed p = Call(BuildLlmRomanizeRequest(text, s_.model, local_), 1);
         r.ok = p.ok;
         if (p.ok) r.text = p.texts[0];
         else r.error = p.error;
@@ -198,9 +201,19 @@ private:
     }
 
     LlmSettings s_;
+    bool local_ = true;
 };
 
 }  // namespace
+
+bool IsLocalLlmUrl(const std::wstring& url) {
+    const std::wstring u = CaseFold(Trim(url));
+    const size_t scheme = u.find(L"://");
+    const size_t hostStart = scheme == std::wstring::npos ? 0 : scheme + 3;
+    const std::wstring host = u.substr(hostStart, u.find_first_of(L":/", hostStart) - hostStart);
+    return host == L"localhost" || host == L"127.0.0.1" || host == L"[::1]" || host.rfind(L"192.168.", 0) == 0 ||
+           host.rfind(L"10.", 0) == 0 || (host.size() > 6 && host.compare(host.size() - 6, 6, L".local") == 0);
+}
 
 std::shared_ptr<LlmTranslator> MakeLlmTranslator(const LlmSettings& settings) {
     return std::make_shared<OpenAiCompatibleTranslator>(settings);

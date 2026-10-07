@@ -1210,10 +1210,39 @@ static void TestModelList() {
     const std::string req = BuildLlmRequest({{{L"Hallo Lête", false}}}, L"English", L"m", true);
     CHECK(req.find("recognition errors") != std::string::npos);
     CHECK(BuildLlmRequest({{{L"x", false}}}, L"English", L"m").find("recognition errors") == std::string::npos);
+    // Cloud reasoning models reject any temperature: left out for them.
+    CHECK(BuildLlmRequest({{{L"x", false}}}, L"English", L"m").find("temperature") != std::string::npos);
+    CHECK(BuildLlmRequest({{{L"x", false}}}, L"English", L"m", false, false).find("temperature") == std::string::npos);
+}
+
+static void TestFreeText() {
+    auto line = [](const wchar_t* t, int top, int left = 10) {
+        OcrLine l;
+        l.text = t;
+        l.top = top;
+        l.height = 20;
+        l.left = left;
+        l.width = 300;
+        return l;
+    };
+    // Two lines close together are one paragraph, a gap starts the next; a
+    // hyphenated word at the line end is joined again.
+    const auto m = BuildFreeTextMessages({line(L"The quick brown fox jumps over the lazy", 0),
+                                          line(L"dog and runs into the for-", 24), line(L"est.", 48),
+                                          line(L"Second paragraph here.", 100)});
+    CHECK(m.size() == 2);
+    CHECK(m.size() == 2 && m[0].text == L"The quick brown fox jumps over the lazy dog and runs into the forest.");
+    CHECK(m.size() == 2 && m[1].text == L"Second paragraph here." && m[1].freeText);
+    // A long text is cut after a sentence.
+    const auto cut = BuildFreeTextMessages({line(L"One sentence here.", 0), line(L"Another one follows.", 24)}, 20);
+    CHECK(cut.size() == 2);
+    // A clearly different indent (another column) is its own paragraph.
+    CHECK(BuildFreeTextMessages({line(L"left column", 0, 10), line(L"right column", 24, 400)}).size() == 2);
 }
 
 int main() {
     TestUtf();
+    TestFreeText();
     TestText();
     TestChat();
     TestHotkey();

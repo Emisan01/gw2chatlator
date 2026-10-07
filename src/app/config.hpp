@@ -64,6 +64,11 @@ struct Config {
     bool saveCaptures = false;
     bool regionSet = false;
     int regionLeft = 0, regionFromBottom = 0, regionWidth = 0, regionHeight = 0;  // relative to GW2 client area
+    // Free screen area: any text on the screen (a website, a document, another
+    // game), no chat rules, read also outside GW2. Screen pixels.
+    bool freeArea = false;
+    RECT freeRect{};
+    bool FreeSet() const { return freeRect.right - freeRect.left >= 40 && freeRect.bottom - freeRect.top >= 20; }
     std::vector<ChannelColor> palette;
 
     // [Spelling]
@@ -110,6 +115,7 @@ struct Config {
     void Load(const std::wstring& dir);
     void SaveWindowRect(HWND wnd, float scale) const;
     void SaveRegion() const;
+    void SaveFreeArea() const;
     void SaveColor(Channel ch, Rgb rgb);
     void ResetColors();
     void SaveTabs() const;

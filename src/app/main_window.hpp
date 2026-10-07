@@ -179,6 +179,8 @@ private:
     void PollGame();
     RECT ChatArea() const;
     void PickRegion();
+    void PickFreeArea();         // any screen text, no chat rules
+    void SetFreeArea(bool on);
     RECT GameClientRect() const;  // screen coordinates, empty without GW2
     // ---- docking ("an GW2 andocken")
     RECT DockTarget() const;

@@ -90,6 +90,10 @@ const char kTranslateSections[] =
     "RegionFromBottom=\r\n"
     "RegionWidth=\r\n"
     "RegionHeight=\r\n"
+    "; Free screen area instead of the chat: everything inside is translated (FreeArea=1).\r\n"
+    "; FreeRect=left,top,width,height in screen pixels.\r\n"
+    "FreeArea=0\r\n"
+    "FreeRect=\r\n"
     "; Channel colours (RRGGBB). Right-click a chat line -> \"This line colour is\" calibrates them.\r\n"
     "; ColorSay= ColorMap= ColorParty= ColorSquad= ColorTeam= ColorWhisper= ColorGuild= ColorSystem=\r\n"
     "\r\n";
@@ -327,6 +331,14 @@ void Config::Load(const std::wstring& dir) {
     regionWidth = ini.Int(L"Reader", L"RegionWidth", 0, 0, 20000);
     regionHeight = ini.Int(L"Reader", L"RegionHeight", 0, 0, 20000);
     regionSet = regionWidth >= 40 && regionHeight >= 20;
+    freeArea = ini.Bool(L"Reader", L"FreeArea", false);
+    {
+        int v[4] = {0, 0, 0, 0};
+        const std::wstring r = ini.Str(L"Reader", L"FreeRect", L"");
+        if (swscanf_s(r.c_str(), L"%d,%d,%d,%d", &v[0], &v[1], &v[2], &v[3]) == 4 && v[2] > 0 && v[3] > 0)
+            freeRect = {v[0], v[1], v[0] + v[2], v[1] + v[3]};
+    }
+    if (!FreeSet()) freeArea = false;
 
     palette = DefaultChannelColors();
     for (const ColorKey& ck : kColorKeys) {
@@ -399,6 +411,13 @@ void Config::SaveWindowRect(HWND wnd, float scale) const {
     SaveValue(L"Window", L"Y", std::to_wstring(rc.top));
     SaveValue(L"Window", L"Width", std::to_wstring(static_cast<int>((rc.right - rc.left) / scale + 0.5f)));
     SaveValue(L"Window", L"Height", std::to_wstring(static_cast<int>((rc.bottom - rc.top) / scale + 0.5f)));
+}
+
+void Config::SaveFreeArea() const {
+    SaveBool(L"Reader", L"FreeArea", freeArea);
+    SaveValue(L"Reader", L"FreeRect",
+              std::to_wstring(freeRect.left) + L"," + std::to_wstring(freeRect.top) + L"," +
+                  std::to_wstring(freeRect.right - freeRect.left) + L"," + std::to_wstring(freeRect.bottom - freeRect.top));
 }
 
 void Config::SaveRegion() const {

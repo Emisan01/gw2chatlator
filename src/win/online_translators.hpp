@@ -38,6 +38,9 @@ std::shared_ptr<LlmTranslator> MakeLlmTranslator(const LlmSettings& settings);
 // "http://localhost:11434" or ".../v1" -> full chat-completions URL.
 std::wstring NormalizeLlmUrl(const std::wstring& url);
 
+// True for an LLM on this PC or in the home network (Ollama, LM Studio), false for cloud APIs.
+bool IsLocalLlmUrl(const std::wstring& url);
+
 // Models the server offers: tries <base>/v1/models, then Ollama's /api/tags.
 // Blocking (call from a worker thread).
 std::vector<std::wstring> FetchLlmModels(const std::wstring& url, const std::wstring& apiKey, std::wstring* error);
