@@ -18,6 +18,7 @@ src/win   Windows services (no UI)      http (WinHTTP), deepl_translator, online
                                         gw2_locate (find GW2, install, autostart, add-on scan), folder_cleanup, files,
                                         keyboard_layout (neighbouring keys of the active layout for the word bar)
 src/core  portable logic, NO windows.h  text, json, i18n (+ i18n_de / i18n_ar tables), hotkey, langs, languages,
+                                        glyph_reader (the GW2 chat font, learned and read exactly),
                                         glossary, protect, slang (+ word-bar starter list), chat_line (OCR-tolerant
                                         parsing), chat_stream, chat_tabs, image, chat_geometry (line grid, dynamic
                                         enlargement, snapping the chat frame, words -> lines), names (speakers seen,
@@ -234,6 +235,18 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
   unique hit) → re-read → `SuggestFor` → else the word is dropped (empty words and lines removed). Free area: an
   unknown word touching the left/right edge is dropped. Free area after the first picture: `KeepActiveBottom`
   (`kFreeActiveLines` = 6 rows, `ChatMessage::bottom`) – flickering re-readings further up made old fragments.
+- Glyph reader (`core/glyph_reader`, chat only, `ReaderOptions::glyphDir` = `<data>\glyphs`, one model per
+  `grid.textHeight`, `glyphs_<H>.txt` "glyphs 2"): ink = brightest channel between the row's 60 % and 99.5 %
+  percentiles × the outline edge (pixel minus its darkest 5×5 neighbour, /0.35 – GW2 letters have a black outline, the
+  game behind the panel has soft edges); letter window = baseline (median piece bottom) − asc+1 … + desc; ink
+  normalised against the brightest column within H/3. Reading = Viterbi over columns: empty column (cost Σink²) or a
+  letter picture (Σ squared difference + 0.06·H); space = gap ≥ 0.2·H. Sure ⇔ every letter ≤ 0.04 per pixel and ≥ 0.01
+  ahead of every other letter of its width, no leftover ink (> 0.2 per pixel) – only sure rows replace the OCR row in
+  `ChatOcr::Read`. Learning: one-to-one (pieces = letters, word gaps check) or forced alignment (≤ 2 unknown letters,
+  each placed letter ≤ 0.06); in the app `LearnWord` per OCR word that is a real dictionary word, at the OCR's box,
+  24 words per picture, rows by pixel hash once. Measured (ocr_bench "glyphs", leave-one-picture-out on 4K): sure rows
+  100 % exact; line hits Windows 11 % → hybrid 14 %. `tools/../ocr_bench` knobs: GLYPH_PENALTY, GLYPH_SPACE,
+  BENCH_GLYPH_STATS.
 - Learned recognition fixes (`<data>\ocr-fixes.txt`, a `MyWords` list "as read = correct"): second-look successes
   arrive as `ReaderSnapshot::newFixes`, are stored by `MainWindow`, and reach `ChatOcr` as `ReaderOptions::ocrFixes`
   (applied before the dictionary check, no re-read).

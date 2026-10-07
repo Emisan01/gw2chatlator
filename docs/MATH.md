@@ -98,5 +98,32 @@ Mehrheit der Zeilen beginnt am linken Rand (dann ist eng gerahmt, nicht abgeschn
 
 **Bildbereich:** nach dem ersten Bild zählen nur Absätze, deren Unterkante in die untersten 6 Textzeilen reicht
 (Zeilen gleicher Höhe ±3 px = eine Zeile). Mathe: 6 Zeilen / 0,4 s = 15 Zeilen/s – mehr schreibt kein Chat.
+## 4 Glyphen-Leser (exakt statt Annäherung)
+
+**Tinte** eines Pixels: `t = clamp((h − h₆₀)/(h₉₉,₅ − h₆₀)) · clamp((h − min₅ₓ₅ h)/0,35)` mit `h` = hellster Farbkanal,
+`h₆₀, h₉₉,₅` = Perzentile der Zeile. Der zweite Faktor ist der **Umriss**: GW2-Buchstaben haben einen schwarzen Rand,
+das Spiel hinter dem Panel nicht – Laub und Himmel fallen damit auf 0.
+**Buchstabenfenster:** Grundlinie = Median der Unterkanten der Tintenstücke; Höhe `H = asc + desc` (90. / 95. Perzentil,
+einmal gelernt). Normiert gegen die hellste Spalte im Umkreis `H/3` (graue Zeitstempel wie heller Text).
+
+**Lesen** (Viterbi über die Spalten `x`):
+
+    R(0) = 0
+    R(x+1) ← R(x) + Σ_y n(x,y)²                       (leere Spalte)
+    R(x+w_g) ← R(x) + Σ (n − T_g)² + 0,06·H            (Buchstabe g der Breite w_g ab x)
+
+Kein Zerschneiden vorab: klebende Buchstaben brauchen keine Lücke, ein „m“ aus zwei blassen Bögen bleibt ein Bild.
+Leerzeichen ⇔ Lücke ≥ 0,2·H. **Sicher** ⇔ jeder Buchstabe `e = Σ(n−T)²/(w·H) ≤ 0,04` ∧ jeder andere Buchstabe gleicher
+Breite ≥ `e + 0,01` ∧ keine leere Spalte mit Tinte > 0,2 pro Pixel. Nur sichere Zeilen ersetzen die Erkennung.
+
+**Lernen:** (1) Stücke = Buchstaben und Wortlücken > Lücken im Wort → jedes Stück lehrt seinen Buchstaben;
+(2) Zwangsausrichtung: derselbe Viterbi, aber die Buchstabenfolge ist bekannt (≤ 2 unbekannte, deren Breite sich aus
+den Nachbarn ergibt); angenommen nur, wenn jeder bekannte Buchstabe `e ≤ 0,06` hat. Im Spiel wortweise: jedes Wort
+der Erkennung, das ein echtes Wörterbuchwort ist, an der Stelle, wo die Erkennung es fand.
+
+**Messung** (echte 4K-Bilder, gelernt nur aus den *anderen* Bildern): sichere Zeilen 100 % exakt; exakte Zeilen
+Windows-OCR 11 % → zusammen 14 %. Die verbleibenden Fehler sind Zwillinge mit wenig Beispielen (m/rn, I/l, F/E) –
+Daten, keine Logik: im Spiel lernt er laufend.
+
 **Doppelte Prüfung:** eine neue Zeile zählt erst, wenn das nächste Bild (200 ms später) sie wieder zeigt.
 Messung nach den Korrekturen (ocr_bench, echte 4K-Aufnahmen): unverändert 30,3 % / 30,4 % – kein Schaden.

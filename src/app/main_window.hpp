@@ -320,6 +320,8 @@ private:
         ULONGLONG since = 0;
         uint64_t pictures = 0, messages = 0, dropped = 0, confirmed = 0, translated = 0, failed = 0;
         uint64_t secondLooks = 0, secondFixes = 0;  // words read a second time / taken from the second reading
+        uint64_t glyphRows = 0;  // rows the glyph reader read itself
+        int glyphLetters = 0;    // letters of the chat font it knows
         int lastMs = 0;
         double avgMs = 0, avgTranslateMs = 0;
         size_t lastLines = 0;
