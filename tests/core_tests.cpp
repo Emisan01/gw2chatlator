@@ -1,6 +1,7 @@
 // Portable unit tests for src/core — no Windows needed:
 //   g++ -std=c++17 -I src tests/core_tests.cpp src/core/*.cpp -o core_tests && ./core_tests
 #include <chrono>
+#include <map>
 #include <cstdio>
 #include <fstream>
 #include <set>
@@ -35,6 +36,7 @@
 #include "core/json.hpp"
 #include "core/langs.hpp"
 #include "core/protect.hpp"
+#include "core/glyph_reader.hpp"
 #include "core/slang.hpp"
 #include "core/text.hpp"
 #include "core/translator.hpp"
@@ -1452,6 +1454,68 @@ static void TestGw2Abbreviations() {
     CHECK(!IsKeepWord(BuiltinSpellIgnore(), L"ac"));
 }
 
+// A tiny invented font (5 x 7, drawn twice as large, bright on dark with a dark outline like GW2's chat): the glyph
+// reader learns it from rows whose text is known and then reads new rows exactly.
+static Image FontRow(const std::wstring& text) {
+    static const std::map<wchar_t, std::vector<const char*>> font = {
+        {L'a', {".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"}},
+        {L'b', {"####.", "#...#", "####.", "#...#", "#...#", "#...#", "####."}},
+        {L'c', {".####", "#....", "#....", "#....", "#....", "#....", ".####"}},
+        {L'd', {"####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####."}},
+    };
+    const int k = 2, top = 6, H = 7 * k + 12;
+    int width = 6;
+    for (wchar_t c : text) width += c == L' ' ? 10 : 5 * k + 2;
+    Image img;
+    img.width = width;
+    img.height = H;
+    img.bgra.assign(static_cast<size_t>(width) * H * 4, 0);
+    for (size_t i = 0; i < img.bgra.size(); i += 4) {  // a dark panel with a little noise
+        img.bgra[i] = img.bgra[i + 1] = img.bgra[i + 2] = static_cast<uint8_t>(18 + (i / 4 * 7) % 9);
+        img.bgra[i + 3] = 255;
+    }
+    int x = 3;
+    for (wchar_t c : text) {
+        if (c == L' ') {
+            x += 10;
+            continue;
+        }
+        const auto& rows = font.at(c);
+        for (int r = 0; r < 7; ++r)
+            for (int col = 0; col < 5; ++col)
+                if (rows[static_cast<size_t>(r)][col] == '#')
+                    for (int dy = 0; dy < k; ++dy)
+                        for (int dx = 0; dx < k; ++dx) {
+                            uint8_t* px = &img.bgra[(static_cast<size_t>(top + r * k + dy) * width + x + col * k + dx) * 4];
+                            px[0] = 40;  // yellow chat text
+                            px[1] = px[2] = 235;
+                        }
+        x += 5 * k + 2;
+    }
+    return img;
+}
+
+static void TestGlyphReader() {
+    GlyphReader gr;
+    const std::vector<std::wstring> known = {L"abc", L"cab dab", L"bad cad", L"dcba"};
+    std::vector<Image> imgs;
+    for (const auto& t : known) imgs.push_back(FontRow(t));
+    std::vector<std::pair<const Image*, std::wstring>> rows;
+    for (size_t i = 0; i < known.size(); ++i) rows.push_back({&imgs[i], known[i]});
+    CHECK(gr.Train(rows) > 0);
+    CHECK(gr.Letters() == 4);
+    // A row it never saw: read exactly, sure, with the words in place.
+    const GlyphReader::Result r = gr.Read(FontRow(L"dab cab bc"));
+    CHECK(r.text == L"dab cab bc");
+    CHECK(r.sure);
+    CHECK(r.words.size() == 3);
+    // Saved and loaded again: the same reading.
+    GlyphReader back;
+    CHECK(back.Parse(gr.Serialize()));
+    CHECK(back.Read(FontRow(L"dab cab bc")).text == L"dab cab bc");
+    CHECK(!back.Parse("glyphs 1\n"));  // an old or foreign file is refused
+}
+
 static void TestPhraseMemory() {
     WordModel m;
     for (int i = 0; i < 4; ++i) m.Learn(L"gute nacht bis morgen mit micro");
@@ -1613,6 +1677,7 @@ int main() {
     TestWordTriples();
     TestWordModelWeights();
     TestPhraseMemory();
+    TestGlyphReader();
     TestGw2Abbreviations();
     TestRapidRec();
     TestText();

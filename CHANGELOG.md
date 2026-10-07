@@ -3,8 +3,24 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## Unreleased
+## 0.9.0 — 2026-10-07
 
+**The glyph reader** – the GW2 chat has one fixed font; the tool now learns its letters and reads them exactly,
+instead of only guessing with a general text recognition:
+- **Learns while you play:** every word the normal recognition reads in the chat that is a real word teaches its
+  letters, right where it stands in the line (names and slang in the same line do not matter). A letter is only taken
+  when it also fits the letters already known. Stored per text size in `glyphs\` (letter shapes only, no text).
+- **Reads exactly:** a chat line is read as the best sequence of known letters that explains all of its ink – letters
+  that touch need no gap, a letter in two faint parts stays one letter. GW2's black outline around every letter tells
+  text from the game shining through the panel. A line replaces the normal reading **only when every letter is
+  clearly that letter**; everything else is read as before – it can only get better.
+- Measured on real 4K chat pictures, learned from other pictures than the one read: every line it was sure of was
+  exactly right; the normal recognition reads only 11 % of the lines exactly, together it is 14 % – with letters learned
+  from two pictures. In the game it learns from hundreds of lines every evening. ~7 ms per line, lines already seen
+  come from a cache.
+- Settings → Technical shows how many letters it knows and how many lines it read itself.
+
+**Logic, checked as mathematics**
 - **Core logic written down as mathematics** (`docs/MATH.md`), and two mistakes found that way are fixed:
   - one accidental word triple no longer outweighs a word you use all the time – a context now weighs by how often
     it has been seen (S/(S+1)), for completions and the next word;

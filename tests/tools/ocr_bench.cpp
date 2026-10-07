@@ -26,6 +26,7 @@
 
 #include "core/chat_geometry.hpp"
 #include "core/chat_line.hpp"
+#include "core/glyph_reader.hpp"
 #include "core/image.hpp"
 #include "core/tesseract_tsv.hpp"
 #include "core/text.hpp"
@@ -180,6 +181,27 @@ struct Score {
     int n = 0;
 };
 
+// One measured text row of a picture with what really stands there (for the glyph reader).
+struct RowSample {
+    std::wstring picture;  // name without the resolution suffix: t001 and t001_1080 are the same text
+    int textHeight = 0;
+    Image row;
+    std::wstring truth;    // the truth line this row shows
+    std::wstring windows;  // what Windows OCR read there
+};
+
+// The row as the glyph reader gets it: the measured line with a quarter line of room above and below.
+Image RowCrop(const Image& raw, const TextRow& r) {
+    const int pad = std::max(2, r.height / 4);
+    const int y0 = std::max(0, r.top - pad), y1 = std::min(raw.height, r.top + r.height + pad);
+    return Crop(raw, {0, y0, raw.width, y1 - y0});
+}
+
+std::vector<RowSample>& rowSamples() {
+    static std::vector<RowSample> v;
+    return v;
+}
+
 }  // namespace
 
 int wmain(int argc, wchar_t** argv) {
@@ -231,6 +253,44 @@ int wmain(int argc, wchar_t** argv) {
 
         const LineGrid grid = FindLineGrid(raw, {0, 0, raw.width, raw.height});
         const int dyn = OcrScaleFor(grid);
+        // Glyph reader material: every measured row, what Windows OCR reads there, and the truth line it shows
+        // (the closest one by edit distance; rows without a close truth line – half lines – are left out).
+        if (haveWin && grid.Found()) {
+            std::vector<OcrTextLine> tl;
+            const Image upW = UpscaleForOcr(raw, dyn);
+            if (win.Recognize(upW, tl, &err)) {
+                std::vector<std::wstring> rowText(grid.rows.size());
+                for (const OcrTextLine& l : tl)
+                    for (const OcrWordBox& wb : l.words) {
+                        const int cy = (wb.rect.y + wb.rect.h / 2) / dyn;
+                        int best = -1, bestD = 1 << 30;
+                        for (size_t i = 0; i < grid.rows.size(); ++i) {
+                            const TextRow& r = grid.rows[i];
+                            const int d = cy < r.top ? r.top - cy : cy > r.top + r.height ? cy - (r.top + r.height) : 0;
+                            if (d < bestD) {
+                                bestD = d;
+                                best = static_cast<int>(i);
+                            }
+                        }
+                        if (best >= 0) rowText[static_cast<size_t>(best)] += (rowText[static_cast<size_t>(best)].empty() ? L"" : L" ") + wb.text;
+                    }
+                const std::vector<std::wstring> truthRows = Lines(truth);
+                std::wstring pic = name.substr(0, name.size() - 4);
+                if (const size_t us = pic.find(L'_'); us != std::wstring::npos) pic = pic.substr(0, us);
+                for (size_t i = 0; i < grid.rows.size(); ++i) {
+                    double bestC = 1e9;
+                    std::wstring bestT;
+                    for (const std::wstring& t : truthRows) {
+                        const double c = Cer(t, rowText[i]);
+                        if (c < bestC) {
+                            bestC = c;
+                            bestT = t;
+                        }
+                    }
+                    if (bestC <= 35) rowSamples().push_back({pic, grid.textHeight, RowCrop(raw, grid.rows[i]), bestT, rowText[i]});
+                }
+            }
+        }
         struct Prep {
             std::string name;
             Image img;
@@ -289,10 +349,12 @@ int wmain(int argc, wchar_t** argv) {
             }
         }
         // The app's own pipeline (ChatOcr, Windows OCR) without and with the second look at unknown words.
-        for (int look = 0; look < 3 && haveWin; ++look) {
+        for (int look = 0; look < 4 && haveWin; ++look) {
             ReaderOptions o;
             o.ocrChoice = look == 2 ? 3 : 2;  // 3 = RapidOCR
-            o.secondLook = look == 1;
+            o.secondLook = look == 1 || look == 3;
+            // look 3: with the glyph reader, learning from checked rows into local\glyphs_bench (grows every run).
+            if (look == 3) o.glyphDir = L"local\\glyphs_bench";
             o.rapidDir = L"local\\rapid";
             o.rapidGroups = {L"latin"};
             o.wordLangs = {L"DE", L"EN-GB"};
@@ -313,9 +375,9 @@ int wmain(int argc, wchar_t** argv) {
                 std::printf("    rapid, same picture again: %.0f ms\n",
                             std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t1).count());
             }
-            const std::string kind = look == 2 ? "rapid" : look ? "2nd look" : "plain";
-            std::printf("%-28ls %-6s %-12s %6.1f %8.1f %7.0f  (second look: %d read again, %d taken)\n", name.c_str(),
-                        "app", kind.c_str(), cer, parsed, ms, co.SecondLooks(), co.SecondFixes());
+            const std::string kind = look == 3 ? "glyphs" : look == 2 ? "rapid" : look ? "2nd look" : "plain";
+            std::printf("%-28ls %-6s %-12s %6.1f %8.1f %7.0f  (second look: %d read again, %d taken; glyphs: %d rows, %zu letters)\n", name.c_str(),
+                        "app", kind.c_str(), cer, parsed, ms, co.SecondLooks(), co.SecondFixes(), co.GlyphRows(), co.GlyphLetters());
             if (GetEnvironmentVariableW(L"BENCH_DUMP", nullptr, 0) > 0)
                 std::printf("--- app %s:\n%s\n", kind.c_str(), ToUtf8(Parsed(lines)).c_str());
             Score& s = total["app " + kind];
@@ -374,6 +436,71 @@ int wmain(int argc, wchar_t** argv) {
         }
     } while (FindNextFileW(h, &fd));
     FindClose(h);
+
+    // Glyph reader, measured honestly: for each picture the letters are learned from the *other* pictures of the same
+    // text size (never from this one), then this picture's rows are read. A row counts as a hit only when it is
+    // exactly the truth. "hybrid": rows the glyph reader is sure of from it, the rest from Windows OCR.
+    {
+        std::map<std::wstring, std::vector<const RowSample*>> byPicture;
+        for (const RowSample& s : rowSamples()) byPicture[s.picture + L"@" + std::to_wstring(s.textHeight)].push_back(&s);
+        int rows = 0, sure = 0, sureHit = 0, winHit = 0, hybridHit = 0;
+        double sureCer = 0;
+        for (const auto& [key, test] : byPicture) {
+            GlyphReader gr;
+            {
+                wchar_t knob[32] = {};
+                const double pen = GetEnvironmentVariableW(L"GLYPH_PENALTY", knob, 32) ? _wtof(knob) : 0.06;
+                const double sp = GetEnvironmentVariableW(L"GLYPH_SPACE", knob, 32) ? _wtof(knob) : 0.0;
+                gr.Tune(pen, sp);
+            }
+            std::vector<std::pair<const Image*, std::wstring>> train;
+            for (const RowSample& s : rowSamples())
+                if (s.picture != test.front()->picture && std::abs(s.textHeight - test.front()->textHeight) <= 2)
+                    train.push_back({&s.row, s.truth});
+            const auto tl0 = std::chrono::steady_clock::now();
+            const int learned = gr.Train(train);
+            const double learnMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - tl0).count();
+            double readMs = 0;
+            int r0 = 0, s0 = 0, h0 = 0, w0 = 0, hy0 = 0;
+            for (const RowSample* s : test) {
+                const auto tr0 = std::chrono::steady_clock::now();
+                const GlyphReader::Result r = gr.Read(s->row);
+                readMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - tr0).count();
+                const bool winOk = Squash(s->windows) == Squash(s->truth);
+                const bool glyphOk = r.sure && Squash(r.text) == Squash(s->truth);
+                ++r0;
+                w0 += winOk;
+                if (r.sure) {
+                    ++s0;
+                    h0 += glyphOk;
+                    sureCer += Cer(s->truth, r.text);
+                }
+                hy0 += r.sure ? glyphOk : winOk;
+                if (GetEnvironmentVariableW(L"BENCH_DUMP", nullptr, 0) > 0)
+                    std::printf("  glyph %s %.3f | %s\n  truth       | %s\n", r.sure ? "sure  " : "unsure", r.worst,
+                                ToUtf8(r.text).c_str(), ToUtf8(s->truth).c_str());
+                // For choosing the thresholds: per row exact or not, worst difference, smallest margin, ink left over.
+                if (GetEnvironmentVariableW(L"BENCH_GLYPH_STATS", nullptr, 0) > 0)
+                    std::printf("  stat %d %.4f %.4f %d %d\n", Squash(r.text) == Squash(s->truth) ? 1 : 0, r.worst,
+                                r.margin, r.leftover ? 1 : 0, s->textHeight);
+            }
+            std::printf("glyphs time: learning %.0f ms for %zu rows, reading %.1f ms per row\n", learnMs, train.size(),
+                        test.empty() ? 0.0 : readMs / test.size());
+            std::printf("glyphs space %.1f px\n", gr.LearnedSpace());
+            std::printf("glyphs %-12ls learned %4d letters (%zu kinds) | rows %2d, sure %2d, sure+exact %2d | windows exact %2d, "
+                        "hybrid exact %2d\n", key.c_str(), learned, gr.Letters(), r0, s0, h0, w0, hy0);
+            rows += r0;
+            sure += s0;
+            sureHit += h0;
+            winHit += w0;
+            hybridHit += hy0;
+        }
+        if (rows > 0)
+            std::printf("glyphs total: %d rows | sure %d (%.0f %%), of them exact %d (%.0f %%), CER of sure rows %.2f %% | "
+                        "line hits: windows %.0f %%, hybrid %.0f %%\n",
+                        rows, sure, 100.0 * sure / rows, sureHit, sure ? 100.0 * sureHit / sure : 0.0,
+                        sure ? sureCer / sure : 0.0, 100.0 * winHit / rows, 100.0 * hybridHit / rows);
+    }
     std::printf("\naverage            CER %%  parsed %%      ms\n");
     for (const auto& [k, s] : total)
         std::printf("%-16s %7.1f %9.1f %7.0f\n", k.c_str(), s.cer / s.n, s.parsedCer / s.n, s.ms / s.n);

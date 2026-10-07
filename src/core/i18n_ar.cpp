@@ -7,6 +7,8 @@ namespace gct {
 extern const I18nEntry kArabicStrings[] = {
     {L"   (could deliver squad/party chat as exact text later – optional add-on, not used now)",
      L"   (قد يوفّر لاحقًا محادثة الفرقة/المجموعة كنص دقيق – إضافة اختيارية، غير مستخدمة حاليًا)"},
+    {L"  Glyph reader: knows {1} letters of the chat font, read {2} rows itself",
+     L"  قارئ الحروف: يعرف {1} حرفًا من خط الدردشة، وقرأ {2} سطرًا بنفسه"},
     {L"  Learned words: {1}",
      L"  الكلمات المتعلَّمة: {1}"},
     {L"  Messages found: {1} · dropped as noise: {2} ({3} %) · new after the double scan: {4}",

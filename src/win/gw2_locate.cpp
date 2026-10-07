@@ -377,7 +377,7 @@ InstallResult InstallTo(const std::wstring& targetDir) {
     const std::wstring ortFrom = JoinPath(selfDir, L"onnxruntime.dll");
     if (Exists(ortFrom)) CopyFileW(ortFrom.c_str(), JoinPath(targetDir, L"onnxruntime.dll").c_str(), FALSE);
     // Learned words and the RapidOCR models (folders of files, never overwritten).
-    for (const wchar_t* folder : {L"learned", L"rapid"}) {
+    for (const wchar_t* folder : {L"learned", L"rapid", L"glyphs"}) {
         const std::wstring dirFrom = JoinPath(selfDir, folder), dirTo = JoinPath(targetDir, folder);
         WIN32_FIND_DATAW fd;
         HANDLE h = FindFirstFileW(JoinPath(dirFrom, L"*.*").c_str(), &fd);

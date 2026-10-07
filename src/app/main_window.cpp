@@ -539,6 +539,7 @@ ReaderOptions MainWindow::MakeReaderOptions() const {
     for (const auto& e : myWords_.Entries()) o.knownWords.push_back(e.first);
     // RapidOCR: the models in <data>\rapid for the languages you read and write.
     o.rapidDir = cfg_.RapidDir();
+    o.glyphDir = cfg_.dataDir + L"\\glyphs";  // the glyph reader learns the chat font here
     o.rapidGroups = RapidGroupsFor(o.wordLangs);
     for (const auto& e : ocrFixes_.Entries())
         if (!e.second.empty()) o.ocrFixes.push_back(e);
@@ -2145,6 +2146,8 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
     stats_.confirmed += fresh.size();
     stats_.secondLooks += static_cast<uint64_t>(s->secondLooks);
     stats_.secondFixes += static_cast<uint64_t>(s->secondFixes);
+    stats_.glyphRows += static_cast<uint64_t>(s->glyphRows);
+    stats_.glyphLetters = s->glyphLetters;
     if (!s->newFixes.empty()) {  // learned: from now on fixed at once, also after a restart
         for (const auto& [wrong, right] : s->newFixes) ocrFixes_.Set(wrong, right);
         SaveOcrFixes();
@@ -3166,6 +3169,8 @@ std::wstring MainWindow::TechnicalStatus() {
     if (const std::wstring q = MyMemoryQuotaText(); !q.empty()) line(L"  " + q);
     line(TrF(L"  Second look: {1} unknown words read again, {2} corrected",
              {std::to_wstring(stats_.secondLooks), std::to_wstring(stats_.secondFixes)}));
+    line(TrF(L"  Glyph reader: knows {1} letters of the chat font, read {2} rows itself",
+             {std::to_wstring(stats_.glyphLetters), std::to_wstring(stats_.glyphRows)}));
     line(TrF(L"  Learned words: {1}", {std::to_wstring(spell_.Model().Size())}));
     line(L"");
     line(Tr(L"Parameters (as in the settings file)"));

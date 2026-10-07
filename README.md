@@ -75,6 +75,9 @@ The writing helpers learn only from what you write and run on this PC in a few m
   language is clear are sent to a translator; with **Show only translations** (default) lines in your languages do not
   appear at all.
 - **Any screen area** (menu ≡): frame a website, a document, another game – its text is translated.
+- **Glyph reader:** the GW2 chat has one fixed font – the tool learns its letters while you play (from words it read
+  correctly) and then reads chat lines exactly, letter by letter; a line is only taken from it when every letter is
+  certain.
 - Recognition errors are repaired where the dictionary knows the word (`syn!ax` → `syntax`) and left out where nothing
   makes sense; repairs are learned. Text recognition: Windows OCR, RapidOCR (open source, ships with the program, best
   for small text) or Tesseract.

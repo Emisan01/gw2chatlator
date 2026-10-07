@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(GW2ChatTranslator VERSION 0.8.3 LANGUAGES CXX)
+project(GW2ChatTranslator VERSION 0.9.0 LANGUAGES CXX)
 if(WIN32)
     enable_language(RC)
 endif()
@@ -24,6 +24,7 @@ add_library(gct_core STATIC
     src/core/cloud_mt_protocol.cpp
     src/core/corrections.cpp
     src/core/second_look.cpp
+    src/core/glyph_reader.cpp
     src/core/my_words.cpp
     src/core/rapid_rec.cpp
     src/core/rapid_models.cpp

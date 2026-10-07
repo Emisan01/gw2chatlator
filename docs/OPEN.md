@@ -19,6 +19,8 @@ Pflicht. Bei 4K reicht fast der Rohtext.
 
 ## A – Lesen
 
+0. ✅ (0.9.0) **Glyphen-Leser** – lernt die GW2-Chatschrift im Spiel und liest sichere Zeilen exakt. Nächste Schritte:
+   Live-Lernkurve beobachten (Technik-Seite), echte 1080p-Aufnahmen, Zwillinge (m/rn, I/l) per Wörterbuch auflösen.
 1. ★ **1080p-Erkennung** (8–31 % Fehler mit RapidOCR). Gemessen nur mit *simuliertem* 1080p. Echte Aufnahmen fehlen.
    Größter Qualitätshebel.
 2. ✅ (Kurzwort-Liste) **Kurze fremde Zeilen gingen verloren.** `SureLanguage` braucht 3 Wörter oder verräterische Buchstaben → „merci“,

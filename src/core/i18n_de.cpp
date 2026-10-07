@@ -7,6 +7,8 @@ namespace gct {
 extern const I18nEntry kGermanStrings[] = {
     {L"   (could deliver squad/party chat as exact text later – optional add-on, not used now)",
      L"   (könnte später Trupp-/Gruppenchat als exakten Text liefern – optionales Add-on, derzeit nicht genutzt)"},
+    {L"  Glyph reader: knows {1} letters of the chat font, read {2} rows itself",
+     L"  Glyphen-Leser: kennt {1} Buchstaben der Chatschrift, hat {2} Zeilen selbst gelesen"},
     {L"  Learned words: {1}",
      L"  Gelernte Wörter: {1}"},
     {L"  Messages found: {1} · dropped as noise: {2} ({3} %) · new after the double scan: {4}",
