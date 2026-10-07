@@ -756,6 +756,16 @@ static void TestChatGeometry() {
         }
     CHECK(FindLineGrid(joined, {0, 0, 400, 200}).rows.size() == 6);
 
+    // Dark text on a white page (a website in the free screen area): the same grid.
+    Image page = FakeChat(400, 260, 30, 20, 14, 10);
+    for (size_t i = 0; i + 3 < page.bgra.size(); i += 4) {
+        page.bgra[i] = static_cast<uint8_t>(255 - page.bgra[i]);
+        page.bgra[i + 1] = static_cast<uint8_t>(255 - page.bgra[i + 1]);
+        page.bgra[i + 2] = static_cast<uint8_t>(255 - page.bgra[i + 2]);
+    }
+    const LineGrid pg = FindLineGrid(page, {0, 0, 400, 260});
+    CHECK(pg.rows.size() == 10 && pg.pitch == 20);
+
     // Snapping: the frame cuts the first line mostly away (left out) and the
     // last line only a little (taken in).
     SnapResult s = SnapChatArea(img, {0, 40, 400, 165});  // lines at 30,50,...,210
@@ -1303,6 +1313,17 @@ static void TestFreeText() {
     CHECK(cut.size() == 2);
     // A clearly different indent (another column) is its own paragraph.
     CHECK(BuildFreeTextMessages({line(L"left column", 0, 10), line(L"right column", 24, 400)}).size() == 2);
+    // Two columns side by side, lines sorted top to bottom alternate: each column stays one paragraph.
+    const auto cols = BuildFreeTextMessages({line(L"New", 0, 10), line(L"The quick brown fox", 0, 400),
+                                             line(L"Projects", 24, 10), line(L"jumps over the dog.", 24, 400)});
+    CHECK(cols.size() == 2);
+    CHECK(cols.size() == 2 && cols[0].text == L"New Projects" && cols[1].text == L"The quick brown fox jumps over the dog.");
+    // The same paragraph read again: grown while typing, or read slightly differently.
+    CHECK(SameFreeParagraph(L"es verhält sich relativ flott", L"es verhält sich relativ flott! ich finds super"));
+    CHECK(SameFreeParagraph(L"when scanning it seems to read the lines mixed up",
+                            L"when scanning it seems to read the lines mixed up not line by line"));
+    CHECK(SameFreeParagraph(L"the window gets the same long list as before", L"the windovv gets the same long list as before"));
+    CHECK(!SameFreeParagraph(L"Who wants to join the world boss?", L"Thanks for the help, see you later"));
 }
 
 int main() {

@@ -34,6 +34,7 @@ std::vector<TextRow> ScaledRows(const LineGrid& g, int scale) {
 // text, where it holds up better.
 bool ChatOcr::Init(const ReaderOptions& o, std::wstring* error) {
     choice_ = o.ocrChoice;
+    keepEngineLines_ = o.freeText;
     haveTess_ = haveWin_ = useTess_ = false;
     if (o.ocrChoice != 2) {
         TesseractInfo info;
@@ -64,6 +65,9 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
     else if (choice_ == 2) useTess_ = false;
     else useTess_ = haveTess_ && (!haveWin_ || (grid.pitch > 0 && grid.pitch < kSmallTextPitch));
     int scale = fixedScale > 0 ? std::clamp(fixedScale, 1, 4) : OcrScaleFor(grid);
+    // Free text (apps, websites): small UI fonts with thin strokes ("w" read as "uv", "ü" as "j") read clearly
+    // better at least doubled.
+    if (keepEngineLines_ && fixedScale <= 0 && (grid.pitch == 0 || grid.pitch < 40)) scale = std::max(scale, 2);
     const int maxDim = useTess_ ? 6000 : win_.MaxImageDimension();
     while (scale > 1 && maxDim > 0 && (raw.width * scale > maxDim || raw.height * scale > maxDim)) --scale;
     const Image prepared = UpscaleForOcr(raw, scale);
@@ -105,7 +109,7 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
     // Words into the measured lines: text recognition sometimes merges several
     // chat lines into one or reports them out of order. (Test doubles deliver
     // their own colours per line and are kept as they are.)
-    if (grid.Found() && !found.empty() && !found.front().hasColor) {
+    if (!keepEngineLines_ && grid.Found() && !found.empty() && !found.front().hasColor) {
         std::vector<BoxWord> words;
         for (const Line& l : found)
             for (const Word& w : l.words) words.push_back({w.text, w.rect});

@@ -25,6 +25,8 @@ int Median(std::vector<int> v) {
 // Ink = clearly brighter than the panel: the chat is light text on a dark,
 // half-transparent background. Threshold between the typical pixel and the
 // brightest ones, so coloured names (darker than white text) still count.
+// A bright background (a website, a document in the free screen area) means
+// dark text: then ink is clearly darker than the typical pixel.
 struct InkMap {
     RectI area;
     std::vector<uint8_t> ink;  // area.w * area.h, 1 = text pixel
@@ -50,7 +52,17 @@ InkMap FindInk(const Image& img, RectI area) {
         }
         return 255;
     };
-    const int bg = pct(0.5), hi = pct(0.99);
+    const int bg = pct(0.5), hi = pct(0.99), lo = pct(0.01);
+    const bool darkText = bg >= 160 && bg - lo > hi - bg;
+    if (darkText) {
+        const int threshold = bg - std::max(35, (bg - lo) * 4 / 10);
+        if (threshold < 5) return m;
+        for (int y = 0; y < area.h; ++y)
+            for (int x = 0; x < area.w; ++x)
+                m.ink[static_cast<size_t>(y) * area.w + x] =
+                    MaxChannel(&img.bgra[(static_cast<size_t>(area.y + y) * img.width + area.x + x) * 4]) <= threshold;
+        return m;
+    }
     const int threshold = bg + std::max(35, (hi - bg) * 4 / 10);
     if (threshold > 250) return m;  // nothing stands out: no text
     for (int y = 0; y < area.h; ++y)

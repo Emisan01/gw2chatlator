@@ -2,6 +2,7 @@
 #include "chat_line.hpp"
 
 #include <algorithm>
+#include <iterator>
 #include <cmath>
 #include <cstdlib>
 #include <cwchar>
@@ -358,18 +359,16 @@ size_t FuzzyTagLength(const std::wstring& s, Channel* channel) {
 }
 
 std::vector<ChatMessage> BuildFreeTextMessages(const std::vector<OcrLine>& lines, size_t maxChars) {
-    std::vector<ChatMessage> out;
-    ChatMessage cur;
-    int lastBottom = 0, lastHeight = 0, lastLeft = 0;
-    auto flush = [&] {
-        cur.text = Trim(cur.text);
-        if (!cur.text.empty()) {
-            cur.freeText = true;
-            cur.raw = cur.text;
-            out.push_back(std::move(cur));
-        }
-        cur = ChatMessage{};
+    // A screen area often has several columns side by side (a sidebar, the
+    // text, a picture): lines sorted top to bottom alternate between them.
+    // Each line therefore continues the open block right above it in its own
+    // column (same left edge, small gap), not simply the previous line.
+    struct Block {
+        ChatMessage msg;
+        int top = 0, left = 0, right = 0, lastBottom = 0, lastHeight = 0;
+        bool open = true;
     };
+    std::vector<Block> blocks;
     auto endsSentence = [](const std::wstring& t) {
         const std::wstring x = Trim(t);
         return !x.empty() && std::wcschr(L".!?:;。！？؟", x.back()) != nullptr;
@@ -377,26 +376,113 @@ std::vector<ChatMessage> BuildFreeTextMessages(const std::vector<OcrLine>& lines
     for (const OcrLine& l : lines) {
         const std::wstring t = Trim(l.text);
         if (t.empty()) continue;
-        if (!cur.text.empty()) {
-            const int h = std::max(1, std::max(lastHeight, l.height));
-            const int gap = l.top - lastBottom;
-            const bool indentJump = l.width > 0 && lastLeft > 0 && std::abs(l.left - lastLeft) > h * 2;
-            const bool tooLong = cur.text.size() + t.size() > maxChars && endsSentence(cur.text);
-            if (gap > h * 7 / 10 || indentJump || tooLong || cur.text.size() > maxChars * 2) flush();
+        const bool hasBox = l.width > 0;
+        int best = -1, bestGap = 0;
+        for (size_t i = 0; i < blocks.size(); ++i) {
+            Block& b = blocks[i];
+            if (!b.open) continue;
+            const int h = std::max(1, std::max(b.lastHeight, l.height));
+            const int gap = l.top - b.lastBottom;
+            if (gap > h * 2) {
+                b.open = false;  // far above: this block is finished
+                continue;
+            }
+            if (gap < -h / 2 || gap > h * 7 / 10) continue;
+            if (hasBox && b.right > b.left) {
+                const bool aligned = std::abs(l.left - b.left) <= h * 2;
+                const bool overlaps = l.left < b.right && l.left + l.width > b.left;
+                if (!aligned || !overlaps) continue;
+            }
+            if (best < 0 || gap < bestGap) {
+                best = static_cast<int>(i);
+                bestGap = gap;
+            }
         }
-        if (cur.text.empty()) cur.color = l.color;
+        if (best >= 0) {
+            Block& b = blocks[static_cast<size_t>(best)];
+            const bool tooLong = b.msg.text.size() + t.size() > maxChars && endsSentence(b.msg.text);
+            if (tooLong || b.msg.text.size() > maxChars * 2) {
+                b.open = false;  // long enough: the next line starts a new block in this column
+                best = -1;
+            }
+        }
+        if (best < 0) {
+            Block nb;
+            nb.top = l.top;
+            nb.left = l.left;
+            nb.right = l.left + l.width;
+            nb.msg.color = l.color;
+            blocks.push_back(std::move(nb));
+            best = static_cast<int>(blocks.size()) - 1;
+        }
+        Block& b = blocks[static_cast<size_t>(best)];
+        std::wstring& text = b.msg.text;
         // A word broken with a hyphen at the line end is joined again.
-        if (!cur.text.empty() && cur.text.back() == L'-' && cur.text.size() > 1 && IsWordChar(cur.text[cur.text.size() - 2]))
-            cur.text.pop_back();
-        else if (!cur.text.empty())
-            cur.text += L' ';
-        cur.text += t;
-        lastBottom = l.top + l.height;
-        lastHeight = l.height;
-        if (l.width > 0) lastLeft = l.left;
+        if (!text.empty() && text.back() == L'-' && text.size() > 1 && IsWordChar(text[text.size() - 2])) text.pop_back();
+        else if (!text.empty()) text += L' ';
+        text += t;
+        b.lastBottom = l.top + l.height;
+        b.lastHeight = l.height;
+        if (hasBox) {
+            if (b.right <= b.left) b.left = l.left;
+            b.left = std::min(b.left, l.left);
+            b.right = std::max(b.right, l.left + l.width);
+        }
     }
-    flush();
+    // Reading order: by the top of each block, left column first on the same height.
+    std::stable_sort(blocks.begin(), blocks.end(), [](const Block& a, const Block& b) {
+        const int h = std::max(1, std::max(a.lastHeight, b.lastHeight));
+        if (std::abs(a.top - b.top) > h / 2) return a.top < b.top;
+        return a.left < b.left;
+    });
+    std::vector<ChatMessage> out;
+    for (Block& b : blocks) {
+        b.msg.text = Trim(b.msg.text);
+        if (b.msg.text.empty()) continue;
+        b.msg.freeText = true;
+        b.msg.raw = b.msg.text;
+        out.push_back(std::move(b.msg));
+    }
     return out;
+}
+
+bool SameFreeParagraph(const std::wstring& a, const std::wstring& b) {
+    auto norm = [](const std::wstring& s) {
+        std::wstring o;
+        for (wchar_t c : CaseFold(s))
+            if (IsWordChar(c)) o += c;
+            else if (!o.empty() && o.back() != L' ') o += L' ';
+        return Trim(o);
+    };
+    const std::wstring x = norm(a), y = norm(b);
+    if (x.empty() || y.empty()) return false;
+    if (x == y) return true;
+    // Grown (someone is typing, a text streams in): the shorter is the start of the longer.
+    size_t p = 0;
+    while (p < x.size() && p < y.size() && x[p] == y[p]) ++p;
+    const size_t shorter = std::min(x.size(), y.size());
+    if (p >= 12 && p * 10 >= shorter * 6) return true;
+    // Read a little differently: most words are the same.
+    auto words = [](const std::wstring& s) {
+        std::vector<std::wstring> w;
+        std::wstring cur;
+        for (wchar_t c : s) {
+            if (c == L' ') {
+                if (!cur.empty()) w.push_back(cur);
+                cur.clear();
+            } else {
+                cur += c;
+            }
+        }
+        if (!cur.empty()) w.push_back(cur);
+        std::sort(w.begin(), w.end());
+        return w;
+    };
+    const std::vector<std::wstring> wa = words(x), wb = words(y);
+    if (wa.size() < 4 || wb.size() < 4) return false;
+    std::vector<std::wstring> common;
+    std::set_intersection(wa.begin(), wa.end(), wb.begin(), wb.end(), std::back_inserter(common));
+    return common.size() * 10 >= std::min(wa.size(), wb.size()) * 8;
 }
 
 bool LooksLikeChatText(const std::wstring& text) {

@@ -277,6 +277,13 @@ private:
     static constexpr std::ptrdiff_t kStartLines = 3;  // of the history shown at the start, translate the last ...
     TranslationCache cache_;
     CorrectionMemory corrections_;  // your corrected translations (all translators)
+    // Free screen area: the last paragraphs shown, so a paragraph that grows (typing, streaming text) updates its
+    // entry instead of adding a new one each time.
+    struct FreeParagraph {
+        uint64_t id;
+        std::wstring text;
+    };
+    std::deque<FreeParagraph> recentFree_;
     struct PendingLine {
         uint64_t entryId;
         std::wstring text;

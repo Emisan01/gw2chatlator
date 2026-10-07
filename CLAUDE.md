@@ -188,7 +188,10 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
 - Free screen area (`[Reader] FreeArea=1`, `FreeRect` in screen pixels, menu ≡): no MumbleLink gate, no game
   window needed, capture target = screen, `BuildFreeTextMessages` (lines → paragraphs, ≤ ~450 chars) instead of
   `BuildMessages`, messages carry `freeText` (never "system", always translated unless the language is understood),
-  the whole first picture is translated. Chat detection does not run in this mode.
+  the whole first picture is translated. Chat detection does not run in this mode. `ReaderOptions::freeText`: no
+  `GroupWordsByRows` (it merges side-by-side columns), scale ≥ 2; `BuildFreeTextMessages` assigns each line to the
+  open block above it in its column; `recentFree_` + `SameFreeParagraph`: a grown paragraph updates its entry.
+- `FindInk` handles both polarities: bright background (median ≥ 160) = dark text.
 - Translators (`Engine`): Auto order = DeepL → Google → Microsoft → own LibreTranslate server → LLM → MyMemory. Google
   key goes in the `X-Goog-Api-Key` header (never the URL). Protected segments: `<span translate="no"
   class="notranslate">` (HTML mode only when something is protected). The settings combo order differs from the enum:

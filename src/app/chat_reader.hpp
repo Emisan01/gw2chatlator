@@ -31,6 +31,7 @@ struct ReaderOptions {
     std::wstring ocrLanguage;     // Windows OCR: empty = Windows languages
     int scale = 0;                // 0 = automatic from the line grid
     bool windowCapture = true;    // WGC allowed (else screen capture: no yellow frame on Windows 10)
+    bool freeText = false;        // free screen area: keep the lines of the text recognition (columns stay apart)
     std::wstring captureDir;      // diagnostics target
 };
 
@@ -66,6 +67,7 @@ private:
     int choice_ = 0;  // 0 auto, 1 Tesseract, 2 Windows
     bool haveTess_ = false, haveWin_ = false;
     bool useTess_ = false;  // the engine of the last picture
+    bool keepEngineLines_ = false;  // free text: no regrouping by rows (it would merge side-by-side columns)
 };
 
 class ChatReader {
