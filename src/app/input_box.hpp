@@ -49,6 +49,10 @@ public:
     // Note: no EN_CHANGE follows (multi-line EDIT + WM_SETTEXT); the owner
     // has to update itself.
     void Clear();
+    // Keys pressed for the current text (Enter and modifier keys not counted) and whether something was pasted:
+    // the measure of how much the word help saves. Reset by Clear().
+    int KeyPresses() const { return keyPresses_; }
+    bool Pasted() const { return pasted_; }
 
     // Owner forwards EN_CHANGE: marks are hidden until the next check.
     void OnTextChanged();
@@ -119,6 +123,8 @@ private:
         wchar_t boundary = 0;   // the character that finished the word
     } lastFix_;
     bool swallowBackspaceChar_ = false;
+    int keyPresses_ = 0;
+    bool pasted_ = false;
 };
 
 }  // namespace gct

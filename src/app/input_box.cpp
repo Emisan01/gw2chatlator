@@ -113,6 +113,8 @@ std::wstring InputBox::Text() const {
 }
 
 void InputBox::Clear() {
+    keyPresses_ = 0;
+    pasted_ = false;
     issues_.clear();
     grammar_.clear();
     lastFix_.valid = false;
@@ -591,6 +593,10 @@ LRESULT InputBox::Handle(UINT msg, WPARAM wp, LPARAM lp) {
         case WM_KEYDOWN: {
             const bool ctrl = GetKeyState(VK_CONTROL) < 0;
             const bool shift = GetKeyState(VK_SHIFT) < 0;
+            if (wp != VK_RETURN && wp != VK_SHIFT && wp != VK_CONTROL && wp != VK_MENU && wp != VK_LWIN && wp != VK_RWIN &&
+                wp != VK_CAPITAL)
+                ++keyPresses_;
+            if (ctrl && (wp == 'V' || wp == VK_INSERT)) pasted_ = true;
             if (wp == VK_RETURN) {
                 if (!shift) {
                     // Enter finishes the word too: the grey word, else autocorrection.
@@ -653,6 +659,9 @@ LRESULT InputBox::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             if (wp != VK_SHIFT && wp != VK_CONTROL && wp != VK_MENU) lastFix_.valid = lastFix_.valid && wp == VK_BACK;
             break;
         }
+        case WM_PASTE:
+            pasted_ = true;
+            break;
         case WM_CHAR: {
             if (wp == 0x08 && swallowBackspaceChar_) {
                 swallowBackspaceChar_ = false;

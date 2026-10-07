@@ -40,7 +40,7 @@ Pflicht. Bei 4K reicht fast der Rohtext.
 
 ## B – Schreiben (Markenkern)
 
-1. ★ **Kein Beweis für den Nutzen.** Es fehlt die Zahl „gesparte Tastendrücke“: 1 − Tastendrücke ÷ gesendete
+1. ✅ (Einstellungen → Schreiben) **Kein Beweis für den Nutzen.** Es fehlt die Zahl „gesparte Tastendrücke“: 1 − Tastendrücke ÷ gesendete
    Zeichen. Ohne sie wissen wir nicht, ob die Engine hilft.
 2. ★ **Graue Vervollständigung nur links-nach-rechts** → der arabische Freund (Hauptnutzer 2!) sieht sie nicht; er hat
    nur die Wortleiste. Größte Lücke für ihn.

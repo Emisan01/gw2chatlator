@@ -420,6 +420,12 @@ void Config::Load(const std::wstring& dir) {
     fontFace = ini.Str(L"Window", L"Font", L"Segoe UI");
     followGame = ini.Bool(L"Window", L"FollowGame", true);
     focusOnGameChat = ini.Bool(L"Window", L"FocusOnGameChat", false);
+    typingDay = ini.Int(L"Typing", L"Day", 0, 0, 99991231);
+    dayKeys = ini.Int(L"Typing", L"DayKeys", 0, 0, 2000000000);
+    dayChars = ini.Int(L"Typing", L"DayChars", 0, 0, 2000000000);
+    totalKeys = ini.Int(L"Typing", L"TotalKeys", 0, 0, 2000000000);
+    totalChars = ini.Int(L"Typing", L"TotalChars", 0, 0, 2000000000);
+    totalMessages = ini.Int(L"Typing", L"TotalMessages", 0, 0, 2000000000);
     dock = ini.Bool(L"Window", L"Dock", false);
     dockLeft = ini.Int(L"Window", L"DockLeft", 0, -20000, 20000);
     dockFromBottom = ini.Int(L"Window", L"DockFromBottom", 0, -20000, 20000);
