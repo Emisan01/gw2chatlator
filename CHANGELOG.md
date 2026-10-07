@@ -5,6 +5,7 @@ diagnosis show it.
 
 ## Unreleased
 
+- Dedicated to Kassiopeia 🐢 (see the README).
 - **GW2 abbreviations, kept apart from ordinary words:** many more short forms from the GW2 wiki's list stay
   untranslated and are never marked wrong ("use tp", "cc", "lfg fotm t4", "cdps", "vindi" …). Letters that are an
   ordinary word somewhere are kept only when written like an abbreviation: "LA", "HoT", "DE", "CM" stay, "la casa",
