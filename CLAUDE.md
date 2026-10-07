@@ -65,6 +65,8 @@ of people in the chat, keep-words) → worker `Translate`
 
 Typing help: `SpellService::Suggestions` (completion from the learned `WordModel` – pairs and triples, a triple is a
 pair whose first word is `prev2prev`, sharing the 60k pair cap; `WordsBefore` gives the two words – then the recent chat words
+(choices are learned when taken: `InputBox::ApplyChoice` / `AcceptSuggestion` → `SpellService::Chose` →
+`WordModel::Chose`, weight 1.0 deliberate (click, Tab to another) / 0.3 default, pair and triple ×2; off with Learn=0),
 (`MainWindow::NoteChatWords` → `SpellService::SetContext`: speakers, incoming text and its translation, 4+ letters,
 80 newest; offered, never learned – invariant 10), then `Gw2StarterWords`, then
 `CompleteFuzzy` = one typo in the prefix, neighbouring keys of the layout rank first; correction via

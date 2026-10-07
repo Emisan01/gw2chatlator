@@ -62,6 +62,9 @@ public:
     // one-letter words are skipped).
     void Learn(const std::wstring& text, double weight = 1.0);
     void AddWord(const std::wstring& word, double weight);
+    // You took `word` from the suggestions after `prev2 prev`: the word, its pair and its triple get stronger, so it
+    // ranks higher there next time (what you did not take falls back by itself).
+    void Chose(const std::wstring& prev2, const std::wstring& prev, const std::wstring& word, double weight);
     // The user undid an autocorrection: `word` is meant as written.
     void Confirm(const std::wstring& word) { AddWord(word, 2.0); }
     // Removes a word and every pair it is part of. False if it was unknown.

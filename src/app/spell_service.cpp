@@ -191,6 +191,13 @@ void WordsBefore(const std::wstring& text, size_t pos, std::wstring* prev, std::
     *prev2 = prev->empty() ? std::wstring() : back(e);
 }
 
+void SpellService::Chose(const std::wstring& text, size_t start, const std::wstring& word, bool deliberate) {
+    if (!learnChoices_) return;
+    std::wstring prev, prev2;
+    WordsBefore(text, start, &prev, &prev2);
+    model_.Chose(prev2, prev, word, deliberate ? 1.0 : 0.3);
+}
+
 // Words of the recent chat that start like `typed` ("Teq" -> "Tequatl", "Ki" -> "Kiro"), after what is already there.
 void SpellService::AddContextCompletions(const std::wstring& typed, std::vector<std::wstring>& out, size_t max) const {
     if (typed.size() < 2) return;

@@ -1384,6 +1384,14 @@ static void TestWordTriples() {
     WordModel back;
     back.Parse(m.Serialize());
     CHECK(!back.Next(L"du", 3, L"kommst").empty() && back.Next(L"du", 3, L"kommst")[0] == L"mit");
+    // Choosing a suggestion teaches its place: after "hast du" the word bar offered "zeit", you took "lust" twice.
+    m.Learn(L"hast du lust");
+    m.Chose(L"hast", L"du", L"lust", 1.0);
+    m.Chose(L"hast", L"du", L"lust", 1.0);
+    CHECK(m.Next(L"du", 1, L"hast") == std::vector<std::wstring>{L"lust"});
+    CHECK(m.Next(L"du", 1, L"kommst") == std::vector<std::wstring>{L"mit"});  // other places keep theirs
+    m.Chose(L"", L"", L"https://x.org", 1.0);                                  // links are never learned
+    CHECK(m.Count(L"https://x.org") == 0);
     // Forgetting a word removes its triples too.
     CHECK(back.Forget(L"kommst"));
     CHECK(back.Next(L"du", 3, L"kommst")[0] == L"da");

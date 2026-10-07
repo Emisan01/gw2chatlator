@@ -89,6 +89,8 @@ bool InputBox::ApplyChoice(wchar_t boundary) {
     const size_t caret = c.replace.start + word.size() + tail.size();
     SendMessageW(hwnd_, EM_SETSEL, caret, caret);
     lastFix_.valid = false;
+    // Learned at the moment of choosing: Tab to another suggestion says more than going on with the first.
+    if (word != typed && spell_) spell_->Chose(Text(), c.replace.start, word, c.highlight > 0);
     if (word != typed) {
         if (boundary) lastFix_ = {true, c.replace.start, typed, word, boundary};
         if (cb_.onAutoCorrected) cb_.onAutoCorrected(typed, word);
@@ -168,6 +170,7 @@ void InputBox::AcceptSuggestion(size_t index) {
     ReplaceRange(s.replace, word + (spaceAfter ? L" " : L""));
     const size_t caret = s.replace.start + word.size() + 1;
     SendMessageW(hwnd_, EM_SETSEL, caret, caret);
+    if (spell_) spell_->Chose(Text(), s.replace.start, word, true);  // picked from the word bar
     lastFix_.valid = false;
     UpdateSuggestions();
 }
