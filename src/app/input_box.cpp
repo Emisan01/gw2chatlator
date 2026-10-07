@@ -7,6 +7,7 @@
 
 #include <algorithm>
 
+#include "core/gw2_text.hpp"
 #include "core/i18n.hpp"
 
 namespace gct {
@@ -303,11 +304,12 @@ void InputBox::DrawSquiggles(HDC dc) const {
 }
 
 // The rest of the highlighted completion, greyed out right after the caret
-// ("Teq|uatl"); Tab takes it. Left-to-right text only: in RTL the EDIT's
-// caret geometry does not tell where the ghost would have to go.
+// ("Teq|uatl"); Space writes it. Right-to-left letters (Arabic, Hebrew): the
+// EDIT reports a character's right edge (measured), so the rest goes to the
+// left of the last letter.
 void InputBox::DrawGhost(HDC dc) const {
     const WordChoices& c = choices_;
-    if (!suggestOn_ || rtl_ || !c.Changes() || static_cast<size_t>(c.highlight) >= c.words.size() ||
+    if (!suggestOn_ || !c.Changes() || static_cast<size_t>(c.highlight) >= c.words.size() ||
         GetFocus() != hwnd_)
         return;
     const std::wstring text = Text();
@@ -319,7 +321,8 @@ void InputBox::DrawGhost(HDC dc) const {
     const std::wstring& word = c.words[static_cast<size_t>(c.highlight)];
     // A completion shows its rest ("Teq|uatl"); a correction shows the word Space would write ("komt| kommt").
     const bool extends = word.size() > typed.size() && CaseFold(word.substr(0, typed.size())) == CaseFold(typed);
-    const std::wstring rest = extends ? word.substr(typed.size()) : L"  \u2192 " + word;
+    const bool rtlLetter = IsRtlText(std::wstring(1, text[caret - 1]));
+    const std::wstring rest = extends ? word.substr(typed.size()) : (rtlLetter ? L"  \u2190 " : L"  \u2192 ") + word;
 
     const int saved = SaveDC(dc);
     SelectObject(dc, theme_->fontText);
@@ -335,7 +338,15 @@ void InputBox::DrawGhost(HDC dc) const {
     IntersectClipRect(dc, clip.left, clip.top, clip.right, clip.bottom);
     SetBkMode(dc, TRANSPARENT);
     SetTextColor(dc, Theme::kMuted);
-    TextOutW(dc, last.x + sz.cx, last.y, rest.c_str(), static_cast<int>(rest.size()));
+    if (rtlLetter) {
+        // `last.x` is the right edge of the last letter: the rest ends at its left edge, read right to left.
+        SIZE restSize{};
+        GetTextExtentPoint32W(dc, rest.c_str(), static_cast<int>(rest.size()), &restSize);
+        RECT r{last.x - sz.cx - restSize.cx - theme_->S(4), last.y, last.x - sz.cx, last.y + restSize.cy};
+        DrawTextW(dc, rest.c_str(), static_cast<int>(rest.size()), &r, DT_RIGHT | DT_RTLREADING | DT_NOPREFIX | DT_SINGLELINE);
+    } else {
+        TextOutW(dc, last.x + sz.cx, last.y, rest.c_str(), static_cast<int>(rest.size()));
+    }
     RestoreDC(dc, saved);
 }
 
