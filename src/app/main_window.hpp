@@ -124,7 +124,6 @@ private:
     void ShowTrayMenu();
     void StartGrammarCheck();
     void OnGrammar(GrammarMsg* msg);
-    void SetEngine(Engine e);
     void OnKeyboardLanguage(const std::wstring& locale);
     void OnWordForgotten(const std::wstring& word);
     void OpenWhisperTab(const std::wstring& name);
@@ -263,6 +262,8 @@ private:
     std::deque<std::wstring> chatWords_;    // words of the recent chat for completions, newest first
     void NoteChatWords(const std::wstring& text);
     void CountTyping();
+    // "Show only translations" – except while this window lies over the GW2 chat: it *is* your chat then.
+    bool HideUntranslated() const { return cfg_.onlyTranslations && !(excludedFromCapture_ && !cfg_.freeArea); }
 
     // glossary
     std::map<std::string, NameTable> names_;

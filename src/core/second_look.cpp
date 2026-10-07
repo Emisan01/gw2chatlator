@@ -126,7 +126,7 @@ bool LooksGarbled(const std::wstring& token) {
             static const wchar_t* const kSuffixes[] = {L"er", L"ern", L"k", L"st", L"nd", L"rd", L"th", L"x", L"s",
                                                         L"h", L"m", L"min", L"ms", L"gb", L"mb", L"v", L"p", L"fps",
                                                         L"hz", L"e", L"te", L"ten", L"ter", L"en", L"g", L"d", L"w",
-                                                        L"ers", L"km", L"kg", L"mio", L"sec", L"s"};
+                                                        L"ers", L"km", L"kg", L"mio", L"sec"};
             const std::wstring tail = CaseFold(t.substr(d));
             bool usual = false;
             for (const wchar_t* s : kSuffixes) usual = usual || tail == s;
