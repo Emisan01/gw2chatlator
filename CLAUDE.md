@@ -103,7 +103,9 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
 7. Docking keeps our window a separate top-level window. No owner/parent link to the game window.
 8. Installing only writes our own folder (`%LOCALAPPDATA%\Programs\GW2ChatTranslator`; installs of 0.6 in
    `<GW2>\addons\GW2ChatTranslator` are updated where they are) and, if chosen, one `HKCU\...\Run` value and one
-   desktop shortcut ("GW2 Chat Translator.lnk"). Run entry and shortcut always point to the installed copy. After the
+   desktop shortcut ("GW2 Chat Translator.lnk"), plus always a start-menu entry of the same name for an installed copy
+   (`CreateStartMenuShortcut`; `EnsureStartMenuShortcut` on every start of the installed copy), so the tool cannot get
+   lost whatever autostart / desktop say. Run entry and shortcuts always point to the installed copy. After the
    setup the downloaded copy ends and the installed one starts (`RestartInto`); a downloaded exe started later hands
    over to the installed copy (`HandOverToInstalledCopy` in main.cpp: newer version, or the same version built later →
    asks to update, closes the running copy, `InstallTo`, starts it; otherwise it just starts it). `--portable` skips
