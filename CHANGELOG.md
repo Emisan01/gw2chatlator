@@ -5,6 +5,10 @@ diagnosis show it.
 
 ## Unreleased
 
+- **Suggestions know the conversation:** names of the people in the chat and the words of the last lines (the
+  translation, in your language) are offered right after your own words – "Ki" -> "Kiro", "Teq" -> "Tequatl" when
+  someone just asked for it. Only offered, never learned (the tool learns only from what you send).
+- Fixed: a folded, docked window jumped to the top of its place several times a second.
 - **No more word salad:** words nobody types ("syn!ax", "g9danken", "!raining", "9QEine") are now always checked:
   characters the recognition confuses are tried (! -> t, 9 -> g/e, 0 -> o, p <-> o, rn <-> m …) and the Windows
   dictionaries pick the real word ("syntax", "gedanken", "training", "putput" -> "output"); else the word is read once

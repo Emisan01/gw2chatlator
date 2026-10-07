@@ -63,7 +63,9 @@ of people in the chat, keep-words) → worker `Translate`
 `SendToGw2Chat` → log entry → `SpellService::Learn` (word model). Optional: debounce → LanguageTool
 (`StartGrammarCheck`, rate limited) → blue marks via `InputBox::SetGrammarIssues`.
 
-Typing help: `SpellService::Suggestions` (completion from the learned `WordModel`, then `Gw2StarterWords`, then
+Typing help: `SpellService::Suggestions` (completion from the learned `WordModel`, then the recent chat words
+(`MainWindow::NoteChatWords` → `SpellService::SetContext`: speakers, incoming text and its translation, 4+ letters,
+80 newest; offered, never learned – invariant 10), then `Gw2StarterWords`, then
 `CompleteFuzzy` = one typo in the prefix, neighbouring keys of the layout rank first; correction via
 `ChooseCorrection`, next word from word pairs) → `SuggestionBar` + grey rest of the completion after the caret
 (`InputBox::DrawGhost`, LTR only); `InputBox::TryAutoCorrect` on a word boundary (incl. Arabic ، ؟ ؛) and

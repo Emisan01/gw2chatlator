@@ -170,6 +170,19 @@ std::optional<std::wstring> SpellService::AutoCorrection(const std::wstring& wor
     return fix;
 }
 
+// Words of the recent chat that start like `typed` ("Teq" -> "Tequatl", "Ki" -> "Kiro"), after what is already there.
+void SpellService::AddContextCompletions(const std::wstring& typed, std::vector<std::wstring>& out, size_t max) const {
+    if (typed.size() < 2) return;
+    const std::wstring p = WordKey(typed);
+    for (const std::wstring& w : context_) {
+        if (out.size() >= max) return;
+        const std::wstring k = WordKey(w);
+        if (k.size() <= p.size() || k.compare(0, p.size(), p) != 0) continue;
+        if (std::any_of(out.begin(), out.end(), [&](const std::wstring& x) { return WordKey(x) == k; })) continue;
+        out.push_back(w);
+    }
+}
+
 WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret, AutoCorrectMode mode) const {
     WordSuggestions s;
     if (caret > text.size()) caret = text.size();
@@ -211,6 +224,7 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
     s.replace = {start, end - start};
 
     std::vector<std::wstring> words = model_.Complete(partial, prev, 3);
+    AddContextCompletions(partial, words, 3);  // what the chat is talking about right now
     // Before much is learned: GW2 words fill the bar ("Teq" -> "Tequatl").
     if (words.size() < 3 && partial.size() >= 2) {
         const std::wstring p = WordKey(partial);
@@ -282,6 +296,7 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
 
     const bool valid = IsKnown(typed) || (checker_.Ready() ? !CheckerRejects(typed) : model_.Knows(typed));
     std::vector<std::wstring> completions = model_.Complete(typed, prev, 3);
+    AddContextCompletions(typed, completions, 3);
     const std::wstring p = WordKey(typed);
     for (const std::wstring& w : Gw2StarterWords(learnedLang_)) {
         if (completions.size() >= 3) break;

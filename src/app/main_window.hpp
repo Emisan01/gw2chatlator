@@ -260,6 +260,8 @@ private:
     std::vector<RECT> tabRects_;
     std::wstring whisperTarget_;            // empty = reply to the last whisper (/r)
     std::deque<std::wstring> whisperers_;   // recent partners, newest first
+    std::deque<std::wstring> chatWords_;    // words of the recent chat for completions, newest first
+    void NoteChatWords(const std::wstring& text);
 
     // glossary
     std::map<std::string, NameTable> names_;
