@@ -3,8 +3,9 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## Unreleased
+## 0.8.1 — 2026-10-07
 
+**The learning keyboard, fine-tuned**
 - **Learns when you choose:** a word you take from the word bar, or a grey suggestion you take (Space, →, or Tab to
   another one), gets stronger right there – at exactly this place in the sentence. Picking on purpose (a click, Tab to
   the second suggestion) counts more than going on with the first. What you do not take simply falls back.
@@ -17,7 +18,14 @@ diagnosis show it.
 - **Old habits fade:** every 200 messages the learned counts shrink a little (forgetting by use – nothing fades while
   you do not write), so new habits win quickly. A word you used twice stays known and is never corrected away.
 - **Grey suggestion for Arabic and Hebrew** too (right to left: it appears left of the last letter).
-- Cleaned up: main-menu commands that were no longer in the menu, and their texts.
+
+**Tidied up**
+- Resetting the channel colours is reachable again: right-click a line → "This line colour is" → "Reset all to the GW2
+  colours".
+- README: a table of the five helpers (completion, next word, autocorrection, grammar, translator) – what each looks
+  at, does and never does.
+- Removed: main-menu commands that were no longer in the menu and their texts, an unused function, a Python cache
+  file that had slipped into the repository.
 
 ## 0.8.0 — 2026-10-07
 

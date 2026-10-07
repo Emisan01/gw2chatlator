@@ -40,8 +40,10 @@ corrections stay). Every setting lives in menu ≡ → Settings; you never need 
 - **Word suggestions like Grammarly:** the likely word appears grey after the cursor and narrows with every letter.
   **Space** writes it, **Tab** shows the next suggestion (Shift+Tab back), **→** takes it without a space, Esc hides it.
 - It **learns how you write** – words, pairs and triples of words from the messages *you* send, per language
-  (`learned\learned_<lang>.txt`): after "kommst du" it offers "mit". Names and words of the current conversation are
-  offered too (never learned). Settings → Writing shows how many key presses it saves.
+  (`learned\learned_<lang>.txt`): after "kommst du" it offers "mit" – grey right after the space when it is almost
+  always that word. What you pick counts more, the sentence so far counts more than plain frequency, and old habits
+  fade as you write. Names and words of the current conversation are offered too (never learned). Settings → Writing
+  shows how many key presses it saves.
 - **Autocorrection like a phone keyboard** (Off / Safe / Phone): a typo is fixed when you finish the word
   (`komtm` → `kommt`), slips to the neighbouring key of your keyboard layout are recognized, **Backspace right after
   the fix undoes it**. Right-click a learned word → *Forget*.
@@ -53,6 +55,19 @@ corrections stay). Every setting lives in menu ≡ → Settings; you never need 
   your language. Chat codes, names and LFG/WvW/DPS stay untouched; official game names come from the GW2 API.
   Longer than 199 characters: split at sentence borders, one part per Enter. Scripts GW2 cannot show: **Ctrl+U**
   writes Latin letters (Arabizi, Pinyin, Romaji).
+
+**Five helpers, each with its own job** – they overlap a little, but none of them changes what another one is for:
+
+| Helper | Looks at | Does | Never | Learns | Online |
+|---|---|---|---|---|---|
+| Completion (grey word) | the word you are typing | finishes *this one word* | acts without Space, → or Tab | your words | no |
+| Next word (word bar, grey after a space) | your last 1–2 words | offers the next word | writes anything by itself | word pairs and triples | no |
+| Autocorrection | the word you just finished | fixes *this one word* (clear typos only) | touches a word you use; Backspace undoes it | yes (Backspace = "meant as written") | no |
+| Grammar check (optional) | the whole sentence | marks it blue | changes your text (suggestions on right-click) | no | yes, while on |
+| Translator | the finished sentence | translates it into the preview | edits your input | only your own corrections | yes |
+
+The writing helpers learn only from what you write and run on this PC in a few milliseconds per key; neural models
+(an AI translator, local or online) are only used for translating.
 
 **Translating (on demand)**
 - **Translate once now** (menu ≡): one look at the chat – scroll the GW2 chat up to something older and translate it.
@@ -87,7 +102,7 @@ followed. Whatever comes back is only displayed; it can never send anything.
 |---|---|
 | Enter | send (or copy in "only copy" mode); for split messages: the next part |
 | Ctrl+Enter | send the original without translation |
-| Space / Tab / → | write the grey suggestion / next suggestion / take it without a space |
+| Space / Tab / → | write the grey suggestion / next suggestion / take it without a space (after a space: Tab or → takes the grey next word) |
 | Backspace right after an autocorrection | undo it (and learn the word) |
 | Ctrl+L | next language to write in |
 | Ctrl+U | Latin letters |
