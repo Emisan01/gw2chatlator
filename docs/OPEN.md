@@ -53,8 +53,8 @@ Pflicht. Bei 4K reicht fast der Rohtext.
    die häufigsten Wörter und Wortpaare als kleine mitgelieferte Liste (~1 MB), Gelerntes zählt mehr. Quellen geprüft:
    Tatoeba-Sätze (CC-BY 2.0 FR, teils CC0 – gesprächsnah, gut für Paare), FrequencyWords aus OpenSubtitles
    (Inhalt CC-BY-SA 4.0 – die abgeleitete Liste bleibt CC-BY-SA, Quellenangabe in THIRD_PARTY_NOTICES). Danach:
-   Satzgedächtnis (ganzer Rest eines oft geschriebenen Satzes als Vorschlag) und negatives Lernen (ignorierte Vorschläge
-   seltener).
+   Satzgedächtnis (ganzer Rest eines oft geschriebenen Satzes als Vorschlag). ✅ Lernen bei der Wahl (Wortleiste und
+   grauer Vorschlag) – „negatives Lernen“ ist unnötig: das Gewählte zu stärken reiht den Rest von selbst nach hinten.
 7. Lernen ist pro Sprache getrennt – wer Deutsch und Englisch mischt, lernt doppelt langsam.
 
 ## C – Übersetzen

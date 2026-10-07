@@ -3,6 +3,13 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## Unreleased
+
+- **Learns when you choose:** a word you take from the word bar, or a grey suggestion you take (Space, →, or Tab to
+  another one), gets stronger right there – at exactly this place in the sentence. Picking on purpose (a click, Tab to
+  the second suggestion) counts more than going on with the first. What you do not take simply falls back.
+- Cleaned up: main-menu commands that were no longer in the menu, and their texts.
+
 ## 0.8.0 — 2026-10-07
 
 **Writing**

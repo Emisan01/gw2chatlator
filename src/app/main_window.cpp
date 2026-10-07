@@ -502,6 +502,7 @@ void MainWindow::CreateChildren() {
     cb.onExplain = [this](const std::wstring& w) { ExplainWord(w); };
     cb.onSuggestions = [this](const WordSuggestions& s) { words_.Set(s); };
     cb.onKeyboardLanguage = [this](const std::wstring& locale) { OnKeyboardLanguage(locale); };
+    spell_.SetLearnChoices(cfg_.learnWords);
     input_.Create(hwnd_, inst_, &theme_, &spell_, cfg_.autoCorrect, cfg_.suggestions, std::move(cb));
     input_.SetRtl(kbdRtl_);
     Layout();
@@ -3293,6 +3294,7 @@ void MainWindow::ApplySettings(const Config& next) {
     c.activeTab = prev.activeTab;
     c.x = prev.x, c.y = prev.y, c.w = prev.w, c.h = prev.h;
     cfg_ = c;
+    spell_.SetLearnChoices(cfg_.learnWords);
 
     if (prev.uiLang != cfg_.uiLang) SetUiLanguage(cfg_.uiLang);
     if (prev.fontPercent != cfg_.fontPercent || theme_.textPercent != cfg_.fontPercent || prev.fontFace != cfg_.fontFace ||

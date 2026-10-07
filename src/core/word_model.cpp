@@ -257,6 +257,17 @@ void WordModel::Learn(const std::wstring& text, double weight) {
     }
 }
 
+void WordModel::Chose(const std::wstring& prev2, const std::wstring& prev, const std::wstring& word, double weight) {
+    if (!Learnable(word) || weight <= 0) return;
+    for (wchar_t c : word)  // one word only: no link, code or phrase
+        if (!IsWordChar(c) && c != L'\'' && c != L'-' && c != 0x2019) return;
+    AddWord(word, weight);
+    const std::wstring key = WordKey(word);
+    if (prev.empty() || !Learnable(prev)) return;
+    AddPair(WordKey(prev), key, weight * 2);  // the place in the sentence is what the choice says most about
+    if (!prev2.empty() && Learnable(prev2)) AddPair(WordKey(prev2) + L'\x1f' + WordKey(prev), key, weight * 2);
+}
+
 double WordModel::Count(const std::wstring& word) const {
     auto it = words_.find(WordKey(word));
     return it == words_.end() ? 0.0 : it->second.count;
