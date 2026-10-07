@@ -255,6 +255,25 @@ void WordModel::Learn(const std::wstring& text, double weight) {
         prev2Key = prevKey;
         prevKey = key;
     }
+    if (++learnedSinceDecay_ >= kDecayEvery) Decay();
+}
+
+void WordModel::Decay() {
+    learnedSinceDecay_ = 0;
+    for (auto& [k, w] : words_)
+        if (w.count > 2.0) w.count = 2.0 + (w.count - 2.0) * kDecay;  // a word you used stays known
+    pairTotal_ = 0;
+    for (auto pit = pairs_.begin(); pit != pairs_.end();) {
+        for (auto it = pit->second.begin(); it != pit->second.end();) {
+            it->second *= kDecay;
+            if (it->second < 0.2) it = pit->second.erase(it);  // a pair seen once long ago
+            else ++it;
+        }
+        pairTotal_ += pit->second.size();
+        if (pit->second.empty()) pit = pairs_.erase(pit);
+        else ++pit;
+    }
+    dirty_ = true;
 }
 
 void WordModel::Chose(const std::wstring& prev2, const std::wstring& prev, const std::wstring& word, double weight) {
@@ -280,20 +299,32 @@ std::vector<std::wstring> WordModel::Complete(const std::wstring& prefix, const 
     const std::wstring p = WordKey(prefix);
     const auto pit = prev.empty() ? pairs_.end() : pairs_.find(WordKey(prev));
     const auto tit = prev.empty() || prev2.empty() ? pairs_.end() : pairs_.find(WordKey(prev2) + L'\x1f' + WordKey(prev));
-    std::vector<std::pair<double, const Word*>> scored;
+    // Every word with this beginning, with how often it came alone, after `prev` and after `prev2 prev`. The score
+    // mixes the three as shares among these candidates (interpolation, as keyboards' n-gram models do): the sentence
+    // so far outweighs plain frequency – "kommst du m" -> "mit" even when "mal" is written more often overall.
+    struct Cand {
+        const Word* w;
+        double c1, c2, c3;
+    };
+    std::vector<Cand> cands;
+    double s1 = 0, s2 = 0, s3 = 0;
     for (const auto& [key, w] : words_) {
         if (key.size() <= p.size() || key.compare(0, p.size(), p) != 0) continue;
-        double score = w.count;
-        if (pit != pairs_.end()) {
-            auto nit = pit->second.find(key);
-            if (nit != pit->second.end()) score += nit->second * 6.0;
-        }
-        if (tit != pairs_.end()) {  // the two words before: the sentence so far says more than one word
-            auto nit = tit->second.find(key);
-            if (nit != tit->second.end()) score += nit->second * 12.0;
-        }
-        scored.push_back({score, &w});
+        double c2 = 0, c3 = 0;
+        if (pit != pairs_.end())
+            if (auto nit = pit->second.find(key); nit != pit->second.end()) c2 = nit->second;
+        if (tit != pairs_.end())
+            if (auto nit = tit->second.find(key); nit != tit->second.end()) c3 = nit->second;
+        cands.push_back({&w, w.count, c2, c3});
+        s1 += w.count;
+        s2 += c2;
+        s3 += c3;
     }
+    const double l3 = s3 > 0 ? 0.5 : 0.0, l2 = s2 > 0 ? 0.3 : 0.0, l1 = 1.0 - l3 - l2;
+    std::vector<std::pair<double, const Word*>> scored;
+    scored.reserve(cands.size());
+    for (const Cand& c : cands)
+        scored.push_back({(s3 > 0 ? l3 * c.c3 / s3 : 0) + (s2 > 0 ? l2 * c.c2 / s2 : 0) + (s1 > 0 ? l1 * c.c1 / s1 : 0), c.w});
     const auto top = scored.begin() + static_cast<std::ptrdiff_t>(std::min(n, scored.size()));
     std::partial_sort(scored.begin(), top, scored.end(), [](const auto& a, const auto& b) {
         if (a.first != b.first) return a.first > b.first;
@@ -389,14 +420,20 @@ std::vector<std::wstring> WordModel::Next(const std::wstring& prev, size_t n, co
     std::vector<std::wstring> out;
     if (n == 0) return out;
     std::unordered_map<std::wstring, double> score;
-    // Two words of context first (a triple seen twice beats a pair seen five times), then one.
-    if (!prev2.empty())
-        if (auto tit = pairs_.find(WordKey(prev2) + L'\x1f' + WordKey(prev)); tit != pairs_.end())
-            for (const auto& [key, count] : tit->second)
-                if (count >= 1.0) score[key] += count * 3.0;
-    if (auto pit = pairs_.find(WordKey(prev)); pit != pairs_.end())
-        for (const auto& [key, count] : pit->second)
-            if (count >= 1.0) score[key] += count;
+    // Shares of what followed: after `prev2 prev` (weight 0.6 when seen) and after `prev` – a triple seen twice beats
+    // a pair seen five times.
+    auto add = [&](const std::unordered_map<std::wstring, double>& next, double weight) {
+        double total = 0;
+        for (const auto& kv : next) total += kv.second;
+        if (total <= 0) return;
+        for (const auto& [key, count] : next)
+            if (count >= 0.5) score[key] += weight * count / total;
+    };
+    const auto tit = prev2.empty() ? pairs_.end() : pairs_.find(WordKey(prev2) + L'\x1f' + WordKey(prev));
+    const auto pit = pairs_.find(WordKey(prev));
+    const double w3 = tit != pairs_.end() ? 0.6 : 0.0;
+    if (tit != pairs_.end()) add(tit->second, w3);
+    if (pit != pairs_.end()) add(pit->second, 1.0 - w3);
     std::vector<std::pair<double, std::wstring>> scored;
     for (const auto& [key, s] : score) {
         auto wit = words_.find(key);

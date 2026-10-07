@@ -109,6 +109,12 @@ public:
 
     static constexpr size_t kMaxWords = 20000;
     static constexpr size_t kMaxPairs = 60000;
+    // Forgetting by use (like the forgetting curve of Android's keyboard, but counted in messages, not days – nothing
+    // fades while you do not write): every kDecayEvery learned messages all counts shrink by kDecay. Old habits make
+    // room for new ones; a word stays "known" (count 2) once you used it twice.
+    static constexpr int kDecayEvery = 200;
+    static constexpr double kDecay = 0.9;
+    void Decay();
 
 private:
     struct Word {
@@ -121,6 +127,7 @@ private:
     std::unordered_map<std::wstring, Word> words_;                  // key: case-folded
     std::unordered_map<std::wstring, std::unordered_map<std::wstring, double>> pairs_;  // prev -> next -> count
     size_t pairTotal_ = 0;
+    int learnedSinceDecay_ = 0;
     bool dirty_ = false;
 };
 

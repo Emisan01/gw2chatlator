@@ -11,6 +11,11 @@ diagnosis show it.
 - **The next word before you type it:** when your last words are (almost) always followed by the same word – seen 3+
   times and at least 60 % of the time – it appears grey after the space ("kommst du |mit"). Tab or → takes it; just
   type on to ignore it.
+- **Context outweighs frequency:** suggestions mix how often a word follows your last two words, your last word and
+  how often you use it at all as shares (as keyboards' n-gram models do) – "kommst du m" offers "mit" even if you
+  write "mal" much more often.
+- **Old habits fade:** every 200 messages the learned counts shrink a little (forgetting by use – nothing fades while
+  you do not write), so new habits win quickly. A word you used twice stays known and is never corrected away.
 - **Grey suggestion for Arabic and Hebrew** too (right to left: it appears left of the last letter).
 - Cleaned up: main-menu commands that were no longer in the menu, and their texts.
 
