@@ -11,18 +11,34 @@ namespace gct {
 
 namespace {
 
+// Kept in any spelling: abbreviations that are no word in any common language (terms from the GW2 wiki's list of
+// abbreviations, chosen and checked by hand: no ordinary DE/EN/FR/ES/IT/PT word).
 const wchar_t* const kKeep[] = {
     // content & modes
-    L"lfg", L"lfm", L"lf", L"wvw", L"pvp", L"pve", L"gw2", L"hot", L"pof", L"eod", L"soto", L"jw", L"voe",
-    L"lw", L"lws", L"cm", L"cms", L"t4", L"meta", L"zerg", L"pug", L"pugs",
+    L"lfg", L"lfm", L"lfr", L"lf", L"wvw", L"pvp", L"spvp", L"pve", L"pvx", L"gw2", L"pof", L"eod", L"soto", L"jw",
+    L"voe", L"lw", L"lws", L"cms", L"t4", L"meta", L"zerg", L"pug", L"pugs", L"fotm", L"fracs", L"ebg", L"eotm",
+    L"sab", L"jp", L"kp", L"teq", L"cof", L"coe", L"ibs", L"drm", L"wtb", L"wts",
+    // raids, strikes, bosses
+    L"vg", L"gors", L"kc", L"qtp", L"cmdr", L"comm", L"commi",
     // combat
-    L"dps", L"hps", L"cc", L"aoe", L"boon", L"boons", L"alac", L"alacrity", L"quickness", L"might", L"stab",
+    L"dps", L"cdps", L"pdps", L"bdps", L"adps", L"qdps", L"hps", L"cc", L"aoe", L"pbaoe", L"boon", L"boons",
+    L"alac", L"alacrity", L"quickness", L"stab", L"icd", L"ooc",
     // professions / specs, short forms
-    L"ele", L"necro", L"engi", L"rev", L"mes", L"warri", L"chrono", L"scourge", L"fb", L"dh", L"hfb", L"qfb",
+    L"necro", L"engi", L"rev", L"warri", L"chrono", L"scourge", L"fb", L"dh", L"hfb", L"qfb", L"bsw", L"vindi",
+    L"virt", L"holo", L"dudu", L"ren", L"mech",
     // items & map
-    L"wp", L"wps", L"ecto", L"ektos", L"li", L"ld",
+    L"wp", L"wps", L"tp", L"ecto", L"ektos", L"ld", L"obby", L"mc", L"wv",
     // chat
     L"afk", L"brb", L"gg", L"gz", L"gratz", L"ty", L"thx", L"np", L"wb", L"inc", L"rdy", L"lol", L"omg", L"xd",
+    L"gtg", L"g2g", L"rc", L"dc",
+};
+
+// Kept only when written like an abbreviation (two capitals or more: "LA", "HoT", "CoF"): the same letters are an
+// ordinary word somewhere – "la casa", "it's hot", "de", "se", "cm" (centimetre).
+const wchar_t* const kKeepCaps[] = {
+    L"hot", L"la", L"de", L"se", L"cm", L"ac", L"ap", L"ar", L"bl", L"ca", L"co", L"cs", L"cw", L"dd", L"dr", L"ds",
+    L"dt", L"li", L"mo", L"ms", L"mf", L"ow", L"sw", L"ta", L"tc", L"td", L"sb", L"sh", L"eb", L"ha", L"ls",
+    L"oos", L"am",
 };
 
 const wchar_t* const kSpellOnly[] = {
@@ -35,6 +51,8 @@ const wchar_t* const kSpellOnly[] = {
     L"deffen", L"pushen", L"worldboss", L"worldbosse", L"dailies", L"daily", L"weekly", L"pls", L"plz", L"ok",
     L"wipe", L"wipen", L"gewiped", L"cd", L"cds", L"cooldown", L"skill", L"skills", L"mats", L"t5", L"t6",
     L"sigil", L"sigils", L"infusion", L"infusionen", L"karma", L"hp", L"stats", L"build", L"builds",
+    // GW2 short forms that are also words elsewhere ("mes amis", "ele" = he): not kept, only never marked wrong
+    L"mes", L"ele", L"rez", L"res", L"rota", L"champ", L"vet", L"condi", L"zerk", L"mesmer",
 };
 
 // Words for the word bar before much is learned, by the language you write in: GW2 terms everyone uses, plus the
@@ -71,14 +89,42 @@ WordSet Make(std::initializer_list<const wchar_t* const*> lists, std::initialize
 
 }  // namespace
 
+// The abbreviation-only entries go into the same set as "^" + word (see IsKeepWord).
+void AddCaps(WordSet& s) {
+    for (const wchar_t* w : kKeepCaps) s.insert(L"^" + CaseFold(w));
+}
+
 const WordSet& BuiltinKeepWords() {
-    static const WordSet s = Make({kKeep}, {std::size(kKeep)});
+    static const WordSet s = [] {
+        WordSet x = Make({kKeep}, {std::size(kKeep)});
+        AddCaps(x);
+        return x;
+    }();
     return s;
 }
 
 const WordSet& BuiltinSpellIgnore() {
-    static const WordSet s = Make({kKeep, kSpellOnly}, {std::size(kKeep), std::size(kSpellOnly)});
+    static const WordSet s = [] {
+        WordSet x = Make({kKeep, kSpellOnly}, {std::size(kKeep), std::size(kSpellOnly)});
+        AddCaps(x);
+        return x;
+    }();
     return s;
+}
+
+bool LooksLikeAbbreviation(const std::wstring& word) {
+    size_t upper = 0, letters = 0;
+    for (wchar_t c : word) {
+        if (!IsWordChar(c) || (c >= L'0' && c <= L'9')) continue;
+        ++letters;
+        if (CaseFold(std::wstring(1, c)) != std::wstring(1, c)) ++upper;
+    }
+    return letters >= 2 && upper >= 2;
+}
+
+bool IsKeepWord(const WordSet& keep, const std::wstring& word) {
+    const std::wstring f = CaseFold(word);
+    return keep.count(f) > 0 || (keep.count(L"^" + f) > 0 && LooksLikeAbbreviation(word));
 }
 
 const std::vector<std::wstring>& Gw2StarterWords(const std::wstring& lang) {

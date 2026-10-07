@@ -13,6 +13,13 @@ const WordSet& BuiltinKeepWords();
 // fine to translate but not in any dictionary (Kommi, stacken, Fraktale ...).
 const WordSet& BuiltinSpellIgnore();
 
+// Two capitals or more ("LA", "HoT", "CoF", "WvW").
+bool LooksLikeAbbreviation(const std::wstring& word);
+
+// `word` is in a keep/ignore set from above: in any spelling, or – for letters that are an ordinary word somewhere
+// ("la", "hot", "de") – only when written like an abbreviation.
+bool IsKeepWord(const WordSet& keep, const std::wstring& word);
+
 // What the word bar offers before it has learned anything: GW2 words as
 // they are written (English and German forms), for completions only.
 // GW2 words for the word bar, for the language you write in ("DE", "EN-GB"; other languages: only the terms

@@ -1422,6 +1422,31 @@ static void TestWordModelWeights() {
     CHECK(f.Next(L"alpha", 3).empty());       // the old pair has faded
 }
 
+static void TestGw2Abbreviations() {
+    auto kept = [](const std::wstring& text) {
+        std::wstring out;
+        for (const Segment& seg : ProtectForTranslation(text, nullptr, &BuiltinKeepWords()).segments)
+            if (seg.keep) out += (out.empty() ? L"" : L"|") + seg.text;
+        return out;
+    };
+    // Commands from people to people stay as they are, in any spelling.
+    CHECK(kept(L"use tp pls") == L"tp");
+    CHECK(kept(L"CC now, then dps") == L"CC|dps");
+    CHECK(kept(L"lfg fotm t4") == L"lfg|fotm|t4");
+    // Ordinary words are translated: never kept.
+    CHECK(kept(L"I might come later").empty());
+    CHECK(kept(L"it's hot in here").empty());
+    CHECK(kept(L"mes amis sont la").empty());
+    CHECK(kept(L"la casa de mi amigo").empty());
+    // The same letters written like an abbreviation are kept.
+    CHECK(kept(L"HoT meta in LA") == L"HoT|meta|LA");
+    CHECK(kept(L"DE needs CM") == L"DE|CM");
+    CHECK(LooksLikeAbbreviation(L"CoF") && LooksLikeAbbreviation(L"WvW") && !LooksLikeAbbreviation(L"La"));
+    // Never marked as a spelling mistake.
+    CHECK(IsKeepWord(BuiltinSpellIgnore(), L"mes") && IsKeepWord(BuiltinSpellIgnore(), L"AC"));
+    CHECK(!IsKeepWord(BuiltinSpellIgnore(), L"ac"));
+}
+
 static void TestPhraseMemory() {
     WordModel m;
     for (int i = 0; i < 4; ++i) m.Learn(L"gute nacht bis morgen mit micro");
@@ -1575,6 +1600,7 @@ int main() {
     TestWordTriples();
     TestWordModelWeights();
     TestPhraseMemory();
+    TestGw2Abbreviations();
     TestRapidRec();
     TestText();
     TestChat();

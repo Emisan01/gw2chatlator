@@ -174,6 +174,10 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
   `ChatStream::Feed(..., confirm=true)` takes a new line only when the next read (200 ms later) shows it again.
 - The log shows no timestamps and no channel tags, only "Name: text" in the channel colour.
 - Smileys (`:D`, `^^`, `<3`, `xD` ...) and names are protected from translation (`ProtectForTranslation`).
+- Keep-words (core/slang): `kKeep` in any spelling only for letters that are no word in any common language;
+  `kKeepCaps` (la, de, hot, cm, se …) are stored as "^word" and kept only when written like an abbreviation (2+
+  capitals, `LooksLikeAbbreviation`) – always check membership with `IsKeepWord`, never `count()`. "might", "mes",
+  "ele" were kept once and broke ordinary sentences.
 - MumbleLink "game closed?" is checked by the game's windows (`EnumWindows`), never `OpenProcess` (invariant 1).
 - Sending: every key is held `KeyHoldMs` (30 ms) and Ctrl+V is staggered — GW2 reads the keyboard once per frame;
   down+up in one `SendInput` batch got lost (messages did not arrive).

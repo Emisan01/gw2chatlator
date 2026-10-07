@@ -1,5 +1,6 @@
 // protect.cpp
 #include "protect.hpp"
+#include "slang.hpp"
 
 #include <algorithm>
 #include <cwchar>
@@ -87,7 +88,7 @@ ProtectedText ProtectForTranslation(const std::wstring& body, const Glossary* gl
     if (keepWords && !keepWords->empty()) {
         for (const Span& w : WordSpans(body)) {
             if (std::any_of(taken.begin(), taken.end(), [&](const Span& t) { return t.Overlaps(w); })) continue;
-            if (keepWords->count(CaseFold(body.substr(w.start, w.length))))
+            if (IsKeepWord(*keepWords, body.substr(w.start, w.length)))
                 prot.push_back({w, body.substr(w.start, w.length)});
         }
     }
