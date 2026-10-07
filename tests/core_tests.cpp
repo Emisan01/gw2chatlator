@@ -1401,6 +1401,27 @@ static void TestWordTriples() {
     CHECK(back.Next(L"du", 3, L"kommst")[0] == L"da");
 }
 
+static void TestWordModelWeights() {
+    WordModel m;
+    // "mal" is written more often, but after "kommst du" it is "mit": the sentence outweighs frequency.
+    for (int i = 0; i < 12; ++i) m.Learn(L"das mal sehen");
+    for (int i = 0; i < 2; ++i) m.Learn(L"kommst du mit");
+    CHECK(m.Complete(L"m", L"", 1) == std::vector<std::wstring>{L"mal"});
+    CHECK(m.Complete(L"m", L"du", 1, L"kommst") == std::vector<std::wstring>{L"mit"});
+    // Forgetting by use: counts shrink, a word used twice stays known, a pair seen once long ago goes.
+    WordModel f;
+    f.Learn(L"alpha beta");
+    for (int i = 0; i < 10; ++i) f.Learn(L"gamma");
+    const double before = f.Count(L"gamma");
+    f.Decay();
+    CHECK(f.Count(L"gamma") < before && f.Count(L"gamma") > 2.0);
+    f.Learn(L"delta");
+    f.Learn(L"delta");
+    for (int i = 0; i < 30; ++i) f.Decay();
+    CHECK(f.Knows(L"delta"));                 // still known: never corrected away
+    CHECK(f.Next(L"alpha", 3).empty());       // the old pair has faded
+}
+
 static void TestActiveBottom() {
     // Ten text lines 20 px apart; two paragraphs (gap after line 3).
     std::vector<OcrLine> lines;
@@ -1536,6 +1557,7 @@ int main() {
     TestGarbled();
     TestActiveBottom();
     TestWordTriples();
+    TestWordModelWeights();
     TestRapidRec();
     TestText();
     TestChat();

@@ -65,7 +65,9 @@ of people in the chat, keep-words) → worker `Translate`
 
 Typing help: `SpellService::Suggestions` (completion from the learned `WordModel` – pairs and triples, a triple is a
 pair whose first word is `prev2prev`, sharing the 60k pair cap; `WordsBefore` gives the two words – then the recent chat words
-(choices are learned when taken: `InputBox::ApplyChoice` / `AcceptSuggestion` → `SpellService::Chose` →
+(`Complete`/`Next` score = interpolated shares: triple 0.5 / pair 0.3 / unigram rest, Next 0.6/0.4;
+`Decay` every 200 learned messages ×0.9, words never below 2 = stay known, pairs < 0.2 dropped;
+choices are learned when taken: `InputBox::ApplyChoice` / `AcceptSuggestion` → `SpellService::Chose` →
 `WordModel::Chose`, weight 1.0 deliberate (click, Tab to another) / 0.3 default, pair and triple ×2; off with Learn=0),
 (`MainWindow::NoteChatWords` → `SpellService::SetContext`: speakers, incoming text and its translation, 4+ letters,
 80 newest; offered, never learned – invariant 10), then `Gw2StarterWords`, then
