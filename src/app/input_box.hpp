@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 
-#include "app/choice_popup.hpp"
 #include "app/spell_service.hpp"
 #include "app/theme.hpp"
 
@@ -107,12 +106,10 @@ private:
     std::vector<SpellIssue> issues_;
     std::vector<SpellIssue> grammar_;
     WordSuggestions suggestions_;
-    ChoicePopup popup_;          // the dropdown under the word
     WordChoices choices_;
     std::wstring choicesText_;   // text and caret `choices_` was worked out for
     size_t choicesCaret_ = static_cast<size_t>(-1);
     std::wstring dismissedText_; // Esc closed the dropdown for this text
-    POINT popupPos_{};
     // The last autocorrection, for Backspace-undo: text after the fix.
     struct Fix {
         bool valid = false;

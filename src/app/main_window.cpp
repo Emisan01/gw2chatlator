@@ -271,7 +271,6 @@ int MainWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
     ChatLogView::Register(inst);
     PreviewView::Register(inst);
     SuggestionBar::Register(inst);
-    ChoicePopup::Register(inst);
 
     int w = theme_.S(cfg_.w), h = theme_.S(cfg_.h), x = cfg_.x, y = cfg_.y;
     PlaceWindow(x, y, w, h);
@@ -383,11 +382,14 @@ void MainWindow::InitServices() {
     ChooseEngine(false);
 
     if (cfg_.spellEnabled) {
-        std::vector<std::wstring> tags = SpellTagCandidates(PrimaryLang(kbdLocale_), kbdLocale_);
-        for (const std::wstring& t : SpellTagCandidates(PrimaryLang(locale), locale)) tags.push_back(t);
+        // Spell check, learned words and word-bar starters all follow the language you type in.
+        const std::wstring typing = TypingLocale();
+        std::vector<std::wstring> tags = SpellTagCandidates(PrimaryLang(typing), typing);
+        if (cfg_.writeIn.empty())
+            for (const std::wstring& t : SpellTagCandidates(PrimaryLang(locale), locale)) tags.push_back(t);
         spell_.Init(tags, cfg_.UserWordsPath());
     }
-    spell_.UseLearnedLanguage(PrimaryLang(kbdLocale_), cfg_.LearnedDir());
+    spell_.UseLearnedLanguage(PrimaryLang(TypingLocale()), cfg_.LearnedDir());
 }
 
 void MainWindow::ChooseEngine(bool announce) {
@@ -1036,6 +1038,16 @@ std::wstring MainWindow::ReadingAdvice() const {
                {what, size});
 }
 
+std::wstring MainWindow::TypingLocale() const {
+    if (cfg_.writeIn.empty()) return kbdLocale_;
+    // "DE" -> "de-DE", "EN-GB" -> "en-GB", "EN" -> "en-US": a tag Windows' spell checker knows.
+    const std::wstring code = ToUpperAscii(cfg_.writeIn);
+    const size_t dash = code.find(L'-');
+    std::wstring primary = ToLowerAscii(code.substr(0, dash));
+    if (dash != std::wstring::npos) return primary + L"-" + code.substr(dash + 1);
+    return primary + L"-" + (primary == L"en" ? std::wstring(L"US") : ToUpperAscii(primary));
+}
+
 void MainWindow::ToggleReading() {
     cfg_.readerEnabled = !cfg_.readerEnabled;
     cfg_.SaveBool(L"Reader", L"Enabled", cfg_.readerEnabled);
@@ -1629,6 +1641,7 @@ void MainWindow::OnKeyboardLanguage(const std::wstring& locale) {
     const std::wstring primary = PrimaryLang(locale);
     kbdRtl_ = IsRtlLanguage(primary);
     if (SanitizeChatText(input_.Text()).empty()) input_.SetRtl(kbdRtl_);
+    if (!cfg_.writeIn.empty()) return;  // a fixed writing language: the keyboard layout does not change it
     if (cfg_.spellEnabled) {
         const bool ok = spell_.SwitchLanguage(SpellTagCandidates(primary, locale));
         input_.RecheckSpelling();
@@ -1823,7 +1836,7 @@ void MainWindow::StartTranslation() {
     std::wstring source;
     if (engine_ == Engine::Basic) {
         source = DetectLanguage(body);
-        if (source.empty()) source = PrimaryLang(kbdLocale_);
+        if (source.empty()) source = PrimaryLang(TypingLocale());
     }
     inflightGen_ = inputGen_;
     CountMyMemory(CodePointCount(JoinSegments(p.segments)));
@@ -3311,6 +3324,15 @@ void MainWindow::ApplySettings(const Config& next) {
         if (writeLangs_.empty()) writeLangs_ = {L"EN-GB"};
         writeIdx_ = 0;
     }
+    if (prev.writeIn != cfg_.writeIn) {  // the language you type in: spelling, learned words, word bar follow
+        const std::wstring typing = TypingLocale();
+        if (cfg_.spellEnabled) {
+            spell_.SwitchLanguage(SpellTagCandidates(PrimaryLang(typing), typing));
+            input_.RecheckSpelling();
+        }
+        spell_.UseLearnedLanguage(PrimaryLang(typing), cfg_.LearnedDir());
+        input_.RefreshSuggestions();
+    }
     const bool engineChanged = prev.engine != cfg_.engine || prev.deeplKey != cfg_.deeplKey ||
                                prev.basicEmail != cfg_.basicEmail || prev.llmUrl != cfg_.llmUrl ||
                                prev.llmModel != cfg_.llmModel || prev.llmKey != cfg_.llmKey ||
@@ -3417,7 +3439,7 @@ void MainWindow::StartGrammarCheck() {
     if (CodePointCount(clean) < 8) return;
     if (!grammarLimiter_.Allow(GetTickCount64())) return;  // public server: max. 20 per minute
     grammarInFlight_ = true;
-    std::thread([hwnd = hwnd_, url = cfg_.languageToolUrl, text, lang = kbdLocale_] {
+    std::thread([hwnd = hwnd_, url = cfg_.languageToolUrl, text, lang = TypingLocale()] {
         auto msg = std::make_unique<GrammarMsg>();
         msg->text = text;
         msg->result = CheckWithLanguageTool(url, text, lang, L"");

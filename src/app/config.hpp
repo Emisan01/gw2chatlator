@@ -82,6 +82,7 @@ struct Config {
     std::vector<ChannelColor> palette;
 
     // [Spelling]
+    std::wstring writeIn;  // the language you type in ("DE", "EN-GB"); empty = the keyboard layout's language
     bool spellEnabled = true;
     AutoCorrectMode autoCorrect = AutoCorrectMode::Phone;
     bool suggestions = true;     // word bar above the input (completions, next word)

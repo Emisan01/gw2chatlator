@@ -891,6 +891,16 @@ static void TestStarterWords() {
     std::set<std::wstring> keys;
     for (const std::wstring& w : v) keys.insert(WordKey(w));
     CHECK(keys.size() == v.size());  // no duplicates
+    // By the language you write in: no English suggestions for German and the other way round.
+    auto has = [](const std::vector<std::wstring>& list, const wchar_t* w) {
+        return std::find(list.begin(), list.end(), w) != list.end();
+    };
+    const auto& de = Gw2StarterWords(L"DE");
+    const auto& en = Gw2StarterWords(L"EN-GB");
+    const auto& fr = Gw2StarterWords(L"FR");
+    CHECK(has(de, L"Danke") && !has(de, L"Thanks") && has(de, L"Tequatl"));
+    CHECK(has(en, L"Thanks") && !has(en, L"Danke") && has(en, L"Tequatl"));
+    CHECK(!has(fr, L"Danke") && !has(fr, L"Thanks") && has(fr, L"LFG"));
 }
 
 static void TestEmoticons() {

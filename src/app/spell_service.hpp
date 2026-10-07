@@ -111,6 +111,7 @@ private:
     std::wstring userPath_;
     WordModel model_;
     std::wstring learnedPath_;
+    std::wstring learnedLang_;  // "de": the language of the learned words and the starter list
 };
 
 }  // namespace gct

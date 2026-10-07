@@ -168,8 +168,11 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
   `ChatOcr::kSmallTextPitch`. Reading interval default 400 ms (OCR runs only when the picture changed).
 - The reading area goes ~1/3 below the frame (at most to the window edge) so the newest line is never cut; the
   input line (tag, no timestamp, below the last stamped line) and the number row are dropped by the parser.
-- Typing: the dropdown under the word (`ChoicePopup`, `SpellService::Choices`): Space/punctuation take the
-  highlight, Tab/arrows move, Esc closes, Backspace undoes. Slips: `SlipDistance` (key next door 0.5, swap 0.7),
+- Typing: no dropdown any more (choice_popup removed). `SpellService::Choices` decides what Space writes;
+  `InputBox::DrawGhost` shows exactly that word grey after the caret (a completion shows its rest, a correction
+  "→ word"); Tab/Shift+Tab cycle it (`CycleChoice`), → at the end takes it without a space, Esc hides it, Backspace
+  undoes. A typed word that is already valid stays (Space = space) unless Tab chose another. `[Spelling] WriteIn`
+  (`MainWindow::TypingLocale`) fixes the language of spelling, learned words and `Gw2StarterWords(lang)`. Slips: `SlipDistance` (key next door 0.5, swap 0.7),
   `HandShiftVariants` (whole hand one key off), `KeyLayout` from the active keyboard layout.
 - Log: names white, text in the channel colour; click a name → whisper tab for that player (`ChatTab::person`,
   max `kMaxPersonTabs`); click an untranslated line → translated first; links (`FindLinks`) are never translated

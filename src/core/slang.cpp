@@ -37,26 +37,26 @@ const wchar_t* const kSpellOnly[] = {
     L"sigil", L"sigils", L"infusion", L"infusionen", L"karma", L"hp", L"stats", L"build", L"builds",
 };
 
-const wchar_t* const kStarter[] = {
-    // content
-    L"LFG", L"LFM", L"Tequatl", L"Fraktal", L"Fraktale", L"Fractal", L"Fractals", L"Dungeon", L"Raid", L"Strike",
-    L"Meta", L"Worldboss", L"Event", L"Champion", L"Achievement", L"Erfolg", L"Dailies", L"Weekly", L"Commander",
-    L"Kommandeur", L"Squad", L"Trupp", L"Gruppe", L"Party", L"Guild", L"Gilde", L"Gildenhalle", L"Guild Hall",
-    // places
-    L"Lion's Arch", L"Löwenstein", L"Götterfels", L"Divinity's Reach", L"Rata Sum", L"Hoelbrak", L"Schwarzzitadelle",
-    L"Black Citadel", L"Waypoint", L"Wegmarke", L"Drachensturm", L"Dragonstorm", L"Drakkar", L"Silverwastes",
-    L"Silberwüste",
-    // combat
-    L"Quickness", L"Alacrity", L"Might", L"Boons", L"Healer", L"Heal", L"Tank", L"DPS", L"Condi", L"Revive",
-    L"Stack", L"Stacken", L"Breakbar", L"Wipe",
-    // items
-    L"Legendary", L"Legendär", L"Ascended", L"Aufgestiegen", L"Exotic", L"Exotisch", L"Mystic Forge",
-    L"Mystische Schmiede", L"Ectoplasm", L"Ektoplasma", L"Karma", L"Gold", L"Gems", L"Edelsteine", L"Infusion",
-    // mounts
-    L"Skyscale", L"Himmelsschuppe", L"Griffon", L"Greif", L"Raptor", L"Springer", L"Jackal", L"Schakal",
-    L"Beetle", L"Käfer", L"Warclaw", L"Kriegsklaue",
-    // chat
-    L"Danke", L"Thanks", L"Bitte", L"Please", L"Sorry", L"Gerne", L"Willkommen", L"Welcome",
+// Words for the word bar before much is learned, by the language you write in: GW2 terms everyone uses, plus the
+// German or English names. Never English suggestions for German or the other way round.
+const wchar_t* const kStarterAny[] = {
+    L"LFG", L"LFM", L"Tequatl", L"Dungeon", L"Raid", L"Strike", L"Meta", L"Event", L"Champion", L"Commander",
+    L"Squad", L"Party", L"Rata Sum", L"Hoelbrak", L"Drakkar", L"Quickness", L"Alacrity", L"Might", L"Boons",
+    L"Healer", L"Heal", L"Tank", L"DPS", L"Condi", L"Revive", L"Stack", L"Breakbar", L"Wipe", L"Karma", L"Gold",
+    L"Gems", L"Raptor", L"Sorry", L"Infusion",
+};
+const wchar_t* const kStarterDe[] = {
+    L"Fraktal", L"Fraktale", L"Erfolg", L"Kommandeur", L"Trupp", L"Gruppe", L"Gilde", L"Gildenhalle", L"Weltboss",
+    L"Löwenstein", L"Götterfels", L"Schwarzzitadelle", L"Wegmarke", L"Drachensturm", L"Silberwüste", L"Stacken",
+    L"Legendär", L"Aufgestiegen", L"Exotisch", L"Mystische Schmiede", L"Ektoplasma", L"Edelsteine",
+    L"Himmelsschuppe", L"Greif", L"Springer", L"Schakal", L"Käfer", L"Kriegsklaue", L"Danke", L"Bitte", L"Gerne",
+    L"Willkommen",
+};
+const wchar_t* const kStarterEn[] = {
+    L"Fractal", L"Fractals", L"Worldboss", L"Achievement", L"Dailies", L"Weekly", L"Guild", L"Guild Hall",
+    L"Lion's Arch", L"Divinity's Reach", L"Black Citadel", L"Waypoint", L"Dragonstorm", L"Silverwastes",
+    L"Legendary", L"Ascended", L"Exotic", L"Mystic Forge", L"Ectoplasm", L"Skyscale", L"Griffon",
+    L"Jackal", L"Beetle", L"Warclaw", L"Thanks", L"Please", L"Welcome",
 };
 
 WordSet Make(std::initializer_list<const wchar_t* const*> lists, std::initializer_list<size_t> sizes) {
@@ -81,9 +81,29 @@ const WordSet& BuiltinSpellIgnore() {
     return s;
 }
 
-const std::vector<std::wstring>& Gw2StarterWords() {
-    static const std::vector<std::wstring> v(std::begin(kStarter), std::end(kStarter));
-    return v;
+const std::vector<std::wstring>& Gw2StarterWords(const std::wstring& lang) {
+    std::wstring p = ToUpperAscii(Trim(lang));
+    p = p.substr(0, p.find(L'-'));
+    static const std::vector<std::wstring> any(std::begin(kStarterAny), std::end(kStarterAny));
+    static const std::vector<std::wstring> de = [] {
+        std::vector<std::wstring> v(std::begin(kStarterAny), std::end(kStarterAny));
+        v.insert(v.end(), std::begin(kStarterDe), std::end(kStarterDe));
+        return v;
+    }();
+    static const std::vector<std::wstring> en = [] {
+        std::vector<std::wstring> v(std::begin(kStarterAny), std::end(kStarterAny));
+        v.insert(v.end(), std::begin(kStarterEn), std::end(kStarterEn));
+        return v;
+    }();
+    static const std::vector<std::wstring> all = [] {
+        std::vector<std::wstring> v = de;
+        v.insert(v.end(), std::begin(kStarterEn), std::end(kStarterEn));
+        return v;
+    }();
+    if (p.empty()) return all;
+    if (p == L"DE") return de;
+    if (p == L"EN") return en;
+    return any;
 }
 
 }  // namespace gct
