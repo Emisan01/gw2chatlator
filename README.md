@@ -183,6 +183,13 @@ cmake --build build-win
 **Translations:** all UI text is English in the code, wrapped in `Tr()`. The German and Arabic tables are
 `src/core/i18n_de.cpp` and `src/core/i18n_ar.cpp`. `python3 tools/i18n_check.py` lists missing entries.
 
+## Dedicated to Kassiopeia 🐢
+
+This tool is dedicated to Kassiopeia, the tortoise from Michael Ende's *Momo* who sees a little into the future and
+shows it, quietly, in glowing letters on her shell – just before it happens. That is what the grey suggestion tries
+to be: calm, never pushy, one step ahead. And like her, it is on the side of those who want to keep their time, not
+of the grey gentlemen who steal it: every key press it saves is yours.
+
 ## Origin
 
 The idea of a floating input window that sends into the GW2 chat comes from
