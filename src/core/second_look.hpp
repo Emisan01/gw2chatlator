@@ -9,6 +9,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 namespace gct {
 
@@ -21,5 +22,22 @@ bool WorthSecondLook(const std::wstring& core);
 
 // The second reading may replace the first: different, close (1 edit up to 4 letters, 2 for 5, 3 above).
 bool PlausibleRereading(const std::wstring& first, const std::wstring& second);
+
+// A token no person types – a recognition artifact: a digit or a mark (! | > $ ...) between letters ("syn!ax",
+// "g9danken", "Plövdsi0Q"), a mark glued before a word ("!raining"), digits before letters that are no usual suffix
+// ("9QEine"; "10er", "4k", "2nd" are fine). Times, levels, "gw2", links, chat codes and account names are not.
+bool LooksGarbled(const std::wstring& token);
+
+// The part of a garbled token to repair: like WordCore, but a single mark in front of the letters belongs to it
+// ("!raining," -> "!raining").
+std::wstring GarbledCore(const std::wstring& token, size_t* start = nullptr);
+
+// What a word may really have said, for a dictionary to pick from: characters text recognition confuses replaced
+// (! -> t/l/i, 9 -> g/e, 0 -> o, 1 -> l/i, 5 -> s, rn <-> m, vv -> w, cl -> d, p <-> o, c <-> e, l <-> i ...). Marks and
+// digits are replaced first (a garbled word gets up to two of them), letters one at a time. Never the word itself.
+std::vector<std::wstring> ConfusionCandidates(const std::wstring& core, size_t max = 80);
+
+// `core` with every mark and digit replaced by its most likely letter ("g9danken" -> "ggdanken"), for suggestions.
+std::wstring MarksToLetters(const std::wstring& core);
 
 }  // namespace gct

@@ -5,6 +5,13 @@ diagnosis show it.
 
 ## Unreleased
 
+- **No more word salad:** words nobody types ("syn!ax", "g9danken", "!raining", "9QEine") are now always checked:
+  characters the recognition confuses are tried (! -> t, 9 -> g/e, 0 -> o, p <-> o, rn <-> m …) and the Windows
+  dictionaries pick the real word ("syntax", "gedanken", "training", "putput" -> "output"); else the word is read once
+  more, enlarged, or the dictionary's suggestion is taken. What is still garbage after that is left out instead of
+  shown. In a screen area, an unknown word cut off at the left or right edge is left out too. Repairs are learned.
+- **Screen area: only the active part.** The whole area is read once; after that only the lowest 6 lines count
+  (where new text appears). Typing below no longer brings back old fragments from further up.
 - **Only what needs translating:** a line is translated only when its language is clear (another script, or at least
   three words the Windows language detection is sure about, or telltale letters like ñ, ß, ç). Short or unclear lines
   ("ok np", names) cost nothing. **"Show only translations"** (menu ≡, on by default): lines in your languages, unclear

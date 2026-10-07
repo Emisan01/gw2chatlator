@@ -153,6 +153,17 @@ Einstellungen auf Wunsch behalten) – als Knopf unter „Spiel & Start“ und a
 - Kleines spezialisiertes Übersetzungsmodell (Opus-MT/NLLB über CTranslate2) als zweiter lokaler Weg neben Ollama.
 - Menüs aufräumen; `main_window.cpp` aufteilen (Leser, Docking, Menüs, Senden).
 
+- **Idee (Roadmap, nicht jetzt): mehrere Bildbereiche parallel** – beim Spielen kann es mehrere übersetzenswerte
+  Stellen geben (Chat + Questtext, NPC-Dialog …). Erst wenn die Kernprobleme gelöst sind.
+
+**Markenkern (2026-10-07, Entscheidung des Nutzers):**
+1. **Lernende Wortvorschlag-Engine / Eingabehilfe** – mit Training wie eine native Schreibweise: nur noch erkannte
+   Wörter, sofort schreibbar, später mit Syntax für den ganzen Satz. Das ist die Hauptkompetenz.
+2. **Gezieltes Übersetzen per Bilderfassung** – auf Wunsch, auch nachträglich (Chat hochscrollen → „Jetzt einmal
+   übersetzen“). Kein Chat-Ersatz, kein „alles mitlaufen lassen“.
+- Kernproblem, als Nächstes: **unser Fenster drängt sich zu sehr auf, ohne direkten Mehrwert.** Es soll nur da sein,
+  wenn es etwas bringt (schreiben, gezielt übersetzen). Menü-Logik bleibt bis dahin wie sie ist.
+
 **Zurückgestellt (Entscheidung des Nutzers):**
 - Unser Fenster an den nativen Chat koppeln (öffnen/minimieren gemeinsam).
 - Bereinigen der Git-Historie von alten Testnamen (nur mit ausdrücklichem OK, Force-Push).

@@ -136,6 +136,33 @@ bool ChatOcr::IsWord(const std::wstring& core) {
     return ok;
 }
 
+std::wstring ChatOcr::PickConfusion(const std::wstring& core, bool garbled) {
+    if (!garbled && core.size() < 5) return {};  // short words and names: too many real words one letter apart
+    std::vector<std::wstring> valid;
+    for (const std::wstring& c : ConfusionCandidates(core)) {
+        if (c.size() < 2 || !IsWord(c)) continue;
+        valid.push_back(c);
+        if (valid.size() >= 4) break;
+    }
+    if (valid.empty()) return {};
+    if (valid.size() == 1) return valid.front();
+    // Several real words: the dictionary's own ranking decides ("putput": "output" before "putout").
+    for (const auto& checker : checkers_)
+        for (const std::wstring& s : checker->Suggest(garbled ? MarksToLetters(core) : core, 8))
+            for (const std::wstring& v : valid)
+                if (CaseFold(s) == CaseFold(v)) return v;
+    return garbled ? valid.front() : std::wstring();
+}
+
+std::wstring ChatOcr::SuggestFor(const std::wstring& core) {
+    const std::wstring base = MarksToLetters(core);
+    if (base.size() < 3) return {};
+    for (const auto& checker : checkers_)
+        for (const std::wstring& s : checker->Suggest(base, 5))
+            if (s.find(L' ') == std::wstring::npos && PlausibleRereading(base, s)) return s;
+    return {};
+}
+
 std::wstring ChatOcr::EngineName() const {
     return useRapid_ ? L"RapidOCR" : useTess_ ? L"Tesseract" : L"Windows OCR";
 }
@@ -258,21 +285,26 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
             found.push_back(std::move(x));
         }
     }
-    // Second look: a word the dictionaries do not know is read once more – cut out with some room around it and
-    // enlarged more than the first time. Taken only when the new reading is a real word and close to the first
-    // ("*ain" -> "main"); otherwise the first stays (people write odd words, names, slang). Each word in its line
-    // is decided once (the same line comes in every picture), at most a few new words per picture.
+    // Second look: a word the dictionaries do not know is checked against the characters text recognition confuses
+    // ("syn!ax" -> "syntax", "putput" -> "output"), else read once more – cut out with some room around it and
+    // enlarged more than the first time. Taken only when the result is a real word and close to the first;
+    // otherwise an ordinary unknown word stays (people write odd words, names, slang). A garbled token nobody types
+    // ("pvg!pyt", "9QEine") that cannot be repaired is dropped, and so is an unknown word cut off at the edge of a
+    // free screen area. Each word in its line is decided once (the same line comes in every picture), at most a few
+    // new readings per picture.
     lastLooks_ = lastFixes_ = 0;
     newFixes_.clear();
-    if (haveWin_ && !checkers_.empty() && !found.empty() && !found.front().hasColor) {
+    if (!found.empty() && !found.front().hasColor) {
         constexpr int kMaxLooksPerPicture = 6;
+        const bool dict = !checkers_.empty();
         const int altScale = scale >= 3 ? 4 : scale + 2;  // clearly larger than the first reading
         for (Line& line : found) {
             bool changed = false;
             for (Word& w : line.words) {
+                const bool garbled = LooksGarbled(w.text);
                 size_t at = 0;
-                const std::wstring core = WordCore(w.text, &at);
-                if (!WorthSecondLook(core)) continue;
+                const std::wstring core = garbled ? GarbledCore(w.text, &at) : WordCore(w.text, &at);
+                if (!garbled && (!dict || !WorthSecondLook(core))) continue;
                 const std::wstring key = core + L'\x1f' + line.text;
                 if (const auto it = decided_.find(key); it != decided_.end()) {
                     if (it->second != w.text) {
@@ -289,42 +321,56 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
                     changed = true;
                     continue;
                 }
-                if (IsWord(core)) continue;
-                if (lastLooks_ >= kMaxLooksPerPicture) continue;  // the rest next picture
-                ++lastLooks_;
-                // The word in the picture (raw pixels) with half a line height above/below and some room aside.
-                const int h = std::max(1, w.rect.h / scale);
-                RectI r{w.rect.x / scale - h, w.rect.y / scale - h / 2, w.rect.w / scale + 2 * h, h * 2};
-                r.x = std::max(0, r.x);
-                r.y = std::max(0, r.y);
-                r.w = std::min(r.w, raw.width - r.x);
-                r.h = std::min(r.h, raw.height - r.y);
+                if (!garbled && IsWord(core)) continue;
+                std::wstring fixed = dict ? PickConfusion(core, garbled) : L"";
                 std::wstring decision = w.text;
-                std::vector<OcrTextLine> again;
-                std::wstring ignored;
-                if (r.w > 4 && r.h > 4 && win_.Recognize(UpscaleForOcr(Crop(raw, r), altScale), again, &ignored)) {
-                    // The word whose middle is closest to where the first one was.
-                    const double want = (w.rect.x / static_cast<double>(scale) + w.rect.w / (2.0 * scale) - r.x) * altScale;
-                    const OcrWordBox* best = nullptr;
-                    double bestDist = 1e18;
-                    for (const OcrTextLine& l : again)
-                        for (const OcrWordBox& b : l.words) {
-                            const double d = std::abs(b.rect.x + b.rect.w / 2.0 - want);
-                            if (d < bestDist) {
-                                bestDist = d;
-                                best = &b;
+                if (fixed.empty() && haveWin_) {
+                    if (lastLooks_ >= kMaxLooksPerPicture) continue;  // the rest next picture
+                    ++lastLooks_;
+                    // The word in the picture (raw pixels) with half a line height above/below and some room aside.
+                    const int h = std::max(1, w.rect.h / scale);
+                    RectI r{w.rect.x / scale - h, w.rect.y / scale - h / 2, w.rect.w / scale + 2 * h, h * 2};
+                    r.x = std::max(0, r.x);
+                    r.y = std::max(0, r.y);
+                    r.w = std::min(r.w, raw.width - r.x);
+                    r.h = std::min(r.h, raw.height - r.y);
+                    std::vector<OcrTextLine> again;
+                    std::wstring ignored;
+                    if (r.w > 4 && r.h > 4 && win_.Recognize(UpscaleForOcr(Crop(raw, r), altScale), again, &ignored)) {
+                        // The word whose middle is closest to where the first one was.
+                        const double want = (w.rect.x / static_cast<double>(scale) + w.rect.w / (2.0 * scale) - r.x) * altScale;
+                        const OcrWordBox* best = nullptr;
+                        double bestDist = 1e18;
+                        for (const OcrTextLine& l : again)
+                            for (const OcrWordBox& bx : l.words) {
+                                const double d = std::abs(bx.rect.x + bx.rect.w / 2.0 - want);
+                                if (d < bestDist) {
+                                    bestDist = d;
+                                    best = &bx;
+                                }
                             }
-                        }
-                    if (best) {
-                        const std::wstring second = WordCore(best->text);
-                        if (PlausibleRereading(core, second) && IsWord(second)) {
-                            // The whole second token: a stray mark read in place of a letter ("*ain") goes too.
-                            decision = best->text;
-                            ++lastFixes_;
-                            fixes_[CaseFold(core)] = second;  // learned: next time without reading again
-                            newFixes_.push_back({core, second});
+                        if (best) {
+                            const std::wstring second = WordCore(best->text);
+                            const std::wstring base = garbled ? MarksToLetters(core) : core;
+                            const bool close = PlausibleRereading(base, second) || (garbled && base == second) ||
+                                               (garbled && PlausibleRereading(core, second));
+                            if (!second.empty() && !LooksGarbled(best->text) && close && (!dict || IsWord(second)))
+                                fixed = second;
                         }
                     }
+                }
+                if (fixed.empty() && dict && garbled) fixed = SuggestFor(core);
+                if (!fixed.empty()) {
+                    decision = w.text.substr(0, at) + fixed + w.text.substr(at + core.size());
+                    ++lastFixes_;
+                    fixes_[CaseFold(core)] = fixed;  // learned: next time without reading again
+                    newFixes_.push_back({core, fixed});
+                } else if (garbled) {
+                    decision.clear();  // no person wrote this: better a gap than nonsense
+                } else if (keepEngineLines_) {
+                    // An unknown word at the left or right edge of the free area: cut off by the frame ("berc").
+                    const int x0 = w.rect.x / scale, x1 = (w.rect.x + w.rect.w) / scale;
+                    if (x0 <= 3 || x1 >= raw.width - 3) decision.clear();
                 }
                 if (decided_.size() > 5000) decided_.clear();
                 decided_[key] = decision;
@@ -334,10 +380,15 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
                 }
             }
             if (changed) {
+                line.words.erase(std::remove_if(line.words.begin(), line.words.end(),
+                                                [](const Word& x) { return Trim(x.text).empty(); }),
+                                 line.words.end());
                 line.text.clear();
                 for (const Word& w : line.words) line.text += (line.text.empty() ? L"" : L" ") + w.text;
             }
         }
+        found.erase(std::remove_if(found.begin(), found.end(), [](const Line& l) { return l.words.empty(); }),
+                    found.end());
     }
     for (const Line& tl : found) {
         OcrLine line;
