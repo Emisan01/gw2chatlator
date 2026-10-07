@@ -49,7 +49,9 @@ Pflicht. Bei 4K reicht fast der Rohtext.
 4. **Arabizi** („kifak“ → كيفك) fehlt – so schreiben viele Araber im Spiel tatsächlich.
 5. **Ganze Phrasen** („bin gleich da“) als grauer Vorschlag fehlen.
 6. Sprache: nur Win+H; Push-to-Talk mit lokalem Whisper wäre der nächste Schritt (3–4× schneller als Tippen).
-8. ★ **Vorwissen fehlt (Kaltstart):** Gboard kennt die Sprache ab Werk, wir starten fast leer. Plan: pro Sprache
+8. (nachrangig, Entscheidung 2026-10-07: Maßstab ist „neues Handy – drauflos tippen, nichts stört, nichts fehlt, nach
+   einer Woche 3× schneller“; das Lernen ist der Kern, die Rechtschreibung kennt Windows schon; Wortlisten höchstens
+   als freiwilliges Angebot) **Vorwissen fehlt (Kaltstart):** Gboard kennt die Sprache ab Werk, wir starten fast leer. Plan: pro Sprache
    die häufigsten Wörter und Wortpaare als kleine mitgelieferte Liste (~1 MB), Gelerntes zählt mehr. Quellen geprüft:
    Tatoeba-Sätze (CC-BY 2.0 FR, teils CC0 – gesprächsnah, gut für Paare), FrequencyWords aus OpenSubtitles
    (Inhalt CC-BY-SA 4.0 – die abgeleitete Liste bleibt CC-BY-SA, Quellenangabe in THIRD_PARTY_NOTICES). ✅ Satzgedächtnis (`ContinueSure`, Tab nimmt den ganzen Rest). ✅ Lernen bei der Wahl (Wortleiste und
