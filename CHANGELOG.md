@@ -5,6 +5,12 @@ diagnosis show it.
 
 ## Unreleased
 
+- **Only what needs translating:** a line is translated only when its language is clear (another script, or at least
+  three words the Windows language detection is sure about, or telltale letters like ñ, ß, ç). Short or unclear lines
+  ("ok np", names) cost nothing. **"Show only translations"** (menu ≡, on by default): lines in your languages, unclear
+  ones and system lines no longer appear in the window.
+- **"Translate once now"** (menu ≡): one look at the chat or screen area, what is foreign is translated, then reading
+  stops again. The first entry is now called "Automatic translation (permanent)".
 - **Installing like other programs:** the setup installs for your Windows user (`%LOCALAPPDATA%\Programs`, no admin
   rights; ticked by default), then the downloaded copy ends and the installed one starts. Autostart and the desktop
   shortcut always point to the installed copy, so settings and learned words never end up in the download folder.

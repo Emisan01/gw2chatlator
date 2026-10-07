@@ -1371,6 +1371,18 @@ static void TestRapidRec() {
     CHECK(ParseRecDictionary("a\r\nb\nc").size() == 3);
 }
 
+static void TestSureLanguage() {
+    // Another script decides at once, even short.
+    CHECK(SureLanguage(L"привет", L"") == L"RU");
+    CHECK(SureLanguage(L"مرحبا", L"") == L"AR");
+    // Latin: three words and the Windows detection, or telltale letters.
+    CHECK(SureLanguage(L"quelqu'un pour le boss mondial", L"FR") == L"FR");
+    CHECK(SureLanguage(L"ok np", L"EN").empty());            // too short: unsure, nothing sent
+    CHECK(SureLanguage(L"Kiro Vale", L"").empty());           // a name
+    CHECK(SureLanguage(L"mañana", L"").find(L"ES") == 0); // ñ says Spanish
+    CHECK(SureLanguage(L"wer kommt mit", L"").empty());       // three words but no detection, no telltale letters
+}
+
 static void TestFreeText() {
     auto line = [](const wchar_t* t, int top, int left = 10) {
         OcrLine l;
@@ -1421,6 +1433,7 @@ int main() {
     TestCorrections();
     TestSecondLook();
     TestMyWords();
+    TestSureLanguage();
     TestRapidRec();
     TestText();
     TestChat();

@@ -72,6 +72,7 @@ struct Config {
     int ocrScale = 0;             // 0 = automatic (line spacing), 1-4 fixed
     bool secondLook = true;       // unknown words are read once more, enlarged more (taken only if then a real word)
     bool showSystemLines = false;
+    bool onlyTranslations = true;  // the log shows only lines that were (or can be) translated
     bool saveCaptures = false;
     bool regionSet = false;
     int regionLeft = 0, regionFromBottom = 0, regionWidth = 0, regionHeight = 0;  // relative to GW2 client area

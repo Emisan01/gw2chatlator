@@ -130,6 +130,9 @@ private:
     void OpenWhisperTab(const std::wstring& name);
     void Retranslate(uint64_t id, const std::wstring& text);
     void ToggleReading();
+    void TranslateOnce();
+    void EndTranslateOnce();
+    bool ReadingWanted() const { return cfg_.readerEnabled || once_; }
     // The language you type in: chosen in Settings -> Writing, else the keyboard layout's ("de-DE").
     std::wstring TypingLocale() const;
     ReaderOptions MakeReaderOptions() const;
@@ -283,6 +286,8 @@ private:
     ChatStream stream_;
     NameList speakers_;  // speakers seen in the chat: their names are never translated
     bool streamPrimed_ = false;  // the first picture was fed (old history skipped)
+    bool once_ = false;          // "translate once": reading runs for one look, then stops again
+    size_t onceFound_ = 0;       // lines that look brought
     bool wasInMap_ = false;      // MumbleLink: on a map (reading allowed)
     bool detecting_ = false;     // looking for the GW2 chat (no area set yet)
     bool placedForSetup_ = false;  // first start: put at the usual chat place once

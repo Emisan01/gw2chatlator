@@ -90,6 +90,8 @@ constexpr UINT_PTR kTimerGame = 3;
 constexpr UINT_PTR kTimerCaptures = 4;
 constexpr UINT_PTR kTimerGrammar = 5;
 constexpr UINT_PTR kTimerConfirm = 9;  // double scan: read again to confirm new lines
+constexpr UINT_PTR kTimerOnce = 11;    // "translate once" ends
+constexpr UINT kOnceMs = 3500;          // a few pictures incl. the double scan
 constexpr UINT kConfirmDelayMs = 200;  // second look at new lines (not the same frame)
 constexpr ULONGLONG kDetectEveryMs = 1500;  // no chat area yet: look for the GW2 chat this often
 constexpr UINT kCaptureMinutes = 15;  // diagnostic pictures switch themselves off
@@ -506,7 +508,7 @@ void MainWindow::CreateChildren() {
 }
 
 void MainWindow::StartReader() {
-    if (!cfg_.readerEnabled) return;
+    if (!ReadingWanted()) return;
     reader_.SetSaveCaptures(cfg_.saveCaptures);
     reader_.Start(hwnd_, WM_APP_SNAPSHOT, MakeReaderOptions());
 }
@@ -1054,7 +1056,32 @@ std::wstring MainWindow::TypingLocale() const {
     return primary + L"-" + (primary == L"en" ? std::wstring(L"US") : ToUpperAscii(primary));
 }
 
+// One look at the chat (or the screen area): what is there now and foreign is translated, then reading stops
+// again. Lines already in the log do not come twice (the stream remembers them).
+void MainWindow::TranslateOnce() {
+    if (cfg_.readerEnabled || once_) return;
+    once_ = true;
+    onceFound_ = 0;
+    streamPrimed_ = true;  // everything visible is wanted, not only the last lines
+    RestartReader();
+    SetTimer(hwnd_, kTimerOnce, kOnceMs, nullptr);
+    SetStatus(Tr(L"Translating what is visible now …"), Tone::Muted, kOnceMs);
+}
+
+void MainWindow::EndTranslateOnce() {
+    KillTimer(hwnd_, kTimerOnce);
+    if (!once_) return;
+    once_ = false;
+    RestartReader();
+    if (onceFound_ == 0)
+        SetStatus(cfg_.freeArea || (cfg_.regionSet && mumbleState_.inMap)
+                      ? Tr(L"Nothing new to translate")
+                      : Tr(L"Nothing read – is the chat on screen (on a map, chat area set)?"),
+                  Tone::Muted, 4000);
+}
+
 void MainWindow::ToggleReading() {
+    EndTranslateOnce();
     cfg_.readerEnabled = !cfg_.readerEnabled;
     cfg_.SaveBool(L"Reader", L"Enabled", cfg_.readerEnabled);
     RestartReader();
@@ -1304,7 +1331,7 @@ void MainWindow::ShowMainMenu() {
     const ModalScope modal;
     enum : UINT {
         kSetup = 1, kSettings, kRegion, kReader, kCover, kSystem, kCaptures, kResetColors, kBack, kCopyOnly, kSuggest,
-        kLearn, kSpell, kLanguageTool, kDock, kFollow, kOpenDir, kOpenIni, kQuit, kGw2Chat, kFreeArea,
+        kLearn, kSpell, kLanguageTool, kDock, kFollow, kOpenDir, kOpenIni, kQuit, kGw2Chat, kFreeArea, kOnce, kOnlyTr,
         kEngineAuto = 50, kEngineBasic, kEngineDeepL, kEngineLlm, kEngineSetup,
         kAcOff = 60, kAcSafe, kAcPhone,
         kOcrAuto = 70, kOcrTess, kOcrWin,
@@ -1324,7 +1351,10 @@ void MainWindow::ShowMainMenu() {
     (void)kOpacities;
     (void)sub;
     HMENU menu = CreatePopupMenu();
-    add(menu, MF_STRING | check(cfg_.readerEnabled), kReader, Tr(L"Translate the chat permanently"));
+    add(menu, MF_STRING | check(cfg_.readerEnabled), kReader, Tr(L"Automatic translation (permanent)"));
+    add(menu, MF_STRING | (cfg_.readerEnabled || once_ ? MF_GRAYED : 0), kOnce, Tr(L"Translate once now"));
+    add(menu, MF_STRING | check(cfg_.onlyTranslations), kOnlyTr, Tr(L"Show only translations"));
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     add(menu, MF_STRING | (cfg_.freeArea ? MF_UNCHECKED : MF_CHECKED), kGw2Chat, Tr(L"Read the GW2 chat"));
     add(menu, MF_STRING | check(cfg_.freeArea), kFreeArea, Tr(L"Translate a screen area (any text) …"));
     add(menu, MF_STRING, kRegion, Tr(L"Set the chat area …"));
@@ -1358,6 +1388,14 @@ void MainWindow::ShowMainMenu() {
         case kGw2Chat: SetFreeArea(false); break;
         case kFreeArea: PickFreeArea(); break;
         case kReader: ToggleReading(); break;
+        case kOnce: TranslateOnce(); break;
+        case kOnlyTr:
+            cfg_.onlyTranslations = !cfg_.onlyTranslations;
+            cfg_.SaveBool(L"Reader", L"OnlyTranslations", cfg_.onlyTranslations);
+            SetStatus(cfg_.onlyTranslations ? Tr(L"From now on only translated lines appear")
+                                            : Tr(L"From now on every chat line appears"),
+                      Tone::Muted, 3500);
+            break;
         case kOcrAuto:
         case kOcrTess:
         case kOcrWin:
@@ -1492,7 +1530,7 @@ void MainWindow::RestartReader() {
     readingActive_ = false;
     readerError_.clear();
     readerReported_ = false;
-    if (cfg_.readerEnabled) StartReader();
+    if (ReadingWanted()) StartReader();
     UpdateHint();
     InvalidateChrome();
 }
@@ -2176,6 +2214,7 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
         if (fresh.size() > kStartLines && !cfg_.freeArea)  // a free area: all of its text is wanted
             fresh.erase(fresh.begin(), fresh.end() - kStartLines);
     }
+    onceFound_ += fresh.size();
     for (const ChatMessage& m : fresh) HandleIncoming(m);
     PumpIncoming();
     UpdateHint();
@@ -2188,9 +2227,9 @@ bool MainWindow::NeedsTranslation(const std::wstring& text, std::wstring* detect
     if (letters < 3) return false;  // "gg", "ty", emotes
     const ProtectedText p = ProtectForTranslation(text, nullptr, &BuiltinKeepWords());
     if (!HasTranslatableText(p.segments)) return false;  // only LFG/WvW/chat codes
-    *detected = DetectLanguage(text);
-    if (detected->empty()) *detected = GuessLanguageByLetters(text);  // short lines: telltale letters
-    return detected->empty() || *detected != PrimaryLang(readLang_);
+    // Only when the language is clear: unsure lines ("ok np", names, slang) are not sent anywhere by themselves.
+    *detected = SureLanguage(text, DetectLanguage(text));
+    return !detected->empty() && *detected != PrimaryLang(readLang_);
 }
 
 MainWindow::Own MainWindow::ClassifyOwn(const ChatMessage& m) {
@@ -2252,6 +2291,7 @@ void MainWindow::HandleIncoming(const ChatMessage& m) {
         case Own::SentHere:  // already in the log as "Du: ..."
             return;
         case Own::TypedInGame: {  // typed in GW2 itself: show it for context, untranslated
+            if (cfg_.onlyTranslations) return;
             ChatEntry e;
             e.kind = ChatEntry::Kind::Outgoing;
             e.channel = m.channel == Channel::System ? Channel::Unknown : m.channel;
@@ -2282,6 +2322,8 @@ void MainWindow::HandleIncoming(const ChatMessage& m) {
     // default). Everything else: a click on the line translates it.
     const bool foreign = !system && NeedsTranslation(m.text, &detected) && !Understood(detected);
     const bool automatic = m.freeText || (cfg_.autoTranslate & ChannelBit(m.channel)) != 0;
+    // "Show only translations": what is not foreign (your languages, unsure lines, system lines) does not appear.
+    if (!foreign && cfg_.onlyTranslations) return;
     if (foreign) {
         std::wstring cached;
         if (corrections_.Lookup(m.text, readLang_, &cached)) {  // you corrected this text once
@@ -2447,7 +2489,7 @@ void MainWindow::UpdateHint() {
         return;
     }
     if (!cfg_.readerEnabled)
-        log_.SetEmptyHint(Tr(L"Reading the chat is off (menu \u2261 \u2192 Reading the chat)."), false);
+        log_.SetEmptyHint(Tr(L"Automatic translation is off (menu \u2261: switch it on, or \u201cTranslate once now\u201d)."), false);
     else if (!readerError_.empty())
         log_.SetEmptyHint(TrF(L"Text recognition not available:\n{1}", {readerError_}), false);
     else if (cfg_.freeArea)
@@ -2585,8 +2627,8 @@ void MainWindow::PollGame() {
     const bool inMap = mumbleState_.inMap;
     // Free screen area: any text, also without GW2.
     const bool canRead = ModalScope::Active() ? false  // one of our dialogs / menus is open
-                         : cfg_.freeArea      ? cfg_.readerEnabled && !moving_ && !picking_
-                                              : cfg_.readerEnabled && cfg_.regionSet && gw2_ && !IsIconic(gw2_) &&
+                         : cfg_.freeArea      ? ReadingWanted() && !moving_ && !picking_
+                                              : ReadingWanted() && cfg_.regionSet && gw2_ && !IsIconic(gw2_) &&
                                                (gameFront || ours) && !moving_ && inMap;
     if (inMap != wasInMap_) {
         wasInMap_ = inMap;
@@ -3536,6 +3578,7 @@ LRESULT MainWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
                 if (cfg_.languageTool) SetTimer(hwnd_, kTimerGrammar, 900, nullptr);
             } else if (wp == kTimerGame) PollGame();
             else if (wp == kTimerGrammar) StartGrammarCheck();
+            else if (wp == kTimerOnce) EndTranslateOnce();
             else if (wp == kTimerConfirm) {  // double scan: the second look at new lines
                 KillTimer(hwnd_, kTimerConfirm);
                 reader_.Rescan();

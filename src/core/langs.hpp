@@ -22,6 +22,12 @@ std::string Gw2ApiLang(const std::wstring& deeplCode);
 // Windows language detection refuses.
 std::wstring GuessLanguageByLetters(const std::wstring& text);
 
+// The language of a chat line only when it is clear, else "" (then nothing is translated by itself; a click still
+// can): another script (Arabic, Cyrillic, CJK …) decides at once; Latin lines need three words or more and the Windows
+// detection `els` (passed in), or letters only one language uses (ñ, ç, ß …). Short Latin lines without such letters
+// ("ok np", names, slang) stay unsure.
+std::wstring SureLanguage(const std::wstring& text, const std::wstring& els);
+
 // Spell-checker tags to try, best first. `lang` is a DeepL-style code
 // ("DE", "EN-GB"), `userLocale` the Windows user locale ("de-AT").
 std::vector<std::wstring> SpellTagCandidates(const std::wstring& lang, const std::wstring& userLocale);

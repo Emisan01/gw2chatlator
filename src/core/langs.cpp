@@ -10,6 +10,24 @@
 
 namespace gct {
 
+std::wstring SureLanguage(const std::wstring& text, const std::wstring& els) {
+    const std::wstring byLetters = GuessLanguageByLetters(text);
+    bool latinOnly = true;
+    size_t words = 0, run = 0;
+    for (wchar_t c : text) {
+        const uint32_t u = static_cast<uint32_t>(c);
+        if (u >= 0x0370 && !(u >= 0x1E00 && u <= 0x1EFF) && IsWordChar(c)) latinOnly = false;  // another script
+        if (IsWordChar(c) && !(c >= L'0' && c <= L'9')) {
+            if (++run == 2) ++words;  // a word = 2+ letters
+        } else {
+            run = 0;
+        }
+    }
+    if (!latinOnly && !byLetters.empty()) return byLetters;  // the script says it
+    if (words >= 3 && !els.empty()) return els;
+    return byLetters;  // telltale letters, or "" (unsure)
+}
+
 std::wstring GuessLanguageByLetters(const std::wstring& text) {
     // Scripts first: one script, one language (most likely in GW2 chat).
     int cyr = 0, ukr = 0, greek = 0, arabic = 0, hebrew = 0, hangul = 0, kana = 0, han = 0, thai = 0;
