@@ -44,7 +44,7 @@ Pflicht. Bei 4K reicht fast der Rohtext.
    Zeichen. Ohne sie wissen wir nicht, ob die Engine hilft.
 2. ★ **Graue Vervollständigung nur links-nach-rechts** → der arabische Freund (Hauptnutzer 2!) sieht sie nicht; er hat
    nur die Wortleiste. Größte Lücke für ihn.
-3. ★ **Nächstes Wort nur aus Wortpaaren**; Dreierfolgen („kommst du *mit*“) fehlen. Mathe: Paare kennen nur das letzte
+3. ✅ (Dreierfolgen) **Nächstes Wort nur aus Wortpaaren**; Dreierfolgen („kommst du *mit*“) fehlen. Mathe: Paare kennen nur das letzte
    Wort – bei häufigen Wörtern („du“, „ich“) ist das fast Raten.
 4. **Arabizi** („kifak“ → كيفك) fehlt – so schreiben viele Araber im Spiel tatsächlich.
 5. **Ganze Phrasen** („bin gleich da“) als grauer Vorschlag fehlen.

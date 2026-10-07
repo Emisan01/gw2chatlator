@@ -1371,6 +1371,24 @@ static void TestRapidRec() {
     CHECK(ParseRecDictionary("a\r\nb\nc").size() == 3);
 }
 
+static void TestWordTriples() {
+    WordModel m;
+    // "du" is followed by many words; after "kommst du" it is "mit".
+    for (int i = 0; i < 5; ++i) m.Learn(L"bist du da");
+    for (int i = 0; i < 4; ++i) m.Learn(L"hast du zeit");
+    for (int i = 0; i < 2; ++i) m.Learn(L"kommst du mit");
+    CHECK(!m.Next(L"du", 3).empty() && m.Next(L"du", 3)[0] == L"da");      // one word: the most frequent
+    CHECK(!m.Next(L"du", 3, L"kommst").empty() && m.Next(L"du", 3, L"kommst")[0] == L"mit");  // two words: the sentence
+    CHECK(m.Complete(L"m", L"du", 1, L"kommst") == std::vector<std::wstring>{L"mit"});
+    // Saved and loaded again (triples are pairs with "a\x1fb" as their first word).
+    WordModel back;
+    back.Parse(m.Serialize());
+    CHECK(!back.Next(L"du", 3, L"kommst").empty() && back.Next(L"du", 3, L"kommst")[0] == L"mit");
+    // Forgetting a word removes its triples too.
+    CHECK(back.Forget(L"kommst"));
+    CHECK(back.Next(L"du", 3, L"kommst")[0] == L"da");
+}
+
 static void TestActiveBottom() {
     // Ten text lines 20 px apart; two paragraphs (gap after line 3).
     std::vector<OcrLine> lines;
@@ -1505,6 +1523,7 @@ int main() {
     TestSureLanguage();
     TestGarbled();
     TestActiveBottom();
+    TestWordTriples();
     TestRapidRec();
     TestText();
     TestChat();

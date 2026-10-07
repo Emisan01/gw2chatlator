@@ -233,11 +233,12 @@ void WordModel::AddPair(const std::wstring& prevKey, const std::wstring& nextKey
 
 void WordModel::Learn(const std::wstring& text, double weight) {
     const std::vector<std::wstring> tokens = Tokens(text);
-    std::wstring prevKey;
+    std::wstring prevKey, prev2Key;
     for (size_t i = 0; i < tokens.size(); ++i) {
         const std::wstring& w = tokens[i];
         if (!Learnable(w)) {
             prevKey.clear();
+            prev2Key.clear();
             continue;
         }
         // First word of a message: do not learn its sentence capitalisation as the form.
@@ -250,6 +251,8 @@ void WordModel::Learn(const std::wstring& text, double weight) {
         AddWord(form, weight);
         const std::wstring key = WordKey(w);
         if (!prevKey.empty()) AddPair(prevKey, key, weight);
+        if (!prev2Key.empty() && !prevKey.empty()) AddPair(prev2Key + L'\x1f' + prevKey, key, weight);  // a triple
+        prev2Key = prevKey;
         prevKey = key;
     }
 }
@@ -259,11 +262,13 @@ double WordModel::Count(const std::wstring& word) const {
     return it == words_.end() ? 0.0 : it->second.count;
 }
 
-std::vector<std::wstring> WordModel::Complete(const std::wstring& prefix, const std::wstring& prev, size_t n) const {
+std::vector<std::wstring> WordModel::Complete(const std::wstring& prefix, const std::wstring& prev, size_t n,
+                                             const std::wstring& prev2) const {
     std::vector<std::wstring> out;
     if (prefix.empty() || n == 0) return out;
     const std::wstring p = WordKey(prefix);
     const auto pit = prev.empty() ? pairs_.end() : pairs_.find(WordKey(prev));
+    const auto tit = prev.empty() || prev2.empty() ? pairs_.end() : pairs_.find(WordKey(prev2) + L'\x1f' + WordKey(prev));
     std::vector<std::pair<double, const Word*>> scored;
     for (const auto& [key, w] : words_) {
         if (key.size() <= p.size() || key.compare(0, p.size(), p) != 0) continue;
@@ -271,6 +276,10 @@ std::vector<std::wstring> WordModel::Complete(const std::wstring& prefix, const 
         if (pit != pairs_.end()) {
             auto nit = pit->second.find(key);
             if (nit != pit->second.end()) score += nit->second * 6.0;
+        }
+        if (tit != pairs_.end()) {  // the two words before: the sentence so far says more than one word
+            auto nit = tit->second.find(key);
+            if (nit != tit->second.end()) score += nit->second * 12.0;
         }
         scored.push_back({score, &w});
     }
@@ -337,6 +346,15 @@ bool WordModel::Forget(const std::wstring& word) {
         found = true;
     }
     for (auto pit = pairs_.begin(); pit != pairs_.end();) {
+        // Triples that start with the word: "<word>\x1f..." or "...\x1f<word>".
+        const std::wstring& p = pit->first;
+        const size_t sep = p.find(L'\x1f');
+        if (sep != std::wstring::npos && ((sep == key.size() && p.compare(0, sep, key) == 0) || p.substr(sep + 1) == key)) {
+            pairTotal_ -= pit->second.size();
+            pit = pairs_.erase(pit);
+            found = true;
+            continue;
+        }
         if (pit->second.erase(key)) {
             --pairTotal_;
             found = true;
@@ -356,15 +374,22 @@ void WordModel::Clear() {
     if (had) dirty_ = true;
 }
 
-std::vector<std::wstring> WordModel::Next(const std::wstring& prev, size_t n) const {
+std::vector<std::wstring> WordModel::Next(const std::wstring& prev, size_t n, const std::wstring& prev2) const {
     std::vector<std::wstring> out;
-    auto pit = pairs_.find(WordKey(prev));
-    if (pit == pairs_.end() || n == 0) return out;
+    if (n == 0) return out;
+    std::unordered_map<std::wstring, double> score;
+    // Two words of context first (a triple seen twice beats a pair seen five times), then one.
+    if (!prev2.empty())
+        if (auto tit = pairs_.find(WordKey(prev2) + L'\x1f' + WordKey(prev)); tit != pairs_.end())
+            for (const auto& [key, count] : tit->second)
+                if (count >= 1.0) score[key] += count * 3.0;
+    if (auto pit = pairs_.find(WordKey(prev)); pit != pairs_.end())
+        for (const auto& [key, count] : pit->second)
+            if (count >= 1.0) score[key] += count;
     std::vector<std::pair<double, std::wstring>> scored;
-    for (const auto& [key, count] : pit->second) {
-        if (count < 1.0) continue;
+    for (const auto& [key, s] : score) {
         auto wit = words_.find(key);
-        scored.push_back({count, wit != words_.end() ? wit->second.form : key});
+        scored.push_back({s, wit != words_.end() ? wit->second.form : key});
     }
     std::sort(scored.begin(), scored.end(), [](const auto& a, const auto& b) {
         if (a.first != b.first) return a.first > b.first;

@@ -72,16 +72,18 @@ public:
     bool Knows(const std::wstring& word) const { return Count(word) >= 2.0; }
 
     // Words starting with `prefix` (longer than it), best first; a word that
-    // often follows `prev` ranks higher. Case follows the typed prefix.
-    std::vector<std::wstring> Complete(const std::wstring& prefix, const std::wstring& prev, size_t n) const;
+    // often follows `prev` ranks higher, one that follows `prev2 prev` higher still.
+    // Case follows the typed prefix.
+    std::vector<std::wstring> Complete(const std::wstring& prefix, const std::wstring& prev, size_t n,
+                                       const std::wstring& prev2 = std::wstring()) const;
     // Like Complete, but the typed prefix may hold one typo ("helo" -> "hello",
     // "komt" -> "kommt"): 3+ letters, same first letter (or the first two
     // swapped), only words used at least twice. A typo on a neighbouring key
     // ranks higher. Exact completions are not repeated here.
     std::vector<std::wstring> CompleteFuzzy(const std::wstring& prefix, const std::wstring& prev, size_t n,
                                             const KeyNeighbors& neighbors = nullptr) const;
-    // Words that often follow `prev`.
-    std::vector<std::wstring> Next(const std::wstring& prev, size_t n) const;
+    // Words that often follow `prev2 prev` ("kommst du" -> "mit"), then those that follow `prev`.
+    std::vector<std::wstring> Next(const std::wstring& prev, size_t n, const std::wstring& prev2 = std::wstring()) const;
     // Known words one or two typos away from `word` (same first letter or the
     // first two swapped), closest and most used first.
     std::vector<std::wstring> Near(const std::wstring& word, size_t n) const;
@@ -94,7 +96,8 @@ public:
     bool Dirty() const { return dirty_; }
     void ClearDirty() { dirty_ = false; }
 
-    // UTF-8 text: "w\t<form>\t<count>" and "n\t<prev>\t<next>\t<count>" lines.
+    // UTF-8 text: "w\t<form>\t<count>" and "n\t<prev>\t<next>\t<count>" lines; a word triple is a pair whose
+    // <prev> is "<prev2>\x1f<prev>" (older files without triples load unchanged).
     std::string Serialize() const;
     void Parse(const std::string& utf8);
 

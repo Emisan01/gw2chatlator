@@ -5,6 +5,9 @@ diagnosis show it.
 
 ## Unreleased
 
+- **The sentence so far counts:** the next word and completions look at the last *two* words you typed, not only
+  the last one ("kommst du" -> "mit", while "du" alone would offer "da"). Learned from your messages like before;
+  older word files keep working.
 - **Key presses saved** (Settings → Writing): the word help is measured – keys you press compared with the letters
   you send, today and in total ("Today 38 % (120 keys for 195 letters)"). Pasted text is not counted.
 - Short foreign lines are recognized by their words: "merci", "gracias amigo", "grazie mille", "obrigado" are
