@@ -65,6 +65,35 @@ Image PrepareForOcr(const Image& src, int scale) {
     return out;
 }
 
+Image AutoContrast(const Image& src, bool greyOnly) {
+    Image out = src;
+    if (src.Empty()) return out;
+    const size_t n = static_cast<size_t>(src.width) * src.height;
+    std::vector<uint8_t> grey(n);
+    unsigned hist[256] = {};
+    for (size_t i = 0; i < n; ++i) {
+        const uint8_t* p = &src.bgra[i * 4];
+        grey[i] = std::max(p[0], std::max(p[1], p[2]));  // coloured text keeps its strength
+        ++hist[grey[i]];
+    }
+    int lo = 0, hi = 255;
+    if (!greyOnly) {
+        size_t acc = 0;
+        while (lo < 255 && (acc += hist[lo]) < n * 2 / 100) ++lo;
+        acc = 0;
+        while (hi > 0 && (acc += hist[hi]) < n / 100) --hi;
+        if (hi - lo < 16) {  // flat crop: nothing to stretch
+            lo = 0;
+            hi = 255;
+        }
+    }
+    for (size_t i = 0; i < n; ++i) {
+        const int v = std::clamp((grey[i] - lo) * 255 / std::max(1, hi - lo), 0, 255);
+        out.bgra[i * 4] = out.bgra[i * 4 + 1] = out.bgra[i * 4 + 2] = static_cast<uint8_t>(v);
+    }
+    return out;
+}
+
 Rgb SampleTextColor(const Image& img, const std::vector<RectI>& rects) {
     if (img.Empty()) return {};
     std::array<uint32_t, 256> hist{};

@@ -242,7 +242,9 @@ int wmain(int argc, wchar_t** argv) {
         std::vector<Prep> preps = {{"old 2x", PrepareForOcr(frame, 2), 2, false, &frame},
                                    {"new " + std::to_string(dyn) + "x", up, dyn, false, &raw},
                                    {"new " + std::to_string(dyn) + "x inv", up, dyn, true, &raw},
-                                   {"raw 1x inv", raw, 1, true, &raw}};
+                                   {"raw 1x inv", raw, 1, true, &raw},
+                                   {"new contrast", AutoContrast(up), dyn, false, &raw},
+                                   {"new grey", AutoContrast(up, true), dyn, false, &raw}};
         for (const Prep& p : preps) {
             for (int e = 0; e < 2; ++e) {
                 if ((e == 0 && !haveTess) || (e == 1 && !haveWin)) continue;
@@ -345,7 +347,10 @@ int wmain(int argc, wchar_t** argv) {
                 const RectI rr{0, std::max(0, row.top - pad), raw.width,
                                std::min(raw.height, row.top + row.height + pad) - std::max(0, row.top - pad)};
                 std::wstring e4;
-                const RecResult rec = rapid.Recognize(UpscaleForOcr(Crop(raw, rr), pre), inv == 1, &e4);
+                const int contrast = GetEnvironmentVariableW(L"BENCH_CONTRAST", knob, 16) ? _wtoi(knob) : 0;
+                Image crop = UpscaleForOcr(Crop(raw, rr), pre);
+                if (contrast > 0) crop = AutoContrast(crop, contrast == 1);
+                const RecResult rec = rapid.Recognize(crop, inv == 1, &e4);
                 OcrLine l;
                 l.text = rec.text;
                 l.top = rr.y;

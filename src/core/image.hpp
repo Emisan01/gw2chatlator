@@ -30,6 +30,11 @@ Image PrepareForOcr(const Image& src, int scale);
 // Average colour of the text pixels (clearly brighter than the background) inside `rects`.
 Rgb SampleTextColor(const Image& img, const std::vector<RectI>& rects);
 
+// Automatic contrast of one crop: grey levels from the brightest channel, the darkest 2 % mapped to black and the
+// brightest 1 % to white (coloured text on a half-transparent panel spreads over the whole range). `greyOnly`:
+// without stretching (measurement baseline).
+Image AutoContrast(const Image& src, bool greyOnly = false);
+
 // Cheap fingerprint to skip OCR when the chat did not change.
 uint64_t ImageFingerprint(const Image& img);
 

@@ -213,6 +213,10 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
   the Latin model is downloaded at configure time and copied to `<exe>apid`; other groups download into
   `<data>apid` (`DownloadRapidGroup`, SHA-256). Measured (ocr_bench, parsed error): 4K Windows 0.5–3.4 % vs Rapid
   5–17 %; simulated 1080p Windows 63–81 % vs Rapid 8–31 %. Auto = Rapid only for small text (pitch < 14 px).
+- Contrast processing measured again (2026-10-07, `AutoContrast`, ocr_bench rows "new contrast"/"new grey",
+  `BENCH_CONTRAST=1|2` for RapidOCR crops, `BENCH_RAPID_PAD`, `BENCH_RAPID_PRE`): Windows OCR always worse (4K
+  0.5 → 10 %); RapidOCR grey mixed (one picture 17 → 1.6 %, two worse), stretched worse; pre-enlarging no gain.
+  Not used in the app – needs more real captures (esp. real low resolution) before deciding.
 - `FindInk` handles both polarities: bright background (median ≥ 160) = dark text.
 - Translators (`Engine`): Auto order = DeepL → Google → Microsoft → own LibreTranslate server → LLM → MyMemory. Google
   key goes in the `X-Goog-Api-Key` header (never the URL). Protected segments: `<span translate="no"
