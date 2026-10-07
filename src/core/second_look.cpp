@@ -112,26 +112,24 @@ bool LooksGarbled(const std::wstring& token) {
     }
     if (letters < 2) return false;  // numbers, smileys, "<3"
     const size_t n = t.size();
-    // A mark glued in front of a word: "!raining", "|ch".
-    if (n >= 3 && IsStrayMark(t[0]) && IsLetter(t[1]) && letters + 1 == n) return true;
+    // A mark glued in front of a word that recognition reads for a letter (l, I, t): "!raining", "|ch". Not "*grins",
+    // "#lfg", "~hi" – people write those.
+    if (n >= 3 && (t[0] == L'!' || t[0] == L'|') && IsLetter(t[1]) && letters + 1 == n) return true;
     for (size_t i = 1; i + 1 < n; ++i)
         if ((IsDigit(t[i]) || IsStrayMark(t[i])) && IsLetter(t[i - 1]) && IsLetter(t[i + 1])) return true;
-    // Digits, then letters: only usual suffixes ("10er", "4k", "1st", "5min", "100x").
+    // Digits, then letters with a capital inside and small letters too ("9QEine"): people write "10er", "4k", "2nd",
+    // "2day", "4ever", "2ND" – never capitals in the middle of small letters.
     size_t d = 0;
     while (d < n && IsDigit(t[d])) ++d;
     if (d > 0 && d < n) {
         size_t e = d;
-        while (e < n && IsLetter(t[e])) ++e;
-        if (e == n) {
-            static const wchar_t* const kSuffixes[] = {L"er", L"ern", L"k", L"st", L"nd", L"rd", L"th", L"x", L"s",
-                                                        L"h", L"m", L"min", L"ms", L"gb", L"mb", L"v", L"p", L"fps",
-                                                        L"hz", L"e", L"te", L"ten", L"ter", L"en", L"g", L"d", L"w",
-                                                        L"ers", L"km", L"kg", L"mio", L"sec"};
-            const std::wstring tail = CaseFold(t.substr(d));
-            bool usual = false;
-            for (const wchar_t* s : kSuffixes) usual = usual || tail == s;
-            if (!usual && tail.size() >= 2) return true;
+        bool innerCapital = false, small = false;
+        for (; e < n && IsLetter(t[e]); ++e) {
+            const bool upper = CaseFold(std::wstring(1, t[e])) != std::wstring(1, t[e]);
+            if (upper && e > d) innerCapital = true;
+            if (!upper) small = true;
         }
+        if (e == n && innerCapital && small) return true;
     }
     return false;
 }
@@ -139,7 +137,7 @@ bool LooksGarbled(const std::wstring& token) {
 std::wstring GarbledCore(const std::wstring& token, size_t* start) {
     size_t at = 0;
     std::wstring core = WordCore(token, &at);
-    if (at > 0 && IsStrayMark(token[at - 1]) && (at == 1 || !IsStrayMark(token[at - 2]))) {
+    if (at > 0 && (token[at - 1] == L'!' || token[at - 1] == L'|') && (at == 1 || !IsStrayMark(token[at - 2]))) {
         --at;
         core.insert(core.begin(), token[at]);
     }

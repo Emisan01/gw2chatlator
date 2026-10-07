@@ -311,6 +311,10 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
                 size_t at = 0;
                 const std::wstring core = garbled ? GarbledCore(w.text, &at) : WordCore(w.text, &at);
                 if (!garbled && (!dict || !WorthSecondLook(core))) continue;
+                // The speaker ("Marco:") is a name: never made into a dictionary word.
+                if (!garbled && !keepEngineLines_ && &w == &line.words.front() && !w.text.empty() &&
+                    w.text.back() == L':')
+                    continue;
                 const std::wstring key = core + L'\x1f' + line.text;
                 if (const auto it = decided_.find(key); it != decided_.end()) {
                     if (it->second != w.text) {

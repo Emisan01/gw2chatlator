@@ -10,6 +10,9 @@ diagnosis show it.
     it has been seen (S/(S+1)), for completions and the next word;
   - the telltale words that recognize short foreign lines overlapped between languages ("je" is Dutch too, "mille"
     French, "porque", "amigo", "vamos" Portuguese) – removed.
+  - chat slang like "2day", "4ever" was taken for word salad and left out; emotes like "*grins*" lost their first
+    star; a speaker's name ("Marco:") could be "repaired" into a dictionary word – all fixed;
+  - completions with a typo use the same weights as the others.
 
 ## 0.8.3 — 2026-10-07
 
