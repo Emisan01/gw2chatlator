@@ -5,6 +5,12 @@ diagnosis show it.
 
 ## Unreleased
 
+- **GW2 abbreviations, kept apart from ordinary words:** many more short forms from the GW2 wiki's list stay
+  untranslated and are never marked wrong ("use tp", "cc", "lfg fotm t4", "cdps", "vindi" …). Letters that are an
+  ordinary word somewhere are kept only when written like an abbreviation: "LA", "HoT", "DE", "CM" stay, "la casa",
+  "it's hot", "de" are translated.
+- Fixed: "might", "hot", "mes" and "ele" were never translated, even as ordinary words ("I might come", "mes amis",
+  Portuguese "ele").
 - **Learning for the long run:** old habits fade much more slowly now (every 500 messages by 5 %): a phrase you wrote
   three times stays offered for over a month (at ~50 messages a day), even if you do not use it in between.
 - **Phrase memory:** a phrase you write again and again is offered whole – after "gute nacht " the grey rest

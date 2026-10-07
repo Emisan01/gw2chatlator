@@ -114,7 +114,8 @@ void SpellService::RejectCorrection(const std::wstring& original) {
 
 bool SpellService::IsKnown(const std::wstring& word) const {
     const std::wstring f = CaseFold(word);
-    return BuiltinSpellIgnore().count(f) || game_.count(f) || user_.count(f) || session_.count(f) || model_.Knows(word);
+    return IsKeepWord(BuiltinSpellIgnore(), word) || game_.count(f) || user_.count(f) || session_.count(f) ||
+           model_.Knows(word);
 }
 
 bool SpellService::IsMisspelled(const std::wstring& word) const {
