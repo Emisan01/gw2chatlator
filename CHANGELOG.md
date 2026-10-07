@@ -3,20 +3,27 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## Unreleased
+## 0.8.3 — 2026-10-07
 
-- Dedicated to Kassiopeia 🐢 (see the README).
+**Writing**
+- **Phrase memory:** a phrase you write again and again is offered whole – after "gute nacht " the grey rest
+  "bis morgen mit micro" appears, **Tab takes all of it**, → one word at a time, typing on ignores it. Only when every
+  word of the rest is sure on its own (seen 3+ times, 60 %+), at most 6 words, never going round in circles.
+- **Learning for the long run:** old habits fade much more slowly now (every 500 messages by 5 %): a phrase you wrote
+  three times stays offered for over a month (at ~50 messages a day), even if you do not use it in between.
+
+**Translating**
 - **GW2 abbreviations, kept apart from ordinary words:** many more short forms from the GW2 wiki's list stay
   untranslated and are never marked wrong ("use tp", "cc", "lfg fotm t4", "cdps", "vindi" …). Letters that are an
   ordinary word somewhere are kept only when written like an abbreviation: "LA", "HoT", "DE", "CM" stay, "la casa",
   "it's hot", "de" are translated.
 - Fixed: "might", "hot", "mes" and "ele" were never translated, even as ordinary words ("I might come", "mes amis",
   Portuguese "ele").
-- **Learning for the long run:** old habits fade much more slowly now (every 500 messages by 5 %): a phrase you wrote
-  three times stays offered for over a month (at ~50 messages a day), even if you do not use it in between.
-- **Phrase memory:** a phrase you write again and again is offered whole – after "gute nacht " the grey rest
-  "bis morgen mit micro" appears, **Tab takes all of it**, → one word at a time, typing on ignores it. Only when every
-  word of the rest is sure on its own (seen 3+ times, 60 %+), at most 6 words, never going round in circles.
+
+**Kassiopeia** 🐢
+- The tool is dedicated to Kassiopeia, the tortoise from Michael Ende's *Momo* (see the README).
+- A new program icon as a first sketch: her shell seen from above is the icon's edge, glyphs glow on it. A finished
+  icon will follow.
 
 ## 0.8.2 — 2026-10-07
 

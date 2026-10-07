@@ -75,6 +75,12 @@ Pflicht. Bei 4K reicht fast der Rohtext.
    kurzes „Wusstest du?“ in der leeren Fensterfläche würde reichen.
 5. Das Menü bleibt bewusst wie es ist (Entscheidung 2026-10-07).
 
+## F – Symbol
+
+1. Das Programmsymbol ist eine erste Skizze (tools/make_icon.py): Kassiopeia eingezogen, der Panzer von oben ist der
+   Rand des Symbols, darauf glühen unlesbare Glyphen. Die Idee bleibt (Widmung an Kassiopeia, „ur-original“, nicht der
+   Film); das fertige Symbol wird später gezeichnet (Entscheidung 2026-10-07).
+
 ## E – Technik
 
 1. `main_window.cpp` hat ~3.700 Zeilen → aufteilen (Leser, Senden, Menü, Docking).

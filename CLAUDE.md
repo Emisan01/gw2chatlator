@@ -26,8 +26,9 @@ src/core  portable logic, NO windows.h  text, json, i18n (+ i18n_de / i18n_ar ta
                                         languagetool_protocol, gw2_install, housekeeping, deepl/mymemory/llm_protocol,
                                         cloud_mt_protocol (Google v2, Microsoft v3, LibreTranslate),
                                         translator.hpp
-res/      app.rc (icon id 1, manifest: common controls v6, version info), app.ico, app.manifest
-tools/    i18n_check.py (missing/unused translations)
+res/      app.rc (icon id 1, manifest: common controls v6, version info), app.ico (Kassiopeia sketch, drawn by
+          tools/make_icon.py – a placeholder, a finished icon will follow), app.manifest
+tools/    i18n_check.py (missing/unused translations), make_icon.py (draws app.ico; Pillow)
 ```
 
 - `core` must compile on Linux: `g++ -std=c++17 -I src tests/core_tests.cpp src/core/*.cpp` (run from the repo
