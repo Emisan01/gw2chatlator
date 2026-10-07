@@ -488,12 +488,28 @@ bool CreateDesktopShortcut(const std::wstring& exePath) { return CreateShortcutI
 
 bool CreateStartMenuShortcut(const std::wstring& exePath) { return CreateShortcutIn(FOLDERID_Programs, exePath); }
 
-void EnsureStartMenuShortcut(const std::wstring& exePath) {
+namespace {
+std::wstring StartMenuLink() {
     PWSTR base = nullptr;
-    if (FAILED(SHGetKnownFolderPath(FOLDERID_Programs, 0, nullptr, &base)) || !base) return;
+    if (FAILED(SHGetKnownFolderPath(FOLDERID_Programs, 0, nullptr, &base)) || !base) return {};
     const std::wstring link = std::wstring(base) + L"\\GW2 Chat Translator.lnk";
     CoTaskMemFree(base);
-    if (!Exists(link)) CreateStartMenuShortcut(exePath);
+    return link;
+}
+}  // namespace
+
+void EnsureStartMenuShortcut(const std::wstring& exePath) {
+    if (!StartMenuShortcutExists()) CreateStartMenuShortcut(exePath);
+}
+
+bool StartMenuShortcutExists() {
+    const std::wstring link = StartMenuLink();
+    return !link.empty() && Exists(link);
+}
+
+void RemoveStartMenuShortcut() {
+    const std::wstring link = StartMenuLink();
+    if (!link.empty()) DeleteFileW(link.c_str());  // only our own shortcut
 }
 
 std::wstring PickTextFile(void* owner, const std::wstring& title, bool save, const std::wstring& name) {

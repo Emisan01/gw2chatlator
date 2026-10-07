@@ -251,7 +251,7 @@ int MainWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
     CleanUpFiles();
     // The installed copy is always in the start menu, so it can never get lost (autostart and the desktop shortcut
     // are free choices). Autostart belongs to it too: an entry left pointing elsewhere (an old download folder) moves.
-    if (RunningInstalledCopy()) EnsureStartMenuShortcut(CurrentExePath());
+    if (RunningInstalledCopy() && cfg_.startMenu) EnsureStartMenuShortcut(CurrentExePath());
     if (RunningInstalledCopy() && !AutostartTarget().empty() &&  // also when the old exe is gone
         CompareStringOrdinal(AutostartTarget().c_str(), -1, CurrentExePath().c_str(), -1, TRUE) != CSTR_EQUAL)
         SetAutostart(true, CurrentExePath());

@@ -314,6 +314,7 @@ void Config::Load(const std::wstring& dir) {
     uiLangCode = ini.Str(L"General", L"UiLanguage", L"");
     uiLang = EffectiveUiLang(uiLangCode);
     setupDone = ini.Bool(L"General", L"SetupDone", false);
+    startMenu = ini.Bool(L"General", L"StartMenu", true);
     myMemoryNoticeShown = ini.Bool(L"Basic", L"NoticeShown", false);
     myMemoryDay = ini.Str(L"Basic", L"UsedDay", L"");
     myMemoryUsed = ini.Int(L"Basic", L"UsedChars", 0, 0, 10000000);
@@ -525,6 +526,7 @@ void Config::SaveAll() const {
     SaveValue(L"Reader", L"OcrZoom", std::to_wstring(ocrScale));
     SaveBool(L"Reader", L"SecondLook", secondLook);
     SaveValue(L"Spelling", L"WriteIn", writeIn);
+    SaveBool(L"General", L"StartMenu", startMenu);
     SaveValue(L"Chat", L"KeyHoldMs", std::to_wstring(send.keyHoldMs));
     SaveValue(L"Chat", L"StepDelayMs", std::to_wstring(send.stepDelayMs));
     SaveValue(L"Reader", L"TesseractPath", AsciiEscape(tesseractPath));

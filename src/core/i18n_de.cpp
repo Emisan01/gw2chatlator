@@ -251,6 +251,8 @@ extern const I18nEntry kGermanStrings[] = {
      L"Enter oder Klick in den Rahmen: übernehmen  ·  neu ziehen: korrigieren  ·  Esc: abbrechen"},
     {L"Enter sends",
      L"Enter sendet"},
+    {L"Entry in the start menu",
+     L"Eintrag im Startmenü"},
     {L"Esc: back to the game",
      L"Esc: zurück ins Spiel"},
     {L"European provider with a free experiment tier (limits per minute).",

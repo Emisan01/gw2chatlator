@@ -53,7 +53,7 @@ enum : int {
     // Translator
     kEngine, kEngineNote, kLocalModel, kPull, kLocalInfo, kGetOllama, kPullStatus, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
     kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
-    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare, kWriteIn, kLtProvider, kLtTest, kLtStatus,
+    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kStartMenu, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare, kWriteIn, kLtProvider, kLtTest, kLtStatus,
     // Game & start
     kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kStatus, kRefresh, kSetup,
     // Wizard
@@ -826,6 +826,8 @@ private:
         Label(InstallStatusText(), kLabelX + 250, Y(r++) - 2, kW - 290, 34, kInstallStatus);
         Check(kAutostart, Tr(L"Start with Windows (stays hidden until GW2 runs)"), IsAutostartEnabled(), kLabelX,
               Y(r++), kW - 50);
+        Check(kStartMenu, Tr(L"Entry in the start menu"), cfg_.startMenu && StartMenuShortcutExists(), kLabelX, Y(r++),
+              kW - 50);
         Check(kDock, Tr(L"Dock to the GW2 window (moves with it)"), cfg_.dock, kLabelX, Y(r++), kW - 50);
         Check(kFollow, Tr(L"Show and hide together with the game"), cfg_.followGame, kLabelX, Y(r++), kW - 50);
         Check(kFocusGameChat, Tr(L"Focus translator when in-game chat is opened"), cfg_.focusOnGameChat, kLabelX,
@@ -1605,6 +1607,9 @@ private:
         const bool autostart = Checked(kAutostart);
         if (autostart != IsAutostartEnabled() || (autostart && AutostartTarget() != CurrentExePath()))
             SetAutostart(autostart, CurrentExePath());
+        cfg_.startMenu = Checked(kStartMenu);
+        if (cfg_.startMenu) CreateStartMenuShortcut(CurrentExePath());
+        else RemoveStartMenuShortcut();
         cfg_.SaveAll();
     }
 
@@ -1653,12 +1658,13 @@ private:
         // Both free choices: an installed copy is always in the start menu, so the tool can never get lost.
         // Starting by hand is the default; autostart keeps it hidden in the background until GW2 appears.
         Check(kDesktop, Tr(L"Shortcut on the desktop"), true, 24, 206, kW - 48);
-        Check(kAutostart, Tr(L"Start with Windows and appear when GW2 runs"), false, 24, 234, kW - 48);
+        Check(kStartMenu, Tr(L"Entry in the start menu"), cfg_.startMenu, 24, 234, kW - 48);
+        Check(kAutostart, Tr(L"Start with Windows and appear when GW2 runs"), false, 24, 262, kW - 48);
         EndPages();
 
         // One page: the chat itself is found later, when it is open.
-        Button(kNext, Tr(L"Finish"), kW - 222, 276, 100);
-        Button(IDCANCEL, Tr(L"Close"), kW - 114, 276, 100);
+        Button(kNext, Tr(L"Finish"), kW - 222, 304, 100);
+        Button(IDCANCEL, Tr(L"Close"), kW - 114, 304, 100);
         SetText(kStepTitle, Tr(L"Setup – one step"));
         ShowPage(0);
     }
@@ -1671,6 +1677,7 @@ private:
         const std::wstring resolved = ResolveGw2Dir(rawDir);
         const std::wstring dir = resolved.empty() ? rawDir : resolved;
         if (!dir.empty()) cfg_.gw2Dir = dir;
+        cfg_.startMenu = Checked(kStartMenu);
         // Saved before installing: the installed copy takes this settings file along.
         cfg_.setupDone = true;
         cfg_.SaveAll();
@@ -1690,7 +1697,8 @@ private:
         }
         // Autostart and the shortcut always point to the copy that keeps running: the installed one.
         SetAutostart(Checked(kAutostart), exe);
-        if (Checked(kInstall)) CreateStartMenuShortcut(exe);  // always findable (start menu, Windows search)
+        if (Checked(kInstall) && Checked(kStartMenu)) CreateStartMenuShortcut(exe);  // start menu + Windows search
+        else if (!Checked(kStartMenu)) RemoveStartMenuShortcut();
         if (Checked(kDesktop)) CreateDesktopShortcut(exe);
         return true;
     }
@@ -1879,7 +1887,7 @@ DialogResult ShowSettingsDialog(HWND owner, HINSTANCE inst, Config& cfg, const D
 
 DialogResult ShowSetupWizard(HWND owner, HINSTANCE inst, Config& cfg, const DialogContext& ctx) {
     SetupWizard dlg(cfg, ctx);
-    dlg.Run(owner, inst, Tr(L"Setup") + L" – GW2 Chat Translator", 560, 314);
+    dlg.Run(owner, inst, Tr(L"Setup") + L" – GW2 Chat Translator", 560, 342);
     return dlg.result;
 }
 

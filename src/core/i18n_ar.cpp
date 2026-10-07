@@ -251,6 +251,8 @@ extern const I18nEntry kArabicStrings[] = {
      L"Enter أو نقرة داخل الإطار: اعتماد  ·  اسحب من جديد: تصحيح  ·  Esc: إلغاء"},
     {L"Enter sends",
      L"Enter يرسل"},
+    {L"Entry in the start menu",
+     L"إدخال في قائمة ابدأ"},
     {L"Esc: back to the game",
      L"Esc: العودة إلى اللعبة"},
     {L"European provider with a free experiment tier (limits per minute).",
