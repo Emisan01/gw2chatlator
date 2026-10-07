@@ -15,6 +15,8 @@ const WordSet& BuiltinSpellIgnore();
 
 // What the word bar offers before it has learned anything: GW2 words as
 // they are written (English and German forms), for completions only.
-const std::vector<std::wstring>& Gw2StarterWords();
+// GW2 words for the word bar, for the language you write in ("DE", "EN-GB"; other languages: only the terms
+// everyone uses; empty = all, for tests).
+const std::vector<std::wstring>& Gw2StarterWords(const std::wstring& lang = L"");
 
 }  // namespace gct

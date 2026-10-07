@@ -39,6 +39,7 @@ bool SpellService::Init(const std::vector<std::wstring>& tags, const std::wstrin
 void SpellService::UseLearnedLanguage(const std::wstring& primaryLang, const std::wstring& dir) {
     const std::wstring lang = ToLowerAscii(primaryLang.empty() ? std::wstring(L"xx") : primaryLang);
     const std::wstring path = dir + L"\\learned_" + lang + L".txt";
+    learnedLang_ = lang;
     layout_ = LayoutFor(GetKeyboardLayout(0));  // runs at start and on every layout switch
     neighbors_ = layout_.AsNeighbors();
     if (path == learnedPath_) return;
@@ -213,7 +214,7 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
     // Before much is learned: GW2 words fill the bar ("Teq" -> "Tequatl").
     if (words.size() < 3 && partial.size() >= 2) {
         const std::wstring p = WordKey(partial);
-        for (const std::wstring& w : Gw2StarterWords()) {
+        for (const std::wstring& w : Gw2StarterWords(learnedLang_)) {
             if (words.size() >= 3) break;
             const std::wstring k = WordKey(w);
             if (k.size() <= p.size() || k.compare(0, p.size(), p) != 0) continue;
@@ -282,7 +283,7 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
     const bool valid = IsKnown(typed) || (checker_.Ready() ? !CheckerRejects(typed) : model_.Knows(typed));
     std::vector<std::wstring> completions = model_.Complete(typed, prev, 3);
     const std::wstring p = WordKey(typed);
-    for (const std::wstring& w : Gw2StarterWords()) {
+    for (const std::wstring& w : Gw2StarterWords(learnedLang_)) {
         if (completions.size() >= 3) break;
         const std::wstring k = WordKey(w);
         if (k.size() > p.size() && k.compare(0, p.size(), p) == 0)

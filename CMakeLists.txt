@@ -118,7 +118,6 @@ if(WIN32)
         src/app/region_picker.cpp
         src/app/spell_service.cpp
         src/app/suggestion_bar.cpp
-        src/app/choice_popup.cpp
         src/app/settings_dialog.cpp
         src/app/config.cpp
         res/app.rc)

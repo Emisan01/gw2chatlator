@@ -36,6 +36,7 @@ constexpr UINT WM_APP_PULL = WM_APP + 52;
 constexpr UINT WM_APP_COMPARE = WM_APP + 53;
 constexpr UINT WM_APP_RAPID = WM_APP + 54;
 constexpr UINT WM_APP_OCRCMP = WM_APP + 55;
+constexpr UINT WM_APP_LTTEST = WM_APP + 56;
 constexpr wchar_t kTesseractUrl[] = L"https://github.com/UB-Mannheim/tesseract/wiki";
 
 enum : int {
@@ -52,7 +53,7 @@ enum : int {
     // Translator
     kEngine, kEngineNote, kLocalModel, kPull, kLocalInfo, kGetOllama, kPullStatus, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
     kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
-    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare,
+    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare, kWriteIn, kLtProvider, kLtTest, kLtStatus,
     // Game & start
     kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kStatus, kRefresh, kSetup,
     // Wizard
@@ -584,36 +585,75 @@ private:
     void BuildWriting() {
         BeginPage();
         int r = 0;
-        Check(kSpell, Tr(L"Spell checking (Windows, follows your keyboard language)"), cfg_.spellEnabled, kLabelX,
-              Y(r++), kW - 50);
-        Label(Tr(L"Autocorrection"), kLabelX, Y(r), kLabelW);
-        Combo(kAutoCorrect,
-              {Tr(L"Off"), Tr(L"Safe (only Windows' sure fixes)"), Tr(L"Like a phone keyboard (recommended)")},
-              static_cast<int>(cfg_.autoCorrect), kCtrlX, Y(r++), kCtrlW);
-        Check(kSuggest, Tr(L"Word bar with suggestions (Tab takes the highlighted word)"), cfg_.suggestions, kLabelX,
-              Y(r++), kW - 50);
+        // The language you type in: spelling, the word bar and what is learned all follow it.
+        Label(Tr(L"I write in"), kLabelX, Y(r), kLabelW);
+        {
+            std::vector<std::wstring> langs{Tr(L"Keyboard language (switches with it)")};
+            int sel = 0;
+            for (size_t i = 0; i < Languages().size(); ++i) {
+                langs.push_back(std::wstring(Languages()[i].native) + L"  (" + Languages()[i].code + L")");
+                if (!cfg_.writeIn.empty() && FindLanguage(cfg_.writeIn) == &Languages()[i]) sel = static_cast<int>(i) + 1;
+            }
+            Combo(kWriteIn, langs, sel, kCtrlX, Y(r++), kCtrlW);
+        }
+        Check(kSpell, Tr(L"Spell checking (Windows, offline)"), cfg_.spellEnabled, kLabelX, Y(r), 270);
+        Label(Tr(L"Autocorrection"), kLabelX + 280, Y(r), 100);
+        Combo(kAutoCorrect, {Tr(L"Off"), Tr(L"Safe"), Tr(L"Like a phone")}, static_cast<int>(cfg_.autoCorrect),
+              kLabelX + 380, Y(r++), kW - kLabelX - 400);
+        Check(kSuggest, Tr(L"Word suggestions: grey after the cursor – Space writes it, Tab shows the next"),
+              cfg_.suggestions, kLabelX, Y(r++), kW - 50);
         Check(kLearn, Tr(L"Learn the words I send"), cfg_.learnWords, kLabelX, Y(r), 260);
         Button(kForgetAll, Tr(L"Delete everything learned…"), kCtrlX + 80, Y(r++) - 2, 220);
-        // Own row: below the button it used to run into the next line.
         Label(Tr(L"Stays on this PC. Right-click a word to forget just that one."), kLabelX + 20, Y(r) - 8,
               kCtrlX + 50 - kLabelX, 34, kForgetStatus);
         Button(kMyWords, Tr(L"My words…"), kCtrlX + 80, Y(r++) - 6, 220);
-        Check(kLt, Tr(L"Grammar check with LanguageTool (online)"), cfg_.languageTool, kLabelX, Y(r++), kW - 50);
-        Label(Tr(L"LanguageTool server"), kLabelX, Y(r), kLabelW);
-        Edit(kLtUrl, cfg_.languageToolUrl, kCtrlX, Y(r++), kCtrlW);
-        Label(Tr(L"The public server allows 20 checks per minute; your own server has no limit."), kCtrlX, Y(r++) - 6,
-              kCtrlW, 30);
+        // Grammar: whole sentences, online (or your own server); blue marks with suggestions on right-click.
+        Label(Tr(L"Grammar check"), kLabelX, Y(r), kLabelW);
+        const bool publicLt = cfg_.languageToolUrl.find(L"api.languagetool.org") != std::wstring::npos;
+        Combo(kLtProvider,
+              {Tr(L"Off"), Tr(L"LanguageTool – free, no account (20 checks a minute)"),
+               Tr(L"Own LanguageTool server (free, no limit)")},
+              !cfg_.languageTool ? 0 : publicLt ? 1 : 2, kCtrlX, Y(r++), kCtrlW);
+        Edit(kLtUrl, cfg_.languageToolUrl, kCtrlX, Y(r) - 4, kCtrlW - 96);
+        Button(kLtTest, Tr(L"Test"), kCtrlX + kCtrlW - 90, Y(r++) - 5, 90);
+        Label(Tr(L"Checks the whole message after a short pause and marks mistakes blue (right-click: suggestions). "
+                 L"Separate from the word suggestions, which stay on this PC."),
+              kCtrlX, Y(r++) - 8, kCtrlW, 34, kLtStatus);
         Check(kBackTr, Tr(L"Show the back-translation of my message"), cfg_.backTranslate, kLabelX, Y(r++), kW - 50);
         Label(Tr(L"Enter does"), kLabelX, Y(r), kLabelW);
         Combo(kSendMode, {Tr(L"Send into the GW2 chat"), Tr(L"Only copy (not a single key reaches the game)")},
               cfg_.copyOnly ? 1 : 0, kCtrlX, Y(r++), kCtrlW);
         Check(kReturnFocus, Tr(L"Back to this window after sending"), cfg_.returnFocus, kLabelX, Y(r++), kW - 50);
-        // Correction memory (right-click a translated line → "Correct this translation").
+        // Correction memory (right-click a translated line -> "Correct this translation").
         Label(Tr(L"Corrected translations"), kLabelX, Y(r), kLabelW);
-        Label(ctx_.correctionsInfo ? ctx_.correctionsInfo() : L"", kCtrlX, Y(r++), kCtrlW, 18, kCorrInfo);
-        Button(kCorrExport, Tr(L"Export…"), kCtrlX, Y(r) - 4, 110);
-        Button(kCorrImport, Tr(L"Import…"), kCtrlX + 118, Y(r) - 4, 110);
-        Button(kCorrClear, Tr(L"Delete all…"), kCtrlX + 236, Y(r++) - 4, 120);
+        Label(ctx_.correctionsInfo ? ctx_.correctionsInfo() : L"", kCtrlX, Y(r) - 14, kCtrlW, 16, kCorrInfo);
+        Button(kCorrExport, Tr(L"Export…"), kCtrlX, Y(r) + 2, 110);
+        Button(kCorrImport, Tr(L"Import…"), kCtrlX + 118, Y(r) + 2, 110);
+        Button(kCorrClear, Tr(L"Delete all…"), kCtrlX + 236, Y(r++) + 2, 120);
+        UpdateLtFields();
+    }
+
+    // Grammar provider: the address follows the choice; your own server keeps what you typed.
+    void UpdateLtFields() {
+        const int p = Sel(kLtProvider);
+        EnableWindow(Item(kLtUrl), p == 2);
+        EnableWindow(Item(kLtTest), p != 0);
+        if (p == 1) SetText(kLtUrl, L"https://api.languagetool.org");
+        else if (p == 2 && Text(kLtUrl).find(L"api.languagetool.org") != std::wstring::npos)
+            SetText(kLtUrl, L"http://localhost:8010");
+    }
+
+    // One test sentence with a mistake: shows whether the server answers and finds it.
+    void TestLanguageTool() {
+        SetText(kLtStatus, Tr(L"Testing …"));
+        EnableWindow(Item(kLtTest), FALSE);
+        std::thread([h = hwnd_, url = Trim(Text(kLtUrl))] {
+            const LtResult r = CheckWithLanguageTool(url, L"This is a tset.", L"en-US", L"");
+            auto* text = new std::wstring(
+                r.ok ? TrF(L"[OK] Connected – found {1} mistake(s) in a test sentence.", {std::to_wstring(r.matches.size())})
+                     : TrF(L"[!] Not reachable: {1}", {r.error}));
+            if (!PostMessageW(h, WM_APP_LTTEST, 0, reinterpret_cast<LPARAM>(text))) delete text;
+        }).detach();
     }
 
     void BuildTranslator() {
@@ -638,10 +678,10 @@ private:
         // MyMemory
         group_ = &secBasic_;
         r = top;
-        Label(Tr(L"E-mail (optional)"), kLabelX, Y(r), kLabelW);
+        Label(Tr(L"Your e-mail (optional)"), kLabelX, Y(r), kLabelW);
         Edit(kEmail, cfg_.basicEmail, kCtrlX, Y(r++), kCtrlW);
-        Label(Tr(L"Without an account 5,000 characters a day. With your e-mail address 50,000 a day – no sign-up, "
-                 L"the address is only sent along with each request."),
+        Label(Tr(L"No registration: any address of yours works. Without it 5,000 characters a day, with it 50,000 – "
+                 L"MyMemory only uses it to count your contingent."),
               kCtrlX, Y(r++) - 6, kCtrlW, 44);
         Label(Tr(L"What MyMemory does: it translates the lines it gets and keeps them in its public translation "
                  L"memory. Your learned words stay on this PC. With another translator MyMemory is not used at all."),
@@ -990,6 +1030,12 @@ private:
                 break;
             case kRapidGet:
                 InstallRapid();
+                break;
+            case kLtProvider:
+                if (code == CBN_SELCHANGE) UpdateLtFields();
+                break;
+            case kLtTest:
+                TestLanguageTool();
                 break;
             case kHelpCapture:
                 MessageBoxW(hwnd_,
@@ -1393,6 +1439,12 @@ private:
             }
             return 0;
         }
+        if (msg == WM_APP_LTTEST) {
+            std::unique_ptr<std::wstring> text(reinterpret_cast<std::wstring*>(lp));
+            EnableWindow(Item(kLtTest), TRUE);
+            SetText(kLtStatus, *text);
+            return 0;
+        }
         if (msg == WM_APP_OCRCMP) {
             std::unique_ptr<std::wstring> text(reinterpret_cast<std::wstring*>(lp));
             EnableWindow(Item(kTechOcrCompare), TRUE);
@@ -1498,8 +1550,10 @@ private:
         if (Sel(kAutoCorrect) >= 0) c.autoCorrect = static_cast<AutoCorrectMode>(Sel(kAutoCorrect));
         c.suggestions = Checked(kSuggest);
         c.learnWords = Checked(kLearn);
-        c.languageTool = Checked(kLt);
+        c.languageTool = Sel(kLtProvider) > 0;
         if (!Trim(Text(kLtUrl)).empty()) c.languageToolUrl = Trim(Text(kLtUrl));
+        if (Sel(kWriteIn) >= 0)
+            c.writeIn = Sel(kWriteIn) == 0 ? L"" : Languages()[static_cast<size_t>(Sel(kWriteIn) - 1)].code;
         c.backTranslate = Checked(kBackTr);
         c.ocrScale = std::clamp(_wtoi(Text(kOcrZoom).c_str()), 0, 4);
         c.send.keyHoldMs = std::clamp(_wtoi(Text(kKeyHold).c_str()), 5, 500);

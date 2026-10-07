@@ -26,6 +26,15 @@ diagnosis show it.
   lines and side-by-side columns (sidebar, text, picture) become separate paragraphs; at least double enlargement for
   small app fonts; a paragraph that grows (someone types, text streams in) updates its entry instead of adding new
   ones, a slightly different reading of the same text is ignored.
+- **Word suggestions like Grammarly**: the likely word is written grey after the cursor and narrows with every
+  letter. Space writes it and goes on, Tab shows the next suggestion (Shift+Tab back), → at the end takes it
+  without a space, Esc hides it. The dropdown at the cursor is gone; the word bar above stays.
+- **"I write in"** (Settings → Writing): spelling, learned words and suggestions follow the language you type in
+  (default: the keyboard layout's). The GW2 starter words are split by language – no English suggestions while
+  writing German.
+- Grammar check: choice of provider (LanguageTool free without an account, or your own server), a "Test" button
+  that shows whether it is connected, and what it does (whole message, blue marks).
+- MyMemory e-mail: says clearly that any address of yours works, no registration.
 - **RapidOCR**, a third text recognition (open source: PaddleOCR models, Apache-2.0, on ONNX Runtime, MIT),
   running only on this PC. The Latin model (EN, DE, FR, ES, IT, PT, NL, PL, TR …) ships with the program; other
   scripts (Cyrillic, Arabic, Korean, Chinese/Japanese) are downloaded for your languages in Settings → Reading

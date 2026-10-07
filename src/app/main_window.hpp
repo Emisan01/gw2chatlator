@@ -130,6 +130,8 @@ private:
     void OpenWhisperTab(const std::wstring& name);
     void Retranslate(uint64_t id, const std::wstring& text);
     void ToggleReading();
+    // The language you type in: chosen in Settings -> Writing, else the keyboard layout's ("de-DE").
+    std::wstring TypingLocale() const;
     ReaderOptions MakeReaderOptions() const;
     // Settings -> Technical: one picture of the chat area through every text recognition, side by side.
     void CompareRecognition(HWND notify, UINT message);
