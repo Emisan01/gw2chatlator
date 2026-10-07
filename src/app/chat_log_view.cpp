@@ -295,8 +295,8 @@ void ChatLogView::Paint() {
     EndPaint(hwnd_, &ps);
 }
 
-// A name opens the whisper tab for that person; a line that was not
-// translated (language not recognized, skipped, failed) gets translated now.
+// A name opens the whisper tab for that person; a click on the text translates
+// the line (again): not translated yet, or the translation did not fit.
 void ChatLogView::OnClick(POINT client) {
     const POINT content{client.x, client.y + scroll_};
     for (const Row& row : rows_) {
@@ -315,9 +315,7 @@ void ChatLogView::OnClick(POINT client) {
         OfferLinks(e, screen);
         return;
     }
-    if (e.kind != ChatEntry::Kind::Incoming || e.state == ChatEntry::State::Translated ||
-        e.state == ChatEntry::State::Pending)
-        return;
+    if (e.kind != ChatEntry::Kind::Incoming || e.state == ChatEntry::State::Pending) return;
     if (cb_.onRetranslate) cb_.onRetranslate(e.id, e.original.empty() ? e.main : e.original);
 }
 
@@ -507,6 +505,13 @@ LRESULT ChatLogView::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             const POINT content{pt.x, pt.y + scroll_};
             for (const Row& row : rows_)
                 if (PtInRect(&row.name, content)) hand = true;  // a name: whisper tab
+            if (!hand) {  // the text of a message from someone: translate (again)
+                const int r = RowAt(pt.y);
+                if (r >= 0) {
+                    const ChatEntry& e = entries_[rows_[static_cast<size_t>(r)].index];
+                    hand = e.kind == ChatEntry::Kind::Incoming && e.state != ChatEntry::State::Pending;
+                }
+            }
             if (hand) {
                 SetCursor(LoadCursorW(nullptr, IDC_HAND));
                 return TRUE;

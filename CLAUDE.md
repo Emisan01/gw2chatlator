@@ -73,9 +73,9 @@ choices are learned when taken: `InputBox::ApplyChoice` / `AcceptSuggestion` →
 80 newest; offered, never learned – invariant 10), then `Gw2StarterWords`, then
 `CompleteFuzzy` = one typo in the prefix, neighbouring keys of the layout rank first; correction via
 `ChooseCorrection`, next word from word pairs) → `SuggestionBar` + grey rest of the completion after the caret
-(`InputBox::DrawGhost`; RTL letters: the EDIT reports their right edge, the ghost goes left of
-it; the sure next word `WordModel::NextSure` – 3+ seen, ≥60 % – is drawn by `DrawNextGhost` after a trailing space,
-Tab/→ take it, LTR only); `InputBox::TryAutoCorrect` on a word boundary (incl. Arabic ، ؟ ؛) and
+(`InputBox::DrawGhost`, Latin script only by the user's decision – no instant suggestion for
+Arabic/Cyrillic/CJK without a proven model; the sure next word `WordModel::NextSure` – 3+ seen, ≥60 % – is drawn by
+`DrawNextGhost` after a trailing space, Tab/→ take it); `InputBox::TryAutoCorrect` on a word boundary (incl. Arabic ، ؟ ؛) and
 `FinishWordAtCaret` on Enter (`AutoCorrectMode` Off/Safe/Phone); Backspace right after it → `UndoAutoCorrect` →
 `RejectCorrection`. Right-click a learned word (word bar or input) → `SpellService::Forget`; Settings → Writing →
 `ForgetAll` deletes every `learned_*.txt`. Word keys go through `WordKey` (case fold + Arabic variants أإآٱ→ا,
@@ -189,7 +189,7 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
   (`MainWindow::TypingLocale`) fixes the language of spelling, learned words and `Gw2StarterWords(lang)`. Slips: `SlipDistance` (key next door 0.5, swap 0.7),
   `HandShiftVariants` (whole hand one key off), `KeyLayout` from the active keyboard layout.
 - Log: names white, text in the channel colour; click a name → whisper tab for that player (`ChatTab::person`,
-  max `kMaxPersonTabs`); click an untranslated line → translated first; links (`FindLinks`) are never translated
+  max `kMaxPersonTabs`); click the text of a message → translated (again, also when it was translated); links (`FindLinks`) are never translated
   and open only after a yes (`OpenLinkAsking`, http/https only).
 - Settings → Translator: local models via Ollama (`LocalModelOffers`, `/api/pull`), with size and VRAM notes.
 - First start (0.6): one-page setup; no chat area is guessed. While `regionSet` is false, `PollGame` places the
