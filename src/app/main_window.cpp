@@ -505,6 +505,11 @@ void MainWindow::StartReader() {
     o.scale = cfg_.ocrScale;
     o.windowCapture = WindowCaptureAllowed();
     o.freeText = cfg_.freeArea;
+    o.secondLook = cfg_.secondLook;
+    // Dictionaries for the second look: the languages you read and write in (the OCR language is added).
+    o.wordLangs = cfg_.writeLangs;
+    o.wordLangs.insert(o.wordLangs.begin(), readLang_);
+    o.wordLangs.push_back(cfg_.chatLang);
     o.captureDir = cfg_.CaptureDir();
     reader_.SetSaveCaptures(cfg_.saveCaptures);
     reader_.Start(hwnd_, WM_APP_SNAPSHOT, o);
@@ -2043,6 +2048,8 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
     stats_.messages += built.size();
     stats_.dropped += built.size() - msgs.size();
     stats_.confirmed += fresh.size();
+    stats_.secondLooks += static_cast<uint64_t>(s->secondLooks);
+    stats_.secondFixes += static_cast<uint64_t>(s->secondFixes);
     if (stream_.HasPending()) SetTimer(hwnd_, kTimerConfirm, kConfirmDelayMs, nullptr);
     // The first picture shows the whole chat history: only the last few lines
     // are worth translating, the rest is old (all lines are remembered, so
@@ -2992,6 +2999,8 @@ std::wstring MainWindow::TechnicalStatus() {
              {std::to_wstring(stats_.translated), std::to_wstring(stats_.failed), num(stats_.avgTranslateMs),
               std::to_wstring(inQueue_.size()), std::to_wstring(inFlight_)}));
     if (const std::wstring q = MyMemoryQuotaText(); !q.empty()) line(L"  " + q);
+    line(TrF(L"  Second look: {1} unknown words read again, {2} corrected",
+             {std::to_wstring(stats_.secondLooks), std::to_wstring(stats_.secondFixes)}));
     line(TrF(L"  Learned words: {1}", {std::to_wstring(spell_.Model().Size())}));
     line(L"");
     line(Tr(L"Parameters (as in the settings file)"));
@@ -2999,7 +3008,7 @@ std::wstring MainWindow::TechnicalStatus() {
     for (const std::wstring& l : cfg_.understoodLangs) understood += (understood.empty() ? L"" : L",") + l;
     line(L"  [Reader] Enabled=" + std::to_wstring(cfg_.readerEnabled) + L"  IntervalMs=" +
          std::to_wstring(cfg_.readerIntervalMs) + L"  OcrEngine=" + OcrKey(cfg_.ocr) + L"  OcrZoom=" +
-         std::to_wstring(cfg_.ocrScale) + L"  Capture=" +
+         std::to_wstring(cfg_.ocrScale) + L"  SecondLook=" + std::to_wstring(cfg_.secondLook) + L"  Capture=" +
          (cfg_.captureMode == 1 ? L"window" : cfg_.captureMode == 2 ? L"screen" : L"auto") + L"  ConfirmMs=" +
          std::to_wstring(kConfirmDelayMs) + L"  ShowSystemLines=" + std::to_wstring(cfg_.showSystemLines));
     line(L"  [Reader] Region=" + std::to_wstring(cfg_.regionLeft) + L"," + std::to_wstring(cfg_.regionFromBottom) +
@@ -3160,7 +3169,8 @@ void MainWindow::ApplySettings(const Config& next) {
     if (prev.saveCaptures != cfg_.saveCaptures) SetSaveCaptures(cfg_.saveCaptures);
     if (prev.readerEnabled != cfg_.readerEnabled || prev.ocr != cfg_.ocr || prev.tesseractPath != cfg_.tesseractPath ||
         prev.readChinese != cfg_.readChinese || prev.readerIntervalMs != cfg_.readerIntervalMs ||
-        prev.captureMode != cfg_.captureMode || prev.ocrScale != cfg_.ocrScale)
+        prev.captureMode != cfg_.captureMode || prev.ocrScale != cfg_.ocrScale || prev.secondLook != cfg_.secondLook ||
+        prev.readLang != cfg_.readLang || prev.writeLangs != cfg_.writeLangs)
         RestartReader();
     if (prev.dock != cfg_.dock) SetDock(cfg_.dock);
     if (!cfg_.followGame && autoHidden_) {

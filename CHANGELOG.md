@@ -26,6 +26,9 @@ diagnosis show it.
   lines and side-by-side columns (sidebar, text, picture) become separate paragraphs; at least double enlargement for
   small app fonts; a paragraph that grows (someone types, text streams in) updates its entry instead of adding new
   ones, a slightly different reading of the same text is ignored.
+- **Second look** at words that make no sense: a word the dictionaries do not know is read once more, cut out and
+  enlarged more; the new reading is taken only if it is then a real word close to the first ("*ain" -> "main"),
+  otherwise the text stays as written (names, slang). Counters on the technical page; switch in Settings → Reading.
 - Setup: "Language of this window" offers the same full list as "Translate the chat into", both starting with
   "Windows language" (the window itself shows English, German or Arabic; other choices show English for now).
   New: shortcut on the desktop. The two text paragraphs are gone.

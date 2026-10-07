@@ -11,6 +11,8 @@
 #include <windows.h>
 #include <wincodec.h>
 
+#include "app/chat_reader.hpp"
+
 #include <algorithm>
 #include <chrono>
 #include <climits>
@@ -282,6 +284,33 @@ int wmain(int argc, wchar_t** argv) {
                 s.ms += ms;
                 ++s.n;
             }
+        }
+        // The app's own pipeline (ChatOcr, Windows OCR) without and with the second look at unknown words.
+        for (int look = 0; look < 2 && haveWin; ++look) {
+            ReaderOptions o;
+            o.ocrChoice = 2;
+            o.secondLook = look == 1;
+            o.wordLangs = {L"DE", L"EN-GB"};
+            ChatOcr co;
+            std::wstring e2;
+            if (!co.Init(o, &e2)) break;
+            std::vector<OcrLine> lines;
+            const auto t0 = std::chrono::steady_clock::now();
+            if (!co.Read(raw, 0, lines, nullptr, &e2)) break;
+            const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+            std::wstring all;
+            for (const OcrLine& l : lines) all += l.text + L"\n";
+            const double cer = Cer(truthText, all), parsed = Cer(truthParsed, Parsed(lines));
+            const std::string kind = look ? "2nd look" : "plain";
+            std::printf("%-28ls %-6s %-12s %6.1f %8.1f %7.0f  (second look: %d read again, %d taken)\n", name.c_str(),
+                        "app", kind.c_str(), cer, parsed, ms, co.SecondLooks(), co.SecondFixes());
+            if (GetEnvironmentVariableW(L"BENCH_DUMP", nullptr, 0) > 0)
+                std::printf("--- app %s:\n%s\n", kind.c_str(), ToUtf8(Parsed(lines)).c_str());
+            Score& s = total["app " + kind];
+            s.cer += cer;
+            s.parsedCer += parsed;
+            s.ms += ms;
+            ++s.n;
         }
     } while (FindNextFileW(h, &fd));
     FindClose(h);

@@ -10,6 +10,8 @@
 #include <windows.h>
 
 #include <condition_variable>
+#include <memory>
+#include <unordered_map>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -18,6 +20,7 @@
 #include "core/chat_line.hpp"
 #include "core/image.hpp"
 #include "win/ocr.hpp"
+#include "win/spellcheck.hpp"
 #include "win/tesseract_ocr.hpp"
 
 namespace gct {
@@ -32,6 +35,8 @@ struct ReaderOptions {
     int scale = 0;                // 0 = automatic from the line grid
     bool windowCapture = true;    // WGC allowed (else screen capture: no yellow frame on Windows 10)
     bool freeText = false;        // free screen area: keep the lines of the text recognition (columns stay apart)
+    bool secondLook = true;       // words the dictionary does not know are read once more, enlarged more
+    std::vector<std::wstring> wordLangs;  // dictionaries for that ("DE", "EN-GB"); the OCR language is added
     std::wstring captureDir;      // diagnostics target
 };
 
@@ -43,6 +48,8 @@ struct ReaderSnapshot {
     std::wstring engine;         // "Tesseract" / "Windows OCR"
     std::wstring language;       // OCR language tag(s)
     int milliseconds = 0;        // capture + OCR time
+    int secondLooks = 0;         // words read a second time in this picture
+    int secondFixes = 0;         // ... of which the second reading was taken
     ULONGLONG captureTick = 0;   // GetTickCount64() when the picture was taken
 };
 
@@ -57,6 +64,9 @@ public:
     bool Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, Image* prepared, std::wstring* error);
     std::wstring EngineName() const;
     std::wstring Language() const;
+    // Second look in the last picture: words read again / taken from the second reading.
+    int SecondLooks() const { return lastLooks_; }
+    int SecondFixes() const { return lastFixes_; }
 
     // Line spacing (px) below which "automatic" prefers Tesseract (if installed).
     static constexpr int kSmallTextPitch = 14;
@@ -68,6 +78,14 @@ private:
     bool haveTess_ = false, haveWin_ = false;
     bool useTess_ = false;  // the engine of the last picture
     bool keepEngineLines_ = false;  // free text: no regrouping by rows (it would merge side-by-side columns)
+
+    // Second look: dictionaries (Windows spell checker), answers cached per word, and per word in its line
+    // what the second look decided (the same line comes again in every picture: it is looked at once).
+    bool IsWord(const std::wstring& core);
+    std::vector<std::unique_ptr<SpellChecker>> checkers_;
+    std::unordered_map<std::wstring, bool> wordOk_;
+    std::unordered_map<std::wstring, std::wstring> decided_;
+    int lastLooks_ = 0, lastFixes_ = 0;
 };
 
 class ChatReader {

@@ -12,6 +12,7 @@
 #include "core/chat_tabs.hpp"
 #include "core/cloud_mt_protocol.hpp"
 #include "core/corrections.hpp"
+#include "core/second_look.hpp"
 #include "core/deepl_protocol.hpp"
 #include "core/gw2_text.hpp"
 #include "core/chat_geometry.hpp"
@@ -1290,6 +1291,24 @@ static void TestCorrections() {
     CHECK(d.Lines() == 0 && d.Phrases() == 0);
 }
 
+static void TestSecondLook() {
+    size_t at = 9;
+    CHECK(WordCore(L"(main),", &at) == L"main" && at == 1);
+    CHECK(WordCore(L"*ain") == L"ain");
+    // Worth checking: normal words; not numbers, abbreviations, links, other scripts, very short words.
+    CHECK(WorthSecondLook(L"uvjrde") && WorthSecondLook(L"Weltboss") && WorthSecondLook(L"Lion's"));
+    CHECK(!WorthSecondLook(L"LFG") && !WorthSecondLook(L"WvW") && !WorthSecondLook(L"lvl80"));
+    CHECK(!WorthSecondLook(L"ok") && !WorthSecondLook(L"gw2.com") && !WorthSecondLook(L"привет"));
+    // The second reading replaces only when close: one or two characters differ.
+    CHECK(PlausibleRereading(L"rnain", L"main"));
+    CHECK(PlausibleRereading(L"ain", L"main"));
+    CHECK(PlausibleRereading(L"uvjrde", L"würde"));
+    CHECK(!PlausibleRereading(L"main", L"main"));
+    CHECK(!PlausibleRereading(L"Main", L"main"));            // only the case: nothing to fix
+    CHECK(!PlausibleRereading(L"finds", L"Freunde"));        // another word altogether
+    CHECK(!PlausibleRereading(L"tbe", L"thy"));              // short word: one character only
+}
+
 static void TestFreeText() {
     auto line = [](const wchar_t* t, int top, int left = 10) {
         OcrLine l;
@@ -1331,6 +1350,7 @@ int main() {
     TestFreeText();
     TestCloudMt();
     TestCorrections();
+    TestSecondLook();
     TestText();
     TestChat();
     TestHotkey();

@@ -347,6 +347,7 @@ void Config::Load(const std::wstring& dir) {
 
     readerEnabled = ini.Bool(L"Reader", L"Enabled", true);
     readerIntervalMs = ini.Int(L"Reader", L"IntervalMs", 400, 150, 10000);
+    secondLook = ini.Bool(L"Reader", L"SecondLook", true);
     ocr = ParseOcr(ini.Str(L"Reader", L"OcrEngine", L"auto"));
     {
         const std::wstring c = ToLowerAscii(ini.Str(L"Reader", L"Capture", L"auto"));
@@ -517,6 +518,7 @@ void Config::SaveAll() const {
     SaveValue(L"Reader", L"OcrEngine", OcrKey(ocr));
     SaveValue(L"Reader", L"Capture", captureMode == 1 ? L"window" : captureMode == 2 ? L"screen" : L"auto");
     SaveValue(L"Reader", L"OcrZoom", std::to_wstring(ocrScale));
+    SaveBool(L"Reader", L"SecondLook", secondLook);
     SaveValue(L"Chat", L"KeyHoldMs", std::to_wstring(send.keyHoldMs));
     SaveValue(L"Chat", L"StepDelayMs", std::to_wstring(send.stepDelayMs));
     SaveValue(L"Reader", L"TesseractPath", AsciiEscape(tesseractPath));
