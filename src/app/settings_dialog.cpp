@@ -216,6 +216,19 @@ protected:
                      x, y, w, 260, id);
         for (const std::wstring& s : items) SendMessageW(c, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(s.c_str()));
         if (sel >= 0) SendMessageW(c, CB_SETCURSEL, static_cast<WPARAM>(sel), 0);
+        // The opened list is as wide as its longest entry: nothing is cut off there.
+        if (HDC dc = GetDC(c)) {
+            HGDIOBJ old = SelectObject(dc, font_);
+            int widest = 0;
+            for (const std::wstring& s : items) {
+                SIZE sz{};
+                GetTextExtentPoint32W(dc, s.c_str(), static_cast<int>(s.size()), &sz);
+                widest = std::max(widest, static_cast<int>(sz.cx));
+            }
+            SelectObject(dc, old);
+            ReleaseDC(c, dc);
+            SendMessageW(c, CB_SETDROPPEDWIDTH, static_cast<WPARAM>(widest + S(12) + GetSystemMetrics(SM_CXVSCROLL)), 0);
+        }
         return c;
     }
     HWND Item(int id) const { return GetDlgItem(hwnd_, id); }
@@ -545,7 +558,7 @@ private:
         // Reading on/off lives in the main window (dot in the header, first menu entry).
         Label(Tr(L"Text recognition"), kLabelX, Y(r), kLabelW);
         Combo(kOcrEngine,
-              {Tr(L"Automatic (Windows OCR; RapidOCR or Tesseract for small text)"), Tr(L"Tesseract (separate install)"),
+              {Tr(L"Automatic (Windows OCR; RapidOCR for small text)"), Tr(L"Tesseract (separate install)"),
                Tr(L"Windows OCR (built in, fast)"), Tr(L"RapidOCR (open source, best with small text)")},
               static_cast<int>(cfg_.ocr), kCtrlX, Y(r), kCtrlW - 30);
         Button(kHelpOcr, L"?", kCtrlX + kCtrlW - 24, Y(r++) - 1, 24);
@@ -558,8 +571,8 @@ private:
         Button(kHelpCapture, L"?", kCtrlX + kCtrlW - 24, Y(r++) - 1, 24);
         // Tesseract: an optional second recognition for small letters.
         Label(Tr(L"Tesseract (optional)"), kLabelX, Y(r), kLabelW);
-        Edit(kTessPath, cfg_.tesseractPath, kCtrlX, Y(r), kCtrlW - 96);
-        Button(kTessBrowse, Tr(L"Browse…"), kCtrlX + kCtrlW - 90, Y(r++) - 1, 90);
+        Edit(kTessPath, cfg_.tesseractPath, kCtrlX, Y(r), kCtrlW - 108);
+        Button(kTessBrowse, Tr(L"Browse…"), kCtrlX + kCtrlW - 102, Y(r++) - 1, 102);
         Label(TesseractStatus(cfg_.tesseractPath), kCtrlX, Y(r) - 4, kCtrlW - 150, 34, kTessStatus);
         Button(kTessGet, Tr(L"Get Tesseract…"), kCtrlX + kCtrlW - 140, Y(r++) - 4, 140);
         // RapidOCR: open-source models (PaddleOCR) that run on this PC; only the groups for your languages.
@@ -616,8 +629,7 @@ private:
               !cfg_.languageTool ? 0 : publicLt ? 1 : 2, kCtrlX, Y(r++), kCtrlW);
         Edit(kLtUrl, cfg_.languageToolUrl, kCtrlX, Y(r) - 4, kCtrlW - 96);
         Button(kLtTest, Tr(L"Test"), kCtrlX + kCtrlW - 90, Y(r++) - 5, 90);
-        Label(Tr(L"Checks the whole message after a short pause and marks mistakes blue (right-click: suggestions). "
-                 L"Separate from the word suggestions, which stay on this PC."),
+        Label(Tr(L"Checks the whole message after a pause and marks mistakes blue (right-click: suggestions)."),
               kCtrlX, Y(r++) - 8, kCtrlW, 34, kLtStatus);
         Check(kBackTr, Tr(L"Show the back-translation of my message"), cfg_.backTranslate, kLabelX, Y(r++), kW - 50);
         Label(Tr(L"Enter does"), kLabelX, Y(r), kLabelW);
@@ -749,7 +761,7 @@ private:
         Button(kLlmLoad, Tr(L"Load models"), kCtrlX + kCtrlW - 120, Y(r++) - 1, 120);
         Label(Tr(L"API key"), kLabelX, Y(r), kLabelW);
         Edit(kLlmKey, cfg_.llmKey, kCtrlX, Y(r++), kCtrlW, ES_PASSWORD);
-        Check(kFixOcr, Tr(L"The same model also repairs recognition errors in incoming lines"), cfg_.llmFixOcr,
+        Check(kFixOcr, Tr(L"The same model also repairs misread chat lines"), cfg_.llmFixOcr,
               kCtrlX, Y(r++), kCtrlW);
         Label(Tr(kLlmPresets[preset].note), kCtrlX, Y(r++) - 4, kCtrlW, 30, kLlmNote);
         // Local models, with an install button (only for the local provider).
@@ -761,7 +773,7 @@ private:
         Button(kPull, Tr(L"Install"), kCtrlX + kCtrlW - 120, Y(r++) - 1, 120);
         Label(Tr(LocalModelOffers()[0].summary), kCtrlX, Y(r++) - 4, kCtrlW, 30, kLocalInfo);
         Button(kGetOllama, Tr(L"Get Ollama (free)…"), kCtrlX, Y(r) - 2, 170);
-        Label(Tr(L"Runs the models; LM Studio works too (http://localhost:1234)."), kCtrlX + 180, Y(r++) - 2,
+        Label(Tr(L"Runs the models; LM Studio works too."), kCtrlX + 180, Y(r++) - 2,
               kCtrlW - 180, 30, kPullStatus);
         group_ = nullptr;
 
@@ -807,9 +819,9 @@ private:
         BeginPage();
         int r = 0;
         Label(Tr(L"Guild Wars 2 folder"), kLabelX, Y(r), kLabelW);
-        Edit(kGw2Dir, cfg_.gw2Dir.empty() ? FindGw2Dir() : cfg_.gw2Dir, kCtrlX, Y(r), kCtrlW - 160);
-        Button(kGw2Find, Tr(L"Find"), kCtrlX + kCtrlW - 154, Y(r) - 1, 70);
-        Button(kGw2Browse, Tr(L"Browse…"), kCtrlX + kCtrlW - 80, Y(r++) - 1, 80);
+        Edit(kGw2Dir, cfg_.gw2Dir.empty() ? FindGw2Dir() : cfg_.gw2Dir, kCtrlX, Y(r), kCtrlW - 182);
+        Button(kGw2Find, Tr(L"Find"), kCtrlX + kCtrlW - 176, Y(r) - 1, 70);
+        Button(kGw2Browse, Tr(L"Browse…"), kCtrlX + kCtrlW - 102, Y(r++) - 1, 102);
         Button(kInstall, Tr(L"Install into the GW2 folder"), kLabelX, Y(r), 220);
         Label(InstallStatusText(), kLabelX + 230, Y(r++) - 2, kW - 270, 34, kInstallStatus);
         Check(kAutostart, Tr(L"Start with Windows (stays hidden until GW2 runs)"), IsAutostartEnabled(), kLabelX,
@@ -854,18 +866,18 @@ private:
         Label(Tr(L"Enlargement for recognition"), kLabelX, Y(r), kLabelW);
         Edit(kOcrZoom, std::to_wstring(cfg_.ocrScale), kCtrlX, Y(r), 60, ES_NUMBER);
         Label(Tr(L"0 = automatic from the line spacing, 1–4 fixed"), kCtrlX + 70, Y(r++) + 4, kCtrlW - 70, 20);
-        Label(Tr(L"Key held when sending (ms)"), kLabelX, Y(r), kLabelW);
+        Label(Tr(L"Key held when sending (ms)"), kLabelX, Y(r), kCtrlX - kLabelX);
         Edit(kKeyHold, std::to_wstring(cfg_.send.keyHoldMs), kCtrlX, Y(r), 60, ES_NUMBER);
-        Label(Tr(L"raise it at low FPS if messages do not arrive"), kCtrlX + 70, Y(r++) + 4, kCtrlW - 70, 20);
+        Label(Tr(L"raise it at low FPS if messages go missing"), kCtrlX + 70, Y(r++) + 4, kCtrlW - 70, 20);
         Label(Tr(L"Pause between keys (ms)"), kLabelX, Y(r), kLabelW);
         Edit(kStepDelay, std::to_wstring(cfg_.send.stepDelayMs), kCtrlX, Y(r++), 60, ES_NUMBER);
         Add(L"EDIT", L"", ES_MULTILINE | ES_READONLY | WS_VSCROLL | WS_HSCROLL | ES_AUTOVSCROLL | ES_AUTOHSCROLL, kLabelX,
             Y(r) - 2, kW - 44, 250, kTechText, WS_EX_CLIENTEDGE);
         r += 8;
-        Button(kTechRefresh, Tr(L"Refresh"), kLabelX, Y(r), 100);
-        Button(kTechCopy, Tr(L"Copy diagnosis"), kLabelX + 108, Y(r), 140);
-        Button(kTechCompare, Tr(L"Compare translators"), kLabelX + 256, Y(r), 140);
-        Button(kTechOcrCompare, Tr(L"Compare recognition"), kLabelX + 402, Y(r), 130);
+        Button(kTechRefresh, Tr(L"Refresh"), kLabelX, Y(r), 92);
+        Button(kTechCopy, Tr(L"Copy diagnosis"), kLabelX + 98, Y(r), 136);
+        Button(kTechCompare, Tr(L"Compare translators"), kLabelX + 240, Y(r), 148);
+        Button(kTechOcrCompare, Tr(L"Compare recognition"), kLabelX + 394, Y(r), 148);
         Label(Tr(L"Numbers and settings only, no chat text."), kLabelX, Y(r) + 30, kW - 44, 20, kTechStatus);
         RefreshTechnical();
     }
@@ -1281,7 +1293,7 @@ private:
 
     std::wstring RapidStatus() const {
         if (!RapidRecognizer::RuntimeAvailable(nullptr))
-            return Tr(L"[--] Not available in this build (onnxruntime.dll missing next to the program).");
+            return Tr(L"[--] Not in this build (onnxruntime.dll missing).");
         std::wstring have, missing;
         int mb = 0;
         for (const std::wstring& id : RapidGroupsNeeded()) {
@@ -1647,8 +1659,8 @@ private:
         Combo(kReadLang, LanguageChoices(), LanguageChoiceOf(cfg_.readLang), 220, 96, 300);
         Label(Tr(L"Guild Wars 2 folder"), 24, 140, 190);
         const std::wstring found = cfg_.gw2Dir.empty() ? FindGw2Dir() : cfg_.gw2Dir;
-        Edit(kGw2Dir, found, 220, 140, 214);
-        Button(kGw2Browse, Tr(L"Browse…"), 440, 139, 80);
+        Edit(kGw2Dir, found, 220, 140, 196);
+        Button(kGw2Browse, Tr(L"Browse…"), 420, 139, 100);
         Check(kInstall, Tr(L"Install into the GW2 folder (addons\\GW2ChatTranslator)"), !found.empty(), 24, 178,
               kW - 48);
         Check(kDesktop, Tr(L"Shortcut on the desktop"), true, 24, 206, kW - 48);

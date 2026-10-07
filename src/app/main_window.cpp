@@ -1033,8 +1033,8 @@ std::wstring MainWindow::ReadingAdvice() const {
         return TrF(L"{1}: {2} → Windows OCR fits (about 0.1 s per picture). Tesseract only helps with very small "
                    L"text.",
                    {what, size});
-    return TrF(L"{1}: {2} → small letters possible. If words are misread, install RapidOCR (measured clearly more "
-               L"exact with small text; about 1 s for the first picture, then ~0.1 s) – or use a larger chat font in GW2.",
+    return TrF(L"{1}: {2} → small letters possible. RapidOCR reads small text clearly better – or use a larger "
+               L"chat font in GW2.",
                {what, size});
 }
 
