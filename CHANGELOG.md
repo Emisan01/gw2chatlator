@@ -26,6 +26,8 @@ diagnosis show it.
   lines and side-by-side columns (sidebar, text, picture) become separate paragraphs; at least double enlargement for
   small app fonts; a paragraph that grows (someone types, text streams in) updates its entry instead of adding new
   ones, a slightly different reading of the same text is ignored.
+- Settings: no text is cut off any more (all 480 texts measured in English, German and Arabic with the dialog
+  font); opened lists are as wide as their longest entry.
 - **Word suggestions like Grammarly**: the likely word is written grey after the cursor and narrows with every
   letter. Space writes it and goes on, Tab shows the next suggestion (Shift+Tab back), → at the end takes it
   without a space, Esc hides it. The dropdown at the cursor is gone; the word bar above stays.
