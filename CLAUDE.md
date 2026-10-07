@@ -101,10 +101,13 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
    dictionary, words you never used), 4+ letters, never all-caps, never a word you use, 1 edit up to 6
    letters / 2 above, same first letter (or first two swapped), single words only. Backspace undoes it.
 7. Docking keeps our window a separate top-level window. No owner/parent link to the game window.
-8. Installing only writes our own folder (`<GW2>\addons\GW2ChatTranslator`, fallback
-   `%LOCALAPPDATA%\Programs\GW2ChatTranslator`) and, if chosen, one `HKCU\...\Run` value and one desktop shortcut
-   ("GW2 Chat Translator.lnk"). No game file is
-   touched; the GW2 folder is found via registry/Steam/folders, never via the game process.
+8. Installing only writes our own folder (`%LOCALAPPDATA%\Programs\GW2ChatTranslator`; installs of 0.6 in
+   `<GW2>\addons\GW2ChatTranslator` are updated where they are) and, if chosen, one `HKCU\...\Run` value and one
+   desktop shortcut ("GW2 Chat Translator.lnk"). Run entry and shortcut always point to the installed copy. After the
+   setup the downloaded copy ends and the installed one starts (`RestartInto`); a downloaded exe started later hands
+   over to the installed copy (`HandOverToInstalledCopy` in main.cpp: newer version, or the same version built later →
+   asks to update, closes the running copy, `InstallTo`, starts it; otherwise it just starts it). `--portable` skips
+   that. No game file is touched; the GW2 folder is found via registry/Steam/folders, never via the game process.
 9. Files stay small: captures rotate (20 × 3 files), switch off after 15 minutes, are deleted after 3 days;
    stale `*.tmp` are removed on start; the word model is capped (20k words, 60k pairs).
 10. Privacy: pictures never leave the PC. The word model learns only from what the user sends, never from other

@@ -3,6 +3,14 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## Unreleased
+
+- **Installing like other programs:** the setup installs for your Windows user (`%LOCALAPPDATA%\Programs`, no admin
+  rights; ticked by default), then the downloaded copy ends and the installed one starts. Autostart and the desktop
+  shortcut always point to the installed copy, so settings and learned words never end up in the download folder.
+- **Updating:** start a newer downloaded version and it offers to update the installed copy (a running old copy is
+  closed; settings, learned words and corrections stay); the same or an older download simply starts the installed one.
+
 ## 0.7.0 — 2026-10-07
 
 - **Translate any screen area** (menu ≡): frame any text – a website, a document, another game – and everything in
