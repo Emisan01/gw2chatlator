@@ -1417,7 +1417,7 @@ static void TestWordModelWeights() {
     CHECK(f.Count(L"gamma") < before && f.Count(L"gamma") > 2.0);
     f.Learn(L"delta");
     f.Learn(L"delta");
-    for (int i = 0; i < 30; ++i) f.Decay();
+    for (int i = 0; i < 40; ++i) f.Decay();
     CHECK(f.Knows(L"delta"));                 // still known: never corrected away
     CHECK(f.Next(L"alpha", 3).empty());       // the old pair has faded
 }
