@@ -1,6 +1,8 @@
 // input_box.cpp
 #include "input_box.hpp"
 
+#include "app/modal_scope.hpp"
+
 #include <windowsx.h>
 
 #include <algorithm>
@@ -360,6 +362,7 @@ void InputBox::ReplaceRange(Span span, const std::wstring& text) {
 }
 
 bool InputBox::ShowSpellMenu(LPARAM lp) {
+    const ModalScope modal;
     if ((issues_.empty() && grammar_.empty()) || !spell_) return false;
     const std::wstring text = Text();
     POINT screen{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)};
@@ -455,6 +458,7 @@ bool InputBox::ShowSpellMenu(LPARAM lp) {
 // Right-click on a word you taught the tool (no spell mark there): forget it,
 // plus the usual clipboard commands the EDIT's own menu would have offered.
 bool InputBox::ShowWordMenu(LPARAM lp) {
+    const ModalScope modal;
     if (!spell_) return false;
     const std::wstring text = Text();
     POINT screen{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)};

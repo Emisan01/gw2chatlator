@@ -446,6 +446,41 @@ std::vector<ChatMessage> BuildFreeTextMessages(const std::vector<OcrLine>& lines
     return out;
 }
 
+bool LooksLikeFreeText(const std::wstring& text) {
+    size_t tokens = 0, clean = 0, words = 0;
+    size_t i = 0;
+    while (i < text.size()) {
+        while (i < text.size() && text[i] == L' ') ++i;
+        if (i >= text.size()) break;
+        size_t j = i;
+        while (j < text.size() && text[j] != L' ') ++j;
+        std::wstring t = text.substr(i, j - i);
+        i = j;
+        // Punctuation at the edges is normal: "(Hallo," "Welt!)".
+        size_t a = 0, b = t.size();
+        while (a < b && std::wcschr(L"([{\"'„“»«", t[a])) ++a;
+        while (b > a && std::wcschr(L".,!?:;)]}\"'“”«»…", t[b - 1])) --b;
+        const std::wstring core = t.substr(a, b - a);
+        ++tokens;
+        if (core.empty()) {
+            if (t == L"-" || t == L"–" || t == L"&" || t == L"+") ++clean;  // a dash between words
+            continue;
+        }
+        size_t letters = 0, digits = 0, odd = 0;
+        for (wchar_t c : core) {
+            if (c >= L'0' && c <= L'9') ++digits;
+            else if (IsWordChar(c)) ++letters;
+            else if (c != L'\'' && c != L'-' && c != L'/' && c != L'.' && c != L'@' && c != L':' && c != 0x2019) ++odd;
+        }
+        if (odd == 0 && (letters > 0 || digits > 0)) {
+            ++clean;
+            if (letters >= 2) ++words;
+        }
+    }
+    if (tokens == 0 || words == 0) return false;
+    return clean * 10 >= tokens * 7;  // at least 70 % clean tokens
+}
+
 bool SameFreeParagraph(const std::wstring& a, const std::wstring& b) {
     auto norm = [](const std::wstring& s) {
         std::wstring o;

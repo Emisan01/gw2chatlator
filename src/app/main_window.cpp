@@ -10,6 +10,7 @@
 #include <thread>
 
 #include "app/region_picker.hpp"
+#include "app/modal_scope.hpp"
 #include "app/settings_dialog.hpp"
 #include "core/chat_geometry.hpp"
 #include "core/deepl_protocol.hpp"
@@ -297,8 +298,8 @@ int MainWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
         hotkeyOk_ = RegisterHotKey(hwnd_, kHotkeyId, hk->mods | MOD_NOREPEAT, hk->vk) != FALSE;
 
     if (engine_ == Engine::Basic)
-        SetStatus(Tr(L"Translator: basic (MyMemory, free) \u00b7 best quality: DeepL key or a local LLM (\u2261 \u2192 "
-                     L"Settings)"),
+        SetStatus(Tr(L"Translator: MyMemory (free) \u00b7 better: Google, Microsoft, DeepL or an AI model (\u2261 \u2192 "
+                     L"Settings \u2192 Translator)"),
                   Tone::Muted, 9000);
     else
         SetStatus(TrF(L"Translator: {1}", {translator_->Name()}), Tone::Ok, 5000);
@@ -1225,6 +1226,7 @@ void MainWindow::ShowChannelMenu() {
 }
 
 void MainWindow::ShowMainMenu() {
+    const ModalScope modal;
     enum : UINT {
         kSetup = 1, kSettings, kRegion, kReader, kCover, kSystem, kCaptures, kResetColors, kBack, kCopyOnly, kSuggest,
         kLearn, kSpell, kLanguageTool, kDock, kFollow, kOpenDir, kOpenIni, kQuit, kGw2Chat, kFreeArea,
@@ -1490,6 +1492,7 @@ void MainWindow::ShowMyMemoryNotice() {
     if (cfg_.myMemoryNoticeShown || engine_ != Engine::Basic) return;
     cfg_.myMemoryNoticeShown = true;
     cfg_.SaveBool(L"Basic", L"NoticeShown", true);
+    const ModalScope modal;
     const int answer = MessageBoxW(
         hwnd_,
         Tr(L"Translating with MyMemory (free).\n\n"
@@ -2037,6 +2040,8 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
     // Taken while our own window may have covered the chat (moved, region
     // picker, capture exclusion just switched on): never read ourselves.
     if (s->captureTick && s->captureTick < ignoreSnapshotsBefore_) return;
+    // One of our dialogs, menus or message boxes may be in the picture.
+    if (ModalScope::MayShowOurWindow(s->captureTick ? s->captureTick : GetTickCount64())) return;
     if (!s->error.empty()) {
         if (readerError_ != s->error) {
             readerError_ = s->error;
@@ -2065,7 +2070,7 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
     std::vector<ChatMessage> built =
         cfg_.freeArea ? BuildFreeTextMessages(s->lines) : BuildMessages(s->lines, cfg_.palette);
     for (ChatMessage& m : built)
-        if (LooksLikeChatText(m.text)) msgs.push_back(std::move(m));
+        if (cfg_.freeArea ? LooksLikeFreeText(m.text) : LooksLikeChatText(m.text)) msgs.push_back(std::move(m));
     std::vector<ChatMessage> fresh = stream_.Feed(msgs, true);
     // For the technical page.
     if (!stats_.since) stats_.since = GetTickCount64();
@@ -2495,9 +2500,10 @@ void MainWindow::PollGame() {
     // text where the chat is (character name, level, map progress ...).
     const bool inMap = mumbleState_.inMap;
     // Free screen area: any text, also without GW2.
-    const bool canRead = cfg_.freeArea ? cfg_.readerEnabled && !moving_ && !picking_
-                                       : cfg_.readerEnabled && cfg_.regionSet && gw2_ && !IsIconic(gw2_) &&
-                                             (gameFront || ours) && !moving_ && inMap;
+    const bool canRead = ModalScope::Active() ? false  // one of our dialogs / menus is open
+                         : cfg_.freeArea      ? cfg_.readerEnabled && !moving_ && !picking_
+                                              : cfg_.readerEnabled && cfg_.regionSet && gw2_ && !IsIconic(gw2_) &&
+                                               (gameFront || ours) && !moving_ && inMap;
     if (inMap != wasInMap_) {
         wasInMap_ = inMap;
         UpdateHint();

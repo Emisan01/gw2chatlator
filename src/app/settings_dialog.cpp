@@ -11,6 +11,7 @@
 #include <thread>
 #include <vector>
 
+#include "app/modal_scope.hpp"
 #include "core/cloud_mt_protocol.hpp"
 #include "core/gw2_install.hpp"
 #include "core/langs.hpp"
@@ -101,6 +102,7 @@ public:
     }
 
     bool Run(HWND owner, HINSTANCE inst, const std::wstring& title, int w96, int h96) {
+        const ModalScope modal;  // the reader does not use pictures while this dialog is open
         owner_ = owner;
         inst_ = inst;
         static bool registered = false;
@@ -148,6 +150,8 @@ public:
         hwnd_ = CreateWindowExW(ex, kDialogClass, title.c_str(), WS_POPUP | WS_CAPTION | WS_SYSMENU, x, y, w, h, owner,
                                 nullptr, inst, this);
         if (!hwnd_) return false;
+        // Never in a screen capture: the free screen area or the chat may lie under it (invariant 5).
+        SetWindowDisplayAffinity(hwnd_, WDA_EXCLUDEFROMCAPTURE);
         Build();
         if (owner) EnableWindow(owner, FALSE);
         ShowWindow(hwnd_, SW_SHOW);

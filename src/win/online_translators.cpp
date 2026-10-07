@@ -66,7 +66,7 @@ public:
             }
             const MyMemoryParsed p = ParseMyMemoryResponse(http.body);
             if (!p.ok) {
-                r.error = p.quotaExceeded ? p.error + L" – " + Tr(L"add a DeepL key or an LLM in the settings") : p.error;
+                r.error = p.quotaExceeded ? p.error + L" – " + Tr(L"choose another translator in the settings (Google, Microsoft, DeepL, AI model)") : p.error;
                 r.quotaExceeded = p.quotaExceeded;
                 return r;
             }
