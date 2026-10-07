@@ -2332,7 +2332,7 @@ void MainWindow::HandleIncoming(const ChatMessage& m) {
     }
 
     if (!system && !m.speaker.empty()) speakers_.Add(m.speaker);
-    if (!system) NoteChatWords(m.speaker + L" " + m.text);  // completions: names and what is talked about
+    if (!system) NoteChatWords(m.speaker);  // completions: the names of the people in the chat
 
     ChatEntry e;
     e.kind = system ? ChatEntry::Kind::System : ChatEntry::Kind::Incoming;
@@ -2351,6 +2351,7 @@ void MainWindow::HandleIncoming(const ChatMessage& m) {
     const bool foreign = !system && NeedsTranslation(m.text, &detected) && !Understood(detected);
     const bool automatic = m.freeText || (cfg_.autoTranslate & ChannelBit(m.channel)) != 0;
     // "Show only translations": what is not foreign (your languages, unsure lines, system lines) does not appear.
+    if (!system && !foreign) NoteChatWords(m.text);  // your language: words you may answer with (foreign: its translation)
     if (!foreign && cfg_.onlyTranslations) return;
     if (foreign) {
         std::wstring cached;
@@ -2362,6 +2363,7 @@ void MainWindow::HandleIncoming(const ChatMessage& m) {
             if (NormalizeForCompare(cached) != NormalizeForCompare(m.text)) {
                 e.state = ChatEntry::State::Translated;
                 e.main = cached;
+                NoteChatWords(cached);
                 e.original = m.text;
             }
         } else if (!automatic) {
