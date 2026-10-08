@@ -3,6 +3,18 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## Unreleased
+
+- **Everyday words from the first letter, like a phone keyboard:** the typing help now also uses Windows' own word
+  prediction (the one of the touch keyboard, offline, for every installed input language): "Sch" offers "schon",
+  "schön"; after "wie" a "g" offers "geht's"; after "bin" "gl" offers "gleich". Your own words and names still come
+  first; from 4 letters a GW2 word wins ("Tequ" -> "Tequatl"). Space writes Windows' best guess only while what you
+  typed is not a word yet – still 0 surprises in `typing_bench`. Languages without the Windows input language
+  installed get no such suggestions (Windows Settings -> Time & language -> Language: add the language).
+- The grey suggestion shows before anything is learned (starter and chat words for clearly unfinished words).
+- Footer: "Write: <language>" (what is corrected and suggested) and "Send: <language>" always side by side.
+- `typing_bench --probe de-DE "Sch" "wie g"` prints what a fresh tool offers for these inputs.
+
 ## 0.9.1 — 2026-10-08
 
 - **The typing help, measured and tuned with a simulated player** (`tests/tools/typing_bench`: hundreds of typical

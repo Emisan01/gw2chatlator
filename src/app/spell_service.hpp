@@ -16,6 +16,7 @@
 #include "core/text.hpp"
 #include "core/word_model.hpp"
 #include "win/spellcheck.hpp"
+#include "win/text_prediction.hpp"
 
 namespace gct {
 
@@ -48,10 +49,7 @@ public:
     // Another language (the keyboard layout changed). False if Windows has
     // no checker for it — spelling is then off until the next switch, rather
     // than marking every word of a foreign language as wrong.
-    bool SwitchLanguage(const std::vector<std::wstring>& tags) {
-        ClearCache();
-        return checker_.Init(tags);
-    }
+    bool SwitchLanguage(const std::vector<std::wstring>& tags);
     const std::wstring& Tag() const { return checker_.Tag(); }
 
     void SetGameWords(WordSet words) { game_ = std::move(words); }
@@ -138,6 +136,17 @@ private:
     void SaveNames();
     bool learnChoices_ = true;
     void AddContextCompletions(const std::wstring& typed, std::vector<std::wstring>& out, size_t max) const;
+    // Windows' own word prediction (the touch keyboard's): the basic vocabulary of the language before anything is
+    // learned ("Sch" -> "schon", "schön"; after "wie": "g" -> "geht's"). Only words that start like `typed`.
+    TextPrediction predict_;
+    void InitPrediction(const std::vector<std::wstring>& tags);
+    std::vector<std::wstring> Predicted(const std::wstring& prev, const std::wstring& typed, size_t max) const;
+    bool PredictedExactly(const std::wstring& typed) const;
+    // Words nobody taught yet: Windows' everyday words and the GW2 starter list. From 4 letters on a GW2 word
+    // comes first ("Tequ" -> "Tequatl", not "Tequila"); before, the everyday words ("Sch" -> "schon").
+    // `firstPredicted` = the first entry is Windows' best guess.
+    std::vector<std::wstring> BaseCompletions(const std::wstring& prev, const std::wstring& typed, size_t max,
+                                              bool* firstPredicted) const;
 };
 
 }  // namespace gct

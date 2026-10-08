@@ -16,7 +16,8 @@ src/win   Windows services (no UI)      http (WinHTTP), deepl_translator, online
                                         ocr (Windows.Media.Ocr, raw WinRT ABI), tesseract_ocr (subprocess),
                                         screen_capture (DXGI + GDI), mumble_link, gw2_sender, gw2_api, spellcheck,
                                         gw2_locate (find GW2, install, autostart, add-on scan), folder_cleanup, files,
-                                        keyboard_layout (neighbouring keys of the active layout for the word bar)
+                                        keyboard_layout (neighbouring keys of the active layout for the word bar),
+                                        text_prediction (Windows' touch-keyboard word prediction, raw WinRT ABI)
 src/core  portable logic, NO windows.h  text, json, i18n (+ i18n_de / i18n_ar tables), hotkey, langs, languages,
                                         glyph_reader (the GW2 chat font, learned and read exactly),
                                         glossary, protect, slang (+ word-bar starter list), chat_line (OCR-tolerant
@@ -72,7 +73,10 @@ pair whose first word is `prev2prev`, sharing the 60k pair cap; `WordsBefore` g
 choices are learned when taken: `InputBox::ApplyChoice` / `AcceptSuggestion` → `SpellService::Chose` →
 `WordModel::Chose`, weight 1.0 deliberate (click, Tab to another) / 0.3 default, pair and triple ×2; off with Learn=0),
 (`MainWindow::NoteChatWords` → `SpellService::SetContext`: speakers, incoming text and its translation, 4+ letters,
-80 newest; offered, never learned – invariant 10), then `Gw2StarterWords`, then
+80 newest; offered, never learned – invariant 10), then `BaseCompletions` = Windows' prediction
+(`TextPrediction`, `Predicted`: word before + typed as context, only words starting like the typed part, small-written
+first – the list is full of first names; ~15 ms per new prefix, cached) and `Gw2StarterWords` (GW2 first from 4 letters
+typed), then
 `CompleteFuzzy` = one typo in the prefix, neighbouring keys of the layout rank first; correction via
 `ChooseCorrection`, next word from word pairs) → `SuggestionBar` + grey rest of the completion after the caret
 (`InputBox::DrawGhost`, Latin script only by the user's decision – no instant suggestion for

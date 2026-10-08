@@ -75,8 +75,9 @@ if(WIN32)
         src/win/folder_cleanup.cpp
         src/win/keyboard_layout.cpp
         src/win/secret.cpp
-        src/win/rapid_ocr.cpp)
-    target_link_libraries(gct_win PUBLIC gct_core winhttp ole32 user32 gdi32 d3d11 dxgi dwmapi shell32 advapi32 version uuid crypt32 bcrypt)
+        src/win/rapid_ocr.cpp
+        src/win/text_prediction.cpp)
+    target_link_libraries(gct_win PUBLIC gct_core winhttp ole32 user32 gdi32 d3d11 dxgi dwmapi shell32 advapi32 version uuid crypt32 bcrypt runtimeobject)
 
     # ---- RapidOCR (optional, open source): PaddleOCR recognition models on ONNX Runtime (MIT, Microsoft).
     # The runtime is downloaded at configure time (checksum checked) and loaded only when RapidOCR is used

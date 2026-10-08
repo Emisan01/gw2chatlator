@@ -52,7 +52,85 @@ bool SpellService::Init(const std::vector<std::wstring>& tags, const std::wstrin
     keep_ = BuiltinKeepWords();
     for (const auto& kv : names_) keep_.insert(L"=" + kv.second);  // exactly as taught: "Fallen", not "fallen"
     ClearCache();
+    InitPrediction(tags);
     return checker_.Init(tags);
+}
+
+bool SpellService::SwitchLanguage(const std::vector<std::wstring>& tags) {
+    ClearCache();
+    InitPrediction(tags);
+    return checker_.Init(tags);
+}
+
+void SpellService::InitPrediction(const std::vector<std::wstring>& tags) {
+    for (const std::wstring& t : tags)
+        if (predict_.Init(t)) return;
+    predict_.Init(L"");
+}
+
+// Windows' predictions for the word being typed, the word before as context ("wie g" -> "wie geht's"). They come
+// as phrases and also with near misses ("Sch" -> "ach", "DFB"): only the last word, and only when it starts like
+// `typed`. Case as typed at the start ("Sch" -> "Schon"), else as Windows writes it ("sch" -> "Schatz").
+std::vector<std::wstring> SpellService::Predicted(const std::wstring& prev, const std::wstring& typed,
+                                                  size_t max) const {
+    std::vector<std::wstring> out;
+    if (!predict_.Ready() || typed.empty() || HasDigit(typed)) return out;
+    const std::wstring p = WordKey(typed);
+    // Windows' list is full of first names ("dan" -> "Daniel", "Ka" -> "Karin"): words written small come first,
+    // capitalised ones (names, German nouns) after them.
+    std::vector<std::wstring> lower, capital;
+    auto take = [&](const std::vector<std::wstring>& cands) {
+        for (const std::wstring& c : cands) {
+            const size_t sp = c.find_last_of(L' ');
+            const std::wstring w = sp == std::wstring::npos ? c : c.substr(sp + 1);
+            const std::wstring k = WordKey(w);
+            if (k.size() <= p.size() || k.compare(0, p.size(), p) != 0 || HasDigit(w)) continue;
+            if (std::any_of(w.begin(), w.end(), [](wchar_t ch) { return !IsWordChar(ch) && ch != L'\''; })) continue;
+            auto same = [&](const std::wstring& x) { return WordKey(x) == k; };
+            if (std::any_of(lower.begin(), lower.end(), same) || std::any_of(capital.begin(), capital.end(), same))
+                continue;
+            (CaseFoldChar(w[0]) == w[0] ? lower : capital).push_back(w);
+        }
+    };
+    if (!prev.empty() && !HasDigit(prev)) take(predict_.Candidates(prev + L" " + typed));
+    if (lower.size() + capital.size() < max) take(predict_.Candidates(typed));
+    for (const auto* list : {&lower, &capital})
+        for (const std::wstring& w : *list)
+            if (out.size() < max) out.push_back(CaseFoldChar(typed[0]) != typed[0] ? MatchCase(typed, w) : w);
+    return out;
+}
+
+std::vector<std::wstring> SpellService::BaseCompletions(const std::wstring& prev, const std::wstring& typed,
+                                                        size_t max, bool* firstPredicted) const {
+    std::vector<std::wstring> starters;
+    if (typed.size() >= 2) {
+        const std::wstring p = WordKey(typed);
+        for (const std::wstring& w : Gw2StarterWords(learnedLang_)) {
+            if (starters.size() >= max) break;
+            const std::wstring k = WordKey(w);
+            if (k.size() > p.size() && k.compare(0, p.size(), p) == 0)
+                starters.push_back(CaseFoldChar(typed[0]) != typed[0] ? MatchCase(typed, w) : w);
+        }
+    }
+    const std::vector<std::wstring> predicted = Predicted(prev, typed, max);
+    const bool gw2First = typed.size() >= 4 && !starters.empty();
+    if (firstPredicted) *firstPredicted = !gw2First && !predicted.empty();
+    std::vector<std::wstring> out;
+    for (const auto* list : {gw2First ? &starters : &predicted, gw2First ? &predicted : &starters})
+        for (const std::wstring& w : *list)
+            if (out.size() < max &&
+                std::none_of(out.begin(), out.end(), [&](const std::wstring& x) { return WordKey(x) == WordKey(w); }))
+                out.push_back(w);
+    return out;
+}
+
+// Windows offers the typed word itself: it is a word (used where no dictionary is installed).
+bool SpellService::PredictedExactly(const std::wstring& typed) const {
+    if (!predict_.Ready() || typed.size() < 2) return false;
+    const std::wstring k = WordKey(typed);
+    for (const std::wstring& c : predict_.Candidates(typed))
+        if (WordKey(c) == k) return true;
+    return false;
 }
 
 void SpellService::SaveNames() {
@@ -341,17 +419,11 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
         if (words.size() < 3 && std::none_of(words.begin(), words.end(), [&](const std::wstring& x) { return WordKey(x) == WordKey(w); }))
             words.push_back(w);
     AddContextCompletions(partial, words, 3);  // what the chat is talking about right now
-    // Before much is learned: GW2 words fill the bar ("Teq" -> "Tequatl").
-    if (words.size() < 3 && partial.size() >= 2) {
-        const std::wstring p = WordKey(partial);
-        for (const std::wstring& w : Gw2StarterWords(learnedLang_)) {
-            if (words.size() >= 3) break;
-            const std::wstring k = WordKey(w);
-            if (k.size() <= p.size() || k.compare(0, p.size(), p) != 0) continue;
-            if (std::any_of(words.begin(), words.end(), [&](const std::wstring& x) { return WordKey(x) == k; })) continue;
-            words.push_back(CaseFoldChar(partial[0]) != partial[0] ? MatchCase(partial, w) : w);
-        }
-    }
+    // Before much is learned: the language's everyday words (Windows) and GW2 words ("Teq" -> "Tequatl").
+    if (words.size() < 3)
+        for (const std::wstring& w : BaseCompletions(prev, partial, 3, nullptr))
+            if (words.size() < 3 && std::none_of(words.begin(), words.end(), [&](const std::wstring& x) { return WordKey(x) == WordKey(w); }))
+                words.push_back(w);
     // Mid-word typo ("helo", "komt"): your own words that start like it with
     // one slip get the first, highlighted place, as on a phone keyboard.
     if (words.empty() && mode != AutoCorrectMode::Off) {
@@ -416,7 +488,7 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
     while (b > 0 && IsWordChar(text[b - 1])) --b;
     const std::wstring prev = text.substr(b, e - b);
 
-    const bool valid = IsValidWord(typed);
+    const bool valid = IsValidWord(typed) || (!checker_.Ready() && PredictedExactly(typed));
     std::wstring p1, p2;
     WordsBefore(text, start, &p1, &p2);
     // What Space may write without asking: your own words (learned, names) and clear slips on the keyboard. The
@@ -433,12 +505,20 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
     for (const std::wstring& w : completions)
         if (checker_.Ready() || (typed.size() >= 3 && w.size() >= typed.size() + 2)) strong.push_back(w);
     AddContextCompletions(typed, completions, 3);
-    const std::wstring p = WordKey(typed);
-    for (const std::wstring& w : Gw2StarterWords(learnedLang_)) {
-        if (completions.size() >= 3) break;
-        const std::wstring k = WordKey(w);
-        if (k.size() > p.size() && k.compare(0, p.size(), p) == 0)
-            completions.push_back(CaseFoldChar(typed[0]) != typed[0] ? MatchCase(typed, w) : w);
+    // The language's everyday words (Windows' prediction) and the GW2 starter list. Windows' best guess is written
+    // by Space while the typed part is not a word yet ("Sch" -> "schon"), the others wait for Tab.
+    if (completions.size() < 3) {
+        bool firstPredicted = false;
+        bool first = true;
+        for (const std::wstring& w : BaseCompletions(prev, typed, 3, &firstPredicted)) {
+            if (completions.size() >= 3) break;
+            if (std::any_of(completions.begin(), completions.end(), [&](const std::wstring& x) { return WordKey(x) == WordKey(w); }))
+                continue;
+            if (first && firstPredicted && !valid && typed.size() >= 2 && w.size() >= typed.size() + 2)
+                strong.push_back(w);
+            first = false;
+            completions.push_back(w);
+        }
     }
     // Words of the chat and the starter list: shown grey (Space writes them) only while the typed part is clearly
     // unfinished – not a word at all and the suggestion much longer ("Sch" -> "Schwarzzitadelle"). Without that, a
