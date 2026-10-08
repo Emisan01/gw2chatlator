@@ -3,7 +3,7 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## Unreleased
+## 0.9.1 — 2026-10-08
 
 - **The typing help, measured and tuned with a simulated player** (`tests/tools/typing_bench`: hundreds of typical
   chat messages typed letter by letter with the real logic and the Windows spell checker):
