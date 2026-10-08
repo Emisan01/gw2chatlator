@@ -95,6 +95,10 @@ size_t MangledStampAndTagLength(const std::wstring& s, Channel* channel);
 // optional guild tag, "Speaker: text". Lines without a speaker (system
 // messages, emotes, wrapped continuations) have an empty speaker.
 // `tagChannel` receives the channel from a tag, Unknown if none.
+// The shape of a timestamp (+ channel tag) however its characters were misread ("CO•.54JCWJ" = "[10:54][W]"):
+// its length, 0 if none; `channel` gets the tag's channel (Unknown without a tag).
+size_t StampShapeLength(const std::wstring& s, Channel* channel);
+
 ChatMessage ParseChatLine(const std::wstring& line, Channel* tagChannel = nullptr);
 
 // Where the GW2 chat is in a picture of the game's corner: several lines that

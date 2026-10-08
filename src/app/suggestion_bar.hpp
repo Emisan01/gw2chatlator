@@ -39,6 +39,18 @@ private:
     std::function<void(size_t)> onPick_;
     std::function<bool(const std::wstring&)> isLearned_;
     std::function<void(const std::wstring&)> onForget_;
+    std::function<std::wstring(const std::wstring&)> nameFor_;
+    std::function<void(const std::wstring&, bool)> setName_;
+
+public:
+    // Right-click also offers "is a name" / "is not a name": `nameFor` gives the taught name or "", `setName` sets it.
+    void SetNames(std::function<std::wstring(const std::wstring&)> nameFor,
+                  std::function<void(const std::wstring&, bool)> setName) {
+        nameFor_ = std::move(nameFor);
+        setName_ = std::move(setName);
+    }
+
+private:
     WordSuggestions s_;
     int hot_ = -1;
 };

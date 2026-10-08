@@ -1,5 +1,6 @@
 // gw2_sender.cpp — clipboard round-trip + key injection into the GW2 chat.
 #include "core/i18n.hpp"
+#include "core/text.hpp"
 #include "gw2_sender.hpp"
 
 #include <cstring>
@@ -126,6 +127,21 @@ void CtrlTap(WORD vk, int holdMs) {
     Send({Key(vk, true)});
     Sleep(holdMs);
     Send({Key(VK_CONTROL, true)});
+}
+
+// Characters typed as keys (a chat command), each held a few frames like every key we send.
+void TypeText(const std::wstring& s, int holdMs) {
+    for (wchar_t c : s) {
+        INPUT in{};
+        in.type = INPUT_KEYBOARD;
+        in.ki.wScan = c;
+        in.ki.dwFlags = KEYEVENTF_UNICODE;
+        SendInput(1, &in, sizeof(INPUT));
+        Sleep(holdMs);
+        in.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
+        SendInput(1, &in, sizeof(INPUT));
+        Sleep(holdMs);
+    }
 }
 
 bool AnyKeyHeld() {
@@ -271,6 +287,38 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
         WaitForTargetToDrain(gw2, 1000);
         if (!textbox(true, 600)) Sleep(opt.stepDelayMs);
         else Sleep(opt.keyHoldMs);  // the line is open; one more frame before typing into it
+    }
+
+    // A chat command ("/w Name, text", "/p text") is typed the way a person does it: GW2 only switches the channel
+    // when it sees the command typed – pasted, the whole line was sent as text. For a whisper the name is then the
+    // address (confirmed with Tab), and only the message is pasted.
+    std::wstring message = text;
+    if (!text.empty() && text[0] == L'/') {
+        const ChatSplit split = SplitChatCommand(text);
+        const size_t sp = text.find(L' ');
+        if (!split.prefix.empty() && sp != std::wstring::npos) {
+            const std::wstring command = text.substr(0, sp + 1);  // "/w "
+            std::wstring recipient = Trim(split.prefix.substr(command.size()));
+            if (!recipient.empty() && recipient.back() == L',') recipient.pop_back();
+            recipient = Trim(recipient);
+            if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – cancelled"));
+            TypeText(command, opt.keyHoldMs);
+            WaitForTargetToDrain(gw2, 1000);
+            Sleep(opt.stepDelayMs);
+            if (!recipient.empty()) {
+                if (GetForegroundWindow() != gw2 || !SetClipboardText(owner, recipient))
+                    return finish(Tr(L"Focus lost – cancelled"));
+                CtrlTap('V', opt.keyHoldMs);  // the address
+                WaitForTargetToDrain(gw2, 1000);
+                Sleep(opt.stepDelayMs);
+                if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – cancelled"));
+                Tap(VK_TAB, opt.keyHoldMs);  // confirm it: the cursor moves to the message
+                WaitForTargetToDrain(gw2, 1000);
+                Sleep(opt.stepDelayMs);
+            }
+            message = split.body;
+            if (!SetClipboardText(owner, message)) return finish(Tr(L"The clipboard is blocked"));
+        }
     }
 
     if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – cancelled"));

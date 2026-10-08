@@ -61,7 +61,8 @@ public:
     // Words and word pairs of a sent message (digits, chat codes, links and
     // one-letter words are skipped).
     void Learn(const std::wstring& text, double weight = 1.0);
-    void AddWord(const std::wstring& word, double weight);
+    // `countCase`: this use tells how you write the word (not the capital at the start of a message).
+    void AddWord(const std::wstring& word, double weight, bool countCase = true);
     // You took `word` from the suggestions after `prev2 prev`: the word, its pair and its triple get stronger, so it
     // ranks higher there next time (what you did not take falls back by itself).
     void Chose(const std::wstring& prev2, const std::wstring& prev, const std::wstring& word, double weight);
@@ -126,8 +127,9 @@ public:
 
 private:
     struct Word {
-        std::wstring form;  // as typed most recently
+        std::wstring form;  // how you write it most of the time ("fallen", "Tisch", "Lion's Arch")
         double count = 0;
+        double cap = 0, caseUses = 0;  // uses with a capital first letter / uses that tell the case
     };
     void AddPair(const std::wstring& prevKey, const std::wstring& nextKey, double weight);
     void Prune();

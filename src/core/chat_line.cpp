@@ -247,6 +247,48 @@ Channel TagLetter(wchar_t c) {
 
 }  // namespace
 
+size_t StampShapeLength(const std::wstring& s, Channel* channel) {
+    // The shape of "[hh:mm]" (+ "[W]"), whatever the recognition made of each character: bracket-like, 1-2 digit-like
+    // (O, D, I, l for 0 and 1), up to two separator marks (: ; . • lost or doubled), 2 digit-like, bracket-like, then
+    // optionally bracket-like + tag letter + bracket-like. "CO•.54JCWJ", "CD;56JCWJ", "CIIOOJCWJ", "CO•.50JCS)".
+    auto digitish = [](wchar_t c) { return IsDigit(c) || DigitLike(c) || c == L'D'; };
+    size_t i = 0;
+    if (i < s.size() && IsOpener(s[i])) ++i;
+    int real = 0, digits = 0;
+    const size_t h0 = i;
+    while (i < s.size() && i - h0 < 2 && digitish(s[i])) {
+        real += IsDigit(s[i]);
+        ++digits;
+        ++i;
+    }
+    if (digits == 0) return 0;
+    int seps = 0;
+    while (i < s.size() && seps < 2 && (TimestampSep(s[i]) || s[i] == L' ')) {
+        ++seps;
+        ++i;
+    }
+    for (int k = 0; k < 2; ++k) {
+        if (i >= s.size() || !digitish(s[i])) return 0;
+        real += IsDigit(s[i]);
+        ++digits;
+        ++i;
+    }
+    if (seps == 0 && digits < 4) return 0;  // "hhmm" only when all four are there
+    if (i >= s.size() || !IsCloser(s[i])) return 0;
+    ++i;
+    Channel ch = Channel::Unknown;
+    if (i + 2 < s.size() + 1 && i + 1 < s.size() && IsOpener(s[i]) && TagLetter(s[i + 1]) != Channel::Unknown &&
+        i + 2 < s.size() && IsCloser(s[i + 2])) {
+        ch = TagLetter(s[i + 1]);
+        i += 3;
+    }
+    if (i < s.size() && s[i] != L' ') return 0;
+    // Without a tag the time must be readable as one (two real digits); with the tag the shape alone is clear.
+    if (ch == Channel::Unknown && real < 2) return 0;
+    if (channel) *channel = ch;
+    return i;
+}
+
 size_t MangledStampAndTagLength(const std::wstring& s, Channel* channel) {
     // "117:46J[M]", "(17-46)(M)", "(17: 46)(M)", "(17-471(M)", "[17:48J1IWJ]", "10M]", "[(W]":
     // a timestamp whose brackets were misread, then a one-letter channel tag.
@@ -631,6 +673,18 @@ ChatMessage ParseChatLine(const std::wstring& line, Channel* tagChannel) {
             (t[0] == L']' || t[0] == L')' || t[0] == L'}' || t[0] == L'|' || t[0] == L'J')) {
             t = Trim(t.substr(2));
             continue;
+        }
+        if (!m.stamped && !sawTag && t[0] != L'[') {
+            Channel c = Channel::Unknown;
+            if (const size_t n = StampShapeLength(t, &c); n > 0) {
+                m.stamped = true;
+                if (c != Channel::Unknown) {
+                    tag = c;
+                    sawTag = true;
+                }
+                t = Trim(t.substr(n));
+                continue;
+            }
         }
         if (!m.stamped && !sawTag) {
             Channel c = Channel::Unknown;

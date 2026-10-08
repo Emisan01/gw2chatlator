@@ -1452,6 +1452,10 @@ static void TestGw2Abbreviations() {
     // Never marked as a spelling mistake.
     CHECK(IsKeepWord(BuiltinSpellIgnore(), L"mes") && IsKeepWord(BuiltinSpellIgnore(), L"AC"));
     CHECK(!IsKeepWord(BuiltinSpellIgnore(), L"ac"));
+    // A name the user taught: kept exactly as taught, the ordinary word is translated.
+    WordSet withName = BuiltinKeepWords();
+    withName.insert(L"=Fallen");
+    CHECK(IsKeepWord(withName, L"Fallen") && !IsKeepWord(withName, L"fallen"));
 }
 
 // A tiny invented font (5 x 7, drawn twice as large, bright on dark with a dark outline like GW2's chat): the glyph
@@ -1514,6 +1518,45 @@ static void TestGlyphReader() {
     CHECK(back.Parse(gr.Serialize()));
     CHECK(back.Read(FontRow(L"dab cab bc")).text == L"dab cab bc");
     CHECK(!back.Parse("glyphs 1\n"));  // an old or foreign file is refused
+}
+
+static void TestWordCase() {
+    // The way you write a word most of the time wins: one "Fallen" (a name) does not capitalise the verb.
+    WordModel m;
+    for (int i = 0; i < 3; ++i) m.Learn(L"ich bin fallen gelassen");
+    m.Learn(L"hi Fallen");
+    CHECK(m.Complete(L"fal", L"", 1) == std::vector<std::wstring>{L"fallen"});
+    // A noun you always write with a capital stays capital; the capital at the start of a message says nothing.
+    for (int i = 0; i < 3; ++i) m.Learn(L"der Tisch ist da");
+    m.Learn(L"tisch");
+    CHECK(m.Complete(L"tis", L"", 1) == std::vector<std::wstring>{L"Tisch"});
+    m.Learn(L"Gelassen bleiben");
+    CHECK(m.Complete(L"gel", L"", 1) == std::vector<std::wstring>{L"gelassen"});
+    // Saved and loaded: the counts of both spellings come along.
+    WordModel back;
+    back.Parse(m.Serialize());
+    CHECK(back.Complete(L"fal", L"", 1) == std::vector<std::wstring>{L"fallen"});
+    CHECK(back.Complete(L"tis", L"", 1) == std::vector<std::wstring>{L"Tisch"});
+}
+
+static void TestStampShape() {
+    // Timestamps the recognition mangled (seen in a real whisper chat), each the start of its own message.
+    Channel c = Channel::Unknown;
+    CHECK(StampShapeLength(L"CO•.54JCWJ An A Brave Knight: hope you are better", &c) == 10 && c == Channel::Whisper);
+    CHECK(StampShapeLength(L"CO:58JCWJ Von A Brave Knight: only those", &c) == 9 && c == Channel::Whisper);
+    CHECK(StampShapeLength(L"CD;56JCWJ An A Brave Knight: you will be here", &c) == 9);
+    CHECK(StampShapeLength(L"CIIOOJCWJ Von A Brave Knight: discord open", &c) == 9 && c == Channel::Whisper);
+    CHECK(StampShapeLength(L"CO•.50JCS) Gwyn: hi", &c) == 10 && c == Channel::Say);
+    CHECK(StampShapeLength(L"[11:05] Bedrohung entdeckt!", &c) == 7 && c == Channel::Unknown);
+    // Words are no timestamps.
+    CHECK(StampShapeLength(L"Cool idea", &c) == 0);
+    CHECK(StampShapeLength(L"Dodo is here", &c) == 0);
+    CHECK(StampShapeLength(L"ok test when?", &c) == 0);
+    // The parser takes the tag as the channel (the whisper prefix "Von" is removed later, in BuildMessages).
+    Channel tag = Channel::Unknown;
+    const ChatMessage m = ParseChatLine(L"CO:58JCWJ Von A Brave Knight: only those who face the fury", &tag);
+    CHECK(m.stamped && tag == Channel::Whisper && m.speaker == L"Von A Brave Knight" &&
+          m.text == L"only those who face the fury");
 }
 
 static void TestPhraseMemory() {
@@ -1677,6 +1720,8 @@ int main() {
     TestWordTriples();
     TestWordModelWeights();
     TestPhraseMemory();
+    TestStampShape();
+    TestWordCase();
     TestGlyphReader();
     TestGw2Abbreviations();
     TestRapidRec();

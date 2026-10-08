@@ -212,12 +212,27 @@ std::wstring MatchCase(const std::wstring& typed, const std::wstring& candidate)
 }
 
 // ---------------------------------------------------------------------------
-void WordModel::AddWord(const std::wstring& word, double weight) {
+void WordModel::AddWord(const std::wstring& word, double weight, bool countCase) {
     if (!Learnable(word)) return;
     const std::wstring key = WordKey(word);
     Word& w = words_[key];
-    w.form = word;  // Learn() passes the mid-sentence form for a message's first word
     w.count += weight;
+    // Only the first letter differs ("fallen" / "Fallen"): the way you write it most of the time wins – one name
+    // "Fallen" does not turn the verb "fallen" into a capital. Other spellings ("WvW", "Lion's Arch"): as written.
+    bool restLower = word.size() > 1;
+    for (size_t i = 1; i < word.size() && restLower; ++i) restLower = !IsUpper(word[i]);
+    if (restLower) {
+        if (countCase) {
+            w.caseUses += weight;
+            if (IsUpper(word[0])) w.cap += weight;
+        }
+        std::wstring form = word;
+        const bool capital = w.caseUses > 0 ? w.cap * 2 > w.caseUses : IsUpper(word[0]);
+        form[0] = capital ? static_cast<wchar_t>(std::towupper(form[0])) : CaseFoldChar(form[0]);
+        w.form = form;
+    } else {
+        w.form = word;
+    }
     dirty_ = true;
     if (words_.size() > kMaxWords) Prune();
 }
@@ -248,7 +263,7 @@ void WordModel::Learn(const std::wstring& text, double weight) {
             auto it = words_.find(key);
             form = it != words_.end() ? it->second.form : std::wstring(1, CaseFoldChar(w[0])) + w.substr(1);
         }
-        AddWord(form, weight);
+        AddWord(form, weight, i > 0);  // a message's first word: its capital says nothing
         const std::wstring key = WordKey(w);
         if (!prevKey.empty()) AddPair(prevKey, key, weight);
         if (!prev2Key.empty() && !prevKey.empty()) AddPair(prev2Key + L'\x1f' + prevKey, key, weight);  // a triple
@@ -260,8 +275,11 @@ void WordModel::Learn(const std::wstring& text, double weight) {
 
 void WordModel::Decay() {
     learnedSinceDecay_ = 0;
-    for (auto& [k, w] : words_)
+    for (auto& [k, w] : words_) {
         if (w.count > 2.0) w.count = 2.0 + (w.count - 2.0) * kDecay;  // a word you used stays known
+        w.cap *= kDecay;  // how you write it: the newer uses weigh more
+        w.caseUses *= kDecay;
+    }
     pairTotal_ = 0;
     for (auto pit = pairs_.begin(); pit != pairs_.end();) {
         for (auto it = pit->second.begin(); it != pit->second.end();) {
@@ -616,7 +634,9 @@ std::string WordModel::Serialize() const {
     std::vector<const std::pair<const std::wstring, Word>*> sorted;
     for (const auto& kv : words_) sorted.push_back(&kv);
     std::sort(sorted.begin(), sorted.end(), [](const auto* a, const auto* b) { return a->first < b->first; });
-    for (const auto* kv : sorted) out += "w\t" + ToUtf8(kv->second.form) + "\t" + num(kv->second.count) + "\n";
+    for (const auto* kv : sorted)
+        out += "w\t" + ToUtf8(kv->second.form) + "\t" + num(kv->second.count) + "\t" + num(kv->second.cap) + "\t" +
+               num(kv->second.caseUses) + "\n";
     std::vector<std::pair<std::wstring, std::wstring>> keys;
     for (const auto& [p, next] : pairs_)
         for (const auto& [k, c] : next) keys.push_back({p, k});
@@ -653,12 +673,19 @@ void WordModel::Parse(const std::string& utf8) {
                 return 0.0;
             }
         };
-        if (f[0] == "w" && f.size() == 3) {
+        if (f[0] == "w" && (f.size() == 3 || f.size() == 5)) {
             const std::wstring form = FromUtf8(f[1]);
             if (!Learnable(form)) continue;
             Word& w = words_[WordKey(form)];
             w.form = form;
             w.count += count(f[2]);
+            if (f.size() == 5) {
+                w.cap += count(f[3]);
+                w.caseUses += count(f[4]);
+            } else {  // older file: the stored form stands for every use
+                w.caseUses += count(f[2]);
+                if (IsUpper(form[0])) w.cap += count(f[2]);
+            }
         } else if (f[0] == "n" && f.size() == 4) {
             const double c = count(f[3]);
             if (c <= 0) continue;

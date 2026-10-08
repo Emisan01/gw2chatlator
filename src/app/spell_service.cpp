@@ -32,8 +32,55 @@ bool SpellService::Init(const std::vector<std::wstring>& tags, const std::wstrin
             if (!w.empty() && w[0] != L'#') user_.insert(CaseFold(w));
         }
     }
+    // Names you taught: my-names.txt next to your words, one per line, written as they should be.
+    const size_t slash = userPath_.find_last_of(L'\\');
+    namesPath_ = (slash == std::wstring::npos ? std::wstring() : userPath_.substr(0, slash + 1)) + L"my-names.txt";
+    names_.clear();
+    data.clear();
+    if (ReadFileBytes(namesPath_, data)) {
+        size_t pos = 0;
+        while (pos < data.size()) {
+            size_t eol = data.find('\n', pos);
+            if (eol == std::string::npos) eol = data.size();
+            std::wstring w = Trim(FromUtf8(data.substr(pos, eol - pos)));
+            pos = eol + 1;
+            if (!w.empty() && w[0] == 0xFEFF) w.erase(0, 1);
+            if (!w.empty() && w[0] != L'#') names_[CaseFold(w)] = w;
+        }
+    }
+    keep_ = BuiltinKeepWords();
+    for (const auto& kv : names_) keep_.insert(L"=" + kv.second);  // exactly as taught: "Fallen", not "fallen"
     ClearCache();
     return checker_.Init(tags);
+}
+
+void SpellService::SaveNames() {
+    keep_ = BuiltinKeepWords();
+    for (const auto& kv : names_) keep_.insert(L"=" + kv.second);  // exactly as taught: "Fallen", not "fallen"
+    std::vector<std::wstring> all;
+    for (const auto& kv : names_) all.push_back(kv.second);
+    std::sort(all.begin(), all.end());
+    std::string out = "# Names you taught – written exactly like this. One per line.\n";
+    for (const std::wstring& n : all) out += ToUtf8(n) + "\n";
+    WriteFileAtomic(namesPath_, out);
+}
+
+void SpellService::AddName(const std::wstring& name) {
+    const std::wstring n = Trim(name);
+    if (n.empty() || n.size() > 40) return;
+    names_[CaseFold(n)] = n;
+    SaveNames();
+}
+
+bool SpellService::RemoveName(const std::wstring& word) {
+    if (names_.erase(CaseFold(Trim(word))) == 0) return false;
+    SaveNames();
+    return true;
+}
+
+std::wstring SpellService::NameFor(const std::wstring& word) const {
+    const auto it = names_.find(CaseFold(word));
+    return it == names_.end() ? std::wstring() : it->second;
 }
 
 void SpellService::UseLearnedLanguage(const std::wstring& primaryLang, const std::wstring& dir) {
@@ -114,7 +161,7 @@ void SpellService::RejectCorrection(const std::wstring& original) {
 
 bool SpellService::IsKnown(const std::wstring& word) const {
     const std::wstring f = CaseFold(word);
-    return IsKeepWord(BuiltinSpellIgnore(), word) || game_.count(f) || user_.count(f) || session_.count(f) ||
+    return names_.count(f) || IsKeepWord(BuiltinSpellIgnore(), word) || game_.count(f) || user_.count(f) || session_.count(f) ||
            model_.Knows(word);
 }
 
@@ -265,7 +312,13 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
 
     std::wstring p1, p2;
     WordsBefore(text, start, &p1, &p2);
-    std::vector<std::wstring> words = model_.Complete(partial, prev, 3, p2);
+    std::vector<std::wstring> words;
+    for (const auto& [k, n] : names_)  // names you taught come first
+        if (words.size() < 3 && k.size() > WordKey(partial).size() && k.compare(0, WordKey(partial).size(), WordKey(partial)) == 0)
+            words.push_back(n);
+    for (const std::wstring& w : model_.Complete(partial, prev, 3, p2))
+        if (words.size() < 3 && std::none_of(words.begin(), words.end(), [&](const std::wstring& x) { return WordKey(x) == WordKey(w); }))
+            words.push_back(w);
     AddContextCompletions(partial, words, 3);  // what the chat is talking about right now
     // Before much is learned: GW2 words fill the bar ("Teq" -> "Tequatl").
     if (words.size() < 3 && partial.size() >= 2) {
@@ -328,6 +381,12 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
     const std::wstring typed = text.substr(start, caret - start);
     if (typed.size() < 2 || HasDigit(typed)) return c;
     c.replace = {start, caret - start};
+    // A name you taught: written the taught way with Space, the word as typed with Tab ("Fallen", then "fallen").
+    if (const std::wstring name = NameFor(typed); !name.empty() && name != typed) {
+        c.words = {name, typed};
+        c.highlight = 0;
+        return c;
+    }
 
     // The word before (for completions that usually follow it).
     size_t e = start;
@@ -339,7 +398,11 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
     const bool valid = IsKnown(typed) || (checker_.Ready() ? !CheckerRejects(typed) : model_.Knows(typed));
     std::wstring p1, p2;
     WordsBefore(text, start, &p1, &p2);
-    std::vector<std::wstring> completions = model_.Complete(typed, prev, 3, p2);
+    std::vector<std::wstring> completions;
+    for (const auto& [k, n] : names_)  // names you taught come first ("Fal" -> "Fallen")
+        if (k.size() > WordKey(typed).size() && k.compare(0, WordKey(typed).size(), WordKey(typed)) == 0)
+            completions.push_back(n);
+    for (const std::wstring& w : model_.Complete(typed, prev, 3, p2)) completions.push_back(w);
     AddContextCompletions(typed, completions, 3);
     const std::wstring p = WordKey(typed);
     for (const std::wstring& w : Gw2StarterWords(learnedLang_)) {

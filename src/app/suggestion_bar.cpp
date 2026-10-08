@@ -1,6 +1,7 @@
 // suggestion_bar.cpp
 #include "suggestion_bar.hpp"
 
+#include <cwctype>
 #include <windowsx.h>
 
 #include <algorithm>
@@ -136,18 +137,28 @@ LRESULT SuggestionBar::Handle(UINT msg, WPARAM wp, LPARAM lp) {
         }
         case WM_RBUTTONUP: {
             const int slot = SlotAt(GET_X_LPARAM(lp));
-            if (slot < 0 || !onForget_) return 0;
+            if (slot < 0) return 0;
             const std::wstring word = s_.words[static_cast<size_t>(slot)];
-            if (isLearned_ && !isLearned_(word)) return 0;
+            const bool learned = onForget_ && (!isLearned_ || isLearned_(word));
+            const std::wstring name = nameFor_ ? nameFor_(word) : std::wstring();
+            std::wstring nameForm = word;
+            if (!nameForm.empty()) nameForm[0] = static_cast<wchar_t>(std::towupper(nameForm[0]));
+            if (!learned && !setName_) return 0;
             POINT pt{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)};
             ClientToScreen(hwnd_, &pt);
             HMENU menu = CreatePopupMenu();
-            AppendMenuW(menu, MF_STRING, 1, TrF(L"Forget “{1}”", {word}).c_str());
+            if (setName_) {
+                if (!name.empty()) AppendMenuW(menu, MF_STRING, 2, TrF(L"“{1}” is not a name", {name}).c_str());
+                else AppendMenuW(menu, MF_STRING, 3, TrF(L"“{1}” is a name (always written like this)", {nameForm}).c_str());
+            }
+            if (learned) AppendMenuW(menu, MF_STRING, 1, TrF(L"Forget “{1}”", {word}).c_str());
             const UINT cmd = static_cast<UINT>(TrackPopupMenu(
                 menu, TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_NONOTIFY | (UiRtl() ? TPM_LAYOUTRTL : 0), pt.x, pt.y, 0,
                 hwnd_, nullptr));
             DestroyMenu(menu);
             if (cmd == 1) onForget_(word);
+            else if (cmd == 2) setName_(word, false);
+            else if (cmd == 3) setName_(nameForm, true);
             return 0;
         }
         case WM_NCDESTROY:

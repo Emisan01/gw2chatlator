@@ -368,7 +368,7 @@ InstallResult InstallTo(const std::wstring& targetDir) {
         return r;
     }
     // Take the settings and your words along, but never overwrite files already there.
-    for (const wchar_t* name : {kIniName, L"my-gw2-words.txt", L"gw2-woerter.txt", L"my-words.txt", L"ocr-fixes.txt",
+    for (const wchar_t* name : {kIniName, L"my-gw2-words.txt", L"gw2-woerter.txt", L"my-words.txt", L"my-names.txt", L"ocr-fixes.txt",
                                 L"corrections.txt"}) {
         const std::wstring from = JoinPath(selfDir, name), to = JoinPath(targetDir, name);
         if (Exists(from) && !Exists(to)) CopyFileW(from.c_str(), to.c_str(), TRUE);

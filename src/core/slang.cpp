@@ -124,7 +124,8 @@ bool LooksLikeAbbreviation(const std::wstring& word) {
 
 bool IsKeepWord(const WordSet& keep, const std::wstring& word) {
     const std::wstring f = CaseFold(word);
-    return keep.count(f) > 0 || (keep.count(L"^" + f) > 0 && LooksLikeAbbreviation(word));
+    return keep.count(f) > 0 || (keep.count(L"^" + f) > 0 && LooksLikeAbbreviation(word)) ||
+           keep.count(L"=" + word) > 0;  // a name taught by the user: kept only exactly as taught
 }
 
 const std::vector<std::wstring>& Gw2StarterWords(const std::wstring& lang) {
