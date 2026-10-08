@@ -1356,6 +1356,7 @@ void MainWindow::ShowWriteMenu() {
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     for (size_t i = 0; i < writeLangs_.size(); ++i) {
         const LangInfo* l = FindLanguage(writeLangs_[i]);
+        if (l && !l->latinScript && i != writeIdx_) continue;  // the GW2 chat cannot show this script
         const std::wstring label = l ? LangMenuLabel(*l) : writeLangs_[i];
         AppendMenuW(menu, MF_STRING | (i == writeIdx_ ? MF_CHECKED : 0), kCmdFavBase + i, label.c_str());
     }
@@ -1364,9 +1365,11 @@ void MainWindow::ShowWriteMenu() {
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     HMENU more = CreatePopupMenu();
     const auto& langs = Languages();
-    for (size_t i = 0; i < langs.size(); ++i) {
+    for (size_t i = 0, shown = 0; i < langs.size(); ++i) {
+        if (!langs[i].latinScript) continue;  // only what the GW2 chat can show
         UINT flags = MF_STRING;
-        if (i > 0 && i % 20 == 0) flags |= MF_MENUBARBREAK;
+        if (shown > 0 && shown % 20 == 0) flags |= MF_MENUBARBREAK;
+        ++shown;
         AppendMenuW(more, flags, kCmdMoreBase + i, LangMenuLabel(langs[i]).c_str());
     }
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(more), Tr(L"More languages").c_str());
