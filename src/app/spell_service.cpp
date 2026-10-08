@@ -440,6 +440,14 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
         if (k.size() > p.size() && k.compare(0, p.size(), p) == 0)
             completions.push_back(CaseFoldChar(typed[0]) != typed[0] ? MatchCase(typed, w) : w);
     }
+    // Words of the chat and the starter list: shown grey (Space writes them) only while the typed part is clearly
+    // unfinished – not a word at all and the suggestion much longer ("Sch" -> "Schwarzzitadelle"). Without that, a
+    // fresh tool showed no grey word at all; "use" -> "User" (+1) stays a Tab offer.
+    // Without a dictionary "not a word" is only a guess ("an", "break" may be finished): from 3 letters, +4.
+    const size_t minTyped = checker_.Ready() ? 2 : 3, minMore = checker_.Ready() ? 3 : 4;
+    if (!valid && typed.size() >= minTyped)
+        for (const std::wstring& w : completions)
+            if (w.size() >= typed.size() + minMore && w.find(L' ') == std::wstring::npos) strong.push_back(w);
     std::vector<std::wstring> fixes;
     if (!valid && typed.size() >= 3) {
         // The whole hand one key off: the strongest hint there is.
