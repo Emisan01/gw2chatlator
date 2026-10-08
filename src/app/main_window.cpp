@@ -653,9 +653,54 @@ std::wstring MainWindow::ChannelChipText() const {
 }
 
 std::wstring MainWindow::WriteChipText() const {
-    if (WriteOriginal()) return Tr(L"Original");
+    if (WriteOriginal()) return Tr(L"Send: original (only corrected)");
     const LangInfo* l = FindLanguage(WriteLang());
-    return L"\u2192 " + (l ? std::wstring(l->native) : WriteLang());
+    return TrF(L"Send: {1}", {l ? std::wstring(l->native) : WriteLang()});
+}
+
+std::wstring MainWindow::TypeChipText() const {
+    const LangInfo* l = FindLanguage(TypingLocale());
+    if (!l) l = FindLanguage(PrimaryLang(TypingLocale()));
+    return TrF(L"Write: {1}", {l ? std::wstring(l->native) : TypingLocale()});
+}
+
+// The language you type in: only this text is corrected and suggested (and learned); what is sent is translated from it.
+void MainWindow::ShowTypeLangMenu() {
+    const ModalScope modal;
+    HMENU menu = CreatePopupMenu();
+    AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, Tr(L"I write in:").c_str());
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(menu, MF_STRING | (cfg_.writeIn.empty() ? MF_CHECKED : 0), kCmdLangBase - 1,
+                Tr(L"Keyboard language (switches with it)").c_str());
+    const auto& langs = Languages();
+    for (size_t i = 0; i < langs.size(); ++i) {
+        UINT flags = MF_STRING;
+        if (!cfg_.writeIn.empty() && FindLanguage(cfg_.writeIn) == &langs[i]) flags |= MF_CHECKED;
+        if (i > 0 && i % 20 == 0) flags |= MF_MENUBARBREAK;
+        AppendMenuW(menu, flags, kCmdLangBase + i, LangMenuLabel(langs[i]).c_str());
+    }
+    POINT pt{typeRect_.left, typeRect_.top};
+    ClientToScreen(hwnd_, &pt);
+    const UINT cmd = static_cast<UINT>(TrackPopupMenu(menu, MenuFlags(TPM_RETURNCMD | TPM_NONOTIFY | TPM_BOTTOMALIGN),
+                                                      pt.x, pt.y, 0, hwnd_, nullptr));
+    DestroyMenu(menu);
+    if (cmd == kCmdLangBase - 1 || (cmd >= kCmdLangBase && cmd - kCmdLangBase < langs.size())) {
+        cfg_.writeIn = cmd == kCmdLangBase - 1 ? std::wstring() : std::wstring(langs[cmd - kCmdLangBase].code);
+        cfg_.SaveValue(L"Spelling", L"WriteIn", cfg_.writeIn);
+        ApplyTypingLanguage();
+        InvalidateChrome();
+    }
+    SetFocus(input_.Hwnd());
+}
+
+void MainWindow::ApplyTypingLanguage() {
+    const std::wstring typing = TypingLocale();
+    if (cfg_.spellEnabled) {
+        spell_.SwitchLanguage(SpellTagCandidates(PrimaryLang(typing), typing));
+        input_.RecheckSpelling();
+    }
+    spell_.UseLearnedLanguage(PrimaryLang(typing), cfg_.LearnedDir());
+    input_.RefreshSuggestions();
 }
 
 void MainWindow::Paint() {
@@ -756,19 +801,17 @@ void MainWindow::Paint() {
     if (collapsed_) {
         channelRect_ = {};
         writeRect_ = {};
+        typeRect_ = {};
     } else {
         const int fy0 = rc.bottom - m.foot + t.S(4), fy1 = rc.bottom - t.S(4);
         const Channel chipChannel = SendChannel();
         channelRect_ = DrawChip(dc, t, m.pad, fy0, fy1, ChannelChipText(),
                                 ChannelColorRef(cfg_.palette, chipChannel, Theme::kText), false);
-        writeRect_ = DrawChip(dc, t, channelRect_.right + t.S(6), fy0, fy1, WriteChipText(),
+        // You write in one language (only that is corrected and suggested), the chat gets another.
+        typeRect_ = DrawChip(dc, t, channelRect_.right + t.S(6), fy0, fy1, TypeChipText(), Theme::kText, false);
+        writeRect_ = DrawChip(dc, t, typeRect_.right + t.S(6), fy0, fy1, WriteChipText(),
                               WriteOriginal() ? Theme::kMuted : Theme::kAccent, false);
         chatRect_ = {};
-        if (WriteNeedsChatLang()) {  // second drop-down: the language that goes into the GW2 chat
-            const LangInfo* cl = FindLanguage(chatLang_);
-            chatRect_ = DrawChip(dc, t, writeRect_.right + t.S(6), fy0, fy1,
-                                 TrF(L"Chat: {1}", {cl ? std::wstring(cl->native) : chatLang_}), Theme::kText, false);
-        }
 
         std::wstring counter;
         COLORREF counterColor = Theme::kMuted;
@@ -824,7 +867,7 @@ void MainWindow::Paint() {
 
 bool MainWindow::IsClickable(POINT pt) const {
     for (const RECT* r : {&readRect_, &readDotRect_, &menuRect_, &collapseRect_, &closeRect_, &channelRect_, &writeRect_,
-                          &chatRect_})
+                          &chatRect_, &typeRect_})
         if (PtInRect(r, pt)) return true;
     for (const RECT& r : tabRects_)
         if (PtInRect(&r, pt)) return true;
@@ -866,6 +909,7 @@ void MainWindow::OnClick(POINT pt) {
     else if (PtInRect(&readRect_, pt)) ShowReadMenu();
     else if (PtInRect(&channelRect_, pt)) ShowChannelMenu();
     else if (PtInRect(&chatRect_, pt)) ShowChatLangMenu();
+    else if (PtInRect(&typeRect_, pt)) ShowTypeLangMenu();
     else if (PtInRect(&writeRect_, pt)) ShowWriteMenu();
     else
         for (size_t i = 0; i < tabRects_.size(); ++i)
@@ -899,9 +943,9 @@ std::wstring MainWindow::WriteLang() const { return WriteOriginal() ? std::wstri
 // GW2 cannot show every script. Writing in Arabic, Chinese ... means: you see
 // your message in that language, but the chat gets it in the chat language.
 bool MainWindow::WriteNeedsChatLang() const {
-    if (WriteOriginal()) return false;
-    const LangInfo* l = FindLanguage(WriteLang());
-    return l && !l->latinScript;
+    // "Write" and "Send" are two choices now: what is chosen under Send is what the chat gets. (Before, sending in a
+    // script GW2 cannot show went into a separate chat language.)
+    return false;
 }
 
 std::wstring MainWindow::SendLang() const {
@@ -3341,15 +3385,7 @@ void MainWindow::ApplySettings(const Config& next) {
         if (writeLangs_.empty()) writeLangs_ = {L"EN-GB"};
         writeIdx_ = 0;
     }
-    if (prev.writeIn != cfg_.writeIn) {  // the language you type in: spelling, learned words, word bar follow
-        const std::wstring typing = TypingLocale();
-        if (cfg_.spellEnabled) {
-            spell_.SwitchLanguage(SpellTagCandidates(PrimaryLang(typing), typing));
-            input_.RecheckSpelling();
-        }
-        spell_.UseLearnedLanguage(PrimaryLang(typing), cfg_.LearnedDir());
-        input_.RefreshSuggestions();
-    }
+    if (prev.writeIn != cfg_.writeIn) ApplyTypingLanguage();  // spelling, learned words, word bar follow
     const bool engineChanged = prev.engine != cfg_.engine || prev.deeplKey != cfg_.deeplKey ||
                                prev.basicEmail != cfg_.basicEmail || prev.llmUrl != cfg_.llmUrl ||
                                prev.llmModel != cfg_.llmModel || prev.llmKey != cfg_.llmKey ||
