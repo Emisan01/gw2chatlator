@@ -109,9 +109,12 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
    (`NativeDialog::Run`) and the word dropdown are `WDA_EXCLUDEFROMCAPTURE`; while any dialog, menu or message box
    of ours is open (`ModalScope`, app/modal_scope.hpp) and 400 ms after, pictures are dropped and reading pauses –
    the free area once read the settings dialog incl. the MyMemory e-mail and sent it to the translator.
-6. Autocorrection never surprises: Phone mode only touches words the dictionary rejects (or, without a
-   dictionary, words you never used), 4+ letters, never all-caps, never a word you use, 1 edit up to 6
-   letters / 2 above, same first letter (or first two swapped), single words only. Backspace undoes it.
+6. Autocorrection never surprises: Phone mode only touches words the dictionary rejects in both cases of the first
+   letter (`IsValidWord`: "abend" is fine), never without a dictionary, 4+ letters, never all-caps, never a word you
+   use, only a keyboard slip (`SlipDistance` ≤ 0.7) or one of your own words, letters only. Space writes only
+   "strong" choices (`Choices`: names, learned completions – without a dictionary from 3 letters and +2 –, hand-shift,
+   learned slips with a dictionary, dictionary ideas within 0.7); everything else is Tab only. Backspace undoes it.
+   Measured with `typing_bench`: 0 surprises in 1200 simulated messages – keep it at 0.
 7. Docking keeps our window a separate top-level window. No owner/parent link to the game window.
 8. Installing only writes our own folder (`%LOCALAPPDATA%\Programs\GW2ChatTranslator`; installs of 0.6 in
    `<GW2>\addons\GW2ChatTranslator` are updated where they are) and, if chosen, one `HKCU\...\Run` value and one
@@ -304,6 +307,10 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
 - `build\Release\ocr_bench.exe local\bench`: real chat crops `name.png` + `name.txt` (what really stands there) →
   error rate before/after the parser and time, old vs new preparation, Tesseract vs Windows OCR. `BENCH_DUMP=1`
   prints recognized/parsed/truth text. Pictures stay in `local\` (never committed).
+- `build\Release\typing_bench.exe [n]`: a simulated player types n invented chat messages per language (DE with
+  the Windows spell checker, EN as installed) with the app's SpellService: key presses saved per 100 messages,
+  SURPRISES (Space/Enter changing a correctly typed word – must stay 0), how suggestions were taken. Run it after every
+  change to the typing help.
 - `core_tests` (any OS; also as .exe under Wine for 16-bit `wchar_t`); ASan/UBSan on Linux:
   `g++ -std=c++17 -g -fsanitize=address,undefined -I src tests/core_tests.cpp src/core/*.cpp -o t && ./t`
 - Windows build from Linux: `cmake -B build-win -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-w64.cmake

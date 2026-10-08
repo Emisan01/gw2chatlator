@@ -5,6 +5,16 @@ diagnosis show it.
 
 ## Unreleased
 
+- **The typing help, measured and tuned with a simulated player** (`tests/tools/typing_bench`: hundreds of typical
+  chat messages typed letter by letter with the real logic and the Windows spell checker):
+  - **Space never changes a word you typed correctly any more** – before, 42 times in 1200 messages ("abend" ->
+    "Abend", "tequatl" -> "gequält", "me" -> "Meta"); now 0. Space writes only your own words (learned, names) or a
+    clear slip on the keyboard (a key next door, two letters swapped); the dictionary's ideas, the starter list and
+    words of the chat are offered with Tab. Writing small is never an error ("abend" is fine in a chat).
+  - Without a dictionary for the language: completion of your own words from 3 letters, no autocorrection (every new
+    word would look like a slip).
+  - The grey suggestion starts with the first letter.
+  - Result: about **50 % fewer key presses** over the first 600 messages, **60 %** once it has learned.
 - **Whispers arrive as whispers:** a reply in a whisper tab ("/w Name, text") is now sent the way you do it by hand –
   "/w " typed, the name pasted as the address and confirmed with Tab, then the message. Pasted in one go, GW2 took the
   name as part of the text.

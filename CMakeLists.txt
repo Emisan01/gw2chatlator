@@ -147,6 +147,13 @@ if(WIN32)
             target_link_options(ocr_bench PRIVATE -municode)
         endif()
         list(APPEND GCT_APP_TARGETS ocr_bench)
+        # Measures the typing help with a simulated player (invented messages, the real spell checker).
+        add_executable(typing_bench tests/tools/typing_bench.cpp src/app/spell_service.cpp src/win/spellcheck.cpp)
+        target_link_libraries(typing_bench PRIVATE gct_win)
+        if(NOT MSVC)
+            target_link_options(typing_bench PRIVATE -municode)
+        endif()
+        list(APPEND GCT_APP_TARGETS typing_bench)
     endif()
 
     foreach(t gct_core gct_win ${GCT_APP_TARGETS})
