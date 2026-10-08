@@ -14,6 +14,7 @@
 #include "app/config.hpp"
 #include "core/slang.hpp"
 #include "core/text.hpp"
+#include "core/typo_memory.hpp"
 #include "core/word_model.hpp"
 #include "win/spellcheck.hpp"
 #include "win/text_prediction.hpp"
@@ -57,10 +58,25 @@ public:
     // The learned words of this language ("de"), from `dir`\learned_de.txt.
     void UseLearnedLanguage(const std::wstring& primaryLang, const std::wstring& dir);
     void Learn(const std::wstring& sentText);
+    // Your own texts (old chats, mails, notes) as a typing profile: each sentence is learned like a sent message.
+    // Lines that look like code or links are skipped. A word the dictionary rejects is one of your typical typos
+    // when its fix is clear (a word of your own text one edit away, used at least twice as often, or the only close
+    // idea of the dictionary): the typo goes into the typo memory, the sentence is learned with the fix. Otherwise
+    // it is your slang when used 3+ times, else the sentence is cut there.
+    struct ProfileResult {
+        size_t sentences = 0;  // learned
+        size_t newWords = 0;   // words the model did not have before
+        size_t typos = 0;      // typical typos found (with what was meant)
+    };
+    ProfileResult LearnFromText(const std::wstring& text);
     void SaveLearned();
     // Backspace right after an autocorrection: the word was meant as typed.
     void RejectCorrection(const std::wstring& original);
     const WordModel& Model() const { return model_; }
+    const TypoMemory& Typos() const { return typos_; }
+    // A correction was kept (Space/Tab wrote `fix` for `typed`): a typo you make, corrected without guessing next
+    // time. Completions are no typos. Backspace right after it (RejectCorrection) forgets it again.
+    void NoteFix(const std::wstring& typed, const std::wstring& fix);
     bool IsLearned(const std::wstring& word) const { return model_.Count(word) > 0; }
     // A word taught by mistake: gone from the word bar and autocorrection.
     bool Forget(const std::wstring& word);
@@ -112,6 +128,9 @@ private:
     bool IsKnown(const std::wstring& word) const;
     bool IsValidWord(const std::wstring& word) const;
     static bool LettersOnly(const std::wstring& word);
+    // A dictionary idea Space may write: the dictionary's first idea, and only when it is one slip of the fingers
+    // away ("shon" -> "schon"; "habs" -> "Harbs" or "shon" -> "Sohn" never).
+    bool DictionarySlip(const std::wstring& typed, const std::wstring& fix) const;
     bool IsMisspelled(const std::wstring& word) const;
     // The Windows spell checker is a COM call; the word bar asks on every key
     // press, so answers per word are kept until the language changes.
@@ -128,6 +147,12 @@ private:
     std::wstring userPath_;
     WordModel model_;
     std::wstring learnedPath_;
+    TypoMemory typos_;  // your typical typos -> what you meant (typos_<lang>.txt next to the learned words)
+    std::wstring typosPath_;
+    // The fix you meant with this typo, in the case it was typed; empty if unknown or `typed` is a word.
+    std::wstring KnownFix(const std::wstring& typed) const;
+    std::wstring GuessFix(const std::wstring& typo, const std::unordered_map<std::wstring, int>& uses,
+                          const std::unordered_map<std::wstring, std::wstring>& forms) const;
     std::wstring learnedLang_;  // "de": the language of the learned words and the starter list
     std::vector<std::wstring> context_;  // words of the recent chat, newest first (SetContext)
     std::unordered_map<std::wstring, std::wstring> names_;  // folded -> as taught
@@ -140,7 +165,9 @@ private:
     // learned ("Sch" -> "schon", "schön"; after "wie": "g" -> "geht's"). Only words that start like `typed`.
     TextPrediction predict_;
     void InitPrediction(const std::vector<std::wstring>& tags);
-    std::vector<std::wstring> Predicted(const std::wstring& prev, const std::wstring& typed, size_t max) const;
+    // `firstSmall`: the first one is written small by Windows (an ordinary word, no name or brand like "WhatsApp").
+    std::vector<std::wstring> Predicted(const std::wstring& prev, const std::wstring& typed, size_t max,
+                                        bool* firstSmall = nullptr) const;
     bool PredictedExactly(const std::wstring& typed) const;
     // Words nobody taught yet: Windows' everyday words and the GW2 starter list. From 4 letters on a GW2 word
     // comes first ("Tequ" -> "Tequatl", not "Tequila"); before, the everyday words ("Sch" -> "schon").

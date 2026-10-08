@@ -40,6 +40,8 @@ struct DialogContext {
     // "My words" (slang with its meaning): the list as text, and storing an edited one.
     std::function<std::wstring()> myWordsText;
     std::function<void(const std::wstring&)> setMyWords;
+    // Learns your own texts (a .txt file) into the typing profile; returns a status text.
+    std::function<std::wstring(const std::wstring& path)> learnFromFile;
     // Learned recognition fixes ("rnain = main") as text, and storing an edited list.
     std::function<std::wstring()> ocrFixesText;
     std::function<void(const std::wstring&)> setOcrFixes;

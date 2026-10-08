@@ -14,6 +14,13 @@ diagnosis show it.
 - The grey suggestion shows before anything is learned (starter and chat words for clearly unfinished words).
 - Footer: "Write: <language>" (what is corrected and suggested) and "Send: <language>" always side by side.
 - `typing_bench --probe de-DE "Sch" "wie g"` prints what a fresh tool offers for these inputs.
+- **Typing profile:** Settings -> Writing -> "Learn from my texts…" learns your own texts (.txt) – your words, word
+  pairs and your typical typos with what you meant ("shon" -> "schon"); stays on this PC. Typos are also remembered
+  from every correction you keep while typing (Backspace forgets it again) and are then corrected without guessing.
+- **More freedom:** Space only fixes real finger slips (key next door, swapped, doubled or left-out letter inside the
+  word, and only the dictionary's first idea). Changed endings, spoken German ("habs", "gehts") and common English
+  chat words ("with", "good", "thanks") stay as you wrote them.
+- Spoken German contractions go to the translator written out ("habs" -> "hab es"); a German chat gets them as written.
 
 ## 0.9.1 — 2026-10-08
 

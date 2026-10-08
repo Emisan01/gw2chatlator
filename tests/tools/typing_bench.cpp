@@ -215,7 +215,10 @@ void Run(const wchar_t* lang, const wchar_t* tag, const Line* lines, size_t coun
 }
 
 // typing_bench --probe de-DE "Sch" "wie g": what a fresh tool offers for these inputs (nothing learned).
+// typing_bench --profile de-DE texts.txt "shon" …: the same after learning your own texts as a typing profile
+// (prints what was learned, incl. the typos found – your texts stay on your PC, keep them in local/).
 void Probe(int argc, wchar_t** argv) {
+    const bool profile = std::wstring(argv[1]) == L"--profile";
     const std::wstring tag = argv[2];
     const std::wstring lang = tag.substr(0, 2);
     wchar_t tmp[MAX_PATH];
@@ -223,10 +226,22 @@ void Probe(int argc, wchar_t** argv) {
     const std::wstring dir = std::wstring(tmp) + L"gct_typing_probe";
     CreateDirectoryW(dir.c_str(), nullptr);
     DeleteFileW((dir + L"\\learned_" + lang + L".txt").c_str());
+    DeleteFileW((dir + L"\\typos_" + lang + L".txt").c_str());
     SpellService sp;
     sp.Init({tag, lang}, dir + L"\\words.txt");
     sp.UseLearnedLanguage(lang, dir);
-    for (int i = 3; i < argc; ++i) {
+    int first = 3;
+    if (profile && argc > 3) {
+        std::string data;
+        ReadFileBytes(argv[3], data);
+        const auto t0 = GetTickCount64();
+        const SpellService::ProfileResult r = sp.LearnFromText(FromUtf8(data));
+        std::printf("profile: %zu sentences, %zu new words, %zu typos (%llu ms)\n", r.sentences, r.newWords, r.typos,
+                    GetTickCount64() - t0);
+        std::printf("%s\n", sp.Typos().Serialize().c_str());
+        first = 4;
+    }
+    for (int i = first; i < argc; ++i) {
         const std::wstring text = argv[i];
         const auto t0 = GetTickCount64();
         const WordSuggestions s = sp.Suggestions(text, text.size(), AutoCorrectMode::Phone);
@@ -244,7 +259,7 @@ void Probe(int argc, wchar_t** argv) {
 
 int wmain(int argc, wchar_t** argv) {
     CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
-    if (argc > 2 && std::wstring(argv[1]) == L"--probe") {
+    if (argc > 2 && (std::wstring(argv[1]) == L"--probe" || std::wstring(argv[1]) == L"--profile")) {
         Probe(argc, argv);
         return 0;
     }
