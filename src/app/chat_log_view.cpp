@@ -375,6 +375,13 @@ bool ChatLogView::CanTranslateAgain(const ChatEntry& e) const {
     return cb_.onRetranslate && e.kind == ChatEntry::Kind::Incoming && e.state != ChatEntry::State::Pending;
 }
 
+void ChatLogView::TranslateAllAgain(size_t max) {
+    std::vector<const ChatEntry*> todo;
+    for (auto it = entries_.rbegin(); it != entries_.rend() && todo.size() < max; ++it)
+        if (CanTranslateAgain(*it)) todo.push_back(&*it);
+    for (auto it = todo.rbegin(); it != todo.rend(); ++it) TranslateAgain(**it);
+}
+
 void ChatLogView::TranslateAgain(const ChatEntry& e) {
     if (CanTranslateAgain(e)) cb_.onRetranslate(e.id, e.original.empty() ? e.main : e.original);
 }

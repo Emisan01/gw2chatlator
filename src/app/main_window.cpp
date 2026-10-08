@@ -1002,6 +1002,7 @@ void MainWindow::SetReadLang(const std::wstring& code) {
     readLang_ = code;
     cfg_.SaveValue(L"Translate", L"ReadLang", code);
     SetStatus(TrF(L"New chat lines are translated into {1}", {LanguageLabel(code)}), Tone::Ok, 4000);
+    log_.TranslateAllAgain(50);  // what is shown already: into the new language too
     InvalidateChrome();
     if (PreviewIsCurrent()) {
         backText_.clear();
@@ -3399,7 +3400,9 @@ void MainWindow::ApplySettings(const Config& next) {
         wchar_t locale[LOCALE_NAME_MAX_LENGTH] = {};
         GetUserDefaultLocaleName(locale, LOCALE_NAME_MAX_LENGTH);
         const LangInfo* read = FindLanguage(cfg_.readLang.empty() ? std::wstring(locale) : cfg_.readLang);
+        const std::wstring before = readLang_;
         readLang_ = read ? read->code : L"EN-GB";
+        if (readLang_ != before) log_.TranslateAllAgain(50);
     }
     if (prev.writeLangs != cfg_.writeLangs) {
         writeLangs_.clear();
