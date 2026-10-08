@@ -62,6 +62,9 @@ public:
     // Changes an entry in place (no-op if it was dropped meanwhile).
     void Update(uint64_t id, const std::function<void(ChatEntry&)>& change);
     void Clear();
+    // The reading language changed: the newest `max` incoming lines are translated again (oldest first asked, so the
+    // newest is translated first).
+    void TranslateAllAgain(size_t max);
 
     // Show the entries of these channels plus those written in tab `tabId`;
     // with `person`, only whispers from and to that person (a whisper tab).
