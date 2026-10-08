@@ -72,8 +72,9 @@ void SpellService::InitPrediction(const std::vector<std::wstring>& tags) {
 // as phrases and also with near misses ("Sch" -> "ach", "DFB"): only the last word, and only when it starts like
 // `typed`. Case as typed at the start ("Sch" -> "Schon"), else as Windows writes it ("sch" -> "Schatz").
 std::vector<std::wstring> SpellService::Predicted(const std::wstring& prev, const std::wstring& typed,
-                                                  size_t max) const {
+                                                  size_t max, bool* firstSmall) const {
     std::vector<std::wstring> out;
+    if (firstSmall) *firstSmall = false;
     if (!predict_.Ready() || typed.empty() || HasDigit(typed)) return out;
     const std::wstring p = WordKey(typed);
     // Windows' list is full of first names ("dan" -> "Daniel", "Ka" -> "Karin"): words written small come first,
@@ -94,6 +95,7 @@ std::vector<std::wstring> SpellService::Predicted(const std::wstring& prev, cons
     };
     if (!prev.empty() && !HasDigit(prev)) take(predict_.Candidates(prev + L" " + typed));
     if (lower.size() + capital.size() < max) take(predict_.Candidates(typed));
+    if (firstSmall) *firstSmall = !lower.empty();
     for (const auto* list : {&lower, &capital})
         for (const std::wstring& w : *list)
             if (out.size() < max) out.push_back(CaseFoldChar(typed[0]) != typed[0] ? MatchCase(typed, w) : w);
@@ -112,9 +114,11 @@ std::vector<std::wstring> SpellService::BaseCompletions(const std::wstring& prev
                 starters.push_back(CaseFoldChar(typed[0]) != typed[0] ? MatchCase(typed, w) : w);
         }
     }
-    const std::vector<std::wstring> predicted = Predicted(prev, typed, max);
+    bool plain = false;
+    const std::vector<std::wstring> predicted = Predicted(prev, typed, max, &plain);
     const bool gw2First = typed.size() >= 4 && !starters.empty();
-    if (firstPredicted) *firstPredicted = !gw2First && !predicted.empty();
+    // Space may write Windows' guess only when it is an ordinary word: "what" must not become "WhatsApp".
+    if (firstPredicted) *firstPredicted = !gw2First && plain;
     std::vector<std::wstring> out;
     for (const auto* list : {gw2First ? &starters : &predicted, gw2First ? &predicted : &starters})
         for (const std::wstring& w : *list)
@@ -174,6 +178,10 @@ void SpellService::UseLearnedLanguage(const std::wstring& primaryLang, const std
     model_ = WordModel();
     std::string data;
     if (ReadFileBytes(path, data)) model_.Parse(data);
+    typosPath_ = dir + L"\\typos_" + lang + L".txt";
+    typos_ = TypoMemory();
+    data.clear();
+    if (ReadFileBytes(typosPath_, data)) typos_.Parse(data);
 }
 
 void SpellService::Learn(const std::wstring& sentText) {
@@ -181,7 +189,106 @@ void SpellService::Learn(const std::wstring& sentText) {
     SaveLearned();
 }
 
+SpellService::ProfileResult SpellService::LearnFromText(const std::wstring& text) {
+    ProfileResult r;
+    // Sentences: lines, cut after . ! ? followed by a space.
+    std::vector<std::wstring> sentences;
+    size_t pos = 0;
+    while (pos <= text.size()) {
+        size_t eol = text.find(L'\n', pos);
+        if (eol == std::wstring::npos) eol = text.size();
+        std::wstring line = Trim(text.substr(pos, eol - pos));
+        pos = eol + 1;
+        if (!line.empty() && line[0] == 0xFEFF) line.erase(0, 1);
+        if (line.empty()) continue;
+        // Code, links, paths: not how you write in a chat.
+        bool skip = false;
+        for (const wchar_t* bad : {L"://", L"www.", L"{", L"}", L";", L"::", L"->", L"\\", L"==", L"</", L"/>"})
+            if (line.find(bad) != std::wstring::npos) skip = true;
+        size_t letters = 0;
+        for (wchar_t c : line)
+            if (IsWordChar(c) && !(c >= L'0' && c <= L'9')) ++letters;
+        if (skip || letters * 2 < line.size()) continue;
+        size_t b = 0;
+        for (size_t i = 0; i < line.size(); ++i) {
+            const wchar_t c = line[i];
+            if ((c == L'.' || c == L'!' || c == L'?') && (i + 1 == line.size() || line[i + 1] == L' ')) {
+                sentences.push_back(line.substr(b, i + 1 - b));
+                b = i + 1;
+            }
+        }
+        if (b < line.size()) sentences.push_back(line.substr(b));
+    }
+    auto tokens = [](const std::wstring& s) {
+        std::vector<std::wstring> out;
+        size_t i = 0;
+        while (i < s.size()) {
+            while (i < s.size() && !IsWordChar(s[i])) ++i;
+            size_t e = i;
+            while (e < s.size() && IsWordChar(s[e])) ++e;
+            if (e > i) out.push_back(s.substr(i, e - i));
+            i = e;
+        }
+        return out;
+    };
+    std::unordered_map<std::wstring, int> uses;
+    std::unordered_map<std::wstring, std::wstring> forms;  // key -> the first spelling seen
+    for (const std::wstring& s : sentences)
+        for (const std::wstring& w : tokens(s)) {
+            const std::wstring k = WordKey(w);
+            ++uses[k];
+            forms.emplace(k, w);
+        }
+    std::unordered_map<std::wstring, std::wstring> fixOf;  // typo key -> fix ("" = no typo), decided once
+    const size_t typosBefore = typos_.Size();
+    const size_t before = model_.Size();
+    for (const std::wstring& s : sentences) {
+        std::wstring part;
+        bool learned = false;
+        auto flush = [&] {
+            if (!part.empty()) {
+                model_.Learn(part);
+                learned = true;
+            }
+            part.clear();
+        };
+        for (const std::wstring& w : tokens(s)) {
+            if (HasDigit(w)) {
+                flush();
+                continue;
+            }
+            std::wstring word = w;
+            if (!IsValidWord(w) && NameFor(w).empty()) {
+                const std::wstring k = WordKey(w);
+                auto f = fixOf.find(k);
+                if (f == fixOf.end()) {
+                    // A typo when the fix is clear – also a frequent one, as long as the fix is used at least twice as
+                    // often (your typical slip); otherwise a word used 3+ times is your slang.
+                    std::wstring fix = checker_.Ready() ? GuessFix(w, uses, forms) : std::wstring();
+                    if (!fix.empty() && uses[k] >= 3 && uses[WordKey(fix)] < 2 * uses[k]) fix.clear();
+                    f = fixOf.emplace(k, fix).first;
+                }
+                if (!f->second.empty()) {
+                    typos_.Add(w, f->second);
+                    word = CaseFoldChar(w[0]) != w[0] ? MatchCase(w, f->second) : f->second;
+                } else if (uses[k] < 3) {
+                    flush();  // an unclear typo: the words around it are not a pair
+                    continue;
+                }
+            }
+            part += (part.empty() ? L"" : L" ") + word;
+        }
+        flush();
+        if (learned) ++r.sentences;
+    }
+    r.newWords = model_.Size() > before ? model_.Size() - before : 0;
+    r.typos = typos_.Size() > typosBefore ? typos_.Size() - typosBefore : 0;
+    SaveLearned();
+    return r;
+}
+
 void SpellService::SaveLearned() {
+    if (!typosPath_.empty() && typos_.Dirty() && WriteFileAtomic(typosPath_, typos_.Serialize())) typos_.ClearDirty();
     if (learnedPath_.empty() || !model_.Dirty()) return;
     const size_t slash = learnedPath_.find_last_of(L'\\');
     if (slash != std::wstring::npos) EnsureDir(learnedPath_.substr(0, slash));
@@ -189,7 +296,9 @@ void SpellService::SaveLearned() {
 }
 
 bool SpellService::Forget(const std::wstring& word) {
-    const bool found = model_.Forget(word);
+    bool found = model_.Forget(word);
+    found = typos_.Forget(word) || found;
+    typos_.ForgetFix(word);
     session_.erase(CaseFold(word));
     SaveLearned();
     return found;
@@ -197,18 +306,84 @@ bool SpellService::Forget(const std::wstring& word) {
 
 void SpellService::ForgetAll() {
     model_.Clear();
+    typos_.Clear();
     SaveLearned();
     // Every language, not just the active one.
     const size_t slash = learnedPath_.find_last_of(L'\\');
     if (slash == std::wstring::npos) return;
     const std::wstring dir = learnedPath_.substr(0, slash);
     WIN32_FIND_DATAW fd;
-    HANDLE h = FindFirstFileW((dir + L"\\learned_*.txt").c_str(), &fd);
-    if (h == INVALID_HANDLE_VALUE) return;
-    do {
-        if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) DeleteFileW((dir + L"\\" + fd.cFileName).c_str());
-    } while (FindNextFileW(h, &fd));
-    FindClose(h);
+    for (const wchar_t* pattern : {L"\\learned_*.txt", L"\\typos_*.txt"}) {
+        HANDLE h = FindFirstFileW((dir + pattern).c_str(), &fd);
+        if (h == INVALID_HANDLE_VALUE) continue;
+        do {
+            if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) DeleteFileW((dir + L"\\" + fd.cFileName).c_str());
+        } while (FindNextFileW(h, &fd));
+        FindClose(h);
+    }
+}
+
+bool SpellService::DictionarySlip(const std::wstring& typed, const std::wstring& fix) const {
+    // Only the dictionary's first idea – the one it finds most likely ("shon": "schon", not the swap "Sohn").
+    if (!checker_.Ready()) return false;
+    for (const std::wstring& s : CheckerSuggest(typed)) {
+        if (s.find(L' ') != std::wstring::npos || !LettersOnly(s)) continue;
+        return WordKey(s) == WordKey(fix) && LooksLikeSlip(WordKey(typed), WordKey(fix), layout_, false);
+    }
+    return false;
+}
+
+void SpellService::NoteFix(const std::wstring& typed, const std::wstring& fix) {
+    if (!learnChoices_ || typed.size() < 3 || fix.empty() || !LettersOnly(typed) || IsValidWord(typed)) return;
+    const std::wstring tk = WordKey(typed), fk = WordKey(fix);
+    if (fk.size() > tk.size() && fk.compare(0, tk.size(), tk) == 0) return;  // a completion, no typo
+    if (fix.find(L' ') != std::wstring::npos) return;
+    typos_.Add(typed, fix);
+    SaveLearned();
+}
+
+std::wstring SpellService::KnownFix(const std::wstring& typed) const {
+    if (typed.size() < 3 || IsValidWord(typed)) return {};
+    const std::wstring fix = typos_.FixFor(typed);
+    if (fix.empty()) return {};
+    return CaseFoldChar(typed[0]) != typed[0] ? MatchCase(typed, fix) : fix;
+}
+
+// The clear fix of a typo in your own text: a word of the same text one keyboard slip away (LooksLikeSlip) that the
+// dictionary knows (the more you use it, the better), else the dictionary's idea when it is the only one a swap or a
+// doubled letter away. Two candidates of similar weight: no guess.
+std::wstring SpellService::GuessFix(const std::wstring& typo, const std::unordered_map<std::wstring, int>& uses,
+                                    const std::unordered_map<std::wstring, std::wstring>& forms) const {
+    if (typo.size() < 4 || !LettersOnly(typo)) return {};
+    const std::wstring tk = WordKey(typo);
+    struct Cand {
+        std::wstring word;
+        double score;
+    };
+    std::vector<Cand> cands;
+    for (const auto& [k, n] : uses) {
+        if (k == tk || (k.size() > tk.size() ? k.size() - tk.size() : tk.size() - k.size()) > 1) continue;
+        if (!LooksLikeSlip(tk, k, layout_, false)) continue;
+        const std::wstring& form = forms.at(k);
+        if (!LettersOnly(form) || !IsValidWord(form)) continue;
+        cands.push_back({form, static_cast<double>(n)});
+    }
+    if (checker_.Ready()) {
+        int close = 0;
+        std::wstring only;
+        for (const std::wstring& s : CheckerSuggest(typo)) {
+            if (s.find(L' ') != std::wstring::npos || !LettersOnly(s)) continue;
+            if (!LooksLikeSlip(tk, WordKey(s), layout_, true)) continue;
+            ++close;
+            only = s;
+        }
+        if (close == 1 && std::none_of(cands.begin(), cands.end(), [&](const Cand& c) { return WordKey(c.word) == WordKey(only); }))
+            cands.push_back({only, 0.5});
+    }
+    if (cands.empty()) return {};
+    std::sort(cands.begin(), cands.end(), [](const Cand& a, const Cand& b) { return a.score > b.score; });
+    if (cands.size() > 1 && cands[1].score * 2 > cands[0].score) return {};
+    return cands[0].word;
 }
 
 void SpellService::ClearCache() const {
@@ -233,6 +408,7 @@ const std::vector<std::wstring>& SpellService::CheckerSuggest(const std::wstring
 }
 
 void SpellService::RejectCorrection(const std::wstring& original) {
+    typos_.Forget(original);  // meant as typed: no typo of yours
     model_.Confirm(original);
     session_.insert(CaseFold(original));
     SaveLearned();
@@ -241,7 +417,7 @@ void SpellService::RejectCorrection(const std::wstring& original) {
 bool SpellService::IsKnown(const std::wstring& word) const {
     const std::wstring f = CaseFold(word);
     return names_.count(f) || IsKeepWord(BuiltinSpellIgnore(), word) || game_.count(f) || user_.count(f) || session_.count(f) ||
-           model_.Knows(word);
+           CommonChatEnglish().count(f) || (learnedLang_ == L"de" && IsGermanContraction(word)) || model_.Knows(word);
 }
 
 bool SpellService::IsMisspelled(const std::wstring& word) const {
@@ -299,6 +475,9 @@ bool SpellService::IsValidWord(const std::wstring& w) const {
 std::optional<std::wstring> SpellService::AutoCorrection(const std::wstring& word, AutoCorrectMode mode) const {
     if (mode == AutoCorrectMode::Off || word.size() < 2 || IsKnown(word)) return std::nullopt;
     if (IsValidWord(word)) return std::nullopt;  // a real word (also small-written nouns) is never changed
+    // One of your typical typos: you meant this word before (profile or a kept correction).
+    if (mode == AutoCorrectMode::Phone)
+        if (const std::wstring known = KnownFix(word); !known.empty()) return known;
     if (checker_.Ready()) {
         for (const SpellIssue& issue : checker_.Check(word)) {
             if (issue.kind == SpellIssue::Kind::Replace && issue.span.start == 0 && issue.span.length == word.size() &&
@@ -312,8 +491,10 @@ std::optional<std::wstring> SpellService::AutoCorrection(const std::wstring& wor
     const std::wstring fix =
         ChooseCorrection(word, checker_.Ready() ? CheckerSuggest(word) : std::vector<std::wstring>(), model_);
     if (fix.empty() || fix == word || !LettersOnly(fix) || CaseFold(fix) == CaseFold(word)) return std::nullopt;
-    // Only a slip on the keyboard (a key next door, two letters swapped) – or one of your own words.
-    if (!model_.Knows(fix) && SlipDistance(WordKey(fix), WordKey(word), layout_, 0.7) > 0.7) return std::nullopt;
+    // Only a slip of the fingers (a key next door, two letters swapped, a doubled or left-out letter inside the
+    // word) – a changed ending is grammar or another language ("habs", "with"), never corrected.
+    if (model_.Knows(fix) ? !LooksLikeSlip(WordKey(word), WordKey(fix), layout_, false) : !DictionarySlip(word, fix))
+        return std::nullopt;
     return fix;
 }
 
@@ -408,6 +589,12 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
     if (HasDigit(partial)) return s;
     const std::wstring prev = wordBefore(start);
     s.replace = {start, end - start};
+    if (const std::wstring known = KnownFix(partial); !known.empty()) {  // one of your typical typos
+        s.kind = WordSuggestions::Kind::Correction;
+        s.words = {known};
+        s.autoIndex = 0;
+        return s;
+    }
 
     std::wstring p1, p2;
     WordsBefore(text, start, &p1, &p2);
@@ -529,6 +716,11 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
         for (const std::wstring& w : completions)
             if (w.size() >= typed.size() + minMore && w.find(L' ') == std::wstring::npos) strong.push_back(w);
     std::vector<std::wstring> fixes;
+    const std::wstring known = valid ? std::wstring() : KnownFix(typed);  // one of your typical typos
+    if (!known.empty()) {
+        fixes.push_back(known);
+        strong.push_back(known);
+    }
     if (!valid && typed.size() >= 3) {
         // The whole hand one key off: the strongest hint there is.
         for (const std::wstring& v : HandShiftVariants(typed, layout_))
@@ -537,9 +729,10 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
                 strong.push_back(fixes.back());
             }
         // Without a dictionary every new word looks like a slip of a known one ("many" -> "maybe"): offered only.
+        // With one, Space writes it only when it looks like a slip of the fingers ("gehts" stays, "shon" -> "schon").
         for (const std::wstring& w : model_.NearSlip(typed, layout_, 3)) {
             fixes.push_back(w);
-            if (checker_.Ready()) strong.push_back(w);
+            if (checker_.Ready() && LooksLikeSlip(WordKey(typed), WordKey(w), layout_, false)) strong.push_back(w);
         }
         for (const std::wstring& w : model_.CompleteFuzzy(typed, prev, 2, neighbors_)) {
             fixes.push_back(w);
@@ -549,8 +742,8 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
             for (const std::wstring& w : CheckerSuggest(typed)) {
                 if (w.find(L' ') != std::wstring::npos || !LettersOnly(w)) continue;
                 fixes.push_back(w);
-                // The dictionary's idea is only taken by Space when it is one slip away on the keyboard.
-                if (SlipDistance(WordKey(w), WordKey(typed), layout_, 0.7) <= 0.7) strong.push_back(w);
+                // The dictionary's idea is only taken by Space when it is one slip of the fingers away.
+                if (DictionarySlip(typed, w)) strong.push_back(w);
             }
     }
 
@@ -567,6 +760,7 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
     }
     // An unfinished word ("Tequ") wants its completion; a finished word with
     // a slip ("helo", "jsööp") its correction.
+    if (!known.empty()) add(known);  // what you meant the last times comes first
     if (!completions.empty()) {
         for (const std::wstring& w : completions) add(w);
         for (const std::wstring& w : fixes) add(w);

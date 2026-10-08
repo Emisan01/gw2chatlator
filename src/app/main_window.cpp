@@ -1856,7 +1856,10 @@ void MainWindow::StartTranslation() {
     if (inflightGen_ == inputGen_) return;  // already on its way
 
     // Your words ("finds") go to the translator as what they mean ("finde es").
-    ProtectedText p = ProtectForTranslation(myWords_.Expand(body), glossary_.Empty() ? nullptr : &glossary_,
+    // Spoken German ("habs") goes to the translator written out ("hab es"); a German chat gets it as written anyway.
+    std::wstring toTranslate = myWords_.Expand(body);
+    if (PrimaryLang(TypingLocale()) == L"de") toTranslate = ExpandGermanContractions(toTranslate);
+    ProtectedText p = ProtectForTranslation(toTranslate, glossary_.Empty() ? nullptr : &glossary_,
                                             &spell_.KeepWords(), &speakers_);
     lastHits_ = p.glossaryHits;
     if (!HasTranslatableText(p.segments)) {  // only names, codes, keep-words
@@ -2412,7 +2415,8 @@ void MainWindow::PumpIncoming() {
             chars += pl.text.size();
             CountMyMemory(CodePointCount(pl.text));
             items.push_back(
-                ProtectForTranslation(myWords_.Expand(pl.text), nullptr, &spell_.KeepWords(), &speakers_).segments);
+                ProtectForTranslation(ExpandGermanContractions(myWords_.Expand(pl.text)), nullptr, &spell_.KeepWords(),
+                                      &speakers_).segments);
             msg->ids.push_back(pl.entryId);
             msg->texts.push_back(std::move(pl.text));
         }
@@ -3279,6 +3283,22 @@ void MainWindow::OpenSettings(SettingsPage page) {
     ctx.forgetLearned = [this] {
         spell_.ForgetAll();
         input_.RefreshSuggestions();
+    };
+    ctx.learnFromFile = [this](const std::wstring& path) {
+        std::string data;
+        if (!ReadFileBytes(path, data)) return Tr(L"The file could not be read.");
+        std::wstring text;
+        if (data.size() >= 2 && static_cast<unsigned char>(data[0]) == 0xFF && static_cast<unsigned char>(data[1]) == 0xFE)
+            text.assign(reinterpret_cast<const wchar_t*>(data.data() + 2), (data.size() - 2) / sizeof(wchar_t));  // UTF-16
+        else
+            text = FromUtf8(data);
+        const SpellService::ProfileResult r = spell_.LearnFromText(text);
+        input_.RefreshSuggestions();
+        const LangInfo* l = FindLanguage(TypingLocale());
+        if (!l) l = FindLanguage(PrimaryLang(TypingLocale()));
+        return TrF(L"Learned {1} sentences, {2} new words and {3} of your typical typos ({4}).",
+                   {std::to_wstring(r.sentences), std::to_wstring(r.newWords), std::to_wstring(r.typos),
+                    l ? std::wstring(l->native) : TypingLocale()});
     };
     ctx.correctionsInfo = [this] { return CorrectionsInfo(); };
     ctx.myWordsText = [this] { return myWords_.Serialize(); };

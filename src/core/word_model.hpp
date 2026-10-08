@@ -48,6 +48,13 @@ std::vector<std::wstring> HandShiftVariants(const std::wstring& word, const KeyL
 // swapped letters 0.7, anything else 1. Returns limit + 1 once above `limit`.
 double SlipDistance(const std::wstring& a, const std::wstring& b, const KeyLayout& layout, double limit);
 
+// One slip of the fingers between a typo and the word meant (WordKey text), of the kinds that really happen on a
+// keyboard: a key next door, two letters swapped (also the first two), a letter doubled or a double typed once, a
+// letter left out or a key next door added inside the word. The first letter and the ending stay: a changed ending is
+// grammar or another language ("gehts", "windows", "wieviele", "with" -> "witz"), not a slip. `strict`: only swaps
+// and doubled letters (for a guess without other evidence).
+bool LooksLikeSlip(const std::wstring& typo, const std::wstring& meant, const KeyLayout& layout, bool strict);
+
 // Damerau-Levenshtein (optimal string alignment) on WordKey text.
 // Returns limit + 1 as soon as the distance is known to exceed `limit`.
 int EditDistance(const std::wstring& a, const std::wstring& b, int limit);

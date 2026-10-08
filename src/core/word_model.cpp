@@ -129,6 +129,31 @@ std::vector<std::wstring> HandShiftVariants(const std::wstring& word, const KeyL
     return out;
 }
 
+bool LooksLikeSlip(const std::wstring& t, const std::wstring& f, const KeyLayout& layout, bool strict) {
+    if (t.size() < 3 || f.size() < 3 || t == f) return false;
+    size_t i = 0;
+    while (i < t.size() && i < f.size() && t[i] == f[i]) ++i;
+    if (t.size() == f.size()) {
+        // Two letters swapped (the first two as well).
+        if (i + 1 < t.size() && t[i] == f[i + 1] && t[i + 1] == f[i] && t.compare(i + 2, std::wstring::npos, f, i + 2) == 0)
+            return true;
+        if (strict || i == 0 || i + 1 >= t.size() || t.compare(i + 1, std::wstring::npos, f, i + 1) != 0) return false;
+        return layout.Neighbors(t[i], f[i]);  // a key next door
+    }
+    if (t.size() == f.size() + 1) {  // one letter too many at i
+        if (t.compare(i + 1, std::wstring::npos, f, i) != 0 || !std::iswalpha(t[i])) return false;
+        if (i > 0 && t[i] == t[i - 1]) return i + 1 < t.size() || !strict;  // doubled ("aaber", "funnktioniert")
+        if (strict || i == 0 || i + 1 >= t.size()) return false;
+        return layout.Neighbors(t[i], t[i - 1]) || layout.Neighbors(t[i], t[i + 1]);  // a key next door caught too
+    }
+    if (f.size() == t.size() + 1) {  // one letter missing at i ("habs" -> "hab's" is a way of writing, no slip)
+        if (f.compare(i + 1, std::wstring::npos, t, i) != 0 || !std::iswalpha(f[i])) return false;
+        if (i > 0 && f[i] == f[i - 1]) return i + 1 < f.size();  // a double typed once ("tippsuport")
+        return !strict && i > 0 && i + 1 < f.size();  // left out inside the word ("shon", "indivduell")
+    }
+    return false;
+}
+
 double SlipDistance(const std::wstring& a0, const std::wstring& b0, const KeyLayout& layout, double limit) {
     const std::wstring a = WordKey(a0), b = WordKey(b0);
     const size_t n = a.size(), m = b.size();

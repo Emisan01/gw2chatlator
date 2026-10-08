@@ -53,7 +53,7 @@ enum : int {
     // Translator
     kEngine, kEngineNote, kLocalModel, kPull, kLocalInfo, kGetOllama, kPullStatus, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
     kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
-    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kStartMenu, kOnlyTr, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare, kWriteIn, kLtProvider, kLtTest, kLtStatus,
+    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kStartMenu, kOnlyTr, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare, kWriteIn, kLtProvider, kLtTest, kLtStatus, kLearnFile,
     // Game & start
     kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kStatus, kRefresh, kSetup,
     // Wizard
@@ -622,6 +622,11 @@ private:
         Label(Tr(L"Stays on this PC. Right-click a word to forget just that one."), kLabelX + 20, Y(r) - 8,
               kCtrlX + 50 - kLabelX, 34, kForgetStatus);
         Button(kMyWords, Tr(L"My words…"), kCtrlX + 80, Y(r++) - 6, 220);
+        // A typing profile from texts you wrote anyway (chats, mails, notes): the word bar knows your way of writing
+        // from the start.
+        Label(Tr(L"Typing profile from your own texts (chats, mails, notes as .txt)"), kLabelX + 20, Y(r) - 4,
+              kCtrlX + 50 - kLabelX, 34);
+        Button(kLearnFile, Tr(L"Learn from my texts…"), kCtrlX + 80, Y(r++) - 4, 220);
         // Grammar: whole sentences, online (or your own server); blue marks with suggestions on right-click.
         Label(Tr(L"Grammar check"), kLabelX, Y(r), kLabelW);
         const bool publicLt = cfg_.languageToolUrl.find(L"api.languagetool.org") != std::wstring::npos;
@@ -1089,6 +1094,12 @@ private:
                 if (ctx_.ocrFixesText && ctx_.setOcrFixes) {
                     std::wstring text = ctx_.ocrFixesText();
                     if (EditOcrFixes(hwnd_, inst_, &text)) ctx_.setOcrFixes(text);
+                }
+                break;
+            case kLearnFile:
+                if (ctx_.learnFromFile) {
+                    const std::wstring path = PickTextFile(hwnd_, Tr(L"Learn from my texts"), false, L"");
+                    if (!path.empty()) SetText(kForgetStatus, ctx_.learnFromFile(path));
                 }
                 break;
             case kMyWords:

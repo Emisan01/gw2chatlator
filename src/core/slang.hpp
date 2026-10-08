@@ -13,6 +13,16 @@ const WordSet& BuiltinKeepWords();
 // fine to translate but not in any dictionary (Kommi, stacken, Fraktale ...).
 const WordSet& BuiltinSpellIgnore();
 
+// The English everyone writes in a GW2 chat, whatever language they type in ("with", "sorry", "thanks", "good"):
+// never a typo to correct while writing another language.
+const WordSet& CommonChatEnglish();
+
+// German spoken contractions ("habs", "geht's", "gibts"): a way of writing, never a typo – and for a translator
+// written out ("hab es", "geht es", "gibt es"; translators leave "habs" as it is and break the sentence). Only the text
+// that goes to the translator; what you see and send stays as written.
+bool IsGermanContraction(const std::wstring& word);
+std::wstring ExpandGermanContractions(const std::wstring& text);
+
 // Two capitals or more ("LA", "HoT", "CoF", "WvW").
 bool LooksLikeAbbreviation(const std::wstring& word);
 

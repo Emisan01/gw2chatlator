@@ -31,6 +31,7 @@
 #include "core/i18n.hpp"
 #include "core/languagetool_protocol.hpp"
 #include "core/tesseract_tsv.hpp"
+#include "core/typo_memory.hpp"
 #include "core/word_model.hpp"
 #include "core/hotkey.hpp"
 #include "core/json.hpp"
@@ -1520,6 +1521,55 @@ static void TestGlyphReader() {
     CHECK(!back.Parse("glyphs 1\n"));  // an old or foreign file is refused
 }
 
+static void TestLooksLikeSlip() {
+    const KeyLayout k = Qwertz();
+    // Slips that really happen.
+    CHECK(LooksLikeSlip(L"shon", L"schon", k, false));            // left out inside
+    CHECK(LooksLikeSlip(L"eifnach", L"einfach", k, false));       // swapped
+    CHECK(LooksLikeSlip(L"aaber", L"aber", k, false));            // doubled
+    CHECK(LooksLikeSlip(L"funnktioniert", L"funktioniert", k, true));
+    CHECK(LooksLikeSlip(L"tippsuport", L"tippsupport", k, false)); // a double typed once
+    CHECK(LooksLikeSlip(L"siund", L"sind", k, false));            // a key next door caught too
+    CHECK(LooksLikeSlip(L"hsllo", L"hallo", k, false));           // key next door
+    CHECK(LooksLikeSlip(L"ahllo", L"hallo", k, true));            // first two swapped
+    // Grammar, other languages, word parts: no slips.
+    CHECK(!LooksLikeSlip(L"gehts", L"geht", k, false));
+    CHECK(!LooksLikeSlip(L"habs", L"habe", k, false));
+    CHECK(!LooksLikeSlip(L"habs", L"hab's", k, false));  // a way of writing, the user's choice
+    CHECK(!LooksLikeSlip(L"with", L"witz", k, false));
+    CHECK(!LooksLikeSlip(L"window", L"windows", k, false));
+    CHECK(!LooksLikeSlip(L"auflösungs", L"auflösung", k, false));
+    CHECK(!LooksLikeSlip(L"debug", L"debut", k, false));
+    CHECK(!LooksLikeSlip(L"dont", L"dort", k, false));            // n and r are not next door
+    CHECK(!LooksLikeSlip(L"once", L"ponce", k, false));           // the first letter stays
+    CHECK(!LooksLikeSlip(L"shon", L"schon", k, true));            // strict: only swaps and doubles
+}
+
+static void TestGermanContractions() {
+    CHECK(ExpandGermanContractions(L"habs schon, gehts dir gut? Gibt's das") == L"hab es schon, geht es dir gut? Gibt es das");
+    CHECK(ExpandGermanContractions(L"nice hats and old wars, finds") == L"nice hats and old wars, finds");
+    CHECK(IsGermanContraction(L"wirds") && IsGermanContraction(L"klappt’s") && !IsGermanContraction(L"teams"));
+}
+
+static void TestTypoMemory() {
+    TypoMemory m;
+    m.Add(L"shon", L"schon");
+    m.Add(L"shon", L"schon");
+    CHECK(m.FixFor(L"Shon") == L"schon");
+    m.Add(L"tset", L"test");
+    m.Add(L"tset", L"set");
+    CHECK(m.FixFor(L"tset").empty());  // two fixes compete
+    m.Add(L"tset", L"test");
+    m.Add(L"tset", L"test");
+    CHECK(m.FixFor(L"tset") == L"test");  // 3 of 4
+    TypoMemory n;
+    n.Parse(m.Serialize());
+    CHECK(n.FixFor(L"shon") == L"schon" && n.FixFor(L"tset") == L"test" && !n.Dirty());
+    n.ForgetFix(L"schon");
+    CHECK(n.FixFor(L"shon").empty());
+    CHECK(n.Forget(L"tset") && n.Size() == 0);
+}
+
 static void TestWordCase() {
     // The way you write a word most of the time wins: one "Fallen" (a name) does not capitalise the verb.
     WordModel m;
@@ -1722,6 +1772,9 @@ int main() {
     TestPhraseMemory();
     TestStampShape();
     TestWordCase();
+    TestLooksLikeSlip();
+    TestTypoMemory();
+    TestGermanContractions();
     TestGlyphReader();
     TestGw2Abbreviations();
     TestRapidRec();

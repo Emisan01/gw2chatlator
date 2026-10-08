@@ -44,7 +44,7 @@ const wchar_t* const kKeepCaps[] = {
 const wchar_t* const kSpellOnly[] = {
     L"kommi", L"kommis", L"kommander", L"commander", L"squad", L"squads", L"taggen", L"stack", L"stacke",
     L"stacken", L"stackt", L"raid", L"raids", L"raiden", L"fraktal", L"fraktale", L"fractal", L"fractals",
-    L"strike", L"strikes", L"metas", L"blob", L"loot", L"looten", L"farmen", L"gildi", L"gildis", L"carry",
+    L"strike", L"strikes", L"metas", L"blob", L"loot", L"looten", L"farmen", L"farme", L"farmst", L"farmt", L"gefarmt", L"gildi", L"gildis", L"carry",
     L"carryen", L"buff", L"buffs", L"buffen", L"heal", L"healer", L"heali", L"healen", L"condi", L"condis",
     L"kiten", L"rezz", L"rezzen", L"ressen", L"revive", L"reviven", L"mount", L"mounts", L"gems", L"ekto",
     L"golem", L"golems", L"legy", L"legi", L"legis", L"legendary", L"exo", L"exos", L"gear", L"dmg", L"deff",
@@ -100,6 +100,84 @@ const WordSet& BuiltinKeepWords() {
         AddCaps(x);
         return x;
     }();
+    return s;
+}
+
+// The most common English words of a chat (written for this list, everyday vocabulary).
+const wchar_t* const kChatEnglish[] = {
+    L"a", L"about", L"after", L"again", L"all", L"almost", L"also", L"always", L"am", L"an", L"and", L"any",
+    L"anyone", L"anything", L"are", L"around", L"as", L"ask", L"at", L"away", L"back", L"bad", L"be", L"because",
+    L"been", L"before", L"being", L"best", L"better", L"big", L"boss", L"both", L"bring", L"busy", L"but", L"buy",
+    L"by", L"call", L"came", L"can", L"cant", L"come", L"coming", L"could", L"cool", L"damn", L"day", L"did",
+    L"didnt", L"do", L"does", L"doesnt", L"doing", L"done", L"dont", L"down", L"each", L"easy", L"else", L"enough",
+    L"even", L"ever", L"every", L"everyone", L"fast", L"few", L"fine", L"first", L"for", L"found", L"free",
+    L"friend", L"friends", L"from", L"fun", L"funny", L"get", L"gets", L"getting", L"give", L"go", L"goes", L"going",
+    L"gone", L"good", L"got", L"great", L"guys", L"had", L"happy", L"has", L"have", L"having", L"he", L"hello",
+    L"help", L"her", L"here", L"hey", L"hi", L"him", L"his", L"hold", L"home", L"how", L"i", L"if", L"im", L"in",
+    L"into", L"is", L"isnt", L"it", L"its", L"just", L"keep", L"kill", L"kind", L"know", L"last", L"late", L"later",
+    L"learn", L"leave", L"left", L"let", L"lets", L"like", L"little", L"long", L"look", L"looking", L"lost", L"lot",
+    L"lots", L"love", L"made", L"make", L"many", L"maybe", L"me", L"mean", L"mine", L"more", L"most", L"much",
+    L"must", L"my", L"need", L"never", L"new", L"next", L"nice", L"night", L"no", L"not", L"nothing", L"now", L"of",
+    L"off", L"oh", L"ok", L"okay", L"old", L"on", L"once", L"one", L"only", L"open", L"or", L"other", L"our", L"out",
+    L"over", L"party", L"people", L"play", L"player", L"players", L"please", L"point", L"pretty", L"quick", L"quite",
+    L"ready", L"real", L"really", L"right", L"run", L"same", L"say", L"see", L"seem", L"send", L"sent", L"she",
+    L"should", L"show", L"since", L"so", L"some", L"someone", L"something", L"soon", L"sorry", L"start", L"still",
+    L"stop", L"stuff", L"sure", L"take", L"talk", L"team", L"tell", L"than", L"thank", L"thanks", L"that", L"thats",
+    L"the", L"their", L"them", L"then", L"there", L"these", L"they", L"thing", L"things", L"think", L"this",
+    L"those", L"though", L"thought", L"through", L"time", L"to", L"today", L"together", L"tomorrow", L"too", L"try",
+    L"trying", L"turn", L"up", L"us", L"use", L"used", L"very", L"wait", L"want", L"wanted", L"was", L"way", L"we",
+    L"well", L"went", L"were", L"what", L"whats", L"when", L"where", L"which", L"while", L"who", L"why", L"will",
+    L"with", L"without", L"wont", L"work", L"would", L"yeah", L"yes", L"yet", L"you", L"your", L"yours", L"youre",
+};
+
+// Verb forms that take "s" for "es" in spoken German. "hat"/"war" are left out ("hats", "wars" are English words).
+const wchar_t* const kContractionStems[] = {
+    L"hab", L"geht", L"gibt", L"gab", L"wird", L"ist", L"mach", L"macht", L"kann", L"ging", L"sieht", L"klappt",
+    L"passt", L"stimmt", L"wär", L"hätt", L"nimm", L"lohnt", L"braucht", L"dauert", L"kommt",
+    L"gefällt", L"tut", L"hilft", L"reicht", L"schaff", L"glaub",
+};
+
+// The stem of a contraction ("Habs" -> "Hab", "geht's" -> "geht"), empty if `word` is none.
+static std::wstring ContractionStem(const std::wstring& word) {
+    size_t cut = 0;
+    if (word.size() > 3 && (word[word.size() - 2] == L'\'' || word[word.size() - 2] == L'\u2019') &&
+        (word.back() == L's' || word.back() == L'S'))
+        cut = 2;
+    else if (word.size() > 2 && (word.back() == L's' || word.back() == L'S'))
+        cut = 1;
+    if (!cut) return {};
+    const std::wstring stem = word.substr(0, word.size() - cut);
+    const std::wstring key = CaseFold(stem);
+    for (const wchar_t* s : kContractionStems)
+        if (key == s) return stem;
+    return {};
+}
+
+bool IsGermanContraction(const std::wstring& word) { return !ContractionStem(word).empty(); }
+
+std::wstring ExpandGermanContractions(const std::wstring& text) {
+    std::wstring out;
+    size_t i = 0;
+    while (i < text.size()) {
+        auto inWord = [&](size_t k) {
+            return IsWordChar(text[k]) || ((text[k] == L'\'' || text[k] == L'\u2019') && k > 0 && IsWordChar(text[k - 1]));
+        };
+        if (!inWord(i)) {
+            out += text[i++];
+            continue;
+        }
+        size_t e = i;
+        while (e < text.size() && inWord(e)) ++e;
+        const std::wstring word = text.substr(i, e - i);
+        const std::wstring stem = ContractionStem(word);
+        out += stem.empty() ? word : stem + L" es";
+        i = e;
+    }
+    return out;
+}
+
+const WordSet& CommonChatEnglish() {
+    static const WordSet s = Make({kChatEnglish}, {std::size(kChatEnglish)});
     return s;
 }
 

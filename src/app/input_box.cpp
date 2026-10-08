@@ -93,6 +93,7 @@ bool InputBox::ApplyChoice(wchar_t boundary) {
     // Learned at the moment of choosing: Tab to another suggestion says more than going on with the first.
     if (word != typed && spell_) spell_->Chose(Text(), c.replace.start, word, c.highlight > 0);
     if (word != typed) {
+        if (spell_) spell_->NoteFix(typed, word);  // a kept correction: your typo (Backspace forgets it)
         if (boundary) lastFix_ = {true, c.replace.start, typed, word, boundary};
         if (cb_.onAutoCorrected) cb_.onAutoCorrected(typed, word);
     }
@@ -629,6 +630,7 @@ void InputBox::CorrectWordEndingAt(size_t end, bool boundaryTyped) {
     const size_t newCaret = caret + replacement->size() - word.size();
     SendMessageW(hwnd_, EM_SETSEL, newCaret, newCaret);
     if (boundaryTyped) lastFix_ = {true, start, word, *replacement, text[end]};
+    spell_->NoteFix(word, *replacement);
     if (cb_.onAutoCorrected) cb_.onAutoCorrected(word, *replacement);
 }
 
