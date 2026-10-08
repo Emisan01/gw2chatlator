@@ -3,6 +3,12 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.0.1 — 2026-10-08
+
+- **Screenshots of the tool:** menu ≡ -> "Show this tool on screenshots (1 minute)". Our windows are normally hidden
+  from every screen capture (also Win+Print and the Snipping Tool) so the reader never reads itself; for one minute
+  they are visible, reading pauses meanwhile, then everything is as before.
+
 ## 1.0.0 — 2026-10-08 (Release 1)
 
 - **Everyday words from the first letter, like a phone keyboard:** the typing help now also uses Windows' own word
