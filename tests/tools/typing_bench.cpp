@@ -214,10 +214,40 @@ void Run(const wchar_t* lang, const wchar_t* tag, const Line* lines, size_t coun
     for (const auto& [k, v] : all.surpriseList) std::printf("  surprise %3dx  %s\n", v, ToUtf8(k).c_str());
 }
 
+// typing_bench --probe de-DE "Sch" "wie g": what a fresh tool offers for these inputs (nothing learned).
+void Probe(int argc, wchar_t** argv) {
+    const std::wstring tag = argv[2];
+    const std::wstring lang = tag.substr(0, 2);
+    wchar_t tmp[MAX_PATH];
+    GetTempPathW(MAX_PATH, tmp);
+    const std::wstring dir = std::wstring(tmp) + L"gct_typing_probe";
+    CreateDirectoryW(dir.c_str(), nullptr);
+    DeleteFileW((dir + L"\\learned_" + lang + L".txt").c_str());
+    SpellService sp;
+    sp.Init({tag, lang}, dir + L"\\words.txt");
+    sp.UseLearnedLanguage(lang, dir);
+    for (int i = 3; i < argc; ++i) {
+        const std::wstring text = argv[i];
+        const auto t0 = GetTickCount64();
+        const WordSuggestions s = sp.Suggestions(text, text.size(), AutoCorrectMode::Phone);
+        const WordChoices c = sp.Choices(text, text.size(), AutoCorrectMode::Phone);
+        std::wstring bar, ch;
+        for (const std::wstring& w : s.words) bar += L"[" + w + L"] ";
+        for (size_t k = 0; k < c.words.size(); ++k)
+            ch += (static_cast<int>(k) == c.highlight ? L"*" : L"") + c.words[k] + L" ";
+        std::printf("%-16s bar: %-40s grey/Tab: %s (%llu ms)\n", ToUtf8(text).c_str(), ToUtf8(bar).c_str(),
+                    ToUtf8(ch).c_str(), GetTickCount64() - t0);
+    }
+}
+
 }  // namespace
 
 int wmain(int argc, wchar_t** argv) {
     CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    if (argc > 2 && std::wstring(argv[1]) == L"--probe") {
+        Probe(argc, argv);
+        return 0;
+    }
     const int messages = argc > 1 ? std::max(100, _wtoi(argv[1])) : 600;
     Run(L"de", L"de-DE", kGerman, std::size(kGerman), messages);
     Run(L"en", L"en-US", kEnglish, std::size(kEnglish), messages);
