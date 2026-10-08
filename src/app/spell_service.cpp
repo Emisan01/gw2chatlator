@@ -4,6 +4,7 @@
 #include <windows.h>
 
 #include <algorithm>
+#include <cwctype>
 
 #include "core/slang.hpp"
 #include "win/files.hpp"
@@ -200,8 +201,26 @@ std::vector<SpellIssue> SpellService::Check(const std::wstring& text, size_t car
 
 std::vector<std::wstring> SpellService::Suggest(const std::wstring& word) const { return CheckerSuggest(word); }
 
+bool SpellService::LettersOnly(const std::wstring& w) {
+    for (wchar_t c : w)
+        if (!IsWordChar(c) && c != L'\'' && c != L'-' && c != 0x2019) return false;
+    return !w.empty();
+}
+
+// A real word: known to you (learned, names, GW2 words) or to the dictionary – in any case of its first letter
+// ("abend" is "Abend" written small, no error in a chat). Without a dictionary: your words and short words.
+bool SpellService::IsValidWord(const std::wstring& w) const {
+    if (IsKnown(w)) return true;
+    if (!checker_.Ready()) return model_.Knows(w);
+    if (!CheckerRejects(w)) return true;
+    std::wstring other = w;
+    other[0] = std::iswupper(w[0]) ? CaseFoldChar(w[0]) : static_cast<wchar_t>(std::towupper(w[0]));
+    return !CheckerRejects(other);
+}
+
 std::optional<std::wstring> SpellService::AutoCorrection(const std::wstring& word, AutoCorrectMode mode) const {
     if (mode == AutoCorrectMode::Off || word.size() < 2 || IsKnown(word)) return std::nullopt;
+    if (IsValidWord(word)) return std::nullopt;  // a real word (also small-written nouns) is never changed
     if (checker_.Ready()) {
         for (const SpellIssue& issue : checker_.Check(word)) {
             if (issue.kind == SpellIssue::Kind::Replace && issue.span.start == 0 && issue.span.length == word.size() &&
@@ -210,11 +229,13 @@ std::optional<std::wstring> SpellService::AutoCorrection(const std::wstring& wor
         }
     }
     if (mode != AutoCorrectMode::Phone) return std::nullopt;
-    // Only words the dictionary rejects; without a dictionary only what you taught it.
-    if (checker_.Ready() && !IsMisspelled(word)) return std::nullopt;
+    // Only words the dictionary rejects – without a dictionary any new word would look like a slip: no correction.
+    if (!checker_.Ready() || !IsMisspelled(word)) return std::nullopt;
     const std::wstring fix =
         ChooseCorrection(word, checker_.Ready() ? CheckerSuggest(word) : std::vector<std::wstring>(), model_);
-    if (fix.empty() || fix == word) return std::nullopt;
+    if (fix.empty() || fix == word || !LettersOnly(fix) || CaseFold(fix) == CaseFold(word)) return std::nullopt;
+    // Only a slip on the keyboard (a key next door, two letters swapped) – or one of your own words.
+    if (!model_.Knows(fix) && SlipDistance(WordKey(fix), WordKey(word), layout_, 0.7) > 0.7) return std::nullopt;
     return fix;
 }
 
@@ -379,7 +400,7 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
     size_t start = caret;
     while (start > 0 && IsWordChar(text[start - 1])) --start;
     const std::wstring typed = text.substr(start, caret - start);
-    if (typed.size() < 2 || HasDigit(typed)) return c;
+    if (typed.empty() || HasDigit(typed)) return c;
     c.replace = {start, caret - start};
     // A name you taught: written the taught way with Space, the word as typed with Tab ("Fallen", then "fallen").
     if (const std::wstring name = NameFor(typed); !name.empty() && name != typed) {
@@ -395,14 +416,22 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
     while (b > 0 && IsWordChar(text[b - 1])) --b;
     const std::wstring prev = text.substr(b, e - b);
 
-    const bool valid = IsKnown(typed) || (checker_.Ready() ? !CheckerRejects(typed) : model_.Knows(typed));
+    const bool valid = IsValidWord(typed);
     std::wstring p1, p2;
     WordsBefore(text, start, &p1, &p2);
+    // What Space may write without asking: your own words (learned, names) and clear slips on the keyboard. The
+    // dictionary's ideas, the starter list and words of the chat are offered with Tab only – measured with
+    // tests/tools/typing_bench: they turned correctly typed words into others ("tequatl" -> "gequält").
+    std::vector<std::wstring> strong;
     std::vector<std::wstring> completions;
     for (const auto& [k, n] : names_)  // names you taught come first ("Fal" -> "Fallen")
         if (k.size() > WordKey(typed).size() && k.compare(0, WordKey(typed).size(), WordKey(typed)) == 0)
             completions.push_back(n);
     for (const std::wstring& w : model_.Complete(typed, prev, 3, p2)) completions.push_back(w);
+    // Without a dictionary a short word may already be finished ("an", "do"): Space completes only from 3 letters
+    // on and only when it adds 2 or more.
+    for (const std::wstring& w : completions)
+        if (checker_.Ready() || (typed.size() >= 3 && w.size() >= typed.size() + 2)) strong.push_back(w);
     AddContextCompletions(typed, completions, 3);
     const std::wstring p = WordKey(typed);
     for (const std::wstring& w : Gw2StarterWords(learnedLang_)) {
@@ -415,12 +444,26 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
     if (!valid && typed.size() >= 3) {
         // The whole hand one key off: the strongest hint there is.
         for (const std::wstring& v : HandShiftVariants(typed, layout_))
-            if (model_.Knows(v) || (checker_.Ready() && !CheckerRejects(v))) fixes.push_back(MatchCase(typed, v));
-        for (const std::wstring& w : model_.NearSlip(typed, layout_, 3)) fixes.push_back(w);
+            if (LettersOnly(v) && (model_.Knows(v) || (checker_.Ready() && !CheckerRejects(v)))) {
+                fixes.push_back(MatchCase(typed, v));
+                strong.push_back(fixes.back());
+            }
+        // Without a dictionary every new word looks like a slip of a known one ("many" -> "maybe"): offered only.
+        for (const std::wstring& w : model_.NearSlip(typed, layout_, 3)) {
+            fixes.push_back(w);
+            if (checker_.Ready()) strong.push_back(w);
+        }
+        for (const std::wstring& w : model_.CompleteFuzzy(typed, prev, 2, neighbors_)) {
+            fixes.push_back(w);
+            if (checker_.Ready()) strong.push_back(w);
+        }
         if (checker_.Ready())
-            for (const std::wstring& w : CheckerSuggest(typed))
-                if (w.find(L' ') == std::wstring::npos) fixes.push_back(w);
-        for (const std::wstring& w : model_.CompleteFuzzy(typed, prev, 2, neighbors_)) fixes.push_back(w);
+            for (const std::wstring& w : CheckerSuggest(typed)) {
+                if (w.find(L' ') != std::wstring::npos || !LettersOnly(w)) continue;
+                fixes.push_back(w);
+                // The dictionary's idea is only taken by Space when it is one slip away on the keyboard.
+                if (SlipDistance(WordKey(w), WordKey(typed), layout_, 0.7) <= 0.7) strong.push_back(w);
+            }
     }
 
     auto add = [&](const std::wstring& w) {
@@ -444,8 +487,16 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
     }
     if (c.words.size() <= 1 && c.firstIsTyped) return {};  // nothing to choose
     if (c.words.empty()) return {};
-    if (c.firstIsTyped) c.highlight = 0;
-    else c.highlight = mode == AutoCorrectMode::Phone ? 0 : -1;
+    if (c.firstIsTyped) {
+        c.highlight = 0;
+    } else if (mode == AutoCorrectMode::Phone) {
+        // The first of your own words or clear slips; the rest waits for Tab.
+        c.highlight = -1;
+        for (size_t i = 0; i < c.words.size() && c.highlight < 0; ++i)
+            if (std::find(strong.begin(), strong.end(), c.words[i]) != strong.end()) c.highlight = static_cast<int>(i);
+    } else {
+        c.highlight = -1;
+    }
     return c;
 }
 

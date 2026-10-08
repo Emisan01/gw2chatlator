@@ -112,6 +112,8 @@ public:
 
 private:
     bool IsKnown(const std::wstring& word) const;
+    bool IsValidWord(const std::wstring& word) const;
+    static bool LettersOnly(const std::wstring& word);
     bool IsMisspelled(const std::wstring& word) const;
     // The Windows spell checker is a COM call; the word bar asks on every key
     // press, so answers per word are kept until the language changes.
