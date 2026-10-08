@@ -24,7 +24,9 @@ public:
 
     static bool Active() { return depth_ > 0; }
     // A picture taken at `tick` may show one of our windows: one is open, or it closed less than 400 ms before.
-    static bool MayShowOurWindow(ULONGLONG tick) { return depth_ > 0 || tick < lastChange_ + 400; }
+    // "Show on screenshots" (menu, 1 minute): no window of ours is hidden from captures, so no picture is used.
+    static bool MayShowOurWindow(ULONGLONG tick) { return depth_ > 0 || tick < lastChange_ + 400 || showOnScreenshots; }
+    static inline bool showOnScreenshots = false;
 
 private:
     static inline int depth_ = 0;

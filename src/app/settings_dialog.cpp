@@ -158,7 +158,7 @@ public:
                                 nullptr, inst, this);
         if (!hwnd_) return false;
         // Never in a screen capture: the free screen area or the chat may lie under it (invariant 5).
-        SetWindowDisplayAffinity(hwnd_, WDA_EXCLUDEFROMCAPTURE);
+        if (!ModalScope::showOnScreenshots) SetWindowDisplayAffinity(hwnd_, WDA_EXCLUDEFROMCAPTURE);
         Build();
         if (owner) EnableWindow(owner, FALSE);
         ShowWindow(hwnd_, SW_SHOW);

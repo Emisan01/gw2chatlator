@@ -91,6 +91,8 @@ constexpr UINT_PTR kTimerCaptures = 4;
 constexpr UINT_PTR kTimerGrammar = 5;
 constexpr UINT_PTR kTimerConfirm = 9;  // double scan: read again to confirm new lines
 constexpr UINT_PTR kTimerOnce = 11;    // "translate once" ends
+constexpr UINT_PTR kTimerShowSelf = 12;  // "show on screenshots" ends
+constexpr UINT kShowSelfMs = 60 * 1000;
 constexpr UINT kOnceMs = 10000;         // at most; it ends as soon as the pictures are read (slow OCR: Tesseract)
 constexpr UINT kConfirmDelayMs = 200;  // second look at new lines (not the same frame)
 constexpr ULONGLONG kDetectEveryMs = 1500;  // no chat area yet: look for the GW2 chat this often
@@ -1445,7 +1447,7 @@ void MainWindow::ShowChannelMenu() {
 void MainWindow::ShowMainMenu() {
     const ModalScope modal;
     enum : UINT {
-        kSetup = 1, kSettings, kRegion, kReader, kCover, kDock, kQuit, kGw2Chat, kFreeArea, kOnce, kOnlyTr,
+        kSetup = 1, kSettings, kRegion, kReader, kCover, kDock, kQuit, kGw2Chat, kFreeArea, kOnce, kOnlyTr, kShowSelf,
         kUiLangBase = 100,  // + index into UiLanguages()
     };
     auto check = [](bool on) { return static_cast<UINT>(on ? MF_CHECKED : MF_UNCHECKED); };
@@ -1464,6 +1466,8 @@ void MainWindow::ShowMainMenu() {
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     add(menu, MF_STRING, kSettings, Tr(L"Settings …"));
     add(menu, MF_STRING, kSetup, Tr(L"Setup (install, mark the chat) …"));
+    add(menu, MF_STRING | check(ModalScope::showOnScreenshots), kShowSelf,
+        Tr(L"Show this tool on screenshots (1 minute)"));
     HMENU ui = CreatePopupMenu();
     for (size_t i = 0; i < UiLanguages().size(); ++i)
         add(ui, MF_STRING | check(UiLanguages()[i].lang == cfg_.uiLang), kUiLangBase + static_cast<UINT>(i),
@@ -1489,6 +1493,18 @@ void MainWindow::ShowMainMenu() {
         case kFreeArea: PickFreeArea(); break;
         case kReader: ToggleReading(); break;
         case kOnce: TranslateOnce(); break;
+        case kShowSelf:
+            // Our windows are normally hidden from every capture (also Win+Print, Snipping Tool) so the reader never
+            // reads them; for one minute they are visible and the reader uses no picture.
+            ModalScope::showOnScreenshots = !ModalScope::showOnScreenshots;
+            if (ModalScope::showOnScreenshots) {
+                SetTimer(hwnd_, kTimerShowSelf, kShowSelfMs, nullptr);
+                SetStatus(Tr(L"Visible on screenshots for 1 minute – reading pauses."), Tone::Ok, 5000);
+            } else {
+                KillTimer(hwnd_, kTimerShowSelf);
+            }
+            PollGame();  // apply now
+            break;
         case kOnlyTr:
             cfg_.onlyTranslations = !cfg_.onlyTranslations;
             cfg_.SaveBool(L"Reader", L"OnlyTranslations", cfg_.onlyTranslations);
@@ -2667,11 +2683,12 @@ void MainWindow::PollGame() {
         StartChatDetection();
     // Covering the chat: hide this window from captures (Windows 10 2004+).
     // Otherwise lift it again, so screenshots and recordings show the window.
-    if (overlap != excludedFromCapture_ && !(overlap && affinityUnsupported_)) {
-        if (SetWindowDisplayAffinity(hwnd_, overlap ? WDA_EXCLUDEFROMCAPTURE : WDA_NONE)) {
-            excludedFromCapture_ = overlap;
-            if (overlap) ignoreSnapshotsBefore_ = GetTickCount64() + 150;  // until the compositor applied it
-        } else if (overlap) {
+    const bool hide = overlap && !ModalScope::showOnScreenshots;  // "show on screenshots": never hidden
+    if (hide != excludedFromCapture_ && !(hide && affinityUnsupported_)) {
+        if (SetWindowDisplayAffinity(hwnd_, hide ? WDA_EXCLUDEFROMCAPTURE : WDA_NONE)) {
+            excludedFromCapture_ = hide;
+            if (hide) ignoreSnapshotsBefore_ = GetTickCount64() + 150;  // until the compositor applied it
+        } else if (hide) {
             affinityUnsupported_ = true;
         }
     }
@@ -3610,6 +3627,11 @@ LRESULT MainWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             } else if (wp == kTimerGame) PollGame();
             else if (wp == kTimerGrammar) StartGrammarCheck();
             else if (wp == kTimerOnce) EndTranslateOnce();
+            else if (wp == kTimerShowSelf) {
+                KillTimer(hwnd_, kTimerShowSelf);
+                ModalScope::showOnScreenshots = false;
+                PollGame();
+            }
             else if (wp == kTimerConfirm) {  // double scan: the second look at new lines
                 KillTimer(hwnd_, kTimerConfirm);
                 reader_.Rescan();
