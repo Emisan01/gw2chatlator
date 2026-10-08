@@ -161,6 +161,9 @@ private:
     std::wstring TechnicalStatus();
     std::wstring ChannelChipText() const;
     std::wstring WriteChipText() const;
+    std::wstring TypeChipText() const;   // "Write: Deutsch" – the language you type in (spelling, suggestions)
+    void ShowTypeLangMenu();
+    void ApplyTypingLanguage();          // spelling, learned words and suggestions follow cfg_.writeIn
 
     // ---- glossary (official GW2 names)
     void RefreshGlossary();
@@ -343,6 +346,7 @@ private:
     std::wstring status_;
     Tone tone_ = Tone::Muted;
     RECT chatRect_{};
+    RECT typeRect_{};  // footer: "Write: …"
     RECT readRect_{}, menuRect_{}, closeRect_{}, collapseRect_{}, channelRect_{}, writeRect_{};
     RECT readDotRect_{};  // small dot in the header: reading on (grey) / off (black)
     bool previewVisible_ = false;  // the preview only takes space while you type
