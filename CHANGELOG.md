@@ -3,7 +3,7 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## Unreleased
+## 1.0.0 — 2026-10-08 (Release 1)
 
 - **Everyday words from the first letter, like a phone keyboard:** the typing help now also uses Windows' own word
   prediction (the one of the touch keyboard, offline, for every installed input language): "Sch" offers "schon",
@@ -21,6 +21,8 @@ diagnosis show it.
   word, and only the dictionary's first idea). Changed endings, spoken German ("habs", "gehts") and common English
   chat words ("with", "good", "thanks") stay as you wrote them.
 - Spoken German contractions go to the translator written out ("habs" -> "hab es"); a German chat gets them as written.
+- Switching the reading language translates the lines already shown (newest 50) again into the new language.
+- The "Send" menu offers only languages the GW2 chat can show (Latin script).
 
 ## 0.9.1 — 2026-10-08
 
