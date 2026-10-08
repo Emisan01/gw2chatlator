@@ -17,7 +17,7 @@ const WordSet& BuiltinSpellIgnore();
 bool LooksLikeAbbreviation(const std::wstring& word);
 
 // `word` is in a keep/ignore set from above: in any spelling, or – for letters that are an ordinary word somewhere
-// ("la", "hot", "de") – only when written like an abbreviation.
+// ("la", "hot", "de") – only when written like an abbreviation; entries "=Word" (names the user taught) only exactly so.
 bool IsKeepWord(const WordSet& keep, const std::wstring& word);
 
 // What the word bar offers before it has learned anything: GW2 words as

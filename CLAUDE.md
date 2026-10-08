@@ -176,6 +176,17 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
   `ChatStream::Feed(..., confirm=true)` takes a new line only when the next read (200 ms later) shows it again.
 - The log shows no timestamps and no channel tags, only "Name: text" in the channel colour.
 - Smileys (`:D`, `^^`, `<3`, `xD` ...) and names are protected from translation (`ProtectForTranslation`).
+- Names the user taught (`SpellService::AddName`, `<data>\my-names.txt`, right-click in input / word bar): `Choices`
+  offers the name first, the typed word second; `KeepWords()` = built-in keep-words + "=Name" entries (kept only in
+  exactly that spelling) – pass `spell_.KeepWords()` to `ProtectForTranslation`, never `BuiltinKeepWords()` directly.
+- `WordModel` form = the majority spelling of the first letter (`cap`/`caseUses`, message-initial words do not count);
+  file lines "w form count cap caseUses" (older 3-field lines still load).
+- Sending a chat command (`SendToGw2Chat`): the command ("/w ") is typed as keys (`TypeText`), a whisper recipient is
+  pasted and confirmed with Tab, then only the message is pasted – pasting "/w Name, text" in one go made GW2 send the
+  name as text (2026-10-08). Up/Down in the input = sent history (`InputBox::AddHistory`, 50, session only).
+- `StampShapeLength` (chat_line): the shape of "[hh:mm]" + optional "[X]" tag with any misread characters
+  (opener-like, 1–2 + 2 digit-like incl. O/D/I/l, ≤ 2 separators, closer-like) – checked first in `ParseChatLine`;
+  without a tag two real digits are required.
 - Keep-words (core/slang): `kKeep` in any spelling only for letters that are no word in any common language;
   `kKeepCaps` (la, de, hot, cm, se …) are stored as "^word" and kept only when written like an abbreviation (2+
   capitals, `LooksLikeAbbreviation`) – always check membership with `IsKeepWord`, never `count()`. "might", "mes",

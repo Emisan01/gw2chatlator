@@ -491,6 +491,14 @@ void MainWindow::CreateChildren() {
                          SetFocus(input_.Hwnd());
                      });
 
+    words_.SetNames([this](const std::wstring& w) { return spell_.NameFor(w); },
+                    [this](const std::wstring& w, bool add) {
+                        if (add) spell_.AddName(w);
+                        else spell_.RemoveName(w);
+                        input_.RefreshSuggestions();
+                        SetFocus(input_.Hwnd());
+                    });
+
     InputBox::Callbacks cb;
     cb.onEnter = [this](bool original) { OnEnter(original); };
     cb.onEscape = [this] { ReturnToGame(); };
@@ -1805,7 +1813,7 @@ void MainWindow::StartTranslation() {
 
     // Your words ("finds") go to the translator as what they mean ("finde es").
     ProtectedText p = ProtectForTranslation(myWords_.Expand(body), glossary_.Empty() ? nullptr : &glossary_,
-                                            &BuiltinKeepWords(), &speakers_);
+                                            &spell_.KeepWords(), &speakers_);
     lastHits_ = p.glossaryHits;
     if (!HasTranslatableText(p.segments)) {  // only names, codes, keep-words
         finish(JoinSegments(p.segments));
@@ -1887,7 +1895,7 @@ void MainWindow::StartBackTranslation() {
     // language (shown big); otherwise it is the check in your reading language.
     const std::wstring backTarget = WriteNeedsChatLang() ? WriteLang() : readLang_;
     if (PrimaryLang(SendLang()) == PrimaryLang(backTarget)) return;  // you can read it anyway
-    ProtectedText p = ProtectForTranslation(previewBody_, nullptr, &BuiltinKeepWords(), &speakers_);
+    ProtectedText p = ProtectForTranslation(previewBody_, nullptr, &spell_.KeepWords(), &speakers_);
     if (!HasTranslatableText(p.segments)) return;
     CountMyMemory(CodePointCount(previewBody_));
     std::thread([hwnd = hwnd_, gen = inputGen_, translator = translator_, segments = std::move(p.segments),
@@ -2013,7 +2021,10 @@ void MainWindow::SendNextPart() {
         original = split.prefix.empty() ? text : split.body;
     }
     if (!DoSend(line, original)) return;
-    if (partIdx_ == 0) CountTyping();
+    if (partIdx_ == 0) {
+        CountTyping();
+        input_.AddHistory(input_.Text());  // Up brings it back
+    }
     if (partIdx_ == 0 && cfg_.learnWords) {
         // Learn what you write in your own language (the original), like a phone keyboard.
         const std::wstring typed = SanitizeChatText(input_.Text());
@@ -2175,7 +2186,7 @@ bool MainWindow::NeedsTranslation(const std::wstring& text, std::wstring* detect
     for (wchar_t c : text)
         if (IsWordChar(c) && !(c >= L'0' && c <= L'9')) ++letters;
     if (letters < 3) return false;  // "gg", "ty", emotes
-    const ProtectedText p = ProtectForTranslation(text, nullptr, &BuiltinKeepWords());
+    const ProtectedText p = ProtectForTranslation(text, nullptr, &spell_.KeepWords());
     if (!HasTranslatableText(p.segments)) return false;  // only LFG/WvW/chat codes
     // Only when the language is clear: unsure lines ("ok np", names, slang) are not sent anywhere by themselves.
     *detected = SureLanguage(text, DetectLanguage(text));
@@ -2357,7 +2368,7 @@ void MainWindow::PumpIncoming() {
             chars += pl.text.size();
             CountMyMemory(CodePointCount(pl.text));
             items.push_back(
-                ProtectForTranslation(myWords_.Expand(pl.text), nullptr, &BuiltinKeepWords(), &speakers_).segments);
+                ProtectForTranslation(myWords_.Expand(pl.text), nullptr, &spell_.KeepWords(), &speakers_).segments);
             msg->ids.push_back(pl.entryId);
             msg->texts.push_back(std::move(pl.text));
         }

@@ -3,6 +3,22 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## Unreleased
+
+- **Whispers arrive as whispers:** a reply in a whisper tab ("/w Name, text") is now sent the way you do it by hand –
+  "/w " typed, the name pasted as the address and confirmed with Tab, then the message. Pasted in one go, GW2 took the
+  name as part of the text.
+- **Up / Down** in the input brings back what you sent before (like a command line, this session).
+- **Teach names:** right-click a word (input or word bar) → "“Fallen” is a name". From then on typing "fallen" offers
+  **Fallen** first (Space) and **fallen** right after (Tab), and the name is **never translated** ("hi Fallen" no
+  longer arrives as "hi fall"). Kept exactly as taught – the verb "fallen" is still translated. Stored in my-names.txt.
+- The word memory writes a word the way you write it **most of the time**: one name "Fallen" no longer capitalises
+  the verb "fallen"; a noun you always write with a capital keeps it.
+- **Fixed: messages glued together and old ones coming back.** Timestamps the recognition mangled ("CO•.54JCWJ" for
+  "[10:54][W]", "CIIOOJCWJ" for "[11:00][W]") were not seen as the start of a message, so several lines became one –
+  and every picture glued them a little differently, so they came again as "new". The shape of a timestamp is now
+  recognised however its characters were misread.
+
 ## 0.9.0 — 2026-10-07
 
 **The glyph reader** – the GW2 chat has one fixed font; the tool now learns its letters and reads them exactly,

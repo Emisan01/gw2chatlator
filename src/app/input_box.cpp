@@ -3,6 +3,7 @@
 
 #include "app/modal_scope.hpp"
 
+#include <cwctype>
 #include <windowsx.h>
 
 #include <algorithm>
@@ -114,7 +115,24 @@ std::wstring InputBox::Text() const {
     return s;
 }
 
+void InputBox::AddHistory(const std::wstring& text) {
+    const std::wstring t = Trim(text);
+    if (t.empty()) return;
+    if (history_.empty() || history_.back() != t) history_.push_back(t);
+    if (history_.size() > 50) history_.erase(history_.begin());
+    histPos_ = -1;
+}
+
+void InputBox::ShowHistoryText(const std::wstring& text) {
+    SendMessageW(hwnd_, EM_SETSEL, 0, -1);
+    SendMessageW(hwnd_, EM_REPLACESEL, TRUE, reinterpret_cast<LPARAM>(text.c_str()));  // EN_CHANGE: preview follows
+    const LRESULT end = GetWindowTextLengthW(hwnd_);
+    SendMessageW(hwnd_, EM_SETSEL, end, end);
+    lastFix_.valid = false;
+}
+
 void InputBox::Clear() {
+    histPos_ = -1;
     keyPresses_ = 0;
     pasted_ = false;
     issues_.clear();
@@ -517,12 +535,18 @@ bool InputBox::ShowWordMenu(LPARAM lp) {
     if (word.empty() || (!spell_->IsLearned(word) && !cb_.onExplain)) return false;
     const bool learned = spell_->IsLearned(word);
 
-    enum : UINT { kForget = 1, kCut, kCopy, kPaste, kAll, kExplain };
+    enum : UINT { kForget = 1, kCut, kCopy, kPaste, kAll, kExplain, kName, kNoName };
+    // A name: as you typed it if it starts with a capital, else with a capital ("fallen" -> "Fallen").
+    std::wstring nameForm = word;
+    if (!nameForm.empty()) nameForm[0] = static_cast<wchar_t>(std::towupper(nameForm[0]));
+    const bool isName = !spell_->NameFor(word).empty();
     DWORD a = 0, b = 0;
     SendMessageW(hwnd_, EM_GETSEL, reinterpret_cast<WPARAM>(&a), reinterpret_cast<LPARAM>(&b));
     const UINT sel = a != b ? MF_STRING : MF_STRING | MF_GRAYED;
     HMENU menu = CreatePopupMenu();
     if (learned) AppendMenuW(menu, MF_STRING, kForget, TrF(L"Forget “{1}”", {word}).c_str());
+    if (isName) AppendMenuW(menu, MF_STRING, kNoName, TrF(L"“{1}” is not a name", {spell_->NameFor(word)}).c_str());
+    else AppendMenuW(menu, MF_STRING, kName, TrF(L"“{1}” is a name (always written like this)", {nameForm}).c_str());
     if (cb_.onExplain)
         AppendMenuW(menu, MF_STRING, kExplain, TrF(L"Explain “{1}” (slang, abbreviation) …", {word}).c_str());
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
@@ -539,6 +563,16 @@ bool InputBox::ShowWordMenu(LPARAM lp) {
         case kExplain:
             cb_.onExplain(word);
             RunSpellCheck(std::wstring::npos);
+            break;
+        case kName:
+            spell_->AddName(nameForm);
+            ReplaceRange({start, end - start}, nameForm);  // and written so right here
+            UpdateSuggestions();
+            RunSpellCheck(std::wstring::npos);
+            break;
+        case kNoName:
+            spell_->RemoveName(word);
+            UpdateSuggestions();
             break;
         case kForget:
             spell_->Forget(word);
@@ -687,6 +721,30 @@ LRESULT InputBox::Handle(UINT msg, WPARAM wp, LPARAM lp) {
                 suggestions_.kind == WordSuggestions::Kind::Next && suggestions_.autoIndex == 0 &&
                 !suggestions_.words.empty()) {
                 AcceptSuggestion(0);
+                return 0;
+            }
+            // Up on the first line: what you sent before, older with every press; Down goes back to newer ones and
+            // finally to what you had typed.
+            if (!ctrl && !shift && wp == VK_UP && !history_.empty() &&
+                SendMessageW(hwnd_, EM_LINEFROMCHAR, Caret(), 0) == 0) {
+                if (histPos_ < 0) {
+                    histDraft_ = Text();
+                    histPos_ = static_cast<int>(history_.size()) - 1;
+                } else if (histPos_ > 0) {
+                    --histPos_;
+                }
+                ShowHistoryText(history_[static_cast<size_t>(histPos_)]);
+                return 0;
+            }
+            if (!ctrl && !shift && wp == VK_DOWN && histPos_ >= 0 &&
+                SendMessageW(hwnd_, EM_LINEFROMCHAR, Caret(), 0) == SendMessageW(hwnd_, EM_GETLINECOUNT, 0, 0) - 1) {
+                if (histPos_ + 1 < static_cast<int>(history_.size())) {
+                    ++histPos_;
+                    ShowHistoryText(history_[static_cast<size_t>(histPos_)]);
+                } else {
+                    histPos_ = -1;
+                    ShowHistoryText(histDraft_);
+                }
                 return 0;
             }
             if (ctrl && wp == 'A') {

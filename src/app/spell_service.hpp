@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "app/config.hpp"
+#include "core/slang.hpp"
 #include "core/text.hpp"
 #include "core/word_model.hpp"
 #include "win/spellcheck.hpp"
@@ -96,6 +97,14 @@ public:
     void Chose(const std::wstring& text, size_t start, const std::wstring& word, bool deliberate);
     void SetLearnChoices(bool on) { learnChoices_ = on; }
     void AddUserWord(const std::wstring& word);    // persists
+    // Names you taught ("Fallen" for "A Fallen Warrior"): always written as taught. Typing the plain word offers the
+    // name first (Space) and the ordinary word right after (Tab) – "fallen" stays a verb when you want it.
+    // Stored next to your words in my-names.txt.
+    void AddName(const std::wstring& name);
+    bool RemoveName(const std::wstring& word);
+    std::wstring NameFor(const std::wstring& word) const;
+    // Never translated: the built-in GW2 abbreviations plus the names you taught.
+    const WordSet& KeepWords() const { return keep_; }
     void IgnoreForSession(const std::wstring& word);
 
     // Ranges no spell logic may touch: chat codes and a "/w Name, " prefix.
@@ -121,6 +130,10 @@ private:
     std::wstring learnedPath_;
     std::wstring learnedLang_;  // "de": the language of the learned words and the starter list
     std::vector<std::wstring> context_;  // words of the recent chat, newest first (SetContext)
+    std::unordered_map<std::wstring, std::wstring> names_;  // folded -> as taught
+    std::wstring namesPath_;
+    WordSet keep_ = BuiltinKeepWords();
+    void SaveNames();
     bool learnChoices_ = true;
     void AddContextCompletions(const std::wstring& typed, std::vector<std::wstring>& out, size_t max) const;
 };
