@@ -366,6 +366,8 @@ static void TestTypingSlips() {
     near = m.NearSlip(L"Teqiatl", k, 3);
     CHECK(!near.empty() && near[0] == L"Tequatl");
     CHECK(m.NearSlip(L"zum", k, 3).empty());  // a known word needs no correction from itself
+    CHECK(LooksLikeSlip(L"micih", L"mich", k, false));
+    CHECK(IsKeepWord(BuiltinSpellIgnore(), L"ohje"));
 }
 
 static void TestDoubleScan() {

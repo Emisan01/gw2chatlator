@@ -44,18 +44,18 @@ bool ChatOcr::Init(const ReaderOptions& o, std::wstring* error) {
     choice_ = o.ocrChoice;
     keepEngineLines_ = o.freeText;
     haveTess_ = haveWin_ = useTess_ = false;
-    if (o.ocrChoice != 2) {
+    if (o.ocrChoice == 1) {
         TesseractInfo info;
         if (FindTesseract(o.tesseractPath, &info)) {
             const std::string langs = ChooseTesseractLangs(o.tesseractLangs, info.models, o.readChinese);
             haveTess_ = tess_.Init(info, langs, error);
             tess_.SetLightText(true);  // the picture is the chat as captured: light text on dark
-        } else if (o.ocrChoice == 1 && error) {
+        } else if (error) {
             *error = Tr(L"Tesseract not found – using Windows text recognition");
         }
     }
     if (!(o.ocrChoice == 1 && haveTess_)) haveWin_ = win_.Init(o.ocrLanguage, error);
-    useTess_ = haveTess_ && !haveWin_;
+    useTess_ = (choice_ == 1 && haveTess_);
     // RapidOCR (open source, local): the installed model groups for your languages, Latin first.
     rapid_.clear();
     rapidCache_.clear();
@@ -229,10 +229,7 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
     useRapid_ = !rapid_.empty() && (choice_ == 3 || (choice_ == 0 && (smallText || !haveWin_)));
     if (useRapid_ && !keepEngineLines_ && !grid.Found()) useRapid_ = false;  // no lines measured: nothing to cut out
     if (useRapid_ && keepEngineLines_ && !haveWin_) useRapid_ = false;       // free text needs the line boxes
-    if (useRapid_) useTess_ = false;
-    else if (choice_ == 1) useTess_ = haveTess_;
-    else if (choice_ == 2 || choice_ == 3) useTess_ = false;
-    else useTess_ = haveTess_ && (!haveWin_ || smallText);
+    useTess_ = !useRapid_ && (choice_ == 1 && haveTess_);
     int scale = fixedScale > 0 ? std::clamp(fixedScale, 1, 4) : OcrScaleFor(grid);
     // Free text (apps, websites): small UI fonts with thin strokes ("w" read as "uv", "ü" as "j") read clearly
     // better at least doubled.

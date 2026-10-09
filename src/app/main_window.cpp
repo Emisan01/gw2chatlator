@@ -2214,6 +2214,11 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
     for (ChatMessage& m : built)
         if (cfg_.freeArea ? LooksLikeFreeText(m.text) : LooksLikeChatText(m.text)) msgs.push_back(std::move(m));
     std::vector<ChatMessage> fresh = stream_.Feed(msgs, true);
+    if (cfg_.freeArea && fresh.size() > 1) {
+        std::stable_sort(fresh.begin(), fresh.end(), [](const ChatMessage& a, const ChatMessage& b) {
+            return a.top < b.top;
+        });
+    }
     // For the technical page.
     if (!stats_.since) stats_.since = GetTickCount64();
     ++stats_.pictures;
