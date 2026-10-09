@@ -15,6 +15,9 @@
 #include "els.hpp"
 #include "http.hpp"
 
+#include <windows.h>
+#include <tlhelp32.h>
+
 namespace gct {
 
 // ===========================================================================
@@ -446,20 +449,88 @@ bool PullOllamaModel(const std::wstring& llmUrl, const std::wstring& model, std:
     return true;
 }
 
+// Finds listening ports of any running llama-server process (e.g. Unsloth Studio on dynamic ports)
+static std::vector<int> FindLlamaServerPorts() {
+    std::vector<int> ports;
+    std::vector<DWORD> pids;
+    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snap != INVALID_HANDLE_VALUE) {
+        PROCESSENTRY32W pe{};
+        pe.dwSize = sizeof(pe);
+        if (Process32FirstW(snap, &pe)) {
+            do {
+                std::wstring name = pe.szExeFile;
+                for (auto& c : name) c = towlower(c);
+                if (name == L"llama-server.exe" || name == L"server.exe" || name == L"llama-box.exe") {
+                    pids.push_back(pe.th32ProcessID);
+                }
+            } while (Process32NextW(snap, &pe));
+        }
+        CloseHandle(snap);
+    }
+    if (pids.empty()) return ports;
+
+    HMODULE iphlp = LoadLibraryW(L"iphlpapi.dll");
+    if (!iphlp) return ports;
+    using GetExtTcpTableFn = DWORD(WINAPI*)(PVOID, PDWORD, BOOL, ULONG, int, ULONG);
+    auto getExt = reinterpret_cast<GetExtTcpTableFn>(GetProcAddress(iphlp, "GetExtendedTcpTable"));
+    if (getExt) {
+        DWORD size = 0;
+        // TCP_TABLE_OWNER_PID_LISTENER = 3, AF_INET = 2
+        getExt(nullptr, &size, FALSE, 2 /* AF_INET */, 3 /* TCP_TABLE_OWNER_PID_LISTENER */, 0);
+        if (size > 0) {
+            std::vector<char> buf(size);
+            if (getExt(buf.data(), &size, FALSE, 2, 3, 0) == NO_ERROR) {
+                struct MibRow {
+                    DWORD state;
+                    DWORD localAddr;
+                    DWORD localPort;
+                    DWORD remoteAddr;
+                    DWORD remotePort;
+                    DWORD owningPid;
+                };
+                struct MibTable {
+                    DWORD numEntries;
+                    MibRow table[1];
+                };
+                const auto* table = reinterpret_cast<const MibTable*>(buf.data());
+                for (DWORD i = 0; i < table->numEntries; ++i) {
+                    const auto& row = table->table[i];
+                    for (DWORD pid : pids) {
+                        if (row.owningPid == pid) {
+                            const int port = static_cast<int>(((row.localPort & 0xFF) << 8) | ((row.localPort >> 8) & 0xFF));
+                            if (port > 0 && std::find(ports.begin(), ports.end(), port) == ports.end()) {
+                                ports.push_back(port);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    FreeLibrary(iphlp);
+    return ports;
+}
+
 bool DiscoverLocalLlmServer(LocalServerResult* result, std::wstring* error) {
     struct Probe {
         std::wstring url;
         std::wstring name;
         std::wstring checkPath;
     };
-    const Probe probes[] = {
+    std::vector<Probe> probes = {
         {L"http://localhost:11434", L"Ollama", L"/api/version"},
         {L"http://localhost:1234", L"LM Studio", L"/v1/models"},
         {L"http://localhost:8080", L"llama-server", L"/v1/models"},
         {L"http://127.0.0.1:11434", L"Ollama", L"/api/version"},
         {L"http://127.0.0.1:1234", L"LM Studio", L"/v1/models"},
         {L"http://127.0.0.1:8080", L"llama-server", L"/v1/models"},
+        {L"http://localhost:5000", L"llama-server", L"/v1/models"},
+        {L"http://localhost:8000", L"llama-server", L"/v1/models"},
     };
+    for (int port : FindLlamaServerPorts()) {
+        probes.push_back({L"http://127.0.0.1:" + std::to_wstring(port), L"llama-server", L"/v1/models"});
+    }
     for (const auto& p : probes) {
         const HttpResponse http = HttpRequestUrl(L"GET", p.url + p.checkPath, L"", "", 2000);
         if (http.transportOk && http.status == 200) {
