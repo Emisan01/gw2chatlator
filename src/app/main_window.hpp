@@ -282,12 +282,14 @@ private:
     std::vector<std::wstring> parts_;  // chat lines to send, prefix included
     size_t partIdx_ = 0;
     struct Sent {
+        std::wstring exact;
         std::wstring normalized;
         ULONGLONG tick;
         uint64_t entryId;   // the "Du: ..." line in the log
         bool echoed;        // seen in the game chat already
     };
     std::deque<Sent> recentSent_;  // to recognise our own lines when they come back through OCR
+    std::map<std::pair<std::wstring, std::wstring>, int> fixConfirmations_;
 
     // incoming state
     ChatReader reader_;

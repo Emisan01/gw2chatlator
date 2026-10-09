@@ -5,8 +5,10 @@
 #include <chrono>
 #include <climits>
 #include <memory>
+#include <sstream>
 
 #include "core/chat_geometry.hpp"
+#include "core/chat_stream.hpp"
 #include "core/i18n.hpp"
 #include "core/rapid_models.hpp"
 #include "core/second_look.hpp"
@@ -43,6 +45,8 @@ bool ChatOcr::Init(const ReaderOptions& o, std::wstring* error) {
     glyphCache_.clear();
     choice_ = o.ocrChoice;
     keepEngineLines_ = o.freeText;
+    palette_ = FullChatPalette(o.palette);
+    recentSent_ = o.recentSent;
     haveTess_ = haveWin_ = useTess_ = false;
     if (o.ocrChoice == 1) {
         TesseractInfo info;
@@ -102,9 +106,12 @@ bool ChatOcr::Init(const ReaderOptions& o, std::wstring* error) {
 // One line with RapidOCR: from the cache when the pixels are the same as before; otherwise the first model
 // group, and the other groups only when it was unsure (another script).
 bool ChatOcr::ReadRapidLine(const Image& crop, RapidLine* out) {
-    uint64_t h = 1469598103934665603ull;  // FNV-1a over the pixels
-    for (uint8_t b : crop.bgra) h = (h ^ b) * 1099511628211ull;
-    h ^= static_cast<uint64_t>(crop.width) << 32 | static_cast<uint32_t>(crop.height);
+    uint64_t h = HashProjectedRow(crop, palette_);
+    if (!h) {
+        h = 1469598103934665603ull;  // FNV-1a over the pixels
+        for (uint8_t b : crop.bgra) h = (h ^ b) * 1099511628211ull;
+        h ^= static_cast<uint64_t>(crop.width) << 32 | static_cast<uint32_t>(crop.height);
+    }
     if (const auto it = rapidCache_.find(h); it != rapidCache_.end()) {
         *out = it->second;
         return true;
@@ -472,18 +479,50 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
             }
             // Word by word: every word of the recognition's line that is a real word teaches its letters, right where
             // the recognition found it (names, slang and misread words in the same line do not matter).
-            if (mine && !checkers_.empty() && !glyphLearned_.count(h)) {
+            if (mine && !glyphLearned_.count(h)) {
                 glyphLearned_.insert(h);
-                for (const Word& wd : mine->words) {
-                    if (learnBudget <= 0) break;
-                    const std::wstring core = WordCore(wd.text);
-                    if (core.size() < 2 || core != wd.text) continue;  // with punctuation around: not exact enough
-                    bool letters = true;
-                    for (wchar_t c : core) letters = letters && IsWordChar(c) && !(c >= L'0' && c <= L'9');
-                    if (!letters || !IsWord(core)) continue;
-                    --learnBudget;
-                    if (gr.LearnWord(crop, core, wd.rect.x / scale, (wd.rect.x + wd.rect.w) / scale) > 0)
-                        ++glyphDirty_[grid.textHeight];
+                // 5.1 Learn from own messages first: exact ground truth
+                bool learnedFromOwn = false;
+                for (const std::wstring& sent : recentSent_) {
+                    if (sent.empty()) continue;
+                    std::vector<std::wstring> sentWords;
+                    std::wistringstream ss(sent);
+                    std::wstring sw;
+                    while (ss >> sw) sentWords.push_back(sw);
+                    if (sentWords.empty() || mine->words.size() < sentWords.size()) continue;
+                    const size_t k = sentWords.size();
+                    for (size_t s = 0; s + k <= mine->words.size(); ++s) {
+                        std::wstring cand;
+                        for (size_t j = 0; j < k; ++j) {
+                            if (j) cand += L" ";
+                            cand += mine->words[s + j].text;
+                        }
+                        if (DiceSimilarity(NormalizeForCompare(cand), NormalizeForCompare(sent)) >= 0.8) {
+                            for (size_t j = 0; j < k; ++j) {
+                                const Word& wd = mine->words[s + j];
+                                const int x0 = wd.rect.x / scale;
+                                const int x1 = (wd.rect.x + wd.rect.w) / scale;
+                                if (gr.LearnWord(crop, sentWords[j], x0, x1) > 0)
+                                    ++glyphDirty_[grid.textHeight];
+                            }
+                            learnedFromOwn = true;
+                            break;
+                        }
+                    }
+                    if (learnedFromOwn) break;
+                }
+                if (!learnedFromOwn && !checkers_.empty()) {
+                    for (const Word& wd : mine->words) {
+                        if (learnBudget <= 0) break;
+                        const std::wstring core = WordCore(wd.text);
+                        if (core.size() < 2 || core != wd.text) continue;  // with punctuation around: not exact enough
+                        bool letters = true;
+                        for (wchar_t c : core) letters = letters && IsWordChar(c) && !(c >= L'0' && c <= L'9');
+                        if (!letters || !IsWord(core)) continue;
+                        --learnBudget;
+                        if (gr.LearnWord(crop, core, wd.rect.x / scale, (wd.rect.x + wd.rect.w) / scale) > 0)
+                            ++glyphDirty_[grid.textHeight];
+                    }
                 }
             }
             if (!gr.Ready()) continue;
@@ -655,6 +694,12 @@ void ChatReader::Loop() {
         lastFingerprint = fp;
         lastOcr = t0;
 
+        std::vector<std::wstring> sent;
+        {
+            std::lock_guard<std::mutex> lk(mu_);
+            sent.assign(recentSent_.begin(), recentSent_.end());
+        }
+        ocr.SetRecentSent(sent);
         auto snap = std::make_unique<ReaderSnapshot>();
         Image prepared;
         if (!ocr.Read(raw, opt_.scale, snap->lines, &prepared, &err)) snap->error = err;
@@ -689,6 +734,12 @@ void ChatReader::SaveDiagnostics(const Image& raw, const Image& prepared, const 
         txt += ToUtf8(RgbToHex(l.color)) + " | " + std::to_string(l.top) + " | " + std::to_string(l.height) + " | " +
                ToUtf8(l.text) + "\r\n";
     WriteFileAtomic(base + L".txt", txt);
+}
+
+void ChatReader::AddRecentSent(const std::wstring& text) {
+    std::lock_guard<std::mutex> lk(mu_);
+    recentSent_.push_back(text);
+    while (recentSent_.size() > 20) recentSent_.pop_front();
 }
 
 }  // namespace gct

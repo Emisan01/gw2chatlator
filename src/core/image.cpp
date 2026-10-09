@@ -245,4 +245,125 @@ bool DecodeF16(const std::string& data, Image& out, float* sdrWhiteFactor) {
     return true;
 }
 
+std::vector<Rgb> FullChatPalette(const std::vector<ChannelColor>& userChannels) {
+    std::vector<Rgb> pal;
+    const auto& base = userChannels.empty() ? DefaultChannelColors() : userChannels;
+    for (const auto& c : base) pal.push_back(c.rgb);
+    pal.push_back({255, 255, 255});  // white
+    pal.push_back({255, 208, 0});    // system yellow
+    // Item rarity colors
+    pal.push_back({170, 170, 170});  // junk
+    pal.push_back({98, 164, 218});   // fine
+    pal.push_back({26, 147, 6});     // masterwork
+    pal.push_back({253, 209, 17});   // rare
+    pal.push_back({255, 164, 5});    // exotic
+    pal.push_back({251, 62, 141});   // ascended
+    pal.push_back({160, 56, 224});   // legendary
+    return pal;
+}
+
+namespace {
+
+std::vector<float> ComputeRowInk(const Image& row, const std::vector<Rgb>& palette) {
+    const size_t n = static_cast<size_t>(row.width) * row.height;
+    std::vector<float> ink(n, 0.0f);
+    if (row.Empty() || row.width < 4 || row.height < 4) return ink;
+
+    std::vector<int> hist(256, 0);
+    std::vector<uint8_t> m(n);
+    for (size_t i = 0; i < n; ++i) {
+        const uint8_t* p = &row.bgra[i * 4];
+        m[i] = std::max({p[0], p[1], p[2]});
+        ++hist[m[i]];
+    }
+
+    auto at = [&](double q) {
+        const size_t want = static_cast<size_t>(q * static_cast<double>(n));
+        size_t acc = 0;
+        for (int v = 0; v < 256; ++v)
+            if ((acc += static_cast<size_t>(hist[v])) > want) return v;
+        return 255;
+    };
+
+    const int lo = at(0.60), hi = at(0.995);
+    if (hi - lo < 25) return ink;
+
+    // GW2 font outline: contrast against darkest 5x5 neighbor
+    std::vector<float> lum(n);
+    for (size_t i = 0; i < n; ++i) lum[i] = m[i] / 255.0f;
+    const int r = 2;
+    std::vector<float> rowMin(n), darkest(n);
+    for (int y = 0; y < row.height; ++y) {
+        for (int x = 0; x < row.width; ++x) {
+            float d = 1.0f;
+            for (int k = std::max(0, x - r); k <= std::min(row.width - 1, x + r); ++k)
+                d = std::min(d, lum[static_cast<size_t>(y) * row.width + k]);
+            rowMin[static_cast<size_t>(y) * row.width + x] = d;
+        }
+    }
+    for (int y = 0; y < row.height; ++y) {
+        for (int x = 0; x < row.width; ++x) {
+            float d = 1.0f;
+            for (int k = std::max(0, y - r); k <= std::min(row.height - 1, y + r); ++k)
+                d = std::min(d, rowMin[static_cast<size_t>(k) * row.width + x]);
+            darkest[static_cast<size_t>(y) * row.width + x] = d;
+        }
+    }
+
+    const auto pal = palette.empty() ? FullChatPalette() : palette;
+
+    for (size_t i = 0; i < n; ++i) {
+        const float base = std::clamp((static_cast<float>(m[i]) - lo) / static_cast<float>(hi - lo), 0.0f, 1.0f);
+        const float edge = std::clamp((lum[i] - darkest[i]) / 0.35f, 0.0f, 1.0f);
+        const uint8_t* p = &row.bgra[i * 4];
+        const int pb = p[0], pg = p[1], pr = p[2];
+        int minD2 = 255 * 255 * 3;
+        for (const Rgb& c : pal) {
+            const int dr = pr - c.r, dg = pg - c.g, db = pb - c.b;
+            const int d2 = dr * dr + dg * dg + db * db;
+            if (d2 < minD2) minD2 = d2;
+        }
+        const float colorScore = std::clamp(1.0f - std::sqrt(static_cast<float>(minD2)) / 180.0f, 0.0f, 1.0f);
+        ink[i] = base * edge * colorScore;
+    }
+    return ink;
+}
+
+}  // namespace
+
+Image ProjectRow(const Image& row, const std::vector<Rgb>& palette, bool darkOnWhite) {
+    Image out;
+    if (row.Empty()) return out;
+    out.width = row.width;
+    out.height = row.height;
+    out.bgra.resize(static_cast<size_t>(row.width) * row.height * 4);
+    const std::vector<float> ink = ComputeRowInk(row, palette);
+    const size_t n = ink.size();
+    for (size_t i = 0; i < n; ++i) {
+        const float v = std::clamp(ink[i], 0.0f, 1.0f);
+        const uint8_t val = darkOnWhite ? static_cast<uint8_t>(std::clamp(255.0f * (1.0f - v), 0.0f, 255.0f))
+                                        : static_cast<uint8_t>(std::clamp(255.0f * v, 0.0f, 255.0f));
+        out.bgra[i * 4 + 0] = val;
+        out.bgra[i * 4 + 1] = val;
+        out.bgra[i * 4 + 2] = val;
+        out.bgra[i * 4 + 3] = 255;
+    }
+    return out;
+}
+
+uint64_t HashProjectedRow(const Image& row, const std::vector<Rgb>& palette) {
+    if (row.Empty()) return 0;
+    const std::vector<float> ink = ComputeRowInk(row, palette);
+    uint64_t h = 1469598103934665603ull;  // FNV-1a
+    for (float v : ink) {
+        uint8_t q = 0;
+        if (v >= 0.70f) q = 3;
+        else if (v >= 0.40f) q = 2;
+        else if (v >= 0.18f) q = 1;
+        h = (h ^ q) * 1099511628211ull;
+    }
+    h ^= static_cast<uint64_t>(row.width) << 32 | static_cast<uint32_t>(row.height);
+    return h;
+}
+
 }  // namespace gct

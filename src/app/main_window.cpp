@@ -554,6 +554,9 @@ ReaderOptions MainWindow::MakeReaderOptions() const {
     for (const auto& e : ocrFixes_.Entries())
         if (!e.second.empty()) o.ocrFixes.push_back(e);
     o.captureDir = cfg_.CaptureDir();
+    o.palette = cfg_.palette;
+    for (const auto& s : recentSent_)
+        if (!s.exact.empty()) o.recentSent.push_back(s.exact);
     return o;
 }
 
@@ -1448,6 +1451,7 @@ void MainWindow::ShowMainMenu() {
     const ModalScope modal;
     enum : UINT {
         kSetup = 1, kSettings, kRegion, kReader, kCover, kDock, kQuit, kGw2Chat, kFreeArea, kOnce, kOnlyTr, kShowSelf,
+        kCalibrateFont,
         kUiLangBase = 100,  // + index into UiLanguages()
     };
     auto check = [](bool on) { return static_cast<UINT>(on ? MF_CHECKED : MF_UNCHECKED); };
@@ -1463,6 +1467,7 @@ void MainWindow::ShowMainMenu() {
     add(menu, MF_STRING, kRegion, Tr(L"Set the chat area …"));
     add(menu, MF_STRING | (cfg_.regionSet ? 0 : MF_GRAYED), kCover, Tr(L"Lay over the GW2 chat (replaces it)"));
     add(menu, MF_STRING | check(cfg_.dock), kDock, Tr(L"Dock to GW2 (moves with it)"));
+    add(menu, MF_STRING, kCalibrateFont, Tr(L"Calibrate font recognition …"));
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     add(menu, MF_STRING, kSettings, Tr(L"Settings …"));
     add(menu, MF_STRING, kSetup, Tr(L"Setup (install, mark the chat) …"));
@@ -1514,6 +1519,14 @@ void MainWindow::ShowMainMenu() {
             break;
         case kDock: SetDock(!cfg_.dock); break;
         case kCover: CoverChat(); break;
+        case kCalibrateFont: {
+            const std::wstring sample =
+                L"Zwölf Boxkämpfer jagen Viktor quer über den großen Sylter Deich. 1234567890 ,!?-()";
+            input_.SetText(sample);
+            SetFocus(input_.Hwnd());
+            SetStatus(Tr(L"Send this into the GW2 chat (press Enter) to calibrate font recognition"), Tone::Ok, 10000);
+            break;
+        }
         case kQuit: PostMessageW(hwnd_, WM_CLOSE, 0, 0); break;
         default:
             if (cmd >= kUiLangBase && cmd < kUiLangBase + UiLanguages().size())
@@ -2153,8 +2166,10 @@ bool MainWindow::DoSend(const std::wstring& line, const std::wstring& original) 
     e.splitSend = parts_.size() > 1;
     e.tabId = cfg_.tabs[tab_].id;  // stays visible in the tab it was written in
     const uint64_t id = log_.Add(std::move(e));
-    recentSent_.push_back({NormalizeForCompare(body), GetTickCount64(), id, false});
+    const std::wstring sentText = body.empty() ? line : body;
+    recentSent_.push_back({sentText, NormalizeForCompare(body), GetTickCount64(), id, false});
     while (recentSent_.size() > 40) recentSent_.pop_front();
+    reader_.AddRecentSent(sentText);
 
     if (cfg_.copyOnly) {
         SetStatus(Tr(L"Copied \u2013 in GW2: Enter \u00b7 Ctrl+V \u00b7 Enter"), Tone::Ok, 8000);
@@ -2232,9 +2247,15 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
     stats_.secondFixes += static_cast<uint64_t>(s->secondFixes);
     stats_.glyphRows += static_cast<uint64_t>(s->glyphRows);
     stats_.glyphLetters = s->glyphLetters;
-    if (!s->newFixes.empty()) {  // learned: from now on fixed at once, also after a restart
-        for (const auto& [wrong, right] : s->newFixes) ocrFixes_.Set(wrong, right);
-        SaveOcrFixes();
+    if (!s->newFixes.empty()) {  // learned: applied after 3 confirmations
+        bool changed = false;
+        for (const auto& [wrong, right] : s->newFixes) {
+            if (++fixConfirmations_[{wrong, right}] >= 3) {
+                ocrFixes_.Set(wrong, right);
+                changed = true;
+            }
+        }
+        if (changed) SaveOcrFixes();
     }
     if (stream_.HasPending()) SetTimer(hwnd_, kTimerConfirm, kConfirmDelayMs, nullptr);
     // The first picture shows the whole chat history: only the last few lines

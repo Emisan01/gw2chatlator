@@ -116,6 +116,14 @@ std::wstring InputBox::Text() const {
     return s;
 }
 
+void InputBox::SetText(const std::wstring& text) {
+    SendMessageW(hwnd_, EM_SETSEL, 0, -1);
+    SendMessageW(hwnd_, EM_REPLACESEL, TRUE, reinterpret_cast<LPARAM>(text.c_str()));
+    const LRESULT end = GetWindowTextLengthW(hwnd_);
+    SendMessageW(hwnd_, EM_SETSEL, end, end);
+    lastFix_.valid = false;
+}
+
 void InputBox::AddHistory(const std::wstring& text) {
     const std::wstring t = Trim(text);
     if (t.empty()) return;
