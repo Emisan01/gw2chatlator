@@ -66,6 +66,7 @@ struct ChatMessage {
     bool stamped = false;          // started with a timestamp (OCR-tolerant)
     bool tagOnly = false;          // only a timestamp / channel tag, no text (the input line)
     bool freeText = false;         // from a free screen area: a paragraph, no chat rules
+    int top = 0;                   // free text: upper edge of its first line in the picture (pixels)
     int bottom = 0;                // free text: lower edge of its last line in the picture (pixels)
 };
 

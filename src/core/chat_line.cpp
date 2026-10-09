@@ -513,6 +513,7 @@ std::vector<ChatMessage> BuildFreeTextMessages(const std::vector<OcrLine>& lines
         if (b.msg.text.empty()) continue;
         b.msg.freeText = true;
         b.msg.raw = b.msg.text;
+        b.msg.top = b.top;
         b.msg.bottom = b.lastBottom;
         out.push_back(std::move(b.msg));
     }
