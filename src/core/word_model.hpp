@@ -81,6 +81,9 @@ public:
 
     double Count(const std::wstring& word) const;
     bool Knows(const std::wstring& word) const { return Count(word) >= 2.0; }
+    // How often `next` followed `prev` (pair count) or `prev2 prev` (triple count), or 0.
+    double PairCount(const std::wstring& prev, const std::wstring& next) const;
+    double TripleCount(const std::wstring& prev2, const std::wstring& prev, const std::wstring& next) const;
 
     // Words starting with `prefix` (longer than it), best first; a word that
     // often follows `prev` ranks higher, one that follows `prev2 prev` higher still.
@@ -90,9 +93,11 @@ public:
     // Like Complete, but the typed prefix may hold one typo ("helo" -> "hello",
     // "komt" -> "kommt"): 3+ letters, same first letter (or the first two
     // swapped), only words used at least twice. A typo on a neighbouring key
-    // ranks higher. Exact completions are not repeated here.
+    // ranks higher; triples and pairs in the sentence context rank higher.
+    // Exact completions are not repeated here.
     std::vector<std::wstring> CompleteFuzzy(const std::wstring& prefix, const std::wstring& prev, size_t n,
-                                            const KeyNeighbors& neighbors = nullptr) const;
+                                            const KeyNeighbors& neighbors = nullptr,
+                                            const std::wstring& prev2 = std::wstring()) const;
     // Words that often follow `prev2 prev` ("kommst du" -> "mit"), then those that follow `prev`.
     std::vector<std::wstring> Next(const std::wstring& prev, size_t n, const std::wstring& prev2 = std::wstring()) const;
     // The next word when it is (almost) always the same: seen 3+ times there (2.5 after slow fading) and at least
@@ -153,7 +158,10 @@ private:
 // never a word you use, one typo up to 6 letters / two above, same first
 // letter (or its first two letters swapped), single words only.
 // `spell` are the dictionary's suggestions, best first.
+// If `prev` (and optionally `prev2`) are supplied, candidates fitting the sentence
+// context (pairs and triples) rank higher.
 std::wstring ChooseCorrection(const std::wstring& word, const std::vector<std::wstring>& spell,
-                              const WordModel& model);
+                              const WordModel& model, const std::wstring& prev = std::wstring(),
+                              const std::wstring& prev2 = std::wstring());
 
 }  // namespace gct

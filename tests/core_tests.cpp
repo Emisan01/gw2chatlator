@@ -1472,6 +1472,21 @@ static void TestWordTriples() {
     // Forgetting a word removes its triples too.
     CHECK(back.Forget(L"kommst"));
     CHECK(back.Next(L"du", 3, L"kommst")[0] == L"da");
+
+    // Pair and triple counts directly accessible.
+    for (int i = 0; i < 2; ++i) m.Learn(L"seid ihr bereit");
+    for (int i = 0; i < 2; ++i) m.Learn(L"wir wollen reisen");
+    CHECK(m.PairCount(L"ihr", L"bereit") == 2.0);
+    CHECK(m.TripleCount(L"seid", L"ihr", L"bereit") == 2.0);
+    CHECK(m.TripleCount(L"habt", L"ihr", L"bereit") == 0.0);
+
+    // Fuzzy completion with trigram context.
+    CHECK(m.CompleteFuzzy(L"bereti", L"ihr", 1, nullptr, L"seid") == std::vector<std::wstring>{L"bereit"});
+
+    // ChooseCorrection without context picks the first dictionary suggestion (reiten over reisen for typo reiden),
+    // but with sentence context (wir wollen ...) the matching triple promotes reisen.
+    CHECK(ChooseCorrection(L"reiden", {L"reiten", L"reisen"}, m) == L"reiten");
+    CHECK(ChooseCorrection(L"reiden", {L"reiten", L"reisen"}, m, L"wollen", L"wir") == L"reisen");
 }
 
 static void TestWordModelWeights() {
