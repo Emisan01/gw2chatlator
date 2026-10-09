@@ -53,6 +53,7 @@ const wchar_t* const kSpellOnly[] = {
     L"sigil", L"sigils", L"infusion", L"infusionen", L"karma", L"hp", L"stats", L"build", L"builds",
     // GW2 short forms that are also words elsewhere ("mes amis", "ele" = he): not kept, only never marked wrong
     L"mes", L"ele", L"rez", L"res", L"rota", L"champ", L"vet", L"condi", L"zerk", L"mesmer",
+    L"ohje", L"oje",
 };
 
 // Words for the word bar before much is learned, by the language you write in: GW2 terms everyone uses, plus the

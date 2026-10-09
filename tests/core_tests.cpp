@@ -1532,6 +1532,9 @@ static void TestLooksLikeSlip() {
     CHECK(LooksLikeSlip(L"siund", L"sind", k, false));            // a key next door caught too
     CHECK(LooksLikeSlip(L"hsllo", L"hallo", k, false));           // key next door
     CHECK(LooksLikeSlip(L"ahllo", L"hallo", k, true));            // first two swapped
+    CHECK(LooksLikeSlip(L"micih", L"mich", k, false));            // letter one place too late
+    CHECK(LooksLikeSlip(L"mcich", L"mich", k, false));            // letter one place too early
+    CHECK(BuiltinSpellIgnore().count(L"ohje"));                   // interjection: never a typo
     // Grammar, other languages, word parts: no slips.
     CHECK(!LooksLikeSlip(L"gehts", L"geht", k, false));
     CHECK(!LooksLikeSlip(L"habs", L"habe", k, false));
@@ -1757,6 +1760,33 @@ static void TestFreeText() {
     CHECK(!LooksLikeFreeText(L"123 456"));
 }
 
+static void TestF16AndLut() {
+    const auto lut = HalfToSrgb8Lut(1.0);
+    CHECK(lut[0x0000] == 0);
+    CHECK(lut[0x3C00] == 255);
+    CHECK(lut[0x3800] > 0 && lut[0x3800] < 255);
+    CHECK(lut[0x8000] == 0);
+    CHECK(lut[0xBC00] == 0);
+
+    const int w = 2, h = 2;
+    const std::vector<uint16_t> pixels = {
+        0x0000, 0x3C00, 0x0000, 0x3C00,
+        0x3C00, 0x0000, 0x3C00, 0x3C00,
+        0x1000, 0x2000, 0x3000, 0x3C00,
+        0x0000, 0x0000, 0x0000, 0x3C00
+    };
+    const float sdrWhite = 2.5f;
+    const std::string encoded = EncodeF16(w, h, sdrWhite, pixels.data());
+    CHECK(!encoded.empty());
+
+    Image img;
+    float decWhite = 0.0f;
+    CHECK(DecodeF16(encoded, img, &decWhite));
+    CHECK(img.width == w && img.height == h);
+    CHECK(std::abs(decWhite - sdrWhite) < 1e-4f);
+    CHECK(img.bgra.size() == static_cast<size_t>(w * h * 4));
+}
+
 int main() {
     TestUtf();
     TestFreeText();
@@ -1822,6 +1852,7 @@ int main() {
     TestHousekeeping();
     TestModelList();
     TestChatTextFilter();
+    TestF16AndLut();
     std::printf("%d passed, %d failed\n", g_pass, g_fail);
     return g_fail == 0 ? 0 : 1;
 }

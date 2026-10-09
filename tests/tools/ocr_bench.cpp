@@ -61,6 +61,23 @@ bool LoadPicture(const std::wstring& path, Image& out) {
     return ok;
 }
 
+bool LoadPictureOrF16(const std::wstring& base, Image& out, float* sdrWhite = nullptr, bool* wasF16 = nullptr) {
+    const std::wstring f16Path = base + L".f16";
+    if (GetFileAttributesW(f16Path.c_str()) != INVALID_FILE_ATTRIBUTES) {
+        std::ifstream in(f16Path, std::ios::binary);
+        if (in) {
+            std::stringstream ss;
+            ss << in.rdbuf();
+            if (DecodeF16(ss.str(), out, sdrWhite)) {
+                if (wasF16) *wasF16 = true;
+                return true;
+            }
+        }
+    }
+    if (wasF16) *wasF16 = false;
+    return LoadPicture(base + L".png", out);
+}
+
 std::wstring ReadUtf8(const std::wstring& path) {
     std::ifstream in(path, std::ios::binary);
     std::stringstream ss;
@@ -212,30 +229,52 @@ int wmain(int argc, wchar_t** argv) {
     TesseractInfo info;
     std::wstring err;
     const bool haveTess = FindTesseract(L"", &info) && tess.Init(info, ChooseTesseractLangs("", info.models, false), &err);
+    wchar_t winLang[32] = {};
+    const std::wstring winLangStr = GetEnvironmentVariableW(L"BENCH_WINLANG", winLang, 32) ? winLang : L"";
     OcrEngine win;
-    const bool haveWin = win.Init(L"", &err);
-    std::printf("Tesseract: %s   Windows OCR: %s\n\n", haveTess ? "yes" : "no", haveWin ? "yes" : "no");
+    const bool haveWin = win.Init(winLangStr, &err);
+    std::printf("Tesseract: %s   Windows OCR: %s%s\n\n", haveTess ? "yes" : "no", haveWin ? "yes" : "no",
+                winLangStr.empty() ? "" : (" (" + ToUtf8(winLangStr) + ")").c_str());
 
     std::map<std::string, Score> total;
-    WIN32_FIND_DATAW fd;
-    HANDLE h = FindFirstFileW((dir + L"\\*.png").c_str(), &fd);
-    if (h == INVALID_HANDLE_VALUE) {
-        std::printf("No pictures in %ls\n", dir.c_str());
+    std::vector<std::wstring> names;
+    auto scanDir = [&](const std::wstring& pattern, size_t extLen) {
+        WIN32_FIND_DATAW fdw;
+        HANDLE hw = FindFirstFileW((dir + L"\\" + pattern).c_str(), &fdw);
+        if (hw != INVALID_HANDLE_VALUE) {
+            do {
+                std::wstring fn = fdw.cFileName;
+                if (fn.size() > extLen) {
+                    std::wstring base = fn.substr(0, fn.size() - extLen);
+                    if (std::find(names.begin(), names.end(), base) == names.end())
+                        names.push_back(base);
+                }
+            } while (FindNextFileW(hw, &fdw));
+            FindClose(hw);
+        }
+    };
+    scanDir(L"*.png", 4);
+    scanDir(L"*.f16", 4);
+    if (names.empty()) {
+        std::printf("No pictures (*.png or *.f16) in %ls\n", dir.c_str());
         return 1;
     }
+    std::sort(names.begin(), names.end());
     std::printf("%-28s %-6s %-12s %6s %8s %7s\n", "picture", "engine", "preparation", "CER %", "parsed %", "ms");
-    do {
-        const std::wstring name = fd.cFileName;
-        const std::wstring base = dir + L"\\" + name.substr(0, name.size() - 4);
+    for (const std::wstring& name : names) {
+        const std::wstring base = dir + L"\\" + name;
         const std::wstring truth = ReadUtf8(base + L".txt");
         Image frame;
-        if (truth.empty() || !LoadPicture(base + L".png", frame)) continue;
+        float sdrWhite = 1.0f;
+        bool wasF16 = false;
+        if (truth.empty() || !LoadPictureOrF16(base, frame, &sdrWhite, &wasF16)) continue;
         // The old path read the frame as drawn; the new one snaps it to the
         // text lines first (no half lines, no scroll bar), as the app does now.
         const SnapResult snap = SnapChatArea(frame, {0, 0, frame.width, frame.height});
-        std::printf("%-28ls frame %dx%d -> snapped x=%d y=%d %dx%d, %zu lines, pitch %d, text %d px, scale %d\n",
-                    name.c_str(), frame.width, frame.height, snap.area.x, snap.area.y, snap.area.w, snap.area.h,
-                    snap.grid.rows.size(), snap.grid.pitch, snap.grid.textHeight, snap.scale);
+        std::printf("%-28ls %s%dx%d -> snapped x=%d y=%d %dx%d, %zu lines, pitch %d, text %d px, scale %d%s\n",
+                    name.c_str(), wasF16 ? "FP16 " : "frame ", frame.width, frame.height, snap.area.x, snap.area.y, snap.area.w, snap.area.h,
+                    snap.grid.rows.size(), snap.grid.pitch, snap.grid.textHeight, snap.scale,
+                    wasF16 ? (" (white=" + std::to_string(static_cast<int>(std::lround(sdrWhite * 80))) + " nits)").c_str() : "");
         const Image snapped = Crop(frame, snap.area);
         const Image& raw = snapped;
         std::vector<OcrLine> truthLines;
@@ -252,7 +291,8 @@ int wmain(int argc, wchar_t** argv) {
         const std::wstring truthText = Squash(truth), truthParsed = Parsed(truthLines);
 
         const LineGrid grid = FindLineGrid(raw, {0, 0, raw.width, raw.height});
-        const int dyn = OcrScaleFor(grid);
+        wchar_t scaleKnob[16] = {};
+        const int dyn = GetEnvironmentVariableW(L"BENCH_SCALE", scaleKnob, 16) ? std::clamp(_wtoi(scaleKnob), 1, 4) : OcrScaleFor(grid);
         // Glyph reader material: every measured row, what Windows OCR reads there, and the truth line it shows
         // (the closest one by edit distance; rows without a close truth line – half lines – are left out).
         if (haveWin && grid.Found()) {
@@ -434,8 +474,7 @@ int wmain(int argc, wchar_t** argv) {
             sc.ms += ms;
             ++sc.n;
         }
-    } while (FindNextFileW(h, &fd));
-    FindClose(h);
+    }
 
     // Glyph reader, measured honestly: for each picture the letters are learned from the *other* pictures of the same
     // text size (never from this one), then this picture's rows are read. A row counts as a hit only when it is

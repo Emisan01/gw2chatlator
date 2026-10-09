@@ -144,7 +144,8 @@ bool LooksLikeSlip(const std::wstring& t, const std::wstring& f, const KeyLayout
         if (t.compare(i + 1, std::wstring::npos, f, i) != 0 || !std::iswalpha(t[i])) return false;
         if (i > 0 && t[i] == t[i - 1]) return i + 1 < t.size() || !strict;  // doubled ("aaber", "funnktioniert")
         if (strict || i == 0 || i + 1 >= t.size()) return false;
-        return layout.Neighbors(t[i], t[i - 1]) || layout.Neighbors(t[i], t[i + 1]);  // a key next door caught too
+        return layout.Neighbors(t[i], t[i - 1]) || layout.Neighbors(t[i], t[i + 1]) ||
+               (i >= 2 && t[i] == t[i - 2]) || (i + 2 < t.size() && t[i] == t[i + 2]);  // a key next door or a letter one place too early/late ("micih" -> "mich")
     }
     if (f.size() == t.size() + 1) {  // one letter missing at i ("habs" -> "hab's" is a way of writing, no slip)
         if (f.compare(i + 1, std::wstring::npos, t, i) != 0 || !std::iswalpha(f[i])) return false;

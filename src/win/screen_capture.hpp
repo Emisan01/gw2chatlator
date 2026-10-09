@@ -2,16 +2,26 @@
 //
 // DXGI Desktop Duplication first: it sees DirectX games in borderless mode
 // reliably, also when Windows bypasses desktop composition. GDI BitBlt as
-// fallback (remote desktop, Wine, old drivers). Use from one thread only.
+// fallback (remote desktop, Wine, old drivers). A method that failed is tried
+// again every 30 s (HDR switched, UAC prompt, fullscreen switch pass by).
+// Use from one thread only.
 #pragma once
 
 #include <windows.h>
 
 #include <memory>
+#include <string>
 
 #include "core/image.hpp"
 
 namespace gct {
+
+// What the capture is doing right now – for the technical page.
+struct CaptureStatus {
+    bool hdr = false;        // the screen is in HDR mode and is duplicated in FP16 (exact conversion)
+    int sdrWhiteNits = 0;    // its SDR white level ("SDR content brightness"), HDR only
+    std::wstring fallback;   // why a better method is not in use ("" = none), e.g. "DXGI: AcquireNextFrame 0x887A0026"
+};
 
 class ScreenCapture {
 public:
@@ -37,6 +47,15 @@ public:
 
     // "WGC", "DXGI" or "GDI" — for the diagnostics line.
     const wchar_t* Method() const;
+    // HDR, SDR white level and the reason of a fallback.
+    CaptureStatus Status() const;
+
+    // Requests saving the next captured frame as an .f16 file.
+    void SaveNextF16(const std::wstring& path);
+
+    // After this many errors in a row a method is left for kRetryMs.
+    static constexpr int kMaxFailures = 3;
+    static constexpr ULONGLONG kRetryMs = 30000;
 
 private:
     struct Wgc;
@@ -51,6 +70,8 @@ private:
     bool usingDxgi_ = false;
     int wgcFailures_ = 0;
     int dxgiFailures_ = 0;
+    ULONGLONG wgcRetryAt_ = 0, dxgiRetryAt_ = 0;  // GetTickCount64() when a left method is tried again
+    std::wstring wgcError_, dxgiError_;           // why it was left (cleared when it works again)
 };
 
 }  // namespace gct

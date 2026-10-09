@@ -50,6 +50,8 @@ struct DialogContext {
     // One picture of the chat through every text recognition; the result (text) is posted to `notify` as
     // LPARAM = new std::wstring.
     std::function<void(HWND notify, UINT message)> compareOcr;
+    // Saves the next chat capture as an .f16 file into the captures folder.
+    std::function<void()> saveF16;
 };
 
 enum class SettingsPage { General = 0, Reading, Writing, Translator, Game, Technical };

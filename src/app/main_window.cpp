@@ -2193,6 +2193,7 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
         UpdateHint();
     }
     lastCaptureMethod_ = s->method;
+    lastCaptureStatus_ = s->captureStatus;
     if (!readerReported_ && BackgroundNoticeAllowed()) {
         readerReported_ = true;
         SetStatus(TrF(L"Chat found: {1} lines \u00b7 {2} \u00b7 {3} \u00b7 {4} ms",
@@ -2844,14 +2845,23 @@ void MainWindow::CompareRecognition(HWND notify, UINT message) {
                 continue;
             }
             out += L"  (" + std::to_wstring(ms) + L" ms) ==\r\n";
-            const std::vector<ChatMessage> msgs = freeText ? BuildFreeTextMessages(lines) : BuildMessages(lines, palette);
-            for (const ChatMessage& m : msgs) out += L"  " + (m.speaker.empty() ? L"" : m.speaker + L": ") + m.text + L"\r\n";
+            for (const OcrLine& l : lines) {
+                if (!Trim(l.text).empty()) out += L"  " + l.text + L"\r\n";
+            }
             out += L"\r\n";
         }
         out += Tr(L"Which one reads your chat best? Choose it under “Reading the chat” → Text recognition.");
         auto* text = new std::wstring(std::move(out));
         if (!PostMessageW(notify, message, 0, reinterpret_cast<LPARAM>(text))) delete text;
     }).detach();
+}
+
+void MainWindow::SaveF16Capture() {
+    const std::wstring dir = cfg_.CaptureDir();
+    EnsureDir(dir);
+    const std::wstring path = dir + L"\\chat_capture.f16";
+    reader_.SaveNextF16(path);
+    SetStatus(TrF(L"Saving next chat capture as .f16 to {1} …", {path}), Tone::Ok, 6000);
 }
 
 void MainWindow::PickFreeArea() {
@@ -3199,6 +3209,21 @@ std::wstring MainWindow::TechnicalStatus() {
              {lastCaptureMethod_.empty() ? std::wstring(L"-") : lastCaptureMethod_,
               lastOcrEngine_.empty() ? std::wstring(L"-") : lastOcrEngine_,
               translator_ ? translator_->Name() : std::wstring(L"-")}));
+    {
+        const std::wstring hdrState = lastCaptureStatus_.hdr ? Tr(L"HDR") : Tr(L"SDR");
+        const std::wstring whiteStr = lastCaptureStatus_.hdr
+                                          ? TrF(L"{1} nits", {std::to_wstring(lastCaptureStatus_.sdrWhiteNits)})
+                                          : std::wstring(L"-");
+        std::wstring capMode = lastCaptureMethod_.empty() ? std::wstring(L"-") : lastCaptureMethod_;
+        if (lastCaptureStatus_.hdr) {
+            capMode = L"FP16 (" + lastCaptureMethod_ + L")";
+        } else if (lastCaptureMethod_ == L"DXGI" || lastCaptureMethod_ == L"WGC") {
+            capMode = L"8 bit (" + lastCaptureMethod_ + L")";
+        }
+        std::wstring capLine = TrF(L"Screen: {1} · SDR white: {2} · capture: {3}", {hdrState, whiteStr, capMode});
+        if (!lastCaptureStatus_.fallback.empty()) capLine += L" · " + TrF(L"Fallback: {1}", {lastCaptureStatus_.fallback});
+        line(capLine);
+    }
     line(L"");
     // Safety: what the tool does and does not do, and where texts go right now.
     auto host = [](const std::wstring& url) {
@@ -3331,6 +3356,7 @@ void MainWindow::OpenSettings(SettingsPage page) {
     };
     ctx.readingAdvice = [this] { return ReadingAdvice(); };
     ctx.compareOcr = [this](HWND notify, UINT message) { CompareRecognition(notify, message); };
+    ctx.saveF16 = [this] { SaveF16Capture(); };
     ctx.setMyWords = [this](const std::wstring& text) {
         myWords_.Parse(text);
         for (const auto& e : myWords_.Entries()) spell_.AddUserWord(e.first);

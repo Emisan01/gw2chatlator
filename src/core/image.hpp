@@ -41,4 +41,14 @@ uint64_t ImageFingerprint(const Image& img);
 // 32-bit BMP file (diagnostic captures; opens in any image viewer).
 std::string EncodeBmp(const Image& img);
 
+// Lookup table (65536 bytes) for half-float -> sRGB 8-bit:
+// value / sdrWhiteFactor, clamp 0..1, sRGB transfer curve.
+std::vector<uint8_t> HalfToSrgb8Lut(double sdrWhiteFactor);
+
+// Encodes an FP16 frame (R16G16B16A16_FLOAT) to a .f16 file buffer.
+std::string EncodeF16(int width, int height, float sdrWhiteFactor, const uint16_t* rgbaHalf);
+
+// Decodes a .f16 file buffer into BGRA8 Image using HalfToSrgb8Lut.
+bool DecodeF16(const std::string& data, Image& out, float* sdrWhiteFactor = nullptr);
+
 }  // namespace gct
