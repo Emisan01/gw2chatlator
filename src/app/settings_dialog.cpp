@@ -37,6 +37,7 @@ constexpr UINT WM_APP_COMPARE = WM_APP + 53;
 constexpr UINT WM_APP_RAPID = WM_APP + 54;
 constexpr UINT WM_APP_OCRCMP = WM_APP + 55;
 constexpr UINT WM_APP_LTTEST = WM_APP + 56;
+constexpr UINT WM_APP_FIND_LOCAL = WM_APP + 57;
 constexpr wchar_t kTesseractUrl[] = L"https://github.com/UB-Mannheim/tesseract/wiki";
 
 enum : int {
@@ -51,7 +52,7 @@ enum : int {
     // Writing
     kSpell, kAutoCorrect, kSuggest, kLearn, kForgetAll, kForgetStatus, kLt, kLtUrl, kBackTr, kSendMode, kReturnFocus,
     // Translator
-    kEngine, kEngineNote, kLocalModel, kPull, kLocalInfo, kGetOllama, kPullStatus, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
+    kEngine, kEngineNote, kLocalModel, kPull, kLocalInfo, kGetOllama, kLlmFindLocal, kPullStatus, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
     kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
     kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kStartMenu, kOnlyTr, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare, kWriteIn, kLtProvider, kLtTest, kLtStatus, kLearnFile,
     // Game & start
@@ -326,6 +327,12 @@ struct ModelsMsg {
 struct PullMsg {
     std::wstring model;
     bool ok = false;
+    std::wstring error;
+};
+
+struct FindLocalMsg {
+    bool found = false;
+    LocalServerResult result;
     std::wstring error;
 };
 
@@ -799,9 +806,10 @@ private:
         Combo(kLocalModel, models, 0, kCtrlX, Y(r), kCtrlW - 126);
         Button(kPull, Tr(L"Install"), kCtrlX + kCtrlW - 120, Y(r++) - 1, 120);
         Label(Tr(LocalModelOffers()[0].summary), kCtrlX, Y(r++) - 4, kCtrlW, 30, kLocalInfo);
-        Button(kGetOllama, Tr(L"Get Ollama (free)…"), kCtrlX, Y(r) - 2, 170);
-        Label(Tr(L"Runs the models; LM Studio works too."), kCtrlX + 180, Y(r++) - 2,
-              kCtrlW - 180, 30, kPullStatus);
+        Button(kGetOllama, Tr(L"Get Ollama (free)…"), kCtrlX, Y(r) - 2, 160);
+        Button(kLlmFindLocal, Tr(L"Find local server"), kCtrlX + 170, Y(r) - 2, 160);
+        Label(Tr(L"Runs the models; LM Studio works too."), kCtrlX + 340, Y(r++) - 2,
+              kCtrlW - 340, 30, kPullStatus);
         group_ = nullptr;
 
         Button(kTest, Tr(L"Test the translator"), kLabelX, Y(12), 180);
@@ -1168,6 +1176,9 @@ private:
             case kGetOllama:
                 ShellExecuteW(hwnd_, L"open", L"https://ollama.com/download", nullptr, nullptr, SW_SHOWNORMAL);
                 break;
+            case kLlmFindLocal:
+                FindLocalServer();
+                break;
             case kPull:
                 PullModel();
                 break;
@@ -1230,6 +1241,16 @@ private:
                 msg->ok = PullOllamaModel(url, model, &msg->error);
             }
             if (PostMessageW(h, WM_APP_PULL, 0, reinterpret_cast<LPARAM>(msg.get()))) msg.release();
+        }).detach();
+    }
+
+    void FindLocalServer() {
+        SetText(kPullStatus, Tr(L"Searching for local server …"));
+        EnableWindow(Item(kLlmFindLocal), FALSE);
+        std::thread([h = hwnd_] {
+            auto msg = std::make_unique<FindLocalMsg>();
+            msg->found = DiscoverLocalLlmServer(&msg->result, &msg->error);
+            if (PostMessageW(h, WM_APP_FIND_LOCAL, 0, reinterpret_cast<LPARAM>(msg.get()))) msg.release();
         }).detach();
     }
 
@@ -1490,6 +1511,26 @@ private:
                 SetText(kTestStatus, TrF(L"{1} models found – pick one in the list.", {std::to_wstring(m->models.size())}));
                 if (Trim(current).empty()) SendMessageW(combo, CB_SETCURSEL, 0, 0);
                 SendMessageW(combo, CB_SHOWDROPDOWN, TRUE, 0);
+            }
+            return 0;
+        }
+        if (msg == WM_APP_FIND_LOCAL) {
+            std::unique_ptr<FindLocalMsg> m(reinterpret_cast<FindLocalMsg*>(lp));
+            EnableWindow(Item(kLlmFindLocal), TRUE);
+            if (!m->found) {
+                SetText(kPullStatus, m->error);
+            } else {
+                SetText(kLlmUrl, m->result.url);
+                HWND combo = Item(kLlmModel);
+                SendMessageW(combo, CB_RESETCONTENT, 0, 0);
+                for (const std::wstring& s : m->result.models) {
+                    SendMessageW(combo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(s.c_str()));
+                }
+                if (!m->result.models.empty()) {
+                    SendMessageW(combo, CB_SETCURSEL, 0, 0);
+                    SetWindowTextW(combo, m->result.models[0].c_str());
+                }
+                SetText(kPullStatus, TrF(L"{1} found ({2} models)", {m->result.name, std::to_wstring(m->result.models.size())}));
             }
             return 0;
         }

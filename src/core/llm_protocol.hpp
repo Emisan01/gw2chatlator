@@ -20,11 +20,13 @@ namespace gct {
 // reasoning models (Claude, GPT-5 …) reject any temperature, so cloud calls omit it.
 std::string BuildLlmRequest(const std::vector<std::vector<Segment>>& items,
                             const std::wstring& targetLangName,  // "German", "Chinese (Simplified)"
-                            const std::wstring& model, bool fromOcr = false, bool temperature0 = true);
+                            const std::wstring& model, bool fromOcr = false, bool temperature0 = true,
+                            bool ollamaMode = false);
 
 // Same text in Latin letters as people write it in chat (Arabizi, Pinyin,
 // Romaji ...), not translated — for scripts the GW2 chat cannot display.
-std::string BuildLlmRomanizeRequest(const std::wstring& text, const std::wstring& model, bool temperature0 = true);
+std::string BuildLlmRomanizeRequest(const std::wstring& text, const std::wstring& model, bool temperature0 = true,
+                                    bool ollamaMode = false);
 
 struct LlmParsed {
     bool ok = false;

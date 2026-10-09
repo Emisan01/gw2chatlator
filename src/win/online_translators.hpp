@@ -62,6 +62,15 @@ bool OllamaReachable(const std::wstring& llmUrl);
 // Ollama downloads `model` (blocking: minutes for gigabytes; call from a worker thread).
 bool PullOllamaModel(const std::wstring& llmUrl, const std::wstring& model, std::wstring* error);
 
+struct LocalServerResult {
+    std::wstring url;
+    std::wstring name;  // "Ollama", "LM Studio", "llama-server"
+    std::vector<std::wstring> models;
+};
+
+// Probes common local AI endpoints (Ollama :11434, LM Studio :1234, llama-server :8080).
+bool DiscoverLocalLlmServer(LocalServerResult* result, std::wstring* error = nullptr);
+
 // LanguageTool check (public API or own server); blocking.
 LtResult CheckWithLanguageTool(const std::wstring& serverUrl, const std::wstring& text, const std::wstring& lang,
                                const std::wstring& motherTongue);
