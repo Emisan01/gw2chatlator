@@ -3,6 +3,12 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## Unreleased
+
+- **HDR screens:** with Windows HDR on, the chat is now captured in 16 bit and converted exactly (SDR white level,
+  sRGB curve) instead of Windows' own 8-bit squeeze that washed the letters out. Switched on only when the screen is in
+  HDR mode (DXGI); SDR screens keep the plain path with no extra work. Not yet measured on real HDR captures.
+
 ## 1.0.1 — 2026-10-08
 
 - **Screenshots of the tool:** menu ≡ -> "Show this tool on screenshots (1 minute)". Our windows are normally hidden

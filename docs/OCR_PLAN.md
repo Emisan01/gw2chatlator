@@ -52,6 +52,8 @@ capture paths (DXGI, WGC, GDI) take 8 bit and let Windows convert – washed-out
 1.4 **(do this first, cheap)** No permanent GDI: today, after 3 DXGI errors the tool stays on GDI until restart
     (errors happen e.g. when HDR is switched or a UAC dialog appears; GDI is the worst path with HDR). Retry
     DXGI (and WGC where used) every 30 s, remember the fallback reason, show it on the technical page.
+1.1–1.3 **Done (2026-10-09, DXGI only, `screen_capture.cpp`: `SdrWhiteFactor`, `HdrLut`, FP16 path in
+    `CopyArea`). Still to do: measure with real HDR captures (0.3), 1.4, 1.5.**
 1.1 Detect HDR: `IDXGIOutput6::GetDesc1`, `ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020`.
 1.2 HDR on: DXGI via `IDXGIOutput5::DuplicateOutput1` with formats `{DXGI_FORMAT_R16G16B16A16_FLOAT,
     DXGI_FORMAT_B8G8R8A8_UNORM}`. (WGC: frame pool with `DirectXPixelFormat::R16G16B16A16Float` – only relevant on

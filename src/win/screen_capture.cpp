@@ -3,13 +3,15 @@
 
 #include <d3d11.h>
 #include <dwmapi.h>
-#include <dxgi1_2.h>
+#include <dxgi1_6.h>
 
 #include <inspectable.h>
 #include <winstring.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
+#include <vector>
 
 #ifdef _MSC_VER
 #pragma comment(lib, "d3d11.lib")
@@ -402,6 +404,60 @@ struct ScreenCapture::Wgc {
 // ===========================================================================
 // DXGI Desktop Duplication
 // ===========================================================================
+// HDR: with Windows HDR on, the desktop is linear FP16 (scRGB, 1.0 = 80 nits) and SDR content like GW2 sits in it
+// scaled by the SDR white level (the user's "SDR brightness"). An 8-bit duplication lets Windows squeeze that in its
+// own way (washed-out letters), so on an HDR screen we take FP16 and convert exactly: / white, clamp, sRGB curve.
+// SDR screens keep the plain 8-bit path - no extra work at all.
+namespace {
+
+// The SDR white level of the monitor `deviceName` (GDI name of the output), as a factor of 80 nits; 1 if unknown.
+double SdrWhiteFactor(const wchar_t* deviceName) {
+    UINT32 nPaths = 0, nModes = 0;
+    if (GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &nPaths, &nModes) != ERROR_SUCCESS) return 1.0;
+    std::vector<DISPLAYCONFIG_PATH_INFO> paths(nPaths);
+    std::vector<DISPLAYCONFIG_MODE_INFO> modes(nModes);
+    if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &nPaths, paths.data(), &nModes, modes.data(), nullptr) != ERROR_SUCCESS)
+        return 1.0;
+    for (UINT32 i = 0; i < nPaths; ++i) {
+        DISPLAYCONFIG_SOURCE_DEVICE_NAME source{};
+        source.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+        source.header.size = sizeof source;
+        source.header.adapterId = paths[i].sourceInfo.adapterId;
+        source.header.id = paths[i].sourceInfo.id;
+        if (DisplayConfigGetDeviceInfo(&source.header) != ERROR_SUCCESS || wcscmp(source.viewGdiDeviceName, deviceName) != 0)
+            continue;
+        DISPLAYCONFIG_SDR_WHITE_LEVEL white{};
+        white.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SDR_WHITE_LEVEL;
+        white.header.size = sizeof white;
+        white.header.adapterId = paths[i].targetInfo.adapterId;
+        white.header.id = paths[i].targetInfo.id;
+        if (DisplayConfigGetDeviceInfo(&white.header) == ERROR_SUCCESS && white.SDRWhiteLevel > 0)
+            return white.SDRWhiteLevel / 1000.0;  // 1000 = 80 nits
+    }
+    return 1.0;
+}
+
+float HalfToFloat(uint16_t h) {
+    const int sign = h >> 15, exp = (h >> 10) & 31, man = h & 1023;
+    const float v = exp == 0    ? std::ldexp(static_cast<float>(man), -24)
+                    : exp == 31 ? 65504.0f
+                                : std::ldexp(static_cast<float>(man | 1024), exp - 25);
+    return sign ? -v : v;
+}
+
+// Every half value -> 8-bit sRGB of the SDR picture: / white, clamp 0..1, sRGB curve. 64 KB, built per start.
+std::vector<uint8_t> HdrLut(double white) {
+    std::vector<uint8_t> lut(65536);
+    for (uint32_t i = 0; i < 65536; ++i) {
+        double v = std::clamp(HalfToFloat(static_cast<uint16_t>(i)) / white, 0.0, 1.0);
+        v = v <= 0.0031308 ? 12.92 * v : 1.055 * std::pow(v, 1.0 / 2.4) - 0.055;
+        lut[i] = static_cast<uint8_t>(std::lround(v * 255.0));
+    }
+    return lut;
+}
+
+}  // namespace
+
 struct ScreenCapture::Dxgi {
     ID3D11Device* device = nullptr;
     ID3D11DeviceContext* context = nullptr;
@@ -409,6 +465,7 @@ struct ScreenCapture::Dxgi {
     ID3D11Texture2D* staging = nullptr;
     RECT outputRect{};  // desktop coordinates of the duplicated output
     D3D11_TEXTURE2D_DESC stagingDesc{};
+    std::vector<uint8_t> hdrLut;  // filled only while duplicating an HDR screen in FP16
     Image last;         // last delivered image (returned when no new frame arrived)
     RECT lastArea{};
 
@@ -417,6 +474,7 @@ struct ScreenCapture::Dxgi {
     void Reset() {
         SafeRelease(staging);
         SafeRelease(dup);
+        hdrLut.clear();
         SafeRelease(context);
         SafeRelease(device);
         last = Image{};
@@ -452,11 +510,24 @@ struct ScreenCapture::Dxgi {
         if (FAILED(D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, D3D11_CREATE_DEVICE_BGRA_SUPPORT, levels,
                                      3, D3D11_SDK_VERSION, &device, nullptr, &context)))
             return false;
-        IDXGIOutput1* output1 = nullptr;
-        if (FAILED(output->QueryInterface(__uuidof(IDXGIOutput1), reinterpret_cast<void**>(&output1)))) return false;
-        const HRESULT hr = output1->DuplicateOutput(device, &dup);
-        SafeRelease(output1);
-        if (FAILED(hr)) return false;
+        // HDR screen: FP16 duplication + exact conversion (decided here; Start runs again after every mode change).
+        IDXGIOutput6* output6 = nullptr;
+        if (SUCCEEDED(output->QueryInterface(__uuidof(IDXGIOutput6), reinterpret_cast<void**>(&output6)))) {
+            DXGI_OUTPUT_DESC1 d1{};
+            if (SUCCEEDED(output6->GetDesc1(&d1)) && d1.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020) {
+                const DXGI_FORMAT formats[] = {DXGI_FORMAT_R16G16B16A16_FLOAT};
+                if (SUCCEEDED(output6->DuplicateOutput1(device, 0, 1, formats, &dup)))
+                    hdrLut = HdrLut(SdrWhiteFactor(d1.DeviceName));
+            }
+            SafeRelease(output6);
+        }
+        if (!dup) {
+            IDXGIOutput1* output1 = nullptr;
+            if (FAILED(output->QueryInterface(__uuidof(IDXGIOutput1), reinterpret_cast<void**>(&output1)))) return false;
+            const HRESULT hr = output1->DuplicateOutput(device, &dup);
+            SafeRelease(output1);
+            if (FAILED(hr)) return false;
+        }
         outputRect = rect;
         return true;
     }
@@ -502,7 +573,8 @@ struct ScreenCapture::Dxgi {
     bool CopyArea(ID3D11Texture2D* frame, const RECT& area, Image& out) {
         D3D11_TEXTURE2D_DESC fdesc{};
         frame->GetDesc(&fdesc);
-        if (fdesc.Format != DXGI_FORMAT_B8G8R8A8_UNORM) return false;
+        const bool hdr = fdesc.Format == DXGI_FORMAT_R16G16B16A16_FLOAT && hdrLut.size() == 65536;
+        if (fdesc.Format != DXGI_FORMAT_B8G8R8A8_UNORM && !hdr) return false;
 
         // Area relative to the output, clipped.
         const LONG x0 = std::max(area.left - outputRect.left, 0L);
@@ -512,14 +584,14 @@ struct ScreenCapture::Dxgi {
         if (x1 <= x0 || y1 <= y0) return false;
         const UINT w = static_cast<UINT>(x1 - x0), h = static_cast<UINT>(y1 - y0);
 
-        if (!staging || stagingDesc.Width != w || stagingDesc.Height != h) {
+        if (!staging || stagingDesc.Width != w || stagingDesc.Height != h || stagingDesc.Format != fdesc.Format) {
             SafeRelease(staging);
             stagingDesc = {};
             stagingDesc.Width = w;
             stagingDesc.Height = h;
             stagingDesc.MipLevels = 1;
             stagingDesc.ArraySize = 1;
-            stagingDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+            stagingDesc.Format = fdesc.Format;
             stagingDesc.SampleDesc.Count = 1;
             stagingDesc.Usage = D3D11_USAGE_STAGING;
             stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
@@ -533,9 +605,23 @@ struct ScreenCapture::Dxgi {
         out.width = static_cast<int>(w);
         out.height = static_cast<int>(h);
         out.bgra.resize(static_cast<size_t>(w) * h * 4);
-        for (UINT y = 0; y < h; ++y)
-            std::memcpy(&out.bgra[static_cast<size_t>(y) * w * 4], static_cast<const uint8_t*>(map.pData) + y * map.RowPitch,
-                        static_cast<size_t>(w) * 4);
+        if (hdr) {  // RGBA half -> BGRA8 through the table
+            for (UINT y = 0; y < h; ++y) {
+                const uint16_t* src =
+                    reinterpret_cast<const uint16_t*>(static_cast<const uint8_t*>(map.pData) + y * map.RowPitch);
+                uint8_t* dst = &out.bgra[static_cast<size_t>(y) * w * 4];
+                for (UINT x = 0; x < w; ++x, src += 4, dst += 4) {
+                    dst[0] = hdrLut[src[2]];
+                    dst[1] = hdrLut[src[1]];
+                    dst[2] = hdrLut[src[0]];
+                    dst[3] = 255;
+                }
+            }
+        } else {
+            for (UINT y = 0; y < h; ++y)
+                std::memcpy(&out.bgra[static_cast<size_t>(y) * w * 4],
+                            static_cast<const uint8_t*>(map.pData) + y * map.RowPitch, static_cast<size_t>(w) * 4);
+        }
         context->Unmap(staging, 0);
         return true;
     }
