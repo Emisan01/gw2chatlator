@@ -143,3 +143,19 @@ Re-measure after steps 1–2 on the user's real captures before deciding.
 - OpenCV / `cv::Mat`; Reinhard tone mapping; histogram stretching; "just check the colour space" (you must capture in
   16 bit); Google API key in the URL (`?key=` – the repo sends it in the `X-Goog-Api-Key` header on purpose); rotating
   several free accounts' keys to stretch free tiers (against the providers' terms).
+
+## Review after Gemini's pass (2026-10-09, Claude) – open points
+
+- **Glyph reader regressed?** `ocr_bench` now reports 0 sure rows (before: sure rows 100 % exact, line hits Windows
+  11 % → hybrid 14 %). Check what changed in the glyph path (projection / own-message learning) and compare with
+  commit `05fdfa9`.
+- **Hybrid (manual choice) shows no gain on the bench** (app hybrid 23.8 % vs app plain 23.6 %, +250 ms). Keep it
+  opt-in; do not make it automatic without a measured win.
+- **Calibration sentence** (menu "Calibrate font recognition"): it is translated if "Send" is not German and it is
+  learned into the word model – it must be sent as original (only corrected) and not learned.
+- **Relative birth zone for `ChatStream`** (idea from an outside sketch, cleaned up): new messages can only appear
+  *below the lowest row that matched a known message*. Estimate the shift in rows by matching the new picture's rows
+  against known messages (edit distance, not same-position characters); everything above the anchor is old. No fixed
+  pixel border (three messages at once must not be lost), no constant "flow" (the chat jumps by rows and only when
+  something arrives or the user scrolls). Tests: three at once, scrolling up/down, misread first letters. Measure
+  ghosts and lost messages before/after on real picture sequences.
