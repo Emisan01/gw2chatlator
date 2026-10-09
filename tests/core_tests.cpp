@@ -1675,9 +1675,11 @@ static void TestGarbled() {
     CHECK(!LooksGarbled(L"<3"));
     CHECK(!LooksGarbled(L"output"));
     CHECK(!LooksGarbled(L"\"Hallo\","));
-    // Chat slang and emotes are no artifacts.
     CHECK(!LooksGarbled(L"2day") && !LooksGarbled(L"4ever") && !LooksGarbled(L"2nite") && !LooksGarbled(L"2ND"));
     CHECK(!LooksGarbled(L"*grins*") && !LooksGarbled(L"#lfg") && !LooksGarbled(L"~hi"));
+    CHECK(!LooksGarbled(L"LF1M") && !LooksGarbled(L"LF2M") && !LooksGarbled(L"f2p") && !LooksGarbled(L"p2w"));
+    CHECK(!LooksGarbled(L"b2b") && !LooksGarbled(L"g2g") && !LooksGarbled(L"2v2"));
+    CHECK(IsGamerAbbreviation(L"LF1M") && IsGamerAbbreviation(L"1v1") && IsGamerAbbreviation(L"f2p"));
     // The part to repair keeps a mark in front.
     size_t at = 9;
     CHECK(GarbledCore(L"(!raining,", &at) == L"!raining" && at == 1);
@@ -1735,6 +1737,11 @@ static void TestFreeText() {
     CHECK(m.size() == 2);
     CHECK(m.size() == 2 && m[0].text == L"The quick brown fox jumps over the lazy dog and runs into the forest.");
     CHECK(m.size() == 2 && m[1].text == L"Second paragraph here." && m[1].freeText);
+    // Hyphen kept when digit precedes or capital follows.
+    const auto hy1 = BuildFreeTextMessages({line(L"ein 10-", 0), line(L"facher Gewinn", 24)});
+    CHECK(hy1.size() == 1 && hy1[0].text == L"ein 10-facher Gewinn");
+    const auto hy2 = BuildFreeTextMessages({line(L"in Nord-", 0), line(L"Rheinland", 24)});
+    CHECK(hy2.size() == 1 && hy2[0].text == L"in Nord-Rheinland");
     // A long text is cut after a sentence.
     const auto cut = BuildFreeTextMessages({line(L"One sentence here.", 0), line(L"Another one follows.", 24)}, 20);
     CHECK(cut.size() == 2);

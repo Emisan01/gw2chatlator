@@ -201,6 +201,24 @@ bool LooksLikeAbbreviation(const std::wstring& word) {
     return letters >= 2 && upper >= 2;
 }
 
+const wchar_t* const kGamerAbbrevs[] = {
+    L"lf1m", L"lf2m", L"lf3m", L"lf4m", L"lf5m", L"lfm", L"lfg",
+    L"f2p", L"p2w", L"b2b", L"b3b", L"w2w", L"g2g", L"gtg", L"c2c",
+    L"h2h", L"r2r", L"d2d", L"o2o", L"p2p", L"m2m", L"1v1", L"2v2",
+    L"3v3", L"4v4", L"5v5", L"10v10", L"wvw", L"eotm", L"pvp", L"spvp",
+    L"pve", L"pvx", L"afk", L"brb", L"btw", L"gg", L"ty", L"np", L"yw",
+    L"omw", L"rofl", L"lmao", L"ttyl", L"dps", L"cdps", L"pdps", L"hps",
+};
+
+bool IsGamerAbbreviation(const std::wstring& word) {
+    static const WordSet s = [] {
+        WordSet set;
+        for (const wchar_t* w : kGamerAbbrevs) set.insert(CaseFold(w));
+        return set;
+    }();
+    return s.count(CaseFold(word)) > 0;
+}
+
 bool IsKeepWord(const WordSet& keep, const std::wstring& word) {
     const std::wstring f = CaseFold(word);
     return keep.count(f) > 0 || (keep.count(L"^" + f) > 0 && LooksLikeAbbreviation(word)) ||

@@ -136,7 +136,22 @@ bool ChatOcr::IsWord(const std::wstring& core) {
     if (const auto it = wordOk_.find(key); it != wordOk_.end()) return it->second;
     if (checkers_.empty()) return true;  // no dictionary: nothing is suspicious
     bool ok = false;
-    for (const auto& c : checkers_) ok = ok || c->Check(core).empty();
+    for (const auto& c : checkers_) {
+        if (c->Check(core).empty()) {
+            ok = true;
+            break;
+        }
+    }
+    if (!ok && !core.empty() && iswlower(core.front())) {
+        std::wstring cap = core;
+        cap.front() = towupper(cap.front());
+        for (const auto& c : checkers_) {
+            if (c->Check(cap).empty()) {
+                ok = true;
+                break;
+            }
+        }
+    }
     if (wordOk_.size() > 20000) wordOk_.clear();
     wordOk_[key] = ok;
     return ok;
@@ -595,6 +610,7 @@ void ChatReader::Rescan() {
 }
 
 void ChatReader::Loop() {
+    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
     auto post = [this](std::unique_ptr<ReaderSnapshot> s) {
         if (PostMessageW(notify_, message_, 0, reinterpret_cast<LPARAM>(s.get()))) s.release();
     };

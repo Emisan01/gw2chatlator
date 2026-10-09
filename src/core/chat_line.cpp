@@ -479,9 +479,19 @@ std::vector<ChatMessage> BuildFreeTextMessages(const std::vector<OcrLine>& lines
         }
         Block& b = blocks[static_cast<size_t>(best)];
         std::wstring& text = b.msg.text;
-        // A word broken with a hyphen at the line end is joined again.
-        if (!text.empty() && text.back() == L'-' && text.size() > 1 && IsWordChar(text[text.size() - 2])) text.pop_back();
-        else if (!text.empty()) text += L' ';
+        // A word broken with a hyphen at the line end is joined again; keep hyphen when a digit precedes or a capital follows.
+        bool dropHyphen = false;
+        if (!text.empty() && text.back() == L'-' && text.size() > 1 && IsWordChar(text[text.size() - 2])) {
+            const wchar_t prev = text[text.size() - 2];
+            const bool digitPrev = prev >= L'0' && prev <= L'9';
+            const bool capNext = !t.empty() && iswupper(t.front());
+            if (!digitPrev && !capNext) dropHyphen = true;
+        }
+        if (dropHyphen) {
+            text.pop_back();
+        } else if (!text.empty() && text.back() != L'-') {
+            text += L' ';
+        }
         text += t;
         b.lastBottom = l.top + l.height;
         b.lastHeight = l.height;
