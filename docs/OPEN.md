@@ -95,4 +95,4 @@ Pflicht. Bei 4K reicht fast der Rohtext.
 2. B1 Tastendruck-Zahl (macht den Markenkern messbar)
 3. B2 Vervollständigung für Arabisch (Hauptnutzer 2)
 4. D1 Versionshinweis
-5. B3 Dreierfolgen, A1 echte 1080p-Aufnahmen, B4 Arabizi
+5. ✅ B3 Dreierfolgen (abgeschlossen: CompleteFuzzy & ChooseCorrection nutzen Trigramm-Kontext), A1 echte 1080p-Aufnahmen, B4 Arabizi

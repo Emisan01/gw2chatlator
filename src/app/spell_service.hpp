@@ -92,7 +92,9 @@ public:
 
     // Correction for a just-finished word: Safe = only Windows' sure fixes,
     // Phone = also the most likely word for a typo (see ChooseCorrection).
-    std::optional<std::wstring> AutoCorrection(const std::wstring& word, AutoCorrectMode mode) const;
+    std::optional<std::wstring> AutoCorrection(const std::wstring& word, AutoCorrectMode mode,
+                                               const std::wstring& prev = std::wstring(),
+                                               const std::wstring& prev2 = std::wstring()) const;
 
     // The word bar for the text and caret position.
     WordSuggestions Suggestions(const std::wstring& text, size_t caret, AutoCorrectMode mode) const;
@@ -175,5 +177,8 @@ private:
     std::vector<std::wstring> BaseCompletions(const std::wstring& prev, const std::wstring& typed, size_t max,
                                               bool* firstPredicted) const;
 };
+
+// The two words before `pos` in the same sentence ("kommst du |" -> "du", "kommst"); empty after . ! ?
+void WordsBefore(const std::wstring& text, size_t pos, std::wstring* prev, std::wstring* prev2);
 
 }  // namespace gct

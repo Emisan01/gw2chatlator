@@ -336,6 +336,22 @@ double WordModel::Count(const std::wstring& word) const {
     return it == words_.end() ? 0.0 : it->second.count;
 }
 
+double WordModel::PairCount(const std::wstring& prev, const std::wstring& next) const {
+    if (prev.empty() || next.empty()) return 0.0;
+    auto pit = pairs_.find(WordKey(prev));
+    if (pit == pairs_.end()) return 0.0;
+    auto nit = pit->second.find(WordKey(next));
+    return nit == pit->second.end() ? 0.0 : nit->second;
+}
+
+double WordModel::TripleCount(const std::wstring& prev2, const std::wstring& prev, const std::wstring& next) const {
+    if (prev2.empty() || prev.empty() || next.empty()) return 0.0;
+    auto tit = pairs_.find(WordKey(prev2) + L'\x1f' + WordKey(prev));
+    if (tit == pairs_.end()) return 0.0;
+    auto nit = tit->second.find(WordKey(next));
+    return nit == tit->second.end() ? 0.0 : nit->second;
+}
+
 std::vector<std::wstring> WordModel::Complete(const std::wstring& prefix, const std::wstring& prev, size_t n,
                                              const std::wstring& prev2) const {
     std::vector<std::wstring> out;
@@ -387,26 +403,30 @@ std::vector<std::wstring> WordModel::Complete(const std::wstring& prefix, const 
 }
 
 std::vector<std::wstring> WordModel::CompleteFuzzy(const std::wstring& prefix, const std::wstring& prev, size_t n,
-                                                   const KeyNeighbors& neighbors) const {
+                                                   const KeyNeighbors& neighbors,
+                                                   const std::wstring& prev2) const {
     std::vector<std::wstring> out;
     const std::wstring p = WordKey(prefix);
     if (p.size() < 3 || n == 0 || std::any_of(p.begin(), p.end(), IsDigitChar)) return out;
     const auto pit = prev.empty() ? pairs_.end() : pairs_.find(WordKey(prev));
+    const auto tit = prev.empty() || prev2.empty() ? pairs_.end() : pairs_.find(WordKey(prev2) + L'\x1f' + WordKey(prev));
     const size_t m = p.size();
-    // The same shares as Complete (word and pair, the pair weighted by how often it was seen), times 2 for a slip to
+    // The same shares as Complete (word, pair and triple, weighted by how often they were seen), times 2 for a slip to
     // the key next door – the most likely typo.
     struct Cand {
         const Word* w;
-        double c1, c2, slip;
+        double c1, c2, c3, slip;
     };
     std::vector<Cand> cands;
-    double s1 = 0, s2 = 0;
+    double s1 = 0, s2 = 0, s3 = 0;
     for (const auto& [key, w] : words_) {
         if (w.count < 2.0 || key.size() < m || key == p) continue;
         if (!OneTypoPrefix(key, p)) continue;
-        double c2 = 0;
+        double c2 = 0, c3 = 0;
         if (pit != pairs_.end())
             if (auto nit = pit->second.find(key); nit != pit->second.end()) c2 = nit->second;
+        if (tit != pairs_.end())
+            if (auto nit = tit->second.find(key); nit != tit->second.end()) c3 = nit->second;
         double slip = 1.0;
         if (neighbors) {
             size_t diff = 0, at = 0;
@@ -417,15 +437,16 @@ std::vector<std::wstring> WordModel::CompleteFuzzy(const std::wstring& prefix, c
                 }
             if (diff == 1 && neighbors(key[at], p[at])) slip = 2.0;
         }
-        cands.push_back({&w, w.count, c2, slip});
+        cands.push_back({&w, w.count, c2, c3, slip});
         s1 += w.count;
         s2 += c2;
+        s3 += c3;
     }
-    const double l2 = 0.3 * s2 / (s2 + 1.0), l1 = 1.0 - l2;
+    const double l3 = 0.5 * s3 / (s3 + 1.0), l2 = 0.3 * s2 / (s2 + 1.0), l1 = 1.0 - l3 - l2;
     std::vector<std::pair<double, const Word*>> scored;
     scored.reserve(cands.size());
     for (const Cand& c : cands)
-        scored.push_back({c.slip * ((s2 > 0 ? l2 * c.c2 / s2 : 0) + (s1 > 0 ? l1 * c.c1 / s1 : 0)), c.w});
+        scored.push_back({c.slip * ((s3 > 0 ? l3 * c.c3 / s3 : 0) + (s2 > 0 ? l2 * c.c2 / s2 : 0) + (s1 > 0 ? l1 * c.c1 / s1 : 0)), c.w});
     const auto top = scored.begin() + static_cast<std::ptrdiff_t>(std::min(n, scored.size()));
     std::partial_sort(scored.begin(), top, scored.end(), [](const auto& a, const auto& b) {
         if (a.first != b.first) return a.first > b.first;
@@ -725,7 +746,8 @@ void WordModel::Parse(const std::string& utf8) {
 }
 
 // ---------------------------------------------------------------------------
-std::wstring ChooseCorrection(const std::wstring& word, const std::vector<std::wstring>& spell, const WordModel& model) {
+std::wstring ChooseCorrection(const std::wstring& word, const std::vector<std::wstring>& spell, const WordModel& model,
+                              const std::wstring& prev, const std::wstring& prev2) {
     const size_t letters = Letters(word);
     if (letters < 4 || word.size() > 40) return {};
     if (AllUpper(word) || model.Knows(word)) return {};
@@ -738,6 +760,7 @@ std::wstring ChooseCorrection(const std::wstring& word, const std::vector<std::w
         int dist;
         int rank;      // position in the dictionary's list (lower = better), 99 = only learned
         double count;  // how often you used it
+        double context; // bigram/trigram context score
     };
     std::vector<Cand> cands;
     auto consider = [&](const std::wstring& c, int rank) {
@@ -752,13 +775,23 @@ std::wstring ChooseCorrection(const std::wstring& word, const std::vector<std::w
                 x.rank = std::min(x.rank, rank);
                 return;
             }
-        cands.push_back({c, d, rank, model.Count(c)});
+        double ctx = 0.0;
+        if (!prev.empty()) {
+            const double c2 = model.PairCount(prev, c);
+            const double c3 = !prev2.empty() ? model.TripleCount(prev2, prev, c) : 0.0;
+            ctx = c3 * 3.0 + c2;
+        }
+        cands.push_back({c, d, rank, model.Count(c), ctx});
     };
     for (size_t i = 0; i < spell.size() && i < 8; ++i) consider(spell[i], static_cast<int>(i));
     for (const std::wstring& c : model.Near(word, 5)) consider(c, 99);
     if (cands.empty()) return {};
     std::sort(cands.begin(), cands.end(), [](const Cand& a, const Cand& b) {
         if (a.dist != b.dist) return a.dist < b.dist;
+        // Strong context match (triple or pair) breaks ties before dictionary rank.
+        const bool aCtx = a.context >= 1.0, bCtx = b.context >= 1.0;
+        if (aCtx != bCtx) return aCtx;
+        if (aCtx && std::abs(a.context - b.context) >= 0.5) return a.context > b.context;
         // A word you use a lot beats the dictionary's order.
         const bool aUsed = a.count >= 3, bUsed = b.count >= 3;
         if (aUsed != bUsed) return aUsed;

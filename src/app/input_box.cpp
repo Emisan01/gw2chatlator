@@ -631,7 +631,9 @@ void InputBox::CorrectWordEndingAt(size_t end, bool boundaryTyped) {
 
     const std::wstring word = text.substr(start, end - start);
     if (std::any_of(word.begin(), word.end(), [](wchar_t c) { return c >= L'0' && c <= L'9'; })) return;
-    const auto replacement = spell_->AutoCorrection(word, mode_);
+    std::wstring p1, p2;
+    WordsBefore(text, start, &p1, &p2);
+    const auto replacement = spell_->AutoCorrection(word, mode_, p1, p2);
     if (!replacement) return;
 
     ReplaceRange(span, *replacement);

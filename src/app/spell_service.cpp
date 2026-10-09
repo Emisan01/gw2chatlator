@@ -472,7 +472,8 @@ bool SpellService::IsValidWord(const std::wstring& w) const {
     return !CheckerRejects(other);
 }
 
-std::optional<std::wstring> SpellService::AutoCorrection(const std::wstring& word, AutoCorrectMode mode) const {
+std::optional<std::wstring> SpellService::AutoCorrection(const std::wstring& word, AutoCorrectMode mode,
+                                                         const std::wstring& prev, const std::wstring& prev2) const {
     if (mode == AutoCorrectMode::Off || word.size() < 2 || IsKnown(word)) return std::nullopt;
     if (IsValidWord(word)) return std::nullopt;  // a real word (also small-written nouns) is never changed
     // One of your typical typos: you meant this word before (profile or a kept correction).
@@ -489,7 +490,7 @@ std::optional<std::wstring> SpellService::AutoCorrection(const std::wstring& wor
     // Only words the dictionary rejects – without a dictionary any new word would look like a slip: no correction.
     if (!checker_.Ready() || !IsMisspelled(word)) return std::nullopt;
     const std::wstring fix =
-        ChooseCorrection(word, checker_.Ready() ? CheckerSuggest(word) : std::vector<std::wstring>(), model_);
+        ChooseCorrection(word, checker_.Ready() ? CheckerSuggest(word) : std::vector<std::wstring>(), model_, prev, prev2);
     if (fix.empty() || fix == word || !LettersOnly(fix) || CaseFold(fix) == CaseFold(word)) return std::nullopt;
     // Only a slip of the fingers (a key next door, two letters swapped, a doubled or left-out letter inside the
     // word) – a changed ending is grammar or another language ("habs", "with"), never corrected.
@@ -614,7 +615,7 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
     // Mid-word typo ("helo", "komt"): your own words that start like it with
     // one slip get the first, highlighted place, as on a phone keyboard.
     if (words.empty() && mode != AutoCorrectMode::Off) {
-        std::vector<std::wstring> fuzzy = model_.CompleteFuzzy(partial, prev, 3, neighbors_);
+        std::vector<std::wstring> fuzzy = model_.CompleteFuzzy(partial, prev, 3, neighbors_, p2);
         if (!fuzzy.empty()) {
             s.kind = WordSuggestions::Kind::Correction;
             s.words = std::move(fuzzy);
@@ -624,7 +625,7 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
     }
     // A typo the phone logic would fix gets the first, highlighted place.
     if (mode == AutoCorrectMode::Phone && partial.size() >= 4 && words.empty()) {
-        if (auto fix = AutoCorrection(partial, mode)) {
+        if (auto fix = AutoCorrection(partial, mode, prev, p2)) {
             s.kind = WordSuggestions::Kind::Correction;
             s.words.push_back(*fix);
             s.autoIndex = 0;
@@ -734,7 +735,7 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
             fixes.push_back(w);
             if (checker_.Ready() && LooksLikeSlip(WordKey(typed), WordKey(w), layout_, false)) strong.push_back(w);
         }
-        for (const std::wstring& w : model_.CompleteFuzzy(typed, prev, 2, neighbors_)) {
+        for (const std::wstring& w : model_.CompleteFuzzy(typed, prev, 2, neighbors_, p2)) {
             fixes.push_back(w);
             if (checker_.Ready()) strong.push_back(w);
         }
