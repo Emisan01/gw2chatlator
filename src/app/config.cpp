@@ -234,6 +234,7 @@ OcrChoice ParseOcr(const std::wstring& s) {
     if (v == L"tesseract") return OcrChoice::Tesseract;
     if (v == L"windows") return OcrChoice::Windows;
     if (v == L"rapid" || v == L"rapidocr") return OcrChoice::Rapid;
+    if (v == L"hybrid") return OcrChoice::Hybrid;
     return OcrChoice::Auto;
 }
 
@@ -263,6 +264,7 @@ const wchar_t* OcrKey(OcrChoice o) {
         case OcrChoice::Tesseract: return L"tesseract";
         case OcrChoice::Windows: return L"windows";
         case OcrChoice::Rapid: return L"rapid";
+        case OcrChoice::Hybrid: return L"hybrid";
         default: return L"auto";
     }
 }

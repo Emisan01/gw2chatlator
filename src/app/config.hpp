@@ -16,7 +16,7 @@
 namespace gct {
 
 enum class Engine { Auto, Basic, DeepL, Llm, Google, Microsoft, Libre };
-enum class OcrChoice { Auto, Tesseract, Windows, Rapid };
+enum class OcrChoice { Auto, Tesseract, Windows, Rapid, Hybrid };
 enum class AutoCorrectMode { Off, Safe, Phone };
 
 struct Config {

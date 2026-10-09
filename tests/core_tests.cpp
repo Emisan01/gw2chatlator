@@ -323,6 +323,27 @@ static void TestBuildMessages() {
         CHECK(msgs[4].channel == Channel::System && msgs[4].speaker.empty());
         CHECK((msgs[0].color == Rgb{240, 165, 155}));
     }
+
+    std::vector<OcrLine> hyphen1 = {
+        {L"Alice: unter-", {240, 165, 155}, 0, 14},
+        {L"brechung", {238, 160, 150}, 15, 14},
+    };
+    auto m1 = BuildMessages(hyphen1, pal);
+    CHECK(m1.size() == 1 && m1[0].text == L"unterbrechung");
+
+    std::vector<OcrLine> hyphen2 = {
+        {L"Alice: 80-", {240, 165, 155}, 0, 14},
+        {L"er Zone", {238, 160, 150}, 15, 14},
+    };
+    auto m2 = BuildMessages(hyphen2, pal);
+    CHECK(m2.size() == 1 && m2[0].text == L"80-er Zone");
+
+    std::vector<OcrLine> hyphen3 = {
+        {L"Alice: PvP-", {240, 165, 155}, 0, 14},
+        {L"Event startet", {238, 160, 150}, 15, 14},
+    };
+    auto m3 = BuildMessages(hyphen3, pal);
+    CHECK(m3.size() == 1 && m3[0].text == L"PvP-Event startet");
 }
 
 // German QWERTZ letter rows as KeyLayout (what keyboard_layout.cpp builds from Windows).
@@ -1374,6 +1395,9 @@ static void TestSecondLook() {
     CHECK(!PlausibleRereading(L"Main", L"main"));            // only the case: nothing to fix
     CHECK(!PlausibleRereading(L"finds", L"Freunde"));        // another word altogether
     CHECK(!PlausibleRereading(L"tbe", L"thy"));              // short word: one character only
+    CHECK(IsGamerAbbreviation(L"LF1M") && IsGamerAbbreviation(L"f2p") && IsGamerAbbreviation(L"1v1"));
+    CHECK(!LooksGarbled(L"LF1M") && !LooksGarbled(L"f2p") && !LooksGarbled(L"1v1"));
+    CHECK(LooksGarbled(L"pvg!pyt"));
 }
 
 static void TestMyWords() {

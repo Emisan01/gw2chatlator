@@ -100,7 +100,7 @@ public:
 private:
     OcrEngine win_;
     TesseractOcr tess_;
-    int choice_ = 0;  // 0 auto, 1 Tesseract, 2 Windows, 3 RapidOCR
+    int choice_ = 0;  // 0 auto, 1 Tesseract, 2 Windows, 3 RapidOCR, 4 Hybrid
     bool haveTess_ = false, haveWin_ = false;
     bool useTess_ = false;  // the engine of the last picture
     bool keepEngineLines_ = false;  // free text: no regrouping by rows (it would merge side-by-side columns)
@@ -113,10 +113,17 @@ private:
         std::wstring text;
         std::vector<RecWord> words;  // x/w in raw pixels relative to the line's left edge
     };
-    bool ReadRapidLine(const Image& crop, RapidLine* out);
+    struct WinWord {
+        std::wstring text;
+        int x = 0, w = 0;
+    };
+    bool ReadRapidLine(const Image& crop, RapidLine* out, bool* cacheHit = nullptr, uint64_t* hashOut = nullptr);
+    RapidLine MergeRapidAndWin(const RapidLine& rapid, const std::vector<WinWord>& winWords);
+    bool IsValidChatWord(const std::wstring& core);
     std::vector<std::unique_ptr<RapidRecognizer>> rapid_;
     std::unordered_map<uint64_t, RapidLine> rapidCache_;
     bool useRapid_ = false;
+    bool useHybrid_ = false;
 
     // Second look: dictionaries (Windows spell checker), answers cached per word, and per word in its line
     // what the second look decided (the same line comes again in every picture: it is looked at once).

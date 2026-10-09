@@ -12,6 +12,7 @@
 #include "core/i18n.hpp"
 #include "core/rapid_models.hpp"
 #include "core/second_look.hpp"
+#include "core/slang.hpp"
 #include "core/tesseract_tsv.hpp"
 #include "core/text.hpp"
 #include "win/files.hpp"
@@ -105,15 +106,18 @@ bool ChatOcr::Init(const ReaderOptions& o, std::wstring* error) {
 
 // One line with RapidOCR: from the cache when the pixels are the same as before; otherwise the first model
 // group, and the other groups only when it was unsure (another script).
-bool ChatOcr::ReadRapidLine(const Image& crop, RapidLine* out) {
+bool ChatOcr::ReadRapidLine(const Image& crop, RapidLine* out, bool* cacheHit, uint64_t* hashOut) {
+    if (cacheHit) *cacheHit = false;
     uint64_t h = HashProjectedRow(crop, palette_);
     if (!h) {
         h = 1469598103934665603ull;  // FNV-1a over the pixels
         for (uint8_t b : crop.bgra) h = (h ^ b) * 1099511628211ull;
         h ^= static_cast<uint64_t>(crop.width) << 32 | static_cast<uint32_t>(crop.height);
     }
+    if (hashOut) *hashOut = h;
     if (const auto it = rapidCache_.find(h); it != rapidCache_.end()) {
         *out = it->second;
+        if (cacheHit) *cacheHit = true;
         return true;
     }
     RecResult best;
@@ -136,6 +140,57 @@ bool ChatOcr::ReadRapidLine(const Image& crop, RapidLine* out) {
     rapidCache_[h] = line;
     *out = std::move(line);
     return true;
+}
+
+ChatOcr::RapidLine ChatOcr::MergeRapidAndWin(const RapidLine& rapid, const std::vector<WinWord>& winWords) {
+    if (winWords.empty()) return rapid;
+    if (rapid.words.empty()) {
+        RapidLine res;
+        for (const auto& ww : winWords) {
+            res.words.push_back({ww.text, ww.x, ww.w});
+            res.text += (res.text.empty() ? L"" : L" ") + ww.text;
+        }
+        return res;
+    }
+    RapidLine res;
+    for (RecWord rw : rapid.words) {
+        int bestIdx = -1;
+        int bestOverlap = 0;
+        const int rx0 = rw.x, rx1 = rw.x + rw.w;
+        for (size_t i = 0; i < winWords.size(); ++i) {
+            const int wx0 = winWords[i].x, wx1 = winWords[i].x + winWords[i].w;
+            const int overlap = std::max(0, std::min(rx1, wx1) - std::max(rx0, wx0));
+            if (overlap > bestOverlap) {
+                bestOverlap = overlap;
+                bestIdx = static_cast<int>(i);
+            }
+        }
+        if (bestIdx >= 0 && bestOverlap > 0) {
+            const auto& ww = winWords[static_cast<size_t>(bestIdx)];
+            if (CaseFold(rw.text) == CaseFold(ww.text)) {
+                if (ww.text.size() == rw.text.size()) rw.text = ww.text;
+            } else {
+                const std::wstring coreR = WordCore(rw.text);
+                const std::wstring coreW = WordCore(ww.text);
+                const bool okR = IsValidChatWord(coreR);
+                const bool okW = IsValidChatWord(coreW);
+                if (okW && !okR) rw.text = ww.text;
+            }
+        }
+        res.words.push_back(rw);
+        res.text += (res.text.empty() ? L"" : L" ") + rw.text;
+    }
+    return res;
+}
+
+bool ChatOcr::IsValidChatWord(const std::wstring& core) {
+    if (core.empty()) return false;
+    if (IsWord(core)) return true;
+    if (IsKeepWord(BuiltinSpellIgnore(), core)) return true;
+    if (IsGamerAbbreviation(core)) return true;
+    if (LooksLikeAbbreviation(core)) return true;
+    if (IsGermanContraction(core)) return true;
+    return false;
 }
 
 bool ChatOcr::IsWord(const std::wstring& core) {
@@ -217,6 +272,7 @@ size_t ChatOcr::GlyphLetters() const {
 }
 
 std::wstring ChatOcr::EngineName() const {
+    if (useHybrid_) return L"Hybrid (Rapid+Win)";
     return useRapid_ ? L"RapidOCR" : useTess_ ? L"Tesseract" : L"Windows OCR";
 }
 
@@ -233,9 +289,10 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
     // Measured (ocr_bench): Windows OCR is best at normal/large chat text, RapidOCR clearly best at small text
     // (1080p), Tesseract in between and slowest. Automatic: RapidOCR (if installed) or Tesseract for small text.
     const bool smallText = grid.pitch > 0 && grid.pitch < kSmallTextPitch;
-    useRapid_ = !rapid_.empty() && (choice_ == 3 || (choice_ == 0 && (smallText || !haveWin_)));
+    useRapid_ = !rapid_.empty() && (choice_ == 3 || choice_ == 4 || (choice_ == 0 && (smallText || !haveWin_)));
     if (useRapid_ && !keepEngineLines_ && !grid.Found()) useRapid_ = false;  // no lines measured: nothing to cut out
     if (useRapid_ && keepEngineLines_ && !haveWin_) useRapid_ = false;       // free text needs the line boxes
+    useHybrid_ = (choice_ == 4) && haveWin_ && useRapid_;
     useTess_ = !useRapid_ && (choice_ == 1 && haveTess_);
     int scale = fixedScale > 0 ? std::clamp(fixedScale, 1, 4) : OcrScaleFor(grid);
     // Free text (apps, websites): small UI fonts with thin strokes ("w" read as "uv", "ü" as "j") read clearly
@@ -288,7 +345,23 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
         }
         for (const RectI& rr : rows) {
             RapidLine rl;
-            ReadRapidLine(Crop(raw, rr), &rl);
+            bool cacheHit = false;
+            uint64_t rowHash = 0;
+            ReadRapidLine(Crop(raw, rr), &rl, &cacheHit, &rowHash);
+            if (!cacheHit && useHybrid_ && haveWin_) {
+                const Image crop = Crop(raw, rr);
+                const Image proj = ProjectRow(crop, palette_, true);
+                std::vector<OcrTextLine> winLines;
+                std::wstring ignored;
+                if (win_.Recognize(UpscaleForOcr(proj, 2), winLines, &ignored)) {
+                    std::vector<WinWord> winWords;
+                    for (const auto& wl : winLines)
+                        for (const auto& wb : wl.words)
+                            winWords.push_back({wb.text, wb.rect.x / 2, wb.rect.w / 2});
+                    rl = MergeRapidAndWin(rl, winWords);
+                    if (rowHash) rapidCache_[rowHash] = rl;
+                }
+            }
             if (rl.text.empty()) continue;
             Line x;
             x.text = rl.text;
@@ -373,8 +446,12 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
                     }
                     continue;
                 }
-                // A recognition error seen before: fixed at once, no second reading needed.
-                if (const auto fx = fixes_.find(CaseFold(core)); fx != fixes_.end()) {
+                // A recognition error seen before: mode + height scoped, then mode, then global
+                const std::wstring modePrefix = keepEngineLines_ ? L"free:" : (L"chat@" + std::to_wstring(grid.textHeight) + L":");
+                auto fx = fixes_.find(modePrefix + CaseFold(core));
+                if (fx == fixes_.end()) fx = fixes_.find(keepEngineLines_ ? (L"free:" + CaseFold(core)) : (L"chat:" + CaseFold(core)));
+                if (fx == fixes_.end()) fx = fixes_.find(CaseFold(core));
+                if (fx != fixes_.end()) {
                     const std::wstring decision = w.text.substr(0, at) + fx->second + w.text.substr(at + core.size());
                     decided_[key] = decision;
                     w.text = decision;
@@ -382,9 +459,8 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
                     continue;
                 }
                 if (!garbled && IsWord(core)) continue;
-                std::wstring fixed = dict ? PickConfusion(core, garbled) : L"";
-                std::wstring decision = w.text;
-                if (fixed.empty() && haveWin_) {
+                std::wstring fixed;
+                if (haveWin_) {
                     if (lastLooks_ >= kMaxLooksPerPicture) continue;  // the rest next picture
                     ++lastLooks_;
                     // The word in the picture (raw pixels) with half a line height above/below and some room aside.
@@ -414,17 +490,27 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
                             const std::wstring base = garbled ? MarksToLetters(core) : core;
                             const bool close = PlausibleRereading(base, second) || (garbled && base == second) ||
                                                (garbled && PlausibleRereading(core, second));
-                            if (!second.empty() && !LooksGarbled(best->text) && close && (!dict || IsWord(second)))
+                            const std::wstring cand = dict ? PickConfusion(core, garbled) : L"";
+                            if (!second.empty() && !LooksGarbled(best->text) && close && (!dict || IsWord(second))) {
                                 fixed = second;
+                            } else if (!cand.empty() && CaseFold(second) == CaseFold(cand)) {
+                                fixed = cand;
+                            }
                         }
                     }
+                } else {
+                    fixed = dict ? PickConfusion(core, garbled) : L"";
+                    if (fixed.empty() && dict && garbled) fixed = SuggestFor(core);
                 }
-                if (fixed.empty() && dict && garbled) fixed = SuggestFor(core);
+                std::wstring decision = w.text;
                 if (!fixed.empty()) {
                     decision = w.text.substr(0, at) + fixed + w.text.substr(at + core.size());
                     ++lastFixes_;
-                    fixes_[CaseFold(core)] = fixed;  // learned: next time without reading again
-                    newFixes_.push_back({core, fixed});
+                    const std::wstring scopedKey = keepEngineLines_
+                        ? (L"free:" + core)
+                        : (grid.textHeight > 0 ? (L"chat@" + std::to_wstring(grid.textHeight) + L":" + core) : (L"chat:" + core));
+                    fixes_[CaseFold(scopedKey)] = fixed;  // learned: next time without reading again
+                    newFixes_.push_back({scopedKey, fixed});
                 } else if (garbled) {
                     decision.clear();  // no person wrote this: better a gap than nonsense
                 } else if (keepEngineLines_) {

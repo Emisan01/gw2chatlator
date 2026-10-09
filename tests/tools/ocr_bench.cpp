@@ -339,12 +339,17 @@ int wmain(int argc, wchar_t** argv) {
             const Image* src;  // where the colours are sampled
         };
         const Image up = UpscaleForOcr(raw, dyn);
+        wchar_t projKnob[16] = {};
+        const bool benchProject = GetEnvironmentVariableW(L"BENCH_PROJECT", projKnob, 16) && _wtoi(projKnob) != 0;
         std::vector<Prep> preps = {{"old 2x", PrepareForOcr(frame, 2), 2, false, &frame},
                                    {"new " + std::to_string(dyn) + "x", up, dyn, false, &raw},
                                    {"new " + std::to_string(dyn) + "x inv", up, dyn, true, &raw},
                                    {"raw 1x inv", raw, 1, true, &raw},
                                    {"new contrast", AutoContrast(up), dyn, false, &raw},
                                    {"new grey", AutoContrast(up, true), dyn, false, &raw}};
+        if (benchProject) {
+            preps.push_back({"projected", ProjectRow(raw, FullChatPalette(), true), 1, false, &raw});
+        }
         for (const Prep& p : preps) {
             for (int e = 0; e < 2; ++e) {
                 if ((e == 0 && !haveTess) || (e == 1 && !haveWin)) continue;
@@ -389,15 +394,16 @@ int wmain(int argc, wchar_t** argv) {
             }
         }
         // The app's own pipeline (ChatOcr, Windows OCR) without and with the second look at unknown words.
-        for (int look = 0; look < 4 && haveWin; ++look) {
+        for (int look = 0; look < 5 && haveWin; ++look) {
             ReaderOptions o;
-            o.ocrChoice = look == 2 ? 3 : 2;  // 3 = RapidOCR
-            o.secondLook = look == 1 || look == 3;
-            // look 3: with the glyph reader, learning from checked rows into local\glyphs_bench (grows every run).
-            if (look == 3) o.glyphDir = L"local\\glyphs_bench";
+            o.ocrChoice = look == 4 ? 4 : look == 2 ? 3 : 2;  // 4 = hybrid, 3 = RapidOCR, 2 = Windows
+            o.secondLook = look == 1 || look == 3 || look == 4;
+            // look 3, 4: with the glyph reader, learning from checked rows into local\glyphs_bench (grows every run).
+            if (look == 3 || look == 4) o.glyphDir = L"local\\glyphs_bench";
             o.rapidDir = L"local\\rapid";
             o.rapidGroups = {L"latin"};
             o.wordLangs = {L"DE", L"EN-GB"};
+            o.palette = DefaultChannelColors();
             ChatOcr co;
             std::wstring e2;
             if (!co.Init(o, &e2)) break;
@@ -408,14 +414,15 @@ int wmain(int argc, wchar_t** argv) {
             std::wstring all;
             for (const OcrLine& l : lines) all += l.text + L"\n";
             const double cer = Cer(truthText, all), parsed = Cer(truthParsed, Parsed(lines));
-            if (look == 2) {  // the same picture again: lines that did not change come from the cache
+            if (look == 2 || look == 4) {  // the same picture again: lines that did not change come from the cache
                 std::vector<OcrLine> again;
                 const auto t1 = std::chrono::steady_clock::now();
                 co.Read(raw, 0, again, nullptr, &e2);
-                std::printf("    rapid, same picture again: %.0f ms\n",
+                std::printf("    %s, same picture again: %.0f ms\n",
+                            look == 4 ? "hybrid" : "rapid",
                             std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t1).count());
             }
-            const std::string kind = look == 3 ? "glyphs" : look == 2 ? "rapid" : look ? "2nd look" : "plain";
+            const std::string kind = look == 4 ? "hybrid" : look == 3 ? "glyphs" : look == 2 ? "rapid" : look ? "2nd look" : "plain";
             std::printf("%-28ls %-6s %-12s %6.1f %8.1f %7.0f  (second look: %d read again, %d taken; glyphs: %d rows, %zu letters)\n", name.c_str(),
                         "app", kind.c_str(), cer, parsed, ms, co.SecondLooks(), co.SecondFixes(), co.GlyphRows(), co.GlyphLetters());
             if (GetEnvironmentVariableW(L"BENCH_DUMP", nullptr, 0) > 0)
@@ -451,6 +458,7 @@ int wmain(int argc, wchar_t** argv) {
                 std::wstring e4;
                 const int contrast = GetEnvironmentVariableW(L"BENCH_CONTRAST", knob, 16) ? _wtoi(knob) : 0;
                 Image crop = UpscaleForOcr(Crop(raw, rr), pre);
+                if (benchProject) crop = ProjectRow(crop, FullChatPalette(), inv == 1);
                 if (contrast > 0) crop = AutoContrast(crop, contrast == 1);
                 const RecResult rec = rapid.Recognize(crop, inv == 1, &e4);
                 OcrLine l;

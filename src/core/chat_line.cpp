@@ -886,7 +886,20 @@ std::vector<ChatMessage> BuildMessages(const std::vector<OcrLine>& lines, const 
         // A wrapped line continues the message text, so it has the colour of
         // the text at the end of the line above, not of the speaker's name.
         if (!structured && !out.empty() && below && ColorsClose(lead, prevColor)) {
-            out.back().text += L" " + m.text;
+            std::wstring& text = out.back().text;
+            bool dropHyphen = false;
+            if (!text.empty() && text.back() == L'-' && text.size() > 1 && IsWordChar(text[text.size() - 2])) {
+                const wchar_t prev = text[text.size() - 2];
+                const bool digitPrev = prev >= L'0' && prev <= L'9';
+                const bool capNext = !m.text.empty() && iswupper(m.text.front());
+                if (!digitPrev && !capNext) dropHyphen = true;
+            }
+            if (dropHyphen) {
+                text.pop_back();
+            } else if (!text.empty() && text.back() != L'-') {
+                text += L' ';
+            }
+            text += m.text;
             out.back().raw += L" " + Trim(line.text);
             prevBottom = line.top + line.height;
             prevColor = TailColor(line);

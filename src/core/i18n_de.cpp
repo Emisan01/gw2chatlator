@@ -387,6 +387,8 @@ extern const I18nEntry kGermanStrings[] = {
      L"HDR"},
     {L"Hebrew",
      L"Hebräisch"},
+    {L"Hybrid (RapidOCR + Windows OCR on new lines)",
+     L"Hybrid (RapidOCR + Windows OCR bei neuen Zeilen)"},
     {L"Hotkey “{1}” is taken – change it in the settings",
      L"Hotkey „{1}“ belegt – in den Einstellungen ändern"},
     {L"How the picture of the chat is taken:\n\nGame window (WGC, Windows Graphics Capture): Windows hands over the content of the GW2 window itself, even under our window. On Windows 10 Windows then draws a yellow frame around the game (it cannot be switched off there).\n\nScreen (DXGI, DirectX desktop duplication): a picture of the screen as you see it, never a frame. Our own windows are hidden from it.\n\nAutomatic: game window on Windows 11 (frame switched off), screen on Windows 10.",

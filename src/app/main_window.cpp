@@ -2853,7 +2853,7 @@ void MainWindow::CompareRecognition(HWND notify, UINT message) {
         const struct {
             int choice;
             const wchar_t* name;
-        } engines[] = {{2, L"Windows OCR"}, {3, L"RapidOCR"}, {1, L"Tesseract"}};
+        } engines[] = {{2, L"Windows OCR"}, {3, L"RapidOCR"}, {4, L"Hybrid (Rapid+Win)"}, {1, L"Tesseract"}};
         for (const auto& e : engines) {
             ReaderOptions o = base;
             o.ocrChoice = e.choice;
