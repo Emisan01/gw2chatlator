@@ -436,6 +436,30 @@ static void TestImage() {
     CHECK(static_cast<uint8_t>(bmp[10]) == 54);
     CHECK(static_cast<uint8_t>(bmp[28]) == 32);
     CHECK(EncodeBmp(Image{}).empty());
+
+    CHECK(FullChatPalette().size() >= 17);
+    Image row;
+    row.width = 16;
+    row.height = 12;
+    row.bgra.assign(16 * 12 * 4, 30);  // dark background
+    for (int y = 3; y <= 8; ++y) {
+        for (int x = 4; x <= 6; ++x) {
+            uint8_t* p = &row.bgra[(y * 16 + x) * 4];
+            p[0] = 255; p[1] = 255; p[2] = 255; p[3] = 255;
+        }
+    }
+    const Image proj = ProjectRow(row, FullChatPalette(), true);
+    CHECK(proj.width == row.width && proj.height == row.height);
+    CHECK(proj.bgra[(0 * 16 + 0) * 4] == 255);
+    CHECK(proj.bgra[(5 * 16 + 5) * 4] < proj.bgra[(0 * 16 + 0) * 4]);
+
+    const uint64_t h1 = HashProjectedRow(row, FullChatPalette());
+    Image rowWithMovingBg = row;
+    rowWithMovingBg.bgra[0] = 35;
+    rowWithMovingBg.bgra[1] = 28;
+    CHECK(ImageFingerprint(row) != ImageFingerprint(rowWithMovingBg));
+    const uint64_t h2 = HashProjectedRow(rowWithMovingBg, FullChatPalette());
+    CHECK(h1 == h2);
 }
 
 static void TestGw2Text() {

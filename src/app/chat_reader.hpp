@@ -10,6 +10,7 @@
 #include <windows.h>
 
 #include <condition_variable>
+#include <deque>
 #include <memory>
 #include <unordered_map>
 #include <mutex>
@@ -50,6 +51,8 @@ struct ReaderOptions {
     std::vector<std::pair<std::wstring, std::wstring>> ocrFixes;
     std::wstring glyphDir;        // the glyph reader's letters (<data>\glyphs); empty = no glyph reader
     std::wstring captureDir;      // diagnostics target
+    std::vector<ChannelColor> palette;    // calibrated GW2 channel colours
+    std::vector<std::wstring> recentSent; // own messages to learn glyphs from
 };
 
 // Posted as LPARAM of the notify message; the receiver deletes it.
@@ -89,6 +92,7 @@ public:
     ~ChatOcr() { SaveGlyphs(); }
     // Fixes the second look found in the last picture (wrong reading -> word), to be stored.
     const std::vector<std::pair<std::wstring, std::wstring>>& NewFixes() const { return newFixes_; }
+    void SetRecentSent(const std::vector<std::wstring>& sent) { recentSent_ = sent; }
 
     // Line spacing (px) below which "automatic" prefers Tesseract (if installed).
     static constexpr int kSmallTextPitch = 14;
@@ -100,6 +104,8 @@ private:
     bool haveTess_ = false, haveWin_ = false;
     bool useTess_ = false;  // the engine of the last picture
     bool keepEngineLines_ = false;  // free text: no regrouping by rows (it would merge side-by-side columns)
+    std::vector<Rgb> palette_;
+    std::vector<std::wstring> recentSent_;
 
     // RapidOCR: one recognizer per installed model group; a line that looks exactly as before is not
     // recognized again (the chat mostly only scrolls), its text comes from the cache.
@@ -158,6 +164,8 @@ public:
     void SaveNextF16(const std::wstring& path);
     // Read again at once, even if the picture did not change.
     void Rescan();
+    // Tells the reader of own messages sent, so the glyph reader can learn from them.
+    void AddRecentSent(const std::wstring& text);
 
 private:
     void Loop();
@@ -175,6 +183,7 @@ private:
     HWND notify_ = nullptr;
     UINT message_ = 0;
     ReaderOptions opt_;
+    std::deque<std::wstring> recentSent_;
     int captureIndex_ = 0;
 };
 

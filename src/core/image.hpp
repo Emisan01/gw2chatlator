@@ -51,4 +51,15 @@ std::string EncodeF16(int width, int height, float sdrWhiteFactor, const uint16_
 // Decodes a .f16 file buffer into BGRA8 Image using HalfToSrgb8Lut.
 bool DecodeF16(const std::string& data, Image& out, float* sdrWhiteFactor = nullptr);
 
+// Full chat color palette: calibrated channel colors + white + system yellow + item rarities.
+std::vector<Rgb> FullChatPalette(const std::vector<ChannelColor>& userChannels = {});
+
+// Projects a chat row onto the palette, separating letters from the transparent background:
+// text ink (dark) on white (or white on dark if !darkOnWhite).
+Image ProjectRow(const Image& row, const std::vector<Rgb>& palette, bool darkOnWhite = true);
+
+// FNV-1a hash of the projected and quantised row: background variations behind the chat
+// are eliminated so identical text produces identical hashes.
+uint64_t HashProjectedRow(const Image& row, const std::vector<Rgb>& palette);
+
 }  // namespace gct

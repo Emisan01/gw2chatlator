@@ -47,6 +47,7 @@ public:
     HWND Hwnd() const { return hwnd_; }
 
     std::wstring Text() const;
+    void SetText(const std::wstring& text);
     // Note: no EN_CHANGE follows (multi-line EDIT + WM_SETTEXT); the owner
     // has to update itself.
     void Clear();
