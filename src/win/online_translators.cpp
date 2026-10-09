@@ -240,10 +240,23 @@ std::shared_ptr<Translator> MakeMicrosoftTranslator(const std::wstring& apiKey, 
 // ===========================================================================
 // LLM (OpenAI-compatible)
 // ===========================================================================
+bool IsOllamaEndpoint(const std::wstring& url) {
+    const std::wstring u = CaseFold(Trim(url));
+    return u.find(L":11434") != std::wstring::npos || u.find(L"/api/chat") != std::wstring::npos;
+}
+
 std::wstring NormalizeLlmUrl(const std::wstring& in) {
     std::wstring u = Trim(in);
-    if (u.empty()) return L"http://localhost:11434/v1/chat/completions";
+    if (u.empty()) return L"http://localhost:11434/api/chat";
     while (!u.empty() && u.back() == L'/') u.pop_back();
+    if (IsOllamaEndpoint(u)) {
+        if (u.find(L"/api/chat") != std::wstring::npos) return u;
+        if (u.find(L"/v1") != std::wstring::npos) {
+            const size_t v1 = u.find(L"/v1");
+            return u.substr(0, v1) + L"/api/chat";
+        }
+        return u + L"/api/chat";
+    }
     if (u.find(L"/chat/completions") != std::wstring::npos) return u;
     const size_t scheme = u.find(L"://");
     const size_t pathStart = scheme == std::wstring::npos ? std::wstring::npos : u.find(L'/', scheme + 3);
@@ -258,6 +271,7 @@ public:
     explicit OpenAiCompatibleTranslator(LlmSettings s) : s_(std::move(s)) {
         s_.url = NormalizeLlmUrl(s_.url);
         local_ = IsLocalLlmUrl(s_.url);
+        ollama_ = IsOllamaEndpoint(s_.url);
     }
 
     std::wstring Name() const override { return L"LLM (" + s_.model + L")"; }
@@ -285,13 +299,13 @@ public:
             const size_t end = std::min(items.size(), begin + kChunk);
             const std::vector<std::vector<Segment>> part(items.begin() + begin, items.begin() + end);
             const LlmParsed p =
-                Call(BuildLlmRequest(part, LanguageEnglishName(targetLang), s_.model, fromOcr, local_), part.size());
+                Call(BuildLlmRequest(part, LanguageEnglishName(targetLang), s_.model, fromOcr, local_, ollama_), part.size());
             if (!p.ok && p.formatError && part.size() > 1) {
                 // Small local models sometimes merge or drop lines in a batch:
                 // ask once per line instead of losing the whole batch.
                 for (size_t i = begin; i < end; ++i) {
                     const LlmParsed one =
-                        Call(BuildLlmRequest({items[i]}, LanguageEnglishName(targetLang), s_.model, fromOcr, local_), 1);
+                        Call(BuildLlmRequest({items[i]}, LanguageEnglishName(targetLang), s_.model, fromOcr, local_, ollama_), 1);
                     out[i].ok = one.ok;
                     if (one.ok) out[i].text = one.texts[0];
                     else out[i].error = one.error;
@@ -309,7 +323,7 @@ public:
 
     TranslateResult Romanize(const std::wstring& text) override {
         TranslateResult r;
-        const LlmParsed p = Call(BuildLlmRomanizeRequest(text, s_.model, local_), 1);
+        const LlmParsed p = Call(BuildLlmRomanizeRequest(text, s_.model, local_, ollama_), 1);
         r.ok = p.ok;
         if (p.ok) r.text = p.texts[0];
         else r.error = p.error;
@@ -339,6 +353,7 @@ private:
 
     LlmSettings s_;
     bool local_ = true;
+    bool ollama_ = false;
 };
 
 }  // namespace
@@ -399,10 +414,10 @@ std::vector<std::wstring> FetchLlmModels(const std::wstring& url, const std::wst
 // working memory) and the game wants the graphics card too.
 const std::vector<LocalModelOffer>& LocalModelOffers() {
     static const std::vector<LocalModelOffer> offers = {
-        {L"gemma3:1b", L"Very fast · 0.8 GB download · runs on the CPU or with ~2 GB VRAM · good for short chat lines"},
-        {L"gemma3:4b", L"Balanced · 3.3 GB download · ~4–6 GB VRAM · 140 languages"},
-        {L"aya-expanse:8b", L"Best translations · 5 GB download · 8 GB VRAM recommended · made for translating, "
-                            L"23 languages incl. Arabic, Turkish, Russian"},
+        {L"gemma3:1b", L"Fastest on CPU · ~1.5 GB RAM · 0.8 GB download · ideal alongside GW2 on CPU"},
+        {L"qwen2.5:1.5b", L"Very fast · ~2 GB RAM · 1.0 GB download · strong in European languages and Chinese"},
+        {L"gemma3:4b", L"Better quality · ~5 GB RAM / GPU · 3.3 GB download · 140 languages"},
+        {L"aya-expanse:8b", L"Best translations · ~9 GB RAM / 8 GB VRAM · 5 GB download · 23 languages incl. Arabic"},
     };
     return offers;
 }
@@ -429,6 +444,35 @@ bool PullOllamaModel(const std::wstring& llmUrl, const std::wstring& model, std:
         return false;
     }
     return true;
+}
+
+bool DiscoverLocalLlmServer(LocalServerResult* result, std::wstring* error) {
+    struct Probe {
+        std::wstring url;
+        std::wstring name;
+        std::wstring checkPath;
+    };
+    const Probe probes[] = {
+        {L"http://localhost:11434", L"Ollama", L"/api/version"},
+        {L"http://localhost:1234", L"LM Studio", L"/v1/models"},
+        {L"http://localhost:8080", L"llama-server", L"/v1/models"},
+        {L"http://127.0.0.1:11434", L"Ollama", L"/api/version"},
+        {L"http://127.0.0.1:1234", L"LM Studio", L"/v1/models"},
+        {L"http://127.0.0.1:8080", L"llama-server", L"/v1/models"},
+    };
+    for (const auto& p : probes) {
+        const HttpResponse http = HttpRequestUrl(L"GET", p.url + p.checkPath, L"", "", 2000);
+        if (http.transportOk && http.status == 200) {
+            if (result) {
+                result->url = p.url;
+                result->name = p.name;
+                result->models = FetchLlmModels(p.url, L"", nullptr);
+            }
+            return true;
+        }
+    }
+    if (error) *error = Tr(L"No local AI server found (Ollama, LM Studio, llama-server)");
+    return false;
 }
 
 LtResult CheckWithLanguageTool(const std::wstring& serverUrl, const std::wstring& text, const std::wstring& lang,

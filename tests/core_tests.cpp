@@ -478,10 +478,30 @@ static void TestLlm() {
     CHECK(r.ok && r.texts.size() == 2 && r.texts[0] == L"Meet in Lion's Arch" && r.texts[1] == L"sag \"hi\"");
     r = ParseLlmResponse(R"({"choices":[{"message":{"content":"Hallo zusammen"}}]})", 1);
     CHECK(r.ok && r.texts.size() == 1 && r.texts[0] == L"Hallo zusammen");
+    // Native Ollama /api/chat response
+    r = ParseLlmResponse(R"({"message":{"role":"assistant","content":"[\"Meet in Lion's Arch\", \"sag \\\"hi\\\"\"]"}})", 2);
+    CHECK(r.ok && r.texts.size() == 2 && r.texts[0] == L"Meet in Lion's Arch" && r.texts[1] == L"sag \"hi\"");
     r = ParseLlmResponse(R"({"choices":[{"message":{"content":"[\"nur eins\"]"}}]})", 2);
     CHECK(!r.ok && r.formatError);  // -> the translator retries line by line
     r = ParseLlmResponse(R"({"error":{"message":"model not found"}})", 1);
     CHECK(!r.ok && !r.formatError && r.error.find(L"model not found") != std::wstring::npos);
+    r = ParseLlmResponse(R"({"error":"model 'xyz' not found, try pulling it first"})", 1);
+    CHECK(!r.ok && !r.formatError && r.error.find(L"model 'xyz' not found") != std::wstring::npos);
+
+    // Ollama CPU-friendly options in request
+    const std::string reqOllama = BuildLlmRequest(items, L"German", L"gemma3:1b", false, true, true);
+    JsonValue vOllama;
+    CHECK(ParseJson(reqOllama, vOllama));
+    CHECK(vOllama.GetBool("stream", true) == false);
+    CHECK(vOllama.GetString("keep_alive") == "5m");
+    const JsonValue* opt = vOllama.Get("options");
+    CHECK(opt != nullptr);
+    if (opt) {
+        const JsonValue* numGpu = opt->Get("num_gpu");
+        CHECK(numGpu && numGpu->n == 0.0);
+        const JsonValue* numThread = opt->Get("num_thread");
+        CHECK(numThread && numThread->n == 2.0);
+    }
 }
 
 static void TestDeepLBatch() {
