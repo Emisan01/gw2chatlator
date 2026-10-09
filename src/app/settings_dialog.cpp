@@ -566,7 +566,8 @@ private:
         Label(Tr(L"Text recognition"), kLabelX, Y(r), kLabelW);
         Combo(kOcrEngine,
               {Tr(L"Automatic (Windows OCR; RapidOCR for small text)"), Tr(L"Tesseract (separate install)"),
-               Tr(L"Windows OCR (built in, fast)"), Tr(L"RapidOCR (open source, best with small text)")},
+               Tr(L"Windows OCR (built in, fast)"), Tr(L"RapidOCR (open source, best with small text)"),
+               Tr(L"Hybrid (RapidOCR + Windows OCR on new lines)")},
               static_cast<int>(cfg_.ocr), kCtrlX, Y(r), kCtrlW - 30);
         Button(kHelpOcr, L"?", kCtrlX + kCtrlW - 24, Y(r++) - 1, 24);
         Label(ctx_.readingAdvice ? ctx_.readingAdvice() : L"", kCtrlX, Y(r++) - 6, kCtrlW, 34);
