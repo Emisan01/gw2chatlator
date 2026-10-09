@@ -67,6 +67,7 @@ bool RapidRecognizer::Load(const std::wstring& modelPath, const std::wstring& di
     try {
         Ort::SessionOptions so;
         so.SetIntraOpNumThreads(2);  // leave the game its cores
+        so.AddConfigEntry("session.intra_op.allow_spinning", "0");
         so.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
         impl_->session = std::make_unique<Ort::Session>(Env(), modelPath.c_str(), so);
         Ort::AllocatorWithDefaultOptions alloc;

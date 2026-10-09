@@ -26,6 +26,9 @@ std::wstring ExpandGermanContractions(const std::wstring& text);
 // Two capitals or more ("LA", "HoT", "CoF", "WvW").
 bool LooksLikeAbbreviation(const std::wstring& word);
 
+// Gamer abbreviations (LF1M, LF2M, f2p, p2w, b2b, 1v1, 2v2 ...): never reading errors in LooksGarbled.
+bool IsGamerAbbreviation(const std::wstring& word);
+
 // `word` is in a keep/ignore set from above: in any spelling, or – for letters that are an ordinary word somewhere
 // ("la", "hot", "de") – only when written like an abbreviation; entries "=Word" (names the user taught) only exactly so.
 bool IsKeepWord(const WordSet& keep, const std::wstring& word);

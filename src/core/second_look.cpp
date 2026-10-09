@@ -6,6 +6,7 @@
 #include <cwchar>
 #include <vector>
 
+#include "slang.hpp"
 #include "text.hpp"
 #include "word_model.hpp"
 
@@ -111,6 +112,7 @@ bool LooksGarbled(const std::wstring& token) {
         if (IsLetter(c)) ++letters;
     }
     if (letters < 2) return false;  // numbers, smileys, "<3"
+    if (IsGamerAbbreviation(t)) return false;
     const size_t n = t.size();
     // A mark glued in front of a word that recognition reads for a letter (l, I, t): "!raining", "|ch". Not "*grins",
     // "#lfg", "~hi" – people write those.
