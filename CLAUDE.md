@@ -347,8 +347,11 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
    neighbours, Arabic folding, Enter finishes the last word, grey completion, starter list), privacy (README,
    MyMemory notice), reading rebuilt on measurements (line grid, dynamic enlargement, regrouping, snapping
    frame with traffic light + preview, hardened timestamp parsing, names protected), `ocr_bench`.
-8. **Now: `docs/OCR_PLAN.md`** (HDR capture first, then engine comparison, hybrid, glyph learning from own
-   lines, local LLM on CPU) – follow it step by step, bench-gated.
+8. ✅ `docs/OCR_PLAN.md` (HDR capture in 16-bit FP16 + SDR white LUT, 30s fallback retry; colour projection per row
+   and quantised row cache; RapidOCR intra_op spin off & below normal thread priority; Hybrid OCR mode with word-level
+   merging and 2nd look confirmation; scoped fixes with 3 confirmations; wrapped hyphen joining; gamer abbreviations;
+   glyph reader learning from own messages & calibration sentence; local LLM on CPU via Ollama /api/chat & dynamic
+   llama-server port discovery; typing slip and interjection improvements).
 9. Next: live test in the game (incl. real 1080p/1440p captures for `ocr_bench`), then decide on an own glyph
    reader. Optional, off by default, user's decision: Nexus add-on that forwards unofficial-extras party/squad
    chat as exact text to the exe (named pipe). It lives in the game process — keep it a separate download.
