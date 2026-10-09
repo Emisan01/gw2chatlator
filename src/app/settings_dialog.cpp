@@ -58,7 +58,7 @@ enum : int {
     kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kStatus, kRefresh, kSetup,
     // Wizard
     // Technical
-    kOcrZoom, kKeyHold, kStepDelay, kTechText, kTechRefresh, kTechCopy, kTechStatus,
+    kOcrZoom, kKeyHold, kStepDelay, kTechText, kTechRefresh, kTechCopy, kTechSaveF16, kTechStatus,
     kBack, kNext, kStepTitle, kStepText,
 };
 
@@ -907,7 +907,8 @@ private:
         Button(kTechCopy, Tr(L"Copy diagnosis"), kLabelX + 98, Y(r), 136);
         Button(kTechCompare, Tr(L"Compare translators"), kLabelX + 240, Y(r), 148);
         Button(kTechOcrCompare, Tr(L"Compare recognition"), kLabelX + 394, Y(r), 148);
-        Label(Tr(L"Numbers and settings only, no chat text."), kLabelX, Y(r) + 30, kW - 44, 20, kTechStatus);
+        Button(kTechSaveF16, Tr(L"Save .f16 capture"), kLabelX, Y(r) + 26, 150);
+        Label(Tr(L"Numbers and settings only, no chat text."), kLabelX + 160, Y(r) + 30, kW - 204, 20, kTechStatus);
         RefreshTechnical();
     }
 
@@ -1152,6 +1153,12 @@ private:
                     EnableWindow(Item(kTechOcrCompare), FALSE);
                     SetText(kTechText, Tr(L"Reading one picture of the chat with every text recognition …"));
                     ctx_.compareOcr(hwnd_, WM_APP_OCRCMP);
+                }
+                break;
+            case kTechSaveF16:
+                if (ctx_.saveF16) {
+                    ctx_.saveF16();
+                    SetText(kTechStatus, Tr(L"Saving next chat capture as .f16 …"));
                 }
                 break;
             case kLocalModel:

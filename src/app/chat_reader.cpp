@@ -579,6 +579,13 @@ void ChatReader::SetSaveCaptures(bool on) {
     save_ = on;
 }
 
+void ChatReader::SaveNextF16(const std::wstring& path) {
+    std::lock_guard<std::mutex> lk(mu_);
+    saveF16Path_ = path;
+    force_ = true;
+    cv_.notify_all();
+}
+
 void ChatReader::Rescan() {
     {
         std::lock_guard<std::mutex> lk(mu_);
@@ -609,6 +616,7 @@ void ChatReader::Loop() {
         RECT area;
         HWND target;
         bool force, save;
+        std::wstring saveF16;
         {
             std::unique_lock<std::mutex> lk(mu_);
             cv_.wait_for(lk, std::chrono::milliseconds(opt_.intervalMs), [this] { return stop_ || force_; });
@@ -618,9 +626,12 @@ void ChatReader::Loop() {
             force = force_;
             force_ = false;
             save = save_;
+            saveF16 = saveF16Path_;
+            saveF16Path_.clear();
         }
         if (IsRectEmpty(&area)) continue;
 
+        if (!saveF16.empty()) capture.SaveNextF16(saveF16);
         capture.SetUseWindowCapture(opt_.windowCapture);
         capture.SetTarget(target);
         const ULONGLONG t0 = GetTickCount64();
@@ -636,6 +647,7 @@ void ChatReader::Loop() {
         if (!ocr.Read(raw, opt_.scale, snap->lines, &prepared, &err)) snap->error = err;
         snap->captureTick = t0;
         snap->method = capture.Method();
+        snap->captureStatus = capture.Status();
         snap->engine = ocr.EngineName();
         snap->language = ocr.Language();
         snap->milliseconds = static_cast<int>(GetTickCount64() - t0);

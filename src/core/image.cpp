@@ -3,6 +3,8 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
+#include <cstring>
 
 namespace gct {
 
@@ -175,6 +177,72 @@ std::string EncodeBmp(const Image& img) {
     u32(0);
     out.append(reinterpret_cast<const char*>(img.bgra.data()), pixelBytes);
     return out;
+}
+
+namespace {
+float HalfToFloat(uint16_t h) {
+    const int sign = h >> 15, exp = (h >> 10) & 31, man = h & 1023;
+    const float v = exp == 0    ? std::ldexp(static_cast<float>(man), -24)
+                    : exp == 31 ? 65504.0f
+                                : std::ldexp(static_cast<float>(man | 1024), exp - 25);
+    return sign ? -v : v;
+}
+}  // namespace
+
+std::vector<uint8_t> HalfToSrgb8Lut(double sdrWhiteFactor) {
+    if (sdrWhiteFactor <= 0.0) sdrWhiteFactor = 1.0;
+    std::vector<uint8_t> lut(65536);
+    for (uint32_t i = 0; i < 65536; ++i) {
+        double v = std::clamp(HalfToFloat(static_cast<uint16_t>(i)) / sdrWhiteFactor, 0.0, 1.0);
+        v = v <= 0.0031308 ? 12.92 * v : 1.055 * std::pow(v, 1.0 / 2.4) - 0.055;
+        lut[i] = static_cast<uint8_t>(std::lround(v * 255.0));
+    }
+    return lut;
+}
+
+std::string EncodeF16(int width, int height, float sdrWhiteFactor, const uint16_t* rgbaHalf) {
+    if (width <= 0 || height <= 0 || !rgbaHalf) return {};
+    const size_t pixelBytes = static_cast<size_t>(width) * height * 4 * sizeof(uint16_t);
+    std::string out;
+    out.resize(24 + pixelBytes);
+    std::memcpy(&out[0], "GCT_F16\0", 8);
+    const uint32_t w = static_cast<uint32_t>(width);
+    const uint32_t h = static_cast<uint32_t>(height);
+    const uint32_t zero = 0;
+    std::memcpy(&out[8], &w, 4);
+    std::memcpy(&out[12], &h, 4);
+    std::memcpy(&out[16], &sdrWhiteFactor, 4);
+    std::memcpy(&out[20], &zero, 4);
+    std::memcpy(&out[24], rgbaHalf, pixelBytes);
+    return out;
+}
+
+bool DecodeF16(const std::string& data, Image& out, float* sdrWhiteFactor) {
+    if (data.size() < 24) return false;
+    if (std::memcmp(data.data(), "GCT_F16\0", 8) != 0) return false;
+    uint32_t w = 0, h = 0;
+    float white = 1.0f;
+    std::memcpy(&w, &data[8], 4);
+    std::memcpy(&h, &data[12], 4);
+    std::memcpy(&white, &data[16], 4);
+    if (w == 0 || h == 0 || w > 16384 || h > 16384) return false;
+    const size_t pixelBytes = static_cast<size_t>(w) * h * 4 * sizeof(uint16_t);
+    if (data.size() < 24 + pixelBytes) return false;
+    if (sdrWhiteFactor) *sdrWhiteFactor = white;
+    const std::vector<uint8_t> lut = HalfToSrgb8Lut(white > 0.0f ? white : 1.0f);
+    out.width = static_cast<int>(w);
+    out.height = static_cast<int>(h);
+    out.bgra.resize(static_cast<size_t>(w) * h * 4);
+    const uint16_t* src = reinterpret_cast<const uint16_t*>(&data[24]);
+    uint8_t* dst = out.bgra.data();
+    const size_t totalPixels = static_cast<size_t>(w) * h;
+    for (size_t i = 0; i < totalPixels; ++i, src += 4, dst += 4) {
+        dst[0] = lut[src[2]];
+        dst[1] = lut[src[1]];
+        dst[2] = lut[src[0]];
+        dst[3] = 255;
+    }
+    return true;
 }
 
 }  // namespace gct

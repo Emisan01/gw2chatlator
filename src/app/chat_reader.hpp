@@ -21,6 +21,7 @@
 #include "core/image.hpp"
 #include "win/ocr.hpp"
 #include "win/rapid_ocr.hpp"
+#include "win/screen_capture.hpp"
 #include "win/spellcheck.hpp"
 #include "win/tesseract_ocr.hpp"
 #include "core/glyph_reader.hpp"
@@ -65,6 +66,7 @@ struct ReaderSnapshot {
     int glyphLetters = 0;        // letters of the chat font it knows
     std::vector<std::pair<std::wstring, std::wstring>> newFixes;  // learned in this picture (to be remembered)
     ULONGLONG captureTick = 0;   // GetTickCount64() when the picture was taken
+    CaptureStatus captureStatus; // HDR, SDR white level and fallback reason
 };
 
 // Text recognition of one chat picture, as the reader does it (also used by
@@ -152,6 +154,8 @@ public:
     // Sets the target window for window-targeted capture (e.g. WGC).
     void SetTarget(HWND hwnd);
     void SetSaveCaptures(bool on);
+    // Saves the next capture of the chat area as an .f16 file.
+    void SaveNextF16(const std::wstring& path);
     // Read again at once, even if the picture did not change.
     void Rescan();
 
@@ -165,6 +169,7 @@ private:
     bool stop_ = false;
     bool force_ = false;
     bool save_ = false;
+    std::wstring saveF16Path_;
     RECT area_{};
     HWND target_ = nullptr;
     HWND notify_ = nullptr;

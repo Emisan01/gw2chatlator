@@ -13,6 +13,8 @@
 #include <cstring>
 #include <vector>
 
+#include "win/files.hpp"
+
 #ifdef _MSC_VER
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -28,6 +30,13 @@ void SafeRelease(T*& p) {
         p->Release();
         p = nullptr;
     }
+}
+
+// "AcquireNextFrame 0x887A0026" – the reason of a fallback, for the technical page.
+std::wstring HrText(const wchar_t* what, HRESULT hr) {
+    wchar_t b[96];
+    swprintf(b, 96, L"%ls 0x%08X", what, static_cast<unsigned>(hr));
+    return b;
 }
 }  // namespace
 
@@ -437,25 +446,6 @@ double SdrWhiteFactor(const wchar_t* deviceName) {
     return 1.0;
 }
 
-float HalfToFloat(uint16_t h) {
-    const int sign = h >> 15, exp = (h >> 10) & 31, man = h & 1023;
-    const float v = exp == 0    ? std::ldexp(static_cast<float>(man), -24)
-                    : exp == 31 ? 65504.0f
-                                : std::ldexp(static_cast<float>(man | 1024), exp - 25);
-    return sign ? -v : v;
-}
-
-// Every half value -> 8-bit sRGB of the SDR picture: / white, clamp 0..1, sRGB curve. 64 KB, built per start.
-std::vector<uint8_t> HdrLut(double white) {
-    std::vector<uint8_t> lut(65536);
-    for (uint32_t i = 0; i < 65536; ++i) {
-        double v = std::clamp(HalfToFloat(static_cast<uint16_t>(i)) / white, 0.0, 1.0);
-        v = v <= 0.0031308 ? 12.92 * v : 1.055 * std::pow(v, 1.0 / 2.4) - 0.055;
-        lut[i] = static_cast<uint8_t>(std::lround(v * 255.0));
-    }
-    return lut;
-}
-
 }  // namespace
 
 struct ScreenCapture::Dxgi {
@@ -466,10 +456,20 @@ struct ScreenCapture::Dxgi {
     RECT outputRect{};  // desktop coordinates of the duplicated output
     D3D11_TEXTURE2D_DESC stagingDesc{};
     std::vector<uint8_t> hdrLut;  // filled only while duplicating an HDR screen in FP16
+    std::wstring deviceName;      // GDI name of the duplicated output (for its SDR white level)
+    double white = 1.0;           // SDR white level as a factor of 80 nits (HDR only)
+    ULONGLONG whiteAt = 0;        // when it was read
+    std::wstring error;           // the last failure (kept across Reset, for the technical page)
+    std::wstring saveNextF16Path; // if not empty, the next CopyArea writes raw FP16 texture to this path
     Image last;         // last delivered image (returned when no new frame arrived)
     RECT lastArea{};
 
+    // The SDR brightness slider can move while the game runs: read it again every few seconds.
+    static constexpr ULONGLONG kWhiteCheckMs = 5000;
+
     ~Dxgi() { Reset(); }
+
+    bool Hdr() const { return hdrLut.size() == 65536; }
 
     void Reset() {
         SafeRelease(staging);
@@ -502,31 +502,45 @@ struct ScreenCapture::Dxgi {
             SafeRelease(adapter);
         }
         SafeRelease(factory);
+        if (!ok && error.empty()) error = L"no screen at the chat area";
         return ok;
     }
 
     bool StartOn(IDXGIAdapter1* adapter, IDXGIOutput* output, const RECT& rect) {
         const D3D_FEATURE_LEVEL levels[] = {D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_10_0};
-        if (FAILED(D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, D3D11_CREATE_DEVICE_BGRA_SUPPORT, levels,
-                                     3, D3D11_SDK_VERSION, &device, nullptr, &context)))
+        const HRESULT hrDev = D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, D3D11_CREATE_DEVICE_BGRA_SUPPORT,
+                                                levels, 3, D3D11_SDK_VERSION, &device, nullptr, &context);
+        if (FAILED(hrDev)) {
+            error = HrText(L"D3D11CreateDevice", hrDev);
             return false;
+        }
         // HDR screen: FP16 duplication + exact conversion (decided here; Start runs again after every mode change).
         IDXGIOutput6* output6 = nullptr;
         if (SUCCEEDED(output->QueryInterface(__uuidof(IDXGIOutput6), reinterpret_cast<void**>(&output6)))) {
             DXGI_OUTPUT_DESC1 d1{};
             if (SUCCEEDED(output6->GetDesc1(&d1)) && d1.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020) {
                 const DXGI_FORMAT formats[] = {DXGI_FORMAT_R16G16B16A16_FLOAT};
-                if (SUCCEEDED(output6->DuplicateOutput1(device, 0, 1, formats, &dup)))
-                    hdrLut = HdrLut(SdrWhiteFactor(d1.DeviceName));
+                if (SUCCEEDED(output6->DuplicateOutput1(device, 0, 1, formats, &dup))) {
+                    deviceName = d1.DeviceName;
+                    white = SdrWhiteFactor(d1.DeviceName);
+                    whiteAt = GetTickCount64();
+                    hdrLut = HalfToSrgb8Lut(white);
+                }
             }
             SafeRelease(output6);
         }
         if (!dup) {
             IDXGIOutput1* output1 = nullptr;
-            if (FAILED(output->QueryInterface(__uuidof(IDXGIOutput1), reinterpret_cast<void**>(&output1)))) return false;
+            if (FAILED(output->QueryInterface(__uuidof(IDXGIOutput1), reinterpret_cast<void**>(&output1)))) {
+                error = L"no IDXGIOutput1";
+                return false;
+            }
             const HRESULT hr = output1->DuplicateOutput(device, &dup);
             SafeRelease(output1);
-            if (FAILED(hr)) return false;
+            if (FAILED(hr)) {
+                error = HrText(L"DuplicateOutput", hr);
+                return false;
+            }
         }
         outputRect = rect;
         return true;
@@ -538,6 +552,14 @@ struct ScreenCapture::Dxgi {
         if (!dup && !Start(area)) return Result::Error;
         if (!PtInRect(&outputRect, POINT{area.left, area.top})) {  // area moved to another monitor
             if (!Start(area)) return Result::Error;
+        }
+        if (Hdr() && GetTickCount64() - whiteAt >= kWhiteCheckMs) {
+            whiteAt = GetTickCount64();
+            const double w = SdrWhiteFactor(deviceName.c_str());
+            if (std::fabs(w - white) > 1e-3) {
+                white = w;
+                hdrLut = HalfToSrgb8Lut(white);
+            }
         }
 
         IDXGIResource* resource = nullptr;
@@ -554,7 +576,10 @@ struct ScreenCapture::Dxgi {
             Reset();
             return Result::NoNewFrame;
         }
-        if (FAILED(hr)) return Result::Error;
+        if (FAILED(hr)) {
+            error = HrText(L"AcquireNextFrame", hr);
+            return Result::Error;
+        }
 
         bool ok = false;
         ID3D11Texture2D* frame = nullptr;
@@ -573,8 +598,11 @@ struct ScreenCapture::Dxgi {
     bool CopyArea(ID3D11Texture2D* frame, const RECT& area, Image& out) {
         D3D11_TEXTURE2D_DESC fdesc{};
         frame->GetDesc(&fdesc);
-        const bool hdr = fdesc.Format == DXGI_FORMAT_R16G16B16A16_FLOAT && hdrLut.size() == 65536;
-        if (fdesc.Format != DXGI_FORMAT_B8G8R8A8_UNORM && !hdr) return false;
+        const bool hdr = fdesc.Format == DXGI_FORMAT_R16G16B16A16_FLOAT && Hdr();
+        if (fdesc.Format != DXGI_FORMAT_B8G8R8A8_UNORM && !hdr) {
+            error = L"frame format " + std::to_wstring(static_cast<int>(fdesc.Format));
+            return false;
+        }
 
         // Area relative to the output, clipped.
         const LONG x0 = std::max(area.left - outputRect.left, 0L);
@@ -601,7 +629,10 @@ struct ScreenCapture::Dxgi {
         context->CopySubresourceRegion(staging, 0, 0, 0, 0, frame, 0, &box);
 
         D3D11_MAPPED_SUBRESOURCE map{};
-        if (FAILED(context->Map(staging, 0, D3D11_MAP_READ, 0, &map))) return false;
+        if (const HRESULT hrMap = context->Map(staging, 0, D3D11_MAP_READ, 0, &map); FAILED(hrMap)) {
+            error = HrText(L"Map", hrMap);
+            return false;
+        }
         out.width = static_cast<int>(w);
         out.height = static_cast<int>(h);
         out.bgra.resize(static_cast<size_t>(w) * h * 4);
@@ -621,6 +652,43 @@ struct ScreenCapture::Dxgi {
             for (UINT y = 0; y < h; ++y)
                 std::memcpy(&out.bgra[static_cast<size_t>(y) * w * 4],
                             static_cast<const uint8_t*>(map.pData) + y * map.RowPitch, static_cast<size_t>(w) * 4);
+        }
+        if (!saveNextF16Path.empty()) {
+            std::string bytes;
+            if (hdr) {
+                std::vector<uint16_t> compact(static_cast<size_t>(w) * h * 4);
+                for (UINT y = 0; y < h; ++y) {
+                    const uint16_t* src =
+                        reinterpret_cast<const uint16_t*>(static_cast<const uint8_t*>(map.pData) + y * map.RowPitch);
+                    std::memcpy(&compact[static_cast<size_t>(y) * w * 4], src, static_cast<size_t>(w) * 4 * sizeof(uint16_t));
+                }
+                bytes = EncodeF16(static_cast<int>(w), static_cast<int>(h), static_cast<float>(white), compact.data());
+            } else {
+                std::vector<uint16_t> halfRgba(static_cast<size_t>(w) * h * 4);
+                auto floatToHalf = [](float f) -> uint16_t {
+                    uint32_t x;
+                    std::memcpy(&x, &f, 4);
+                    uint32_t sign = (x >> 16) & 0x8000;
+                    int32_t exp = ((x >> 23) & 0xff) - 127 + 15;
+                    uint32_t mant = (x >> 13) & 0x3ff;
+                    if (exp <= 0) return static_cast<uint16_t>(sign);
+                    if (exp >= 31) return static_cast<uint16_t>(sign | 0x7c00);
+                    return static_cast<uint16_t>(sign | (exp << 10) | mant);
+                };
+                for (UINT y = 0; y < h; ++y) {
+                    const uint8_t* srcBgra = static_cast<const uint8_t*>(map.pData) + y * map.RowPitch;
+                    uint16_t* dstHalf = &halfRgba[static_cast<size_t>(y) * w * 4];
+                    for (UINT x = 0; x < w; ++x, srcBgra += 4, dstHalf += 4) {
+                        dstHalf[0] = floatToHalf(srcBgra[2] / 255.0f);
+                        dstHalf[1] = floatToHalf(srcBgra[1] / 255.0f);
+                        dstHalf[2] = floatToHalf(srcBgra[0] / 255.0f);
+                        dstHalf[3] = floatToHalf(1.0f);
+                    }
+                }
+                bytes = EncodeF16(static_cast<int>(w), static_cast<int>(h), 1.0f, halfRgba.data());
+            }
+            WriteFileAtomic(saveNextF16Path, bytes);
+            saveNextF16Path.clear();
         }
         context->Unmap(staging, 0);
         return true;
@@ -642,6 +710,22 @@ const wchar_t* ScreenCapture::Method() const {
     if (usingWgc_) return L"WGC";
     if (usingDxgi_) return L"DXGI";
     return L"GDI";
+}
+
+void ScreenCapture::SaveNextF16(const std::wstring& path) {
+    if (dxgi_) dxgi_->saveNextF16Path = path;
+}
+
+CaptureStatus ScreenCapture::Status() const {
+    CaptureStatus s;
+    if (usingDxgi_ && dxgi_->Hdr()) {
+        s.hdr = true;
+        s.sdrWhiteNits = static_cast<int>(std::lround(dxgi_->white * 80.0));
+    }
+    if (useWgc_ && !usingWgc_ && !wgcError_.empty()) s.fallback = L"WGC: " + wgcError_;
+    if (!usingWgc_ && !usingDxgi_ && !dxgiError_.empty())
+        s.fallback += (s.fallback.empty() ? L"" : L" \u00b7 ") + (L"DXGI: " + dxgiError_);
+    return s;
 }
 
 void ScreenCapture::SetUseWindowCapture(bool on) {
@@ -666,33 +750,48 @@ bool ScreenCapture::BorderlessWindowCapture() {
 
 bool ScreenCapture::Grab(const RECT& area, Image& out) {
     if (area.right <= area.left || area.bottom <= area.top) return false;
-    if (useWgc_ && targetHwnd_ && IsWindow(targetHwnd_) && wgcFailures_ < 3) {
+    // A method left after kMaxFailures errors is tried again after kRetryMs: the errors come and go (HDR switched,
+    // UAC prompt, fullscreen switch), and staying on GDI until a restart gave the worst pictures exactly with HDR.
+    const ULONGLONG now = GetTickCount64();
+    if (wgcFailures_ >= kMaxFailures && now >= wgcRetryAt_) wgcFailures_ = 0;
+    if (dxgiFailures_ >= kMaxFailures && now >= dxgiRetryAt_) dxgiFailures_ = 0;
+    if (useWgc_ && targetHwnd_ && IsWindow(targetHwnd_) && wgcFailures_ < kMaxFailures) {
         if (!wgc_) wgc_ = std::make_unique<Wgc>();
         switch (wgc_->Grab(targetHwnd_, area, out)) {
             case Wgc::Result::Ok:
                 usingWgc_ = true;
                 usingDxgi_ = false;
                 wgcFailures_ = 0;
+                wgcError_.clear();
                 return true;
             case Wgc::Result::NoNewFrame:
                 usingWgc_ = true;
                 return false;  // try again next round
             case Wgc::Result::Error:
-                ++wgcFailures_;
+                if (++wgcFailures_ >= kMaxFailures) {
+                    wgcRetryAt_ = now + kRetryMs;
+                    wgcError_ = L"no frame";
+                    wgc_->Reset();
+                }
                 break;
         }
     }
     usingWgc_ = false;
-    if (dxgiFailures_ < 3) {
+    if (dxgiFailures_ < kMaxFailures) {
         switch (dxgi_->Grab(area, out)) {
             case Dxgi::Result::Ok:
                 usingDxgi_ = true;
                 dxgiFailures_ = 0;
+                dxgiError_.clear();
                 return true;
             case Dxgi::Result::NoNewFrame:
                 return false;  // try again next round
             case Dxgi::Result::Error:
-                ++dxgiFailures_;  // after three errors in a row stay on GDI
+                if (++dxgiFailures_ >= kMaxFailures) {  // GDI meanwhile, DXGI again in kRetryMs
+                    dxgiRetryAt_ = now + kRetryMs;
+                    dxgiError_ = dxgi_->error.empty() ? std::wstring(L"error") : dxgi_->error;
+                    dxgi_->Reset();
+                }
                 break;
         }
     }

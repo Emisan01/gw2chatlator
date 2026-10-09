@@ -137,6 +137,7 @@ private:
     ReaderOptions MakeReaderOptions() const;
     // Settings -> Technical: one picture of the chat area through every text recognition, side by side.
     void CompareRecognition(HWND notify, UINT message);
+    void SaveF16Capture();
     std::wstring ReadingAdvice() const;  // resolution and the text recognition that fits it
     // Correction memory: right-click "Correct this translation" -> remembered for that text and target language.
     void CorrectEntry(const ChatEntry& e);
@@ -364,6 +365,7 @@ private:
     std::wstring restartCommand_;
     std::wstring lastOcrEngine_;
     std::wstring lastCaptureMethod_;
+    CaptureStatus lastCaptureStatus_;
     bool lastTextboxFocus_ = false;
     bool grammarInFlight_ = false;
     RateLimiter grammarLimiter_{18};
