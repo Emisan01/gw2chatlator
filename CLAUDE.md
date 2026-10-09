@@ -347,6 +347,8 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
    neighbours, Arabic folding, Enter finishes the last word, grey completion, starter list), privacy (README,
    MyMemory notice), reading rebuilt on measurements (line grid, dynamic enlargement, regrouping, snapping
    frame with traffic light + preview, hardened timestamp parsing, names protected), `ocr_bench`.
-8. Next: live test in the game (incl. real 1080p/1440p captures for `ocr_bench`), then decide on an own glyph
+8. **Now: `docs/OCR_PLAN.md`** (HDR capture first, then engine comparison, hybrid, glyph learning from own
+   lines, local LLM on CPU) – follow it step by step, bench-gated.
+9. Next: live test in the game (incl. real 1080p/1440p captures for `ocr_bench`), then decide on an own glyph
    reader. Optional, off by default, user's decision: Nexus add-on that forwards unofficial-extras party/squad
    chat as exact text to the exe (named pipe). It lives in the game process — keep it a separate download.
