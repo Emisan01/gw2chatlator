@@ -33,7 +33,10 @@ struct Config {
     std::wstring gw2Dir;        // found or chosen game folder
 
     // [Translate]
-    Engine engine = Engine::Auto;
+    Engine engine = Engine::Auto;   // translates what you write
+    bool chatSameEngine = true;     // the chat uses the same translator ...
+    Engine chatEngine = Engine::Auto;  // ... or this one ([Translate] ChatEngine=same|auto|deepl|...)
+    bool keyboardOnly = false;      // only the typing help: no chat reading at all ([Basic] KeyboardOnly)
     std::wstring readLang;                    // empty = Windows language
     std::vector<std::wstring> writeLangs{L"EN-GB", L"FR", L"ES", L"DE"};
     std::wstring chatLang = L"EN-GB";         // into the chat when the writing language has a script GW2 cannot show
