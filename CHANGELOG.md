@@ -3,6 +3,12 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.2.1 — 2026-10-11
+
+- **Fixed: the GW2 input line glued to the last message** ("… O tüldeJCABCJ" – "[Gilde][ABC]" with misread
+  brackets): glued tags below the last stamped line are the input line, never text. A guild tag in front of a name
+  ("[ABC] Nia Stone", also "tABCJ …") is removed from the name.
+
 ## 1.2.0 — 2026-10-11
 
 - **Two translators:** Settings -> Translator -> "For the chat": the chat can use another translator than your own
