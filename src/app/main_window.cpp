@@ -2732,7 +2732,7 @@ RECT MainWindow::ChatArea() const {
 SendOptions MainWindow::SendTiming() const {
     SendOptions so = cfg_.send;
     if (gameFps_ <= 0 || so.keyHoldMs != 30) return so;
-    const int action = std::clamp(static_cast<int>(std::ceil(1000.0 / gameFps_)) + 10, 15, 150);
+    const int action = std::clamp(static_cast<int>(std::ceil(1000.0 / gameFps_)) + 10, 15, 1010);  // down to 1 fps
     so.keyHoldMs = action;
     if (so.stepDelayMs == 80) so.stepDelayMs = action;
     return so;
@@ -2748,7 +2748,7 @@ void MainWindow::PollGame() {
             fpsTick_ = mumbleState_.uiTick;
         } else if (t - fpsSince_ >= 2000) {
             const double fps = static_cast<double>(mumbleState_.uiTick - fpsTick_) * 1000.0 / static_cast<double>(t - fpsSince_);
-            if (fps >= 5 && fps <= 1000) gameFps_ = gameFps_ > 0 ? 0.7 * gameFps_ + 0.3 * fps : fps;
+            if (fps >= 1 && fps <= 1000) gameFps_ = gameFps_ > 0 ? 0.7 * gameFps_ + 0.3 * fps : fps;
             fpsSince_ = t;
             fpsTick_ = mumbleState_.uiTick;
         }

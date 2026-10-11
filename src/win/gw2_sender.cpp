@@ -291,7 +291,7 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
         const ULONGLONG t0 = GetTickCount64();
         Tap(VK_RETURN, opt.keyHoldMs);  // open chat
         WaitForTargetToDrain(gw2, 1000);
-        if (!textbox(true, 600)) {
+        if (!textbox(true, std::max(600, 8 * opt.keyHoldMs))) {  // ~8 frames: also a game at a few fps
             Sleep(opt.stepDelayMs);
         } else {
             r.openMs = static_cast<int>(GetTickCount64() - t0);
@@ -339,7 +339,7 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
     if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – the text may still be in the chat line"));
     const ULONGLONG tSend = GetTickCount64();
     Tap(VK_RETURN, opt.keyHoldMs);  // send
-    r.confirmedByGame = textbox(false, 1000);              // input closed = message went out
+    r.confirmedByGame = textbox(false, std::max(1000, 8 * opt.keyHoldMs));  // input closed = message went out
     if (r.confirmedByGame) r.confirmMs = static_cast<int>(GetTickCount64() - tSend);
     if (!r.confirmedByGame) Sleep(opt.stepDelayMs);
     return finish(std::wstring());
