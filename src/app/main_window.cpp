@@ -766,7 +766,10 @@ void MainWindow::Paint() {
     // Short form when space is tight (several tabs or a narrow window).
     const bool roomy = rc.right >= t.S(470) && cfg_.tabs.size() <= 3;
     readRect_ = DrawChip(dc, t, readDotRect_.left - t.S(2), t.S(6), m.head - t.S(6),
-                         roomy ? TrF(L"Read: {1}", {readName}) : readName, Theme::kAccent, true);
+                         cfg_.keyboardOnly ? Tr(L"Keyboard only")
+                         : roomy           ? TrF(L"Read: {1}", {readName})
+                                           : readName,
+                         cfg_.keyboardOnly ? Theme::kMuted : Theme::kAccent, true);
 
     const int badgeD = t.S(15), gap = t.S(16);
     const int tabsLeft = m.pad + t.S(2), tabsRight = static_cast<int>(readRect_.left) - t.S(10);
@@ -934,6 +937,7 @@ void MainWindow::OnClick(POINT pt) {
             cfg_.SaveBool(L"Basic", L"KeyboardOnly", false);
             if (!cfg_.readerEnabled) ToggleReading();
             else RestartReader();
+            UpdateHint();
             InvalidateChrome();
         } else {
             ToggleReading();
@@ -1533,6 +1537,7 @@ void MainWindow::ShowMainMenu() {
             RestartReader();
             SetStatus(cfg_.keyboardOnly ? Tr(L"Keyboard only: the chat is not read") : Tr(L"Reading the chat: on"),
                       Tone::Muted, 3000);
+            UpdateHint();
             InvalidateChrome();
             break;
         case kShowSelf:
@@ -2587,7 +2592,11 @@ void MainWindow::UpdateHint() {
                           false);
         return;
     }
-    if (!cfg_.readerEnabled)
+    if (cfg_.keyboardOnly)
+        log_.SetEmptyHint(Tr(L"Keyboard only: the chat is not read. What you send appears here.\n(Menu \u2261 or the dot "
+                             L"above: read the chat again.)"),
+                          false);
+    else if (!cfg_.readerEnabled)
         log_.SetEmptyHint(Tr(L"Automatic translation is off (menu \u2261: switch it on, or \u201cTranslate once now\u201d)."), false);
     else if (!readerError_.empty())
         log_.SetEmptyHint(TrF(L"Text recognition not available:\n{1}", {readerError_}), false);
@@ -2736,7 +2745,7 @@ void MainWindow::PollGame() {
     }
     if (canRead) area = ChatArea();
     // No chat area yet: look for the GW2 chat by itself now and then.
-    const bool searching = cfg_.readerEnabled && !cfg_.freeArea && !cfg_.regionSet && gw2_ && !IsIconic(gw2_) && (gameFront || ours) &&
+    const bool searching = cfg_.readerEnabled && !cfg_.keyboardOnly && !cfg_.freeArea && !cfg_.regionSet && gw2_ && !IsIconic(gw2_) && (gameFront || ours) &&
                            inMap && !moving_ && !picking_;
     const RECT watch = !IsRectEmpty(&area) ? area : searching ? ChatSearchArea() : RECT{};
     bool overlap = false;
@@ -3526,6 +3535,7 @@ void MainWindow::ApplySettings(const Config& next) {
     if (prev.keyboardOnly != cfg_.keyboardOnly) {
         EndTranslateOnce();
         RestartReader();  // starts again only if reading is wanted
+        UpdateHint();
         InvalidateChrome();
     }
     const bool engineChanged = prev.engine != cfg_.engine || prev.chatSameEngine != cfg_.chatSameEngine ||

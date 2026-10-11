@@ -715,6 +715,7 @@ private:
                Tr(L"DeepL (free contingent, key)"), Tr(L"Own translation server (any address)"),
                Tr(L"AI model (local or cloud)")},
               EngineIndex(cfg_.engine), kCtrlX, Y(r++), kCtrlW);
+        shownEngine_ = cfg_.engine;
         Label(EngineNote(cfg_.engine), kCtrlX, Y(r++) - 6, kCtrlW, 30, kEngineNote);
         // The chat may use another translator than your messages (e.g. a free one for reading, DeepL for writing).
         Label(Tr(L"For the chat"), kLabelX, Y(r), kLabelW);
@@ -830,7 +831,7 @@ private:
     // Only the section of the chosen translator is visible (all keep their values).
     void UpdateTranslatorView() {
         const bool page = SendMessageW(tab_, TCM_GETCURSEL, 0, 0) == static_cast<LRESULT>(SettingsPage::Translator);
-        const Engine e = EngineAt(Sel(kEngine));
+        const Engine e = shownEngine_;
         const bool local = Sel(kLlmPreset) == kPresetLocal;
         auto show = [&](const std::vector<HWND>& g, bool on) {
             for (HWND h : g) ShowWindow(h, page && on ? SW_SHOW : SW_HIDE);
@@ -1030,7 +1031,15 @@ private:
                 break;
             case kEngine:
                 if (code == CBN_SELCHANGE) {
-                    SetText(kEngineNote, EngineNote(EngineAt(Sel(kEngine))));
+                    shownEngine_ = EngineAt(Sel(kEngine));
+                    SetText(kEngineNote, EngineNote(shownEngine_));
+                    UpdateTranslatorView();
+                }
+                break;
+            case kChatEngine:  // "same" shows the section of the messages' translator; else the chat one's (key entry)
+                if (code == CBN_SELCHANGE) {
+                    shownEngine_ = Sel(kChatEngine) > 0 ? EngineAt(Sel(kChatEngine) - 1) : EngineAt(Sel(kEngine));
+                    SetText(kEngineNote, EngineNote(shownEngine_));
                     UpdateTranslatorView();
                 }
                 break;
@@ -1717,6 +1726,7 @@ private:
     HWND tab_ = nullptr;
     // Translator page: one section per translator, only the chosen one is visible.
     std::vector<HWND> secAuto_, secBasic_, secGoogle_, secMicrosoft_, secDeepL_, secLibre_, secLlm_, secLocal_;
+    Engine shownEngine_ = Engine::Auto;  // whose key section is visible (the translator combo changed last)
     int lastPreset_ = -1;
     bool syncing_ = false;  // slider and size field update each other
 };
@@ -1758,11 +1768,14 @@ private:
         Check(kDesktop, Tr(L"Shortcut on the desktop"), true, 24, 206, kW - 48);
         Check(kStartMenu, Tr(L"Entry in the start menu"), cfg_.startMenu, 24, 234, kW - 48);
         Check(kAutostart, Tr(L"Start with Windows and appear when GW2 runs"), false, 24, 262, kW - 48);
+        // Only the typing help, or the chat translation too (that one needs the chat marked later).
+        Check(kKeyboardOnly, Tr(L"Keyboard only: no chat reading at all, only the typing help"), cfg_.keyboardOnly, 24,
+              290, kW - 48);
         EndPages();
 
         // One page: the chat itself is found later, when it is open.
-        Button(kNext, Tr(L"Finish"), kW - 222, 304, 100);
-        Button(IDCANCEL, Tr(L"Close"), kW - 114, 304, 100);
+        Button(kNext, Tr(L"Finish"), kW - 222, 332, 100);
+        Button(IDCANCEL, Tr(L"Close"), kW - 114, 332, 100);
         SetText(kStepTitle, Tr(L"Setup – one step"));
         ShowPage(0);
     }
@@ -1776,6 +1789,7 @@ private:
         const std::wstring dir = resolved.empty() ? rawDir : resolved;
         if (!dir.empty()) cfg_.gw2Dir = dir;
         cfg_.startMenu = Checked(kStartMenu);
+        cfg_.keyboardOnly = Checked(kKeyboardOnly);
         // Saved before installing: the installed copy takes this settings file along.
         cfg_.setupDone = true;
         cfg_.SaveAll();
@@ -1985,7 +1999,7 @@ DialogResult ShowSettingsDialog(HWND owner, HINSTANCE inst, Config& cfg, const D
 
 DialogResult ShowSetupWizard(HWND owner, HINSTANCE inst, Config& cfg, const DialogContext& ctx) {
     SetupWizard dlg(cfg, ctx);
-    dlg.Run(owner, inst, Tr(L"Setup") + L" – GW2 Chat Translator", 560, 342);
+    dlg.Run(owner, inst, Tr(L"Setup") + L" – GW2 Chat Translator", 560, 370);
     return dlg.result;
 }
 
