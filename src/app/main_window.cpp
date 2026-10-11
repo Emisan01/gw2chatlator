@@ -2740,15 +2740,16 @@ SendOptions MainWindow::SendTiming() const {
 
 void MainWindow::PollGame() {
     mumbleState_ = mumble_.Read();
-    // Frame rate, measured over 2 s while on a map (the counter stands still on loading screens), smoothed.
+    // Frame rate, measured every second while on a map (the counter stands still on loading screens). A drop counts at
+    // once (a mass fight takes 60 fps down to 5 in a moment – the keys must be held longer right away), a rise slowly.
     if (mumbleState_.inMap) {
         const ULONGLONG t = GetTickCount64();
         if (fpsSince_ == 0) {
             fpsSince_ = t;
             fpsTick_ = mumbleState_.uiTick;
-        } else if (t - fpsSince_ >= 2000) {
+        } else if (t - fpsSince_ >= 1000) {
             const double fps = static_cast<double>(mumbleState_.uiTick - fpsTick_) * 1000.0 / static_cast<double>(t - fpsSince_);
-            if (fps >= 1 && fps <= 1000) gameFps_ = gameFps_ > 0 ? 0.7 * gameFps_ + 0.3 * fps : fps;
+            if (fps >= 1 && fps <= 1000) gameFps_ = gameFps_ <= 0 || fps < gameFps_ ? fps : 0.7 * gameFps_ + 0.3 * fps;
             fpsSince_ = t;
             fpsTick_ = mumbleState_.uiTick;
         }
