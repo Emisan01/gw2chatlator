@@ -46,7 +46,7 @@ std::string BuildLanguageToolForm(const std::wstring& text, const std::wstring& 
     if (!Trim(motherTongue).empty() && LanguageToolLang(lang) == L"auto")
         body += "&preferredVariants=" + UrlEncode(ToUtf8(LanguageToolLang(motherTongue)));
     // Chat is casual: no style nitpicks, but keep spelling and grammar.
-    body += "&disabledCategories=" + UrlEncode("STYLE,REDUNDANCY,TYPOGRAPHY,CASING");
+    body += "&disabledCategories=" + UrlEncode("STYLE,REDUNDANCY,TYPOGRAPHY,CASING,TYPOS");
     return body;
 }
 

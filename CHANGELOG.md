@@ -8,7 +8,12 @@ diagnosis show it.
 - **Two translators:** Settings -> Translator -> "For the chat": the chat can use another translator than your own
   messages (e.g. MyMemory or a local model for reading, DeepL for writing). Default: the same one.
 - **Keyboard only:** Settings -> Reading -> "Keyboard only": nothing of the chat is read, the tool is just the typing
-  help (spelling, suggestions, learning, translating what you write).
+  help (spelling, suggestions, learning, translating what you write). Also in the menu ≡ (first entry); the dot in
+  the header is only the chat translation on/off.
+- The grey back-translation in the preview comes in the language you **write** in (before: the reading language);
+  switching the reading language no longer touches the preview, switching the writing language translates again.
+- Writing and sending in the same language: nothing is translated, only the typing help runs.
+- The grammar check (LanguageTool, optional) only looks at sentence structure; spelling is the typing help's job.
 
 ## 1.1.0 — 2026-10-09
 
