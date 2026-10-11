@@ -5,6 +5,9 @@ diagnosis show it.
 
 ## Unreleased
 
+- **Chat like in GW2:** a map change (MumbleLink map id) takes the say and map chat and the notices of that map out of
+  the log – the party, squad, guild and whispers stay. Settings → Game: "Keep say and map chat after a map change" and
+  "Keep messages: always / 15 / 30 / 60 minutes".
 - **GW2 Keyboard (new, `GW2Keyboard.exe`):** the typing help as its own small program, written anew – no chat
   reading, no OCR, no chat log or tabs: spelling, learned words and typo memory, Windows' prediction, every translator
   (MyMemory, Google, Microsoft, DeepL, own server, AI model local or cloud), your words, corrections, GW2 names, the

@@ -72,6 +72,7 @@ bool ChatLogView::ShowsTranslation(const std::wstring& text) const {
 
 uint64_t ChatLogView::Add(ChatEntry e) {
     e.id = nextId_++;
+    e.added = GetTickCount64();
     const bool own = e.kind == ChatEntry::Kind::Outgoing;
     entries_.push_back(std::move(e));
     while (entries_.size() > kMaxEntries) entries_.pop_front();
@@ -88,6 +89,25 @@ void ChatLogView::Update(uint64_t id, const std::function<void(ChatEntry&)>& cha
                                [](const ChatEntry& e, uint64_t v) { return e.id < v; });
     if (it == entries_.end() || it->id != id) return;
     change(*it);
+    layoutDirty_ = true;
+    Relayout();
+    InvalidateRect(hwnd_, nullptr, FALSE);
+}
+
+void ChatLogView::DropOlderThan(unsigned long long tick) {
+    size_t n = 0;
+    while (n < entries_.size() && entries_[n].added < tick) ++n;  // chronological: the oldest are in front
+    if (n == 0) return;
+    entries_.erase(entries_.begin(), entries_.begin() + static_cast<std::ptrdiff_t>(n));
+    layoutDirty_ = true;
+    Relayout();
+    InvalidateRect(hwnd_, nullptr, FALSE);
+}
+
+void ChatLogView::DropWhere(const std::function<bool(const ChatEntry&)>& drop) {
+    const size_t before = entries_.size();
+    entries_.erase(std::remove_if(entries_.begin(), entries_.end(), drop), entries_.end());
+    if (entries_.size() == before) return;
     layoutDirty_ = true;
     Relayout();
     InvalidateRect(hwnd_, nullptr, FALSE);
