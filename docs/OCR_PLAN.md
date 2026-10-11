@@ -144,6 +144,13 @@ Re-measure after steps 1–2 on the user's real captures before deciding.
   16 bit); Google API key in the URL (`?key=` – the repo sends it in the `X-Goog-Api-Key` header on purpose); rotating
   several free accounts' keys to stretch free tiers (against the providers' terms).
 
+## Decisions (2026-10-11, user)
+
+- Glyph reader: switched off in the app (`o.glyphDir.clear()` in `MakeReaderOptions`), calibration sentence removed.
+- Hybrid: no own engine choice; Windows OCR re-reads only artefacts the output filter sees (second look / garble
+  repair) – that is the coupling the user wants.
+- The grey preview line stays the back-translation (in the writing language), not the translator input.
+
 ## Review after Gemini's pass (2026-10-09, Claude) – open points
 
 - **Glyph reader regressed?** `ocr_bench` now reports 0 sure rows (before: sure rows 100 % exact, line hits Windows

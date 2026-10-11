@@ -564,7 +564,9 @@ ReaderOptions MainWindow::MakeReaderOptions() const {
     for (const auto& e : myWords_.Entries()) o.knownWords.push_back(e.first);
     // RapidOCR: the models in <data>\rapid for the languages you read and write.
     o.rapidDir = cfg_.RapidDir();
-    o.glyphDir = cfg_.dataDir + L"\\glyphs";  // the glyph reader learns the chat font here
+    // The glyph reader stays switched off (empty glyphDir): after the 1.1.0 changes it no longer found a sure row on the
+    // bench (docs/OCR_PLAN.md). The code stays for a later look.
+    o.glyphDir.clear();
     o.rapidGroups = RapidGroupsFor(o.wordLangs);
     for (const auto& e : ocrFixes_.Entries())
         if (!e.second.empty()) o.ocrFixes.push_back(e);
@@ -1478,7 +1480,7 @@ void MainWindow::ShowMainMenu() {
     const ModalScope modal;
     enum : UINT {
         kSetup = 1, kSettings, kRegion, kReader, kCover, kDock, kQuit, kGw2Chat, kFreeArea, kOnce, kOnlyTr, kShowSelf,
-        kCalibrateFont, kKeyboardOnly,
+        kKeyboardOnly,
         kUiLangBase = 100,  // + index into UiLanguages()
     };
     auto check = [](bool on) { return static_cast<UINT>(on ? MF_CHECKED : MF_UNCHECKED); };
@@ -1499,7 +1501,6 @@ void MainWindow::ShowMainMenu() {
     add(menu, MF_STRING, kRegion, Tr(L"Set the chat area …"));
     add(menu, MF_STRING | (cfg_.regionSet ? 0 : MF_GRAYED), kCover, Tr(L"Lay over the GW2 chat (replaces it)"));
     add(menu, MF_STRING | check(cfg_.dock), kDock, Tr(L"Dock to GW2 (moves with it)"));
-    add(menu, MF_STRING, kCalibrateFont, Tr(L"Calibrate font recognition …"));
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     add(menu, MF_STRING, kSettings, Tr(L"Settings …"));
     add(menu, MF_STRING, kSetup, Tr(L"Setup (install, mark the chat) …"));
@@ -1561,14 +1562,6 @@ void MainWindow::ShowMainMenu() {
             break;
         case kDock: SetDock(!cfg_.dock); break;
         case kCover: CoverChat(); break;
-        case kCalibrateFont: {
-            const std::wstring sample =
-                L"Zwölf Boxkämpfer jagen Viktor quer über den großen Sylter Deich. 1234567890 ,!?-()";
-            input_.SetText(sample);
-            SetFocus(input_.Hwnd());
-            SetStatus(Tr(L"Send this into the GW2 chat (press Enter) to calibrate font recognition"), Tone::Ok, 10000);
-            break;
-        }
         case kQuit: PostMessageW(hwnd_, WM_CLOSE, 0, 0); break;
         default:
             if (cmd >= kUiLangBase && cmd < kUiLangBase + UiLanguages().size())
@@ -2901,7 +2894,7 @@ void MainWindow::CompareRecognition(HWND notify, UINT message) {
         const struct {
             int choice;
             const wchar_t* name;
-        } engines[] = {{2, L"Windows OCR"}, {3, L"RapidOCR"}, {4, L"Hybrid (Rapid+Win)"}, {1, L"Tesseract"}};
+        } engines[] = {{2, L"Windows OCR"}, {3, L"RapidOCR"}, {1, L"Tesseract"}};
         for (const auto& e : engines) {
             ReaderOptions o = base;
             o.ocrChoice = e.choice;

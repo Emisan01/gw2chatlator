@@ -234,7 +234,7 @@ OcrChoice ParseOcr(const std::wstring& s) {
     if (v == L"tesseract") return OcrChoice::Tesseract;
     if (v == L"windows") return OcrChoice::Windows;
     if (v == L"rapid" || v == L"rapidocr") return OcrChoice::Rapid;
-    if (v == L"hybrid") return OcrChoice::Hybrid;
+    if (v == L"hybrid") return OcrChoice::Auto;  // 1.1.0 only: the second look re-reads artefacts instead
     return OcrChoice::Auto;
 }
 
