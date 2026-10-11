@@ -5,6 +5,13 @@ diagnosis show it.
 
 ## Unreleased
 
+- **GW2 Keyboard (new, `GW2Keyboard.exe`):** the typing help as its own small program, written anew – no chat
+  reading, no OCR, no chat log or tabs: spelling, learned words and typo memory, Windows' prediction, every translator
+  (MyMemory, Google, Microsoft, DeepL, own server, AI model local or cloud), your words, corrections, GW2 names, the
+  back-translation in the language you write in, the grammar offer, sending timed by the game's fps, docking, tray,
+  hotkey, the light autostart. Same settings and learned words as the full tool (one data folder). Menu ≡ →
+  "Activate chat translation" starts the full GW2 Chat Translator with reading on.
+
 - **Reading check with your own lines:** every line you send that comes back through the text recognition is compared
   letter by letter with what was really sent – an exact hit rate of the reading on your screen ("read exactly 48/50"
   in the footer while reading, details incl. character errors on Settings → Technical). The gate for taking over the

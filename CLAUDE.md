@@ -7,6 +7,10 @@ and update this file when you learn something the next agent needs.
 ## Layers (dependencies point downwards only)
 
 ```
+src/kbd   GW2 Keyboard (own exe)          keyboard_window (only the typing help: input, preview, word bar, translators,
+                                        sending, docking, tray; no reader / log / tabs), kbd_main (own mutex + window
+                                        class). Reuses app/input_box, preview_view, suggestion_bar, spell_service,
+                                        settings_dialog, config. "Activate chat translation" starts GW2ChatTranslator.exe.
 src/app   window + views (UI thread)   main_window (menus, tray, wait-for-GW2), input_box (spelling, autocorrect,
                                         word bar, Backspace undo), suggestion_bar, chat_log_view, preview_view,
                                         settings_dialog (settings + guided setup, native controls), chat_reader
