@@ -373,6 +373,8 @@ void Config::Load(const std::wstring& dir) {
     ocrScale = ini.Int(L"Reader", L"OcrZoom", 0, 0, 4);
     showSystemLines = ini.Bool(L"Reader", L"ShowSystem", false);
     onlyTranslations = ini.Bool(L"Reader", L"OnlyTranslations", true);
+    keepAfterMap = ini.Bool(L"Reader", L"KeepAfterMap", false);
+    keepMinutes = ini.Int(L"Reader", L"KeepMinutes", 0, 0, 1440);
     saveCaptures = ini.Bool(L"Reader", L"SaveCaptures", false);
     regionLeft = ini.Int(L"Reader", L"RegionLeft", 0, -20000, 20000);
     regionFromBottom = ini.Int(L"Reader", L"RegionFromBottom", 0, -20000, 20000);
@@ -555,6 +557,8 @@ void Config::SaveAll() const {
     SaveBool(L"Reader", L"ReadChinese", readChinese);
     SaveBool(L"Reader", L"ShowSystem", showSystemLines);
     SaveBool(L"Reader", L"OnlyTranslations", onlyTranslations);
+    SaveBool(L"Reader", L"KeepAfterMap", keepAfterMap);
+    SaveValue(L"Reader", L"KeepMinutes", std::to_wstring(keepMinutes));
     SaveBool(L"Reader", L"SaveCaptures", saveCaptures);
     SaveBool(L"Spelling", L"Enabled", spellEnabled);
     SaveValue(L"Spelling", L"AutoCorrectMode", AutoCorrectKey(autoCorrect));

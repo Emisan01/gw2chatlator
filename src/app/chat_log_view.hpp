@@ -24,6 +24,7 @@ struct ChatEntry {
     enum class State { Plain, Pending, Translated, Failed };
 
     uint64_t id = 0;  // assigned by Add
+    unsigned long long added = 0;  // GetTickCount64 when added (for "keep messages … minutes")
     Kind kind = Kind::Incoming;
     State state = State::Plain;
     Channel channel = Channel::Unknown;
@@ -62,6 +63,8 @@ public:
     // Changes an entry in place (no-op if it was dropped meanwhile).
     void Update(uint64_t id, const std::function<void(ChatEntry&)>& change);
     void Clear();
+    void DropOlderThan(unsigned long long tick);  // entries added before `tick` go
+    void DropWhere(const std::function<bool(const ChatEntry&)>& drop);
     // The reading language changed: the newest `max` incoming lines are translated again (oldest first asked, so the
     // newest is translated first).
     void TranslateAllAgain(size_t max);

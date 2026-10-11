@@ -2794,6 +2794,20 @@ void MainWindow::PollGame() {
         gw2_ = FindGw2Window(mumbleState_.live ? mumbleState_.processId : 0);
         if (gw2_) UpdateHint();
     }
+    // Like the GW2 chat: a new map takes what belonged to the map – say, map chat and its notices (unless kept). The
+    // party, squad, guild and whispers stay (a party lives on across maps); messages older than the chosen time go.
+    if (mumbleState_.inMap && mumbleState_.identity.mapId != 0) {
+        if (lastMapId_ != 0 && mumbleState_.identity.mapId != lastMapId_ && !cfg_.keepAfterMap)
+            log_.DropWhere([](const ChatEntry& e) {
+                return e.channel == Channel::Say || e.channel == Channel::Map || e.channel == Channel::System;
+            });
+        lastMapId_ = mumbleState_.identity.mapId;
+    }
+    if (cfg_.keepMinutes > 0 && now - lastKeepCheck_ > 10000) {
+        lastKeepCheck_ = now;
+        const ULONGLONG keep = static_cast<ULONGLONG>(cfg_.keepMinutes) * 60000;
+        if (now > keep) log_.DropOlderThan(now - keep);
+    }
     // Started with Windows: appear with the game, disappear when it closes. "With the game" = in the 3D world
     // (MumbleLink ticks after a map loaded), not already with the launcher, login or character select.
     const bool ready = gw2_ != nullptr && mumbleState_.inMap;  // a map is loaded and ticking (not launcher, login, character select)
