@@ -310,6 +310,12 @@ private:
         bool echoed;        // seen in the game chat already
     };
     std::deque<Sent> recentSent_;  // to recognise our own lines when they come back through OCR
+    // The reading check: every own line that comes back through OCR is compared letter by letter with what was really
+    // sent – an exact hit rate of the reading on this screen (the gate for taking over the chat later). Last 50.
+    std::deque<bool> readChecks_;
+    uint64_t readCheckChars_ = 0, readCheckErrors_ = 0;
+    void NoteReadCheck(const std::wstring& sent, const std::wstring& read);
+    std::wstring ReadCheckText() const;  // "read exactly 48/50", empty before the first check
     std::map<std::pair<std::wstring, std::wstring>, int> fixConfirmations_;
 
     // incoming state
