@@ -127,6 +127,13 @@ if(WIN32)
     target_link_libraries(GW2ChatTranslator PRIVATE gct_win shell32 comctl32 runtimeobject)
     set(GCT_APP_TARGETS GW2ChatTranslator)
 
+    # GW2 Keyboard: only the typing help (no chat reading, no OCR) – the same settings and learned words.
+    add_executable(GW2Keyboard WIN32 src/kbd/kbd_main.cpp src/kbd/keyboard_window.cpp src/app/input_box.cpp
+                   src/app/preview_view.cpp src/app/suggestion_bar.cpp src/app/spell_service.cpp
+                   src/app/settings_dialog.cpp src/app/config.cpp src/win/spellcheck.cpp res/app.rc)
+    target_link_libraries(GW2Keyboard PRIVATE gct_win shell32 comctl32 runtimeobject)
+    list(APPEND GCT_APP_TARGETS GW2Keyboard)
+
     if(GCT_BUILD_TESTS)
         # Stand-in game: GW2 window class, chat panel fed from fake_chat.txt,
         # MumbleLink block, chat line that logs to received.txt.
