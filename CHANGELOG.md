@@ -16,7 +16,11 @@ diagnosis show it.
 - Glyph reader removed (it no longer found sure rows after 1.1.0 and only patched the OCR), its "Calibrate font
   recognition" menu entry too; "Hybrid" is no own choice any more – re-reading misread words is the second look's job (old "hybrid"
   settings read as automatic).
-- **Keyboard only = a compact typing window:** the chat log is hidden, the preview takes its place.
+- **Keyboard only is the start mode** and a compact typing window: just preview, word bar and input; the window grows
+  upwards to its full size (with the chat) only when the chat translation is switched on (dot or menu).
+- **Sending follows the game's frame rate:** measured from MumbleLink's frame counter (no access to the game) – keys
+  are held two frames, steps three frames apart (30 fps needs far longer than 120 fps). A KeyHoldMs set by hand stays.
+  Shown on Settings → Technical.
 - **The sentence from the first letter:** the grey suggestion shows the word *and* the rest of a phrase you usually
   write after it ("w" -> "wie geht's dir"); Space writes the word, Tab then takes the rest. Only what was learned.
 - **Grammar check offered when it helps:** translating and the check is off → once the sentence stands the preview

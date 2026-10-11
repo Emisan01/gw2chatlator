@@ -283,6 +283,12 @@ private:
     // outgoing state; inputGen_ changes with every edit / language change
     uint64_t inputGen_ = 1, inflightGen_ = 0, previewGen_ = 0, backGen_ = 0;
     bool grammarOffer_ = false;
+    // The game's frame rate from MumbleLink's frame counter (no access to the game): GW2 reads the keyboard once per
+    // frame, so the key timing for sending follows it (30 fps needs keys held far longer than 120 fps).
+    double gameFps_ = 0;
+    ULONGLONG fpsSince_ = 0;
+    uint32_t fpsTick_ = 0;
+    SendOptions SendTiming() const;
     // An LLM answers one request after the other: while one translation of your text is on its way, newer text waits
     // (only the newest is sent when it comes back) instead of piling up requests behind it.
     bool llmBusy_ = false, llmAgain_ = false;  // the preview offers to switch on the grammar check (a click does it)
@@ -362,6 +368,11 @@ private:
     bool previewVisible_ = false;  // the preview only takes space while you type
     bool collapsed_ = false;
     int expandedHeight_ = 0;
+    // Keyboard only: the window is just preview + input (no chat area); the full height comes back with the reader.
+    bool compactKbd_ = false;
+    int fullHeight_ = 0;
+    void FitKeyboardWindow();
+    void SaveWindow();  // the window's place; while compact with its full height (what the reader mode uses)
 
     // self-read guard
     ULONGLONG selfReadTick_ = 0;

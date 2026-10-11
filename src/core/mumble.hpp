@@ -33,6 +33,7 @@ struct MumbleState {
     MumbleIdentity identity;
     uint32_t uiState = 0;
     uint32_t processId = 0;
+    uint32_t uiTick = 0;  // GW2 adds 1 every frame: ticks per second = the game's frame rate
 
     bool GameHasFocus() const { return live && (uiState & kUiGameHasFocus); }
     bool TextboxHasFocus() const { return live && (uiState & kUiTextboxHasFocus); }

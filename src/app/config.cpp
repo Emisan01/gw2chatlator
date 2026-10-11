@@ -327,7 +327,7 @@ void Config::Load(const std::wstring& dir) {
         chatSameEngine = ce.empty() || ce == L"same";
         chatEngine = chatSameEngine ? Engine::Auto : ParseEngine(ce);
     }
-    keyboardOnly = ini.Bool(L"Basic", L"KeyboardOnly", false);
+    keyboardOnly = ini.Bool(L"Basic", L"KeyboardOnly", true);  // the start mode: only the typing help
     // v0.2 had SourceLang/TargetLangs under [DeepL]; used as fallbacks.
     readLang = ToUpperAscii(ini.Has(L"Translate", L"ReadLang") ? ini.Str(L"Translate", L"ReadLang", L"")
                                                                 : ini.Str(L"DeepL", L"SourceLang", L""));
@@ -463,6 +463,10 @@ void Config::SaveValue(const wchar_t* section, const wchar_t* key, const std::ws
 void Config::SaveWindowRect(HWND wnd, float scale) const {
     RECT rc;
     if (!wnd || !GetWindowRect(wnd, &rc)) return;
+    SaveWindowRect(rc, scale);
+}
+
+void Config::SaveWindowRect(const RECT& rc, float scale) const {
     SaveValue(L"Window", L"X", std::to_wstring(rc.left));
     SaveValue(L"Window", L"Y", std::to_wstring(rc.top));
     SaveValue(L"Window", L"Width", std::to_wstring(static_cast<int>((rc.right - rc.left) / scale + 0.5f)));

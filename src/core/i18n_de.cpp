@@ -351,6 +351,8 @@ extern const I18nEntry kGermanStrings[] = {
      L"Spielnamen: {1}"},
     {L"Game window (Windows 10: yellow frame)",
      L"Spielfenster (Windows 10: gelber Rahmen)"},
+    {L"Game: {1} fps → keys held {2} ms, steps {3} ms apart",
+     L"Spiel: {1} fps → Tasten {2} ms gehalten, Schritte {3} ms Abstand"},
     {L"Gemini (Google, free key)",
      L"Gemini (Google, Gratis-Schlüssel)"},
     {L"General",

@@ -325,6 +325,7 @@ int MainWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
     UpdatePreview();
 
     AddTrayIcon();
+    FitKeyboardWindow();
     if (!waitForGame_) {
         ShowWindow(hwnd_, SW_SHOW);
         SetForegroundWindow(hwnd_);
@@ -629,6 +630,37 @@ void MainWindow::Layout() {
     MoveWindow(input_.Hwnd(), m.pad, inputY, w, m.inputH, TRUE);
     ShowWindow(input_.Hwnd(), SW_SHOW);
     input_.ApplyPadding();
+}
+
+// Keyboard only: shrink to preview + word bar + input, the bottom edge (the input) stays where it is; back to the full
+// height when the chat translation is switched on.
+void MainWindow::FitKeyboardWindow() {
+    if (collapsed_ || !hwnd_) return;
+    RECT r{}, rc{};
+    GetWindowRect(hwnd_, &r);
+    GetClientRect(hwnd_, &rc);
+    const Metrics m = MetricsFor(theme_);
+    const int chrome = (r.bottom - r.top) - (rc.bottom - rc.top);
+    if (cfg_.keyboardOnly) {
+        if (!compactKbd_) fullHeight_ = r.bottom - r.top;
+        compactKbd_ = true;
+        const int h = chrome + m.head + preview_.PreferredHeight() + m.gap + (cfg_.suggestions ? words_.PreferredHeight() : 0) +
+                      m.inputH + m.foot;
+        if (h < r.bottom - r.top)
+            SetWindowPos(hwnd_, nullptr, r.left, r.bottom - h, r.right - r.left, h, SWP_NOZORDER | SWP_NOACTIVATE);
+    } else if (compactKbd_) {
+        compactKbd_ = false;
+        const int h = std::max(fullHeight_, static_cast<int>(r.bottom - r.top));
+        SetWindowPos(hwnd_, nullptr, r.left, r.bottom - h, r.right - r.left, h, SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+    Layout();
+}
+
+void MainWindow::SaveWindow() {
+    RECT r{};
+    if (!GetWindowRect(hwnd_, &r)) return;
+    if (compactKbd_ && fullHeight_ > r.bottom - r.top) r.top = r.bottom - fullHeight_;
+    cfg_.SaveWindowRect(r, theme_.scale);
 }
 
 void MainWindow::ToggleCollapse() {
@@ -949,7 +981,7 @@ void MainWindow::OnClick(POINT pt) {
             if (!cfg_.readerEnabled) ToggleReading();
             else RestartReader();
             UpdateHint();
-            Layout();
+            FitKeyboardWindow();
             InvalidateChrome();
         } else {
             ToggleReading();
@@ -1549,7 +1581,7 @@ void MainWindow::ShowMainMenu() {
             SetStatus(cfg_.keyboardOnly ? Tr(L"Keyboard only: the chat is not read") : Tr(L"Reading the chat: on"),
                       Tone::Muted, 3000);
             UpdateHint();
-            Layout();
+            FitKeyboardWindow();
             InvalidateChrome();
             break;
         case kShowSelf:
@@ -2225,7 +2257,7 @@ bool MainWindow::DoSend(const std::wstring& line, const std::wstring& original) 
     } else {
         SetStatus(Tr(L"sending \u2026"), Tone::Muted);
         UpdateWindow(hwnd_);  // sending blocks for a moment; show the status first
-        out = SendToGw2Chat(hwnd_, line, cfg_.send, mumbleState_.live ? &mumble_ : nullptr);
+        out = SendToGw2Chat(hwnd_, line, SendTiming(), mumbleState_.live ? &mumble_ : nullptr);
         if (!out.ok) {
             SetStatus(out.error, Tone::Error);
             return false;
@@ -2689,8 +2721,34 @@ RECT MainWindow::ChatArea() const {
     return clipped;
 }
 
+// Key timing for the game's frame rate: every key held at least two frames (+ a little), every step three frames apart.
+// A KeyHoldMs set by hand (not the default 30) is kept.
+SendOptions MainWindow::SendTiming() const {
+    SendOptions so = cfg_.send;
+    if (gameFps_ <= 0 || so.keyHoldMs != 30) return so;
+    const double frame = 1000.0 / gameFps_;
+    so.keyHoldMs = std::clamp(static_cast<int>(std::ceil(2 * frame)) + 4, 12, 150);
+    so.stepDelayMs = std::max(so.stepDelayMs, static_cast<int>(std::ceil(3 * frame)));
+    return so;
+}
+
 void MainWindow::PollGame() {
     mumbleState_ = mumble_.Read();
+    // Frame rate, measured over 2 s while on a map (the counter stands still on loading screens), smoothed.
+    if (mumbleState_.inMap) {
+        const ULONGLONG t = GetTickCount64();
+        if (fpsSince_ == 0) {
+            fpsSince_ = t;
+            fpsTick_ = mumbleState_.uiTick;
+        } else if (t - fpsSince_ >= 2000) {
+            const double fps = static_cast<double>(mumbleState_.uiTick - fpsTick_) * 1000.0 / static_cast<double>(t - fpsSince_);
+            if (fps >= 5 && fps <= 1000) gameFps_ = gameFps_ > 0 ? 0.7 * gameFps_ + 0.3 * fps : fps;
+            fpsSince_ = t;
+            fpsTick_ = mumbleState_.uiTick;
+        }
+    } else {
+        fpsSince_ = 0;
+    }
     if (gw2_ && !IsWindow(gw2_)) gw2_ = nullptr;
     const ULONGLONG now = GetTickCount64();
     const bool hadGame = gw2_ != nullptr;
@@ -3194,7 +3252,7 @@ void MainWindow::SetDock(bool on) {
         SetStatus(Tr(L"Docked \u2013 the window moves with GW2"), Tone::Ok, 4000);
     } else {
         cfg_.SaveDock();
-        cfg_.SaveWindowRect(hwnd_, theme_.scale);
+        SaveWindow();
         SetStatus(Tr(L"Undocked"), Tone::Muted, 2500);
     }
 }
@@ -3405,6 +3463,12 @@ std::wstring MainWindow::TechnicalStatus() {
          std::to_wstring(cfg_.send.stepDelayMs) + L"  KeyHoldMs=" + std::to_wstring(cfg_.send.keyHoldMs) +
          L"  RestoreDelayMs=" + std::to_wstring(cfg_.send.restoreDelayMs) + L"  MaxLength=" +
          std::to_wstring(cfg_.maxLength));
+    {
+        const SendOptions so = SendTiming();
+        line(L"  " + TrF(L"Game: {1} fps \u2192 keys held {2} ms, steps {3} ms apart",
+                         {gameFps_ > 0 ? std::to_wstring(static_cast<int>(gameFps_ + 0.5)) : std::wstring(L"?"),
+                          std::to_wstring(so.keyHoldMs), std::to_wstring(so.stepDelayMs)}));
+    }
     line(L"  [Spelling] Enabled=" + std::to_wstring(cfg_.spellEnabled) + L"  AutoCorrect=" +
          std::to_wstring(static_cast<int>(cfg_.autoCorrect)) + L"  Suggestions=" + std::to_wstring(cfg_.suggestions) +
          L"  Learn=" + std::to_wstring(cfg_.learnWords) + L"  LanguageTool=" + std::to_wstring(cfg_.languageTool));
@@ -3566,7 +3630,7 @@ void MainWindow::ApplySettings(const Config& next) {
         EndTranslateOnce();
         RestartReader();  // starts again only if reading is wanted
         UpdateHint();
-        Layout();
+        FitKeyboardWindow();
         InvalidateChrome();
     }
     const bool engineChanged = prev.engine != cfg_.engine || prev.chatSameEngine != cfg_.chatSameEngine ||
@@ -3736,7 +3800,9 @@ LRESULT MainWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
                 mmi->ptMaxTrackSize.y = m.head;
             } else {
                 const int previewH = theme_.textLineHeight * 2 + theme_.smallLineHeight * 2 + theme_.S(14);
-                mmi->ptMinTrackSize = {theme_.S(360), m.head + theme_.S(40) + previewH + m.inputH + 2 * m.gap + m.foot};
+                // Keyboard only has no chat area: no room for it either.
+                mmi->ptMinTrackSize = {theme_.S(360), m.head + (cfg_.keyboardOnly ? 0 : theme_.S(40)) + previewH + m.inputH +
+                                                          2 * m.gap + m.foot};
             }
             return 0;
         }
@@ -3874,7 +3940,7 @@ LRESULT MainWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
         case WM_EXITSIZEMOVE:
             moving_ = false;
             ignoreSnapshotsBefore_ = GetTickCount64();
-            cfg_.SaveWindowRect(hwnd_, theme_.scale);
+            SaveWindow();
             if (cfg_.dock) UpdateDockFromWindow();  // docked: the new place is relative to the game
             PollGame();
             return 0;
@@ -3884,7 +3950,7 @@ LRESULT MainWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
         case WM_DESTROY:
             reader_.Stop();
             RemoveTrayIcon();
-            cfg_.SaveWindowRect(hwnd_, theme_.scale);
+            SaveWindow();
             if (hotkeyOk_) UnregisterHotKey(hwnd_, kHotkeyId);
             PostQuitMessage(0);
             return 0;

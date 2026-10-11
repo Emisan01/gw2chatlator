@@ -351,6 +351,8 @@ extern const I18nEntry kArabicStrings[] = {
      L"أسماء اللعبة: {1}"},
     {L"Game window (Windows 10: yellow frame)",
      L"نافذة اللعبة (Windows 10: إطار أصفر)"},
+    {L"Game: {1} fps → keys held {2} ms, steps {3} ms apart",
+     L"اللعبة: {1} إطار/ث → تُضغط المفاتيح {2} مللي ث، والخطوات بفاصل {3} مللي ث"},
     {L"Gemini (Google, free key)",
      L"Gemini (Google، مفتاح مجاني)"},
     {L"General",
