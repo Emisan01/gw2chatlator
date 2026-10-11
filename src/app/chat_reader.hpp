@@ -25,7 +25,6 @@
 #include "win/screen_capture.hpp"
 #include "win/spellcheck.hpp"
 #include "win/tesseract_ocr.hpp"
-#include "core/glyph_reader.hpp"
 
 #include <map>
 #include <unordered_set>
@@ -49,10 +48,8 @@ struct ReaderOptions {
     std::vector<std::wstring> knownWords; // your own words: always correct for the second look
     // Learned recognition fixes ("rnain" -> "main"): applied at once, without reading the word again.
     std::vector<std::pair<std::wstring, std::wstring>> ocrFixes;
-    std::wstring glyphDir;        // the glyph reader's letters (<data>\glyphs); empty = no glyph reader
     std::wstring captureDir;      // diagnostics target
     std::vector<ChannelColor> palette;    // calibrated GW2 channel colours
-    std::vector<std::wstring> recentSent; // own messages to learn glyphs from
 };
 
 // Posted as LPARAM of the notify message; the receiver deletes it.
@@ -65,8 +62,6 @@ struct ReaderSnapshot {
     int milliseconds = 0;        // capture + OCR time
     int secondLooks = 0;         // words read a second time in this picture
     int secondFixes = 0;         // ... of which the second reading was taken
-    int glyphRows = 0;           // rows the glyph reader read itself (sure of every letter)
-    int glyphLetters = 0;        // letters of the chat font it knows
     std::vector<std::pair<std::wstring, std::wstring>> newFixes;  // learned in this picture (to be remembered)
     ULONGLONG captureTick = 0;   // GetTickCount64() when the picture was taken
     CaptureStatus captureStatus; // HDR, SDR white level and fallback reason
@@ -86,13 +81,8 @@ public:
     // Second look in the last picture: words read again / taken from the second reading.
     int SecondLooks() const { return lastLooks_; }
     int SecondFixes() const { return lastFixes_; }
-    // Glyph reader in the last picture: rows it read itself (sure of every letter), letters it knows.
-    int GlyphRows() const { return glyphRows_; }
-    size_t GlyphLetters() const;
-    ~ChatOcr() { SaveGlyphs(); }
     // Fixes the second look found in the last picture (wrong reading -> word), to be stored.
     const std::vector<std::pair<std::wstring, std::wstring>>& NewFixes() const { return newFixes_; }
-    void SetRecentSent(const std::vector<std::wstring>& sent) { recentSent_ = sent; }
 
     // Line spacing (px) below which "automatic" prefers Tesseract (if installed).
     static constexpr int kSmallTextPitch = 14;
@@ -105,7 +95,6 @@ private:
     bool useTess_ = false;  // the engine of the last picture
     bool keepEngineLines_ = false;  // free text: no regrouping by rows (it would merge side-by-side columns)
     std::vector<Rgb> palette_;
-    std::vector<std::wstring> recentSent_;
 
     // RapidOCR: one recognizer per installed model group; a line that looks exactly as before is not
     // recognized again (the chat mostly only scrolls), its text comes from the cache.
@@ -138,17 +127,6 @@ private:
     std::unordered_map<std::wstring, std::wstring> fixes_;  // folded wrong reading -> word (learned, persistent)
     std::vector<std::pair<std::wstring, std::wstring>> newFixes_;
     int lastLooks_ = 0, lastFixes_ = 0;
-
-    // Glyph reader (core/glyph_reader): one per letter size, learning from rows whose every word is a real word,
-    // reading the rows it is sure of. Rows are known by a hash of their pixels: learned once, read once.
-    GlyphReader& GlyphsFor(int textHeight);
-    void SaveGlyphs();
-    std::wstring glyphDir_;
-    std::map<int, GlyphReader> glyphs_;
-    std::map<int, int> glyphDirty_;  // rows learned since the last save, per letter size
-    std::unordered_set<uint64_t> glyphLearned_;
-    std::unordered_map<uint64_t, GlyphReader::Result> glyphCache_;
-    int glyphRows_ = 0;
 };
 
 class ChatReader {
@@ -171,8 +149,6 @@ public:
     void SaveNextF16(const std::wstring& path);
     // Read again at once, even if the picture did not change.
     void Rescan();
-    // Tells the reader of own messages sent, so the glyph reader can learn from them.
-    void AddRecentSent(const std::wstring& text);
 
 private:
     void Loop();
@@ -190,7 +166,6 @@ private:
     HWND notify_ = nullptr;
     UINT message_ = 0;
     ReaderOptions opt_;
-    std::deque<std::wstring> recentSent_;
     int captureIndex_ = 0;
 };
 

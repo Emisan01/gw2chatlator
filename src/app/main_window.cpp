@@ -564,16 +564,11 @@ ReaderOptions MainWindow::MakeReaderOptions() const {
     for (const auto& e : myWords_.Entries()) o.knownWords.push_back(e.first);
     // RapidOCR: the models in <data>\rapid for the languages you read and write.
     o.rapidDir = cfg_.RapidDir();
-    // The glyph reader stays switched off (empty glyphDir): after the 1.1.0 changes it no longer found a sure row on the
-    // bench (docs/OCR_PLAN.md). The code stays for a later look.
-    o.glyphDir.clear();
     o.rapidGroups = RapidGroupsFor(o.wordLangs);
     for (const auto& e : ocrFixes_.Entries())
         if (!e.second.empty()) o.ocrFixes.push_back(e);
     o.captureDir = cfg_.CaptureDir();
     o.palette = cfg_.palette;
-    for (const auto& s : recentSent_)
-        if (!s.exact.empty()) o.recentSent.push_back(s.exact);
     return o;
 }
 
@@ -2206,7 +2201,6 @@ bool MainWindow::DoSend(const std::wstring& line, const std::wstring& original) 
     const std::wstring sentText = body.empty() ? line : body;
     recentSent_.push_back({sentText, NormalizeForCompare(body), GetTickCount64(), id, false});
     while (recentSent_.size() > 40) recentSent_.pop_front();
-    reader_.AddRecentSent(sentText);
 
     if (cfg_.copyOnly) {
         SetStatus(Tr(L"Copied \u2013 in GW2: Enter \u00b7 Ctrl+V \u00b7 Enter"), Tone::Ok, 8000);
@@ -2282,8 +2276,6 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
     stats_.confirmed += fresh.size();
     stats_.secondLooks += static_cast<uint64_t>(s->secondLooks);
     stats_.secondFixes += static_cast<uint64_t>(s->secondFixes);
-    stats_.glyphRows += static_cast<uint64_t>(s->glyphRows);
-    stats_.glyphLetters = s->glyphLetters;
     if (!s->newFixes.empty()) {  // learned: applied after 3 confirmations
         bool changed = false;
         for (const auto& [wrong, right] : s->newFixes) {
@@ -3344,8 +3336,6 @@ std::wstring MainWindow::TechnicalStatus() {
     if (const std::wstring q = MyMemoryQuotaText(); !q.empty()) line(L"  " + q);
     line(TrF(L"  Second look: {1} unknown words read again, {2} corrected",
              {std::to_wstring(stats_.secondLooks), std::to_wstring(stats_.secondFixes)}));
-    line(TrF(L"  Glyph reader: knows {1} letters of the chat font, read {2} rows itself",
-             {std::to_wstring(stats_.glyphLetters), std::to_wstring(stats_.glyphRows)}));
     line(TrF(L"  Learned words: {1}", {std::to_wstring(spell_.Model().Size())}));
     line(L"");
     line(Tr(L"Parameters (as in the settings file)"));

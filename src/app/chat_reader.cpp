@@ -38,16 +38,9 @@ std::vector<TextRow> ScaledRows(const LineGrid& g, int scale) {
 // uses Windows OCR and takes Tesseract (when installed) only for very small
 // text, where it holds up better.
 bool ChatOcr::Init(const ReaderOptions& o, std::wstring* error) {
-    SaveGlyphs();
-    glyphDir_ = o.glyphDir;
-    glyphs_.clear();
-    glyphDirty_.clear();
-    glyphLearned_.clear();
-    glyphCache_.clear();
     choice_ = o.ocrChoice;
     keepEngineLines_ = o.freeText;
     palette_ = FullChatPalette(o.palette);
-    recentSent_ = o.recentSent;
     haveTess_ = haveWin_ = useTess_ = false;
     if (o.ocrChoice == 1) {
         TesseractInfo info;
@@ -246,30 +239,8 @@ std::wstring ChatOcr::SuggestFor(const std::wstring& core) {
     return {};
 }
 
-GlyphReader& ChatOcr::GlyphsFor(int textHeight) {
-    auto it = glyphs_.find(textHeight);
-    if (it != glyphs_.end()) return it->second;
-    GlyphReader& gr = glyphs_[textHeight];
-    std::string data;
-    if (ReadFileBytes(glyphDir_ + L"\\glyphs_" + std::to_wstring(textHeight) + L".txt", data)) gr.Parse(data);
-    return gr;
-}
 
-void ChatOcr::SaveGlyphs() {
-    if (glyphDir_.empty()) return;
-    for (auto& [height, dirty] : glyphDirty_) {
-        if (dirty == 0) continue;
-        EnsureDir(glyphDir_);
-        if (WriteFileAtomic(glyphDir_ + L"\\glyphs_" + std::to_wstring(height) + L".txt", glyphs_[height].Serialize()))
-            dirty = 0;
-    }
-}
 
-size_t ChatOcr::GlyphLetters() const {
-    size_t n = 0;
-    for (const auto& [h, g] : glyphs_) n = std::max(n, g.Letters());
-    return n;
-}
 
 std::wstring ChatOcr::EngineName() const {
     if (useHybrid_) return L"Hybrid (Rapid+Win)";
@@ -536,104 +507,6 @@ bool ChatOcr::Read(const Image& raw, int fixedScale, std::vector<OcrLine>& out, 
         found.erase(std::remove_if(found.begin(), found.end(), [](const Line& l) { return l.words.empty(); }),
                     found.end());
     }
-    // Glyph reader (chat only: the GW2 chat font). Every measured row: learned from when the text recognition read
-    // it and every word is a real word (the letters are only taken when they also fit the pictures already known),
-    // and read by it when it is sure of every letter – then its reading replaces the recognition's for that row.
-    glyphRows_ = 0;
-    if (!keepEngineLines_ && !glyphDir_.empty() && grid.Found() && grid.textHeight >= 6) {
-        GlyphReader& gr = GlyphsFor(grid.textHeight);
-        int learnBudget = 24;  // words per picture: learning is the slow part
-        for (const TextRow& row : grid.rows) {
-            const int pad = std::max(2, row.height / 4);
-            const int y0 = std::max(0, row.top - pad), y1 = std::min(raw.height, row.top + row.height + pad);
-            if (y1 - y0 < 4) continue;
-            const Image crop = Crop(raw, {0, y0, raw.width, y1 - y0});
-            uint64_t h = 1469598103934665603ull;  // FNV-1a over the pixels
-            for (uint8_t b : crop.bgra) h = (h ^ b) * 1099511628211ull;
-            // The recognition's line in this row: the one whose words sit in it.
-            Line* mine = nullptr;
-            for (Line& l : found) {
-                int inside = 0;
-                for (const Word& wd : l.words) {
-                    const int cy = (wd.rect.y + wd.rect.h / 2) / scale;
-                    inside += cy >= y0 && cy < y1;
-                }
-                if (inside * 2 > static_cast<int>(l.words.size())) {
-                    mine = &l;
-                    break;
-                }
-            }
-            // Word by word: every word of the recognition's line that is a real word teaches its letters, right where
-            // the recognition found it (names, slang and misread words in the same line do not matter).
-            if (mine && !glyphLearned_.count(h)) {
-                glyphLearned_.insert(h);
-                // 5.1 Learn from own messages first: exact ground truth
-                bool learnedFromOwn = false;
-                for (const std::wstring& sent : recentSent_) {
-                    if (sent.empty()) continue;
-                    std::vector<std::wstring> sentWords;
-                    std::wistringstream ss(sent);
-                    std::wstring sw;
-                    while (ss >> sw) sentWords.push_back(sw);
-                    if (sentWords.empty() || mine->words.size() < sentWords.size()) continue;
-                    const size_t k = sentWords.size();
-                    for (size_t s = 0; s + k <= mine->words.size(); ++s) {
-                        std::wstring cand;
-                        for (size_t j = 0; j < k; ++j) {
-                            if (j) cand += L" ";
-                            cand += mine->words[s + j].text;
-                        }
-                        if (DiceSimilarity(NormalizeForCompare(cand), NormalizeForCompare(sent)) >= 0.8) {
-                            for (size_t j = 0; j < k; ++j) {
-                                const Word& wd = mine->words[s + j];
-                                const int x0 = wd.rect.x / scale;
-                                const int x1 = (wd.rect.x + wd.rect.w) / scale;
-                                if (gr.LearnWord(crop, sentWords[j], x0, x1) > 0)
-                                    ++glyphDirty_[grid.textHeight];
-                            }
-                            learnedFromOwn = true;
-                            break;
-                        }
-                    }
-                    if (learnedFromOwn) break;
-                }
-                if (!learnedFromOwn && !checkers_.empty()) {
-                    for (const Word& wd : mine->words) {
-                        if (learnBudget <= 0) break;
-                        const std::wstring core = WordCore(wd.text);
-                        if (core.size() < 2 || core != wd.text) continue;  // with punctuation around: not exact enough
-                        bool letters = true;
-                        for (wchar_t c : core) letters = letters && IsWordChar(c) && !(c >= L'0' && c <= L'9');
-                        if (!letters || !IsWord(core)) continue;
-                        --learnBudget;
-                        if (gr.LearnWord(crop, core, wd.rect.x / scale, (wd.rect.x + wd.rect.w) / scale) > 0)
-                            ++glyphDirty_[grid.textHeight];
-                    }
-                }
-            }
-            if (!gr.Ready()) continue;
-            auto it = glyphCache_.find(h);
-            if (it == glyphCache_.end()) {
-                if (glyphCache_.size() > 2000) glyphCache_.clear();
-                it = glyphCache_.emplace(h, gr.Read(crop)).first;
-            }
-            const GlyphReader::Result& r = it->second;
-            if (!r.sure) continue;
-            Line x;
-            x.text = r.text;
-            size_t from = 0;
-            for (const auto& [wx0, wx1] : r.words) {
-                const size_t to = std::min(r.text.find(L' ', from), r.text.size());
-                x.words.push_back({r.text.substr(from, to - from),
-                                   RectI{wx0 * scale, row.top * scale, (wx1 - wx0) * scale, row.height * scale}});
-                from = to + 1;
-            }
-            if (mine) *mine = std::move(x);
-            else found.push_back(std::move(x));
-            ++glyphRows_;
-        }
-        if (glyphDirty_[grid.textHeight] >= 10) SaveGlyphs();
-    }
     for (const Line& tl : found) {
         OcrLine line;
         line.text = tl.text;
@@ -780,12 +653,6 @@ void ChatReader::Loop() {
         lastFingerprint = fp;
         lastOcr = t0;
 
-        std::vector<std::wstring> sent;
-        {
-            std::lock_guard<std::mutex> lk(mu_);
-            sent.assign(recentSent_.begin(), recentSent_.end());
-        }
-        ocr.SetRecentSent(sent);
         auto snap = std::make_unique<ReaderSnapshot>();
         Image prepared;
         if (!ocr.Read(raw, opt_.scale, snap->lines, &prepared, &err)) snap->error = err;
@@ -796,8 +663,6 @@ void ChatReader::Loop() {
         snap->language = ocr.Language();
         snap->milliseconds = static_cast<int>(GetTickCount64() - t0);
         snap->secondLooks = ocr.SecondLooks();
-        snap->glyphRows = ocr.GlyphRows();
-        snap->glyphLetters = static_cast<int>(ocr.GlyphLetters());
         snap->secondFixes = ocr.SecondFixes();
         snap->newFixes = ocr.NewFixes();
         if (save) SaveDiagnostics(raw, prepared, snap->lines);
@@ -820,12 +685,6 @@ void ChatReader::SaveDiagnostics(const Image& raw, const Image& prepared, const 
         txt += ToUtf8(RgbToHex(l.color)) + " | " + std::to_string(l.top) + " | " + std::to_string(l.height) + " | " +
                ToUtf8(l.text) + "\r\n";
     WriteFileAtomic(base + L".txt", txt);
-}
-
-void ChatReader::AddRecentSent(const std::wstring& text) {
-    std::lock_guard<std::mutex> lk(mu_);
-    recentSent_.push_back(text);
-    while (recentSent_.size() > 20) recentSent_.pop_front();
 }
 
 }  // namespace gct
