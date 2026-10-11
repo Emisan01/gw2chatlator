@@ -18,6 +18,9 @@ diagnosis show it.
   settings read as automatic).
 - **Keyboard only is the start mode** and a compact typing window: just preview, word bar and input; the window grows
   upwards to its full size (with the chat) only when the chat translation is switched on (dot or menu).
+- **Lighter start with Windows:** the autostart only creates the hidden window and the tray icon; spell checker,
+  Windows' prediction, the learned words, GW2 name lists and the file clean-up are built when GW2 reaches the 3D world
+  (or the tray opens the window).
 - **Sending follows the game's frame rate:** measured from MumbleLink's frame counter (no access to the game) – keys
   every action (holding a key, the pause between steps, the moment after the chat line opened) gets one measured frame
   + 10 ms; opening the chat is waited for live (MumbleLink). Settings → Technical shows the fps, the timing and the
