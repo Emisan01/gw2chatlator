@@ -119,6 +119,13 @@ bool LocateChatLines(const std::vector<OcrLine>& lines, ChatBlock* area);
 // timestamps, everything above the first stamped line (the tab bar, a
 // message cut off at the top) is skipped; lines that are only a tag (the
 // input line) and messages without text are dropped.
+//
+// Brackets the recognition misreads: "[Gilde][ABC]" comes as "tüldeJCABCJ", "[ABC]" as "tABCJ" / "IABCJ".
+// GluedTagsAtStart: the length of a run of two or more glued bracket tags at the start of `t` (after an optional
+// icon like the chat bubble "O"), 0 if none – the GW2 input line, never a message.
+// StripGuildTag: "[ABC] Nia Stone" / "tABCJ Nia Stone" -> "Nia Stone" (a guild tag of 2-4 capitals in brackets).
+size_t GluedTagsAtStart(const std::wstring& t);
+std::wstring StripGuildTag(const std::wstring& speaker);
 std::vector<ChatMessage> BuildMessages(const std::vector<OcrLine>& lines, const std::vector<ChannelColor>& palette);
 
 // Free screen area (any text, not a chat): lines that follow closely are one

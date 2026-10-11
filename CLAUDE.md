@@ -191,6 +191,9 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
 - Sending a chat command (`SendToGw2Chat`): the command ("/w ") is typed as keys (`TypeText`), a whisper recipient is
   pasted and confirmed with Tab, then only the message is pasted – pasting "/w Name, text" in one go made GW2 send the
   name as text (2026-10-08). Up/Down in the input = sent history (`InputBox::AddHistory`, 50, session only).
+- Misread brackets around tags (`GluedTagsAtStart`, `StripGuildTag` in chat_line): "[Gilde][ABC]" reads as
+  "O tüldeJCABCJ" – glued tags after the last stamped line = the input line (dropped); a guild tag of 2-4 capitals in
+  bracket-like marks in front of a name is removed. ocr_bench app rows unchanged (2026-10-11).
 - `StampShapeLength` (chat_line): the shape of "[hh:mm]" + optional "[X]" tag with any misread characters
   (opener-like, 1–2 + 2 digit-like incl. O/D/I/l, ≤ 2 separators, closer-like) – checked first in `ParseChatLine`;
   without a tag two real digits are required.

@@ -1637,6 +1637,35 @@ static void TestStampShape() {
           m.text == L"only those who face the fury");
 }
 
+static void TestInputLineTags() {
+    // The GW2 input line "[Gilde][ABC]" with misread brackets (and the chat bubble in front) is never a message.
+    CHECK(GluedTagsAtStart(L"O tüldeJCABCJ") > 0);
+    CHECK(GluedTagsAtStart(L"CGIdeJCABCJ") > 0);
+    CHECK(GluedTagsAtStart(L"[Gilde][ABC] hello") > 0);
+    CHECK(GluedTagsAtStart(L"platziert einige Artefakte") == 0);
+    CHECK(GluedTagsAtStart(L"Nia Stone: grrr") == 0);
+    CHECK(GluedTagsAtStart(L"or or or") == 0);
+    // The guild tag in front of a name, also with misread brackets.
+    CHECK(StripGuildTag(L"tABCJ Nia Stone") == L"Nia Stone");
+    CHECK(StripGuildTag(L"[ABC] Nia Stone") == L"Nia Stone");
+    CHECK(StripGuildTag(L"IABCJ Nia Stone") == L"Nia Stone");
+    CHECK(StripGuildTag(L"Nia Stone") == L"Nia Stone");
+    CHECK(StripGuildTag(L"Tom Brave") == L"Tom Brave");
+    // In a chat picture: the input line is not glued to the last message, the guild tag leaves the name.
+    std::vector<OcrLine> lines(2);
+    lines[0].text = L"[12:19] [G] [ABC] Nia Stone: it works well";
+    lines[0].top = 0;
+    lines[0].height = 20;
+    lines[0].color = {240, 220, 120};
+    lines[1].text = L"O tüldeJCABCJ";
+    lines[1].top = 22;
+    lines[1].height = 20;
+    lines[1].color = {240, 220, 120};
+    const auto msgs = BuildMessages(lines, DefaultChannelColors());
+    CHECK(msgs.size() == 1);
+    if (!msgs.empty()) CHECK(msgs[0].text == L"it works well" && msgs[0].speaker == L"Nia Stone");
+}
+
 static void TestPhraseMemory() {
     WordModel m;
     for (int i = 0; i < 4; ++i) m.Learn(L"gute nacht bis morgen mit micro");
@@ -1833,6 +1862,7 @@ int main() {
     TestWordModelWeights();
     TestPhraseMemory();
     TestStampShape();
+    TestInputLineTags();
     TestWordCase();
     TestLooksLikeSlip();
     TestTypoMemory();

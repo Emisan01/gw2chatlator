@@ -2,6 +2,7 @@
 #include "chat_line.hpp"
 
 #include <algorithm>
+#include <cwctype>
 #include <functional>
 #include <iterator>
 #include <cmath>
@@ -826,6 +827,52 @@ bool LocateChatLines(const std::vector<OcrLine>& lines, ChatBlock* area) {
     return true;
 }
 
+namespace {
+bool OpenLike(wchar_t c) { return c == L'[' || c == L'(' || c == L'{' || c == L't' || c == L'I' || c == L'C' || c == L'l' || c == L'|'; }
+bool CloseLike(wchar_t c) { return c == L']' || c == L')' || c == L'}' || c == L'J' || c == L'I' || c == L'l' || c == L'|'; }
+}  // namespace
+
+size_t GluedTagsAtStart(const std::wstring& t) {
+    size_t i = 0;
+    while (i < t.size() && t[i] == L' ') ++i;
+    // An icon in front (the chat bubble reads as "O", "o", "0", "Q", "•" …): one short non-word token.
+    const size_t sp = t.find(L' ', i);
+    if (sp != std::wstring::npos && sp - i <= 2) {
+        bool icon = true;
+        for (size_t k = i; k < sp; ++k) icon = icon && (!IsWordChar(t[k]) || t[k] == L'O' || t[k] == L'o' || t[k] == L'0' || t[k] == L'Q');
+        if (icon) i = sp + 1;
+    }
+    const size_t start = i;
+    size_t end = t.find(L' ', i);
+    if (end == std::wstring::npos) end = t.size();
+    const std::wstring tok = t.substr(start, end - start);
+    // Two or more tags: letters, a closing bracket glued to an opening one ("…JC…", "][", ")("), letters, closing.
+    if (tok.size() < 6) return 0;
+    if (!CloseLike(tok.back())) return 0;
+    size_t glue = std::wstring::npos;
+    for (size_t k = 2; k + 3 < tok.size(); ++k)
+        if (CloseLike(tok[k]) && OpenLike(tok[k + 1]) && iswalpha(tok[k - 1]) && iswalpha(tok[k + 2])) {
+            glue = k;
+            break;
+        }
+    if (glue == std::wstring::npos) return 0;
+    size_t letters = 0;
+    for (wchar_t c : tok) letters += iswalpha(c) ? 1 : 0;
+    if (letters + 2 < tok.size() - 3) return 0;  // mostly letters with a few bracket marks
+    return end;
+}
+
+std::wstring StripGuildTag(const std::wstring& speaker) {
+    const size_t sp = speaker.find(L' ');
+    if (sp == std::wstring::npos || sp < 4 || sp > 6) return speaker;
+    const std::wstring tok = speaker.substr(0, sp);
+    if (!OpenLike(tok.front()) || !CloseLike(tok.back())) return speaker;
+    for (size_t k = 1; k + 1 < tok.size(); ++k)
+        if (!iswupper(tok[k])) return speaker;
+    const std::wstring rest = Trim(speaker.substr(sp + 1));
+    return rest.empty() ? speaker : rest;
+}
+
 std::vector<ChatMessage> BuildMessages(const std::vector<OcrLine>& lines, const std::vector<ChannelColor>& palette) {
     std::vector<ChatMessage> out;
     Rgb prevColor;
@@ -878,6 +925,8 @@ std::vector<ChatMessage> BuildMessages(const std::vector<OcrLine>& lines, const 
         // The input line itself ("[Gruppe] what you are typing"): below the
         // last stamped line, a channel tag but no timestamp.
         if (anyStamped && !m.stamped && tag != Channel::Unknown && i > lastStamped) continue;
+        // ... also when its tags were misread ("O tüldeJCABCJ" for "[Gilde][ABC]"): glued tags, no timestamp.
+        if (!m.stamped && i > lastStamped && GluedTagsAtStart(line.text) > 0) continue;
 
         const int gap = line.top - prevBottom;
         const bool below = gap >= -std::max(2, line.height / 2) && gap <= std::max(6, line.height);
@@ -915,6 +964,7 @@ std::vector<ChatMessage> BuildMessages(const std::vector<OcrLine>& lines, const 
         m.channel = tag != Channel::Unknown ? tag : ClassifyColor(lead, palette);
         if (m.channel == Channel::Unknown && m.speaker.empty()) m.channel = Channel::System;
         if (m.channel == Channel::Whisper) StripWhisperPrefix(m);
+        m.speaker = StripGuildTag(m.speaker);  // "[ABC] Nia Stone" -> "Nia Stone" (also with misread brackets)
         if (m.channel == Channel::System && !m.speaker.empty()) {  // "Event: ..." in system yellow
             m.text = m.speaker + L": " + m.text;
             m.speaker.clear();
