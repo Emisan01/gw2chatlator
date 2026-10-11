@@ -21,6 +21,9 @@ diagnosis show it.
   write after it ("w" -> "wie geht's dir"); Space writes the word, Tab then takes the rest. Only what was learned.
 - **Grammar check offered when it helps:** translating and the check is off → once the sentence stands the preview
   offers it; in the warning colour when the back-translation differs a lot from what you typed. One click switches it on.
+- **Local AI (Ollama) no longer hangs:** requests set a small context (4096 tokens – Ollama was loading models with a
+  128k context, which makes a CPU model crawl), no thinking phase (qwen3 & co.), 4 threads, the model stays loaded
+  30 minutes; while one translation of your text is on its way, newer text waits instead of piling up requests.
 - The grammar check (LanguageTool, optional) only looks at sentence structure; spelling is the typing help's job.
 
 ## 1.1.0 — 2026-10-09

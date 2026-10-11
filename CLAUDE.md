@@ -275,6 +275,9 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
 - Two translators: `translator_` (what you write: preview, back-translation) and `chatTranslator_` (incoming chat,
   `PumpIncoming`, `Retranslate`) – the same object unless `[Translate] ChatEngine` is set (`MakeEngine`, `chatEngine_`;
   MyMemory counting per side). `[Basic] KeyboardOnly=1` → `ReadingWanted()` is false: only the typing help runs.
+- Ollama (native `/api/chat`, `BuildLlmRequest` ollamaMode): `options {num_gpu 0, num_thread 4, num_ctx 4096}`,
+  `think:false`, `keep_alive 30m` – the user's Ollama loaded every model at n_ctx 131072 (server.log, 2026-10-09), which
+  made CPU translation hang. Outgoing LLM translation: one request at a time (`llmBusy_`/`llmAgain_`).
 - Translators (`Engine`): Auto order = DeepL → Google → Microsoft → own LibreTranslate server → LLM → MyMemory. Google
   key goes in the `X-Goog-Api-Key` header (never the URL). Protected segments: `<span translate="no"
   class="notranslate">` (HTML mode only when something is protected). The settings combo order differs from the enum:
