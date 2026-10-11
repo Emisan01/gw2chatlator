@@ -1440,7 +1440,7 @@ void KeyboardWindow::PollGame() {
     }
     if (hadGame != (gw2_ != nullptr)) InvalidateChrome();
     // Started with Windows: appear in the 3D world (MumbleLink carries a character), go when the game closes.
-    const bool ready = gw2_ != nullptr && mumbleState_.live;
+    const bool ready = gw2_ != nullptr && mumbleState_.inMap;  // a map is loaded and ticking (not launcher, login, character select)
     if (waitForGame_ && (hadGame != (gw2_ != nullptr) || ready != gameReady_)) {
         UpdateTrayTip();
         if (ready && !gameReady_ && !userHidden_) {
