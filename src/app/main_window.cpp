@@ -1959,6 +1959,13 @@ void MainWindow::StartTranslation() {
         source = DetectLanguage(body);
         if (source.empty()) source = PrimaryLang(TypingLocale());
     }
+    if (engine_ == Engine::Llm) {
+        if (llmBusy_) {
+            llmAgain_ = true;
+            return;
+        }
+        llmBusy_ = true;
+    }
     inflightGen_ = inputGen_;
     CountMyMemory(CodePointCount(JoinSegments(p.segments)));
     UpdatePreview();
@@ -1977,6 +1984,14 @@ void MainWindow::OnTranslated(TranslatedMsg* raw) {
     switch (m->kind) {
         case TranslatedMsg::Kind::Forward: {
             if (inflightGen_ == m->gen) inflightGen_ = 0;
+            llmBusy_ = false;
+            if (llmAgain_) {  // typed on meanwhile: now the newest text
+                llmAgain_ = false;
+                if (m->gen != inputGen_) {
+                    StartTranslation();
+                    return;
+                }
+            }
             if (m->gen != inputGen_) return;  // text or language changed meanwhile
             if (!m->result.ok) {
                 sendPending_ = false;

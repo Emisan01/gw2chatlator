@@ -74,9 +74,11 @@ std::string BuildLlmRequest(const std::vector<std::vector<Segment>>& items, cons
 
     std::string j = "{\"model\":\"" + JsonEscape(ToUtf8(model)) + "\",\"stream\":false,";
     if (ollamaMode) {
-        j += "\"options\":{\"num_gpu\":0,\"num_thread\":2";
+        // Chat lines need ~1-2k tokens: a context of 128k set in Ollama makes a CPU model crawl (measured: every
+        // load at n_ctx 131072). No thinking phase (qwen3 & co. think by default). 4 threads leave the game cores.
+        j += "\"options\":{\"num_gpu\":0,\"num_thread\":4,\"num_ctx\":4096";
         if (temperature0) j += ",\"temperature\":0";
-        j += "},\"keep_alive\":\"5m\",";
+        j += "},\"think\":false,\"keep_alive\":\"30m\",";
     } else if (temperature0) {
         j += "\"temperature\":0,";
     }
@@ -96,9 +98,11 @@ std::string BuildLlmRomanizeRequest(const std::wstring& text, const std::wstring
     const std::string array = "[\"" + JsonEscape(ToUtf8(text)) + "\"]";
     std::string j = "{\"model\":\"" + JsonEscape(ToUtf8(model)) + "\",\"stream\":false,";
     if (ollamaMode) {
-        j += "\"options\":{\"num_gpu\":0,\"num_thread\":2";
+        // Chat lines need ~1-2k tokens: a context of 128k set in Ollama makes a CPU model crawl (measured: every
+        // load at n_ctx 131072). No thinking phase (qwen3 & co. think by default). 4 threads leave the game cores.
+        j += "\"options\":{\"num_gpu\":0,\"num_thread\":4,\"num_ctx\":4096";
         if (temperature0) j += ",\"temperature\":0";
-        j += "},\"keep_alive\":\"5m\",";
+        j += "},\"think\":false,\"keep_alive\":\"30m\",";
     } else if (temperature0) {
         j += "\"temperature\":0,";
     }

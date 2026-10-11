@@ -539,14 +539,17 @@ static void TestLlm() {
     JsonValue vOllama;
     CHECK(ParseJson(reqOllama, vOllama));
     CHECK(vOllama.GetBool("stream", true) == false);
-    CHECK(vOllama.GetString("keep_alive") == "5m");
+    CHECK(vOllama.GetString("keep_alive") == "30m");
+    CHECK(vOllama.GetBool("think", true) == false);  // no thinking phase
     const JsonValue* opt = vOllama.Get("options");
     CHECK(opt != nullptr);
     if (opt) {
         const JsonValue* numGpu = opt->Get("num_gpu");
         CHECK(numGpu && numGpu->n == 0.0);
         const JsonValue* numThread = opt->Get("num_thread");
-        CHECK(numThread && numThread->n == 2.0);
+        CHECK(numThread && numThread->n == 4.0);
+        const JsonValue* numCtx = opt->Get("num_ctx");
+        CHECK(numCtx && numCtx->n == 4096.0);  // never the 128k context Ollama may be set to
     }
 }
 
