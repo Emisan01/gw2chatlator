@@ -25,6 +25,7 @@ struct ChatEntry {
 
     uint64_t id = 0;  // assigned by Add
     unsigned long long added = 0;  // GetTickCount64 when it came in (saving "the last n minutes")
+    mutable int layoutH = -1;      // measured height at the current width and fonts; -1 = measure again
     Kind kind = Kind::Incoming;
     State state = State::Plain;
     Channel channel = Channel::Unknown;

@@ -328,7 +328,6 @@ private:
     int onceShots_ = 0;          // pictures read during that look
     bool wasInMap_ = false;      // MumbleLink: on a map (reading allowed)
     uint32_t lastMapId_ = 0;     // MumbleLink map id: a change empties the log (unless kept)
-    bool chatFullTold_ = false;  // the "chat memory full" notice was shown (again after the log got smaller)
     bool detecting_ = false;     // looking for the GW2 chat (no area set yet)
     bool placedForSetup_ = false;  // first start: put at the usual chat place once
     ULONGLONG lastDetect_ = 0;

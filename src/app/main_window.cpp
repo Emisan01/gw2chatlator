@@ -930,8 +930,6 @@ void MainWindow::Paint() {
                 const std::wstring quota = MyMemoryQuotaText();  // small and quiet, only with MyMemory
                 if (!quota.empty()) text += L"  \u00b7  " + quota;
                 if (const std::wstring check = ReadCheckText(); !check.empty()) text += L"  \u00b7  " + check;
-                text += L"  \u00b7  " + TrF(L"chat {1}/{2}", {std::to_wstring(log_.Count()),
-                                                               std::to_wstring(ChatLogView::kMaxEntries)});
             } else if (!gw2_) {
                 text = Tr(L"GW2 not found");
             } else {
@@ -1559,6 +1557,13 @@ void MainWindow::ShowMainMenu() {
     add(menu, MF_STRING | (cfg_.regionSet ? 0 : MF_GRAYED), kCover, Tr(L"Lay over the GW2 chat (replaces it)"));
     add(menu, MF_STRING | check(cfg_.dock), kDock, Tr(L"Dock to GW2 (moves with it)"));
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    // The chat memory, like a contingent – only here, never as a notice: when full the oldest are overwritten (like GW2).
+    {
+        const std::wstring used = std::to_wstring(log_.Count()), max = std::to_wstring(ChatLogView::kMaxEntries);
+        add(menu, MF_STRING | MF_GRAYED, 0,
+            log_.Count() >= ChatLogView::kMaxEntries ? TrF(L"Chat memory full ({1}) \u2013 the oldest are overwritten", {max})
+                                                     : TrF(L"Chat memory: {1}/{2}", {used, max}));
+    }
     // Save: valuable things said in the chat (a boss explained over ten minutes …) – the last few minutes or all.
     HMENU save = CreatePopupMenu();
     static const int kSaveMinutes[] = {1, 5, 10, 20, 60};
@@ -2836,16 +2841,7 @@ void MainWindow::PollGame() {
             });
         lastMapId_ = mumbleState_.identity.mapId;
     }
-    // The chat memory is full: overwritten without a word (like GW2), or – when chosen – one notice to save or clear.
-    if (log_.Count() >= ChatLogView::kMaxEntries) {
-        if (cfg_.chatFullNotice && !chatFullTold_) {
-            chatFullTold_ = true;
-            SetStatus(Tr(L"Chat memory full (500) \u2013 menu \u2261: save or clear; the oldest are overwritten meanwhile"),
-                      Tone::Warn, 15000);
-        }
-    } else if (log_.Count() < ChatLogView::kMaxEntries - 50) {
-        chatFullTold_ = false;
-    }
+
 
     // Started with Windows: appear with the game, disappear when it closes. "With the game" = in the 3D world
     // (MumbleLink ticks after a map loaded), not already with the launcher, login or character select.

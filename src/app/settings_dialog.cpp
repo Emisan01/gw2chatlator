@@ -54,7 +54,7 @@ enum : int {
     // Translator
     kEngine, kEngineNote, kLocalModel, kPull, kLocalInfo, kGetOllama, kLlmFindLocal, kPullStatus, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
     kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
-    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kStartMenu, kOnlyTr, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare, kWriteIn, kLtProvider, kLtTest, kLtStatus, kChatEngine, kKeyboardOnly, kLearnFile, kKeepMap, kChatFull,
+    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kStartMenu, kOnlyTr, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare, kWriteIn, kLtProvider, kLtTest, kLtStatus, kChatEngine, kKeyboardOnly, kLearnFile, kKeepMap,
     // Game & start
     kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kStatus, kRefresh, kSetup,
     // Wizard
@@ -881,13 +881,10 @@ private:
         // Like the GW2 chat, the log empties on a map change – unless kept; and old messages may go after a while.
         Check(kKeepMap, Tr(L"Keep the chat when GW2 clears it (map change)"), cfg_.keepAfterMap, kLabelX, Y(r++),
               kW - 50);
-        Label(Tr(L"Chat memory full (500)"), kLabelX, Y(r), kLabelW);
-        Combo(kChatFull, {Tr(L"overwrite the oldest (like GW2)"), Tr(L"tell me (save or clear)")},
-              cfg_.chatFullNotice ? 1 : 0, kCtrlX, Y(r++), kCtrlW);
         Label(Tr(L"Connections (read only, nothing is hooked)"), kLabelX, Y(r++), kW - 50);
-        Add(L"EDIT", L"", ES_MULTILINE | ES_READONLY | WS_VSCROLL | ES_AUTOVSCROLL, kLabelX, Y(r) - 4, kW - 44, 60,
+        Add(L"EDIT", L"", ES_MULTILINE | ES_READONLY | WS_VSCROLL | ES_AUTOVSCROLL, kLabelX, Y(r) - 4, kW - 44, 90,
             kStatus, WS_EX_CLIENTEDGE);
-        r += 2;
+        r += 3;
         Button(kRefresh, Tr(L"Refresh"), kLabelX, Y(r), 110);
         Button(kSetup, Tr(L"Guided setup…"), kLabelX + 120, Y(r++), 160);
     }
@@ -1650,7 +1647,6 @@ private:
         if (interval > 0) c.readerIntervalMs = std::clamp(interval, 200, 2000);
         c.onlyTranslations = Checked(kOnlyTr);
         c.keepAfterMap = Checked(kKeepMap);
-        c.chatFullNotice = Sel(kChatFull) == 1;
         c.showSystemLines = !Checked(kShowSystem);  // the box says "filter
         c.secondLook = Checked(kSecondLook);
         c.saveCaptures = Checked(kCaptures);
