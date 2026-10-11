@@ -13,6 +13,9 @@ diagnosis show it.
 - The grey back-translation in the preview comes in the language you **write** in (before: the reading language);
   switching the reading language no longer touches the preview, switching the writing language translates again.
 - Writing and sending in the same language: nothing is translated, only the typing help runs.
+- Glyph reader switched off (it no longer found sure rows after 1.1.0), its "Calibrate font recognition" menu entry
+  removed; "Hybrid" is no own choice any more – re-reading misread words is the second look's job (old "hybrid"
+  settings read as automatic).
 - The grammar check (LanguageTool, optional) only looks at sentence structure; spelling is the typing help's job.
 
 ## 1.1.0 — 2026-10-09
