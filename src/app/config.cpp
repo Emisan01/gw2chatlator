@@ -374,6 +374,7 @@ void Config::Load(const std::wstring& dir) {
     showSystemLines = ini.Bool(L"Reader", L"ShowSystem", false);
     onlyTranslations = ini.Bool(L"Reader", L"OnlyTranslations", true);
     keepAfterMap = ini.Bool(L"Reader", L"KeepAfterMap", false);
+    chatFullNotice = ini.Bool(L"Reader", L"ChatFullNotice", false);
     saveCaptures = ini.Bool(L"Reader", L"SaveCaptures", false);
     regionLeft = ini.Int(L"Reader", L"RegionLeft", 0, -20000, 20000);
     regionFromBottom = ini.Int(L"Reader", L"RegionFromBottom", 0, -20000, 20000);
@@ -557,6 +558,7 @@ void Config::SaveAll() const {
     SaveBool(L"Reader", L"ShowSystem", showSystemLines);
     SaveBool(L"Reader", L"OnlyTranslations", onlyTranslations);
     SaveBool(L"Reader", L"KeepAfterMap", keepAfterMap);
+    SaveBool(L"Reader", L"ChatFullNotice", chatFullNotice);
     SaveBool(L"Reader", L"SaveCaptures", saveCaptures);
     SaveBool(L"Spelling", L"Enabled", spellEnabled);
     SaveValue(L"Spelling", L"AutoCorrectMode", AutoCorrectKey(autoCorrect));

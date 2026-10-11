@@ -930,6 +930,8 @@ void MainWindow::Paint() {
                 const std::wstring quota = MyMemoryQuotaText();  // small and quiet, only with MyMemory
                 if (!quota.empty()) text += L"  \u00b7  " + quota;
                 if (const std::wstring check = ReadCheckText(); !check.empty()) text += L"  \u00b7  " + check;
+                text += L"  \u00b7  " + TrF(L"chat {1}/{2}", {std::to_wstring(log_.Count()),
+                                                               std::to_wstring(ChatLogView::kMaxEntries)});
             } else if (!gw2_) {
                 text = Tr(L"GW2 not found");
             } else {
@@ -2833,6 +2835,16 @@ void MainWindow::PollGame() {
                 return e.channel == Channel::Say || e.channel == Channel::Map || e.channel == Channel::System;
             });
         lastMapId_ = mumbleState_.identity.mapId;
+    }
+    // The chat memory is full: overwritten without a word (like GW2), or – when chosen – one notice to save or clear.
+    if (log_.Count() >= ChatLogView::kMaxEntries) {
+        if (cfg_.chatFullNotice && !chatFullTold_) {
+            chatFullTold_ = true;
+            SetStatus(Tr(L"Chat memory full (500) \u2013 menu \u2261: save or clear; the oldest are overwritten meanwhile"),
+                      Tone::Warn, 15000);
+        }
+    } else if (log_.Count() < ChatLogView::kMaxEntries - 50) {
+        chatFullTold_ = false;
     }
 
     // Started with Windows: appear with the game, disappear when it closes. "With the game" = in the 3D world

@@ -68,6 +68,8 @@ public:
     // later (0 = everything).
     std::wstring AsText(unsigned long long since = 0) const;
     bool Empty() const { return entries_.empty(); }
+    size_t Count() const { return entries_.size(); }
+    static constexpr size_t kMaxEntries = 500;  // the chat memory: then the oldest are overwritten (like GW2)
     // The reading language changed: the newest `max` incoming lines are translated again (oldest first asked, so the
     // newest is translated first).
     void TranslateAllAgain(size_t max);
@@ -112,7 +114,6 @@ private:
     void OpenLinkAsking(const std::wstring& link);
     void OfferLinks(const ChatEntry& e, POINT screen);
 
-    static constexpr size_t kMaxEntries = 500;
 
     HWND hwnd_ = nullptr;
     const Theme* theme_ = nullptr;
