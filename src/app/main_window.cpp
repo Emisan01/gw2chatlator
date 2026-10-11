@@ -2262,6 +2262,11 @@ bool MainWindow::DoSend(const std::wstring& line, const std::wstring& original) 
             SetStatus(out.error, Tone::Error);
             return false;
         }
+        // How fast the chat reacted (MumbleLink: line open / closed again) – shown on the technical page.
+        lastOpenMs_ = out.openMs;
+        lastConfirmMs_ = out.confirmMs;
+        if (out.confirmedByGame) ++sendsConfirmed_;
+        ++sends_;
     }
 
     const ChatSplit split = SplitChatCommand(line);
@@ -2721,14 +2726,16 @@ RECT MainWindow::ChatArea() const {
     return clipped;
 }
 
-// Key timing for the game's frame rate: every key held at least two frames (+ a little), every step three frames apart.
-// A KeyHoldMs set by hand (not the default 30) is kept.
+// Key timing from what is measured: GW2 reads the keyboard once per frame, so every action (holding a key, the pause
+// between steps, the moment after the chat line opened) gets one measured frame + 10 ms. Opening the chat itself is
+// waited for live (MumbleLink reports the line open). A KeyHoldMs set by hand (not the default 30) is kept.
 SendOptions MainWindow::SendTiming() const {
     SendOptions so = cfg_.send;
     if (gameFps_ <= 0 || so.keyHoldMs != 30) return so;
-    const double frame = 1000.0 / gameFps_;
-    so.keyHoldMs = std::clamp(static_cast<int>(std::ceil(2 * frame)) + 4, 12, 150);
-    so.stepDelayMs = std::max(so.stepDelayMs, static_cast<int>(std::ceil(3 * frame)));
+    const int action = std::clamp(static_cast<int>(std::ceil(1000.0 / gameFps_)) + 10, 15, 150);
+    so.keyHoldMs = action;
+    if (so.stepDelayMs == 80) so.stepDelayMs = action;
+    so.settleMs = action;
     return so;
 }
 
@@ -3468,6 +3475,9 @@ std::wstring MainWindow::TechnicalStatus() {
         line(L"  " + TrF(L"Game: {1} fps \u2192 keys held {2} ms, steps {3} ms apart",
                          {gameFps_ > 0 ? std::to_wstring(static_cast<int>(gameFps_ + 0.5)) : std::wstring(L"?"),
                           std::to_wstring(so.keyHoldMs), std::to_wstring(so.stepDelayMs)}));
+        auto ms = [](int v) { return v < 0 ? std::wstring(L"?") : std::to_wstring(v); };
+        line(L"  " + TrF(L"Last send: chat line open after {1} ms, message out after {2} ms \u00b7 confirmed {3} of {4}",
+                         {ms(lastOpenMs_), ms(lastConfirmMs_), std::to_wstring(sendsConfirmed_), std::to_wstring(sends_)}));
     }
     line(L"  [Spelling] Enabled=" + std::to_wstring(cfg_.spellEnabled) + L"  AutoCorrect=" +
          std::to_wstring(static_cast<int>(cfg_.autoCorrect)) + L"  Suggestions=" + std::to_wstring(cfg_.suggestions) +

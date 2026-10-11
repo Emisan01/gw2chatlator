@@ -463,6 +463,8 @@ extern const I18nEntry kGermanStrings[] = {
      L"Sprache dieses Fensters"},
     {L"LanguageTool – free, no account (20 checks a minute)",
      L"LanguageTool – gratis, ohne Konto (20 Prüfungen pro Minute)"},
+    {L"Last send: chat line open after {1} ms, message out after {2} ms · confirmed {3} of {4}",
+     L"Letztes Senden: Chatzeile offen nach {1} ms, Nachricht raus nach {2} ms · bestätigt {3} von {4}"},
     {L"Latin letters for {1} need the optional LLM (≡ → Settings → Translator)",
      L"Umschrift für {1} braucht das optionale LLM (≡ → Einstellungen → Übersetzer)"},
     {L"Lay over the GW2 chat",

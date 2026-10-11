@@ -286,6 +286,7 @@ private:
     // The game's frame rate from MumbleLink's frame counter (no access to the game): GW2 reads the keyboard once per
     // frame, so the key timing for sending follows it (30 fps needs keys held far longer than 120 fps).
     double gameFps_ = 0;
+    int lastOpenMs_ = -1, lastConfirmMs_ = -1, sends_ = 0, sendsConfirmed_ = 0;
     ULONGLONG fpsSince_ = 0;
     uint32_t fpsTick_ = 0;
     SendOptions SendTiming() const;
