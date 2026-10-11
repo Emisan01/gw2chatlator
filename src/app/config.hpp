@@ -36,7 +36,7 @@ struct Config {
     Engine engine = Engine::Auto;   // translates what you write
     bool chatSameEngine = true;     // the chat uses the same translator ...
     Engine chatEngine = Engine::Auto;  // ... or this one ([Translate] ChatEngine=same|auto|deepl|...)
-    bool keyboardOnly = false;      // only the typing help: no chat reading at all ([Basic] KeyboardOnly)
+    bool keyboardOnly = true;       // only the typing help: no chat reading at all ([Basic] KeyboardOnly)
     std::wstring readLang;                    // empty = Windows language
     std::vector<std::wstring> writeLangs{L"EN-GB", L"FR", L"ES", L"DE"};
     std::wstring chatLang = L"EN-GB";         // into the chat when the writing language has a script GW2 cannot show
@@ -134,6 +134,7 @@ struct Config {
 
     void Load(const std::wstring& dir);
     void SaveWindowRect(HWND wnd, float scale) const;
+    void SaveWindowRect(const RECT& rc, float scale) const;
     void SaveRegion() const;
     void SaveFreeArea() const;
     std::wstring RapidDir() const { return dataDir + L"\\rapid"; }  // RapidOCR models
