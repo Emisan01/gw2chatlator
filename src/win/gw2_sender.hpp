@@ -18,7 +18,6 @@ struct SendOptions {
     int stepDelayMs = 80;      // pause between the key steps (raise for low FPS)
     int keyHoldMs = 30;        // each key is held this long: GW2 reads the keyboard once per frame
     int restoreDelayMs = 250;  // extra wait before the old clipboard is restored
-    int settleMs = 40;         // after the chat line opened: GW2 needs a few frames before it takes typed text
 };
 
 struct SendOutcome {
