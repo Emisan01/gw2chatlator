@@ -3,7 +3,7 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## Unreleased
+## 1.2.0 — 2026-10-11
 
 - **Two translators:** Settings -> Translator -> "For the chat": the chat can use another translator than your own
   messages (e.g. MyMemory or a local model for reading, DeepL for writing). Default: the same one.
