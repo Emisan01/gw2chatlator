@@ -282,6 +282,7 @@ private:
 
     // outgoing state; inputGen_ changes with every edit / language change
     uint64_t inputGen_ = 1, inflightGen_ = 0, previewGen_ = 0, backGen_ = 0;
+    bool grammarOffer_ = false;  // the preview offers to switch on the grammar check (a click does it)
     bool previewOk_ = false, sendPending_ = false;
     std::wstring previewPrefix_, previewBody_, backText_;
     std::vector<std::wstring> parts_;  // chat lines to send, prefix included
