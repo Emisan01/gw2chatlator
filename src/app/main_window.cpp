@@ -2795,8 +2795,8 @@ void MainWindow::PollGame() {
         if (gw2_) UpdateHint();
     }
     // Started with Windows: appear with the game, disappear when it closes. "With the game" = in the 3D world
-    // (MumbleLink carries a character), not already with the launcher or the login screen.
-    const bool ready = gw2_ != nullptr && mumbleState_.live;
+    // (MumbleLink ticks after a map loaded), not already with the launcher, login or character select.
+    const bool ready = gw2_ != nullptr && mumbleState_.inMap;  // a map is loaded and ticking (not launcher, login, character select)
     if (waitForGame_ && (hadGame != (gw2_ != nullptr) || ready != gameReady_)) {
         UpdateTrayTip();
         if (ready && !gameReady_ && !userHidden_) {
