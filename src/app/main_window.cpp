@@ -2764,16 +2764,19 @@ void MainWindow::PollGame() {
         gw2_ = FindGw2Window(mumbleState_.live ? mumbleState_.processId : 0);
         if (gw2_) UpdateHint();
     }
-    // Started with Windows: appear with the game, disappear when it closes.
-    if (waitForGame_ && hadGame != (gw2_ != nullptr)) {
+    // Started with Windows: appear with the game, disappear when it closes. "With the game" = in the 3D world
+    // (MumbleLink carries a character), not already with the launcher or the login screen.
+    const bool ready = gw2_ != nullptr && mumbleState_.live;
+    if (waitForGame_ && (hadGame != (gw2_ != nullptr) || ready != gameReady_)) {
         UpdateTrayTip();
-        if (gw2_ && !userHidden_) {
+        if (ready && !gameReady_ && !userHidden_) {
             ShowWindow(hwnd_, SW_SHOWNOACTIVATE);
             autoHidden_ = false;
         } else if (!gw2_) {
             ShowWindow(hwnd_, SW_HIDE);
         }
     }
+    gameReady_ = ready;
     if (picking_) return;
 
     // First start with the game running: lie where the GW2 chat usually is
