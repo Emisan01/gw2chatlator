@@ -495,7 +495,17 @@ void MainWindow::CreateChildren() {
     log_.SetPalette(cfg_.palette);
     ApplyTabFilter();
 
-    preview_.Create(hwnd_, inst_, &theme_, [this] { SetFocus(input_.Hwnd()); });
+    preview_.Create(hwnd_, inst_, &theme_, [this] {
+        if (grammarOffer_) {  // the offer in the preview: the grammar check (LanguageTool) on, as in Settings -> Writing
+            cfg_.languageTool = true;
+            cfg_.SaveBool(L"Spelling", L"LanguageTool", true);
+            grammarOffer_ = false;
+            SetStatus(Tr(L"Grammar check: on (Settings \u2192 Writing)"), Tone::Ok, 4000);
+            SetTimer(hwnd_, kTimerGrammar, 300, nullptr);
+            UpdatePreview();
+        }
+        SetFocus(input_.Hwnd());
+    });
     words_.Create(hwnd_, inst_, &theme_, [this](size_t i) {
         input_.AcceptSuggestion(i);
         SetFocus(input_.Hwnd());
@@ -598,18 +608,22 @@ void MainWindow::Layout() {
     }
     const int w = std::max(10, static_cast<int>(rc.right) - 2 * m.pad);
     // Like the GW2 chat: the log takes the space; the preview appears while you type.
-    const int previewH = previewVisible_ ? preview_.PreferredHeight() : 0;
+    // Keyboard only: no chat log at all – the preview stays and takes the space above the input.
+    const bool kbd = cfg_.keyboardOnly;
+    const bool showPreview = previewVisible_ || kbd;
+    int previewH = showPreview ? preview_.PreferredHeight() : 0;
     const bool bar = cfg_.suggestions;
     const int barH = bar ? words_.PreferredHeight() : 0;
     const int inputY = rc.bottom - m.foot - m.inputH;
     const int barY = inputY - barH;
-    const int previewY = barY - (previewVisible_ ? m.gap + previewH : 0);
+    if (kbd) previewH = std::max(previewH, barY - m.gap - m.head);
+    const int previewY = barY - (showPreview ? m.gap + previewH : 0);
     const int logH = std::max(theme_.S(40), previewY - m.gap - m.head);
 
     MoveWindow(log_.Hwnd(), m.pad, m.head, w, logH, TRUE);
-    ShowWindow(log_.Hwnd(), SW_SHOW);
+    ShowWindow(log_.Hwnd(), kbd ? SW_HIDE : SW_SHOW);
     MoveWindow(preview_.Hwnd(), m.pad, previewY, w, std::max(1, previewH), TRUE);
-    ShowWindow(preview_.Hwnd(), previewVisible_ ? SW_SHOWNA : SW_HIDE);
+    ShowWindow(preview_.Hwnd(), showPreview ? SW_SHOWNA : SW_HIDE);
     MoveWindow(words_.Hwnd(), m.pad, barY, w, std::max(1, barH), TRUE);
     ShowWindow(words_.Hwnd(), bar ? SW_SHOWNA : SW_HIDE);
     MoveWindow(input_.Hwnd(), m.pad, inputY, w, m.inputH, TRUE);
@@ -935,6 +949,7 @@ void MainWindow::OnClick(POINT pt) {
             if (!cfg_.readerEnabled) ToggleReading();
             else RestartReader();
             UpdateHint();
+            Layout();
             InvalidateChrome();
         } else {
             ToggleReading();
@@ -1534,6 +1549,7 @@ void MainWindow::ShowMainMenu() {
             SetStatus(cfg_.keyboardOnly ? Tr(L"Keyboard only: the chat is not read") : Tr(L"Reading the chat: on"),
                       Tone::Muted, 3000);
             UpdateHint();
+            Layout();
             InvalidateChrome();
             break;
         case kShowSelf:
@@ -2087,6 +2103,22 @@ void MainWindow::UpdatePreview() {
             c.warn = true;
         } else if (c.note.empty()) {
             c.note = HitsText(lastHits_);
+        }
+        // Translating and the grammar check is off: offered once the sentence stands – in the warning colour when the
+        // back-translation says something quite different from what you typed (a click on the preview switches it on).
+        grammarOffer_ = false;
+        if (c.note.empty() && !cfg_.languageTool && !WriteOriginal() &&
+            PrimaryLang(SendLang()) != PrimaryLang(TypingLocale())) {
+            const std::wstring typed = Trim(SplitChatCommand(SanitizeChatText(input_.Text())).body);
+            const bool sentence = !typed.empty() && (typed.back() == L'.' || typed.back() == L'!' || typed.back() == L'?');
+            const bool differs = backGen_ == inputGen_ && !backText_.empty() && !typed.empty() &&
+                                 DiceSimilarity(NormalizeForCompare(backText_), NormalizeForCompare(typed)) < 0.5;
+            if (sentence || differs) {
+                c.note = differs ? Tr(L"The back-translation differs a lot \u2013 click: switch on the grammar check")
+                                 : Tr(L"Click: switch on the grammar check (sentence structure)");
+                c.warn = differs;
+                grammarOffer_ = true;
+            }
         }
     } else {
         c.text = previewBody_.empty() ? ComposePrefix() + text : previewPrefix_ + previewBody_;
@@ -3519,6 +3551,7 @@ void MainWindow::ApplySettings(const Config& next) {
         EndTranslateOnce();
         RestartReader();  // starts again only if reading is wanted
         UpdateHint();
+        Layout();
         InvalidateChrome();
     }
     const bool engineChanged = prev.engine != cfg_.engine || prev.chatSameEngine != cfg_.chatSameEngine ||

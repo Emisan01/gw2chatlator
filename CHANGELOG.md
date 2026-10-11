@@ -16,6 +16,11 @@ diagnosis show it.
 - Glyph reader removed (it no longer found sure rows after 1.1.0 and only patched the OCR), its "Calibrate font
   recognition" menu entry too; "Hybrid" is no own choice any more – re-reading misread words is the second look's job (old "hybrid"
   settings read as automatic).
+- **Keyboard only = a compact typing window:** the chat log is hidden, the preview takes its place.
+- **The sentence from the first letter:** the grey suggestion shows the word *and* the rest of a phrase you usually
+  write after it ("w" -> "wie geht's dir"); Space writes the word, Tab then takes the rest. Only what was learned.
+- **Grammar check offered when it helps:** translating and the check is off → once the sentence stands the preview
+  offers it; in the warning colour when the back-translation differs a lot from what you typed. One click switches it on.
 - The grammar check (LanguageTool, optional) only looks at sentence structure; spelling is the typing help's job.
 
 ## 1.1.0 — 2026-10-09

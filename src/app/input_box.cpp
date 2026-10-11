@@ -372,7 +372,15 @@ void InputBox::DrawGhost(HDC dc) const {
     // A completion shows its rest ("Teq|uatl"); a correction shows the word Space would write ("komt| kommt").
     const bool extends = word.size() > typed.size() && CaseFold(word.substr(0, typed.size())) == CaseFold(typed);
     if (!LatinOnly(typed) || !LatinOnly(word)) return;
-    const std::wstring rest = extends ? word.substr(typed.size()) : L"  \u2192 " + word;
+    std::wstring rest = extends ? word.substr(typed.size()) : L"  \u2192 " + word;
+    // A word you usually go on with in the same way: the whole learned phrase right away ("w|ie geht's dir"); Space
+    // writes the word, then Tab takes the rest (the next-word ghost shows it).
+    if (extends && spell_) {
+        std::wstring p1, p2;
+        WordsBefore(text, c.replace.start, &p1, &p2);
+        for (const std::wstring& next : spell_->Model().ContinueSure(word, p1, 6))
+            if (LatinOnly(next)) rest += L" " + next;
+    }
 
     const int saved = SaveDC(dc);
     SelectObject(dc, theme_->fontText);
