@@ -24,7 +24,6 @@ add_library(gct_core STATIC
     src/core/cloud_mt_protocol.cpp
     src/core/corrections.cpp
     src/core/second_look.cpp
-    src/core/glyph_reader.cpp
     src/core/typo_memory.cpp
     src/core/my_words.cpp
     src/core/rapid_rec.cpp
