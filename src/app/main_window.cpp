@@ -721,6 +721,9 @@ void MainWindow::ApplyTypingLanguage() {
     }
     spell_.UseLearnedLanguage(PrimaryLang(typing), cfg_.LearnedDir());
     input_.RefreshSuggestions();
+    backText_.clear();
+    ++inputGen_;
+    StartTranslation();
 }
 
 void MainWindow::Paint() {
@@ -749,7 +752,7 @@ void MainWindow::Paint() {
     {
         const int d = t.S(9);
         const int cx = (readDotRect_.left + readDotRect_.right) / 2, cy = m.head / 2;
-        HBRUSH fill = CreateSolidBrush(cfg_.readerEnabled ? RGB(150, 155, 165) : RGB(0, 0, 0));
+        HBRUSH fill = CreateSolidBrush(ReadingWanted() ? RGB(150, 155, 165) : RGB(0, 0, 0));
         HPEN ring = CreatePen(PS_SOLID, std::max(1, t.S(1)), RGB(120, 125, 135));
         HGDIOBJ oldB = SelectObject(dc, fill), oldP = SelectObject(dc, ring);
         Ellipse(dc, cx - d / 2, cy - d / 2, cx + d / 2 + 1, cy + d / 2 + 1);
@@ -925,7 +928,17 @@ void MainWindow::OnClick(POINT pt) {
     if (PtInRect(&closeRect_, pt)) PostMessageW(hwnd_, WM_CLOSE, 0, 0);
     else if (PtInRect(&collapseRect_, pt)) ToggleCollapse();
     else if (PtInRect(&menuRect_, pt)) ShowMainMenu();
-    else if (PtInRect(&readDotRect_, pt)) ToggleReading();
+    else if (PtInRect(&readDotRect_, pt)) {  // the chat translation on / off (the keyboard is not affected)
+        if (cfg_.keyboardOnly) {
+            cfg_.keyboardOnly = false;
+            cfg_.SaveBool(L"Basic", L"KeyboardOnly", false);
+            if (!cfg_.readerEnabled) ToggleReading();
+            else RestartReader();
+            InvalidateChrome();
+        } else {
+            ToggleReading();
+        }
+    }
     else if (PtInRect(&readRect_, pt)) ShowReadMenu();
     else if (PtInRect(&channelRect_, pt)) ShowChannelMenu();
     else if (PtInRect(&chatRect_, pt)) ShowChatLangMenu();
@@ -1024,11 +1037,6 @@ void MainWindow::SetReadLang(const std::wstring& code) {
     SetStatus(TrF(L"New chat lines are translated into {1}", {LanguageLabel(code)}), Tone::Ok, 4000);
     log_.TranslateAllAgain(50);  // what is shown already: into the new language too
     InvalidateChrome();
-    if (PreviewIsCurrent()) {
-        backText_.clear();
-        StartBackTranslation();
-        UpdatePreview();
-    }
 }
 
 void MainWindow::SwitchTab(size_t idx) {
@@ -1466,15 +1474,20 @@ void MainWindow::ShowMainMenu() {
     const ModalScope modal;
     enum : UINT {
         kSetup = 1, kSettings, kRegion, kReader, kCover, kDock, kQuit, kGw2Chat, kFreeArea, kOnce, kOnlyTr, kShowSelf,
-        kCalibrateFont,
+        kCalibrateFont, kKeyboardOnly,
         kUiLangBase = 100,  // + index into UiLanguages()
     };
     auto check = [](bool on) { return static_cast<UINT>(on ? MF_CHECKED : MF_UNCHECKED); };
     auto add = [](HMENU m, UINT flags, UINT id, const std::wstring& text) { AppendMenuW(m, flags, id, text.c_str()); };
     // Short and flat: the everyday actions. Everything else is in Settings.
     HMENU menu = CreatePopupMenu();
-    add(menu, MF_STRING | check(cfg_.readerEnabled), kReader, Tr(L"Automatic translation (permanent)"));
-    add(menu, MF_STRING | (cfg_.readerEnabled || once_ ? MF_GRAYED : 0), kOnce, Tr(L"Translate once now"));
+    // Keyboard only: the chat translation (reading) is switched off as a whole; the typing help stays.
+    add(menu, MF_STRING | check(cfg_.keyboardOnly), kKeyboardOnly, Tr(L"Keyboard only (no chat reading)"));
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    const UINT readingOff = cfg_.keyboardOnly ? MF_GRAYED : 0;
+    add(menu, MF_STRING | readingOff | check(cfg_.readerEnabled), kReader, Tr(L"Automatic translation (permanent)"));
+    add(menu, MF_STRING | (cfg_.readerEnabled || once_ || cfg_.keyboardOnly ? MF_GRAYED : 0), kOnce,
+        Tr(L"Translate once now"));
     add(menu, MF_STRING | check(cfg_.onlyTranslations), kOnlyTr, Tr(L"Show only translations"));
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     add(menu, MF_STRING | (cfg_.freeArea ? MF_UNCHECKED : MF_CHECKED), kGw2Chat, Tr(L"Read the GW2 chat"));
@@ -1513,6 +1526,15 @@ void MainWindow::ShowMainMenu() {
         case kFreeArea: PickFreeArea(); break;
         case kReader: ToggleReading(); break;
         case kOnce: TranslateOnce(); break;
+        case kKeyboardOnly:
+            cfg_.keyboardOnly = !cfg_.keyboardOnly;
+            cfg_.SaveBool(L"Basic", L"KeyboardOnly", cfg_.keyboardOnly);
+            EndTranslateOnce();
+            RestartReader();
+            SetStatus(cfg_.keyboardOnly ? Tr(L"Keyboard only: the chat is not read") : Tr(L"Reading the chat: on"),
+                      Tone::Muted, 3000);
+            InvalidateChrome();
+            break;
         case kShowSelf:
             // Our windows are normally hidden from every capture (also Win+Print, Snipping Tool) so the reader never
             // reads them; for one minute they are visible and the reader uses no picture.
@@ -1896,7 +1918,9 @@ void MainWindow::StartTranslation() {
             SendNextPart();
         }
     };
-    if (WriteOriginal() || body.empty()) {  // "nur Korrektur", or "/wave"
+    // "only corrected", "/wave", or you write in the language the chat gets: nothing to translate – the typing help
+    // (spelling, Windows' prediction, learning) is all that runs.
+    if (WriteOriginal() || body.empty() || PrimaryLang(SendLang()) == PrimaryLang(TypingLocale())) {
         lastHits_.clear();
         finish(body);
         return;
@@ -1986,9 +2010,9 @@ void MainWindow::StartBackTranslation() {
     if ((!cfg_.backTranslate && !WriteNeedsChatLang()) || !PreviewIsCurrent() || WriteOriginal() ||
         previewBody_.empty())
         return;
-    // Writing in a language GW2 cannot show: the "back" text is your message in that
-    // language (shown big); otherwise it is the check in your reading language.
-    const std::wstring backTarget = WriteNeedsChatLang() ? WriteLang() : readLang_;
+    // The check of what goes into the chat, in the language you write in – the keyboard never uses the reading
+    // language (that belongs to the chat translation).
+    const std::wstring backTarget = WriteNeedsChatLang() ? WriteLang() : PrimaryLang(TypingLocale());
     if (PrimaryLang(SendLang()) == PrimaryLang(backTarget)) return;  // you can read it anyway
     ProtectedText p = ProtectForTranslation(previewBody_, nullptr, &spell_.KeepWords(), &speakers_);
     if (!HasTranslatableText(p.segments)) return;
