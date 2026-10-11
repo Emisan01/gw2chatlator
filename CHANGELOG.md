@@ -3,6 +3,13 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## Unreleased
+
+- **Reading check with your own lines:** every line you send that comes back through the text recognition is compared
+  letter by letter with what was really sent – an exact hit rate of the reading on your screen ("read exactly 48/50"
+  in the footer while reading, details incl. character errors on Settings → Technical). The gate for taking over the
+  chat later: only when this stays at 100 %.
+
 ## 1.2.1 — 2026-10-11
 
 - **Fixed: the GW2 input line glued to the last message** ("… O tüldeJCABCJ" – "[Gilde][ABC]" with misread

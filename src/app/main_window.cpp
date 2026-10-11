@@ -929,6 +929,7 @@ void MainWindow::Paint() {
                 color = Theme::kOk;
                 const std::wstring quota = MyMemoryQuotaText();  // small and quiet, only with MyMemory
                 if (!quota.empty()) text += L"  \u00b7  " + quota;
+                if (const std::wstring rc = ReadCheckText(); !rc.empty()) text += L"  \u00b7  " + rc;
             } else if (!gw2_) {
                 text = Tr(L"GW2 not found");
             } else {
@@ -2412,6 +2413,22 @@ bool MainWindow::NeedsTranslation(const std::wstring& text, std::wstring* detect
     return !detected->empty() && *detected != PrimaryLang(readLang_);
 }
 
+void MainWindow::NoteReadCheck(const std::wstring& sent, const std::wstring& read) {
+    const std::wstring a = Trim(sent), b = Trim(read);
+    if (a.empty()) return;
+    readChecks_.push_back(a == b);
+    while (readChecks_.size() > 50) readChecks_.pop_front();
+    readCheckChars_ += a.size();
+    readCheckErrors_ += static_cast<uint64_t>(EditDistance(a, b, static_cast<int>(a.size() + b.size())));
+    InvalidateChrome();
+}
+
+std::wstring MainWindow::ReadCheckText() const {
+    if (readChecks_.empty()) return {};
+    const size_t exact = static_cast<size_t>(std::count(readChecks_.begin(), readChecks_.end(), true));
+    return TrF(L"read exactly {1}/{2}", {std::to_wstring(exact), std::to_wstring(readChecks_.size())});
+}
+
 MainWindow::Own MainWindow::ClassifyOwn(const ChatMessage& m) {
     const ULONGLONG now = GetTickCount64();
     // Prefer a sent line that has not come back yet ("inc", "inc" sent twice).
@@ -2421,6 +2438,7 @@ MainWindow::Own MainWindow::ClassifyOwn(const ChatMessage& m) {
             if (DiceSimilarity(m.text, s.normalized) < 0.8) continue;
             if (!s.echoed) {
                 s.echoed = true;
+                NoteReadCheck(s.exact, m.text);
                 // "Active channel" sends: the colour in the game chat tells where it went.
                 log_.Update(s.entryId, [&](ChatEntry& e) {
                     if (e.channel == Channel::Unknown && m.channel != Channel::System) e.channel = m.channel;
@@ -3463,6 +3481,13 @@ std::wstring MainWindow::TechnicalStatus() {
              {std::to_wstring(stats_.translated), std::to_wstring(stats_.failed), num(stats_.avgTranslateMs),
               std::to_wstring(inQueue_.size()), std::to_wstring(inFlight_)}));
     if (const std::wstring q = MyMemoryQuotaText(); !q.empty()) line(L"  " + q);
+    if (!readChecks_.empty()) {
+        const size_t exact = static_cast<size_t>(std::count(readChecks_.begin(), readChecks_.end(), true));
+        wchar_t err[16];
+        swprintf(err, 16, L"%.2f", readCheckChars_ ? 100.0 * static_cast<double>(readCheckErrors_) / static_cast<double>(readCheckChars_) : 0.0);
+        line(L"  " + TrF(L"Reading check (your own lines): {1} of the last {2} read exactly \u00b7 character errors {3} %",
+                         {std::to_wstring(exact), std::to_wstring(readChecks_.size()), err}));
+    }
     line(TrF(L"  Second look: {1} unknown words read again, {2} corrected",
              {std::to_wstring(stats_.secondLooks), std::to_wstring(stats_.secondFixes)}));
     line(TrF(L"  Learned words: {1}", {std::to_wstring(spell_.Model().Size())}));
