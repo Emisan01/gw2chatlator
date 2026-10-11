@@ -75,10 +75,9 @@ struct Config {
     int ocrScale = 0;             // 0 = automatic (line spacing), 1-4 fixed
     bool secondLook = true;       // unknown words are read once more, enlarged more (taken only if then a real word)
     bool showSystemLines = false;
-    // Like the GW2 chat: the log empties on a map change (MumbleLink map id) unless kept; messages older than
-    // keepMinutes go (0 = as long as the tool runs). [Reader] KeepAfterMap / KeepMinutes.
+    // Like the GW2 chat: a map change (MumbleLink map id) takes the say / map chat out of the log unless kept.
+    // [Reader] KeepAfterMap.
     bool keepAfterMap = false;
-    int keepMinutes = 0;
     bool onlyTranslations = true;  // the log shows only lines that were (or can be) translated
     bool saveCaptures = false;
     bool regionSet = false;

@@ -54,7 +54,7 @@ enum : int {
     // Translator
     kEngine, kEngineNote, kLocalModel, kPull, kLocalInfo, kGetOllama, kLlmFindLocal, kPullStatus, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
     kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
-    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kStartMenu, kOnlyTr, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare, kWriteIn, kLtProvider, kLtTest, kLtStatus, kChatEngine, kKeyboardOnly, kLearnFile, kKeepMap, kKeepTime,
+    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kStartMenu, kOnlyTr, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare, kWriteIn, kLtProvider, kLtTest, kLtStatus, kChatEngine, kKeyboardOnly, kLearnFile, kKeepMap,
     // Game & start
     kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kStatus, kRefresh, kSetup,
     // Wizard
@@ -879,16 +879,8 @@ private:
         Check(kFocusGameChat, Tr(L"Focus translator when in-game chat is opened"), cfg_.focusOnGameChat, kLabelX,
               Y(r++), kW - 50);
         // Like the GW2 chat, the log empties on a map change – unless kept; and old messages may go after a while.
-        Check(kKeepMap, Tr(L"Keep say and map chat after a map change"), cfg_.keepAfterMap, kLabelX, Y(r), 270);
-        Label(Tr(L"Keep messages"), kLabelX + 280, Y(r), 110);
-        {
-            static const int kMinutes[] = {0, 15, 30, 60};
-            int sel = 0;
-            for (int i = 0; i < 4; ++i)
-                if (cfg_.keepMinutes == kMinutes[i]) sel = i;
-            Combo(kKeepTime, {Tr(L"always"), Tr(L"15 minutes"), Tr(L"30 minutes"), Tr(L"60 minutes")}, sel,
-                  kLabelX + 390, Y(r++), kW - kLabelX - 410);
-        }
+        Check(kKeepMap, Tr(L"Keep the chat when GW2 clears it (map change)"), cfg_.keepAfterMap, kLabelX, Y(r++),
+              kW - 50);
         Label(Tr(L"Connections (read only, nothing is hooked)"), kLabelX, Y(r++), kW - 50);
         Add(L"EDIT", L"", ES_MULTILINE | ES_READONLY | WS_VSCROLL | ES_AUTOVSCROLL, kLabelX, Y(r) - 4, kW - 44, 90,
             kStatus, WS_EX_CLIENTEDGE);
@@ -1655,11 +1647,6 @@ private:
         if (interval > 0) c.readerIntervalMs = std::clamp(interval, 200, 2000);
         c.onlyTranslations = Checked(kOnlyTr);
         c.keepAfterMap = Checked(kKeepMap);
-        {
-            static const int kMinutes[] = {0, 15, 30, 60};
-            const int sel = Sel(kKeepTime);
-            if (sel >= 0 && sel < 4) c.keepMinutes = kMinutes[sel];
-        }
         c.showSystemLines = !Checked(kShowSystem);  // the box says "filter
         c.secondLook = Checked(kSecondLook);
         c.saveCaptures = Checked(kCaptures);
