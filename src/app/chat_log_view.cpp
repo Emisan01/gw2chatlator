@@ -94,16 +94,6 @@ void ChatLogView::Update(uint64_t id, const std::function<void(ChatEntry&)>& cha
     InvalidateRect(hwnd_, nullptr, FALSE);
 }
 
-void ChatLogView::DropOlderThan(unsigned long long tick) {
-    size_t n = 0;
-    while (n < entries_.size() && entries_[n].added < tick) ++n;  // chronological: the oldest are in front
-    if (n == 0) return;
-    entries_.erase(entries_.begin(), entries_.begin() + static_cast<std::ptrdiff_t>(n));
-    layoutDirty_ = true;
-    Relayout();
-    InvalidateRect(hwnd_, nullptr, FALSE);
-}
-
 void ChatLogView::DropWhere(const std::function<bool(const ChatEntry&)>& drop) {
     const size_t before = entries_.size();
     entries_.erase(std::remove_if(entries_.begin(), entries_.end(), drop), entries_.end());
@@ -111,6 +101,19 @@ void ChatLogView::DropWhere(const std::function<bool(const ChatEntry&)>& drop) {
     layoutDirty_ = true;
     Relayout();
     InvalidateRect(hwnd_, nullptr, FALSE);
+}
+
+std::wstring ChatLogView::AsText(unsigned long long since) const {
+    std::wstring out;
+    for (const ChatEntry& e : entries_) {
+        if (e.added < since) continue;
+        const std::wstring who = e.kind == ChatEntry::Kind::Outgoing
+                                     ? (e.speaker.empty() ? Tr(L"You") : TrF(L"To {1}", {e.speaker}))
+                                     : e.speaker;
+        out += (who.empty() ? L"" : who + L": ") + e.main + L"\r\n";
+        if (!e.original.empty() && e.original != e.main) out += L"    (" + e.original + L")\r\n";
+    }
+    return out;
 }
 
 void ChatLogView::Clear() {

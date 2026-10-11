@@ -1535,7 +1535,7 @@ void MainWindow::ShowMainMenu() {
     const ModalScope modal;
     enum : UINT {
         kSetup = 1, kSettings, kRegion, kReader, kCover, kDock, kQuit, kGw2Chat, kFreeArea, kOnce, kOnlyTr, kShowSelf,
-        kKeyboardOnly,
+        kKeyboardOnly, kClearChat, kSaveChat = 50,  // 50 = everything, 51.. = the last 1/5/10/20/60 minutes
         kUiLangBase = 100,  // + index into UiLanguages()
     };
     auto check = [](bool on) { return static_cast<UINT>(on ? MF_CHECKED : MF_UNCHECKED); };
@@ -1556,6 +1556,16 @@ void MainWindow::ShowMainMenu() {
     add(menu, MF_STRING, kRegion, Tr(L"Set the chat area …"));
     add(menu, MF_STRING | (cfg_.regionSet ? 0 : MF_GRAYED), kCover, Tr(L"Lay over the GW2 chat (replaces it)"));
     add(menu, MF_STRING | check(cfg_.dock), kDock, Tr(L"Dock to GW2 (moves with it)"));
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    // Save: valuable things said in the chat (a boss explained over ten minutes …) – the last few minutes or all.
+    HMENU save = CreatePopupMenu();
+    static const int kSaveMinutes[] = {1, 5, 10, 20, 60};
+    for (int i = 0; i < 5; ++i)
+        add(save, MF_STRING, kSaveChat + 1 + i, TrF(L"the last {1} minutes", {std::to_wstring(kSaveMinutes[i])}));
+    add(save, MF_STRING, kSaveChat, Tr(L"everything"));
+    AppendMenuW(menu, MF_POPUP | (log_.Empty() ? MF_GRAYED : 0), reinterpret_cast<UINT_PTR>(save),
+                Tr(L"Save the chat as text …").c_str());
+    add(menu, MF_STRING | (log_.Empty() ? MF_GRAYED : 0), kClearChat, Tr(L"Clear the chat"));
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     add(menu, MF_STRING, kSettings, Tr(L"Settings …"));
     add(menu, MF_STRING, kSetup, Tr(L"Setup (install, mark the chat) …"));
@@ -1617,6 +1627,27 @@ void MainWindow::ShowMainMenu() {
                       Tone::Muted, 3500);
             break;
         case kDock: SetDock(!cfg_.dock); break;
+        case kSaveChat:
+        case kSaveChat + 1:
+        case kSaveChat + 2:
+        case kSaveChat + 3:
+        case kSaveChat + 4:
+        case kSaveChat + 5: {  // only on your click; the file goes where you choose
+            static const int kMinutes[] = {0, 1, 5, 10, 20, 60};
+            const ULONGLONG span = static_cast<ULONGLONG>(kMinutes[cmd - kSaveChat]) * 60000;
+            const ULONGLONG now = GetTickCount64();
+            const ULONGLONG since = span && now > span ? now - span : 0;
+            const std::wstring path = PickTextFile(hwnd_, Tr(L"Save the chat as text …"), true, L"gw2-chat.txt");
+            if (!path.empty())
+                SetStatus(WriteFileAtomic(path, "\xEF\xBB\xBF" + ToUtf8(log_.AsText(since))) ? Tr(L"Chat saved")
+                                                                                            : Tr(L"Could not write the file."),
+                          Tone::Ok, 4000);
+            break;
+        }
+        case kClearChat:
+            log_.Clear();
+            UpdateHint();
+            break;
         case kCover: CoverChat(); break;
         case kQuit: PostMessageW(hwnd_, WM_CLOSE, 0, 0); break;
         default:
@@ -2795,7 +2826,7 @@ void MainWindow::PollGame() {
         if (gw2_) UpdateHint();
     }
     // Like the GW2 chat: a new map takes what belonged to the map – say, map chat and its notices (unless kept). The
-    // party, squad, guild and whispers stay (a party lives on across maps); messages older than the chosen time go.
+    // party, squad, guild and whispers stay (a party lives on across maps).
     if (mumbleState_.inMap && mumbleState_.identity.mapId != 0) {
         if (lastMapId_ != 0 && mumbleState_.identity.mapId != lastMapId_ && !cfg_.keepAfterMap)
             log_.DropWhere([](const ChatEntry& e) {
@@ -2803,11 +2834,7 @@ void MainWindow::PollGame() {
             });
         lastMapId_ = mumbleState_.identity.mapId;
     }
-    if (cfg_.keepMinutes > 0 && now - lastKeepCheck_ > 10000) {
-        lastKeepCheck_ = now;
-        const ULONGLONG keep = static_cast<ULONGLONG>(cfg_.keepMinutes) * 60000;
-        if (now > keep) log_.DropOlderThan(now - keep);
-    }
+
     // Started with Windows: appear with the game, disappear when it closes. "With the game" = in the 3D world
     // (MumbleLink ticks after a map loaded), not already with the launcher, login or character select.
     const bool ready = gw2_ != nullptr && mumbleState_.inMap;  // a map is loaded and ticking (not launcher, login, character select)
