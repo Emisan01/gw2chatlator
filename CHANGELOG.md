@@ -5,6 +5,11 @@ diagnosis show it.
 
 ## Unreleased
 
+- **A menu that explains itself:** ≡ is grouped by what you want to do – WRITE, READ THE CHAT TRANSLATED, WINDOW, HELP &
+  SETTINGS – with "What can this tool do?" on top of help: the whole tool on one page (writing, learning, the chips
+  below the input, reading, the handy keys, nothing in the game). It shows once by itself after the setup (first start
+  of GW2 Keyboard), then stays in the menu.
+
 - **Chat like in GW2:** a map change (MumbleLink map id) takes the say and map chat and the notices of that map out of
   the log – the party, squad, guild and whispers stay. Settings → Game: "Keep the chat when GW2 clears it".
 - **Save the chat** (menu ≡): the last 1 / 5 / 10 / 20 / 60 minutes or everything as a text file (translation and

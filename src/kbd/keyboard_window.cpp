@@ -238,6 +238,7 @@ int KeyboardWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
         SetForegroundWindow(hwnd_);
         SetFocus(input_.Hwnd());
         SetStatus(TrF(L"Translator: {1}", {translator_->Name()}), Tone::Ok, 5000);
+        if (!cfg_.tourShown) ShowTour();  // the first start: what it can do
     }
 
     MSG msg;
@@ -792,13 +793,18 @@ void KeyboardWindow::ShowSendMenu() {
 
 void KeyboardWindow::ShowMainMenu() {
     const ModalScope modal;
-    enum : UINT { kSettings = 1, kDock, kQuit, kChat, kUiLangBase = 100 };
+    enum : UINT { kSettings = 1, kDock, kQuit, kChat, kTour, kUiLangBase = 100 };
     auto check = [](bool on) { return static_cast<UINT>(on ? MF_CHECKED : MF_UNCHECKED); };
+    auto heading = [](HMENU m, const std::wstring& text) { AppendMenuW(m, MF_STRING | MF_GRAYED, 0, text.c_str()); };
     HMENU menu = CreatePopupMenu();
+    heading(menu, Tr(L"READ THE CHAT TRANSLATED"));
     AppendMenuW(menu, MF_STRING, kChat, Tr(L"Activate chat translation (reads the GW2 chat) …").c_str());
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    heading(menu, Tr(L"WINDOW"));
     AppendMenuW(menu, MF_STRING | check(cfg_.dock), kDock, Tr(L"Dock to GW2 (moves with it)").c_str());
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    heading(menu, Tr(L"HELP & SETTINGS"));
+    AppendMenuW(menu, MF_STRING | MF_DEFAULT, kTour, Tr(L"What can this tool do? (2 minutes)").c_str());
     AppendMenuW(menu, MF_STRING, kSettings, Tr(L"Settings …").c_str());
     HMENU ui = CreatePopupMenu();
     for (size_t i = 0; i < UiLanguages().size(); ++i)
@@ -813,10 +819,33 @@ void KeyboardWindow::ShowMainMenu() {
         static_cast<UINT>(TrackPopupMenu(menu, MenuFlags(TPM_RETURNCMD | TPM_NONOTIFY), pt.x, pt.y, 0, hwnd_, nullptr));
     DestroyMenu(menu);
     if (cmd == kSettings) OpenSettings(SettingsPage::Writing);
+    else if (cmd == kTour) ShowTour();
     else if (cmd == kDock) SetDock(!cfg_.dock);
     else if (cmd == kChat) ActivateChatTranslation();
     else if (cmd == kQuit) PostMessageW(hwnd_, WM_CLOSE, 0, 0);
     else if (cmd >= kUiLangBase && cmd < kUiLangBase + UiLanguages().size()) SetUiLanguage(UiLanguages()[cmd - kUiLangBase].lang);
+}
+
+void KeyboardWindow::ShowTour() {
+    if (!cfg_.tourShown) {
+        cfg_.tourShown = true;
+        cfg_.SaveBool(L"General", L"TourShown", true);
+    }
+    const ModalScope modal;
+    MessageBoxW(hwnd_,
+                Tr(L"What GW2 Keyboard does for you\n\n"
+           L"WRITE in your language \u2013 the chat gets it translated. You see the translation above the input and, small, "
+           L"what it means in your language again. Enter sends, Ctrl+Enter sends what you typed.\n\n"
+           L"IT LEARNS HOW YOU TYPE: the grey word after the cursor \u2013 Space takes it, Tab shows the next idea. It knows "
+           L"the phrases you use and your typical typos, and it never changes a word you typed right.\n\n"
+           L"BELOW THE INPUT: where it goes (channel, whisper), the language you write in, the language the chat gets.\n\n"
+           L"HANDY: Ctrl+L switches the language, Up brings back what you sent, right-click a word to teach a name or "
+           L"explain your slang.\n\n"
+           L"Nothing runs inside the game: no add-on, no hook \u2013 it sends only when you press Enter.")
+                    .c_str(),
+                Tr(L"What can this tool do?").c_str(),
+                MB_OK | MB_ICONINFORMATION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0));
+    SetFocus(input_.Hwnd());
 }
 
 void KeyboardWindow::ActivateChatTranslation() {

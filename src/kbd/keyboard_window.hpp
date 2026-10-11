@@ -88,6 +88,7 @@ private:
     void ShowTypeLangMenu();
     void ShowSendMenu();
     void ShowMainMenu();
+    void ShowTour();
     void SetUiLanguage(UiLang lang);
     // "Activate chat translation": the full GW2 Chat Translator (reading the chat) takes over – started with reading
     // on, this window ends (both use the same settings and learned words).

@@ -48,6 +48,7 @@ struct Config {
     // [Basic] MyMemory
     std::wstring basicEmail;
     bool myMemoryNoticeShown = false;  // the one-time privacy notice was shown
+    bool tourShown = false;            // "What can this tool do?" was shown once by itself ([General] TourShown)
     std::wstring myMemoryDay;          // "20261006": the day myMemoryUsed counts for
     int myMemoryUsed = 0;              // characters sent today (free: 5,000 a day, 50,000 with an e-mail)
     // [DeepL]

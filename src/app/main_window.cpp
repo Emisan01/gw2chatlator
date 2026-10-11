@@ -328,6 +328,7 @@ int MainWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
     }
     if (markChat || coverChat) PostMessageW(hwnd_, WM_APP_FIRSTRUN, markChat ? 1 : 0, coverChat ? 1 : 0);
     else if (!cfg_.setupDone && !waitForGame_) PostMessageW(hwnd_, WM_APP_FIRSTRUN, 2, 0);
+    else if (!cfg_.tourShown && !waitForGame_) PostMessageW(hwnd_, WM_APP_FIRSTRUN, 3, 0);  // once: what it can do
 
     MSG m;
     while (GetMessageW(&m, nullptr, 0, 0) > 0) {
@@ -1535,16 +1536,19 @@ void MainWindow::ShowMainMenu() {
     const ModalScope modal;
     enum : UINT {
         kSetup = 1, kSettings, kRegion, kReader, kCover, kDock, kQuit, kGw2Chat, kFreeArea, kOnce, kOnlyTr, kShowSelf,
-        kKeyboardOnly, kClearChat, kSaveChat = 50,  // 50 = everything, 51.. = the last 1/5/10/20/60 minutes
+        kKeyboardOnly, kClearChat, kTour, kSaveChat = 50,  // 50 = everything, 51.. = the last 1/5/10/20/60 minutes
         kUiLangBase = 100,  // + index into UiLanguages()
     };
     auto check = [](bool on) { return static_cast<UINT>(on ? MF_CHECKED : MF_UNCHECKED); };
     auto add = [](HMENU m, UINT flags, UINT id, const std::wstring& text) { AppendMenuW(m, flags, id, text.c_str()); };
-    // Short and flat: the everyday actions. Everything else is in Settings.
+    // By what you want to do – someone who never saw the tool finds their way (grey lines are headings).
+    auto heading = [&](HMENU m, const std::wstring& text) { AppendMenuW(m, MF_STRING | MF_GRAYED, 0, text.c_str()); };
     HMENU menu = CreatePopupMenu();
+    heading(menu, Tr(L"WRITE"));
     // Keyboard only: the chat translation (reading) is switched off as a whole; the typing help stays.
     add(menu, MF_STRING | check(cfg_.keyboardOnly), kKeyboardOnly, Tr(L"Keyboard only (no chat reading)"));
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    heading(menu, Tr(L"READ THE CHAT TRANSLATED"));
     const UINT readingOff = cfg_.keyboardOnly ? MF_GRAYED : 0;
     add(menu, MF_STRING | readingOff | check(cfg_.readerEnabled), kReader, Tr(L"Automatic translation (permanent)"));
     add(menu, MF_STRING | (cfg_.readerEnabled || once_ || cfg_.keyboardOnly ? MF_GRAYED : 0), kOnce,
@@ -1555,8 +1559,6 @@ void MainWindow::ShowMainMenu() {
     add(menu, MF_STRING | check(cfg_.freeArea), kFreeArea, Tr(L"Translate a screen area (any text) …"));
     add(menu, MF_STRING, kRegion, Tr(L"Set the chat area …"));
     add(menu, MF_STRING | (cfg_.regionSet ? 0 : MF_GRAYED), kCover, Tr(L"Lay over the GW2 chat (replaces it)"));
-    add(menu, MF_STRING | check(cfg_.dock), kDock, Tr(L"Dock to GW2 (moves with it)"));
-    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     // The chat memory, like a contingent – only here, never as a notice: when full the oldest are overwritten (like GW2).
     {
         const std::wstring used = std::to_wstring(log_.Count()), max = std::to_wstring(ChatLogView::kMaxEntries);
@@ -1574,10 +1576,15 @@ void MainWindow::ShowMainMenu() {
                 Tr(L"Save the chat as text …").c_str());
     add(menu, MF_STRING | (log_.Empty() ? MF_GRAYED : 0), kClearChat, Tr(L"Clear the chat"));
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    add(menu, MF_STRING, kSettings, Tr(L"Settings …"));
-    add(menu, MF_STRING, kSetup, Tr(L"Setup (install, mark the chat) …"));
+    heading(menu, Tr(L"WINDOW"));
+    add(menu, MF_STRING | check(cfg_.dock), kDock, Tr(L"Dock to GW2 (moves with it)"));
     add(menu, MF_STRING | check(ModalScope::showOnScreenshots), kShowSelf,
         Tr(L"Show this tool on screenshots (1 minute)"));
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    heading(menu, Tr(L"HELP & SETTINGS"));
+    add(menu, MF_STRING | MF_DEFAULT, kTour, Tr(L"What can this tool do? (2 minutes)"));
+    add(menu, MF_STRING, kSettings, Tr(L"Settings …"));
+    add(menu, MF_STRING, kSetup, Tr(L"Setup (install, mark the chat) …"));
     HMENU ui = CreatePopupMenu();
     for (size_t i = 0; i < UiLanguages().size(); ++i)
         add(ui, MF_STRING | check(UiLanguages()[i].lang == cfg_.uiLang), kUiLangBase + static_cast<UINT>(i),
@@ -1594,6 +1601,7 @@ void MainWindow::ShowMainMenu() {
 
     switch (cmd) {
         case kSetup: RunSetup(); break;
+        case kTour: ShowTour(); break;
         case kSettings: OpenSettings(SettingsPage::General); break;
         case kRegion:
             SetFreeArea(false);
@@ -1662,6 +1670,32 @@ void MainWindow::ShowMainMenu() {
                 SetUiLanguage(UiLanguages()[cmd - kUiLangBase].lang);
             break;
     }
+}
+
+// "What can this tool do?": the whole tool on one page, for someone who never saw it. Once by itself after the
+// setup, then in the menu.
+void MainWindow::ShowTour() {
+    if (!cfg_.tourShown) {
+        cfg_.tourShown = true;
+        cfg_.SaveBool(L"General", L"TourShown", true);
+    }
+    const ModalScope modal;
+    MessageBoxW(hwnd_,
+                Tr(L"What GW2 Chat Translator does for you\n\n"
+           L"WRITE in your language \u2013 the chat gets it translated. You see the translation above the input and, small, "
+           L"what it means in your language again. Enter sends, Ctrl+Enter sends what you typed.\n\n"
+           L"IT LEARNS HOW YOU TYPE: the grey word after the cursor \u2013 Space takes it, Tab shows the next idea. It knows "
+           L"the phrases you use and your typical typos, and it never changes a word you typed right.\n\n"
+           L"BELOW THE INPUT: where it goes (channel, whisper), the language you write in, the language the chat gets.\n\n"
+           L"READ THE CHAT translated: switch it on with the dot at the top. Click a name to whisper back, click a message "
+           L"to translate it again.\n\n"
+           L"HANDY: Ctrl+L switches the language, Up brings back what you sent, right-click a word to teach a name or "
+           L"explain your slang.\n\n"
+           L"Nothing runs inside the game: no add-on, no hook \u2013 it reads the screen and sends only when you press Enter.")
+                    .c_str(),
+                Tr(L"What can this tool do?").c_str(),
+                MB_OK | MB_ICONINFORMATION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0));
+    SetFocus(input_.Hwnd());
 }
 
 void MainWindow::SetUiLanguage(UiLang lang) {
@@ -3990,6 +4024,9 @@ LRESULT MainWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
         case WM_APP_FIRSTRUN:
             if (wp == 2) {
                 RunSetup();
+                if (!cfg_.tourShown) ShowTour();  // right after the setup: what it can do
+            } else if (wp == 3) {
+                ShowTour();
             } else {
                 if (wp == 1 || !cfg_.regionSet) PickRegion();
                 if (lp == 1 && cfg_.regionSet) CoverChat();
