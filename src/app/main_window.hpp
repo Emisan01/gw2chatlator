@@ -112,6 +112,7 @@ private:
     void ShowWriteMenu();
     void ShowChannelMenu();
     void ShowMainMenu();
+    void ShowTour();  // "What can this tool do?" – once by itself, then in the menu
     void SetUiLanguage(UiLang lang);
     void SetSaveCaptures(bool on);
     void RestartReader();

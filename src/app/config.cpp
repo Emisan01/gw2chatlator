@@ -318,6 +318,7 @@ void Config::Load(const std::wstring& dir) {
     setupDone = ini.Bool(L"General", L"SetupDone", false);
     startMenu = ini.Bool(L"General", L"StartMenu", true);
     myMemoryNoticeShown = ini.Bool(L"Basic", L"NoticeShown", false);
+    tourShown = ini.Bool(L"General", L"TourShown", false);
     myMemoryDay = ini.Str(L"Basic", L"UsedDay", L"");
     myMemoryUsed = ini.Int(L"Basic", L"UsedChars", 0, 0, 10000000);
     gw2Dir = AsciiUnescape(ini.Str(L"General", L"Gw2Dir", L""));
