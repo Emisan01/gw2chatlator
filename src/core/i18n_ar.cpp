@@ -463,6 +463,8 @@ extern const I18nEntry kArabicStrings[] = {
      L"لغة هذه النافذة"},
     {L"LanguageTool – free, no account (20 checks a minute)",
      L"LanguageTool – مجاني، بدون حساب (20 فحصًا في الدقيقة)"},
+    {L"Last send: chat line open after {1} ms, message out after {2} ms · confirmed {3} of {4}",
+     L"آخر إرسال: سطر المحادثة مفتوح بعد {1} مللي ث، والرسالة أُرسلت بعد {2} مللي ث · تم التأكيد {3} من {4}"},
     {L"Latin letters for {1} need the optional LLM (≡ → Settings → Translator)",
      L"الكتابة بالحروف اللاتينية لـ {1} تحتاج إلى LLM الاختياري (≡ ← الإعدادات ← المترجم)"},
     {L"Lay over the GW2 chat",

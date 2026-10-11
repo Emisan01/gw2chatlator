@@ -19,8 +19,9 @@ diagnosis show it.
 - **Keyboard only is the start mode** and a compact typing window: just preview, word bar and input; the window grows
   upwards to its full size (with the chat) only when the chat translation is switched on (dot or menu).
 - **Sending follows the game's frame rate:** measured from MumbleLink's frame counter (no access to the game) – keys
-  are held two frames, steps three frames apart (30 fps needs far longer than 120 fps). A KeyHoldMs set by hand stays.
-  Shown on Settings → Technical.
+  every action (holding a key, the pause between steps, the moment after the chat line opened) gets one measured frame
+  + 10 ms; opening the chat is waited for live (MumbleLink). Settings → Technical shows the fps, the timing and the
+  last send: chat line open after … ms, message out after … ms, confirmed n of m. A KeyHoldMs set by hand stays.
 - **The sentence from the first letter:** the grey suggestion shows the word *and* the rest of a phrase you usually
   write after it ("w" -> "wie geht's dir"); Space writes the word, Tab then takes the rest. Only what was learned.
 - **Grammar check offered when it helps:** translating and the check is off → once the sentence stands the preview
