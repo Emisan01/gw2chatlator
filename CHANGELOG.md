@@ -8,8 +8,10 @@ diagnosis show it.
 - **Chat like in GW2:** a map change (MumbleLink map id) takes the say and map chat and the notices of that map out of
   the log – the party, squad, guild and whispers stay. Settings → Game: "Keep the chat when GW2 clears it".
 - **Save the chat** (menu ≡): the last 1 / 5 / 10 / 20 / 60 minutes or everything as a text file (translation and
-  original) – valuable things said over a boss fight kept for good. **Clear the chat** next to it. The log never grows
-  beyond its last 500 messages.
+  original) – valuable things said over a boss fight kept for good. **Clear the chat** next to it.
+- **The chat memory shown like a contingent:** "chat 312/500" in the footer while reading. Settings → Game, "Chat
+  memory full": overwrite the oldest (like GW2, no interaction – the default) or tell me (one notice: save or clear;
+  overwriting goes on meanwhile).
 - **GW2 Keyboard (new, `GW2Keyboard.exe`):** the typing help as its own small program, written anew – no chat
   reading, no OCR, no chat log or tabs: spelling, learned words and typo memory, Windows' prediction, every translator
   (MyMemory, Google, Microsoft, DeepL, own server, AI model local or cloud), your words, corrections, GW2 names, the
