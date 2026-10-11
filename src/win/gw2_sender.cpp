@@ -282,6 +282,11 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
     if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – cancelled"));
     injected = true;
     const bool alreadyOpen = ms.live && mumble->Read().TextboxHasFocus();
+    // Once GW2 reported the chat line open, the rest goes at full speed: every key is held one frame (+10 ms), so the
+    // next one already falls into a later frame – no extra pauses between the steps. Only the moment between the
+    // paste and Enter stays (the pasted text must be in the line). Without MumbleLink: the old pauses.
+    int step = opt.stepDelayMs;
+    if (alreadyOpen) step = 0;
     if (!alreadyOpen) {
         const ULONGLONG t0 = GetTickCount64();
         Tap(VK_RETURN, opt.keyHoldMs);  // open chat
@@ -290,7 +295,7 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
             Sleep(opt.stepDelayMs);
         } else {
             r.openMs = static_cast<int>(GetTickCount64() - t0);
-            Sleep(opt.settleMs);  // the line is open; GW2 takes typed text a few frames later
+            step = 0;
         }
     }
 
@@ -309,17 +314,17 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
             if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – cancelled"));
             TypeText(command, opt.keyHoldMs);
             WaitForTargetToDrain(gw2, 1000);
-            Sleep(opt.stepDelayMs);
+            Sleep(step);
             if (!recipient.empty()) {
                 if (GetForegroundWindow() != gw2 || !SetClipboardText(owner, recipient))
                     return finish(Tr(L"Focus lost – cancelled"));
                 CtrlTap('V', opt.keyHoldMs);  // the address
                 WaitForTargetToDrain(gw2, 1000);
-                Sleep(opt.stepDelayMs);
+                Sleep(step);
                 if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – cancelled"));
                 Tap(VK_TAB, opt.keyHoldMs);  // confirm it: the cursor moves to the message
                 WaitForTargetToDrain(gw2, 1000);
-                Sleep(opt.stepDelayMs);
+                Sleep(step);
             }
             message = split.body;
             if (!SetClipboardText(owner, message)) return finish(Tr(L"The clipboard is blocked"));

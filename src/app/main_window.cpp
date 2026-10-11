@@ -2727,7 +2727,7 @@ RECT MainWindow::ChatArea() const {
 }
 
 // Key timing from what is measured: GW2 reads the keyboard once per frame, so every action (holding a key, the pause
-// between steps, the moment after the chat line opened) gets one measured frame + 10 ms. Opening the chat itself is
+// between steps without MumbleLink) gets one measured frame + 10 ms. Opening the chat itself is
 // waited for live (MumbleLink reports the line open). A KeyHoldMs set by hand (not the default 30) is kept.
 SendOptions MainWindow::SendTiming() const {
     SendOptions so = cfg_.send;
@@ -2735,7 +2735,6 @@ SendOptions MainWindow::SendTiming() const {
     const int action = std::clamp(static_cast<int>(std::ceil(1000.0 / gameFps_)) + 10, 15, 150);
     so.keyHoldMs = action;
     if (so.stepDelayMs == 80) so.stepDelayMs = action;
-    so.settleMs = action;
     return so;
 }
 
