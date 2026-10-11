@@ -78,9 +78,6 @@ struct Config {
     // Like the GW2 chat: a map change (MumbleLink map id) takes the say / map chat out of the log unless kept.
     // [Reader] KeepAfterMap.
     bool keepAfterMap = false;
-    // The chat memory (500 messages) is full: false = the oldest are overwritten without a word (like GW2), true = a
-    // notice offers to save or clear it (overwriting goes on meanwhile). [Reader] ChatFullNotice.
-    bool chatFullNotice = false;
     bool onlyTranslations = true;  // the log shows only lines that were (or can be) translated
     bool saveCaptures = false;
     bool regionSet = false;

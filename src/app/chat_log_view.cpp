@@ -89,6 +89,7 @@ void ChatLogView::Update(uint64_t id, const std::function<void(ChatEntry&)>& cha
                                [](const ChatEntry& e, uint64_t v) { return e.id < v; });
     if (it == entries_.end() || it->id != id) return;
     change(*it);
+    it->layoutH = -1;  // only this one is measured again
     layoutDirty_ = true;
     Relayout();
     InvalidateRect(hwnd_, nullptr, FALSE);
@@ -142,6 +143,7 @@ void ChatLogView::SetPalette(const std::vector<ChannelColor>& palette) {
 }
 
 void ChatLogView::ThemeChanged() {
+    for (const ChatEntry& e : entries_) e.layoutH = -1;  // other fonts or texts: everything is measured again
     layoutDirty_ = true;
     Relayout();
     InvalidateRect(hwnd_, nullptr, FALSE);
@@ -191,22 +193,31 @@ void ChatLogView::Relayout() {
     const int pad = theme_->S(10);
     const int width = std::max(10, static_cast<int>(rc.right) - 2 * pad);
     if (layoutDirty_ || width != layoutWidth_) {
-        HDC dc = GetDC(hwnd_);
+        // Measuring text costs ~0.25 ms a line (measured): with 500 entries a full measure took ~250 ms on every new or
+        // translated line. Heights are kept per entry; only new, changed or (after a width / font change) all entries
+        // are measured.
+        if (width != layoutWidth_)
+            for (const ChatEntry& e : entries_) e.layoutH = -1;
+        HDC dc = nullptr;
         rows_.clear();
         int y = pad;
         for (size_t i = 0; i < entries_.size(); ++i) {
             const ChatEntry& e = entries_[i];
             if (!Matches(e, filterChannels_, filterTab_, filterPerson_)) continue;
-            int h = MeasureText(dc, theme_->fontText, MainLine(e), width, DirFlags(e.main));
-            const std::wstring sec = SecondaryLine(e);
-            if (!sec.empty()) h += theme_->S(1) + MeasureText(dc, theme_->fontSmall, sec, width, DirFlags(sec));
-            rows_.push_back({i, y, h});
-            y += h + theme_->S(7);
+            if (e.layoutH < 0) {
+                if (!dc) dc = GetDC(hwnd_);
+                int h = MeasureText(dc, theme_->fontText, MainLine(e), width, DirFlags(e.main));
+                const std::wstring sec = SecondaryLine(e);
+                if (!sec.empty()) h += theme_->S(1) + MeasureText(dc, theme_->fontSmall, sec, width, DirFlags(sec));
+                e.layoutH = h;
+            }
+            rows_.push_back({i, y, e.layoutH});
+            y += e.layoutH + theme_->S(7);
         }
         total_ = y;
         layoutWidth_ = width;
         layoutDirty_ = false;
-        ReleaseDC(hwnd_, dc);
+        if (dc) ReleaseDC(hwnd_, dc);
     }
     ScrollTo(stickToBottom_ ? MaxScroll() : scroll_);
 }

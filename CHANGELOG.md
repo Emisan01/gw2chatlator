@@ -9,9 +9,11 @@ diagnosis show it.
   the log – the party, squad, guild and whispers stay. Settings → Game: "Keep the chat when GW2 clears it".
 - **Save the chat** (menu ≡): the last 1 / 5 / 10 / 20 / 60 minutes or everything as a text file (translation and
   original) – valuable things said over a boss fight kept for good. **Clear the chat** next to it.
-- **The chat memory shown like a contingent:** "chat 312/500" in the footer while reading. Settings → Game, "Chat
-  memory full": overwrite the oldest (like GW2, no interaction – the default) or tell me (one notice: save or clear;
-  overwriting goes on meanwhile).
+- **The chat memory like a contingent, only in the menu ≡:** "Chat memory: 312/500", when full "the oldest are
+  overwritten" (like GW2, no notice, no popup) – save or clear right below.
+- **Faster chat log:** every new or translated line measured all up to 500 entries again (~0.25 ms a line, measured:
+  up to ~250 ms on the UI thread per message with a full log). Heights are now kept per entry – only new or changed
+  lines are measured. Clearing automatically when full would bring nothing more.
 - **GW2 Keyboard (new, `GW2Keyboard.exe`):** the typing help as its own small program, written anew – no chat
   reading, no OCR, no chat log or tabs: spelling, learned words and typo memory, Windows' prediction, every translator
   (MyMemory, Google, Microsoft, DeepL, own server, AI model local or cloud), your words, corrections, GW2 names, the
