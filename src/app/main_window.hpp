@@ -62,6 +62,10 @@ private:
 
     // ---- setup
     void InitServices();
+    // The heavy part of the start (spell checker, Windows' prediction, the learned words, GW2 name lists, file
+    // clean-up): at once when started by hand, with the autostart only when the window is first needed.
+    void WarmUp();
+    bool warmedUp_ = false;
     void CleanUpFiles();
     void ChooseEngine(bool announce);
     void CreateChildren();

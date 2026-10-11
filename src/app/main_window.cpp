@@ -252,7 +252,6 @@ int MainWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
     SetUiLang(cfg_.uiLang);
     waitForGame_ = HasSwitch(cmdLine, kWaitForGw2Switch);
     const bool markChat = HasSwitch(cmdLine, L"--mark-chat"), coverChat = HasSwitch(cmdLine, L"--cover-chat");
-    CleanUpFiles();
     // The installed copy is always in the start menu, so it can never get lost (autostart and the desktop shortcut
     // are free choices). Autostart belongs to it too: an entry left pointing elsewhere (an old download folder) moves.
     if (RunningInstalledCopy() && cfg_.startMenu) EnsureStartMenuShortcut(CurrentExePath());
@@ -313,12 +312,8 @@ int MainWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
                   Tone::Muted, 9000);
     else
         SetStatus(TrF(L"Translator: {1}", {translator_->Name()}), Tone::Ok, 5000);
-    if (cfg_.spellEnabled && !spell_.Ready())
-        SetStatus(TrF(L"No spell checking installed for {1} (Windows language packs)", {kbdLocale_}), Tone::Warn, 8000);
-
-    EnsureDir(cfg_.CacheDir());
-    RefreshGlossary();
-    UpdateSpellWords();
+    // Started with Windows: only the window and the tray now – the rest when GW2 shows up (or the tray opens us).
+    if (!waitForGame_) WarmUp();
     StartReader();
     SetTimer(hwnd_, kTimerGame, 300, nullptr);
     UpdateHint();
@@ -392,8 +387,16 @@ void MainWindow::InitServices() {
     }
     ChooseEngine(false);
 
+}
+
+void MainWindow::WarmUp() {
+    if (warmedUp_) return;
+    warmedUp_ = true;
+    CleanUpFiles();
     if (cfg_.spellEnabled) {
         // Spell check, learned words and word-bar starters all follow the language you type in.
+        wchar_t locale[LOCALE_NAME_MAX_LENGTH] = {};
+        GetUserDefaultLocaleName(locale, LOCALE_NAME_MAX_LENGTH);
         const std::wstring typing = TypingLocale();
         std::vector<std::wstring> tags = SpellTagCandidates(PrimaryLang(typing), typing);
         if (cfg_.writeIn.empty())
@@ -401,6 +404,15 @@ void MainWindow::InitServices() {
         spell_.Init(tags, cfg_.UserWordsPath());
     }
     spell_.UseLearnedLanguage(PrimaryLang(TypingLocale()), cfg_.LearnedDir());
+    if (cfg_.spellEnabled && !spell_.Ready())
+        SetStatus(TrF(L"No spell checking installed for {1} (Windows language packs)", {kbdLocale_}), Tone::Warn, 8000);
+    EnsureDir(cfg_.CacheDir());
+    RefreshGlossary();
+    UpdateSpellWords();
+    if (hwnd_) {
+        input_.RecheckSpelling();
+        input_.RefreshSuggestions();
+    }
 }
 
 std::shared_ptr<Translator> MainWindow::MakeEngine(Engine wanted, Engine* resolved, std::wstring* noteOut) {
@@ -2770,6 +2782,7 @@ void MainWindow::PollGame() {
     if (waitForGame_ && (hadGame != (gw2_ != nullptr) || ready != gameReady_)) {
         UpdateTrayTip();
         if (ready && !gameReady_ && !userHidden_) {
+            WarmUp();
             ShowWindow(hwnd_, SW_SHOWNOACTIVATE);
             autoHidden_ = false;
         } else if (!gw2_) {
@@ -3313,6 +3326,7 @@ void MainWindow::OnSelfRead() {
 }
 
 void MainWindow::ShowOverlay() {
+    WarmUp();
     userHidden_ = false;
     autoHidden_ = false;
     if (collapsed_) ToggleCollapse();

@@ -91,7 +91,8 @@ Generations: `inputGen_` increments on every edit, language, channel or engine c
 for older generations are dropped. `sendPending_` = Enter pressed before the translation arrived.
 
 Start: `main.cpp` → `MainWindow::Run(inst, cmdLine)`. `--wait-for-gw2` (autostart entry) = start hidden in the
-tray, show when the GW2 window appears, hide when it goes. `--restarted --mark-chat --cover-chat` = the
+tray as a minimal base (no `WarmUp`: spell checker, prediction, learned words, glossary, clean-up come later), show and
+`WarmUp()` when GW2 is in the 3D world (`gameReady_` = window + MumbleLink live) or the tray opens it, hide when it goes. `--restarted --mark-chat --cover-chat` = the
 installed copy continues the setup. First start without `SetupDone=1` opens the setup wizard.
 
 ## Invariants (do not break)
