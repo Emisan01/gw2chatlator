@@ -131,7 +131,8 @@ private:
     void ToggleReading();
     void TranslateOnce();
     void EndTranslateOnce();
-    bool ReadingWanted() const { return cfg_.readerEnabled || once_; }
+    // "Keyboard only": the tool is just the typing help – nothing of the chat is read.
+    bool ReadingWanted() const { return !cfg_.keyboardOnly && (cfg_.readerEnabled || once_); }
     // The language you type in: chosen in Settings -> Writing, else the keyboard layout's ("de-DE").
     std::wstring TypingLocale() const;
     ReaderOptions MakeReaderOptions() const;
@@ -157,7 +158,9 @@ private:
     void OnChatFound(RECT* r);
     bool WindowCaptureAllowed() const;
     bool Understood(const std::wstring& lang) const;
-    void CountMyMemory(size_t chars);
+    void CountMyMemory(size_t chars, bool chat = false);
+    // One translator for an engine choice (Auto resolved, missing key -> MyMemory with a note).
+    std::shared_ptr<Translator> MakeEngine(Engine wanted, Engine* resolved, std::wstring* note);
     std::wstring MyMemoryQuotaText() const;
     std::wstring TechnicalStatus();
     std::wstring ChannelChipText() const;
@@ -240,7 +243,9 @@ private:
     ULONGLONG ignoreSnapshotsBefore_ = 0;  // captures that may contain our own window
 
     // translation backends
-    std::shared_ptr<Translator> translator_;
+    std::shared_ptr<Translator> translator_;      // what you write
+    std::shared_ptr<Translator> chatTranslator_;  // the chat (the same object unless chosen otherwise)
+    Engine chatEngine_ = Engine::Basic;
     std::shared_ptr<LlmTranslator> llm_;  // when configured (also used for romanization)
     Engine engine_ = Engine::Basic;
 

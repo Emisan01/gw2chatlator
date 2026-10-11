@@ -322,6 +322,12 @@ void Config::Load(const std::wstring& dir) {
     myMemoryUsed = ini.Int(L"Basic", L"UsedChars", 0, 0, 10000000);
     gw2Dir = AsciiUnescape(ini.Str(L"General", L"Gw2Dir", L""));
     engine = ParseEngine(ini.Str(L"Translate", L"Engine", L"auto"));
+    {
+        const std::wstring ce = ToLowerAscii(ini.Str(L"Translate", L"ChatEngine", L"same"));
+        chatSameEngine = ce.empty() || ce == L"same";
+        chatEngine = chatSameEngine ? Engine::Auto : ParseEngine(ce);
+    }
+    keyboardOnly = ini.Bool(L"Basic", L"KeyboardOnly", false);
     // v0.2 had SourceLang/TargetLangs under [DeepL]; used as fallbacks.
     readLang = ToUpperAscii(ini.Has(L"Translate", L"ReadLang") ? ini.Str(L"Translate", L"ReadLang", L"")
                                                                 : ini.Str(L"DeepL", L"SourceLang", L""));
@@ -506,6 +512,8 @@ void Config::SaveAll() const {
     SaveBool(L"General", L"SetupDone", setupDone);
     SaveValue(L"General", L"Gw2Dir", AsciiEscape(gw2Dir));
     SaveValue(L"Translate", L"Engine", EngineKey(engine));
+    SaveValue(L"Translate", L"ChatEngine", chatSameEngine ? std::wstring(L"same") : EngineKey(chatEngine));
+    SaveBool(L"Basic", L"KeyboardOnly", keyboardOnly);
     SaveValue(L"Translate", L"ReadLang", readLang);
     std::wstring joined;
     for (const std::wstring& c : writeLangs) joined += (joined.empty() ? L"" : L",") + c;

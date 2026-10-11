@@ -3,6 +3,13 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## Unreleased
+
+- **Two translators:** Settings -> Translator -> "For the chat": the chat can use another translator than your own
+  messages (e.g. MyMemory or a local model for reading, DeepL for writing). Default: the same one.
+- **Keyboard only:** Settings -> Reading -> "Keyboard only": nothing of the chat is read, the tool is just the typing
+  help (spelling, suggestions, learning, translating what you write).
+
 ## 1.1.0 — 2026-10-09
 
 - **HDR screens:** with Windows HDR on, the chat is now captured in 16 bit and converted exactly (SDR white level,

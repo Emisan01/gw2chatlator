@@ -402,10 +402,10 @@ void MainWindow::InitServices() {
     spell_.UseLearnedLanguage(PrimaryLang(TypingLocale()), cfg_.LearnedDir());
 }
 
-void MainWindow::ChooseEngine(bool announce) {
+std::shared_ptr<Translator> MainWindow::MakeEngine(Engine wanted, Engine* resolved, std::wstring* noteOut) {
     const bool haveDeepL = !cfg_.deeplKey.empty(), haveLlm = llm_ != nullptr;
     const bool haveGoogle = !cfg_.googleKey.empty(), haveMs = !cfg_.msKey.empty(), haveLibre = !cfg_.libreUrl.empty();
-    Engine e = cfg_.engine;
+    Engine e = wanted;
     std::wstring note;
     if (e == Engine::Auto)
         e = haveDeepL    ? Engine::DeepL
@@ -426,16 +426,31 @@ void MainWindow::ChooseEngine(bool announce) {
         e = Engine::Basic;
         note = Tr(L"No LLM model set \u2013 using basic (MyMemory)");
     }
-    engine_ = e;
-    if (e == Engine::DeepL) translator_ = MakeDeepLTranslator(cfg_.deeplKey);
-    else if (e == Engine::Google) translator_ = MakeGoogleTranslator(cfg_.googleKey);
-    else if (e == Engine::Microsoft) translator_ = MakeMicrosoftTranslator(cfg_.msKey, cfg_.msRegion);
-    else if (e == Engine::Libre) translator_ = MakeLibreTranslator(cfg_.libreUrl, cfg_.libreKey);
-    else if (e == Engine::Llm) translator_ = llm_;
-    else translator_ = MakeMyMemoryTranslator(cfg_.basicEmail);
+    *resolved = e;
+    if (noteOut) *noteOut = note;
+    if (e == Engine::DeepL) return MakeDeepLTranslator(cfg_.deeplKey);
+    if (e == Engine::Google) return MakeGoogleTranslator(cfg_.googleKey);
+    if (e == Engine::Microsoft) return MakeMicrosoftTranslator(cfg_.msKey, cfg_.msRegion);
+    if (e == Engine::Libre) return MakeLibreTranslator(cfg_.libreUrl, cfg_.libreKey);
+    if (e == Engine::Llm) return llm_;
+    return MakeMyMemoryTranslator(cfg_.basicEmail);
+}
+
+// Two translators that do not depend on each other: one for what you write, one for the chat ("same" by default).
+void MainWindow::ChooseEngine(bool announce) {
+    std::wstring note;
+    translator_ = MakeEngine(cfg_.engine, &engine_, &note);
+    if (cfg_.chatSameEngine) {
+        chatTranslator_ = translator_;
+        chatEngine_ = engine_;
+    } else {
+        std::wstring chatNote;
+        chatTranslator_ = MakeEngine(cfg_.chatEngine, &chatEngine_, &chatNote);
+        if (note.empty()) note = chatNote;
+    }
     inPauseUntil_ = 0;
     // MyMemory works fully, but people should know once who receives their texts.
-    if (e == Engine::Basic && !cfg_.myMemoryNoticeShown && cfg_.setupDone)
+    if ((engine_ == Engine::Basic || chatEngine_ == Engine::Basic) && !cfg_.myMemoryNoticeShown && cfg_.setupDone)
         PostMessageW(hwnd_, WM_APP_MYMEMORY_NOTICE, 0, 0);
     if (announce) {
         if (note.empty()) SetStatus(TrF(L"Translator: {1}", {translator_->Name()}), Tone::Ok, 4000);
@@ -1207,7 +1222,7 @@ void MainWindow::CountTyping() {
 }
 
 void MainWindow::Retranslate(uint64_t id, const std::wstring& text) {
-    if (!translator_ || Trim(text).empty()) return;
+    if (!chatTranslator_ || Trim(text).empty()) return;
     log_.Update(id, [](ChatEntry& e) {
         e.state = ChatEntry::State::Pending;
         e.note.clear();
@@ -1583,8 +1598,8 @@ bool MainWindow::Understood(const std::wstring& lang) const {
 
 // What MyMemory gets is counted per day (its free contingent: 5,000
 // characters, 50,000 with an e-mail address), shown small in the footer.
-void MainWindow::CountMyMemory(size_t chars) {
-    if (engine_ != Engine::Basic || chars == 0) return;
+void MainWindow::CountMyMemory(size_t chars, bool chat) {
+    if ((chat ? chatEngine_ : engine_) != Engine::Basic || chars == 0) return;
     SYSTEMTIME st;
     GetLocalTime(&st);
     wchar_t day[16];
@@ -1601,7 +1616,7 @@ void MainWindow::CountMyMemory(size_t chars) {
 
 // "MyMemory 3.2k / 5k" — only while MyMemory is the translator.
 std::wstring MainWindow::MyMemoryQuotaText() const {
-    if (engine_ != Engine::Basic) return {};
+    if (engine_ != Engine::Basic && chatEngine_ != Engine::Basic) return {};
     SYSTEMTIME st;
     GetLocalTime(&st);
     wchar_t day[16];
@@ -1624,7 +1639,7 @@ bool MainWindow::WindowCaptureAllowed() const {
 }
 
 void MainWindow::ShowMyMemoryNotice() {
-    if (cfg_.myMemoryNoticeShown || engine_ != Engine::Basic) return;
+    if (cfg_.myMemoryNoticeShown || (engine_ != Engine::Basic && chatEngine_ != Engine::Basic)) return;
     cfg_.myMemoryNoticeShown = true;
     cfg_.SaveBool(L"Basic", L"NoticeShown", true);
     const ModalScope modal;
@@ -2442,14 +2457,14 @@ void MainWindow::HandleIncoming(const ChatMessage& m) {
 // latest line wait behind a backlog. The log keeps its order (new lines at the
 // bottom); only the translations of older lines may arrive later.
 void MainWindow::PumpIncoming() {
-    if (!translator_) return;
+    if (!chatTranslator_) return;
     if (GetTickCount64() < inPauseUntil_) return;  // after an error; the game timer retries
     // An LLM works on one prompt at a time (a local one shares the graphics
     // card with the game); MyMemory answers one line per request, so lines go
     // out one by one in parallel; DeepL takes a batch per request.
-    const bool llm = engine_ == Engine::Llm;
+    const bool llm = chatEngine_ == Engine::Llm;
     const int maxJobs = llm ? 1 : kParallelJobs;
-    const size_t perJob = engine_ == Engine::Basic ? 1 : kBatchMax;
+    const size_t perJob = chatEngine_ == Engine::Basic ? 1 : kBatchMax;
     while (inFlight_ < maxJobs && !inQueue_.empty()) {
         auto msg = std::make_unique<IncomingMsg>();
         msg->lang = readLang_;
@@ -2460,7 +2475,7 @@ void MainWindow::PumpIncoming() {
             PendingLine pl = std::move(inQueue_.back());  // the newest line first
             inQueue_.pop_back();
             chars += pl.text.size();
-            CountMyMemory(CodePointCount(pl.text));
+            CountMyMemory(CodePointCount(pl.text), true);
             items.push_back(
                 ProtectForTranslation(ExpandGermanContractions(myWords_.Expand(pl.text)), nullptr, &spell_.KeepWords(),
                                       &speakers_).segments);
@@ -2470,7 +2485,7 @@ void MainWindow::PumpIncoming() {
         ++inFlight_;
         // With an LLM, chat lines read from the screen get their OCR errors repaired too.
         std::shared_ptr<LlmTranslator> ocrLlm = (llm && cfg_.llmFixOcr) ? llm_ : nullptr;
-        std::thread([hwnd = hwnd_, translator = translator_, ocrLlm, items = std::move(items),
+        std::thread([hwnd = hwnd_, translator = chatTranslator_, ocrLlm, items = std::move(items),
                      m = std::move(msg)]() mutable {
             m->results =
                 ocrLlm ? ocrLlm->TranslateOcrBatch(items, m->lang) : translator->TranslateBatch(items, L"", m->lang);
@@ -3216,6 +3231,9 @@ std::wstring MainWindow::ConnectionStatus() {
     else line(L"[--] " + Tr(L"Tesseract not installed (Windows text recognition is used)"));
     if (!lastOcrEngine_.empty()) line(TrF(L"Reading with: {1}", {lastOcrEngine_}));
     line(TrF(L"Translator: {1}", {translator_ ? translator_->Name() : std::wstring(L"-")}));
+    line(TrF(L"Chat translator: {1}", {cfg_.keyboardOnly       ? Tr(L"off (keyboard only)")
+                                       : chatTranslator_ ? chatTranslator_->Name()
+                                                         : std::wstring(L"-")}));
     line(TrF(L"Settings: {1}", {cfg_.iniPath}));
     return s;
 }
@@ -3481,7 +3499,13 @@ void MainWindow::ApplySettings(const Config& next) {
         writeIdx_ = 0;
     }
     if (prev.writeIn != cfg_.writeIn) ApplyTypingLanguage();  // spelling, learned words, word bar follow
-    const bool engineChanged = prev.engine != cfg_.engine || prev.deeplKey != cfg_.deeplKey ||
+    if (prev.keyboardOnly != cfg_.keyboardOnly) {
+        EndTranslateOnce();
+        RestartReader();  // starts again only if reading is wanted
+        InvalidateChrome();
+    }
+    const bool engineChanged = prev.engine != cfg_.engine || prev.chatSameEngine != cfg_.chatSameEngine ||
+                               prev.chatEngine != cfg_.chatEngine || prev.deeplKey != cfg_.deeplKey ||
                                prev.basicEmail != cfg_.basicEmail || prev.llmUrl != cfg_.llmUrl ||
                                prev.llmModel != cfg_.llmModel || prev.llmKey != cfg_.llmKey ||
                                prev.googleKey != cfg_.googleKey || prev.msKey != cfg_.msKey ||

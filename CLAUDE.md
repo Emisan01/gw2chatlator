@@ -282,6 +282,9 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
   0.5 → 10 %); RapidOCR grey mixed (one picture 17 → 1.6 %, two worse), stretched worse; pre-enlarging no gain.
   Not used in the app – needs more real captures (esp. real low resolution) before deciding.
 - `FindInk` handles both polarities: bright background (median ≥ 160) = dark text.
+- Two translators: `translator_` (what you write: preview, back-translation) and `chatTranslator_` (incoming chat,
+  `PumpIncoming`, `Retranslate`) – the same object unless `[Translate] ChatEngine` is set (`MakeEngine`, `chatEngine_`;
+  MyMemory counting per side). `[Basic] KeyboardOnly=1` → `ReadingWanted()` is false: only the typing help runs.
 - Translators (`Engine`): Auto order = DeepL → Google → Microsoft → own LibreTranslate server → LLM → MyMemory. Google
   key goes in the `X-Goog-Api-Key` header (never the URL). Protected segments: `<span translate="no"
   class="notranslate">` (HTML mode only when something is protected). The settings combo order differs from the enum:

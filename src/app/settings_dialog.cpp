@@ -54,7 +54,7 @@ enum : int {
     // Translator
     kEngine, kEngineNote, kLocalModel, kPull, kLocalInfo, kGetOllama, kLlmFindLocal, kPullStatus, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
     kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
-    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kStartMenu, kOnlyTr, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare, kWriteIn, kLtProvider, kLtTest, kLtStatus, kLearnFile,
+    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kStartMenu, kOnlyTr, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare, kWriteIn, kLtProvider, kLtTest, kLtStatus, kChatEngine, kKeyboardOnly, kLearnFile,
     // Game & start
     kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kStatus, kRefresh, kSetup,
     // Wizard
@@ -563,6 +563,8 @@ private:
         BeginPage();
         int r = 0;
         // Reading on/off lives in the main window (dot in the header, first menu entry).
+        Check(kKeyboardOnly, Tr(L"Keyboard only: no chat reading at all, only the typing help"), cfg_.keyboardOnly,
+              kLabelX, Y(r++), kW - 50);
         Label(Tr(L"Text recognition"), kLabelX, Y(r), kLabelW);
         Combo(kOcrEngine,
               {Tr(L"Automatic (Windows OCR; RapidOCR for small text)"), Tr(L"Tesseract (separate install)"),
@@ -714,6 +716,14 @@ private:
                Tr(L"AI model (local or cloud)")},
               EngineIndex(cfg_.engine), kCtrlX, Y(r++), kCtrlW);
         Label(EngineNote(cfg_.engine), kCtrlX, Y(r++) - 6, kCtrlW, 30, kEngineNote);
+        // The chat may use another translator than your messages (e.g. a free one for reading, DeepL for writing).
+        Label(Tr(L"For the chat"), kLabelX, Y(r), kLabelW);
+        Combo(kChatEngine,
+              {Tr(L"Same as for my messages"), Tr(L"Automatic (the first one set up)"), Tr(L"MyMemory (free, no account)"),
+               Tr(L"Google Translate (free contingent, key)"), Tr(L"Microsoft Translator (free contingent, key)"),
+               Tr(L"DeepL (free contingent, key)"), Tr(L"Own translation server (any address)"),
+               Tr(L"AI model (local or cloud)")},
+              cfg_.chatSameEngine ? 0 : EngineIndex(cfg_.chatEngine) + 1, kCtrlX, Y(r++), kCtrlW);
         const int top = r;  // the sections below share the same rows; only the chosen one is shown
 
         // Automatic
@@ -1665,6 +1675,11 @@ private:
         c.returnFocus = Checked(kReturnFocus);
 
         if (Sel(kEngine) >= 0) c.engine = EngineAt(Sel(kEngine));
+        if (Sel(kChatEngine) >= 0) {
+            c.chatSameEngine = Sel(kChatEngine) == 0;
+            c.chatEngine = c.chatSameEngine ? Engine::Auto : EngineAt(Sel(kChatEngine) - 1);
+        }
+        c.keyboardOnly = Checked(kKeyboardOnly);
         c.deeplKey = Trim(Text(kDeepL));
         c.googleKey = Trim(Text(kGoogleKey));
         c.msKey = Trim(Text(kMsKey));
