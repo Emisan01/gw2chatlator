@@ -929,7 +929,7 @@ void MainWindow::Paint() {
                 color = Theme::kOk;
                 const std::wstring quota = MyMemoryQuotaText();  // small and quiet, only with MyMemory
                 if (!quota.empty()) text += L"  \u00b7  " + quota;
-                if (const std::wstring rc = ReadCheckText(); !rc.empty()) text += L"  \u00b7  " + rc;
+                if (const std::wstring check = ReadCheckText(); !check.empty()) text += L"  \u00b7  " + check;
             } else if (!gw2_) {
                 text = Tr(L"GW2 not found");
             } else {
