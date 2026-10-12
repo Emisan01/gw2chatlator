@@ -8,6 +8,8 @@
 
 #include <windows.h>
 
+#include <shlobj.h>
+
 #ifndef PF_AVX2_INSTRUCTIONS_AVAILABLE
 #define PF_AVX2_INSTRUCTIONS_AVAILABLE 40
 #endif
@@ -52,11 +54,13 @@ bool DownloadVoiceModel(const std::wstring& dir, const VoiceModelInfo& m,
     if (!PlainFileName(m.file) || m.bytes == 0 || m.url.compare(0, 8, "https://") != 0)
         return fail(Tr(L"This voice model entry is invalid."));
     if (cancel && *cancel) return fail(Tr(L"Download cancelled."));
-    if (!EnsureDir(dir)) return fail(TrF(L"Cannot create the folder {1}.", {dir}));
     const uint64_t need = m.bytes + (50ull << 20);  // the model plus room to spare
     const uint64_t freeBytes = FreeDiskBytes(dir);
     if (freeBytes && freeBytes < need)
         return fail(TrF(L"Not enough free disk space: {1} MB are needed, {2} MB are free.", {Mb(need), Mb(freeBytes)}));
+    const int made = SHCreateDirectoryExW(nullptr, dir.c_str(), nullptr);  // with missing parents
+    if (made != ERROR_SUCCESS && made != ERROR_ALREADY_EXISTS && made != ERROR_FILE_EXISTS)
+        return fail(TrF(L"Cannot create the folder {1}.", {dir}));
     auto step = [&](uint64_t done, uint64_t total) {
         if (cancel && *cancel) return false;
         return !progress || progress(done, total);
