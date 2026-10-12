@@ -220,6 +220,12 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
   `ggml_backend_load_all()`). Models (`core/voice` catalog, SHA-256, streamed `HttpDownloadToFile`) in `<data>\models`.
   Measured (i7-5820K, 4 threads): small 1.2 s for 5.9 s German, base ~0.3 s; tiny loops with the short context (not
   offered); abort only between graphs (~1 s). `voice_bench.exe model lang threads wav…` with TTS WAVs in `local\voice`.
+- Send guard (`core/send_guard`, GW2 Keyboard `OnEnter`, user 2026-10-12): an Enter injected by software
+  (`GetCurrentInputMessageSource` IMO_INJECTED / IMO_UNAVAILABLE → `InputBox::LastEnterInjected`), text written into
+  the box from outside (cross-thread sends via `InSendMessageEx`, characters without a hardware key →
+  `InputBox::ForeignText`), the same line > 4× in 2 min or > 20 lines/min block that line; the 2nd hit switches
+  sending off for the session (nothing stored – open source; a lasting lock would only hit honest players). Caveat:
+  on-screen keyboards / remote tools that inject keys count as injected.
 - Reading check (`NoteReadCheck`, `readChecks_`, last 50): an own line that comes back (`ClassifyOwn`, first echo)
   is compared with `Sent::exact` – exact or not, plus character errors (edit distance). Footer "read exactly n/m",
   technical page with %. Meant as the measured gate for the chat take-over idea (user, 2026-10-11): take over (focus

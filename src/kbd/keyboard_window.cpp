@@ -1318,6 +1318,25 @@ void KeyboardWindow::OnEnter(bool sendOriginal) {
     }
     const std::wstring text = SanitizeChatText(input_.Text());
     if (text.empty()) return;
+    // Only a person's own Enter on their own text, at a human pace: never a bot, macro or spam tool.
+    // The parts of a long message count once (its first Enter); injected keys / foreign text count on every part.
+    SendGuard::Verdict guard;
+    if (partIdx_ == 0 || input_.LastEnterInjected() || input_.ForeignText())
+        guard = sendGuard_.Check(text, input_.LastEnterInjected(), input_.ForeignText(), GetTickCount64());
+    if (!guard.allow) {
+        std::wstring why;
+        switch (guard.reason) {
+            case SendGuard::Reason::Injected: why = Tr(L"Not sent: the Enter came from another program, not from your keyboard."); break;
+            case SendGuard::Reason::Foreign: why = Tr(L"Not sent: another program wrote into the input box."); break;
+            case SendGuard::Reason::Repeat: why = Tr(L"Not sent: the same line too often in a short time."); break;
+            case SendGuard::Reason::Rate: why = Tr(L"Not sent: more lines than a person writes in a minute."); break;
+            default: why = Tr(L"Sending is switched off for this session (misuse detected). Restart the program to send again."); break;
+        }
+        if (guard.nowLocked)
+            why += L" " + Tr(L"Sending is switched off for this session (misuse detected). Restart the program to send again.");
+        SetStatus(why, Tone::Error, guard.reason == SendGuard::Reason::Locked || guard.nowLocked ? 0 : 8000);
+        return;
+    }
     if (sendOriginal && partIdx_ == 0) {
         const ChatSplit split = SplitChatCommand(text);
         lastHits_.clear();
@@ -2173,6 +2192,8 @@ std::wstring KeyboardWindow::TechnicalStatus() {
     line(L"  " + TrF(L"Last send: chat line open after {1} ms, message out after {2} ms · confirmed {3} of {4}",
                      {ms(lastOpenMs_), ms(lastConfirmMs_), std::to_wstring(sendsConfirmed_), std::to_wstring(sends_)}));
     if (const std::wstring q = MyMemoryQuotaText(); !q.empty()) line(L"  " + q);
+    line(sendGuard_.Locked() ? L"[!] " + Tr(L"Send guard: sending is off for this session")
+                             : TrF(L"Send guard: {1} hits", {std::to_wstring(sendGuard_.Strikes())}));
     // Voice input: what runs and how fast (never what was said).
     if (!cfg_.voiceEnabled) {
         line(L"[--] " + Tr(L"Voice input: off (Settings → Voice)"));

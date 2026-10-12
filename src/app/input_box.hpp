@@ -59,6 +59,10 @@ public:
     // the measure of how much the word help saves. Reset by Clear().
     int KeyPresses() const { return keyPresses_; }
     bool Pasted() const { return pasted_; }
+    // Misuse guard (core/send_guard): the last Enter came from software, not from this PC's keyboard; the text holds
+    // something another program wrote into the box (cleared when the box is emptied).
+    bool LastEnterInjected() const { return lastEnterInjected_; }
+    bool ForeignText() const { return foreign_; }
 
     // Owner forwards EN_CHANGE: marks are hidden until the next check.
     void OnTextChanged();
@@ -150,6 +154,9 @@ private:
     void ShowHistoryText(const std::wstring& text);
     int keyPresses_ = 0;
     bool pasted_ = false;
+    bool lastEnterInjected_ = false;
+    bool foreign_ = false;
+    unsigned long long lastHardwareKey_ = 0;  // GetTickCount64 of the last key from this PC's keyboard
     // voice input
     void DrawDictation(HDC dc) const;
     UINT pttVk_ = 0, pttMods_ = 0;

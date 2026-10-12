@@ -143,6 +143,7 @@ void InputBox::ShowHistoryText(const std::wstring& text) {
 
 void InputBox::Clear() {
     histPos_ = -1;
+    foreign_ = false;
     keyPresses_ = 0;
     pasted_ = false;
     dictStable_.clear();
@@ -159,6 +160,7 @@ void InputBox::Clear() {
 }
 
 void InputBox::OnTextChanged() {
+    if (hwnd_ && GetWindowTextLengthW(hwnd_) == 0) foreign_ = false;  // nothing left of what came from outside
     ClearDictationPreview();  // stale positions; the next live result draws it again
     if (!issues_.empty() || !grammar_.empty()) {
         issues_.clear();  // positions are stale now
@@ -845,6 +847,25 @@ LRESULT CALLBACK InputBox::Proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
 }
 
 LRESULT InputBox::Handle(UINT msg, WPARAM wp, LPARAM lp) {
+    // Misuse guard: a key that did not come from this PC's keyboard (SendInput, a posted message), characters with no
+    // key behind them, and text sent into the box from another thread or program are remembered – such a line is
+    // never sent (core/send_guard). Unknown sources never count against the user.
+    auto fromThisPc = [] {
+        INPUT_MESSAGE_SOURCE src{};
+        if (!GetCurrentInputMessageSource(&src)) return true;
+        return src.originId != IMO_INJECTED && src.originId != IMO_UNAVAILABLE;
+    };
+    if (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN) {
+        if (fromThisPc()) lastHardwareKey_ = GetTickCount64();
+        else foreign_ = true;
+        if (wp == VK_RETURN) lastEnterInjected_ = !fromThisPc();
+    } else if (msg == WM_CHAR && GetTickCount64() - lastHardwareKey_ > 2000 && !fromThisPc()) {
+        foreign_ = true;  // a character posted in without a key press
+    } else if ((msg == WM_SETTEXT || msg == EM_REPLACESEL || msg == WM_PASTE || msg == WM_CHAR ||
+                msg == WM_IME_CHAR) &&
+               (InSendMessageEx(nullptr) & (ISMEX_SEND | ISMEX_NOTIFY | ISMEX_CALLBACK))) {
+        foreign_ = true;  // sent from another thread: never this window's own typing
+    }
     // The push-to-talk key: held to speak, never typed, not counted; key repeat ignored.
     if (pttVk_ && wp == pttVk_ && (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN || msg == WM_KEYUP || msg == WM_SYSKEYUP)) {
         const bool down = msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN;
