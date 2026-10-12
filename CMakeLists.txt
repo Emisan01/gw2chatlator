@@ -46,7 +46,8 @@ add_library(gct_core STATIC
     src/core/tesseract_tsv.cpp
     src/core/languagetool_protocol.cpp
     src/core/gw2_install.cpp
-    src/core/housekeeping.cpp)
+    src/core/housekeeping.cpp
+    src/core/voice.cpp)
 target_include_directories(gct_core PUBLIC src)
 
 option(GCT_BUILD_TESTS "Build the core unit tests and the Windows test doubles" ON)
@@ -77,6 +78,9 @@ if(WIN32)
         src/win/secret.cpp
         src/win/rapid_ocr.cpp
         src/win/extension.cpp
+        src/win/hash.cpp
+        src/win/audio_capture.cpp
+        src/win/voice_models.cpp
         src/win/text_prediction.cpp)
     target_link_libraries(gct_win PUBLIC gct_core winhttp ole32 user32 gdi32 d3d11 dxgi dwmapi shell32 advapi32 version uuid crypt32 bcrypt runtimeobject)
 
@@ -131,7 +135,8 @@ if(WIN32)
     # GW2 Keyboard: only the typing help (no chat reading, no OCR) – the same settings and learned words.
     add_executable(GW2Keyboard WIN32 src/kbd/kbd_main.cpp src/kbd/keyboard_window.cpp src/app/input_box.cpp
                    src/app/preview_view.cpp src/app/suggestion_bar.cpp src/app/spell_service.cpp
-                   src/app/settings_dialog.cpp src/app/config.cpp src/win/spellcheck.cpp res/app.rc)
+                   src/app/settings_dialog.cpp src/app/config.cpp src/win/spellcheck.cpp
+                   src/kbd/voice_session.cpp src/kbd/whisper_engine.cpp res/app.rc)
     target_link_libraries(GW2Keyboard PRIVATE gct_win shell32 comctl32 runtimeobject)
     # Built without everything that only reading the chat needs (OCR, RapidOCR/onnxruntime, Tesseract, capture).
     target_compile_definitions(GW2Keyboard PRIVATE GCT_KEYBOARD_APP=1)

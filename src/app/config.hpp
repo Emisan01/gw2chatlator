@@ -136,12 +136,28 @@ struct Config {
     bool dockSet = false;
     int dockLeft = 0, dockFromBottom = 0, dockWidth = 0, dockHeight = 0;
 
+    // [Voice] — voice input of GW2 Keyboard (hold the microphone button or the key, speak, release, check, Enter).
+    bool voiceEnabled = true;
+    std::wstring voiceModel;          // catalog id ("small-q5_1"); "" = the catalog's recommended one
+    std::wstring voiceLang;           // "" = the language you write in, "auto" = detect, else a language code
+    bool voiceTranslate = false;      // speak any language, get English (whisper's own translation)
+    std::wstring voiceKey = L"F8";    // key in this window (hold / toggle); "" = only the button
+    bool voiceToggle = false;         // false: hold to talk; true: press to start, press again to stop
+    bool voiceAppend = false;         // a new recording: false = replaces the last dictated text, true = appends
+    int voiceMaxSec = 30;             // then the recording ends by itself
+    bool voiceLive = true;            // live text while speaking (repeated passes, more CPU)
+    int voiceThreads = 0;             // 0 = automatic (half the logical processors, at most 4)
+    std::wstring voiceDevice;         // microphone endpoint id; "" = Windows default
+    int voiceUnloadMin = 10;          // free the model after this many idle minutes
+    bool voiceGlossary = true;        // your names and GW2 words steer the recognizer's spelling
+
     void Load(const std::wstring& dir);
     void SaveWindowRect(HWND wnd, float scale) const;
     void SaveWindowRect(const RECT& rc, float scale) const;
     void SaveRegion() const;
     void SaveFreeArea() const;
     std::wstring RapidDir() const { return dataDir + L"\\rapid"; }  // RapidOCR models
+    std::wstring VoiceModelDir() const { return dataDir + L"\\models"; }  // voice models (whisper)
     void SaveColor(Channel ch, Rgb rgb);
     void ResetColors();
     void SaveTabs() const;
