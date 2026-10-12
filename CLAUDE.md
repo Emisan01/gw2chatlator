@@ -209,6 +209,17 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
   Translate chat once now; reading options live in Settings → Reading the chat (`kReadWhat` → `DetectChat` /
   `UseFreeArea` / `PickFreeArea` actions). The chat memory is the header circle (`memoryRect_`, tooltip `tip_` excluded
   from capture, click = `ShowMemoryMenu`). `PickScreenRegion(..., initial)`: edges of the checked frame can be dragged.
+- Voice input (GW2 Keyboard only, 2026-10-12): mic button in the header / push-to-talk key (`InputBox::SetPushToTalkKey`)
+  → `VoiceSession` (kbd/voice_session: WASAPI `AudioCapture` + one below-normal worker owning `WhisperEngine`) →
+  `FindSpeech` (whisper invents text on silence – always gate) → whisper with `WhisperAudioCtx(n)` (full context is
+  4–6× slower) → `CleanTranscript` → `VoiceFixes::Apply` (core/voice_learn, `<data>\voice-fixes.txt`, learned from
+  dictated vs. sent text on send) → `InsertDictated` → the normal typing/translation chain; Enter only by the user
+  (blocked while recording). Live text = repeated passes shown by `SetDictationPreview`, never written into the EDIT.
+  whisper.cpp v1.9.5 is built via FetchContent as DLLs in `<exe>\voice` (CPU variants, static CRT, no OpenMP),
+  delay-loaded, gated by `WhisperEngine::RuntimeAvailable` (`__HrLoadAllImportsForDll`, never
+  `ggml_backend_load_all()`). Models (`core/voice` catalog, SHA-256, streamed `HttpDownloadToFile`) in `<data>\models`.
+  Measured (i7-5820K, 4 threads): small 1.2 s for 5.9 s German, base ~0.3 s; tiny loops with the short context (not
+  offered); abort only between graphs (~1 s). `voice_bench.exe model lang threads wav…` with TTS WAVs in `local\voice`.
 - Reading check (`NoteReadCheck`, `readChecks_`, last 50): an own line that comes back (`ClassifyOwn`, first echo)
   is compared with `Sent::exact` – exact or not, plus character errors (edit distance). Footer "read exactly n/m",
   technical page with %. Meant as the measured gate for the chat take-over idea (user, 2026-10-11): take over (focus
