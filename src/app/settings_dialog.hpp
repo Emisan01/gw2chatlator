@@ -58,9 +58,14 @@ struct DialogContext {
     std::function<void()> saveF16;
     // GW2 Keyboard: the chat translation extension (GW2 Chat Translator) is there.
     std::function<bool()> extensionInstalled;
+    // GW2 Keyboard, Settings → Voice → "Test": records a few seconds with the settings in `cfg` (the dialog's current
+    // choices) and posts one std::wstring* (owned by the receiver: text, latency, real-time factor) to (notify, message).
+    std::function<void(const Config& cfg, HWND notify, UINT message)> voiceTest;
+    // GW2 Keyboard: the voice recognizer DLLs are there (voice input can work); text says why not otherwise.
+    std::function<bool(std::wstring* why)> voiceAvailable;
 };
 
-enum class SettingsPage { General = 0, Reading, Writing, Translator, Game, Technical };
+enum class SettingsPage { General = 0, Reading, Writing, Translator, Game, Technical, Voice };  // Voice: GW2 Keyboard only
 
 // Modal. `cfg` is changed only when the user confirms.
 DialogResult ShowSettingsDialog(HWND owner, HINSTANCE inst, Config& cfg, const DialogContext& ctx,
