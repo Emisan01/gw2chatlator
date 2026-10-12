@@ -112,6 +112,8 @@ private:
     void ShowWriteMenu();
     void ShowChannelMenu();
     void ShowMainMenu();
+    void ShowMemoryMenu();           // the chat memory circle: save or clear
+    std::wstring MemoryText() const;  // "Chat memory: 312/500"
     void ShowTour();  // "What can this tool do?" – once by itself, then in the menu
     void SetUiLanguage(UiLang lang);
     void SetSaveCaptures(bool on);
@@ -160,6 +162,8 @@ private:
     void UseChatArea(const RECT& r);
     RECT ChatSearchArea() const;
     void StartChatDetection();
+    ReaderOptions DetectOptions() const;
+    static RECT FindChatIn(const Image& img, const RECT& at, const ReaderOptions& o);
     void OnChatFound(RECT* r);
     bool WindowCaptureAllowed() const;
     bool Understood(const std::wstring& lang) const;
@@ -212,7 +216,10 @@ private:
     // ---- game tracking & visibility
     void PollGame();
     RECT ChatArea() const;
-    void PickRegion();
+    RECT ChatFrame() const;  // the chat frame as set (screen pixels), without the reading room below it
+    // detect: find the GW2 chat in the picture first and show the found frame (edges can be dragged); else the frame
+    // set so far is shown to adjust.
+    void PickRegion(bool detect = false);
     void PickFreeArea();         // any screen text, no chat rules
     void SetFreeArea(bool on);
     RECT GameClientRect() const;  // screen coordinates, empty without GW2
@@ -379,6 +386,10 @@ private:
     RECT typeRect_{};  // footer: "Write: …"
     RECT readRect_{}, menuRect_{}, closeRect_{}, collapseRect_{}, channelRect_{}, writeRect_{};
     RECT readDotRect_{};  // small dot in the header: reading on (grey) / off (black)
+    RECT memoryRect_{};   // small circle in the header that fills up: the chat memory (500), click = save / clear
+    HWND tip_ = nullptr;  // its explanation on mouse-over
+    std::wstring tipText_;
+    size_t memoryShown_ = 0;  // the log size the circle shows
     bool previewVisible_ = false;  // the preview only takes space while you type
     bool collapsed_ = false;
     int expandedHeight_ = 0;

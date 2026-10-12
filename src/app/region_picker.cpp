@@ -33,10 +33,34 @@ struct PickState {
     PickCheck check;
     std::wstring previewText;
     unsigned gen = 0;
+    // Dragging an edge of the checked frame: 1 left, 2 top, 4 right, 8 bottom; the frame meanwhile (client pixels).
+    int edges = 0;
+    RECT edit{};
 };
 
 RECT Normalized(POINT a, POINT b) {
     return {std::min(a.x, b.x), std::min(a.y, b.y), std::max(a.x, b.x), std::max(a.y, b.y)};
+}
+
+// The checked frame in client pixels.
+RECT Frame(const PickState* s) {
+    RECT f = s->check.snapped;
+    OffsetRect(&f, -s->origin.x, -s->origin.y);
+    return f;
+}
+
+// Which edges of the checked frame are under the point (client pixels).
+int EdgesAt(const PickState* s, POINT p) {
+    if (!s->checked || s->dragging) return 0;
+    const RECT f = Frame(s);
+    const int g = s->theme->S(7);
+    if (p.x < f.left - g || p.x > f.right + g || p.y < f.top - g || p.y > f.bottom + g) return 0;
+    int e = 0;
+    if (std::abs(p.x - f.left) <= g) e |= 1;
+    else if (std::abs(p.x - f.right) <= g) e |= 4;
+    if (std::abs(p.y - f.top) <= g) e |= 2;
+    else if (std::abs(p.y - f.bottom) <= g) e |= 8;
+    return e;
 }
 
 COLORREF QualityColor(int q) { return q >= 2 ? Theme::kOk : q == 1 ? Theme::kWarn : Theme::kError; }
@@ -58,7 +82,8 @@ std::wstring HintText(const PickState* s) {
     std::wstring t = s->check.summary;
     if (s->check.quality > 0) {
         if (!s->previewText.empty()) t += L"\n\n" + s->previewText;
-        t += L"\n\n" + Tr(L"Enter or a click into the frame: take it  ·  drag again: redo  ·  Esc: cancel");
+        t += L"\n\n" + Tr(L"Enter or a click into the frame: take it  ·  drag an edge: adjust  ·  drag outside: redo  ·  "
+                         L"Esc: cancel");
     } else {
         t += L"\n\n" + Tr(L"Drag again around the text lines of the chat  ·  Esc: cancel");
     }
@@ -84,7 +109,9 @@ void Paint(HWND h, PickState* s) {
         FillRect(dc, &sel, key);
         DeleteObject(key);
     };
-    if (s->dragging) {
+    if (s->edges) {
+        clear(s->edit, Theme::kAccent);
+    } else if (s->dragging) {
         clear(Normalized(s->a, s->b), Theme::kAccent);
     } else if (s->checked) {
         RECT snapped = s->check.snapped;
@@ -169,16 +196,45 @@ LRESULT CALLBACK Proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
         case WM_PAINT:
             Paint(h, s);
             return 0;
-        case WM_SETCURSOR:
-            SetCursor(LoadCursorW(nullptr, IDC_CROSS));
+        case WM_SETCURSOR: {
+            POINT p;
+            GetCursorPos(&p);
+            ScreenToClient(h, &p);
+            const int e = s->edges ? s->edges : EdgesAt(s, p);
+            const RECT f = Frame(s);
+            LPCWSTR cursor = IDC_CROSS;
+            if ((e & 5) && (e & 10)) cursor = e == 3 || e == 12 ? IDC_SIZENWSE : IDC_SIZENESW;
+            else if (e & 5) cursor = IDC_SIZEWE;
+            else if (e & 10) cursor = IDC_SIZENS;
+            else if (s->checked && !s->dragging && s->check.quality > 0 && PtInRect(&f, p)) cursor = IDC_HAND;
+            SetCursor(LoadCursorW(nullptr, cursor));
             return TRUE;
+        }
         case WM_LBUTTONDOWN:
+            if (const int e = EdgesAt(s, {GET_X_LPARAM(lp), GET_Y_LPARAM(lp)})) {  // adjust the frame, no new one
+                s->edges = e;
+                s->edit = Frame(s);
+                SetCapture(h);
+                InvalidateRect(h, nullptr, FALSE);
+                return 0;
+            }
             s->dragging = true;
             s->a = s->b = {GET_X_LPARAM(lp), GET_Y_LPARAM(lp)};
             SetCapture(h);
             InvalidateRect(h, nullptr, FALSE);
             return 0;
         case WM_MOUSEMOVE:
+            if (s->edges) {
+                const POINT p{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)};
+                const LONG min = s->theme->S(20);
+                RECT& r = s->edit;
+                if (s->edges & 1) r.left = std::min(p.x, r.right - min);
+                if (s->edges & 4) r.right = std::max(p.x, r.left + min);
+                if (s->edges & 2) r.top = std::min(p.y, r.bottom - min);
+                if (s->edges & 8) r.bottom = std::max(p.y, r.top + min);
+                InvalidateRect(h, nullptr, FALSE);
+                return 0;
+            }
             if (s->dragging) {
                 s->b = {GET_X_LPARAM(lp), GET_Y_LPARAM(lp)};
                 if (s->checked && (std::abs(s->b.x - s->a.x) > 4 || std::abs(s->b.y - s->a.y) > 4)) {
@@ -189,6 +245,15 @@ LRESULT CALLBACK Proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
             }
             return 0;
         case WM_LBUTTONUP:
+            if (s->edges) {  // snapped and rated again, like a new frame
+                s->edges = 0;
+                ReleaseCapture();
+                RECT r = s->edit;
+                OffsetRect(&r, s->origin.x, s->origin.y);
+                Check(h, s, r);
+                InvalidateRect(h, nullptr, FALSE);
+                return 0;
+            }
             if (s->dragging) {
                 s->b = {GET_X_LPARAM(lp), GET_Y_LPARAM(lp)};
                 s->dragging = false;
@@ -226,7 +291,7 @@ LRESULT CALLBACK Proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
 }  // namespace
 
 bool PickScreenRegion(HINSTANCE inst, const Theme& theme, const std::wstring& hint, RECT* out, PickAnalyzer analyze,
-                      PickPreview preview) {
+                      PickPreview preview, const RECT* initial) {
     static bool registered = false;
     if (!registered) {
         WNDCLASSEXW wc{};
@@ -252,6 +317,10 @@ bool PickScreenRegion(HINSTANCE inst, const Theme& theme, const std::wstring& hi
     ShowWindow(wnd, SW_SHOW);
     SetForegroundWindow(wnd);
     SetFocus(wnd);
+    if (initial && s.analyze && !IsRectEmpty(initial)) {  // shown at once: take it, adjust an edge or draw anew
+        Check(wnd, &s, *initial);
+        InvalidateRect(wnd, nullptr, FALSE);
+    }
 
     MSG m{};
     bool quit = false;

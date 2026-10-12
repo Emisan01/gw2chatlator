@@ -3,7 +3,8 @@
 // exactly which lines will be read. With an analyzer the frame snaps to the
 // text lines after dragging and gets a traffic light (green: good, yellow:
 // small text, red: no lines) and a preview of the first recognized lines;
-// Enter takes it, dragging again redoes it.
+// Enter takes it, dragging again redoes it, dragging an edge of the frame adjusts it. `initial` (needs an
+// analyzer): a frame to show at once – found by itself or the one set so far.
 #pragma once
 
 #include <windows.h>
@@ -28,6 +29,6 @@ using PickPreview = std::function<std::wstring(const RECT& snapped)>;
 // Blocks with its own message loop. `out` in screen pixels. False when
 // cancelled (Esc, right click) or the frame is too small.
 bool PickScreenRegion(HINSTANCE inst, const Theme& theme, const std::wstring& hint, RECT* out,
-                      PickAnalyzer analyze = nullptr, PickPreview preview = nullptr);
+                      PickAnalyzer analyze = nullptr, PickPreview preview = nullptr, const RECT* initial = nullptr);
 
 }  // namespace gct
