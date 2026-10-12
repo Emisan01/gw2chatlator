@@ -6,9 +6,8 @@
 #include "core/text.hpp"
 #include "win/files.hpp"
 
-#include <bcrypt.h>
-
 #include "core/rapid_models.hpp"
+#include "win/hash.hpp"
 #include "win/http.hpp"
 
 #ifdef GCT_HAVE_RAPIDOCR
@@ -121,28 +120,6 @@ bool RapidRecognizer::Ready() const { return false; }
 RecResult RapidRecognizer::Recognize(const Image&, bool, std::wstring*) { return {}; }
 
 #endif
-
-namespace {
-
-std::string Sha256Hex(const std::string& data) {
-    BCRYPT_ALG_HANDLE alg = nullptr;
-    unsigned char hash[32] = {};
-    std::string hex;
-    if (BCryptOpenAlgorithmProvider(&alg, BCRYPT_SHA256_ALGORITHM, nullptr, 0) == 0) {
-        if (BCryptHash(alg, nullptr, 0, reinterpret_cast<PUCHAR>(const_cast<char*>(data.data())),
-                       static_cast<ULONG>(data.size()), hash, sizeof(hash)) == 0) {
-            static const char* digits = "0123456789abcdef";
-            for (unsigned char b : hash) {
-                hex += digits[b >> 4];
-                hex += digits[b & 15];
-            }
-        }
-        BCryptCloseAlgorithmProvider(alg, 0);
-    }
-    return hex;
-}
-
-}  // namespace
 
 bool RapidGroupInstalled(const RapidModelGroup& g, const std::wstring& dir) {
     return GetFileAttributesW((dir + L"\\" + RapidModelFile(g)).c_str()) != INVALID_FILE_ATTRIBUTES &&
