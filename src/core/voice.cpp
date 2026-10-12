@@ -239,6 +239,8 @@ const VoiceModelInfo* VoiceCatalog::Recommended() const {
 }
 
 // whisper.cpp v1.9.5 multilingual models (sizes and SHA-256 checked 2026-10-12). ramMb: measured-order estimates.
+// No tiny: with the short encoder context it loops and loses half sentences (voice_bench, 2026-10-12), and with the
+// full context it is slower than base with more errors.
 // "langs": Whisper paper (Radford et al. 2022, arXiv:2212.04356), Table 13, FLEURS error rates of tiny / base / small /
 // medium and large-v2 for the turbo model (large-v3 and turbo are at least as good; q5 quantization costs little):
 // < 10 % -> 3, < 20 % -> 2, < 35 % -> 1, else 0. Arabic needs at least small (tiny 63 %, base 49 %, small 31 %).
@@ -246,12 +248,6 @@ const char* DefaultVoiceCatalogJson() {
     return R"json({
   "date": "2026-10-12",
   "models": [
-    {"id": "tiny-q5_1", "name": "Whisper tiny (q5_1)", "provider": "whisper", "file": "ggml-tiny-q5_1.bin",
-     "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny-q5_1.bin",
-     "sha256": "818710568da3ca15689e31a743197b520007872ff9576237bda97bd1b469c3d7", "bytes": 32152673,
-     "ramMb": 120, "streaming": false, "englishOnly": false, "recommended": false, "licence": "MIT",
-     "langs": {"en": 2, "de": 1, "fr": 0, "es": 2, "it": 1, "pt": 1, "nl": 0, "pl": 0, "ru": 1, "tr": 0, "ar": 0,
-               "zh": 0, "ja": 0, "ko": 0}},
     {"id": "base-q5_1", "name": "Whisper base (q5_1)", "provider": "whisper", "file": "ggml-base-q5_1.bin",
      "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base-q5_1.bin",
      "sha256": "422f1ae452ade6f30a004d7e5c6a43195e4433bc370bf23fac9cc591f01a8898", "bytes": 59707625,

@@ -63,6 +63,9 @@ struct DialogContext {
     std::function<void(const Config& cfg, HWND notify, UINT message)> voiceTest;
     // GW2 Keyboard: the voice recognizer DLLs are there (voice input can work); text says why not otherwise.
     std::function<bool(std::wstring* why)> voiceAvailable;
+    // GW2 Keyboard: learned misheard words ("heard = meant" per line) as text, and storing an edited list.
+    std::function<std::wstring()> voiceFixesText;
+    std::function<void(const std::wstring&)> setVoiceFixes;
 };
 
 enum class SettingsPage { General = 0, Reading, Writing, Translator, Game, Technical, Voice };  // Voice: GW2 Keyboard only
