@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "core/text.hpp"
@@ -84,6 +85,15 @@ int wmain(int argc, wchar_t** argv) {
         return 1;
     }
     Print("system: " + gct::WhisperEngine::SystemInfo() + "\n");
+    // Which CPU variant ggml chose (the one that stays loaded).
+    WIN32_FIND_DATAW fd;
+    HANDLE h = FindFirstFileW((gct::WhisperEngine::RuntimeDir() + L"\\ggml-cpu-*.dll").c_str(), &fd);
+    if (h != INVALID_HANDLE_VALUE) {
+        do {
+            if (GetModuleHandleW(fd.cFileName)) Print("backend: " + gct::ToUtf8(fd.cFileName) + "\n");
+        } while (FindNextFileW(h, &fd));
+        FindClose(h);
+    }
 
     gct::WhisperEngine engine;
     auto t0 = std::chrono::steady_clock::now();
@@ -137,6 +147,24 @@ int wmain(int argc, wchar_t** argv) {
         // One tab-separated line per file for tables: name, audio ms, full ms, reduced ctx, reduced ms, texts.
         Print("RESULT\t" + name + "\t" + std::to_string(audioMs) + "\t" + std::to_string(ms[0]) + "\t" +
               std::to_string(reduced) + "\t" + std::to_string(ms[1]) + "\t" + texts[0] + "\t" + texts[1] + "\n\n");
+    }
+
+    // Cancel: how fast a running pass stops (abort set 200 ms into a pass on the first file, both contexts).
+    std::vector<float> pcm;
+    std::string err;
+    if (ReadWav16kMono(argv[4], &pcm, &err)) {
+        for (int ctx : {0, std::clamp(static_cast<int>(pcm.size() * 50 / 16000) + 64, 256, 1500)}) {
+            o.audioCtx = ctx;
+            abort = false;
+            std::thread stopper([&abort] {
+                Sleep(200);
+                abort = true;
+            });
+            const gct::WhisperEngine::Result r = engine.Transcribe(pcm.data(), pcm.size(), o, &abort);
+            stopper.join();
+            Print("abort ctx " + std::to_string(ctx ? ctx : 1500) + ": aborted=" + std::to_string(r.aborted) +
+                  " after " + std::to_string(r.ms) + " ms (set at 200 ms)\n");
+        }
     }
     return 0;
 }
