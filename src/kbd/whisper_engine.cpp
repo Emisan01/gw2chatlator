@@ -26,9 +26,9 @@ namespace gct {
 
 namespace {
 
+enum class RuntimeState { Missing, WrongVersion, NoBackend, Ok };
 std::once_flag g_once;
-bool g_ok = false;
-std::wstring g_error;
+RuntimeState g_state = RuntimeState::Missing;  // written once inside call_once, read after it
 
 void QuietLog(ggml_log_level, const char*, void*) {}  // whisper/ggml log to stderr otherwise
 
@@ -90,27 +90,29 @@ std::wstring WhisperEngine::RuntimeDir() { return ExeDir() + L"\\voice"; }
 
 bool WhisperEngine::RuntimeAvailable(std::wstring* error) {
     std::call_once(g_once, [] {
-        const std::wstring dir = RuntimeDir();
         // By full path, with the voice folder as search path for its own imports (ggml.dll, ggml-base.dll); the
         // delay-load helper then finds the modules already loaded. Never unloaded.
         const UINT oldMode = SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOOPENFILEERRORBOX);
-        HMODULE whisper = LoadLibraryExW((dir + L"\\whisper.dll").c_str(), nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
+        HMODULE whisper =
+            LoadLibraryExW((RuntimeDir() + L"\\whisper.dll").c_str(), nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
         SetErrorMode(oldMode);
         if (!whisper) {
-            g_error = TrF(L"The voice recognizer is missing (folder {1}).", {dir});
+            g_state = RuntimeState::Missing;
             return;
         }
-        const long long devices = BindAndRegister(ToUtf8(dir).c_str());
-        if (devices < 0) {
-            g_error = TrF(L"The voice recognizer in {1} does not fit this program version.", {dir});
-        } else if (devices == 0) {
-            g_error = Tr(L"The voice recognizer found no backend for this processor.");
-        } else {
-            g_ok = true;
-        }
+        const long long devices = BindAndRegister(ToUtf8(RuntimeDir()).c_str());
+        g_state = devices < 0 ? RuntimeState::WrongVersion : devices == 0 ? RuntimeState::NoBackend : RuntimeState::Ok;
     });
-    if (!g_ok && error) *error = g_error;
-    return g_ok;
+    if (g_state == RuntimeState::Ok) return true;
+    if (error) {  // translated here, not cached: the UI language can change while the program runs
+        if (g_state == RuntimeState::Missing)
+            *error = TrF(L"The voice recognizer is missing (folder {1}).", {RuntimeDir()});
+        else if (g_state == RuntimeState::WrongVersion)
+            *error = TrF(L"The voice recognizer in {1} does not fit this program version.", {RuntimeDir()});
+        else
+            *error = Tr(L"The voice recognizer found no backend for this processor.");
+    }
+    return false;
 }
 
 std::string WhisperEngine::SystemInfo() {
