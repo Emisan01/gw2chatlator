@@ -2,6 +2,7 @@
 //   voice_bench.exe <model.bin> <lang|auto> <threads> <file.wav>...
 // WAVs: 16 kHz mono 16-bit PCM. Each file runs twice: full encoder context (audio_ctx 0) and the reduced context the
 // app uses for short clips (seconds * 50 + 64, 256..1500). Prints text, time and real-time factor (time / audio).
+// VOICE_BENCH_REPEAT=n runs each pass n times and reports the fastest.
 // The DLLs are expected in <exe>\voice (copied by the build). Recordings stay in local\ (never committed).
 #include <windows.h>
 
@@ -98,6 +99,9 @@ int wmain(int argc, wchar_t** argv) {
     const std::string lang = gct::ToUtf8(argv[2]);
     o.language = lang == "auto" ? "" : lang;
     o.threads = std::max(1, _wtoi(argv[3]));
+    wchar_t rep[16] = L"1";  // n runs per pass, the fastest counts
+    GetEnvironmentVariableW(L"VOICE_BENCH_REPEAT", rep, 16);
+    const int repeat = std::max(1, _wtoi(rep));
 
     // Warm-up (first run allocates buffers): 1 s of silence, not counted.
     std::vector<float> silence(16000, 0.0f);
@@ -121,7 +125,9 @@ int wmain(int argc, wchar_t** argv) {
         int ms[2] = {0, 0};
         for (int pass = 0; pass < 2; ++pass) {
             o.audioCtx = pass == 0 ? 0 : reduced;
-            const gct::WhisperEngine::Result r = engine.Transcribe(pcm.data(), pcm.size(), o, &abort);
+            gct::WhisperEngine::Result r = engine.Transcribe(pcm.data(), pcm.size(), o, &abort);
+            for (int k = 1; k < repeat; ++k)  // fastest of n: other programs on the PC only ever add time
+                r.ms = std::min(r.ms, engine.Transcribe(pcm.data(), pcm.size(), o, &abort).ms);
             ms[pass] = r.ms;
             texts[pass] = r.ok ? r.text : "ERROR " + gct::ToUtf8(r.error);
             snprintf(line, sizeof line, "  ctx %4d: %5d ms  RTF %.3f  [%s] ", pass == 0 ? 1500 : reduced, r.ms,
