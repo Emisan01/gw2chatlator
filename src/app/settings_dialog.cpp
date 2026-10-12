@@ -6,6 +6,7 @@
 #include <shellapi.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cstring>
 #include <memory>
 #include <thread>
@@ -18,6 +19,10 @@
 #include "core/rapid_models.hpp"
 #include "win/rapid_ocr.hpp"
 #include "win/tesseract_ocr.hpp"
+#else
+#include "core/voice.hpp"
+#include "win/audio_capture.hpp"
+#include "win/voice_models.hpp"
 #endif
 #include "core/gw2_install.hpp"
 #include "core/langs.hpp"
@@ -40,6 +45,11 @@ constexpr UINT WM_APP_RAPID = WM_APP + 54;
 constexpr UINT WM_APP_OCRCMP = WM_APP + 55;
 constexpr UINT WM_APP_LTTEST = WM_APP + 56;
 constexpr UINT WM_APP_FIND_LOCAL = WM_APP + 57;
+#ifdef GCT_KEYBOARD_APP
+constexpr UINT WM_APP_VOICE_PROGRESS = WM_APP + 58;  // WPARAM = percent of the model download
+constexpr UINT WM_APP_VOICE_DONE = WM_APP + 59;      // LPARAM = new std::wstring (error, empty = done)
+constexpr UINT WM_APP_VOICE_TEST = WM_APP + 60;      // LPARAM = new std::wstring (result of the test recording)
+#endif
 constexpr wchar_t kTesseractUrl[] = L"https://github.com/UB-Mannheim/tesseract/wiki";
 
 enum : int {
@@ -62,6 +72,10 @@ enum : int {
     // Wizard
     // Technical
     kOcrZoom, kKeyHold, kStepDelay, kTechText, kTechRefresh, kTechCopy, kTechSaveF16, kTechStatus,
+    // Voice (GW2 Keyboard)
+    kVoiceOn, kVoiceModel, kVoiceGet, kVoiceModelStatus, kVoiceLang, kVoiceTranslate, kVoiceKey, kVoiceMode,
+    kVoiceAppend, kVoiceMaxSec, kVoiceLive, kVoiceDevice, kVoiceThreads, kVoiceGlossary, kVoiceTest, kVoiceTestStatus,
+    kVoiceFixes, kVoiceHint,
     kBack, kNext, kStepTitle, kStepText,
 };
 
@@ -411,12 +425,33 @@ int PresetOf(const std::wstring& url) {
     return kPresetOther;
 }
 
+#ifdef GCT_KEYBOARD_APP
+// Modal: the learned misheard words of the voice input, "heard = meant" per line. True when confirmed.
+bool EditVoiceFixes(HWND owner, HINSTANCE inst, std::wstring* text);
+
+// Model size in MB as the downloads count it (rounded up).
+std::wstring VoiceMb(uint64_t bytes) { return std::to_wstring((bytes + (1ull << 20) - 1) >> 20); }
+
+// The language of the keyboard layout ("de-DE"), like the input box reads it.
+std::wstring KeyboardLayoutLocale() {
+    const LANGID lang = LOWORD(reinterpret_cast<UINT_PTR>(GetKeyboardLayout(0)));
+    wchar_t name[LOCALE_NAME_MAX_LENGTH] = {};
+    if (LCIDToLocaleName(MAKELCID(lang, SORT_DEFAULT), name, LOCALE_NAME_MAX_LENGTH, 0) <= 0) return {};
+    return name;
+}
+#endif
+
 // ---------------------------------------------------------------------------
 // Settings
 // ---------------------------------------------------------------------------
 class SettingsDialog final : public NativeDialog {
 public:
     SettingsDialog(Config& cfg, const DialogContext& ctx, SettingsPage start) : cfg_(cfg), ctx_(ctx), start_(start) {}
+#ifdef GCT_KEYBOARD_APP
+    ~SettingsDialog() override {
+        if (voiceCancel_) *voiceCancel_ = true;  // a running model download ends with the dialog
+    }
+#endif
     DialogResult result;
 
 private:
@@ -426,7 +461,7 @@ private:
     void Build() override {
         tab_ = Add(WC_TABCONTROLW, L"", WS_TABSTOP | WS_CLIPSIBLINGS, 10, 10, kW - 20, 470, kIdTab);
 #ifdef GCT_KEYBOARD_APP
-        const wchar_t* names[] = {L"General", L"Writing", L"Translator", L"Game & start", L"Technical"};
+        const wchar_t* names[] = {L"General", L"Writing", L"Voice", L"Translator", L"Game & start", L"Technical"};
 #else
         const wchar_t* names[] = {L"General", L"Reading the chat", L"Writing", L"Translator", L"Game & start",
                                   L"Technical"};
@@ -444,6 +479,9 @@ private:
         BuildReading();
 #endif
         BuildWriting();
+#ifdef GCT_KEYBOARD_APP
+        BuildVoice();
+#endif
         BuildTranslator();
         BuildGame();
         BuildTechnical();
@@ -459,14 +497,29 @@ private:
 
     int Y(int row) const { return kTop + row * kRow; }
 
-    // The tab of a page: GW2 Keyboard has no "Reading the chat" page.
+    // The tab of a page (= the order of the Build* calls): GW2 Keyboard has no "Reading the chat" page, the full
+    // tool no "Voice" page (each falls back to General).
     static int TabOf(SettingsPage p) {
-        int i = static_cast<int>(p);
+        switch (p) {
 #ifdef GCT_KEYBOARD_APP
-        if (p == SettingsPage::Reading) i = 0;
-        else if (i > static_cast<int>(SettingsPage::Reading)) --i;
+            case SettingsPage::General:
+            case SettingsPage::Reading: return 0;
+            case SettingsPage::Writing: return 1;
+            case SettingsPage::Voice: return 2;
+            case SettingsPage::Translator: return 3;
+            case SettingsPage::Game: return 4;
+            case SettingsPage::Technical: return 5;
+#else
+            case SettingsPage::General:
+            case SettingsPage::Voice: return 0;
+            case SettingsPage::Reading: return 1;
+            case SettingsPage::Writing: return 2;
+            case SettingsPage::Translator: return 3;
+            case SettingsPage::Game: return 4;
+            case SettingsPage::Technical: return 5;
 #endif
-        return i;
+        }
+        return 0;
     }
 
     void BuildGeneral() {
@@ -744,6 +797,320 @@ private:
             if (!PostMessageW(h, WM_APP_LTTEST, 0, reinterpret_cast<LPARAM>(text))) delete text;
         }).detach();
     }
+
+#ifdef GCT_KEYBOARD_APP
+    // Voice input: hold, speak, release – the text lands in the input box and goes through the same chain as typed
+    // text; Enter stays yours. Model management looks like the local translator models (size, memory, install).
+    void BuildVoice() {
+        BeginPage();
+        voiceCatalog_ = LoadVoiceCatalog(cfg_.dataDir);
+        voiceHw_ = ProbeVoiceHardware();
+        voiceWhy_.clear();
+        voiceOk_ = !ctx_.voiceAvailable || ctx_.voiceAvailable(&voiceWhy_);
+        // Without AVX2 or with few cores only base answers in time.
+        voiceRecommended_.clear();
+        if ((!voiceHw_.avx2 || voiceHw_.logicalProcessors < 4) && voiceCatalog_.Find("base-q5_1"))
+            voiceRecommended_ = "base-q5_1";
+        if (voiceRecommended_.empty() && voiceCatalog_.Recommended()) voiceRecommended_ = voiceCatalog_.Recommended()->id;
+        voiceCtrls_.clear();
+        int r = 0;
+        HWND on = Add(L"BUTTON",
+                      Tr(L"Voice input: hold the microphone button or the key, speak, release – check the text, Enter "
+                         L"sends"),
+                      BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP, kLabelX, Y(r++) - 6, kW - 44, 34, kVoiceOn);
+        SendMessageW(on, BM_SETCHECK, cfg_.voiceEnabled ? BST_CHECKED : BST_UNCHECKED, 0);
+        group_ = &voiceCtrls_;  // everything below except the hint is disabled when voice input cannot work
+
+        // Model: size and memory in the list; status (downloaded, disk space, quality for your language) below.
+        Label(Tr(L"Model"), kLabelX, Y(r), kLabelW);
+        std::vector<std::wstring> models;
+        voiceModelIds_.clear();
+        const std::string wanted = cfg_.voiceModel.empty() ? voiceRecommended_ : ToUtf8(cfg_.voiceModel);
+        int modelSel = -1, recommendedSel = 0;
+        for (const VoiceModelInfo& m : voiceCatalog_.models) {
+            std::wstring item =
+                TrF(L"{1} – {2} MB, RAM ~{3} MB", {FromUtf8(m.name), VoiceMb(m.bytes), std::to_wstring(m.ramMb)});
+            if (m.id == voiceRecommended_) {
+                item = TrF(L"{1} – recommended", {item});
+                recommendedSel = static_cast<int>(models.size());
+            }
+            if (m.id == wanted) modelSel = static_cast<int>(models.size());
+            models.push_back(item);
+            voiceModelIds_.push_back(m.id);
+        }
+        Combo(kVoiceModel, models, modelSel >= 0 ? modelSel : recommendedSel, kCtrlX, Y(r), kCtrlW - 126);
+        Button(kVoiceGet, Tr(L"Download…"), kCtrlX + kCtrlW - 120, Y(r++) - 1, 120);
+        Label(L"", kCtrlX, Y(r++) - 4, kCtrlW, 32, kVoiceModelStatus);
+
+        // Language: the one you write in (default), detected, or a fixed one; whisper can also give English directly.
+        Label(Tr(L"Language"), kLabelX, Y(r), kLabelW);
+        std::vector<std::wstring> langs{Tr(L"As I write"), Tr(L"Detect automatically")};
+        voiceLangValues_ = {L"", L"auto"};
+        const bool fixedLang = !cfg_.voiceLang.empty() && cfg_.voiceLang != L"auto";
+        const LangInfo* fixed = fixedLang ? FindLanguage(cfg_.voiceLang) : nullptr;
+        int langSel = cfg_.voiceLang == L"auto" ? 1 : 0;
+        for (const LangInfo& l : Languages()) {
+            if (WhisperLang(l.code).empty()) continue;  // the recognizer does not know it
+            if (&l == fixed) langSel = static_cast<int>(langs.size());
+            langs.push_back(std::wstring(l.native) + L"  (" + l.code + L")");
+            voiceLangValues_.push_back(l.code);
+        }
+        if (fixedLang && langSel == 0) {  // a code from the settings file that is not in the list stays
+            langSel = static_cast<int>(langs.size());
+            langs.push_back(cfg_.voiceLang);
+            voiceLangValues_.push_back(cfg_.voiceLang);
+        }
+        Combo(kVoiceLang, langs, langSel, kCtrlX, Y(r++), kCtrlW);
+        Check(kVoiceTranslate, Tr(L"Directly into English (whisper translates; normally your translator does it)"),
+              cfg_.voiceTranslate, kLabelX, Y(r++), kW - 44);
+
+        // The key works while this window has the focus; the microphone button always.
+        Label(Tr(L"Key in this window"), kLabelX, Y(r), kLabelW);
+        std::vector<std::wstring> keys{Tr(L"Only the button")};
+        voiceKeyValues_ = {L""};
+        for (int f = 1; f <= 12; ++f)
+            if (f != 10) {  // F10 is Windows' menu key
+                voiceKeyValues_.push_back(L"F" + std::to_wstring(f));
+                keys.push_back(voiceKeyValues_.back());
+            }
+        const std::wstring key = ToUpperAscii(Trim(cfg_.voiceKey));
+        int keySel = -1;
+        for (size_t i = 0; i < voiceKeyValues_.size(); ++i)
+            if (voiceKeyValues_[i] == key) keySel = static_cast<int>(i);
+        if (keySel < 0) {  // another key from the settings file stays
+            keySel = static_cast<int>(keys.size());
+            keys.push_back(cfg_.voiceKey);
+            voiceKeyValues_.push_back(cfg_.voiceKey);
+        }
+        Combo(kVoiceKey, keys, keySel, kCtrlX, Y(r), 150);
+        Combo(kVoiceMode, {Tr(L"Hold to talk"), Tr(L"Press to start and stop")}, cfg_.voiceToggle ? 1 : 0, kCtrlX + 158,
+              Y(r++), kCtrlW - 158);
+        Label(Tr(L"New recording"), kLabelX, Y(r), kLabelW);
+        Combo(kVoiceAppend, {Tr(L"replaces the last dictation"), Tr(L"is appended")}, cfg_.voiceAppend ? 1 : 0, kCtrlX,
+              Y(r++), kCtrlW);
+        Label(Tr(L"Longest recording"), kLabelX, Y(r), kLabelW);
+        Edit(kVoiceMaxSec, std::to_wstring(cfg_.voiceMaxSec), kCtrlX, Y(r), 50, ES_NUMBER);
+        Label(L"s", kCtrlX + 56, Y(r), 16);
+        Check(kVoiceLive, Tr(L"Live text while speaking (more CPU)"), cfg_.voiceLive, kCtrlX + 80, Y(r++), kCtrlW - 80);
+
+        Label(Tr(L"Microphone"), kLabelX, Y(r), kLabelW);
+        std::vector<std::wstring> mics{Tr(L"Windows default")};
+        voiceDeviceIds_ = {L""};
+        int micSel = 0;
+        for (const AudioDevice& d : AudioCapture::Devices()) {
+            if (!cfg_.voiceDevice.empty() && d.id == cfg_.voiceDevice) micSel = static_cast<int>(mics.size());
+            mics.push_back(d.name);
+            voiceDeviceIds_.push_back(d.id);
+        }
+        if (!cfg_.voiceDevice.empty() && micSel == 0) {  // unplugged: kept until you choose another one
+            micSel = static_cast<int>(mics.size());
+            mics.push_back(Tr(L"(not connected)"));
+            voiceDeviceIds_.push_back(cfg_.voiceDevice);
+        }
+        Combo(kVoiceDevice, mics, micSel, kCtrlX, Y(r++), kCtrlW);
+
+        Label(Tr(L"CPU threads"), kLabelX, Y(r), kLabelW);
+        const unsigned logical = std::max(1u, voiceHw_.logicalProcessors);
+        std::vector<std::wstring> threads{TrF(L"Automatic ({1})", {std::to_wstring(VoiceThreads(0, logical))})};
+        voiceThreadValues_ = {0};
+        int threadSel = 0;
+        const int most = std::min(8, static_cast<int>(logical));
+        for (int t = 1; t <= most; ++t) {
+            if (t == cfg_.voiceThreads) threadSel = static_cast<int>(threads.size());
+            threads.push_back(std::to_wstring(t));
+            voiceThreadValues_.push_back(t);
+        }
+        if (cfg_.voiceThreads > most) {  // more from the settings file stays
+            threadSel = static_cast<int>(threads.size());
+            threads.push_back(std::to_wstring(cfg_.voiceThreads));
+            voiceThreadValues_.push_back(cfg_.voiceThreads);
+        }
+        Combo(kVoiceThreads, threads, threadSel, kCtrlX, Y(r), 150);
+        Check(kVoiceGlossary, Tr(L"Know my names and GW2 words"), cfg_.voiceGlossary, kCtrlX + 160, Y(r++),
+              kCtrlW - 160);
+
+        Button(kVoiceTest, Tr(L"Test (speak 4 s)"), kLabelX, Y(r) - 1, 170);
+        Label(Tr(L"Records 4 s with the choices above – nothing is saved."), kLabelX + 180, Y(r++) - 2, kW - 44 - 180,
+              50, kVoiceTestStatus);
+        Button(kVoiceFixes, Tr(L"Learned…"), kLabelX, Y(r++) - 1, 170);
+        group_ = nullptr;
+        Label(L"", kLabelX, Y(r) - 2, kW - 44, 34, kVoiceHint);
+
+        if (!voiceOk_)
+            for (HWND h : voiceCtrls_) EnableWindow(h, FALSE);
+        EnableWindow(Item(kVoiceTest), voiceOk_ && ctx_.voiceTest && !voiceTesting_);
+        EnableWindow(Item(kVoiceFixes), voiceOk_ && ctx_.voiceFixesText && ctx_.setVoiceFixes);
+        RefreshVoice();
+    }
+
+    const VoiceModelInfo* SelectedVoiceModel() const {
+        const int i = Sel(kVoiceModel);
+        return i >= 0 && static_cast<size_t>(i) < voiceModelIds_.size()
+                   ? voiceCatalog_.Find(voiceModelIds_[static_cast<size_t>(i)])
+                   : nullptr;
+    }
+
+    // "" (as I write), "auto" or a language code.
+    std::wstring VoiceLangValue() const {
+        const int i = Sel(kVoiceLang);
+        return i >= 0 && static_cast<size_t>(i) < voiceLangValues_.size() ? voiceLangValues_[static_cast<size_t>(i)]
+                                                                         : cfg_.voiceLang;
+    }
+
+    // The language the recognizer listens for: "" = detected; else a code ("DE", "de-DE").
+    std::wstring VoiceLangCode() const {
+        const std::wstring v = VoiceLangValue();
+        if (v == L"auto") return L"";
+        if (!v.empty()) return v;
+        // As I write: the writing language as chosen on the Writing page now, else the keyboard layout's.
+        const int w = Sel(kWriteIn);
+        if (w > 0 && static_cast<size_t>(w - 1) < Languages().size()) return Languages()[static_cast<size_t>(w - 1)].code;
+        if (w < 0 && !cfg_.writeIn.empty()) return cfg_.writeIn;
+        return KeyboardLayoutLocale();
+    }
+
+    static std::wstring VoiceQualityWord(int q) {
+        return q >= 3 ? Tr(L"very good") : q == 2 ? Tr(L"good") : q == 1 ? Tr(L"weak") : Tr(L"unusable");
+    }
+
+    std::wstring VoiceModelStatus() const {
+        const VoiceModelInfo* m = SelectedVoiceModel();
+        if (!m) return Tr(L"[--] No voice model in the list.");
+        const std::wstring dir = cfg_.VoiceModelDir();
+        std::wstring s;
+        if (voiceDownloading_ == m->id)
+            s = TrF(L"Downloading … {1} % of {2} MB", {std::to_wstring(voicePercent_), VoiceMb(m->bytes)});
+        else if (voiceErrorId_ == m->id && !voiceError_.empty())
+            s = TrF(L"[!] Not downloaded: {1}", {voiceError_});
+        else if (VoiceModelInstalled(dir, *m))
+            s = Tr(L"[OK] Downloaded.");
+        else if (const uint64_t freeBytes = FreeDiskBytes(dir))
+            s = TrF(L"[--] Not downloaded: {1} MB needed, {2} MB free.", {VoiceMb(m->bytes), VoiceMb(freeBytes)});
+        else
+            s = TrF(L"[--] Not downloaded: {1} MB needed.", {VoiceMb(m->bytes)});
+        const std::wstring code = VoiceLangCode();
+        const std::string wl = WhisperLang(code);
+        if (!wl.empty())
+            s += L" " + TrF(L"Recognition of {1}: {2}.", {LanguageLabel(code), VoiceQualityWord(m->QualityFor(wl))});
+        return s;
+    }
+
+    // One line below everything: why it cannot work, what does not fit this PC or language, else the privacy note.
+    std::wstring VoiceHint() const {
+        if (!voiceOk_) return L"[!] " + voiceWhy_;
+        if (!voiceHw_.avx2) return Tr(L"[!] No AVX2 on this PC: base is the right model.");
+        const VoiceModelInfo* m = SelectedVoiceModel();
+        if (m && voiceHw_.ramAvailable &&
+            voiceHw_.ramAvailable < ((static_cast<uint64_t>(m->ramMb) * 3 / 2) << 20))
+            return TrF(L"[!] Only {1} MB of memory are free – {2} needs about {3} MB. A smaller model is safer.",
+                       {VoiceMb(voiceHw_.ramAvailable), FromUtf8(m->name), std::to_wstring(m->ramMb)});
+        const std::string wl = WhisperLang(VoiceLangCode());
+        if (m && !wl.empty() && m->QualityFor(wl) < 2) {
+            const VoiceModelInfo* better = nullptr;  // the smallest larger model that recognizes it well
+            for (const VoiceModelInfo& o : voiceCatalog_.models)
+                if (o.bytes > m->bytes && o.QualityFor(wl) >= 2 && (!better || o.bytes < better->bytes)) better = &o;
+            if (better)
+                return TrF(L"[!] {1} recognizes this language poorly – {2} or larger is better.",
+                           {FromUtf8(m->name), FromUtf8(better->name)});
+            return TrF(L"[!] {1} recognizes this language poorly.", {FromUtf8(m->name)});
+        }
+        if (VoiceLangValue() == L"auto") return Tr(L"A fixed language is more reliable for short sentences.");
+        return Tr(L"Runs on this PC – no audio leaves it, nothing is recorded to disk.");
+    }
+
+    void RefreshVoice() {
+        const VoiceModelInfo* m = SelectedVoiceModel();
+        const bool busy = !voiceDownloading_.empty();
+        const bool thisOne = m && busy && voiceDownloading_ == m->id;
+        const bool installed = m && !thisOne && VoiceModelInstalled(cfg_.VoiceModelDir(), *m);
+        SetText(kVoiceGet, thisOne ? Tr(L"Cancel") : installed ? Tr(L"Delete…") : Tr(L"Download…"));
+        EnableWindow(Item(kVoiceGet), voiceOk_ && m && (!busy || (thisOne && voiceCancel_ && !*voiceCancel_)));
+        SetText(kVoiceModelStatus, VoiceModelStatus());
+        SetText(kVoiceHint, VoiceHint());
+    }
+
+    // Download (asked first), cancel a running download, or delete the chosen model.
+    void VoiceGetClicked() {
+        const VoiceModelInfo* m = SelectedVoiceModel();
+        if (!m) return;
+        if (!voiceDownloading_.empty()) {  // the button says "Cancel"
+            if (voiceDownloading_ == m->id && voiceCancel_) *voiceCancel_ = true;
+            RefreshVoice();
+            return;
+        }
+        const std::wstring dir = cfg_.VoiceModelDir();
+        const std::wstring name = FromUtf8(m->name);
+        const UINT rtl = UiRtl() ? MB_RTLREADING | MB_RIGHT : 0;
+        if (VoiceModelInstalled(dir, *m)) {
+            if (MessageBoxW(hwnd_,
+                            TrF(L"Delete the voice model {1}? It frees {2} MB; you can download it again.",
+                                {name, VoiceMb(m->bytes)})
+                                .c_str(),
+                            Tr(L"Voice input").c_str(), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2 | rtl) != IDYES)
+                return;
+            voiceError_.clear();
+            const bool deleted = DeleteVoiceModel(dir, *m);
+            RefreshVoice();
+            if (!deleted)
+                SetText(kVoiceModelStatus, TrF(L"[!] Could not delete {1} – is it in use?", {VoiceModelPath(dir, *m)}));
+            return;
+        }
+        // Where it comes from, as the catalog says (https only).
+        const size_t hostEnd = m->url.find('/', 8);
+        std::wstring source = FromUtf8(m->url.substr(8, hostEnd == std::string::npos ? std::string::npos : hostEnd - 8));
+        if (m->provider == "whisper") source += L" (whisper.cpp)";
+        if (MessageBoxW(hwnd_,
+                        TrF(L"Download the voice model {1} ({2} MB from {3})?\n\nIt turns your speech into text on this "
+                            L"PC only: no audio leaves it and nothing is recorded. Licence: {4}.",
+                            {name, VoiceMb(m->bytes), source,
+                             FromUtf8(m->licence.empty() ? std::string("MIT") : m->licence)})
+                            .c_str(),
+                        Tr(L"Voice input").c_str(), MB_YESNO | MB_ICONQUESTION | rtl) != IDYES)
+            return;
+        voiceError_.clear();
+        voiceDownloading_ = m->id;
+        voicePercent_ = 0;
+        auto cancel = std::make_shared<std::atomic<bool>>(false);
+        voiceCancel_ = cancel;
+        RefreshVoice();
+        std::thread([h = hwnd_, dir, model = *m, cancel] {
+            std::wstring error;
+            int last = -1;
+            const bool ok = DownloadVoiceModel(
+                dir, model,
+                [&](uint64_t done, uint64_t total) {
+                    if (!total) total = model.bytes;
+                    const int pct = total ? static_cast<int>(std::min<uint64_t>(done * 100 / total, 100)) : 0;
+                    if (pct != last) {  // at most ~100 messages
+                        last = pct;
+                        PostMessageW(h, WM_APP_VOICE_PROGRESS, static_cast<WPARAM>(pct), 0);
+                    }
+                    return true;
+                },
+                cancel.get(), &error);
+            if (ok) error.clear();
+            else if (error.empty()) error = Tr(L"Download failed.");
+            auto* msg = new std::wstring(std::move(error));
+            if (!PostMessageW(h, WM_APP_VOICE_DONE, 0, reinterpret_cast<LPARAM>(msg))) delete msg;
+        }).detach();
+    }
+
+    // A few seconds through the real chain with the choices on this page (not saved yet).
+    void TestVoice() {
+        if (!ctx_.voiceTest || voiceTesting_) return;
+        const VoiceModelInfo* m = SelectedVoiceModel();
+        if (!m || !VoiceModelInstalled(cfg_.VoiceModelDir(), *m)) {
+            SetText(kVoiceTestStatus, Tr(L"[--] Download the model first."));
+            return;
+        }
+        Config probe = cfg_;
+        Collect(probe);
+        voiceTesting_ = true;
+        EnableWindow(Item(kVoiceTest), FALSE);
+        SetText(kVoiceTestStatus, Tr(L"Speak now (4 s) …"));
+        ctx_.voiceTest(probe, hwnd_, WM_APP_VOICE_TEST);
+    }
+#endif
 
     void BuildTranslator() {
         BeginPage();
@@ -1210,6 +1577,25 @@ private:
                     if (EditMyWords(hwnd_, inst_, &text)) ctx_.setMyWords(text);
                 }
                 break;
+#ifdef GCT_KEYBOARD_APP
+            case kVoiceModel:
+            case kVoiceLang:
+            case kWriteIn:  // "As I write" follows the writing language
+                if (code == CBN_SELCHANGE) RefreshVoice();
+                break;
+            case kVoiceGet:
+                VoiceGetClicked();
+                break;
+            case kVoiceTest:
+                TestVoice();
+                break;
+            case kVoiceFixes:
+                if (ctx_.voiceFixesText && ctx_.setVoiceFixes) {
+                    std::wstring text = ctx_.voiceFixesText();
+                    if (EditVoiceFixes(hwnd_, inst_, &text)) ctx_.setVoiceFixes(text);
+                }
+                break;
+#endif
             case kCorrExport:
                 if (ctx_.exportCorrections) {
                     const std::wstring path = PickTextFile(hwnd_, Tr(L"Export corrections"), true, L"gw2-corrections.txt");
@@ -1650,6 +2036,37 @@ private:
             return 0;
         }
 #endif
+#ifdef GCT_KEYBOARD_APP
+        if (msg == WM_APP_VOICE_PROGRESS) {
+            if (!voiceDownloading_.empty()) {
+                voicePercent_ = static_cast<int>(wp);
+                const VoiceModelInfo* m = SelectedVoiceModel();
+                if (m && m->id == voiceDownloading_) SetText(kVoiceModelStatus, VoiceModelStatus());
+            }
+            return 0;
+        }
+        if (msg == WM_APP_VOICE_DONE) {
+            std::unique_ptr<std::wstring> err(reinterpret_cast<std::wstring*>(lp));
+            const std::string id = voiceDownloading_;
+            const bool cancelled = voiceCancel_ && *voiceCancel_;
+            voiceDownloading_.clear();
+            voiceCancel_.reset();
+            voiceError_ = cancelled ? std::wstring() : *err;  // cancelled on purpose is no error
+            voiceErrorId_ = id;
+            if (err->empty())  // ready: the downloaded model is the chosen one (saved with OK)
+                for (size_t i = 0; i < voiceModelIds_.size(); ++i)
+                    if (voiceModelIds_[i] == id) SendMessageW(Item(kVoiceModel), CB_SETCURSEL, i, 0);
+            RefreshVoice();
+            return 0;
+        }
+        if (msg == WM_APP_VOICE_TEST) {
+            std::unique_ptr<std::wstring> text(reinterpret_cast<std::wstring*>(lp));
+            voiceTesting_ = false;
+            EnableWindow(Item(kVoiceTest), voiceOk_);
+            SetText(kVoiceTestStatus, text ? *text : std::wstring());
+            return 0;
+        }
+#endif
         if (msg == WM_APP_COMPARE) {
             std::unique_ptr<std::wstring> text(reinterpret_cast<std::wstring*>(lp));
             EnableWindow(Item(kTechCompare), TRUE);
@@ -1739,6 +2156,28 @@ private:
         if (Sel(kWriteIn) >= 0)
             c.writeIn = Sel(kWriteIn) == 0 ? L"" : Languages()[static_cast<size_t>(Sel(kWriteIn) - 1)].code;
         c.backTranslate = Checked(kBackTr);
+#ifdef GCT_KEYBOARD_APP
+        c.voiceEnabled = Checked(kVoiceOn);
+        if (const VoiceModelInfo* m = SelectedVoiceModel()) {
+            // The catalog's recommendation stays "" (it follows a newer catalog) unless a model was chosen before.
+            const VoiceModelInfo* rec = voiceCatalog_.Recommended();
+            c.voiceModel = cfg_.voiceModel.empty() && rec && rec->id == m->id ? std::wstring() : FromUtf8(m->id);
+        }
+        auto pick = [this](int id, const auto& values, auto* out) {
+            const int i = Sel(id);
+            if (i >= 0 && static_cast<size_t>(i) < values.size()) *out = values[static_cast<size_t>(i)];
+        };
+        pick(kVoiceLang, voiceLangValues_, &c.voiceLang);
+        c.voiceTranslate = Checked(kVoiceTranslate);
+        pick(kVoiceKey, voiceKeyValues_, &c.voiceKey);
+        c.voiceToggle = Sel(kVoiceMode) == 1;
+        c.voiceAppend = Sel(kVoiceAppend) == 1;
+        if (const int sec = _wtoi(Text(kVoiceMaxSec).c_str()); sec > 0) c.voiceMaxSec = std::clamp(sec, 5, 120);
+        c.voiceLive = Checked(kVoiceLive);
+        pick(kVoiceThreads, voiceThreadValues_, &c.voiceThreads);
+        pick(kVoiceDevice, voiceDeviceIds_, &c.voiceDevice);
+        c.voiceGlossary = Checked(kVoiceGlossary);
+#endif
 #ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
         c.ocrScale = std::clamp(_wtoi(Text(kOcrZoom).c_str()), 0, 4);
 #endif
@@ -1819,6 +2258,24 @@ private:
     Engine shownEngine_ = Engine::Auto;  // whose key section is visible (the translator combo changed last)
     int lastPreset_ = -1;
     bool syncing_ = false;  // slider and size field update each other
+#ifdef GCT_KEYBOARD_APP
+    // Voice page: the catalog and this PC, the values behind the combo boxes, download and test state.
+    VoiceCatalog voiceCatalog_;
+    VoiceHardware voiceHw_;
+    std::string voiceRecommended_;            // catalog id recommended for this PC
+    std::vector<std::string> voiceModelIds_;  // combo index -> catalog id
+    std::vector<std::wstring> voiceLangValues_, voiceKeyValues_, voiceDeviceIds_;
+    std::vector<int> voiceThreadValues_;
+    std::vector<HWND> voiceCtrls_;  // disabled when voice input cannot work (recognizer DLLs missing)
+    bool voiceOk_ = true;
+    std::wstring voiceWhy_;
+    std::string voiceDownloading_;  // catalog id of the running download
+    int voicePercent_ = 0;
+    std::shared_ptr<std::atomic<bool>> voiceCancel_;  // set by "Cancel" and when the dialog closes
+    std::wstring voiceError_;     // the last download error ...
+    std::string voiceErrorId_;    // ... and for which model
+    bool voiceTesting_ = false;
+#endif
 };
 
 // ---------------------------------------------------------------------------
@@ -2040,6 +2497,18 @@ private:
     std::wstring label_, hint_, text_;
     bool multi_;
 };
+
+#ifdef GCT_KEYBOARD_APP
+bool EditVoiceFixes(HWND owner, HINSTANCE inst, std::wstring* text) {
+    TextDialog dlg(Tr(L"Words the voice input heard wrong – one per line as “heard = meant” (for example Red = Raid)."),
+                   Tr(L"They are replaced right after recognition. Delete a line if a fix is wrong; add your own. Stays "
+                      L"on this PC."),
+                   *text, true);
+    dlg.Run(owner, inst, Tr(L"Learned misheard words"), 480, dlg.Height());
+    if (dlg.ok) *text = dlg.text;
+    return dlg.ok;
+}
+#endif
 
 }  // namespace
 
