@@ -838,9 +838,9 @@ private:
             models.push_back(item);
             voiceModelIds_.push_back(m.id);
         }
-        Combo(kVoiceModel, models, modelSel >= 0 ? modelSel : recommendedSel, kCtrlX, Y(r), kCtrlW - 126);
-        Button(kVoiceGet, Tr(L"Download…"), kCtrlX + kCtrlW - 120, Y(r++) - 1, 120);
-        Label(L"", kCtrlX, Y(r++) - 4, kCtrlW, 32, kVoiceModelStatus);
+        Combo(kVoiceModel, models, modelSel >= 0 ? modelSel : recommendedSel, kCtrlX, Y(r++), kCtrlW);
+        Label(L"", kCtrlX, Y(r) - 5, kCtrlW - 128, 32, kVoiceModelStatus);
+        Button(kVoiceGet, Tr(L"Download…"), kCtrlX + kCtrlW - 120, Y(r++) - 3, 120);
 
         // Language: the one you write in (default), detected, or a fixed one; whisper can also give English directly.
         Label(Tr(L"Language"), kLabelX, Y(r), kLabelW);
@@ -970,7 +970,7 @@ private:
     }
 
     static std::wstring VoiceQualityWord(int q) {
-        return q >= 3 ? Tr(L"very good") : q == 2 ? Tr(L"good") : q == 1 ? Tr(L"weak") : Tr(L"unusable");
+        return q >= 3 ? Tr(L"very well") : q == 2 ? Tr(L"well") : q == 1 ? Tr(L"weakly") : Tr(L"hardly");
     }
 
     std::wstring VoiceModelStatus() const {
@@ -991,7 +991,7 @@ private:
         const std::wstring code = VoiceLangCode();
         const std::string wl = WhisperLang(code);
         if (!wl.empty())
-            s += L" " + TrF(L"Recognition of {1}: {2}.", {LanguageLabel(code), VoiceQualityWord(m->QualityFor(wl))});
+            s += L" " + TrF(L"{1}: recognized {2}.", {LanguageLabel(code), VoiceQualityWord(m->QualityFor(wl))});
         return s;
     }
 
