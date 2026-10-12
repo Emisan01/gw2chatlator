@@ -30,3 +30,6 @@ local/
 *.png
 !res/*.png
 !tests/data/synthetic/*.png
+
+# local tool state (agent worktrees)
+.claude/worktrees/
