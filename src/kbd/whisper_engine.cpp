@@ -60,7 +60,10 @@ struct FileLoader {
     static void Close(void* f) { fclose(static_cast<FILE*>(f)); }
 };
 
+// whisper checks the abort callback only between graphs (after the whole encoder, per decoder step); the encoder
+// itself cannot be stopped, so a cancel waits at most one encoder pass. Checked before the encoder starts as well.
 bool AbortRequested(void* flag) { return static_cast<const std::atomic<bool>*>(flag)->load(); }
+bool EncoderMayBegin(whisper_context*, whisper_state*, void* flag) { return !AbortRequested(flag); }
 
 // The recognizer must not take CPU time from the game: the calling thread runs below normal while it works.
 // ggml's own helper threads (threads - 1, created per graph) start at normal priority; Windows does not inherit it.
@@ -181,8 +184,11 @@ WhisperEngine::Result WhisperEngine::Transcribe(const float* pcm, size_t samples
     p.initial_prompt = o.initialPrompt.empty() ? nullptr : o.initialPrompt.c_str();
     p.audio_ctx = std::clamp(o.audioCtx, 0, 1500);
     if (abort) {
+        void* flag = const_cast<std::atomic<bool>*>(abort);
         p.abort_callback = &AbortRequested;
-        p.abort_callback_user_data = const_cast<std::atomic<bool>*>(abort);
+        p.abort_callback_user_data = flag;
+        p.encoder_begin_callback = &EncoderMayBegin;
+        p.encoder_begin_callback_user_data = flag;
     }
 
     const auto start = std::chrono::steady_clock::now();
