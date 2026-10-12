@@ -14,12 +14,46 @@ GW2 Chat Translator – third-party components shipped with the program
    Further script models (Cyrillic, Arabic, Korean, Chinese/Japanese) are downloaded on request from the RapidAI
    project under the same licence.
 
+3. whisper.cpp and ggml (voice\whisper.dll, voice\ggml*.dll – GW2 Keyboard's voice input), version 1.9.5
+   https://github.com/ggml-org/whisper.cpp
+   Licence: MIT (full text below), Copyright (c) 2023-2026 The ggml authors
+
+4. Whisper speech recognition models (ggml-*.bin, downloaded on request into the "models" folder)
+   OpenAI Whisper weights converted for whisper.cpp: https://huggingface.co/ggerganov/whisper.cpp
+   Licence: MIT, Copyright (c) 2022 OpenAI – https://github.com/openai/whisper/blob/main/LICENSE
+   The files are checked against their SHA-256 before they are used.
+
 ---------------------------------------------------------------------
 ONNX Runtime licence
 ---------------------------------------------------------------------
 MIT License
 
 Copyright (c) Microsoft Corporation
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---------------------------------------------------------------------
+whisper.cpp / ggml licence
+---------------------------------------------------------------------
+MIT License
+
+Copyright (c) 2023-2026 The ggml authors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
