@@ -206,7 +206,7 @@ bool HttpDownloadToFile(const std::wstring& url, const std::wstring& path, uint6
     DWORD status = 0, size = sizeof(status);
     WinHttpQueryHeaders(request.h, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX,
                         &status, &size, WINHTTP_NO_HEADER_INDEX);
-    if (status != 200) return fail(TrF(L"Download failed: the server answered HTTP {1}.", {std::to_wstring(status)}));
+    if (status != 200) return fail(TrF(L"Download failed (HTTP {1}).", {std::to_wstring(status)}));
     ULONGLONG length = 0;
     size = sizeof(length);
     if (!WinHttpQueryHeaders(request.h, WINHTTP_QUERY_CONTENT_LENGTH | WINHTTP_QUERY_FLAG_NUMBER64,
