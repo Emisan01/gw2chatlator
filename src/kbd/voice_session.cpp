@@ -274,11 +274,7 @@ void VoiceSession::RunTest(const VoiceSettings& s, int seconds, HWND notify, UIN
             },
             &err, &msg);
         if (!ok) {
-            PostString(notify, message,
-                       L"[!] " + (err == AudioError::AccessDenied
-                                      ? Tr(L"Windows blocks the microphone: Settings → Privacy → Microphone, allow "
-                                           L"desktop apps.")
-                                      : msg));
+            PostString(notify, message, L"[!] " + msg);  // AudioCapture says why (privacy settings, no device, ...)
             testRunning_ = false;
             return;
         }

@@ -257,10 +257,12 @@ void InputBox::SetRtl(bool rtl) {
 // Voice input: the push-to-talk key, the live text while speaking, the
 // recognized text going in.
 // ---------------------------------------------------------------------------
-void InputBox::SetPushToTalkKey(UINT vk) {
-    if (vk == pttVk_) return;
+void InputBox::SetPushToTalkKey(UINT vk, UINT mods) {
+    mods &= MOD_CONTROL | MOD_ALT | MOD_SHIFT;
+    if (vk == pttVk_ && mods == pttMods_) return;
     const bool wasDown = pttDown_;
     pttVk_ = vk;
+    pttMods_ = mods;
     pttDown_ = false;
     if (wasDown && cb_.onPushToTalk) cb_.onPushToTalk(false);
 }
@@ -845,16 +847,22 @@ LRESULT CALLBACK InputBox::Proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
 LRESULT InputBox::Handle(UINT msg, WPARAM wp, LPARAM lp) {
     // The push-to-talk key: held to speak, never typed, not counted; key repeat ignored.
     if (pttVk_ && wp == pttVk_ && (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN || msg == WM_KEYUP || msg == WM_SYSKEYUP)) {
-        if (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN) {
-            if (!(lp & (1 << 30)) && !pttDown_) {
+        const bool down = msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN;
+        const UINT mods = (GetKeyState(VK_CONTROL) < 0 ? MOD_CONTROL : 0u) | (GetKeyState(VK_MENU) < 0 ? MOD_ALT : 0u) |
+                          (GetKeyState(VK_SHIFT) < 0 ? MOD_SHIFT : 0u);
+        if (down) {
+            if (pttDown_) return 0;  // key repeat
+            if (mods == pttMods_ && !(lp & (1 << 30))) {
                 pttDown_ = true;
                 if (cb_.onPushToTalk) cb_.onPushToTalk(true);
+                return 0;
             }
+            // other modifiers, or held since before the focus came: an ordinary key press
         } else if (pttDown_) {
             pttDown_ = false;
             if (cb_.onPushToTalk) cb_.onPushToTalk(false);
+            return 0;
         }
-        return 0;
     }
     switch (msg) {
         case WM_KEYDOWN: {
@@ -987,8 +995,10 @@ LRESULT InputBox::Handle(UINT msg, WPARAM wp, LPARAM lp) {
                 ApplyChoice(static_cast<wchar_t>(wp));
                 return 0;
             }
+            // Right after recognized speech its last word stays as recognized (you see and check it).
+            const bool afterDictation = !dictatedText_.empty() && Text() == dictatedText_;
             const LRESULT r = CallWindowProcW(orig_, hwnd_, msg, wp, lp);
-            if (IsWordBoundary(static_cast<wchar_t>(wp))) TryAutoCorrect();
+            if (IsWordBoundary(static_cast<wchar_t>(wp)) && !afterDictation) TryAutoCorrect();
             else if (wp != 0x08) lastFix_.valid = false;
             return r;
         }

@@ -75,9 +75,10 @@ public:
     // Locale of the active keyboard layout ("de-DE").
     static std::wstring KeyboardLocale();
 
-    // Voice input (GW2 Keyboard; unused = inert). A key that is held to talk instead of typed (0 = none): its presses
-    // go to onPushToTalk, never into the text, and are not counted as typing.
-    void SetPushToTalkKey(UINT vk);
+    // Voice input (GW2 Keyboard; unused = inert). A key that is held to talk instead of typed (0 = none), with exactly
+    // these modifiers (MOD_CONTROL / MOD_ALT / MOD_SHIFT): its presses go to onPushToTalk, never into the text, and are
+    // not counted as typing.
+    void SetPushToTalkKey(UINT vk, UINT mods = 0);
     // Live text while speaking, drawn after the end of the text (stable part in the preview colour, the unsure rest
     // grey); the text itself is not changed. Cleared by the next edit.
     void SetDictationPreview(const std::wstring& stable, const std::wstring& unsure);
@@ -151,7 +152,7 @@ private:
     bool pasted_ = false;
     // voice input
     void DrawDictation(HDC dc) const;
-    UINT pttVk_ = 0;
+    UINT pttVk_ = 0, pttMods_ = 0;
     bool pttDown_ = false;
     std::wstring dictStable_, dictUnsure_;
     std::wstring dictatedText_;  // the text right after InsertDictated: Enter leaves its last word as recognized
