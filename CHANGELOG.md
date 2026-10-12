@@ -5,17 +5,23 @@ diagnosis show it.
 
 ## Unreleased
 
-- **A menu that explains itself:** ≡ is grouped by what you want to do – WRITE, READ THE CHAT TRANSLATED, WINDOW, HELP &
-  SETTINGS – with "What can this tool do?" on top of help: the whole tool on one page (writing, learning, the chips
-  below the input, reading, the handy keys, nothing in the game). It shows once by itself after the setup (first start
-  of GW2 Keyboard), then stays in the menu.
+- **A short menu that adapts:** ≡ shows "Keyboard only" (ticked) – untick it and it reads "Keyboard + chat reader" with
+  **Detect GW2 chat**, **Set read area …** and **Translate chat once now** below. Then Dock, Show on screens (1 min),
+  "What can this tool do?", Settings, Quit. Everything else about reading (what is read: the GW2 chat or a screen
+  area, only translations, laying over the chat) moved to Settings → Reading the chat; the setup is there as "Guided
+  setup", the language under General.
+- **Detect GW2 chat** finds the chat in a picture of the game and shows the found frame at once (traffic light and the
+  first lines); "Set read area" shows the frame set so far. **Drag an edge of the frame** to adjust it – no new frame.
+- **"What can this tool do?"**: the whole tool on one page (writing, learning, the chips below the input, reading, the
+  handy keys, nothing in the game). It shows once by itself after the setup (first start of GW2 Keyboard), then stays
+  in the menu.
 
 - **Chat like in GW2:** a map change (MumbleLink map id) takes the say and map chat and the notices of that map out of
   the log – the party, squad, guild and whispers stay. Settings → Game: "Keep the chat when GW2 clears it".
-- **Save the chat** (menu ≡): the last 1 / 5 / 10 / 20 / 60 minutes or everything as a text file (translation and
+- **Save the chat** (the memory circle): the last 1 / 5 / 10 / 20 / 60 minutes or everything as a text file (translation and
   original) – valuable things said over a boss fight kept for good. **Clear the chat** next to it.
-- **The chat memory like a contingent, only in the menu ≡:** "Chat memory: 312/500", when full "the oldest are
-  overwritten" (like GW2, no notice, no popup) – save or clear right below.
+- **The chat memory as a small circle in the header** that fills up (500 messages; when full the oldest are
+  overwritten, like GW2 – no notice, no popup). Mouse-over explains it, a click offers save or clear.
 - **Faster chat log:** every new or translated line measured all up to 500 entries again (~0.25 ms a line, measured:
   up to ~250 ms on the UI thread per message with a full log). Heights are now kept per entry – only new or changed
   lines are measured. Clearing automatically when full would bring nothing more.

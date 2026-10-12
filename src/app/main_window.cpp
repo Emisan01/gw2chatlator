@@ -1,10 +1,12 @@
 // main_window.cpp
 #include "main_window.hpp"
 
+#include <commctrl.h>
 #include <shellapi.h>
 #include <windowsx.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cwchar>
 #include <memory>
 #include <thread>
@@ -300,6 +302,24 @@ int MainWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
         }
     }
     SetLayeredWindowAttributes(hwnd_, 0, static_cast<BYTE>(cfg_.opacity), LWA_ALPHA);
+    {  // the explanation of the chat memory circle (mouse-over)
+        INITCOMMONCONTROLSEX icc{sizeof(icc), ICC_WIN95_CLASSES};
+        InitCommonControlsEx(&icc);
+        tip_ = CreateWindowExW(WS_EX_TOPMOST, TOOLTIPS_CLASSW, nullptr, WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX,
+                               CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, hwnd_, nullptr, inst, nullptr);
+        if (tip_) {
+            SetWindowDisplayAffinity(tip_, WDA_EXCLUDEFROMCAPTURE);  // never read as chat (invariant 5)
+            TTTOOLINFOW ti{};
+            ti.cbSize = sizeof(ti);
+            ti.uFlags = TTF_SUBCLASS;
+            ti.hwnd = hwnd_;
+            ti.uId = 1;
+            ti.lpszText = const_cast<wchar_t*>(L"");
+            SendMessageW(tip_, TTM_ADDTOOLW, 0, reinterpret_cast<LPARAM>(&ti));
+            SendMessageW(tip_, TTM_SETMAXTIPWIDTH, 0, theme_.S(340));
+            SendMessageW(tip_, TTM_SETDELAYTIME, TTDT_AUTOPOP, 15000);
+        }
+    }
     // Capture exclusion is switched on only while the window covers the chat
     // area (PollGame), so screenshots normally show it.
 
@@ -817,11 +837,63 @@ void MainWindow::Paint() {
         DeleteObject(fill);
         DeleteObject(ring);
     }
+    // The chat memory: a small circle that fills up (500 messages, then the oldest are overwritten – like GW2).
+    LONG chipRight = readDotRect_.left - t.S(2);
+    memoryRect_ = {};
+    if (!cfg_.keyboardOnly) {
+        memoryRect_ = {readDotRect_.left - t.S(20), 0, readDotRect_.left, m.head};
+        chipRight = memoryRect_.left - t.S(2);
+        const int d = t.S(13), cx = (memoryRect_.left + memoryRect_.right) / 2, cy = m.head / 2;
+        memoryShown_ = log_.Count();
+        const double share = std::min(1.0, static_cast<double>(memoryShown_) / ChatLogView::kMaxEntries);
+        HPEN ring = CreatePen(PS_SOLID, std::max(1, t.S(1)), RGB(120, 125, 135));
+        HGDIOBJ oldP = SelectObject(dc, ring), oldB = SelectObject(dc, GetStockObject(NULL_BRUSH));
+        Ellipse(dc, cx - d / 2, cy - d / 2, cx + d / 2 + 1, cy + d / 2 + 1);
+        const int r = d / 2 - t.S(2);
+        if (share > 0 && r > 0) {
+            HBRUSH fill = CreateSolidBrush(share >= 1.0 ? Theme::kAccent : RGB(150, 155, 165));
+            SelectObject(dc, fill);
+            SelectObject(dc, GetStockObject(NULL_PEN));
+            if (share >= 1.0) {
+                Ellipse(dc, cx - r, cy - r, cx + r + 1, cy + r + 1);
+            } else {  // clockwise from the top, like a clock
+                const double a = share * 6.283185307179586;
+                const int ex = cx + static_cast<int>(std::lround(std::sin(a) * 1000)),
+                          ey = cy - static_cast<int>(std::lround(std::cos(a) * 1000));
+                if (ex != cx || ey > cy) {
+                    const int oldDir = SetArcDirection(dc, AD_CLOCKWISE);
+                    Pie(dc, cx - r, cy - r, cx + r + 1, cy + r + 1, cx, cy - 1000, ex, ey);
+                    SetArcDirection(dc, oldDir);
+                }
+            }
+            SelectObject(dc, oldB);
+            DeleteObject(fill);
+        }
+        SelectObject(dc, oldB);
+        SelectObject(dc, oldP);
+        DeleteObject(ring);
+    }
+    if (tip_) {  // its explanation on mouse-over
+        TTTOOLINFOW ti{};
+        ti.cbSize = sizeof(ti);
+        ti.hwnd = hwnd_;
+        ti.uId = 1;
+        ti.rect = memoryRect_;
+        SendMessageW(tip_, TTM_NEWTOOLRECTW, 0, reinterpret_cast<LPARAM>(&ti));
+        std::wstring tip = TrF(L"Chat memory: {1} of {2} messages.\nWhen it is full, the oldest are overwritten (like "
+                               L"GW2).\nClick: save the chat as text or clear it.",
+                               {std::to_wstring(log_.Count()), std::to_wstring(ChatLogView::kMaxEntries)});
+        if (tip != tipText_) {
+            tipText_ = std::move(tip);
+            ti.lpszText = const_cast<wchar_t*>(tipText_.c_str());
+            SendMessageW(tip_, TTM_UPDATETIPTEXTW, 0, reinterpret_cast<LPARAM>(&ti));
+        }
+    }
     const LangInfo* rl = FindLanguage(readLang_);
     const std::wstring readName = rl ? rl->native : readLang_;
     // Short form when space is tight (several tabs or a narrow window).
     const bool roomy = rc.right >= t.S(470) && cfg_.tabs.size() <= 3;
-    readRect_ = DrawChip(dc, t, readDotRect_.left - t.S(2), t.S(6), m.head - t.S(6),
+    readRect_ = DrawChip(dc, t, chipRight, t.S(6), m.head - t.S(6),
                          cfg_.keyboardOnly ? Tr(L"Keyboard only")
                          : roomy           ? TrF(L"Read: {1}", {readName})
                                            : readName,
@@ -949,7 +1021,7 @@ void MainWindow::Paint() {
 }
 
 bool MainWindow::IsClickable(POINT pt) const {
-    for (const RECT* r : {&readRect_, &readDotRect_, &menuRect_, &collapseRect_, &closeRect_, &channelRect_, &writeRect_,
+    for (const RECT* r : {&readRect_, &readDotRect_, &memoryRect_, &menuRect_, &collapseRect_, &closeRect_, &channelRect_, &writeRect_,
                           &chatRect_, &typeRect_})
         if (PtInRect(r, pt)) return true;
     for (const RECT& r : tabRects_)
@@ -988,6 +1060,7 @@ void MainWindow::OnClick(POINT pt) {
     if (PtInRect(&closeRect_, pt)) PostMessageW(hwnd_, WM_CLOSE, 0, 0);
     else if (PtInRect(&collapseRect_, pt)) ToggleCollapse();
     else if (PtInRect(&menuRect_, pt)) ShowMainMenu();
+    else if (PtInRect(&memoryRect_, pt)) ShowMemoryMenu();
     else if (PtInRect(&readDotRect_, pt)) {  // the chat translation on / off (the keyboard is not affected)
         if (cfg_.keyboardOnly) {
             cfg_.keyboardOnly = false;
@@ -1534,62 +1607,26 @@ void MainWindow::ShowChannelMenu() {
 
 void MainWindow::ShowMainMenu() {
     const ModalScope modal;
-    enum : UINT {
-        kSetup = 1, kSettings, kRegion, kReader, kCover, kDock, kQuit, kGw2Chat, kFreeArea, kOnce, kOnlyTr, kShowSelf,
-        kKeyboardOnly, kClearChat, kTour, kSaveChat = 50,  // 50 = everything, 51.. = the last 1/5/10/20/60 minutes
-        kUiLangBase = 100,  // + index into UiLanguages()
-    };
+    enum : UINT { kSettings = 1, kDetect, kReadArea, kOnce, kDock, kShowSelf, kKeyboardOnly, kTour, kQuit };
     auto check = [](bool on) { return static_cast<UINT>(on ? MF_CHECKED : MF_UNCHECKED); };
     auto add = [](HMENU m, UINT flags, UINT id, const std::wstring& text) { AppendMenuW(m, flags, id, text.c_str()); };
-    // By what you want to do – someone who never saw the tool finds their way (grey lines are headings).
-    auto heading = [&](HMENU m, const std::wstring& text) { AppendMenuW(m, MF_STRING | MF_GRAYED, 0, text.c_str()); };
+    // Short, only what you do now. Everything else about reading (only translations, a screen area, laying over the
+    // chat …) is in Settings → Reading the chat; the chat memory is the small circle in the header.
     HMENU menu = CreatePopupMenu();
-    heading(menu, Tr(L"WRITE"));
-    // Keyboard only: the chat translation (reading) is switched off as a whole; the typing help stays.
-    add(menu, MF_STRING | check(cfg_.keyboardOnly), kKeyboardOnly, Tr(L"Keyboard only (no chat reading)"));
-    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    heading(menu, Tr(L"READ THE CHAT TRANSLATED"));
-    const UINT readingOff = cfg_.keyboardOnly ? MF_GRAYED : 0;
-    add(menu, MF_STRING | readingOff | check(cfg_.readerEnabled), kReader, Tr(L"Automatic translation (permanent)"));
-    add(menu, MF_STRING | (cfg_.readerEnabled || once_ || cfg_.keyboardOnly ? MF_GRAYED : 0), kOnce,
-        Tr(L"Translate once now"));
-    add(menu, MF_STRING | check(cfg_.onlyTranslations), kOnlyTr, Tr(L"Show only translations"));
-    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    add(menu, MF_STRING | (cfg_.freeArea ? MF_UNCHECKED : MF_CHECKED), kGw2Chat, Tr(L"Read the GW2 chat"));
-    add(menu, MF_STRING | check(cfg_.freeArea), kFreeArea, Tr(L"Translate a screen area (any text) …"));
-    add(menu, MF_STRING, kRegion, Tr(L"Set the chat area …"));
-    add(menu, MF_STRING | (cfg_.regionSet ? 0 : MF_GRAYED), kCover, Tr(L"Lay over the GW2 chat (replaces it)"));
-    // The chat memory, like a contingent – only here, never as a notice: when full the oldest are overwritten (like GW2).
-    {
-        const std::wstring used = std::to_wstring(log_.Count()), max = std::to_wstring(ChatLogView::kMaxEntries);
-        add(menu, MF_STRING | MF_GRAYED, 0,
-            log_.Count() >= ChatLogView::kMaxEntries ? TrF(L"Chat memory full ({1}) \u2013 the oldest are overwritten", {max})
-                                                     : TrF(L"Chat memory: {1}/{2}", {used, max}));
+    if (cfg_.keyboardOnly) {
+        add(menu, MF_STRING | MF_CHECKED, kKeyboardOnly, Tr(L"Keyboard only"));
+    } else {
+        add(menu, MF_STRING, kKeyboardOnly, Tr(L"Keyboard + chat reader"));
+        add(menu, MF_STRING | check(!cfg_.freeArea), kDetect, Tr(L"Detect GW2 chat"));
+        add(menu, MF_STRING, kReadArea, Tr(L"Set read area …"));
+        add(menu, MF_STRING | (cfg_.readerEnabled || once_ ? MF_GRAYED : 0), kOnce, Tr(L"Translate chat once now"));
     }
-    // Save: valuable things said in the chat (a boss explained over ten minutes …) – the last few minutes or all.
-    HMENU save = CreatePopupMenu();
-    static const int kSaveMinutes[] = {1, 5, 10, 20, 60};
-    for (int i = 0; i < 5; ++i)
-        add(save, MF_STRING, kSaveChat + 1 + i, TrF(L"the last {1} minutes", {std::to_wstring(kSaveMinutes[i])}));
-    add(save, MF_STRING, kSaveChat, Tr(L"everything"));
-    AppendMenuW(menu, MF_POPUP | (log_.Empty() ? MF_GRAYED : 0), reinterpret_cast<UINT_PTR>(save),
-                Tr(L"Save the chat as text …").c_str());
-    add(menu, MF_STRING | (log_.Empty() ? MF_GRAYED : 0), kClearChat, Tr(L"Clear the chat"));
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    heading(menu, Tr(L"WINDOW"));
     add(menu, MF_STRING | check(cfg_.dock), kDock, Tr(L"Dock to GW2 (moves with it)"));
-    add(menu, MF_STRING | check(ModalScope::showOnScreenshots), kShowSelf,
-        Tr(L"Show this tool on screenshots (1 minute)"));
+    add(menu, MF_STRING | check(ModalScope::showOnScreenshots), kShowSelf, Tr(L"Show on screens (1 min)"));
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    heading(menu, Tr(L"HELP & SETTINGS"));
     add(menu, MF_STRING | MF_DEFAULT, kTour, Tr(L"What can this tool do? (2 minutes)"));
     add(menu, MF_STRING, kSettings, Tr(L"Settings …"));
-    add(menu, MF_STRING, kSetup, Tr(L"Setup (install, mark the chat) …"));
-    HMENU ui = CreatePopupMenu();
-    for (size_t i = 0; i < UiLanguages().size(); ++i)
-        add(ui, MF_STRING | check(UiLanguages()[i].lang == cfg_.uiLang), kUiLangBase + static_cast<UINT>(i),
-            UiLanguages()[i].native);
-    AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(ui), L"Language / Sprache / \u0627\u0644\u0644\u063a\u0629");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     add(menu, MF_STRING, kQuit, Tr(L"Quit"));
 
@@ -1600,16 +1637,16 @@ void MainWindow::ShowMainMenu() {
     DestroyMenu(menu);
 
     switch (cmd) {
-        case kSetup: RunSetup(); break;
         case kTour: ShowTour(); break;
         case kSettings: OpenSettings(SettingsPage::General); break;
-        case kRegion:
+        case kDetect:  // the GW2 chat (not a screen area), found by itself – the found frame is shown to check
             SetFreeArea(false);
-            PickRegion();
+            PickRegion(true);
             break;
-        case kGw2Chat: SetFreeArea(false); break;
-        case kFreeArea: PickFreeArea(); break;
-        case kReader: ToggleReading(); break;
+        case kReadArea:
+            if (cfg_.freeArea) PickFreeArea();
+            else PickRegion();
+            break;
         case kOnce: TranslateOnce(); break;
         case kKeyboardOnly:
             cfg_.keyboardOnly = !cfg_.keyboardOnly;
@@ -1634,41 +1671,56 @@ void MainWindow::ShowMainMenu() {
             }
             PollGame();  // apply now
             break;
-        case kOnlyTr:
-            cfg_.onlyTranslations = !cfg_.onlyTranslations;
-            cfg_.SaveBool(L"Reader", L"OnlyTranslations", cfg_.onlyTranslations);
-            SetStatus(cfg_.onlyTranslations ? Tr(L"From now on only translated lines appear")
-                                            : Tr(L"From now on every chat line appears"),
-                      Tone::Muted, 3500);
-            break;
         case kDock: SetDock(!cfg_.dock); break;
-        case kSaveChat:
-        case kSaveChat + 1:
-        case kSaveChat + 2:
-        case kSaveChat + 3:
-        case kSaveChat + 4:
-        case kSaveChat + 5: {  // only on your click; the file goes where you choose
-            static const int kMinutes[] = {0, 1, 5, 10, 20, 60};
-            const ULONGLONG span = static_cast<ULONGLONG>(kMinutes[cmd - kSaveChat]) * 60000;
-            const ULONGLONG now = GetTickCount64();
-            const ULONGLONG since = span && now > span ? now - span : 0;
-            const std::wstring path = PickTextFile(hwnd_, Tr(L"Save the chat as text …"), true, L"gw2-chat.txt");
-            if (!path.empty())
-                SetStatus(WriteFileAtomic(path, "\xEF\xBB\xBF" + ToUtf8(log_.AsText(since))) ? Tr(L"Chat saved")
-                                                                                            : Tr(L"Could not write the file."),
-                          Tone::Ok, 4000);
-            break;
-        }
-        case kClearChat:
-            log_.Clear();
-            UpdateHint();
-            break;
-        case kCover: CoverChat(); break;
         case kQuit: PostMessageW(hwnd_, WM_CLOSE, 0, 0); break;
-        default:
-            if (cmd >= kUiLangBase && cmd < kUiLangBase + UiLanguages().size())
-                SetUiLanguage(UiLanguages()[cmd - kUiLangBase].lang);
-            break;
+        default: break;
+    }
+}
+
+std::wstring MainWindow::MemoryText() const {
+    const std::wstring used = std::to_wstring(log_.Count()), max = std::to_wstring(ChatLogView::kMaxEntries);
+    return log_.Count() >= ChatLogView::kMaxEntries
+               ? TrF(L"Chat memory full ({1}) – the oldest are overwritten", {max})
+               : TrF(L"Chat memory: {1}/{2}", {used, max});
+}
+
+// The chat memory circle: how full it is, save (the last minutes or all) or clear. Only on your click.
+void MainWindow::ShowMemoryMenu() {
+    const ModalScope modal;
+    enum : UINT { kClearChat = 1, kSaveChat = 50 };  // 50 = everything, 51.. = the last 1/5/10/20/60 minutes
+    auto add = [](HMENU m, UINT flags, UINT id, const std::wstring& text) { AppendMenuW(m, flags, id, text.c_str()); };
+    HMENU menu = CreatePopupMenu();
+    add(menu, MF_STRING | MF_GRAYED, 0, MemoryText());
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    // Save: valuable things said in the chat (a boss explained over ten minutes …) – the last few minutes or all.
+    HMENU save = CreatePopupMenu();
+    static const int kSaveMinutes[] = {1, 5, 10, 20, 60};
+    for (int i = 0; i < 5; ++i)
+        add(save, MF_STRING, kSaveChat + 1 + i, TrF(L"the last {1} minutes", {std::to_wstring(kSaveMinutes[i])}));
+    add(save, MF_STRING, kSaveChat, Tr(L"everything"));
+    AppendMenuW(menu, MF_POPUP | (log_.Empty() ? MF_GRAYED : 0), reinterpret_cast<UINT_PTR>(save),
+                Tr(L"Save the chat as text …").c_str());
+    add(menu, MF_STRING | (log_.Empty() ? MF_GRAYED : 0), kClearChat, Tr(L"Clear the chat"));
+
+    POINT pt{memoryRect_.left, memoryRect_.bottom};
+    ClientToScreen(hwnd_, &pt);
+    const UINT cmd =
+        static_cast<UINT>(TrackPopupMenu(menu, MenuFlags(TPM_RETURNCMD | TPM_NONOTIFY), pt.x, pt.y, 0, hwnd_, nullptr));
+    DestroyMenu(menu);
+    if (cmd >= kSaveChat && cmd <= kSaveChat + 5) {  // the file goes where you choose
+        static const int kMinutes[] = {0, 1, 5, 10, 20, 60};
+        const ULONGLONG span = static_cast<ULONGLONG>(kMinutes[cmd - kSaveChat]) * 60000;
+        const ULONGLONG now = GetTickCount64();
+        const ULONGLONG since = span && now > span ? now - span : 0;
+        const std::wstring path = PickTextFile(hwnd_, Tr(L"Save the chat as text …"), true, L"gw2-chat.txt");
+        if (!path.empty())
+            SetStatus(WriteFileAtomic(path, "\xEF\xBB\xBF" + ToUtf8(log_.AsText(since))) ? Tr(L"Chat saved")
+                                                                                        : Tr(L"Could not write the file."),
+                      Tone::Ok, 4000);
+    } else if (cmd == kClearChat) {
+        log_.Clear();
+        UpdateHint();
+        InvalidateChrome();
     }
 }
 
@@ -2768,13 +2820,15 @@ void MainWindow::UpdateHint() {
                              L"above: read the chat again.)"),
                           false);
     else if (!cfg_.readerEnabled)
-        log_.SetEmptyHint(Tr(L"Automatic translation is off (menu \u2261: switch it on, or \u201cTranslate once now\u201d)."), false);
+        log_.SetEmptyHint(Tr(L"Automatic translation is off (the dot above: switch it on, or menu \u2261 \u2192 "
+                             L"\u201cTranslate chat once now\u201d)."),
+                          false);
     else if (!readerError_.empty())
         log_.SetEmptyHint(TrF(L"Text recognition not available:\n{1}", {readerError_}), false);
     else if (cfg_.freeArea)
         log_.SetEmptyHint(overlapsChat_ ? Tr(L"This window covers the chat area – please move it beside the chat.")
                                         : Tr(L"Translating everything in the screen area you marked …\n(Back to "
-                                             L"the GW2 chat: menu ≡ → Read the GW2 chat)"),
+                                             L"the GW2 chat: menu ≡ → Detect GW2 chat)"),
                           false);
     else if (!cfg_.regionSet)
         log_.SetEmptyHint(
@@ -2790,7 +2844,7 @@ void MainWindow::UpdateHint() {
         log_.SetEmptyHint(Tr(L"This window covers the chat area \u2013 please move it beside the chat."), false);
     else
         log_.SetEmptyHint(Tr(L"Reading the chat \u2026 new messages appear here in your language.\n(Adjust the "
-                             L"area: menu \u2261 \u2192 Reading the chat \u2192 Set the chat area)"),
+                             L"area: menu \u2261 \u2192 Set read area)"),
                           false);
 }
 
@@ -2826,6 +2880,13 @@ RECT MainWindow::ChatArea() const {
     RECT clipped{};
     IntersectRect(&clipped, &area, &client);
     return clipped;
+}
+
+RECT MainWindow::ChatFrame() const {
+    const RECT client = GameClientRect();
+    if (IsRectEmpty(&client) || !cfg_.regionSet) return {};
+    return {client.left + cfg_.regionLeft, client.bottom - cfg_.regionFromBottom - cfg_.regionHeight,
+            client.left + cfg_.regionLeft + cfg_.regionWidth, client.bottom - cfg_.regionFromBottom};
 }
 
 // Key timing from what is measured: GW2 reads the keyboard once per frame, so every action (holding a key, the pause
@@ -2875,6 +2936,8 @@ void MainWindow::PollGame() {
             });
         lastMapId_ = mumbleState_.identity.mapId;
     }
+    if (log_.Count() != memoryShown_ && !IsRectEmpty(&memoryRect_))
+        InvalidateRect(hwnd_, &memoryRect_, FALSE);  // the chat memory circle follows the log
 
 
     // Started with Windows: appear with the game, disappear when it closes. "With the game" = in the 3D world
@@ -2996,7 +3059,7 @@ void MainWindow::PollGame() {
     PumpIncoming();
 }
 
-void MainWindow::PickRegion() {
+void MainWindow::PickRegion(bool detect) {
     if (!gw2_) gw2_ = FindGw2Window(mumbleState_.live ? mumbleState_.processId : 0);
     picking_ = true;
     reader_.SetArea({});  // the dimmed picker must not be read as chat
@@ -3071,11 +3134,33 @@ void MainWindow::PickRegion() {
             return text;
         };
     }
+    // The frame to show at once: found in the picture (Detect GW2 chat) or the one set so far – its edges can be
+    // dragged, so a small change needs no new frame.
+    RECT initial{};
+    bool notFound = false;
+    if (detect && !still->Empty()) {
+        RECT search = ChatSearchArea();
+        if (IsRectEmpty(&search)) {  // no game window: the bottom-left part of the screen
+            const LONG w = stillRect.right - stillRect.left, h = stillRect.bottom - stillRect.top;
+            search = {stillRect.left, stillRect.top + h * 35 / 100, stillRect.left + w * 55 / 100, stillRect.bottom};
+        }
+        IntersectRect(&search, &search, &stillRect);
+        const Image crop = Crop(*still, {search.left - stillRect.left, search.top - stillRect.top,
+                                         search.right - search.left, search.bottom - search.top});
+        const ReaderOptions o = DetectOptions();
+        std::thread([&] { initial = FindChatIn(crop, search, o); }).join();  // the text recognition wants its own thread
+        notFound = IsRectEmpty(&initial) != FALSE;
+    } else if (!detect) {
+        initial = ChatFrame();
+    }
     RECT r{};
     const bool ok = PickScreenRegion(inst_, theme_,
-                                     Tr(L"Draw a frame around the text lines of the GW2 chat\n(without the input "
-                                        L"line and the tabs).  Esc cancels."),
-                                     &r, analyze, preview);
+                                     notFound ? Tr(L"The GW2 chat was not found by itself (timestamps on? GW2 options "
+                                                   L"→ Chat).\nDraw a frame around its text lines (without the "
+                                                   L"input line and the tabs).  Esc cancels.")
+                                              : Tr(L"Draw a frame around the text lines of the GW2 chat\n(without the "
+                                                   L"input line and the tabs).  Esc cancels."),
+                                     &r, analyze, preview, IsRectEmpty(&initial) ? nullptr : &initial);
     picking_ = false;
     ignoreSnapshotsBefore_ = GetTickCount64() + 150;
     if (wasVisible) ShowOverlay();
@@ -3211,7 +3296,7 @@ void MainWindow::PickFreeArea() {
     const bool ok = PickScreenRegion(inst_, theme_,
                                      Tr(L"Draw a frame around the text you want translated (any window).  Esc "
                                         L"cancels."),
-                                     &r, analyze, preview);
+                                     &r, analyze, preview, cfg_.FreeSet() ? &cfg_.freeRect : nullptr);
     picking_ = false;
     ignoreSnapshotsBefore_ = GetTickCount64() + 150;
     if (wasVisible) ShowOverlay();
@@ -3281,20 +3366,40 @@ RECT MainWindow::ChatSearchArea() const {
     return {c.left, c.top + h * 35 / 100, c.left + w * 55 / 100, c.bottom};
 }
 
-void MainWindow::StartChatDetection() {
-    const RECT search = ChatSearchArea();
-    if (IsRectEmpty(&search) || detecting_) return;
-    detecting_ = true;
-    lastDetect_ = GetTickCount64();
+ReaderOptions MainWindow::DetectOptions() const {
     ReaderOptions o;
     o.ocrChoice = static_cast<int>(cfg_.ocr);
     o.tesseractPath = cfg_.tesseractPath;
     o.tesseractLangs = cfg_.tesseractLangs;
     o.readChinese = cfg_.readChinese;
     o.ocrLanguage = cfg_.ocrLanguage;
-    std::thread([hwnd = hwnd_, gw2 = gw2_, search, o, windowCapture = WindowCaptureAllowed()] {
+    return o;
+}
+
+// The GW2 chat in a picture of the game's bottom-left corner (`at` = where the picture is, screen pixels): several
+// timestamp lines aligned on the left, snapped to whole lines (no tab bar, no input line). Empty when not found.
+// Runs the text recognition – call it on a worker thread.
+RECT MainWindow::FindChatIn(const Image& img, const RECT& at, const ReaderOptions& o) {
+    ChatOcr ocr;
+    std::wstring err;
+    std::vector<OcrLine> lines;
+    ChatBlock b;
+    if (img.Empty() || !ocr.Init(o, &err) || !ocr.Read(img, 0, lines, nullptr, &err) || !LocateChatLines(lines, &b))
+        return {};
+    const int pad = 4;
+    const SnapResult snap = SnapChatArea(img, {std::max(0, b.left - pad), std::max(0, b.top - pad),
+                                               b.right - b.left + 2 * pad, b.bottom - b.top + 2 * pad});
+    return {at.left + snap.area.x, at.top + snap.area.y, at.left + snap.area.x + snap.area.w,
+            at.top + snap.area.y + snap.area.h};
+}
+
+void MainWindow::StartChatDetection() {
+    const RECT search = ChatSearchArea();
+    if (IsRectEmpty(&search) || detecting_) return;
+    detecting_ = true;
+    lastDetect_ = GetTickCount64();
+    std::thread([hwnd = hwnd_, gw2 = gw2_, search, o = DetectOptions(), windowCapture = WindowCaptureAllowed()] {
         auto found = std::make_unique<RECT>();
-        *found = {};
         Image img;
         {
             ScreenCapture cap;
@@ -3303,18 +3408,7 @@ void MainWindow::StartChatDetection() {
             for (int i = 0; i < 12 && img.Empty(); ++i)
                 if (!cap.Grab(search, img)) Sleep(40);
         }
-        ChatOcr ocr;
-        std::wstring err;
-        std::vector<OcrLine> lines;
-        ChatBlock b;
-        if (!img.Empty() && ocr.Init(o, &err) && ocr.Read(img, 0, lines, nullptr, &err) && LocateChatLines(lines, &b)) {
-            // Snap to the text lines (whole lines, no tab bar, no input line).
-            const int pad = 4;
-            const SnapResult snap = SnapChatArea(img, {std::max(0, b.left - pad), std::max(0, b.top - pad),
-                                                       b.right - b.left + 2 * pad, b.bottom - b.top + 2 * pad});
-            *found = {search.left + snap.area.x, search.top + snap.area.y, search.left + snap.area.x + snap.area.w,
-                      search.top + snap.area.y + snap.area.h};
-        }
+        *found = FindChatIn(img, search, o);
         if (PostMessageW(hwnd, WM_APP_CHATFOUND, 0, reinterpret_cast<LPARAM>(found.get()))) found.release();
     }).detach();
 }
@@ -3703,6 +3797,17 @@ void MainWindow::HandleDialogAction(const DialogResult& r) {
     switch (r.action) {
         case DialogResult::Action::PickRegion:
             PickRegion();
+            break;
+        case DialogResult::Action::DetectChat:
+            SetFreeArea(false);
+            PickRegion(true);
+            break;
+        case DialogResult::Action::PickFreeArea:
+            PickFreeArea();
+            break;
+        case DialogResult::Action::UseFreeArea:
+            if (cfg_.FreeSet()) SetFreeArea(true);
+            else PickFreeArea();
             break;
         case DialogResult::Action::CoverChat:
             if (!cfg_.regionSet) PickRegion();

@@ -195,6 +195,11 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
 - Sending a chat command (`SendToGw2Chat`): the command ("/w ") is typed as keys (`TypeText`), a whisper recipient is
   pasted and confirmed with Tab, then only the message is pasted – pasting "/w Name, text" in one go made GW2 send the
   name as text (2026-10-08). Up/Down in the input = sent history (`InputBox::AddHistory`, 50, session only).
+- Main menu ≡ (`ShowMainMenu`) is short on purpose (user, 2026-10-12): Keyboard only / "Keyboard + chat reader" with
+  Detect GW2 chat (`PickRegion(true)`: `FindChatIn` on the still, the found frame shown in the picker), Set read area,
+  Translate chat once now; reading options live in Settings → Reading the chat (`kReadWhat` → `DetectChat` /
+  `UseFreeArea` / `PickFreeArea` actions). The chat memory is the header circle (`memoryRect_`, tooltip `tip_` excluded
+  from capture, click = `ShowMemoryMenu`). `PickScreenRegion(..., initial)`: edges of the checked frame can be dragged.
 - Reading check (`NoteReadCheck`, `readChecks_`, last 50): an own line that comes back (`ClassifyOwn`, first echo)
   is compared with `Sent::exact` – exact or not, plus character errors (edit distance). Footer "read exactly n/m",
   technical page with %. Meant as the measured gate for the chat take-over idea (user, 2026-10-11): take over (focus

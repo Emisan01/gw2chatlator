@@ -54,7 +54,7 @@ enum : int {
     // Translator
     kEngine, kEngineNote, kLocalModel, kPull, kLocalInfo, kGetOllama, kLlmFindLocal, kPullStatus, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
     kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
-    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kStartMenu, kOnlyTr, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare, kWriteIn, kLtProvider, kLtTest, kLtStatus, kChatEngine, kKeyboardOnly, kLearnFile, kKeepMap,
+    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kStartMenu, kOnlyTr, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare, kWriteIn, kLtProvider, kLtTest, kLtStatus, kChatEngine, kKeyboardOnly, kLearnFile, kKeepMap, kReadWhat,
     // Game & start
     kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kStatus, kRefresh, kSetup,
     // Wizard
@@ -602,8 +602,11 @@ private:
         Button(kOcrFixes, Tr(L"Learned…"), kCtrlX + kCtrlW - 110, Y(r++) - 2, 110);
         Check(kCaptures, Tr(L"Save diagnostic pictures (switches off after 15 minutes)"), cfg_.saveCaptures, kLabelX,
               Y(r++), kW - 50);
-        Button(kPickRegion, Tr(L"Set the chat area…"), kLabelX, Y(r) + 4, 200);
-        Button(kCover, Tr(L"Lay over the GW2 chat"), kLabelX + 210, Y(r++) + 4, 200);
+        // What is read: the GW2 chat (found by itself) or any text in a screen area; then its frame.
+        Combo(kReadWhat, {Tr(L"Read: the GW2 chat"), Tr(L"Read: a screen area (any text)")}, cfg_.freeArea ? 1 : 0,
+              kLabelX, Y(r) + 4, 220);
+        Button(kPickRegion, Tr(L"Set read area…"), kLabelX + 230, Y(r) + 3, 140);
+        Button(kCover, Tr(L"Lay over the GW2 chat"), kLabelX + 378, Y(r++) + 3, 160);
     }
 
     void BuildWriting() {
@@ -1001,6 +1004,11 @@ private:
             case IDOK:
                 Save();
                 result.saved = true;
+                // Switched between the GW2 chat and a screen area: the chat is found (and shown to check), a screen
+                // area is taken – or drawn when there is none yet.
+                if (Item(kReadWhat) && (Sel(kReadWhat) == 1) != cfg_.freeArea)
+                    result.action = Sel(kReadWhat) == 1 ? DialogResult::Action::UseFreeArea
+                                                        : DialogResult::Action::DetectChat;
                 Close();
                 break;
             case IDCANCEL:
@@ -1025,7 +1033,9 @@ private:
             case kCover:
                 Save();
                 result.saved = true;
-                result.action = id == kPickRegion ? DialogResult::Action::PickRegion : DialogResult::Action::CoverChat;
+                result.action = id == kCover            ? DialogResult::Action::CoverChat
+                                : Sel(kReadWhat) == 1   ? DialogResult::Action::PickFreeArea
+                                                        : DialogResult::Action::PickRegion;
                 Close();
                 break;
             case kLlmLoad:

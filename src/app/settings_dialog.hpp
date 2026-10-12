@@ -13,7 +13,7 @@
 namespace gct {
 
 struct DialogResult {
-    enum class Action { None, PickRegion, CoverChat, RunSetup, RestartInto };
+    enum class Action { None, PickRegion, CoverChat, RunSetup, RestartInto, DetectChat, PickFreeArea, UseFreeArea };
     bool saved = false;          // cfg was changed and should be applied
     Action action = Action::None;
     std::wstring restartExe;     // RestartInto: start this exe and quit
