@@ -13,8 +13,16 @@ namespace gct {
 namespace {
 
 constexpr const wchar_t* kRunKey = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
-constexpr const wchar_t* kRunValue = L"GW2ChatTranslator";
 constexpr const wchar_t* kIniName = L"gw2-chat-translator.ini";
+
+// GW2 Keyboard has its own Run value and shortcuts ("GW2 Keyboard"); everything else is GW2 Chat Translator.
+bool IsKeyboardExe(const std::wstring& exe) {
+    const size_t slash = exe.find_last_of(L"\\/");
+    const std::wstring name = slash == std::wstring::npos ? exe : exe.substr(slash + 1);
+    return _wcsicmp(name.c_str(), L"GW2Keyboard.exe") == 0;
+}
+const wchar_t* RunValueFor(const std::wstring& exe) { return IsKeyboardExe(exe) ? L"GW2Keyboard" : L"GW2ChatTranslator"; }
+const wchar_t* AppNameFor(const std::wstring& exe) { return IsKeyboardExe(exe) ? L"GW2 Keyboard" : L"GW2 Chat Translator"; }
 
 std::wstring ReadRegString(HKEY root, const wchar_t* subKey, const wchar_t* value, REGSAM view) {
     HKEY key = nullptr;
@@ -400,12 +408,15 @@ bool SetAutostart(bool enable, const std::wstring& exePath) {
     if (RegCreateKeyExW(HKEY_CURRENT_USER, kRunKey, 0, nullptr, 0, KEY_SET_VALUE, nullptr, &key, nullptr) != ERROR_SUCCESS)
         return false;
     LSTATUS st;
+    const wchar_t* value = RunValueFor(exePath);
     if (enable) {
         std::wstring cmd = AutostartCommand(exePath);
-        st = RegSetValueExW(key, kRunValue, 0, REG_SZ, reinterpret_cast<const BYTE*>(cmd.c_str()),
+        st = RegSetValueExW(key, value, 0, REG_SZ, reinterpret_cast<const BYTE*>(cmd.c_str()),
                             static_cast<DWORD>((cmd.size() + 1) * sizeof(wchar_t)));
+        // Only one of the two programs starts with Windows: both would type into the same chat.
+        RegDeleteValueW(key, IsKeyboardExe(exePath) ? L"GW2ChatTranslator" : L"GW2Keyboard");
     } else {
-        st = RegDeleteValueW(key, kRunValue);
+        st = RegDeleteValueW(key, value);
         if (st == ERROR_FILE_NOT_FOUND) st = ERROR_SUCCESS;
     }
     RegCloseKey(key);
@@ -413,7 +424,7 @@ bool SetAutostart(bool enable, const std::wstring& exePath) {
 }
 
 std::wstring AutostartTarget() {
-    std::wstring cmd = ReadRegString(HKEY_CURRENT_USER, kRunKey, kRunValue, 0);
+    std::wstring cmd = ReadRegString(HKEY_CURRENT_USER, kRunKey, RunValueFor(CurrentExePath()), 0);
     if (cmd.empty()) return {};
     if (cmd[0] == L'"') {
         size_t close = cmd.find(L'"', 1);
@@ -459,11 +470,12 @@ std::wstring PickFolder(void* owner, const std::wstring& title, const std::wstri
 
 namespace {
 
-// "GW2 Chat Translator.lnk" in a known folder (desktop, start menu), pointing to `exePath`; replaced if there.
+// "GW2 Chat Translator.lnk" (or "GW2 Keyboard.lnk") in a known folder (desktop, start menu), pointing to `exePath`;
+// replaced if there.
 bool CreateShortcutIn(REFKNOWNFOLDERID folder, const std::wstring& exePath) {
     PWSTR base = nullptr;
     if (FAILED(SHGetKnownFolderPath(folder, 0, nullptr, &base)) || !base) return false;
-    const std::wstring link = std::wstring(base) + L"\\GW2 Chat Translator.lnk";
+    const std::wstring link = std::wstring(base) + L"\\" + AppNameFor(exePath) + L".lnk";
     CoTaskMemFree(base);
     IShellLinkW* sl = nullptr;
     if (FAILED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&sl))) || !sl) return false;
@@ -471,7 +483,7 @@ bool CreateShortcutIn(REFKNOWNFOLDERID folder, const std::wstring& exePath) {
     const size_t slash = exePath.find_last_of(L"\\/");
     if (slash != std::wstring::npos) sl->SetWorkingDirectory(exePath.substr(0, slash).c_str());
     sl->SetIconLocation(exePath.c_str(), 0);
-    sl->SetDescription(L"GW2 Chat Translator");
+    sl->SetDescription(AppNameFor(exePath));
     bool ok = false;
     IPersistFile* pf = nullptr;
     if (SUCCEEDED(sl->QueryInterface(IID_PPV_ARGS(&pf))) && pf) {
@@ -492,7 +504,7 @@ namespace {
 std::wstring StartMenuLink() {
     PWSTR base = nullptr;
     if (FAILED(SHGetKnownFolderPath(FOLDERID_Programs, 0, nullptr, &base)) || !base) return {};
-    const std::wstring link = std::wstring(base) + L"\\GW2 Chat Translator.lnk";
+    const std::wstring link = std::wstring(base) + L"\\" + AppNameFor(CurrentExePath()) + L".lnk";
     CoTaskMemFree(base);
     return link;
 }

@@ -96,6 +96,10 @@ private:
     void LoadExtension();             // "Load extension": downloads the chat translation (OCR) on your click
     void OnExtensionLoaded(std::wstring* result, bool ok);
     bool extensionLoading_ = false;
+    std::wstring restartCommand_;  // started after this program ended (the installed copy, the downloaded extension)
+public:
+    const std::wstring& RestartCommand() const { return restartCommand_; }
+private:
 
     // ---- glossary (official GW2 names) and your words
     void RefreshGlossary();

@@ -3,6 +3,17 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## Unreleased
+
+- **GW2 Keyboard installs and starts with Windows by itself** (Settings → Game & start): it goes into the same
+  install folder, gets its own start-menu entry "GW2 Keyboard" and its own autostart entry. Only one of the two
+  programs starts with Windows (both would type into the same chat): switching it on for one switches it off for the
+  other.
+- **Load extension = the normal setup:** the downloaded GW2 Chat Translator now starts like a fresh download and
+  installs itself with its own setup, as always; your settings and learned words go along. As it has the whole keyboard
+  too, it takes GW2 Keyboard's place: the autostart goes over to it, GW2 Keyboard's start-menu entry goes (the file
+  stays – both programs keep working on their own).
+
 ## 1.3.1 — 2026-10-12
 
 - **GW2 Keyboard cleaned up, standalone:** built without everything only reading the chat needs – no text

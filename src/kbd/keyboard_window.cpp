@@ -231,6 +231,13 @@ int KeyboardWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
     if (auto hk = ParseHotkey(cfg_.hotkey))
         hotkeyOk_ = RegisterHotKey(hwnd_, kHotkeyId, hk->mods | MOD_NOREPEAT, hk->vk) != FALSE;
 
+    // Installed (Settings → Game & start): always in the start menu as "GW2 Keyboard"; its own autostart entry
+    // follows it when it pointed to an old download folder.
+    if (RunningInstalledCopy() && cfg_.startMenu) EnsureStartMenuShortcut(CurrentExePath());
+    if (RunningInstalledCopy() && !AutostartTarget().empty() &&
+        CompareStringOrdinal(AutostartTarget().c_str(), -1, CurrentExePath().c_str(), -1, TRUE) != CSTR_EQUAL)
+        SetAutostart(true, CurrentExePath());
+
     if (!waitForGame_) WarmUp();  // started with Windows: only the window and the tray now
     SetTimer(hwnd_, kTimerGame, 300, nullptr);
     UpdatePreview();
@@ -876,9 +883,10 @@ void KeyboardWindow::LoadExtension() {
     }
     extensionLoading_ = true;
     SetStatus(Tr(L"Loading the extension \u2026"), Tone::Muted, 0);
-    std::thread([hwnd = hwnd_] {
+    spell_.SaveLearned();  // the words go along with the extension
+    std::thread([hwnd = hwnd_, dataDir = cfg_.dataDir] {
         std::wstring error;
-        auto* result = new std::wstring(LoadChatExtension(&error));
+        auto* result = new std::wstring(LoadChatExtension(dataDir, &error));
         const bool ok = !result->empty();
         if (!ok) *result = error;
         if (!PostMessageW(hwnd, WM_APP_EXTENSION, ok ? 1 : 0, reinterpret_cast<LPARAM>(result))) delete result;
@@ -892,12 +900,20 @@ void KeyboardWindow::OnExtensionLoaded(std::wstring* raw, bool ok) {
         SetStatus(TrF(L"Extension not loaded: {1}", {*result}), Tone::Error, 12000);
         return;
     }
+    // The downloaded program starts like a fresh download: its setup installs it (as always); this window closes.
     SetStatus(Tr(L"Extension loaded"), Tone::Ok, 5000);
-    const ModalScope modal;
-    if (MessageBoxW(hwnd_, Tr(L"The extension is loaded. Start the chat translation now? This window closes.").c_str(),
-                    Tr(L"Load extension").c_str(),
-                    MB_YESNO | MB_ICONQUESTION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0)) == IDYES)
-        ActivateChatTranslation();
+    cfg_.SaveBool(L"Basic", L"KeyboardOnly", false);
+    cfg_.SaveWindowRect(hwnd_, theme_.scale);
+    // The downloaded copy runs the setup (its own settings file says so). When this program is installed, the install
+    // folder already holds our settings file, which the setup never overwrites: there the setup counts as done, so
+    // the installed full tool does not ask again.
+    cfg_.SaveBool(L"General", L"SetupDone", true);
+    // The full tool has the whole keyboard too, so it takes this one's place: the autostart goes over to it (its
+    // installed copy moves the entry to itself; enabling it removes ours), our start-menu entry goes. The file stays.
+    if (IsAutostartEnabled()) SetAutostart(true, *result);
+    RemoveStartMenuShortcut();
+    restartCommand_ = L"\"" + *result + L"\"";
+    PostMessageW(hwnd_, WM_CLOSE, 0, 0);
 }
 
 void KeyboardWindow::SetUiLanguage(UiLang lang) {
@@ -1701,6 +1717,10 @@ void KeyboardWindow::OpenSettings(SettingsPage page) {
     const DialogResult r = ShowSettingsDialog(hwnd_, inst_, edited, ctx, page);
     if (r.saved) ApplySettings(edited);
     if (r.action == DialogResult::Action::ShowTour) ShowTour();
+    else if (r.action == DialogResult::Action::RestartInto) {  // installed: continue in the installed copy
+        restartCommand_ = L"\"" + r.restartExe + L"\"";
+        PostMessageW(hwnd_, WM_CLOSE, 0, 0);
+    }
     else if (r.action == DialogResult::Action::LoadExtension) ActivateChatTranslation();
 }
 
