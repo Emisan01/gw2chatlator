@@ -3,7 +3,7 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## Unreleased
+## 1.3.1 — 2026-10-12
 
 - **GW2 Keyboard cleaned up, standalone:** built without everything only reading the chat needs – no text
   recognition, no RapidOCR/onnxruntime, no Tesseract, no screen capture (it needs no DLL next to it). Settings: no
