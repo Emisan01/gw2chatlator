@@ -42,6 +42,7 @@
 #include "core/text.hpp"
 #include "core/translator.hpp"
 #include "core/voice.hpp"
+#include "core/voice_learn.hpp"
 
 using namespace gct;
 
@@ -2140,6 +2141,71 @@ static void TestToMono16k() {
           std::fabs(out[5] + 0.5f) < 1e-6f);
 }
 
+static void TestVoiceLearn() {
+    CHECK(VoiceFixes::SoundsAlike(L"Red", L"Raid") && VoiceFixes::SoundsAlike(L"Fracktale", L"Fraktale"));
+    CHECK(VoiceFixes::SoundsAlike(L"Löwinstein", L"Löwenstein"));
+    CHECK(VoiceFixes::SoundsAlike(L"Löwen Stein", L"Löwenstein"));  // only the space differs
+    CHECK(!VoiceFixes::SoundsAlike(L"heute", L"morgen") && !VoiceFixes::SoundsAlike(L"Raid", L"raid"));
+    CHECK(!VoiceFixes::SoundsAlike(L"Raid", L"Raids") && !VoiceFixes::SoundsAlike(L"in", L"im"));
+    CHECK(!VoiceFixes::SoundsAlike(L"gehen", L"gegangen") && !VoiceFixes::SoundsAlike(L"hallo", L"Raid"));
+
+    // A correction: one word swapped for one that sounds alike.
+    VoiceFixes f;
+    std::vector<VoiceFixes::Pair> got = f.Learn(L"Red heute Abend um acht", L"Raid heute Abend um acht");
+    CHECK(got.size() == 1 && got[0].first == L"Red" && got[0].second == L"Raid");
+    CHECK(f.Apply(L"wer kommt zum red?") == L"wer kommt zum Raid?");
+    CHECK(f.Apply(L"Red um acht, red!") == L"Raid um acht, Raid!");
+    CHECK(f.Apply(L"Redner und reden") == L"Redner und reden");  // whole words only
+    CHECK(f.Words().size() == 1 && f.Words()[0] == L"Raid");
+    VoiceFixes one;
+    CHECK(one.Learn(L"Red", L"Raid.").size() == 1 && one.Learn(L"hallo", L"Raid").empty() && one.Size() == 1);
+
+    // A rewrite, added or removed words, other endings and short words teach nothing.
+    VoiceFixes g;
+    CHECK(g.Learn(L"ich gehe heute einkaufen", L"wir treffen uns morgen am Tor").empty());
+    CHECK(g.Learn(L"heute Abend", L"heute Abend!").empty());
+    CHECK(g.Learn(L"Raid heute", L"Raid heute um acht am Tor").empty());
+    CHECK(g.Learn(L"ein Raid heute Abend", L"ein Raids heute Abend").empty());
+    CHECK(g.Learn(L"wir sind in der Gilde", L"wir sind im der Gilde").empty());
+    CHECK(g.Learn(L"wir gehen dann los", L"wir gegangen dann los").empty());
+    CHECK(g.Learn(L"", L"Raid").empty() && g.Learn(L"Red", L"").empty() && g.Size() == 0);
+
+    // Several words: split or joined as one phrase, word for word each on its own.
+    got = f.Learn(L"treffen uns in Löwen Stein um acht", L"treffen uns in Löwenstein um acht");
+    CHECK(got.size() == 1 && got[0].first == L"Löwen Stein" && got[0].second == L"Löwenstein");
+    CHECK(f.Apply(L"bin in löwen stein") == L"bin in Löwenstein");
+    CHECK(f.Apply(L"bin in Löwen, Stein") == L"bin in Löwen, Stein");  // not across punctuation
+    CHECK(f.Learn(L"die Fracktale und Tekwattle heute", L"die Fraktale und Tequatl heute").size() == 2);
+    CHECK(f.Apply(L"fracktale, dann tekwattle") == L"Fraktale, dann Tequatl");
+    CHECK(f.Size() == 4);
+
+    // Case and punctuation: written as learned, capitalized at a sentence start; punctuation does not count.
+    VoiceFixes c;
+    CHECK(c.Learn(L"Wir gehn rein, okay?", L"Wir gehen rein okay.").size() == 1);
+    CHECK(c.Apply(L"gehn wir? gehn!") == L"Gehen wir? Gehen!");
+    CHECK(c.Apply(L"wir GEHN") == L"wir gehen");
+    // Newest wins; the reverse pair goes.
+    CHECK(c.Learn(L"wir gehn rein", L"wir gähn rein").size() == 1);
+    CHECK(c.Apply(L"wir gehn") == L"wir gähn" && c.Size() == 1);
+    VoiceFixes r;
+    r.Learn(L"zum Red heute", L"zum Raid heute");
+    r.Learn(L"zum Raid heute", L"zum Red heute");
+    CHECK(r.Size() == 1 && r.Apply(L"red und raid") == L"red und Red");
+
+    // The file: comments and broken lines skipped, later lines win, round trip.
+    VoiceFixes p;
+    p.Parse(L"# heard = meant\r\nRed = Raid\r\n  löwen stein=Löwenstein \r\n=leer\r\nkein Gleich\r\nred = Rat\r\n");
+    CHECK(p.Size() == 2 && p.Apply(L"red") == L"Rat");
+    CHECK(p.Serialize() == L"löwen stein = Löwenstein\r\nred = Rat\r\n");
+    VoiceFixes q;
+    q.Parse(p.Serialize());
+    CHECK(q.Size() == 2 && q.Serialize() == p.Serialize());
+    std::wstring many;
+    for (int i = 0; i < 510; ++i) many += L"hx" + std::to_wstring(i) + L" = mx" + std::to_wstring(i) + L"\n";
+    q.Parse(many);
+    CHECK(q.Size() == VoiceFixes::kMaxPairs && q.Entries().front().first == L"hx10" && q.Words().front() == L"mx509");
+}
+
 int main() {
     TestUtf();
     TestFreeText();
@@ -2212,6 +2278,7 @@ int main() {
     TestSplitLive();
     TestWhisperSettings();
     TestToMono16k();
+    TestVoiceLearn();
     std::printf("%d passed, %d failed\n", g_pass, g_fail);
     return g_fail == 0 ? 0 : 1;
 }

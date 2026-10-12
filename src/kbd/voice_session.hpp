@@ -99,6 +99,8 @@ public:
 private:
     void Worker();
     void Post(std::unique_ptr<VoiceEvent> e);
+    void EnsureWorker();                // UI thread: starts the worker on first use
+    void StopCapture(unsigned session);  // stops the microphone if `session` still owns it
 
     HWND notify_;
     UINT message_;
@@ -120,6 +122,13 @@ private:
     std::atomic<unsigned> session_{0};
     unsigned long long beginTick_ = 0, lastUseTick_ = 0;
     Stats stats_;
+    bool maxReached_ = false;                 // the recording hit settings_.maxSeconds (the worker ends it)
+    std::deque<std::function<void()>> jobs_;  // run on the worker while nothing is recorded (test, unloading)
+    // capture_ is started / stopped by the UI thread and the worker: always under captureMu_, which is taken before
+    // mu_ and never while holding it (the capture callback takes mu_; Stop() waits for the callback).
+    std::mutex captureMu_;
+    std::thread testThread_;                  // RunTest's recording
+    std::atomic<bool> testRunning_{false}, testCancel_{false};
 };
 
 }  // namespace gct

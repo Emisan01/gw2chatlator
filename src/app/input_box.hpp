@@ -30,6 +30,8 @@ public:
         std::function<void(const WordSuggestions&)> onSuggestions;  // the word bar changed
         // Keyboard layout changed; locale name like "ar-SA".
         std::function<void(const std::wstring& locale)> onKeyboardLanguage;
+        // The push-to-talk key (SetPushToTalkKey) went down / up; up also when the box loses the focus while held.
+        std::function<void(bool down)> onPushToTalk;
     };
 
     bool Create(HWND parent, HINSTANCE inst, const Theme* theme, SpellService* spell, AutoCorrectMode mode,
@@ -72,6 +74,20 @@ public:
     void RecheckSpelling() { RunSpellCheck(std::wstring::npos); }
     // Locale of the active keyboard layout ("de-DE").
     static std::wstring KeyboardLocale();
+
+    // Voice input (GW2 Keyboard; unused = inert). A key that is held to talk instead of typed (0 = none), with exactly
+    // these modifiers (MOD_CONTROL / MOD_ALT / MOD_SHIFT): its presses go to onPushToTalk, never into the text, and are
+    // not counted as typing.
+    void SetPushToTalkKey(UINT vk, UINT mods = 0);
+    // Live text while speaking, drawn after the end of the text (stable part in the preview colour, the unsure rest
+    // grey); the text itself is not changed. Cleared by the next edit.
+    void SetDictationPreview(const std::wstring& stable, const std::wstring& unsure);
+    void ClearDictationPreview();
+    // Puts recognized text in place of [replaceFrom, replaceTo) as one undoable edit (EN_CHANGE follows), caret after
+    // it. Counted as pasted; no autocorrection, and Enter does not finish its last word.
+    void InsertDictated(const std::wstring& text, size_t replaceFrom, size_t replaceTo);
+    // The selection (caret = both equal).
+    void Selection(size_t* from, size_t* to) const;
 
 private:
     static LRESULT CALLBACK Proc(HWND h, UINT msg, WPARAM wp, LPARAM lp);
@@ -134,6 +150,12 @@ private:
     void ShowHistoryText(const std::wstring& text);
     int keyPresses_ = 0;
     bool pasted_ = false;
+    // voice input
+    void DrawDictation(HDC dc) const;
+    UINT pttVk_ = 0, pttMods_ = 0;
+    bool pttDown_ = false;
+    std::wstring dictStable_, dictUnsure_;
+    std::wstring dictatedText_;  // the text right after InsertDictated: Enter leaves its last word as recognized
 };
 
 }  // namespace gct

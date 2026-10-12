@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cwchar>
+#include <cwctype>
 #include <memory>
 #include <thread>
 
@@ -23,12 +24,16 @@
 #include "core/protect.hpp"
 #include "core/slang.hpp"
 #include "core/text.hpp"
+#include "core/voice.hpp"
+#include "kbd/whisper_engine.hpp"
+#include "win/audio_capture.hpp"
 #include "win/deepl_translator.hpp"
 #include "win/els.hpp"
 #include "win/files.hpp"
 #include "win/folder_cleanup.hpp"
 #include "win/gw2_api.hpp"
 #include "win/gw2_locate.hpp"
+#include "win/voice_models.hpp"
 
 #ifndef MOD_NOREPEAT
 #define MOD_NOREPEAT 0x4000
@@ -64,10 +69,13 @@ constexpr UINT WM_APP_GRAMMAR = WM_APP + 3;
 constexpr UINT WM_APP_TRAY = WM_APP + 4;
 constexpr UINT WM_APP_MYMEMORY_NOTICE = WM_APP + 5;
 constexpr UINT WM_APP_EXTENSION = WM_APP + 6;  // wParam: ok, lParam: std::wstring* (exe or error, owned)
+constexpr UINT WM_APP_VOICE = WM_APP + 7;      // lParam: VoiceEvent* (owned)
 constexpr UINT_PTR kTimerDebounce = 1;
 constexpr UINT_PTR kTimerStatus = 2;
 constexpr UINT_PTR kTimerGame = 3;
 constexpr UINT_PTR kTimerGrammar = 4;
+constexpr UINT_PTR kTimerVoice = 5;  // the microphone button's animation while recording / recognizing
+constexpr int kVoiceUnloadPolls = 100;  // game polls (300 ms) between checks whether the voice model can go
 constexpr int kHotkeyId = 1;
 
 constexpr UINT kCmdLangBase = 1000;  // + index into Languages()
@@ -176,6 +184,13 @@ std::wstring NameCachePath(const Config& cfg, const std::string& lang) {
     return cfg.CacheDir() + L"\\gw2names_" + FromUtf8(lang) + L".tsv";
 }
 
+std::wstring VoiceFixesPath(const Config& cfg) { return cfg.dataDir + L"\\voice-fixes.txt"; }
+
+void PostText(HWND notify, UINT message, const std::wstring& text) {
+    auto* s = new std::wstring(text);
+    if (!PostMessageW(notify, message, 0, reinterpret_cast<LPARAM>(s))) delete s;
+}
+
 }  // namespace
 
 // ===========================================================================
@@ -191,6 +206,8 @@ int KeyboardWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
         if (ReadFileBytes(cfg_.dataDir + L"\\corrections.txt", data)) corrections_.Parse(data);
         data.clear();
         if (ReadFileBytes(cfg_.dataDir + L"\\my-words.txt", data)) myWords_.Parse(FromUtf8(data));
+        data.clear();
+        if (ReadFileBytes(VoiceFixesPath(cfg_), data)) voiceFixes_.Parse(FromUtf8(data));
     }
 
     HDC screen = GetDC(nullptr);
@@ -401,9 +418,21 @@ void KeyboardWindow::CreateChildren() {
     cb.onExplain = [this](const std::wstring& w) { ExplainWord(w); };
     cb.onSuggestions = [this](const WordSuggestions& s) { words_.Set(s); };
     cb.onKeyboardLanguage = [this](const std::wstring& locale) { OnKeyboardLanguage(locale); };
+    cb.onPushToTalk = [this](bool down) {
+        if (cfg_.voiceToggle) {
+            if (down) ToggleVoice();
+        } else if (down) {
+            StartVoice();
+        } else {
+            StopVoice();
+        }
+    };
     spell_.SetLearnChoices(cfg_.learnWords);
     input_.Create(hwnd_, inst_, &theme_, &spell_, cfg_.autoCorrect, cfg_.suggestions, std::move(cb));
     input_.SetRtl(kbdRtl_);
+    voice_ = std::make_unique<VoiceSession>(hwnd_, WM_APP_VOICE);
+    ApplyVoiceKey();
+    RefreshVoiceReady();
     Layout();
 }
 
@@ -473,7 +502,13 @@ void KeyboardWindow::Paint() {
     DrawLine(dc, L"×", closeRect_, Theme::kMuted, t.fontText, DT_CENTER);
     menuRect_ = {closeRect_.left - t.S(28), 0, closeRect_.left, m.head};
     DrawLine(dc, L"≡", menuRect_, Theme::kMuted, t.fontText, DT_CENTER);
-    RECT title{m.pad + t.S(2), 0, menuRect_.left - t.S(8), m.head};
+    if (cfg_.voiceEnabled) {  // voice input: hold to speak (right-click: its settings)
+        micRect_ = {menuRect_.left - t.S(30), 0, menuRect_.left, m.head};
+        DrawMic(dc, micRect_);
+    } else {
+        micRect_ = {};
+    }
+    RECT title{m.pad + t.S(2), 0, (cfg_.voiceEnabled ? micRect_.left : menuRect_.left) - t.S(8), m.head};
     DrawLine(dc, kTitle, title, Theme::kText, t.fontUiBold, DT_LEFT | DT_END_ELLIPSIS);
 
     // ---- footer: channel | write | send | counter | status
@@ -527,7 +562,7 @@ void KeyboardWindow::Paint() {
 }
 
 bool KeyboardWindow::IsClickable(POINT pt) const {
-    for (const RECT* r : {&menuRect_, &closeRect_, &channelRect_, &typeRect_, &sendRect_})
+    for (const RECT* r : {&menuRect_, &closeRect_, &channelRect_, &typeRect_, &sendRect_, &micRect_})
         if (PtInRect(r, pt)) return true;
     return false;
 }
@@ -559,6 +594,7 @@ void KeyboardWindow::OnClick(POINT pt) {
     else if (PtInRect(&channelRect_, pt)) ShowChannelMenu();
     else if (PtInRect(&typeRect_, pt)) ShowTypeLangMenu();
     else if (PtInRect(&sendRect_, pt)) ShowSendMenu();
+    else if (PtInRect(&micRect_, pt) && cfg_.voiceToggle) ToggleVoice();  // hold mode: WM_LBUTTONDOWN / UP
 }
 
 void KeyboardWindow::SetStatus(const std::wstring& text, Tone tone, UINT autoClearMs) {
@@ -584,12 +620,14 @@ void KeyboardWindow::ShowWindowNow() {
 }
 
 void KeyboardWindow::HideWindowNow() {
+    CancelVoice();
     userHidden_ = true;
     ShowWindow(hwnd_, SW_HIDE);
 }
 
 // Esc: hand the keyboard back to the game.
 void KeyboardWindow::ReturnToGame() {
+    CancelVoice();
     if (gw2_ && IsWindow(gw2_)) Front(gw2_);
     else HideWindowNow();
 }
@@ -599,9 +637,11 @@ bool KeyboardWindow::Front(HWND h) { return BringToFront(h, !cfg_.copyOnly); }
 // ===========================================================================
 // Languages, channel, menus
 // ===========================================================================
-std::wstring KeyboardWindow::TypingLocale() const {
-    if (cfg_.writeIn.empty()) return kbdLocale_;
-    const std::wstring code = ToUpperAscii(cfg_.writeIn);
+std::wstring KeyboardWindow::TypingLocale() const { return TypingLocaleFor(cfg_); }
+
+std::wstring KeyboardWindow::TypingLocaleFor(const Config& c) const {
+    if (c.writeIn.empty()) return kbdLocale_;
+    const std::wstring code = ToUpperAscii(c.writeIn);
     const size_t dash = code.find(L'-');
     const std::wstring primary = ToLowerAscii(code.substr(0, dash));
     if (dash != std::wstring::npos) return primary + L"-" + code.substr(dash + 1);
@@ -832,8 +872,7 @@ void KeyboardWindow::ShowTour() {
         cfg_.tourShown = true;
         cfg_.SaveBool(L"General", L"TourShown", true);
     }
-    const ModalScope modal;
-    MessageBoxW(hwnd_,
+    std::wstring text =
                 Tr(L"What GW2 Keyboard does for you\n\n"
            L"WRITE in your language \u2013 the chat gets it translated. You see the translation above the input and, small, "
            L"what it means in your language again. Enter sends, Ctrl+Enter sends what you typed.\n\n"
@@ -842,9 +881,22 @@ void KeyboardWindow::ShowTour() {
            L"BELOW THE INPUT: where it goes (channel, whisper), the language you write in, the language the chat gets.\n\n"
            L"HANDY: Ctrl+L switches the language, Up brings back what you sent, right-click a word to teach a name or "
            L"explain your slang.\n\n"
-           L"Nothing runs inside the game: no add-on, no hook \u2013 it sends only when you press Enter.")
-                    .c_str(),
-                Tr(L"What can this tool do?").c_str(),
+           L"Nothing runs inside the game: no add-on, no hook \u2013 it sends only when you press Enter.");
+    if (cfg_.voiceEnabled) {  // before the closing paragraph
+        const std::wstring voice =
+            cfg_.voiceKey.empty()
+                ? Tr(L"SPEAK instead of typing: hold the microphone button, speak, release \u2013 the text appears, you "
+                     L"check it, Enter sends. It runs on this PC and learns the words it misheard once you correct them.")
+                : TrF(L"SPEAK instead of typing: hold the microphone button (or {1}), speak, release \u2013 the text "
+                      L"appears, you check it, Enter sends. It runs on this PC and learns the words it misheard once "
+                      L"you correct them.",
+                      {cfg_.voiceKey});
+        const size_t cut = text.rfind(L"\n\n");
+        if (cut == std::wstring::npos) text += L"\n\n" + voice;
+        else text.insert(cut, L"\n\n" + voice);
+    }
+    const ModalScope modal;
+    MessageBoxW(hwnd_, text.c_str(), Tr(L"What can this tool do?").c_str(),
                 MB_OK | MB_ICONINFORMATION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0));
     SetFocus(input_.Hwnd());
 }
@@ -1033,6 +1085,7 @@ void KeyboardWindow::OnInputChanged() {
         previewBody_.clear();
         previewPrefix_.clear();
         lastHits_.clear();
+        lastDictated_.clear();  // nothing of the voice input left to learn from
         if (tone_ != Tone::Ok) SetStatus(L"", Tone::Muted);
     }
     UpdatePreview();
@@ -1259,6 +1312,10 @@ void KeyboardWindow::UpdatePreview() {
 }
 
 void KeyboardWindow::OnEnter(bool sendOriginal) {
+    if (voice_ && voice_->Busy()) {  // the recognized text is not there yet – and nothing is sent unchecked
+        SetStatus(Tr(L"Still listening – finish the recording, check the text, then Enter"), Tone::Warn, 5000);
+        return;
+    }
     const std::wstring text = SanitizeChatText(input_.Text());
     if (text.empty()) return;
     if (sendOriginal && partIdx_ == 0) {
@@ -1305,6 +1362,11 @@ void KeyboardWindow::SendNextPart() {
             }
         }
         if (cfg_.learnWords) spell_.Learn(split.prefix.empty() ? SanitizeChatText(input_.Text()) : split.body);
+        // Voice input: what you changed in the recognized text before sending = words it misheard.
+        if (!lastDictated_.empty()) {
+            LearnVoiceFixes(SanitizeChatText(input_.Text()));
+            lastDictated_.clear();
+        }
     }
     ++partIdx_;
     if (partIdx_ >= parts_.size()) {
@@ -1479,6 +1541,290 @@ void KeyboardWindow::OnGrammar(KbdGrammarMsg* raw) {
 }
 
 // ===========================================================================
+// Voice input (push to talk): the text goes into the input box like typed text – spelling, your words, corrections
+// and the translator follow as usual – and only your Enter sends it.
+// ===========================================================================
+bool KeyboardWindow::BuildVoiceSettings(const Config& c, VoiceSettings* s, std::wstring* modelName) const {
+    const VoiceCatalog catalog = LoadVoiceCatalog(c.dataDir);
+    const VoiceModelInfo* m = catalog.Find(ToUtf8(c.voiceModel));
+    if (!m) m = catalog.Recommended();
+    if (modelName) *modelName = m ? FromUtf8(m->name) : std::wstring();
+    if (!m || !VoiceModelInstalled(c.VoiceModelDir(), *m)) return false;
+    s->modelPath = VoiceModelPath(c.VoiceModelDir(), *m);
+    if (m->englishOnly) s->language = "en";
+    else if (c.voiceLang == L"auto") s->language.clear();  // whisper detects it
+    else s->language = WhisperLang(c.voiceLang.empty() ? TypingLocaleFor(c) : c.voiceLang);
+    s->translate = c.voiceTranslate;
+    s->threads = VoiceThreads(c.voiceThreads, ProbeVoiceHardware().logicalProcessors);
+    s->live = c.voiceLive;
+    s->maxSeconds = c.voiceMaxSec;
+    s->deviceId = c.voiceDevice;
+    s->initialPrompt = c.voiceGlossary ? VoicePrompt() : std::string();
+    return true;
+}
+
+// Steers the recognizer's spelling: GW2, the words it misheard once (as you corrected them), the names you taught.
+// Never anything of the chat. Kept short – whisper's prompt is a hint, not a dictionary.
+std::string KeyboardWindow::VoicePrompt() const {
+    std::vector<std::wstring> words{L"Guild Wars 2"};
+    WordSet seen{CaseFold(words[0])};
+    auto add = [&](const std::wstring& w) {
+        const std::wstring t = Trim(w);
+        if (!t.empty() && seen.insert(CaseFold(t)).second) words.push_back(t);
+    };
+    for (const std::wstring& w : voiceFixes_.Words()) add(w);
+    std::vector<std::wstring> names;
+    for (const std::wstring& k : spell_.KeepWords())
+        if (k.size() > 1 && k[0] == L'=') names.push_back(k.substr(1));  // "=Name": taught names, exactly as taught
+    std::sort(names.begin(), names.end());
+    for (const std::wstring& n : names) add(n);
+    std::wstring prompt;
+    for (const std::wstring& w : words) {
+        const std::wstring next = prompt.empty() ? w : prompt + L", " + w;
+        if (next.size() > 200) break;
+        prompt = next;
+    }
+    return ToUtf8(prompt);
+}
+
+void KeyboardWindow::RefreshVoiceReady() {
+    // Only files: the recognizer DLLs are loaded when voice input is first used.
+    const DWORD a = GetFileAttributesW((WhisperEngine::RuntimeDir() + L"\\whisper.dll").c_str());
+    VoiceSettings s;
+    voiceReady_ = a != INVALID_FILE_ATTRIBUTES && BuildVoiceSettings(cfg_, &s, nullptr);
+    InvalidateChrome();
+}
+
+// The key works while the input box has the focus. A key that types (a letter, Space ...) only together with Ctrl or
+// Alt – otherwise it could never be typed again.
+void KeyboardWindow::ApplyVoiceKey() {
+    UINT vk = 0, mods = 0;
+    if (cfg_.voiceEnabled) {
+        if (const auto hk = ParseHotkey(cfg_.voiceKey)) {
+            const bool types = MapVirtualKeyW(hk->vk, MAPVK_VK_TO_CHAR) != 0 || hk->vk == VK_RETURN ||
+                               hk->vk == VK_TAB || hk->vk == VK_BACK || hk->vk == VK_ESCAPE || hk->vk == VK_DELETE ||
+                               (hk->vk >= VK_PRIOR && hk->vk <= VK_DOWN);
+            if (!types || (hk->mods & (kModCtrl | kModAlt))) {
+                vk = hk->vk;
+                mods = hk->mods;
+            }
+        }
+    }
+    input_.SetPushToTalkKey(vk, mods);
+}
+
+bool KeyboardWindow::StartVoice() {
+    if (!voice_ || !cfg_.voiceEnabled) return false;
+    if (voice_->Recording()) return true;
+    if (voice_->Busy()) {
+        SetStatus(Tr(L"Still recognizing the last recording – a moment"), Tone::Muted, 3000);
+        return false;
+    }
+    WarmUp();  // the names you taught (the recognizer's prompt)
+    std::wstring why;
+    if (!VoiceSession::Available(&why)) {
+        voiceReady_ = false;
+        InvalidateChrome();
+        SetStatus(TrF(L"Voice input needs the voice module (voice folder next to the program): {1}", {why}), Tone::Warn,
+                  12000);
+        return false;
+    }
+    VoiceSettings s;
+    if (!BuildVoiceSettings(cfg_, &s, nullptr)) {
+        voiceReady_ = false;
+        InvalidateChrome();
+        SetStatus(Tr(L"Voice model not downloaded – Settings → Voice"), Tone::Warn, 8000);
+        OpenSettings(SettingsPage::Voice);
+        return false;
+    }
+    unsigned session = 0;
+    std::wstring message;
+    AudioError error = AudioError::None;
+    if (!voice_->Begin(s, &session, &message, &error)) {
+        if (error == AudioError::AccessDenied) {
+            SetStatus(message, Tone::Warn, 8000);
+            const ModalScope modal;
+            if (MessageBoxW(hwnd_,
+                            Tr(L"Windows does not let programs use the microphone.\n\nOpen the microphone privacy "
+                               L"settings? Allow microphone access for desktop apps there.")
+                                .c_str(),
+                            Tr(L"Voice input").c_str(),
+                            MB_YESNO | MB_ICONQUESTION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0)) == IDYES)
+                OpenMicrophonePrivacySettings();
+        } else if (error == AudioError::NoDevice) {
+            SetStatus(Tr(L"No microphone found."), Tone::Warn, 6000);
+        } else {
+            SetStatus(message.empty() ? Tr(L"The microphone could not be opened") : message, Tone::Error, 8000);
+        }
+        return false;
+    }
+    voiceSession_ = session;
+    voiceReady_ = true;
+    input_.ClearDictationPreview();
+    SetStatus(cfg_.voiceToggle ? Tr(L"Listening … press again to finish") : Tr(L"Listening … release to finish"),
+              Tone::Ok, 0);
+    SetTimer(hwnd_, kTimerVoice, 60, nullptr);
+    InvalidateChrome();
+    return true;
+}
+
+void KeyboardWindow::StopVoice() {
+    if (!voice_ || !voice_->Recording()) return;  // not started, or ended by itself (longest recording)
+    voice_->End();
+    SetStatus(Tr(L"Recognizing …"), Tone::Muted, 0);
+    InvalidateChrome();
+}
+
+void KeyboardWindow::ToggleVoice() {
+    if (voice_ && voice_->Recording()) StopVoice();
+    else StartVoice();
+}
+
+void KeyboardWindow::CancelVoice() {
+    if (voiceHolding_) {
+        voiceHolding_ = false;  // first: ReleaseCapture sends WM_CAPTURECHANGED
+        if (GetCapture() == hwnd_) ReleaseCapture();
+    }
+    input_.ClearDictationPreview();
+    if (!voice_) return;
+    const bool busy = voice_->Busy();
+    voice_->Cancel();  // also drops a result already on its way
+    if (busy) {
+        SetStatus(Tr(L"Voice input cancelled"), Tone::Muted, 3000);
+        InvalidateChrome();
+    }
+}
+
+void KeyboardWindow::OnVoiceEvent(VoiceEvent* raw) {
+    std::unique_ptr<VoiceEvent> e(raw);
+    if (!e || !voice_ || e->session != voice_->Session() || e->session != voiceSession_) return;  // an older session
+    switch (e->kind) {
+        case VoiceEvent::Kind::Partial:
+            // Only drawn: the input text stays as it is while you speak (no translation per live result).
+            if (voice_->Recording()) input_.SetDictationPreview(e->live.stable, e->live.unsure);
+            return;
+        case VoiceEvent::Kind::Final: {
+            input_.ClearDictationPreview();
+            InvalidateChrome();
+            const std::wstring text = Trim(e->text);
+            if (e->empty || text.empty()) {
+                SetStatus(Tr(L"Nothing recognized – hold the key while you speak"), Tone::Muted, 5000);
+                return;
+            }
+            InsertDictation(voiceFixes_.Apply(text));
+            std::wstring status = cfg_.copyOnly ? Tr(L"Check the text – Enter copies") : Tr(L"Check the text – Enter sends");
+            if (e->maxReached) status += L" " + Tr(L"(longest recording reached)");
+            SetStatus(status, Tone::Ok, 8000);
+            if (GetForegroundWindow() == hwnd_) SetFocus(input_.Hwnd());
+            return;
+        }
+        case VoiceEvent::Kind::Error:
+            input_.ClearDictationPreview();
+            InvalidateChrome();
+            SetStatus(e->message.empty() ? Tr(L"Voice input failed") : e->message, Tone::Error, 10000);
+            return;
+    }
+}
+
+// Replace mode: a new attempt takes the place of the last one while the input is unchanged since; otherwise (and in
+// append mode) it goes in at the caret / at the end, with a space between it and the words around it.
+void KeyboardWindow::InsertDictation(const std::wstring& text) {
+    const std::wstring cur = input_.Text();
+    size_t from = cur.size(), to = cur.size();
+    if (!cfg_.voiceAppend && !lastDictated_.empty() && cur == lastDictated_ && lastDictFrom_ + lastDictLen_ <= cur.size()) {
+        from = lastDictFrom_;
+        to = lastDictFrom_ + lastDictLen_;
+    } else if (!cfg_.voiceAppend) {
+        input_.Selection(&from, &to);
+        from = std::min(from, cur.size());
+        to = std::clamp(to, from, cur.size());
+    }
+    std::wstring ins = text;
+    if (from > 0 && !std::iswspace(cur[from - 1])) ins = L" " + ins;
+    if (to < cur.size() && !std::iswspace(cur[to])) ins += L" ";
+    input_.InsertDictated(ins, from, to);  // EN_CHANGE: preview and translation follow as for typed text
+    lastDictated_ = input_.Text();
+    lastDictFrom_ = from;
+    lastDictLen_ = std::min(ins.size(), lastDictated_.size() - std::min(from, lastDictated_.size()));
+}
+
+// After sending: the recognized text against what you sent. Words you replaced by ones that sound alike are learned
+// (like the typing side, only from what you send; Settings → Voice lists them).
+void KeyboardWindow::LearnVoiceFixes(const std::wstring& sent) {
+    if (!cfg_.learnWords) return;
+    const std::wstring dictated = SanitizeChatText(lastDictated_);
+    if (dictated.empty() || dictated == sent) return;
+    const std::vector<VoiceFixes::Pair> pairs = voiceFixes_.Learn(dictated, sent);
+    if (pairs.empty()) return;
+    SaveVoiceFixes();
+    std::wstring learned = TrF(L"Learned: {1} → {2}", {pairs[0].first, pairs[0].second});
+    if (pairs.size() > 1) learned += L" …";
+    // After "Sent." / "Copied – …": keep what the send said, add what was learned.
+    if (status_.empty() || tone_ == Tone::Muted) SetStatus(learned, Tone::Ok, 5000);
+    else SetStatus(status_ + L"  ·  " + learned, tone_, 8000);
+}
+
+void KeyboardWindow::SaveVoiceFixes() {
+    WriteFileAtomic(VoiceFixesPath(cfg_),
+                    ToUtf8(L"# GW2 Keyboard: words the voice input misheard, \"heard = meant\" per line (fixed in what "
+                           L"you dictate)\r\n" +
+                           voiceFixes_.Serialize()));
+}
+
+// The microphone button: a capsule on a stand. Recording: red, a pulsing dot and the level; recognizing: dots; faint
+// when the recognizer or the model is missing.
+void KeyboardWindow::DrawMic(HDC dc, const RECT& r) const {
+    const Theme& t = theme_;
+    const bool recording = voice_ && voice_->Recording();
+    const bool recognizing = voice_ && !recording && voice_->Busy();
+    const COLORREF color = recording     ? Theme::kError
+                           : recognizing ? Theme::kAccent
+                           : voiceReady_ ? Theme::kMuted
+                                         : Theme::kFaint;
+    const int cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
+    HPEN pen = CreatePen(PS_SOLID, std::max(1, (t.S(3) + 1) / 2), color);
+    HBRUSH fill = CreateSolidBrush(color);
+    HGDIOBJ oldPen = SelectObject(dc, pen);
+    HGDIOBJ oldBrush = SelectObject(dc, recording ? static_cast<HGDIOBJ>(fill) : GetStockObject(NULL_BRUSH));
+    RoundRect(dc, cx - t.S(3), cy - t.S(9), cx + t.S(3) + 1, cy + t.S(1) + 1, t.S(6), t.S(6));  // capsule
+    Arc(dc, cx - t.S(6), cy - t.S(6), cx + t.S(6) + 1, cy + t.S(4) + 1, cx - t.S(6), cy - t.S(1), cx + t.S(6),
+        cy - t.S(1));  // the holder, lower half
+    MoveToEx(dc, cx, cy + t.S(4), nullptr);
+    LineTo(dc, cx, cy + t.S(7));
+    MoveToEx(dc, cx - t.S(3), cy + t.S(7), nullptr);
+    LineTo(dc, cx + t.S(3) + 1, cy + t.S(7));
+    SelectObject(dc, GetStockObject(NULL_PEN));
+    const ULONGLONG now = GetTickCount64();
+    if (recording) {
+        SelectObject(dc, fill);  // pulsing dot, top left
+        const int rad = t.S(2) + ((now / 400) % 2 ? t.S(1) : 0);
+        const int dx = r.left + t.S(5), dy = r.top + t.S(9);
+        Ellipse(dc, dx - rad, dy - rad, dx + rad + 1, dy + rad + 1);
+        // level, right
+        const float level = std::clamp(voice_->Level(), 0.0f, 1.0f);
+        const int h = std::max(t.S(1), static_cast<int>(level * static_cast<float>(t.S(14))));
+        RECT bar{r.right - t.S(6), cy + t.S(7) - h, r.right - t.S(3), cy + t.S(7)};
+        HBRUSH ok = CreateSolidBrush(Theme::kOk);
+        FillRect(dc, &bar, ok);
+        DeleteObject(ok);
+    } else if (recognizing) {
+        const int y = r.bottom - t.S(4), step = t.S(4), rad = std::max(1, t.S(1));
+        for (int i = 0; i < 3; ++i) {
+            HBRUSH b = CreateSolidBrush(static_cast<int>((now / 250) % 3) == i ? Theme::kText : Theme::kMuted);
+            SelectObject(dc, b);
+            const int x = cx + (i - 1) * step;
+            Ellipse(dc, x - rad, y - rad, x + rad + 1, y + rad + 1);
+            SelectObject(dc, fill);
+            DeleteObject(b);
+        }
+    }
+    SelectObject(dc, oldBrush);
+    SelectObject(dc, oldPen);
+    DeleteObject(fill);
+    DeleteObject(pen);
+}
+
+// ===========================================================================
 // Game, docking, tray, settings
 // ===========================================================================
 RECT KeyboardWindow::GameClientRect() const {
@@ -1491,6 +1837,10 @@ RECT KeyboardWindow::GameClientRect() const {
 }
 
 void KeyboardWindow::PollGame() {
+    if (voice_ && ++voiceIdleTicks_ >= kVoiceUnloadPolls) {  // about every 30 s: free an idle voice model
+        voiceIdleTicks_ = 0;
+        voice_->UnloadIfIdle(cfg_.voiceUnloadMin);
+    }
     mumbleState_ = mumble_.Read();
     // Frame rate from MumbleLink's frame counter every second on a map: a drop counts at once, a rise slowly.
     if (mumbleState_.inMap) {
@@ -1524,6 +1874,7 @@ void KeyboardWindow::PollGame() {
             ShowWindow(hwnd_, SW_SHOWNOACTIVATE);
             autoHidden_ = false;
         } else if (!gw2_) {
+            CancelVoice();
             ShowWindow(hwnd_, SW_HIDE);
         }
     }
@@ -1554,6 +1905,7 @@ void KeyboardWindow::PollGame() {
                 ShowWindow(hwnd_, SW_SHOWNOACTIVATE);
             }
         } else if (IsWindowVisible(hwnd_)) {
+            CancelVoice();
             autoHidden_ = true;
             ShowWindow(hwnd_, SW_HIDE);
         }
@@ -1660,9 +2012,29 @@ void KeyboardWindow::ShowTrayMenu() {
 // The same settings dialog as the full tool: every translator (MyMemory, Google, Microsoft, DeepL, own server, AI
 // model local or cloud), your words, corrections, the typing profile, sending.
 void KeyboardWindow::OpenSettings(SettingsPage page) {
+    CancelVoice();
     WarmUp();
     Config edited = cfg_;
     DialogContext ctx;
+    ctx.voiceAvailable = [](std::wstring* why) { return VoiceSession::Available(why); };
+    ctx.voiceTest = [this](const Config& c, HWND notify, UINT message) {
+        VoiceSettings s;
+        if (!voice_) return;
+        if (voice_->Recording()) {
+            PostText(notify, message, L"[!] " + Tr(L"Finish the recording in the window first, then test again."));
+            return;
+        }
+        if (!BuildVoiceSettings(c, &s, nullptr)) {
+            PostText(notify, message, L"[!] " + Tr(L"The voice model is not downloaded yet."));
+            return;
+        }
+        voice_->RunTest(s, 4, notify, message);
+    };
+    ctx.voiceFixesText = [this] { return voiceFixes_.Serialize(); };
+    ctx.setVoiceFixes = [this](const std::wstring& text) {
+        voiceFixes_.Parse(text);
+        SaveVoiceFixes();
+    };
     ctx.technicalStatus = [this] { return TechnicalStatus(); };
     ctx.connectionStatus = [this] { return TechnicalStatus(); };
     ctx.isGw2Running = [this] { return gw2_ != nullptr || mumbleState_.live; };
@@ -1716,6 +2088,7 @@ void KeyboardWindow::OpenSettings(SettingsPage page) {
     ctx.extensionInstalled = [] { return !FindChatTranslatorExe().empty(); };
     const DialogResult r = ShowSettingsDialog(hwnd_, inst_, edited, ctx, page);
     if (r.saved) ApplySettings(edited);
+    else RefreshVoiceReady();  // a model may have been downloaded or deleted meanwhile
     if (r.action == DialogResult::Action::ShowTour) ShowTour();
     else if (r.action == DialogResult::Action::RestartInto) {  // installed: continue in the installed copy
         restartCommand_ = L"\"" + r.restartExe + L"\"";
@@ -1771,6 +2144,9 @@ void KeyboardWindow::ApplySettings(const Config& next) {
         Layout();
     }
     if (prev.dock != cfg_.dock) SetDock(cfg_.dock);
+    if (!cfg_.voiceEnabled) CancelVoice();
+    if (prev.voiceKey != cfg_.voiceKey || prev.voiceEnabled != cfg_.voiceEnabled) ApplyVoiceKey();
+    RefreshVoiceReady();
     if (!cfg_.followGame && autoHidden_) {
         autoHidden_ = false;
         ShowWindow(hwnd_, SW_SHOWNOACTIVATE);
@@ -1797,6 +2173,32 @@ std::wstring KeyboardWindow::TechnicalStatus() {
     line(L"  " + TrF(L"Last send: chat line open after {1} ms, message out after {2} ms · confirmed {3} of {4}",
                      {ms(lastOpenMs_), ms(lastConfirmMs_), std::to_wstring(sendsConfirmed_), std::to_wstring(sends_)}));
     if (const std::wstring q = MyMemoryQuotaText(); !q.empty()) line(L"  " + q);
+    // Voice input: what runs and how fast (never what was said).
+    if (!cfg_.voiceEnabled) {
+        line(L"[--] " + Tr(L"Voice input: off (Settings → Voice)"));
+        return s;
+    }
+    std::wstring why;
+    const bool runtime = VoiceSession::Available(&why);
+    line(runtime ? L"[OK] " + Tr(L"Voice input: recognizer ready") : L"[!] " + TrF(L"Voice input: {1}", {why}));
+    VoiceSettings vs;
+    std::wstring model;
+    const bool installed = BuildVoiceSettings(cfg_, &vs, &model);
+    const VoiceSession::Stats st = voice_ ? voice_->GetStats() : VoiceSession::Stats{};
+    line(L"  " + TrF(L"Model: {1} – {2}", {model.empty() ? std::wstring(L"-") : model,
+                                            !installed  ? Tr(L"not downloaded")
+                                            : st.loaded ? TrF(L"loaded ({1} ms)", {std::to_wstring(st.loadMs)})
+                                                        : Tr(L"not loaded")}));
+    if (st.lastRecordMs > 0) {
+        wchar_t rtf[32];
+        swprintf(rtf, 32, L"%.2f", st.lastRealtimeFactor);
+        line(L"  " + TrF(L"Last recording {1} ms, recognized in {2} ms (real-time factor {3})",
+                         {std::to_wstring(st.lastRecordMs), std::to_wstring(st.lastRecognizeMs), rtf}));
+    }
+    const VoiceHardware hw = ProbeVoiceHardware();
+    line(L"  " + TrF(L"Threads: {1} of {2}", {std::to_wstring(VoiceThreads(cfg_.voiceThreads, hw.logicalProcessors)),
+                                             std::to_wstring(hw.logicalProcessors)}) +
+         L" · AVX2 " + (hw.avx2 ? L"[OK]" : L"[--]") + L" · " + TrF(L"learned misheard words: {1}", {std::to_wstring(voiceFixes_.Size())}));
     return s;
 }
 
@@ -1860,6 +2262,9 @@ LRESULT KeyboardWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
                 PollGame();
             } else if (wp == kTimerGrammar) {
                 StartGrammarCheck();
+            } else if (wp == kTimerVoice) {  // the microphone button moves only while it works
+                if (!voice_ || !voice_->Busy()) KillTimer(hwnd_, kTimerVoice);
+                InvalidateRect(hwnd_, &micRect_, FALSE);
             } else if (wp == kTimerStatus) {
                 KillTimer(hwnd_, kTimerStatus);
                 status_.clear();
@@ -1882,6 +2287,31 @@ LRESULT KeyboardWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
         case WM_APP_MYMEMORY_NOTICE:
             ShowMyMemoryNotice();
             return 0;
+        case WM_APP_VOICE:
+            OnVoiceEvent(reinterpret_cast<VoiceEvent*>(lp));
+            return 0;
+        case WM_LBUTTONDOWN:
+            // Hold to talk: pressed on the microphone starts, releasing (or losing the mouse) ends the recording.
+            if (cfg_.voiceEnabled && !cfg_.voiceToggle && PtInRect(&micRect_, POINT{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)})) {
+                if (StartVoice()) {
+                    voiceHolding_ = true;
+                    SetCapture(hwnd_);
+                }
+                return 0;
+            }
+            break;
+        case WM_CAPTURECHANGED:
+            if (voiceHolding_) {
+                voiceHolding_ = false;
+                StopVoice();
+            }
+            return 0;
+        case WM_RBUTTONUP:
+            if (PtInRect(&micRect_, POINT{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)})) {
+                OpenSettings(SettingsPage::Voice);
+                return 0;
+            }
+            break;
         case WM_APP_TRAY:
             if (LOWORD(lp) == WM_LBUTTONUP || LOWORD(lp) == WM_LBUTTONDBLCLK) {
                 if (IsWindowVisible(hwnd_) && GetForegroundWindow() == hwnd_) HideWindowNow();
@@ -1891,6 +2321,12 @@ LRESULT KeyboardWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             }
             return 0;
         case WM_LBUTTONUP:
+            if (voiceHolding_) {  // released the microphone button: recognize (no click)
+                voiceHolding_ = false;
+                if (GetCapture() == hwnd_) ReleaseCapture();
+                StopVoice();
+                return 0;
+            }
             OnClick({GET_X_LPARAM(lp), GET_Y_LPARAM(lp)});
             return 0;
         case WM_SETCURSOR: {
@@ -1924,6 +2360,8 @@ LRESULT KeyboardWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             DestroyWindow(hwnd_);
             return 0;
         case WM_DESTROY:
+            CancelVoice();
+            voice_.reset();  // joins its threads; the microphone is closed
             RemoveTrayIcon();
             cfg_.SaveWindowRect(hwnd_, theme_.scale);
             if (hotkeyOk_) UnregisterHotKey(hwnd_, kHotkeyId);
