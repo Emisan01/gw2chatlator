@@ -1595,11 +1595,22 @@ void KeyboardWindow::RefreshVoiceReady() {
     InvalidateChrome();
 }
 
+// The key works while the input box has the focus. A key that types (a letter, Space ...) only together with Ctrl or
+// Alt – otherwise it could never be typed again.
 void KeyboardWindow::ApplyVoiceKey() {
-    UINT vk = 0;
-    if (cfg_.voiceEnabled)
-        if (const auto hk = ParseHotkey(cfg_.voiceKey)) vk = hk->vk;
-    input_.SetPushToTalkKey(vk);
+    UINT vk = 0, mods = 0;
+    if (cfg_.voiceEnabled) {
+        if (const auto hk = ParseHotkey(cfg_.voiceKey)) {
+            const bool types = MapVirtualKeyW(hk->vk, MAPVK_VK_TO_CHAR) != 0 || hk->vk == VK_RETURN ||
+                               hk->vk == VK_TAB || hk->vk == VK_BACK || hk->vk == VK_ESCAPE || hk->vk == VK_DELETE ||
+                               (hk->vk >= VK_PRIOR && hk->vk <= VK_DOWN);
+            if (!types || (hk->mods & (kModCtrl | kModAlt))) {
+                vk = hk->vk;
+                mods = hk->mods;
+            }
+        }
+    }
+    input_.SetPushToTalkKey(vk, mods);
 }
 
 bool KeyboardWindow::StartVoice() {
@@ -1631,7 +1642,7 @@ bool KeyboardWindow::StartVoice() {
     AudioError error = AudioError::None;
     if (!voice_->Begin(s, &session, &message, &error)) {
         if (error == AudioError::AccessDenied) {
-            SetStatus(Tr(L"Windows blocks the microphone"), Tone::Warn, 8000);
+            SetStatus(message, Tone::Warn, 8000);
             const ModalScope modal;
             if (MessageBoxW(hwnd_,
                             Tr(L"Windows does not let programs use the microphone.\n\nOpen the microphone privacy "
@@ -1641,7 +1652,7 @@ bool KeyboardWindow::StartVoice() {
                             MB_YESNO | MB_ICONQUESTION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0)) == IDYES)
                 OpenMicrophonePrivacySettings();
         } else if (error == AudioError::NoDevice) {
-            SetStatus(Tr(L"No microphone found"), Tone::Warn, 6000);
+            SetStatus(Tr(L"No microphone found."), Tone::Warn, 6000);
         } else {
             SetStatus(message.empty() ? Tr(L"The microphone could not be opened") : message, Tone::Error, 8000);
         }
