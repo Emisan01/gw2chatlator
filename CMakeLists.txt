@@ -114,6 +114,50 @@ if(WIN32)
         endif()
     endif()
 
+    # ---- Voice input of GW2 Keyboard (optional, open source): whisper.cpp (MIT) on the CPU. Built as DLLs that go to
+    # <exe>\voice and are delay-loaded: without that folder GW2 Keyboard runs as before and voice is not offered.
+    # One CPU backend DLL per instruction set (ggml-cpu-*), the best is chosen at runtime (CPUs without AVX2 too).
+    # Static CRT and no OpenMP, so the DLLs need no VC++ redistributable.
+    option(GCT_VOICE "Build the voice input of GW2 Keyboard (downloads whisper.cpp)" ON)
+    if(GCT_VOICE AND MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+        enable_language(C)
+        include(FetchContent)
+        set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)  # our settings below win over whisper's option() defaults
+        set(CMAKE_POLICY_DEFAULT_CMP0091 NEW)  # CMAKE_MSVC_RUNTIME_LIBRARY is honoured inside whisper
+        set(GCT_SAVED_SHARED_LIBS ${BUILD_SHARED_LIBS})
+        set(BUILD_SHARED_LIBS ON)  # GGML_BACKEND_DL needs DLLs; our own libraries are STATIC explicitly
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        set(WHISPER_BUILD_TESTS OFF)
+        set(WHISPER_BUILD_EXAMPLES OFF)
+        set(WHISPER_BUILD_SERVER OFF)
+        set(WHISPER_BUILD_IS_DEV OFF)
+        set(GGML_NATIVE OFF)
+        set(GGML_OPENMP OFF)
+        set(GGML_CCACHE OFF)
+        set(GGML_BACKEND_DL ON)
+        set(GGML_CPU_ALL_VARIANTS ON)
+        FetchContent_Declare(whisper
+            URL https://github.com/ggml-org/whisper.cpp/archive/refs/tags/v1.9.5.tar.gz
+            URL_HASH SHA256=ff1a9053feb509ff9d7729703355541ae9690073a6b1c40eb692c962e0dc1720
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+            EXCLUDE_FROM_ALL)  # only what GW2 Keyboard needs is built (not the bundled parakeet library)
+        FetchContent_MakeAvailable(whisper)
+        set(BUILD_SHARED_LIBS ${GCT_SAVED_SHARED_LIBS})
+        unset(CMAKE_MSVC_RUNTIME_LIBRARY)
+        # Every CPU backend variant that exists for this compiler (MODULE libraries, loaded by ggml at runtime).
+        set(GCT_GGML_CPU_TARGETS)
+        foreach(v x64 sse42 sandybridge haswell skylakex cannonlake cascadelake icelake cooperlake zen4 alderlake
+                  sapphirerapids)
+            if(TARGET ggml-cpu-${v})
+                list(APPEND GCT_GGML_CPU_TARGETS ggml-cpu-${v})
+            endif()
+        endforeach()
+        if(NOT GCT_GGML_CPU_TARGETS)
+            message(FATAL_ERROR "whisper.cpp: no ggml-cpu-* backend target found")
+        endif()
+        set(GCT_WHISPER ON)
+    endif()
+
     # ---- app: the window
     set(GCT_APP_SOURCES
         src/app/main.cpp
@@ -170,6 +214,12 @@ if(WIN32)
             target_link_options(typing_bench PRIVATE -municode)
         endif()
         list(APPEND GCT_APP_TARGETS typing_bench)
+        if(GCT_WHISPER)
+            # Measures the voice recognizer on 16 kHz WAV recordings (local\voice, never committed).
+            add_executable(voice_bench tests/tools/voice_bench.cpp src/kbd/whisper_engine.cpp)
+            target_link_libraries(voice_bench PRIVATE gct_win)
+            list(APPEND GCT_APP_TARGETS voice_bench)
+        endif()
     endif()
 
     foreach(t gct_core gct_win ${GCT_APP_TARGETS})
@@ -211,6 +261,25 @@ if(WIN32)
                 COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${t}>/rapid
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different ${GCT_RAPID_DIR}/latin_rec.onnx ${GCT_RAPID_DIR}/latin_dict.txt
                         $<TARGET_FILE_DIR:${t}>/rapid)
+        endforeach()
+    endif()
+
+    if(GCT_WHISPER)
+        # Voice input: whisper/ggml delay-loaded (GW2 Keyboard starts without them), the DLLs go to <exe>\voice.
+        set(GCT_VOICE_DLLS $<TARGET_FILE:whisper> $<TARGET_FILE:ggml> $<TARGET_FILE:ggml-base>)
+        foreach(c ${GCT_GGML_CPU_TARGETS})
+            list(APPEND GCT_VOICE_DLLS $<TARGET_FILE:${c}>)
+        endforeach()
+        foreach(t GW2Keyboard voice_bench)
+            if(TARGET ${t})
+                target_link_libraries(${t} PRIVATE whisper ggml delayimp)
+                target_compile_definitions(${t} PRIVATE GCT_HAVE_WHISPER=1)
+                target_link_options(${t} PRIVATE /DELAYLOAD:whisper.dll /DELAYLOAD:ggml.dll)
+                add_dependencies(${t} ${GCT_GGML_CPU_TARGETS})  # loaded at runtime only, no link dependency
+                add_custom_command(TARGET ${t} POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${t}>/voice
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${GCT_VOICE_DLLS} $<TARGET_FILE_DIR:${t}>/voice)
+            endif()
         endforeach()
     endif()
 endif()
