@@ -3,7 +3,7 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## Unreleased
+## 1.3.0 — 2026-10-12
 
 - **A short menu that adapts:** ≡ shows "Keyboard only" (ticked) – untick it and it reads "Keyboard + chat reader" with
   **Detect GW2 chat**, **Set read area …** and **Translate chat once now** below. Then Dock, Show on screens (1 min),
