@@ -1,6 +1,7 @@
 // Portable unit tests for src/core — no Windows needed:
 //   g++ -std=c++17 -I src tests/core_tests.cpp src/core/*.cpp -o core_tests && ./core_tests
 #include <chrono>
+#include <cmath>
 #include <map>
 #include <cstdio>
 #include <fstream>
@@ -40,6 +41,7 @@
 #include "core/slang.hpp"
 #include "core/text.hpp"
 #include "core/translator.hpp"
+#include "core/voice.hpp"
 
 using namespace gct;
 
@@ -1848,6 +1850,297 @@ static void TestF16AndLut() {
     CHECK(img.bgra.size() == static_cast<size_t>(w * h * 4));
 }
 
+// ---- voice input (core/voice) ----------------------------------------------
+static void TestVoiceCatalog() {
+    VoiceCatalog cat;
+    CHECK(ParseVoiceCatalog(DefaultVoiceCatalogJson(), &cat));
+    CHECK(cat.date == "2026-10-12");
+    CHECK(cat.models.size() == 5);
+    const VoiceModelInfo* rec = cat.Recommended();
+    CHECK(rec && rec->id == "small-q5_1" && rec->name == "Whisper small (q5_1)");
+    CHECK(rec && rec->bytes == 190085487ull && rec->licence == "MIT" && !rec->streaming && !rec->englishOnly);
+    CHECK(rec && rec->sha256 == "ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb");
+    const VoiceModelInfo* turbo = cat.Find("large-v3-turbo-q5_0");
+    CHECK(turbo && turbo->bytes == 574041195ull && turbo->file == "ggml-large-v3-turbo-q5_0.bin");
+    CHECK(turbo && turbo->url == "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin");
+    CHECK(!cat.Find("nope"));
+    for (const auto& m : cat.models) {
+        CHECK(m.url.size() > m.file.size() && m.url.compare(m.url.size() - m.file.size(), m.file.size(), m.file) == 0);
+        CHECK(m.provider == "whisper" && m.langs.size() == 14 && m.ramMb > 0 && m.sha256.size() == 64);
+    }
+    // Quality: Arabic needs at least small; a bigger model is never worse.
+    const VoiceModelInfo* tiny = cat.Find("tiny-q5_1");
+    CHECK(tiny && tiny->QualityFor("ar") == 0 && tiny->QualityFor("en") == 2 && tiny->QualityFor("de") == 1);
+    CHECK(cat.Find("base-q5_1") && cat.Find("base-q5_1")->QualityFor("ar") == 0);
+    CHECK(rec && rec->QualityFor("ar") == 1 && rec->QualityFor("de") == 2 && rec->QualityFor("en") == 3);
+    CHECK(turbo && turbo->QualityFor("ar") == 2 && turbo->QualityFor("de") == 3);
+    CHECK(rec && rec->QualityFor("sv") == 1);  // not listed: the model's weakest
+    for (const char* lang : {"en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "tr", "ar", "zh", "ja", "ko"})
+        for (size_t i = 1; i < cat.models.size(); ++i)
+            CHECK(cat.models[i].QualityFor(lang) >= cat.models[i - 1].QualityFor(lang));
+    VoiceModelInfo bare;
+    CHECK(bare.QualityFor("de") == 2);
+    bare.englishOnly = true;
+    CHECK(bare.QualityFor("de") == 0 && bare.QualityFor("en") == 2);
+
+    // Validation: a bad entry is skipped, never offered.
+    auto entry = [](const std::string& file, const std::string& url, const std::string& sha, const std::string& bytes) {
+        std::string e = R"({"id":"m)" + std::to_string(file.size()) + R"(")";
+        if (!file.empty()) e += R"(,"file":")" + file + R"(")";
+        e += R"(,"url":")" + url + R"(","sha256":")" + sha + R"(")";
+        if (!bytes.empty()) e += R"(,"bytes":)" + bytes;
+        return e + "}";
+    };
+    auto doc = [](const std::string& entries) { return R"({"date":"t","models":[)" + entries + "]}"; };
+    const std::string url = "https://example.com/m.bin";
+    const std::string sha = "AE85E4A935D7A567BD102FE55AFC16BB595BDB618E11B2FC7591BC08120411BB";
+    VoiceCatalog c;
+    CHECK(ParseVoiceCatalog(doc(entry("m.bin", url, sha, "1234")), &c) && c.models.size() == 1);
+    CHECK(c.models.size() == 1 && c.models[0].bytes == 1234 && c.models[0].provider == "whisper" &&
+          c.models[0].sha256 == "ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb");
+    CHECK(c.Recommended() == &c.models[0]);  // none marked: the first
+    CHECK(c.models.size() == 1 && c.models[0].langs.empty() && c.models[0].QualityFor("de") == 2);
+    CHECK(!ParseVoiceCatalog(doc(entry("m.bin", "http://example.com/m.bin", sha, "1234")), &c) && c.models.empty());
+    CHECK(!ParseVoiceCatalog(doc(entry("m.bin", "ftp://example.com/m.bin", sha, "1234")), &c));
+    CHECK(!ParseVoiceCatalog(doc(entry("m.bin", url, sha.substr(1), "1234")), &c));
+    CHECK(!ParseVoiceCatalog(doc(entry("m.bin", url, "g" + sha.substr(1), "1234")), &c));
+    CHECK(!ParseVoiceCatalog(doc(entry("../m.bin", url, sha, "1234")), &c));
+    CHECK(!ParseVoiceCatalog(doc(entry("sub/m.bin", url, sha, "1234")), &c));
+    CHECK(!ParseVoiceCatalog(doc(entry("sub\\\\m.bin", url, sha, "1234")), &c));
+    CHECK(!ParseVoiceCatalog(doc(entry("C:m.bin", url, sha, "1234")), &c));
+    CHECK(!ParseVoiceCatalog(doc(entry("", url, sha, "1234")), &c));
+    CHECK(!ParseVoiceCatalog(doc(entry("m.bin", url, sha, "")), &c));
+    CHECK(!ParseVoiceCatalog(doc(entry("m.bin", url, sha, "0")), &c));
+    CHECK(!ParseVoiceCatalog(doc(entry("m.bin", url, sha, "-5")), &c));
+    CHECK(!ParseVoiceCatalog(doc(entry("m.bin", url, sha, "1.5")), &c));
+    CHECK(!ParseVoiceCatalog(doc(entry("m.bin", url, sha, "\"1234\"")), &c));
+    CHECK(ParseVoiceCatalog(doc(entry("a/b.bin", url, sha, "1") + "," + entry("ok.bin", url, sha, "2")), &c) &&
+          c.models.size() == 1 && c.models[0].file == "ok.bin");
+    CHECK(!ParseVoiceCatalog("not json", &c));
+    CHECK(!ParseVoiceCatalog("{}", &c));
+    CHECK(!ParseVoiceCatalog(R"({"models":[]})", &c));
+}
+
+static void AddNoise(std::vector<float>& v, float amp, unsigned seed) {
+    unsigned x = seed;
+    for (auto& s : v) {
+        x = x * 1664525u + 1013904223u;
+        s += amp * (static_cast<float>(x >> 8) / 8388608.0f - 1.0f);
+    }
+}
+
+static void AddTone(std::vector<float>& v, size_t from, size_t to, float amp, double hz = 440, int rate = 16000) {
+    for (size_t i = from; i < to && i < v.size(); ++i)
+        v[i] += amp * static_cast<float>(std::sin(6.283185307179586 * hz * static_cast<double>(i) / rate));
+}
+
+static void TestFindSpeech() {
+    std::vector<float> a(32000, 0.0f);  // 2 s of digital silence
+    SpeechSpan s = FindSpeech(a.data(), a.size());
+    CHECK(!s.speech && s.voicedMs == 0 && s.peakDb <= -119);
+    CHECK(!FindSpeech(nullptr, 100).speech && !FindSpeech(a.data(), 0).speech);
+
+    std::vector<float> tone(3200, 0.0f);  // 0.2 s tone alone: recording too short
+    AddTone(tone, 0, tone.size(), 0.3f);
+    s = FindSpeech(tone.data(), tone.size());
+    CHECK(!s.speech);
+
+    std::vector<float> b(16000, 0.0f);  // 0.2 s tone in 1 s of quiet noise: too little speech
+    AddNoise(b, 0.003f, 1);
+    AddTone(b, 4000, 7200, 0.3f);
+    s = FindSpeech(b.data(), b.size());
+    CHECK(!s.speech && s.voicedMs >= 180 && s.voicedMs <= 240);
+
+    std::vector<float> c(32000, 0.0f);  // 1.5 s tone in 2 s of noise
+    AddNoise(c, 0.01f, 2);
+    AddTone(c, 4000, 28000, 0.3f);
+    s = FindSpeech(c.data(), c.size());
+    CHECK(s.speech);
+    CHECK(s.begin >= 4000 - 3200 - 320 && s.begin <= 4000 - 3200);
+    CHECK(s.end >= 28000 + 3200 && s.end <= 28000 + 3200 + 320);
+    CHECK(s.voicedMs >= 1480 && s.voicedMs <= 1540);
+    CHECK(s.peakDb > -20 && s.noiseDb > -48 && s.noiseDb < -42);
+
+    std::vector<float> d(32000, 0.0f);  // low noise only
+    AddNoise(d, 0.003f, 3);
+    CHECK(!FindSpeech(d.data(), d.size()).speech);
+    std::vector<float> e(32000, 0.0f);  // loud noise only (fan, wind)
+    AddNoise(e, 0.2f, 4);
+    s = FindSpeech(e.data(), e.size());
+    CHECK(!s.speech && s.voicedMs < 100);
+    std::vector<float> f(32000, 0.0f);  // a short click in quiet noise
+    AddNoise(f, 0.003f, 5);
+    for (size_t i = 16000; i < 16160; ++i) f[i] = (i % 2) ? 0.9f : -0.9f;
+    CHECK(!FindSpeech(f.data(), f.size()).speech);
+
+    std::vector<float> g(16000 * 30, 0.0f);  // long recording, speech near the end, padding clamped
+    AddNoise(g, 0.005f, 6);
+    AddTone(g, g.size() - 8000, g.size(), 0.2f);
+    s = FindSpeech(g.data(), g.size());
+    CHECK(s.speech && s.end == g.size() && s.begin + 8000 + 3200 + 320 >= g.size() && s.begin + 8000 + 3200 <= g.size());
+
+    std::vector<float> h(16000, 0.0f);  // syllables with short pauses (speech-like)
+    AddNoise(h, 0.004f, 7);
+    for (size_t k = 0; k < 4; ++k) AddTone(h, 3200 + k * 3200, 3200 + k * 3200 + 2400, 0.25f, 220 + 40.0 * k);
+    s = FindSpeech(h.data(), h.size());
+    CHECK(s.speech && s.voicedMs >= 560 && s.voicedMs <= 680);
+
+    // Level meter: -60 dBFS = 0, 0 dBFS = 1; only the last 50 ms count.
+    CHECK(LevelMeter(a.data(), a.size()) == 0.0f);
+    CHECK(LevelMeter(nullptr, 10) == 0.0f);
+    std::vector<float> full(1600);
+    for (size_t i = 0; i < full.size(); ++i) full[i] = (i % 2) ? 1.0f : -1.0f;
+    CHECK(LevelMeter(full.data(), full.size()) == 1.0f);
+    std::vector<float> mid(1600, 0.0f);
+    AddTone(mid, 0, mid.size(), 0.1f);  // RMS about -23 dBFS
+    const float lv = LevelMeter(mid.data(), mid.size());
+    CHECK(lv > 0.55f && lv < 0.68f);
+    std::vector<float> fade(full);
+    for (size_t i = fade.size() - 800; i < fade.size(); ++i) fade[i] = 0.0f;
+    CHECK(LevelMeter(fade.data(), fade.size(), 50) == 0.0f && LevelMeter(fade.data(), fade.size(), 100) > 0.9f);
+}
+
+static std::wstring Clean(const std::wstring& w) { return CleanTranscript(ToUtf8(w)); }
+
+static void TestCleanTranscript() {
+    // Markers go.
+    CHECK(Clean(L"[BLANK_AUDIO]") == L"");
+    CHECK(Clean(L" [Musik] Hallo zusammen!") == L"Hallo zusammen!");
+    CHECK(Clean(L"Hallo [ Silence ] du") == L"Hallo du");
+    CHECK(Clean(L"Hallo [Musik].") == L"Hallo.");
+    CHECK(Clean(L"(Applaus)") == L"");
+    CHECK(Clean(L"(upbeat music) Let's go") == L"Let's go");
+    CHECK(Clean(L"Ja (lacht), klar") == L"Ja, klar");
+    CHECK(Clean(L"(Musik spielt) Wer kommt mit?") == L"Wer kommt mit?");
+    CHECK(Clean(L"(MUSIC) ready") == L"ready" && Clean(L"(CROWD CHEERING) ready") == L"ready");
+    CHECK(Clean(L"(...) gleich da") == L"gleich da");
+    CHECK(Clean(L"*seufzt* Na gut.") == L"Na gut.");
+    CHECK(Clean(L"♪ Hallo ♪") == L"Hallo");
+    CHECK(Clean(L"♪ ♫") == L"");
+    CHECK(Clean(L"- Hallo.") == L"Hallo.");
+    CHECK(Clean(L"– Wer tankt?") == L"Wer tankt?");
+    CHECK(Clean(L"  viel   Platz \n hier\t") == L"viel Platz hier");
+    CHECK(Clean(L"（拍手）") == L"");  // （拍手）
+    // Silence hallucinations, only when they are everything.
+    CHECK(Clean(L"Untertitel der Amara.org-Gemeinschaft") == L"");
+    CHECK(Clean(L" Untertitel im Auftrag des ZDF für funk, 2017") == L"");
+    CHECK(Clean(L"Untertitelung des ZDF, 2020") == L"");
+    CHECK(Clean(L"Vielen Dank fürs Zuschauen!") == L"");
+    CHECK(Clean(L"Vielen Dank für Ihre Aufmerksamkeit.") == L"");
+    CHECK(Clean(L"Thanks for watching!") == L"");
+    CHECK(Clean(L"Thank you for watching.") == L"");
+    CHECK(Clean(L"Subtitles by the Amara.org community") == L"");
+    CHECK(Clean(L" you") == L"" && Clean(L"You.") == L"");
+    CHECK(Clean(L".") == L"" && Clean(L"...") == L"" && Clean(L"") == L"");
+    CHECK(Clean(L"Продолжение следует...") == L"");
+    CHECK(Clean(L"ご視聴ありがとうございました。") == L"");
+    CHECK(Clean(L"[Musik] Vielen Dank fürs Zuschauen") == L"");
+    // Real text stays.
+    CHECK(Clean(L"you too") == L"you too");
+    CHECK(Clean(L"Thank you") == L"Thank you");
+    CHECK(Clean(L"Vielen Dank fürs Zuschauen, bis morgen") == L"Vielen Dank fürs Zuschauen, bis morgen");
+    CHECK(Clean(L"Wir treffen uns um 8 (oder 9) am Tor.") == L"Wir treffen uns um 8 (oder 9) am Tor.");
+    CHECK(Clean(L"Ich bin (kurz) weg") == L"Ich bin (kurz) weg");
+    CHECK(Clean(L"Das ist (Musik für mich)") == L"Das ist (Musik für mich)");
+    CHECK(Clean(L"Gilde (OK)") == L"Gilde (OK)");
+    CHECK(Clean(L"Ich komme gleich (bin noch im Dungeon)") == L"Ich komme gleich (bin noch im Dungeon)");
+    CHECK(Clean(L"5 - 3 = 2") == L"5 - 3 = 2");
+    CHECK(Clean(L"Grüße aus Köln, schön! Ärger? Spaß.") ==
+          L"Grüße aus Köln, schön! Ärger? Spaß.");
+    CHECK(Clean(L"مرحبا [موسيقى] كيف حالك؟") ==
+          L"مرحبا كيف حالك؟");
+}
+
+static void TestSplitLive() {
+    LiveText t = SplitLive(L"", L"");
+    CHECK(t.stable.empty() && t.unsure.empty());
+    t = SplitLive(L"anything", L"");
+    CHECK(t.stable.empty() && t.unsure.empty());
+    t = SplitLive(L"", L"hallo");
+    CHECK(t.stable.empty() && t.unsure == L"hallo");
+    t = SplitLive(L"hallo wie", L"Hallo, wie geht");
+    CHECK(t.stable == L"Hallo, wie" && t.unsure == L"geht");
+    t = SplitLive(L"hallo wie geht", L"hallo wie geht");
+    CHECK(t.stable == L"hallo wie" && t.unsure == L"geht");  // the last word is always unsure
+    t = SplitLive(L"hallo wir", L"hallo wie geht es");
+    CHECK(t.stable == L"hallo" && t.unsure == L"wie geht es");
+    t = SplitLive(L"hallo wie geht es dir", L"hallo wie");
+    CHECK(t.stable == L"hallo" && t.unsure == L"wie");
+    t = SplitLive(L"  a   b  c ", L"a  b c d");
+    CHECK(t.stable == L"a b c" && t.unsure == L"d");
+    t = SplitLive(L"Grüße AN alle", L"grüße an alle!");
+    CHECK(t.stable == L"grüße an" && t.unsure == L"alle!");
+}
+
+static void TestWhisperSettings() {
+    CHECK(WhisperLang(L"DE") == "de");
+    CHECK(WhisperLang(L"EN-GB") == "en" && WhisperLang(L"EN-US") == "en");
+    CHECK(WhisperLang(L"PT-BR") == "pt" && WhisperLang(L"pt-pt") == "pt");
+    CHECK(WhisperLang(L"ZH-HANS") == "zh" && WhisperLang(L"ZH-HANT") == "zh" && WhisperLang(L"zh_TW") == "zh");
+    CHECK(WhisperLang(L"NB") == "no" && WhisperLang(L"iw") == "he" && WhisperLang(L"HE") == "he");
+    CHECK(WhisperLang(L"fil") == "tl" && WhisperLang(L"de-AT") == "de" && WhisperLang(L" ja ") == "ja");
+    CHECK(WhisperLang(L"").empty() && WhisperLang(L"XX").empty() && WhisperLang(L"auto").empty());
+    CHECK(WhisperLang(L"ä").empty() && WhisperLang(L"-").empty());
+    for (const auto& l : Languages()) CHECK(!WhisperLang(l.code).empty());
+
+    CHECK(WhisperAudioCtx(0) == 256);
+    CHECK(WhisperAudioCtx(16000) == 256);         // 1 s
+    CHECK(WhisperAudioCtx(16000 * 4) == 264);     // 4 s
+    CHECK(WhisperAudioCtx(16000 * 10) == 564);    // 10 s
+    CHECK(WhisperAudioCtx(16000 * 28) == 1464);
+    CHECK(WhisperAudioCtx(16000 * 30) == 1500);   // the full window
+    CHECK(WhisperAudioCtx(16000 * 120) == 1500);
+
+    CHECK(VoiceThreads(0, 8) == 4 && VoiceThreads(0, 4) == 2 && VoiceThreads(0, 1) == 1);
+    CHECK(VoiceThreads(0, 0) == 1 && VoiceThreads(0, 32) == 4 && VoiceThreads(-1, 6) == 3);
+    CHECK(VoiceThreads(6, 2) == 6 && VoiceThreads(64, 4) == 16);
+}
+
+static void TestToMono16k() {
+    CHECK(ToMono16k(nullptr, 10, 1, 48000).empty());
+    std::vector<float> one = {0.5f};
+    CHECK(ToMono16k(one.data(), 0, 1, 48000).empty() && ToMono16k(one.data(), 1, 0, 48000).empty() &&
+          ToMono16k(one.data(), 1, 1, 0).empty());
+
+    // 48 kHz stereo sine -> a third of the samples, amplitude kept.
+    std::vector<float> mono48(48000, 0.0f);
+    AddTone(mono48, 0, mono48.size(), 0.5f, 440, 48000);
+    std::vector<float> stereo(mono48.size() * 2);
+    for (size_t i = 0; i < mono48.size(); ++i) stereo[2 * i] = stereo[2 * i + 1] = mono48[i];
+    std::vector<float> out = ToMono16k(stereo.data(), mono48.size(), 2, 48000);
+    CHECK(out.size() == 16000);
+    float peak = 0, maxErr = 0;
+    for (size_t j = 0; j < out.size(); ++j) {
+        peak = std::max(peak, std::fabs(out[j]));
+        const float want = 0.5f * static_cast<float>(std::sin(6.283185307179586 * 440.0 * static_cast<double>(j) / 16000));
+        maxErr = std::max(maxErr, std::fabs(out[j] - want));
+    }
+    CHECK(peak > 0.48f && peak < 0.51f);
+    CHECK(maxErr < 0.02f);
+
+    // Above 8 kHz is damped by the low-pass (it would fold back into speech).
+    std::vector<float> high(48000, 0.0f);
+    AddTone(high, 0, high.size(), 0.5f, 15000, 48000);
+    out = ToMono16k(high.data(), high.size(), 1, 48000);
+    double sq = 0;
+    for (float v : out) sq += static_cast<double>(v) * v;
+    CHECK(std::sqrt(sq / static_cast<double>(out.size())) < 0.5 * 0.5 / std::sqrt(2.0));
+
+    // 16 kHz mono = copy; 16 kHz stereo = average; 44.1 and 8 kHz lengths; 8 kHz interpolates.
+    std::vector<float> m16 = {0.1f, -0.2f, 0.3f};
+    CHECK(ToMono16k(m16.data(), m16.size(), 1, 16000) == m16);
+    std::vector<float> s16 = {0.2f, 0.4f, -0.2f, -0.4f};
+    out = ToMono16k(s16.data(), 2, 2, 16000);
+    CHECK(out.size() == 2 && std::fabs(out[0] - 0.3f) < 1e-6f && std::fabs(out[1] + 0.3f) < 1e-6f);
+    std::vector<float> m441(44100, 0.25f);
+    out = ToMono16k(m441.data(), m441.size(), 1, 44100);
+    CHECK(out.size() == 16000 && std::fabs(out[100] - 0.25f) < 1e-5f && std::fabs(out.back() - 0.25f) < 1e-5f);
+    std::vector<float> m8 = {0.0f, 1.0f, 0.0f, -1.0f};
+    out = ToMono16k(m8.data(), m8.size(), 1, 8000);
+    CHECK(out.size() == 8 && std::fabs(out[1] - 0.5f) < 1e-6f && std::fabs(out[2] - 1.0f) < 1e-6f &&
+          std::fabs(out[5] + 0.5f) < 1e-6f);
+}
+
 int main() {
     TestUtf();
     TestFreeText();
@@ -1914,6 +2207,12 @@ int main() {
     TestModelList();
     TestChatTextFilter();
     TestF16AndLut();
+    TestVoiceCatalog();
+    TestFindSpeech();
+    TestCleanTranscript();
+    TestSplitLive();
+    TestWhisperSettings();
+    TestToMono16k();
     std::printf("%d passed, %d failed\n", g_pass, g_fail);
     return g_fail == 0 ? 0 : 1;
 }
