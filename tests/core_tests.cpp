@@ -1855,7 +1855,8 @@ static void TestVoiceCatalog() {
     VoiceCatalog cat;
     CHECK(ParseVoiceCatalog(DefaultVoiceCatalogJson(), &cat));
     CHECK(cat.date == "2026-10-12");
-    CHECK(cat.models.size() == 5);
+    CHECK(cat.models.size() == 4);
+    CHECK(!cat.Find("tiny-q5_1"));  // loops with the short context (voice_bench)
     const VoiceModelInfo* rec = cat.Recommended();
     CHECK(rec && rec->id == "small-q5_1" && rec->name == "Whisper small (q5_1)");
     CHECK(rec && rec->bytes == 190085487ull && rec->licence == "MIT" && !rec->streaming && !rec->englishOnly);
@@ -1869,8 +1870,6 @@ static void TestVoiceCatalog() {
         CHECK(m.provider == "whisper" && m.langs.size() == 14 && m.ramMb > 0 && m.sha256.size() == 64);
     }
     // Quality: Arabic needs at least small; a bigger model is never worse.
-    const VoiceModelInfo* tiny = cat.Find("tiny-q5_1");
-    CHECK(tiny && tiny->QualityFor("ar") == 0 && tiny->QualityFor("en") == 2 && tiny->QualityFor("de") == 1);
     CHECK(cat.Find("base-q5_1") && cat.Find("base-q5_1")->QualityFor("ar") == 0);
     CHECK(rec && rec->QualityFor("ar") == 1 && rec->QualityFor("de") == 2 && rec->QualityFor("en") == 3);
     CHECK(turbo && turbo->QualityFor("ar") == 2 && turbo->QualityFor("de") == 3);
