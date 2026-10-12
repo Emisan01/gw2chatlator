@@ -8,6 +8,7 @@
 
 #include <algorithm>
 
+#include "core/gw2_text.hpp"
 #include "core/i18n.hpp"
 
 namespace gct {
@@ -144,6 +145,9 @@ void InputBox::Clear() {
     histPos_ = -1;
     keyPresses_ = 0;
     pasted_ = false;
+    dictStable_.clear();
+    dictUnsure_.clear();
+    dictatedText_.clear();
     issues_.clear();
     grammar_.clear();
     lastFix_.valid = false;
@@ -155,6 +159,7 @@ void InputBox::Clear() {
 }
 
 void InputBox::OnTextChanged() {
+    ClearDictationPreview();  // stale positions; the next live result draws it again
     if (!issues_.empty() || !grammar_.empty()) {
         issues_.clear();  // positions are stale now
         grammar_.clear();
@@ -246,6 +251,145 @@ void InputBox::SetRtl(bool rtl) {
                  SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
     ApplyPadding();
     InvalidateRect(hwnd_, nullptr, TRUE);
+}
+
+// ---------------------------------------------------------------------------
+// Voice input: the push-to-talk key, the live text while speaking, the
+// recognized text going in.
+// ---------------------------------------------------------------------------
+void InputBox::SetPushToTalkKey(UINT vk) {
+    if (vk == pttVk_) return;
+    const bool wasDown = pttDown_;
+    pttVk_ = vk;
+    pttDown_ = false;
+    if (wasDown && cb_.onPushToTalk) cb_.onPushToTalk(false);
+}
+
+void InputBox::SetDictationPreview(const std::wstring& stable, const std::wstring& unsure) {
+    if (stable == dictStable_ && unsure == dictUnsure_) return;
+    dictStable_ = stable;
+    dictUnsure_ = unsure;
+    if (hwnd_) InvalidateRect(hwnd_, nullptr, TRUE);
+}
+
+void InputBox::ClearDictationPreview() { SetDictationPreview(std::wstring(), std::wstring()); }
+
+void InputBox::Selection(size_t* from, size_t* to) const {
+    DWORD a = 0, b = 0;
+    SendMessageW(hwnd_, EM_GETSEL, reinterpret_cast<WPARAM>(&a), reinterpret_cast<LPARAM>(&b));
+    *from = std::min(a, b);
+    *to = std::max(a, b);
+}
+
+void InputBox::InsertDictated(const std::wstring& text, size_t replaceFrom, size_t replaceTo) {
+    if (!hwnd_) return;
+    const size_t len = static_cast<size_t>(GetWindowTextLengthW(hwnd_));
+    replaceFrom = std::min(replaceFrom, len);
+    replaceTo = std::clamp(replaceTo, replaceFrom, len);
+    dictStable_.clear();
+    dictUnsure_.clear();
+    lastFix_.valid = false;
+    histPos_ = -1;
+    pasted_ = true;  // not typed: the typing statistics leave this message out
+    SendMessageW(hwnd_, EM_SETSEL, replaceFrom, replaceTo);
+    SendMessageW(hwnd_, EM_REPLACESEL, TRUE, reinterpret_cast<LPARAM>(text.c_str()));  // undoable; EN_CHANGE follows
+    const size_t caret = std::min(replaceFrom + text.size(), static_cast<size_t>(GetWindowTextLengthW(hwnd_)));
+    SendMessageW(hwnd_, EM_SETSEL, caret, caret);
+    // As recognized: no grey word for it (Space / Enter would write it) until you type on.
+    dictatedText_ = Text();
+    dismissedText_ = dictatedText_;
+    choices_ = WordChoices{};
+    InvalidateRect(hwnd_, nullptr, TRUE);
+}
+
+// The live text after the end of the text: word by word, wrapped like the
+// EDIT wraps; when it does not fit, the oldest words give way to "…".
+void InputBox::DrawDictation(HDC dc) const {
+    if (dictStable_.empty() && dictUnsure_.empty()) return;
+    const std::wstring text = Text();
+    RECT area;
+    SendMessageW(hwnd_, EM_GETRECT, 0, reinterpret_cast<LPARAM>(&area));
+    const int saved = SaveDC(dc);
+    SelectObject(dc, theme_->fontText);
+    TEXTMETRICW tm{};
+    GetTextMetricsW(dc, &tm);
+    const int lineH = std::max(1, static_cast<int>(tm.tmHeight));
+    IntersectClipRect(dc, area.left, area.top, area.right, area.bottom);
+    SetBkMode(dc, TRANSPARENT);
+    auto width = [dc](const std::wstring& s) {
+        SIZE sz{};
+        GetTextExtentPoint32W(dc, s.c_str(), static_cast<int>(s.size()), &sz);
+        return static_cast<int>(sz.cx);
+    };
+    const int space = width(L" ");
+    int x = area.left, y = area.top;
+    if (!text.empty()) {
+        const POINT last = PosFromChar(text.size() - 1);
+        if (last.x == -32768) {
+            RestoreDC(dc, saved);
+            return;
+        }
+        x = last.x + width(text.substr(text.size() - 1)) + (text.back() == L' ' ? 0 : space);
+        y = last.y;
+    }
+    if (rtl_ || IsRtlText(dictStable_ + dictUnsure_)) {  // right to left: in one piece, below the text
+        RECT r = area;
+        if (!text.empty()) r.top = y + lineH;
+        const std::wstring all = Trim(dictStable_ + L" " + dictUnsure_);
+        SetTextColor(dc, Theme::kMuted);
+        DrawTextW(dc, all.c_str(), static_cast<int>(all.size()), &r, DT_RIGHT | DT_RTLREADING | DT_WORDBREAK | DT_NOPREFIX);
+        RestoreDC(dc, saved);
+        return;
+    }
+    struct Piece {
+        std::wstring word;
+        bool unsure;
+        int w;
+    };
+    std::vector<Piece> pieces;
+    auto add = [&](const std::wstring& s, bool unsure) {
+        size_t i = 0;
+        while (i < s.size()) {
+            while (i < s.size() && s[i] == L' ') ++i;
+            size_t j = i;
+            while (j < s.size() && s[j] != L' ') ++j;
+            if (j > i) pieces.push_back({s.substr(i, j - i), unsure, width(s.substr(i, j - i))});
+            i = j;
+        }
+    };
+    add(dictStable_, false);
+    add(dictUnsure_, true);
+    const std::wstring dots = L"… ";
+    const int dotsW = width(dots);
+    auto fits = [&](size_t first) {
+        int cx = x + (first > 0 ? dotsW : 0), cy = y;
+        for (size_t i = first; i < pieces.size(); ++i) {
+            if (cx + pieces[i].w > area.right && cx > area.left) {
+                cx = area.left;
+                cy += lineH;
+            }
+            cx += pieces[i].w + space;
+        }
+        return cy + lineH <= area.bottom;
+    };
+    size_t first = 0;
+    while (first + 1 < pieces.size() && !fits(first)) ++first;
+    int cx = x, cy = y;
+    if (first > 0) {
+        SetTextColor(dc, Theme::kMuted);
+        TextOutW(dc, cx, cy, dots.c_str(), static_cast<int>(dots.size()));
+        cx += dotsW;
+    }
+    for (size_t i = first; i < pieces.size(); ++i) {
+        if (cx + pieces[i].w > area.right && cx > area.left) {
+            cx = area.left;
+            cy += lineH;
+        }
+        SetTextColor(dc, pieces[i].unsure ? Theme::kMuted : Theme::kPreviewText);
+        TextOutW(dc, cx, cy, pieces[i].word.c_str(), static_cast<int>(pieces[i].word.size()));
+        cx += pieces[i].w + space;
+    }
+    RestoreDC(dc, saved);
 }
 
 std::wstring InputBox::KeyboardLocale() {
@@ -357,6 +501,7 @@ bool LatinOnly(const std::wstring& s) {
 // The rest of the highlighted completion, greyed out right after the caret
 // ("Teq|uatl"); Space writes it. Latin script only.
 void InputBox::DrawGhost(HDC dc) const {
+    if (!dictStable_.empty() || !dictUnsure_.empty()) return;  // the live voice text stands there
     const WordChoices& c = choices_;
     if (suggestOn_ && GetFocus() == hwnd_ && !c.Changes()) DrawNextGhost(dc);
     if (!suggestOn_ || !c.Changes() || static_cast<size_t>(c.highlight) >= c.words.size() ||
@@ -698,6 +843,19 @@ LRESULT CALLBACK InputBox::Proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
 }
 
 LRESULT InputBox::Handle(UINT msg, WPARAM wp, LPARAM lp) {
+    // The push-to-talk key: held to speak, never typed, not counted; key repeat ignored.
+    if (pttVk_ && wp == pttVk_ && (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN || msg == WM_KEYUP || msg == WM_SYSKEYUP)) {
+        if (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN) {
+            if (!(lp & (1 << 30)) && !pttDown_) {
+                pttDown_ = true;
+                if (cb_.onPushToTalk) cb_.onPushToTalk(true);
+            }
+        } else if (pttDown_) {
+            pttDown_ = false;
+            if (cb_.onPushToTalk) cb_.onPushToTalk(false);
+        }
+        return 0;
+    }
     switch (msg) {
         case WM_KEYDOWN: {
             const bool ctrl = GetKeyState(VK_CONTROL) < 0;
@@ -708,9 +866,12 @@ LRESULT InputBox::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             if (ctrl && (wp == 'V' || wp == VK_INSERT)) pasted_ = true;
             if (wp == VK_RETURN) {
                 if (!shift) {
-                    // Enter finishes the word too: the grey word, else autocorrection.
-                    if (CurrentChoices().Changes()) ApplyChoice(0);
-                    else FinishWordAtCaret();
+                    // Enter finishes the word too: the grey word, else autocorrection (recognized speech stays as
+                    // recognized – you checked it).
+                    if (Text() != dictatedText_) {
+                        if (CurrentChoices().Changes()) ApplyChoice(0);
+                        else FinishWordAtCaret();
+                    }
                     if (cb_.onEnter) cb_.onEnter(ctrl);
                 }
                 return 0;
@@ -812,6 +973,10 @@ LRESULT InputBox::Handle(UINT msg, WPARAM wp, LPARAM lp) {
                 swallowBackspaceChar_ = false;
                 return 0;
             }
+            if (pttDown_) {  // a character key held to talk types nothing
+                const UINT ch = MapVirtualKeyW(pttVk_, MAPVK_VK_TO_CHAR) & 0x7FFFFFFFu;
+                if (ch && std::towupper(static_cast<wint_t>(wp)) == std::towupper(static_cast<wint_t>(ch))) return 0;
+            }
             // Characters produced by the shortcuts above: no beeps, no newlines.
             if (wp == L'\r' || wp == L'\n' || wp == 0x1B || wp == 0x01 || wp == 0x0C || wp == 0x15 || wp == 0x7F)
                 return 0;
@@ -839,6 +1004,7 @@ LRESULT InputBox::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             HDC dc = GetDC(hwnd_);
             if (!issues_.empty() || !grammar_.empty()) DrawSquiggles(dc);
             DrawGhost(dc);
+            DrawDictation(dc);
             ReleaseDC(hwnd_, dc);
             return r;
         }
@@ -854,6 +1020,10 @@ LRESULT InputBox::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             break;
         case WM_KILLFOCUS: {
             const LRESULT r = CallWindowProcW(orig_, hwnd_, msg, wp, lp);
+            if (pttDown_) {  // the key-up goes elsewhere now: count it as released
+                pttDown_ = false;
+                if (cb_.onPushToTalk) cb_.onPushToTalk(false);
+            }
             RunSpellCheck(std::wstring::npos);  // the last word counts as finished
             InvalidateRect(hwnd_, nullptr, TRUE);  // no grey completion without focus
             return r;

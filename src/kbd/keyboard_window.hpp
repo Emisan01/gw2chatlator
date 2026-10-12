@@ -29,6 +29,8 @@
 #include "core/languagetool_protocol.hpp"
 #include "core/my_words.hpp"
 #include "core/translator.hpp"
+#include "core/voice_learn.hpp"
+#include "kbd/voice_session.hpp"
 #include "win/gw2_sender.hpp"
 #include "win/mumble_link.hpp"
 #include "win/online_translators.hpp"
@@ -72,8 +74,26 @@ private:
     void ReturnToGame();
     bool Front(HWND h);
 
+    // ---- voice input: hold the microphone button (or the key), speak, release – the text goes into the input box,
+    // you check it, Enter sends. Never sent by itself.
+    bool StartVoice();
+    void StopVoice();
+    void ToggleVoice();
+    void CancelVoice();  // drops a recording / recognition in progress, no text
+    void OnVoiceEvent(VoiceEvent* e);
+    void InsertDictation(const std::wstring& text);
+    // Settings for a recording with `c` (the current or the dialog's settings); false when the model is not there.
+    bool BuildVoiceSettings(const Config& c, VoiceSettings* s, std::wstring* modelName) const;
+    std::string VoicePrompt() const;  // GW2, your names, the words it misheard once – never chat text
+    void LearnVoiceFixes(const std::wstring& sent);
+    void SaveVoiceFixes();
+    void RefreshVoiceReady();
+    void ApplyVoiceKey();
+    void DrawMic(HDC dc, const RECT& r) const;
+
     // ---- languages, channel, menus
     std::wstring TypingLocale() const;  // the language you type in ("de-DE")
+    std::wstring TypingLocaleFor(const Config& c) const;
     bool SendOriginal() const;          // send what you typed, only corrected
     std::wstring SendLang() const;      // empty when sending the original
     bool Translating() const;           // send language differs from the typing language
@@ -147,6 +167,7 @@ private:
 
     HINSTANCE inst_ = nullptr;
     HWND hwnd_ = nullptr;
+    std::unique_ptr<VoiceSession> voice_;  // created with the window, ended in WM_DESTROY
     Config cfg_;
     Theme theme_;
     SpellService spell_;
@@ -200,7 +221,16 @@ private:
     // chrome
     std::wstring status_;
     Tone tone_ = Tone::Muted;
-    RECT menuRect_{}, closeRect_{}, channelRect_{}, typeRect_{}, sendRect_{};
+    RECT menuRect_{}, closeRect_{}, channelRect_{}, typeRect_{}, sendRect_{}, micRect_{};
+
+    // voice input
+    VoiceFixes voiceFixes_;      // learned misheard words (<data>\voice-fixes.txt)
+    std::wstring lastDictated_;  // the input text right after the last voice input (learning compares it when sent)
+    size_t lastDictFrom_ = 0, lastDictLen_ = 0;  // where that voice input went (a new attempt replaces it)
+    unsigned voiceSession_ = 0;
+    bool voiceHolding_ = false;  // the microphone button is held with the mouse (captured)
+    bool voiceReady_ = false;    // recognizer files and the model are there (the button is drawn faint otherwise)
+    int voiceIdleTicks_ = 0;     // game polls since the last unload check
 };
 
 }  // namespace gct
