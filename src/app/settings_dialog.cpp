@@ -14,8 +14,11 @@
 #include "app/modal_scope.hpp"
 #include "core/cloud_mt_protocol.hpp"
 #include "core/hotkey.hpp"
+#ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
 #include "core/rapid_models.hpp"
 #include "win/rapid_ocr.hpp"
+#include "win/tesseract_ocr.hpp"
+#endif
 #include "core/gw2_install.hpp"
 #include "core/langs.hpp"
 #include "core/i18n.hpp"
@@ -24,7 +27,6 @@
 #include "win/deepl_translator.hpp"
 #include "win/gw2_locate.hpp"
 #include "win/online_translators.hpp"
-#include "win/tesseract_ocr.hpp"
 
 namespace gct {
 namespace {
@@ -54,7 +56,7 @@ enum : int {
     // Translator
     kEngine, kEngineNote, kLocalModel, kPull, kLocalInfo, kGetOllama, kLlmFindLocal, kPullStatus, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
     kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
-    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kStartMenu, kOnlyTr, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare, kWriteIn, kLtProvider, kLtTest, kLtStatus, kChatEngine, kKeyboardOnly, kLearnFile, kKeepMap, kReadWhat,
+    kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kStartMenu, kOnlyTr, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare, kWriteIn, kLtProvider, kLtTest, kLtStatus, kChatEngine, kKeyboardOnly, kLearnFile, kKeepMap, kReadWhat, kTour, kLoadExt,
     // Game & start
     kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kStatus, kRefresh, kSetup,
     // Wizard
@@ -89,6 +91,7 @@ int DpiOf(HWND h) {
     return d;
 }
 
+#ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
 std::wstring TesseractStatus(const std::wstring& configured) {
     TesseractInfo info;
     if (!FindTesseract(configured, &info)) return Tr(L"[--] Not installed – Windows OCR is used (enough for most).");
@@ -98,6 +101,7 @@ std::wstring TesseractStatus(const std::wstring& configured) {
     // Only the packs for your languages are loaded; all installed ones are not a problem.
     return TrF(L"[OK] Found, {1} language packs installed.", {std::to_wstring(models)});
 }
+#endif
 
 // ---------------------------------------------------------------------------
 // A window with native controls and its own modal loop.
@@ -421,9 +425,13 @@ private:
 
     void Build() override {
         tab_ = Add(WC_TABCONTROLW, L"", WS_TABSTOP | WS_CLIPSIBLINGS, 10, 10, kW - 20, 470, kIdTab);
+#ifdef GCT_KEYBOARD_APP
+        const wchar_t* names[] = {L"General", L"Writing", L"Translator", L"Game & start", L"Technical"};
+#else
         const wchar_t* names[] = {L"General", L"Reading the chat", L"Writing", L"Translator", L"Game & start",
                                   L"Technical"};
-        for (int i = 0; i < 6; ++i) {
+#endif
+        for (int i = 0; i < static_cast<int>(std::size(names)); ++i) {
             std::wstring n;
             for (wchar_t c : Tr(names[i])) n += c == L'&' ? std::wstring(L"&&") : std::wstring(1, c);
             TCITEMW item{};
@@ -432,7 +440,9 @@ private:
             SendMessageW(tab_, TCM_INSERTITEMW, static_cast<WPARAM>(i), reinterpret_cast<LPARAM>(&item));
         }
         BuildGeneral();
+#ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
         BuildReading();
+#endif
         BuildWriting();
         BuildTranslator();
         BuildGame();
@@ -440,8 +450,8 @@ private:
         EndPages();
         Button(IDOK, Tr(L"OK"), kW - 220, 490, 100);
         Button(IDCANCEL, Tr(L"Cancel"), kW - 112, 490, 100);
-        SendMessageW(tab_, TCM_SETCURSEL, static_cast<WPARAM>(start_), 0);
-        ShowPage(static_cast<size_t>(start_));
+        SendMessageW(tab_, TCM_SETCURSEL, static_cast<WPARAM>(TabOf(start_)), 0);
+        ShowPage(static_cast<size_t>(TabOf(start_)));
         UpdateTranslatorView();
         lastPreset_ = Sel(kLlmPreset);
         RefreshStatus();
@@ -449,12 +459,26 @@ private:
 
     int Y(int row) const { return kTop + row * kRow; }
 
+    // The tab of a page: GW2 Keyboard has no "Reading the chat" page.
+    static int TabOf(SettingsPage p) {
+        int i = static_cast<int>(p);
+#ifdef GCT_KEYBOARD_APP
+        if (p == SettingsPage::Reading) i = 0;
+        else if (i > static_cast<int>(SettingsPage::Reading)) --i;
+#endif
+        return i;
+    }
+
     void BuildGeneral() {
         BeginPage();
         int r = 0;
         // The two language lists side by side, the same list in both.
         constexpr int kHalf = (kW - 2 * kLabelX - 16) / 2;
         Label(Tr(L"Language of this window"), kLabelX, Y(r) - 4, kHalf);
+#ifdef GCT_KEYBOARD_APP
+        r++;
+        Combo(kUiLang, LanguageChoices(), LanguageChoiceOf(cfg_.uiLangCode), kLabelX, Y(r++) - 10, kHalf);
+#else
         Label(Tr(L"Translate the chat into"), kLabelX + kHalf + 16, Y(r++) - 4, kHalf);
         Combo(kUiLang, LanguageChoices(), LanguageChoiceOf(cfg_.uiLangCode), kLabelX, Y(r) - 10, kHalf);
         Combo(kReadLang, LanguageChoices(), LanguageChoiceOf(cfg_.readLang), kLabelX + kHalf + 16, Y(r++) - 10, kHalf);
@@ -479,6 +503,7 @@ private:
         for (const LangInfo& l : Languages()) langs.push_back(std::wstring(l.native) + L"  (" + l.code + L")");
         Combo(kUnderstood, langs, std::max(0, LanguageChoiceOf(other.empty() ? L"IT" : other) - 1), kCtrlX + 4 * 52 + 22,
               Y(r++), kCtrlW - 4 * 52 - 22);
+#endif
 
         // Text: size in points (slider or typed) and a few well readable Windows fonts; live preview behind.
         Label(Tr(L"Text size"), kLabelX, Y(r), kLabelW);
@@ -517,6 +542,17 @@ private:
         Button(kHotkeyClear, Tr(L"None"), kCtrlX + 188, Y(r) - 1, 80);
         Label(L"", kCtrlX, Y(r++) + 28, kCtrlW, 34, kHotkeyStatus);
         UpdateHotkeyStatus();
+#ifdef GCT_KEYBOARD_APP
+        // The chat translation by OCR is an extension: GW2 Chat Translator, loaded on your click.
+        r += 2;
+        const bool have = ctx_.extensionInstalled && ctx_.extensionInstalled();
+        Label(Tr(L"Extension: translating the chat (OCR)"), kLabelX, Y(r++), kW - 50);
+        Label(have ? Tr(L"[OK] Loaded. It reads the GW2 chat and shows it in your language.")
+                   : Tr(L"[--] Not loaded. It reads the GW2 chat and shows it in your language (about 15 MB, from the "
+                        L"official release on GitHub)."),
+              kLabelX, Y(r) - 4, kW - 250, 40);
+        Button(kLoadExt, have ? Tr(L"Start chat translation") : Tr(L"Load extension…"), kW - 222, Y(r++) - 2, 196);
+#endif
     }
 
     static constexpr int kMinPt = 8, kMaxPt = 32;     // chat text size in points (100 % = 11 pt)
@@ -559,6 +595,7 @@ private:
         SetText(kHotkeyStatus, status);
     }
 
+#ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
     void BuildReading() {
         BeginPage();
         int r = 0;
@@ -608,6 +645,7 @@ private:
         Button(kPickRegion, Tr(L"Set read area…"), kLabelX + 230, Y(r) + 3, 140);
         Button(kCover, Tr(L"Lay over the GW2 chat"), kLabelX + 378, Y(r++) + 3, 160);
     }
+#endif
 
     void BuildWriting() {
         BeginPage();
@@ -719,6 +757,7 @@ private:
               EngineIndex(cfg_.engine), kCtrlX, Y(r++), kCtrlW);
         shownEngine_ = cfg_.engine;
         Label(EngineNote(cfg_.engine), kCtrlX, Y(r++) - 6, kCtrlW, 30, kEngineNote);
+#ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
         // The chat may use another translator than your messages (e.g. a free one for reading, DeepL for writing).
         Label(Tr(L"For the chat"), kLabelX, Y(r), kLabelW);
         Combo(kChatEngine,
@@ -727,6 +766,7 @@ private:
                Tr(L"DeepL (free contingent, key)"), Tr(L"Own translation server (any address)"),
                Tr(L"AI model (local or cloud)")},
               cfg_.chatSameEngine ? 0 : EngineIndex(cfg_.chatEngine) + 1, kCtrlX, Y(r++), kCtrlW);
+#endif
         const int top = r;  // the sections below share the same rows; only the chosen one is shown
 
         // Automatic
@@ -809,8 +849,10 @@ private:
         Button(kLlmLoad, Tr(L"Load models"), kCtrlX + kCtrlW - 120, Y(r++) - 1, 120);
         Label(Tr(L"API key"), kLabelX, Y(r), kLabelW);
         Edit(kLlmKey, cfg_.llmKey, kCtrlX, Y(r++), kCtrlW, ES_PASSWORD);
+#ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
         Check(kFixOcr, Tr(L"The same model also repairs misread chat lines"), cfg_.llmFixOcr,
               kCtrlX, Y(r++), kCtrlW);
+#endif
         Label(Tr(kLlmPresets[preset].note), kCtrlX, Y(r++) - 4, kCtrlW, 30, kLlmNote);
         // Local models, with an install button (only for the local provider).
         group_ = &secLocal_;
@@ -832,7 +874,7 @@ private:
 
     // Only the section of the chosen translator is visible (all keep their values).
     void UpdateTranslatorView() {
-        const bool page = SendMessageW(tab_, TCM_GETCURSEL, 0, 0) == static_cast<LRESULT>(SettingsPage::Translator);
+        const bool page = SendMessageW(tab_, TCM_GETCURSEL, 0, 0) == TabOf(SettingsPage::Translator);
         const Engine e = shownEngine_;
         const bool local = Sel(kLlmPreset) == kPresetLocal;
         auto show = [&](const std::vector<HWND>& g, bool on) {
@@ -882,8 +924,10 @@ private:
         Check(kFocusGameChat, Tr(L"Focus translator when in-game chat is opened"), cfg_.focusOnGameChat, kLabelX,
               Y(r++), kW - 50);
         // Like the GW2 chat, the log empties on a map change – unless kept; and old messages may go after a while.
+#ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
         Check(kKeepMap, Tr(L"Keep the chat when GW2 clears it (map change)"), cfg_.keepAfterMap, kLabelX, Y(r++),
               kW - 50);
+#endif
         Label(Tr(L"Connections (read only, nothing is hooked)"), kLabelX, Y(r++), kW - 50);
         Add(L"EDIT", L"", ES_MULTILINE | ES_READONLY | WS_VSCROLL | ES_AUTOVSCROLL, kLabelX, Y(r) - 4, kW - 44, 90,
             kStatus, WS_EX_CLIENTEDGE);
@@ -917,9 +961,11 @@ private:
     void BuildTechnical() {
         BeginPage();
         int r = 0;
+#ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
         Label(Tr(L"Enlargement for recognition"), kLabelX, Y(r), kLabelW);
         Edit(kOcrZoom, std::to_wstring(cfg_.ocrScale), kCtrlX, Y(r), 60, ES_NUMBER);
         Label(Tr(L"0 = automatic from the line spacing, 1–4 fixed"), kCtrlX + 70, Y(r++) + 4, kCtrlW - 70, 20);
+#endif
         Label(Tr(L"Key held when sending (ms)"), kLabelX, Y(r), kCtrlX - kLabelX);
         Edit(kKeyHold, std::to_wstring(cfg_.send.keyHoldMs), kCtrlX, Y(r), 60, ES_NUMBER);
         Label(Tr(L"raise it at low FPS if messages go missing"), kCtrlX + 70, Y(r++) + 4, kCtrlW - 70, 20);
@@ -931,9 +977,13 @@ private:
         Button(kTechRefresh, Tr(L"Refresh"), kLabelX, Y(r), 92);
         Button(kTechCopy, Tr(L"Copy diagnosis"), kLabelX + 98, Y(r), 136);
         Button(kTechCompare, Tr(L"Compare translators"), kLabelX + 240, Y(r), 148);
+        // The whole tool on one page, for someone who never saw it.
+        Button(kTour, Tr(L"What can this tool do? (2 minutes)"), kLabelX, Y(r) + 30, 240);
+#ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
         Button(kTechOcrCompare, Tr(L"Compare recognition"), kLabelX + 394, Y(r), 148);
-        Button(kTechSaveF16, Tr(L"Save .f16 capture"), kLabelX, Y(r) + 26, 150);
-        Label(Tr(L"Numbers and settings only, no chat text."), kLabelX + 160, Y(r) + 30, kW - 204, 20, kTechStatus);
+        Button(kTechSaveF16, Tr(L"Save .f16 capture"), kLabelX + 248, Y(r) + 30, 150);
+#endif
+        Label(Tr(L"Numbers and settings only, no chat text."), kLabelX, Y(r) + 62, kW - 44, 20, kTechStatus);
         RefreshTechnical();
     }
 
@@ -1015,6 +1065,14 @@ private:
                 if (ctx_.preview) ctx_.preview(cfg_.opacity, cfg_.fontPercent, cfg_.fontFace);  // undo the live preview
                 Close();
                 break;
+            case kTour:
+            case kLoadExt:
+                Save();
+                result.saved = true;
+                result.action = id == kTour ? DialogResult::Action::ShowTour : DialogResult::Action::LoadExtension;
+                Close();
+                break;
+#ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
             case kTessBrowse: {
                 const std::wstring dir = PickFolder(hwnd_, Tr(L"Tesseract folder"), Text(kTessPath));
                 if (!dir.empty()) {
@@ -1029,6 +1087,7 @@ private:
             case kTessGet:
                 ShellExecuteW(hwnd_, L"open", kTesseractUrl, nullptr, nullptr, SW_SHOWNORMAL);
                 break;
+#endif
             case kPickRegion:
             case kCover:
                 Save();
@@ -1110,9 +1169,11 @@ private:
                                 .c_str(),
                             Tr(L"Text recognition").c_str(), MB_OK | MB_ICONINFORMATION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0));
                 break;
+#ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
             case kRapidGet:
                 InstallRapid();
                 break;
+#endif
             case kLtProvider:
                 if (code == CBN_SELCHANGE) UpdateLtFields();
                 break;
@@ -1370,6 +1431,7 @@ private:
                     Tr(L"Set up on this PC").c_str(), MB_OK | MB_ICONINFORMATION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0));
     }
 
+#ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
     // The RapidOCR model groups your languages need (Latin always).
     std::vector<std::wstring> RapidGroupsNeeded() const {
         std::vector<std::wstring> langs = cfg_.writeLangs;
@@ -1436,6 +1498,7 @@ private:
             if (!PostMessageW(h, WM_APP_RAPID, 0, reinterpret_cast<LPARAM>(msg))) delete msg;
         }).detach();
     }
+#endif
 
     // Quality test: the same invented chat lines through every translator that is set up,
     // with the time each took. You judge which reads naturally.
@@ -1578,6 +1641,7 @@ private:
             SetText(kTechText, *text);
             return 0;
         }
+#ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
         if (msg == WM_APP_RAPID) {
             std::unique_ptr<std::wstring> err(reinterpret_cast<std::wstring*>(lp));
             EnableWindow(Item(kRapidGet), RapidMissing());
@@ -1585,6 +1649,7 @@ private:
             if (err->empty()) SendMessageW(Item(kOcrEngine), CB_SETCURSEL, 0, 0);  // automatic uses it from now on
             return 0;
         }
+#endif
         if (msg == WM_APP_COMPARE) {
             std::unique_ptr<std::wstring> text(reinterpret_cast<std::wstring*>(lp));
             EnableWindow(Item(kTechCompare), TRUE);
@@ -1638,13 +1703,16 @@ private:
             c.uiLangCode = LanguageAt(Sel(kUiLang));
             c.uiLang = EffectiveUiLang(c.uiLangCode);
         }
+#ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
         if (Sel(kReadLang) >= 0) c.readLang = LanguageAt(Sel(kReadLang));
+#endif
         // "Send as" languages are no longer set here: the window offers every language and remembers the used ones.
         c.fontPercent = PercentOf(static_cast<int>(SendMessageW(Item(kFontSize), TBM_GETPOS, 0, 0)));
         c.fontFace = kFonts[static_cast<size_t>(std::max(0, Sel(kFontFace))) % std::size(kFonts)];
         c.opacity = OpacityOf(static_cast<int>(SendMessageW(Item(kOpacity), TBM_GETPOS, 0, 0)));
         c.hotkey = HotkeyText();  // empty = no hotkey
 
+#ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
         // Reading on/off is switched in the main window.
         if (Sel(kOcrEngine) >= 0) c.ocr = static_cast<OcrChoice>(Sel(kOcrEngine));
         if (Sel(kCapture) >= 0) c.captureMode = Sel(kCapture);
@@ -1660,6 +1728,7 @@ private:
         c.showSystemLines = !Checked(kShowSystem);  // the box says "filter
         c.secondLook = Checked(kSecondLook);
         c.saveCaptures = Checked(kCaptures);
+#endif
 
         c.spellEnabled = Checked(kSpell);
         if (Sel(kAutoCorrect) >= 0) c.autoCorrect = static_cast<AutoCorrectMode>(Sel(kAutoCorrect));
@@ -1670,9 +1739,12 @@ private:
         if (Sel(kWriteIn) >= 0)
             c.writeIn = Sel(kWriteIn) == 0 ? L"" : Languages()[static_cast<size_t>(Sel(kWriteIn) - 1)].code;
         c.backTranslate = Checked(kBackTr);
+#ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
         c.ocrScale = std::clamp(_wtoi(Text(kOcrZoom).c_str()), 0, 4);
+#endif
         c.send.keyHoldMs = std::clamp(_wtoi(Text(kKeyHold).c_str()), 5, 500);
         c.send.stepDelayMs = std::clamp(_wtoi(Text(kStepDelay).c_str()), 20, 1000);
+#ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
         c.understoodLangs.clear();
         const wchar_t* quick[] = {L"EN", L"DE", L"FR", L"ES"};
         for (int i = 0; i < 4; ++i)
@@ -1691,17 +1763,20 @@ private:
             if (std::find(c.understoodLangs.begin(), c.understoodLangs.end(), l) == c.understoodLangs.end())
                 c.understoodLangs.push_back(l);
         }
+#endif
         // Everything that is read is translated (the channel choice is gone); a click translates the rest.
         c.autoTranslate = DefaultAutoTranslate();
         c.copyOnly = Sel(kSendMode) == 1;
         c.returnFocus = Checked(kReturnFocus);
 
         if (Sel(kEngine) >= 0) c.engine = EngineAt(Sel(kEngine));
+#ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
         if (Sel(kChatEngine) >= 0) {
             c.chatSameEngine = Sel(kChatEngine) == 0;
             c.chatEngine = c.chatSameEngine ? Engine::Auto : EngineAt(Sel(kChatEngine) - 1);
         }
         c.keyboardOnly = Checked(kKeyboardOnly);
+#endif
         c.deeplKey = Trim(Text(kDeepL));
         c.googleKey = Trim(Text(kGoogleKey));
         c.msKey = Trim(Text(kMsKey));
@@ -1712,7 +1787,9 @@ private:
         c.llmUrl = Trim(Text(kLlmUrl));
         c.llmModel = Trim(WindowText(Item(kLlmModel)));
         c.llmKey = Trim(Text(kLlmKey));
+#ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
         c.llmFixOcr = Checked(kFixOcr);
+#endif
 
         const std::wstring rawDir = Trim(Text(kGw2Dir));
         const std::wstring resolved = ResolveGw2Dir(rawDir);

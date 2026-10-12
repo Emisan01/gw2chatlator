@@ -11,6 +11,7 @@
 #include <thread>
 
 #include "app/modal_scope.hpp"
+#include "win/extension.hpp"
 #include "core/chat_line.hpp"
 #include "core/chat_stream.hpp"
 #include "core/gw2_text.hpp"
@@ -62,6 +63,7 @@ constexpr UINT WM_APP_NAMES = WM_APP + 2;
 constexpr UINT WM_APP_GRAMMAR = WM_APP + 3;
 constexpr UINT WM_APP_TRAY = WM_APP + 4;
 constexpr UINT WM_APP_MYMEMORY_NOTICE = WM_APP + 5;
+constexpr UINT WM_APP_EXTENSION = WM_APP + 6;  // wParam: ok, lParam: std::wstring* (exe or error, owned)
 constexpr UINT_PTR kTimerDebounce = 1;
 constexpr UINT_PTR kTimerStatus = 2;
 constexpr UINT_PTR kTimerGame = 3;
@@ -793,24 +795,18 @@ void KeyboardWindow::ShowSendMenu() {
 
 void KeyboardWindow::ShowMainMenu() {
     const ModalScope modal;
-    enum : UINT { kSettings = 1, kDock, kQuit, kChat, kTour, kUiLangBase = 100 };
+    enum : UINT { kSettings = 1, kDock, kQuit, kChat };
     auto check = [](bool on) { return static_cast<UINT>(on ? MF_CHECKED : MF_UNCHECKED); };
-    auto heading = [](HMENU m, const std::wstring& text) { AppendMenuW(m, MF_STRING | MF_GRAYED, 0, text.c_str()); };
+    // Short: the chat translation (loaded as an extension when missing), the window, settings. The tour is on the
+    // Technical page, the language under General.
     HMENU menu = CreatePopupMenu();
-    heading(menu, Tr(L"READ THE CHAT TRANSLATED"));
-    AppendMenuW(menu, MF_STRING, kChat, Tr(L"Activate chat translation (reads the GW2 chat) …").c_str());
+    AppendMenuW(menu, MF_STRING | (extensionLoading_ ? MF_GRAYED : 0), kChat,
+                (FindChatTranslatorExe().empty() ? Tr(L"Load extension: translating the chat (OCR) …")
+                                                 : Tr(L"Activate chat translation (reads the GW2 chat) …"))
+                    .c_str());
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    heading(menu, Tr(L"WINDOW"));
     AppendMenuW(menu, MF_STRING | check(cfg_.dock), kDock, Tr(L"Dock to GW2 (moves with it)").c_str());
-    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    heading(menu, Tr(L"HELP & SETTINGS"));
-    AppendMenuW(menu, MF_STRING | MF_DEFAULT, kTour, Tr(L"What can this tool do? (2 minutes)").c_str());
     AppendMenuW(menu, MF_STRING, kSettings, Tr(L"Settings …").c_str());
-    HMENU ui = CreatePopupMenu();
-    for (size_t i = 0; i < UiLanguages().size(); ++i)
-        AppendMenuW(ui, MF_STRING | check(UiLanguages()[i].lang == cfg_.uiLang), kUiLangBase + static_cast<UINT>(i),
-                    UiLanguages()[i].native);
-    AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(ui), L"Language / Sprache / اللغة");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, kQuit, Tr(L"Quit").c_str());
     POINT pt{menuRect_.left, menuRect_.bottom};
@@ -818,12 +814,10 @@ void KeyboardWindow::ShowMainMenu() {
     const UINT cmd =
         static_cast<UINT>(TrackPopupMenu(menu, MenuFlags(TPM_RETURNCMD | TPM_NONOTIFY), pt.x, pt.y, 0, hwnd_, nullptr));
     DestroyMenu(menu);
-    if (cmd == kSettings) OpenSettings(SettingsPage::Writing);
-    else if (cmd == kTour) ShowTour();
+    if (cmd == kSettings) OpenSettings(SettingsPage::General);
     else if (cmd == kDock) SetDock(!cfg_.dock);
     else if (cmd == kChat) ActivateChatTranslation();
     else if (cmd == kQuit) PostMessageW(hwnd_, WM_CLOSE, 0, 0);
-    else if (cmd >= kUiLangBase && cmd < kUiLangBase + UiLanguages().size()) SetUiLanguage(UiLanguages()[cmd - kUiLangBase].lang);
 }
 
 void KeyboardWindow::ShowTour() {
@@ -849,13 +843,10 @@ void KeyboardWindow::ShowTour() {
 }
 
 void KeyboardWindow::ActivateChatTranslation() {
-    // Next to this program (the download) or the installed copy.
-    std::wstring exe = CurrentExePath();
-    exe = exe.substr(0, exe.find_last_of(L"\\/") + 1) + L"GW2ChatTranslator.exe";
-    if (GetFileAttributesW(exe.c_str()) == INVALID_FILE_ATTRIBUTES) exe = FindInstalledExe();
-    if (exe.empty() || GetFileAttributesW(exe.c_str()) == INVALID_FILE_ATTRIBUTES) {
-        SetStatus(Tr(L"The chat translation is part of GW2 Chat Translator – not found next to this program"),
-                  Tone::Warn, 8000);
+    // Next to this program (the package) or the installed copy; else it is loaded first (your click, your yes).
+    const std::wstring exe = FindChatTranslatorExe();
+    if (exe.empty()) {
+        LoadExtension();
         return;
     }
     spell_.SaveLearned();
@@ -867,6 +858,46 @@ void KeyboardWindow::ActivateChatTranslation() {
         return;
     }
     PostMessageW(hwnd_, WM_CLOSE, 0, 0);
+}
+
+void KeyboardWindow::LoadExtension() {
+    if (extensionLoading_) return;
+    {
+        const ModalScope modal;
+        if (MessageBoxW(hwnd_,
+                        Tr(L"Load the extension for translating the chat?\n\nIt is GW2 Chat Translator: it reads the GW2 "
+                           L"chat from the screen (text recognition on this PC) and shows it in your language. About 15 "
+                           L"MB from the official release on GitHub (github.com/Emisan01/gw2chatlator), installed for "
+                           L"your Windows user. Nothing runs inside the game.")
+                            .c_str(),
+                        Tr(L"Load extension").c_str(),
+                        MB_YESNO | MB_ICONQUESTION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0)) != IDYES)
+            return;
+    }
+    extensionLoading_ = true;
+    SetStatus(Tr(L"Loading the extension \u2026"), Tone::Muted, 0);
+    std::thread([hwnd = hwnd_] {
+        std::wstring error;
+        auto* result = new std::wstring(LoadChatExtension(&error));
+        const bool ok = !result->empty();
+        if (!ok) *result = error;
+        if (!PostMessageW(hwnd, WM_APP_EXTENSION, ok ? 1 : 0, reinterpret_cast<LPARAM>(result))) delete result;
+    }).detach();
+}
+
+void KeyboardWindow::OnExtensionLoaded(std::wstring* raw, bool ok) {
+    std::unique_ptr<std::wstring> result(raw);
+    extensionLoading_ = false;
+    if (!ok) {
+        SetStatus(TrF(L"Extension not loaded: {1}", {*result}), Tone::Error, 12000);
+        return;
+    }
+    SetStatus(Tr(L"Extension loaded"), Tone::Ok, 5000);
+    const ModalScope modal;
+    if (MessageBoxW(hwnd_, Tr(L"The extension is loaded. Start the chat translation now? This window closes.").c_str(),
+                    Tr(L"Load extension").c_str(),
+                    MB_YESNO | MB_ICONQUESTION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0)) == IDYES)
+        ActivateChatTranslation();
 }
 
 void KeyboardWindow::SetUiLanguage(UiLang lang) {
@@ -1666,8 +1697,11 @@ void KeyboardWindow::OpenSettings(SettingsPage page) {
                         ToUtf8(L"# GW2 Chat Translator: your words, \"word = meaning\" per line (replaced before translating)\r\n" +
                                myWords_.Serialize()));
     };
+    ctx.extensionInstalled = [] { return !FindChatTranslatorExe().empty(); };
     const DialogResult r = ShowSettingsDialog(hwnd_, inst_, edited, ctx, page);
     if (r.saved) ApplySettings(edited);
+    if (r.action == DialogResult::Action::ShowTour) ShowTour();
+    else if (r.action == DialogResult::Action::LoadExtension) ActivateChatTranslation();
 }
 
 void KeyboardWindow::ApplySettings(const Config& next) {
@@ -1821,6 +1855,9 @@ LRESULT KeyboardWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             return 0;
         case WM_APP_GRAMMAR:
             OnGrammar(reinterpret_cast<KbdGrammarMsg*>(lp));
+            return 0;
+        case WM_APP_EXTENSION:
+            OnExtensionLoaded(reinterpret_cast<std::wstring*>(lp), wp != 0);
             return 0;
         case WM_APP_MYMEMORY_NOTICE:
             ShowMyMemoryNotice();

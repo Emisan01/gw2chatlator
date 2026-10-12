@@ -1607,7 +1607,7 @@ void MainWindow::ShowChannelMenu() {
 
 void MainWindow::ShowMainMenu() {
     const ModalScope modal;
-    enum : UINT { kSettings = 1, kDetect, kReadArea, kOnce, kDock, kShowSelf, kKeyboardOnly, kTour, kQuit };
+    enum : UINT { kSettings = 1, kDetect, kReadArea, kOnce, kDock, kShowSelf, kKeyboardOnly, kQuit };
     auto check = [](bool on) { return static_cast<UINT>(on ? MF_CHECKED : MF_UNCHECKED); };
     auto add = [](HMENU m, UINT flags, UINT id, const std::wstring& text) { AppendMenuW(m, flags, id, text.c_str()); };
     // Short, only what you do now. Everything else about reading (only translations, a screen area, laying over the
@@ -1625,7 +1625,6 @@ void MainWindow::ShowMainMenu() {
     add(menu, MF_STRING | check(cfg_.dock), kDock, Tr(L"Dock to GW2 (moves with it)"));
     add(menu, MF_STRING | check(ModalScope::showOnScreenshots), kShowSelf, Tr(L"Show on screens (1 min)"));
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    add(menu, MF_STRING | MF_DEFAULT, kTour, Tr(L"What can this tool do? (2 minutes)"));
     add(menu, MF_STRING, kSettings, Tr(L"Settings …"));
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     add(menu, MF_STRING, kQuit, Tr(L"Quit"));
@@ -1637,7 +1636,6 @@ void MainWindow::ShowMainMenu() {
     DestroyMenu(menu);
 
     switch (cmd) {
-        case kTour: ShowTour(); break;
         case kSettings: OpenSettings(SettingsPage::General); break;
         case kDetect:  // the GW2 chat (not a screen area), found by itself – the found frame is shown to check
             SetFreeArea(false);
@@ -3797,6 +3795,9 @@ void MainWindow::HandleDialogAction(const DialogResult& r) {
     switch (r.action) {
         case DialogResult::Action::PickRegion:
             PickRegion();
+            break;
+        case DialogResult::Action::ShowTour:
+            ShowTour();
             break;
         case DialogResult::Action::DetectChat:
             SetFreeArea(false);
