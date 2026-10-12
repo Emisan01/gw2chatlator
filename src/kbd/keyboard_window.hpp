@@ -29,6 +29,7 @@
 #include "core/languagetool_protocol.hpp"
 #include "core/my_words.hpp"
 #include "core/translator.hpp"
+#include "core/send_guard.hpp"
 #include "core/voice_learn.hpp"
 #include "kbd/voice_session.hpp"
 #include "win/gw2_sender.hpp"
@@ -224,6 +225,7 @@ private:
     RECT menuRect_{}, closeRect_{}, channelRect_{}, typeRect_{}, sendRect_{}, micRect_{};
 
     // voice input
+    SendGuard sendGuard_;        // no bot / macro / spam use (core/send_guard)
     VoiceFixes voiceFixes_;      // learned misheard words (<data>\voice-fixes.txt)
     std::wstring lastDictated_;  // the input text right after the last voice input (learning compares it when sent)
     size_t lastDictFrom_ = 0, lastDictLen_ = 0;  // where that voice input went (a new attempt replaces it)

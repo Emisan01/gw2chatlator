@@ -43,6 +43,7 @@
 #include "core/translator.hpp"
 #include "core/voice.hpp"
 #include "core/voice_learn.hpp"
+#include "core/send_guard.hpp"
 
 using namespace gct;
 
@@ -2141,6 +2142,36 @@ static void TestToMono16k() {
           std::fabs(out[5] + 0.5f) < 1e-6f);
 }
 
+static void TestSendGuard() {
+    {  // ordinary chatting passes, the same line a few times too
+        SendGuard g;
+        for (int i = 0; i < 4; ++i) CHECK(g.Check(L"lfg Fraktale", false, false, 1000u * i).allow);
+        CHECK(g.Check(L"anyone for the world boss?", false, false, 5000).allow);
+        CHECK(!g.Locked() && g.Strikes() == 0);
+    }
+    {  // the 5th same line in 2 minutes (case, spacing, end punctuation ignored) is blocked; later it passes again
+        SendGuard g;
+        for (int i = 0; i < 4; ++i) CHECK(g.Check(L"WTS stuff", false, false, 10000u * i).allow);
+        const SendGuard::Verdict v = g.Check(L"wts  STUFF!!", false, false, 45000);
+        CHECK(!v.allow && v.reason == SendGuard::Reason::Repeat && !v.nowLocked && !g.Locked());
+        CHECK(g.Check(L"wts stuff", false, false, 45000 + SendGuard::kRepeatWindowMs + 1).allow);
+    }
+    {  // more than 20 lines a minute: blocked; a second hit locks the session
+        SendGuard g;
+        for (int i = 0; i < SendGuard::kRateMax; ++i) CHECK(g.Check(L"line " + std::to_wstring(i), false, false, 100u * i).allow);
+        CHECK(g.Check(L"one more", false, false, 2500).reason == SendGuard::Reason::Rate);
+        const SendGuard::Verdict v = g.Check(L"and another", false, false, 2600);
+        CHECK(!v.allow && v.nowLocked && g.Locked());
+        CHECK(g.Check(L"hello", false, false, 999999).reason == SendGuard::Reason::Locked);
+    }
+    {  // an injected Enter or text written in from outside never sends
+        SendGuard g;
+        CHECK(g.Check(L"hi", true, false, 0).reason == SendGuard::Reason::Injected);
+        CHECK(g.Check(L"hi", false, true, 10).reason == SendGuard::Reason::Foreign);
+        CHECK(g.Locked() && g.Strikes() == 2);
+    }
+}
+
 static void TestVoiceLearn() {
     CHECK(VoiceFixes::SoundsAlike(L"Red", L"Raid") && VoiceFixes::SoundsAlike(L"Fracktale", L"Fraktale"));
     CHECK(VoiceFixes::SoundsAlike(L"Löwinstein", L"Löwenstein"));
@@ -2279,6 +2310,7 @@ int main() {
     TestWhisperSettings();
     TestToMono16k();
     TestVoiceLearn();
+    TestSendGuard();
     std::printf("%d passed, %d failed\n", g_pass, g_fail);
     return g_fail == 0 ? 0 : 1;
 }
