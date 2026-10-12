@@ -14,8 +14,12 @@ src/kbd   GW2 Keyboard (own exe)          keyboard_window (only the typing help:
                                         reading page and every OCR/RapidOCR/Tesseract call, so the exe imports no
                                         onnxruntime and no capture (check with dumpbin /dependents). "Activate chat
                                         translation" starts GW2ChatTranslator.exe (`FindChatTranslatorExe`); missing →
-                                        "Load extension" (win/extension: latest release ZIP → Windows' tar.exe → copy
-                                        into UserInstallDir, only on click + yes).
+                                        "Load extension" (win/extension: latest release ZIP → Windows' tar.exe →
+                                        %TEMP%\GW2ChatTranslator-download with the user's ini/words, KeyboardOnly=0,
+                                        SetupDone=0 → started after the keyboard ends, its own setup installs it; only
+                                        on click + yes). Install/autostart: own Run value "GW2Keyboard" and
+                                        "GW2 Keyboard.lnk" (gw2_locate `RunValueFor`/`AppNameFor` by exe name); enabling
+                                        one program's autostart removes the other's.
 src/app   window + views (UI thread)   main_window (menus, tray, wait-for-GW2), input_box (spelling, autocorrect,
                                         word bar, Backspace undo), suggestion_bar, chat_log_view, preview_view,
                                         settings_dialog (settings + guided setup, native controls), chat_reader

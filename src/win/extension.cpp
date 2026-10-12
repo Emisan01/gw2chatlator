@@ -90,7 +90,7 @@ std::wstring FindChatTranslatorExe() {
     return {};
 }
 
-std::wstring LoadChatExtension(std::wstring* error) {
+std::wstring LoadChatExtension(const std::wstring& dataDir, std::wstring* error) {
     std::wstring dummy;
     if (!error) error = &dummy;
     const HttpResponse r = HttpRequestUrl(L"GET", kExtensionUrl, L"", "", 180000, 64u << 20);
@@ -100,41 +100,42 @@ std::wstring LoadChatExtension(std::wstring* error) {
     }
     wchar_t tmp[MAX_PATH] = {};
     GetTempPathW(MAX_PATH, tmp);
-    const std::wstring work = Join(tmp, L"gw2ct-extension-" + std::to_wstring(GetTickCount64()));
-    if (!EnsureDir(work) || !WriteFileAtomic(Join(work, L"package.zip"), r.body)) {
+    const std::wstring work = Join(tmp, L"GW2ChatTranslator-download");
+    RemoveTree(work);  // an older download (files in use stay – a new name below avoids them)
+    const std::wstring dir = Join(work, std::to_wstring(GetTickCount64()));
+    const std::wstring zip = Join(dir, L"package.zip");
+    if (!EnsureDir(work) || !EnsureDir(dir) || !WriteFileAtomic(zip, r.body)) {
         *error = Tr(L"Could not write the file.");
         return {};
     }
-    std::wstring exe;
-    const std::wstring unpacked = Join(work, L"x");
-    if (EnsureDir(unpacked) && Unpack(Join(work, L"package.zip"), unpacked, error)) {
-        const std::wstring root = FindPackageRoot(unpacked);
-        const std::wstring dest = UserInstallDir();
-        if (root.empty()) {
-            *error = Tr(L"GW2ChatTranslator.exe is not in the download.");
-        } else if (dest.empty() || !EnsureDir(dest) || !EnsureDir(Join(dest, L"rapid"))) {
-            *error = Tr(L"Could not write the file.");
-        } else {
-            bool ok = true;
-            for (const wchar_t* f : {L"GW2ChatTranslator.exe", L"onnxruntime.dll", L"THIRD_PARTY_NOTICES.txt"})
-                if (Exists(Join(root, f)) && !CopyFileW(Join(root, f).c_str(), Join(dest, f).c_str(), FALSE)) ok = false;
-            WIN32_FIND_DATAW fd;
-            HANDLE h = FindFirstFileW(Join(Join(root, L"rapid"), L"*").c_str(), &fd);
-            if (h != INVALID_HANDLE_VALUE) {
-                do {
-                    if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
-                    if (!CopyFileW(Join(Join(root, L"rapid"), fd.cFileName).c_str(),
-                                   Join(Join(dest, L"rapid"), fd.cFileName).c_str(), FALSE))
-                        ok = false;
-                } while (FindNextFileW(h, &fd));
-                FindClose(h);
-            }
-            if (ok) exe = Join(dest, L"GW2ChatTranslator.exe");
-            else *error = Tr(L"Could not copy the files (is GW2 Chat Translator still running?).");
-        }
+    if (!Unpack(zip, dir, error)) return {};
+    DeleteFileW(zip.c_str());
+    const std::wstring root = FindPackageRoot(dir);
+    if (root.empty()) {
+        *error = Tr(L"GW2ChatTranslator.exe is not in the download.");
+        return {};
     }
-    RemoveTree(work);
-    return exe;
+    // Your settings and words go along; the setup carries them into the install folder.
+    for (const wchar_t* f : {L"gw2-chat-translator.ini", L"my-words.txt", L"my-names.txt", L"corrections.txt"}) {
+        const std::wstring from = Join(dataDir, f);
+        if (Exists(from)) CopyFileW(from.c_str(), Join(root, f).c_str(), FALSE);
+    }
+    WIN32_FIND_DATAW fd;
+    HANDLE h = FindFirstFileW(Join(Join(dataDir, L"learned"), L"*").c_str(), &fd);
+    if (h != INVALID_HANDLE_VALUE) {
+        EnsureDir(Join(root, L"learned"));
+        do {
+            if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+                CopyFileW(Join(Join(dataDir, L"learned"), fd.cFileName).c_str(), Join(Join(root, L"learned"), fd.cFileName).c_str(),
+                          FALSE);
+        } while (FindNextFileW(h, &fd));
+        FindClose(h);
+    }
+    // The chat translation is what was asked for; the setup runs as for every new download.
+    const std::wstring ini = Join(root, L"gw2-chat-translator.ini");
+    WritePrivateProfileStringW(L"Basic", L"KeyboardOnly", L"0", ini.c_str());
+    WritePrivateProfileStringW(L"General", L"SetupDone", L"0", ini.c_str());
+    return Join(root, L"GW2ChatTranslator.exe");
 }
 
 }  // namespace gct

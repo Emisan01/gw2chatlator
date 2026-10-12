@@ -57,7 +57,8 @@ int CompareVersions(const std::wstring& a, const std::wstring& b);
 // `a` was written more than a minute after `b`.
 bool FileNewer(const std::wstring& a, const std::wstring& b);
 
-// HKCU\...\Run entry "GW2ChatTranslator" -> "<exe>" --wait-for-gw2.
+// HKCU\...\Run entry "GW2ChatTranslator" (GW2 Keyboard: "GW2Keyboard") -> "<exe>" --wait-for-gw2. Enabling one removes
+// the other program's entry; AutostartTarget / IsAutostartEnabled look at the running program's own entry.
 bool SetAutostart(bool enable, const std::wstring& exePath);
 bool IsAutostartEnabled();
 // "GW2 Chat Translator" shortcut on the desktop pointing to `exePath` (replaced if there). The user's choice.

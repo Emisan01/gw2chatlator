@@ -34,6 +34,12 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmdLine, int) {
     const std::wstring args = cmdLine ? cmdLine : L"";
     // One instance only; a second start brings the first one forward.
     HANDLE mutex = CreateMutexW(nullptr, TRUE, kMutexName);
+    for (int i = 0; i < 40 && GetLastError() == ERROR_ALREADY_EXISTS && FindWindowW(kClassName, nullptr) == nullptr;
+         ++i) {  // the old copy is just ending (restart into the installed one)
+        CloseHandle(mutex);
+        Sleep(100);
+        mutex = CreateMutexW(nullptr, TRUE, kMutexName);
+    }
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
         if (HWND other = FindWindowW(kClassName, nullptr)) {
             ShowWindow(other, SW_SHOW);
@@ -45,11 +51,22 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmdLine, int) {
     EnableDpiAwareness();
     const HRESULT com = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);  // spell checker, prediction
     int code;
+    std::wstring restart;
     {
         gct::KeyboardWindow window;
         code = window.Run(inst, args);
+        restart = window.RestartCommand();
     }
     if (SUCCEEDED(com)) CoUninitialize();
     if (mutex) CloseHandle(mutex);
+    if (!restart.empty()) {  // the installed copy, or the downloaded chat translation (its setup)
+        STARTUPINFOW si{};
+        si.cb = sizeof(si);
+        PROCESS_INFORMATION pi{};
+        if (CreateProcessW(nullptr, restart.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi)) {
+            CloseHandle(pi.hThread);
+            CloseHandle(pi.hProcess);
+        }
+    }
     return code;
 }
