@@ -3,6 +3,17 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## Unreleased
+
+- **GW2 Keyboard cleaned up, standalone:** built without everything only reading the chat needs – no text
+  recognition, no RapidOCR/onnxruntime, no Tesseract, no screen capture (it needs no DLL next to it). Settings: no
+  "Reading the chat" page, no chat-only options. All of the writing and translating stays.
+- **"Load extension"** (GW2 Keyboard, Settings → General and menu ≡): the chat translation by OCR is GW2 Chat
+  Translator itself – when it is not there, one click (and a yes) downloads it from the official GitHub release and
+  installs it for your Windows user; then it can start right away.
+- **"What can this tool do?"** moved from the menu to Settings → Technical (both programs). GW2 Keyboard's menu is
+  short too: chat translation (or load it), dock, settings, quit.
+
 ## 1.3.0 — 2026-10-12
 
 - **A short menu that adapts:** ≡ shows "Keyboard only" (ticked) – untick it and it reads "Keyboard + chat reader" with

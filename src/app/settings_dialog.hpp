@@ -13,7 +13,11 @@
 namespace gct {
 
 struct DialogResult {
-    enum class Action { None, PickRegion, CoverChat, RunSetup, RestartInto, DetectChat, PickFreeArea, UseFreeArea };
+    enum class Action {
+        None, PickRegion, CoverChat, RunSetup, RestartInto, DetectChat, PickFreeArea, UseFreeArea,
+        ShowTour,       // "What can this tool do?" (Technical page)
+        LoadExtension,  // GW2 Keyboard: load / start the chat translation by OCR (General page)
+    };
     bool saved = false;          // cfg was changed and should be applied
     Action action = Action::None;
     std::wstring restartExe;     // RestartInto: start this exe and quit
@@ -52,6 +56,8 @@ struct DialogContext {
     std::function<void(HWND notify, UINT message)> compareOcr;
     // Saves the next chat capture as an .f16 file into the captures folder.
     std::function<void()> saveF16;
+    // GW2 Keyboard: the chat translation extension (GW2 Chat Translator) is there.
+    std::function<bool()> extensionInstalled;
 };
 
 enum class SettingsPage { General = 0, Reading, Writing, Translator, Game, Technical };

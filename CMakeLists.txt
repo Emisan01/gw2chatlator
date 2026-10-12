@@ -76,6 +76,7 @@ if(WIN32)
         src/win/keyboard_layout.cpp
         src/win/secret.cpp
         src/win/rapid_ocr.cpp
+        src/win/extension.cpp
         src/win/text_prediction.cpp)
     target_link_libraries(gct_win PUBLIC gct_core winhttp ole32 user32 gdi32 d3d11 dxgi dwmapi shell32 advapi32 version uuid crypt32 bcrypt runtimeobject)
 
@@ -132,6 +133,8 @@ if(WIN32)
                    src/app/preview_view.cpp src/app/suggestion_bar.cpp src/app/spell_service.cpp
                    src/app/settings_dialog.cpp src/app/config.cpp src/win/spellcheck.cpp res/app.rc)
     target_link_libraries(GW2Keyboard PRIVATE gct_win shell32 comctl32 runtimeobject)
+    # Built without everything that only reading the chat needs (OCR, RapidOCR/onnxruntime, Tesseract, capture).
+    target_compile_definitions(GW2Keyboard PRIVATE GCT_KEYBOARD_APP=1)
     list(APPEND GCT_APP_TARGETS GW2Keyboard)
 
     if(GCT_BUILD_TESTS)

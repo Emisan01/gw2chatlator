@@ -93,6 +93,9 @@ private:
     // "Activate chat translation": the full GW2 Chat Translator (reading the chat) takes over – started with reading
     // on, this window ends (both use the same settings and learned words).
     void ActivateChatTranslation();
+    void LoadExtension();             // "Load extension": downloads the chat translation (OCR) on your click
+    void OnExtensionLoaded(std::wstring* result, bool ok);
+    bool extensionLoading_ = false;
 
     // ---- glossary (official GW2 names) and your words
     void RefreshGlossary();
