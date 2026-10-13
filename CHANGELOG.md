@@ -3,6 +3,11 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## Unreleased
+
+- Settings → Microphone tidied: start mode, keys, device, pause first; everything only for voice activation in its own
+  section, greyed unless voice activation is chosen; the voice-chat list and "Find…" are gone (one checkbox).
+
 ## 1.4.1 — 2026-10-13 (GW2 Keyboard only; GW2 Chat Translator stays 1.4.0)
 
 - **GW2 Keyboard: the status sits at the top left** instead of the title (down in the footer it was often cut off).
