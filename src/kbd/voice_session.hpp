@@ -33,6 +33,9 @@ struct VoiceSettings {
     std::wstring deviceId;      // "" = Windows default microphone
     std::string initialPrompt;  // UTF-8, may be empty
     unsigned long long affinity = 0;  // logical processors to recognize on (PickVoiceCores); 0 = any
+    float gainDb = 0;           // microphone boost applied to what is recorded
+    bool levelSpeech = false;
+    int autoEndMs = 0;          // > 0: the recording ends by itself after this much silence following speech   // automatic boost: quiet speech is raised to a good level before recognition
 };
 
 struct VoiceEvent {
@@ -72,6 +75,8 @@ public:
     void End();
     // Stops and drops everything of the current session; no further event of it.
     void Cancel();
+    // Ends the running recording by itself after `ms` of silence once something was said (0 = only by End()).
+    void SetAutoEnd(int ms) { autoEndMs_ = ms; }
 
     bool Recording() const { return recording_; }
     bool Busy() const { return recording_ || recognizing_; }  // recording or final pass still running
@@ -117,6 +122,8 @@ private:
     bool finalWanted_ = false;
     bool liveRunning_ = false;
     std::wstring lastLive_;
+    float gain_ = 1.0f;
+    std::atomic<int> autoEndMs_{0};  // microphone boost as a factor (set in Begin)
     std::atomic<bool> recording_{false};
     std::atomic<bool> recognizing_{false};
     std::atomic<bool> abort_{false};

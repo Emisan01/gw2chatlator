@@ -110,6 +110,29 @@ private:
     void ShowTypeLangMenu();
     void ShowSendMenu();
     void ShowMainMenu();
+    // What you sent this session (yours only, in memory): the circle in the header, save as text, learn later.
+    struct SentLine {
+        SYSTEMTIME time;
+        std::wstring typed, sent;
+    };
+    static constexpr size_t kSentLogMax = 500;
+    std::deque<SentLine> sentLog_;
+    RECT logRect_{};
+    size_t pendingLearn_ = 0;  // lines waiting in learn-later.txt
+    void ShowLogMenu();
+    void LearnLaterNow();
+    void DrawLogCircle(HDC dc, const RECT& r) const;
+    // The live view (Settings → Technical): every technical value, refreshed every second, in its own window.
+    HWND liveWnd_ = nullptr;
+    void ShowLiveView();
+    std::wstring LiveStatus();
+    static LRESULT CALLBACK LiveProc(HWND h, UINT msg, WPARAM wp, LPARAM lp);
+    unsigned long long procCpuLast_ = 0, procWallLast_ = 0;
+    double procCpu_ = 0;
+    // The text translator, measured: requests, last time, errors.
+    unsigned long long translateStart_ = 0;
+    int lastTranslateMs_ = 0, translateCount_ = 0, translateErrors_ = 0;
+    std::wstring lastTranslateError_;
     void ShowTour();
     void SetUiLanguage(UiLang lang);
     // "Activate chat translation": the full GW2 Chat Translator (reading the chat) takes over – started with reading
@@ -236,6 +259,8 @@ private:
     std::wstring lastDictated_;  // the input text right after the last voice input (learning compares it when sent)
     size_t lastDictFrom_ = 0, lastDictLen_ = 0;  // where that voice input went (a new attempt replaces it)
     unsigned voiceSession_ = 0;
+    bool voiceLocked_ = false;    // held + right click: the mouse is free, a pause ends the recording
+    bool lockRightClick_ = false; // the right click that locked: its button-up is no settings click
     bool voiceHolding_ = false;  // the microphone button is held with the mouse (captured)
     bool voiceReady_ = false;    // recognizer files and the model are there (the button is drawn faint otherwise)
     int voiceIdleTicks_ = 0;     // game polls since the last unload check

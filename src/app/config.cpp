@@ -388,6 +388,7 @@ void Config::Load(const std::wstring& dir) {
     voiceDevice = AsciiUnescape(ini.Str(L"Voice", L"Device", L""));
     voiceUnloadMin = ini.Int(L"Voice", L"UnloadMinutes", 10, 1, 240);
     voiceGlossary = ini.Bool(L"Voice", L"Glossary", true);
+    voiceBoost = ini.Int(L"Voice", L"Boost", 0, 0, 3);
     saveCaptures = ini.Bool(L"Reader", L"SaveCaptures", false);
     regionLeft = ini.Int(L"Reader", L"RegionLeft", 0, -20000, 20000);
     regionFromBottom = ini.Int(L"Reader", L"RegionFromBottom", 0, -20000, 20000);
@@ -418,6 +419,7 @@ void Config::Load(const std::wstring& dir) {
                                                                                : AutoCorrectMode::Off);
     suggestions = ini.Bool(L"Spelling", L"Suggestions", true);
     learnWords = ini.Bool(L"Spelling", L"Learn", true);
+    learnLater = ini.Bool(L"Spelling", L"LearnLater", false);
     languageTool = ini.Bool(L"Spelling", L"LanguageTool", false);
     languageToolUrl = ini.Str(L"Spelling", L"LanguageToolUrl", L"https://api.languagetool.org");
 
@@ -584,11 +586,13 @@ void Config::SaveAll() const {
     SaveValue(L"Voice", L"Device", AsciiEscape(voiceDevice));
     SaveValue(L"Voice", L"UnloadMinutes", std::to_wstring(voiceUnloadMin));
     SaveBool(L"Voice", L"Glossary", voiceGlossary);
+    SaveValue(L"Voice", L"Boost", std::to_wstring(voiceBoost));
     SaveBool(L"Reader", L"SaveCaptures", saveCaptures);
     SaveBool(L"Spelling", L"Enabled", spellEnabled);
     SaveValue(L"Spelling", L"AutoCorrectMode", AutoCorrectKey(autoCorrect));
     SaveBool(L"Spelling", L"Suggestions", suggestions);
     SaveBool(L"Spelling", L"Learn", learnWords);
+    SaveBool(L"Spelling", L"LearnLater", learnLater);
     SaveBool(L"Spelling", L"LanguageTool", languageTool);
     SaveValue(L"Spelling", L"LanguageToolUrl", AsciiEscape(languageToolUrl));
     SaveValue(L"Hotkey", L"Toggle", hotkey);
