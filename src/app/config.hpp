@@ -96,6 +96,7 @@ struct Config {
     AutoCorrectMode autoCorrect = AutoCorrectMode::Phone;
     bool suggestions = true;     // word bar above the input (completions, next word)
     bool learnWords = true;      // learn from what you send
+    bool learnLater = false;     // ... not while playing: collected, learned when you choose ([Spelling] LearnLater)
     bool languageTool = false;   // optional grammar check
     std::wstring languageToolUrl = L"https://api.languagetool.org";
 
@@ -149,7 +150,8 @@ struct Config {
     int voiceThreads = 0;             // 0 = automatic (half the logical processors, at most 4)
     std::wstring voiceDevice;         // microphone endpoint id; "" = Windows default
     int voiceUnloadMin = 10;          // free the model after this many idle minutes
-    bool voiceGlossary = true;        // your names and GW2 words steer the recognizer's spelling
+    bool voiceGlossary = true;
+    int voiceBoost = 0;               // microphone boost: 0 off, 1 = +6 dB, 2 = +12 dB, 3 = automatic (levels speech)        // your names and GW2 words steer the recognizer's spelling
 
     void Load(const std::wstring& dir);
     void SaveWindowRect(HWND wnd, float scale) const;

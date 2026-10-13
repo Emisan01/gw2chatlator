@@ -28,6 +28,8 @@
 #include "kbd/whisper_engine.hpp"
 #include "win/audio_capture.hpp"
 #include "win/cpu_cores.hpp"
+
+#include <psapi.h>
 #include "win/deepl_translator.hpp"
 #include "win/els.hpp"
 #include "win/files.hpp"
@@ -76,7 +78,8 @@ constexpr UINT_PTR kTimerStatus = 2;
 constexpr UINT_PTR kTimerGame = 3;
 constexpr UINT_PTR kTimerGrammar = 4;
 constexpr UINT_PTR kTimerVoice = 5;  // the microphone button's animation while recording / recognizing
-constexpr int kVoiceUnloadPolls = 100;  // game polls (300 ms) between checks whether the voice model can go
+constexpr int kVoiceUnloadPolls = 100;
+constexpr int kVoicePauseMs = 1200;  // silence after speech that ends a locked / toggled recording  // game polls (300 ms) between checks whether the voice model can go
 constexpr int kHotkeyId = 1;
 
 constexpr UINT kCmdLangBase = 1000;  // + index into Languages()
@@ -186,6 +189,7 @@ std::wstring NameCachePath(const Config& cfg, const std::string& lang) {
 }
 
 std::wstring VoiceFixesPath(const Config& cfg) { return cfg.dataDir + L"\\voice-fixes.txt"; }
+std::wstring LearnLaterPath(const Config& cfg) { return cfg.dataDir + L"\\learn-later.txt"; }
 
 void PostText(HWND notify, UINT message, const std::wstring& text) {
     auto* s = new std::wstring(text);
@@ -209,6 +213,9 @@ int KeyboardWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
         if (ReadFileBytes(cfg_.dataDir + L"\\my-words.txt", data)) myWords_.Parse(FromUtf8(data));
         data.clear();
         if (ReadFileBytes(VoiceFixesPath(cfg_), data)) voiceFixes_.Parse(FromUtf8(data));
+        data.clear();
+        if (ReadFileBytes(LearnLaterPath(cfg_), data))
+            pendingLearn_ = static_cast<size_t>(std::count(data.begin(), data.end(), '\n'));
     }
 
     HDC screen = GetDC(nullptr);
@@ -509,8 +516,12 @@ void KeyboardWindow::Paint() {
     } else {
         micRect_ = {};
     }
+    // What you sent this session: a small circle that fills up (click: save as text, learn later, clear).
+    const LONG leftOfButtons = cfg_.voiceEnabled ? micRect_.left : menuRect_.left;
+    logRect_ = {leftOfButtons - t.S(22), 0, leftOfButtons - t.S(2), m.head};
+    DrawLogCircle(dc, logRect_);
     // The status takes the place of a title (the window is narrow; down in the footer it was cut off).
-    RECT statusRect{m.pad + t.S(2), 0, (cfg_.voiceEnabled ? micRect_.left : menuRect_.left) - t.S(8), m.head};
+    RECT statusRect{m.pad + t.S(2), 0, logRect_.left - t.S(6), m.head};
     std::wstring text = status_;
     COLORREF color = Theme::kMuted;
     switch (tone_) {
@@ -562,7 +573,7 @@ void KeyboardWindow::Paint() {
 }
 
 bool KeyboardWindow::IsClickable(POINT pt) const {
-    for (const RECT* r : {&menuRect_, &closeRect_, &channelRect_, &typeRect_, &sendRect_, &micRect_})
+    for (const RECT* r : {&menuRect_, &closeRect_, &channelRect_, &typeRect_, &sendRect_, &micRect_, &logRect_})
         if (PtInRect(r, pt)) return true;
     return false;
 }
@@ -594,6 +605,7 @@ void KeyboardWindow::OnClick(POINT pt) {
     else if (PtInRect(&channelRect_, pt)) ShowChannelMenu();
     else if (PtInRect(&typeRect_, pt)) ShowTypeLangMenu();
     else if (PtInRect(&sendRect_, pt)) ShowSendMenu();
+    else if (PtInRect(&logRect_, pt)) ShowLogMenu();
     else if (PtInRect(&micRect_, pt) && cfg_.voiceToggle) ToggleVoice();  // hold mode: WM_LBUTTONDOWN / UP
 }
 
@@ -1175,6 +1187,8 @@ void KeyboardWindow::StartTranslation() {
         llmBusy_ = true;
     }
     inflightGen_ = inputGen_;
+    translateStart_ = GetTickCount64();
+    ++translateCount_;
     CountMyMemory(CodePointCount(JoinSegments(p.segments)));
     UpdatePreview();
     std::thread([hwnd = hwnd_, gen = inputGen_, translator = translator_, segments = std::move(p.segments), source,
@@ -1199,6 +1213,11 @@ void KeyboardWindow::OnTranslated(KbdTranslatedMsg* raw) {
                     StartTranslation();
                     return;
                 }
+            }
+            if (translateStart_) lastTranslateMs_ = static_cast<int>(GetTickCount64() - translateStart_);
+            if (!m->result.ok) {
+                ++translateErrors_;
+                lastTranslateError_ = m->result.error;
             }
             if (m->gen != inputGen_) return;
             if (!m->result.ok) {
@@ -1404,7 +1423,20 @@ void KeyboardWindow::SendNextPart() {
                 while (whisperers_.size() > 8) whisperers_.pop_back();
             }
         }
-        if (cfg_.learnWords) spell_.Learn(split.prefix.empty() ? SanitizeChatText(input_.Text()) : split.body);
+        // Learning: right away, or collected for later (Settings → Writing) – while playing there is no time for it.
+        const std::wstring learnText = split.prefix.empty() ? SanitizeChatText(input_.Text()) : split.body;
+        if (cfg_.learnWords && !cfg_.learnLater) {
+            spell_.Learn(learnText);
+        } else if (cfg_.learnWords && AppendFileBytes(LearnLaterPath(cfg_), ToUtf8(learnText + L"\r\n"))) {
+            ++pendingLearn_;
+        }
+        SentLine logLine;
+        GetLocalTime(&logLine.time);
+        logLine.typed = SanitizeChatText(input_.Text());
+        for (const std::wstring& part : parts_) logLine.sent += (logLine.sent.empty() ? L"" : L" ") + part;
+        sentLog_.push_back(std::move(logLine));
+        while (sentLog_.size() > kSentLogMax) sentLog_.pop_front();
+        InvalidateChrome();
         // Voice input: what you changed in the recognized text before sending = words it misheard.
         if (!lastDictated_.empty()) {
             LearnVoiceFixes(SanitizeChatText(input_.Text()));
@@ -1586,6 +1618,242 @@ void KeyboardWindow::OnGrammar(KbdGrammarMsg* raw) {
 }
 
 // ===========================================================================
+// What you sent this session: the circle, save as text, learn later
+// ===========================================================================
+void KeyboardWindow::DrawLogCircle(HDC dc, const RECT& r) const {
+    const Theme& t = theme_;
+    const int d = t.S(13), cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
+    const double share = std::min(1.0, static_cast<double>(sentLog_.size()) / kSentLogMax);
+    HPEN ring = CreatePen(PS_SOLID, std::max(1, t.S(1)), pendingLearn_ ? Theme::kAccent : RGB(120, 125, 135));
+    HGDIOBJ oldP = SelectObject(dc, ring), oldB = SelectObject(dc, GetStockObject(NULL_BRUSH));
+    Ellipse(dc, cx - d / 2, cy - d / 2, cx + d / 2 + 1, cy + d / 2 + 1);
+    const int rad = d / 2 - t.S(2);
+    if (share > 0 && rad > 0) {
+        HBRUSH fill = CreateSolidBrush(share >= 1.0 ? Theme::kAccent : RGB(150, 155, 165));
+        SelectObject(dc, fill);
+        SelectObject(dc, GetStockObject(NULL_PEN));
+        if (share >= 1.0) {
+            Ellipse(dc, cx - rad, cy - rad, cx + rad + 1, cy + rad + 1);
+        } else {  // clockwise from the top
+            const double a = share * 6.283185307179586;
+            const int ex = cx + static_cast<int>(std::lround(std::sin(a) * 1000)),
+                      ey = cy - static_cast<int>(std::lround(std::cos(a) * 1000));
+            if (ex != cx || ey > cy) {
+                const int oldDir = SetArcDirection(dc, AD_CLOCKWISE);
+                Pie(dc, cx - rad, cy - rad, cx + rad + 1, cy + rad + 1, cx, cy - 1000, ex, ey);
+                SetArcDirection(dc, oldDir);
+            }
+        }
+        SelectObject(dc, oldB);
+        DeleteObject(fill);
+    }
+    SelectObject(dc, oldB);
+    SelectObject(dc, oldP);
+    DeleteObject(ring);
+}
+
+void KeyboardWindow::ShowLogMenu() {
+    const ModalScope modal;
+    enum : UINT { kSave = 1, kLearnNow, kClear };
+    HMENU menu = CreatePopupMenu();
+    const std::wstring head = TrF(L"Sent this session: {1}/{2} (only here, until you close the program)",
+                                  {std::to_wstring(sentLog_.size()), std::to_wstring(kSentLogMax)});
+    AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, head.c_str());
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(menu, MF_STRING | (sentLog_.empty() ? MF_GRAYED : 0), kSave, Tr(L"Save as text …").c_str());
+    const std::wstring learn = TrF(L"Learn from what I sent now ({1} waiting)", {std::to_wstring(pendingLearn_)});
+    AppendMenuW(menu, MF_STRING | (pendingLearn_ ? 0 : MF_GRAYED), kLearnNow, learn.c_str());
+    AppendMenuW(menu, MF_STRING | (sentLog_.empty() ? MF_GRAYED : 0), kClear, Tr(L"Clear the list").c_str());
+    POINT pt{logRect_.left, logRect_.bottom};
+    ClientToScreen(hwnd_, &pt);
+    const UINT cmd =
+        static_cast<UINT>(TrackPopupMenu(menu, MenuFlags(TPM_RETURNCMD | TPM_NONOTIFY), pt.x, pt.y, 0, hwnd_, nullptr));
+    DestroyMenu(menu);
+    if (cmd == kSave) {
+        // Readable: time, what you typed, and – when it went out translated – what arrived. Yours only.
+        std::wstring out;
+        for (const SentLine& l : sentLog_) {
+            wchar_t stamp[16];
+            swprintf(stamp, 16, L"%02u:%02u  ", l.time.wHour, l.time.wMinute);
+            out += stamp + l.typed + L"\r\n";
+            if (!l.sent.empty() && l.sent != l.typed) out += L"       → " + l.sent + L"\r\n";
+        }
+        const std::wstring path = PickTextFile(hwnd_, Tr(L"Save as text …"), true, L"gw2-keyboard-sent.txt");
+        if (!path.empty())
+            SetStatus(WriteFileAtomic(path, "\xEF\xBB\xBF" + ToUtf8(out)) ? Tr(L"Saved") : Tr(L"Could not write the file."),
+                      Tone::Ok, 4000);
+    } else if (cmd == kLearnNow) {
+        LearnLaterNow();
+    } else if (cmd == kClear) {
+        sentLog_.clear();
+        InvalidateChrome();
+    }
+}
+
+// Learn later: what you sent while playing goes into the typing profile now (sentences, words, your typical typos).
+void KeyboardWindow::LearnLaterNow() {
+    WarmUp();
+    std::string data;
+    if (!ReadFileBytes(LearnLaterPath(cfg_), data) || data.empty()) {
+        pendingLearn_ = 0;
+        InvalidateChrome();
+        return;
+    }
+    const SpellService::ProfileResult r = spell_.LearnFromText(FromUtf8(data));
+    DeleteFileW(LearnLaterPath(cfg_).c_str());
+    pendingLearn_ = 0;
+    input_.RefreshSuggestions();
+    const LangInfo* l = FindLanguage(TypingLocale());
+    if (!l) l = FindLanguage(PrimaryLang(TypingLocale()));
+    SetStatus(TrF(L"Learned {1} sentences, {2} new words and {3} of your typical typos ({4}).",
+                  {std::to_wstring(r.sentences), std::to_wstring(r.newWords), std::to_wstring(r.typos),
+                   l ? std::wstring(l->native) : TypingLocale()}),
+              Tone::Ok, 8000);
+    InvalidateChrome();
+}
+
+// ===========================================================================
+// Live view: every technical value while you play (no chat text, nothing you typed)
+// ===========================================================================
+LRESULT CALLBACK KeyboardWindow::LiveProc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
+    auto* self = reinterpret_cast<KeyboardWindow*>(GetWindowLongPtrW(h, GWLP_USERDATA));
+    switch (msg) {
+        case WM_NCCREATE:
+            SetWindowLongPtrW(h, GWLP_USERDATA,
+                              reinterpret_cast<LONG_PTR>(reinterpret_cast<CREATESTRUCTW*>(lp)->lpCreateParams));
+            break;
+        case WM_SIZE:
+            if (HWND edit = GetWindow(h, GW_CHILD)) MoveWindow(edit, 0, 0, LOWORD(lp), HIWORD(lp), TRUE);
+            return 0;
+        case WM_TIMER:
+            if (self) {
+                HWND edit = GetWindow(h, GW_CHILD);
+                const std::wstring text = self->LiveStatus();
+                const int len = GetWindowTextLengthW(edit);
+                std::wstring old(static_cast<size_t>(len) + 1, L'\0');
+                GetWindowTextW(edit, old.data(), len + 1);
+                old.resize(static_cast<size_t>(len));
+                if (old != text) {  // keep where you scrolled to
+                    const LRESULT first = SendMessageW(edit, EM_GETFIRSTVISIBLELINE, 0, 0);
+                    SetWindowTextW(edit, text.c_str());
+                    SendMessageW(edit, EM_LINESCROLL, 0, first);
+                }
+            }
+            return 0;
+        case WM_CLOSE:
+            DestroyWindow(h);
+            return 0;
+        case WM_DESTROY:
+            if (self) self->liveWnd_ = nullptr;
+            return 0;
+    }
+    return DefWindowProcW(h, msg, wp, lp);
+}
+
+void KeyboardWindow::ShowLiveView() {
+    if (liveWnd_) {
+        ShowWindow(liveWnd_, SW_SHOWNORMAL);
+        SetForegroundWindow(liveWnd_);
+        return;
+    }
+    static bool registered = false;
+    if (!registered) {
+        WNDCLASSEXW wc{};
+        wc.cbSize = sizeof(wc);
+        wc.lpfnWndProc = LiveProc;
+        wc.hInstance = inst_;
+        wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+        wc.hIcon = LoadIconW(inst_, MAKEINTRESOURCEW(1));
+        wc.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
+        wc.lpszClassName = L"GW2KeyboardLiveView";
+        registered = RegisterClassExW(&wc) != 0;
+    }
+    liveWnd_ = CreateWindowExW(WS_EX_TOPMOST | (UiRtl() ? WS_EX_LAYOUTRTL : 0), L"GW2KeyboardLiveView",
+                               Tr(L"Live view").c_str(), WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
+                               theme_.S(560), theme_.S(640), nullptr, nullptr, inst_, this);
+    if (!liveWnd_) return;
+    HWND edit = CreateWindowExW(0, L"EDIT", L"",
+                                WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL, 0, 0,
+                                0, 0, liveWnd_, nullptr, inst_, nullptr);
+    SendMessageW(edit, WM_SETFONT, reinterpret_cast<WPARAM>(theme_.fontUi), TRUE);
+    RECT rc;
+    GetClientRect(liveWnd_, &rc);
+    MoveWindow(edit, 0, 0, rc.right, rc.bottom, TRUE);
+    SetTimer(liveWnd_, 1, 1000, nullptr);
+    SendMessageW(liveWnd_, WM_TIMER, 1, 0);
+    ShowWindow(liveWnd_, SW_SHOWNORMAL);
+}
+
+std::wstring KeyboardWindow::LiveStatus() {
+    std::wstring s;
+    auto line = [&](const std::wstring& l) { s += l + L"\r\n"; };
+    auto pct = [](double v) { return std::to_wstring(static_cast<int>(std::lround(v * 100))) + L" %"; };
+    line(Tr(L"Live view – refreshed every second; no chat text, nothing you typed."));
+    line(L"");
+    line(L"== " + Tr(L"This PC"));
+    const std::vector<float>& busy = coreLoad_.Busy();
+    if (!busy.empty()) {
+        double sum = 0;
+        std::wstring cores;
+        for (size_t i = 0; i < busy.size(); ++i) {
+            sum += busy[i];
+            cores += (i ? L"  " : L"") + std::to_wstring(i) + L":" + std::to_wstring(static_cast<int>(std::lround(busy[i] * 100)));
+        }
+        line(TrF(L"CPU in total: {1}", {pct(sum / static_cast<double>(busy.size()))}));
+        line(TrF(L"Per core (%): {1}", {cores}));
+    }
+    MEMORYSTATUSEX ms{};
+    ms.dwLength = sizeof(ms);
+    if (GlobalMemoryStatusEx(&ms))
+        line(TrF(L"Memory: {1} of {2} MB free", {std::to_wstring(ms.ullAvailPhys >> 20), std::to_wstring(ms.ullTotalPhys >> 20)}));
+    // This program: its share of the whole CPU since the last refresh, and its memory.
+    FILETIME create{}, exitT{}, kernel{}, user{};
+    if (GetProcessTimes(GetCurrentProcess(), &create, &exitT, &kernel, &user)) {
+        const ULONGLONG cpu = (static_cast<ULONGLONG>(kernel.dwHighDateTime) << 32 | kernel.dwLowDateTime) +
+                              (static_cast<ULONGLONG>(user.dwHighDateTime) << 32 | user.dwLowDateTime);
+        FILETIME now{};
+        GetSystemTimeAsFileTime(&now);
+        const ULONGLONG wall = static_cast<ULONGLONG>(now.dwHighDateTime) << 32 | now.dwLowDateTime;
+        SYSTEM_INFO si{};
+        GetSystemInfo(&si);
+        if (procWallLast_ && wall > procWallLast_)
+            procCpu_ = static_cast<double>(cpu - procCpuLast_) / static_cast<double>(wall - procWallLast_) /
+                       std::max<DWORD>(1, si.dwNumberOfProcessors);
+        procCpuLast_ = cpu;
+        procWallLast_ = wall;
+    }
+    PROCESS_MEMORY_COUNTERS pmc{};
+    pmc.cb = sizeof(pmc);
+    const std::wstring ram =
+        K32GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)) ? std::to_wstring(pmc.WorkingSetSize >> 20) : L"?";
+    line(TrF(L"GW2 Keyboard: CPU {1} · memory {2} MB", {pct(procCpu_), ram}));
+    line(L"");
+    line(L"== " + Tr(L"Game"));
+    line(TrF(L"GW2 window: {1} · MumbleLink: {2} · on a map: {3} · chat line open: {4}",
+             {gw2_ ? Tr(L"found") : Tr(L"not found"), mumbleState_.live ? Tr(L"on") : Tr(L"off"),
+              mumbleState_.inMap ? Tr(L"yes") : Tr(L"no"), mumbleState_.TextboxHasFocus() ? Tr(L"yes") : Tr(L"no")}));
+    if (gameFps_ > 0) line(TrF(L"Game frame rate: {1} fps", {std::to_wstring(static_cast<int>(std::lround(gameFps_)))}));
+    line(L"");
+    line(L"== " + Tr(L"Translator"));
+    line(TrF(L"{1} · requests: {2} · last answer after {3} ms · errors: {4}",
+             {translator_ ? translator_->Name() : std::wstring(L"-"), std::to_wstring(translateCount_),
+              std::to_wstring(lastTranslateMs_), std::to_wstring(translateErrors_)}));
+    if (!lastTranslateError_.empty()) line(L"  " + TrF(L"Last error: {1}", {lastTranslateError_}));
+    if (!routeNote_.empty()) line(L"  " + routeNote_);
+    line(L"");
+    line(L"== " + Tr(L"Voice input"));
+    if (voice_) {
+        line(voice_->Recording() ? TrF(L"Recording · level {1}", {pct(voice_->Level())})
+             : voice_->Busy()   ? Tr(L"Recognizing …")
+                                : Tr(L"Idle"));
+    }
+    line(L"");
+    line(L"== " + Tr(L"Settings and numbers"));
+    s += TechnicalStatus();
+    return s;
+}
+
+// ===========================================================================
 // Voice input (push to talk): the text goes into the input box like typed text – spelling, your words, corrections
 // and the translator follow as usual – and only your Enter sends it.
 // ===========================================================================
@@ -1612,6 +1880,9 @@ bool KeyboardWindow::BuildVoiceSettings(const Config& c, VoiceSettings* s, std::
     s->maxSeconds = c.voiceMaxSec;
     s->deviceId = c.voiceDevice;
     s->initialPrompt = c.voiceGlossary ? VoicePrompt() : std::string();
+    s->gainDb = c.voiceBoost == 1 ? 6.0f : c.voiceBoost == 2 ? 12.0f : 0.0f;
+    s->levelSpeech = c.voiceBoost == 3;
+    s->autoEndMs = c.voiceToggle ? kVoicePauseMs : 0;  // press to start: a pause ends it (or the next press)
     return true;
 }
 
@@ -1733,6 +2004,7 @@ void KeyboardWindow::ToggleVoice() {
 }
 
 void KeyboardWindow::CancelVoice() {
+    voiceLocked_ = false;
     if (voiceHolding_) {
         voiceHolding_ = false;  // first: ReleaseCapture sends WM_CAPTURECHANGED
         if (GetCapture() == hwnd_) ReleaseCapture();
@@ -1756,6 +2028,7 @@ void KeyboardWindow::OnVoiceEvent(VoiceEvent* raw) {
             if (voice_->Recording()) input_.SetDictationPreview(e->live.stable, e->live.unsure);
             return;
         case VoiceEvent::Kind::Final: {
+            voiceLocked_ = false;
             input_.ClearDictationPreview();
             InvalidateChrome();
             const std::wstring text = Trim(e->text);
@@ -1778,6 +2051,7 @@ void KeyboardWindow::OnVoiceEvent(VoiceEvent* raw) {
             return;
         }
         case VoiceEvent::Kind::Error:
+            voiceLocked_ = false;
             input_.ClearDictationPreview();
             InvalidateChrome();
             SetStatus(e->message.empty() ? Tr(L"Voice input failed") : e->message, Tone::Error, 10000);
@@ -2091,6 +2365,7 @@ void KeyboardWindow::OpenSettings(SettingsPage page) {
         voice_->RunTest(s, 4, notify, message);
     };
     ctx.voiceFixesText = [this] { return voiceFixes_.Serialize(); };
+    ctx.openLiveView = [this] { ShowLiveView(); };
     ctx.setVoiceFixes = [this](const std::wstring& text) {
         voiceFixes_.Parse(text);
         SaveVoiceFixes();
@@ -2360,6 +2635,11 @@ LRESULT KeyboardWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
         case WM_LBUTTONDOWN:
             // Hold to talk: pressed on the microphone starts, releasing (or losing the mouse) ends the recording.
             if (cfg_.voiceEnabled && !cfg_.voiceToggle && PtInRect(&micRect_, POINT{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)})) {
+                if (voiceLocked_ && voice_ && voice_->Recording()) {  // locked: a click on the microphone ends it now
+                    voiceLocked_ = false;
+                    StopVoice();
+                    return 0;
+                }
                 if (StartVoice()) {
                     voiceHolding_ = true;
                     SetCapture(hwnd_);
@@ -2373,7 +2653,21 @@ LRESULT KeyboardWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
                 StopVoice();
             }
             return 0;
+        case WM_RBUTTONDOWN:
+            // Holding the microphone + a right click: locked – let go of the mouse, a pause ends the message.
+            if (voiceHolding_ && voice_ && voice_->Recording()) {
+                voiceLocked_ = true;
+                lockRightClick_ = true;
+                voice_->SetAutoEnd(kVoicePauseMs);
+                SetStatus(Tr(L"Locked – speak freely; a pause ends it (click the microphone to finish now)"), Tone::Ok, 0);
+                return 0;
+            }
+            break;
         case WM_RBUTTONUP:
+            if (lockRightClick_) {
+                lockRightClick_ = false;
+                return 0;
+            }
             if (PtInRect(&micRect_, POINT{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)})) {
                 OpenSettings(SettingsPage::Voice);
                 return 0;
@@ -2388,10 +2682,10 @@ LRESULT KeyboardWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             }
             return 0;
         case WM_LBUTTONUP:
-            if (voiceHolding_) {  // released the microphone button: recognize (no click)
+            if (voiceHolding_) {  // released the microphone button: recognize (no click) – unless it is locked
                 voiceHolding_ = false;
                 if (GetCapture() == hwnd_) ReleaseCapture();
-                StopVoice();
+                if (!voiceLocked_) StopVoice();
                 return 0;
             }
             OnClick({GET_X_LPARAM(lp), GET_Y_LPARAM(lp)});
@@ -2427,6 +2721,7 @@ LRESULT KeyboardWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             DestroyWindow(hwnd_);
             return 0;
         case WM_DESTROY:
+            if (liveWnd_) DestroyWindow(liveWnd_);
             CancelVoice();
             voice_.reset();  // joins its threads; the microphone is closed
             RemoveTrayIcon();

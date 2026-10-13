@@ -66,6 +66,8 @@ struct DialogContext {
     // GW2 Keyboard: learned misheard words ("heard = meant" per line) as text, and storing an edited list.
     std::function<std::wstring()> voiceFixesText;
     std::function<void(const std::wstring&)> setVoiceFixes;
+    // GW2 Keyboard, Settings → Technical: opens the live view of every technical value (its own window).
+    std::function<void()> openLiveView;
 };
 
 enum class SettingsPage { General = 0, Reading, Writing, Translator, Game, Technical, Voice };  // Voice: GW2 Keyboard only

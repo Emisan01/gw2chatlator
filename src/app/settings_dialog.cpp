@@ -62,7 +62,7 @@ enum : int {
     kReaderOn, kOcrEngine, kCapture, kTessPath, kTessBrowse, kTessStatus, kTessGet, kChinese, kInterval, kShowSystem, kCaptures,
     kPickRegion, kCover,
     // Writing
-    kSpell, kAutoCorrect, kSuggest, kLearn, kForgetAll, kForgetStatus, kLt, kLtUrl, kBackTr, kSendMode, kReturnFocus,
+    kSpell, kAutoCorrect, kSuggest, kLearn, kVoiceBoost, kLiveView, kForgetAll, kForgetStatus, kLt, kLtUrl, kBackTr, kSendMode, kReturnFocus,
     // Translator
     kEngine, kEngineNote, kLocalModel, kPull, kLocalInfo, kGetOllama, kLlmFindLocal, kPullStatus, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
     kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
@@ -720,7 +720,10 @@ private:
               kLabelX + 380, Y(r++), kW - kLabelX - 400);
         Check(kSuggest, Tr(L"Word suggestions: grey after the cursor – Space writes it, Tab shows the next"),
               cfg_.suggestions, kLabelX, Y(r++), kW - 50);
-        Check(kLearn, Tr(L"Learn the words I send"), cfg_.learnWords, kLabelX, Y(r), 260);
+        // Learning from what you send: right away, or later when you choose (no time for it while playing).
+        Combo(kLearn, {Tr(L"Learn what I send – while I play"), Tr(L"Learn what I send – later, when I choose"),
+                       Tr(L"Do not learn what I send")},
+              !cfg_.learnWords ? 2 : cfg_.learnLater ? 1 : 0, kLabelX, Y(r), 250);
         Button(kForgetAll, Tr(L"Delete everything learned…"), kCtrlX + 80, Y(r++) - 2, 220);
         Label(Tr(L"Stays on this PC. Right-click a word to forget just that one."), kLabelX + 20, Y(r) - 8,
               kCtrlX + 50 - kLabelX, 34, kForgetStatus);
@@ -907,7 +910,9 @@ private:
             mics.push_back(Tr(L"(not connected)"));
             voiceDeviceIds_.push_back(cfg_.voiceDevice);
         }
-        Combo(kVoiceDevice, mics, micSel, kCtrlX, Y(r++), kCtrlW);
+        Combo(kVoiceDevice, mics, micSel, kCtrlX, Y(r), kCtrlW - 136);
+        Combo(kVoiceBoost, {Tr(L"Boost: off"), Tr(L"Boost: +6 dB"), Tr(L"Boost: +12 dB"), Tr(L"Boost: automatic")},
+              std::clamp(cfg_.voiceBoost, 0, 3), kCtrlX + kCtrlW - 130, Y(r++), 130);
 
         Label(Tr(L"CPU threads"), kLabelX, Y(r), kLabelW);
         const unsigned logical = std::max(1u, voiceHw_.logicalProcessors);
@@ -1348,7 +1353,10 @@ private:
         Button(kTechCompare, Tr(L"Compare translators"), kLabelX + 240, Y(r), 148);
         // The whole tool on one page, for someone who never saw it.
         Button(kTour, Tr(L"What can this tool do? (2 minutes)"), kLabelX, Y(r) + 30, 240);
-#ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
+#ifdef GCT_KEYBOARD_APP
+        // Everything technical, live while you play: its own small window (the dialog can be closed).
+        Button(kLiveView, Tr(L"Live view…"), kLabelX + 248, Y(r) + 30, 150);
+#else  // GW2 Keyboard: no chat reading, no OCR
         Button(kTechOcrCompare, Tr(L"Compare recognition"), kLabelX + 394, Y(r), 148);
         Button(kTechSaveF16, Tr(L"Save .f16 capture"), kLabelX + 248, Y(r) + 30, 150);
 #endif
@@ -1433,6 +1441,9 @@ private:
             case IDCANCEL:
                 if (ctx_.preview) ctx_.preview(cfg_.opacity, cfg_.fontPercent, cfg_.fontFace);  // undo the live preview
                 Close();
+                break;
+            case kLiveView:
+                if (ctx_.openLiveView) ctx_.openLiveView();
                 break;
             case kTour:
             case kLoadExt:
@@ -2152,7 +2163,8 @@ private:
         c.spellEnabled = Checked(kSpell);
         if (Sel(kAutoCorrect) >= 0) c.autoCorrect = static_cast<AutoCorrectMode>(Sel(kAutoCorrect));
         c.suggestions = Checked(kSuggest);
-        c.learnWords = Checked(kLearn);
+        c.learnWords = Sel(kLearn) != 2;
+        c.learnLater = Sel(kLearn) == 1;
         c.languageTool = Sel(kLtProvider) > 0;
         if (!Trim(Text(kLtUrl)).empty()) c.languageToolUrl = Trim(Text(kLtUrl));
         if (Sel(kWriteIn) >= 0)
@@ -2179,6 +2191,7 @@ private:
         pick(kVoiceThreads, voiceThreadValues_, &c.voiceThreads);
         pick(kVoiceDevice, voiceDeviceIds_, &c.voiceDevice);
         c.voiceGlossary = Checked(kVoiceGlossary);
+        if (Sel(kVoiceBoost) >= 0) c.voiceBoost = Sel(kVoiceBoost);
 #endif
 #ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
         c.ocrScale = std::clamp(_wtoi(Text(kOcrZoom).c_str()), 0, 4);

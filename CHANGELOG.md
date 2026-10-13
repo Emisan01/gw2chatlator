@@ -13,6 +13,17 @@ diagnosis show it.
   game); whisper runs on the least busy physical cores – as many threads as help (2–6) – and below normal priority, its
   helper threads included, so GW2 wins whenever both want a core.
 - Settings → Game & start (GW2 Keyboard): the connections box is gone – the same status is on the Technical page.
+- **Who translates is clear:** dictated text keeps its language (whisper's English), text that is already in the chat
+  language is not sent to the translator again (saves MyMemory), the grammar check uses that language, and the preview
+  says who did what ("MyMemory: DE → EN", "Whisper translated into English · already EN – not translated").
+- **Lock the microphone:** hold the microphone button and right-click – let go of the mouse and speak; a pause of
+  about 1.2 s ends the recording (press-to-toggle mode ends after a pause too). The text still waits for your Enter.
+- **Microphone boost** (Settings → Voice): +6 dB, +12 dB or automatic (quiet speech is raised before recognition).
+- **Live view** (Settings → Technical): its own window with every technical value, refreshed every second – CPU per
+  core, memory, this program, GW2 window / MumbleLink / frame rate, translator requests and times, voice input.
+- **What you sent, as a circle in the header:** this session's messages (yours only, in memory) – save them as text,
+  or learn from them later: Settings → Writing → "Learn what I send – later, when I choose" collects instead of
+  learning while you play; the circle's menu then learns them in one go (sentences, words, your typical typos).
 
 ## 1.4.0 — 2026-10-13
 

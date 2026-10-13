@@ -94,6 +94,15 @@ private:
 WhisperEngine::Result Recognize(WhisperEngine& engine, const VoiceSettings& s, const float* pcm, size_t n,
                                 const std::atomic<bool>* abort) {
     const CpuBudget budget(s.affinity);
+    if (s.levelSpeech && n > 0) {  // automatic boost: the loudest part of the speech to about -18 dBFS (at most x8)
+        const SpeechSpan sp = FindSpeech(pcm, n);
+        const float gain = std::clamp(std::pow(10.0f, (-18.0f - sp.peakDb) / 20.0f), 1.0f, 8.0f);
+        if (gain > 1.05f) {
+            std::vector<float> loud(pcm, pcm + n);
+            for (float& v : loud) v = std::clamp(v * gain, -1.0f, 1.0f);
+            return engine.Transcribe(loud.data(), n, OptionsFor(s, n), abort);
+        }
+    }
     return engine.Transcribe(pcm, n, OptionsFor(s, n), abort);
 }
 
@@ -148,6 +157,8 @@ bool VoiceSession::Begin(const VoiceSettings& s, unsigned* session, std::wstring
         std::lock_guard<std::mutex> lk(mu_);
         id = ++session_;
         settings_ = s;
+        gain_ = std::pow(10.0f, std::clamp(s.gainDb, 0.0f, 24.0f) / 20.0f);
+        autoEndMs_ = s.autoEndMs;
         settings_.maxSeconds = std::clamp(s.maxSeconds, 1, 600);
         audio_.clear();
         audio_.reserve(static_cast<size_t>(settings_.maxSeconds) * kVoiceRate);
@@ -168,7 +179,10 @@ bool VoiceSession::Begin(const VoiceSettings& s, unsigned* session, std::wstring
             if (!recording_ || session_ != id || maxReached_) return;
             const size_t limit = static_cast<size_t>(settings_.maxSeconds) * kVoiceRate;
             const size_t take = std::min(n, limit - std::min(limit, audio_.size()));
+            const size_t at = audio_.size();
             audio_.insert(audio_.end(), pcm, pcm + take);
+            if (gain_ != 1.0f)  // microphone boost
+                for (size_t i = at; i < audio_.size(); ++i) audio_[i] = std::clamp(audio_[i] * gain_, -1.0f, 1.0f);
             if (audio_.size() >= limit) {
                 maxReached_ = true;
                 cv_.notify_one();
@@ -233,7 +247,9 @@ void VoiceSession::StopCapture(unsigned id) {
     capture_.Stop();
 }
 
-float VoiceSession::Level() const { return recording_ ? capture_.Level() : 0.0f; }
+float VoiceSession::Level() const {  // the meter shows the boosted level (60 dB span)
+    return recording_ ? std::clamp(capture_.Level() + 20.0f * std::log10(gain_) / 60.0f, 0.0f, 1.0f) : 0.0f;
+}
 
 int VoiceSession::RecordedMs() const {
     std::lock_guard<std::mutex> lk(mu_);
@@ -395,6 +411,7 @@ void VoiceSession::RunTest(const VoiceSettings& s, int seconds, HWND notify, UIN
 void VoiceSession::Worker() {
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
     ULONGLONG nextLive = 0;  // earliest tick of the next live pass
+    ULONGLONG nextEndCheck = 0;  // auto end: when to look at the trailing silence again
     unsigned loadFailed = 0;  // the session whose model did not load (not tried again)
     std::unique_lock<std::mutex> lk(mu_);
     while (!quit_) {
@@ -470,7 +487,16 @@ void VoiceSession::Worker() {
                 std::unique_lock<std::mutex> cap(captureMu_, std::try_to_lock);  // Begin may still be starting it
                 lost = cap.owns_lock() && !capture_.Running();
             }
-            if (maxReached_ || lost) {
+            // Locked / press-to-toggle: a pause after speech ends the message (the text still waits for your Enter).
+            bool paused = false;
+            const int endMs = autoEndMs_;
+            if (!maxReached_ && !lost && endMs > 0 && GetTickCount64() >= nextEndCheck) {
+                nextEndCheck = GetTickCount64() + 150;
+                const SpeechSpan sp = FindSpeech(audio_.data(), audio_.size());  // end includes 200 ms padding
+                paused = sp.speech && audio_.size() > sp.end &&
+                         static_cast<int>((audio_.size() - sp.end) * 1000 / kVoiceRate) + 200 >= endMs;
+            }
+            if (maxReached_ || lost || paused) {
                 const unsigned id = session_;
                 recording_ = false;
                 recognizing_ = true;
