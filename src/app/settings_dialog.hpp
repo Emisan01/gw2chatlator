@@ -70,7 +70,7 @@ struct DialogContext {
     std::function<void()> openLiveView;
 };
 
-enum class SettingsPage { General = 0, Reading, Writing, Translator, Game, Technical, Voice };  // Voice: GW2 Keyboard only
+enum class SettingsPage { General = 0, Reading, Writing, Translator, Game, Technical, Voice, Microphone };  // Voice: GW2 Keyboard only
 
 // Modal. `cfg` is changed only when the user confirms.
 DialogResult ShowSettingsDialog(HWND owner, HINSTANCE inst, Config& cfg, const DialogContext& ctx,

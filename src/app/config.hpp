@@ -151,7 +151,18 @@ struct Config {
     std::wstring voiceDevice;         // microphone endpoint id; "" = Windows default
     int voiceUnloadMin = 10;          // free the model after this many idle minutes
     bool voiceGlossary = true;
-    int voiceBoost = 0;               // microphone boost: 0 off, 1 = +6 dB, 2 = +12 dB, 3 = automatic (levels speech)        // your names and GW2 words steer the recognizer's spelling
+    int voiceBoost = 0;
+    bool voiceActivation = false;     // voice activation: listens and starts by itself when you speak
+    int voiceGuard = 0;               // ... listens 0 = only after the key anywhere switched it on, 1 = while this
+                                      //     window is in front, 2 = always
+    int voicePauseMs = 1200;          // silence after speech that ends a message (press-to-start, lock, activation)
+    int voicePreRollMs = 300;         // voice activation keeps this much from before the speech
+    int voiceSensitivity = 50;        // voice activation 0..100 (100 = reacts to quiet speech)
+    int voiceMinMs = 250;             // voice activation: speech needed to start
+    std::wstring voiceGlobalKey;      // key anywhere (Windows hotkey, also while GW2 is in front); "" = none
+    bool voiceMuteOthers = false;     // mute the microphone of other programs while dictating
+    std::wstring voiceMuteApps = L"Discord.exe";  // ... these (exe names, separated by commas)
+    std::wstring voiceMutedNow;       // muted right now (unmuted on the next start after a crash)               // microphone boost: 0 off, 1 = +6 dB, 2 = +12 dB, 3 = automatic (levels speech)        // your names and GW2 words steer the recognizer's spelling
 
     void Load(const std::wstring& dir);
     void SaveWindowRect(HWND wnd, float scale) const;

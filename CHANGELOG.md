@@ -18,7 +18,17 @@ diagnosis show it.
   says who did what ("MyMemory: DE → EN", "Whisper translated into English · already EN – not translated").
 - **Lock the microphone:** hold the microphone button and right-click – let go of the mouse and speak; a pause of
   about 1.2 s ends the recording (press-to-toggle mode ends after a pause too). The text still waits for your Enter.
-- **Microphone boost** (Settings → Voice): +6 dB, +12 dB or automatic (quiet speech is raised before recognition).
+- **Settings → Microphone (new page):** how a recording starts – hold the button or key / press once, a pause ends
+  it / voice activation; a key in this window and a **key anywhere** (a Windows hotkey, also while GW2 is in front:
+  it starts, a pause ends it, then this window takes the focus for your Enter – no hook); pause length, pre-roll (the
+  first word is not lost), sensitivity and shortest speech for voice activation; device and boost (+6 / +12 dB /
+  automatic).
+- **Voice activation:** listens and starts by itself when you speak, keeping the moment before it; a pause ends the
+  message, then it listens again. It listens only after the key anywhere switched it on, while this window is in
+  front, or always (with a warning). A click on the microphone switches it off and on. Sending stays your Enter.
+- **Keep dictation out of voice chats (experimental):** while you dictate, the microphone of chosen programs (Discord,
+  TeamSpeak …, "Find…" lists who uses it now) is muted through Windows' audio sessions and unmuted right after – also
+  on the next start after a crash. Never with voice activation "always". Push-to-talk in Discord stays the safest way.
 - **Live view** (Settings → Technical): its own window with every technical value, refreshed every second – CPU per
   core, memory, this program, GW2 window / MumbleLink / frame rate, translator requests and times, voice input.
 - **What you sent, as a circle in the header:** this session's messages (yours only, in memory) – save them as text,

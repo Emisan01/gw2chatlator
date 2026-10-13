@@ -78,9 +78,9 @@ constexpr UINT_PTR kTimerStatus = 2;
 constexpr UINT_PTR kTimerGame = 3;
 constexpr UINT_PTR kTimerGrammar = 4;
 constexpr UINT_PTR kTimerVoice = 5;  // the microphone button's animation while recording / recognizing
-constexpr int kVoiceUnloadPolls = 100;
-constexpr int kVoicePauseMs = 1200;  // silence after speech that ends a locked / toggled recording  // game polls (300 ms) between checks whether the voice model can go
+constexpr int kVoiceUnloadPolls = 100;  // game polls (300 ms) between checks whether the voice model can go
 constexpr int kHotkeyId = 1;
+constexpr int kVoiceHotkeyId = 2;  // the key anywhere (voice input)
 
 constexpr UINT kCmdLangBase = 1000;  // + index into Languages()
 constexpr UINT kCmdMoreBase = 2000;  // "More languages" + index into Languages()
@@ -189,6 +189,22 @@ std::wstring NameCachePath(const Config& cfg, const std::string& lang) {
 }
 
 std::wstring VoiceFixesPath(const Config& cfg) { return cfg.dataDir + L"\\voice-fixes.txt"; }
+// "Discord.exe, ts3client_win64.exe; mumble.exe" -> the names.
+std::vector<std::wstring> SplitList(const std::wstring& s) {
+    std::vector<std::wstring> out;
+    std::wstring cur;
+    for (wchar_t c : s + L",") {
+        if (c == L',' || c == L';') {
+            const std::wstring t = Trim(cur);
+            if (!t.empty()) out.push_back(t);
+            cur.clear();
+        } else {
+            cur += c;
+        }
+    }
+    return out;
+}
+
 std::wstring LearnLaterPath(const Config& cfg) { return cfg.dataDir + L"\\learn-later.txt"; }
 
 void PostText(HWND notify, UINT message, const std::wstring& text) {
@@ -255,6 +271,14 @@ int KeyboardWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
     SetLayeredWindowAttributes(hwnd_, 0, static_cast<BYTE>(cfg_.opacity), LWA_ALPHA);
     if (auto hk = ParseHotkey(cfg_.hotkey))
         hotkeyOk_ = RegisterHotKey(hwnd_, kHotkeyId, hk->mods | MOD_NOREPEAT, hk->vk) != FALSE;
+    ApplyVoiceGlobalKey();
+    if (!cfg_.voiceMutedNow.empty()) {  // the program ended while voice chats were muted: give them their microphone
+        std::vector<std::wstring> names;
+        for (const std::wstring& n : SplitList(cfg_.voiceMutedNow)) names.push_back(n);
+        UnmuteMicrophoneOf(names);
+        cfg_.voiceMutedNow.clear();
+        cfg_.SaveValue(L"Voice", L"MutedNow", L"");
+    }
 
     // Installed (Settings → Game & start): always in the start menu as "GW2 Keyboard"; its own autostart entry
     // follows it when it pointed to an old download folder.
@@ -606,7 +630,7 @@ void KeyboardWindow::OnClick(POINT pt) {
     else if (PtInRect(&typeRect_, pt)) ShowTypeLangMenu();
     else if (PtInRect(&sendRect_, pt)) ShowSendMenu();
     else if (PtInRect(&logRect_, pt)) ShowLogMenu();
-    else if (PtInRect(&micRect_, pt) && cfg_.voiceToggle) ToggleVoice();  // hold mode: WM_LBUTTONDOWN / UP
+    else if (PtInRect(&micRect_, pt) && cfg_.voiceToggle && !cfg_.voiceActivation) ToggleVoice();  // hold mode: WM_LBUTTONDOWN / UP
 }
 
 void KeyboardWindow::SetStatus(const std::wstring& text, Tone tone, UINT autoClearMs) {
@@ -1882,7 +1906,10 @@ bool KeyboardWindow::BuildVoiceSettings(const Config& c, VoiceSettings* s, std::
     s->initialPrompt = c.voiceGlossary ? VoicePrompt() : std::string();
     s->gainDb = c.voiceBoost == 1 ? 6.0f : c.voiceBoost == 2 ? 12.0f : 0.0f;
     s->levelSpeech = c.voiceBoost == 3;
-    s->autoEndMs = c.voiceToggle ? kVoicePauseMs : 0;  // press to start: a pause ends it (or the next press)
+    s->autoEndMs = c.voiceToggle || c.voiceActivation ? c.voicePauseMs : 0;  // a pause ends it (or the next press)
+    s->thresholdDb = -20.0f - 0.4f * static_cast<float>(std::clamp(c.voiceSensitivity, 0, 100));  // 50 -> -40 dBFS
+    s->minSpeechMs = c.voiceMinMs;
+    s->preRollMs = c.voicePreRollMs;
     return true;
 }
 
@@ -1936,7 +1963,7 @@ void KeyboardWindow::ApplyVoiceKey() {
     input_.SetPushToTalkKey(vk, mods);
 }
 
-bool KeyboardWindow::StartVoice() {
+bool KeyboardWindow::StartVoice(bool autoEnd) {
     if (!voice_ || !cfg_.voiceEnabled) return false;
     if (voice_->Recording()) return true;
     if (voice_->Busy()) {
@@ -1953,7 +1980,9 @@ bool KeyboardWindow::StartVoice() {
         return false;
     }
     VoiceSettings s;
-    if (!BuildVoiceSettings(cfg_, &s, &voiceModelName_)) {
+    const bool built = BuildVoiceSettings(cfg_, &s, &voiceModelName_);
+    if (autoEnd) s.autoEndMs = cfg_.voicePauseMs;
+    if (!built) {
         voiceReady_ = false;
         InvalidateChrome();
         SetStatus(Tr(L"Voice model not downloaded – Settings → Voice"), Tone::Warn, 8000);
@@ -1983,12 +2012,95 @@ bool KeyboardWindow::StartVoice() {
     }
     voiceSession_ = session;
     voiceReady_ = true;
+    MuteOthers(true);
     input_.ClearDictationPreview();
     SetStatus(cfg_.voiceToggle ? Tr(L"Listening … press again to finish") : Tr(L"Listening … release to finish"),
               Tone::Ok, 0);
     SetTimer(hwnd_, kTimerVoice, 60, nullptr);
     InvalidateChrome();
     return true;
+}
+
+// Voice activation: the microphone listens; speech starts a recording (with the pre-roll), a pause ends it.
+bool KeyboardWindow::StartListening() {
+    if (!voice_ || !cfg_.voiceEnabled) return false;
+    std::wstring why;
+    if (!VoiceSession::Available(&why)) {
+        voiceListenFailed_ = true;
+        SetStatus(TrF(L"Voice input needs the voice module (voice folder next to the program): {1}", {why}), Tone::Warn, 12000);
+        return false;
+    }
+    VoiceSettings s;
+    if (!BuildVoiceSettings(cfg_, &s, &voiceModelName_)) {
+        voiceListenFailed_ = true;
+        SetStatus(Tr(L"Voice model not downloaded – Settings → Voice"), Tone::Warn, 8000);
+        return false;
+    }
+    std::wstring message;
+    AudioError error = AudioError::None;
+    if (!voice_->Listen(s, &message, &error)) {
+        voiceListenFailed_ = true;
+        SetStatus(message.empty() ? Tr(L"The microphone could not be opened") : message, Tone::Error, 8000);
+        return false;
+    }
+    SetStatus(Tr(L"Voice activation on – speak; a pause ends the message"), Tone::Ok, 5000);
+    InvalidateChrome();
+    return true;
+}
+
+void KeyboardWindow::StopListening() {
+    if (!voice_ || !voice_->Listening()) return;
+    voice_->Cancel();
+    MuteOthers(false);
+    input_.ClearDictationPreview();
+    SetStatus(Tr(L"Voice activation off"), Tone::Muted, 3000);
+    InvalidateChrome();
+}
+
+// The key anywhere (a Windows hotkey: also while GW2 is in front): starts a recording that a pause ends – or, with
+// voice activation "after the key", switches listening on and off.
+void KeyboardWindow::OnVoiceHotkey() {
+    if (!voice_ || !cfg_.voiceEnabled) return;
+    if (cfg_.voiceActivation && cfg_.voiceGuard == 0) {
+        if (voice_->Listening()) StopListening();
+        else StartListening();
+        return;
+    }
+    if (voice_->Recording()) {
+        StopVoice();
+        return;
+    }
+    voiceFromAnywhere_ = StartVoice(true);
+}
+
+void KeyboardWindow::ApplyVoiceGlobalKey() {
+    UnregisterHotKey(hwnd_, kVoiceHotkeyId);
+    voiceGlobalOk_ = false;
+    if (!cfg_.voiceEnabled) return;
+    if (const auto hk = ParseHotkey(cfg_.voiceGlobalKey))
+        voiceGlobalOk_ = RegisterHotKey(hwnd_, kVoiceHotkeyId, hk->mods | MOD_NOREPEAT, hk->vk) != FALSE;
+    if (!cfg_.voiceGlobalKey.empty() && !voiceGlobalOk_)
+        SetStatus(TrF(L"The key “{1}” is taken by another program – choose another in Settings → Microphone",
+                      {cfg_.voiceGlobalKey}),
+                  Tone::Warn, 10000);
+}
+
+// Keeping the dictation out of voice chats: only while a recording runs, never with voice activation "always"
+// (you would be muted in Discord at every sentence); what was muted is noted for a crash and given back after.
+void KeyboardWindow::MuteOthers(bool on) {
+    if (!on) {
+        if (!micMuter_.Active()) return;
+        micMuter_.Restore();
+        cfg_.SaveValue(L"Voice", L"MutedNow", L"");
+        return;
+    }
+    if (!cfg_.voiceMuteOthers || (cfg_.voiceActivation && cfg_.voiceGuard == 2) || micMuter_.Active()) return;
+    std::vector<std::wstring> names;
+    for (const std::wstring& n : SplitList(cfg_.voiceMuteApps)) names.push_back(n);
+    const std::vector<std::wstring> muted = micMuter_.Mute(cfg_.voiceDevice, names);
+    std::wstring list;
+    for (const std::wstring& n : muted) list += (list.empty() ? L"" : L",") + n;
+    if (!list.empty()) cfg_.SaveValue(L"Voice", L"MutedNow", AsciiEscape(list));
 }
 
 void KeyboardWindow::StopVoice() {
@@ -2005,6 +2117,8 @@ void KeyboardWindow::ToggleVoice() {
 
 void KeyboardWindow::CancelVoice() {
     voiceLocked_ = false;
+    voiceFromAnywhere_ = false;
+    MuteOthers(false);
     if (voiceHolding_) {
         voiceHolding_ = false;  // first: ReleaseCapture sends WM_CAPTURECHANGED
         if (GetCapture() == hwnd_) ReleaseCapture();
@@ -2021,6 +2135,15 @@ void KeyboardWindow::CancelVoice() {
 
 void KeyboardWindow::OnVoiceEvent(VoiceEvent* raw) {
     std::unique_ptr<VoiceEvent> e(raw);
+    if (e && voice_ && e->kind == VoiceEvent::Kind::Started && e->session == voice_->Session()) {  // voice activation
+        voiceSession_ = e->session;
+        MuteOthers(true);
+        input_.ClearDictationPreview();
+        SetStatus(Tr(L"Hearing you … a pause ends it"), Tone::Ok, 0);
+        SetTimer(hwnd_, kTimerVoice, 60, nullptr);
+        InvalidateChrome();
+        return;
+    }
     if (!e || !voice_ || e->session != voice_->Session() || e->session != voiceSession_) return;  // an older session
     switch (e->kind) {
         case VoiceEvent::Kind::Partial:
@@ -2029,6 +2152,7 @@ void KeyboardWindow::OnVoiceEvent(VoiceEvent* raw) {
             return;
         case VoiceEvent::Kind::Final: {
             voiceLocked_ = false;
+            MuteOthers(false);
             input_.ClearDictationPreview();
             InvalidateChrome();
             const std::wstring text = Trim(e->text);
@@ -2047,11 +2171,21 @@ void KeyboardWindow::OnVoiceEvent(VoiceEvent* raw) {
                                       {voiceModelName_, cfg_.voiceTranslate ? Tr(L"on") : Tr(L"off"), secs, rtf});
             if (e->maxReached) status += L" " + Tr(L"(longest recording reached)");
             SetStatus(status, Tone::Muted, 15000);
+            // From the key anywhere (or voice activation switched on by it): this window takes the focus for your Enter.
+            if (voiceFromAnywhere_ || (voice_->Listening() && cfg_.voiceGuard == 0)) {
+                if (!IsWindowVisible(hwnd_)) ShowWindow(hwnd_, SW_SHOWNOACTIVATE);
+                SetForegroundWindow(hwnd_);
+                voiceFromAnywhere_ = false;
+            }
             if (GetForegroundWindow() == hwnd_) SetFocus(input_.Hwnd());
             return;
         }
+        case VoiceEvent::Kind::Started:
+            return;
         case VoiceEvent::Kind::Error:
             voiceLocked_ = false;
+            voiceFromAnywhere_ = false;
+            MuteOthers(false);
             input_.ClearDictationPreview();
             InvalidateChrome();
             SetStatus(e->message.empty() ? Tr(L"Voice input failed") : e->message, Tone::Error, 10000);
@@ -2110,8 +2244,10 @@ void KeyboardWindow::DrawMic(HDC dc, const RECT& r) const {
     const Theme& t = theme_;
     const bool recording = voice_ && voice_->Recording();
     const bool recognizing = voice_ && !recording && voice_->Busy();
+    const bool listening = voice_ && voice_->Listening();
     const COLORREF color = recording     ? Theme::kError
                            : recognizing ? Theme::kAccent
+                           : listening   ? Theme::kOk
                            : voiceReady_ ? Theme::kMuted
                                          : Theme::kFaint;
     const int cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
@@ -2171,6 +2307,13 @@ RECT KeyboardWindow::GameClientRect() const {
 
 void KeyboardWindow::PollGame() {
     coreLoad_.Sample();  // the voice recognizer goes to the cores that are free right now
+    // Voice activation by itself: "always", or while this window is in front (the key anywhere switches it otherwise).
+    if (voice_ && cfg_.voiceEnabled && cfg_.voiceActivation && cfg_.voiceGuard > 0 && !voiceListenPaused_ &&
+        !voiceListenFailed_ && !voice_->Busy()) {
+        const bool want = cfg_.voiceGuard == 2 || GetForegroundWindow() == hwnd_;
+        if (want && !voice_->Listening()) StartListening();
+        else if (!want && voice_->Listening()) StopListening();
+    }
     if (voice_ && ++voiceIdleTicks_ >= kVoiceUnloadPolls) {  // about every 30 s: free an idle voice model
         voiceIdleTicks_ = 0;
         voice_->UnloadIfIdle(cfg_.voiceUnloadMin);
@@ -2481,6 +2624,10 @@ void KeyboardWindow::ApplySettings(const Config& next) {
     if (prev.dock != cfg_.dock) SetDock(cfg_.dock);
     if (!cfg_.voiceEnabled) CancelVoice();
     if (prev.voiceKey != cfg_.voiceKey || prev.voiceEnabled != cfg_.voiceEnabled) ApplyVoiceKey();
+    if (prev.voiceGlobalKey != cfg_.voiceGlobalKey || prev.voiceEnabled != cfg_.voiceEnabled) ApplyVoiceGlobalKey();
+    voiceListenFailed_ = false;
+    voiceListenPaused_ = false;
+    if (voice_ && voice_->Listening() && (!cfg_.voiceActivation || !cfg_.voiceEnabled)) StopListening();
     RefreshVoiceReady();
     if (!cfg_.followGame && autoHidden_) {
         autoHidden_ = false;
@@ -2634,6 +2781,17 @@ LRESULT KeyboardWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             return 0;
         case WM_LBUTTONDOWN:
             // Hold to talk: pressed on the microphone starts, releasing (or losing the mouse) ends the recording.
+            if (cfg_.voiceEnabled && cfg_.voiceActivation && PtInRect(&micRect_, POINT{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)})) {
+                if (voice_ && voice_->Listening()) {
+                    voiceListenPaused_ = true;
+                    StopListening();
+                } else {
+                    voiceListenPaused_ = false;
+                    voiceListenFailed_ = false;
+                    StartListening();
+                }
+                return 0;
+            }
             if (cfg_.voiceEnabled && !cfg_.voiceToggle && PtInRect(&micRect_, POINT{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)})) {
                 if (voiceLocked_ && voice_ && voice_->Recording()) {  // locked: a click on the microphone ends it now
                     voiceLocked_ = false;
@@ -2658,7 +2816,7 @@ LRESULT KeyboardWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             if (voiceHolding_ && voice_ && voice_->Recording()) {
                 voiceLocked_ = true;
                 lockRightClick_ = true;
-                voice_->SetAutoEnd(kVoicePauseMs);
+                voice_->SetAutoEnd(cfg_.voicePauseMs);
                 SetStatus(Tr(L"Locked – speak freely; a pause ends it (click the microphone to finish now)"), Tone::Ok, 0);
                 return 0;
             }
@@ -2704,6 +2862,8 @@ LRESULT KeyboardWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             if (wp == kHotkeyId) {
                 if (IsWindowVisible(hwnd_) && GetForegroundWindow() == hwnd_) HideWindowNow();
                 else ShowWindowNow();
+            } else if (wp == kVoiceHotkeyId) {
+                OnVoiceHotkey();
             }
             return 0;
         case WM_ACTIVATE:

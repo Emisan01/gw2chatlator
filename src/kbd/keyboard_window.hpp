@@ -34,6 +34,7 @@
 #include "kbd/voice_session.hpp"
 #include "win/gw2_sender.hpp"
 #include "win/cpu_cores.hpp"
+#include "win/mic_sessions.hpp"
 #include "win/mumble_link.hpp"
 #include "win/online_translators.hpp"
 
@@ -78,7 +79,17 @@ private:
 
     // ---- voice input: hold the microphone button (or the key), speak, release – the text goes into the input box,
     // you check it, Enter sends. Never sent by itself.
-    bool StartVoice();
+    bool StartVoice(bool autoEnd = false);  // autoEnd: a pause ends it (key anywhere, press mode)
+    bool StartListening();                   // voice activation on
+    void StopListening();
+    void OnVoiceHotkey();                    // the key anywhere
+    void ApplyVoiceGlobalKey();
+    void MuteOthers(bool on);                // keep the dictation out of voice chats (Settings → Microphone)
+    MicMuter micMuter_;
+    bool voiceGlobalOk_ = false;      // the key anywhere is registered
+    bool voiceFromAnywhere_ = false;  // the running recording came from the key anywhere: take the focus afterwards
+    bool voiceListenPaused_ = false;  // voice activation switched off by a click (guards "window in front"/"always")
+    bool voiceListenFailed_ = false;  // could not start listening: not again until the settings change
     void StopVoice();
     void ToggleVoice();
     void CancelVoice();  // drops a recording / recognition in progress, no text
