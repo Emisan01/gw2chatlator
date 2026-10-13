@@ -150,8 +150,8 @@ struct Config {
     int voiceThreads = 0;             // 0 = automatic (half the logical processors, at most 4)
     std::wstring voiceDevice;         // microphone endpoint id; "" = Windows default
     int voiceUnloadMin = 10;          // free the model after this many idle minutes
-    bool voiceGlossary = true;
-    int voiceBoost = 0;
+    bool voiceGlossary = true;        // your names and GW2 words steer the recognizer's spelling
+    int voiceBoost = 0;               // microphone boost: 0 off, 1 = +6 dB, 2 = +12 dB, 3 = automatic (levels speech)
     bool voiceActivation = false;     // voice activation: listens and starts by itself when you speak
     int voiceGuard = 0;               // ... listens 0 = only after the key anywhere switched it on, 1 = while this
                                       //     window is in front, 2 = always
@@ -160,9 +160,10 @@ struct Config {
     int voiceSensitivity = 50;        // voice activation 0..100 (100 = reacts to quiet speech)
     int voiceMinMs = 250;             // voice activation: speech needed to start
     std::wstring voiceGlobalKey;      // key anywhere (Windows hotkey, also while GW2 is in front); "" = none
-    bool voiceMuteOthers = false;     // mute the microphone of other programs while dictating
-    std::wstring voiceMuteApps = L"Discord.exe";  // ... these (exe names, separated by commas)
-    std::wstring voiceMutedNow;       // muted right now (unmuted on the next start after a crash)               // microphone boost: 0 off, 1 = +6 dB, 2 = +12 dB, 3 = automatic (levels speech)        // your names and GW2 words steer the recognizer's spelling
+    // Voice activation is not exclusive (Discord hears you too, and it cannot tell what was meant for it): it pauses
+    // while one of these voice chats has the microphone open; the key and a click still work.
+    bool voiceChatPause = true;
+    std::wstring voiceChatApps = L"Discord.exe, DiscordPTB.exe, DiscordCanary.exe, ts3client_win64.exe, TeamSpeak.exe, mumble.exe, Teams.exe, ms-teams.exe, Zoom.exe, Skype.exe, Guilded.exe";
 
     void Load(const std::wstring& dir);
     void SaveWindowRect(HWND wnd, float scale) const;

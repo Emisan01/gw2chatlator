@@ -26,9 +26,10 @@ diagnosis show it.
 - **Voice activation:** listens and starts by itself when you speak, keeping the moment before it; a pause ends the
   message, then it listens again. It listens only after the key anywhere switched it on, while this window is in
   front, or always (with a warning). A click on the microphone switches it off and on. Sending stays your Enter.
-- **Keep dictation out of voice chats (experimental):** while you dictate, the microphone of chosen programs (Discord,
-  TeamSpeak …, "Find…" lists who uses it now) is muted through Windows' audio sessions and unmuted right after – also
-  on the next start after a crash. Never with voice activation "always". Push-to-talk in Discord stays the safest way.
+- **Voice activation and voice chats:** voice activation is not exclusive – it cannot tell what was meant for Discord,
+  and Discord still hears you. So it pauses by itself while a voice chat (Discord, TeamSpeak, Mumble, Teams …;
+  "Find…" lists who uses the microphone now) has the microphone open – the key or a click still work, and a click
+  switches it on anyway until the voice chat closes. Nothing in those programs is touched (Windows' audio sessions).
 - **Live view** (Settings → Technical): its own window with every technical value, refreshed every second – CPU per
   core, memory, this program, GW2 window / MumbleLink / frame rate, translator requests and times, voice input.
 - **What you sent, as a circle in the header:** this session's messages (yours only, in memory) – save them as text,

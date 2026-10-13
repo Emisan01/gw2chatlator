@@ -887,13 +887,14 @@ private:
         Combo(kVoiceDevice, mics, micSel, kCtrlX, Y(r), kCtrlW - 136);
         Combo(kVoiceBoost, {Tr(L"Boost: off"), Tr(L"Boost: +6 dB"), Tr(L"Boost: +12 dB"), Tr(L"Boost: automatic")},
               std::clamp(cfg_.voiceBoost, 0, 3), kCtrlX + kCtrlW - 130, Y(r++), 130);
-        // Keep the dictation out of voice chats: their microphone streams are muted while you dictate.
-        Check(kMicMute, Tr(L"While I dictate, mute the microphone for:"), cfg_.voiceMuteOthers, kLabelX, Y(r), 290);
-        Edit(kMicMuteApps, cfg_.voiceMuteApps, kLabelX + 296, Y(r), kW - kLabelX - 296 - 130);
-        Button(kMicFindApps, Tr(L"Find…"), kW - 122, Y(r++) - 1, 100);
-        Label(Tr(L"Experimental: test it with a friend. The safest way stays push-to-talk in Discord – then it never "
-                 L"hears your dictation. With voice activation \"always\" nothing is muted."),
-              kLabelX, Y(r), kW - 44, 34);
+        // Voice activation cannot tell what was meant for a voice chat: it pauses while one has the microphone open.
+        Check(kMicMute, Tr(L"Pause voice activation while a voice chat uses the microphone:"), cfg_.voiceChatPause,
+              kLabelX, Y(r++), kW - 44);
+        Edit(kMicMuteApps, cfg_.voiceChatApps, kLabelX + 20, Y(r) - 4, kW - kLabelX - 20 - 130);
+        Button(kMicFindApps, Tr(L"Find…"), kW - 122, Y(r++) - 5, 100);
+        Label(Tr(L"Voice activation is not exclusive: everything you say lands in the box, and Discord still hears it. "
+                 L"With a voice chat open, start with the key or a click."),
+              kLabelX, Y(r) - 4, kW - 44, 34);
     }
 
     void BuildVoice() {
@@ -2262,8 +2263,8 @@ private:
         if (const int v = _wtoi(Text(kMicPause).c_str()); v > 0) c.voicePauseMs = std::clamp(v, 400, 3000);
         c.voicePreRollMs = std::clamp(_wtoi(Text(kMicPreRoll).c_str()), 0, 1000);
         if (const int v = _wtoi(Text(kMicMinMs).c_str()); v > 0) c.voiceMinMs = std::clamp(v, 100, 1500);
-        c.voiceMuteOthers = Checked(kMicMute);
-        c.voiceMuteApps = Trim(Text(kMicMuteApps));
+        c.voiceChatPause = Checked(kMicMute);
+        c.voiceChatApps = Trim(Text(kMicMuteApps));
         c.voiceAppend = Sel(kVoiceAppend) == 1;
         if (const int sec = _wtoi(Text(kVoiceMaxSec).c_str()); sec > 0) c.voiceMaxSec = std::clamp(sec, 5, 120);
         c.voiceLive = Checked(kVoiceLive);

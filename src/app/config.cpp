@@ -396,9 +396,8 @@ void Config::Load(const std::wstring& dir) {
     voiceSensitivity = ini.Int(L"Voice", L"Sensitivity", 50, 0, 100);
     voiceMinMs = ini.Int(L"Voice", L"MinSpeechMs", 250, 100, 1500);
     voiceGlobalKey = ini.Str(L"Voice", L"KeyAnywhere", L"");
-    voiceMuteOthers = ini.Bool(L"Voice", L"MuteOthers", false);
-    voiceMuteApps = AsciiUnescape(ini.Str(L"Voice", L"MuteApps", L"Discord.exe"));
-    voiceMutedNow = AsciiUnescape(ini.Str(L"Voice", L"MutedNow", L""));
+    voiceChatPause = ini.Bool(L"Voice", L"PauseForVoiceChat", true);
+    if (ini.Has(L"Voice", L"VoiceChatApps")) voiceChatApps = AsciiUnescape(ini.Str(L"Voice", L"VoiceChatApps", L""));
     saveCaptures = ini.Bool(L"Reader", L"SaveCaptures", false);
     regionLeft = ini.Int(L"Reader", L"RegionLeft", 0, -20000, 20000);
     regionFromBottom = ini.Int(L"Reader", L"RegionFromBottom", 0, -20000, 20000);
@@ -604,8 +603,8 @@ void Config::SaveAll() const {
     SaveValue(L"Voice", L"Sensitivity", std::to_wstring(voiceSensitivity));
     SaveValue(L"Voice", L"MinSpeechMs", std::to_wstring(voiceMinMs));
     SaveValue(L"Voice", L"KeyAnywhere", voiceGlobalKey);
-    SaveBool(L"Voice", L"MuteOthers", voiceMuteOthers);
-    SaveValue(L"Voice", L"MuteApps", AsciiEscape(voiceMuteApps));
+    SaveBool(L"Voice", L"PauseForVoiceChat", voiceChatPause);
+    SaveValue(L"Voice", L"VoiceChatApps", AsciiEscape(voiceChatApps));
     SaveBool(L"Reader", L"SaveCaptures", saveCaptures);
     SaveBool(L"Spelling", L"Enabled", spellEnabled);
     SaveValue(L"Spelling", L"AutoCorrectMode", AutoCorrectKey(autoCorrect));
