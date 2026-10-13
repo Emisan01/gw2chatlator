@@ -3,8 +3,23 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## Unreleased
+## 1.4.0 — 2026-10-13
 
+- **Voice input in GW2 Keyboard (new):** hold the microphone button in the header (or F8 in the window), speak,
+  release – the text appears in the input box, you check it, Enter sends. Recognition runs on this PC (whisper.cpp,
+  CPU only, no audio leaves the PC, nothing is recorded to disk); the text then goes through the same chain as typed
+  text – spelling, your words, corrections and your translator (also offline with a local model). Optional live text
+  while speaking (grey). Measured: a 6 s German sentence in about 1.2 s with the "small" model.
+- **Settings → Voice:** choose a model (base, small – recommended, medium, large-v3-turbo; size, memory and how well it
+  knows your language), download it (checked by SHA-256) or delete it, language, key and hold / press-to-toggle,
+  microphone, threads, a 4 s test, hints for weaker PCs. Hidden behind the voice module: GW2 Keyboard still starts and
+  types without it.
+- **It learns the words it misheard:** correct a recognized word before sending ("Red" → "Raid") and the next time it
+  writes it right; the words also steer the recognizer. Only from what you send, stays on this PC, editable
+  (Settings → Voice → Learned…).
+- **Send guard:** nothing goes to the game from an Enter that another program injected, from text another program
+  wrote into the input box, or as spam (the same line more than 4 times in 2 minutes, more than 20 lines a minute).
+  The second hit switches sending off for the session.
 - **GW2 Keyboard installs and starts with Windows by itself** (Settings → Game & start): it goes into the same
   install folder, gets its own start-menu entry "GW2 Keyboard" and its own autostart entry. Only one of the two
   programs starts with Windows (both would type into the same chat): switching it on for one switches it off for the
