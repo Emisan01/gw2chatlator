@@ -3,8 +3,11 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## Unreleased
+## 1.5.0 — 2026-10-13 (GW2 Keyboard; GW2 Chat Translator stays 1.4.0)
 
+GW2 Keyboard as the main download: the typing help with voice input, everything of 1.4.0 and 1.4.1 polished.
+
+- README: GW2 Keyboard first, with its own download link and what it does.
 - Settings → Microphone tidied: start mode, keys, device, pause first; everything only for voice activation in its own
   section, greyed unless voice activation is chosen; the voice-chat list and "Find…" are gone (one checkbox).
 

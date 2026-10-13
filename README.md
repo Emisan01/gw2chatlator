@@ -1,26 +1,42 @@
-# GW2 Chat Translator
+# GW2 Keyboard & GW2 Chat Translator
 
-A chat helper for Guild Wars 2: it helps you **write** (word suggestions that learn how you write, autocorrection like
-a phone keyboard, translation into the chat's language) and **translates on demand** what others write – in the GW2
-chat or in any area of the screen.
+Chat helpers for Guild Wars 2. No hook, no memory reading, nothing injected into the game – a line goes into the chat
+only when you press Enter yourself.
 
-No hook, no memory reading, nothing injected into the game. The tool only looks at what is on the screen anyway, and it
-sends a line only when you press Enter yourself.
+## GW2 Keyboard – write and speak in your language
 
-The window is available in **English, Deutsch and العربية**. Use menu ≡ → **Language / Sprache / اللغة**. That entry
-has the same name in every language, so you can always find your way back.
+**[⬇ Download GW2 Keyboard (Windows, ZIP, ~6 MB)](https://github.com/Emisan01/gw2chatlator/releases/latest/download/GW2Keyboard-win64.zip)**
+– unpack it anywhere and start `GW2Keyboard.exe` (Settings → Game & start installs it for your Windows user).
 
-## Download
+- **Write in your language, the chat gets it translated** – the translation above the input box and, small, what it
+  means in your language again. Translators: MyMemory (free), Google, Microsoft, DeepL, your own server, an AI model
+  (cloud, or local and offline with Ollama).
+- **Typing help that learns you:** the grey next word (Space takes it, Tab the next idea), your phrases, your typical
+  typos, autocorrection like a phone keyboard that never changes a word you typed right.
+- **Voice input:** hold the microphone button (or F8) – or right-click it for on / off – speak, and the text appears;
+  you check it, Enter sends. Recognition runs **on your PC** (whisper.cpp; download a model once in Settings → Voice),
+  it learns words it misheard once you correct them, and it keeps off the CPU cores the game is busy on. A key that
+  works while GW2 is in front, and optional voice activation (it pauses while Discord & co. use the microphone).
+- **Safe sending:** waits for each frame of the game, never sends without your Enter, and refuses to be used as a bot
+  or spam macro.
+- English, Deutsch and العربية.
 
-**[⬇ Download the latest version (Windows, ZIP, ~14 MB)](https://github.com/Emisan01/gw2chatlator/releases/latest/download/GW2ChatTranslator-win64.zip)**
+## GW2 Chat Translator – also read the chat translated
+
+GW2 Keyboard plus a reader: it **translates what others write** – in the GW2 chat (found by itself) or in any area of
+the screen – by reading the screen (text recognition on your PC). In GW2 Keyboard: menu ≡ → "Load extension".
+
+**[⬇ Download GW2 Chat Translator (Windows, ZIP, ~20 MB)](https://github.com/Emisan01/gw2chatlator/releases/latest/download/GW2ChatTranslator-win64.zip)**
 – unpack it anywhere and start `GW2ChatTranslator.exe`. All versions: [Releases](https://github.com/Emisan01/gw2chatlator/releases) ·
 what changed: [CHANGELOG.md](CHANGELOG.md).
 
-> The green **Code → Download ZIP** button only contains the source code, not the program – use the link above.
+> The green **Code → Download ZIP** button only contains the source code, not the program – use the links above.
 
 Windows may warn about an unknown publisher on the first start (the exe is not signed yet): *More info → Run anyway*.
 
-## Install (one minute)
+The window is available in **English, Deutsch and العربية** (Settings → General).
+
+## Install GW2 Chat Translator (one minute)
 
 1. Download the ZIP above, unpack it and start `GW2ChatTranslator.exe`.
 2. The **setup** opens on the first start: window language, the language you read, and where it goes. Ticked by
