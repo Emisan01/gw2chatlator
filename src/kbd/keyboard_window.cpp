@@ -29,6 +29,7 @@
 #include "win/audio_capture.hpp"
 #include "win/cpu_cores.hpp"
 
+#include <commctrl.h>
 #include <psapi.h>
 #include "win/deepl_translator.hpp"
 #include "win/els.hpp"
@@ -269,6 +270,22 @@ int KeyboardWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
         if (wdpi > 0 && wdpi != theme_.dpi) ApplyDpi(wdpi, nullptr);
     }
     SetLayeredWindowAttributes(hwnd_, 0, static_cast<BYTE>(cfg_.opacity), LWA_ALPHA);
+    {  // the microphone's explanation (mouse-over)
+        INITCOMMONCONTROLSEX icc{sizeof(icc), ICC_WIN95_CLASSES};
+        InitCommonControlsEx(&icc);
+        tip_ = CreateWindowExW(WS_EX_TOPMOST, TOOLTIPS_CLASSW, nullptr, WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX,
+                               CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, hwnd_, nullptr, inst, nullptr);
+        if (tip_) {
+            TTTOOLINFOW ti{};
+            ti.cbSize = sizeof(ti);
+            ti.uFlags = TTF_SUBCLASS;
+            ti.hwnd = hwnd_;
+            ti.uId = 1;
+            ti.lpszText = const_cast<wchar_t*>(L"");
+            SendMessageW(tip_, TTM_ADDTOOLW, 0, reinterpret_cast<LPARAM>(&ti));
+            SendMessageW(tip_, TTM_SETMAXTIPWIDTH, 0, theme_.S(320));
+        }
+    }
     if (auto hk = ParseHotkey(cfg_.hotkey))
         hotkeyOk_ = RegisterHotKey(hwnd_, kHotkeyId, hk->mods | MOD_NOREPEAT, hk->vk) != FALSE;
     ApplyVoiceGlobalKey();
@@ -533,12 +550,23 @@ void KeyboardWindow::Paint() {
     } else {
         micRect_ = {};
     }
-    // What you sent this session: a small circle that fills up (click: save as text, learn later, clear).
-    const LONG leftOfButtons = cfg_.voiceEnabled ? micRect_.left : menuRect_.left;
-    logRect_ = {leftOfButtons - t.S(22), 0, leftOfButtons - t.S(2), m.head};
-    DrawLogCircle(dc, logRect_);
+    if (tip_) {  // what the microphone does (mouse-over)
+        TTTOOLINFOW ti{};
+        ti.cbSize = sizeof(ti);
+        ti.hwnd = hwnd_;
+        ti.uId = 1;
+        ti.rect = micRect_;
+        SendMessageW(tip_, TTM_NEWTOOLRECTW, 0, reinterpret_cast<LPARAM>(&ti));
+        std::wstring tip = cfg_.voiceActivation ? Tr(L"Click or right-click: voice activation on / off")
+                                                : Tr(L"Hold: speak – letting go ends it\nRight-click: microphone on / off (a pause ends it)");
+        if (tip != tipText_) {
+            tipText_ = std::move(tip);
+            ti.lpszText = const_cast<wchar_t*>(tipText_.c_str());
+            SendMessageW(tip_, TTM_UPDATETIPTEXTW, 0, reinterpret_cast<LPARAM>(&ti));
+        }
+    }
     // The status takes the place of a title (the window is narrow; down in the footer it was cut off).
-    RECT statusRect{m.pad + t.S(2), 0, logRect_.left - t.S(6), m.head};
+    RECT statusRect{m.pad + t.S(2), 0, (cfg_.voiceEnabled ? micRect_.left : menuRect_.left) - t.S(8), m.head};
     std::wstring text = status_;
     COLORREF color = Theme::kMuted;
     switch (tone_) {
@@ -578,7 +606,10 @@ void KeyboardWindow::Paint() {
         counter = std::to_wstring(n) + L"/" + std::to_wstring(cfg_.maxLength);
         if (n > static_cast<size_t>(cfg_.maxLength)) counterColor = Theme::kWarn;
     }
-    RECT fr{sendRect_.right + t.S(10), rc.bottom - m.foot, rc.right - m.pad, rc.bottom};
+    // What you sent this session: a small circle after the counter (click: save as text, learn later, clear).
+    logRect_ = {rc.right - m.pad - t.S(18), rc.bottom - m.foot, rc.right - m.pad + t.S(2), rc.bottom};
+    DrawLogCircle(dc, logRect_);
+    RECT fr{sendRect_.right + t.S(10), rc.bottom - m.foot, logRect_.left - t.S(4), rc.bottom};
     DrawLine(dc, counter, fr, counterColor, t.fontUi, DT_RIGHT);
 
     BitBlt(wdc, 0, 0, rc.right, rc.bottom, dc, 0, 0, SRCCOPY);
@@ -2813,23 +2844,25 @@ LRESULT KeyboardWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
                 StopVoice();
             }
             return 0;
-        case WM_RBUTTONDOWN:
-            // Holding the microphone + a right click: locked – let go of the mouse, a pause ends the message.
-            if (voiceHolding_ && voice_ && voice_->Recording()) {
-                voiceLocked_ = true;
-                lockRightClick_ = true;
-                voice_->SetAutoEnd(cfg_.voicePauseMs);
-                SetStatus(Tr(L"Locked – speak freely; a pause ends it (click the microphone to finish now)"), Tone::Ok, 0);
-                return 0;
-            }
-            break;
         case WM_RBUTTONUP:
-            if (lockRightClick_) {
-                lockRightClick_ = false;
-                return 0;
-            }
-            if (PtInRect(&micRect_, POINT{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)})) {
-                OpenSettings(SettingsPage::Voice);
+            // Right-click on the microphone: on / off – a pause (or the next right-click) ends the recording; with
+            // voice activation it switches listening.
+            if (cfg_.voiceEnabled && voice_ && PtInRect(&micRect_, POINT{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)})) {
+                if (cfg_.voiceActivation) {
+                    if (voice_->Listening()) {
+                        voiceListenPaused_ = true;
+                        StopListening();
+                    } else {
+                        voiceListenPaused_ = false;
+                        voiceListenFailed_ = false;
+                        voiceChatOverride_ = !voiceChat_.empty();
+                        StartListening();
+                    }
+                } else if (voice_->Recording()) {
+                    StopVoice();
+                } else if (StartVoice(true)) {
+                    SetStatus(Tr(L"Microphone on – speak; a pause ends it (right-click: off)"), Tone::Ok, 0);
+                }
                 return 0;
             }
             break;
