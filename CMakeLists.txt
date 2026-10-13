@@ -82,6 +82,7 @@ if(WIN32)
         src/win/extension.cpp
         src/win/hash.cpp
         src/win/cpu_cores.cpp
+        src/win/mic_sessions.cpp
         src/win/audio_capture.cpp
         src/win/voice_models.cpp
         src/win/text_prediction.cpp)

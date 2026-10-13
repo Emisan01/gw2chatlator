@@ -203,6 +203,77 @@ bool VoiceSession::Begin(const VoiceSettings& s, unsigned* session, std::wstring
     return true;
 }
 
+bool VoiceSession::Listen(const VoiceSettings& s, std::wstring* message, AudioError* audioError) {
+    auto fail = [&](AudioError e, const std::wstring& m) {
+        if (message) *message = m;
+        if (audioError) *audioError = e;
+        return false;
+    };
+    if (message) message->clear();
+    if (audioError) *audioError = AudioError::None;
+    std::wstring why;
+    if (!Available(&why)) return fail(AudioError::None, why);
+    if (s.modelPath.empty() || !FileExists(s.modelPath))
+        return fail(AudioError::None, TrF(L"The voice model is missing: {1}", {s.modelPath}));
+    Cancel();
+    EnsureWorker();
+    std::lock_guard<std::mutex> cap(captureMu_);
+    {
+        std::lock_guard<std::mutex> lk(mu_);
+        ++session_;
+        settings_ = s;
+        settings_.maxSeconds = std::clamp(s.maxSeconds, 1, 600);
+        gain_ = std::pow(10.0f, std::clamp(s.gainDb, 0.0f, 24.0f) / 20.0f);
+        autoEndMs_ = s.autoEndMs > 0 ? s.autoEndMs : 1200;
+        audio_.clear();
+        ring_.clear();
+        lastLive_.clear();
+        finalWanted_ = maxReached_ = false;
+        recognizing_ = recording_ = false;
+        listening_ = true;
+        lastUseTick_ = GetTickCount64();
+    }
+    AudioError err = AudioError::None;
+    std::wstring msg;
+    const bool ok = capture_.Start(
+        s.deviceId,
+        [this](const float* pcm, size_t n) {
+            std::lock_guard<std::mutex> lk(mu_);
+            if (!listening_) return;
+            std::vector<float>& dst = recording_ ? audio_ : ring_;
+            size_t take = n;
+            if (recording_) {
+                if (maxReached_) return;
+                const size_t limit = static_cast<size_t>(settings_.maxSeconds) * kVoiceRate;
+                take = std::min(n, limit - std::min(limit, audio_.size()));
+            }
+            const size_t at = dst.size();
+            dst.insert(dst.end(), pcm, pcm + take);
+            if (gain_ != 1.0f)
+                for (size_t i = at; i < dst.size(); ++i) dst[i] = std::clamp(dst[i] * gain_, -1.0f, 1.0f);
+            if (recording_) {
+                if (audio_.size() >= static_cast<size_t>(settings_.maxSeconds) * kVoiceRate) {
+                    maxReached_ = true;
+                    cv_.notify_one();
+                }
+            } else {  // only the last moments are kept
+                const size_t keep =
+                    static_cast<size_t>(std::max(0, settings_.preRollMs) + std::max(100, settings_.minSpeechMs) + 200) *
+                    kVoiceRate / 1000;
+                if (ring_.size() > keep * 2) ring_.erase(ring_.begin(), ring_.end() - static_cast<ptrdiff_t>(keep));
+            }
+        },
+        &err, &msg);
+    if (!ok) {
+        std::lock_guard<std::mutex> lk(mu_);
+        listening_ = false;
+        ring_.clear();
+        return fail(err == AudioError::None ? AudioError::Failed : err, msg);
+    }
+    cv_.notify_one();
+    return true;
+}
+
 void VoiceSession::End() {
     unsigned id;
     {
@@ -215,7 +286,7 @@ void VoiceSession::End() {
         id = session_;
     }
     cv_.notify_one();
-    StopCapture(id);
+    if (!listening_) StopCapture(id);  // voice activation keeps listening
 }
 
 void VoiceSession::Cancel() {
@@ -224,6 +295,8 @@ void VoiceSession::Cancel() {
         {
             std::lock_guard<std::mutex> lk(mu_);
             ++session_;  // any event still on its way is stale now
+            listening_ = false;
+            ring_.clear();
             if (liveRunning_ || recognizing_) abort_ = true;
             recording_ = false;
             recognizing_ = false;
@@ -412,6 +485,7 @@ void VoiceSession::Worker() {
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
     ULONGLONG nextLive = 0;  // earliest tick of the next live pass
     ULONGLONG nextEndCheck = 0;  // auto end: when to look at the trailing silence again
+    ULONGLONG nextVad = 0;       // voice activation: when to look for speech again
     unsigned loadFailed = 0;  // the session whose model did not load (not tried again)
     std::unique_lock<std::mutex> lk(mu_);
     while (!quit_) {
@@ -501,9 +575,12 @@ void VoiceSession::Worker() {
                 recording_ = false;
                 recognizing_ = true;
                 finalWanted_ = true;
-                lk.unlock();
-                StopCapture(id);
-                lk.lock();
+                if (lost) listening_ = false;
+                if (!listening_) {  // voice activation keeps the microphone open for the next sentence
+                    lk.unlock();
+                    StopCapture(id);
+                    lk.lock();
+                }
                 continue;
             }
         }
@@ -589,8 +666,54 @@ void VoiceSession::Worker() {
             continue;
         }
 
+        // ---- Voice activation: enough speech in the last moments starts a recording (with what came before it).
+        if (listening_ && !recording_ && !recognizing_ && !finalWanted_ && GetTickCount64() >= nextVad) {
+            nextVad = GetTickCount64() + 40;
+            {
+                std::unique_lock<std::mutex> cap(captureMu_, std::try_to_lock);
+                if (cap.owns_lock() && !capture_.Running()) {  // the microphone went away
+                    listening_ = false;
+                    ring_.clear();
+                    auto e = std::make_unique<VoiceEvent>();
+                    e->kind = VoiceEvent::Kind::Error;
+                    e->session = session_;
+                    e->message = Tr(L"No microphone found.");
+                    Post(std::move(e));
+                    continue;
+                }
+            }
+            const size_t frame = kVoiceRate / 50;  // 20 ms
+            const size_t need = static_cast<size_t>(std::max(100, settings_.minSpeechMs)) * kVoiceRate / 1000;
+            if (ring_.size() >= need) {
+                int voiced = 0, frames = 0;
+                for (size_t i = ring_.size() - need; i + frame <= ring_.size(); i += frame, ++frames) {
+                    double sum = 0;
+                    for (size_t k = i; k < i + frame; ++k) sum += static_cast<double>(ring_[k]) * ring_[k];
+                    const double db = 10.0 * std::log10(sum / static_cast<double>(frame) + 1e-12);
+                    if (db >= settings_.thresholdDb) ++voiced;
+                }
+                if (frames > 0 && voiced * 10 >= frames * 7) {  // 70 % of the frames are speech
+                    const size_t take =
+                        std::min(ring_.size(), need + static_cast<size_t>(std::max(0, settings_.preRollMs)) * kVoiceRate / 1000);
+                    audio_.assign(ring_.end() - static_cast<ptrdiff_t>(take), ring_.end());
+                    ring_.clear();
+                    recording_ = true;
+                    maxReached_ = false;
+                    lastLive_.clear();
+                    nextLive = 0;
+                    nextEndCheck = 0;
+                    beginTick_ = GetTickCount64();
+                    auto e = std::make_unique<VoiceEvent>();
+                    e->kind = VoiceEvent::Kind::Started;
+                    e->session = ++session_;
+                    Post(std::move(e));
+                    continue;
+                }
+            }
+        }
+
         // ---- Nothing to do.
-        if (recording_) cv_.wait_for(lk, std::chrono::milliseconds(50));
+        if (recording_ || listening_) cv_.wait_for(lk, std::chrono::milliseconds(40));
         else cv_.wait(lk);
     }
     lk.unlock();

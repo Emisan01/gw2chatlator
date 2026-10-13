@@ -35,7 +35,10 @@ struct VoiceSettings {
     unsigned long long affinity = 0;  // logical processors to recognize on (PickVoiceCores); 0 = any
     float gainDb = 0;           // microphone boost applied to what is recorded
     bool levelSpeech = false;
-    int autoEndMs = 0;          // > 0: the recording ends by itself after this much silence following speech   // automatic boost: quiet speech is raised to a good level before recognition
+    int autoEndMs = 0;          // > 0: the recording ends by itself after this much silence following speech
+    float thresholdDb = -40;    // voice activation: a 20 ms frame above this level (dBFS) counts as speech ...
+    int minSpeechMs = 250;      // ... this much of it starts a recording ...
+    int preRollMs = 300;        // ... with this much from before it, so the first word is not lost   // automatic boost: quiet speech is raised to a good level before recognition
 };
 
 struct VoiceEvent {
@@ -43,6 +46,7 @@ struct VoiceEvent {
         Partial,  // live text while speaking: `live`
         Final,    // after release: `text` (may be empty: nothing recognized / too short / silence -> `empty`)
         Error,    // `message` (+ `audioError` for the microphone); the session is over
+        Started,  // voice activation heard speech: a recording runs now (`session` is its id)
     } kind = Kind::Final;
     unsigned session = 0;  // drop events of older sessions
     LiveText live;
@@ -75,6 +79,11 @@ public:
     void End();
     // Stops and drops everything of the current session; no further event of it.
     void Cancel();
+    // Voice activation: the microphone stays open; a recording starts by itself when speech is heard (with the
+    // pre-roll), ends after the pause (settings.autoEndMs), posts Started / Partial / Final like any other, and then it
+    // listens again – until Cancel(). False + message when the microphone or the model cannot be used.
+    bool Listen(const VoiceSettings& s, std::wstring* message, AudioError* audioError);
+    bool Listening() const { return listening_; }
     // Ends the running recording by itself after `ms` of silence once something was said (0 = only by End()).
     void SetAutoEnd(int ms) { autoEndMs_ = ms; }
 
@@ -123,7 +132,9 @@ private:
     bool liveRunning_ = false;
     std::wstring lastLive_;
     float gain_ = 1.0f;
-    std::atomic<int> autoEndMs_{0};  // microphone boost as a factor (set in Begin)
+    std::atomic<int> autoEndMs_{0};
+    std::atomic<bool> listening_{false};
+    std::vector<float> ring_;  // voice activation: the last moments before speech (under mu_)  // microphone boost as a factor (set in Begin)
     std::atomic<bool> recording_{false};
     std::atomic<bool> recognizing_{false};
     std::atomic<bool> abort_{false};
