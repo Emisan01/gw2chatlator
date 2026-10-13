@@ -84,8 +84,10 @@ private:
     void StopListening();
     void OnVoiceHotkey();                    // the key anywhere
     void ApplyVoiceGlobalKey();
-    void MuteOthers(bool on);                // keep the dictation out of voice chats (Settings → Microphone)
-    MicMuter micMuter_;
+    std::wstring VoiceChatOpen();            // a listed voice chat has the microphone open ("" = none)
+    std::wstring voiceChat_;          // the voice chat that paused voice activation ("" = none)
+    bool voiceChatOverride_ = false;  // switched on anyway by a click / the key while that chat is open
+    int voiceChatTicks_ = 0;
     bool voiceGlobalOk_ = false;      // the key anywhere is registered
     bool voiceFromAnywhere_ = false;  // the running recording came from the key anywhere: take the focus afterwards
     bool voiceListenPaused_ = false;  // voice activation switched off by a click (guards "window in front"/"always")

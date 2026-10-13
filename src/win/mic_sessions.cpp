@@ -95,36 +95,4 @@ std::vector<std::wstring> AppsUsingMicrophone(const std::wstring& deviceId) {
     return out;
 }
 
-std::vector<std::wstring> MicMuter::Mute(const std::wstring& deviceId, const std::vector<std::wstring>& exeNames) {
-    Restore();
-    device_ = deviceId;
-    std::vector<std::wstring> names;
-    if (exeNames.empty()) return names;
-    ForEachSession(deviceId, [&](DWORD pid, const std::wstring& exe, ISimpleAudioVolume* vol) {
-        BOOL was = FALSE;
-        if (exe.empty() || !Listed(exeNames, exe) || FAILED(vol->GetMute(&was)) || was) return;  // muted by you: not ours
-        if (SUCCEEDED(vol->SetMute(TRUE, nullptr))) {
-            muted_.push_back({pid, exe});
-            if (!Listed(names, exe)) names.push_back(exe);
-        }
-    });
-    return names;
-}
-
-void MicMuter::Restore() {
-    if (muted_.empty()) return;
-    ForEachSession(device_, [&](DWORD pid, const std::wstring&, ISimpleAudioVolume* vol) {
-        for (const Muted& m : muted_)
-            if (m.pid == pid) vol->SetMute(FALSE, nullptr);
-    });
-    muted_.clear();
-}
-
-void UnmuteMicrophoneOf(const std::vector<std::wstring>& exeNames) {
-    if (exeNames.empty()) return;
-    ForEachSession(L"", [&](DWORD, const std::wstring& exe, ISimpleAudioVolume* vol) {
-        if (Listed(exeNames, exe)) vol->SetMute(FALSE, nullptr);
-    });
-}
-
 }  // namespace gct
