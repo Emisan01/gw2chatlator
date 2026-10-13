@@ -64,7 +64,7 @@ enum : int {
     kPickRegion, kCover,
     // Writing
     kSpell, kAutoCorrect, kSuggest, kLearn, kVoiceBoost, kLiveView, kMicMode, kMicKey, kMicGlobalKey, kMicGuard, kMicSens,
-    kMicSensValue, kMicPause, kMicPreRoll, kMicMinMs, kMicMute, kMicMuteApps, kMicFindApps, kForgetAll, kForgetStatus, kLt, kLtUrl, kBackTr, kSendMode, kReturnFocus,
+    kMicSensValue, kMicPause, kMicPreRoll, kMicMinMs, kMicMute, kForgetAll, kForgetStatus, kLt, kLtUrl, kBackTr, kSendMode, kReturnFocus,
     // Translator
     kEngine, kEngineNote, kLocalModel, kPull, kLocalInfo, kGetOllama, kLlmFindLocal, kPullStatus, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
     kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
@@ -838,6 +838,7 @@ private:
     void BuildMicrophone() {
         BeginPage();
         int r = 0;
+        // How a recording starts and ends – for everyone.
         Label(Tr(L"Starting"), kLabelX, Y(r), kLabelW);
         Combo(kMicMode,
               {Tr(L"Hold the button or key while you speak"), Tr(L"Press once – a pause ends it"),
@@ -851,25 +852,6 @@ private:
         Label(Tr(L"Starts; a pause ends it; this window then takes the focus for your Enter. GW2 does not get this key."),
               kCtrlX + 178, Y(r) - 2, kCtrlW - 178, 64);
         r += 2;
-        Label(Tr(L"Voice activation listens"), kLabelX, Y(r), kLabelW);
-        Combo(kMicGuard,
-              {Tr(L"only after the key anywhere switched it on"), Tr(L"while this window is in front"),
-               Tr(L"always (everything you say lands in the box)")},
-              std::clamp(cfg_.voiceGuard, 0, 2), kCtrlX, Y(r++), kCtrlW);
-        Label(Tr(L"Sensitivity"), kLabelX, Y(r), kLabelW);
-        HWND sens = Add(TRACKBAR_CLASSW, L"", TBS_HORZ | TBS_NOTICKS | WS_TABSTOP, kCtrlX, Y(r), kCtrlW - 60, 26, kMicSens);
-        SendMessageW(sens, TBM_SETRANGE, TRUE, MAKELPARAM(0, 100));
-        SendMessageW(sens, TBM_SETPOS, TRUE, std::clamp(cfg_.voiceSensitivity, 0, 100));
-        Label(std::to_wstring(cfg_.voiceSensitivity), kCtrlX + kCtrlW - 52, Y(r++), 50, 18, kMicSensValue);
-        Label(Tr(L"Pause that ends it"), kLabelX, Y(r), kLabelW);
-        Edit(kMicPause, std::to_wstring(cfg_.voicePauseMs), kCtrlX, Y(r), 60, ES_NUMBER);
-        Label(Tr(L"ms (400–3000)"), kCtrlX + 66, Y(r++), 110);
-        Label(Tr(L"Kept from before"), kLabelX, Y(r), kLabelW);
-        Edit(kMicPreRoll, std::to_wstring(cfg_.voicePreRollMs), kCtrlX, Y(r), 60, ES_NUMBER);
-        Label(Tr(L"ms – so the first word is not lost"), kCtrlX + 66, Y(r), 200);
-        Edit(kMicMinMs, std::to_wstring(cfg_.voiceMinMs), kCtrlX + kCtrlW - 116, Y(r), 50, ES_NUMBER);
-        Label(Tr(L"ms speech starts it"), kCtrlX + kCtrlW - 62, Y(r++) - 6, 64, 34);
-
         Label(Tr(L"Microphone"), kLabelX, Y(r), kLabelW);
         std::vector<std::wstring> mics{Tr(L"Windows default")};
         voiceDeviceIds_ = {L""};
@@ -887,14 +869,41 @@ private:
         Combo(kVoiceDevice, mics, micSel, kCtrlX, Y(r), kCtrlW - 136);
         Combo(kVoiceBoost, {Tr(L"Boost: off"), Tr(L"Boost: +6 dB"), Tr(L"Boost: +12 dB"), Tr(L"Boost: automatic")},
               std::clamp(cfg_.voiceBoost, 0, 3), kCtrlX + kCtrlW - 130, Y(r++), 130);
-        // Voice activation cannot tell what was meant for a voice chat: it pauses while one has the microphone open.
-        Check(kMicMute, Tr(L"Pause voice activation while a voice chat uses the microphone:"), cfg_.voiceChatPause,
-              kLabelX, Y(r++), kW - 44);
-        Edit(kMicMuteApps, cfg_.voiceChatApps, kLabelX + 20, Y(r) - 4, kW - kLabelX - 20 - 130);
-        Button(kMicFindApps, Tr(L"Find…"), kW - 122, Y(r++) - 5, 100);
+        Label(Tr(L"Pause that ends it"), kLabelX, Y(r), kLabelW);
+        Edit(kMicPause, std::to_wstring(cfg_.voicePauseMs), kCtrlX, Y(r), 60, ES_NUMBER);
+        Label(Tr(L"ms (400–3000)"), kCtrlX + 66, Y(r++), 110);
+
+        // Only for voice activation (greyed otherwise).
+        r++;
+        Label(Tr(L"Voice activation"), kLabelX, Y(r) - 8, kLabelW);
         Label(Tr(L"Voice activation is not exclusive: everything you say lands in the box, and Discord still hears it. "
                  L"With a voice chat open, start with the key or a click."),
-              kLabelX, Y(r) - 4, kW - 44, 34);
+              kCtrlX, Y(r++) - 8, kCtrlW, 34);
+        Label(Tr(L"Voice activation listens"), kLabelX, Y(r), kLabelW);
+        Combo(kMicGuard,
+              {Tr(L"only after the key anywhere switched it on"), Tr(L"while this window is in front"),
+               Tr(L"always (everything you say lands in the box)")},
+              std::clamp(cfg_.voiceGuard, 0, 2), kCtrlX, Y(r++), kCtrlW);
+        Label(Tr(L"Sensitivity"), kLabelX, Y(r), kLabelW);
+        HWND sens = Add(TRACKBAR_CLASSW, L"", TBS_HORZ | TBS_NOTICKS | WS_TABSTOP, kCtrlX, Y(r), kCtrlW - 60, 26, kMicSens);
+        SendMessageW(sens, TBM_SETRANGE, TRUE, MAKELPARAM(0, 100));
+        SendMessageW(sens, TBM_SETPOS, TRUE, std::clamp(cfg_.voiceSensitivity, 0, 100));
+        Label(std::to_wstring(cfg_.voiceSensitivity), kCtrlX + kCtrlW - 52, Y(r++), 50, 18, kMicSensValue);
+        Label(Tr(L"Kept from before"), kLabelX, Y(r), kLabelW);
+        Edit(kMicPreRoll, std::to_wstring(cfg_.voicePreRollMs), kCtrlX, Y(r), 60, ES_NUMBER);
+        Label(Tr(L"ms – so the first word is not lost"), kCtrlX + 66, Y(r), 200);
+        Edit(kMicMinMs, std::to_wstring(cfg_.voiceMinMs), kCtrlX + kCtrlW - 116, Y(r), 50, ES_NUMBER);
+        Label(Tr(L"ms speech starts it"), kCtrlX + kCtrlW - 62, Y(r++) - 6, 64, 34);
+        // It cannot tell what was meant for a voice chat: it pauses while Discord, TeamSpeak ... have the microphone.
+        Check(kMicMute, Tr(L"Pause while a voice chat uses the microphone (Discord, TeamSpeak …)"), cfg_.voiceChatPause,
+              kLabelX, Y(r++), kW - 44);
+        UpdateMicView();
+    }
+
+    // The voice activation fields only count with voice activation.
+    void UpdateMicView() {
+        const bool on = Sel(kMicMode) == 2;
+        for (int id : {kMicGuard, kMicSens, kMicSensValue, kMicPreRoll, kMicMinMs, kMicMute}) EnableWindow(Item(id), on);
     }
 
     void BuildVoice() {
@@ -1502,16 +1511,6 @@ private:
                 Close();
                 break;
 #ifdef GCT_KEYBOARD_APP
-            case kMicFindApps: {  // the programs that have the microphone open now join the list
-                std::wstring list = Trim(Text(kMicMuteApps));
-                const int dev = Sel(kVoiceDevice);
-                const std::wstring devId =
-                    dev >= 0 && static_cast<size_t>(dev) < voiceDeviceIds_.size() ? voiceDeviceIds_[static_cast<size_t>(dev)] : L"";
-                for (const std::wstring& exe : AppsUsingMicrophone(devId))
-                    if (CaseFold(list).find(CaseFold(exe)) == std::wstring::npos) list += (list.empty() ? L"" : L", ") + exe;
-                SetText(kMicMuteApps, list);
-                break;
-            }
 #endif
             case kLiveView:
                 if (ctx_.openLiveView) ctx_.openLiveView();
@@ -1662,6 +1661,9 @@ private:
                 }
                 break;
 #ifdef GCT_KEYBOARD_APP
+            case kMicMode:
+                if (code == CBN_SELCHANGE) UpdateMicView();
+                break;
             case kVoiceModel:
             case kVoiceLang:
             case kWriteIn:  // "As I write" follows the writing language
@@ -2264,7 +2266,6 @@ private:
         c.voicePreRollMs = std::clamp(_wtoi(Text(kMicPreRoll).c_str()), 0, 1000);
         if (const int v = _wtoi(Text(kMicMinMs).c_str()); v > 0) c.voiceMinMs = std::clamp(v, 100, 1500);
         c.voiceChatPause = Checked(kMicMute);
-        c.voiceChatApps = Trim(Text(kMicMuteApps));
         c.voiceAppend = Sel(kVoiceAppend) == 1;
         if (const int sec = _wtoi(Text(kVoiceMaxSec).c_str()); sec > 0) c.voiceMaxSec = std::clamp(sec, 5, 120);
         c.voiceLive = Checked(kVoiceLive);
