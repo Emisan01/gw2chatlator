@@ -27,6 +27,7 @@
 #include "core/voice.hpp"
 #include "kbd/whisper_engine.hpp"
 #include "win/audio_capture.hpp"
+#include "win/cpu_cores.hpp"
 #include "win/deepl_translator.hpp"
 #include "win/els.hpp"
 #include "win/files.hpp"
@@ -508,10 +509,30 @@ void KeyboardWindow::Paint() {
     } else {
         micRect_ = {};
     }
-    RECT title{m.pad + t.S(2), 0, (cfg_.voiceEnabled ? micRect_.left : menuRect_.left) - t.S(8), m.head};
-    DrawLine(dc, kTitle, title, Theme::kText, t.fontUiBold, DT_LEFT | DT_END_ELLIPSIS);
+    // The status takes the place of a title (the window is narrow; down in the footer it was cut off).
+    RECT statusRect{m.pad + t.S(2), 0, (cfg_.voiceEnabled ? micRect_.left : menuRect_.left) - t.S(8), m.head};
+    std::wstring text = status_;
+    COLORREF color = Theme::kMuted;
+    switch (tone_) {
+        case Tone::Ok: color = Theme::kOk; break;
+        case Tone::Warn: color = Theme::kWarn; break;
+        case Tone::Error: color = Theme::kError; break;
+        default: break;
+    }
+    if (text.empty()) {
+        if (!hotkeyOk_ && !Trim(cfg_.hotkey).empty()) {
+            text = TrF(L"Hotkey “{1}” is taken – change it in the settings", {cfg_.hotkey});
+            color = Theme::kWarn;
+        } else if (!gw2_) {
+            text = Tr(L"Waiting for GW2");
+        } else {
+            if (cfg_.copyOnly) text = Tr(L"Copy only");
+            if (const std::wstring q = MyMemoryQuotaText(); !q.empty()) text += (text.empty() ? L"" : L"  ·  ") + q;
+        }
+    }
+    DrawLine(dc, text, statusRect, color, t.fontUi, DT_LEFT | DT_END_ELLIPSIS | (IsRtlText(text) ? DT_RTLREADING : 0));
 
-    // ---- footer: channel | write | send | counter | status
+    // ---- footer: channel | write | send | counter
     const int fy0 = rc.bottom - m.foot + t.S(4), fy1 = rc.bottom - t.S(4);
     channelRect_ = DrawChip(dc, t, m.pad, fy0, fy1, ChannelChipText(), ChannelColorRef(cfg_.palette, channel_, Theme::kText));
     typeRect_ = DrawChip(dc, t, channelRect_.right + t.S(6), fy0, fy1, TypeChipText(), Theme::kText);
@@ -530,28 +551,7 @@ void KeyboardWindow::Paint() {
         if (n > static_cast<size_t>(cfg_.maxLength)) counterColor = Theme::kWarn;
     }
     RECT fr{sendRect_.right + t.S(10), rc.bottom - m.foot, rc.right - m.pad, rc.bottom};
-    DrawLine(dc, counter, fr, counterColor, t.fontUi, DT_LEFT);
-    fr.left += TextWidth(dc, counter, t.fontUi) + t.S(10);
-    std::wstring text = status_;
-    COLORREF color = Theme::kMuted;
-    switch (tone_) {
-        case Tone::Ok: color = Theme::kOk; break;
-        case Tone::Warn: color = Theme::kWarn; break;
-        case Tone::Error: color = Theme::kError; break;
-        default: break;
-    }
-    if (text.empty()) {
-        if (!hotkeyOk_ && !Trim(cfg_.hotkey).empty()) {
-            text = TrF(L"Hotkey “{1}” is taken – change it in the settings", {cfg_.hotkey});
-            color = Theme::kWarn;
-        } else if (!gw2_) {
-            text = Tr(L"GW2 not found");
-        } else {
-            text = cfg_.copyOnly ? Tr(L"Copy only · Esc: back to the game") : Tr(L"Esc: back to the game");
-            if (const std::wstring q = MyMemoryQuotaText(); !q.empty()) text += L"  ·  " + q;
-        }
-    }
-    DrawLine(dc, text, fr, color, t.fontUi, DT_RIGHT | DT_END_ELLIPSIS | (IsRtlText(text) ? DT_RTLREADING : 0));
+    DrawLine(dc, counter, fr, counterColor, t.fontUi, DT_RIGHT);
 
     BitBlt(wdc, 0, 0, rc.right, rc.bottom, dc, 0, 0, SRCCOPY);
     SelectObject(dc, oldFont);
@@ -1574,7 +1574,14 @@ bool KeyboardWindow::BuildVoiceSettings(const Config& c, VoiceSettings* s, std::
     else if (c.voiceLang == L"auto") s->language.clear();  // whisper detects it
     else s->language = WhisperLang(c.voiceLang.empty() ? TypingLocaleFor(c) : c.voiceLang);
     s->translate = c.voiceTranslate;
-    s->threads = VoiceThreads(c.voiceThreads, ProbeVoiceHardware().logicalProcessors);
+    // On the least busy cores (GW2 keeps one or two busy), as many threads as help; Windows chooses without data.
+    const VoiceCorePick pick = PickVoiceCores(coreLoad_.Busy(), PhysicalCores(), c.voiceThreads);
+    if (pick.threads > 0) {
+        s->threads = pick.threads;
+        s->affinity = CoreMask(pick.logical);
+    } else {
+        s->threads = VoiceThreads(c.voiceThreads, ProbeVoiceHardware().logicalProcessors);
+    }
     s->live = c.voiceLive;
     s->maxSeconds = c.voiceMaxSec;
     s->deviceId = c.voiceDevice;
@@ -1649,7 +1656,7 @@ bool KeyboardWindow::StartVoice() {
         return false;
     }
     VoiceSettings s;
-    if (!BuildVoiceSettings(cfg_, &s, nullptr)) {
+    if (!BuildVoiceSettings(cfg_, &s, &voiceModelName_)) {
         voiceReady_ = false;
         InvalidateChrome();
         SetStatus(Tr(L"Voice model not downloaded – Settings → Voice"), Tone::Warn, 8000);
@@ -1731,9 +1738,14 @@ void KeyboardWindow::OnVoiceEvent(VoiceEvent* raw) {
                 return;
             }
             InsertDictation(voiceFixes_.Apply(text));
-            std::wstring status = cfg_.copyOnly ? Tr(L"Check the text – Enter copies") : Tr(L"Check the text – Enter sends");
+            // Quietly, which model ran and how fast (the text itself is in the box to check).
+            wchar_t secs[16], rtf[16];
+            swprintf(secs, 16, L"%.1f", e->recognizeMs / 1000.0);
+            swprintf(rtf, 16, L"%.2f", e->recordMs > 0 ? static_cast<double>(e->recognizeMs) / e->recordMs : 0.0);
+            std::wstring status = TrF(L"{1} · into English: {2} · recognized in {3} s · {4}× real time",
+                                      {voiceModelName_, cfg_.voiceTranslate ? Tr(L"on") : Tr(L"off"), secs, rtf});
             if (e->maxReached) status += L" " + Tr(L"(longest recording reached)");
-            SetStatus(status, Tone::Ok, 8000);
+            SetStatus(status, Tone::Muted, 15000);
             if (GetForegroundWindow() == hwnd_) SetFocus(input_.Hwnd());
             return;
         }
@@ -1856,6 +1868,7 @@ RECT KeyboardWindow::GameClientRect() const {
 }
 
 void KeyboardWindow::PollGame() {
+    coreLoad_.Sample();  // the voice recognizer goes to the cores that are free right now
     if (voice_ && ++voiceIdleTicks_ >= kVoiceUnloadPolls) {  // about every 30 s: free an idle voice model
         voiceIdleTicks_ = 0;
         voice_->UnloadIfIdle(cfg_.voiceUnloadMin);
@@ -2217,7 +2230,12 @@ std::wstring KeyboardWindow::TechnicalStatus() {
                          {std::to_wstring(st.lastRecordMs), std::to_wstring(st.lastRecognizeMs), rtf}));
     }
     const VoiceHardware hw = ProbeVoiceHardware();
-    line(L"  " + TrF(L"Threads: {1} of {2}", {std::to_wstring(VoiceThreads(cfg_.voiceThreads, hw.logicalProcessors)),
+    const VoiceCorePick pick = PickVoiceCores(coreLoad_.Busy(), PhysicalCores(), cfg_.voiceThreads);
+    std::wstring cores;
+    for (int i : pick.logical) cores += (cores.empty() ? L"" : L", ") + std::to_wstring(i);
+    if (!cores.empty()) line(L"  " + TrF(L"Cores now (least busy): {1}", {cores}));
+    line(L"  " + TrF(L"Threads: {1} of {2}", {std::to_wstring(pick.threads > 0 ? pick.threads
+                                                                               : VoiceThreads(cfg_.voiceThreads, hw.logicalProcessors)),
                                              std::to_wstring(hw.logicalProcessors)}) +
          L" · AVX2 " + (hw.avx2 ? L"[OK]" : L"[--]") + L" · " + TrF(L"learned misheard words: {1}", {std::to_wstring(voiceFixes_.Size())}));
     return s;

@@ -2142,6 +2142,22 @@ static void TestToMono16k() {
           std::fabs(out[5] + 0.5f) < 1e-6f);
 }
 
+static void TestPickVoiceCores() {
+    // 4 physical cores with 2 siblings each; the game keeps core 1 (logical 2, 3) and logical 4 busy.
+    const std::vector<std::vector<int>> cores{{0, 1}, {2, 3}, {4, 5}, {6, 7}};
+    const std::vector<float> busy{0.10f, 0.05f, 0.95f, 0.30f, 0.80f, 0.10f, 0.02f, 0.01f};
+    VoiceCorePick p = PickVoiceCores(busy, cores, 0);
+    CHECK(p.threads == 2 && p.logical == std::vector<int>({1, 7}));  // free cores 0 and 3, the less busy sibling each
+    p = PickVoiceCores(busy, cores, 3);
+    CHECK(p.threads == 3 && p.logical == std::vector<int>({1, 5, 7}));  // then the next least busy core
+    p = PickVoiceCores(busy, cores, 6);
+    CHECK(p.threads == 6 && p.logical.size() == 6);  // more than cores: siblings join
+    CHECK(PickVoiceCores({}, cores, 0).logical.empty());  // no data: Windows chooses
+    const std::vector<float> idle(12, 0.05f);
+    const std::vector<std::vector<int>> six{{0, 1}, {2, 3}, {4, 5}, {6, 7}, {8, 9}, {10, 11}};
+    CHECK(PickVoiceCores(idle, six, 0).threads == 6);
+}
+
 static void TestSendGuard() {
     {  // ordinary chatting passes, the same line a few times too
         SendGuard g;
@@ -2311,6 +2327,7 @@ int main() {
     TestToMono16k();
     TestVoiceLearn();
     TestSendGuard();
+    TestPickVoiceCores();
     std::printf("%d passed, %d failed\n", g_pass, g_fail);
     return g_fail == 0 ? 0 : 1;
 }

@@ -65,6 +65,38 @@ bool LoadModel(WhisperEngine& engine, const std::wstring& path, std::wstring* er
     return ok;
 }
 
+// While whisper runs: only on the chosen (least busy) cores and below normal priority – its helper threads included, so
+// GW2 always wins when both want a core. Restored afterwards.
+class CpuBudget {
+public:
+    explicit CpuBudget(unsigned long long mask) {
+        HANDLE self = GetCurrentProcess();
+        DWORD_PTR sys = 0;
+        if (mask && GetProcessAffinityMask(self, &oldMask_, &sys) && (mask & sys))
+            setMask_ = SetProcessAffinityMask(self, static_cast<DWORD_PTR>(mask & sys)) != FALSE;
+        oldClass_ = GetPriorityClass(self);
+        if (oldClass_ == NORMAL_PRIORITY_CLASS) SetPriorityClass(self, BELOW_NORMAL_PRIORITY_CLASS);
+    }
+    ~CpuBudget() {
+        HANDLE self = GetCurrentProcess();
+        if (setMask_) SetProcessAffinityMask(self, oldMask_);
+        if (oldClass_ == NORMAL_PRIORITY_CLASS) SetPriorityClass(self, NORMAL_PRIORITY_CLASS);
+    }
+    CpuBudget(const CpuBudget&) = delete;
+    CpuBudget& operator=(const CpuBudget&) = delete;
+
+private:
+    DWORD_PTR oldMask_ = 0;
+    DWORD oldClass_ = 0;
+    bool setMask_ = false;
+};
+
+WhisperEngine::Result Recognize(WhisperEngine& engine, const VoiceSettings& s, const float* pcm, size_t n,
+                                const std::atomic<bool>* abort) {
+    const CpuBudget budget(s.affinity);
+    return engine.Transcribe(pcm, n, OptionsFor(s, n), abort);
+}
+
 }  // namespace
 
 VoiceSession::VoiceSession(HWND notify, UINT message)
@@ -327,7 +359,7 @@ void VoiceSession::RunTest(const VoiceSettings& s, int seconds, HWND notify, UIN
                 } else {
                     const size_t n = span.end - span.begin;
                     const WhisperEngine::Result r =
-                        engine_->Transcribe(audio.data() + span.begin, n, OptionsFor(s, n), &abort_);
+                        Recognize(*engine_, s, audio.data() + span.begin, n, &abort_);
                     if (r.aborted) {
                         testRunning_ = false;
                         return;  // the program is closing
@@ -396,7 +428,7 @@ void VoiceSession::Worker() {
                 } else {
                     const size_t n = span.end - span.begin;
                     const WhisperEngine::Result r =
-                        engine_->Transcribe(audio.data() + span.begin, n, OptionsFor(s, n), &abort_);
+                        Recognize(*engine_, s, audio.data() + span.begin, n, &abort_);
                     if (r.aborted) {
                         e.reset();  // cancelled meanwhile: no event
                     } else if (!r.ok) {
@@ -509,7 +541,7 @@ void VoiceSession::Worker() {
             if (span.speech) {
                 const size_t n = snapshot.size() - span.begin;  // up to now: the last word may still be spoken
                 const WhisperEngine::Result r =
-                    engine_->Transcribe(snapshot.data() + span.begin, n, OptionsFor(s, n), &abort_);
+                    Recognize(*engine_, s, snapshot.data() + span.begin, n, &abort_);
                 done = r.ok && !r.aborted;
                 if (done) text = CleanTranscript(r.text);
             }

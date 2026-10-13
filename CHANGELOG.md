@@ -3,6 +3,17 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## Unreleased
+
+- **GW2 Keyboard: the status sits at the top left** instead of the title (down in the footer it was often cut off).
+  "Waiting for GW2" instead of "GW2 not found"; no "Esc: back to the game" any more.
+- **After speaking, quietly in the status:** which model ran, whether "into English" is on, how long the recognition
+  took and the real-time factor.
+- **Voice recognition keeps off the busy cores:** the load of every core is measured (system-wide, no access to the
+  game); whisper runs on the least busy physical cores – as many threads as help (2–6) – and below normal priority, its
+  helper threads included, so GW2 wins whenever both want a core.
+- Settings → Game & start (GW2 Keyboard): the connections box is gone – the same status is on the Technical page.
+
 ## 1.4.0 — 2026-10-13
 
 - **Voice input in GW2 Keyboard (new):** hold the microphone button in the header (or F8 in the window), speak,
