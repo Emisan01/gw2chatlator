@@ -229,6 +229,9 @@ private:
     SendGuard sendGuard_;        // no bot / macro / spam use (core/send_guard)
     VoiceFixes voiceFixes_;
     std::wstring voiceModelName_;
+    std::wstring dictLang_;   // language of the dictated text in the box ("EN" when whisper translated); "" = typed
+    std::wstring routeNote_;  // who did what with the current text: "MyMemory: DE → EN", "Whisper: DE → EN · ..."
+    std::wstring InputLang() const;  // the language of what is in the box (dictation, else the typing language)
     CoreLoad coreLoad_;  // load per core (sampled with the game poll), for the voice recognizer's cores  // the model of the running / last recording (for the status)      // learned misheard words (<data>\voice-fixes.txt)
     std::wstring lastDictated_;  // the input text right after the last voice input (learning compares it when sent)
     size_t lastDictFrom_ = 0, lastDictLen_ = 0;  // where that voice input went (a new attempt replaces it)
