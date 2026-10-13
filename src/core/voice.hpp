@@ -104,6 +104,17 @@ int WhisperAudioCtx(size_t samples);
 // Threads for the recognizer: half the logical processors, at most 4, at least 1 (setting 0 = automatic).
 int VoiceThreads(int setting, unsigned logicalProcessors);
 
+// Where the recognizer runs: the least busy physical cores right now (GW2 keeps one or two cores busy, Windows moves
+// them around – so the choice is made fresh for every recording). `busy` = share 0..1 per logical processor,
+// `cores` = the logical processors of each physical core (hyper-threading siblings together). One thread per chosen
+// physical core, on its less busy sibling. `want` 0 = automatic: every core under ~35 % load, 2..6 (more brings little:
+// 4 -> 6 threads was only 18 % faster in voice_bench); else exactly `want` (siblings added when there are too few cores).
+struct VoiceCorePick {
+    std::vector<int> logical;  // logical processor indices to run on (empty = no data: let Windows choose)
+    int threads = 0;
+};
+VoiceCorePick PickVoiceCores(const std::vector<float>& busy, const std::vector<std::vector<int>>& cores, int want);
+
 // ---- audio format ----
 
 // Interleaved float frames of any rate / channel count -> 16 kHz mono (channels averaged, linear interpolation after a

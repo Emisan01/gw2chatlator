@@ -431,6 +431,44 @@ int VoiceThreads(int setting, unsigned logicalProcessors) {
     return static_cast<int>(std::clamp(logicalProcessors / 2u, 1u, 4u));
 }
 
+VoiceCorePick PickVoiceCores(const std::vector<float>& busy, const std::vector<std::vector<int>>& cores, int want) {
+    VoiceCorePick pick;
+    struct Core {
+        float load;
+        int best;    // its least busy logical processor
+        int other;   // a sibling (-1 if none)
+    };
+    std::vector<Core> list;
+    for (const std::vector<int>& c : cores) {
+        Core k{0.0f, -1, -1};
+        for (int i : c) {
+            if (i < 0 || static_cast<size_t>(i) >= busy.size()) continue;
+            k.load = std::max(k.load, busy[static_cast<size_t>(i)]);  // a busy sibling slows the whole core
+            if (k.best < 0 || busy[static_cast<size_t>(i)] < busy[static_cast<size_t>(k.best)]) {
+                if (k.best >= 0) k.other = k.best;
+                k.best = i;
+            } else if (k.other < 0) {
+                k.other = i;
+            }
+        }
+        if (k.best >= 0) list.push_back(k);
+    }
+    if (list.empty()) return pick;  // no data
+    std::stable_sort(list.begin(), list.end(), [](const Core& a, const Core& b) { return a.load < b.load; });
+    int n = want;
+    if (n <= 0) {
+        n = 0;
+        for (const Core& k : list) n += k.load < 0.35f ? 1 : 0;
+        n = std::clamp(n, 2, 6);
+    }
+    for (size_t i = 0; i < list.size() && static_cast<int>(pick.logical.size()) < n; ++i) pick.logical.push_back(list[i].best);
+    for (size_t i = 0; i < list.size() && static_cast<int>(pick.logical.size()) < n; ++i)  // few cores: siblings too
+        if (list[i].other >= 0) pick.logical.push_back(list[i].other);
+    std::sort(pick.logical.begin(), pick.logical.end());
+    pick.threads = std::min(n, static_cast<int>(pick.logical.size()));
+    return pick;
+}
+
 // ---- audio format ----
 
 std::vector<float> ToMono16k(const float* interleaved, size_t frames, int channels, int rate) {

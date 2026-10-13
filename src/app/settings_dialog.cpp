@@ -1294,13 +1294,15 @@ private:
 #ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
         Check(kKeepMap, Tr(L"Keep the chat when GW2 clears it (map change)"), cfg_.keepAfterMap, kLabelX, Y(r++),
               kW - 50);
-#endif
         Label(Tr(L"Connections (read only, nothing is hooked)"), kLabelX, Y(r++), kW - 50);
         Add(L"EDIT", L"", ES_MULTILINE | ES_READONLY | WS_VSCROLL | ES_AUTOVSCROLL, kLabelX, Y(r) - 4, kW - 44, 90,
             kStatus, WS_EX_CLIENTEDGE);
         r += 3;
         Button(kRefresh, Tr(L"Refresh"), kLabelX, Y(r), 110);
         Button(kSetup, Tr(L"Guided setup…"), kLabelX + 120, Y(r++), 160);
+#else  // GW2 Keyboard: the same status is on the Technical page
+        Button(kSetup, Tr(L"Guided setup…"), kLabelX, Y(r++) + 4, 160);
+#endif
     }
 
     // Who receives the text with the chosen translator (privacy, one line).

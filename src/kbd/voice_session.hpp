@@ -32,6 +32,7 @@ struct VoiceSettings {
     int maxSeconds = 30;        // then the recording ends by itself (Final follows, `maxReached`)
     std::wstring deviceId;      // "" = Windows default microphone
     std::string initialPrompt;  // UTF-8, may be empty
+    unsigned long long affinity = 0;  // logical processors to recognize on (PickVoiceCores); 0 = any
 };
 
 struct VoiceEvent {
