@@ -650,6 +650,13 @@ std::wstring KeyboardWindow::TypingLocaleFor(const Config& c) const {
 
 bool KeyboardWindow::SendOriginal() const { return sendIdx_ >= sendLangs_.size(); }
 
+// What is in the box: dictated text keeps the language it came in (whisper's translation = English) until the box is
+// emptied or sent; typed text is in the language you write in.
+std::wstring KeyboardWindow::InputLang() const {
+    if (!lastDictated_.empty() && !dictLang_.empty()) return dictLang_;
+    return PrimaryLang(TypingLocale());
+}
+
 std::wstring KeyboardWindow::SendLang() const { return SendOriginal() ? std::wstring() : sendLangs_[sendIdx_]; }
 
 // Translation only when the chat gets another language than the one you write in; otherwise only the typing help.
@@ -1120,9 +1127,22 @@ void KeyboardWindow::StartTranslation() {
             SendNextPart();
         }
     };
+    // Who does what, shown under the preview: whisper (when it translated), the text translator, or nobody.
+    const std::wstring inLang = InputLang();
+    const bool fromVoice = !lastDictated_.empty() && !dictLang_.empty();
+    const std::wstring voicePart =
+        fromVoice && cfg_.voiceTranslate ? Tr(L"Whisper translated into English") + L"  ·  " : std::wstring();
     // Same language in and out (or "only corrected", "/wave"): nothing to translate, only the typing help runs.
     if (!Translating() || body.empty()) {
         lastHits_.clear();
+        routeNote_ = voicePart.empty() ? std::wstring() : voicePart + Tr(L"not translated again");
+        finish(body);
+        return;
+    }
+    // Already in the chat's language (whisper translated, or you wrote it that way): the translator is not asked.
+    if (PrimaryLang(inLang) == PrimaryLang(SendLang())) {
+        lastHits_.clear();
+        routeNote_ = voicePart + TrF(L"already {1} – not translated", {ToUpperAscii(PrimaryLang(inLang))});
         finish(body);
         return;
     }
@@ -1142,9 +1162,11 @@ void KeyboardWindow::StartTranslation() {
     }
     std::wstring source;  // MyMemory needs a source language; the others detect it better themselves
     if (engine_ == Engine::Basic) {
-        source = DetectLanguage(body);
+        source = fromVoice ? PrimaryLang(inLang) : DetectLanguage(body);
         if (source.empty()) source = PrimaryLang(TypingLocale());
     }
+    routeNote_ = voicePart + TrF(L"{1}: {2} → {3}", {translator_->Name(), ToUpperAscii(PrimaryLang(inLang)),
+                                                    ToUpperAscii(PrimaryLang(SendLang()))});
     if (engine_ == Engine::Llm) {  // one request at a time: newer text waits
         if (llmBusy_) {
             llmAgain_ = true;
@@ -1303,6 +1325,8 @@ void KeyboardWindow::UpdatePreview() {
                 grammarOffer_ = true;
             }
         }
+        // Who did what (whisper, the translator, nobody) – quietly, after anything more important.
+        if (!routeNote_.empty() && !c.warn && !grammarOffer_) c.note = c.note.empty() ? routeNote_ : c.note + L"  ·  " + routeNote_;
     } else {
         c.text = previewBody_.empty() ? ComposePrefix() + text : previewPrefix_ + previewBody_;
         c.current = false;
@@ -1531,7 +1555,9 @@ void KeyboardWindow::StartGrammarCheck() {
     if (CodePointCount(SanitizeChatText(text)) < 8) return;
     if (!grammarLimiter_.Allow(GetTickCount64())) return;
     grammarInFlight_ = true;
-    std::thread([hwnd = hwnd_, url = cfg_.languageToolUrl, text, lang = TypingLocale()] {
+    // Dictated text in another language (whisper's English) is checked in that language.
+    const std::wstring lang = PrimaryLang(InputLang()) == PrimaryLang(TypingLocale()) ? TypingLocale() : InputLang();
+    std::thread([hwnd = hwnd_, url = cfg_.languageToolUrl, text, lang] {
         auto msg = std::make_unique<KbdGrammarMsg>();
         msg->text = text;
         msg->result = CheckWithLanguageTool(url, text, lang, L"");
@@ -1737,6 +1763,8 @@ void KeyboardWindow::OnVoiceEvent(VoiceEvent* raw) {
                 SetStatus(Tr(L"Nothing recognized – hold the key while you speak"), Tone::Muted, 5000);
                 return;
             }
+            // The language the text arrives in: English when whisper translated, else what whisper heard.
+            dictLang_ = cfg_.voiceTranslate ? std::wstring(L"EN") : ToUpperAscii(FromUtf8(e->language));
             InsertDictation(voiceFixes_.Apply(text));
             // Quietly, which model ran and how fast (the text itself is in the box to check).
             wchar_t secs[16], rtf[16];
