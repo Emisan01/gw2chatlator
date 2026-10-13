@@ -220,6 +220,9 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
   `ggml_backend_load_all()`). Models (`core/voice` catalog, SHA-256, streamed `HttpDownloadToFile`) in `<data>\models`.
   Measured (i7-5820K, 4 threads): small 1.2 s for 5.9 s German, base ~0.3 s; tiny loops with the short context (not
   offered); abort only between graphs (~1 s). `voice_bench.exe model lang threads wav…` with TTS WAVs in `local\voice`.
+  Cores: `CoreLoad` (win/cpu_cores, NtQuerySystemInformation per-core idle, sampled in `PollGame`) → `PickVoiceCores`
+  (least busy physical cores, auto 2–6 threads) → `VoiceSettings::affinity`; `CpuBudget` sets process affinity +
+  BELOW_NORMAL priority class only while whisper runs (ggml's pool threads inherit both).
 - Send guard (`core/send_guard`, GW2 Keyboard `OnEnter`, user 2026-10-12): an Enter injected by software
   (`GetCurrentInputMessageSource` IMO_INJECTED / IMO_UNAVAILABLE → `InputBox::LastEnterInjected`), text written into
   the box from outside (cross-thread sends via `InSendMessageEx`, characters without a hardware key →
