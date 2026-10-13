@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(GW2ChatTranslator VERSION 1.4.0 LANGUAGES CXX)
+project(GW2ChatTranslator VERSION 1.4.1 LANGUAGES CXX)
 if(WIN32)
     enable_language(RC)
 endif()

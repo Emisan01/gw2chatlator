@@ -84,7 +84,9 @@ private:
     void StopListening();
     void OnVoiceHotkey();                    // the key anywhere
     void ApplyVoiceGlobalKey();
-    std::wstring VoiceChatOpen();            // a listed voice chat has the microphone open ("" = none)
+    std::wstring VoiceChatOpen();
+    HWND tip_ = nullptr;      // the microphone's explanation on mouse-over
+    std::wstring tipText_;            // a listed voice chat has the microphone open ("" = none)
     std::wstring voiceChat_;          // the voice chat that paused voice activation ("" = none)
     bool voiceChatOverride_ = false;  // switched on anyway by a click / the key while that chat is open
     int voiceChatTicks_ = 0;

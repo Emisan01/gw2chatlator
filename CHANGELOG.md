@@ -3,7 +3,7 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## Unreleased
+## 1.4.1 — 2026-10-13 (GW2 Keyboard only; GW2 Chat Translator stays 1.4.0)
 
 - **GW2 Keyboard: the status sits at the top left** instead of the title (down in the footer it was often cut off).
   "Waiting for GW2" instead of "GW2 not found"; no "Esc: back to the game" any more.
@@ -16,8 +16,8 @@ diagnosis show it.
 - **Who translates is clear:** dictated text keeps its language (whisper's English), text that is already in the chat
   language is not sent to the translator again (saves MyMemory), the grammar check uses that language, and the preview
   says who did what ("MyMemory: DE → EN", "Whisper translated into English · already EN – not translated").
-- **Lock the microphone:** hold the microphone button and right-click – let go of the mouse and speak; a pause of
-  about 1.2 s ends the recording (press-to-toggle mode ends after a pause too). The text still waits for your Enter.
+- **Right-click the microphone: on / off** – speak with the mouse free; a pause of about 1.2 s (or the next
+  right-click) ends the recording. Mouse-over explains the button. The text still waits for your Enter.
 - **Settings → Microphone (new page):** how a recording starts – hold the button or key / press once, a pause ends
   it / voice activation; a key in this window and a **key anywhere** (a Windows hotkey, also while GW2 is in front:
   it starts, a pause ends it, then this window takes the focus for your Enter – no hook); pause length, pre-roll (the
@@ -25,14 +25,14 @@ diagnosis show it.
   automatic).
 - **Voice activation:** listens and starts by itself when you speak, keeping the moment before it; a pause ends the
   message, then it listens again. It listens only after the key anywhere switched it on, while this window is in
-  front, or always (with a warning). A click on the microphone switches it off and on. Sending stays your Enter.
+  front, or always (with a warning). A click or right-click on the microphone switches it off and on. Sending stays your Enter.
 - **Voice activation and voice chats:** voice activation is not exclusive – it cannot tell what was meant for Discord,
   and Discord still hears you. So it pauses by itself while a voice chat (Discord, TeamSpeak, Mumble, Teams …;
   "Find…" lists who uses the microphone now) has the microphone open – the key or a click still work, and a click
   switches it on anyway until the voice chat closes. Nothing in those programs is touched (Windows' audio sessions).
 - **Live view** (Settings → Technical): its own window with every technical value, refreshed every second – CPU per
   core, memory, this program, GW2 window / MumbleLink / frame rate, translator requests and times, voice input.
-- **What you sent, as a circle in the header:** this session's messages (yours only, in memory) – save them as text,
+- **What you sent, as a circle after the character counter:** this session's messages (yours only, in memory) – save them as text,
   or learn from them later: Settings → Writing → "Learn what I send – later, when I choose" collects instead of
   learning while you play; the circle's menu then learns them in one go (sentences, words, your typical typos).
 
