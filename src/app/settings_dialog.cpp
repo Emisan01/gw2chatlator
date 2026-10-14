@@ -1345,10 +1345,12 @@ private:
     void BuildGame() {
         BeginPage();
         int r = 0;
+#ifndef GCT_KEYBOARD_APP  // GW2 Keyboard needs no game folder (it finds the game window by itself)
         Label(Tr(L"Guild Wars 2 folder"), kLabelX, Y(r), kLabelW);
         Edit(kGw2Dir, cfg_.gw2Dir.empty() ? FindGw2Dir() : cfg_.gw2Dir, kCtrlX, Y(r), kCtrlW - 182);
         Button(kGw2Find, Tr(L"Find"), kCtrlX + kCtrlW - 176, Y(r) - 1, 70);
         Button(kGw2Browse, Tr(L"Browse…"), kCtrlX + kCtrlW - 102, Y(r++) - 1, 102);
+#endif
         Button(kInstall, Tr(L"Install for this Windows user"), kLabelX, Y(r), 240);
         Label(InstallStatusText(), kLabelX + 250, Y(r++) - 2, kW - 290, 34, kInstallStatus);
         Check(kAutostart, Tr(L"Start with Windows (stays hidden until GW2 runs)"), IsAutostartEnabled(), kLabelX,
@@ -1369,8 +1371,6 @@ private:
         r += 3;
         Button(kRefresh, Tr(L"Refresh"), kLabelX, Y(r), 110);
         Button(kSetup, Tr(L"Guided setup…"), kLabelX + 120, Y(r++), 160);
-#else  // GW2 Keyboard: the same status is on the Technical page
-        Button(kSetup, Tr(L"Guided setup…"), kLabelX, Y(r++) + 4, 160);
 #endif
     }
 
@@ -2326,9 +2326,11 @@ private:
         c.llmFixOcr = Checked(kFixOcr);
 #endif
 
+#ifndef GCT_KEYBOARD_APP
         const std::wstring rawDir = Trim(Text(kGw2Dir));
         const std::wstring resolved = ResolveGw2Dir(rawDir);
         c.gw2Dir = resolved.empty() ? rawDir : resolved;
+#endif
         c.dock = Checked(kDock);
         c.followGame = Checked(kFollow);
         c.focusOnGameChat = Checked(kFocusGameChat);
