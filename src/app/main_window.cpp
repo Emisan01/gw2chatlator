@@ -1686,19 +1686,13 @@ std::wstring MainWindow::MemoryText() const {
 // The chat memory circle: how full it is, save (the last minutes or all) or clear. Only on your click.
 void MainWindow::ShowMemoryMenu() {
     const ModalScope modal;
-    enum : UINT { kClearChat = 1, kSaveChat = 50 };  // 50 = everything, 51.. = the last 1/5/10/20/60 minutes
+    enum : UINT { kClearChat = 1 };
     auto add = [](HMENU m, UINT flags, UINT id, const std::wstring& text) { AppendMenuW(m, flags, id, text.c_str()); };
     HMENU menu = CreatePopupMenu();
     add(menu, MF_STRING | MF_GRAYED, 0, MemoryText());
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    // Save: valuable things said in the chat (a boss explained over ten minutes …) – the last few minutes or all.
-    HMENU save = CreatePopupMenu();
-    static const int kSaveMinutes[] = {1, 5, 10, 20, 60};
-    for (int i = 0; i < 5; ++i)
-        add(save, MF_STRING, kSaveChat + 1 + i, TrF(L"the last {1} minutes", {std::to_wstring(kSaveMinutes[i])}));
-    add(save, MF_STRING, kSaveChat, Tr(L"everything"));
-    AppendMenuW(menu, MF_POPUP | (log_.Empty() ? MF_GRAYED : 0), reinterpret_cast<UINT_PTR>(save),
-                Tr(L"Save the chat as text …").c_str());
+    // No saving of the chat to a file: it holds other players' messages – collecting chat data is the privacy problem
+    // (Delta / Raidcore, 2026-10-14). The chat memory only lives in this window.
     add(menu, MF_STRING | (log_.Empty() ? MF_GRAYED : 0), kClearChat, Tr(L"Clear the chat"));
 
     POINT pt{memoryRect_.left, memoryRect_.bottom};
@@ -1706,17 +1700,7 @@ void MainWindow::ShowMemoryMenu() {
     const UINT cmd =
         static_cast<UINT>(TrackPopupMenu(menu, MenuFlags(TPM_RETURNCMD | TPM_NONOTIFY), pt.x, pt.y, 0, hwnd_, nullptr));
     DestroyMenu(menu);
-    if (cmd >= kSaveChat && cmd <= kSaveChat + 5) {  // the file goes where you choose
-        static const int kMinutes[] = {0, 1, 5, 10, 20, 60};
-        const ULONGLONG span = static_cast<ULONGLONG>(kMinutes[cmd - kSaveChat]) * 60000;
-        const ULONGLONG now = GetTickCount64();
-        const ULONGLONG since = span && now > span ? now - span : 0;
-        const std::wstring path = PickTextFile(hwnd_, Tr(L"Save the chat as text …"), true, L"gw2-chat.txt");
-        if (!path.empty())
-            SetStatus(WriteFileAtomic(path, "\xEF\xBB\xBF" + ToUtf8(log_.AsText(since))) ? Tr(L"Chat saved")
-                                                                                        : Tr(L"Could not write the file."),
-                      Tone::Ok, 4000);
-    } else if (cmd == kClearChat) {
+    if (cmd == kClearChat) {
         log_.Clear();
         UpdateHint();
         InvalidateChrome();

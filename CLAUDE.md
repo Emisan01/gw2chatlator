@@ -176,6 +176,8 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
     players' chat. MyMemory shows a one-time notice (`[Basic] NoticeShown`). **Never commit real screenshots,
     captures, OCR output or other players' names/messages** — the repo is public. Real test pictures live in
     `local/` (git-ignored); fixtures in `tests/` use invented names.
+    No saving of the chat log to a file (it holds other players' messages – collecting chat data is the privacy
+    problem, Delta/Raidcore 2026-10-14; removed from the chat memory menu). Your own sent lines may be saved.
 
 ## Conventions
 
