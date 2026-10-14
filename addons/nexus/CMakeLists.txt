@@ -30,6 +30,10 @@ set_source_files_properties(third_party/imgui/imgui.cpp third_party/imgui/imgui_
 set_target_properties(gw2chat_bridge PROPERTIES
     MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
     PREFIX "")
+# Next to the programs as in the package (<exe>\nexus): GW2 Keyboard offers to install it from there.
+add_custom_command(TARGET gw2chat_bridge POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:GW2Keyboard>/nexus
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:gw2chat_bridge> $<TARGET_FILE_DIR:GW2Keyboard>/nexus)
 
 if(GCT_BUILD_TESTS)
     # The whole chain without the game: the DLL with a stand-in Nexus API → the real pipe of our programs.

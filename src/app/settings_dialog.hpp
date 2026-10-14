@@ -18,6 +18,9 @@ struct DialogResult {
         ShowTour,       // "What can this tool do?" (Technical page)
         LoadExtension,  // GW2 Keyboard: load / start the chat translation by OCR (General page)
         LoadExtras,     // GW2 Keyboard: install Unofficial Extras for ArcDPS into <GW2>\addons (General page)
+        RemoveExtras,   // ... and remove it again
+        InstallBridge,  // GW2 Keyboard: our Nexus add-on GW2 Chat Bridge into <GW2>\addons (from the package)
+        RemoveBridge,   // ... and remove it again
     };
     bool saved = false;          // cfg was changed and should be applied
     Action action = Action::None;
@@ -61,6 +64,9 @@ struct DialogContext {
     std::function<bool()> extensionInstalled;
     // GW2 Keyboard: Unofficial Extras in <GW2>\addons: 1 installed, 0 missing, -1 no GW2 add-ons folder found.
     std::function<int()> extrasState;
+    // GW2 Keyboard: our Nexus add-on in <GW2>\addons: 1 installed (same as in the package), 2 installed but different
+    // (update), 0 missing, 3 not in this package, -1 no GW2 add-ons folder found.
+    std::function<int()> bridgeState;
     // GW2 Keyboard, Settings → Voice → "Test": records a few seconds with the settings in `cfg` (the dialog's current
     // choices) and posts one std::wstring* (owned by the receiver: text, latency, real-time factor) to (notify, message).
     std::function<void(const Config& cfg, HWND notify, UINT message)> voiceTest;

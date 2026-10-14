@@ -70,7 +70,7 @@ enum : int {
     kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
     kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kStartMenu, kOnlyTr, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare, kWriteIn, kLtProvider, kLtTest, kLtStatus, kChatEngine, kKeyboardOnly, kLearnFile, kKeepMap, kReadWhat, kTour, kLoadExt,
     // Game & start
-    kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kBridgeRead, kScreenshots, kLoadExtras, kStatus, kRefresh, kSetup,
+    kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kBridgeRead, kScreenshots, kLoadExtras, kRemoveExtras, kInstallBridge, kRemoveBridge, kHotkeySet, kPttSet, kPttValue, kStatus, kRefresh, kSetup,
     // Wizard
     // Technical
     kOcrZoom, kKeyHold, kStepDelay, kTechText, kTechRefresh, kTechCopy, kTechSaveF16, kTechStatus,
@@ -446,6 +446,11 @@ std::wstring KeyboardLayoutLocale() {
 // ---------------------------------------------------------------------------
 // Settings
 // ---------------------------------------------------------------------------
+// Asks for a key in a small window: two keys (Ctrl+T), a third optional (Ctrl+Alt+T); shows live whether Windows has
+// it free. `mine` = the key this tool holds now (it counts as free). False = cancelled.
+bool PickKey(HWND owner, HINSTANCE inst, const std::wstring& title, const std::wstring& current, const std::wstring& mine,
+             bool needModifier, std::wstring* key);
+
 class SettingsDialog final : public NativeDialog {
 public:
     SettingsDialog(Config& cfg, const DialogContext& ctx, SettingsPage start) : cfg_(cfg), ctx_(ctx), start_(start) {}
@@ -568,48 +573,42 @@ private:
               Y(r++), kCtrlW - 4 * 52 - 22);
 #endif
 
-        // Text: size in points (slider or typed) and a few well readable Windows fonts; live preview behind.
+        // Text: size in points (slider or typed) and the font right behind it; live preview behind the dialog.
         Label(Tr(L"Text size"), kLabelX, Y(r), kLabelW);
-        HWND size = Add(TRACKBAR_CLASSW, L"", TBS_HORZ | TBS_NOTICKS | WS_TABSTOP, kCtrlX, Y(r), kCtrlW - 100, 26, kFontSize);
+        HWND size = Add(TRACKBAR_CLASSW, L"", TBS_HORZ | TBS_NOTICKS | WS_TABSTOP, kCtrlX - 6, Y(r), 150, 26, kFontSize);
         SendMessageW(size, TBM_SETRANGE, TRUE, MAKELPARAM(kMinPt, kMaxPt));
         SendMessageW(size, TBM_SETPOS, TRUE, PtOf(cfg_.fontPercent));
-        Edit(kFontSizeValue, std::to_wstring(PtOf(cfg_.fontPercent)), kCtrlX + kCtrlW - 94, Y(r), 50, ES_NUMBER);
-        Label(L"pt", kCtrlX + kCtrlW - 38, Y(r++), 30);
-        Label(Tr(L"Font"), kLabelX, Y(r), kLabelW);
+        Edit(kFontSizeValue, std::to_wstring(PtOf(cfg_.fontPercent)), kCtrlX + 148, Y(r), 40, ES_NUMBER);
+        Label(L"pt", kCtrlX + 192, Y(r), 22);
         int faceSel = 0;
         std::vector<std::wstring> faces;
         for (size_t i = 0; i < std::size(kFonts); ++i) {
             faces.push_back(kFonts[i]);
             if (cfg_.fontFace == kFonts[i]) faceSel = static_cast<int>(i);
         }
-        Combo(kFontFace, faces, faceSel, kCtrlX, Y(r++), 200);
+        Combo(kFontFace, faces, faceSel, kCtrlX + 216, Y(r++), kCtrlW - 216);
         Label(Tr(L"Transparency"), kLabelX, Y(r), kLabelW);
-        HWND tr = Add(TRACKBAR_CLASSW, L"", TBS_HORZ | TBS_NOTICKS | WS_TABSTOP, kCtrlX, Y(r), kCtrlW - 100, 26, kOpacity);
+        HWND tr = Add(TRACKBAR_CLASSW, L"", TBS_HORZ | TBS_NOTICKS | WS_TABSTOP, kCtrlX - 6, Y(r), 150, 26, kOpacity);
         SendMessageW(tr, TBM_SETRANGE, TRUE, MAKELPARAM(0, 75));
         SendMessageW(tr, TBM_SETPOS, TRUE, TransparencyOf(cfg_.opacity));
-        Label(std::to_wstring(TransparencyOf(cfg_.opacity)) + L" %", kCtrlX + kCtrlW - 94, Y(r++), 60, 18, kOpacityValue);
+        Label(std::to_wstring(TransparencyOf(cfg_.opacity)) + L" %", kCtrlX + 148, Y(r++), 60, 18, kOpacityValue);
 
-        // Hotkey: a Windows-wide one (also outside the game). Optional; three keys clash least.
+        // Keys: the current one, and a button that asks for a new one (with a check whether it is free).
 #ifndef GCT_KEYBOARD_APP
         r++;
 #endif
+        hotkey_ = cfg_.hotkey;
         Label(Tr(L"Show / hide hotkey"), kLabelX, Y(r), kLabelW);
-        HWND hk = Add(HOTKEY_CLASSW, L"", WS_TABSTOP, kCtrlX, Y(r), 180, 24, kHotkey, WS_EX_CLIENTEDGE);
-        // Letters alone would be taken from every program: at least one of Ctrl / Alt is required.
-        SendMessageW(hk, HKM_SETRULES, HKCOMB_NONE | HKCOMB_S, MAKELPARAM(HOTKEYF_CONTROL | HOTKEYF_ALT, 0));
-        if (const auto cur = ParseHotkey(cfg_.hotkey)) {
-            BYTE f = 0;
-            if (cur->mods & kModCtrl) f |= HOTKEYF_CONTROL;
-            if (cur->mods & kModAlt) f |= HOTKEYF_ALT;
-            if (cur->mods & kModShift) f |= HOTKEYF_SHIFT;
-            SendMessageW(hk, HKM_SETHOTKEY, MAKEWORD(static_cast<BYTE>(cur->vk), f), 0);
-        }
-        Button(kHotkeyClear, Tr(L"None"), kCtrlX + 188, Y(r) - 1, 80);
-        Label(L"", kCtrlX, Y(r++) + 28, kCtrlW, 50, kHotkeyStatus);
-        UpdateHotkeyStatus();
+        Label(KeyShown(hotkey_), kCtrlX, Y(r) + 3, 150, 20, kHotkeyStatus);
+        Button(kHotkeySet, Tr(L"Set hotkey…"), kCtrlX + 156, Y(r++) - 1, 150);
 #ifdef GCT_KEYBOARD_APP
-        // The chat translation by OCR is an extension: GW2 Chat Translator, loaded on your click.
-        r += 2;
+        // Push to talk: the key anywhere (also in GW2) – the same setting as on the Microphone page.
+        Label(Tr(L"Push-to-talk key"), kLabelX, Y(r), kLabelW);
+        Label(KeyShown(cfg_.voiceGlobalKey), kCtrlX, Y(r) + 3, 150, 20, kPttValue);
+        Button(kPttSet, Tr(L"Set key…"), kCtrlX + 156, Y(r++) - 1, 150);
+
+        // Extensions, each loaded on your click: the chat translation by OCR, and party/squad chat as exact text.
+        r++;
         const bool have = ctx_.extensionInstalled && ctx_.extensionInstalled();
         Label(Tr(L"Extension: translating the chat (OCR)"), kLabelX, Y(r++), kW - 50);
         Label(have ? Tr(L"[OK] Loaded. It reads the GW2 chat and shows it in your language.")
@@ -617,18 +616,28 @@ private:
                         L"official release on GitHub)."),
               kLabelX, Y(r) - 4, kW - 250, 40);
         Button(kLoadExt, have ? Tr(L"Start chat translation") : Tr(L"Load extension…"), kW - 222, Y(r++) - 2, 196);
-        // Party and squad chat as exact text: Unofficial Extras for ArcDPS, passed on by the Nexus add-on.
+
         const int extras = ctx_.extrasState ? ctx_.extrasState() : -1;
-        Label(Tr(L"Extension: party and squad chat as exact text (Unofficial Extras for ArcDPS)"), kLabelX,
-              Y(r++) + 10, kW - 50);
-        Label(extras == 1   ? Tr(L"[OK] Installed in the GW2 add-ons folder. Nexus loads it, the GW2 Chat Bridge add-on "
-                                 L"passes the chat on.")
-              : extras == 0 ? Tr(L"[--] Not installed. A free ArcDPS extension by Krappa322 (from its GitHub releases, "
-                                 L"checksum checked). Needs Nexus with ArcDPS and the GW2 Chat Bridge add-on.")
-                            : Tr(L"[--] No Guild Wars 2 add-ons folder found (is Nexus installed?)."),
-              kLabelX, Y(r) + 4, kW - 250, 50);
-        if (extras == 0) Button(kLoadExtras, Tr(L"Load Unofficial Extras…"), kW - 222, Y(r) + 6, 196);
-        r++;
+        const int bridge = ctx_.bridgeState ? ctx_.bridgeState() : -1;
+        Label(Tr(L"Extension: party and squad chat as exact text (Nexus)"), kLabelX, Y(r++) + 6, kW - 50);
+        if (extras < 0) {
+            Label(Tr(L"[--] No Guild Wars 2 add-ons folder found (is Nexus installed?)."), kLabelX, Y(r++) + 4, kW - 50);
+        } else {
+            Label(Tr(L"Unofficial Extras (ArcDPS, by Krappa322)"), kLabelX + 12, Y(r) + 6, 250);
+            Label(extras == 1 ? Tr(L"[OK] installed") : Tr(L"[--] missing"), kLabelX + 268, Y(r) + 6, 110);
+            Button(extras == 1 ? kRemoveExtras : kLoadExtras, extras == 1 ? Tr(L"Remove…") : Tr(L"Load…"), kW - 222,
+                   Y(r++) + 2, 196);
+            Label(Tr(L"GW2 Chat Bridge (our Nexus add-on)"), kLabelX + 12, Y(r) + 6, 250);
+            Label(bridge == 1   ? Tr(L"[OK] installed")
+                  : bridge == 2 ? Tr(L"[!] older version")
+                  : bridge == 3 ? Tr(L"[--] not in this package")
+                                : Tr(L"[--] missing"),
+                  kLabelX + 268, Y(r) + 6, 110);
+            if (bridge == 1) Button(kRemoveBridge, Tr(L"Remove…"), kW - 222, Y(r) + 2, 196);
+            else if (bridge == 0 || bridge == 2)
+                Button(kInstallBridge, bridge == 2 ? Tr(L"Update…") : Tr(L"Install…"), kW - 222, Y(r) + 2, 196);
+            r++;
+        }
 #endif
     }
 
@@ -638,39 +647,20 @@ private:
     static int PtOf(int percent) { return std::clamp((percent * 11 + 50) / 100, kMinPt, kMaxPt); }
     static int PercentOf(int pt) { return std::clamp((pt * 100 + 5) / 11, 70, 300); }
 
-    // The hotkey in the control as "Ctrl+Alt+Shift+T" (empty = none).
-    std::wstring HotkeyText() const {
-        const WORD v = static_cast<WORD>(SendMessageW(Item(kHotkey), HKM_GETHOTKEY, 0, 0));
-        Hotkey hk;
-        hk.vk = LOBYTE(v);
-        const BYTE f = HIBYTE(v);
-        if (f & HOTKEYF_CONTROL) hk.mods |= kModCtrl;
-        if (f & HOTKEYF_ALT) hk.mods |= kModAlt;
-        if (f & HOTKEYF_SHIFT) hk.mods |= kModShift;
-        return hk.vk ? FormatHotkey(hk) : L"";
-    }
-
-    // Free or taken? Windows tells us for hotkeys of other programs; keys a game or add-on (arcdps) reads
-    // itself cannot be seen from outside.
-    void UpdateHotkeyStatus() {
-        const std::wstring text = HotkeyText();
-        std::wstring status;
-        if (text.empty()) {
-            status = Tr(L"No hotkey: show the window from the tray icon.");
-        } else if (const auto hk = ParseHotkey(text); !hk) {
-            status = Tr(L"[!] This key cannot be used – take a letter, digit or F-key with Ctrl or Alt.");
-        } else if (const auto mine = ParseHotkey(cfg_.hotkey); mine && mine->vk == hk->vk && mine->mods == hk->mods) {
-            status = Tr(L"[OK] In use by this tool. Keys of the game and its add-ons (e.g. arcdps) cannot be checked – "
-                        L"three keys clash least.");
-        } else if (RegisterHotKey(hwnd_, 0x7FFF, hk->mods | MOD_NOREPEAT, hk->vk)) {
-            UnregisterHotKey(hwnd_, 0x7FFF);
-            status = Tr(L"[OK] Free in Windows. Keys of the game and its add-ons (e.g. arcdps) cannot be checked – "
-                        L"three keys clash least.");
-        } else {
-            status = Tr(L"[!] Already taken by another program – choose another one.");
+    // A key as shown next to its button ("Ctrl+Alt+T", or "none").
+    static std::wstring KeyShown(const std::wstring& key) { return key.empty() ? Tr(L"none") : key; }
+    void SetHotkeyControl(int id, const std::wstring& value) {
+        WORD v = 0;
+        if (const auto cur = ParseHotkey(value)) {
+            BYTE f = 0;
+            if (cur->mods & kModCtrl) f |= HOTKEYF_CONTROL;
+            if (cur->mods & kModAlt) f |= HOTKEYF_ALT;
+            if (cur->mods & kModShift) f |= HOTKEYF_SHIFT;
+            v = MAKEWORD(static_cast<BYTE>(cur->vk), f);
         }
-        SetText(kHotkeyStatus, status);
+        SendMessageW(Item(id), HKM_SETHOTKEY, v, 0);
     }
+    std::wstring hotkey_;  // show / hide hotkey as chosen in this dialog
 
 #ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
     void BuildReading() {
@@ -1549,11 +1539,17 @@ private:
             case kTour:
             case kLoadExt:
             case kLoadExtras:
+            case kRemoveExtras:
+            case kInstallBridge:
+            case kRemoveBridge:
                 Save();
                 result.saved = true;
-                result.action = id == kTour      ? DialogResult::Action::ShowTour
-                                : id == kLoadExt ? DialogResult::Action::LoadExtension
-                                                 : DialogResult::Action::LoadExtras;
+                result.action = id == kTour            ? DialogResult::Action::ShowTour
+                                : id == kLoadExt       ? DialogResult::Action::LoadExtension
+                                : id == kLoadExtras    ? DialogResult::Action::LoadExtras
+                                : id == kRemoveExtras  ? DialogResult::Action::RemoveExtras
+                                : id == kInstallBridge ? DialogResult::Action::InstallBridge
+                                                       : DialogResult::Action::RemoveBridge;
                 Close();
                 break;
 #ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
@@ -1630,13 +1626,27 @@ private:
             case kFontFace:
                 if (code == CBN_SELCHANGE) Preview();
                 break;
-            case kHotkey:
-                if (code == EN_CHANGE) UpdateHotkeyStatus();
+            case kHotkeySet: {  // letters alone would be taken from every program: Ctrl or Alt is required
+                std::wstring key = hotkey_;
+                if (PickKey(hwnd_, inst_, Tr(L"Show / hide hotkey"), hotkey_, cfg_.hotkey, true, &key)) {
+                    hotkey_ = key;
+                    SetText(kHotkeyStatus, KeyShown(hotkey_));
+                }
                 break;
-            case kHotkeyClear:
-                SendMessageW(Item(kHotkey), HKM_SETHOTKEY, 0, 0);
-                UpdateHotkeyStatus();
+            }
+#ifdef GCT_KEYBOARD_APP
+            case kPttSet: {  // the key anywhere of the Microphone page (works while GW2 is in front)
+                std::wstring key = HotkeyValue(kMicGlobalKey);
+                if (PickKey(hwnd_, inst_, Tr(L"Push-to-talk key"), key, cfg_.voiceGlobalKey, false, &key)) {
+                    SetHotkeyControl(kMicGlobalKey, key);
+                    SetText(kPttValue, KeyShown(key));
+                }
                 break;
+            }
+            case kMicGlobalKey:
+                if (code == EN_CHANGE) SetText(kPttValue, KeyShown(HotkeyValue(kMicGlobalKey)));
+                break;
+#endif
             case kHelpOcr:
                 MessageBoxW(hwnd_,
                             Tr(L"Text recognition (OCR, optical character recognition) turns the picture of the chat into "
@@ -2247,7 +2257,7 @@ private:
         c.fontPercent = PercentOf(static_cast<int>(SendMessageW(Item(kFontSize), TBM_GETPOS, 0, 0)));
         c.fontFace = kFonts[static_cast<size_t>(std::max(0, Sel(kFontFace))) % std::size(kFonts)];
         c.opacity = OpacityOf(static_cast<int>(SendMessageW(Item(kOpacity), TBM_GETPOS, 0, 0)));
-        c.hotkey = HotkeyText();  // empty = no hotkey
+        c.hotkey = hotkey_;  // empty = no hotkey
 
 #ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
         // Reading on/off is switched in the main window.
@@ -2634,6 +2644,98 @@ private:
     std::wstring label_, hint_, text_;
     bool multi_;
 };
+
+class KeyDialog final : public NativeDialog {
+public:
+    KeyDialog(std::wstring current, std::wstring mine, bool needModifier)
+        : current_(std::move(current)), mine_(std::move(mine)), needModifier_(needModifier) {}
+    bool ok = false;
+    std::wstring key;
+    static constexpr int kW = 420, kH = 196;
+
+private:
+    enum : int { kKey = 300, kKeyStatus, kKeyNone };
+
+    void Build() override {
+        Label(Tr(L"Press the keys: two of them (for example Ctrl+T), a third one is optional (Ctrl+Alt+T)."), 16, 12,
+              kW - 32, 34);
+        HWND hk = Add(HOTKEY_CLASSW, L"", WS_TABSTOP, 16, 52, 220, 26, kKey, WS_EX_CLIENTEDGE);
+        if (needModifier_)  // letters alone would be taken from every program
+            SendMessageW(hk, HKM_SETRULES, HKCOMB_NONE | HKCOMB_S, MAKELPARAM(HOTKEYF_CONTROL | HOTKEYF_ALT, 0));
+        if (const auto cur = ParseHotkey(current_)) {
+            BYTE f = 0;
+            if (cur->mods & kModCtrl) f |= HOTKEYF_CONTROL;
+            if (cur->mods & kModAlt) f |= HOTKEYF_ALT;
+            if (cur->mods & kModShift) f |= HOTKEYF_SHIFT;
+            SendMessageW(hk, HKM_SETHOTKEY, MAKEWORD(static_cast<BYTE>(cur->vk), f), 0);
+        }
+        Button(kKeyNone, Tr(L"None"), 244, 51, 90);
+        Label(L"", 16, 88, kW - 32, 50, kKeyStatus);
+        Button(IDOK, Tr(L"OK"), kW - 228, kH - 40, 104);
+        Button(IDCANCEL, Tr(L"Cancel"), kW - 116, kH - 40, 100);
+        UpdateStatus();
+        SetFocus(hk);
+    }
+
+    std::wstring Value() const {
+        const WORD v = static_cast<WORD>(SendMessageW(Item(kKey), HKM_GETHOTKEY, 0, 0));
+        Hotkey hk;
+        hk.vk = LOBYTE(v);
+        const BYTE f = HIBYTE(v);
+        if (f & HOTKEYF_CONTROL) hk.mods |= kModCtrl;
+        if (f & HOTKEYF_ALT) hk.mods |= kModAlt;
+        if (f & HOTKEYF_SHIFT) hk.mods |= kModShift;
+        return hk.vk ? FormatHotkey(hk) : L"";
+    }
+
+    // Free or taken? Windows tells us for hotkeys of other programs; keys a game or add-on (arcdps) reads itself
+    // cannot be seen from outside.
+    void UpdateStatus() {
+        const std::wstring text = Value();
+        std::wstring status;
+        if (text.empty()) {
+            status = Tr(L"No key.");
+        } else if (const auto hk = ParseHotkey(text); !hk) {
+            status = Tr(L"[!] This key cannot be used – take a letter, digit or F-key with Ctrl or Alt.");
+        } else if (const auto mine = ParseHotkey(mine_); mine && mine->vk == hk->vk && mine->mods == hk->mods) {
+            status = Tr(L"[OK] In use by this tool. Keys of the game and its add-ons (e.g. arcdps) cannot be checked – "
+                        L"three keys clash least.");
+        } else if (RegisterHotKey(hwnd_, 0x7FFF, hk->mods | MOD_NOREPEAT, hk->vk)) {
+            UnregisterHotKey(hwnd_, 0x7FFF);
+            status = Tr(L"[OK] Free in Windows. Keys of the game and its add-ons (e.g. arcdps) cannot be checked – "
+                        L"three keys clash least.");
+        } else {
+            status = Tr(L"[!] Already taken by another program – choose another one.");
+        }
+        SetText(kKeyStatus, status);
+    }
+
+    void OnCommand(int id, int code) override {
+        if (id == kKey && code == EN_CHANGE) {
+            UpdateStatus();
+        } else if (id == kKeyNone) {
+            SendMessageW(Item(kKey), HKM_SETHOTKEY, 0, 0);
+            UpdateStatus();
+        } else if (id == IDOK) {
+            key = Value();
+            ok = true;
+            Close();
+        } else if (id == IDCANCEL) {
+            Close();
+        }
+    }
+
+    std::wstring current_, mine_;
+    bool needModifier_;
+};
+
+bool PickKey(HWND owner, HINSTANCE inst, const std::wstring& title, const std::wstring& current, const std::wstring& mine,
+             bool needModifier, std::wstring* key) {
+    KeyDialog dlg(current, mine, needModifier);
+    dlg.Run(owner, inst, title, KeyDialog::kW, KeyDialog::kH);
+    if (dlg.ok) *key = dlg.key;
+    return dlg.ok;
+}
 
 #ifdef GCT_KEYBOARD_APP
 bool EditVoiceFixes(HWND owner, HINSTANCE inst, std::wstring* text) {

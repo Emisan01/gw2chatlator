@@ -209,6 +209,8 @@ private:
     };
     void OnBridge(WPARAM kind, BridgeMessage* msg);
     void LoadExtras();                               // Unofficial Extras into <GW2>\addons (Settings → General)
+    void InstallBridge();                            // our Nexus add-on from the package into <GW2>\addons
+    void RemoveAddonFile(const wchar_t* file, const wchar_t* name);
     void OnExtrasLoaded(ExtrasInstallResult* result);
     bool extrasLoading_ = false;
     void TranslateIncoming(const IncomingLine& line);

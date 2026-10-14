@@ -14,6 +14,7 @@
 #include "app/modal_scope.hpp"
 #include "win/extension.hpp"
 #include "win/extras_install.hpp"
+#include "win/hash.hpp"
 #include "core/chat_line.hpp"
 #include "core/chat_stream.hpp"
 #include "core/gw2_text.hpp"
@@ -1089,6 +1090,50 @@ void KeyboardWindow::LoadExtras() {
         auto* res = new ExtrasInstallResult(InstallUnofficialExtras(addons, {}));
         if (!PostMessageW(hwnd, WM_APP_EXTRAS, 0, reinterpret_cast<LPARAM>(res))) delete res;
     }).detach();
+}
+
+// Settings → General: our Nexus add-on from the package (<exe>\nexus) into <GW2>\addons – your click, your yes.
+void KeyboardWindow::InstallBridge() {
+    const std::wstring addons = Gw2AddonsDir(), from = BridgeInPackage();
+    if (addons.empty() || from.empty()) return;
+    {
+        const ModalScope modal;
+        if (MessageBoxW(hwnd_,
+                        TrF(L"Install the Nexus add-on GW2 Chat Bridge?\n\nIt passes party and squad chat (from Unofficial "
+                            L"Extras) to this program as exact text. It only reads – it never sends anything to the "
+                            L"game. Into:\n{1}\n\nNexus loads it, also while the game runs.",
+                            {addons})
+                            .c_str(),
+                        Tr(L"Install GW2 Chat Bridge").c_str(),
+                        MB_YESNO | MB_ICONQUESTION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0)) != IDYES)
+            return;
+    }
+    if (CopyFileW(from.c_str(), (addons + kBridgeDllName).c_str(), FALSE))
+        SetStatus(Tr(L"GW2 Chat Bridge installed – Nexus loads it"), Tone::Ok, 8000);
+    else  // the old one is loaded by the game right now
+        SetStatus(Tr(L"The add-on is in use – close GW2 (or disable it in Nexus) and try again"), Tone::Warn, 10000);
+}
+
+// Settings → General: removes exactly that one file from <GW2>\addons (after your yes).
+void KeyboardWindow::RemoveAddonFile(const wchar_t* file, const wchar_t* name) {
+    const std::wstring addons = Gw2AddonsDir();
+    if (addons.empty()) return;
+    {
+        const ModalScope modal;
+        if (MessageBoxW(hwnd_, TrF(L"Remove {1} from the GW2 add-ons folder?\n\n{2}", {name, addons + file}).c_str(),
+                        TrF(L"Remove {1}", {name}).c_str(),
+                        MB_YESNO | MB_ICONQUESTION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0)) != IDYES)
+            return;
+    }
+    if (DeleteFileW((addons + file).c_str()) || GetLastError() == ERROR_FILE_NOT_FOUND) {
+        if (std::wstring(file) == kBridgeDllName) {  // its own small settings folder goes with it
+            DeleteFileW((addons + L"GW2ChatBridge\\settings.ini").c_str());
+            RemoveDirectoryW((addons + L"GW2ChatBridge").c_str());
+        }
+        SetStatus(TrF(L"{1} removed", {name}), Tone::Ok, 6000);
+    } else {
+        SetStatus(Tr(L"The add-on is in use – close GW2 (or disable it in Nexus) and try again"), Tone::Warn, 10000);
+    }
 }
 
 void KeyboardWindow::OnExtrasLoaded(ExtrasInstallResult* raw) {
@@ -2810,6 +2855,15 @@ void KeyboardWindow::OpenSettings(SettingsPage page) {
         if (addons.empty()) return -1;
         return GetFileAttributesW((addons + kExtrasDllName).c_str()) != INVALID_FILE_ATTRIBUTES ? 1 : 0;
     };
+    ctx.bridgeState = [] {
+        const std::wstring addons = Gw2AddonsDir();
+        if (addons.empty()) return -1;
+        const std::wstring shipped = BridgeInPackage();
+        const std::wstring there = addons + kBridgeDllName;
+        if (GetFileAttributesW(there.c_str()) == INVALID_FILE_ATTRIBUTES) return shipped.empty() ? 3 : 0;
+        if (shipped.empty()) return 1;
+        return Sha256FileHex(there) == Sha256FileHex(shipped) ? 1 : 2;  // another build: offered as update
+    };
     const DialogResult r = ShowSettingsDialog(hwnd_, inst_, edited, ctx, page);
     if (r.saved) ApplySettings(edited);
     else RefreshVoiceReady();  // a model may have been downloaded or deleted meanwhile
@@ -2820,6 +2874,9 @@ void KeyboardWindow::OpenSettings(SettingsPage page) {
     }
     else if (r.action == DialogResult::Action::LoadExtension) ActivateChatTranslation();
     else if (r.action == DialogResult::Action::LoadExtras) LoadExtras();
+    else if (r.action == DialogResult::Action::RemoveExtras) RemoveAddonFile(kExtrasDllName, L"Unofficial Extras");
+    else if (r.action == DialogResult::Action::InstallBridge) InstallBridge();
+    else if (r.action == DialogResult::Action::RemoveBridge) RemoveAddonFile(kBridgeDllName, L"GW2 Chat Bridge");
 }
 
 void KeyboardWindow::ApplySettings(const Config& next) {
