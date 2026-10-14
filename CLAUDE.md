@@ -107,6 +107,10 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 - `build\addons\nexus-keyboard\Release\nexus_kb_selftest.exe <dll>` – loads the add-on with a real ImGui context and a
   stand-in Nexus API, types (wrap, Space, Tab, Enter in two parts, history, a self-correction), unloads: PASS. It
   writes `[Nexus] SetupDone=1` first (no downloads in tests).
+- Look at the window without the game: `GW2KB_SHOT=local\shots\x.bmp` (optional `GW2KB_SHOT_ALPHA=150`,
+  `GW2KB_SHOT_BRIGHT=1`) makes the self-test raise chat lines of every channel (invented names) and rasterize the
+  frame into a BMP (software, no GPU). Chat text: `LookText` (GW2 palette `kChannelLook`: name strong, message light;
+  a dark halo = 4 diagonal copies; `[NexusWindow] Glow / Brightness / GameColors`).
 - `build\Release\typing_bench.exe [n]` after every change to the typing help: SURPRISES must stay 0.
 - `build\Release\voice_bench.exe model lang threads wav…` with recordings in `local\voice`.
 - Not verifiable here: the game itself – test in GW2 with Nexus (copy the DLL + `GW2Keyboard\` into `addons`).
