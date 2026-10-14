@@ -11,6 +11,8 @@ voice model by itself. SHA-256 `9edd4626…5b4bb141` ·
 [the same with the voice module already inside (ZIP)](https://github.com/Emisan01/gw2chatlator/releases/latest/download/GW2Keyboard-Nexus.zip)
 · all versions: [Releases](https://github.com/Emisan01/gw2chatlator/releases) · what changed: [CHANGELOG.md](CHANGELOG.md).
 
+Checked by VirusTotal: [the 1.7.6 DLL – 0 of 71 scanners](https://www.virustotal.com/gui/file/9edd4626add6b2cc310e98d57704daf92bb0c6bc71ae5a2be7ffe0b25b4bb141).
+
 > **New in 1.7.6** – it looks and links like GW2's own chat:
 > the name in the channel colour, the message light, a dark glow around the letters (readable on snow and sky) and a
 > brightness of your own · **waypoints** show their name and map, a click opens the world map right on the spot ·
