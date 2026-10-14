@@ -48,7 +48,10 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   for the session, never takes the game down.
 - **Chat in:** Events: Chat (`EV_CHAT:Message`) → `OnChatEvents` → `AddLine` (`UnescapeChatText`, sanitised) →
   translated on the worker only when `[Nexus] TranslateChat=1` (default 0) or a click on the line asks for it
-  (`SureLanguage`, understood languages skipped). Nothing of other players is stored (privacy, Raidcore).
+  (`SureLanguage`, understood languages skipped – Translator tab "Languages I understand", `[Translate] Understood`).
+  The detection runs for every line (local, no translator): `g_playerLang` (session only) remembers each player's
+  language; their whisper tab then sends in it (`WhisperTab::sendLang` → `g_sendOverride`, "=" = as written; the
+  footer's choice in a tab changes only that tab). Nothing of other players is stored (privacy, Raidcore).
 - **Writing:** the multi-line input (soft wrap = '\n' in place of a space, `Flat()` turns it back) → `ComputeTyping`
   (word bar, grey completion, what Space writes) → debounce → `TranslateInput` (`MyWords::Expand` first, protected
   segments, back-translation) → Enter → `StartSend` → `SplitForChat` (199) → `SendNow` → `SendToGw2Chat`.

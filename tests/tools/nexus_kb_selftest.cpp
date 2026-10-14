@@ -46,6 +46,7 @@ struct TestHooks {  // as in kb_main.cpp
     bool* focus = nullptr;
     int selfFixes = 0;
     char lastFix[128] = {};
+    char sendLang[16] = {};
 };
 void Free(void* p, void*) { std::free(p); }
 
@@ -306,6 +307,17 @@ int wmain(int argc, wchar_t** argv) {
         frames(10);
         std::printf("self-correction: %d noticed, newest %s (input: %s)\n", th->selfFixes, th->lastFix, th->input);
         ok = ok && th->selfFixes >= 1;
+        // Answering in their language: a French line, then a click on the name – that tab sends in French.
+        bridge::ChatEventsMessage fr{};
+        fr.type = bridge::ChatEventsType::Map;
+        fr.generic.characterName = "Jean Invented";
+        fr.generic.content = "Bonjour tout le monde, est-ce que quelqu'un peut m'aider avec cette mission s'il vous plait ?";
+        g_chatEvents(&fr);
+        frames(80);  // the worker detects the language
+        if (auto whisper = reinterpret_cast<void (*)(const char*)>(GetProcAddress(dll, "Gw2KbTestWhisper"))) whisper("Jean Invented");
+        frames(5);
+        std::printf("reply language for Jean Invented: %s\n", th->sendLang);
+        ok = ok && std::strcmp(th->sendLang, "FR") == 0;
     }
     std::printf("unload\n");
     def->Unload();
