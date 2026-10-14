@@ -184,13 +184,19 @@ public:
         if (owner) EnableWindow(owner, FALSE);
         ShowWindow(hwnd_, SW_SHOW);
         SetForegroundWindow(hwnd_);
-        MSG m;
-        while (!done_ && GetMessageW(&m, nullptr, 0, 0) > 0) {
+        MSG m{};
+        bool quit = false;
+        while (!done_) {
+            if (GetMessageW(&m, nullptr, 0, 0) <= 0) {  // the program is quitting while this dialog is open
+                quit = true;
+                break;
+            }
             if (!IsDialogMessageW(hwnd_, &m)) {
                 TranslateMessage(&m);
                 DispatchMessageW(&m);
             }
         }
+        if (quit) PostQuitMessage(static_cast<int>(m.wParam));  // handed on to the main loop (it ends the program)
         if (owner) EnableWindow(owner, TRUE);
         if (hwnd_) DestroyWindow(hwnd_);
         if (owner) SetForegroundWindow(owner);

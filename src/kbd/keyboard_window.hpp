@@ -197,6 +197,8 @@ private:
 
     // ---- game, docking, tray, settings
     void PollGame();
+    void Quit();              // really ends the program (≡ / tray "Quit", hand-over); × and Alt+F4 only hide it
+    bool quitting_ = false;
     // Party/squad chat from the optional Nexus add-on (GW2 Chat Bridge, exact text from Unofficial Extras): the
     // newest lines in a slim band above the preview, translated into your language when they are foreign.
     struct IncomingLine {

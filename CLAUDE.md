@@ -177,6 +177,9 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
 
 ## Pitfalls already hit
 
+- A modal loop (`NativeDialog::Run`) must hand `WM_QUIT` on (`PostQuitMessage`): swallowed, GW2 Keyboard kept running
+  invisibly after tray "Quit" (2026-10-14). GW2 Keyboard: × / Alt+F4 / WM_CLOSE only hide it to the tray; `Quit()` ends
+  it (`quitting_`); WM_DESTROY saves first and arms a 4 s `TerminateProcess` fallback so it can never linger.
 - `small` is a macro (rpcndr.h) → theme fonts are `fontSmall` etc.; `FoldString` is a macro → `CaseFold`.
 - Multi-line EDIT sends no `EN_CHANGE` for `WM_SETTEXT` → call `OnInputChanged()` after `InputBox::Clear()`.
 - `GetPrivateProfileInt` turns negatives into 0 → `Ini::Int` parses strings.
