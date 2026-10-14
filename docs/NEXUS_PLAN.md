@@ -1,7 +1,13 @@
 # NEXUS_PLAN — GW2 Chat Bridge (optional Nexus add-on)
 
-Status 2026-10-14: scaffold in `addons/nexus` (builds, sends hello + party/squad lines into a pipe). The receiving
-side in the programs is not built yet (phase 2).
+Status 2026-10-14:
+- The add-on and the receiver in GW2 Chat Translator are built.
+- `bridge_selftest.exe` runs the whole chain without the game and passes.
+- Not tested in the game yet.
+
+Decision (user, 2026-10-14): map chat, whispers and the other channels **stay with the OCR reader**. Extras is closed
+source (at the request of ArenaNet's community managers), and building our own chat hook would break the rules we want
+to keep. The bridge only takes what Unofficial Extras offers: party and squad.
 
 ## Why
 
@@ -76,7 +82,13 @@ UTF-8, one JSON object per line, `\n` at the end, at most 8192 bytes.
      - Unofficial Extras `Definitions.h` and `KeyBindStructs.h` at commit `33bd9ac5`.
    - `GetAddonDef`, Load/Unload, event subscription, writer thread, hello.
    - `core/bridge_protocol` with tests.
-2. **Receiver in the programs.**
+2. ✅ **Receiver in GW2 Chat Translator** (2026-10-14).
+   - `win/bridge_pipe` and `MainWindow::OnBridge` are done.
+   - Party/squad OCR lines are dropped once the bridge has delivered a line (`BridgeCarriesParty`).
+   - The Technical page shows the bridge status.
+   - Still open: the download offer when `<GW2>ddons` holds Nexus + Unofficial Extras (via the `ScanAddons` file
+     scan, never the game process), and the keyboard strip (below).
+   Original design notes:
    - `win/bridge_pipe`: a server thread with `CreateNamedPipeW` (message mode is not needed because lines are
      framed). It uses a DACL for the current user from `ConvertStringSecurityDescriptorToSecurityDescriptorW`
      ("D:P(A;;GA;;;<user SID>)"), reads lines and passes each one to the UI thread with `PostMessage`. One client at a

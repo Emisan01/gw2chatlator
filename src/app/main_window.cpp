@@ -86,6 +86,7 @@ constexpr UINT WM_APP_TRAY = WM_APP + 6;
 constexpr UINT WM_APP_FIRSTRUN = WM_APP + 7;
 constexpr UINT WM_APP_MYMEMORY_NOTICE = WM_APP + 8;
 constexpr UINT WM_APP_CHATFOUND = WM_APP + 9;   // lParam: RECT* (owned), empty = no chat seen yet
+constexpr UINT WM_APP_BRIDGE = WM_APP + 10;     // BridgePipe: wParam kind, lParam BridgeMessage* (owned)
 constexpr UINT_PTR kTimerDebounce = 1;
 constexpr UINT_PTR kTimerStatus = 2;
 constexpr UINT_PTR kTimerGame = 3;
@@ -413,6 +414,7 @@ void MainWindow::InitServices() {
 void MainWindow::WarmUp() {
     if (warmedUp_) return;
     warmedUp_ = true;
+    bridge_.Start(hwnd_, WM_APP_BRIDGE);  // the optional Nexus add-on connects here when it is installed
     CleanUpFiles();
     if (cfg_.spellEnabled) {
         // Spell check, learned words and word-bar starters all follow the language you type in.
@@ -2479,6 +2481,12 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
     for (ChatMessage& m : built)
         if (cfg_.freeArea ? LooksLikeFreeText(m.text) : LooksLikeChatText(m.text)) msgs.push_back(std::move(m));
     std::vector<ChatMessage> fresh = stream_.Feed(msgs, true);
+    if (BridgeCarriesParty() && !cfg_.freeArea) {  // exact from the Nexus add-on: the OCR reading would come twice
+        fresh.erase(std::remove_if(fresh.begin(), fresh.end(), [](const ChatMessage& m) {
+                        return m.channel == Channel::Party || m.channel == Channel::Squad;
+                    }),
+                    fresh.end());
+    }
     if (cfg_.freeArea && fresh.size() > 1) {
         std::stable_sort(fresh.begin(), fresh.end(), [](const ChatMessage& a, const ChatMessage& b) {
             return a.top < b.top;
@@ -2521,6 +2529,38 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
     // "Translate once": done after the first picture when nothing waits for its confirmation, else after the second
     // (the double scan) – however long the text recognition needs.
     if (once_ && (++onceShots_ >= 2 || !stream_.HasPending())) EndTranslateOnce();
+}
+
+void MainWindow::OnBridge(WPARAM kind, BridgeMessage* raw) {
+    std::unique_ptr<BridgeMessage> msg(raw);
+    if (kind == BridgePipe::kConnected || kind == BridgePipe::kDisconnected) {
+        bridgeConnected_ = kind == BridgePipe::kConnected;
+        bridgeLines_ = 0;
+        if (!bridgeConnected_) bridgeVersion_.clear();
+        return;
+    }
+    if (!msg) return;
+    if (msg->kind == BridgeMessage::Kind::Hello) {
+        bridgeVersion_ = FromUtf8(msg->addonVersion);
+        if (BackgroundNoticeAllowed())
+            SetStatus(Tr(L"Nexus bridge connected: party and squad chat arrive as exact text"), Tone::Ok, 6000);
+        return;
+    }
+    if (!ReadingWanted() || cfg_.freeArea) return;  // reading switched off, or a free screen area instead of the chat
+    ++bridgeLines_;
+    ++stats_.bridgeLines;
+    ChatMessage m;
+    m.channel = msg->channel == "squad" ? Channel::Squad : Channel::Party;
+    m.speaker = SanitizeChatText(FromUtf8(msg->character));
+    m.text = SanitizeChatText(FromUtf8(msg->text));
+    m.raw = m.speaker + L": " + m.text;
+    m.stamped = true;
+    for (const ChannelColor& cc : cfg_.palette)
+        if (cc.channel == m.channel) m.color = cc.rgb;
+    if (m.text.empty()) return;
+    HandleIncoming(m);
+    PumpIncoming();
+    UpdateHint();
 }
 
 bool MainWindow::NeedsTranslation(const std::wstring& text, std::wstring* detected) const {
@@ -3663,6 +3703,11 @@ std::wstring MainWindow::TechnicalStatus() {
         line(L"  " + TrF(L"Reading check (your own lines): {1} of the last {2} read exactly \u00b7 character errors {3} %",
                          {std::to_wstring(exact), std::to_wstring(readChecks_.size()), err}));
     }
+    line(L"  " + (bridgeConnected_
+                      ? TrF(L"Nexus bridge: connected (add-on {1}) · party/squad lines received: {2}",
+                            {bridgeVersion_.empty() ? std::wstring(L"?") : bridgeVersion_,
+                             std::to_wstring(stats_.bridgeLines)})
+                      : Tr(L"Nexus bridge: not connected (optional add-on for exact party/squad chat)")));
     line(TrF(L"  Second look: {1} unknown words read again, {2} corrected",
              {std::to_wstring(stats_.secondLooks), std::to_wstring(stats_.secondFixes)}));
     line(TrF(L"  Learned words: {1}", {std::to_wstring(spell_.Model().Size())}));
@@ -4107,6 +4152,9 @@ LRESULT MainWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
         case WM_APP_SNAPSHOT:
             OnSnapshot(reinterpret_cast<ReaderSnapshot*>(lp));
             return 0;
+        case WM_APP_BRIDGE:
+            OnBridge(wp, reinterpret_cast<BridgeMessage*>(lp));
+            return 0;
         case WM_APP_INCOMING:
             OnIncomingTranslated(reinterpret_cast<IncomingMsg*>(lp));
             return 0;
@@ -4193,6 +4241,7 @@ LRESULT MainWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             return 0;
         case WM_DESTROY:
             reader_.Stop();
+            bridge_.Stop();
             RemoveTrayIcon();
             SaveWindow();
             if (hotkeyOk_) UnregisterHotKey(hwnd_, kHotkeyId);
