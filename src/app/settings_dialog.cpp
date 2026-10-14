@@ -590,7 +590,9 @@ private:
         Label(std::to_wstring(TransparencyOf(cfg_.opacity)) + L" %", kCtrlX + kCtrlW - 94, Y(r++), 60, 18, kOpacityValue);
 
         // Hotkey: a Windows-wide one (also outside the game). Optional; three keys clash least.
+#ifndef GCT_KEYBOARD_APP
         r++;
+#endif
         Label(Tr(L"Show / hide hotkey"), kLabelX, Y(r), kLabelW);
         HWND hk = Add(HOTKEY_CLASSW, L"", WS_TABSTOP, kCtrlX, Y(r), 180, 24, kHotkey, WS_EX_CLIENTEDGE);
         // Letters alone would be taken from every program: at least one of Ctrl / Alt is required.
@@ -603,7 +605,7 @@ private:
             SendMessageW(hk, HKM_SETHOTKEY, MAKEWORD(static_cast<BYTE>(cur->vk), f), 0);
         }
         Button(kHotkeyClear, Tr(L"None"), kCtrlX + 188, Y(r) - 1, 80);
-        Label(L"", kCtrlX, Y(r++) + 28, kCtrlW, 34, kHotkeyStatus);
+        Label(L"", kCtrlX, Y(r++) + 28, kCtrlW, 50, kHotkeyStatus);
         UpdateHotkeyStatus();
 #ifdef GCT_KEYBOARD_APP
         // The chat translation by OCR is an extension: GW2 Chat Translator, loaded on your click.
@@ -616,17 +618,16 @@ private:
               kLabelX, Y(r) - 4, kW - 250, 40);
         Button(kLoadExt, have ? Tr(L"Start chat translation") : Tr(L"Load extension…"), kW - 222, Y(r++) - 2, 196);
         // Party and squad chat as exact text: Unofficial Extras for ArcDPS, passed on by the Nexus add-on.
-        r++;
         const int extras = ctx_.extrasState ? ctx_.extrasState() : -1;
-        Label(Tr(L"Extension: party and squad chat as exact text (Unofficial Extras for ArcDPS)"), kLabelX, Y(r++),
-              kW - 50);
+        Label(Tr(L"Extension: party and squad chat as exact text (Unofficial Extras for ArcDPS)"), kLabelX,
+              Y(r++) + 10, kW - 50);
         Label(extras == 1   ? Tr(L"[OK] Installed in the GW2 add-ons folder. Nexus loads it, the GW2 Chat Bridge add-on "
                                  L"passes the chat on.")
               : extras == 0 ? Tr(L"[--] Not installed. A free ArcDPS extension by Krappa322 (from its GitHub releases, "
                                  L"checksum checked). Needs Nexus with ArcDPS and the GW2 Chat Bridge add-on.")
                             : Tr(L"[--] No Guild Wars 2 add-ons folder found (is Nexus installed?)."),
-              kLabelX, Y(r) - 4, kW - 250, 40);
-        if (extras == 0) Button(kLoadExtras, Tr(L"Load Unofficial Extras…"), kW - 222, Y(r) - 2, 196);
+              kLabelX, Y(r) + 4, kW - 250, 50);
+        if (extras == 0) Button(kLoadExtras, Tr(L"Load Unofficial Extras…"), kW - 222, Y(r) + 6, 196);
         r++;
 #endif
     }
@@ -771,7 +772,11 @@ private:
         Label(Tr(L"Enter does"), kLabelX, Y(r), kLabelW);
         Combo(kSendMode, {Tr(L"Send into the GW2 chat"), Tr(L"Only copy (not a single key reaches the game)")},
               cfg_.copyOnly ? 1 : 0, kCtrlX, Y(r++), kCtrlW);
-        Check(kReturnFocus, Tr(L"Back to this window after sending"), cfg_.returnFocus, kLabelX, Y(r++), kW - 50);
+        // Focus behaviour: when the keyboard focus comes back to this window.
+        Label(Tr(L"Focus behaviour"), kLabelX, Y(r), kLabelW);
+        Check(kReturnFocus, Tr(L"back here after sending"), cfg_.returnFocus, kCtrlX, Y(r), 150);
+        Check(kFocusGameChat, Tr(L"here when the GW2 chat opens"), cfg_.focusOnGameChat, kCtrlX + 156, Y(r++),
+              kCtrlW - 156);
         // Correction memory (right-click a translated line -> "Correct this translation").
         Label(Tr(L"Corrected translations"), kLabelX, Y(r), kLabelW);
         Label(ctx_.correctionsInfo ? ctx_.correctionsInfo() : L"", kCtrlX, Y(r) - 14, kCtrlW, 16, kCorrInfo);
@@ -1384,8 +1389,6 @@ private:
               kW - 50);
         Check(kDock, Tr(L"Dock to the GW2 window (moves with it)"), cfg_.dock, kLabelX, Y(r++), kW - 50);
         Check(kFollow, Tr(L"Show and hide together with the game"), cfg_.followGame, kLabelX, Y(r++), kW - 50);
-        Check(kFocusGameChat, Tr(L"Focus translator when in-game chat is opened"), cfg_.focusOnGameChat, kLabelX,
-              Y(r++), kW - 50);
         // The optional Nexus add-on hands over party/squad chat as exact text (it needs Unofficial Extras in the game).
         Check(kBridgeRead, Tr(L"Read party and squad chat from the Nexus add-on (GW2 Chat Bridge)"), cfg_.bridgeRead,
               kLabelX, Y(r++), kW - 50);
@@ -2687,7 +2690,11 @@ bool AskCorrection(HWND owner, HINSTANCE inst, const std::wstring& original, std
 
 DialogResult ShowSettingsDialog(HWND owner, HINSTANCE inst, Config& cfg, const DialogContext& ctx, SettingsPage start) {
     SettingsDialog dlg(cfg, ctx, start);
+#ifdef GCT_KEYBOARD_APP
+    dlg.Run(owner, inst, Tr(L"Settings") + L" – GW2 Keyboard", 580, 530);
+#else
     dlg.Run(owner, inst, Tr(L"Settings") + L" – GW2 Chat Translator", 580, 530);
+#endif
     return dlg.result;
 }
 
