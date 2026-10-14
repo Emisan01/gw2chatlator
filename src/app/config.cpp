@@ -453,6 +453,7 @@ void Config::Load(const std::wstring& dir) {
     fontPercent = ini.Int(L"Window", L"FontPercent", 100, 70, 300);
     fontFace = ini.Str(L"Window", L"Font", L"Segoe UI");
     followGame = ini.Bool(L"Window", L"FollowGame", true);
+    compact = ini.Bool(L"Window", L"Compact", false);
     focusOnGameChat = ini.Bool(L"Window", L"FocusOnGameChat", false);
     typingDay = ini.Int(L"Typing", L"Day", 0, 0, 99991231);
     dayKeys = ini.Int(L"Typing", L"DayKeys", 0, 0, 2000000000);
@@ -620,6 +621,7 @@ void Config::SaveAll() const {
     SaveValue(L"Window", L"FontPercent", std::to_wstring(fontPercent));
     SaveValue(L"Window", L"Font", fontFace);
     SaveBool(L"Window", L"FollowGame", followGame);
+    SaveBool(L"Window", L"Compact", compact);
     SaveBool(L"Window", L"FocusOnGameChat", focusOnGameChat);
     SaveBool(L"Window", L"Dock", dock);
 }

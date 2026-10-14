@@ -10,6 +10,14 @@ diagnosis show it.
   every language. The recognizer's hint words follow the language you speak.
 - GW2 Keyboard settings without leftovers of the full tool: no game folder, no "Guided setup" button that did nothing.
 - The tour knows right-click on the microphone and the key that works while GW2 is in front.
+- **Which translator is active, always visible:** the send chip reads e.g. "Send: English · MyMemory" – or
+  "· Whisper" when whisper already wrote the chat's language.
+- **No MyMemory when whisper translates:** text that is already in the chat's language is not translated back either
+  (no request at all).
+- **Settings → Translator:** with "Automatic" (MyMemory while no key is set up) the e-mail field for MyMemory's larger
+  contingent is there at once.
+- **Compact view** (menu ≡): slim bars, a one-line input, only the line that goes into the chat; the window takes the
+  height it needs and gets the old one back.
 
 ## 1.5.0 — 2026-10-13 (GW2 Keyboard; GW2 Chat Translator stays 1.4.0)
 

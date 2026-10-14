@@ -92,7 +92,11 @@ constexpr UINT kCmdPartnerBase = 4000;
 struct Metrics {
     int pad, head, foot, gap, inputH;
 };
-Metrics MetricsFor(const Theme& t) { return {t.S(8), t.S(32), t.S(30), t.S(6), t.textLineHeight * 2 + t.S(12)}; }
+// Compact view: slim bars, a one-line input, tighter gaps.
+Metrics MetricsFor(const Theme& t, bool compact) {
+    if (compact) return {t.S(6), t.S(24), t.S(24), t.S(4), t.textLineHeight + t.S(10)};
+    return {t.S(8), t.S(32), t.S(30), t.S(6), t.textLineHeight * 2 + t.S(12)};
+}
 
 // Saved position inside the work area of its monitor; none yet: bottom-left, above the GW2 chat panel.
 void PlaceWindow(int& x, int& y, int w, int h) {
@@ -255,9 +259,10 @@ int KeyboardWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
     SuggestionBar::Register(inst);
 
     // Just preview, word bar and input: the height follows from them.
-    const Metrics m = MetricsFor(theme_);
-    int w = theme_.S(cfg_.w), h = m.head + theme_.textLineHeight * 2 + theme_.smallLineHeight * 2 + theme_.S(14) + m.gap +
-                                 theme_.S(34) + m.inputH + m.foot;
+    const Metrics m = MetricsFor(theme_, cfg_.compact);
+    const int previewH = cfg_.compact ? theme_.textLineHeight + theme_.S(8)
+                                      : theme_.textLineHeight * 2 + theme_.smallLineHeight * 2 + theme_.S(14);
+    int w = theme_.S(cfg_.w), h = m.head + previewH + m.gap + theme_.S(34) + m.inputH + m.foot;
     int x = cfg_.x, y = cfg_.y;
     PlaceWindow(x, y, w, h);
     CreateWindowExW(WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW, kClassName, kTitle, WS_POPUP | WS_CLIPCHILDREN, x,
@@ -485,7 +490,7 @@ void KeyboardWindow::Layout() {
     if (!input_.Hwnd()) return;
     RECT rc;
     GetClientRect(hwnd_, &rc);
-    const Metrics m = MetricsFor(theme_);
+    const Metrics m = MetricsFor(theme_, cfg_.compact);
     const int w = std::max(10, static_cast<int>(rc.right) - 2 * m.pad);
     const bool bar = cfg_.suggestions;
     const int barH = bar ? words_.PreferredHeight() : 0;
@@ -518,7 +523,7 @@ void KeyboardWindow::InvalidateChrome() {
     if (!hwnd_) return;
     RECT rc;
     GetClientRect(hwnd_, &rc);
-    const Metrics m = MetricsFor(theme_);
+    const Metrics m = MetricsFor(theme_, cfg_.compact);
     RECT head{0, 0, rc.right, m.head};
     RECT foot{0, rc.bottom - m.foot, rc.right, rc.bottom};
     InvalidateRect(hwnd_, &head, FALSE);
@@ -536,7 +541,7 @@ void KeyboardWindow::Paint() {
     HGDIOBJ oldFont = SelectObject(dc, theme_.fontUi);
     FillRect(dc, &rc, theme_.bg);
     SetBkMode(dc, TRANSPARENT);
-    const Metrics m = MetricsFor(theme_);
+    const Metrics m = MetricsFor(theme_, cfg_.compact);
     const Theme& t = theme_;
 
     // ---- header: title, menu, close
@@ -642,7 +647,7 @@ LRESULT KeyboardWindow::HitTest(LPARAM lp) const {
     if (right) return HTRIGHT;
     if (top) return HTTOP;
     if (bottom) return HTBOTTOM;
-    const Metrics m = MetricsFor(theme_);
+    const Metrics m = MetricsFor(theme_, cfg_.compact);
     if (pt.y < m.head || pt.y >= rc.bottom - m.foot) return HTCAPTION;  // drag by header / footer
     return HTCLIENT;
 }
@@ -778,7 +783,18 @@ std::wstring KeyboardWindow::TypeChipText() const {
 std::wstring KeyboardWindow::SendChipText() const {
     if (SendOriginal()) return Tr(L"Send: original (only corrected)");
     const LangInfo* l = FindLanguage(SendLang());
-    return TrF(L"Send: {1}", {l ? std::wstring(l->native) : SendLang()});
+    // Who translates, always visible: whisper (it already wrote the chat's language), nobody (the text is in it
+    // already), or the translator ("MyMemory", "DeepL", "LLM" ...).
+    std::wstring who;
+    const bool fromVoice = !lastDictated_.empty() && !dictLang_.empty();
+    if (fromVoice && cfg_.voiceTranslate && PrimaryLang(dictLang_) == PrimaryLang(SendLang())) {
+        who = L"Whisper";
+    } else if (translator_) {
+        who = translator_->Name();
+        if (const size_t cut = who.find(L" ("); cut != std::wstring::npos) who.resize(cut);
+    }
+    const std::wstring lang = l ? std::wstring(l->native) : SendLang();
+    return who.empty() ? TrF(L"Send: {1}", {lang}) : TrF(L"Send: {1} · {2}", {lang, who});
 }
 
 void KeyboardWindow::ShowChannelMenu() {
@@ -909,7 +925,7 @@ void KeyboardWindow::ShowSendMenu() {
 
 void KeyboardWindow::ShowMainMenu() {
     const ModalScope modal;
-    enum : UINT { kSettings = 1, kDock, kQuit, kChat };
+    enum : UINT { kSettings = 1, kDock, kQuit, kChat, kCompact };
     auto check = [](bool on) { return static_cast<UINT>(on ? MF_CHECKED : MF_UNCHECKED); };
     // Short: the chat translation (loaded as an extension when missing), the window, settings. The tour is on the
     // Technical page, the language under General.
@@ -920,6 +936,7 @@ void KeyboardWindow::ShowMainMenu() {
                     .c_str());
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING | check(cfg_.dock), kDock, Tr(L"Dock to GW2 (moves with it)").c_str());
+    AppendMenuW(menu, MF_STRING | check(cfg_.compact), kCompact, Tr(L"Compact view").c_str());
     AppendMenuW(menu, MF_STRING, kSettings, Tr(L"Settings …").c_str());
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, kQuit, Tr(L"Quit").c_str());
@@ -930,8 +947,31 @@ void KeyboardWindow::ShowMainMenu() {
     DestroyMenu(menu);
     if (cmd == kSettings) OpenSettings(SettingsPage::General);
     else if (cmd == kDock) SetDock(!cfg_.dock);
+    else if (cmd == kCompact) SetCompact(!cfg_.compact);
     else if (cmd == kChat) ActivateChatTranslation();
     else if (cmd == kQuit) PostMessageW(hwnd_, WM_CLOSE, 0, 0);
+}
+
+// Compact view: slim bars, one-line input, only the translation – the window takes the height it needs, and gets the
+// old height back when you leave it.
+void KeyboardWindow::SetCompact(bool on) {
+    if (on == cfg_.compact) return;
+    RECT r;
+    GetWindowRect(hwnd_, &r);
+    if (on) normalHeight_ = r.bottom - r.top;
+    cfg_.compact = on;
+    cfg_.SaveBool(L"Window", L"Compact", on);
+    const Metrics m = MetricsFor(theme_, on);
+    const int barH = cfg_.suggestions ? words_.PreferredHeight() : 0;
+    const int previewH = on ? theme_.textLineHeight + theme_.S(8)
+                            : theme_.textLineHeight * 2 + theme_.smallLineHeight * 2 + theme_.S(14);
+    int h = on ? m.head + previewH + m.gap + barH + m.inputH + m.foot : normalHeight_;
+    if (h <= 0) h = m.head + previewH + m.gap + barH + m.inputH + m.foot;
+    // Kept at the bottom edge: the window sits above the GW2 chat, its input line stays where it was.
+    SetWindowPos(hwnd_, nullptr, r.left, r.bottom - h, r.right - r.left, h, SWP_NOZORDER | SWP_NOACTIVATE);
+    Layout();
+    UpdatePreview();
+    InvalidateRect(hwnd_, nullptr, FALSE);
 }
 
 void KeyboardWindow::ShowTour() {
@@ -1309,6 +1349,9 @@ void KeyboardWindow::OnTranslated(KbdTranslatedMsg* raw) {
 // The check of what goes into the chat, in the language you write in.
 void KeyboardWindow::StartBackTranslation() {
     if (!cfg_.backTranslate || !PreviewIsCurrent() || !Translating() || previewBody_.empty()) return;
+    // The text was in the chat's language already (whisper translated, or you wrote it so): nothing to translate back
+    // – no translator request (MyMemory stays untouched).
+    if (PrimaryLang(InputLang()) == PrimaryLang(SendLang())) return;
     ProtectedText p = ProtectForTranslation(previewBody_, nullptr, &spell_.KeepWords());
     if (!HasTranslatableText(p.segments)) return;
     CountMyMemory(CodePointCount(previewBody_));
@@ -1400,6 +1443,10 @@ void KeyboardWindow::UpdatePreview() {
         c.text = previewBody_.empty() ? ComposePrefix() + text : previewPrefix_ + previewBody_;
         c.current = false;
         if (inflightGen_ == inputGen_) c.note = Tr(L"translating …");
+    }
+    if (cfg_.compact) {  // compact view: only the line that goes into the chat
+        c.back.clear();
+        if (!c.warn) c.note.clear();
     }
     preview_.Set(std::move(c));
 }
@@ -2750,10 +2797,11 @@ LRESULT KeyboardWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             InvalidateRect(hwnd_, nullptr, FALSE);
             return 0;
         case WM_GETMINMAXINFO: {
-            const Metrics m = MetricsFor(theme_);
+            const Metrics m = MetricsFor(theme_, cfg_.compact);
             auto* mmi = reinterpret_cast<MINMAXINFO*>(lp);
-            const int previewH = theme_.textLineHeight * 2 + theme_.smallLineHeight * 2 + theme_.S(14);
-            mmi->ptMinTrackSize = {theme_.S(360), m.head + previewH + m.inputH + 2 * m.gap + m.foot};
+            const int previewH = cfg_.compact ? theme_.textLineHeight + theme_.S(8)
+                                              : theme_.textLineHeight * 2 + theme_.smallLineHeight * 2 + theme_.S(14);
+            mmi->ptMinTrackSize = {theme_.S(cfg_.compact ? 300 : 360), m.head + previewH + m.inputH + 2 * m.gap + m.foot};
             return 0;
         }
         case WM_NCHITTEST:

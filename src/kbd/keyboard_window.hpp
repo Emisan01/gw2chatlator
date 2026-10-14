@@ -125,6 +125,8 @@ private:
     void ShowTypeLangMenu();
     void ShowSendMenu();
     void ShowMainMenu();
+    void SetCompact(bool on);
+    int normalHeight_ = 0;  // the height before the compact view
     // What you sent this session (yours only, in memory): the circle in the header, save as text, learn later.
     struct SentLine {
         SYSTEMTIME time;

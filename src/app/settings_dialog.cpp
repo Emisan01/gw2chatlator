@@ -1213,15 +1213,17 @@ private:
 
         // MyMemory
         group_ = &secBasic_;
-        r = top;
+        Label(Tr(L"What MyMemory does: it translates the lines it gets and keeps them in its public translation "
+                 L"memory. Your learned words stay on this PC. With another translator MyMemory is not used at all."),
+              kCtrlX, Y(top), kCtrlW, 60);
+        // Its e-mail: also shown with "Automatic" – without any key that is MyMemory, so the field is there at once.
+        group_ = &secEmail_;
+        r = top + 2;
         Label(Tr(L"Your e-mail (optional)"), kLabelX, Y(r), kLabelW);
         Edit(kEmail, cfg_.basicEmail, kCtrlX, Y(r++), kCtrlW);
         Label(Tr(L"No registration: any address of yours works. Without it 5,000 characters a day, with it 50,000 – "
                  L"MyMemory only uses it to count your contingent."),
               kCtrlX, Y(r++) - 6, kCtrlW, 44);
-        Label(Tr(L"What MyMemory does: it translates the lines it gets and keeps them in its public translation "
-                 L"memory. Your learned words stay on this PC. With another translator MyMemory is not used at all."),
-              kCtrlX, Y(r++) + 8, kCtrlW, 60);
 
         // Google
         group_ = &secGoogle_;
@@ -1318,6 +1320,7 @@ private:
         };
         show(secAuto_, e == Engine::Auto);
         show(secBasic_, e == Engine::Basic);
+        show(secEmail_, e == Engine::Basic || e == Engine::Auto);
         show(secGoogle_, e == Engine::Google);
         show(secMicrosoft_, e == Engine::Microsoft);
         show(secDeepL_, e == Engine::DeepL);
@@ -1468,7 +1471,7 @@ private:
         UpdateTranslatorView();
     }
     void OnRebuild() override {
-        for (auto* g : {&secAuto_, &secBasic_, &secGoogle_, &secMicrosoft_, &secDeepL_, &secLibre_, &secLlm_, &secLocal_}) g->clear();
+        for (auto* g : {&secAuto_, &secBasic_, &secEmail_, &secGoogle_, &secMicrosoft_, &secDeepL_, &secLibre_, &secLlm_, &secLocal_}) g->clear();
     }
 
     void OnSlider() override {
@@ -2352,7 +2355,7 @@ private:
     SettingsPage start_;
     HWND tab_ = nullptr;
     // Translator page: one section per translator, only the chosen one is visible.
-    std::vector<HWND> secAuto_, secBasic_, secGoogle_, secMicrosoft_, secDeepL_, secLibre_, secLlm_, secLocal_;
+    std::vector<HWND> secAuto_, secBasic_, secEmail_, secGoogle_, secMicrosoft_, secDeepL_, secLibre_, secLlm_, secLocal_;
     Engine shownEngine_ = Engine::Auto;  // whose key section is visible (the translator combo changed last)
     int lastPreset_ = -1;
     bool syncing_ = false;  // slider and size field update each other
