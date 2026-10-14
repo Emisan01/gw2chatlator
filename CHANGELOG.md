@@ -3,6 +3,14 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## Unreleased
+
+- **Learned misheard words per language:** "Red = Raid" learned while speaking German no longer touches an English
+  "red". The list (Settings → Voice → Learned…) has sections [de], [en] …; lines above them (and older lists) count for
+  every language. The recognizer's hint words follow the language you speak.
+- GW2 Keyboard settings without leftovers of the full tool: no game folder, no "Guided setup" button that did nothing.
+- The tour knows right-click on the microphone and the key that works while GW2 is in front.
+
 ## 1.5.0 — 2026-10-13 (GW2 Keyboard; GW2 Chat Translator stays 1.4.0)
 
 GW2 Keyboard as the main download: the typing help with voice input, everything of 1.4.0 and 1.4.1 polished.

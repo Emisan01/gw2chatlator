@@ -241,6 +241,76 @@ std::wstring VoiceFixes::Apply(const std::wstring& text) const {
     return out;
 }
 
+std::wstring VoiceFixBook::Key(const std::wstring& lang) {
+    std::wstring k;
+    for (wchar_t c : lang) {
+        if (c == L'-' || c == L'_') break;
+        k += static_cast<wchar_t>(std::towlower(c));
+    }
+    return Trim(k);
+}
+
+void VoiceFixBook::Parse(const std::wstring& text) {
+    book_.clear();
+    std::map<std::wstring, std::wstring> sections;
+    std::wstring current;  // "" = every language
+    size_t pos = 0;
+    while (pos <= text.size()) {
+        size_t nl = text.find(L'\n', pos);
+        if (nl == std::wstring::npos) nl = text.size();
+        const std::wstring line = Trim(text.substr(pos, nl - pos));
+        pos = nl + 1;
+        if (line.size() >= 3 && line.front() == L'[' && line.back() == L']') current = Key(line.substr(1, line.size() - 2));
+        else if (!line.empty()) sections[current] += line + L"\n";
+        if (nl == text.size()) break;
+    }
+    for (const auto& s : sections) {
+        VoiceFixes f;
+        f.Parse(s.second);
+        if (f.Size()) book_[s.first] = std::move(f);
+    }
+}
+
+std::wstring VoiceFixBook::Serialize() const {
+    std::wstring out;
+    if (const auto it = book_.find(L""); it != book_.end()) out += it->second.Serialize();
+    for (const auto& s : book_)
+        if (!s.first.empty() && s.second.Size()) out += L"[" + s.first + L"]\r\n" + s.second.Serialize();
+    return out;
+}
+
+std::vector<VoiceFixes::Pair> VoiceFixBook::Learn(const std::wstring& dictated, const std::wstring& sent,
+                                                  const std::wstring& lang) {
+    return book_[Key(lang)].Learn(dictated, sent);
+}
+
+std::wstring VoiceFixBook::Apply(const std::wstring& text, const std::wstring& lang) const {
+    std::wstring out = text;
+    const std::wstring k = Key(lang);
+    if (!k.empty())
+        if (const auto it = book_.find(k); it != book_.end()) out = it->second.Apply(out);
+    if (const auto it = book_.find(L""); it != book_.end()) out = it->second.Apply(out);
+    return out;
+}
+
+std::vector<std::wstring> VoiceFixBook::Words(const std::wstring& lang) const {
+    std::vector<std::wstring> out;
+    const std::wstring k = Key(lang);
+    auto add = [&](const std::wstring& key) {
+        if (const auto it = book_.find(key); it != book_.end())
+            for (const std::wstring& w : it->second.Words()) out.push_back(w);
+    };
+    if (!k.empty()) add(k);  // that language first, then the common ones
+    add(L"");
+    return out;
+}
+
+size_t VoiceFixBook::Size() const {
+    size_t n = 0;
+    for (const auto& s : book_) n += s.second.Size();
+    return n;
+}
+
 std::vector<std::wstring> VoiceFixes::Words() const {
     std::vector<std::wstring> out;
     std::unordered_set<std::wstring> seen;

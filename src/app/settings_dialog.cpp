@@ -2599,8 +2599,9 @@ private:
 #ifdef GCT_KEYBOARD_APP
 bool EditVoiceFixes(HWND owner, HINSTANCE inst, std::wstring* text) {
     TextDialog dlg(Tr(L"Words the voice input heard wrong – one per line as “heard = meant” (for example Red = Raid)."),
-                   Tr(L"They are replaced right after recognition. Delete a line if a fix is wrong; add your own. Stays "
-                      L"on this PC."),
+                   Tr(L"They are replaced right after recognition. Lines under [de], [en] … count only for that language, "
+                      L"lines above them for every language. Delete a line if a fix is wrong; add your own. Stays on this "
+                      L"PC."),
                    *text, true);
     dlg.Run(owner, inst, Tr(L"Learned misheard words"), 480, dlg.Height());
     if (dlg.ok) *text = dlg.text;

@@ -101,7 +101,7 @@ private:
     void InsertDictation(const std::wstring& text);
     // Settings for a recording with `c` (the current or the dialog's settings); false when the model is not there.
     bool BuildVoiceSettings(const Config& c, VoiceSettings* s, std::wstring* modelName) const;
-    std::string VoicePrompt() const;  // GW2, your names, the words it misheard once – never chat text
+    std::string VoicePrompt(const std::string& language) const;  // GW2, your names, the words it misheard once – never chat text
     void LearnVoiceFixes(const std::wstring& sent);
     void SaveVoiceFixes();
     void RefreshVoiceReady();
@@ -265,7 +265,7 @@ private:
 
     // voice input
     SendGuard sendGuard_;        // no bot / macro / spam use (core/send_guard)
-    VoiceFixes voiceFixes_;
+    VoiceFixBook voiceFixes_;  // per language
     std::wstring voiceModelName_;
     std::wstring dictLang_;   // language of the dictated text in the box ("EN" when whisper translated); "" = typed
     std::wstring routeNote_;  // who did what with the current text: "MyMemory: DE → EN", "Whisper: DE → EN · ..."
