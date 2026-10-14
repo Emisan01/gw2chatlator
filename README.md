@@ -11,6 +11,7 @@ voice model by itself. SHA-256 `24127b74…eaabbe58` ·
 [the same with the voice module already inside (ZIP)](https://github.com/Emisan01/gw2chatlator/releases/latest/download/GW2Keyboard-Nexus.zip)
 · all versions: [Releases](https://github.com/Emisan01/gw2chatlator/releases) · what changed: [CHANGELOG.md](CHANGELOG.md).
 
+Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustotal.com/gui/file/24127b749fc15c3d4afa630a5c7e19b0f3e7001ead8f331637445a80eaabbe58).
 
 > **New in 1.8** – the keyboard that stays in the background until it is needed:
 > tick the languages you understand – only French, Spanish … is translated by itself, a click translates any line ·
