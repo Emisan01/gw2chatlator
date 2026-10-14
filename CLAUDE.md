@@ -55,7 +55,10 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 - **Writing:** the multi-line input (soft wrap = '\n' in place of a space, `Flat()` turns it back) → `ComputeTyping`
   (word bar, grey completion, what Space writes) → debounce → `TranslateInput` (`MyWords::Expand` first, protected
   segments, back-translation) → Enter → `StartSend` → `SplitForChat` (199) → `SendNow` → `SendToGw2Chat`.
-- **Window:** shown only on a map (MumbleLink `inMap`). Header: tabs (Chat + ≤5 whisper tabs, right-click = new tab),
+- **Tabs** (`WhisperTab`): whisper tabs (session only, ≤5, a click on a name) and tabs of your own (`custom`: right-click
+  on the header → "New tab", a copy of the chat; right-click on such a tab = its settings: name, channels shown,
+  channel written in; ≤6, kept in `[NexusTabs]` – settings only, never chat). ImGui id per tab = `uid`.
+- **Window:** shown only on a map (MumbleLink `inMap`). Header: tabs (Chat, your own, whisper tabs),
   mic · V/A (fold to the header) · ≡ · ×. Status text is drawn inside the input box (`BoxText`). Compact view = no
   preview / word bar, the translation small in the box. Scroll bar drawn at the left. Snap to the screen edges.
 - **Right-click** only in the input (learning mode): self-corrections noticed while typing (`NoteSelfFix`) →

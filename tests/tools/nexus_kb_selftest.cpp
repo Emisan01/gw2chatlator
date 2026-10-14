@@ -146,6 +146,7 @@ int wmain(int argc, wchar_t** argv) {
         dir = dir.substr(0, dir.find_last_of(L"\\/") + 1) + L"GW2Keyboard";
         CreateDirectoryW(dir.c_str(), nullptr);
         WritePrivateProfileStringW(L"Nexus", L"SetupDone", L"1", (dir + L"\\gw2-chat-translator.ini").c_str());
+        WritePrivateProfileStringW(L"NexusTabs", nullptr, nullptr, (dir + L"\\gw2-chat-translator.ini").c_str());  // no old tabs
         wchar_t alpha[16] = {};  // GW2KB_SHOT_ALPHA: the window's opacity for the picture (60-255)
         WritePrivateProfileStringW(L"Window", L"Opacity", GetEnvironmentVariableW(L"GW2KB_SHOT_ALPHA", alpha, 16) ? alpha : L"255",
                                    (dir + L"\\gw2-chat-translator.ini").c_str());
@@ -214,6 +215,10 @@ int wmain(int argc, wchar_t** argv) {
         }
         wchar_t frames[16] = {};  // GW2KB_SHOT_FRAMES: wait longer (e.g. the waypoint table on its first load)
         const int n = GetEnvironmentVariableW(L"GW2KB_SHOT_FRAMES", frames, 16) ? _wtoi(frames) : 40;
+        wchar_t tabMask[16] = {};  // GW2KB_SHOT_TAB=<channel bits>: a tab of your own in front, its settings open
+        if (GetEnvironmentVariableW(L"GW2KB_SHOT_TAB", tabMask, 16))
+            if (auto newTab = reinterpret_cast<void (*)(uint32_t, bool)>(GetProcAddress(dll, "Gw2KbTestNewTab")))
+                newTab(static_cast<uint32_t>(_wtoi(tabMask)), true);
         wchar_t hover[32] = {};  // GW2KB_SHOT_HOVER=x,y: the mouse there (a tooltip in the picture)
         if (GetEnvironmentVariableW(L"GW2KB_SHOT_HOVER", hover, 32)) {
             float hx = 0, hy = 0;
