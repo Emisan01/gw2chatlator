@@ -1,6 +1,15 @@
 # NEXUS_KEYBOARD_PLAN — GW2 Keyboard as a pure Nexus add-on
 
-Status 2026-10-14: decided by the user ("we split and build a pure DLL version"); stage 1 is being built.
+Status 2026-10-14: decided by the user ("we split and build a pure DLL version").
+- Stages 1–5 are built.
+- Tested outside the game: `nexus_kb_selftest` loads the add-on with a real ImGui context, draws frames, raises a
+  chat line and unloads it. The voice helper's protocol was tested by hand.
+- Not tested in the game yet.
+
+Layout in `<GW2>\addons`:
+- `gw2keyboard_nexus.dll`
+- `GW2Keyboard\` (settings, learned words, models) with `gw2kb_voice.exe` and its `voice\` DLLs
+- The build puts the same layout under `build\addons\nexus-keyboard\Release\`.
 
 ## Why
 
@@ -31,18 +40,22 @@ The core and the services stay one code base. Only the UI is new. Both products 
    - After an exception the add-on switches itself off for the session and says so in the Nexus log.
 2. **No work on the game's threads.** Render callbacks only draw and copy. Translation, spelling, prediction and voice
    run on our own worker threads with below-normal priority.
-3. **Never touch the game process' affinity or priority class.** The exe's `CpuBudget` sets the *process* – inside GW2
+3. **Never touch the game process' affinity or priority class.** Built: the helper process `gw2kb_voice.exe` runs the exe's
+   `VoiceSession` (thread count to choose; automatic = the least busy cores) with its own affinity, below normal. The exe's `CpuBudget` sets the *process* – inside GW2
    that would hit the game.
    - In the DLL, the voice recognizer runs either on its own threads, each bound to the least busy cores (`CoreLoad` +
      `PickVoiceCores`, per thread), or in a small helper process (`gw2kb-voice.exe`, started hidden by the add-on).
    - The helper process is preferred: a whisper crash or its memory (a model of several hundred MB) stays out of
      the game, and process affinity and priority work as today.
    - Decide with measurements (FPS with and without dictation).
-4. **Sending stays the user's.** The same send path as the exe: Enter in our window, then the line goes into the GW2
+4. **Sending stays the user's** (built: Enter → ImGui lets go of the keyboard → the exe's `SendToGw2Chat` on the
+   worker, key timing after the frame rate). The same send path as the exe: Enter in our window, then the line goes into the GW2
    chat with clipboard and keys and the foreground checks (invariants 1–3).
    - The user's idea of an optional automatic send after dictating (a timer) collides with invariant 1 and with
      ArenaNet's "one key press = one action". Talk about it before building anything.
    - A rule-safe variant: releasing the push-to-talk key *is* the key press that sends.
+   - Built that way as an option (user, 2026-10-14): a small box next to the microphone, `[Voice] AutoSend`, off by
+     default. The details are to be settled later with the user.
 5. **Privacy** (Delta: translating is fine, collecting chat data is not): nothing of other players is stored; the word
    model learns only from what the user sends (invariant 10).
 
