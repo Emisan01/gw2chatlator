@@ -53,6 +53,7 @@
 #include "win/files.hpp"
 #include "win/gw2_sender.hpp"
 #include "win/mumble_link.hpp"
+#include "win/audio_capture.hpp"
 #include "win/voice_models.hpp"
 #include "win/online_translators.hpp"
 
@@ -84,6 +85,15 @@ void Log(ELogLevel level, const char* text) {
 std::string U8(const std::wstring& w) { return ToUtf8(w); }
 std::wstring W(const std::string& s) { return FromUtf8(s); }
 size_t U8Offset(const std::wstring& w, size_t idx) { return ToUtf8(w.substr(0, std::min(idx, w.size()))).size(); }
+// For drawing UI text: Nexus' font has no ≡ → … ▾ and curly quotes – plain stand-ins instead of "?".
+std::string UI(std::wstring w) {
+    static const std::pair<const wchar_t*, const wchar_t*> kSwap[] = {
+        {L"\u2026", L"..."}, {L"\u2192", L">"}, {L"\u2190", L"<"}, {L"\u2261", L"menu"}, {L"\u25BE", L""},
+        {L"\u201C", L"\""}, {L"\u201D", L"\""}, {L"\u201E", L"\""}, {L"\u2018", L"'"}, {L"\u2019", L"'"}};
+    for (const auto& [from, to] : kSwap)
+        for (size_t at; (at = w.find(from)) != std::wstring::npos;) w.replace(at, std::wcslen(from), to);
+    return ToUtf8(w);
+}
 
 // ---------------------------------------------------------------------------------------------------------------
 // One worker thread: translations, spelling and sending never run on the game's threads.
@@ -179,6 +189,8 @@ std::string g_lastInput;
 ULONGLONG g_inputChanged = 0;
 uint64_t g_inputGen = 0;
 std::wstring g_preview;  // the translation of the input
+std::wstring g_back;     // ... and that translated back into your language (small, under it – like the exe)
+bool g_inMap = false;    // MumbleLink: a map is loaded (not character select, not a loading screen)
 uint64_t g_previewGen = 0;
 bool g_sendPending = false;  // Enter before the translation was there
 std::wstring g_status;
@@ -213,7 +225,8 @@ std::wstring g_voiceLive;        // the live text while speaking (only drawn, ne
 std::wstring g_lastDictated;     // the last recognized text as it came (learning misheard words on send)
 std::wstring g_dictLang;         // its language
 VoiceFixBook g_voiceFixes;       // learned misheard words (<data>\voice-fixes.txt), per language
-bool g_autoSendPending = false;  // "send after speaking": the dictation arrived, Enter follows by itself
+bool g_autoSendPending = false;
+bool g_voiceStartPending = false;  // a press came while the helper was still starting  // "send after speaking": the dictation arrived, Enter follows by itself
 
 void SetStatus(const std::wstring& s, ULONGLONG ms = 6000) {  // g_mu held
     g_status = s;
@@ -255,6 +268,41 @@ std::shared_ptr<Translator> MakeTranslator(const Config& c) {  // the exe's choi
     if (!c.msKey.empty()) return MakeMicrosoftTranslator(c.msKey, c.msRegion);
     if (!c.libreUrl.empty()) return MakeLibreTranslator(c.libreUrl, c.libreKey);
     return MakeMyMemoryTranslator(c.basicEmail);
+}
+
+bool UsingMyMemory() { return g_translator && g_translator->Name().rfind(L"MyMemory", 0) == 0; }  // g_mu held
+
+std::wstring Today() {
+    SYSTEMTIME st;
+    GetLocalTime(&st);
+    wchar_t day[16];
+    swprintf(day, 16, L"%04u%02u%02u", st.wYear, st.wMonth, st.wDay);
+    return day;
+}
+
+void CountMyMemory(size_t chars) {  // the free contingent of a day (g_mu held)
+    if (!UsingMyMemory() || chars == 0) return;
+    const std::wstring day = Today();
+    if (g_cfg.myMemoryDay != day) {
+        g_cfg.myMemoryDay = day;
+        g_cfg.myMemoryUsed = 0;
+        g_cfg.SaveValue(L"Basic", L"UsedDay", day);
+    }
+    g_cfg.myMemoryUsed += static_cast<int>(chars);
+    g_cfg.SaveValue(L"Basic", L"UsedChars", std::to_wstring(g_cfg.myMemoryUsed));
+}
+
+std::wstring MyMemoryQuotaText() {  // "MyMemory 25 / 5.0k today" (g_mu held)
+    if (!UsingMyMemory()) return {};
+    const int used = g_cfg.myMemoryDay == Today() ? g_cfg.myMemoryUsed : 0;
+    const int limit = Trim(g_cfg.basicEmail).empty() ? 5000 : 50000;
+    auto k = [](int v) {
+        wchar_t b[16];
+        if (v < 1000) swprintf(b, 16, L"%d", v);
+        else swprintf(b, 16, L"%.1fk", v / 1000.0);
+        return std::wstring(b);
+    };
+    return TrF(L"MyMemory {1} / {2} today", {k(std::min(used, limit)), k(limit)});
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -314,6 +362,10 @@ void TranslateLine(uint64_t id, std::wstring text) {
     if (detected.empty() || PrimaryLang(detected) == target) return;
     for (const std::wstring& u : understood)
         if (PrimaryLang(u) == PrimaryLang(detected)) return;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        CountMyMemory(CodePointCount(text));
+    }
     const TranslateResult r = tr->Translate(p.segments, SourceCode(detected), target);
     if (!r.ok || r.text.empty()) return;
     const std::wstring t = SanitizeChatText(r.text);
@@ -345,9 +397,31 @@ void TranslateInput(uint64_t gen, std::wstring text) {
         if (HasTranslatableText(p.segments)) {
             std::wstring source = DetectLanguage(body);
             if (source.empty()) source = typing;
+            {
+                std::lock_guard<std::mutex> lock(g_mu);
+                CountMyMemory(CodePointCount(body));
+            }
             const TranslateResult r = tr->Translate(p.segments, source, target);
             if (r.ok) result = r.text;
             else error = r.error;
+        }
+    }
+    // The back-translation: what your message means in your language again (small under it, like the exe).
+    std::wstring back;
+    bool wantBack;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        wantBack = g_cfg.backTranslate && gen == g_inputGen && !g_sendPending;
+    }
+    if (translating && tr && wantBack && error.empty() && result != body) {
+        ProtectedText p = ProtectForTranslation(result, nullptr, g_spell ? &g_spell->KeepWords() : &BuiltinKeepWords());
+        if (HasTranslatableText(p.segments)) {
+            {
+                std::lock_guard<std::mutex> lock(g_mu);
+                CountMyMemory(CodePointCount(result));
+            }
+            const TranslateResult r = tr->Translate(p.segments, SourceCode(target), typing);
+            if (r.ok) back = SanitizeChatText(r.text);
         }
     }
     std::vector<std::wstring> parts;
@@ -356,6 +430,7 @@ void TranslateInput(uint64_t gen, std::wstring text) {
         std::lock_guard<std::mutex> lock(g_mu);
         if (gen != g_inputGen && !g_sendPending) return;  // the text changed meanwhile
         g_preview = SanitizeChatText(result);
+        g_back = back;
         g_previewGen = gen;
         if (!error.empty()) SetStatus(error);
         if (g_sendPending && gen == g_inputGen) {
@@ -417,6 +492,18 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
     std::wstring error;
     bool ok = gw2 != nullptr;
     if (!gw2) error = Tr(L"GW2 window not found");
+    bool copyOnly;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        copyOnly = g_cfg.copyOnly;
+    }
+    if (ok && copyOnly) {  // not a single key reaches the game (invariant 1): only the clipboard
+        std::wstring all;
+        for (const std::wstring& part : parts) all += (all.empty() ? L"" : L" ") + part;
+        ok = CopyTextToClipboard(gw2, all);
+        if (!ok) error = Tr(L"The clipboard is blocked");
+        parts.clear();
+    }
     for (const std::wstring& part : parts) {
         if (!ok) break;
         const MumbleState ms = g_mumbleWorker ? g_mumbleWorker->Read() : MumbleState{};
@@ -445,7 +532,7 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
     std::lock_guard<std::mutex> lock(g_mu);
     g_sending = false;
     if (ok) {
-        SetStatus(L"");
+        SetStatus(copyOnly ? Tr(L"Copied – paste it into the GW2 chat with Ctrl+V") : L"");
         g_history.push_front(typed);
         while (g_history.size() > kHistoryMax) g_history.pop_back();
         if (g_cfg.returnFocus) g_focusInput = true;
@@ -558,6 +645,10 @@ void VoiceHelper::OnLine(const std::string& line) {
     std::lock_guard<std::mutex> lock(g_mu);
     if (t == "ready") {
         g_voiceReady = true;
+        if (g_voiceStartPending) {  // the press that started the helper: its recording now
+            g_voiceStartPending = false;
+            g_voice.Send("begin-auto");
+        }
     } else if (t == "started") {
         g_recording = true;
         g_voiceLive.clear();
@@ -607,16 +698,51 @@ void TalkDown() {
         }
         if (g_recording) return;
         if (!g_voiceReady) {
-            SetStatus(g_voice.Running() ? Tr(L"Voice input is starting – a moment") : Tr(L"The voice module is missing"));
-            return;
+            // Loaded on first use: the helper starts now; the recording begins as soon as it is ready (a pause ends it).
+            g_voiceStartPending = true;
+            SetStatus(Tr(L"Voice input is starting – a moment"), 0);
         }
     }
-    g_voice.Send("begin");
+    if (!g_voiceReady) {
+        if (!g_voice.Running()) {
+            if (GetFileAttributesW(HelperExe().c_str()) == INVALID_FILE_ATTRIBUTES ||
+                !g_voice.Start(HelperExe(), g_cfg.dataDir)) {
+                std::lock_guard<std::mutex> lock(g_mu);
+                g_voiceStartPending = false;
+                SetStatus(Tr(L"The voice module is missing"), 10000);
+            }
+        }
+        return;
+    }
+    g_voice.Send(g_cfg.voiceToggle ? "begin-auto" : "begin");
 }
 void TalkUp() { g_voice.Send("end"); }
+void TalkLocked() {  // right-click on the microphone: on until a pause (or the next right-click)
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        if (!g_cfg.voiceEnabled || !g_voiceReady || g_recording) return;
+    }
+    g_voice.Send("begin-auto");
+}
 
 void OnTalkKey(const char*, bool release) {
     if (g_disabled) return;
+    bool toggle;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        toggle = g_cfg.voiceToggle;
+    }
+    if (toggle) {  // press once: starts; a pause ends it (or the next press)
+        if (release) return;
+        bool rec;
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            rec = g_recording;
+        }
+        if (rec) TalkUp();
+        else TalkDown();
+        return;
+    }
     if (release) TalkUp();
     else TalkDown();
 }
@@ -697,20 +823,26 @@ ImVec4 ColorOf(Channel ch) {
     return ImVec4(0.9f, 0.9f, 0.92f, 1.f);
 }
 
-// The rest of a completion after what is typed ("komm" + "t" for "kommt"); empty if it does not continue it.
-std::wstring GhostRest() {
+// The grey text after the caret, like the exe's DrawGhost: what Space writes (a completion shows its rest, a
+// correction "> word"); after a space the sure next word or phrase. `replace` gets what Tab takes.
+std::wstring GhostRest(bool* correction = nullptr) {
+    if (correction) *correction = false;
     const std::wstring text = W(g_input);
     if (g_help.text != text || text.empty()) return {};
+    const WordChoices& c = g_help.choices;
+    if (text.back() != L' ' && c.highlight >= 0 && c.highlight < static_cast<int>(c.words.size()) &&
+        c.replace.end() == text.size() && !(c.firstIsTyped && c.highlight == 0)) {
+        const std::wstring& word = c.words[c.highlight];
+        const std::wstring typed = text.substr(c.replace.start, c.replace.length);
+        if (typed.size() < word.size() && CaseFold(word.substr(0, typed.size())) == CaseFold(typed))
+            return word.substr(typed.size());
+        if (correction) *correction = true;
+        return L"  > " + word;
+    }
     const WordSuggestions& b = g_help.bar;
     if (b.kind == WordSuggestions::Kind::Next && !b.words.empty() && text.back() == L' ')
         return b.phrase.empty() ? b.words[0] : b.phrase;
-    if (b.kind != WordSuggestions::Kind::Completion || b.autoIndex < 0 || b.autoIndex >= static_cast<int>(b.words.size()))
-        return {};
-    const std::wstring& word = b.words[b.autoIndex];
-    if (b.replace.end() != text.size()) return {};
-    const std::wstring typed = text.substr(b.replace.start, b.replace.length);
-    if (typed.size() >= word.size() || CaseFold(word.substr(0, typed.size())) != CaseFold(typed)) return {};
-    return word.substr(typed.size());
+    return {};
 }
 
 // A word of the bar replaces the word at the end (or goes after it), followed by a space.
@@ -729,11 +861,21 @@ void TakeWord(const std::wstring& word) {
 
 int InputCallback(ImGuiInputTextCallbackData* d) {
     switch (d->EventFlag) {
-        case ImGuiInputTextFlags_CallbackCompletion: {  // Tab: take the grey completion / the next word
-            const std::wstring rest = GhostRest();
-            if (!rest.empty() && d->CursorPos == d->BufTextLen) {
-                const std::string add = U8(rest) + (g_help.bar.kind == WordSuggestions::Kind::Next ? "" : " ");
-                d->InsertChars(d->CursorPos, add.c_str());
+        case ImGuiInputTextFlags_CallbackCompletion: {  // Tab: take the grey word (completion, correction, next word)
+            bool correction = false;
+            const std::wstring rest = GhostRest(&correction);
+            if (rest.empty() || d->CursorPos != d->BufTextLen) break;
+            if (correction) {
+                const std::wstring text = W(std::string(d->Buf, d->BufTextLen));
+                const Span r = g_help.choices.replace;
+                const std::wstring word = g_help.choices.words[g_help.choices.highlight];
+                const int startByte = static_cast<int>(U8Offset(text, r.start));
+                d->DeleteChars(startByte, d->BufTextLen - startByte);
+                d->InsertChars(startByte, U8(word + L" ").c_str());
+                g_worker.Post([text, start = r.start, word] { if (g_spell) g_spell->Chose(text, start, word, true); });
+            } else {
+                const bool next = !g_input[0] || g_input[std::strlen(g_input) - 1] == ' ';
+                d->InsertChars(d->CursorPos, (U8(rest) + (next ? "" : " ")).c_str());
             }
             break;
         }
@@ -825,15 +967,23 @@ void StartSend() {  // Enter (g_mu held)
     }
 }
 
-void RenderChannelPicker() {
+std::wstring NativeName(const std::wstring& code) {
+    if (const LangInfo* l = FindLanguage(code)) return l->native;
+    return ToUpperAscii(code);
+}
+
+// The footer chips of the exe: channel | "Write: German" | "Send: English (UK) · MyMemory" (orange) | auto | counter.
+void RenderFooter() {  // g_mu held
     static const Channel kChannels[] = {Channel::Unknown, Channel::Say,   Channel::Map,  Channel::Party,
                                         Channel::Squad,   Channel::Guild, Channel::Team, Channel::Whisper};
-    std::string label = g_channel == Channel::Unknown ? U8(Tr(L"Chat")) : U8(ChannelLabel(g_channel));
+    auto chipWidth = [](const std::string& s) { return ImGui::CalcTextSize(s.c_str()).x + ImGui::GetFrameHeight() + 12; };
+    // Channel.
+    std::string label = g_channel == Channel::Unknown ? UI(Tr(L"Active channel")) : UI(ChannelLabel(g_channel));
     if (g_channel == Channel::Whisper && !g_whisperTo.empty()) label += " " + U8(g_whisperTo);
-    ImGui::SetNextItemWidth(110);
+    ImGui::SetNextItemWidth(chipWidth(label));
     if (ImGui::BeginCombo("##channel", label.c_str())) {
         for (Channel c : kChannels) {
-            const std::string name = c == Channel::Unknown ? U8(Tr(L"Chat")) : U8(ChannelLabel(c));
+            const std::string name = c == Channel::Unknown ? UI(Tr(L"Active channel")) : UI(ChannelLabel(c));
             if (ImGui::Selectable(name.c_str(), c == g_channel)) {
                 g_channel = c;
                 if (c != Channel::Whisper) g_whisperTo.clear();
@@ -842,13 +992,39 @@ void RenderChannelPicker() {
         }
         ImGui::EndCombo();
     }
+    // The language you write in (spelling, learned words and the prediction follow it).
     ImGui::SameLine();
-    std::string lang = SendOriginal() ? U8(Tr(L"as written")) : U8(ToUpperAscii(PrimaryLang(SendLang())));
-    ImGui::SetNextItemWidth(90);
-    if (ImGui::BeginCombo("##sendlang", lang.c_str())) {
+    const std::string write = UI(TrF(L"Write: {1}", {g_cfg.writeIn.empty() ? Tr(L"like Windows") : NativeName(g_cfg.writeIn)}));
+    ImGui::SetNextItemWidth(chipWidth(write));
+    if (ImGui::BeginCombo("##write", write.c_str())) {
+        std::wstring chosen = g_cfg.writeIn;
+        if (ImGui::Selectable(UI(Tr(L"like Windows")).c_str(), chosen.empty())) chosen.clear();
+        for (const LangInfo& l : Languages())
+            if (l.latinScript && ImGui::Selectable(U8(l.native).c_str(), g_cfg.writeIn == l.code)) chosen = l.code;
+        if (chosen != g_cfg.writeIn) {
+            g_cfg.writeIn = chosen;
+            g_cfg.SaveValue(L"Spelling", L"WriteIn", chosen);
+            g_worker.Post([] {  // spelling and learned words follow the language you write in
+                FreeWorkerState();
+                InitSpelling();
+            });
+            ++g_inputGen;
+            g_inputChanged = GetTickCount64();
+        }
+        ImGui::EndCombo();
+    }
+    // What the chat gets, and who translates (orange like the exe).
+    ImGui::SameLine();
+    std::wstring sendText = SendOriginal() ? Tr(L"as written") : NativeName(SendLang());
+    if (Translating() && g_translator) sendText += L" · " + g_translator->Name();
+    const std::string send = UI(TrF(L"Send: {1}", {sendText}));
+    ImGui::SetNextItemWidth(chipWidth(send));
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.94f, 0.75f, 0.35f, 1.f));
+    const bool open = ImGui::BeginCombo("##send", send.c_str());
+    ImGui::PopStyleColor();
+    if (open) {
         for (size_t i = 0; i <= g_cfg.writeLangs.size(); ++i) {
-            const std::string n = i == g_cfg.writeLangs.size() ? U8(Tr(L"as written"))
-                                                                : U8(ToUpperAscii(PrimaryLang(g_cfg.writeLangs[i])));
+            const std::string n = i == g_cfg.writeLangs.size() ? UI(Tr(L"as written")) : U8(NativeName(g_cfg.writeLangs[i]));
             if (ImGui::Selectable(n.c_str(), static_cast<int>(i) == g_sendIdx)) {
                 g_sendIdx = static_cast<int>(i);
                 ++g_inputGen;
@@ -857,8 +1033,32 @@ void RenderChannelPicker() {
                 g_focusInput = true;
             }
         }
+        ImGui::Separator();
+        for (const LangInfo& l : Languages()) {  // more languages: the chosen one becomes the first
+            if (!l.latinScript || std::find(g_cfg.writeLangs.begin(), g_cfg.writeLangs.end(), l.code) != g_cfg.writeLangs.end())
+                continue;
+            if (ImGui::Selectable(U8(l.native).c_str(), false)) {
+                g_cfg.writeLangs.insert(g_cfg.writeLangs.begin(), l.code);
+                g_cfg.SaveAll();
+                g_sendIdx = 0;
+                ++g_inputGen;
+                g_preview.clear();
+                g_inputChanged = GetTickCount64();
+            }
+        }
         ImGui::EndCombo();
     }
+    if (g_cfg.voiceEnabled) {  // send right after speaking (off by default)
+        ImGui::SameLine();
+        if (ImGui::Checkbox(UI(Tr(L"auto") + L"##autosend").c_str(), &g_cfg.voiceAutoSend))
+            g_cfg.SaveBool(L"Voice", L"AutoSend", g_cfg.voiceAutoSend);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", UI(Tr(L"Send right after speaking (releasing the key counts as your Enter)")).c_str());
+    }
+    const size_t n = CodePointCount(W(g_input));
+    const std::string counter = std::to_string(n) + "/" + std::to_string(g_cfg.maxLength);
+    ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - ImGui::CalcTextSize(counter.c_str()).x);
+    ImGui::TextDisabled("%s", counter.c_str());
 }
 
 // ---- "Events: Chat": is it there, and installing it the way the Nexus library would.
@@ -947,8 +1147,8 @@ bool IconButton(const char* id, Icon kind, bool active, bool* rightClick) {
 std::string Fit(const std::string& s, float width) {
     if (ImGui::CalcTextSize(s.c_str()).x <= width) return s;
     std::wstring w = W(s);
-    while (!w.empty() && ImGui::CalcTextSize((U8(w) + "…").c_str()).x > width) w.pop_back();
-    return U8(w) + "…";
+    while (!w.empty() && ImGui::CalcTextSize((U8(w) + "...").c_str()).x > width) w.pop_back();
+    return U8(w) + "...";
 }
 
 // The status line at the top left (like the exe): a message, else what is going on.
@@ -956,6 +1156,7 @@ std::wstring StatusText() {  // g_mu held
     if (!g_status.empty()) return g_status;
     if (g_recording) return Tr(L"Hearing you … release the key when you are done");
     if (!g_chatEventsLive && !g_chatEventsPresent) return Tr(L"Every channel needs Events: Chat – ≡ → Options installs it");
+    if (const std::wstring q = MyMemoryQuotaText(); !q.empty()) return q;
     std::wstring route = SendOriginal() ? Tr(L"as written") : ToUpperAscii(PrimaryLang(SendLang()));
     if (Translating() && g_translator) route += L" · " + g_translator->Name();
     return TrF(L"Send: {1}", {route});
@@ -969,7 +1170,7 @@ void RenderOptionsContent();
 void RenderOptionsWindow() {
     if (!g_showOptions) return;
     ImGui::SetNextWindowSize(ImVec2(520, 640), ImGuiCond_FirstUseEver);
-    if (ImGui::Begin((U8(Tr(L"GW2 Keyboard – Options")) + "###kbopts").c_str(), &g_showOptions)) RenderOptionsContent();
+    if (ImGui::Begin((UI(Tr(L"GW2 Keyboard – Options")) + "###kbopts").c_str(), &g_showOptions)) RenderOptionsContent();
     ImGui::End();
 }
 
@@ -980,41 +1181,56 @@ void RenderWindow() {
     g_keyboardFree = !io.WantCaptureKeyboard;
     g_fps = static_cast<int>(io.Framerate);
     {
-        static ULONGLONG nextName = 0;  // your character, from MumbleLink (every 2 s)
+        // MumbleLink (every 250 ms): shown only on a map – never at character select or on a loading screen (like the
+        // exe waiting for GW2); your character's name; the GW2 chat line opening (focus behaviour).
+        static ULONGLONG next = 0;
         static MumbleLink mumble;
-        if (GetTickCount64() > nextName) {
-            nextName = GetTickCount64() + 2000;
+        static bool chatWasOpen = false;
+        if (GetTickCount64() > next) {
+            next = GetTickCount64() + 250;
             const MumbleState ms = mumble.Read();
             std::lock_guard<std::mutex> lock(g_mu);
+            g_inMap = ms.live && ms.inMap;
             if (ms.live) g_ownName = ms.identity.name;
+            const bool chatOpen = ms.live && ms.TextboxHasFocus();
+            if (chatOpen && !chatWasOpen && g_cfg.focusOnGameChat && g_show) g_focusInput = true;
+            chatWasOpen = chatOpen;
         }
     }
     ChatEventsPresent();
     RenderOptionsWindow();
-    if (!g_show) return;
-    ImGui::SetNextWindowSize(ImVec2(500, 320), ImGuiCond_FirstUseEver);
+    bool inMap;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        inMap = g_inMap;
+    }
+    if (!g_show || !inMap) return;
+    ImGui::SetNextWindowSize(ImVec2(520, 360), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowBgAlpha(std::clamp(g_cfg.opacity, 60, 255) / 255.0f);
     if (!ImGui::Begin("GW2 Keyboard###kbmain", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse)) {
         ImGui::End();
         return;
     }
+    ImGui::SetWindowFontScale(std::clamp(g_cfg.fontPercent, 70, 200) / 100.0f);
     std::unique_lock<std::mutex> lock(g_mu);
     if (g_statusUntil && GetTickCount64() > g_statusUntil) {
         g_status.clear();
         g_statusUntil = 0;
     }
+    const ImVec4 kAccent(0.94f, 0.75f, 0.35f, 1.f), kPreview(0.59f, 0.80f, 1.f, 1.f);
     // ---- header: status at the left; microphone, menu, close at the right
     const float icon = ImGui::GetFrameHeight();
     const float spacing = ImGui::GetStyle().ItemSpacing.x;
     const int icons = g_cfg.voiceEnabled ? 3 : 2;
     const float statusW = ImGui::GetContentRegionAvail().x - icons * (icon + spacing);
-    const std::wstring status = StatusText();
+    const std::string status = UI(StatusText());
     ImGui::AlignTextToFramePadding();
-    ImGui::TextColored(g_status.empty() ? ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled) : ImVec4(0.95f, 0.8f, 0.45f, 1.f),
-                       "%s", Fit(U8(status), statusW).c_str());
-    if (ImGui::IsItemHovered() && Fit(U8(status), statusW) != U8(status)) ImGui::SetTooltip("%s", U8(status).c_str());
+    ImGui::TextColored(g_status.empty() ? ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled) : kAccent, "%s",
+                       Fit(status, statusW).c_str());
+    if (ImGui::IsItemHovered() && Fit(status, statusW) != status) ImGui::SetTooltip("%s", status.c_str());
     ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - icons * (icon + spacing) + spacing);
     if (g_cfg.voiceEnabled) {
-        // Hold with the left button to speak; a right-click switches it on until the next right-click.
+        // Hold with the left button to speak; a right-click: on until a pause (or the next right-click).
         bool right = false;
         IconButton("##mic", Icon::Mic, g_recording, &right);
         static bool held = false;
@@ -1025,49 +1241,52 @@ void RenderWindow() {
             lock.lock();
         } else if (held && !ImGui::IsItemActive()) {
             held = false;
-            if (!g_micLocked) TalkUp();
+            if (!g_micLocked && !g_cfg.voiceToggle) TalkUp();
         }
         if (right) {
-            g_micLocked = !g_micLocked;
+            const bool stop = g_recording;
+            g_micLocked = !stop;
             lock.unlock();
-            if (g_micLocked) TalkDown();
-            else TalkUp();
+            if (stop) TalkUp();
+            else TalkLocked();
             lock.lock();
         }
         if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("%s", U8(Tr(L"Hold to speak (or the push-to-talk key in Nexus) · right-click: on / off")).c_str());
+            ImGui::SetTooltip("%s", UI(Tr(L"Hold to speak (or the push-to-talk key in Nexus) · right-click: on / off")).c_str());
         ImGui::SameLine();
     }
     if (IconButton("##menu", Icon::Menu, false, nullptr)) ImGui::OpenPopup("kbmenu");
     if (ImGui::BeginPopup("kbmenu")) {
-        if (ImGui::MenuItem(U8(Tr(L"Options …")).c_str())) g_showOptions = true;
-        ImGui::MenuItem(U8(Tr(L"Compact view")).c_str(), nullptr, &g_compact);
-        if (!g_chatEventsPresent && ImGui::MenuItem(U8(Tr(L"Install Events: Chat (every channel) …")).c_str()))
+        if (ImGui::MenuItem(UI(Tr(L"Options …")).c_str())) g_showOptions = true;
+        ImGui::MenuItem(UI(Tr(L"Compact view")).c_str(), nullptr, &g_compact);
+        if (!g_chatEventsPresent && ImGui::MenuItem(UI(Tr(L"Install Events: Chat (every channel) …")).c_str()))
             g_showOptions = true;
         ImGui::Separator();
-        if (ImGui::MenuItem(U8(Tr(L"Hide (Ctrl+Alt+K shows it again)")).c_str())) g_show = false;
+        if (ImGui::MenuItem(UI(Tr(L"Hide (Ctrl+Alt+K shows it again)")).c_str())) g_show = false;
         ImGui::EndPopup();
     }
     ImGui::SameLine();
     if (IconButton("##close", Icon::Close, false, nullptr)) g_show = false;
     if (!g_recording && g_micLocked) g_micLocked = false;  // the recording ended (pause, maximum length)
 
-    // ---- the chat: name white (a click answers with a whisper), text in the channel colour, translated if foreign
+    // ---- the chat (the newest at the bottom): name white – a click answers with a whisper –, text in the channel colour
     const float line = ImGui::GetTextLineHeightWithSpacing();
-    const float bottomH = ImGui::GetFrameHeightWithSpacing() * 3 + line * 2;
-    ImGui::BeginChild("chat", ImVec2(0, g_compact ? line * 3 + 4 : -bottomH), false);
+    const float lowerH = line * 3.2f + ImGui::GetFrameHeightWithSpacing() * 3 + 10;
+    ImGui::BeginChild("chat", ImVec2(0, g_compact ? line * 3 + 4 : -lowerH), false);
     const size_t first = g_compact && g_lines.size() > 3 ? g_lines.size() - 3 : 0;
     for (size_t i = first; i < g_lines.size(); ++i) {
         const ChatLine& l = g_lines[i];
         ImGui::PushID(static_cast<int>(l.id));
         if (!l.speaker.empty()) {
-            const std::string name = U8((l.outgoing ? L"→ " : L"") + l.speaker + L":");
+            const std::string name = UI((l.outgoing ? L"> " : L"") + l.speaker + L":");
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
             if (ImGui::SmallButton(name.c_str()) && !l.own) {
                 g_channel = Channel::Whisper;
                 g_whisperTo = l.speaker;
                 g_focusInput = true;
             }
-            ImGui::SameLine();
+            ImGui::PopStyleColor();
+            ImGui::SameLine(0, 2);
         }
         const std::wstring& shown = l.translated.empty() ? l.text : l.translated;
         ImGui::PushStyleColor(ImGuiCol_Text, ColorOf(l.channel));
@@ -1081,24 +1300,60 @@ void RenderWindow() {
         g_scrollDown = false;
     }
     ImGui::EndChild();
-    // ---- the preview: the translation of what you type (while you speak: the live text)
+
+    // ---- the preview (like the exe): what arrives in the GW2 chat, the back-translation small under it
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
+    ImGui::BeginChild("preview", ImVec2(0, line * 3.2f), false);
     const bool previewCurrent = g_previewGen == g_inputGen && !g_preview.empty();
-    if (g_recording)
-        ImGui::TextColored(ImVec4(0.55f, 0.85f, 1.f, 1.f), "%s", g_voiceLive.empty() ? "…" : U8(g_voiceLive).c_str());
-    else if (Translating() && previewCurrent)
-        ImGui::TextColored(ImVec4(0.59f, 0.80f, 1.f, 1.f), "%s", U8(ComposePrefix() + g_preview).c_str());
-    else
-        ImGui::TextUnformatted(" ");
-    // ---- the word bar
-    if (g_cfg.suggestions && g_help.text == W(g_input) && !g_help.bar.words.empty()) {
-        for (size_t i = 0; i < g_help.bar.words.size(); ++i) {
-            if (i) ImGui::SameLine();
-            const std::string w = U8(g_help.bar.words[i]) + "##w" + std::to_string(i);
-            if (ImGui::SmallButton(w.c_str())) TakeWord(g_help.bar.words[i]);
+    if (g_recording) {
+        ImGui::TextColored(kPreview, "%s", g_voiceLive.empty() ? "..." : U8(g_voiceLive).c_str());
+    } else if (!g_input[0]) {
+        ImGui::TextDisabled("%s", UI(Tr(L"Write in your language – here you see what arrives in the GW2 chat.")).c_str());
+    } else if (!Translating()) {
+        ImGui::PushStyleColor(ImGuiCol_Text, kPreview);
+        ImGui::TextWrapped("%s", U8(ComposePrefix() + SanitizeChatText(W(g_input))).c_str());
+        ImGui::PopStyleColor();
+    } else if (previewCurrent) {
+        ImGui::PushStyleColor(ImGuiCol_Text, kPreview);
+        ImGui::TextWrapped("%s", U8(ComposePrefix() + g_preview).c_str());
+        ImGui::PopStyleColor();
+        if (!g_back.empty()) {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+            ImGui::TextWrapped("%s", U8(g_back).c_str());
+            ImGui::PopStyleColor();
         }
     } else {
-        ImGui::TextUnformatted(" ");
+        ImGui::TextDisabled("%s", UI(Tr(L"translating …")).c_str());
     }
+    ImGui::EndChild();
+    ImGui::PopStyleColor();
+
+    // ---- the word bar (like the exe): three cells across the line, what Tab takes in orange
+    {
+        const float w = ImGui::GetContentRegionAvail().x;
+        const ImVec2 p = ImGui::GetCursorScreenPos();
+        const float h = ImGui::GetFrameHeight();
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        const bool have = g_cfg.suggestions && g_help.text == W(g_input);
+        for (int i = 0; i < 3; ++i) {
+            const ImVec2 a(p.x + w * i / 3.0f, p.y), b(p.x + w * (i + 1) / 3.0f, p.y + h);
+            if (i) dl->AddLine(ImVec2(a.x, a.y + h * 0.25f), ImVec2(a.x, b.y - h * 0.25f), ImGui::GetColorU32(ImGuiCol_Separator));
+            if (!have || i >= static_cast<int>(g_help.bar.words.size())) continue;
+            const std::string word = U8(g_help.bar.words[i]);
+            ImGui::SetCursorScreenPos(a);
+            ImGui::PushID(i);
+            if (ImGui::InvisibleButton("##word", ImVec2(b.x - a.x, h))) TakeWord(g_help.bar.words[i]);
+            const bool hot = ImGui::IsItemHovered();
+            ImGui::PopID();
+            if (hot) dl->AddRectFilled(a, b, ImGui::GetColorU32(ImGuiCol_FrameBgHovered));
+            const ImVec2 size = ImGui::CalcTextSize(word.c_str());
+            const bool pick = i == g_help.bar.autoIndex;
+            dl->AddText(ImVec2((a.x + b.x - size.x) * 0.5f, a.y + (h - size.y) * 0.5f),
+                        pick ? ImGui::GetColorU32(kAccent) : ImGui::GetColorU32(ImGuiCol_Text), word.c_str());
+        }
+        ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + h + ImGui::GetStyle().ItemSpacing.y));
+    }
+
     // ---- the input line
     if (g_focusInput && !g_sending) {
         ImGui::SetKeyboardFocusHere();
@@ -1109,32 +1364,22 @@ void RenderWindow() {
                                       ImGuiInputTextFlags_CallbackHistory | ImGuiInputTextFlags_CallbackAlways;
     const bool enter = ImGui::InputText("##input", g_input, sizeof(g_input), flags, InputCallback);
     const ImVec2 inputMin = ImGui::GetItemRectMin();
-    if (const std::wstring rest = GhostRest(); !rest.empty() && ImGui::IsItemActive()) {  // the grey completion
+    if (const std::wstring rest = GhostRest(); !rest.empty() && ImGui::IsItemActive()) {  // what Space / Tab writes
         const ImVec2 typed = ImGui::CalcTextSize(g_input);
         const ImGuiStyle& st = ImGui::GetStyle();
         ImGui::GetWindowDrawList()->AddText(ImVec2(inputMin.x + st.FramePadding.x + typed.x, inputMin.y + st.FramePadding.y),
-                                            ImGui::GetColorU32(ImGuiCol_TextDisabled), U8(rest).c_str());
+                                            ImGui::GetColorU32(ImGuiCol_TextDisabled), UI(rest).c_str());
     }
-    // ---- the footer: channel | send language | send after speaking | counter
-    RenderChannelPicker();
-    if (g_cfg.voiceEnabled) {
-        ImGui::SameLine();
-        if (ImGui::Checkbox(U8(Tr(L"auto") + L"##autosend").c_str(), &g_cfg.voiceAutoSend))
-            g_cfg.SaveBool(L"Voice", L"AutoSend", g_cfg.voiceAutoSend);
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("%s", U8(Tr(L"Send right after speaking (releasing the key counts as your Enter)")).c_str());
-    }
-    ImGui::SameLine();
-    const size_t n = CodePointCount(W(g_input));
-    const std::string counter = std::to_string(n) + "/" + std::to_string(g_cfg.maxLength);
-    ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - ImGui::CalcTextSize(counter.c_str()).x);
-    ImGui::TextDisabled("%s", counter.c_str());
+
+    // ---- the footer (like the exe): channel | write | send · translator | auto | counter
+    RenderFooter();
     // Changes of the text: a pause translates it; the typing help follows every key.
     const std::string now = g_input;
     if (now != g_lastInput) {
         g_lastInput = now;
         g_inputChanged = GetTickCount64();
         ++g_inputGen;
+        g_back.clear();
         if (!g_helpRequested) {
             g_helpRequested = true;
             g_worker.Post(ComputeTyping);
@@ -1208,11 +1453,13 @@ bool LanguageCombo(const char* id, std::wstring& value, const std::wstring& empt
     return changed;
 }
 
-// Nexus → Addons → GW2 Keyboard: the essentials of the exe's settings. Changes apply on "Save".
+// Our options window: the exe's settings pages as tabs (as far as they make sense inside Nexus). "Save" applies.
 void RenderOptionsContent() {
     static Config edit;
     static bool loaded = false;
     static char keyBuf[256] = {}, regionBuf[64] = {}, urlBuf[256] = {}, mailBuf[128] = {};
+    static std::vector<AudioDevice> mics;
+    static bool forgetAsked = false;
     if (!loaded) {
         std::lock_guard<std::mutex> lock(g_mu);
         edit = g_cfg;
@@ -1223,127 +1470,222 @@ void RenderOptionsContent() {
         strncpy_s(regionBuf, U8(edit.msRegion).c_str(), _TRUNCATE);
         strncpy_s(urlBuf, U8(edit.libreUrl).c_str(), _TRUNCATE);
         strncpy_s(mailBuf, U8(edit.basicEmail).c_str(), _TRUNCATE);
+        mics = AudioCapture::Devices();
+        forgetAsked = false;
     }
-    ImGui::TextWrapped("%s", U8(TrF(L"GW2 Keyboard for Nexus {1} – the chat in your language, what you write in the chat's "
-                                    L"language. The chat comes from Events: Chat (every channel). Nothing is sent without "
-                                    L"your Enter; nothing of other players is stored.",
-                                    {GCT_VERSION_WSTR})).c_str());
-    ImGui::Checkbox(U8(Tr(L"Show the window")).c_str(), &g_show);
-    ImGui::Separator();
-
-    // ---- where the chat comes from
-    ImGui::TextUnformatted(U8(Tr(L"The chat")).c_str());
-    if (g_chatEventsPresent || g_chatEventsLive) {
-        ImGui::TextColored(ImVec4(0.45f, 0.85f, 0.45f, 1.f), "%s", U8(Tr(L"Events: Chat is loaded – every channel arrives exactly.")).c_str());
-    } else {
-        ImGui::TextWrapped("%s", U8(Tr(L"The chat (map, whispers, guild, party, squad) comes from Events: Chat by Vonsh, an "
-                                       L"add-on in the Nexus library. Without it no chat arrives here.")).c_str());
-        if (g_chatEventsInstalling) ImGui::TextDisabled("%s", U8(Tr(L"Loading Events: Chat …")).c_str());
-        else if (ImGui::Button(U8(Tr(L"Install Events: Chat")).c_str())) InstallChatEventsNow();
-    }
-    ImGui::Separator();
-
-    // ---- languages
-    ImGui::TextUnformatted(U8(Tr(L"Languages")).c_str());
-    ImGui::SetNextItemWidth(260);
-    LanguageCombo(U8(Tr(L"I write in") + L"##writein").c_str(), edit.writeIn, Tr(L"like Windows"));
-    std::wstring chatLang = edit.writeLangs.empty() ? std::wstring(L"EN-GB") : edit.writeLangs.front();
-    ImGui::SetNextItemWidth(260);
-    if (LanguageCombo(U8(Tr(L"The chat gets") + L"##sendlang").c_str(), chatLang, L"")) {
-        edit.writeLangs.erase(std::remove(edit.writeLangs.begin(), edit.writeLangs.end(), chatLang), edit.writeLangs.end());
-        edit.writeLangs.insert(edit.writeLangs.begin(), chatLang);
-    }
-    ImGui::SetNextItemWidth(260);
-    LanguageCombo(U8(Tr(L"Language of this window") + L"##ui").c_str(), edit.uiLangCode, Tr(L"like Windows"));
-
-    // ---- translator
-    ImGui::Separator();
-    static const Engine kEngines[] = {Engine::Auto, Engine::Basic, Engine::DeepL, Engine::Google, Engine::Microsoft, Engine::Libre};
-    static const wchar_t* kEngineNames[] = {L"Automatic", L"MyMemory (free)", L"DeepL", L"Google", L"Microsoft", L"LibreTranslate"};
-    int engineIdx = 0;
-    for (int i = 0; i < 6; ++i)
-        if (kEngines[i] == edit.engine) engineIdx = i;
-    ImGui::SetNextItemWidth(260);
-    if (ImGui::BeginCombo(U8(Tr(L"Translator") + L"##engine").c_str(), U8(Tr(kEngineNames[engineIdx])).c_str())) {
-        for (int i = 0; i < 6; ++i)
-            if (ImGui::Selectable(U8(Tr(kEngineNames[i])).c_str(), i == engineIdx)) {
-                edit.engine = kEngines[i];
+    const float wide = 280;
+    auto combo = [&](const char* id, const std::vector<std::string>& items, int* sel) {
+        bool changed = false;
+        ImGui::SetNextItemWidth(wide);
+        if (ImGui::BeginCombo(id, items[std::clamp(*sel, 0, static_cast<int>(items.size()) - 1)].c_str())) {
+            for (int i = 0; i < static_cast<int>(items.size()); ++i)
+                if (ImGui::Selectable(items[i].c_str(), i == *sel)) {
+                    *sel = i;
+                    changed = true;
+                }
+            ImGui::EndCombo();
+        }
+        return changed;
+    };
+    if (ImGui::BeginTabBar("##tabs")) {
+        // ---- General
+        if (ImGui::BeginTabItem(UI(Tr(L"General")).c_str())) {
+            ImGui::SetNextItemWidth(wide);
+            LanguageCombo(UI(Tr(L"Language of this window") + L"##ui").c_str(), edit.uiLangCode, Tr(L"like Windows"));
+            int pt = std::clamp(edit.fontPercent, 70, 200);
+            ImGui::SetNextItemWidth(wide);
+            if (ImGui::SliderInt(UI(Tr(L"Text size") + L" (%)##size").c_str(), &pt, 70, 200)) edit.fontPercent = pt;
+            int transparency = 100 - std::clamp(edit.opacity, 60, 255) * 100 / 255;
+            ImGui::SetNextItemWidth(wide);
+            if (ImGui::SliderInt(UI(Tr(L"Transparency") + L" (%)##alpha").c_str(), &transparency, 0, 75))
+                edit.opacity = (100 - transparency) * 255 / 100;
+            ImGui::Checkbox(UI(Tr(L"Show the window")).c_str(), &g_show);
+            ImGui::TextDisabled("%s", UI(Tr(L"Keys (show / hide: Ctrl+Alt+K, push to talk, focus the input): Nexus → Keybinds → GW2 Keyboard.")).c_str());
+            ImGui::Separator();
+            ImGui::TextUnformatted(UI(Tr(L"The chat")).c_str());
+            if (g_chatEventsPresent || g_chatEventsLive) {
+                ImGui::TextColored(ImVec4(0.45f, 0.85f, 0.45f, 1.f), "%s", UI(Tr(L"Events: Chat is loaded – every channel arrives exactly.")).c_str());
+            } else {
+                ImGui::TextWrapped("%s", UI(Tr(L"The chat (map, whispers, guild, party, squad) comes from Events: Chat by Vonsh, an "
+                                               L"add-on in the Nexus library. Without it no chat arrives here.")).c_str());
+                if (g_chatEventsInstalling) ImGui::TextDisabled("%s", UI(Tr(L"Loading Events: Chat …")).c_str());
+                else if (ImGui::Button(UI(Tr(L"Install Events: Chat")).c_str())) InstallChatEventsNow();
+            }
+            ImGui::EndTabItem();
+        }
+        // ---- Writing
+        if (ImGui::BeginTabItem(UI(Tr(L"Writing")).c_str())) {
+            ImGui::SetNextItemWidth(wide);
+            LanguageCombo(UI(Tr(L"I write in") + L"##writein").c_str(), edit.writeIn, Tr(L"like Windows"));
+            ImGui::Checkbox(UI(Tr(L"Spell checking (Windows, offline)")).c_str(), &edit.spellEnabled);
+            int ac = static_cast<int>(edit.autoCorrect);
+            if (combo(UI(Tr(L"Autocorrection") + L"##ac").c_str(),
+                      {UI(Tr(L"Off")), UI(Tr(L"Safe")), UI(Tr(L"Like a phone keyboard"))}, &ac))
+                edit.autoCorrect = static_cast<AutoCorrectMode>(ac);
+            ImGui::Checkbox(UI(Tr(L"Word suggestions while typing")).c_str(), &edit.suggestions);
+            int learn = !edit.learnWords ? 2 : edit.learnLater ? 1 : 0;
+            if (combo("##learn", {UI(Tr(L"Learn from what I send – while playing")), UI(Tr(L"Learn from what I send – later")),
+                                  UI(Tr(L"Do not learn"))},
+                      &learn)) {
+                edit.learnWords = learn != 2;
+                edit.learnLater = learn == 1;
+            }
+            if (!forgetAsked) {
+                if (ImGui::Button(UI(Tr(L"Delete everything learned…")).c_str())) forgetAsked = true;
+            } else {
+                ImGui::TextColored(ImVec4(0.95f, 0.55f, 0.35f, 1.f), "%s", UI(Tr(L"Really delete everything learned?")).c_str());
+                ImGui::SameLine();
+                if (ImGui::Button(UI(Tr(L"Yes")).c_str())) {
+                    g_worker.Post([] { if (g_spell) g_spell->ForgetAll(); });
+                    forgetAsked = false;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button(UI(Tr(L"No")).c_str())) forgetAsked = false;
+            }
+            ImGui::Checkbox(UI(Tr(L"Show the back-translation of my message")).c_str(), &edit.backTranslate);
+            int enterDoes = edit.copyOnly ? 1 : 0;
+            if (combo(UI(Tr(L"Enter does") + L"##enter").c_str(),
+                      {UI(Tr(L"Send into the GW2 chat")), UI(Tr(L"Only copy (not a single key reaches the game)"))}, &enterDoes))
+                edit.copyOnly = enterDoes == 1;
+            ImGui::TextUnformatted(UI(Tr(L"Focus behaviour")).c_str());
+            ImGui::Checkbox(UI(Tr(L"back here after sending")).c_str(), &edit.returnFocus);
+            ImGui::SameLine();
+            ImGui::Checkbox(UI(Tr(L"here when the GW2 chat opens")).c_str(), &edit.focusOnGameChat);
+            ImGui::EndTabItem();
+        }
+        // ---- Voice
+        if (ImGui::BeginTabItem(UI(Tr(L"Voice")).c_str())) {
+            ImGui::Checkbox(UI(Tr(L"Voice input")).c_str(), &edit.voiceEnabled);
+            const VoiceCatalog catalog = LoadVoiceCatalog(edit.dataDir);
+            const VoiceModelInfo* chosen = catalog.Find(U8(edit.voiceModel));
+            if (!chosen) chosen = catalog.Recommended();
+            ImGui::SetNextItemWidth(wide);
+            if (ImGui::BeginCombo(UI(Tr(L"Model") + L"##model").c_str(), chosen ? chosen->name.c_str() : "-")) {
+                for (const VoiceModelInfo& m : catalog.models) {
+                    const std::string label = m.name + "  (" + std::to_string(m.bytes / (1024 * 1024)) + " MB)" +
+                                              (VoiceModelInstalled(edit.VoiceModelDir(), m) ? "  [OK]" : "");
+                    if (ImGui::Selectable(label.c_str(), chosen && chosen->id == m.id)) edit.voiceModel = W(m.id);
+                }
+                ImGui::EndCombo();
+            }
+            if (chosen && !VoiceModelInstalled(edit.VoiceModelDir(), *chosen)) {
+                const int pct = g_downloadPct;
+                if (pct >= 0) ImGui::ProgressBar(pct / 100.f, ImVec2(wide, 0));
+                else if (ImGui::Button(UI(Tr(L"Download the model")).c_str())) StartModelDownload(*chosen);
+            }
+            std::vector<std::string> langs{UI(Tr(L"Like I write")), UI(Tr(L"Detect it"))};
+            std::vector<std::wstring> codes{L"", L"auto"};
+            for (const LangInfo& l : Languages()) {
+                langs.push_back(U8(l.native));
+                codes.push_back(l.code);
+            }
+            int li = 0;
+            for (size_t i = 0; i < codes.size(); ++i)
+                if (codes[i] == edit.voiceLang) li = static_cast<int>(i);
+            if (combo(UI(Tr(L"Language") + L"##vlang").c_str(), langs, &li)) edit.voiceLang = codes[li];
+            ImGui::Checkbox(UI(Tr(L"Translate into English (whisper)")).c_str(), &edit.voiceTranslate);
+            ImGui::Checkbox(UI(Tr(L"Live text while speaking (more CPU)")).c_str(), &edit.voiceLive);
+            ImGui::SetNextItemWidth(wide);
+            ImGui::SliderInt(UI(Tr(L"Longest recording") + L" (s)##max").c_str(), &edit.voiceMaxSec, 5, 60);
+            std::vector<std::string> threads{UI(Tr(L"Automatic"))};
+            for (int i = 1; i <= 8; ++i) threads.push_back(std::to_string(i));
+            int ti = std::clamp(edit.voiceThreads, 0, 8);
+            if (combo(UI(Tr(L"CPU threads") + L"##thr").c_str(), threads, &ti)) edit.voiceThreads = ti;
+            ImGui::TextDisabled("%s", UI(Tr(L"Automatic: the least busy cores – the ones GW2 does not use.")).c_str());
+            ImGui::Checkbox(UI(Tr(L"Send right after speaking (releasing the key counts as your Enter)")).c_str(), &edit.voiceAutoSend);
+            ImGui::TextDisabled("%s", UI(Tr(L"Runs on this PC – no sound leaves it, nothing is recorded to disk.")).c_str());
+            ImGui::EndTabItem();
+        }
+        // ---- Microphone
+        if (ImGui::BeginTabItem(UI(Tr(L"Microphone")).c_str())) {
+            int mode = edit.voiceToggle ? 1 : 0;
+            if (combo(UI(Tr(L"Starting") + L"##mode").c_str(),
+                      {UI(Tr(L"Hold the button or key while you speak")), UI(Tr(L"Press once – a pause ends it"))}, &mode))
+                edit.voiceToggle = mode == 1;
+            std::vector<std::string> names{UI(Tr(L"Windows default"))};
+            int mi = 0;
+            for (size_t i = 0; i < mics.size(); ++i) {
+                names.push_back(U8(mics[i].name));
+                if (mics[i].id == edit.voiceDevice) mi = static_cast<int>(i) + 1;
+            }
+            if (combo(UI(Tr(L"Microphone") + L"##dev").c_str(), names, &mi))
+                edit.voiceDevice = mi == 0 ? std::wstring() : mics[mi - 1].id;
+            int boost = std::clamp(edit.voiceBoost, 0, 3);
+            if (combo(UI(Tr(L"Microphone boost") + L"##boost").c_str(), {UI(Tr(L"Off")), "+6 dB", "+12 dB", UI(Tr(L"Automatic"))}, &boost))
+                edit.voiceBoost = boost;
+            ImGui::SetNextItemWidth(wide);
+            ImGui::SliderInt(UI(Tr(L"Pause to end") + L" (ms)##pause").c_str(), &edit.voicePauseMs, 400, 3000);
+            ImGui::TextDisabled("%s", UI(Tr(L"Right-click on the microphone: on until a pause.")).c_str());
+            ImGui::EndTabItem();
+        }
+        // ---- Translator
+        if (ImGui::BeginTabItem(UI(Tr(L"Translator")).c_str())) {
+            ImGui::Checkbox(UI(Tr(L"Translate my text")).c_str(), &edit.translateWriting);
+            static const Engine kEngines[] = {Engine::Auto, Engine::Basic, Engine::DeepL, Engine::Google, Engine::Microsoft, Engine::Libre};
+            static const wchar_t* kNames[] = {L"Automatic", L"MyMemory (free)", L"DeepL", L"Google", L"Microsoft", L"LibreTranslate"};
+            int ei = 0;
+            for (int i = 0; i < 6; ++i)
+                if (kEngines[i] == edit.engine) ei = i;
+            std::vector<std::string> engines;
+            for (const wchar_t* n : kNames) engines.push_back(UI(Tr(n)));
+            if (combo(UI(Tr(L"Translator") + L"##engine").c_str(), engines, &ei)) {
+                edit.engine = kEngines[ei];
                 const std::wstring k = edit.engine == Engine::DeepL ? edit.deeplKey : edit.engine == Engine::Google ? edit.googleKey
                                        : edit.engine == Engine::Microsoft ? edit.msKey : edit.libreKey;
                 strncpy_s(keyBuf, U8(k).c_str(), _TRUNCATE);
             }
-        ImGui::EndCombo();
-    }
-    if (edit.engine == Engine::DeepL || edit.engine == Engine::Google || edit.engine == Engine::Microsoft ||
-        edit.engine == Engine::Libre) {
-        ImGui::SetNextItemWidth(260);
-        ImGui::InputText(U8(Tr(L"API key") + L"##key").c_str(), keyBuf, sizeof(keyBuf), ImGuiInputTextFlags_Password);
-    }
-    if (edit.engine == Engine::Microsoft) {
-        ImGui::SetNextItemWidth(260);
-        ImGui::InputText(U8(Tr(L"Region") + L"##region").c_str(), regionBuf, sizeof(regionBuf));
-    }
-    if (edit.engine == Engine::Libre) {
-        ImGui::SetNextItemWidth(260);
-        ImGui::InputText(U8(Tr(L"Server") + L"##url").c_str(), urlBuf, sizeof(urlBuf));
-    }
-    if (edit.engine == Engine::Auto || edit.engine == Engine::Basic) {
-        ImGui::SetNextItemWidth(260);
-        ImGui::InputText(U8(Tr(L"E-mail for MyMemory (more free text per day)") + L"##mail").c_str(), mailBuf, sizeof(mailBuf));
-    }
-
-    // ---- writing
-    ImGui::Separator();
-    ImGui::Checkbox(U8(Tr(L"Word suggestions while typing")).c_str(), &edit.suggestions);
-    int ac = static_cast<int>(edit.autoCorrect);
-    const std::string acNames[] = {U8(Tr(L"Off")), U8(Tr(L"Safe")), U8(Tr(L"Like a phone keyboard"))};
-    ImGui::SetNextItemWidth(260);
-    if (ImGui::BeginCombo(U8(Tr(L"Autocorrection") + L"##ac").c_str(), acNames[ac].c_str())) {
-        for (int i = 0; i < 3; ++i)
-            if (ImGui::Selectable(acNames[i].c_str(), i == ac)) edit.autoCorrect = static_cast<AutoCorrectMode>(i);
-        ImGui::EndCombo();
-    }
-    ImGui::Checkbox(U8(Tr(L"Learn my words")).c_str(), &edit.learnWords);
-    ImGui::Checkbox(U8(Tr(L"back here after sending")).c_str(), &edit.returnFocus);
-
-    // ---- voice
-    ImGui::Separator();
-    ImGui::Checkbox(U8(Tr(L"Voice input")).c_str(), &edit.voiceEnabled);
-    if (edit.voiceEnabled) {
-        const VoiceCatalog catalog = LoadVoiceCatalog(edit.dataDir);
-        const VoiceModelInfo* chosen = catalog.Find(U8(edit.voiceModel));
-        if (!chosen) chosen = catalog.Recommended();
-        ImGui::SetNextItemWidth(260);
-        if (ImGui::BeginCombo(U8(Tr(L"Model") + L"##model").c_str(), chosen ? chosen->name.c_str() : "-")) {
-            for (const VoiceModelInfo& m : catalog.models) {
-                const std::string label = m.name + (VoiceModelInstalled(edit.VoiceModelDir(), m) ? "  [OK]" : "") +
-                                          "  (" + std::to_string(m.bytes / (1024 * 1024)) + " MB)";
-                if (ImGui::Selectable(label.c_str(), chosen && chosen->id == m.id)) edit.voiceModel = W(m.id);
+            if (edit.engine == Engine::DeepL || edit.engine == Engine::Google || edit.engine == Engine::Microsoft ||
+                edit.engine == Engine::Libre) {
+                ImGui::SetNextItemWidth(wide);
+                ImGui::InputText(UI(Tr(L"API key") + L"##key").c_str(), keyBuf, sizeof(keyBuf), ImGuiInputTextFlags_Password);
             }
-            ImGui::EndCombo();
+            if (edit.engine == Engine::Microsoft) {
+                ImGui::SetNextItemWidth(wide);
+                ImGui::InputText(UI(Tr(L"Region") + L"##region").c_str(), regionBuf, sizeof(regionBuf));
+            }
+            if (edit.engine == Engine::Libre) {
+                ImGui::SetNextItemWidth(wide);
+                ImGui::InputText(UI(Tr(L"Server") + L"##url").c_str(), urlBuf, sizeof(urlBuf));
+            }
+            if (edit.engine == Engine::Auto || edit.engine == Engine::Basic) {
+                ImGui::SetNextItemWidth(wide);
+                ImGui::InputText(UI(Tr(L"E-mail for MyMemory (more free text per day)") + L"##mail").c_str(), mailBuf, sizeof(mailBuf));
+            }
+            ImGui::SetNextItemWidth(wide);
+            std::wstring chatLang = edit.writeLangs.empty() ? std::wstring(L"EN-GB") : edit.writeLangs.front();
+            if (LanguageCombo(UI(Tr(L"The chat gets") + L"##sendlang").c_str(), chatLang, L"")) {
+                edit.writeLangs.erase(std::remove(edit.writeLangs.begin(), edit.writeLangs.end(), chatLang), edit.writeLangs.end());
+                edit.writeLangs.insert(edit.writeLangs.begin(), chatLang);
+            }
+            ImGui::EndTabItem();
         }
-        if (chosen && !VoiceModelInstalled(edit.VoiceModelDir(), *chosen)) {
-            const int pct = g_downloadPct;
-            if (pct >= 0) ImGui::ProgressBar(pct / 100.f, ImVec2(260, 0));
-            else if (ImGui::Button(U8(Tr(L"Download the model")).c_str())) StartModelDownload(*chosen);
+        // ---- Technical
+        if (ImGui::BeginTabItem(UI(Tr(L"Technical")).c_str())) {
+            ImGui::SetNextItemWidth(120);
+            ImGui::InputInt(UI(Tr(L"Key hold when sending (ms)") + L"##hold").c_str(), &edit.send.keyHoldMs);
+            ImGui::SetNextItemWidth(120);
+            ImGui::InputInt(UI(Tr(L"Pause between keys (ms)") + L"##step").c_str(), &edit.send.stepDelayMs);
+            edit.send.keyHoldMs = std::clamp(edit.send.keyHoldMs, 10, 500);
+            edit.send.stepDelayMs = std::clamp(edit.send.stepDelayMs, 10, 1000);
+            ImGui::Separator();
+            std::lock_guard<std::mutex> lock(g_mu);
+            const int fps = g_fps;
+            const int hold = fps > 0 && g_cfg.send.keyHoldMs == 30 ? std::clamp(1000 / fps + 10, 15, 1010) : g_cfg.send.keyHoldMs;
+            ImGui::Text("GW2 Keyboard for Nexus %s", GCT_VERSION_STR);
+            ImGui::Text("%s", UI(TrF(L"Game: {1} fps → keys held {2} ms", {std::to_wstring(fps), std::to_wstring(hold)})).c_str());
+            ImGui::Text("%s", UI(TrF(L"Translator: {1}", {g_translator ? g_translator->Name() : std::wstring(L"-")})).c_str());
+            if (const std::wstring q = MyMemoryQuotaText(); !q.empty()) ImGui::Text("%s", UI(q).c_str());
+            ImGui::Text("Events: Chat: %s", g_chatEventsPresent || g_chatEventsLive ? "[OK]" : "[--]");
+            ImGui::Text("%s", UI(TrF(L"Voice: {1}", {!g_cfg.voiceEnabled ? Tr(L"off") : g_voiceReady ? Tr(L"ready")
+                                                       : g_voice.Running() ? Tr(L"starting") : Tr(L"The voice module is missing")})).c_str());
+            ImGui::Text("%s", UI(TrF(L"Chat lines: {1}", {std::to_wstring(g_lines.size())})).c_str());
+            ImGui::EndTabItem();
         }
-        ImGui::Checkbox(U8(Tr(L"Translate into English (whisper)")).c_str(), &edit.voiceTranslate);
-        ImGui::SetNextItemWidth(120);
-        ImGui::SliderInt(U8(Tr(L"Threads (0 = automatic: the cores GW2 does not use)") + L"##thr").c_str(), &edit.voiceThreads, 0, 8);
-        int boost = edit.voiceBoost;
-        const std::string boostNames[] = {U8(Tr(L"Off")), "+6 dB", "+12 dB", U8(Tr(L"Automatic"))};
-        ImGui::SetNextItemWidth(260);
-        if (ImGui::BeginCombo(U8(Tr(L"Microphone boost") + L"##boost").c_str(), boostNames[std::clamp(boost, 0, 3)].c_str())) {
-            for (int i = 0; i < 4; ++i)
-                if (ImGui::Selectable(boostNames[i].c_str(), i == boost)) edit.voiceBoost = i;
-            ImGui::EndCombo();
-        }
-        ImGui::Checkbox(U8(Tr(L"Send right after speaking (releasing the key counts as your Enter)")).c_str(), &edit.voiceAutoSend);
-        ImGui::TextDisabled("%s", U8(Tr(L"Push to talk: set the key in Nexus → Keybinds → GW2 Keyboard.")).c_str());
+        ImGui::EndTabBar();
     }
 
     ImGui::Separator();
-    if (ImGui::Button(U8(Tr(L"Save")).c_str())) {
+    if (ImGui::Button(UI(Tr(L"Save")).c_str())) {
         const std::wstring key = W(keyBuf);
         if (edit.engine == Engine::DeepL) edit.deeplKey = key;
         else if (edit.engine == Engine::Google) edit.googleKey = key;
@@ -1356,19 +1698,22 @@ void RenderOptionsContent() {
         bool typingChanged, voiceChanged;
         {
             std::lock_guard<std::mutex> lock(g_mu);
-            typingChanged = edit.writeIn != g_cfg.writeIn;
+            typingChanged = edit.writeIn != g_cfg.writeIn || edit.spellEnabled != g_cfg.spellEnabled;
             voiceChanged = edit.voiceEnabled != g_cfg.voiceEnabled;
+            edit.myMemoryDay = g_cfg.myMemoryDay;  // counted meanwhile
+            edit.myMemoryUsed = g_cfg.myMemoryUsed;
             g_cfg = edit;
             g_cfg.SaveAll();
             SetUiLang(g_cfg.uiLang);
             g_translator = MakeTranslator(g_cfg);
-            g_sendIdx = 0;
+            g_sendIdx = g_cfg.translateWriting ? 0 : static_cast<int>(g_cfg.writeLangs.size());
             SetStatus(Tr(L"Saved"), 3000);
         }
         if (typingChanged) g_worker.Post([] {  // spelling and learned words follow the language you write in
             FreeWorkerState();
             InitSpelling();
         });
+        else g_worker.Post([learn = edit.learnWords] { if (g_spell) g_spell->SetLearnChoices(learn); });
         if (voiceChanged && edit.voiceEnabled && !g_voice.Running() &&
             GetFileAttributesW(HelperExe().c_str()) != INVALID_FILE_ATTRIBUTES)
             g_voice.Start(HelperExe(), edit.dataDir);
@@ -1376,7 +1721,7 @@ void RenderOptionsContent() {
             g_voice.Send("reload");
     }
     ImGui::SameLine();
-    if (ImGui::Button(U8(Tr(L"Undo changes")).c_str())) loaded = false;
+    if (ImGui::Button(UI(Tr(L"Undo changes")).c_str())) loaded = false;
 }
 
 // Nexus → Addons → GW2 Keyboard: only the button that opens / closes our own options window.
@@ -1446,7 +1791,7 @@ void AddonLoad(AddonAPI_t* api) {
         std::string fixes;
         if (ReadFileBytes(dataDir + L"\\voice-fixes.txt", fixes)) g_voiceFixes.Parse(FromUtf8(fixes));
     }
-    if (voice && GetFileAttributesW(HelperExe().c_str()) != INVALID_FILE_ATTRIBUTES) g_voice.Start(HelperExe(), dataDir);
+    (void)voice;  // the voice helper starts on the first press of the microphone or the key, not now
     if (api->GUI_Register) {
         api->GUI_Register(RT_Render, SafeRender);
         api->GUI_Register(RT_OptionsRender, SafeOptions);

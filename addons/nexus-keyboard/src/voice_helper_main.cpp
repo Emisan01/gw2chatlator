@@ -4,7 +4,7 @@
 // there. This small process runs the exe's VoiceSession: the microphone, the speech gate, whisper on the least busy
 // cores below normal priority (its own process affinity – never the game's). It talks to the add-on through its
 // standard input and output only:
-//   in  (one command per line): begin | end | cancel | reload | quit
+//   in  (one command per line): begin | begin-auto (a pause ends it) | end | cancel | reload | quit
 //   out (one JSON object per line): {"t":"ready"} {"t":"started"} {"t":"partial","stable":..,"unsure":..}
 //                                   {"t":"final","text":..,"empty":..,"lang":..,"rec":ms,"rms":ms} {"t":"error","msg":..}
 // When the add-on (its parent) goes, standard input closes and the helper ends.
@@ -92,11 +92,13 @@ void OnCommand(const std::string& cmd) {
         PostQuitMessage(0);
     } else if (cmd == "reload") {  // the options changed (model, language, threads ...)
         g_cfg.Load(g_cfg.dataDir);
-    } else if (cmd == "begin") {
+    } else if (cmd == "begin" || cmd == "begin-auto") {  // begin-auto: a pause after speech ends it
         if (g_voice->Busy()) return;
         VoiceSettings s;
         std::wstring why;
-        if (!BuildSettings(&s, &why)) {
+        const bool ok = BuildSettings(&s, &why);
+        if (cmd == "begin-auto") s.autoEndMs = g_cfg.voicePauseMs;
+        if (!ok) {
             Write("{\"t\":\"error\"" + Str("msg", why) + "}");
             return;
         }
