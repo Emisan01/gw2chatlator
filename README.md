@@ -3,12 +3,17 @@
 The chat of Guild Wars 2 in your language – **read it, write and speak in yours**, the chat gets it translated. A
 Nexus add-on, right inside the game. A line goes into the chat only when you press Enter yourself.
 
-**[⬇ Download GW2 Keyboard for Nexus (ZIP)](https://github.com/Emisan01/gw2chatlator/releases/latest/download/GW2Keyboard-Nexus.zip)**
-– unpack it into your `Guild Wars 2\addons` folder (where [Nexus](https://raidcore.gg/Nexus) keeps its add-ons) and
-load **GW2 Keyboard** in Nexus (version 1.7.5). Checked by VirusTotal: [1.7.5 ZIP, 2 of 66 scanners](https://www.virustotal.com/gui/file/2d32ac0cbda127bd44f47704cfeb75e2b1175c0aa438adf8bce4cab2467c0455)
+## ⬇ [Download gw2keyboard_nexus.dll](https://github.com/Emisan01/gw2chatlator/releases/latest/download/gw2keyboard_nexus.dll)
+
+Put the DLL into your `Guild Wars 2\addons` folder (where [Nexus](https://raidcore.gg/Nexus) keeps its add-ons) and
+load **GW2 Keyboard** in Nexus – that is all: on the first start it loads Events: Chat, its voice module and a small
+voice model by itself. Version 1.7.5 · SHA-256 `8a406c6d…92128afa` ·
+[the same with the voice module already inside (ZIP)](https://github.com/Emisan01/gw2chatlator/releases/latest/download/GW2Keyboard-Nexus.zip)
+· all versions: [Releases](https://github.com/Emisan01/gw2chatlator/releases) · what changed: [CHANGELOG.md](CHANGELOG.md).
+
+Checked by VirusTotal: [1.7.5 ZIP, 2 of 66 scanners](https://www.virustotal.com/gui/file/2d32ac0cbda127bd44f47704cfeb75e2b1175c0aa438adf8bce4cab2467c0455)
 – both are machine-learning guesses (DeepInstinct, Rising "AI"/RDML), common for new unsigned programs; no signature
-scanner flags it (SHA-256 `2d32ac0c…2467c0455`). All versions: [Releases](https://github.com/Emisan01/gw2chatlator/releases)
-· what changed: [CHANGELOG.md](CHANGELOG.md).
+scanner flags it.
 
 > **New in 1.7.5** – the chat window you can play with instead of GW2's own:
 > whisper tabs in the header (click a name, or right-click to open one) · item links like in the game – the name in its
@@ -47,14 +52,14 @@ scanner flags it (SHA-256 `2d32ac0c…2467c0455`). All versions: [Releases](http
 ## Install (one minute)
 
 1. Install [Nexus](https://raidcore.gg/Nexus) if you do not have it.
-2. Unpack the ZIP into `Guild Wars 2\addons`: `gw2keyboard_nexus.dll` lies next to the other add-ons, the folder
-   `GW2Keyboard` beside it.
+2. Put `gw2keyboard_nexus.dll` into `Guild Wars 2\addons`, next to the other add-ons (or unpack the ZIP there: the DLL
+   and the folder `GW2Keyboard` beside it).
 3. In the game: Nexus → Addons → **GW2 Keyboard** → Load. On the first start it loads **Events: Chat**, its voice
    module and a small voice model by itself, and tells you what is ready.
 4. Translation is yours to switch on: menu ≡ → Options → Translator (the chat, your text), Options → Voice (speech
    into English).
 
-Updating: unpack the newer ZIP over the old one (settings and learned words stay in `addons\GW2Keyboard`).
+Updating: replace the DLL (or unpack the newer ZIP over the old one) (settings and learned words stay in `addons\GW2Keyboard`).
 
 ## Keys
 
