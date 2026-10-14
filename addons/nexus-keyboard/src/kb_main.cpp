@@ -67,6 +67,7 @@ constexpr const char* kFocusBind = "KB_GW2KEYBOARD_FOCUS";
 constexpr const char* kTalkBind = "KB_GW2KEYBOARD_TALK";  // push to talk: held while you speak
 constexpr size_t kMaxLines = 200;
 constexpr size_t kHistoryMax = 50;
+constexpr int kInputLines = 4;  // the input box: four lines, wrapping like the exe's
 
 AddonDefinition_t g_def = {};
 AddonAPI_t* g_api = nullptr;
@@ -185,6 +186,13 @@ std::vector<std::wstring> g_context;  // speakers and words of the chat (offered
 std::wstring g_ownName;               // your character (MumbleLink)
 // The input line.
 char g_input[1024] = {};
+float g_wrapWidth = 0;  // the input's text width: soft line breaks ('\n' in place of a space) keep words whole
+std::string Flat(const char* s) {  // the input as it is meant: one line
+    std::string f = s;
+    for (char& c : f)
+        if (c == '\n' || c == '\r') c = ' ';
+    return f;
+}
 std::string g_lastInput;
 ULONGLONG g_inputChanged = 0;
 uint64_t g_inputGen = 0;
@@ -452,7 +460,7 @@ void ComputeTyping() {
     {
         std::lock_guard<std::mutex> lock(g_mu);
         g_helpRequested = false;
-        text = W(g_input);
+        text = W(Flat(g_input));
         caret = text.size();  // the help works at the end of the line (where you type)
         mode = g_cfg.autoCorrect;
         context = g_context;
@@ -465,7 +473,7 @@ void ComputeTyping() {
     h.bar = g_spell->Suggestions(text, caret, mode);
     h.choices = g_spell->Choices(text, caret, mode);
     std::lock_guard<std::mutex> lock(g_mu);
-    if (W(g_input) == text) g_help = std::move(h);
+    if (W(Flat(g_input)) == text) g_help = std::move(h);
 }
 
 // Enter: the parts go into the GW2 chat – only now, on your Enter (invariants 1–3).
@@ -670,7 +678,7 @@ void VoiceHelper::OnLine(const std::string& line) {
         g_edit.active = true;
         g_edit.startByte = len;
         g_edit.lenBytes = 0;
-        g_edit.insert = (len && g_input[len - 1] != ' ' ? " " : "") + U8(fixed);
+        g_edit.insert = (len && g_input[len - 1] != ' ' && g_input[len - 1] != '\n' ? " " : "") + U8(fixed);
         g_focusInput = true;
         g_autoSendPending = g_cfg.voiceAutoSend;  // your key release was the press; off by default
         SetStatus(L"");
@@ -827,7 +835,7 @@ ImVec4 ColorOf(Channel ch) {
 // correction "> word"); after a space the sure next word or phrase. `replace` gets what Tab takes.
 std::wstring GhostRest(bool* correction = nullptr) {
     if (correction) *correction = false;
-    const std::wstring text = W(g_input);
+    const std::wstring text = W(Flat(g_input));
     if (g_help.text != text || text.empty()) return {};
     const WordChoices& c = g_help.choices;
     if (text.back() != L' ' && c.highlight >= 0 && c.highlight < static_cast<int>(c.words.size()) &&
@@ -847,7 +855,7 @@ std::wstring GhostRest(bool* correction = nullptr) {
 
 // A word of the bar replaces the word at the end (or goes after it), followed by a space.
 void TakeWord(const std::wstring& word) {
-    const std::wstring text = W(g_input);
+    const std::wstring text = W(Flat(g_input));
     const WordSuggestions& b = g_help.bar;
     Span r = b.replace;
     if (g_help.text != text || r.end() > text.size()) r = Span{text.size(), 0};
@@ -874,7 +882,8 @@ int InputCallback(ImGuiInputTextCallbackData* d) {
                 d->InsertChars(startByte, U8(word + L" ").c_str());
                 g_worker.Post([text, start = r.start, word] { if (g_spell) g_spell->Chose(text, start, word, true); });
             } else {
-                const bool next = !g_input[0] || g_input[std::strlen(g_input) - 1] == ' ';
+                const bool next = !g_input[0] || g_input[std::strlen(g_input) - 1] == ' ' ||
+                                  g_input[std::strlen(g_input) - 1] == '\n';
                 d->InsertChars(d->CursorPos, (U8(rest) + (next ? "" : " ")).c_str());
             }
             break;
@@ -897,7 +906,31 @@ int InputCallback(ImGuiInputTextCallbackData* d) {
                 }
                 break;
             }
-            const std::string now(d->Buf, d->BufTextLen);
+            // Soft line breaks: the text is broken at spaces to the box's width (only when it changed).
+            if (g_wrapWidth > 0) {
+                static std::string lastSeen;
+                const std::string raw(d->Buf, d->BufTextLen);
+                if (raw != lastSeen) {
+                    std::string wrapped = Flat(raw.c_str());
+                    size_t lineStart = 0, lastSpace = std::string::npos;
+                    for (size_t i = 0; i < wrapped.size(); ++i) {
+                        if (wrapped[i] == ' ') lastSpace = i;
+                        if ((static_cast<unsigned char>(wrapped[i]) & 0xC0) == 0x80) continue;  // inside a character
+                        if (lastSpace != std::string::npos && lastSpace >= lineStart &&
+                            ImGui::CalcTextSize(wrapped.data() + lineStart, wrapped.data() + i + 1).x > g_wrapWidth) {
+                            wrapped[lastSpace] = '\n';
+                            lineStart = lastSpace + 1;
+                            lastSpace = std::string::npos;
+                        }
+                    }
+                    if (wrapped != raw) {
+                        std::memcpy(d->Buf, wrapped.data(), wrapped.size());
+                        d->BufDirty = true;
+                    }
+                    lastSeen = wrapped;
+                }
+            }
+            const std::string now = Flat(std::string(d->Buf, d->BufTextLen).c_str());
             // Backspace right after an autocorrection: the word as you typed it comes back (and is not corrected
             // that way again).
             if (g_undo.active && now.size() + 1 == g_undo.after.size() && g_undo.after.compare(0, now.size(), now) == 0) {
@@ -933,7 +966,7 @@ int InputCallback(ImGuiInputTextCallbackData* d) {
 }
 
 void StartSend() {  // Enter (g_mu held)
-    const std::wstring text = SanitizeChatText(W(g_input));
+    const std::wstring text = SanitizeChatText(W(Flat(g_input)));
     if (text.empty() || g_sending) return;
     const SendGuard::Verdict v = g_guard.Check(text, false, false, GetTickCount64());
     if (!v.allow) {
@@ -1055,7 +1088,7 @@ void RenderFooter() {  // g_mu held
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", UI(Tr(L"Send right after speaking (releasing the key counts as your Enter)")).c_str());
     }
-    const size_t n = CodePointCount(W(g_input));
+    const size_t n = CodePointCount(W(Flat(g_input)));
     const std::string counter = std::to_string(n) + "/" + std::to_string(g_cfg.maxLength);
     ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - ImGui::CalcTextSize(counter.c_str()).x);
     ImGui::TextDisabled("%s", counter.c_str());
@@ -1063,6 +1096,7 @@ void RenderFooter() {  // g_mu held
 
 // ---- "Events: Chat": is it there, and installing it the way the Nexus library would.
 std::atomic<bool> g_chatEventsPresent{false};
+std::atomic<bool> g_chatEventsFile{false};  // Events_Chat.dll lies in the add-ons folder (maybe not loaded in Nexus)
 std::atomic<bool> g_chatEventsInstalling{false};
 std::thread g_chatEventsThread;
 
@@ -1093,6 +1127,7 @@ bool ChatEventsPresent() {
         }
     }
     g_chatEventsPresent = found;
+    g_chatEventsFile = GetFileAttributesW((AddonsDir() + kChatEventsDllName).c_str()) != INVALID_FILE_ATTRIBUTES;
     return found;
 }
 
@@ -1155,7 +1190,6 @@ std::string Fit(const std::string& s, float width) {
 std::wstring StatusText() {  // g_mu held
     if (!g_status.empty()) return g_status;
     if (g_recording) return Tr(L"Hearing you … release the key when you are done");
-    if (!g_chatEventsLive && !g_chatEventsPresent) return Tr(L"Every channel needs Events: Chat – ≡ → Options installs it");
     if (const std::wstring q = MyMemoryQuotaText(); !q.empty()) return q;
     std::wstring route = SendOriginal() ? Tr(L"as written") : ToUpperAscii(PrimaryLang(SendLang()));
     if (Translating() && g_translator) route += L" · " + g_translator->Name();
@@ -1259,7 +1293,7 @@ void RenderWindow() {
     if (ImGui::BeginPopup("kbmenu")) {
         if (ImGui::MenuItem(UI(Tr(L"Options …")).c_str())) g_showOptions = true;
         ImGui::MenuItem(UI(Tr(L"Compact view")).c_str(), nullptr, &g_compact);
-        if (!g_chatEventsPresent && ImGui::MenuItem(UI(Tr(L"Install Events: Chat (every channel) …")).c_str()))
+        if (!g_chatEventsPresent && !g_chatEventsFile && ImGui::MenuItem(UI(Tr(L"Install Events: Chat (every channel) …")).c_str()))
             g_showOptions = true;
         ImGui::Separator();
         if (ImGui::MenuItem(UI(Tr(L"Hide (Ctrl+Alt+K shows it again)")).c_str())) g_show = false;
@@ -1271,8 +1305,22 @@ void RenderWindow() {
 
     // ---- the chat (the newest at the bottom): name white – a click answers with a whisper –, text in the channel colour
     const float line = ImGui::GetTextLineHeightWithSpacing();
-    const float lowerH = line * 3.2f + ImGui::GetFrameHeightWithSpacing() * 3 + 10;
+    const float lowerH = line * 3.2f + ImGui::GetFrameHeightWithSpacing() * 2 + ImGui::GetTextLineHeight() * kInputLines +
+                         ImGui::GetStyle().FramePadding.y * 2 + 16;
     ImGui::BeginChild("chat", ImVec2(0, g_compact ? line * 3 + 4 : -lowerH), false);
+    if (g_lines.empty()) {  // where the chat comes from – loaded, installed but not loaded, or missing
+        const bool live = g_chatEventsLive || g_chatEventsPresent;
+        ImGui::PushStyleColor(ImGuiCol_Text, live ? ImVec4(0.45f, 0.85f, 0.45f, 1.f) : ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+        ImGui::TextWrapped("%s", UI(live ? Tr(L"Events: Chat is loaded – the chat appears here as soon as someone writes.")
+                                    : g_chatEventsFile ? Tr(L"Events: Chat is installed but not loaded: Nexus → Addons → Events: Chat → Load.")
+                                                       : Tr(L"The chat (map, whispers, guild, party, squad) comes from Events: Chat by Vonsh, an "
+                                                            L"add-on in the Nexus library. Without it no chat arrives here.")).c_str());
+        ImGui::PopStyleColor();
+        if (!live && !g_chatEventsFile) {
+            if (g_chatEventsInstalling) ImGui::TextDisabled("%s", UI(Tr(L"Loading Events: Chat …")).c_str());
+            else if (ImGui::SmallButton(UI(Tr(L"Install Events: Chat")).c_str())) InstallChatEventsNow();
+        }
+    }
     const size_t first = g_compact && g_lines.size() > 3 ? g_lines.size() - 3 : 0;
     for (size_t i = first; i < g_lines.size(); ++i) {
         const ChatLine& l = g_lines[i];
@@ -1311,7 +1359,7 @@ void RenderWindow() {
         ImGui::TextDisabled("%s", UI(Tr(L"Write in your language – here you see what arrives in the GW2 chat.")).c_str());
     } else if (!Translating()) {
         ImGui::PushStyleColor(ImGuiCol_Text, kPreview);
-        ImGui::TextWrapped("%s", U8(ComposePrefix() + SanitizeChatText(W(g_input))).c_str());
+        ImGui::TextWrapped("%s", U8(ComposePrefix() + SanitizeChatText(W(Flat(g_input)))).c_str());
         ImGui::PopStyleColor();
     } else if (previewCurrent) {
         ImGui::PushStyleColor(ImGuiCol_Text, kPreview);
@@ -1334,7 +1382,7 @@ void RenderWindow() {
         const ImVec2 p = ImGui::GetCursorScreenPos();
         const float h = ImGui::GetFrameHeight();
         ImDrawList* dl = ImGui::GetWindowDrawList();
-        const bool have = g_cfg.suggestions && g_help.text == W(g_input);
+        const bool have = g_cfg.suggestions && g_help.text == W(Flat(g_input));
         for (int i = 0; i < 3; ++i) {
             const ImVec2 a(p.x + w * i / 3.0f, p.y), b(p.x + w * (i + 1) / 3.0f, p.y + h);
             if (i) dl->AddLine(ImVec2(a.x, a.y + h * 0.25f), ImVec2(a.x, b.y - h * 0.25f), ImGui::GetColorU32(ImGuiCol_Separator));
@@ -1359,22 +1407,33 @@ void RenderWindow() {
         ImGui::SetKeyboardFocusHere();
         g_focusInput = false;
     }
-    ImGui::SetNextItemWidth(-1);
+    const ImGuiStyle& st = ImGui::GetStyle();
+    const ImVec2 boxSize(-1, ImGui::GetTextLineHeight() * kInputLines + st.FramePadding.y * 2);
+    g_wrapWidth = ImGui::GetContentRegionAvail().x - st.FramePadding.x * 2 - st.ScrollbarSize - 4;
     const ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackCompletion |
-                                      ImGuiInputTextFlags_CallbackHistory | ImGuiInputTextFlags_CallbackAlways;
-    const bool enter = ImGui::InputText("##input", g_input, sizeof(g_input), flags, InputCallback);
-    const ImVec2 inputMin = ImGui::GetItemRectMin();
+                                      ImGuiInputTextFlags_CallbackAlways;
+    const bool enter = ImGui::InputTextMultiline("##input", g_input, sizeof(g_input), boxSize, flags, InputCallback);
+    const ImVec2 inputMin = ImGui::GetItemRectMin(), inputMax = ImGui::GetItemRectMax();
     if (const std::wstring rest = GhostRest(); !rest.empty() && ImGui::IsItemActive()) {  // what Space / Tab writes
-        const ImVec2 typed = ImGui::CalcTextSize(g_input);
-        const ImGuiStyle& st = ImGui::GetStyle();
-        ImGui::GetWindowDrawList()->AddText(ImVec2(inputMin.x + st.FramePadding.x + typed.x, inputMin.y + st.FramePadding.y),
-                                            ImGui::GetColorU32(ImGuiCol_TextDisabled), UI(rest).c_str());
+        // In the line where the text ends (the box is its own child window: drawn on top, clipped to the box).
+        const char* lastLine = std::strrchr(g_input, '\n');
+        const int lineNo = static_cast<int>(std::count(g_input, g_input + std::strlen(g_input), '\n'));
+        const ImVec2 typed = ImGui::CalcTextSize(lastLine ? lastLine + 1 : g_input);
+        const ImVec2 at(inputMin.x + st.FramePadding.x + typed.x,
+                        inputMin.y + st.FramePadding.y + lineNo * ImGui::GetTextLineHeight());
+        if (lineNo < kInputLines) {
+            const ImVec4 clip(inputMin.x, inputMin.y, inputMax.x, inputMax.y);
+            const std::string ghost = UI(rest);
+            ImGui::GetForegroundDrawList()->AddText(ImGui::GetFont(), ImGui::GetFontSize(), at,
+                                                    ImGui::GetColorU32(ImGuiCol_TextDisabled), ghost.c_str(), nullptr, 0,
+                                                    &clip);
+        }
     }
 
     // ---- the footer (like the exe): channel | write | send · translator | auto | counter
     RenderFooter();
     // Changes of the text: a pause translates it; the typing help follows every key.
-    const std::string now = g_input;
+    const std::string now = Flat(g_input);
     if (now != g_lastInput) {
         g_lastInput = now;
         g_inputChanged = GetTickCount64();
@@ -1505,6 +1564,8 @@ void RenderOptionsContent() {
             ImGui::TextUnformatted(UI(Tr(L"The chat")).c_str());
             if (g_chatEventsPresent || g_chatEventsLive) {
                 ImGui::TextColored(ImVec4(0.45f, 0.85f, 0.45f, 1.f), "%s", UI(Tr(L"Events: Chat is loaded – every channel arrives exactly.")).c_str());
+            } else if (g_chatEventsFile) {
+                ImGui::TextWrapped("%s", UI(Tr(L"Events: Chat is installed but not loaded: Nexus → Addons → Events: Chat → Load.")).c_str());
             } else {
                 ImGui::TextWrapped("%s", UI(Tr(L"The chat (map, whispers, guild, party, squad) comes from Events: Chat by Vonsh, an "
                                                L"add-on in the Nexus library. Without it no chat arrives here.")).c_str());
