@@ -3,6 +3,7 @@
 set(GCT_NEXUS_TP ${PROJECT_SOURCE_DIR}/addons/nexus/third_party)
 add_library(gw2keyboard_nexus SHARED
     src/kb_main.cpp
+    src/voice_module.cpp
     ${PROJECT_SOURCE_DIR}/src/app/config.cpp
     ${PROJECT_SOURCE_DIR}/src/app/spell_service.cpp
     ${PROJECT_SOURCE_DIR}/src/win/spellcheck.cpp

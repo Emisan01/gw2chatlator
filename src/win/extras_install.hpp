@@ -28,6 +28,11 @@ struct ExtrasInstallResult {
 ExtrasInstallResult InstallUnofficialExtras(const std::wstring& addonsDir, const std::function<bool()>& cancelled);
 // The same for "Events: Chat" (newest release of jsantorek/GW2-Chat, Events_Chat.dll, SHA-256 checked).
 ExtrasInstallResult InstallChatEvents(const std::wstring& addonsDir, const std::function<bool()>& cancelled);
+// One asset of a GitHub release (`releaseApiPath` e.g. "/repos/o/r/releases/latest") into `dest`: only from
+// `downloadPrefix`, only with the SHA-256 GitHub reports for it. `progress` returns false to cancel. Blocking.
+ExtrasInstallResult DownloadReleaseAsset(const std::wstring& releaseApiPath, const char* downloadPrefix,
+                                         const std::wstring& asset, const std::wstring& dest,
+                                         const std::function<bool(uint64_t done, uint64_t total)>& progress);
 
 // <GW2>\addons\ of the installed game (registry / Steam / usual folders, never the game process), empty if none.
 std::wstring Gw2AddonsDir();

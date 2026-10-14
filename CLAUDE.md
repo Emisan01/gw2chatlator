@@ -52,6 +52,17 @@ addons/nexus-keyboard  GW2 Keyboard as a pure Nexus add-on (docs/NEXUS_KEYBOARD_
           VoiceSession). Worker cleanup must run before the DLL goes (Worker::Stop(last)) – dropped, COM/WinRT objects
           outlived the DLL and crashed on unload (caught by nexus_kb_selftest). `[Voice] AutoSend` (off by default):
           the push-to-talk release counts as the Enter – an exception to invariant 1 the user asked for.
+          First start (`[Nexus] SetupDone=0`, `FirstStart`, user's decision 2026-10-14): loads Events: Chat, the voice
+          module (`voice_module.cpp`: this version's release ZIP via `DownloadReleaseAsset`, GitHub SHA-256, tar.exe,
+          only gw2kb_voice.exe + voice\*.dll copied) and, if no model is there, whisper base – without a click; later
+          only on click (mic click with the module missing loads it). `[Nexus] TranslateChat` (default 0): incoming
+          lines are translated only when on (a click / right-click on a line translates it anyway). Window: tabs in the
+          header (Chat + ≤5 whisper tabs, right-click = new tab), mic · V/A (fold to the header) · ≡ · ×; status text is
+          drawn inside the input box (`BoxText`); compact view = no preview / word bar, the translation small in the
+          box; scroll bar drawn at the left; chat codes shown as "[Name]" (core/chat_code + GW2 API, cached per code);
+          right-click in the input = "my words" (meaning goes to the translator). Voice helper reports `peak` (% of all
+          logical CPUs, 100 ms samples) → `[VoiceStats]` per model; two too-slow runs → next smaller installed model.
+          The self-test writes `SetupDone=1` first (no downloads in tests).
 addons/nexus  GW2 Chat Bridge, the OPTIONAL Nexus add-on (separate download, lives in the game process): only
           subscribes to EV_UNOFFICIAL_EXTRAS_CHAT_MESSAGE (Raidcore ArcDPS Integration relay) and writes party/squad
           lines as JSON lines (core/bridge_protocol) into the pipe GW2ChatBridge; never sends, never reads the
