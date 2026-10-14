@@ -33,6 +33,7 @@
 #include "core/chat_stream.hpp"
 #include "core/gw2_text.hpp"
 #include "core/i18n.hpp"
+#include "core/json.hpp"
 #include "core/langs.hpp"
 #include "core/languages.hpp"
 #include "core/protect.hpp"
@@ -40,6 +41,7 @@
 #include "core/slang.hpp"
 #include "core/text.hpp"
 #include "core/translator.hpp"
+#include "core/voice_learn.hpp"
 #include "imgui/imgui.h"
 #include "nexus/Nexus.h"
 #include "unofficial_extras/Definitions.h"
@@ -58,6 +60,7 @@ namespace {
 constexpr const char* kName = "GW2 Keyboard";
 constexpr const char* kToggleBind = "KB_GW2KEYBOARD_TOGGLE";
 constexpr const char* kFocusBind = "KB_GW2KEYBOARD_FOCUS";
+constexpr const char* kTalkBind = "KB_GW2KEYBOARD_TALK";  // push to talk: held while you speak
 constexpr size_t kMaxLines = 200;
 constexpr size_t kHistoryMax = 50;
 
@@ -198,6 +201,14 @@ struct AutoUndo {  // the last autocorrection: Backspace right after it brings t
     std::string before;  // the buffer as typed (without the space)
     std::wstring original;
 } g_undo;
+
+// Voice (stage 4): the helper process gw2kb_voice.exe runs the recognizer outside the game.
+bool g_voiceReady = false;       // the helper said "ready"
+bool g_recording = false;        // a recording runs
+std::wstring g_voiceLive;        // the live text while speaking (only drawn, never written into the input)
+std::wstring g_lastDictated;     // the last recognized text as it came (learning misheard words on send)
+std::wstring g_dictLang;         // its language
+VoiceFixBook g_voiceFixes;       // learned misheard words (<data>\voice-fixes.txt), per language
 
 void SetStatus(const std::wstring& s, ULONGLONG ms = 6000) {  // g_mu held
     g_status = s;
@@ -413,6 +424,14 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
         }
         if (c.learnWords) g_spell->Learn(learnText);  // the word model learns only from what you send
     }
+    {  // misheard words: what was dictated vs. what you finally sent ("heard = meant", per language)
+        std::lock_guard<std::mutex> lock(g_mu);
+        if (ok && !g_lastDictated.empty()) {
+            if (!g_voiceFixes.Learn(g_lastDictated, learnText, g_dictLang).empty())
+                WriteFileAtomic(g_cfg.dataDir + L"\\voice-fixes.txt", ToUtf8(g_voiceFixes.Serialize()));
+            g_lastDictated.clear();
+        }
+    }
     std::lock_guard<std::mutex> lock(g_mu);
     g_sending = false;
     if (ok) {
@@ -427,6 +446,168 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
             strncpy_s(g_input, back.c_str(), _TRUNCATE);
         }
     }
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// The voice helper: a hidden process with pipes; its events are read on our own thread.
+class VoiceHelper {
+public:
+    bool Start(const std::wstring& exe, const std::wstring& dataDir) {
+        Stop();
+        SECURITY_ATTRIBUTES sa{sizeof(sa), nullptr, TRUE};
+        HANDLE inRead = nullptr, outWrite = nullptr;
+        if (!CreatePipe(&inRead, &inWrite_, &sa, 0)) return false;
+        if (!CreatePipe(&outRead_, &outWrite, &sa, 0)) {
+            CloseHandle(inRead);
+            Close();
+            return false;
+        }
+        SetHandleInformation(inWrite_, HANDLE_FLAG_INHERIT, 0);  // our ends stay ours
+        SetHandleInformation(outRead_, HANDLE_FLAG_INHERIT, 0);
+        STARTUPINFOW si{};
+        si.cb = sizeof(si);
+        si.dwFlags = STARTF_USESTDHANDLES;
+        si.hStdInput = inRead;
+        si.hStdOutput = outWrite;
+        si.hStdError = outWrite;
+        std::wstring cmd = L"\"" + exe + L"\" --data \"" + dataDir + L"\"";
+        PROCESS_INFORMATION pi{};
+        const BOOL ok = CreateProcessW(exe.c_str(), cmd.data(), nullptr, nullptr, TRUE,
+                                       CREATE_NO_WINDOW | BELOW_NORMAL_PRIORITY_CLASS, nullptr, nullptr, &si, &pi);
+        CloseHandle(inRead);
+        CloseHandle(outWrite);
+        if (!ok) {
+            Close();
+            return false;
+        }
+        CloseHandle(pi.hThread);
+        process_ = pi.hProcess;
+        reader_ = std::thread([this] { Read(); });
+        return true;
+    }
+    void Send(const char* cmd) {
+        if (!inWrite_) return;
+        const std::string line = std::string(cmd) + "\n";
+        DWORD n = 0;
+        WriteFile(inWrite_, line.data(), static_cast<DWORD>(line.size()), &n, nullptr);
+    }
+    void Stop() {
+        if (process_) {
+            Send("quit");
+            if (WaitForSingleObject(process_, 2000) != WAIT_OBJECT_0) TerminateProcess(process_, 0);
+        }
+        Close();
+        if (reader_.joinable()) reader_.join();  // its pipe is closed: ReadFile returns
+    }
+    bool Running() const { return process_ != nullptr; }
+
+private:
+    void Close() {
+        if (inWrite_) CloseHandle(inWrite_);
+        if (process_) CloseHandle(process_);
+        inWrite_ = process_ = nullptr;
+        if (outRead_ && !reader_.joinable()) {
+            CloseHandle(outRead_);
+            outRead_ = nullptr;
+        }
+    }
+    void Read() {
+        std::string pending;
+        char buf[2048];
+        DWORD n = 0;
+        while (ReadFile(outRead_, buf, sizeof(buf), &n, nullptr) && n > 0) {
+            pending.append(buf, n);
+            size_t nl;
+            while ((nl = pending.find('\n')) != std::string::npos) {
+                const std::string line = pending.substr(0, nl);
+                pending.erase(0, nl + 1);
+                try {
+                    OnLine(line);
+                } catch (...) {
+                }
+            }
+        }
+        CloseHandle(outRead_);
+        outRead_ = nullptr;
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_voiceReady = g_recording = false;
+        g_voiceLive.clear();
+    }
+    static void OnLine(const std::string& line);
+    HANDLE process_ = nullptr, inWrite_ = nullptr, outRead_ = nullptr;
+    std::thread reader_;
+};
+
+VoiceHelper g_voice;
+
+// A recognized text goes into the input (after what is there, with a space), checked by you, sent by your Enter.
+void VoiceHelper::OnLine(const std::string& line) {
+    JsonValue v;
+    if (!ParseJson(line, v) || !v.IsObject()) return;
+    const std::string t = v.GetString("t");
+    std::lock_guard<std::mutex> lock(g_mu);
+    if (t == "ready") {
+        g_voiceReady = true;
+    } else if (t == "started") {
+        g_recording = true;
+        g_voiceLive.clear();
+        SetStatus(Tr(L"Hearing you … release the key when you are done"), 0);
+    } else if (t == "partial") {
+        g_voiceLive = W(v.GetString("stable")) + W(v.GetString("unsure"));
+    } else if (t == "final") {
+        g_recording = false;
+        g_voiceLive.clear();
+        const std::wstring text = Trim(W(v.GetString("text")));
+        if (v.GetBool("empty") || text.empty()) {
+            SetStatus(Tr(L"Nothing recognized – hold the key while you speak"), 5000);
+            return;
+        }
+        g_dictLang = g_cfg.voiceTranslate ? std::wstring(L"EN") : ToUpperAscii(W(v.GetString("lang")));
+        const std::wstring fixed = g_voiceFixes.Apply(text, g_dictLang);
+        g_lastDictated = fixed;
+        const size_t len = std::strlen(g_input);
+        g_edit.active = true;
+        g_edit.startByte = len;
+        g_edit.lenBytes = 0;
+        g_edit.insert = (len && g_input[len - 1] != ' ' ? " " : "") + U8(fixed);
+        g_focusInput = true;
+        SetStatus(L"");
+    } else if (t == "error") {
+        g_recording = false;
+        g_voiceLive.clear();
+        SetStatus(W(v.GetString("msg")), 10000);
+    }
+}
+
+std::wstring HelperExe() {  // <addons>\GW2Keyboard\gw2kb_voice.exe
+    wchar_t path[MAX_PATH] = {};
+    GetModuleFileNameW(g_self, path, MAX_PATH);
+    std::wstring p = path;
+    return p.substr(0, p.find_last_of(L"\\/") + 1) + L"GW2Keyboard\\gw2kb_voice.exe";
+}
+
+// Push to talk: pressed starts, released ends (the recognized text then waits for your Enter).
+void TalkDown() {
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        if (!g_cfg.voiceEnabled) {
+            SetStatus(Tr(L"Voice input is off (options of GW2 Keyboard)"));
+            return;
+        }
+        if (g_recording) return;
+        if (!g_voiceReady) {
+            SetStatus(g_voice.Running() ? Tr(L"Voice input is starting – a moment") : Tr(L"The voice module is missing"));
+            return;
+        }
+    }
+    g_voice.Send("begin");
+}
+void TalkUp() { g_voice.Send("end"); }
+
+void OnTalkKey(const char*, bool release) {
+    if (g_disabled) return;
+    if (release) TalkUp();
+    else TalkDown();
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -733,9 +914,11 @@ void RenderWindow() {
         g_scrollDown = false;
     }
     ImGui::EndChild();
-    // ---- the translation of what you type
+    // ---- the translation of what you type (while you speak: the live text)
     const bool previewCurrent = g_previewGen == g_inputGen && !g_preview.empty();
-    if (Translating())
+    if (g_recording)
+        ImGui::TextColored(ImVec4(0.55f, 0.85f, 1.f, 1.f), "%s", g_voiceLive.empty() ? "…" : U8(g_voiceLive).c_str());
+    else if (Translating())
         ImGui::TextDisabled("%s", previewCurrent ? U8(ComposePrefix() + g_preview).c_str() : " ");
     else
         ImGui::TextDisabled("%s", " ");
@@ -749,7 +932,25 @@ void RenderWindow() {
     } else {
         ImGui::TextUnformatted(" ");
     }
-    // ---- channel, send language, input
+    // ---- microphone (hold), channel, send language, input
+    if (g_cfg.voiceEnabled) {
+        ImGui::PushStyleColor(ImGuiCol_Button, g_recording ? ImVec4(0.75f, 0.2f, 0.2f, 1.f)
+                                                           : ImGui::GetStyleColorVec4(ImGuiCol_Button));
+        ImGui::Button("Mic");
+        ImGui::PopStyleColor();
+        static bool micHeld = false;
+        if (ImGui::IsItemActivated()) {
+            micHeld = true;
+            g_mu.unlock();
+            TalkDown();
+            g_mu.lock();
+        } else if (micHeld && !ImGui::IsItemActive()) {
+            micHeld = false;
+            TalkUp();
+        }
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", U8(Tr(L"Hold to speak (or the push-to-talk key in Nexus)")).c_str());
+        ImGui::SameLine();
+    }
     RenderChannelPicker();
     ImGui::SameLine();
     if (g_focusInput && !g_sending) {
@@ -800,6 +1001,10 @@ void RenderOptions() {
                        "squad). Nothing is sent without your Enter; nothing of other players is stored.",
                        GCT_VERSION_STR);
     ImGui::Checkbox("Show the window", &g_show);
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        ImGui::TextDisabled("Voice: %s", !g_cfg.voiceEnabled ? "off" : g_voiceReady ? "ready" : g_voice.Running() ? "starting" : "module missing");
+    }
     ImGui::TextDisabled(g_chatEventsLive ? "Events: Chat delivers." : "Waiting for chat lines (Events: Chat or "
                                                                       "Unofficial Extras).");
 }
@@ -855,6 +1060,16 @@ void AddonLoad(AddonAPI_t* api) {
     }
     g_worker.Start();
     g_worker.Post(InitSpelling);
+    bool voice = false;
+    std::wstring dataDir;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        voice = g_cfg.voiceEnabled;
+        dataDir = g_cfg.dataDir;
+        std::string fixes;
+        if (ReadFileBytes(dataDir + L"\\voice-fixes.txt", fixes)) g_voiceFixes.Parse(FromUtf8(fixes));
+    }
+    if (voice && GetFileAttributesW(HelperExe().c_str()) != INVALID_FILE_ATTRIBUTES) g_voice.Start(HelperExe(), dataDir);
     if (api->GUI_Register) {
         api->GUI_Register(RT_Render, SafeRender);
         api->GUI_Register(RT_OptionsRender, SafeOptions);
@@ -862,6 +1077,7 @@ void AddonLoad(AddonAPI_t* api) {
     if (api->InputBinds_RegisterWithString) {
         api->InputBinds_RegisterWithString(kToggleBind, OnToggle, "CTRL+ALT+K");
         api->InputBinds_RegisterWithString(kFocusBind, OnFocusKey, "(null)");
+        api->InputBinds_RegisterWithString(kTalkBind, OnTalkKey, "(null)");
     }
     if (api->Events_Subscribe) {
         api->Events_Subscribe(bridge::kChatEventsEvent, OnChatEvents);
@@ -879,12 +1095,14 @@ void AddonUnload() {
         if (g_api->InputBinds_Deregister) {
             g_api->InputBinds_Deregister(kToggleBind);
             g_api->InputBinds_Deregister(kFocusBind);
+            g_api->InputBinds_Deregister(kTalkBind);
         }
         if (g_api->GUI_Deregister) {
             g_api->GUI_Deregister(SafeRender);
             g_api->GUI_Deregister(SafeOptions);
         }
     }
+    g_voice.Stop();  // the helper ends (it would also end by itself when its input closes)
     g_worker.Stop(FreeWorkerState);  // saved and freed on the worker (it owns them), before the DLL goes
     std::lock_guard<std::mutex> lock(g_mu);
     g_lines.clear();
