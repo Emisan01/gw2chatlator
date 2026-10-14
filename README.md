@@ -7,7 +7,8 @@ translated. A line goes into the chat only when you press Enter yourself.
 
 **[⬇ Download GW2 Keyboard for Nexus (ZIP)](https://github.com/Emisan01/gw2chatlator/releases/latest/download/GW2Keyboard-Nexus.zip)**
 – unpack it into your `Guild Wars 2\addons` folder (where [Nexus](https://raidcore.gg/Nexus) keeps its add-ons) and
-load **GW2 Keyboard** in Nexus. SHA-256 `bc78358d…8851442e`.
+load **GW2 Keyboard** in Nexus. Checked by VirusTotal: [1.7.0 ZIP, 1 of 68 scanners](https://www.virustotal.com/gui/file/bc78358d9cbd2484f1e9e11ca5ce750cc770210f9b7f91ef527678268851442e)
+– only Rising's machine-learning guess ("AI"/RDML), common for new unsigned programs (SHA-256 `bc78358d…8851442e`).
 
 - **Every channel in your language:** map, whispers, guild, party, squad – foreign lines are translated as they come
   in; hover a line for the original, click a name to whisper back. The chat comes as exact text from **Events: Chat**
