@@ -5,6 +5,7 @@ add_library(gw2keyboard_nexus SHARED
     src/kb_main.cpp
     src/voice_module.cpp
     src/chat_links.cpp
+    src/map_focus.cpp
     ${PROJECT_SOURCE_DIR}/src/app/config.cpp
     ${PROJECT_SOURCE_DIR}/src/app/spell_service.cpp
     ${PROJECT_SOURCE_DIR}/src/win/spellcheck.cpp

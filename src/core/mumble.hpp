@@ -34,9 +34,12 @@ struct MumbleState {
     uint32_t uiState = 0;
     uint32_t processId = 0;
     uint32_t uiTick = 0;  // GW2 adds 1 every frame: ticks per second = the game's frame rate
+    // The map (continent coordinates, as the GW2 API gives them): where the open world map looks, its scale, you.
+    float mapCenterX = 0, mapCenterY = 0, mapScale = 0, playerX = 0, playerY = 0;
 
     bool GameHasFocus() const { return live && (uiState & kUiGameHasFocus); }
     bool TextboxHasFocus() const { return live && (uiState & kUiTextboxHasFocus); }
+    bool MapOpen() const { return live && (uiState & kUiMapOpen); }
 };
 
 }  // namespace gct

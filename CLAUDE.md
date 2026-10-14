@@ -12,7 +12,13 @@ something the next agent needs.
 ```
 addons/nexus-keyboard   the add-on
   src/kb_main.cpp       everything the game thread draws (ImGui), the worker thread, sending, options, first start
-  src/chat_links.*      chat codes: "[Item name]" + mouse-over details (GW2 API on its own thread, limits)
+  src/chat_links.*      chat codes: "[Item name]" + mouse-over details (GW2 API on its own thread, limits);
+                        waypoints from a table of every point (Tyria + Mists level 1, the public maps on other levels
+                        one by one; <data>\cache\pois_<lang>.tsv, 14 days)
+  src/map_focus.*       a waypoint clicked: Nexus presses the map key (GameBinds GB_MapToggle), MumbleLink's
+                        mapCenterX/Y (continent coords) is measured while the map is dragged onto the spot (closed loop,
+                        synthetic mouse only on the user's click, foreground re-checked, cursor restored); the level /
+                        instance stays as it is – like the game's own links. Shift+click puts the code into the message.
   src/voice_module.*    loads the voice module (helper + whisper DLLs) from this version's GitHub release
   src/voice_helper_main.cpp  gw2kb_voice.exe: whisper outside the game process (stdin/stdout JSON lines)
   src/chat_events.hpp   our own declaration of Vonsh's "Events: Chat" event (static_asserts)
