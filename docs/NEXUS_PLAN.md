@@ -86,8 +86,21 @@ UTF-8, one JSON object per line, `\n` at the end, at most 8192 bytes.
    - `win/bridge_pipe` and `MainWindow::OnBridge` are done.
    - Party/squad OCR lines are dropped once the bridge has delivered a line (`BridgeCarriesParty`).
    - The Technical page shows the bridge status.
-   - Still open: the download offer when `<GW2>ddons` holds Nexus + Unofficial Extras (via the `ScanAddons` file
-     scan, never the game process), and the keyboard strip (below).
+   - Settings → Game & start: "Read party and squad chat from the Nexus add-on" (`[Reader] Bridge`, both programs).
+   - GW2 Keyboard: the newest 3 party/squad lines (2 in the compact view) in a slim band above the preview.
+     - The name is shown, and the text in the channel colour, translated into the writing language when its language
+       is sure and not understood.
+     - A click switches between translation and original. Own lines are left out. Lines leave after 5 minutes.
+2b. ✅ **Add-on options page** (Nexus → Addons → GW2 Chat Bridge, ImGui 1.80 like Nexus).
+   - It shows what is there: ArcDPS, Unofficial Extras, Nexus' ArcDPS Integration, the program, and the lines passed
+     on.
+   - If Extras is missing, the button "Install Unofficial Extras" does what the Nexus library does for its add-ons:
+     - It takes the newest GitHub release of Krappa322, only `arcdps_unofficial_extras.dll`, only from that repository.
+     - The download is checked against the SHA-256 GitHub reports and goes to `<GW2>\addons`.
+     - Nexus loads it and hands it to ArcDPS.
+   - Unofficial Extras is not in the Nexus library (checked 2026-10-14; only ArcDPS itself is, as Nexus' special case
+     with its own updates). ArcDPS and the ArcDPS Integration stay Nexus' business – we never touch them.
+   - The hello message carries `ex` (Extras loaded). The keyboard then says where to install it.
    Original design notes:
    - `win/bridge_pipe`: a server thread with `CreateNamedPipeW` (message mode is not needed because lines are
      framed). It uses a DACL for the current user from `ConvertStringSecurityDescriptorToSecurityDescriptorW`

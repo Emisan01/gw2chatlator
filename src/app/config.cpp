@@ -359,6 +359,7 @@ void Config::Load(const std::wstring& dir) {
     llmFixOcr = ini.Bool(L"LLM", L"FixOcr", true);
 
     readerEnabled = ini.Bool(L"Reader", L"Enabled", true);
+    bridgeRead = ini.Bool(L"Reader", L"Bridge", true);
     readerIntervalMs = ini.Int(L"Reader", L"IntervalMs", 400, 150, 10000);
     secondLook = ini.Bool(L"Reader", L"SecondLook", true);
     writeIn = ToUpperAscii(ini.Str(L"Spelling", L"WriteIn", L""));
@@ -570,6 +571,7 @@ void Config::SaveAll() const {
     SaveValue(L"LLM", L"ApiKey", ProtectSecret(llmKey));
     SaveBool(L"LLM", L"FixOcr", llmFixOcr);
     SaveBool(L"Reader", L"Enabled", readerEnabled);
+    SaveBool(L"Reader", L"Bridge", bridgeRead);
     SaveValue(L"Reader", L"IntervalMs", std::to_wstring(readerIntervalMs));
     SaveValue(L"Reader", L"OcrEngine", OcrKey(ocr));
     SaveValue(L"Reader", L"Capture", captureMode == 1 ? L"window" : captureMode == 2 ? L"screen" : L"auto");

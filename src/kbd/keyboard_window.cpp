@@ -46,9 +46,10 @@
 namespace gct {
 
 struct KbdTranslatedMsg {
-    enum class Kind { Forward, Back, Romanize };
+    enum class Kind { Forward, Back, Romanize, Incoming };
     Kind kind = Kind::Forward;
     uint64_t gen = 0;
+    uint64_t incomingId = 0;  // Kind::Incoming: which line of the band
     TranslateResult result;
 };
 
@@ -74,6 +75,9 @@ constexpr UINT WM_APP_TRAY = WM_APP + 4;
 constexpr UINT WM_APP_MYMEMORY_NOTICE = WM_APP + 5;
 constexpr UINT WM_APP_EXTENSION = WM_APP + 6;  // wParam: ok, lParam: std::wstring* (exe or error, owned)
 constexpr UINT WM_APP_VOICE = WM_APP + 7;      // lParam: VoiceEvent* (owned)
+constexpr UINT WM_APP_BRIDGE = WM_APP + 8;     // BridgePipe: wParam kind, lParam BridgeMessage* (owned)
+constexpr size_t kIncomingLines = 3;            // party/squad lines shown above the preview
+constexpr ULONGLONG kIncomingKeepMs = 5 * 60 * 1000;  // older lines leave the band
 constexpr UINT_PTR kTimerDebounce = 1;
 constexpr UINT_PTR kTimerStatus = 2;
 constexpr UINT_PTR kTimerGame = 3;
@@ -348,6 +352,7 @@ void KeyboardWindow::InitServices() {
 void KeyboardWindow::WarmUp() {
     if (warmedUp_) return;
     warmedUp_ = true;
+    bridge_.Start(hwnd_, WM_APP_BRIDGE);  // the optional Nexus add-on connects here when it is installed
     CleanFolder(cfg_.dataDir, {0, 0, 86400}, IsStaleTempFile);
     CleanFolder(cfg_.LearnedDir(), {0, 0, 86400}, IsStaleTempFile);
     if (cfg_.spellEnabled) {
@@ -496,8 +501,9 @@ void KeyboardWindow::Layout() {
     const int barH = bar ? words_.PreferredHeight() : 0;
     const int inputY = rc.bottom - m.foot - m.inputH;
     const int barY = inputY - barH;
-    const int previewH = std::max(1, barY - m.gap - m.head);  // the preview takes the rest
-    MoveWindow(preview_.Hwnd(), m.pad, m.head, w, previewH, TRUE);
+    const int incH = IncomingHeight();  // party/squad lines from the Nexus add-on, above the preview
+    const int previewH = std::max(1, barY - m.gap - m.head - incH);  // the preview takes the rest
+    MoveWindow(preview_.Hwnd(), m.pad, m.head + incH, w, previewH, TRUE);
     ShowWindow(preview_.Hwnd(), SW_SHOWNA);
     MoveWindow(words_.Hwnd(), m.pad, barY, w, std::max(1, barH), TRUE);
     ShowWindow(words_.Hwnd(), bar ? SW_SHOWNA : SW_HIDE);
@@ -592,6 +598,27 @@ void KeyboardWindow::Paint() {
         }
     }
     DrawLine(dc, text, statusRect, color, t.fontUi, DT_LEFT | DT_END_ELLIPSIS | (IsRtlText(text) ? DT_RTLREADING : 0));
+
+    // ---- party/squad lines from the Nexus add-on: name white, text in the channel colour (translated if foreign)
+    {
+        int y = m.head;
+        for (IncomingLine& l : incoming_) {
+            l.rect = {m.pad, y, rc.right - m.pad, y + t.smallLineHeight};
+            y += t.smallLineHeight;
+            if (!cfg_.bridgeRead) continue;
+            const std::wstring name = l.speaker + L": ";
+            SelectObject(dc, t.fontSmall);
+            SIZE sz{};
+            GetTextExtentPoint32W(dc, name.c_str(), static_cast<int>(name.size()), &sz);
+            DrawLine(dc, name, l.rect, Theme::kText, t.fontSmall, DT_LEFT | DT_END_ELLIPSIS);
+            RECT tr = l.rect;
+            tr.left = std::min<LONG>(tr.right, tr.left + sz.cx);
+            const bool translated = !l.translated.empty() && !l.showOriginal;
+            const std::wstring body = translated ? l.translated : l.text;
+            DrawLine(dc, body, tr, ChannelColorRef(cfg_.palette, l.squad ? Channel::Squad : Channel::Party, Theme::kText),
+                     t.fontSmall, DT_LEFT | DT_END_ELLIPSIS | (IsRtlText(body) ? DT_RTLREADING : 0));
+        }
+    }
 
     // ---- footer: channel | write | send | counter
     const int fy0 = rc.bottom - m.foot + t.S(4), fy1 = rc.bottom - t.S(4);
@@ -1295,8 +1322,78 @@ void KeyboardWindow::StartTranslation() {
     }).detach();
 }
 
+int KeyboardWindow::IncomingHeight() const {
+    if (!cfg_.bridgeRead || incoming_.empty()) return 0;
+    return static_cast<int>(incoming_.size()) * theme_.smallLineHeight + theme_.S(4);
+}
+
+void KeyboardWindow::OnBridge(WPARAM kind, BridgeMessage* raw) {
+    std::unique_ptr<BridgeMessage> msg(raw);
+    if (kind == BridgePipe::kConnected || kind == BridgePipe::kDisconnected) {
+        bridgeConnected_ = kind == BridgePipe::kConnected;
+        if (!bridgeConnected_) bridgeExtras_ = false;
+        return;
+    }
+    if (!msg || !cfg_.bridgeRead) return;
+    if (msg->kind == BridgeMessage::Kind::Hello) {
+        bridgeExtras_ = msg->extras;
+        if (msg->extras)
+            SetStatus(Tr(L"Nexus bridge connected: party and squad chat arrive as exact text"), Tone::Ok, 6000);
+        else
+            SetStatus(Tr(L"Nexus bridge connected – Unofficial Extras is missing: Nexus → Addons → GW2 Chat Bridge installs it"),
+                      Tone::Warn, 10000);
+        return;
+    }
+    IncomingLine l;
+    l.id = incomingNextId_++;
+    l.squad = msg->channel == "squad";
+    l.speaker = SanitizeChatText(FromUtf8(msg->character));
+    l.text = SanitizeChatText(FromUtf8(msg->text));
+    l.tick = GetTickCount64();
+    if (l.text.empty()) return;
+    const std::wstring& own = mumbleState_.identity.name;
+    if (!own.empty() && CaseFold(Trim(l.speaker)) == CaseFold(own)) return;  // your own line: you know it
+    incoming_.push_back(std::move(l));
+    while (incoming_.size() > (cfg_.compact ? 2 : kIncomingLines)) incoming_.pop_front();
+    TranslateIncoming(incoming_.back());
+    Layout();
+    InvalidateRect(hwnd_, nullptr, FALSE);
+}
+
+// Translated into the language you write in - only when its language is sure and not one you understand.
+void KeyboardWindow::TranslateIncoming(const IncomingLine& line) {
+    if (!translator_) return;
+    ProtectedText p = ProtectForTranslation(line.text, nullptr, &spell_.KeepWords());
+    if (!HasTranslatableText(p.segments)) return;  // only names, codes, smileys
+    const std::wstring detected = SureLanguage(line.text, DetectLanguage(line.text));
+    const std::wstring target = PrimaryLang(TypingLocale());
+    if (detected.empty() || PrimaryLang(detected) == target) return;
+    for (const std::wstring& u : cfg_.understoodLangs)
+        if (PrimaryLang(u) == PrimaryLang(detected)) return;
+    CountMyMemory(CodePointCount(line.text));
+    std::thread([hwnd = hwnd_, id = line.id, translator = translator_, segments = std::move(p.segments),
+                 source = SourceCode(detected), target] {
+        auto msg = std::make_unique<KbdTranslatedMsg>();
+        msg->kind = KbdTranslatedMsg::Kind::Incoming;
+        msg->incomingId = id;
+        msg->result = translator->Translate(segments, source, target);
+        if (PostMessageW(hwnd, WM_APP_TRANSLATED, 0, reinterpret_cast<LPARAM>(msg.get()))) msg.release();
+    }).detach();
+}
+
 void KeyboardWindow::OnTranslated(KbdTranslatedMsg* raw) {
     std::unique_ptr<KbdTranslatedMsg> m(raw);
+    if (m->kind == KbdTranslatedMsg::Kind::Incoming) {  // a party/squad line of the band (data only, never an action)
+        for (IncomingLine& l : incoming_) {
+            if (l.id != m->incomingId || !m->result.ok) continue;
+            const std::wstring t = SanitizeChatText(m->result.text);
+            if (!t.empty() && NormalizeForCompare(t) != NormalizeForCompare(l.text)) {
+                l.translated = t;
+                InvalidateRect(hwnd_, &l.rect, FALSE);
+            }
+        }
+        return;
+    }
     switch (m->kind) {
         case KbdTranslatedMsg::Kind::Forward: {
             if (inflightGen_ == m->gen) inflightGen_ = 0;
@@ -2377,6 +2474,11 @@ RECT KeyboardWindow::GameClientRect() const {
 }
 
 void KeyboardWindow::PollGame() {
+    if (!incoming_.empty() && GetTickCount64() - incoming_.front().tick > kIncomingKeepMs) {  // old lines leave
+        incoming_.pop_front();
+        Layout();
+        InvalidateRect(hwnd_, nullptr, FALSE);
+    }
     coreLoad_.Sample();  // the voice recognizer goes to the cores that are free right now
     // Voice activation by itself: "always", or while this window is in front (the key anywhere switches it otherwise).
     // A voice chat opened the microphone: what you say is meant for it – voice activation pauses (key / click still work).
@@ -2686,6 +2788,11 @@ void KeyboardWindow::ApplySettings(const Config& next) {
         sendIdx_ = cfg_.translateWriting ? std::min<size_t>(sendIdx_ >= sendLangs_.size() ? 0 : sendIdx_, sendLangs_.size())
                                          : sendLangs_.size();
     if (prev.writeIn != cfg_.writeIn) ApplyTypingLanguage();
+    if (prev.bridgeRead != cfg_.bridgeRead) {  // party/squad lines switched on or off
+        incoming_.clear();
+        Layout();
+        InvalidateRect(hwnd_, nullptr, FALSE);
+    }
     const bool engineChanged = prev.engine != cfg_.engine || prev.deeplKey != cfg_.deeplKey ||
                                prev.basicEmail != cfg_.basicEmail || prev.llmUrl != cfg_.llmUrl ||
                                prev.llmModel != cfg_.llmModel || prev.llmKey != cfg_.llmKey ||
@@ -2868,7 +2975,21 @@ LRESULT KeyboardWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
         case WM_APP_VOICE:
             OnVoiceEvent(reinterpret_cast<VoiceEvent*>(lp));
             return 0;
+        case WM_APP_BRIDGE:
+            OnBridge(wp, reinterpret_cast<BridgeMessage*>(lp));
+            return 0;
         case WM_LBUTTONDOWN:
+            if (cfg_.bridgeRead) {  // a click on a party/squad line: original <-> translation
+                const POINT pt{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)};
+                for (IncomingLine& l : incoming_) {
+                    if (!PtInRect(&l.rect, pt)) continue;
+                    if (!l.translated.empty()) {
+                        l.showOriginal = !l.showOriginal;
+                        InvalidateRect(hwnd_, &l.rect, FALSE);
+                    }
+                    return 0;
+                }
+            }
             // Hold to talk: pressed on the microphone starts, releasing (or losing the mouse) ends the recording.
             if (cfg_.voiceEnabled && cfg_.voiceActivation && PtInRect(&micRect_, POINT{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)})) {
                 if (voice_ && voice_->Listening()) {
@@ -2973,6 +3094,7 @@ LRESULT KeyboardWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             DestroyWindow(hwnd_);
             return 0;
         case WM_DESTROY:
+            bridge_.Stop();
             if (liveWnd_) DestroyWindow(liveWnd_);
             CancelVoice();
             voice_.reset();  // joins its threads; the microphone is closed

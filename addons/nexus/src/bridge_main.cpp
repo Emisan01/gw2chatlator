@@ -10,6 +10,7 @@
 // the game (CLAUDE.md invariant 1).
 
 #include <windows.h>
+#include <shellapi.h>
 
 #include <atomic>
 #include <chrono>
@@ -20,6 +21,8 @@
 #include <thread>
 
 #include "core/bridge_protocol.hpp"
+#include "extras_setup.hpp"
+#include "imgui/imgui.h"
 #include "nexus/Nexus.h"
 #include "unofficial_extras/Definitions.h"
 #include "version.h"
@@ -35,6 +38,8 @@ static_assert(sizeof(void*) != 8 || sizeof(SquadMessageInfo) == 72, "Unofficial 
 
 AddonDefinition_t g_def = {};
 AddonAPI_t* g_api = nullptr;
+HMODULE g_self = nullptr;
+std::atomic<uint64_t> g_forwarded{0};  // lines written into the pipe (options page)
 
 std::mutex g_mutex;
 std::condition_variable g_wake;
@@ -105,6 +110,7 @@ void WriterLoop() {
             gct::BridgeMessage hello;
             hello.kind = gct::BridgeMessage::Kind::Hello;
             hello.addonVersion = VersionString();
+            hello.extras = bridge::DetectPresence(g_self).extras;
             if (!WriteLine(pipe, gct::EncodeBridgeMessage(hello))) {
                 CloseHandle(pipe);
                 pipe = INVALID_HANDLE_VALUE;
@@ -122,7 +128,9 @@ void WriterLoop() {
             line = std::move(g_queue.front());
             g_queue.pop_front();
         }
-        if (!WriteLine(pipe, line)) {  // program closed: the line is lost, try again later
+        if (WriteLine(pipe, line)) {
+            ++g_forwarded;
+        } else {  // program closed: the line is lost, try again later
             CloseHandle(pipe);
             pipe = INVALID_HANDLE_VALUE;
             g_connected = false;
@@ -133,8 +141,57 @@ void WriterLoop() {
     g_connected = false;
 }
 
+// Nexus → Addons → GW2 Chat Bridge: what is there, what is missing, and Unofficial Extras on a click.
+void OptionsRender() {
+    static ULONGLONG checked = 0;
+    static bridge::Presence p;
+    if (GetTickCount64() - checked > 1000) {  // the module list once a second while this page is open
+        p = bridge::DetectPresence(g_self);
+        checked = GetTickCount64();
+    }
+    const ImVec4 good(0.45f, 0.85f, 0.45f, 1.f), bad(0.95f, 0.55f, 0.35f, 1.f);
+    auto row = [&](const char* what, bool ok, const char* state) {
+        ImGui::TextUnformatted(what);
+        ImGui::SameLine(260);
+        ImGui::TextColored(ok ? good : bad, "%s", state);
+    };
+    ImGui::TextWrapped("Hands party and squad chat to GW2 Keyboard / GW2 Chat Translator as exact text, so they can "
+                       "translate it. It only reads - it never sends anything to the game.");
+    ImGui::Separator();
+    row("ArcDPS", p.arcdps, p.arcdps ? "found" : "missing");
+    row("Unofficial Extras", p.extras,
+        p.extras ? "loaded" : p.extrasFile ? "installed - restart the game" : "missing");
+    row("ArcDPS Integration (Nexus)", p.relay, p.relay ? "found" : "missing");
+    row("GW2 Keyboard / Chat Translator", g_connected, g_connected ? "connected" : "not running");
+    ImGui::Text("Lines passed on: %llu", static_cast<unsigned long long>(g_forwarded.load()));
+
+    std::string msg;
+    const bridge::InstallState st = bridge::GetInstallState(&msg);
+    if (!p.extras && !p.extrasFile && st != bridge::InstallState::Done) {
+        ImGui::Separator();
+        if (!p.arcdps) {
+            ImGui::TextWrapped("Party and squad chat need ArcDPS first: Nexus -> Addons -> Library -> ArcDPS.");
+        } else {
+            ImGui::TextWrapped("Party and squad chat come from Unofficial Extras, a free ArcDPS extension by Krappa322. "
+                               "It can be installed here like the Nexus library installs add-ons: the newest release "
+                               "from its GitHub page, checksum checked, into your addons folder.");
+            if (st != bridge::InstallState::Running && ImGui::Button("Install Unofficial Extras"))
+                bridge::StartExtrasInstall(g_self);
+            ImGui::SameLine();
+            if (ImGui::Button("Open its GitHub page"))
+                ShellExecuteW(nullptr, L"open", L"https://github.com/Krappa322/arcdps_unofficial_extras_releases",
+                              nullptr, nullptr, SW_SHOWNORMAL);
+        }
+    }
+    if (!msg.empty()) ImGui::TextWrapped("%s", msg.c_str());
+}
+
 void AddonLoad(AddonAPI_t* api) {
     g_api = api;
+    ImGui::SetCurrentContext(static_cast<ImGuiContext*>(api->ImguiContext));
+    ImGui::SetAllocatorFunctions(reinterpret_cast<void* (*)(size_t, void*)>(api->ImguiMalloc),
+                                 reinterpret_cast<void (*)(void*, void*)>(api->ImguiFree));
+    if (api->GUI_Register) api->GUI_Register(RT_OptionsRender, OptionsRender);
     g_stop = false;
     g_writer = std::thread(WriterLoop);
     if (g_api->Events_Subscribe) g_api->Events_Subscribe("EV_UNOFFICIAL_EXTRAS_CHAT_MESSAGE", OnChatMessage);
@@ -142,6 +199,8 @@ void AddonLoad(AddonAPI_t* api) {
 }
 
 void AddonUnload() {
+    if (g_api && g_api->GUI_Deregister) g_api->GUI_Deregister(OptionsRender);
+    bridge::StopExtrasInstall();
     if (g_api && g_api->Events_Unsubscribe) g_api->Events_Unsubscribe("EV_UNOFFICIAL_EXTRAS_CHAT_MESSAGE", OnChatMessage);
     g_stop = true;
     g_wake.notify_all();
@@ -158,7 +217,10 @@ void AddonUnload() {
 
 }  // namespace
 
-BOOL APIENTRY DllMain(HMODULE, DWORD, LPVOID) { return TRUE; }
+BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID) {
+    if (reason == DLL_PROCESS_ATTACH) g_self = module;
+    return TRUE;
+}
 
 extern "C" __declspec(dllexport) AddonDefinition_t* GetAddonDef() {
     g_def.Signature = static_cast<uint32_t>(-0x47324342);  // random negative: not hosted on Raidcore

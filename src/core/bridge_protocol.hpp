@@ -17,6 +17,7 @@ struct BridgeMessage {
     // Hello: sent once per connection.
     int protocol = kBridgeProtocol;
     std::string addonVersion;   // "1.5.0"
+    bool extras = false;        // Unofficial Extras is loaded in the game (else no party/squad line can come)
     // Chat: one party/squad line from Unofficial Extras – exact text, no OCR.
     std::string channel;        // "party" | "squad"
     int subgroup = -1;          // 0..14 = sent to that subgroup, -1 = whole squad / party
