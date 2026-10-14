@@ -2531,8 +2531,10 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
     if (once_ && (++onceShots_ >= 2 || !stream_.HasPending())) EndTranslateOnce();
 }
 
-void MainWindow::OnBridge(WPARAM kind, BridgeMessage* raw) {
+void MainWindow::OnBridge(WPARAM wp, BridgeMessage* raw) {
     std::unique_ptr<BridgeMessage> msg(raw);
+    const WORD kind = BridgePipe::KindOf(wp);
+    if (msg && msg->src != "extras") return;  // this program reads the screen itself: only the add-on counts here
     if (kind == BridgePipe::kConnected || kind == BridgePipe::kDisconnected) {
         bridgeConnected_ = kind == BridgePipe::kConnected;
         bridgeLines_ = 0;

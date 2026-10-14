@@ -1,6 +1,8 @@
-// bridge_protocol.hpp — what the optional Nexus add-on "GW2 Chat Bridge" (addons/nexus) sends to our programs.
-// One direction only: the add-on writes, the program reads. Nothing ever goes back into the game process, so
-// nothing that arrives here can make the add-on do anything (invariants 1 and 4). Shared by both sides, portable.
+// bridge_protocol.hpp — what the senders of chat lines write into GW2 Keyboard's pipe: the optional Nexus add-on
+// "GW2 Chat Bridge" (addons/nexus, party/squad from Unofficial Extras) and the OCR reader (everything visible in the
+// chat area). One direction only: the senders write, the program reads – nothing ever goes back (the add-on lives in
+// the game process; nothing that arrives here can make it do anything – invariants 1 and 4). Shared by all sides,
+// portable. See docs/NEXUS_PLAN.md and docs/READER_PLAN.md.
 #pragma once
 
 #include <string>
@@ -9,24 +11,29 @@ namespace gct {
 
 constexpr int kBridgeProtocol = 1;
 constexpr size_t kBridgeMaxLine = 8192;  // longer lines are dropped by the reader
-// Named pipe (the program creates it with a DACL for the current user only; the add-on connects as a client).
+// Named pipe (the program creates it with a DACL for the current user only; the senders connect as clients).
 constexpr const wchar_t* kBridgePipeName = L"\\\\.\\pipe\\GW2ChatBridge";
 
 struct BridgeMessage {
     enum class Kind { Hello, Chat } kind = Kind::Chat;
+    std::string src = "extras";  // "extras" (the Nexus add-on) | "ocr" (the reader); older add-ons send none
     // Hello: sent once per connection.
     int protocol = kBridgeProtocol;
     std::string addonVersion;   // "1.5.0"
     bool extras = false;        // Unofficial Extras is loaded in the game (else no party/squad line can come)
-    // Chat: one party/squad line from Unofficial Extras – exact text, no OCR.
-    std::string channel;        // "party" | "squad"
+    // Chat: one line – exact text (extras) or read from the screen (ocr).
+    std::string channel;        // "party" "squad" "map" "say" "whisper" "guild" "team" "system" "" (unknown)
+    bool outgoing = false;      // a whisper you sent ("To Name: ...")
     int subgroup = -1;          // 0..14 = sent to that subgroup, -1 = whole squad / party
     bool broadcast = false;     // commander broadcast
     std::string time;           // iso8601 server time, e.g. "2022-07-09T11:45:24.888Z"
     std::string account;        // ":Name.1234" as sent by the game
-    std::string character;      // character name
+    std::string character;      // character name (the speaker)
     std::string text;           // the message, UTF-8
 };
+
+// The channels a line may carry (anything else is read as unknown "").
+bool IsBridgeChannel(const std::string& channel);
 
 // One JSON object per line, '\n' at the end. Text is cut to stay below kBridgeMaxLine.
 std::string EncodeBridgeMessage(const BridgeMessage& m);

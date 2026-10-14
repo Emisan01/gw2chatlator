@@ -617,15 +617,17 @@ private:
         r++;
         const bool have = ctx_.extensionInstalled && ctx_.extensionInstalled();
         Label(Tr(L"Extension: translating the chat (OCR)"), kLabelX, Y(r++), kW - 50);
-        Label(have ? Tr(L"[OK] Loaded. It reads the GW2 chat and shows it in your language.")
-                   : Tr(L"[--] Not loaded. It reads the GW2 chat and shows it in your language (about 15 MB, from the "
-                        L"official release on GitHub)."),
+        // Each module says exactly what it reads.
+        Label(have ? Tr(L"[OK] Loaded. Reads everything visible in the chat area you choose (text recognition on this "
+                        L"PC).")
+                   : Tr(L"[--] Not loaded. Reads everything visible in the chat area you choose, by text recognition on "
+                        L"this PC (about 15 MB, from the official release on GitHub)."),
               kLabelX, Y(r) - 4, kW - 250, 40);
         Button(kLoadExt, have ? Tr(L"Start chat translation") : Tr(L"Load extension…"), kW - 222, Y(r++) - 2, 196);
 
         const int extras = ctx_.extrasState ? ctx_.extrasState() : -1;
         const int bridge = ctx_.bridgeState ? ctx_.bridgeState() : -1;
-        Label(Tr(L"Extension: party and squad chat as exact text (Nexus)"), kLabelX, Y(r++) + 6, kW - 50);
+        Label(Tr(L"Extension: only party and squad chat, as exact text (Nexus)"), kLabelX, Y(r++) + 6, kW - 50);
         if (extras < 0) {
             Label(Tr(L"[--] No Guild Wars 2 add-ons folder found (is Nexus installed?)."), kLabelX, Y(r++) + 4, kW - 50);
         } else {

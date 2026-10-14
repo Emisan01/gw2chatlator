@@ -2180,9 +2180,24 @@ static void TestBridgeProtocol() {
     h.extras = true;
     CHECK(DecodeBridgeMessage(EncodeBridgeMessage(h), r) && r.kind == BridgeMessage::Kind::Hello && r.addonVersion == "1.5.0" && r.extras);
     // party line to the whole party; nonsense subgroups become -1
-    m.channel = "anything";
+    // the add-on only reports party/squad: anything else from it is not believed; nonsense subgroups become -1
+    m.channel = "map";
+    CHECK(!DecodeBridgeMessage(EncodeBridgeMessage(m), r));
+    m.channel = "party";
     m.subgroup = 99;
-    CHECK(DecodeBridgeMessage(EncodeBridgeMessage(m), r) && r.channel == "party" && r.subgroup == -1);
+    CHECK(DecodeBridgeMessage(EncodeBridgeMessage(m), r) && r.channel == "party" && r.subgroup == -1 && r.src == "extras");
+    // the OCR reader: every channel, an outgoing whisper, unknown channels become ""
+    BridgeMessage o;
+    o.src = "ocr";
+    o.channel = "whisper";
+    o.outgoing = true;
+    o.character = "Nora Testwind";
+    o.text = "bin gleich da";
+    CHECK(DecodeBridgeMessage(EncodeBridgeMessage(o), r) && r.src == "ocr" && r.channel == "whisper" && r.outgoing);
+    o.channel = "combat";
+    CHECK(DecodeBridgeMessage(EncodeBridgeMessage(o), r) && r.channel.empty());
+    // an older add-on without "src" counts as the add-on
+    CHECK(DecodeBridgeMessage("{\"v\":1,\"t\":\"chat\",\"ch\":\"squad\",\"text\":\"inc\"}", r) && r.src == "extras");
     // rejected: other protocol, unknown type, empty text, broken JSON, too long
     CHECK(!DecodeBridgeMessage("{\"v\":2,\"t\":\"hello\"}", r));
     CHECK(!DecodeBridgeMessage("{\"v\":1,\"t\":\"send\",\"text\":\"x\"}", r));

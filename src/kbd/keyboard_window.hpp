@@ -203,13 +203,13 @@ private:
     // newest lines in a slim band above the preview, translated into your language when they are foreign.
     struct IncomingLine {
         uint64_t id = 0;
-        bool squad = false;
+        Channel channel = Channel::Party;
         std::wstring speaker, text, translated;
         bool showOriginal = false;  // a click switches between translation and original
         ULONGLONG tick = 0;
         RECT rect{};
     };
-    void OnBridge(WPARAM kind, BridgeMessage* msg);
+    void OnBridge(WPARAM wp, BridgeMessage* msg);
     void LoadExtras();                               // Unofficial Extras into <GW2>\addons (Settings → General)
     void InstallBridge();                            // our Nexus add-on from the package into <GW2>\addons
     void RemoveAddonFile(const wchar_t* file, const wchar_t* name);
@@ -220,8 +220,22 @@ private:
     std::deque<IncomingLine> incoming_;
     uint64_t incomingNextId_ = 1;
     BridgePipe bridge_;
-    bool bridgeConnected_ = false;
-    bool bridgeExtras_ = false;  // the add-on reported Unofficial Extras as loaded
+    // The senders connected to the pipe: the Nexus add-on ("extras") and the OCR reader ("ocr") – docs/READER_PLAN.md.
+    struct BridgeConn {
+        bool connected = false;
+        std::string src;      // from its hello
+        bool extras = false;  // the add-on reported Unofficial Extras as loaded
+    };
+    BridgeConn bridgeConns_[BridgePipe::kMaxClients];
+    bool ExtrasLive() const;       // party/squad arrive exactly: OCR readings of them are dropped
+    bool ReaderConnected() const;  // the OCR reader is connected: our window stays out of screen captures
+    void UpdateCaptureExclusion();
+    bool excludedFromCapture_ = false;
+    struct RecentLine {
+        std::wstring text;
+        ULONGLONG tick = 0;
+    };
+    std::deque<RecentLine> recentExact_;  // the add-on's lines of the last 30 s (an OCR reading of them is dropped)
     RECT GameClientRect() const;
     RECT DockTarget() const;
     void UpdateDockFromWindow();

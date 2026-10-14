@@ -33,7 +33,7 @@ struct Received {
 
 LRESULT CALLBACK Proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
     if (msg == WM_APP) {
-        if (wp == BridgePipe::kConnected) g_rx.connected = true;
+        if (BridgePipe::KindOf(wp) == BridgePipe::kConnected) g_rx.connected = true;
         auto* m = reinterpret_cast<BridgeMessage*>(lp);
         if (m) {
             if (m->kind == BridgeMessage::Kind::Hello) g_rx.hello = true;
