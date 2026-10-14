@@ -91,6 +91,7 @@ struct NexusOptions {
     bool snap = true;            // the window snaps to the screen edges when you move it there
     bool setupDone = false;      // the first start loaded Events: Chat, the voice module and the base model
     bool voiceFallback = true;   // a model too slow twice in a row: the next smaller installed one is used
+    std::wstring namesLang;      // item / place names: "en", "de", "fr", "es", "zh"; "" = the language you write in
 };
 NexusOptions g_nx;
 // How chat text looks ([NexusWindow] Glow, Brightness, GameColors): GW2's colours (the name in the channel colour, the
@@ -344,6 +345,11 @@ void LoadLayout() {  // g_mu held
     g_nx.snap = nx(L"Snap", 1);
     g_nx.setupDone = nx(L"SetupDone", 0);
     g_nx.voiceFallback = nx(L"VoiceFallback", 1);
+    {
+        wchar_t lang[8] = {};
+        GetPrivateProfileStringW(L"Nexus", L"NamesLang", L"", lang, 8, g_cfg.iniPath.c_str());
+        g_nx.namesLang = lang;
+    }
     LoadVoiceRuns();
 }
 void SaveNexusOptions() {  // g_mu held
@@ -351,6 +357,7 @@ void SaveNexusOptions() {  // g_mu held
     g_cfg.SaveBool(L"Nexus", L"Snap", g_nx.snap);
     g_cfg.SaveBool(L"Nexus", L"SetupDone", g_nx.setupDone);
     g_cfg.SaveBool(L"Nexus", L"VoiceFallback", g_nx.voiceFallback);
+    g_cfg.SaveValue(L"Nexus", L"NamesLang", g_nx.namesLang);
 }
 void SaveLayout() {  // g_mu held
     g_cfg.SaveValue(L"NexusWindow", L"Chat", g_layout.chat ? L"1" : L"0");
@@ -1897,6 +1904,7 @@ void RenderModules(bool guide) {  // g_mu NOT held
 ChatLinks g_links;
 
 std::wstring ApiLang() {  // the GW2 API speaks en, de, fr, es, zh (g_mu held)
+    if (!g_nx.namesLang.empty()) return g_nx.namesLang;  // like the game
     const std::wstring p = ToLowerAscii(PrimaryLang(TypingLang()));
     return p == L"de" || p == L"fr" || p == L"es" || p == L"zh" ? p : L"en";
 }
@@ -2736,6 +2744,24 @@ void RenderOptionsContent() {
                 ImGui::SetNextItemWidth(wide);
                 changed |= ImGui::SliderInt(UI(Tr(L"Brightness") + L" (%)##bright").c_str(), &g_look.brightness, 60, 160);
                 if (changed) SaveLayout();
+                // Item and place names in the game's language (the GW2 API knows these five).
+                static const wchar_t* kNames[][2] = {{L"", L"like I write"}, {L"en", L"English"}, {L"de", L"Deutsch"},
+                                                     {L"fr", L"Français"}, {L"es", L"Español"}, {L"zh", L"中文"}};
+                int ni = 0;
+                for (int i = 0; i < 6; ++i)
+                    if (g_nx.namesLang == kNames[i][0]) ni = i;
+                ImGui::SetNextItemWidth(wide);
+                if (ImGui::BeginCombo(UI(Tr(L"Item and place names") + L"##names").c_str(),
+                                      ni == 0 ? UI(Tr(L"like I write")).c_str() : U8(kNames[ni][1]).c_str())) {
+                    for (int i = 0; i < 6; ++i)
+                        if (ImGui::Selectable(i == 0 ? UI(Tr(L"like I write")).c_str() : U8(kNames[i][1]).c_str(), i == ni)) {
+                            g_nx.namesLang = kNames[i][0];
+                            SaveNexusOptions();
+                        }
+                    ImGui::EndCombo();
+                }
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("%s", UI(Tr(L"Choose the language your game runs in – item links and waypoints then read as in its own chat.")).c_str());
             }
             Hint(UI(Tr(L"Keys (show / hide: Ctrl+Alt+K, push to talk, focus the input): Nexus → Keybinds → GW2 Keyboard.")));
             ImGui::Separator();

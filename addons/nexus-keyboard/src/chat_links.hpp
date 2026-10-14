@@ -14,6 +14,7 @@
 #include <string>
 #include <thread>
 #include <unordered_map>
+#include <vector>
 
 #include "imgui/imgui.h"
 #include "nexus/Nexus.h"
@@ -32,6 +33,18 @@ public:
         int level = 0;
         int count = 1;
         uint32_t rgb = 0;           // rarity colour, 0 = none
+        // What the game's tooltip shows below the name: weapon strength / defence / attributes, the effect of a
+        // consumable (its own name, icon and duration), a rune's set bonuses, the bonus of a sigil / infusion.
+        std::vector<std::wstring> stats;
+        std::wstring effectName;
+        std::string effectIcon;
+        std::vector<std::wstring> effects;
+        int durationMs = 0;
+        std::vector<std::wstring> bonuses;
+        int infusionSlots = 0;
+        std::string itemType, subType;  // the API's words ("Consumable", "Food"), named as the game names them
+        std::wstring craftDiscipline;   // a crafting material: the discipline of the easiest recipe using it ...
+        int craftRating = 0;            // ... and the rating it needs
         float x = 0, y = 0;         // waypoints / points of interest: continent coordinates
         std::wstring mapName;       // ... and the map they are on
     };
@@ -56,6 +69,7 @@ private:
     void Run();
     Info Fetch(const std::wstring& code, const std::wstring& lang);
     void Tooltip(const std::wstring& code, const Info& info);
+    Texture_t* Icon(const std::string& url);  // an icon of render.guildwars2.com through Nexus (null until loaded)
     // Waypoints and points of interest have no API lookup of their own: the whole table (every map's points with
     // their coordinates) is loaded once – from the cache file, else from the GW2 API – and kept for 14 days.
     struct Poi {

@@ -68,6 +68,73 @@ std::wstring Words(const std::wstring& s) {
     return out;
 }
 
+// The API's attribute names as the game shows them.
+std::wstring AttributeName(const std::string& a) {
+    if (a == "Power") return Tr(L"Power");
+    if (a == "Precision") return Tr(L"Precision");
+    if (a == "Toughness") return Tr(L"Toughness");
+    if (a == "Vitality") return Tr(L"Vitality");
+    if (a == "CritDamage" || a == "Ferocity") return Tr(L"Ferocity");
+    if (a == "ConditionDamage") return Tr(L"Condition Damage");
+    if (a == "Healing" || a == "HealingPower") return Tr(L"Healing Power");
+    if (a == "BoonDuration" || a == "Concentration") return Tr(L"Concentration");
+    if (a == "ConditionDuration" || a == "Expertise") return Tr(L"Expertise");
+    if (a == "AgonyResistance") return Tr(L"Agony Resistance");
+    return Words(FromUtf8(a));
+}
+
+std::wstring Duration(int ms) {  // 1800000 -> "30 m", 3600000 -> "1 h", 45000 -> "45 s"
+    const int s = ms / 1000;
+    if (s >= 3600 && s % 3600 == 0) return std::to_wstring(s / 3600) + L" h";
+    if (s >= 60) return std::to_wstring(s / 60) + L" m";
+    return std::to_wstring(s) + L" s";
+}
+
+std::vector<std::wstring> Lines(const std::wstring& text) {  // "a\nb" -> {"a", "b"}, empty ones dropped
+    std::vector<std::wstring> out;
+    size_t a = 0;
+    while (a <= text.size()) {
+        size_t b = text.find(L'\n', a);
+        if (b == std::wstring::npos) b = text.size();
+        const std::wstring line = Trim(text.substr(a, b - a));
+        if (!line.empty()) out.push_back(line);
+        a = b + 1;
+    }
+    return out;
+}
+
+// The item types as the game names them in its tooltips.
+std::wstring ItemTypeName(const std::string& t) {
+    if (t == "Consumable") return Tr(L"Consumable");
+    if (t == "CraftingMaterial") return Tr(L"Crafting material");
+    if (t == "UpgradeComponent") return Tr(L"Upgrade component");
+    if (t == "Container") return Tr(L"Container");
+    if (t == "Gizmo") return Tr(L"Gizmo");
+    if (t == "Trophy") return Tr(L"Trophy");
+    if (t == "Weapon") return Tr(L"Weapon");
+    if (t == "Armor") return Tr(L"Armor");
+    if (t == "Trinket") return Tr(L"Trinket");
+    if (t == "Back") return Tr(L"Back item");
+    if (t == "Bag") return Tr(L"Bag");
+    if (t == "MiniPet") return Tr(L"Miniature");
+    if (t == "Gathering") return Tr(L"Gathering tool");
+    if (t == "Tool") return Tr(L"Salvage kit");
+    return Words(FromUtf8(t));
+}
+
+std::wstring DisciplineName(const std::string& d) {
+    if (d == "Armorsmith") return Tr(L"Armorsmith");
+    if (d == "Artificer") return Tr(L"Artificer");
+    if (d == "Chef") return Tr(L"Chef");
+    if (d == "Huntsman") return Tr(L"Huntsman");
+    if (d == "Jeweler") return Tr(L"Jeweler");
+    if (d == "Leatherworker") return Tr(L"Leatherworker");
+    if (d == "Tailor") return Tr(L"Tailor");
+    if (d == "Weaponsmith") return Tr(L"Weaponsmith");
+    if (d == "Scribe") return Tr(L"Scribe");
+    return Words(FromUtf8(d));
+}
+
 std::wstring PoiTypeName(const std::string& type) {
     if (type == "waypoint") return Tr(L"Waypoint");
     if (type == "vista") return Tr(L"Vista");
@@ -240,6 +307,61 @@ ChatLinks::Info ChatLinks::Fetch(const std::wstring& code, const std::wstring& l
     info.iconUrl = v.GetString("icon");
     info.description = PlainDescription(FromUtf8(v.GetString("description")));
     if (info.description.empty()) info.description = PlainDescription(FromUtf8(v.GetString("requirement")));  // achievements
+    // The details below the name, as far as the item has them.
+    if (const JsonValue* d = v.Get("details"); d && d->IsObject()) {
+        auto dnum = [&](const char* key) { return num(*d, key); };
+        if (dnum("max_power") > 0)
+            info.stats.push_back(TrF(L"Weapon Strength: {1} – {2}", {std::to_wstring(dnum("min_power")), std::to_wstring(dnum("max_power"))}));
+        if (dnum("defense") > 0) info.stats.push_back(TrF(L"Defense: {1}", {std::to_wstring(dnum("defense"))}));
+        if (const JsonValue* infix = d->Get("infix_upgrade"); infix && infix->IsObject()) {
+            if (const JsonValue* attrs = infix->Get("attributes"); attrs && attrs->IsArray())
+                for (const JsonValue& a : attrs->arr)
+                    if (num(a, "modifier") != 0)
+                        info.stats.push_back(L"+" + std::to_wstring(num(a, "modifier")) + L" " + AttributeName(a.GetString("attribute")));
+            if (const JsonValue* buff = infix->Get("buff"); buff && buff->IsObject())  // sigils, infusions, some trinkets
+                for (const std::wstring& l : Lines(PlainDescription(FromUtf8(buff->GetString("description")))))
+                    info.effects.push_back(l);
+        }
+        // A consumable's effect: its own name, icon, text and duration.
+        if (!d->GetString("description").empty() || !d->GetString("name").empty()) {
+            info.effectName = FromUtf8(d->GetString("name"));
+            info.effectIcon = d->GetString("icon");
+            for (const std::wstring& l : Lines(PlainDescription(FromUtf8(d->GetString("description"))))) info.effects.push_back(l);
+            info.durationMs = dnum("duration_ms");
+        }
+        if (const JsonValue* bonuses = d->Get("bonuses"); bonuses && bonuses->IsArray()) {  // a rune's set
+            int n = 0;
+            for (const JsonValue& b : bonuses->arr)
+                info.bonuses.push_back(L"(" + std::to_wstring(++n) + L"): " + PlainDescription(FromUtf8(b.s)));
+        }
+        if (const JsonValue* slots = d->Get("infusion_slots"); slots && slots->IsArray())
+            info.infusionSlots = static_cast<int>(slots->arr.size());
+    }
+    info.itemType = v.GetString("type");
+    if (const JsonValue* d = v.Get("details"); d && d->IsObject()) info.subType = d->GetString("type");
+    // A crafting material: the easiest recipe that uses it (the game shows "Crafting material: Chef (100)").
+    if (c.kind == ChatCodeKind::Item) {
+        const HttpResponse r = HttpsRequest(L"GET", L"api.guildwars2.com", L"/v2/recipes/search?input=" + std::to_wstring(c.id),
+                                            L"", "", nullptr, 1u << 20);
+        JsonValue ids;
+        if (r.transportOk && r.status == 200 && ParseJson(r.body, ids) && ids.IsArray() && !ids.arr.empty()) {
+            std::wstring list;
+            for (size_t i = 0; i < ids.arr.size() && i < 20; ++i)
+                list += (list.empty() ? L"" : L",") + std::to_wstring(static_cast<long long>(ids.arr[i].n));
+            const HttpResponse rr = HttpsRequest(L"GET", L"api.guildwars2.com", L"/v2/recipes?ids=" + list, L"", "", nullptr, 1u << 20);
+            JsonValue recipes;
+            if (rr.transportOk && rr.status == 200 && ParseJson(rr.body, recipes) && recipes.IsArray())
+                for (const JsonValue& rec : recipes.arr) {
+                    const int rating = num(rec, "min_rating");
+                    const JsonValue* disc = rec.Get("disciplines");
+                    if (!disc || !disc->IsArray() || disc->arr.empty()) continue;
+                    if (info.craftDiscipline.empty() || rating < info.craftRating) {
+                        info.craftRating = rating;
+                        info.craftDiscipline = DisciplineName(disc->arr.front().s);
+                    }
+                }
+        }
+    }
     std::wstring type = Words(FromUtf8(v.GetString("type")));
     if (const JsonValue* d = v.Get("details"); d && d->IsObject() && !d->GetString("type").empty())
         type += L" · " + Words(FromUtf8(d->GetString("type")));
@@ -362,37 +484,80 @@ std::unordered_map<uint32_t, ChatLinks::Poi> ChatLinks::LoadPois(const std::wstr
     return table;
 }
 
+Texture_t* ChatLinks::Icon(const std::string& url) {
+    if (!api_ || !api_->Textures_GetOrCreateFromURL || url.rfind("https://render.guildwars2.com/", 0) != 0) return nullptr;
+    const std::string endpoint = url.substr(29);  // "/file/..."
+    const std::string id = "GW2KB_ICON_" + std::to_string(std::hash<std::string>{}(endpoint));
+    return api_->Textures_GetOrCreateFromURL(id.c_str(), "https://render.guildwars2.com", endpoint.c_str());
+}
+
 void ChatLinks::Tooltip(const std::wstring& code, const Info& info) {
     ImGui::BeginTooltip();
     ImGui::PushTextWrapPos(ImGui::GetFontSize() * 24);
     // The icon through Nexus (loaded in the background; nothing until it is there).
-    if (api_ && api_->Textures_GetOrCreateFromURL && info.iconUrl.rfind("https://render.guildwars2.com/", 0) == 0) {
-        const std::string endpoint = info.iconUrl.substr(29);  // "/file/..."
-        const std::string id = "GW2KB_ICON_" + std::to_string(std::hash<std::string>{}(endpoint));
-        if (Texture_t* t = api_->Textures_GetOrCreateFromURL(id.c_str(), "https://render.guildwars2.com", endpoint.c_str());
-            t && t->Resource) {
-            const float s = ImGui::GetFontSize() * 2.6f;
-            ImGui::Image(t->Resource, ImVec2(s, s));
-            ImGui::SameLine();
-        }
+    if (Texture_t* t = Icon(info.iconUrl); t && t->Resource) {
+        const float s = ImGui::GetFontSize() * 2.6f;
+        ImGui::Image(t->Resource, ImVec2(s, s));
+        ImGui::SameLine();
     }
+    // In the game's order: the name; the description; the values; the effect (its icon, name, duration, text); the
+    // type and the level it needs.
+    const bool item = info.kind == static_cast<int>(ChatCodeKind::Item) || info.kind == static_cast<int>(ChatCodeKind::Recipe);
+    const ImVec4 green(0.55f, 0.85f, 0.45f, 1.f), effect(0.80f, 0.80f, 0.82f, 1.f), grey(0.66f, 0.66f, 0.68f, 1.f);
     ImGui::BeginGroup();
     if (info.state == 1) {
         const std::string name = ToUtf8((info.count > 1 ? std::to_wstring(info.count) + L" " : L"") + info.name);
         if (info.rgb) ImGui::TextColored(Rgb(info.rgb), "%s", name.c_str());
         else ImGui::TextUnformatted(name.c_str());
-        const bool poi = info.kind == static_cast<int>(ChatCodeKind::Poi);
-        std::wstring sub = poi ? info.type : KindName(info.kind);
-        if (!poi && !info.type.empty()) sub += L" · " + info.type;
-        if (!info.mapName.empty()) sub += L" · " + info.mapName;
-        if (info.level > 0) sub += L" · " + TrF(L"level {1}", {std::to_wstring(info.level)});
-        ImGui::TextDisabled("%s", ToUtf8(sub).c_str());
+        if (!item) {  // skills, traits, waypoints …: what it is, where
+            const bool poi = info.kind == static_cast<int>(ChatCodeKind::Poi);
+            std::wstring sub = poi ? info.type : KindName(info.kind);
+            if (!poi && !info.type.empty()) sub += L" · " + info.type;
+            if (!info.mapName.empty()) sub += L" · " + info.mapName;
+            ImGui::TextDisabled("%s", ToUtf8(sub).c_str());
+        }
     } else {
         ImGui::TextUnformatted(ToUtf8(KindName(info.kind)).c_str());
         if (info.state == 0) ImGui::TextDisabled("...");
     }
     ImGui::EndGroup();
-    if (info.state == 1 && !info.description.empty()) ImGui::TextUnformatted(ToUtf8(info.description).c_str());
+    if (info.state == 1) {
+        if (info.itemType == "Consumable" || info.itemType == "Gizmo")  // the game says it for every one of them
+            ImGui::TextUnformatted(ToUtf8(Tr(L"Double-click to use.")).c_str());
+        else if (info.itemType == "Container")
+            ImGui::TextUnformatted(ToUtf8(Tr(L"Double-click to open.")).c_str());
+        if (!info.description.empty()) ImGui::TextUnformatted(ToUtf8(info.description).c_str());
+        for (const std::wstring& st : info.stats) ImGui::TextColored(green, "%s", ToUtf8(st).c_str());
+        if (!info.effectName.empty() || !info.effects.empty()) {  // "Nourishment (30 m): -10 % … / +10 % …"
+            Texture_t* t = info.effectName.empty() ? nullptr : Icon(info.effectIcon);
+            if (t && t->Resource) {
+                const float sz = ImGui::GetFontSize() * 1.5f;
+                ImGui::Image(t->Resource, ImVec2(sz, sz));
+                ImGui::SameLine();
+            }
+            ImGui::BeginGroup();
+            std::wstring head = info.effectName;
+            if (!head.empty() && info.durationMs > 0) head += L" (" + Duration(info.durationMs) + L")";
+            for (size_t i = 0; i < info.effects.size(); ++i) {
+                const std::wstring line = i == 0 && !head.empty() ? head + L": " + info.effects[i] : info.effects[i];
+                ImGui::TextColored(effect, "%s", ToUtf8(line).c_str());
+            }
+            if (info.effects.empty() && !head.empty()) ImGui::TextColored(effect, "%s", ToUtf8(head).c_str());
+            ImGui::EndGroup();
+        }
+        for (const std::wstring& bo : info.bonuses) ImGui::TextColored(effect, "%s", ToUtf8(bo).c_str());
+        if (info.infusionSlots > 0)
+            ImGui::TextColored(grey, "%s", ToUtf8(TrF(L"Infusion slots: {1}", {std::to_wstring(info.infusionSlots)})).c_str());
+        if (item) {
+            std::wstring type = ItemTypeName(info.itemType);  // weapons, armour, trinkets: and what kind
+            if ((info.itemType == "Weapon" || info.itemType == "Armor" || info.itemType == "Trinket") && !info.subType.empty())
+                type = Words(FromUtf8(info.subType));
+            if (!type.empty()) ImGui::TextUnformatted(ToUtf8(type).c_str());
+            if (info.level > 0) ImGui::TextUnformatted(ToUtf8(TrF(L"Required level: {1}", {std::to_wstring(info.level)})).c_str());
+            if (!info.craftDiscipline.empty())
+                ImGui::TextUnformatted(ToUtf8(TrF(L"Crafting material: {1} ({2})", {info.craftDiscipline, std::to_wstring(info.craftRating)})).c_str());
+        }
+    }
     ImGui::TextDisabled("%s", ToUtf8(code + L"  ·  " + (info.kind == static_cast<int>(ChatCodeKind::Poi) && info.state == 1
                                                              ? Tr(L"Click: show it on the map · Shift+click: into your message")
                                                              : Tr(L"Click: into your message"))).c_str());
