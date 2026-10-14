@@ -254,6 +254,9 @@ int MainWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
     cfg_.Load(DataDir());
     SetUiLang(cfg_.uiLang);
     waitForGame_ = HasSwitch(cmdLine, kWaitForGw2Switch);
+    readerMode_ = HasSwitch(cmdLine, L"--reader");
+    if (readerMode_) userHidden_ = true;  // never shown by itself (following the game); the tray opens it
+    if (readerMode_) toKeyboard_.Start("ocr", GCT_VERSION_STR);
     const bool markChat = HasSwitch(cmdLine, L"--mark-chat"), coverChat = HasSwitch(cmdLine, L"--cover-chat");
     // The installed copy is always in the start menu, so it can never get lost (autostart and the desktop shortcut
     // are free choices). Autostart belongs to it too: an entry left pointing elsewhere (an old download folder) moves.
@@ -334,7 +337,7 @@ int MainWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
     else
         SetStatus(TrF(L"Translator: {1}", {translator_->Name()}), Tone::Ok, 5000);
     // Started with Windows: only the window and the tray now – the rest when GW2 shows up (or the tray opens us).
-    if (!waitForGame_) WarmUp();
+    if (!waitForGame_ && !readerMode_) WarmUp();  // the reader for the keyboard needs no typing help
     StartReader();
     SetTimer(hwnd_, kTimerGame, 300, nullptr);
     UpdateHint();
@@ -342,12 +345,14 @@ int MainWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
 
     AddTrayIcon();
     FitKeyboardWindow();
-    if (!waitForGame_) {
+    if (!waitForGame_ && !readerMode_) {
         ShowWindow(hwnd_, SW_SHOW);
         SetForegroundWindow(hwnd_);
         SetFocus(input_.Hwnd());
     }
-    if (markChat || coverChat) PostMessageW(hwnd_, WM_APP_FIRSTRUN, markChat ? 1 : 0, coverChat ? 1 : 0);
+    if (readerMode_) {
+        // The keyboard is the window; this one stays in the tray (its menu: detect the chat, area, settings).
+    } else if (markChat || coverChat) PostMessageW(hwnd_, WM_APP_FIRSTRUN, markChat ? 1 : 0, coverChat ? 1 : 0);
     else if (!cfg_.setupDone && !waitForGame_) PostMessageW(hwnd_, WM_APP_FIRSTRUN, 2, 0);
     else if (!cfg_.tourShown && !waitForGame_) PostMessageW(hwnd_, WM_APP_FIRSTRUN, 3, 0);  // once: what it can do
 
@@ -414,7 +419,7 @@ void MainWindow::InitServices() {
 void MainWindow::WarmUp() {
     if (warmedUp_) return;
     warmedUp_ = true;
-    bridge_.Start(hwnd_, WM_APP_BRIDGE);  // the optional Nexus add-on connects here when it is installed
+    if (!readerMode_) bridge_.Start(hwnd_, WM_APP_BRIDGE);  // the optional Nexus add-on (the keyboard has it in --reader)
     CleanUpFiles();
     if (cfg_.spellEnabled) {
         // Spell check, learned words and word-bar starters all follow the language you type in.
@@ -2523,12 +2528,40 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
             fresh.erase(fresh.begin(), fresh.end() - kStartLines);
     }
     onceFound_ += fresh.size();
-    for (const ChatMessage& m : fresh) HandleIncoming(m);
-    PumpIncoming();
+    if (readerMode_) {  // the keyboard shows and translates (no translator request here)
+        for (const ChatMessage& m : fresh) SendToKeyboard(m);
+    } else {
+        for (const ChatMessage& m : fresh) HandleIncoming(m);
+        PumpIncoming();
+    }
     UpdateHint();
     // "Translate once": done after the first picture when nothing waits for its confirmation, else after the second
     // (the double scan) – however long the text recognition needs.
     if (once_ && (++onceShots_ >= 2 || !stream_.HasPending())) EndTranslateOnce();
+}
+
+// --reader: one read line into GW2 Keyboard's pipe – as read, untranslated (the keyboard drops party/squad when
+// Unofficial Extras delivers them, and your own lines).
+void MainWindow::SendToKeyboard(const ChatMessage& m) {
+    const bool system =
+        !m.freeText && (m.channel == Channel::System || (m.channel == Channel::Unknown && m.speaker.empty()));
+    if (system && !cfg_.showSystemLines) return;
+    BridgeMessage b;
+    switch (m.channel) {
+        case Channel::Party: b.channel = "party"; break;
+        case Channel::Squad: b.channel = "squad"; break;
+        case Channel::Map: b.channel = "map"; break;
+        case Channel::Say: b.channel = "say"; break;
+        case Channel::Whisper: b.channel = "whisper"; break;
+        case Channel::Guild: b.channel = "guild"; break;
+        case Channel::Team: b.channel = "team"; break;
+        case Channel::System: b.channel = "system"; break;
+        default: break;
+    }
+    b.outgoing = m.outgoingWhisper;
+    b.character = ToUtf8(m.speaker);
+    b.text = ToUtf8(m.text);
+    if (!b.text.empty()) toKeyboard_.Send(b);
 }
 
 void MainWindow::OnBridge(WPARAM wp, BridgeMessage* raw) {
@@ -3028,7 +3061,7 @@ void MainWindow::PollGame() {
 
     // Optional focus transfer: when in-game chat box is opened, bring translator to front.
     const bool textboxFocus = mumbleState_.TextboxHasFocus();
-    if (cfg_.focusOnGameChat && textboxFocus && !lastTextboxFocus_ && gw2_ && (gameFront || ours)) {
+    if (cfg_.focusOnGameChat && !readerMode_ && textboxFocus && !lastTextboxFocus_ && gw2_ && (gameFront || ours)) {
         ShowOverlay();
     }
     lastTextboxFocus_ = textboxFocus;
@@ -4244,8 +4277,9 @@ LRESULT MainWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
         case WM_DESTROY:
             reader_.Stop();
             bridge_.Stop();
+            toKeyboard_.Stop();
             RemoveTrayIcon();
-            SaveWindow();
+            if (!readerMode_) SaveWindow();  // the reader shares the settings file with the keyboard: its window stays
             if (hotkeyOk_) UnregisterHotKey(hwnd_, kHotkeyId);
             PostQuitMessage(0);
             return 0;

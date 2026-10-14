@@ -36,6 +36,7 @@
 #include "core/names.hpp"
 #include "core/glossary.hpp"
 #include "core/translator.hpp"
+#include "win/bridge_client.hpp"
 #include "win/bridge_pipe.hpp"
 #include "win/mumble_link.hpp"
 #include "win/online_translators.hpp"
@@ -140,7 +141,7 @@ private:
     void TranslateOnce();
     void EndTranslateOnce();
     // "Keyboard only": the tool is just the typing help – nothing of the chat is read.
-    bool ReadingWanted() const { return !cfg_.keyboardOnly && (cfg_.readerEnabled || once_); }
+    bool ReadingWanted() const { return (!cfg_.keyboardOnly || readerMode_) && (cfg_.readerEnabled || once_); }
     // The language you type in: chosen in Settings -> Writing, else the keyboard layout's ("de-DE").
     std::wstring TypingLocale() const;
     ReaderOptions MakeReaderOptions() const;
@@ -415,6 +416,11 @@ private:
 
     // start / tray / misc
     bool waitForGame_ = false;      // started by the autostart: hidden until GW2 runs
+    // --reader (docs/READER_PLAN.md): started by GW2 Keyboard as its chat reader – hidden in the tray, every chat line
+    // read goes untranslated into the keyboard's pipe; the keyboard shows and translates it.
+    bool readerMode_ = false;
+    BridgeClient toKeyboard_;
+    void SendToKeyboard(const ChatMessage& m);
     bool trayOk_ = false;
     bool loadingNames_ = false;
     std::wstring restartCommand_;
