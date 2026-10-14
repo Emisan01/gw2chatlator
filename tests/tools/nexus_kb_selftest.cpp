@@ -203,6 +203,7 @@ int wmain(int argc, wchar_t** argv) {
             {bridge::ChatEventsType::Whisper, "Finn Fake", "hey, still need help with the fractal?"},
             {bridge::ChatEventsType::Local, "Gia Placeholder", "hello there"},
             {bridge::ChatEventsType::Map, "Hal Invented", "meet at [&BAwEAAA=] in five"},
+            {bridge::ChatEventsType::Party, "Ivy Example", "soup [&AgHFMAAA] and rune [&AgEEYQAA] for you"},
         };
         for (const auto& l : lines) {
             bridge::ChatEventsMessage e{};
@@ -213,6 +214,12 @@ int wmain(int argc, wchar_t** argv) {
         }
         wchar_t frames[16] = {};  // GW2KB_SHOT_FRAMES: wait longer (e.g. the waypoint table on its first load)
         const int n = GetEnvironmentVariableW(L"GW2KB_SHOT_FRAMES", frames, 16) ? _wtoi(frames) : 40;
+        wchar_t hover[32] = {};  // GW2KB_SHOT_HOVER=x,y: the mouse there (a tooltip in the picture)
+        if (GetEnvironmentVariableW(L"GW2KB_SHOT_HOVER", hover, 32)) {
+            float hx = 0, hy = 0;
+            swscanf_s(hover, L"%f,%f", &hx, &hy);
+            ImGui::GetIO().MousePos = ImVec2(hx, hy);
+        }
         for (int i = 0; i < n; ++i) {
             Frame();
             Sleep(20);
