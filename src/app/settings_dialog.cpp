@@ -70,7 +70,7 @@ enum : int {
     kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
     kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kStartMenu, kOnlyTr, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare, kWriteIn, kLtProvider, kLtTest, kLtStatus, kChatEngine, kKeyboardOnly, kLearnFile, kKeepMap, kReadWhat, kTour, kLoadExt,
     // Game & start
-    kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kBridgeRead, kStatus, kRefresh, kSetup,
+    kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kBridgeRead, kScreenshots, kLoadExtras, kStatus, kRefresh, kSetup,
     // Wizard
     // Technical
     kOcrZoom, kKeyHold, kStepDelay, kTechText, kTechRefresh, kTechCopy, kTechSaveF16, kTechStatus,
@@ -536,7 +536,11 @@ private:
         Label(Tr(L"Language of this window"), kLabelX, Y(r) - 4, kHalf);
 #ifdef GCT_KEYBOARD_APP
         r++;
-        Combo(kUiLang, LanguageChoices(), LanguageChoiceOf(cfg_.uiLangCode), kLabelX, Y(r++) - 10, kHalf);
+        Combo(kUiLang, LanguageChoices(), LanguageChoiceOf(cfg_.uiLangCode), kLabelX, Y(r) - 10, kHalf);
+        // Our windows are hidden from screenshots by default (the chat translator must never read them); here they
+        // may be shown, e.g. to share a picture of the settings.
+        Check(kScreenshots, Tr(L"Show my windows on screenshots"), cfg_.showOnScreenshots, kLabelX + kHalf + 16,
+              Y(r++) - 8, kHalf);
 #else
         Label(Tr(L"Translate the chat into"), kLabelX + kHalf + 16, Y(r++) - 4, kHalf);
         Combo(kUiLang, LanguageChoices(), LanguageChoiceOf(cfg_.uiLangCode), kLabelX, Y(r) - 10, kHalf);
@@ -611,6 +615,19 @@ private:
                         L"official release on GitHub)."),
               kLabelX, Y(r) - 4, kW - 250, 40);
         Button(kLoadExt, have ? Tr(L"Start chat translation") : Tr(L"Load extension…"), kW - 222, Y(r++) - 2, 196);
+        // Party and squad chat as exact text: Unofficial Extras for ArcDPS, passed on by the Nexus add-on.
+        r++;
+        const int extras = ctx_.extrasState ? ctx_.extrasState() : -1;
+        Label(Tr(L"Extension: party and squad chat as exact text (Unofficial Extras for ArcDPS)"), kLabelX, Y(r++),
+              kW - 50);
+        Label(extras == 1   ? Tr(L"[OK] Installed in the GW2 add-ons folder. Nexus loads it, the GW2 Chat Bridge add-on "
+                                 L"passes the chat on.")
+              : extras == 0 ? Tr(L"[--] Not installed. A free ArcDPS extension by Krappa322 (from its GitHub releases, "
+                                 L"checksum checked). Needs Nexus with ArcDPS and the GW2 Chat Bridge add-on.")
+                            : Tr(L"[--] No Guild Wars 2 add-ons folder found (is Nexus installed?)."),
+              kLabelX, Y(r) - 4, kW - 250, 40);
+        if (extras == 0) Button(kLoadExtras, Tr(L"Load Unofficial Extras…"), kW - 222, Y(r) - 2, 196);
+        r++;
 #endif
     }
 
@@ -1528,9 +1545,12 @@ private:
                 break;
             case kTour:
             case kLoadExt:
+            case kLoadExtras:
                 Save();
                 result.saved = true;
-                result.action = id == kTour ? DialogResult::Action::ShowTour : DialogResult::Action::LoadExtension;
+                result.action = id == kTour      ? DialogResult::Action::ShowTour
+                                : id == kLoadExt ? DialogResult::Action::LoadExtension
+                                                 : DialogResult::Action::LoadExtras;
                 Close();
                 break;
 #ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
@@ -2346,6 +2366,9 @@ private:
         c.dock = Checked(kDock);
         c.followGame = Checked(kFollow);
         c.bridgeRead = Checked(kBridgeRead);
+#ifdef GCT_KEYBOARD_APP
+        c.showOnScreenshots = Checked(kScreenshots);
+#endif
         c.focusOnGameChat = Checked(kFocusGameChat);
     }
 

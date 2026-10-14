@@ -14,13 +14,14 @@ add_library(gw2chat_bridge SHARED
     ${PROJECT_SOURCE_DIR}/src/core/i18n_de.cpp
     ${PROJECT_SOURCE_DIR}/src/core/i18n_ar.cpp
     ${PROJECT_SOURCE_DIR}/src/win/http.cpp
+    ${PROJECT_SOURCE_DIR}/src/win/extras_install.cpp
     ${PROJECT_SOURCE_DIR}/src/win/hash.cpp)
 target_include_directories(gw2chat_bridge PRIVATE
     ${PROJECT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/imgui)
 target_compile_definitions(gw2chat_bridge PRIVATE UNICODE _UNICODE _WIN32_WINNT=0x0A00 WINVER=0x0A00 NOMINMAX
-                           WIN32_LEAN_AND_MEAN)
+                           WIN32_LEAN_AND_MEAN GCT_BRIDGE_DLL)
 target_link_libraries(gw2chat_bridge PRIVATE winhttp bcrypt shell32)
 # Static CRT: the add-on must not depend on which VC++ runtime the game process happens to have loaded.
 target_compile_options(gw2chat_bridge PRIVATE /utf-8 /W4 /permissive-)

@@ -34,6 +34,7 @@
 #include "kbd/voice_session.hpp"
 #include "win/gw2_sender.hpp"
 #include "win/bridge_pipe.hpp"
+#include "win/extras_install.hpp"
 #include "win/cpu_cores.hpp"
 #include "win/mic_sessions.hpp"
 #include "win/mumble_link.hpp"
@@ -207,6 +208,9 @@ private:
         RECT rect{};
     };
     void OnBridge(WPARAM kind, BridgeMessage* msg);
+    void LoadExtras();                               // Unofficial Extras into <GW2>\addons (Settings → General)
+    void OnExtrasLoaded(ExtrasInstallResult* result);
+    bool extrasLoading_ = false;
     void TranslateIncoming(const IncomingLine& line);
     int IncomingHeight() const;
     std::deque<IncomingLine> incoming_;

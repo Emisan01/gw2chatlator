@@ -8,18 +8,11 @@
 #include <mutex>
 #include <thread>
 
-#include "core/json.hpp"
 #include "core/text.hpp"
-#include "win/http.hpp"
+#include "win/extras_install.hpp"
 
 namespace bridge {
 namespace {
-
-constexpr const char* kReleaseHost = "api.github.com";
-constexpr const wchar_t* kReleasePath = L"/repos/Krappa322/arcdps_unofficial_extras_releases/releases/latest";
-constexpr const char* kDownloadPrefix =
-    "https://github.com/Krappa322/arcdps_unofficial_extras_releases/releases/download/";
-constexpr const char* kAssetName = "arcdps_unofficial_extras.dll";
 
 std::mutex g_mutex;
 InstallState g_state = InstallState::Idle;
@@ -41,53 +34,24 @@ std::wstring AddonsDir(HMODULE self) {
     return slash == std::wstring::npos ? std::wstring() : p.substr(0, slash + 1);
 }
 
-bool IsHex64(const std::string& s) {
-    return s.size() == 64 && std::all_of(s.begin(), s.end(), [](char c) {
-               return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
-           });
-}
-
 void Install(std::wstring dir) {
-    Set(InstallState::Running, "Asking GitHub for the newest Unofficial Extras ...");
-    const gct::HttpResponse r = gct::HttpsRequest(L"GET", gct::FromUtf8(kReleaseHost), kReleasePath,
-                                                  L"Accept: application/vnd.github+json\r\n", "");
-    if (!r.transportOk || r.status != 200) {
-        Set(InstallState::Failed, "GitHub did not answer (" +
-                                      (r.transportOk ? "status " + std::to_string(r.status) : gct::ToUtf8(r.error)) +
-                                      "). Try again later.");
-        return;
+    Set(InstallState::Running, "Downloading the newest Unofficial Extras from its GitHub page ...");
+    const gct::ExtrasInstallResult r = gct::InstallUnofficialExtras(dir, [] { return g_cancel.load(); });
+    switch (r.code) {
+        case gct::ExtrasInstallCode::Ok:
+            Set(InstallState::Done, "Installed. Nexus loads it now; if party chat does not arrive, restart the game.");
+            break;
+        case gct::ExtrasInstallCode::NoAnswer:
+            Set(InstallState::Failed, "GitHub did not answer (" + gct::ToUtf8(r.detail) + "). Try again later.");
+            break;
+        case gct::ExtrasInstallCode::NotChecked:
+            Set(InstallState::Failed, "The newest release has no checked arcdps_unofficial_extras.dll. "
+                                      "Please install it from its GitHub page.");
+            break;
+        case gct::ExtrasInstallCode::DownloadFailed:
+            Set(InstallState::Failed, "Download failed: " + gct::ToUtf8(r.detail));
+            break;
     }
-    gct::JsonValue release;
-    std::string url, sha;
-    uint64_t size = 0;
-    if (gct::ParseJson(r.body, release)) {
-        if (const gct::JsonValue* assets = release.Get("assets"); assets && assets->IsArray()) {
-            for (const gct::JsonValue& a : assets->arr) {
-                if (a.GetString("name") != kAssetName) continue;
-                url = a.GetString("browser_download_url");
-                const std::string digest = a.GetString("digest");
-                if (digest.rfind("sha256:", 0) == 0) sha = digest.substr(7);
-                if (const gct::JsonValue* s = a.Get("size"); s && s->type == gct::JsonValue::Type::Number)
-                    size = static_cast<uint64_t>(s->n);
-            }
-        }
-    }
-    // Only the official release page, and only with a checksum GitHub computed for the file.
-    if (url.rfind(kDownloadPrefix, 0) != 0 || !IsHex64(sha) || size == 0) {
-        Set(InstallState::Failed, "The newest release has no checked arcdps_unofficial_extras.dll. "
-                                  "Please install it from its GitHub page.");
-        return;
-    }
-    Set(InstallState::Running, "Downloading Unofficial Extras (" + std::to_string(size / 1024) + " KB) ...");
-    std::wstring error;
-    const bool ok = gct::HttpDownloadToFile(
-        gct::FromUtf8(url), dir + gct::FromUtf8(kAssetName), size, sha,
-        [](uint64_t, uint64_t) { return !g_cancel.load(); }, &error);
-    if (!ok) {
-        Set(InstallState::Failed, "Download failed: " + gct::ToUtf8(error));
-        return;
-    }
-    Set(InstallState::Done, "Installed. Nexus loads it now; if party chat does not arrive, restart the game.");
 }
 
 }  // namespace
@@ -111,7 +75,7 @@ Presence DetectPresence(HMODULE self) {
             if (name == L"arcdps_integration64.dll") p.relay = true;
         }
     }
-    p.extrasFile = GetFileAttributesW((AddonsDir(self) + gct::FromUtf8(kAssetName)).c_str()) != INVALID_FILE_ATTRIBUTES;
+    p.extrasFile = GetFileAttributesW((AddonsDir(self) + gct::kExtrasDllName).c_str()) != INVALID_FILE_ATTRIBUTES;
     return p;
 }
 
@@ -136,6 +100,27 @@ InstallState GetInstallState(std::string* message) {
 void StopExtrasInstall() {
     g_cancel = true;
     if (g_thread.joinable()) g_thread.join();
+}
+
+// <addons>\GW2ChatBridge\settings.ini – the add-on's own folder, nothing else is written.
+static std::wstring SettingsFile(HMODULE self) {
+    const std::wstring dir = AddonsDir(self) + L"GW2ChatBridge\\";
+    CreateDirectoryW(dir.c_str(), nullptr);
+    return dir + L"settings.ini";
+}
+
+Settings LoadSettings(HMODULE self) {
+    const std::wstring f = SettingsFile(self);
+    Settings s;
+    s.party = GetPrivateProfileIntW(L"Bridge", L"Party", 1, f.c_str()) != 0;
+    s.squad = GetPrivateProfileIntW(L"Bridge", L"Squad", 1, f.c_str()) != 0;
+    return s;
+}
+
+void SaveSettings(HMODULE self, const Settings& s) {
+    const std::wstring f = SettingsFile(self);
+    WritePrivateProfileStringW(L"Bridge", L"Party", s.party ? L"1" : L"0", f.c_str());
+    WritePrivateProfileStringW(L"Bridge", L"Squad", s.squad ? L"1" : L"0", f.c_str());
 }
 
 }  // namespace bridge

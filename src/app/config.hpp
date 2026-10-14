@@ -129,6 +129,7 @@ struct Config {
     int fontPercent = 100;            // chat text: 100 % = 11 pt
     std::wstring fontFace = L"Segoe UI";
     bool followGame = true;
+    bool showOnScreenshots = false;  // GW2 Keyboard: our windows are not hidden from screenshots ([Window] Screenshots)
     bool compact = false;  // GW2 Keyboard: slim bars, one-line input, only the translation in the preview ([Window] Compact)
     bool focusOnGameChat = false;  // focus input when in-game chat box gains focus
     // Key presses vs. letters sent (the word help's benefit): today and in total.

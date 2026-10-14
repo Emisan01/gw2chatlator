@@ -25,4 +25,12 @@ void StartExtrasInstall(HMODULE self);
 InstallState GetInstallState(std::string* message);  // message: UTF-8, for the options page
 void StopExtrasInstall();                              // on unload: cancel and wait
 
+// What is passed on (the options page switches), stored in <addons>\GW2ChatBridge\settings.ini.
+struct Settings {
+    bool party = true;
+    bool squad = true;
+};
+Settings LoadSettings(HMODULE self);
+void SaveSettings(HMODULE self, const Settings& s);
+
 }  // namespace bridge
