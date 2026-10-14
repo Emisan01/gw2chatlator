@@ -206,7 +206,7 @@ private:
     // Party/squad lines from the optional Nexus add-on (exact text from Unofficial Extras, docs/NEXUS_PLAN.md).
     void OnBridge(WPARAM kind, BridgeMessage* msg);
     // The bridge delivers party/squad: OCR lines of these channels are dropped so nothing comes twice.
-    bool BridgeCarriesParty() const { return bridgeConnected_ && bridgeLines_ > 0; }
+    bool BridgeCarriesParty() const { return cfg_.bridgeRead && bridgeConnected_ && bridgeLines_ > 0; }
     void HandleIncoming(const ChatMessage& m);
     // Is this chat line yours? A line sent through this window coming back
     // fills in what only the game knows (the channel it went to, the

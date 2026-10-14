@@ -70,7 +70,7 @@ enum : int {
     kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
     kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kStartMenu, kOnlyTr, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare, kWriteIn, kLtProvider, kLtTest, kLtStatus, kChatEngine, kKeyboardOnly, kLearnFile, kKeepMap, kReadWhat, kTour, kLoadExt,
     // Game & start
-    kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kStatus, kRefresh, kSetup,
+    kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kBridgeRead, kStatus, kRefresh, kSetup,
     // Wizard
     // Technical
     kOcrZoom, kKeyHold, kStepDelay, kTechText, kTechRefresh, kTechCopy, kTechSaveF16, kTechStatus,
@@ -1369,6 +1369,9 @@ private:
         Check(kFollow, Tr(L"Show and hide together with the game"), cfg_.followGame, kLabelX, Y(r++), kW - 50);
         Check(kFocusGameChat, Tr(L"Focus translator when in-game chat is opened"), cfg_.focusOnGameChat, kLabelX,
               Y(r++), kW - 50);
+        // The optional Nexus add-on hands over party/squad chat as exact text (it needs Unofficial Extras in the game).
+        Check(kBridgeRead, Tr(L"Read party and squad chat from the Nexus add-on (GW2 Chat Bridge)"), cfg_.bridgeRead,
+              kLabelX, Y(r++), kW - 50);
         // Like the GW2 chat, the log empties on a map change – unless kept; and old messages may go after a while.
 #ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR
         Check(kKeepMap, Tr(L"Keep the chat when GW2 clears it (map change)"), cfg_.keepAfterMap, kLabelX, Y(r++),
@@ -2342,6 +2345,7 @@ private:
 #endif
         c.dock = Checked(kDock);
         c.followGame = Checked(kFollow);
+        c.bridgeRead = Checked(kBridgeRead);
         c.focusOnGameChat = Checked(kFocusGameChat);
     }
 

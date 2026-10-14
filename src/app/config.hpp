@@ -67,6 +67,7 @@ struct Config {
 
     // [Reader]
     bool readerEnabled = true;
+    bool bridgeRead = true;  // party/squad chat from the optional Nexus add-on GW2 Chat Bridge ([Reader] Bridge)
     int readerIntervalMs = 400;  // a look every 0.4 s; text recognition only runs when the picture changed
     OcrChoice ocr = OcrChoice::Auto;
     int captureMode = 0;          // 0 auto, 1 window (WGC), 2 screen (DXGI, never a yellow frame)

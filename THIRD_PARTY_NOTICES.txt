@@ -27,6 +27,7 @@ GW2 Chat Translator – third-party components shipped with the program
    Nexus API header (Nexus.h), Copyright (c) 2023 Raidcore.GG – https://github.com/RaidcoreGG/RCGG-lib-nexus-api
    arcdps Unofficial Extras API headers, Copyright (c) 2021 Kappa322 –
    https://github.com/Krappa322/arcdps_unofficial_extras_releases
+   Dear ImGui 1.80, Copyright (c) 2014-2021 Omar Cornut – https://github.com/ocornut/imgui
    Licence: MIT (full texts in addons/nexus/third_party of the source code)
 
 ---------------------------------------------------------------------

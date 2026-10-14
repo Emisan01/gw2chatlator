@@ -2177,7 +2177,8 @@ static void TestBridgeProtocol() {
     BridgeMessage h;
     h.kind = BridgeMessage::Kind::Hello;
     h.addonVersion = "1.5.0";
-    CHECK(DecodeBridgeMessage(EncodeBridgeMessage(h), r) && r.kind == BridgeMessage::Kind::Hello && r.addonVersion == "1.5.0");
+    h.extras = true;
+    CHECK(DecodeBridgeMessage(EncodeBridgeMessage(h), r) && r.kind == BridgeMessage::Kind::Hello && r.addonVersion == "1.5.0" && r.extras);
     // party line to the whole party; nonsense subgroups become -1
     m.channel = "anything";
     m.subgroup = 99;

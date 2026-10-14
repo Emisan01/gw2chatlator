@@ -33,6 +33,7 @@ std::string EncodeBridgeMessage(const BridgeMessage& m) {
     if (m.kind == BridgeMessage::Kind::Hello) {
         out += ",\"t\":\"hello\"";
         Field(out, "addon", CutUtf8(m.addonVersion, 32));
+        out += m.extras ? ",\"ex\":true" : ",\"ex\":false";
     } else {
         out += ",\"t\":\"chat\"";
         Field(out, "ch", m.channel == "squad" ? "squad" : "party");
@@ -61,6 +62,7 @@ bool DecodeBridgeMessage(const std::string& line, BridgeMessage& out) {
     if (t == "hello") {
         m.kind = BridgeMessage::Kind::Hello;
         m.addonVersion = v.GetString("addon");
+        m.extras = v.GetBool("ex");
     } else if (t == "chat") {
         m.kind = BridgeMessage::Kind::Chat;
         m.channel = v.GetString("ch");

@@ -1,16 +1,31 @@
-# GW2 Chat Bridge – the optional Nexus add-on (see docs/NEXUS_PLAN.md). Only the pinned, MIT-licensed headers in
-# third_party/ and two portable core files: no ImGui, no other dependency.
+# GW2 Chat Bridge – the optional Nexus add-on (see docs/NEXUS_PLAN.md). Pinned, MIT-licensed third_party/ (Nexus API,
+# Unofficial Extras API, Dear ImGui 1.80 = the version Nexus uses) and a few portable / proven files of ours.
 add_library(gw2chat_bridge SHARED
     src/bridge_main.cpp
+    src/extras_setup.cpp
+    third_party/imgui/imgui.cpp
+    third_party/imgui/imgui_draw.cpp
+    third_party/imgui/imgui_tables.cpp
+    third_party/imgui/imgui_widgets.cpp
     ${PROJECT_SOURCE_DIR}/src/core/bridge_protocol.cpp
-    ${PROJECT_SOURCE_DIR}/src/core/json.cpp)
+    ${PROJECT_SOURCE_DIR}/src/core/json.cpp
+    ${PROJECT_SOURCE_DIR}/src/core/text.cpp
+    ${PROJECT_SOURCE_DIR}/src/core/i18n.cpp
+    ${PROJECT_SOURCE_DIR}/src/core/i18n_de.cpp
+    ${PROJECT_SOURCE_DIR}/src/core/i18n_ar.cpp
+    ${PROJECT_SOURCE_DIR}/src/win/http.cpp
+    ${PROJECT_SOURCE_DIR}/src/win/hash.cpp)
 target_include_directories(gw2chat_bridge PRIVATE
     ${PROJECT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/imgui)
 target_compile_definitions(gw2chat_bridge PRIVATE UNICODE _UNICODE _WIN32_WINNT=0x0A00 WINVER=0x0A00 NOMINMAX
                            WIN32_LEAN_AND_MEAN)
+target_link_libraries(gw2chat_bridge PRIVATE winhttp bcrypt shell32)
 # Static CRT: the add-on must not depend on which VC++ runtime the game process happens to have loaded.
 target_compile_options(gw2chat_bridge PRIVATE /utf-8 /W4 /permissive-)
+set_source_files_properties(third_party/imgui/imgui.cpp third_party/imgui/imgui_draw.cpp
+    third_party/imgui/imgui_tables.cpp third_party/imgui/imgui_widgets.cpp PROPERTIES COMPILE_OPTIONS "/W0")
 set_target_properties(gw2chat_bridge PROPERTIES
     MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
     PREFIX "")

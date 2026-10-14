@@ -2546,7 +2546,7 @@ void MainWindow::OnBridge(WPARAM kind, BridgeMessage* raw) {
             SetStatus(Tr(L"Nexus bridge connected: party and squad chat arrive as exact text"), Tone::Ok, 6000);
         return;
     }
-    if (!ReadingWanted() || cfg_.freeArea) return;  // reading switched off, or a free screen area instead of the chat
+    if (!cfg_.bridgeRead || !ReadingWanted() || cfg_.freeArea) return;  // switched off, or a free screen area
     ++bridgeLines_;
     ++stats_.bridgeLines;
     ChatMessage m;

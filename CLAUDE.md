@@ -48,6 +48,9 @@ addons/nexus  GW2 Chat Bridge, the OPTIONAL Nexus add-on (separate download, liv
           lines as JSON lines (core/bridge_protocol) into the pipe GW2ChatBridge; never sends, never reads the
           pipe. Pinned MIT headers in third_party/. Receiver: win/bridge_pipe → MainWindow::OnBridge (party/squad
           OCR lines dropped while `BridgeCarriesParty`). `bridge_selftest.exe <dll>` = whole chain without the game.
+          GW2 Keyboard: band of the newest party/squad lines above the preview (`incoming_`, `OnBridge`,
+          `TranslateIncoming`), switch `[Reader] Bridge`. Add-on options page (ImGui 1.80) installs Unofficial Extras
+          like the Nexus library would (GitHub release + SHA-256 into <GW2>\addons); ArcDPS itself is Nexus' business.
           Map/whisper stay OCR (user's decision: extras is closed source, no own hook). docs/NEXUS_PLAN.md
 ```
 

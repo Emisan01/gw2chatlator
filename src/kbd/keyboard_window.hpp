@@ -33,6 +33,7 @@
 #include "core/voice_learn.hpp"
 #include "kbd/voice_session.hpp"
 #include "win/gw2_sender.hpp"
+#include "win/bridge_pipe.hpp"
 #include "win/cpu_cores.hpp"
 #include "win/mic_sessions.hpp"
 #include "win/mumble_link.hpp"
@@ -195,6 +196,24 @@ private:
 
     // ---- game, docking, tray, settings
     void PollGame();
+    // Party/squad chat from the optional Nexus add-on (GW2 Chat Bridge, exact text from Unofficial Extras): the
+    // newest lines in a slim band above the preview, translated into your language when they are foreign.
+    struct IncomingLine {
+        uint64_t id = 0;
+        bool squad = false;
+        std::wstring speaker, text, translated;
+        bool showOriginal = false;  // a click switches between translation and original
+        ULONGLONG tick = 0;
+        RECT rect{};
+    };
+    void OnBridge(WPARAM kind, BridgeMessage* msg);
+    void TranslateIncoming(const IncomingLine& line);
+    int IncomingHeight() const;
+    std::deque<IncomingLine> incoming_;
+    uint64_t incomingNextId_ = 1;
+    BridgePipe bridge_;
+    bool bridgeConnected_ = false;
+    bool bridgeExtras_ = false;  // the add-on reported Unofficial Extras as loaded
     RECT GameClientRect() const;
     RECT DockTarget() const;
     void UpdateDockFromWindow();
