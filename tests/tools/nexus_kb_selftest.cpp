@@ -43,6 +43,8 @@ struct TestHooks {  // as in kb_main.cpp
     char lastSent[1024] = {};
     char* input = nullptr;
     bool* focus = nullptr;
+    int selfFixes = 0;
+    char lastFix[128] = {};
 };
 void Free(void* p, void*) { std::free(p); }
 
@@ -181,6 +183,15 @@ int wmain(int argc, wchar_t** argv) {
         frames(3);
         std::printf("history: Up -> %zu bytes, Down -> %zu bytes\n", recalled, std::strlen(th->input));
         ok = ok && recalled > 100 && std::strlen(th->input) == 0;
+        // Learning mode: a word you retype yourself after its space ("Gildne " -> "Gilden ") is noticed.
+        type("wir Gildne ");
+        frames(40);
+        for (int i = 0; i < 7; ++i) press(VK_BACK);
+        frames(40);
+        type("Gilden ");
+        frames(10);
+        std::printf("self-correction: %d noticed, newest %s (input: %s)\n", th->selfFixes, th->lastFix, th->input);
+        ok = ok && th->selfFixes >= 1;
     }
     std::printf("unload\n");
     def->Unload();

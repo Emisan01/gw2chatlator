@@ -77,6 +77,9 @@ public:
     // A correction was kept (Space/Tab wrote `fix` for `typed`): a typo you make, corrected without guessing next
     // time. Completions are no typos. Backspace right after it (RejectCorrection) forgets it again.
     void NoteFix(const std::wstring& typed, const std::wstring& fix);
+    // You taught it (GW2 Keyboard for Nexus: right-click in the input): `typed` is your typo for `fix`. Like NoteFix,
+    // also with learning switched off; never for a word the dictionary knows (invariant 6). False: not taken.
+    bool TeachFix(const std::wstring& typed, const std::wstring& fix);
     bool IsLearned(const std::wstring& word) const { return model_.Count(word) > 0; }
     // A word taught by mistake: gone from the word bar and autocorrection.
     bool Forget(const std::wstring& word);
