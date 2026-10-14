@@ -54,6 +54,7 @@
 #include "imgui/imgui.h"
 #include "nexus/Nexus.h"
 #include "version.h"
+#include "chat_links.hpp"
 #include "voice_module.hpp"
 #include "win/deepl_translator.hpp"
 #include "win/els.hpp"
@@ -119,6 +120,8 @@ struct TestHooks {
     char lastSent[1024] = {};
     char* input = nullptr;
     bool* focus = nullptr;
+    int selfFixes = 0;           // corrections of your own noticed (learning mode)
+    char lastFix[128] = {};      // the newest: "typed>fixed"
 };
 TestHooks g_test;
 bool g_showOptions = false;  // our own options window (menu ≡ / the button on the Nexus page)
@@ -271,6 +274,8 @@ struct AutoUndo {  // the last autocorrection: Backspace right after it brings t
     std::string before;  // the buffer as typed (without the space)
     std::wstring original;
 } g_undo;
+std::wstring g_finishedLast;  // learning mode: the last word when a space last followed it (see NoteSelfFix)
+size_t g_finishedAt = 0;
 
 // Voice (stage 4): the helper process gw2kb_voice.exe runs the recognizer outside the game.
 bool g_voiceReady = false;       // the helper said "ready"
@@ -1249,6 +1254,7 @@ int InputCallback(ImGuiInputTextCallbackData* d) {
                 g_undo.active = false;
                 d->DeleteChars(0, d->BufTextLen);
                 d->InsertChars(0, g_undo.before.c_str());
+                g_finishedLast.clear();  // an undone autocorrection is no correction of your own
                 g_worker.Post([orig = g_undo.original] { if (g_spell) g_spell->RejectCorrection(orig); });
                 break;
             }
@@ -1764,85 +1770,58 @@ void RenderModules(bool guide) {  // g_mu NOT held
     ImGui::PopID();
 }
 
-// ---- chat codes ("[&AgGvWwEA]"): shown as the game shows them – "[Item name]" in its rarity colour. The name comes once
-// per code from the public GW2 API (worker), in the language you write in.
-struct CodeName {
-    int state = 0;  // 0 asked, 1 known, 2 none
-    std::wstring name;
-    uint32_t rgb = 0;
-};
-std::map<std::wstring, CodeName> g_codeNames;  // g_mu
+// ---- chat codes: their own module (chat_links) – "[Item name]" as the game links them, the details on mouse-over.
+ChatLinks g_links;
 
 std::wstring ApiLang() {  // the GW2 API speaks en, de, fr, es, zh (g_mu held)
     const std::wstring p = ToLowerAscii(PrimaryLang(TypingLang()));
     return p == L"de" || p == L"fr" || p == L"es" || p == L"zh" ? p : L"en";
 }
 
-void FetchCodeName(std::wstring code, std::wstring lang) {  // worker
-    const ChatCode c = DecodeChatCode(code);
-    CodeName out;
-    out.state = 2;
-    auto ask = [&](const std::wstring& path, JsonValue* first) {
-        const HttpResponse r = HttpsRequest(L"GET", L"api.guildwars2.com", path + L"&lang=" + lang, L"", "", nullptr, 1u << 20);
-        JsonValue v;
-        if (!r.transportOk || r.status != 200 || !ParseJson(r.body, v) || !v.IsArray() || v.arr.empty()) return false;
-        *first = v.arr.front();
-        return true;
-    };
-    JsonValue v;
-    if (const std::wstring path = ChatCodeApiPath(c); !path.empty() && ask(path, &v)) {
-        if (c.kind == ChatCodeKind::Recipe) {  // a recipe: the name of what it makes
-            JsonValue item;
-            if (const JsonValue* id = v.Get("output_item_id"); id && id->type == JsonValue::Type::Number &&
-                                                                 ask(L"/v2/items?ids=" + std::to_wstring(static_cast<uint64_t>(id->n)), &item)) {
-                out.name = W(item.GetString("name"));
-                out.rgb = RarityColor(item.GetString("rarity"));
-            }
-        } else {
-            out.name = W(v.GetString("name"));
-            out.rgb = RarityColor(v.GetString("rarity"));
-        }
-        if (!out.name.empty()) {
-            out.state = 1;
-            if (c.kind == ChatCodeKind::Item && c.count > 1) out.name = std::to_wstring(c.count) + L" " + out.name;
-        }
-    }
-    std::lock_guard<std::mutex> lock(g_mu);
-    g_codeNames[code] = out;
+// Words you corrected yourself while typing ("shcon" → "schon", this session): a right-click in the input offers to
+// learn them, so autocorrection writes them right next time.
+struct SelfFix {
+    std::wstring typed, fixed;
+};
+std::vector<SelfFix> g_selfFixes;  // newest first, g_mu
+std::vector<std::wstring> g_lastWords;  // the words as they stood before a correction began
+
+void AddSelfFix(const std::wstring& was, const std::wstring& now) {  // g_mu held
+    g_selfFixes.erase(std::remove_if(g_selfFixes.begin(), g_selfFixes.end(),
+                                     [&](const SelfFix& f) { return CaseFold(f.typed) == CaseFold(was); }),
+                      g_selfFixes.end());
+    if (was.size() < 3 || now.size() < 3 || CaseFold(was) == CaseFold(now) || EditDistance(was, now, 3) > 2) return;
+    g_selfFixes.insert(g_selfFixes.begin(), {was, now});
+    if (g_selfFixes.size() > 8) g_selfFixes.resize(8);
+    g_test.selfFixes = static_cast<int>(g_selfFixes.size());
+    strncpy_s(g_test.lastFix, U8(was + L">" + now).c_str(), _TRUNCATE);
 }
 
-// What a chat code shows: "[Name]" once known, else the code (g_mu held; asks for the name once).
-std::wstring CodeLabel(const std::wstring& code, ImVec4* color) {
-    auto it = g_codeNames.find(code);
-    if (it == g_codeNames.end()) {
-        g_codeNames[code] = CodeName{};
-        g_worker.Post([code, lang = ApiLang()] { FetchCodeName(code, lang); });
-        return code;
+void NoteSelfFix(const std::wstring& text) {  // g_mu held; the text changed
+    std::vector<std::wstring> words;
+    for (const Span& sp : WordSpans(text)) words.push_back(text.substr(sp.start, sp.length));
+    const bool spaceAfter = !text.empty() && text.back() == L' ';
+    if (words.empty()) g_finishedLast.clear();
+    if (words.size() == g_lastWords.size() && !words.empty()) {
+        int changed = -1, count = 0;
+        for (size_t i = 0; i < words.size(); ++i)
+            if (words[i] != g_lastWords[i]) changed = static_cast<int>(i), ++count;
+        if (count == 1 && static_cast<size_t>(changed) + 1 < words.size()) {
+            // A word before the last one is being corrected: compared with how it stood before (kept as it was).
+            AddSelfFix(g_lastWords[changed], words[changed]);
+            return;
+        }
     }
-    if (it->second.state != 1) return code;
-    if (it->second.rgb) {
-        const uint32_t rgb = it->second.rgb;
-        *color = ImVec4(((rgb >> 16) & 0xFF) / 255.f, ((rgb >> 8) & 0xFF) / 255.f, (rgb & 0xFF) / 255.f, 1.f);
+    // The last word, retyped after a space had finished it ("shcon " → "schon "): when the space comes again.
+    if (spaceAfter && !words.empty()) {
+        if (g_finishedAt == words.size() - 1 && !g_finishedLast.empty() && words.back() != g_finishedLast)
+            AddSelfFix(g_finishedLast, words.back());
+        if (words.size() - 1 >= g_finishedAt || g_finishedLast.empty()) {  // a word deleted whole: it waits for its retyping
+            g_finishedLast = words.back();
+            g_finishedAt = words.size() - 1;
+        }
     }
-    return L"[" + it->second.name + L"]";
-}
-
-// A word into your language (right-click on a line → a word); the answer is shown in the input box for a while.
-void TranslateWord(std::wstring word, std::wstring line) {
-    std::shared_ptr<Translator> tr;
-    std::wstring target;
-    {
-        std::lock_guard<std::mutex> lock(g_mu);
-        tr = g_translator;
-        target = TypingLang();
-        CountMyMemory(CodePointCount(word));
-    }
-    if (!tr) return;
-    std::wstring source = DetectLanguage(line);  // the line knows its language better than one word
-    if (source.empty() || PrimaryLang(source) == PrimaryLang(target)) source = DetectLanguage(word);
-    const TranslateResult r = tr->Translate({Segment{word, false}}, SourceCode(source), target);
-    std::lock_guard<std::mutex> lock(g_mu);
-    SetStatus(r.ok && !r.text.empty() ? word + L"  >  " + SanitizeChatText(r.text) : r.error, 15000);
+    g_lastWords = words;  // typing at the end, or more than one word changed: the new state to compare with
 }
 
 // Your own words ("finds = I think"): what the translator gets instead (<data>\my-words.txt), learned on a right-click.
@@ -1894,18 +1873,9 @@ bool RichLine(const std::wstring& text, const std::vector<Span>& links, const st
                     g_openLinkAsk = true;
                     clicked = true;
                 }
-            } else {  // a chat code
-                ImVec4 color(0.85f, 0.85f, 0.9f, 1.f);
-                const std::string label = UI(CodeLabel(piece, &color));
-                place(label);
-                ImGui::PushStyleColor(ImGuiCol_Text, color);
-                ImGui::TextUnformatted(label.c_str());
-                ImGui::PopStyleColor();
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-                    ImGui::SetTooltip("%s", UI(piece + L"\n" + Tr(L"Click: into your message")).c_str());
-                }
-                if (ImGui::IsItemClicked()) {  // into the input, like a shift-click in the game
+            } else {  // a chat code: the module draws it (and its details on mouse-over)
+                place(U8(g_links.Label(piece)));
+                if (g_links.Render(piece)) {  // into the input, like a shift-click in the game
                     const size_t len = std::strlen(g_input);
                     g_edit.active = true;
                     g_edit.startByte = len;
@@ -2049,6 +2019,7 @@ void RenderWindow() {
     }
     const ImVec4 kAccent(0.94f, 0.75f, 0.35f, 1.f), kPreview(0.59f, 0.80f, 1.f, 1.f);
     const ImGuiStyle& st = ImGui::GetStyle();
+    g_links.SetLanguage(ApiLang());  // item names in the language you write in
 
     // ---- header: the tabs (the chat, whisper tabs; right-click: a new one) · microphone · V / A · menu · close
     const float icon = ImGui::GetFrameHeight();
@@ -2252,27 +2223,6 @@ void RenderWindow() {
             // A click on the text of a line someone else wrote: just this line into your language.
             if (!clicked && !l.own && l.translated.empty() && ImGui::IsItemClicked())
                 g_worker.Post([id = l.id, t = l.text] { TranslateLine(id, t, true); });
-            // Right-click: translate the line or one of its words, whisper, copy.
-            if (ImGui::BeginPopupContextItem("##linemenu")) {
-                if (!l.own && ImGui::MenuItem(UI(Tr(L"Translate this line")).c_str()))
-                    g_worker.Post([id = l.id, t = l.text] { TranslateLine(id, t, true); });
-                if (ImGui::BeginMenu(UI(Tr(L"Translate a word")).c_str())) {
-                    std::vector<std::wstring> seen;
-                    for (const Span& s : WordSpans(l.text)) {
-                        const std::wstring w = l.text.substr(s.start, s.length);
-                        if (w.size() < 2 || seen.size() >= 16 ||
-                            std::find(seen.begin(), seen.end(), CaseFold(w)) != seen.end())
-                            continue;
-                        seen.push_back(CaseFold(w));
-                        if (ImGui::MenuItem(U8(w).c_str())) g_worker.Post([w, t = l.text] { TranslateWord(w, t); });
-                    }
-                    ImGui::EndMenu();
-                }
-                if (!l.speaker.empty() && !l.own && ImGui::MenuItem(UI(TrF(L"Whisper to {1}", {l.speaker})).c_str()))
-                    OpenWhisperTab(l.speaker);
-                if (ImGui::MenuItem(UI(Tr(L"Copy text")).c_str())) ImGui::SetClipboardText(U8(shown).c_str());
-                ImGui::EndPopup();
-            }
             ImGui::PopID();
         }
         // New lines scroll along only while you are at the bottom (reading further up stays where it is).
@@ -2397,7 +2347,8 @@ void RenderWindow() {
             g_edit.insert = g_historyPos >= 0 ? U8(g_history[g_historyPos]) : std::string();
         }
     }
-    // Right-click in the input: teach a word or abbreviation what it means (the translator gets the meaning).
+    // Right-click in the input (your own words only): the learning mode – what you corrected yourself while typing is
+    // learned (autocorrection writes it right next time), and abbreviations get their meaning (for the translator).
     static bool teach = false;
     if (ImGui::IsMouseHoveringRect(inputMin, inputMax) && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) &&
         ImGui::IsMouseReleased(ImGuiMouseButton_Right))
@@ -2407,14 +2358,52 @@ void RenderWindow() {
         ImGui::OpenPopup("##teach");
     }
     if (ImGui::BeginPopup("##teach")) {
-        static char word[64] = {}, meaning[160] = {};
+        static char typed[64] = {}, fixed[64] = {}, word[64] = {}, meaning[160] = {};
         if (ImGui::IsWindowAppearing()) {  // the last word you typed, and what is known of it
             const std::wstring text = W(Flat(g_input));
             const std::vector<Span> spans = WordSpans(text);
             const std::wstring last = spans.empty() ? std::wstring() : text.substr(spans.back().start, spans.back().length);
+            typed[0] = 0;
+            strncpy_s(fixed, U8(last).c_str(), _TRUNCATE);
             strncpy_s(word, U8(last).c_str(), _TRUNCATE);
             strncpy_s(meaning, U8(g_myWords.MeaningOf(last)).c_str(), _TRUNCATE);
         }
+        auto teachFix = [](const std::wstring& t, const std::wstring& f) {
+            g_worker.Post([t, f] {
+                const bool ok = g_spell && g_spell->TeachFix(t, f);
+                std::lock_guard<std::mutex> lock(g_mu);
+                SetStatus(ok ? TrF(L"Learned: {1} > {2}", {t, f}) : TrF(L"\"{1}\" is a real word – not learned as a typo", {t}), 6000);
+            });
+        };
+        ImGui::TextUnformatted(UI(Tr(L"Learn your corrections")).c_str());
+        Hint(UI(Tr(L"What you corrected yourself while typing: learned once, autocorrection writes it right next time.")));
+        int learned = -1;
+        for (size_t i = 0; i < g_selfFixes.size(); ++i) {
+            ImGui::PushID(static_cast<int>(i));
+            ImGui::AlignTextToFramePadding();
+            ImGui::Text("%s  >  %s", U8(g_selfFixes[i].typed).c_str(), U8(g_selfFixes[i].fixed).c_str());
+            ImGui::SameLine();
+            if (ImGui::SmallButton(UI(Tr(L"Learn")).c_str())) learned = static_cast<int>(i);
+            ImGui::PopID();
+        }
+        if (learned >= 0) {
+            teachFix(g_selfFixes[learned].typed, g_selfFixes[learned].fixed);
+            g_selfFixes.erase(g_selfFixes.begin() + learned);
+        }
+        if (g_selfFixes.empty()) ImGui::TextDisabled("%s", UI(Tr(L"No corrections of your own yet – or enter one:")).c_str());
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 8);
+        ImGui::InputTextWithHint("##typed", UI(Tr(L"I type")).c_str(), typed, sizeof(typed));
+        ImGui::SameLine();
+        ImGui::TextUnformatted(">");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 8);
+        ImGui::InputTextWithHint("##fixed", UI(Tr(L"I mean")).c_str(), fixed, sizeof(fixed));
+        ImGui::SameLine();
+        if (ImGui::Button(UI(Tr(L"Learn") + L"##fix").c_str()) && !Trim(W(typed)).empty() && !Trim(W(fixed)).empty()) {
+            teachFix(Trim(W(typed)), Trim(W(fixed)));
+            typed[0] = 0;
+        }
+        ImGui::Separator();
         ImGui::TextUnformatted(UI(Tr(L"Your word or abbreviation – what it means")).c_str());
         ImGui::SetNextItemWidth(ImGui::GetFontSize() * 8);
         ImGui::InputText("##w", word, sizeof(word));
@@ -2424,8 +2413,8 @@ void RenderWindow() {
         ImGui::SetNextItemWidth(ImGui::GetFontSize() * 14);
         const bool go = ImGui::InputTextWithHint("##m", UI(Tr(L"meaning, e.g. I think")).c_str(), meaning, sizeof(meaning),
                                                  ImGuiInputTextFlags_EnterReturnsTrue);
-        Hint(UI(Tr(L"The translator gets the meaning; your text stays as you wrote it.")));
-        if ((ImGui::Button(UI(Tr(L"Learn")).c_str()) || go) && !Trim(W(word)).empty()) {
+        ImGui::SameLine();
+        if ((ImGui::Button(UI(Tr(L"Learn") + L"##mean").c_str()) || go) && !Trim(W(word)).empty()) {
             const std::wstring w = Trim(W(word)), m = Trim(W(meaning));
             if (m.empty()) g_myWords.Remove(w);
             else g_myWords.Set(w, m);
@@ -2434,8 +2423,8 @@ void RenderWindow() {
             ++g_inputGen;  // translated again with it
             g_inputChanged = GetTickCount64();
             SetStatus(m.empty() ? TrF(L"\"{1}\" forgotten", {w}) : TrF(L"Learned: {1} = {2}", {w, m}), 6000);
-            ImGui::CloseCurrentPopup();
         }
+        Hint(UI(Tr(L"The translator gets the meaning; your text stays as you wrote it.")));
         ImGui::EndPopup();
     }
     const ImVec4 clip(inputMin.x, inputMin.y, inputMax.x, inputMax.y);
@@ -2475,6 +2464,7 @@ void RenderWindow() {
     const std::string now = Flat(g_input);
     if (now != g_lastInput) {
         g_lastInput = now;
+        NoteSelfFix(W(now));
         g_inputChanged = GetTickCount64();
         ++g_inputGen;
         g_back.clear();
@@ -2993,6 +2983,7 @@ void AddonLoad(AddonAPI_t* api) {
     }
     g_worker.Start();
     g_worker.Post(InitSpelling);
+    g_links.Start(api);
     bool voice = false;
     std::wstring dataDir;
     {
@@ -3046,6 +3037,7 @@ void AddonUnload() {
     if (g_download.joinable()) g_download.join();
     if (g_chatEventsThread.joinable()) g_chatEventsThread.join();
     if (g_voiceModuleThread.joinable()) g_voiceModuleThread.join();
+    g_links.Stop();
     g_voice.Stop();  // the helper ends (it would also end by itself when its input closes)
     g_worker.Stop(FreeWorkerState);  // saved and freed on the worker (it owns them), before the DLL goes
     std::lock_guard<std::mutex> lock(g_mu);

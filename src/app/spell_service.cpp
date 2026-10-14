@@ -342,6 +342,14 @@ void SpellService::NoteFix(const std::wstring& typed, const std::wstring& fix) {
     SaveLearned();
 }
 
+bool SpellService::TeachFix(const std::wstring& typed, const std::wstring& fix) {
+    if (typed.size() < 3 || fix.empty() || !LettersOnly(typed) || IsValidWord(typed)) return false;
+    if (fix.find(L' ') != std::wstring::npos || WordKey(typed) == WordKey(fix)) return false;
+    typos_.Add(typed, fix, 2.0);
+    SaveLearned();
+    return true;
+}
+
 std::wstring SpellService::KnownFix(const std::wstring& typed) const {
     if (typed.size() < 3 || IsValidWord(typed)) return {};
     const std::wstring fix = typos_.FixFor(typed);

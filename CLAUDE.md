@@ -59,8 +59,12 @@ addons/nexus-keyboard  GW2 Keyboard as a pure Nexus add-on (docs/NEXUS_KEYBOARD_
           lines are translated only when on (a click / right-click on a line translates it anyway). Window: tabs in the
           header (Chat + ≤5 whisper tabs, right-click = new tab), mic · V/A (fold to the header) · ≡ · ×; status text is
           drawn inside the input box (`BoxText`); compact view = no preview / word bar, the translation small in the
-          box; scroll bar drawn at the left; chat codes shown as "[Name]" (core/chat_code + GW2 API, cached per code);
-          right-click in the input = "my words" (meaning goes to the translator). Voice helper reports `peak` (% of all
+          box; scroll bar drawn at the left; chat codes: own module `chat_links` (core/chat_code decodes, its own thread
+          asks the GW2 API: ≤48-char codes, 20 lookups/min, 400 cached – codes have been misused; hover = icon via
+          Nexus `Textures_GetOrCreateFromURL`, type, level, description; click = code into the message). Right-click
+          only in the input (user, 2026-10-14) = learning mode: self-corrections noticed while typing (`NoteSelfFix`:
+          a finished word retyped / a middle word edited, ≤2 edits) → `SpellService::TeachFix` (never a dictionary
+          word), plus "my words" (meaning goes to the translator). No right-click menu on chat lines. Voice helper reports `peak` (% of all
           logical CPUs, 100 ms samples) → `[VoiceStats]` per model; two too-slow runs → next smaller installed model.
           The self-test writes `SetupDone=1` first (no downloads in tests).
 addons/nexus  GW2 Chat Bridge, the OPTIONAL Nexus add-on (separate download, lives in the game process): only
