@@ -3,6 +3,19 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.7.1 — 2026-10-14 (GW2 Keyboard for Nexus – fixes 1.7.0; desktop GW2 Keyboard 1.7.1; GW2 Chat Translator stays 1.4.0)
+
+- **GW2 Keyboard for Nexus:**
+  - **Enter sends again** from the multi-line input (in 1.7.0 it only broke the line without translation); a message
+    longer than a chat line goes out in several parts. Ctrl+Enter breaks the line.
+  - **Tab / Shift+Tab** pick a word of the word bar (orange), **Space** writes it; without a pick Space writes the grey
+    prediction. Backspace right after it brings the typed word back.
+  - **Up / Down** in the empty input bring back what you sent (this session).
+  - The counter shows into how many chat lines a long message is split ("(2x)").
+  - **The window is modular:** chat, translation preview, word bar and footer can be switched on / off, the heights of
+    the input and the preview chosen (Options → General → Window layout).
+- 1.7.0 is marked as broken on GitHub – please update.
+
 ## 1.7.0 — 2026-10-14 (GW2 Keyboard for Nexus – the new main version; desktop GW2 Keyboard 1.7.0; GW2 Chat Translator stays 1.4.0)
 
 - **GW2 Keyboard for Nexus:** the typing help as a Nexus add-on inside the game (`GW2Keyboard-Nexus.zip`, unpacked into
