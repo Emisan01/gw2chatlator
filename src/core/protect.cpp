@@ -105,6 +105,12 @@ ProtectedText ProtectForTranslation(const std::wstring& body, const Glossary* gl
     return r;
 }
 
+bool HasTranslatableText(const std::vector<Segment>& segments) {
+    for (const Segment& s : segments)
+        if (!s.keep && std::any_of(s.text.begin(), s.text.end(), IsWordChar)) return true;
+    return false;
+}
+
 std::wstring JoinSegments(const std::vector<Segment>& segments) {
     std::wstring out;
     for (const Segment& s : segments) out += s.text;

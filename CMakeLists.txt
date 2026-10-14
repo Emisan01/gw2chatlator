@@ -296,6 +296,7 @@ if(WIN32)
         option(GCT_NEXUS_BRIDGE "Build the optional Nexus add-on GW2 Chat Bridge" ON)
         if(GCT_NEXUS_BRIDGE)
             add_subdirectory(addons/nexus)
+            add_subdirectory(addons/nexus-keyboard)  # GW2 Keyboard as a pure Nexus add-on
         endif()
     endif()
 endif()

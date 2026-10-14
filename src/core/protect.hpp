@@ -30,6 +30,8 @@ ProtectedText ProtectForTranslation(const std::wstring& body, const Glossary* gl
                                     const NameList* names = nullptr);
 
 std::wstring JoinSegments(const std::vector<Segment>& segments);
+// Something left to translate (not only names, chat codes, keep-words, numbers).
+bool HasTranslatableText(const std::vector<Segment>& segments);
 bool HasProtected(const std::vector<Segment>& segments);
 
 }  // namespace gct
