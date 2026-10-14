@@ -684,7 +684,7 @@ LRESULT KeyboardWindow::HitTest(LPARAM lp) const {
 }
 
 void KeyboardWindow::OnClick(POINT pt) {
-    if (PtInRect(&closeRect_, pt)) PostMessageW(hwnd_, WM_CLOSE, 0, 0);
+    if (PtInRect(&closeRect_, pt)) HideWindowNow();  // × = to the tray (Quit: ≡ menu or the tray icon)
     else if (PtInRect(&menuRect_, pt)) ShowMainMenu();
     else if (PtInRect(&channelRect_, pt)) ShowChannelMenu();
     else if (PtInRect(&typeRect_, pt)) ShowTypeLangMenu();
@@ -713,6 +713,11 @@ void KeyboardWindow::ShowWindowNow() {
     ShowWindow(hwnd_, SW_SHOW);
     Front(hwnd_);
     SetFocus(input_.Hwnd());
+}
+
+void KeyboardWindow::Quit() {
+    quitting_ = true;
+    PostMessageW(hwnd_, WM_CLOSE, 0, 0);
 }
 
 void KeyboardWindow::HideWindowNow() {
@@ -984,7 +989,7 @@ void KeyboardWindow::ShowMainMenu() {
     else if (cmd == kDock) SetDock(!cfg_.dock);
     else if (cmd == kCompact) SetCompact(!cfg_.compact);
     else if (cmd == kChat) ActivateChatTranslation();
-    else if (cmd == kQuit) PostMessageW(hwnd_, WM_CLOSE, 0, 0);
+    else if (cmd == kQuit) Quit();
 }
 
 // Compact view: slim bars, one-line input, only the translation – the window takes the height it needs, and gets the
@@ -1060,7 +1065,7 @@ void KeyboardWindow::ActivateChatTranslation() {
                   Tone::Warn, 8000);
         return;
     }
-    PostMessageW(hwnd_, WM_CLOSE, 0, 0);
+    Quit();
 }
 
 // Settings → General: Unofficial Extras into <GW2>\addons, like the Nexus library installs add-ons (your click, your yes).
@@ -1204,7 +1209,7 @@ void KeyboardWindow::OnExtensionLoaded(std::wstring* raw, bool ok) {
     if (IsAutostartEnabled()) SetAutostart(true, *result);
     RemoveStartMenuShortcut();
     restartCommand_ = L"\"" + *result + L"\"";
-    PostMessageW(hwnd_, WM_CLOSE, 0, 0);
+    Quit();
 }
 
 void KeyboardWindow::SetUiLanguage(UiLang lang) {
@@ -2769,7 +2774,7 @@ void KeyboardWindow::ShowTrayMenu() {
     DestroyMenu(menu);
     if (cmd == kShow) ShowWindowNow();
     else if (cmd == kSettings) OpenSettings(SettingsPage::Writing);
-    else if (cmd == kQuit) PostMessageW(hwnd_, WM_CLOSE, 0, 0);
+    else if (cmd == kQuit) Quit();
 }
 
 // The same settings dialog as the full tool: every translator (MyMemory, Google, Microsoft, DeepL, own server, AI
@@ -2870,7 +2875,7 @@ void KeyboardWindow::OpenSettings(SettingsPage page) {
     if (r.action == DialogResult::Action::ShowTour) ShowTour();
     else if (r.action == DialogResult::Action::RestartInto) {  // installed: continue in the installed copy
         restartCommand_ = L"\"" + r.restartExe + L"\"";
-        PostMessageW(hwnd_, WM_CLOSE, 0, 0);
+        Quit();
     }
     else if (r.action == DialogResult::Action::LoadExtension) ActivateChatTranslation();
     else if (r.action == DialogResult::Action::LoadExtras) LoadExtras();
@@ -3211,10 +3216,27 @@ LRESULT KeyboardWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             cfg_.SaveWindowRect(hwnd_, theme_.scale);
             if (cfg_.dock) UpdateDockFromWindow();
             return 0;
-        case WM_CLOSE:
+        case WM_CLOSE:  // Alt+F4 and the like: to the tray like ×; only Quit() ends the program
+            if (!quitting_) {
+                HideWindowNow();
+                return 0;
+            }
             DestroyWindow(hwnd_);
             return 0;
+        case WM_ENDSESSION:  // Windows logs off / shuts down
+            if (wp) {
+                quitting_ = true;
+                DestroyWindow(hwnd_);
+            }
+            return 0;
         case WM_DESTROY:
+            // Saved first; if anything below should ever hang, the program still ends (it must never stay invisible).
+            spell_.SaveLearned();
+            cfg_.SaveWindowRect(hwnd_, theme_.scale);
+            std::thread([] {
+                Sleep(4000);
+                TerminateProcess(GetCurrentProcess(), 0);
+            }).detach();
             bridge_.Stop();
             if (liveWnd_) DestroyWindow(liveWnd_);
             CancelVoice();
