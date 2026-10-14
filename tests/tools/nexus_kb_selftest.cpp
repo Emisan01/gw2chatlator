@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -53,9 +54,76 @@ void Frame() {
     io.DisplaySize = ImVec2(1920, 1080);
     io.DeltaTime = 1.0f / 60.0f;
     ImGui::NewFrame();
-    for (GUI_RENDER r : g_renders)
-        if (r) r();
+    for (size_t i = 0; i < g_renders.size(); ++i) {
+        if (!g_renders[i]) continue;
+        if (i == 1) {  // the options callback: Nexus draws it inside its own window, far from ours
+            ImGui::SetNextWindowPos(ImVec2(1500, 900));
+            ImGui::Begin("Nexus options (stand-in)");
+            g_renders[i]();
+            ImGui::End();
+        } else {
+            g_renders[i]();
+        }
+    }
     ImGui::Render();
+}
+
+// GW2KB_SHOT=<file.bmp>: the window drawn into a picture (ImGui's triangles rasterized here, no GPU) – to look at it.
+void Rasterize(ImDrawData* dd, const unsigned char* tex, int tw, int th, std::vector<float>& img, int W, int H) {
+    for (int n = 0; n < dd->CmdListsCount; ++n) {
+        const ImDrawList* cl = dd->CmdLists[n];
+        for (const ImDrawCmd& cmd : cl->CmdBuffer) {
+            if (cmd.UserCallback) continue;
+            const int cx0 = std::max(0, (int)cmd.ClipRect.x), cy0 = std::max(0, (int)cmd.ClipRect.y);
+            const int cx1 = std::min(W, (int)cmd.ClipRect.z), cy1 = std::min(H, (int)cmd.ClipRect.w);
+            for (unsigned i = 0; i + 2 < cmd.ElemCount; i += 3) {
+                const ImDrawVert* v[3];
+                for (int k = 0; k < 3; ++k) v[k] = &cl->VtxBuffer[cmd.VtxOffset + cl->IdxBuffer[cmd.IdxOffset + i + k]];
+                const float x0 = std::min({v[0]->pos.x, v[1]->pos.x, v[2]->pos.x}), x1 = std::max({v[0]->pos.x, v[1]->pos.x, v[2]->pos.x});
+                const float y0 = std::min({v[0]->pos.y, v[1]->pos.y, v[2]->pos.y}), y1 = std::max({v[0]->pos.y, v[1]->pos.y, v[2]->pos.y});
+                const float area = (v[1]->pos.x - v[0]->pos.x) * (v[2]->pos.y - v[0]->pos.y) - (v[2]->pos.x - v[0]->pos.x) * (v[1]->pos.y - v[0]->pos.y);
+                if (std::fabs(area) < 1e-6f) continue;
+                for (int y = std::max(cy0, (int)y0); y < std::min(cy1, (int)y1 + 1); ++y)
+                    for (int x = std::max(cx0, (int)x0); x < std::min(cx1, (int)x1 + 1); ++x) {
+                        const float px = x + 0.5f, py = y + 0.5f;
+                        auto edge = [&](const ImDrawVert* a, const ImDrawVert* b) {
+                            return ((b->pos.x - a->pos.x) * (py - a->pos.y) - (b->pos.y - a->pos.y) * (px - a->pos.x)) / area;
+                        };
+                        const float w0 = edge(v[1], v[2]), w1 = edge(v[2], v[0]), w2 = edge(v[0], v[1]);
+                        if (w0 < 0 || w1 < 0 || w2 < 0) continue;
+                        float col[4] = {0, 0, 0, 0};
+                        for (int c = 0; c < 4; ++c)
+                            col[c] = (w0 * ((v[0]->col >> (8 * c)) & 0xFF) + w1 * ((v[1]->col >> (8 * c)) & 0xFF) +
+                                      w2 * ((v[2]->col >> (8 * c)) & 0xFF)) / 255.0f;
+                        const float u = w0 * v[0]->uv.x + w1 * v[1]->uv.x + w2 * v[2]->uv.x;
+                        const float vv = w0 * v[0]->uv.y + w1 * v[1]->uv.y + w2 * v[2]->uv.y;
+                        const int tx = std::clamp((int)(u * tw), 0, tw - 1), ty = std::clamp((int)(vv * th), 0, th - 1);
+                        const unsigned char* t = tex + 4 * (ty * tw + tx);
+                        const float a = col[3] * t[3] / 255.0f;
+                        float* d = &img[3 * (y * W + x)];
+                        for (int c = 0; c < 3; ++c) d[c] = d[c] * (1 - a) + col[c] * (t[c] / 255.0f) * a;
+                    }
+            }
+        }
+    }
+}
+
+void SaveBmp(const wchar_t* path, const std::vector<float>& img, int W, int H) {
+    const int row = (W * 3 + 3) & ~3;
+    std::vector<unsigned char> data(54 + row * H, 0);
+    auto put32 = [&](int at, uint32_t v) { for (int i = 0; i < 4; ++i) data[at + i] = (v >> (8 * i)) & 0xFF; };
+    data[0] = 'B'; data[1] = 'M';
+    put32(2, (uint32_t)data.size()); put32(10, 54); put32(14, 40); put32(18, W); put32(22, H);
+    data[26] = 1; data[28] = 24; put32(34, row * H);
+    for (int y = 0; y < H; ++y)
+        for (int x = 0; x < W; ++x)
+            for (int c = 0; c < 3; ++c)
+                data[54 + (H - 1 - y) * row + x * 3 + (2 - c)] = (unsigned char)std::clamp(img[3 * (y * W + x) + c] * 255.0f, 0.0f, 255.0f);
+    FILE* f = nullptr;
+    if (_wfopen_s(&f, path, L"wb") == 0 && f) {
+        fwrite(data.data(), 1, data.size(), f);
+        fclose(f);
+    }
 }
 
 }  // namespace
@@ -77,6 +145,9 @@ int wmain(int argc, wchar_t** argv) {
         dir = dir.substr(0, dir.find_last_of(L"\\/") + 1) + L"GW2Keyboard";
         CreateDirectoryW(dir.c_str(), nullptr);
         WritePrivateProfileStringW(L"Nexus", L"SetupDone", L"1", (dir + L"\\gw2-chat-translator.ini").c_str());
+        wchar_t alpha[16] = {};  // GW2KB_SHOT_ALPHA: the window's opacity for the picture (60-255)
+        WritePrivateProfileStringW(L"Window", L"Opacity", GetEnvironmentVariableW(L"GW2KB_SHOT_ALPHA", alpha, 16) ? alpha : L"255",
+                                   (dir + L"\\gw2-chat-translator.ini").c_str());
     }
     HMODULE dll = LoadLibraryW(argv[1]);
     auto getDef = dll ? reinterpret_cast<AddonDefinition_t* (*)()>(GetProcAddress(dll, "GetAddonDef")) : nullptr;
@@ -115,6 +186,46 @@ int wmain(int argc, wchar_t** argv) {
     for (int i = 0; i < 30 && ok; ++i) {
         Frame();
         Sleep(20);
+    }
+
+    // GW2KB_SHOT: chat lines of every channel (invented names), then the window as a picture – and nothing else.
+    auto hooks0 = reinterpret_cast<TestHooks* (*)()>(GetProcAddress(dll, "Gw2KbTestHooks"));
+    wchar_t shotPath[MAX_PATH] = {};
+    if (ok && hooks0 && GetEnvironmentVariableW(L"GW2KB_SHOT", shotPath, MAX_PATH)) {
+        hooks0()->forceMap = true;
+        const struct { bridge::ChatEventsType t; const char* who; const char* say; } lines[] = {
+            {bridge::ChatEventsType::Map, "Aria Example", "anyone up for the world boss in five?"},
+            {bridge::ChatEventsType::Map, "Bram Sample", "gz! that drop is [&AgGvWwEA] nice"},
+            {bridge::ChatEventsType::Party, "Cleo Test", "ready when you are"},
+            {bridge::ChatEventsType::Squad, "Dax Demo", "stack on tag please, then push left"},
+            {bridge::ChatEventsType::Guild, "Eli Mock", "guild missions at 8, see https://example.org/plan"},
+            {bridge::ChatEventsType::Whisper, "Finn Fake", "hey, still need help with the fractal?"},
+            {bridge::ChatEventsType::Local, "Gia Placeholder", "hello there"},
+        };
+        for (const auto& l : lines) {
+            bridge::ChatEventsMessage e{};
+            e.type = l.t;
+            e.generic.characterName = l.who;
+            e.generic.content = l.say;
+            g_chatEvents(&e);
+        }
+        for (int i = 0; i < 40; ++i) {
+            Frame();
+            Sleep(20);
+        }
+        const int W = 1920, H = 1080;
+        std::vector<float> img(3 * W * H);
+        for (int y = 0; y < H; ++y)  // a dim, slightly green game-like background
+            for (int x = 0; x < W; ++x) {
+                float* d = &img[3 * (y * W + x)];
+                const bool bright = GetEnvironmentVariableW(L"GW2KB_SHOT_BRIGHT", nullptr, 0) > 0;  // snow / sky
+                d[0] = bright ? 0.80f + 0.15f * x / W : 0.22f + 0.10f * x / W;
+                d[1] = bright ? 0.84f + 0.10f * y / H : 0.27f + 0.08f * y / H;
+                d[2] = bright ? 0.88f : 0.20f;
+            }
+        Rasterize(ImGui::GetDrawData(), pixels, w, h, img, W, H);
+        SaveBmp(shotPath, img, W, H);
+        std::printf("picture: %ls\n", shotPath);
     }
 
     // Typing: the window without a map, sending only recorded. A long line, Space after a word, Tab, Enter.

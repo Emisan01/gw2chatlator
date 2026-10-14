@@ -92,6 +92,14 @@ struct NexusOptions {
     bool voiceFallback = true;   // a model too slow twice in a row: the next smaller installed one is used
 };
 NexusOptions g_nx;
+// How chat text looks ([NexusWindow] Glow, Brightness, GameColors): GW2's colours (the name in the channel colour, the
+// message a light tint of it), a dark halo around the letters like the game's text outline, a brightness of your own.
+struct TextLook {
+    bool glow = true;
+    int brightness = 100;  // %
+    bool gameColors = true;
+};
+TextLook g_look;
 MyWords g_myWords;  // your own words and what they mean (<data>\my-words.txt), g_mu
 // Whisper tabs: each keeps whom you write to (at most kMaxWhisperTabs, for this session).
 constexpr size_t kMaxWhisperTabs = 5;
@@ -320,6 +328,9 @@ void LoadLayout() {  // g_mu held
     g_layout.footer = get(L"Footer", 1) != 0;
     g_layout.inputLines = std::clamp(get(L"InputLines", 4), 1, 8);
     g_layout.previewLines = std::clamp(get(L"PreviewLines", 3), 1, 8);
+    g_look.glow = get(L"Glow", 1) != 0;
+    g_look.brightness = std::clamp(get(L"Brightness", 100), 60, 160);
+    g_look.gameColors = get(L"GameColors", 1) != 0;
     auto nx = [](const wchar_t* key, int def) { return GetPrivateProfileIntW(L"Nexus", key, def, g_cfg.iniPath.c_str()) != 0; };
     g_nx.translateChat = nx(L"TranslateChat", 0);
     g_nx.snap = nx(L"Snap", 1);
@@ -340,6 +351,9 @@ void SaveLayout() {  // g_mu held
     g_cfg.SaveValue(L"NexusWindow", L"Footer", g_layout.footer ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"InputLines", std::to_wstring(g_layout.inputLines));
     g_cfg.SaveValue(L"NexusWindow", L"PreviewLines", std::to_wstring(g_layout.previewLines));
+    g_cfg.SaveValue(L"NexusWindow", L"Glow", g_look.glow ? L"1" : L"0");
+    g_cfg.SaveValue(L"NexusWindow", L"Brightness", std::to_wstring(g_look.brightness));
+    g_cfg.SaveValue(L"NexusWindow", L"GameColors", g_look.gameColors ? L"1" : L"0");
 }
 
 void SetStatus(const std::wstring& s, ULONGLONG ms = 6000) {  // g_mu held
@@ -1115,10 +1129,55 @@ void OnFocusKey(const char*, bool release) {
 
 // ---------------------------------------------------------------------------------------------------------------
 // Drawing (game thread, g_mu held).
-ImVec4 ColorOf(Channel ch) {
-    for (const ChannelColor& cc : g_cfg.palette)
-        if (cc.channel == ch) return ImVec4(cc.rgb.r / 255.f, cc.rgb.g / 255.f, cc.rgb.b / 255.f, 1.f);
-    return ImVec4(0.9f, 0.9f, 0.92f, 1.f);
+// GW2's chat colours as the game shows them: the strong one (names) and the light one (the message).
+struct ChannelLook {
+    Channel channel;
+    uint32_t strong, light;
+};
+constexpr ChannelLook kChannelLook[] = {
+    {Channel::Say, 0x7DDC69, 0xCDF0C3},     {Channel::Map, 0xEB8C7D, 0xFADBCE},   {Channel::Party, 0x6EAFFF, 0xC8E1FF},
+    {Channel::Squad, 0xA0E68C, 0xDFF5E2},   {Channel::Team, 0xFF554B, 0xFFBEB9},  {Channel::Whisper, 0xC88CFF, 0xE8D2FF},
+    {Channel::Guild, 0xF5C850, 0xF5E6B4},   {Channel::System, 0xF7F92E, 0xF7F978},
+};
+ImVec4 Rgb32(uint32_t rgb) { return ImVec4(((rgb >> 16) & 0xFF) / 255.f, ((rgb >> 8) & 0xFF) / 255.f, (rgb & 0xFF) / 255.f, 1.f); }
+ImVec4 Bright(ImVec4 c) {  // the brightness of your choice
+    const float b = g_look.brightness / 100.0f;
+    return ImVec4(std::min(1.0f, c.x * b), std::min(1.0f, c.y * b), std::min(1.0f, c.z * b), c.w);
+}
+const ChannelLook* LookOf(Channel ch) {
+    for (const ChannelLook& l : kChannelLook)
+        if (l.channel == ch) return &l;
+    return nullptr;
+}
+ImVec4 ColorOf(Channel ch) {  // the message
+    const ChannelLook* l = LookOf(ch);
+    if (!l) return Bright(ImVec4(0.9f, 0.9f, 0.92f, 1.f));
+    return Bright(Rgb32(g_look.gameColors ? l->light : l->strong));
+}
+ImVec4 NameColorOf(Channel ch) {  // the name in front of it
+    const ChannelLook* l = LookOf(ch);
+    if (!g_look.gameColors || !l) return Bright(ImVec4(0.95f, 0.95f, 0.97f, 1.f));
+    return Bright(Rgb32(l->strong));
+}
+
+// Text as GW2 draws it: a soft dark halo around the letters (when on), then the letters. `wrap`: lines wrap at the
+// right edge and stand under each other at the same x (like TextWrapped). It is an item: hover and click work.
+void LookText(const char* text, ImVec4 color, bool wrap) {
+    ImFont* font = ImGui::GetFont();
+    const float fs = ImGui::GetFontSize();
+    const float wrapW = wrap ? std::max(1.0f, ImGui::GetContentRegionAvail().x) : 0.0f;
+    const ImVec2 size = font->CalcTextSizeA(fs, FLT_MAX, wrapW, text);
+    const ImVec2 p = ImGui::GetCursorScreenPos();
+    ImGui::Dummy(ImVec2(size.x, std::max(size.y, ImGui::GetTextLineHeight())));
+    if (!ImGui::IsItemVisible()) return;
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    if (g_look.glow) {
+        const float d = std::max(1.0f, std::round(fs / 15.0f));
+        const ImU32 halo = IM_COL32(0, 0, 0, 160);
+        const ImVec2 offsets[] = {ImVec2(-d, -d), ImVec2(d, -d), ImVec2(-d, d), ImVec2(d, d)};
+        for (const ImVec2& o : offsets) dl->AddText(font, fs, ImVec2(p.x + o.x, p.y + o.y), halo, text, nullptr, wrapW);
+    }
+    dl->AddText(font, fs, p, ImGui::GetColorU32(color), text, nullptr, wrapW);
 }
 
 // The grey text after the caret: what Space writes (a completion shows its rest, a
@@ -1315,6 +1374,18 @@ void RenderFooter() {  // g_mu held
     // Channel.
     std::string label = g_channel == Channel::Unknown ? UI(Tr(L"Active channel")) : UI(ChannelLabel(g_channel));
     if (g_channel == Channel::Whisper && !g_whisperTo.empty()) label += " " + U8(g_whisperTo);
+    std::string write = UI(TrF(L"Write: {1}", {g_cfg.writeIn.empty() ? Tr(L"like Windows") : NativeName(g_cfg.writeIn)}));
+    const std::wstring sendText = SendOriginal() ? Tr(L"as written") : NativeName(SendLang());
+    std::string send = UI(TrF(L"Send: {1}", {sendText}));
+    {  // too narrow for the full chips: the short forms ("DE", "> EN"), the full text as tooltip
+        const float need = chipWidth(label) + chipWidth(write) + chipWidth(send) + ImGui::GetFrameHeight() * 4 +
+                           ImGui::CalcTextSize("000/199").x;
+        if (need > ImGui::GetContentRegionAvail().x) {
+            if (g_channel == Channel::Unknown) label = UI(Tr(L"Active"));
+            write = g_cfg.writeIn.empty() ? std::string("Win") : U8(ToUpperAscii(PrimaryLang(g_cfg.writeIn)));
+            send = "> " + (SendOriginal() ? UI(Tr(L"as written")) : U8(ToUpperAscii(PrimaryLang(SendLang()))));
+        }
+    }
     ImGui::SetNextItemWidth(chipWidth(label));
     if (ImGui::BeginCombo("##channel", label.c_str())) {
         for (Channel c : kChannels) {
@@ -1330,7 +1401,6 @@ void RenderFooter() {  // g_mu held
     }
     // The language you write in (spelling, learned words and the prediction follow it).
     ImGui::SameLine();
-    const std::string write = UI(TrF(L"Write: {1}", {g_cfg.writeIn.empty() ? Tr(L"like Windows") : NativeName(g_cfg.writeIn)}));
     ImGui::SetNextItemWidth(chipWidth(write));
     if (ImGui::BeginCombo("##write", write.c_str())) {
         std::wstring chosen = g_cfg.writeIn;
@@ -1351,8 +1421,6 @@ void RenderFooter() {  // g_mu held
     }
     // What the chat gets (orange); who translates is told by the status line.
     ImGui::SameLine();
-    const std::wstring sendText = SendOriginal() ? Tr(L"as written") : NativeName(SendLang());
-    const std::string send = UI(TrF(L"Send: {1}", {sendText}));
     ImGui::SetNextItemWidth(chipWidth(send));
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.94f, 0.75f, 0.35f, 1.f));
     const bool open = ImGui::BeginCombo("##send", send.c_str());
@@ -1833,7 +1901,7 @@ void SaveMyWords() {  // g_mu held
 // codes (the item's name in its colour: a click puts the code into your message). Wrapped lines start under the text
 // (a group), like TextWrapped after the name. True: something in it was clicked.
 bool g_openLinkAsk = false;
-bool RichLine(const std::wstring& text, const std::vector<Span>& links, const std::vector<Span>& codes) {  // g_mu held
+bool RichLine(const std::wstring& text, const std::vector<Span>& links, const std::vector<Span>& codes, ImVec4 color) {  // g_mu held
     bool clicked = false;
     const float right = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
     const float space = ImGui::CalcTextSize(" ").x;
@@ -1859,9 +1927,7 @@ bool RichLine(const std::wstring& text, const std::vector<Span>& links, const st
             if (marks[mi].second) {  // a web link
                 const std::string u = U8(piece);
                 place(u);
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.45f, 0.7f, 1.f, 1.f));
-                ImGui::TextUnformatted(u.c_str());
-                ImGui::PopStyleColor();
+                LookText(u.c_str(), Bright(ImVec4(0.45f, 0.7f, 1.f, 1.f)), false);
                 const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
                 ImGui::GetWindowDrawList()->AddLine(ImVec2(a.x, b.y - 1), ImVec2(b.x, b.y - 1), IM_COL32(115, 178, 255, 255));
                 if (ImGui::IsItemHovered()) {
@@ -1875,7 +1941,7 @@ bool RichLine(const std::wstring& text, const std::vector<Span>& links, const st
                 }
             } else {  // a chat code: the module draws it (and its details on mouse-over)
                 place(U8(g_links.Label(piece)));
-                if (g_links.Render(piece)) {  // into the input, like a shift-click in the game
+                if (g_links.Render(piece, [](const std::string& label, ImVec4 c) { LookText(label.c_str(), Bright(c), false); })) {  // into the input, like a shift-click in the game
                     const size_t len = std::strlen(g_input);
                     g_edit.active = true;
                     g_edit.startByte = len;
@@ -1895,7 +1961,7 @@ bool RichLine(const std::wstring& text, const std::vector<Span>& links, const st
         if (end > pos) {
             const std::string word = U8(text.substr(pos, end - pos));
             place(word);
-            ImGui::TextUnformatted(word.c_str());
+            LookText(word.c_str(), color, false);
         }
         pos = end;
         while (pos < stop && text[pos] == L' ') ++pos;
@@ -2204,21 +2270,24 @@ void RenderWindow() {
         for (const ChatLine& l : g_lines) {
             if (!tabName.empty() && (l.channel != Channel::Whisper || CaseFold(Trim(l.speaker)) != tabName)) continue;
             ImGui::PushID(static_cast<int>(l.id));
-            if (!l.speaker.empty()) {
+            if (!l.speaker.empty()) {  // the name in the channel colour – a click: whisper with that player in their tab
                 const std::string name = UI((l.outgoing ? L"> " : L"") + l.speaker + L":");
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-                if (ImGui::SmallButton(name.c_str()) && (!l.own || (l.outgoing && l.channel == Channel::Whisper)))
-                    OpenWhisperTab(l.speaker);  // a click on a name: whisper with that player in their own tab
-                ImGui::PopStyleColor();
-                ImGui::SameLine(0, 2);
+                LookText(name.c_str(), NameColorOf(l.channel), false);
+                const bool canWhisper = !l.own || (l.outgoing && l.channel == Channel::Whisper);
+                if (canWhisper && ImGui::IsItemHovered()) {
+                    ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                    const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
+                    ImGui::GetWindowDrawList()->AddLine(ImVec2(a.x, b.y - 1), ImVec2(b.x, b.y - 1),
+                                                        ImGui::GetColorU32(NameColorOf(l.channel)));
+                }
+                if (canWhisper && ImGui::IsItemClicked()) OpenWhisperTab(l.speaker);
+                ImGui::SameLine(0, ImGui::CalcTextSize(" ").x);
             }
             const std::wstring& shown = l.translated.empty() ? l.text : l.translated;
             const std::vector<Span> links = FindLinks(shown), codes = FindChatCodes(shown);
-            ImGui::PushStyleColor(ImGuiCol_Text, ColorOf(l.channel));
             bool clicked = false;
-            if (links.empty() && codes.empty()) ImGui::TextWrapped("%s", U8(shown).c_str());
-            else clicked = RichLine(shown, links, codes);
-            ImGui::PopStyleColor();
+            if (links.empty() && codes.empty()) LookText(U8(shown).c_str(), ColorOf(l.channel), true);
+            else clicked = RichLine(shown, links, codes, ColorOf(l.channel));
             if (!l.translated.empty() && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", U8(l.text).c_str());
             // A click on the text of a line someone else wrote: just this line into your language.
             if (!clicked && !l.own && l.translated.empty() && ImGui::IsItemClicked())
@@ -2267,7 +2336,9 @@ void RenderWindow() {
     // ---- the preview: what arrives in the GW2 chat, the back-translation small under it
     const bool previewCurrent = g_previewGen == g_inputGen && !g_preview.empty();
     if (showPreview) {
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
+        ImVec4 quiet = ImGui::GetStyleColorVec4(ImGuiCol_FrameBg);
+        quiet.w *= g_input[0] ? 0.6f : 0.25f;  // nearly invisible while there is nothing to show
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, quiet);
         ImGui::BeginChild("preview", ImVec2(0, line * (g_layout.previewLines + 0.2f)), false);
         if (g_recording) {
             ImGui::TextColored(kPreview, "%s", g_voiceLive.empty() ? "..." : U8(g_voiceLive).c_str());
@@ -2585,6 +2656,21 @@ void RenderOptionsContent() {
                 changed |= ImGui::SliderInt(UI(Tr(L"Lines of the input") + L"##inl").c_str(), &g_layout.inputLines, 1, 8);
                 ImGui::SetNextItemWidth(wide);
                 changed |= ImGui::SliderInt(UI(Tr(L"Lines of the preview") + L"##prl").c_str(), &g_layout.previewLines, 1, 8);
+                if (changed) SaveLayout();
+            }
+            ImGui::Separator();
+            ImGui::TextUnformatted(UI(Tr(L"Chat text")).c_str());
+            {
+                std::lock_guard<std::mutex> lock(g_mu);
+                bool changed = ImGui::Checkbox(UI(Tr(L"Glow like GW2's chat")).c_str(), &g_look.glow);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("%s", UI(Tr(L"A dark halo around the letters, like the game draws its chat – readable on any background.")).c_str());
+                ImGui::SameLine();
+                changed |= ImGui::Checkbox(UI(Tr(L"GW2 colours")).c_str(), &g_look.gameColors);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("%s", UI(Tr(L"The name in the channel colour, the message in a light tint of it – as in the game. Off: the message in the channel colour.")).c_str());
+                ImGui::SetNextItemWidth(wide);
+                changed |= ImGui::SliderInt(UI(Tr(L"Brightness") + L" (%)##bright").c_str(), &g_look.brightness, 60, 160);
                 if (changed) SaveLayout();
             }
             Hint(UI(Tr(L"Keys (show / hide: Ctrl+Alt+K, push to talk, focus the input): Nexus → Keybinds → GW2 Keyboard.")));
