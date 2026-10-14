@@ -129,7 +129,7 @@ UTF-8, one JSON object per line, `\n` at the end, at most 8192 bytes.
   - From the game: the options page of the add-on offers a "Start GW2 Keyboard" button. It only acts on a click and
     never starts anything by itself, and it needs the program to be installed. It could also offer to download the
     keyboard if it is missing.
-  - From the program: the menu offers "Get the Nexus bridge". It puts the add-on into <GW2>ddons, found by the
+  - From the program: the menu offers "Get the Nexus bridge". It puts the add-on into <GW2>\addons, found by the
     file scan, never through the game process. Unofficial Extras goes in the same way. A restart of the game may be
     needed when an add-on cannot be hot-loaded.
 
