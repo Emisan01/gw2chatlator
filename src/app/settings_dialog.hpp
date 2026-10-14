@@ -17,6 +17,7 @@ struct DialogResult {
         None, PickRegion, CoverChat, RunSetup, RestartInto, DetectChat, PickFreeArea, UseFreeArea,
         ShowTour,       // "What can this tool do?" (Technical page)
         LoadExtension,  // GW2 Keyboard: load / start the chat translation by OCR (General page)
+        LoadExtras,     // GW2 Keyboard: install Unofficial Extras for ArcDPS into <GW2>\addons (General page)
     };
     bool saved = false;          // cfg was changed and should be applied
     Action action = Action::None;
@@ -58,6 +59,8 @@ struct DialogContext {
     std::function<void()> saveF16;
     // GW2 Keyboard: the chat translation extension (GW2 Chat Translator) is there.
     std::function<bool()> extensionInstalled;
+    // GW2 Keyboard: Unofficial Extras in <GW2>\addons: 1 installed, 0 missing, -1 no GW2 add-ons folder found.
+    std::function<int()> extrasState;
     // GW2 Keyboard, Settings → Voice → "Test": records a few seconds with the settings in `cfg` (the dialog's current
     // choices) and posts one std::wstring* (owned by the receiver: text, latency, real-time factor) to (notify, message).
     std::function<void(const Config& cfg, HWND notify, UINT message)> voiceTest;

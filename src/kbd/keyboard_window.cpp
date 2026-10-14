@@ -13,6 +13,7 @@
 
 #include "app/modal_scope.hpp"
 #include "win/extension.hpp"
+#include "win/extras_install.hpp"
 #include "core/chat_line.hpp"
 #include "core/chat_stream.hpp"
 #include "core/gw2_text.hpp"
@@ -76,6 +77,7 @@ constexpr UINT WM_APP_MYMEMORY_NOTICE = WM_APP + 5;
 constexpr UINT WM_APP_EXTENSION = WM_APP + 6;  // wParam: ok, lParam: std::wstring* (exe or error, owned)
 constexpr UINT WM_APP_VOICE = WM_APP + 7;      // lParam: VoiceEvent* (owned)
 constexpr UINT WM_APP_BRIDGE = WM_APP + 8;     // BridgePipe: wParam kind, lParam BridgeMessage* (owned)
+constexpr UINT WM_APP_EXTRAS = WM_APP + 9;     // Unofficial Extras installed: lParam ExtrasInstallResult* (owned)
 constexpr size_t kIncomingLines = 3;            // party/squad lines shown above the preview
 constexpr ULONGLONG kIncomingKeepMs = 5 * 60 * 1000;  // older lines leave the band
 constexpr UINT_PTR kTimerDebounce = 1;
@@ -229,6 +231,7 @@ void PostText(HWND notify, UINT message, const std::wstring& text) {
 int KeyboardWindow::Run(HINSTANCE inst, const std::wstring& cmdLine) {
     inst_ = inst;
     cfg_.Load(DataDir());  // the same data as the full tool: settings, learned words, corrections
+    ModalScope::showOnScreenshots = cfg_.showOnScreenshots;
     SetUiLang(cfg_.uiLang);
     waitForGame_ = cmdLine.find(L"--wait-for-gw2") != std::wstring::npos;
     {
@@ -1057,6 +1060,57 @@ void KeyboardWindow::ActivateChatTranslation() {
         return;
     }
     PostMessageW(hwnd_, WM_CLOSE, 0, 0);
+}
+
+// Settings → General: Unofficial Extras into <GW2>\addons, like the Nexus library installs add-ons (your click, your yes).
+void KeyboardWindow::LoadExtras() {
+    if (extrasLoading_) return;
+    const std::wstring addons = Gw2AddonsDir();
+    if (addons.empty()) {
+        SetStatus(Tr(L"No Guild Wars 2 add-ons folder found (is Nexus installed?)"), Tone::Warn, 8000);
+        return;
+    }
+    {
+        const ModalScope modal;
+        if (MessageBoxW(hwnd_,
+                        TrF(L"Load Unofficial Extras?\n\nA free ArcDPS extension by Krappa322 that reports party and "
+                            L"squad chat as exact text. The newest release from its GitHub page, checksum checked, "
+                            L"into:\n{1}\n\nNexus loads it and hands it to ArcDPS; if GW2 is running, a restart of "
+                            L"the game may be needed. The GW2 Chat Bridge add-on passes the chat on to this program.",
+                            {addons})
+                            .c_str(),
+                        Tr(L"Load Unofficial Extras").c_str(),
+                        MB_YESNO | MB_ICONQUESTION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0)) != IDYES)
+            return;
+    }
+    extrasLoading_ = true;
+    SetStatus(Tr(L"Loading Unofficial Extras …"), Tone::Muted);
+    std::thread([hwnd = hwnd_, addons] {
+        auto* res = new ExtrasInstallResult(InstallUnofficialExtras(addons, {}));
+        if (!PostMessageW(hwnd, WM_APP_EXTRAS, 0, reinterpret_cast<LPARAM>(res))) delete res;
+    }).detach();
+}
+
+void KeyboardWindow::OnExtrasLoaded(ExtrasInstallResult* raw) {
+    std::unique_ptr<ExtrasInstallResult> r(raw);
+    extrasLoading_ = false;
+    switch (r->code) {
+        case ExtrasInstallCode::Ok:
+            SetStatus(Tr(L"Unofficial Extras installed – Nexus loads it (restart GW2 if party chat does not arrive)"),
+                      Tone::Ok, 10000);
+            break;
+        case ExtrasInstallCode::NoAnswer:
+            SetStatus(TrF(L"GitHub did not answer ({1}) – please try again later", {r->detail}), Tone::Warn, 10000);
+            break;
+        case ExtrasInstallCode::NotChecked:
+            SetStatus(Tr(L"The newest Unofficial Extras release has no checked file – please install it from its "
+                         L"GitHub page"),
+                      Tone::Warn, 10000);
+            break;
+        case ExtrasInstallCode::DownloadFailed:
+            SetStatus(TrF(L"Loading Unofficial Extras failed: {1}", {r->detail}), Tone::Warn, 10000);
+            break;
+    }
 }
 
 void KeyboardWindow::LoadExtension() {
@@ -2751,6 +2805,11 @@ void KeyboardWindow::OpenSettings(SettingsPage page) {
                                myWords_.Serialize()));
     };
     ctx.extensionInstalled = [] { return !FindChatTranslatorExe().empty(); };
+    ctx.extrasState = [] {
+        const std::wstring addons = Gw2AddonsDir();
+        if (addons.empty()) return -1;
+        return GetFileAttributesW((addons + kExtrasDllName).c_str()) != INVALID_FILE_ATTRIBUTES ? 1 : 0;
+    };
     const DialogResult r = ShowSettingsDialog(hwnd_, inst_, edited, ctx, page);
     if (r.saved) ApplySettings(edited);
     else RefreshVoiceReady();  // a model may have been downloaded or deleted meanwhile
@@ -2760,6 +2819,7 @@ void KeyboardWindow::OpenSettings(SettingsPage page) {
         PostMessageW(hwnd_, WM_CLOSE, 0, 0);
     }
     else if (r.action == DialogResult::Action::LoadExtension) ActivateChatTranslation();
+    else if (r.action == DialogResult::Action::LoadExtras) LoadExtras();
 }
 
 void KeyboardWindow::ApplySettings(const Config& next) {
@@ -2767,6 +2827,7 @@ void KeyboardWindow::ApplySettings(const Config& next) {
     Config c = next;
     c.x = prev.x, c.y = prev.y, c.w = prev.w, c.h = prev.h;
     cfg_ = c;
+    ModalScope::showOnScreenshots = cfg_.showOnScreenshots;
     spell_.SetLearnChoices(cfg_.learnWords);
     if (prev.uiLang != cfg_.uiLang) SetUiLanguage(cfg_.uiLang);
     if (prev.fontPercent != cfg_.fontPercent || prev.fontFace != cfg_.fontFace) ApplyDpi(theme_.dpi, nullptr);
@@ -2968,6 +3029,9 @@ LRESULT KeyboardWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             return 0;
         case WM_APP_EXTENSION:
             OnExtensionLoaded(reinterpret_cast<std::wstring*>(lp), wp != 0);
+            return 0;
+        case WM_APP_EXTRAS:
+            OnExtrasLoaded(reinterpret_cast<ExtrasInstallResult*>(lp));
             return 0;
         case WM_APP_MYMEMORY_NOTICE:
             ShowMyMemoryNotice();

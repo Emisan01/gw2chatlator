@@ -22,6 +22,7 @@
 
 #include "core/bridge_protocol.hpp"
 #include "extras_setup.hpp"
+#include "win/extras_install.hpp"
 #include "imgui/imgui.h"
 #include "nexus/Nexus.h"
 #include "unofficial_extras/Definitions.h"
@@ -40,6 +41,7 @@ AddonDefinition_t g_def = {};
 AddonAPI_t* g_api = nullptr;
 HMODULE g_self = nullptr;
 std::atomic<uint64_t> g_forwarded{0};  // lines written into the pipe (options page)
+std::atomic<bool> g_passParty{true}, g_passSquad{true};  // the options page switches
 
 std::mutex g_mutex;
 std::condition_variable g_wake;
@@ -73,9 +75,11 @@ void Enqueue(std::string line) {
 void OnChatMessage(void* args) {
     const auto* m = static_cast<const SquadMessageInfo*>(args);
     if (!m || !m->Text || m->TextLength == 0) return;
+    const bool squad = m->Type == ChannelType::Squad;
+    if (!(squad ? g_passSquad.load() : g_passParty.load())) return;  // switched off on the options page
     try {
         gct::BridgeMessage b;
-        b.channel = m->Type == ChannelType::Squad ? "squad" : "party";
+        b.channel = squad ? "squad" : "party";
         b.subgroup = m->Subgroup == UINT8_MAX ? -1 : m->Subgroup;
         b.broadcast = (m->IsBroadcast & 1) != 0;
         b.time = Str(m->Timestamp, m->TimestampLength);
@@ -164,6 +168,13 @@ void OptionsRender() {
     row("ArcDPS Integration (Nexus)", p.relay, p.relay ? "found" : "missing");
     row("GW2 Keyboard / Chat Translator", g_connected, g_connected ? "connected" : "not running");
     ImGui::Text("Lines passed on: %llu", static_cast<unsigned long long>(g_forwarded.load()));
+    bool party = g_passParty, squad = g_passSquad;
+    const bool changed = ImGui::Checkbox("Pass on party chat", &party) | ImGui::Checkbox("Pass on squad chat", &squad);
+    if (changed) {
+        g_passParty = party;
+        g_passSquad = squad;
+        bridge::SaveSettings(g_self, {party, squad});
+    }
 
     std::string msg;
     const bridge::InstallState st = bridge::GetInstallState(&msg);
@@ -179,8 +190,7 @@ void OptionsRender() {
                 bridge::StartExtrasInstall(g_self);
             ImGui::SameLine();
             if (ImGui::Button("Open its GitHub page"))
-                ShellExecuteW(nullptr, L"open", L"https://github.com/Krappa322/arcdps_unofficial_extras_releases",
-                              nullptr, nullptr, SW_SHOWNORMAL);
+                ShellExecuteW(nullptr, L"open", gct::kExtrasPage, nullptr, nullptr, SW_SHOWNORMAL);
         }
     }
     if (!msg.empty()) ImGui::TextWrapped("%s", msg.c_str());
@@ -192,6 +202,9 @@ void AddonLoad(AddonAPI_t* api) {
     ImGui::SetAllocatorFunctions(reinterpret_cast<void* (*)(size_t, void*)>(api->ImguiMalloc),
                                  reinterpret_cast<void (*)(void*, void*)>(api->ImguiFree));
     if (api->GUI_Register) api->GUI_Register(RT_OptionsRender, OptionsRender);
+    const bridge::Settings s = bridge::LoadSettings(g_self);
+    g_passParty = s.party;
+    g_passSquad = s.squad;
     g_stop = false;
     g_writer = std::thread(WriterLoop);
     if (g_api->Events_Subscribe) g_api->Events_Subscribe("EV_UNOFFICIAL_EXTRAS_CHAT_MESSAGE", OnChatMessage);
