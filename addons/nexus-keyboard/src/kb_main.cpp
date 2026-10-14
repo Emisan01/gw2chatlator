@@ -1,7 +1,7 @@
 // kb_main.cpp — "GW2 Keyboard" as a Nexus add-on (docs/NEXUS_KEYBOARD_PLAN.md), modelled on the exe (src/kbd).
 //
 // An ImGui window inside the game:
-//   - the chat from Vonsh's "Events: Chat" (every channel) or Unofficial Extras (party/squad), foreign lines translated
+//   - the chat from Vonsh's "Events: Chat" (every channel; installed on a click when missing), foreign lines translated
 //     into your language; a click on a name answers with a whisper;
 //   - the input line with the translation as you type, the word bar, the grey completion (Tab), autocorrection on
 //     Space (Backspace undoes it), learned words, the history (Up/Down);
@@ -14,6 +14,7 @@
 
 #include <windows.h>
 #include <objbase.h>
+#include <psapi.h>
 
 #include <algorithm>
 #include <atomic>
@@ -45,10 +46,10 @@
 #include "core/voice_learn.hpp"
 #include "imgui/imgui.h"
 #include "nexus/Nexus.h"
-#include "unofficial_extras/Definitions.h"
 #include "version.h"
 #include "win/deepl_translator.hpp"
 #include "win/els.hpp"
+#include "win/extras_install.hpp"
 #include "win/files.hpp"
 #include "win/gw2_sender.hpp"
 #include "win/mumble_link.hpp"
@@ -74,6 +75,7 @@ std::atomic<bool> g_chatEventsLive{false};
 std::atomic<bool> g_keyboardFree{true};  // ImGui does not hold the keyboard (keys reach the game)
 std::atomic<int> g_fps{0};
 bool g_show = true;
+bool g_showOptions = false;  // our own options window (menu ≡ / the button on the Nexus page)
 
 void Log(ELogLevel level, const char* text) {
     if (g_api && g_api->Log) g_api->Log(level, kName, text);
@@ -677,17 +679,6 @@ void OnChatEvents(void* args) {
     }
 }
 
-void OnExtrasChat(void* args) {
-    if (g_disabled || g_chatEventsLive) return;  // Events: Chat reports party/squad itself
-    try {
-        const auto* m = static_cast<const SquadMessageInfo*>(args);
-        if (!m || !m->Text) return;
-        AddLine(m->Type == ChannelType::Squad ? Channel::Squad : Channel::Party, false, m->CharacterName, m->Text);
-    } catch (...) {
-        g_disabled = true;
-    }
-}
-
 void OnToggle(const char*, bool release) {
     if (!release) g_show = !g_show;
 }
@@ -870,6 +861,118 @@ void RenderChannelPicker() {
     }
 }
 
+// ---- "Events: Chat": is it there, and installing it the way the Nexus library would.
+std::atomic<bool> g_chatEventsPresent{false};
+std::atomic<bool> g_chatEventsInstalling{false};
+std::thread g_chatEventsThread;
+
+std::wstring AddonsDir() {  // the folder our DLL lies in: <GW2>\addons\ .
+    wchar_t path[MAX_PATH] = {};
+    GetModuleFileNameW(g_self, path, MAX_PATH);
+    std::wstring p = path;
+    return p.substr(0, p.find_last_of(L"\\/") + 1);
+}
+
+// A Nexus add-on in this process that says it is "Events: Chat" (its definition is only read). Every 3 s at most.
+bool ChatEventsPresent() {
+    static ULONGLONG next = 0;
+    if (GetTickCount64() < next) return g_chatEventsPresent;
+    next = GetTickCount64() + 3000;
+    bool found = false;
+    HMODULE mods[1024];
+    DWORD needed = 0;
+    if (K32EnumProcessModules(GetCurrentProcess(), mods, sizeof(mods), &needed)) {
+        const DWORD n = std::min<DWORD>(needed / sizeof(HMODULE), 1024);
+        using GetDef = AddonDefinition_t* (*)();
+        for (DWORD i = 0; i < n && !found; ++i) {
+            if (mods[i] == g_self) continue;
+            if (auto get = reinterpret_cast<GetDef>(GetProcAddress(mods[i], "GetAddonDef"))) {
+                const AddonDefinition_t* def = get();
+                found = def && def->Signature == bridge::kChatEventsSignature;
+            }
+        }
+    }
+    g_chatEventsPresent = found;
+    return found;
+}
+
+void InstallChatEventsNow() {  // on your click: newest release, checksum checked, into the add-ons folder
+    if (g_chatEventsInstalling.exchange(true)) return;
+    if (g_chatEventsThread.joinable()) g_chatEventsThread.join();
+    g_chatEventsThread = std::thread([dir = AddonsDir()] {
+        const ExtrasInstallResult r = InstallChatEvents(dir, [] { return g_disabled.load(); });
+        g_chatEventsInstalling = false;
+        std::lock_guard<std::mutex> lock(g_mu);
+        SetStatus(r.code == ExtrasInstallCode::Ok ? Tr(L"Events: Chat installed – Nexus loads it (restart GW2 if no chat arrives)")
+                  : r.code == ExtrasInstallCode::NoAnswer ? TrF(L"GitHub did not answer ({1}) – please try again later", {r.detail})
+                                                          : TrF(L"Loading {1} failed: {2}", {L"Events: Chat", r.detail}),
+                  12000);
+    });
+}
+
+// ---- the header's icons, drawn like the exe's: microphone, menu (three lines), close
+enum class Icon { Mic, Menu, Close };
+bool IconButton(const char* id, Icon kind, bool active, bool* rightClick) {
+    const float s = ImGui::GetFrameHeight();
+    const ImVec2 p = ImGui::GetCursorScreenPos();
+    const bool pressed = ImGui::InvisibleButton(id, ImVec2(s, s));
+    const bool hovered = ImGui::IsItemHovered();
+    if (rightClick) *rightClick = hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right);
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    const ImU32 col = active ? IM_COL32(235, 85, 85, 255)
+                             : ImGui::GetColorU32(hovered ? ImGuiCol_Text : ImGuiCol_TextDisabled);
+    const ImVec2 c(p.x + s * 0.5f, p.y + s * 0.5f);
+    const float u = s / 18.0f;
+    switch (kind) {
+        case Icon::Mic:  // a capsule on a stand
+            dl->AddRectFilled(ImVec2(c.x - 2.5f * u, c.y - 6 * u), ImVec2(c.x + 2.5f * u, c.y + 1.5f * u), col, 2.5f * u);
+            dl->PathArcTo(ImVec2(c.x, c.y - 1 * u), 4.5f * u, 0.0f, 3.14159f, 10);
+            dl->PathStroke(col, false, 1.4f * u);
+            dl->AddLine(ImVec2(c.x, c.y + 3.5f * u), ImVec2(c.x, c.y + 6 * u), col, 1.4f * u);
+            dl->AddLine(ImVec2(c.x - 3 * u, c.y + 6 * u), ImVec2(c.x + 3 * u, c.y + 6 * u), col, 1.4f * u);
+            break;
+        case Icon::Menu:  // ≡
+            for (int i = -1; i <= 1; ++i)
+                dl->AddLine(ImVec2(c.x - 5.5f * u, c.y + i * 4 * u), ImVec2(c.x + 5.5f * u, c.y + i * 4 * u), col, 1.6f * u);
+            break;
+        case Icon::Close:  // ×
+            dl->AddLine(ImVec2(c.x - 4.5f * u, c.y - 4.5f * u), ImVec2(c.x + 4.5f * u, c.y + 4.5f * u), col, 1.6f * u);
+            dl->AddLine(ImVec2(c.x - 4.5f * u, c.y + 4.5f * u), ImVec2(c.x + 4.5f * u, c.y - 4.5f * u), col, 1.6f * u);
+            break;
+    }
+    return pressed;
+}
+
+// Cut to the width with "…" at the end.
+std::string Fit(const std::string& s, float width) {
+    if (ImGui::CalcTextSize(s.c_str()).x <= width) return s;
+    std::wstring w = W(s);
+    while (!w.empty() && ImGui::CalcTextSize((U8(w) + "…").c_str()).x > width) w.pop_back();
+    return U8(w) + "…";
+}
+
+// The status line at the top left (like the exe): a message, else what is going on.
+std::wstring StatusText() {  // g_mu held
+    if (!g_status.empty()) return g_status;
+    if (g_recording) return Tr(L"Hearing you … release the key when you are done");
+    if (!g_chatEventsLive && !g_chatEventsPresent) return Tr(L"Every channel needs Events: Chat – ≡ → Options installs it");
+    std::wstring route = SendOriginal() ? Tr(L"as written") : ToUpperAscii(PrimaryLang(SendLang()));
+    if (Translating() && g_translator) route += L" · " + g_translator->Name();
+    return TrF(L"Send: {1}", {route});
+}
+
+bool g_micLocked = false;  // right-click on the microphone: on until the next right-click
+bool g_compact = false;    // menu ≡: only the newest lines of the chat
+
+void RenderOptionsContent();
+
+void RenderOptionsWindow() {
+    if (!g_showOptions) return;
+    ImGui::SetNextWindowSize(ImVec2(520, 640), ImGuiCond_FirstUseEver);
+    if (ImGui::Begin((U8(Tr(L"GW2 Keyboard – Options")) + "###kbopts").c_str(), &g_showOptions)) RenderOptionsContent();
+    ImGui::End();
+}
+
 void RenderWindow() {
     if (!ImGui::GetCurrentContext()) return;  // failsafe: no context, no drawing
     ImGuiIO& io = ImGui::GetIO();
@@ -886,21 +989,76 @@ void RenderWindow() {
             if (ms.live) g_ownName = ms.identity.name;
         }
     }
+    ChatEventsPresent();
+    RenderOptionsWindow();
     if (!g_show) return;
     ImGui::SetNextWindowSize(ImVec2(500, 320), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("GW2 Keyboard", &g_show)) {
+    if (!ImGui::Begin("GW2 Keyboard###kbmain", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse)) {
         ImGui::End();
         return;
     }
-    std::lock_guard<std::mutex> lock(g_mu);
+    std::unique_lock<std::mutex> lock(g_mu);
     if (g_statusUntil && GetTickCount64() > g_statusUntil) {
         g_status.clear();
         g_statusUntil = 0;
     }
+    // ---- header: status at the left; microphone, menu, close at the right
+    const float icon = ImGui::GetFrameHeight();
+    const float spacing = ImGui::GetStyle().ItemSpacing.x;
+    const int icons = g_cfg.voiceEnabled ? 3 : 2;
+    const float statusW = ImGui::GetContentRegionAvail().x - icons * (icon + spacing);
+    const std::wstring status = StatusText();
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextColored(g_status.empty() ? ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled) : ImVec4(0.95f, 0.8f, 0.45f, 1.f),
+                       "%s", Fit(U8(status), statusW).c_str());
+    if (ImGui::IsItemHovered() && Fit(U8(status), statusW) != U8(status)) ImGui::SetTooltip("%s", U8(status).c_str());
+    ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - icons * (icon + spacing) + spacing);
+    if (g_cfg.voiceEnabled) {
+        // Hold with the left button to speak; a right-click switches it on until the next right-click.
+        bool right = false;
+        IconButton("##mic", Icon::Mic, g_recording, &right);
+        static bool held = false;
+        if (ImGui::IsItemActivated()) {
+            held = true;
+            lock.unlock();
+            TalkDown();
+            lock.lock();
+        } else if (held && !ImGui::IsItemActive()) {
+            held = false;
+            if (!g_micLocked) TalkUp();
+        }
+        if (right) {
+            g_micLocked = !g_micLocked;
+            lock.unlock();
+            if (g_micLocked) TalkDown();
+            else TalkUp();
+            lock.lock();
+        }
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", U8(Tr(L"Hold to speak (or the push-to-talk key in Nexus) · right-click: on / off")).c_str());
+        ImGui::SameLine();
+    }
+    if (IconButton("##menu", Icon::Menu, false, nullptr)) ImGui::OpenPopup("kbmenu");
+    if (ImGui::BeginPopup("kbmenu")) {
+        if (ImGui::MenuItem(U8(Tr(L"Options …")).c_str())) g_showOptions = true;
+        ImGui::MenuItem(U8(Tr(L"Compact view")).c_str(), nullptr, &g_compact);
+        if (!g_chatEventsPresent && ImGui::MenuItem(U8(Tr(L"Install Events: Chat (every channel) …")).c_str()))
+            g_showOptions = true;
+        ImGui::Separator();
+        if (ImGui::MenuItem(U8(Tr(L"Hide (Ctrl+Alt+K shows it again)")).c_str())) g_show = false;
+        ImGui::EndPopup();
+    }
+    ImGui::SameLine();
+    if (IconButton("##close", Icon::Close, false, nullptr)) g_show = false;
+    if (!g_recording && g_micLocked) g_micLocked = false;  // the recording ended (pause, maximum length)
+
     // ---- the chat: name white (a click answers with a whisper), text in the channel colour, translated if foreign
-    const float bottomH = ImGui::GetFrameHeightWithSpacing() * 3 + ImGui::GetTextLineHeightWithSpacing() * 2;
-    ImGui::BeginChild("chat", ImVec2(0, -bottomH), false);
-    for (const ChatLine& l : g_lines) {
+    const float line = ImGui::GetTextLineHeightWithSpacing();
+    const float bottomH = ImGui::GetFrameHeightWithSpacing() * 3 + line * 2;
+    ImGui::BeginChild("chat", ImVec2(0, g_compact ? line * 3 + 4 : -bottomH), false);
+    const size_t first = g_compact && g_lines.size() > 3 ? g_lines.size() - 3 : 0;
+    for (size_t i = first; i < g_lines.size(); ++i) {
+        const ChatLine& l = g_lines[i];
         ImGui::PushID(static_cast<int>(l.id));
         if (!l.speaker.empty()) {
             const std::string name = U8((l.outgoing ? L"→ " : L"") + l.speaker + L":");
@@ -923,14 +1081,14 @@ void RenderWindow() {
         g_scrollDown = false;
     }
     ImGui::EndChild();
-    // ---- the translation of what you type (while you speak: the live text)
+    // ---- the preview: the translation of what you type (while you speak: the live text)
     const bool previewCurrent = g_previewGen == g_inputGen && !g_preview.empty();
     if (g_recording)
         ImGui::TextColored(ImVec4(0.55f, 0.85f, 1.f, 1.f), "%s", g_voiceLive.empty() ? "…" : U8(g_voiceLive).c_str());
-    else if (Translating())
-        ImGui::TextDisabled("%s", previewCurrent ? U8(ComposePrefix() + g_preview).c_str() : " ");
+    else if (Translating() && previewCurrent)
+        ImGui::TextColored(ImVec4(0.59f, 0.80f, 1.f, 1.f), "%s", U8(ComposePrefix() + g_preview).c_str());
     else
-        ImGui::TextDisabled("%s", " ");
+        ImGui::TextUnformatted(" ");
     // ---- the word bar
     if (g_cfg.suggestions && g_help.text == W(g_input) && !g_help.bar.words.empty()) {
         for (size_t i = 0; i < g_help.bar.words.size(); ++i) {
@@ -941,50 +1099,36 @@ void RenderWindow() {
     } else {
         ImGui::TextUnformatted(" ");
     }
-    // ---- microphone (hold), channel, send language, input
-    if (g_cfg.voiceEnabled) {
-        ImGui::PushStyleColor(ImGuiCol_Button, g_recording ? ImVec4(0.75f, 0.2f, 0.2f, 1.f)
-                                                           : ImGui::GetStyleColorVec4(ImGuiCol_Button));
-        ImGui::Button("Mic");
-        ImGui::PopStyleColor();
-        static bool micHeld = false;
-        if (ImGui::IsItemActivated()) {
-            micHeld = true;
-            g_mu.unlock();
-            TalkDown();
-            g_mu.lock();
-        } else if (micHeld && !ImGui::IsItemActive()) {
-            micHeld = false;
-            TalkUp();
-        }
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", U8(Tr(L"Hold to speak (or the push-to-talk key in Nexus)")).c_str());
-        ImGui::SameLine();
-        if (ImGui::Checkbox("##autosend", &g_cfg.voiceAutoSend)) g_cfg.SaveBool(L"Voice", L"AutoSend", g_cfg.voiceAutoSend);
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("%s", U8(Tr(L"Send right after speaking (releasing the key counts as your Enter)")).c_str());
-        ImGui::SameLine();
-    }
-    RenderChannelPicker();
-    ImGui::SameLine();
+    // ---- the input line
     if (g_focusInput && !g_sending) {
         ImGui::SetKeyboardFocusHere();
         g_focusInput = false;
     }
-    ImGui::SetNextItemWidth(-60);
+    ImGui::SetNextItemWidth(-1);
     const ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackCompletion |
                                       ImGuiInputTextFlags_CallbackHistory | ImGuiInputTextFlags_CallbackAlways;
     const bool enter = ImGui::InputText("##input", g_input, sizeof(g_input), flags, InputCallback);
     const ImVec2 inputMin = ImGui::GetItemRectMin();
-    // The grey rest of the completion right after the text.
-    if (const std::wstring rest = GhostRest(); !rest.empty() && ImGui::IsItemActive()) {
+    if (const std::wstring rest = GhostRest(); !rest.empty() && ImGui::IsItemActive()) {  // the grey completion
         const ImVec2 typed = ImGui::CalcTextSize(g_input);
         const ImGuiStyle& st = ImGui::GetStyle();
         ImGui::GetWindowDrawList()->AddText(ImVec2(inputMin.x + st.FramePadding.x + typed.x, inputMin.y + st.FramePadding.y),
                                             ImGui::GetColorU32(ImGuiCol_TextDisabled), U8(rest).c_str());
     }
+    // ---- the footer: channel | send language | send after speaking | counter
+    RenderChannelPicker();
+    if (g_cfg.voiceEnabled) {
+        ImGui::SameLine();
+        if (ImGui::Checkbox(U8(Tr(L"auto") + L"##autosend").c_str(), &g_cfg.voiceAutoSend))
+            g_cfg.SaveBool(L"Voice", L"AutoSend", g_cfg.voiceAutoSend);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", U8(Tr(L"Send right after speaking (releasing the key counts as your Enter)")).c_str());
+    }
     ImGui::SameLine();
     const size_t n = CodePointCount(W(g_input));
-    ImGui::TextDisabled("%zu/%d", n, g_cfg.maxLength);
+    const std::string counter = std::to_string(n) + "/" + std::to_string(g_cfg.maxLength);
+    ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - ImGui::CalcTextSize(counter.c_str()).x);
+    ImGui::TextDisabled("%s", counter.c_str());
     // Changes of the text: a pause translates it; the typing help follows every key.
     const std::string now = g_input;
     if (now != g_lastInput) {
@@ -1005,9 +1149,7 @@ void RenderWindow() {
         g_autoSendPending = false;
         StartSend();
     }
-    // ---- status
-    ImGui::TextDisabled("%s", g_status.empty() ? (g_chatEventsLive ? "" : U8(Tr(L"Waiting for chat lines (Events: Chat or Unofficial Extras)")).c_str())
-                                               : U8(g_status).c_str());
+    lock.unlock();
     ImGui::End();
 }
 
@@ -1067,8 +1209,7 @@ bool LanguageCombo(const char* id, std::wstring& value, const std::wstring& empt
 }
 
 // Nexus → Addons → GW2 Keyboard: the essentials of the exe's settings. Changes apply on "Save".
-void RenderOptions() {
-    if (!ImGui::GetCurrentContext()) return;
+void RenderOptionsContent() {
     static Config edit;
     static bool loaded = false;
     static char keyBuf[256] = {}, regionBuf[64] = {}, urlBuf[256] = {}, mailBuf[128] = {};
@@ -1084,11 +1225,22 @@ void RenderOptions() {
         strncpy_s(mailBuf, U8(edit.basicEmail).c_str(), _TRUNCATE);
     }
     ImGui::TextWrapped("%s", U8(TrF(L"GW2 Keyboard for Nexus {1} – the chat in your language, what you write in the chat's "
-                                    L"language. The chat comes from Events: Chat (every channel) or Unofficial Extras "
-                                    L"(party and squad). Nothing is sent without your Enter; nothing of other players is "
-                                    L"stored.",
+                                    L"language. The chat comes from Events: Chat (every channel). Nothing is sent without "
+                                    L"your Enter; nothing of other players is stored.",
                                     {GCT_VERSION_WSTR})).c_str());
     ImGui::Checkbox(U8(Tr(L"Show the window")).c_str(), &g_show);
+    ImGui::Separator();
+
+    // ---- where the chat comes from
+    ImGui::TextUnformatted(U8(Tr(L"The chat")).c_str());
+    if (g_chatEventsPresent || g_chatEventsLive) {
+        ImGui::TextColored(ImVec4(0.45f, 0.85f, 0.45f, 1.f), "%s", U8(Tr(L"Events: Chat is loaded – every channel arrives exactly.")).c_str());
+    } else {
+        ImGui::TextWrapped("%s", U8(Tr(L"The chat (map, whispers, guild, party, squad) comes from Events: Chat by Vonsh, an "
+                                       L"add-on in the Nexus library. Without it no chat arrives here.")).c_str());
+        if (g_chatEventsInstalling) ImGui::TextDisabled("%s", U8(Tr(L"Loading Events: Chat …")).c_str());
+        else if (ImGui::Button(U8(Tr(L"Install Events: Chat")).c_str())) InstallChatEventsNow();
+    }
     ImGui::Separator();
 
     // ---- languages
@@ -1225,8 +1377,13 @@ void RenderOptions() {
     }
     ImGui::SameLine();
     if (ImGui::Button(U8(Tr(L"Undo changes")).c_str())) loaded = false;
-    ImGui::TextDisabled("%s", U8(g_chatEventsLive ? Tr(L"Events: Chat delivers.")
-                                                  : Tr(L"Waiting for chat lines (Events: Chat or Unofficial Extras)")).c_str());
+}
+
+// Nexus → Addons → GW2 Keyboard: only the button that opens / closes our own options window.
+void RenderNexusOptions() {
+    if (!ImGui::GetCurrentContext()) return;
+    if (ImGui::Button(U8(g_showOptions ? Tr(L"Close the GW2 Keyboard options") : Tr(L"Open the GW2 Keyboard options")).c_str()))
+        g_showOptions = !g_showOptions;
 }
 
 // Every callback runs behind these two: a C++ exception or an access violation ends our add-on, never the game.
@@ -1248,7 +1405,7 @@ void SafeRender() {
 }
 void SafeOptions() {
     __try {
-        GuardedRender(RenderOptions);
+        GuardedRender(RenderNexusOptions);
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         g_disabled = true;
     }
@@ -1301,7 +1458,6 @@ void AddonLoad(AddonAPI_t* api) {
     }
     if (api->Events_Subscribe) {
         api->Events_Subscribe(bridge::kChatEventsEvent, OnChatEvents);
-        api->Events_Subscribe("EV_UNOFFICIAL_EXTRAS_CHAT_MESSAGE", OnExtrasChat);
     }
     Log(LOGL_INFO, "loaded");
 }
@@ -1310,7 +1466,6 @@ void AddonUnload() {
     if (g_api) {
         if (g_api->Events_Unsubscribe) {
             g_api->Events_Unsubscribe(bridge::kChatEventsEvent, OnChatEvents);
-            g_api->Events_Unsubscribe("EV_UNOFFICIAL_EXTRAS_CHAT_MESSAGE", OnExtrasChat);
         }
         if (g_api->InputBinds_Deregister) {
             g_api->InputBinds_Deregister(kToggleBind);
@@ -1324,6 +1479,7 @@ void AddonUnload() {
     }
     g_downloadCancel = true;
     if (g_download.joinable()) g_download.join();
+    if (g_chatEventsThread.joinable()) g_chatEventsThread.join();
     g_voice.Stop();  // the helper ends (it would also end by itself when its input closes)
     g_worker.Stop(FreeWorkerState);  // saved and freed on the worker (it owns them), before the DLL goes
     std::lock_guard<std::mutex> lock(g_mu);
@@ -1349,7 +1505,7 @@ extern "C" __declspec(dllexport) AddonDefinition_t* GetAddonDef() {
     g_def.Version.Revision = 0;
     g_def.Author = "Emisan01";
     g_def.Description = "Typing help for the GW2 chat: the chat in your language, what you write translated and sent "
-                        "on your Enter. Needs \"Events: Chat\" (or Unofficial Extras) for the chat.";
+                        "on your Enter. The chat comes from \"Events: Chat\" (Nexus library).";
     g_def.Load = AddonLoad;
     g_def.Unload = AddonUnload;
     g_def.Flags = AF_None;
