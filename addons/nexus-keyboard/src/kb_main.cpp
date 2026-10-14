@@ -68,7 +68,13 @@ constexpr const char* kFocusBind = "KB_GW2KEYBOARD_FOCUS";
 constexpr const char* kTalkBind = "KB_GW2KEYBOARD_TALK";  // push to talk: held while you speak
 constexpr size_t kMaxLines = 200;
 constexpr size_t kHistoryMax = 50;
-constexpr int kInputLines = 4;  // the input box: four lines, wrapping like the exe's
+// The window is built from parts you can switch on / off and size (Options → General → Window layout).
+struct Layout {
+    bool chat = true, preview = true, words = true, footer = true;
+    int inputLines = 4;    // the input box, wrapping
+    int previewLines = 3;  // the translation and its back-translation
+};
+Layout g_layout;
 
 AddonDefinition_t g_def = {};
 AddonAPI_t* g_api = nullptr;
@@ -256,6 +262,24 @@ bool g_listenUserOff = false;      // you switched voice activation off with the
 std::atomic<unsigned> g_pttVk{0}, g_pttMods{0};
 std::atomic<bool> g_captureKey{false};
 std::wstring g_capturedKey;        // the captured key, picked up by the options (g_mu)
+
+void LoadLayout() {  // g_mu held
+    auto get = [](const wchar_t* key, int def) { return static_cast<int>(GetPrivateProfileIntW(L"NexusWindow", key, def, g_cfg.iniPath.c_str())); };
+    g_layout.chat = get(L"Chat", 1) != 0;
+    g_layout.preview = get(L"Preview", 1) != 0;
+    g_layout.words = get(L"WordBar", 1) != 0;
+    g_layout.footer = get(L"Footer", 1) != 0;
+    g_layout.inputLines = std::clamp(get(L"InputLines", 4), 1, 8);
+    g_layout.previewLines = std::clamp(get(L"PreviewLines", 3), 1, 8);
+}
+void SaveLayout() {  // g_mu held
+    g_cfg.SaveValue(L"NexusWindow", L"Chat", g_layout.chat ? L"1" : L"0");
+    g_cfg.SaveValue(L"NexusWindow", L"Preview", g_layout.preview ? L"1" : L"0");
+    g_cfg.SaveValue(L"NexusWindow", L"WordBar", g_layout.words ? L"1" : L"0");
+    g_cfg.SaveValue(L"NexusWindow", L"Footer", g_layout.footer ? L"1" : L"0");
+    g_cfg.SaveValue(L"NexusWindow", L"InputLines", std::to_wstring(g_layout.inputLines));
+    g_cfg.SaveValue(L"NexusWindow", L"PreviewLines", std::to_wstring(g_layout.previewLines));
+}
 
 void SetStatus(const std::wstring& s, ULONGLONG ms = 6000) {  // g_mu held
     g_status = s;
@@ -1458,8 +1482,11 @@ void RenderWindow() {
 
     // ---- the chat (the newest at the bottom): name white – a click answers with a whisper –, text in the channel colour
     const float line = ImGui::GetTextLineHeightWithSpacing();
-    const float lowerH = line * 3.2f + ImGui::GetFrameHeightWithSpacing() * 2 + ImGui::GetTextLineHeight() * kInputLines +
-                         ImGui::GetStyle().FramePadding.y * 2 + 16;
+    const float lowerH = (g_layout.preview ? line * (g_layout.previewLines + 0.2f) + ImGui::GetStyle().ItemSpacing.y : 0) +
+                         (g_layout.words ? ImGui::GetFrameHeightWithSpacing() : 0) +
+                         (g_layout.footer ? ImGui::GetFrameHeightWithSpacing() : 0) +
+                         ImGui::GetTextLineHeight() * g_layout.inputLines + ImGui::GetStyle().FramePadding.y * 2 + 12;
+    if (g_layout.chat) {
     ImGui::BeginChild("chat", ImVec2(0, g_compact ? line * 3 + 4 : -lowerH), false);
     if (g_lines.empty()) {  // where the chat comes from – loaded, installed but not loaded, or missing
         const bool live = g_chatEventsLive || g_chatEventsPresent;
@@ -1501,10 +1528,12 @@ void RenderWindow() {
         g_scrollDown = false;
     }
     ImGui::EndChild();
+    }
 
     // ---- the preview (like the exe): what arrives in the GW2 chat, the back-translation small under it
+    if (g_layout.preview) {
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
-    ImGui::BeginChild("preview", ImVec2(0, line * 3.2f), false);
+    ImGui::BeginChild("preview", ImVec2(0, line * (g_layout.previewLines + 0.2f)), false);
     const bool previewCurrent = g_previewGen == g_inputGen && !g_preview.empty();
     if (g_recording) {
         ImGui::TextColored(kPreview, "%s", g_voiceLive.empty() ? "..." : U8(g_voiceLive).c_str());
@@ -1528,9 +1557,10 @@ void RenderWindow() {
     }
     ImGui::EndChild();
     ImGui::PopStyleColor();
+    }
 
     // ---- the word bar (like the exe): three cells across the line, what Tab takes in orange
-    {
+    if (g_layout.words) {
         const float w = ImGui::GetContentRegionAvail().x;
         const ImVec2 p = ImGui::GetCursorScreenPos();
         const float h = ImGui::GetFrameHeight();
@@ -1561,7 +1591,7 @@ void RenderWindow() {
         g_focusInput = false;
     }
     const ImGuiStyle& st = ImGui::GetStyle();
-    const ImVec2 boxSize(-1, ImGui::GetTextLineHeight() * kInputLines + st.FramePadding.y * 2);
+    const ImVec2 boxSize(-1, ImGui::GetTextLineHeight() * g_layout.inputLines + st.FramePadding.y * 2);
     g_wrapWidth = ImGui::GetContentRegionAvail().x - st.FramePadding.x * 2 - st.ScrollbarSize - 4;
     const ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CtrlEnterForNewLine |
                                       ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_CallbackCharFilter |
@@ -1575,7 +1605,7 @@ void RenderWindow() {
         const ImVec2 typed = ImGui::CalcTextSize(lastLine ? lastLine + 1 : g_input);
         const ImVec2 at(inputMin.x + st.FramePadding.x + typed.x,
                         inputMin.y + st.FramePadding.y + lineNo * ImGui::GetTextLineHeight());
-        if (lineNo < kInputLines) {
+        if (lineNo < g_layout.inputLines) {
             const ImVec4 clip(inputMin.x, inputMin.y, inputMax.x, inputMax.y);
             const std::string ghost = UI(rest);
             ImGui::GetForegroundDrawList()->AddText(ImGui::GetFont(), ImGui::GetFontSize(), at,
@@ -1585,7 +1615,7 @@ void RenderWindow() {
     }
 
     // ---- the footer (like the exe): channel | write | send · translator | auto | counter
-    RenderFooter();
+    if (g_layout.footer) RenderFooter();
     // Changes of the text: a pause translates it; the typing help follows every key.
     const std::string now = Flat(g_input);
     if (now != g_lastInput) {
@@ -1714,6 +1744,23 @@ void RenderOptionsContent() {
             if (ImGui::SliderInt(UI(Tr(L"Transparency") + L" (%)##alpha").c_str(), &transparency, 0, 75))
                 edit.opacity = (100 - transparency) * 255 / 100;
             ImGui::Checkbox(UI(Tr(L"Show the window")).c_str(), &g_show);
+            ImGui::Separator();
+            ImGui::TextUnformatted(UI(Tr(L"Window layout")).c_str());
+            {
+                std::lock_guard<std::mutex> lock(g_mu);
+                bool changed = ImGui::Checkbox(UI(Tr(L"Chat")).c_str(), &g_layout.chat);
+                ImGui::SameLine();
+                changed |= ImGui::Checkbox(UI(Tr(L"Translation preview")).c_str(), &g_layout.preview);
+                ImGui::SameLine();
+                changed |= ImGui::Checkbox(UI(Tr(L"Word bar")).c_str(), &g_layout.words);
+                ImGui::SameLine();
+                changed |= ImGui::Checkbox(UI(Tr(L"Footer")).c_str(), &g_layout.footer);
+                ImGui::SetNextItemWidth(wide);
+                changed |= ImGui::SliderInt(UI(Tr(L"Lines of the input") + L"##inl").c_str(), &g_layout.inputLines, 1, 8);
+                ImGui::SetNextItemWidth(wide);
+                changed |= ImGui::SliderInt(UI(Tr(L"Lines of the preview") + L"##prl").c_str(), &g_layout.previewLines, 1, 8);
+                if (changed) SaveLayout();
+            }
             Hint(UI(Tr(L"Keys (show / hide: Ctrl+Alt+K, push to talk, focus the input): Nexus → Keybinds → GW2 Keyboard.")));
             ImGui::Separator();
             ImGui::TextUnformatted(UI(Tr(L"The chat")).c_str());
@@ -2032,6 +2079,7 @@ void AddonLoad(AddonAPI_t* api) {
         SetUiLang(g_cfg.uiLang);
         g_translator = MakeTranslator(g_cfg);
         g_sendIdx = g_cfg.translateWriting ? 0 : static_cast<int>(g_cfg.writeLangs.size());
+        LoadLayout();
     }
     g_worker.Start();
     g_worker.Post(InitSpelling);
