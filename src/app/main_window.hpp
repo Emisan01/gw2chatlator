@@ -36,6 +36,7 @@
 #include "core/names.hpp"
 #include "core/glossary.hpp"
 #include "core/translator.hpp"
+#include "win/bridge_pipe.hpp"
 #include "win/mumble_link.hpp"
 #include "win/online_translators.hpp"
 
@@ -202,6 +203,10 @@ private:
 
     // ---- incoming
     void OnSnapshot(ReaderSnapshot* snap);
+    // Party/squad lines from the optional Nexus add-on (exact text from Unofficial Extras, docs/NEXUS_PLAN.md).
+    void OnBridge(WPARAM kind, BridgeMessage* msg);
+    // The bridge delivers party/squad: OCR lines of these channels are dropped so nothing comes twice.
+    bool BridgeCarriesParty() const { return bridgeConnected_ && bridgeLines_ > 0; }
     void HandleIncoming(const ChatMessage& m);
     // Is this chat line yours? A line sent through this window coming back
     // fills in what only the game knows (the channel it went to, the
@@ -328,6 +333,10 @@ private:
 
     // incoming state
     ChatReader reader_;
+    BridgePipe bridge_;
+    bool bridgeConnected_ = false;
+    std::wstring bridgeVersion_;
+    uint64_t bridgeLines_ = 0;  // party/squad lines received in this connection
     ChatStream stream_;
     NameList speakers_;  // speakers seen in the chat: their names are never translated
     bool streamPrimed_ = false;  // the first picture was fed (old history skipped)
@@ -362,6 +371,7 @@ private:
         ULONGLONG since = 0;
         uint64_t pictures = 0, messages = 0, dropped = 0, confirmed = 0, translated = 0, failed = 0;
         uint64_t secondLooks = 0, secondFixes = 0;  // words read a second time / taken from the second reading
+        uint64_t bridgeLines = 0;  // party/squad lines from the Nexus add-on
         int lastMs = 0;
         double avgMs = 0, avgTranslateMs = 0;
         size_t lastLines = 0;

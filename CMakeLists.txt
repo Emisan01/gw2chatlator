@@ -66,6 +66,7 @@ if(WIN32)
     # linked per executable so the test build can swap in deterministic fakes.
     add_library(gct_win STATIC
         src/win/files.cpp
+        src/win/bridge_pipe.cpp
         src/win/http.cpp
         src/win/deepl_translator.cpp
         src/win/online_translators.cpp
