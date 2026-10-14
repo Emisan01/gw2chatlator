@@ -153,7 +153,7 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
    that. No game file is touched; the GW2 folder is found via registry/Steam/folders, never via the game process.
    Only exception (GW2 Keyboard, Settings → General, each on the user's click + yes): it puts our Nexus add-on
    (`<exe>\nexus\gw2chat_bridge.dll` from the package) and Unofficial Extras (`win/extras_install`) into
-   `<GW2>ddons` and removes exactly those files again – nothing else in the game folder.
+   `<GW2>\addons` and removes exactly those files again – nothing else in the game folder.
 9. Files stay small: captures rotate (20 × 3 files), switch off after 15 minutes, are deleted after 3 days;
    stale `*.tmp` are removed on start; the word model is capped (20k words, 60k pairs).
 10. Privacy: pictures never leave the PC. The word model learns only from what the user sends, never from other
