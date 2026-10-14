@@ -135,12 +135,6 @@ void PlaceWindow(int& x, int& y, int w, int h) {
     y = std::clamp(y, static_cast<int>(wa.top), std::max(static_cast<int>(wa.top), static_cast<int>(wa.bottom) - h));
 }
 
-bool HasTranslatableText(const std::vector<Segment>& segments) {
-    for (const Segment& s : segments)
-        if (!s.keep && std::any_of(s.text.begin(), s.text.end(), IsWordChar)) return true;
-    return false;
-}
-
 bool IsRtlLanguage(const std::wstring& primary) {
     return primary == L"AR" || primary == L"HE" || primary == L"FA" || primary == L"UR" || primary == L"PS" ||
            primary == L"YI";
