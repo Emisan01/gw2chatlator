@@ -3,6 +3,21 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.8.0 — 2026-10-15 (GW2 Keyboard for Nexus)
+
+- **Translation in the background:** tick the languages you understand (Options → Translator) – only the others are
+  translated by themselves, so the keyboard stays quiet until someone writes French, Spanish … A click (left or right)
+  on a line translates just that one.
+- **Answer in their language:** the language each player writes in is noted for the session (never stored); a click on
+  their name opens a whisper tab that sends in it. Changing "Send" in a whisper tab changes only that tab.
+- **Item tooltips like the game's:** the description, the effect of food and other consumables (icon, name, duration,
+  text), weapon strength / defence / attributes, rune bonuses, sigil and infusion effects, "Double-click to use.", the
+  type in the game's words, the required level and the crafting discipline. Item and place names in the game's language
+  (Options → General → Chat text).
+- **Tabs of your own:** right-click on the header → a new tab (a copy of the chat); right-click on it: its name, the
+  channels it shows and the channel you write into. Kept across sessions (settings only). New lines mark tabs not in
+  front.
+
 ## 1.7.6 — 2026-10-14 (GW2 Keyboard for Nexus)
 
 - **Chat text like GW2's chat:** the name in the channel colour, the message in a light tint of it, a dark glow around
