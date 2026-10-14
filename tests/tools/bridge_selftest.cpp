@@ -10,24 +10,29 @@
 
 #include "nexus/Nexus.h"
 #include "unofficial_extras/Definitions.h"
+#include "../../addons/nexus/src/chat_events.hpp"
 #include "win/bridge_pipe.hpp"
 
 using namespace gct;
 
 namespace {
 
-EVENT_CONSUME g_chat = nullptr;
+EVENT_CONSUME g_chat = nullptr;      // Unofficial Extras (relayed by the ArcDPS Integration)
+EVENT_CONSUME g_chatEvents = nullptr;  // Vonsh's "Events: Chat"
 
 void FakeSubscribe(const char* id, EVENT_CONSUME cb) {
     if (std::strcmp(id, "EV_UNOFFICIAL_EXTRAS_CHAT_MESSAGE") == 0) g_chat = cb;
+    if (std::strcmp(id, bridge::kChatEventsEvent) == 0) g_chatEvents = cb;
 }
 void FakeUnsubscribe(const char* id, EVENT_CONSUME) {
     if (std::strcmp(id, "EV_UNOFFICIAL_EXTRAS_CHAT_MESSAGE") == 0) g_chat = nullptr;
+    if (std::strcmp(id, bridge::kChatEventsEvent) == 0) g_chatEvents = nullptr;
 }
 void FakeLog(ELogLevel, const char* channel, const char* text) { std::printf("[%s] %s\n", channel, text); }
 
 struct Received {
     bool connected = false, hello = false, chat = false;
+    int lines = 0;
     BridgeMessage last;
 } g_rx;
 
@@ -39,6 +44,7 @@ LRESULT CALLBACK Proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
             if (m->kind == BridgeMessage::Kind::Hello) g_rx.hello = true;
             else {
                 g_rx.chat = true;
+                ++g_rx.lines;
                 g_rx.last = *m;
             }
             delete m;
@@ -113,8 +119,25 @@ int wmain(int argc, wchar_t** argv) {
          g_rx.last.character == "Nora Testwind" && g_rx.last.account == ":Invented.1234" &&
          g_rx.last.text == "Sammeln am Kommandeur \xE2\x80\x93 jetzt!";
 
+    // "Events: Chat": a map line arrives with its channel; afterwards the Unofficial Extras copy of a party line is
+    // left out (Events: Chat reports party/squad itself).
+    ok = ok && g_chatEvents != nullptr;
+    std::string mapText = "anyone for the world boss?";
+    bridge::ChatEventsMessage ce{};
+    ce.type = bridge::ChatEventsType::Map;
+    ce.generic.characterName = "Kai Example";
+    ce.generic.content = mapText.c_str();
+    const int before = g_rx.lines;
+    if (ok) g_chatEvents(&ce);
+    ok = ok && PumpUntil([&] { return g_rx.lines > before; }, 3000);
+    ok = ok && g_rx.last.src == "chat" && g_rx.last.channel == "map" && g_rx.last.character == "Kai Example" &&
+         g_rx.last.text == mapText;
+    if (ok) g_chat(&info);  // the same party/squad line from Unofficial Extras: must not come a second time
+    PumpUntil([] { return false; }, 600);
+    ok = ok && g_rx.lines == before + 1;
+
     def->Unload();
-    ok = ok && g_chat == nullptr;
+    ok = ok && g_chat == nullptr && g_chatEvents == nullptr;
     FreeLibrary(dll);
     pipe.Stop();
     std::printf(ok ? "PASS\n" : "FAIL (connected %d, hello %d, chat %d)\n", g_rx.connected, g_rx.hello, g_rx.chat);

@@ -56,6 +56,9 @@ addons/nexus  GW2 Chat Bridge, the OPTIONAL Nexus add-on (separate download, liv
           (`GW2ChatTranslator.exe --reader` → `win/bridge_client`, src "ocr"). The pipe takes several senders
           (`BridgePipe::kMaxClients`, wParam = MAKEWPARAM(kind, connection)); the keyboard drops OCR party/squad
           while an extras bridge with ex=true is connected, plus by text (Dice ≥ 0.8, 30 s).
+          "Events: Chat" (Vonsh, EV_CHAT:Message, every channel; addons/nexus/src/chat_events.hpp = our own
+          declaration, static_asserts) → src "chat"; then the add-on leaves out the extras copies and the keyboard
+          drops every OCR line. `[Reader] Ocr` switches the whole OCR module (GW2 Keyboard, Settings → General).
 ```
 
 - `core` must compile on Linux: `g++ -std=c++17 -I src tests/core_tests.cpp src/core/*.cpp` (run from the repo

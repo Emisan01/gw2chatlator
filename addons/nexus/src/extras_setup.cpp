@@ -9,6 +9,8 @@
 #include <thread>
 
 #include "core/text.hpp"
+#include "chat_events.hpp"
+#include "nexus/Nexus.h"
 #include "win/extras_install.hpp"
 
 namespace bridge {
@@ -34,19 +36,22 @@ std::wstring AddonsDir(HMODULE self) {
     return slash == std::wstring::npos ? std::wstring() : p.substr(0, slash + 1);
 }
 
-void Install(std::wstring dir) {
-    Set(InstallState::Running, "Downloading the newest Unofficial Extras from its GitHub page ...");
-    const gct::ExtrasInstallResult r = gct::InstallUnofficialExtras(dir, [] { return g_cancel.load(); });
+void Install(std::wstring dir, bool chatEvents) {
+    Set(InstallState::Running, chatEvents ? "Downloading the newest Events: Chat from its GitHub page ..."
+                                          : "Downloading the newest Unofficial Extras from its GitHub page ...");
+    const auto cancelled = [] { return g_cancel.load(); };
+    const gct::ExtrasInstallResult r =
+        chatEvents ? gct::InstallChatEvents(dir, cancelled) : gct::InstallUnofficialExtras(dir, cancelled);
     switch (r.code) {
         case gct::ExtrasInstallCode::Ok:
-            Set(InstallState::Done, "Installed. Nexus loads it now; if party chat does not arrive, restart the game.");
+            Set(InstallState::Done, "Installed. Nexus loads it now; if no chat arrives, restart the game.");
             break;
         case gct::ExtrasInstallCode::NoAnswer:
             Set(InstallState::Failed, "GitHub did not answer (" + gct::ToUtf8(r.detail) + "). Try again later.");
             break;
         case gct::ExtrasInstallCode::NotChecked:
-            Set(InstallState::Failed, "The newest release has no checked arcdps_unofficial_extras.dll. "
-                                      "Please install it from its GitHub page.");
+            Set(InstallState::Failed, "The newest release has no checked file. Please install it from its GitHub "
+                                      "page.");
             break;
         case gct::ExtrasInstallCode::DownloadFailed:
             Set(InstallState::Failed, "Download failed: " + gct::ToUtf8(r.detail));
@@ -73,13 +78,21 @@ Presence DetectPresence(HMODULE self) {
             if (name.find(L"unofficial_extras") != std::wstring::npos || GetProcAddress(mods[i], "get_key_bind"))
                 p.extras = true;
             if (name == L"arcdps_integration64.dll") p.relay = true;
+            // A Nexus add-on that says it is "Events: Chat" (its definition is only read).
+            using GetDef = AddonDefinition_t* (*)();
+            if (auto get = reinterpret_cast<GetDef>(GetProcAddress(mods[i], "GetAddonDef")); get && mods[i] != self) {
+                const AddonDefinition_t* def = get();
+                if (def && def->Signature == kChatEventsSignature) p.chatEvents = true;
+            }
         }
     }
+    p.chatEventsFile =
+        GetFileAttributesW((AddonsDir(self) + gct::kChatEventsDllName).c_str()) != INVALID_FILE_ATTRIBUTES;
     p.extrasFile = GetFileAttributesW((AddonsDir(self) + gct::kExtrasDllName).c_str()) != INVALID_FILE_ATTRIBUTES;
     return p;
 }
 
-void StartExtrasInstall(HMODULE self) {
+static void StartInstall(HMODULE self, bool chatEvents) {
     {
         std::lock_guard<std::mutex> lock(g_mutex);
         if (g_state == InstallState::Running) return;
@@ -88,8 +101,11 @@ void StartExtrasInstall(HMODULE self) {
     }
     if (g_thread.joinable()) g_thread.join();
     g_cancel = false;
-    g_thread = std::thread(Install, AddonsDir(self));
+    g_thread = std::thread(Install, AddonsDir(self), chatEvents);
 }
+
+void StartExtrasInstall(HMODULE self) { StartInstall(self, false); }
+void StartChatEventsInstall(HMODULE self) { StartInstall(self, true); }
 
 InstallState GetInstallState(std::string* message) {
     std::lock_guard<std::mutex> lock(g_mutex);
@@ -114,6 +130,7 @@ Settings LoadSettings(HMODULE self) {
     Settings s;
     s.party = GetPrivateProfileIntW(L"Bridge", L"Party", 1, f.c_str()) != 0;
     s.squad = GetPrivateProfileIntW(L"Bridge", L"Squad", 1, f.c_str()) != 0;
+    s.others = GetPrivateProfileIntW(L"Bridge", L"Others", 1, f.c_str()) != 0;
     return s;
 }
 
@@ -121,6 +138,7 @@ void SaveSettings(HMODULE self, const Settings& s) {
     const std::wstring f = SettingsFile(self);
     WritePrivateProfileStringW(L"Bridge", L"Party", s.party ? L"1" : L"0", f.c_str());
     WritePrivateProfileStringW(L"Bridge", L"Squad", s.squad ? L"1" : L"0", f.c_str());
+    WritePrivateProfileStringW(L"Bridge", L"Others", s.others ? L"1" : L"0", f.c_str());
 }
 
 }  // namespace bridge

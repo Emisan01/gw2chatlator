@@ -15,6 +15,18 @@
 
 namespace gct {
 
+Channel ChannelFromBridge(const std::string& c) {
+    if (c == "party") return Channel::Party;
+    if (c == "squad") return Channel::Squad;
+    if (c == "map") return Channel::Map;
+    if (c == "say") return Channel::Say;
+    if (c == "whisper") return Channel::Whisper;
+    if (c == "guild") return Channel::Guild;
+    if (c == "team") return Channel::Team;
+    if (c == "system") return Channel::System;
+    return Channel::Unknown;
+}
+
 std::wstring ChannelLabel(Channel c) {
     switch (c) {
         case Channel::Say: return Tr(L"Say");

@@ -2486,6 +2486,7 @@ void MainWindow::OnSnapshot(ReaderSnapshot* raw) {
     for (ChatMessage& m : built)
         if (cfg_.freeArea ? LooksLikeFreeText(m.text) : LooksLikeChatText(m.text)) msgs.push_back(std::move(m));
     std::vector<ChatMessage> fresh = stream_.Feed(msgs, true);
+    if (cfg_.bridgeRead && bridgeConnected_ && bridgeChatEvents_ && !cfg_.freeArea) fresh.clear();  // all exact
     if (BridgeCarriesParty() && !cfg_.freeArea) {  // exact from the Nexus add-on: the OCR reading would come twice
         fresh.erase(std::remove_if(fresh.begin(), fresh.end(), [](const ChatMessage& m) {
                         return m.channel == Channel::Party || m.channel == Channel::Squad;
@@ -2567,16 +2568,18 @@ void MainWindow::SendToKeyboard(const ChatMessage& m) {
 void MainWindow::OnBridge(WPARAM wp, BridgeMessage* raw) {
     std::unique_ptr<BridgeMessage> msg(raw);
     const WORD kind = BridgePipe::KindOf(wp);
-    if (msg && msg->src != "extras") return;  // this program reads the screen itself: only the add-on counts here
+    if (msg && msg->src == "ocr") return;  // this program reads the screen itself: only the add-on counts here
     if (kind == BridgePipe::kConnected || kind == BridgePipe::kDisconnected) {
         bridgeConnected_ = kind == BridgePipe::kConnected;
         bridgeLines_ = 0;
+        bridgeChatEvents_ = false;
         if (!bridgeConnected_) bridgeVersion_.clear();
         return;
     }
     if (!msg) return;
     if (msg->kind == BridgeMessage::Kind::Hello) {
         bridgeVersion_ = FromUtf8(msg->addonVersion);
+        bridgeChatEvents_ = msg->chatEvents;
         if (BackgroundNoticeAllowed())
             SetStatus(Tr(L"Nexus bridge connected: party and squad chat arrive as exact text"), Tone::Ok, 6000);
         return;
@@ -2585,7 +2588,8 @@ void MainWindow::OnBridge(WPARAM wp, BridgeMessage* raw) {
     ++bridgeLines_;
     ++stats_.bridgeLines;
     ChatMessage m;
-    m.channel = msg->channel == "squad" ? Channel::Squad : Channel::Party;
+    m.channel = ChannelFromBridge(msg->channel);
+    m.outgoingWhisper = msg->outgoing;
     m.speaker = SanitizeChatText(FromUtf8(msg->character));
     m.text = SanitizeChatText(FromUtf8(msg->text));
     m.raw = m.speaker + L": " + m.text;

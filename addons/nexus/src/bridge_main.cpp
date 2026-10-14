@@ -21,6 +21,7 @@
 #include <thread>
 
 #include "core/bridge_protocol.hpp"
+#include "chat_events.hpp"
 #include "extras_setup.hpp"
 #include "win/extras_install.hpp"
 #include "imgui/imgui.h"
@@ -41,7 +42,9 @@ AddonDefinition_t g_def = {};
 AddonAPI_t* g_api = nullptr;
 HMODULE g_self = nullptr;
 std::atomic<uint64_t> g_forwarded{0};  // lines written into the pipe (options page)
-std::atomic<bool> g_passParty{true}, g_passSquad{true};  // the options page switches
+std::atomic<bool> g_passParty{true}, g_passSquad{true}, g_passOthers{true};  // the options page switches
+// "Events: Chat" delivers (it reports party/squad too): the Unofficial Extras copies are then left out.
+std::atomic<bool> g_chatEventsLive{false};
 
 std::mutex g_mutex;
 std::condition_variable g_wake;
@@ -75,6 +78,7 @@ void Enqueue(std::string line) {
 void OnChatMessage(void* args) {
     const auto* m = static_cast<const SquadMessageInfo*>(args);
     if (!m || !m->Text || m->TextLength == 0) return;
+    if (g_chatEventsLive) return;  // the same line comes from "Events: Chat"
     const bool squad = m->Type == ChannelType::Squad;
     if (!(squad ? g_passSquad.load() : g_passParty.load())) return;  // switched off on the options page
     try {
@@ -86,6 +90,51 @@ void OnChatMessage(void* args) {
         b.account = Str(m->AccountName, m->AccountNameLength);
         b.character = Str(m->CharacterName, m->CharacterNameLength);
         b.text = Str(m->Text, m->TextLength);
+        Enqueue(gct::EncodeBridgeMessage(b));
+    } catch (...) {
+        // never let anything escape into the game
+    }
+}
+
+// Game thread: a line of any channel from "Events: Chat" – copy, nothing else.
+void OnChatEvents(void* args) {
+    const auto* m = static_cast<const bridge::ChatEventsMessage*>(args);
+    if (!m) return;
+    g_chatEventsLive = true;
+    using T = bridge::ChatEventsType;
+    const char* channel = nullptr;
+    switch (m->type) {
+        case T::Party: channel = "party"; break;
+        case T::Squad:
+        case T::SquadMessage:
+        case T::SquadBroadcast: channel = "squad"; break;
+        case T::Map: channel = "map"; break;
+        case T::Local: channel = "say"; break;
+        case T::Whisper: channel = "whisper"; break;
+        case T::Guild: channel = "guild"; break;
+        case T::TeamPvP:
+        case T::TeamWvW: channel = "team"; break;
+        default: return;  // errors, message of the day, emotes
+    }
+    const bool isParty = m->type == T::Party;
+    const bool isSquad = m->type == T::Squad || m->type == T::SquadMessage || m->type == T::SquadBroadcast;
+    if (isParty ? !g_passParty.load() : isSquad ? !g_passSquad.load() : !g_passOthers.load()) return;  // switched off
+    try {
+        gct::BridgeMessage b;
+        b.src = "chat";
+        b.channel = channel;
+        if (m->type == T::SquadMessage || m->type == T::SquadBroadcast) {
+            if (!m->squadMessage) return;
+            b.text = m->squadMessage;
+            b.broadcast = m->type == T::SquadBroadcast || (m->flags & bridge::kChatEventsBroadcast) != 0;
+        } else {
+            if (!m->generic.content) return;
+            b.text = m->generic.content;
+            if (m->generic.characterName) b.character = m->generic.characterName;
+            if (m->generic.accountName) b.account = m->generic.accountName;
+            b.outgoing = m->type == T::Whisper && (m->flags & bridge::kChatEventsWhisperFromMe) != 0;
+        }
+        if (b.text.empty()) return;
         Enqueue(gct::EncodeBridgeMessage(b));
     } catch (...) {
         // never let anything escape into the game
@@ -114,7 +163,10 @@ void WriterLoop() {
             gct::BridgeMessage hello;
             hello.kind = gct::BridgeMessage::Kind::Hello;
             hello.addonVersion = VersionString();
-            hello.extras = bridge::DetectPresence(g_self).extras;
+            const bridge::Presence present = bridge::DetectPresence(g_self);
+            hello.extras = present.extras;
+            hello.chatEvents = present.chatEvents || g_chatEventsLive;
+            if (present.chatEvents) g_chatEventsLive = true;
             if (!WriteLine(pipe, gct::EncodeBridgeMessage(hello))) {
                 CloseHandle(pipe);
                 pipe = INVALID_HANDLE_VALUE;
@@ -159,26 +211,41 @@ void OptionsRender() {
         ImGui::SameLine(260);
         ImGui::TextColored(ok ? good : bad, "%s", state);
     };
-    ImGui::TextWrapped("Hands party and squad chat to GW2 Keyboard / GW2 Chat Translator as exact text, so they can "
-                       "translate it. It only reads - it never sends anything to the game.");
+    ImGui::TextWrapped("Hands the chat to GW2 Keyboard / GW2 Chat Translator as exact text, so they can translate it: "
+                       "every channel from Events: Chat (Vonsh), or party and squad from Unofficial Extras. It only "
+                       "reads - it never sends anything to the game.");
     ImGui::Separator();
+    row("Events: Chat (all channels)", p.chatEvents,
+        p.chatEvents ? "loaded" : p.chatEventsFile ? "installed - restart the game" : "missing");
     row("ArcDPS", p.arcdps, p.arcdps ? "found" : "missing");
     row("Unofficial Extras", p.extras,
         p.extras ? "loaded" : p.extrasFile ? "installed - restart the game" : "missing");
     row("ArcDPS Integration (Nexus)", p.relay, p.relay ? "found" : "missing");
     row("GW2 Keyboard / Chat Translator", g_connected, g_connected ? "connected" : "not running");
     ImGui::Text("Lines passed on: %llu", static_cast<unsigned long long>(g_forwarded.load()));
-    bool party = g_passParty, squad = g_passSquad;
-    const bool changed = ImGui::Checkbox("Pass on party chat", &party) | ImGui::Checkbox("Pass on squad chat", &squad);
+    bool party = g_passParty, squad = g_passSquad, others = g_passOthers;
+    const bool changed = ImGui::Checkbox("Pass on party chat", &party) | ImGui::Checkbox("Pass on squad chat", &squad) |
+                         ImGui::Checkbox("Pass on every other channel (Events: Chat)", &others);
     if (changed) {
         g_passParty = party;
         g_passSquad = squad;
-        bridge::SaveSettings(g_self, {party, squad});
+        g_passOthers = others;
+        bridge::SaveSettings(g_self, {party, squad, others});
     }
 
     std::string msg;
     const bridge::InstallState st = bridge::GetInstallState(&msg);
-    if (!p.extras && !p.extrasFile && st != bridge::InstallState::Done) {
+    if (!p.chatEvents && !p.chatEventsFile && st != bridge::InstallState::Done && st != bridge::InstallState::Running) {
+        ImGui::Separator();
+        ImGui::TextWrapped("Every channel (map, whispers, guild ...) comes from Events: Chat by Vonsh, an add-on in the "
+                           "Nexus library: Nexus -> Addons -> Library -> \"Events: Chat\" - or install it here the same "
+                           "way (its newest GitHub release, checksum checked).");
+        if (ImGui::Button("Install Events: Chat")) bridge::StartChatEventsInstall(g_self);
+        ImGui::SameLine();
+        if (ImGui::Button("Open its GitHub page##chat"))
+            ShellExecuteW(nullptr, L"open", gct::kChatEventsPage, nullptr, nullptr, SW_SHOWNORMAL);
+    }
+    if (!p.chatEvents && !p.extras && !p.extrasFile && st != bridge::InstallState::Done) {
         ImGui::Separator();
         if (!p.arcdps) {
             ImGui::TextWrapped("Party and squad chat need ArcDPS first: Nexus -> Addons -> Library -> ArcDPS.");
@@ -205,16 +272,24 @@ void AddonLoad(AddonAPI_t* api) {
     const bridge::Settings s = bridge::LoadSettings(g_self);
     g_passParty = s.party;
     g_passSquad = s.squad;
+    g_passOthers = s.others;
+    g_chatEventsLive = false;
     g_stop = false;
     g_writer = std::thread(WriterLoop);
-    if (g_api->Events_Subscribe) g_api->Events_Subscribe("EV_UNOFFICIAL_EXTRAS_CHAT_MESSAGE", OnChatMessage);
+    if (g_api->Events_Subscribe) {
+        g_api->Events_Subscribe("EV_UNOFFICIAL_EXTRAS_CHAT_MESSAGE", OnChatMessage);
+        g_api->Events_Subscribe(bridge::kChatEventsEvent, OnChatEvents);
+    }
     Log(LOGL_INFO, "loaded – party/squad chat needs arcdps + Unofficial Extras + the ArcDPS Integration add-on");
 }
 
 void AddonUnload() {
     if (g_api && g_api->GUI_Deregister) g_api->GUI_Deregister(OptionsRender);
     bridge::StopExtrasInstall();
-    if (g_api && g_api->Events_Unsubscribe) g_api->Events_Unsubscribe("EV_UNOFFICIAL_EXTRAS_CHAT_MESSAGE", OnChatMessage);
+    if (g_api && g_api->Events_Unsubscribe) {
+        g_api->Events_Unsubscribe("EV_UNOFFICIAL_EXTRAS_CHAT_MESSAGE", OnChatMessage);
+        g_api->Events_Unsubscribe(bridge::kChatEventsEvent, OnChatEvents);
+    }
     g_stop = true;
     g_wake.notify_all();
     if (g_writer.joinable()) {
