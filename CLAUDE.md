@@ -52,6 +52,10 @@ addons/nexus  GW2 Chat Bridge, the OPTIONAL Nexus add-on (separate download, liv
           `TranslateIncoming`), switch `[Reader] Bridge`. Add-on options page (ImGui 1.80) installs Unofficial Extras
           like the Nexus library would (GitHub release + SHA-256 into <GW2>\addons); ArcDPS itself is Nexus' business.
           Map/whisper stay OCR (user's decision: extras is closed source, no own hook). docs/NEXUS_PLAN.md
+          Layers (docs/READER_PLAN.md): keyboard = core; modules = the add-on (party/squad) and the OCR reader
+          (`GW2ChatTranslator.exe --reader` → `win/bridge_client`, src "ocr"). The pipe takes several senders
+          (`BridgePipe::kMaxClients`, wParam = MAKEWPARAM(kind, connection)); the keyboard drops OCR party/squad
+          while an extras bridge with ex=true is connected, plus by text (Dice ≥ 0.8, 30 s).
 ```
 
 - `core` must compile on Linux: `g++ -std=c++17 -I src tests/core_tests.cpp src/core/*.cpp` (run from the repo

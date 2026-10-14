@@ -973,9 +973,10 @@ void KeyboardWindow::ShowMainMenu() {
     // Short: the chat translation (loaded as an extension when missing), the window, settings. The tour is on the
     // Technical page, the language under General.
     HMENU menu = CreatePopupMenu();
-    AppendMenuW(menu, MF_STRING | (extensionLoading_ ? MF_GRAYED : 0), kChat,
-                (FindChatTranslatorExe().empty() ? Tr(L"Load extension: translating the chat (OCR) …")
-                                                 : Tr(L"Activate chat translation (reads the GW2 chat) …"))
+    AppendMenuW(menu, MF_STRING | (extensionLoading_ || ReaderConnected() ? MF_GRAYED : 0), kChat,
+                (ReaderConnected()                ? Tr(L"Chat reader runs (its tray icon has the options)")
+                 : FindChatTranslatorExe().empty() ? Tr(L"Load extension: translating the chat (OCR) …")
+                                                   : Tr(L"Activate chat translation (reads the GW2 chat) …"))
                     .c_str());
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING | check(cfg_.dock), kDock, Tr(L"Dock to GW2 (moves with it)").c_str());
@@ -1060,15 +1061,13 @@ void KeyboardWindow::ActivateChatTranslation() {
         LoadExtension();
         return;
     }
-    spell_.SaveLearned();
-    cfg_.SaveBool(L"Basic", L"KeyboardOnly", false);  // the full tool starts with reading on
-    cfg_.SaveWindowRect(hwnd_, theme_.scale);
-    if (reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", exe.c_str(), L"--restarted", nullptr, SW_SHOWNORMAL)) <= 32) {
+    // The reader runs next to the keyboard (docs/READER_PLAN.md): it reads, the keyboard shows and translates.
+    if (reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", exe.c_str(), L"--reader", nullptr, SW_SHOWNORMAL)) <= 32) {
         SetStatus(Tr(L"The chat translation is part of GW2 Chat Translator – not found next to this program"),
                   Tone::Warn, 8000);
         return;
     }
-    Quit();
+    SetStatus(Tr(L"Chat reader starting – its tray icon has the reading options"), Tone::Muted, 6000);
 }
 
 // Settings → General: Unofficial Extras into <GW2>\addons, like the Nexus library installs add-ons (your click, your yes).

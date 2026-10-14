@@ -106,6 +106,10 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmdLine, int) {
         mutex = CreateMutexW(nullptr, TRUE, kMutexName);
     }
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
+        if (args.find(L"--reader") != std::wstring::npos) {  // GW2 Keyboard asked for its reader: it runs already
+            if (mutex) CloseHandle(mutex);
+            return 0;
+        }
         if (HWND other = FindWindowW(kClassName, nullptr)) {
             ShowWindow(other, SW_SHOW);
             SetForegroundWindow(other);

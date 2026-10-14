@@ -1,6 +1,8 @@
 # READER_PLAN — GW2 Keyboard as the core, reading the chat as modules
 
-Status 2026-10-14: the user decided this plan; stages 1 and 2 are being built.
+Status 2026-10-14: the user decided this plan. Stages 1 and 2 are built (tested with pipe stand-ins, not yet in the
+game with a real reader + keyboard together). The reader mode needs a new GW2 Chat Translator release: the installed
+1.4.0 does not know `--reader` and would start as the old full tool.
 
 ## Layers (user, 2026-10-14)
 
@@ -68,13 +70,17 @@ nothing), and a warning when the area looks like a combat log.
 
 ## Stages
 
-1. **Keyboard core accepts several senders.**
+1. ✅ **Keyboard core accepts several senders.**
    - Pipe with several instances.
    - Protocol: `src`, all channels, `out`.
    - Hybrid drop in the keyboard (`ex=true` + similarity).
    - Self-exclusion from captures while a reader is connected.
    - Settings → General: one line per module saying what it reads.
-2. **Reader mode in GW2 Chat Translator.**
+2. ✅ **Reader mode in GW2 Chat Translator** (`--reader`).
+   - Started by the keyboard's "Activate chat translation"; the keyboard keeps running.
+   - Hidden in the tray, never shown by itself; no typing help, no translator, no own add-on pipe.
+   - Lines go untranslated through `win/bridge_client` into the keyboard's pipe.
+   - The window position is not saved (the settings file is shared with the keyboard).
    - The existing OCR pipeline sends its messages into the keyboard's pipe instead of its own log when the keyboard
      runs (`[Reader] ToKeyboard`).
    - It skips party/squad rows when the keyboard reports an extras bridge (via the shared ini, no back-channel).

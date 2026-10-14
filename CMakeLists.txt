@@ -67,6 +67,7 @@ if(WIN32)
     add_library(gct_win STATIC
         src/win/files.cpp
         src/win/bridge_pipe.cpp
+        src/win/bridge_client.cpp
         src/win/extras_install.cpp
         src/win/http.cpp
         src/win/deepl_translator.cpp
