@@ -3,6 +3,17 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.7.6 — 2026-10-14 (GW2 Keyboard for Nexus)
+
+- **Chat text like GW2's chat:** the name in the channel colour, the message in a light tint of it, a dark glow around
+  the letters (readable on any background), a brightness of your choice – Options → General → Chat text.
+- **Waypoints like in the game:** their name and map on mouse-over; a click opens the world map and moves it onto the
+  spot (Shift+click puts the code into your message). The level / instance stays as it is, as with the game's links.
+  The table of every waypoint comes once from the GW2 API and is kept for 14 days.
+- Item details read better ("Unlimited Consumable"); the footer shortens its chips instead of being cut off; a quiet
+  preview while nothing is typed; the chat stays at the bottom when a line grows (an item name arrives).
+- main holds only the add-on now – the old desktop programs and the OCR reader are in the branch `desktop-archive`.
+
 ## 1.7.5 — 2026-10-14 (GW2 Keyboard for Nexus only; the desktop programs stay at 1.7.1 / 1.4.0)
 
 - **The window:** tabs in the header – the chat and up to five whisper tabs (a click on a name opens one, a right-click

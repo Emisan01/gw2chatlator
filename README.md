@@ -3,19 +3,20 @@
 The chat of Guild Wars 2 in your language – **read it, write and speak in yours**, the chat gets it translated. A
 Nexus add-on, right inside the game. A line goes into the chat only when you press Enter yourself.
 
-## ⬇ [Download gw2keyboard_nexus.dll](https://github.com/Emisan01/gw2chatlator/releases/latest/download/gw2keyboard_nexus.dll)
+## ⬇ [Download gw2keyboard_nexus.dll – version 1.7.6](https://github.com/Emisan01/gw2chatlator/releases/latest/download/gw2keyboard_nexus.dll)
 
 Put the DLL into your `Guild Wars 2\addons` folder (where [Nexus](https://raidcore.gg/Nexus) keeps its add-ons) and
 load **GW2 Keyboard** in Nexus – that is all: on the first start it loads Events: Chat, its voice module and a small
-voice model by itself. Version 1.7.5 · SHA-256 `8a406c6d…92128afa` ·
+voice model by itself. SHA-256 `9edd4626…5b4bb141` ·
 [the same with the voice module already inside (ZIP)](https://github.com/Emisan01/gw2chatlator/releases/latest/download/GW2Keyboard-Nexus.zip)
 · all versions: [Releases](https://github.com/Emisan01/gw2chatlator/releases) · what changed: [CHANGELOG.md](CHANGELOG.md).
 
-Checked by VirusTotal: [1.7.5 ZIP, 2 of 66 scanners](https://www.virustotal.com/gui/file/2d32ac0cbda127bd44f47704cfeb75e2b1175c0aa438adf8bce4cab2467c0455)
-– both are machine-learning guesses (DeepInstinct, Rising "AI"/RDML), common for new unsigned programs; no signature
-scanner flags it.
+> **New in 1.7.6** – it looks and links like GW2's own chat:
+> the name in the channel colour, the message light, a dark glow around the letters (readable on snow and sky) and a
+> brightness of your own · **waypoints** show their name and map, a click opens the world map right on the spot ·
+> item details read better · the chat stays at the bottom while names of items arrive.
 
-> **New in 1.7.5** – the chat window you can play with instead of GW2's own:
+> **In 1.7.5** – the chat window you can play with instead of GW2's own:
 > whisper tabs in the header (click a name, or right-click to open one) · item links like in the game – the name in its
 > rarity colour, details on mouse-over · fold it up to its header with one click · translation only when you want it ·
 > a learning mode for the words you keep correcting yourself · the voice module sets itself up on the first start and
@@ -30,7 +31,8 @@ scanner flags it.
   text from **Events: Chat** by Vonsh, an add-on in the Nexus library.
 - **A chat window built like GW2's own:** tabs at the top – the chat and up to five whisper tabs (click a name, or
   right-click the header to open one); fold it up to its header (V) and open it again (A); it snaps to the screen edges
-  and appears only on a map, never on the character screen. Item links show as the game shows them – the name in its
+  and appears only on a map, never on the character screen. Waypoints show their name and map – a click opens the
+  world map on the spot. Item links show as the game shows them – the name in its
   rarity colour, icon, type and description on mouse-over; web links open only after a question.
 - **Write in your language,** the chat gets the translation: you see it (and what it means in your language again)
   before Enter sends it. Longer than one chat line: split into several. Translators: MyMemory (free), Google,
