@@ -333,7 +333,7 @@ void KeyboardWindow::InitServices() {
     for (const std::wstring& code : cfg_.writeLangs)
         if (const LangInfo* l = FindLanguage(code)) sendLangs_.push_back(l->code);
     if (sendLangs_.empty()) sendLangs_ = {L"EN-GB"};
-    sendIdx_ = 0;
+    sendIdx_ = cfg_.translateWriting ? 0 : sendLangs_.size();  // translation off: sent as written
     if (!cfg_.llmModel.empty()) {
         LlmSettings s;
         s.url = cfg_.llmUrl;
@@ -733,6 +733,10 @@ void KeyboardWindow::CycleSend() { SetSendIndex((sendIdx_ + 1) % (sendLangs_.siz
 
 void KeyboardWindow::SetSendIndex(size_t idx) {
     sendIdx_ = std::min(idx, sendLangs_.size());
+    if (sendIdx_ < sendLangs_.size() && !cfg_.translateWriting) {  // choosing a language switches translating on again
+        cfg_.translateWriting = true;
+        cfg_.SaveBool(L"Translate", L"Writing", true);
+    }
     if (tone_ == Tone::Error) SetStatus(L"", Tone::Muted);
     ++inputGen_;
     ResetCompose();
@@ -2678,6 +2682,9 @@ void KeyboardWindow::ApplySettings(const Config& next) {
         if (sendLangs_.empty()) sendLangs_ = {L"EN-GB"};
         sendIdx_ = 0;
     }
+    if (prev.translateWriting != cfg_.translateWriting || !cfg_.translateWriting)  // Settings → Translator switch
+        sendIdx_ = cfg_.translateWriting ? std::min<size_t>(sendIdx_ >= sendLangs_.size() ? 0 : sendIdx_, sendLangs_.size())
+                                         : sendLangs_.size();
     if (prev.writeIn != cfg_.writeIn) ApplyTypingLanguage();
     const bool engineChanged = prev.engine != cfg_.engine || prev.deeplKey != cfg_.deeplKey ||
                                prev.basicEmail != cfg_.basicEmail || prev.llmUrl != cfg_.llmUrl ||

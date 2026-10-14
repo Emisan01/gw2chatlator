@@ -41,6 +41,7 @@ struct Config {
     std::vector<std::wstring> writeLangs{L"EN-GB", L"FR", L"ES", L"DE"};
     std::wstring chatLang = L"EN-GB";         // into the chat when the writing language has a script GW2 cannot show
     bool backTranslate = true;
+    bool translateWriting = true;  // GW2 Keyboard: translate what you write (off: sent as written, only corrected)
     ChannelMask autoTranslate = DefaultAutoTranslate();  // translated without a click (others: click a line)
     std::vector<std::wstring> understoodLangs;            // never translated automatically ("EN"); plus readLang
     int debounceMs = 500;

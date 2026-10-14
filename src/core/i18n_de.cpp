@@ -1181,6 +1181,8 @@ extern const I18nEntry kGermanStrings[] = {
      L"Erneut übersetzen"},
     {L"Translate chat once now",
      L"Chat jetzt einmal übersetzen"},
+    {L"Translate my text",
+     L"Meinen Text übersetzen"},
     {L"Translate the chat into",
      L"Chat übersetzen in"},
     {L"Translate the chat into:",
