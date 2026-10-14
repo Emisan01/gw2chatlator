@@ -107,7 +107,13 @@ constexpr size_t kMaxWhisperTabs = 5;
 struct WhisperTab {
     std::wstring name;
     bool unread = false;
+    std::wstring sendLang;  // what you send to this player ("" = like the chat tab, "=" = as written, else a code)
 };
+// The language each player writes in, as far as it is sure (CaseFold(name) -> code). Only for this session, never
+// stored: answering someone in their language (their whisper tab sends in it).
+std::map<std::wstring, std::wstring> g_playerLang;
+// The send language of the whisper tab in front ("" = none: the footer's choice; "=" = as written; else a code).
+std::wstring g_sendOverride;
 std::vector<WhisperTab> g_tabs;
 int g_activeTab = -1;  // -1: the whole chat
 int g_selectTab = -2;  // a tab to select (-1: the chat; -2: none asked)
@@ -131,6 +137,7 @@ struct TestHooks {
     bool* focus = nullptr;
     int selfFixes = 0;           // corrections of your own noticed (learning mode)
     char lastFix[128] = {};      // the newest: "typed>fixed"
+    char sendLang[16] = {};      // what the whisper tab opened last sends in
 };
 TestHooks g_test;
 bool g_showOptions = false;  // our own options window (menu ≡ / the button on the Nexus page)
@@ -377,8 +384,22 @@ std::wstring TypingLocale() {
     const std::wstring p = ToLowerAscii(PrimaryLang(g_cfg.writeIn));
     return p + L"-" + (p == L"en" ? std::wstring(L"US") : ToUpperAscii(p));
 }
-bool SendOriginal() { return g_sendIdx >= static_cast<int>(g_cfg.writeLangs.size()); }
-std::wstring SendLang() { return SendOriginal() ? std::wstring() : g_cfg.writeLangs[g_sendIdx]; }
+bool SendOriginal() {
+    if (!g_sendOverride.empty()) return g_sendOverride == L"=";
+    return g_sendIdx >= static_cast<int>(g_cfg.writeLangs.size());
+}
+std::wstring SendLang() {
+    if (!g_sendOverride.empty()) return g_sendOverride == L"=" ? std::wstring() : g_sendOverride;
+    return SendOriginal() ? std::wstring() : g_cfg.writeLangs[g_sendIdx];
+}
+// A detected language as the translators take it for sending ("en" -> "EN-GB", "pt" -> "PT-BR", "zh" -> "ZH-HANS").
+std::wstring SendCodeFor(const std::wstring& detected) {
+    const std::wstring p = ToUpperAscii(PrimaryLang(detected));
+    if (p == L"EN") return L"EN-GB";
+    if (p == L"PT") return L"PT-BR";
+    if (p == L"ZH") return L"ZH-HANS";
+    return p;
+}
 bool Translating() { return !SendOriginal() && PrimaryLang(SendLang()) != TypingLang(); }
 std::wstring ComposePrefix() {
     if (g_channel == Channel::Whisper) return g_whisperTo.empty() ? L"/r " : L"/w " + g_whisperTo + L", ";
@@ -479,17 +500,20 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked = false) {
     std::shared_ptr<Translator> tr;
     std::wstring target;
     std::vector<std::wstring> understood;
+    ProtectedText p = ProtectForTranslation(text, nullptr, g_spell ? &g_spell->KeepWords() : &BuiltinKeepWords());
+    if (!HasTranslatableText(p.segments)) return;
+    std::wstring detected = SureLanguage(text, DetectLanguage(text));  // on this PC (Windows), no translator asked
     {
         std::lock_guard<std::mutex> lock(g_mu);
+        if (!detected.empty())  // what this player writes in (answering them in it)
+            for (const ChatLine& l : g_lines)
+                if (l.id == id && !l.speaker.empty()) g_playerLang[CaseFold(Trim(l.speaker))] = detected;
         if (!g_nx.translateChat && !asked) return;
         tr = g_translator;
         target = TypingLang();
         understood = g_cfg.understoodLangs;
     }
     if (!tr) return;
-    ProtectedText p = ProtectForTranslation(text, nullptr, g_spell ? &g_spell->KeepWords() : &BuiltinKeepWords());
-    if (!HasTranslatableText(p.segments)) return;
-    std::wstring detected = SureLanguage(text, DetectLanguage(text));
     if (asked && detected.empty()) detected = DetectLanguage(text);
     if (!asked) {
         if (detected.empty() || PrimaryLang(detected) == target) return;
@@ -1090,6 +1114,8 @@ void OnChatEvents(void* args) {
     }
 }
 
+std::wstring NativeName(const std::wstring& code);
+
 // A click on a name: that player's whisper tab (opened, or brought to the front); writing goes to them. g_mu held.
 void OpenWhisperTab(const std::wstring& name) {
     const std::wstring who = Trim(name);
@@ -1106,16 +1132,31 @@ void OpenWhisperTab(const std::wstring& name) {
         at = static_cast<int>(g_tabs.size()) - 1;
     }
     g_tabs[at].unread = false;
+    if (g_tabs[at].sendLang.empty()) {  // first time: answer in the language this player writes in
+        auto lang = g_playerLang.find(CaseFold(who));
+        if (lang != g_playerLang.end() && PrimaryLang(lang->second) != TypingLang()) {
+            g_tabs[at].sendLang = SendCodeFor(lang->second);
+            SetStatus(TrF(L"{1} writes in {2} – your answers go out in it (Send: change it)",
+                          {g_tabs[at].name, NativeName(g_tabs[at].sendLang)}), 8000);
+        }
+    }
+    g_sendOverride = g_tabs[at].sendLang;
+    strncpy_s(g_test.sendLang, U8(g_sendOverride).c_str(), _TRUNCATE);
     g_activeTab = g_selectTab = at;
     g_channel = Channel::Whisper;
     g_whisperTo = g_tabs[at].name;
     g_focusInput = true;
+    ++g_inputGen;  // translated again for this player
+    g_inputChanged = GetTickCount64();
 }
 void LeaveWhisperTab() {  // back to the whole chat, writing in the channel active in GW2 (g_mu held)
     g_activeTab = -1;
     g_selectTab = -1;
     g_channel = Channel::Unknown;
     g_whisperTo.clear();
+    g_sendOverride.clear();
+    ++g_inputGen;
+    g_inputChanged = GetTickCount64();
 }
 
 void OnToggle(const char*, bool release) {
@@ -1429,8 +1470,16 @@ void RenderFooter() {  // g_mu held
     if (open) {
         for (size_t i = 0; i <= g_cfg.writeLangs.size(); ++i) {
             const std::string n = i == g_cfg.writeLangs.size() ? UI(Tr(L"as written")) : U8(NativeName(g_cfg.writeLangs[i]));
-            if (ImGui::Selectable(n.c_str(), static_cast<int>(i) == g_sendIdx)) {
-                g_sendIdx = static_cast<int>(i);
+            const bool current = g_sendOverride.empty() ? static_cast<int>(i) == g_sendIdx
+                                 : i == g_cfg.writeLangs.size() ? g_sendOverride == L"="
+                                                                : g_sendOverride == g_cfg.writeLangs[i];
+            if (ImGui::Selectable(n.c_str(), current)) {
+                if (g_activeTab >= 0 && g_activeTab < static_cast<int>(g_tabs.size())) {  // this player's tab only
+                    g_tabs[g_activeTab].sendLang = i == g_cfg.writeLangs.size() ? std::wstring(L"=") : g_cfg.writeLangs[i];
+                    g_sendOverride = g_tabs[g_activeTab].sendLang;
+                } else {
+                    g_sendIdx = static_cast<int>(i);
+                }
                 ++g_inputGen;
                 g_preview.clear();
                 g_inputChanged = GetTickCount64();
@@ -1444,7 +1493,12 @@ void RenderFooter() {  // g_mu held
             if (ImGui::Selectable(U8(l.native).c_str(), false)) {
                 g_cfg.writeLangs.insert(g_cfg.writeLangs.begin(), l.code);
                 g_cfg.SaveAll();
-                g_sendIdx = 0;
+                if (g_activeTab >= 0 && g_activeTab < static_cast<int>(g_tabs.size())) {  // this player's tab only
+                    g_tabs[g_activeTab].sendLang = l.code;
+                    g_sendOverride = l.code;
+                } else {
+                    g_sendIdx = 0;
+                }
                 ++g_inputGen;
                 g_preview.clear();
                 g_inputChanged = GetTickCount64();
@@ -2301,7 +2355,7 @@ void RenderWindow() {
             else clicked = RichLine(shown, links, codes, ColorOf(l.channel));
             if (!l.translated.empty() && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", U8(l.text).c_str());
             // A click on the text of a line someone else wrote: just this line into your language.
-            if (!clicked && !l.own && l.translated.empty() && ImGui::IsItemClicked())
+            if (!clicked && !l.own && l.translated.empty() && (ImGui::IsItemClicked() || ImGui::IsItemClicked(ImGuiMouseButton_Right)))
                 g_worker.Post([id = l.id, t = l.text] { TranslateLine(id, t, true); });
             ImGui::PopID();
         }
@@ -2909,6 +2963,43 @@ void RenderOptionsContent() {
                 if (ImGui::Checkbox(UI(Tr(L"Translate the chat")).c_str(), &g_nx.translateChat)) SaveNexusOptions();
             }
             Hint(UI(Tr(L"Foreign lines of other players into your language. Off: a click on a line translates just that one.")));
+            // Languages you understand: never translated by themselves (a click still does) – only the others are.
+            ImGui::TextUnformatted(UI(Tr(L"Languages I understand (not translated by themselves):")).c_str());
+            {
+                static const wchar_t* kCommon[] = {L"EN", L"DE", L"FR", L"ES", L"IT", L"PT", L"NL", L"PL",
+                                                   L"RU", L"TR", L"ZH", L"KO", L"JA", L"AR"};
+                std::lock_guard<std::mutex> lock(g_mu);
+                const std::wstring own = TypingLang();
+                bool changed = false;
+                int column = 0;
+                for (const wchar_t* code : kCommon) {
+                    const bool mine = PrimaryLang(code) == PrimaryLang(own);  // the language you write in: always
+                    bool on = mine;
+                    for (const std::wstring& u : g_cfg.understoodLangs)
+                        if (PrimaryLang(u) == PrimaryLang(code)) on = true;
+                    if (column % 7) ImGui::SameLine(static_cast<float>(column % 7) * ImGui::GetFontSize() * 4.2f);
+                    ++column;
+                    if (mine) ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.55f);
+                    if (ImGui::Checkbox((U8(code) + "##und").c_str(), &on) && !mine) {
+                        auto& list = g_cfg.understoodLangs;
+                        list.erase(std::remove_if(list.begin(), list.end(),
+                                                  [&](const std::wstring& u) { return PrimaryLang(u) == PrimaryLang(code); }),
+                                   list.end());
+                        if (on) list.push_back(code);
+                        changed = true;
+                    }
+                    if (mine) ImGui::PopStyleVar();
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", U8(NativeName(code)).c_str());
+                }
+                if (changed) {
+                    std::wstring joined;
+                    for (const std::wstring& u : g_cfg.understoodLangs) joined += (joined.empty() ? L"" : L",") + u;
+                    g_cfg.SaveValue(L"Translate", L"Understood", joined);
+                    edit.understoodLangs = g_cfg.understoodLangs;
+                }
+            }
+            Hint(UI(Tr(L"So the keyboard stays in the background: only a French or Spanish line (whatever you did not tick) "
+                       L"is translated. A click on a name opens a whisper tab that answers in that player's language.")));
             ImGui::Checkbox(UI(Tr(L"Translate my text")).c_str(), &edit.translateWriting);
             Hint(UI(Tr(L"What you write goes into the chat in the language chosen at \"Send\" below the input.")));
             static const Engine kEngines[] = {Engine::Auto, Engine::Basic, Engine::DeepL, Engine::Google, Engine::Microsoft, Engine::Libre};
@@ -3157,6 +3248,11 @@ extern "C" __declspec(dllexport) void* Gw2KbTestHooks() {  // nexus_kb_selftest 
     g_test.input = g_input;
     g_test.focus = &g_focusInput;
     return &g_test;
+}
+
+extern "C" __declspec(dllexport) void Gw2KbTestWhisper(const char* name) {  // nexus_kb_selftest only: a click on a name
+    std::lock_guard<std::mutex> lock(g_mu);
+    OpenWhisperTab(W(name));
 }
 
 extern "C" __declspec(dllexport) AddonDefinition_t* GetAddonDef() {
