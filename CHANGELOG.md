@@ -3,6 +3,23 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.7.5 — 2026-10-14 (GW2 Keyboard for Nexus only; the desktop programs stay at 1.7.1 / 1.4.0)
+
+- **The window:** tabs in the header – the chat and up to five whisper tabs (a click on a name opens one, a right-click
+  on the header makes one yourself); V folds the window up to its header, A opens it again; a minimum size; snaps to
+  the screen edges. Status messages appear inside the input box. The compact view is built like GW2's chat (no preview,
+  no word bar – the translation small in the input). The chat's scroll bar is at the left.
+- **Chat codes** show as the game links them – "[Item name]" in its rarity colour; on mouse-over the icon, type, level
+  and description (public GW2 API, with limits against misused codes); a click puts the code into your message.
+  Web links are clickable and open only after a yes.
+- **Translation on your terms:** "Translate the chat" can be switched off (then a click on a line translates just that
+  one); without any translation the status says so instead of counting MyMemory. A hint that any made-up e-mail works.
+- **Learning mode:** a right-click in the input lists the words you corrected yourself while typing – learned once,
+  autocorrection writes them right next time; abbreviations get their meaning for the translator ("finds = I think").
+- **Voice:** when only the DLL was copied, the voice module loads itself from this release (checksum checked). The first
+  start loads Events: Chat, the voice module and the base model by itself. Per model: the CPU peak and time of the last
+  recognition, "Use" and "Remove", the folders; a model too slow twice in a row hands over to the next smaller one.
+
 ## 1.7.1 — 2026-10-14 (GW2 Keyboard for Nexus – fixes 1.7.0; desktop GW2 Keyboard 1.7.1; GW2 Chat Translator stays 1.4.0)
 
 - **GW2 Keyboard for Nexus:**
