@@ -74,6 +74,11 @@ std::wstring Gw2AddonsDir() {
     addons += L"addons\\";
     return GetFileAttributesW(addons.c_str()) != INVALID_FILE_ATTRIBUTES ? addons : std::wstring();
 }
+
+std::wstring BridgeInPackage() {
+    const std::wstring p = CurrentExeDir() + L"\\nexus\\" + kBridgeDllName;
+    return GetFileAttributesW(p.c_str()) != INVALID_FILE_ATTRIBUTES ? p : std::wstring();
+}
 #endif
 
 }  // namespace gct

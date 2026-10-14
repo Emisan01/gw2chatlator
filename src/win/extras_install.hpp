@@ -27,4 +27,8 @@ ExtrasInstallResult InstallUnofficialExtras(const std::wstring& addonsDir, const
 // <GW2>\addons\ of the installed game (registry / Steam / usual folders, never the game process), empty if none.
 std::wstring Gw2AddonsDir();
 
+// Our Nexus add-on as it comes with the program package: <exe folder>\nexus\gw2chat_bridge.dll (empty if absent).
+constexpr const wchar_t* kBridgeDllName = L"gw2chat_bridge.dll";
+std::wstring BridgeInPackage();
+
 }  // namespace gct

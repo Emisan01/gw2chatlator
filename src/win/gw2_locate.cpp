@@ -398,16 +398,17 @@ InstallResult InstallTo(const std::wstring& targetDir) {
         } while (FindNextFileW(h, &fd));
         FindClose(h);
     }
-    // The voice recognizer's runtime (GW2 Keyboard: whisper/ggml DLLs) is program, not data: replaced so updates
-    // arrive. Without it voice input is simply not offered.
-    const std::wstring voiceFrom = JoinPath(selfDir, L"voice"), voiceTo = JoinPath(targetDir, L"voice");
-    WIN32_FIND_DATAW vfd;
-    HANDLE vh = FindFirstFileW(JoinPath(voiceFrom, L"*.*").c_str(), &vfd);
-    if (vh != INVALID_HANDLE_VALUE) {
-        CreateDirs(voiceTo);
+    // The voice recognizer's runtime (GW2 Keyboard: whisper/ggml DLLs) and the optional Nexus add-on are program, not
+    // data: replaced so updates arrive. Without them voice input / the add-on are simply not offered.
+    for (const wchar_t* sub : {L"voice", L"nexus"}) {
+        const std::wstring from = JoinPath(selfDir, sub), to = JoinPath(targetDir, sub);
+        WIN32_FIND_DATAW vfd;
+        HANDLE vh = FindFirstFileW(JoinPath(from, L"*.*").c_str(), &vfd);
+        if (vh == INVALID_HANDLE_VALUE) continue;
+        CreateDirs(to);
         do {
             if (vfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
-            CopyFileW(JoinPath(voiceFrom, vfd.cFileName).c_str(), JoinPath(voiceTo, vfd.cFileName).c_str(), FALSE);
+            CopyFileW(JoinPath(from, vfd.cFileName).c_str(), JoinPath(to, vfd.cFileName).c_str(), FALSE);
         } while (FindNextFileW(vh, &vfd));
         FindClose(vh);
     }
