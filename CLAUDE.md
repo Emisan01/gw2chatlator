@@ -152,8 +152,7 @@ installed copy continues the setup. First start without `SetupDone=1` opens the 
    asks to update, closes the running copy, `InstallTo`, starts it; otherwise it just starts it). `--portable` skips
    that. No game file is touched; the GW2 folder is found via registry/Steam/folders, never via the game process.
    Only exception (GW2 Keyboard, Settings → General, each on the user's click + yes): it puts our Nexus add-on
-   (`<exe>
-exus\gw2chat_bridge.dll` from the package) and Unofficial Extras (`win/extras_install`) into
+   (`<exe>\nexus\gw2chat_bridge.dll` from the package) and Unofficial Extras (`win/extras_install`) into
    `<GW2>ddons` and removes exactly those files again – nothing else in the game folder.
 9. Files stay small: captures rotate (20 × 3 files), switch off after 15 minutes, are deleted after 3 days;
    stale `*.tmp` are removed on start; the word model is capped (20k words, 60k pairs).
