@@ -70,7 +70,7 @@ enum : int {
     kGoogleKey, kGoogleGet, kMsKey, kMsRegion, kMsGet, kDeepLGet, kLlmPreset, kLlmGetKey, kLlmNote, kLibreUrl, kLibreKey, kLibreGet,
     kCorrInfo, kCorrExport, kCorrImport, kCorrClear, kTechCompare, kLibreLocal, kDesktop, kSecondLook, kMyWords, kSkipMore, kFontFace, kHotkeyClear, kHotkeyStatus, kStartMenu, kOnlyTr, kHelpOcr, kHelpCapture, kOcrFixes, kRapidStatus, kRapidGet, kTechOcrCompare, kWriteIn, kLtProvider, kLtTest, kLtStatus, kChatEngine, kKeyboardOnly, kLearnFile, kKeepMap, kReadWhat, kTour, kLoadExt,
     // Game & start
-    kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kBridgeRead, kScreenshots, kLoadExtras, kRemoveExtras, kInstallBridge, kRemoveBridge, kHotkeySet, kPttSet, kPttValue, kStatus, kRefresh, kSetup,
+    kGw2Dir, kGw2Find, kGw2Browse, kInstall, kInstallStatus, kAutostart, kDock, kFollow, kFocusGameChat, kBridgeRead, kScreenshots, kLoadExtras, kRemoveExtras, kInstallBridge, kRemoveBridge, kHotkeySet, kPttSet, kPttValue, kLoadChatEv, kRemoveChatEv, kOcrOn, kStatus, kRefresh, kSetup,
     // Wizard
     // Technical
     kOcrZoom, kKeyHold, kStepDelay, kTechText, kTechRefresh, kTechCopy, kTechSaveF16, kTechStatus,
@@ -616,7 +616,9 @@ private:
         // Extensions, each loaded on your click: the chat translation by OCR, and party/squad chat as exact text.
         r++;
         const bool have = ctx_.extensionInstalled && ctx_.extensionInstalled();
-        Label(Tr(L"Extension: translating the chat (OCR)"), kLabelX, Y(r++), kW - 50);
+        // The whole OCR module on or off (later also meant for reading other areas of the screen).
+        Check(kOcrOn, Tr(L"Extension: translating the chat by text recognition (OCR) – on"), cfg_.ocrEnabled, kLabelX,
+              Y(r++), kW - 50);
         // Each module says exactly what it reads.
         Label(have ? Tr(L"[OK] Loaded. Reads everything visible in the chat area you choose (text recognition on this "
                         L"PC).")
@@ -627,10 +629,16 @@ private:
 
         const int extras = ctx_.extrasState ? ctx_.extrasState() : -1;
         const int bridge = ctx_.bridgeState ? ctx_.bridgeState() : -1;
-        Label(Tr(L"Extension: only party and squad chat, as exact text (Nexus)"), kLabelX, Y(r++) + 6, kW - 50);
+        const int chatEv = ctx_.chatEventsState ? ctx_.chatEventsState() : -1;
+        Label(Tr(L"Extension: the chat as exact text (Nexus) – every channel, or party and squad only"), kLabelX,
+              Y(r++) + 6, kW - 50);
         if (extras < 0) {
             Label(Tr(L"[--] No Guild Wars 2 add-ons folder found (is Nexus installed?)."), kLabelX, Y(r++) + 4, kW - 50);
         } else {
+            Label(Tr(L"Events: Chat (every channel, by Vonsh)"), kLabelX + 12, Y(r) + 6, 250);
+            Label(chatEv == 1 ? Tr(L"[OK] installed") : Tr(L"[--] missing"), kLabelX + 268, Y(r) + 6, 110);
+            Button(chatEv == 1 ? kRemoveChatEv : kLoadChatEv, chatEv == 1 ? Tr(L"Remove…") : Tr(L"Load…"), kW - 222,
+                   Y(r++) + 2, 196);
             Label(Tr(L"Unofficial Extras (ArcDPS, by Krappa322)"), kLabelX + 12, Y(r) + 6, 250);
             Label(extras == 1 ? Tr(L"[OK] installed") : Tr(L"[--] missing"), kLabelX + 268, Y(r) + 6, 110);
             Button(extras == 1 ? kRemoveExtras : kLoadExtras, extras == 1 ? Tr(L"Remove…") : Tr(L"Load…"), kW - 222,
@@ -1550,6 +1558,8 @@ private:
             case kRemoveExtras:
             case kInstallBridge:
             case kRemoveBridge:
+            case kLoadChatEv:
+            case kRemoveChatEv:
                 Save();
                 result.saved = true;
                 result.action = id == kTour            ? DialogResult::Action::ShowTour
@@ -1557,6 +1567,8 @@ private:
                                 : id == kLoadExtras    ? DialogResult::Action::LoadExtras
                                 : id == kRemoveExtras  ? DialogResult::Action::RemoveExtras
                                 : id == kInstallBridge ? DialogResult::Action::InstallBridge
+                                : id == kLoadChatEv    ? DialogResult::Action::LoadChatEvents
+                                : id == kRemoveChatEv  ? DialogResult::Action::RemoveChatEvents
                                                        : DialogResult::Action::RemoveBridge;
                 Close();
                 break;
@@ -2389,6 +2401,7 @@ private:
         c.bridgeRead = Checked(kBridgeRead);
 #ifdef GCT_KEYBOARD_APP
         c.showOnScreenshots = Checked(kScreenshots);
+        c.ocrEnabled = Checked(kOcrOn);
 #endif
         c.focusOnGameChat = Checked(kFocusGameChat);
     }

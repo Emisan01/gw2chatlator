@@ -4,6 +4,19 @@ Status 2026-10-14: the user decided this plan. Stages 1 and 2 are built (tested 
 game with a real reader + keyboard together). The reader mode needs a new GW2 Chat Translator release: the installed
 1.4.0 does not know `--reader` and would start as the old full tool.
 
+## Update 2026-10-14: every channel exactly – "Events: Chat"
+
+Delta (Raidcore, the Nexus developer) pointed to **"Events: Chat" by Vonsh** (Nexus library id 0x67770263,
+https://github.com/jsantorek/GW2-Chat): a Nexus add-on that raises `EV_CHAT:Message` for **every** chat channel
+(map, say, whisper incl. "from me", guild, party, squad, squad messages, team). On the rules he said: what you do
+counts, not how you get it – translating is fine, collecting chat data is the problem (privacy). We translate and
+keep nothing of other players (invariant 10).
+
+So the bridge listens to both: Events: Chat (src `chat`, every channel) and Unofficial Extras (src `extras`,
+party/squad; left out in the add-on while Events: Chat delivers). With Events: Chat the keyboard drops every OCR
+line, and OCR becomes optional: one switch turns the whole OCR module on or off (Settings → General). OCR stays useful
+later for reading other areas of the screen.
+
 ## Layers (user, 2026-10-14)
 
 | Layer | What it is | Reads | Runs |

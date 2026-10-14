@@ -15,9 +15,16 @@
 namespace gct {
 namespace {
 
-constexpr const wchar_t* kReleasePath = L"/repos/Krappa322/arcdps_unofficial_extras_releases/releases/latest";
-constexpr const char* kDownloadPrefix =
-    "https://github.com/Krappa322/arcdps_unofficial_extras_releases/releases/download/";
+struct ReleaseSource {
+    const wchar_t* releasePath;  // GitHub API: the newest release
+    const char* downloadPrefix;  // the only place the file may come from
+    const wchar_t* asset;        // its file name
+};
+constexpr ReleaseSource kExtras{L"/repos/Krappa322/arcdps_unofficial_extras_releases/releases/latest",
+                                "https://github.com/Krappa322/arcdps_unofficial_extras_releases/releases/download/",
+                                kExtrasDllName};
+constexpr ReleaseSource kChatEvents{L"/repos/jsantorek/GW2-Chat/releases/latest",
+                                    "https://github.com/jsantorek/GW2-Chat/releases/download/", kChatEventsDllName};
 
 bool IsHex64(const std::string& s) {
     return s.size() == 64 && std::all_of(s.begin(), s.end(), [](char c) {
@@ -27,10 +34,11 @@ bool IsHex64(const std::string& s) {
 
 }  // namespace
 
-ExtrasInstallResult InstallUnofficialExtras(const std::wstring& addonsDir, const std::function<bool()>& cancelled) {
+static ExtrasInstallResult InstallFromRelease(const ReleaseSource& src, const std::wstring& addonsDir,
+                                              const std::function<bool()>& cancelled) {
     ExtrasInstallResult res;
     const HttpResponse r =
-        HttpsRequest(L"GET", L"api.github.com", kReleasePath, L"Accept: application/vnd.github+json\r\n", "");
+        HttpsRequest(L"GET", L"api.github.com", src.releasePath, L"Accept: application/vnd.github+json\r\n", "");
     if (!r.transportOk || r.status != 200) {
         res.code = ExtrasInstallCode::NoAnswer;
         res.detail = r.transportOk ? L"HTTP " + std::to_wstring(r.status) : r.error;
@@ -38,7 +46,7 @@ ExtrasInstallResult InstallUnofficialExtras(const std::wstring& addonsDir, const
     }
     JsonValue release;
     std::string url, sha;
-    const std::string asset = ToUtf8(kExtrasDllName);
+    const std::string asset = ToUtf8(src.asset);
     if (ParseJson(r.body, release)) {
         if (const JsonValue* assets = release.Get("assets"); assets && assets->IsArray()) {
             for (const JsonValue& a : assets->arr) {
@@ -52,17 +60,25 @@ ExtrasInstallResult InstallUnofficialExtras(const std::wstring& addonsDir, const
         }
     }
     // Only the official release page, and only with a checksum GitHub computed for the file.
-    if (url.rfind(kDownloadPrefix, 0) != 0 || !IsHex64(sha) || res.bytes == 0) {
+    if (url.rfind(src.downloadPrefix, 0) != 0 || !IsHex64(sha) || res.bytes == 0) {
         res.code = ExtrasInstallCode::NotChecked;
         return res;
     }
     std::wstring error;
     const bool ok = HttpDownloadToFile(
-        FromUtf8(url), addonsDir + kExtrasDllName, res.bytes, sha,
+        FromUtf8(url), addonsDir + src.asset, res.bytes, sha,
         [&](uint64_t, uint64_t) { return !(cancelled && cancelled()); }, &error);
     res.code = ok ? ExtrasInstallCode::Ok : ExtrasInstallCode::DownloadFailed;
     res.detail = error;
     return res;
+}
+
+ExtrasInstallResult InstallUnofficialExtras(const std::wstring& addonsDir, const std::function<bool()>& cancelled) {
+    return InstallFromRelease(kExtras, addonsDir, cancelled);
+}
+
+ExtrasInstallResult InstallChatEvents(const std::wstring& addonsDir, const std::function<bool()>& cancelled) {
+    return InstallFromRelease(kChatEvents, addonsDir, cancelled);
 }
 
 #ifndef GCT_BRIDGE_DLL

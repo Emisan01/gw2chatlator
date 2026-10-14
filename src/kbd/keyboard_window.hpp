@@ -210,11 +210,12 @@ private:
         RECT rect{};
     };
     void OnBridge(WPARAM wp, BridgeMessage* msg);
-    void LoadExtras();                               // Unofficial Extras into <GW2>\addons (Settings → General)
+    void LoadExtras(bool chatEvents);  // Unofficial Extras, or "Events: Chat"                               // Unofficial Extras into <GW2>\addons (Settings → General)
     void InstallBridge();                            // our Nexus add-on from the package into <GW2>\addons
     void RemoveAddonFile(const wchar_t* file, const wchar_t* name);
     void OnExtrasLoaded(ExtrasInstallResult* result);
     bool extrasLoading_ = false;
+    std::wstring extrasLoadingName_;  // "Unofficial Extras" / "Events: Chat"
     void TranslateIncoming(const IncomingLine& line);
     int IncomingHeight() const;
     std::deque<IncomingLine> incoming_;
@@ -224,10 +225,12 @@ private:
     struct BridgeConn {
         bool connected = false;
         std::string src;      // from its hello
-        bool extras = false;  // the add-on reported Unofficial Extras as loaded
+        bool extras = false;      // the add-on reported Unofficial Extras as loaded
+        bool chatEvents = false;  // the add-on reported "Events: Chat" as loaded (every channel exactly)
     };
     BridgeConn bridgeConns_[BridgePipe::kMaxClients];
     bool ExtrasLive() const;       // party/squad arrive exactly: OCR readings of them are dropped
+    bool ChatEventsLive() const;   // every channel arrives exactly ("Events: Chat"): OCR readings are dropped
     bool ReaderConnected() const;  // the OCR reader is connected: our window stays out of screen captures
     void UpdateCaptureExclusion();
     bool excludedFromCapture_ = false;

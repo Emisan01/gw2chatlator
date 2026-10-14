@@ -12,6 +12,8 @@ enum class Channel : uint8_t { Unknown, Say, Map, Party, Squad, Team, Whisper, G
 
 std::wstring ChannelLabel(Channel c);      // UI label in the UI language: "Map", "Party" ...
 const wchar_t* ChannelCommand(Channel c);  // "/m", "/p" ... or nullptr
+// A channel as the chat senders write it (core/bridge_protocol: "party", "map" ...); anything else = Unknown.
+Channel ChannelFromBridge(const std::string& c);
 
 struct Rgb {
     uint8_t r = 0, g = 0, b = 0;

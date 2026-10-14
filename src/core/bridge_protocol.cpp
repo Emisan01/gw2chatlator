@@ -26,7 +26,7 @@ int IntOf(const JsonValue& v, const char* key, int def) {
     return x && x->type == JsonValue::Type::Number ? static_cast<int>(x->n) : def;
 }
 
-std::string SourceOf(const std::string& s) { return s == "ocr" ? "ocr" : "extras"; }
+std::string SourceOf(const std::string& s) { return s == "ocr" || s == "chat" ? s : "extras"; }
 
 }  // namespace
 
@@ -42,6 +42,7 @@ std::string EncodeBridgeMessage(const BridgeMessage& m) {
         Field(out, "src", SourceOf(m.src));
         Field(out, "addon", CutUtf8(m.addonVersion, 32));
         out += m.extras ? ",\"ex\":true" : ",\"ex\":false";
+        if (m.chatEvents) out += ",\"ce\":true";
     } else {
         out += ",\"t\":\"chat\"";
         Field(out, "src", SourceOf(m.src));
@@ -74,6 +75,7 @@ bool DecodeBridgeMessage(const std::string& line, BridgeMessage& out) {
         m.kind = BridgeMessage::Kind::Hello;
         m.addonVersion = v.GetString("addon");
         m.extras = v.GetBool("ex");
+        m.chatEvents = v.GetBool("ce");
     } else if (t == "chat") {
         m.kind = BridgeMessage::Kind::Chat;
         m.channel = v.GetString("ch");

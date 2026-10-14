@@ -338,6 +338,7 @@ private:
     bool bridgeConnected_ = false;
     std::wstring bridgeVersion_;
     uint64_t bridgeLines_ = 0;  // party/squad lines received in this connection
+    bool bridgeChatEvents_ = false;  // "Events: Chat" delivers every channel: OCR readings are dropped
     ChatStream stream_;
     NameList speakers_;  // speakers seen in the chat: their names are never translated
     bool streamPrimed_ = false;  // the first picture was fed (old history skipped)

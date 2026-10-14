@@ -9,6 +9,13 @@ Decision (user, 2026-10-14): map chat, whispers and the other channels **stay wi
 source (at the request of ArenaNet's community managers), and building our own chat hook would break the rules we want
 to keep. The bridge only takes what Unofficial Extras offers: party and squad.
 
+## Update 2026-10-14
+
+The add-on also listens to **"Events: Chat" by Vonsh** (`EV_CHAT:Message`, every channel, in the Nexus library; our
+own declaration of its interface in `addons/nexus/src/chat_events.hpp` – its repository has no licence file, nothing
+of it is copied). Its options page and GW2 Keyboard (Settings → General) install it like the Nexus library would
+(newest GitHub release `Events_Chat.dll`, SHA-256 checked). See docs/READER_PLAN.md.
+
 ## Why
 
 OCR reads every channel but makes mistakes. arcdps **Unofficial Extras** (Krappa322) gets the party and squad chat

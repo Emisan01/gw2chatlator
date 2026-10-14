@@ -16,11 +16,14 @@ constexpr const wchar_t* kBridgePipeName = L"\\\\.\\pipe\\GW2ChatBridge";
 
 struct BridgeMessage {
     enum class Kind { Hello, Chat } kind = Kind::Chat;
-    std::string src = "extras";  // "extras" (the Nexus add-on) | "ocr" (the reader); older add-ons send none
+    // Where a line comes from: "extras" (the Nexus add-on, party/squad from Unofficial Extras), "chat" (the Nexus
+    // add-on, every channel from Vonsh's "Events: Chat") or "ocr" (the reader). Older add-ons send none (= extras).
+    std::string src = "extras";
     // Hello: sent once per connection.
     int protocol = kBridgeProtocol;
     std::string addonVersion;   // "1.5.0"
-    bool extras = false;        // Unofficial Extras is loaded in the game (else no party/squad line can come)
+    bool extras = false;        // Unofficial Extras is loaded in the game (party/squad arrive exactly)
+    bool chatEvents = false;    // "Events: Chat" is loaded in the game (every channel arrives exactly)
     // Chat: one line – exact text (extras) or read from the screen (ocr).
     std::string channel;        // "party" "squad" "map" "say" "whisper" "guild" "team" "system" "" (unknown)
     bool outgoing = false;      // a whisper you sent ("To Name: ...")

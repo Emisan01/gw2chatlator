@@ -2196,6 +2196,13 @@ static void TestBridgeProtocol() {
     CHECK(DecodeBridgeMessage(EncodeBridgeMessage(o), r) && r.src == "ocr" && r.channel == "whisper" && r.outgoing);
     o.channel = "combat";
     CHECK(DecodeBridgeMessage(EncodeBridgeMessage(o), r) && r.channel.empty());
+    // "Events: Chat" through the add-on: every channel
+    o.src = "chat";
+    o.channel = "map";
+    o.outgoing = false;
+    CHECK(DecodeBridgeMessage(EncodeBridgeMessage(o), r) && r.src == "chat" && r.channel == "map");
+    h.chatEvents = true;
+    CHECK(DecodeBridgeMessage(EncodeBridgeMessage(h), r) && r.chatEvents);
     // an older add-on without "src" counts as the add-on
     CHECK(DecodeBridgeMessage("{\"v\":1,\"t\":\"chat\",\"ch\":\"squad\",\"text\":\"inc\"}", r) && r.src == "extras");
     // rejected: other protocol, unknown type, empty text, broken JSON, too long

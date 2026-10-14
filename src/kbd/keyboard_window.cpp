@@ -973,11 +973,12 @@ void KeyboardWindow::ShowMainMenu() {
     // Short: the chat translation (loaded as an extension when missing), the window, settings. The tour is on the
     // Technical page, the language under General.
     HMENU menu = CreatePopupMenu();
-    AppendMenuW(menu, MF_STRING | (extensionLoading_ || ReaderConnected() ? MF_GRAYED : 0), kChat,
-                (ReaderConnected()                ? Tr(L"Chat reader runs (its tray icon has the options)")
-                 : FindChatTranslatorExe().empty() ? Tr(L"Load extension: translating the chat (OCR) …")
-                                                   : Tr(L"Activate chat translation (reads the GW2 chat) …"))
-                    .c_str());
+    if (cfg_.ocrEnabled)  // the OCR module (Settings → General)
+        AppendMenuW(menu, MF_STRING | (extensionLoading_ || ReaderConnected() ? MF_GRAYED : 0), kChat,
+                    (ReaderConnected()                ? Tr(L"Chat reader runs (its tray icon has the options)")
+                     : FindChatTranslatorExe().empty() ? Tr(L"Load extension: translating the chat (OCR) …")
+                                                       : Tr(L"Activate chat translation (reads the GW2 chat) …"))
+                        .c_str());
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING | check(cfg_.dock), kDock, Tr(L"Dock to GW2 (moves with it)").c_str());
     AppendMenuW(menu, MF_STRING | check(cfg_.compact), kCompact, Tr(L"Compact view").c_str());
@@ -1071,7 +1072,7 @@ void KeyboardWindow::ActivateChatTranslation() {
 }
 
 // Settings → General: Unofficial Extras into <GW2>\addons, like the Nexus library installs add-ons (your click, your yes).
-void KeyboardWindow::LoadExtras() {
+void KeyboardWindow::LoadExtras(bool chatEvents) {
     if (extrasLoading_) return;
     const std::wstring addons = Gw2AddonsDir();
     if (addons.empty()) {
@@ -1080,21 +1081,27 @@ void KeyboardWindow::LoadExtras() {
     }
     {
         const ModalScope modal;
-        if (MessageBoxW(hwnd_,
-                        TrF(L"Load Unofficial Extras?\n\nA free ArcDPS extension by Krappa322 that reports party and "
-                            L"squad chat as exact text. The newest release from its GitHub page, checksum checked, "
-                            L"into:\n{1}\n\nNexus loads it and hands it to ArcDPS; if GW2 is running, a restart of "
-                            L"the game may be needed. The GW2 Chat Bridge add-on passes the chat on to this program.",
-                            {addons})
-                            .c_str(),
-                        Tr(L"Load Unofficial Extras").c_str(),
+        const std::wstring ask =
+            chatEvents
+                ? TrF(L"Load Events: Chat?\n\nA Nexus add-on by Vonsh (in the Nexus library) that reports every chat "
+                      L"channel as exact text – map, whispers, guild, party, squad. The newest release from its GitHub "
+                      L"page, checksum checked, into:\n{1}\n\nNexus loads it. The GW2 Chat Bridge add-on passes the "
+                      L"chat on to this program.",
+                      {addons})
+                : TrF(L"Load Unofficial Extras?\n\nA free ArcDPS extension by Krappa322 that reports party and "
+                      L"squad chat as exact text. The newest release from its GitHub page, checksum checked, "
+                      L"into:\n{1}\n\nNexus loads it and hands it to ArcDPS; if GW2 is running, a restart of "
+                      L"the game may be needed. The GW2 Chat Bridge add-on passes the chat on to this program.",
+                      {addons});
+        if (MessageBoxW(hwnd_, ask.c_str(), (chatEvents ? Tr(L"Load Events: Chat") : Tr(L"Load Unofficial Extras")).c_str(),
                         MB_YESNO | MB_ICONQUESTION | (UiRtl() ? MB_RTLREADING | MB_RIGHT : 0)) != IDYES)
             return;
     }
     extrasLoading_ = true;
-    SetStatus(Tr(L"Loading Unofficial Extras …"), Tone::Muted);
-    std::thread([hwnd = hwnd_, addons] {
-        auto* res = new ExtrasInstallResult(InstallUnofficialExtras(addons, {}));
+    extrasLoadingName_ = chatEvents ? L"Events: Chat" : L"Unofficial Extras";
+    SetStatus(TrF(L"Loading {1} …", {extrasLoadingName_}), Tone::Muted);
+    std::thread([hwnd = hwnd_, addons, chatEvents] {
+        auto* res = new ExtrasInstallResult(chatEvents ? InstallChatEvents(addons, {}) : InstallUnofficialExtras(addons, {}));
         if (!PostMessageW(hwnd, WM_APP_EXTRAS, 0, reinterpret_cast<LPARAM>(res))) delete res;
     }).detach();
 }
@@ -1106,9 +1113,10 @@ void KeyboardWindow::InstallBridge() {
     {
         const ModalScope modal;
         if (MessageBoxW(hwnd_,
-                        TrF(L"Install the Nexus add-on GW2 Chat Bridge?\n\nIt passes party and squad chat (from Unofficial "
-                            L"Extras) to this program as exact text. It only reads – it never sends anything to the "
-                            L"game. Into:\n{1}\n\nNexus loads it, also while the game runs.",
+                        TrF(L"Install the Nexus add-on GW2 Chat Bridge?\n\nIt passes the chat to this program as exact "
+                            L"text: every channel from Events: Chat, or party and squad from Unofficial Extras. It only "
+                            L"reads – it never sends anything to the game. Into:\n{1}\n\nNexus loads it, also while the "
+                            L"game runs.",
                             {addons})
                             .c_str(),
                         Tr(L"Install GW2 Chat Bridge").c_str(),
@@ -1148,19 +1156,19 @@ void KeyboardWindow::OnExtrasLoaded(ExtrasInstallResult* raw) {
     extrasLoading_ = false;
     switch (r->code) {
         case ExtrasInstallCode::Ok:
-            SetStatus(Tr(L"Unofficial Extras installed – Nexus loads it (restart GW2 if party chat does not arrive)"),
+            SetStatus(TrF(L"{1} installed – Nexus loads it (restart GW2 if no chat arrives)", {extrasLoadingName_}),
                       Tone::Ok, 10000);
             break;
         case ExtrasInstallCode::NoAnswer:
             SetStatus(TrF(L"GitHub did not answer ({1}) – please try again later", {r->detail}), Tone::Warn, 10000);
             break;
         case ExtrasInstallCode::NotChecked:
-            SetStatus(Tr(L"The newest Unofficial Extras release has no checked file – please install it from its "
-                         L"GitHub page"),
+            SetStatus(TrF(L"The newest {1} release has no checked file – please install it from its GitHub page",
+                          {extrasLoadingName_}),
                       Tone::Warn, 10000);
             break;
         case ExtrasInstallCode::DownloadFailed:
-            SetStatus(TrF(L"Loading Unofficial Extras failed: {1}", {r->detail}), Tone::Warn, 10000);
+            SetStatus(TrF(L"Loading {1} failed: {2}", {extrasLoadingName_, r->detail}), Tone::Warn, 10000);
             break;
     }
 }
@@ -1439,6 +1447,12 @@ bool KeyboardWindow::ExtrasLive() const {
     return false;
 }
 
+bool KeyboardWindow::ChatEventsLive() const {
+    for (const BridgeConn& c : bridgeConns_)
+        if (c.connected && c.src != "ocr" && c.chatEvents) return true;
+    return false;
+}
+
 bool KeyboardWindow::ReaderConnected() const {
     for (const BridgeConn& c : bridgeConns_)
         if (c.connected && c.src == "ocr") return true;
@@ -1452,20 +1466,6 @@ void KeyboardWindow::UpdateCaptureExclusion() {
     if (hide == excludedFromCapture_) return;
     if (SetWindowDisplayAffinity(hwnd_, hide ? WDA_EXCLUDEFROMCAPTURE : WDA_NONE) || !hide) excludedFromCapture_ = hide;
 }
-
-namespace {
-Channel ChannelOfBridge(const std::string& c) {
-    if (c == "party") return Channel::Party;
-    if (c == "squad") return Channel::Squad;
-    if (c == "map") return Channel::Map;
-    if (c == "say") return Channel::Say;
-    if (c == "whisper") return Channel::Whisper;
-    if (c == "guild") return Channel::Guild;
-    if (c == "team") return Channel::Team;
-    if (c == "system") return Channel::System;
-    return Channel::Unknown;
-}
-}  // namespace
 
 void KeyboardWindow::OnBridge(WPARAM wp, BridgeMessage* raw) {
     std::unique_ptr<BridgeMessage> msg(raw);
@@ -1484,11 +1484,19 @@ void KeyboardWindow::OnBridge(WPARAM wp, BridgeMessage* raw) {
     if (msg->kind == BridgeMessage::Kind::Hello) {
         conn.src = msg->src;
         conn.extras = msg->extras;
+        conn.chatEvents = msg->chatEvents;
         UpdateCaptureExclusion();
-        if (fromReader)
+        if (fromReader && ChatEventsLive())  // every channel arrives exactly already
+            SetStatus(Tr(L"Every channel arrives exactly (Events: Chat) – the OCR reader is only needed for translating "
+                         L"once now"),
+                      Tone::Muted, 10000);
+        else if (fromReader)
             SetStatus(Tr(L"Chat reader connected: what it reads in the chat area arrives here"), Tone::Ok, 6000);
         else if (!cfg_.bridgeRead)
             return;
+        else if (msg->chatEvents)
+            SetStatus(Tr(L"Nexus bridge connected: every chat channel arrives as exact text (Events: Chat)"), Tone::Ok,
+                      6000);
         else if (msg->extras)
             SetStatus(Tr(L"Nexus bridge connected: party and squad chat arrive as exact text"), Tone::Ok, 6000);
         else
@@ -1496,10 +1504,11 @@ void KeyboardWindow::OnBridge(WPARAM wp, BridgeMessage* raw) {
                       Tone::Warn, 10000);
         return;
     }
-    if (!fromReader && !cfg_.bridgeRead) return;  // party/squad from the add-on switched off
+    if (!fromReader && !cfg_.bridgeRead) return;  // the add-on's lines switched off
+    if (fromReader && !cfg_.ocrEnabled) return;   // the OCR module switched off
     IncomingLine l;
     l.id = incomingNextId_++;
-    l.channel = ChannelOfBridge(msg->channel);
+    l.channel = ChannelFromBridge(msg->channel);
     l.speaker = SanitizeChatText(FromUtf8(msg->character));
     l.text = SanitizeChatText(FromUtf8(msg->text));
     l.tick = GetTickCount64();
@@ -1509,6 +1518,7 @@ void KeyboardWindow::OnBridge(WPARAM wp, BridgeMessage* raw) {
     if (fromReader) {
         // Party/squad come exactly from the add-on: the reader's reading of them is dropped (docs/READER_PLAN.md) –
         // by channel, and by text in case the colour put the line into another channel.
+        if (ChatEventsLive()) return;  // every channel comes exactly from "Events: Chat"
         if (ExtrasLive() && (l.channel == Channel::Party || l.channel == Channel::Squad)) return;
         for (const RecentLine& r : recentExact_)
             if (DiceSimilarity(l.text, r.text) >= 0.8) return;
@@ -2925,6 +2935,11 @@ void KeyboardWindow::OpenSettings(SettingsPage page) {
         if (addons.empty()) return -1;
         return GetFileAttributesW((addons + kExtrasDllName).c_str()) != INVALID_FILE_ATTRIBUTES ? 1 : 0;
     };
+    ctx.chatEventsState = [] {
+        const std::wstring addons = Gw2AddonsDir();
+        if (addons.empty()) return -1;
+        return GetFileAttributesW((addons + kChatEventsDllName).c_str()) != INVALID_FILE_ATTRIBUTES ? 1 : 0;
+    };
     ctx.bridgeState = [] {
         const std::wstring addons = Gw2AddonsDir();
         if (addons.empty()) return -1;
@@ -2943,8 +2958,10 @@ void KeyboardWindow::OpenSettings(SettingsPage page) {
         Quit();
     }
     else if (r.action == DialogResult::Action::LoadExtension) ActivateChatTranslation();
-    else if (r.action == DialogResult::Action::LoadExtras) LoadExtras();
+    else if (r.action == DialogResult::Action::LoadExtras) LoadExtras(false);
     else if (r.action == DialogResult::Action::RemoveExtras) RemoveAddonFile(kExtrasDllName, L"Unofficial Extras");
+    else if (r.action == DialogResult::Action::LoadChatEvents) LoadExtras(true);
+    else if (r.action == DialogResult::Action::RemoveChatEvents) RemoveAddonFile(kChatEventsDllName, L"Events: Chat");
     else if (r.action == DialogResult::Action::InstallBridge) InstallBridge();
     else if (r.action == DialogResult::Action::RemoveBridge) RemoveAddonFile(kBridgeDllName, L"GW2 Chat Bridge");
 }
@@ -2977,6 +2994,9 @@ void KeyboardWindow::ApplySettings(const Config& next) {
                                          : sendLangs_.size();
     if (prev.writeIn != cfg_.writeIn) ApplyTypingLanguage();
     if (prev.showOnScreenshots != cfg_.showOnScreenshots) UpdateCaptureExclusion();
+    if (!cfg_.ocrEnabled && ReaderConnected()) {  // OCR switched off: the running reader ends
+        if (HWND reader = FindWindowW(L"GW2ChatTranslatorWindow", nullptr)) PostMessageW(reader, WM_CLOSE, 0, 0);
+    }
     if (prev.bridgeRead != cfg_.bridgeRead) {  // party/squad lines switched on or off
         incoming_.clear();
         Layout();
