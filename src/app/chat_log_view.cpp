@@ -104,19 +104,6 @@ void ChatLogView::DropWhere(const std::function<bool(const ChatEntry&)>& drop) {
     InvalidateRect(hwnd_, nullptr, FALSE);
 }
 
-std::wstring ChatLogView::AsText(unsigned long long since) const {
-    std::wstring out;
-    for (const ChatEntry& e : entries_) {
-        if (e.added < since) continue;
-        const std::wstring who = e.kind == ChatEntry::Kind::Outgoing
-                                     ? (e.speaker.empty() ? Tr(L"You") : TrF(L"To {1}", {e.speaker}))
-                                     : e.speaker;
-        out += (who.empty() ? L"" : who + L": ") + e.main + L"\r\n";
-        if (!e.original.empty() && e.original != e.main) out += L"    (" + e.original + L")\r\n";
-    }
-    return out;
-}
-
 void ChatLogView::Clear() {
     entries_.clear();
     scroll_ = 0;

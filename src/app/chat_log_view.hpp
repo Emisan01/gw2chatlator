@@ -65,9 +65,6 @@ public:
     void Update(uint64_t id, const std::function<void(ChatEntry&)>& change);
     void Clear();
     void DropWhere(const std::function<bool(const ChatEntry&)>& drop);
-    // The log as text for a file: "Name: translation" and the original below it; only what came in at `since` or
-    // later (0 = everything).
-    std::wstring AsText(unsigned long long since = 0) const;
     bool Empty() const { return entries_.empty(); }
     size_t Count() const { return entries_.size(); }
     static constexpr size_t kMaxEntries = 500;  // the chat memory: then the oldest are overwritten (like GW2)
