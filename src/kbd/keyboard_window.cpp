@@ -952,11 +952,13 @@ void KeyboardWindow::ShowTour() {
     if (cfg_.voiceEnabled) {  // before the closing paragraph
         const std::wstring voice =
             cfg_.voiceKey.empty()
-                ? Tr(L"SPEAK instead of typing: hold the microphone button, speak, release \u2013 the text appears, you "
-                     L"check it, Enter sends. It runs on this PC and learns the words it misheard once you correct them.")
-                : TrF(L"SPEAK instead of typing: hold the microphone button (or {1}), speak, release \u2013 the text "
-                      L"appears, you check it, Enter sends. It runs on this PC and learns the words it misheard once "
-                      L"you correct them.",
+                ? Tr(L"SPEAK instead of typing: hold the microphone button – or right-click it for on / off –, speak, "
+                     L"and the text appears; you check it, Enter sends. A key in Settings → Microphone also works while "
+                     L"GW2 is in front. It runs on this PC and learns the words it misheard once you correct them.")
+                : TrF(L"SPEAK instead of typing: hold the microphone button (or {1}) – or right-click it for on / off "
+                      L"–, speak, and the text appears; you check it, Enter sends. A key in Settings → Microphone "
+                      L"also works while GW2 is in front. It runs on this PC and learns the words it misheard once you "
+                      L"correct them.",
                       {cfg_.voiceKey});
         const size_t cut = text.rfind(L"\n\n");
         if (cut == std::wstring::npos) text += L"\n\n" + voice;
