@@ -1,11 +1,11 @@
-// kb_main.cpp — "GW2 Keyboard" as a Nexus add-on (docs/NEXUS_KEYBOARD_PLAN.md), modelled on the exe (src/kbd).
+// kb_main.cpp — GW2 Keyboard for Nexus.
 //
 // An ImGui window inside the game:
 //   - the chat from Vonsh's "Events: Chat" (every channel; installed on a click when missing), foreign lines translated
 //     into your language; a click on a name answers with a whisper;
 //   - the input line with the translation as you type, the word bar, the grey completion (Tab), autocorrection on
 //     Space (Backspace undoes it), learned words, the history (Up/Down);
-//   - Enter sends the translation into the GW2 chat – the exe's send path (clipboard + keys, foreground checks,
+//   - Enter sends the translation into the GW2 chat – the safe send path (clipboard + keys, foreground checks,
 //     invariants 1–3), only on your Enter, through the send guard.
 //
 // Inside the game process: the render callback only draws and copies; translations, spelling and sending run on our
@@ -31,7 +31,7 @@
 #include <string>
 #include <thread>
 
-#include "../../nexus/src/chat_events.hpp"
+#include "chat_events.hpp"
 #include "app/config.hpp"
 #include "app/spell_service.hpp"
 #include "core/chat_code.hpp"
@@ -244,7 +244,7 @@ std::string g_lastInput;
 ULONGLONG g_inputChanged = 0;
 uint64_t g_inputGen = 0;
 std::wstring g_preview;  // the translation of the input
-std::wstring g_back;     // ... and that translated back into your language (small, under it – like the exe)
+std::wstring g_back;     // ... and that translated back into your language (small, under it)
 bool g_inMap = false;    // MumbleLink: a map is loaded (not character select, not a loading screen)
 uint64_t g_previewGen = 0;
 bool g_sendPending = false;  // Enter before the translation was there
@@ -371,7 +371,7 @@ std::wstring ComposePrefix() {
     return L"";
 }
 
-std::shared_ptr<Translator> MakeTranslator(const Config& c) {  // the exe's choice: the engine you set, else the best key
+std::shared_ptr<Translator> MakeTranslator(const Config& c) {  // the engine you set, else the best key you have
     if (c.engine == Engine::Basic) return MakeMyMemoryTranslator(c.basicEmail);
     if (c.engine == Engine::DeepL && !c.deeplKey.empty()) return MakeDeepLTranslator(c.deeplKey);
     if (c.engine == Engine::Google && !c.googleKey.empty()) return MakeGoogleTranslator(c.googleKey);
@@ -530,7 +530,7 @@ void TranslateInput(uint64_t gen, std::wstring text) {
             else error = r.error;
         }
     }
-    // The back-translation: what your message means in your language again (small under it, like the exe).
+    // The back-translation: what your message means in your language again (small under it).
     std::wstring back;
     bool wantBack;
     {
@@ -869,7 +869,7 @@ std::wstring HelperExe() {  // <addons>\GW2Keyboard\gw2kb_voice.exe
 
 void InstallVoiceModuleNow();
 
-// The helper starts on first use (like the exe loads its voice module); `cmd` runs as soon as it is ready.
+// The helper starts on first use; `cmd` runs as soon as it is ready.
 void VoiceCommand(const char* cmd) {
     bool ready;
     {
@@ -1121,7 +1121,7 @@ ImVec4 ColorOf(Channel ch) {
     return ImVec4(0.9f, 0.9f, 0.92f, 1.f);
 }
 
-// The grey text after the caret, like the exe's DrawGhost: what Space writes (a completion shows its rest, a
+// The grey text after the caret: what Space writes (a completion shows its rest, a
 // correction "> word"); after a space the sure next word or phrase. `replace` gets what Tab takes.
 std::wstring GhostRest(bool* correction = nullptr) {
     if (correction) *correction = false;
@@ -1167,7 +1167,7 @@ void TakeWord(const std::wstring& word) {
     if (g_spell) g_worker.Post([text, start = r.start, word] { if (g_spell) g_spell->Chose(text, start, word, true); });
 }
 
-// Space at the end of a word: the word picked with Tab, else the grey one (what Space writes – the exe's rule: only
+// Space at the end of a word: the word picked with Tab, else the grey one (what Space writes – only
 // strong choices); the change comes in through g_edit, the space with it. False: just a space.
 bool SpaceWrites() {
     const std::wstring text = W(Flat(g_input));
@@ -1307,7 +1307,7 @@ std::wstring NativeName(const std::wstring& code) {
     return ToUpperAscii(code);
 }
 
-// The footer chips of the exe: channel | "Write: German" | "Send: English (UK) · MyMemory" (orange) | auto | counter.
+// The footer chips: channel | "Write: German" | "Send: English (UK) · MyMemory" (orange) | auto | counter.
 void RenderFooter() {  // g_mu held
     static const Channel kChannels[] = {Channel::Unknown, Channel::Say,   Channel::Map,  Channel::Party,
                                         Channel::Squad,   Channel::Guild, Channel::Team, Channel::Whisper};
@@ -1349,7 +1349,7 @@ void RenderFooter() {  // g_mu held
         }
         ImGui::EndCombo();
     }
-    // What the chat gets (orange like the exe); who translates is told by the status line.
+    // What the chat gets (orange); who translates is told by the status line.
     ImGui::SameLine();
     const std::wstring sendText = SendOriginal() ? Tr(L"as written") : NativeName(SendLang());
     const std::string send = UI(TrF(L"Send: {1}", {sendText}));
@@ -1467,7 +1467,7 @@ void InstallChatEventsNow() {  // on your click: newest release, checksum checke
     });
 }
 
-// ---- the header's icons, drawn like the exe's: microphone, menu (three lines), close
+// ---- the header's icons: microphone, menu (three lines), close
 enum class Icon { Mic, Menu, Close, Collapse, Expand };
 bool IconButton(const char* id, Icon kind, bool active, bool* rightClick, ImU32 tint = 0) {
     const float s = ImGui::GetFrameHeight();
@@ -1516,7 +1516,7 @@ std::string Fit(const std::string& s, float width) {
     return U8(w) + "...";
 }
 
-// The status line at the top left (like the exe): a message, else what is going on.
+// The status text (drawn in the input box): a message, else what is going on.
 std::wstring StatusText() {  // g_mu held
     if (!g_status.empty()) return g_status;
     if (g_recording) return Tr(L"Hearing you … release the key when you are done");
@@ -2264,7 +2264,7 @@ void RenderWindow() {
         ImGui::EndPopup();
     }
 
-    // ---- the preview (like the exe): what arrives in the GW2 chat, the back-translation small under it
+    // ---- the preview: what arrives in the GW2 chat, the back-translation small under it
     const bool previewCurrent = g_previewGen == g_inputGen && !g_preview.empty();
     if (showPreview) {
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
@@ -2293,7 +2293,7 @@ void RenderWindow() {
         ImGui::PopStyleColor();
     }
 
-    // ---- the word bar (like the exe): three cells across the line, what Tab takes in orange
+    // ---- the word bar: three cells across the line, what Tab takes in orange
     if (showWords) {
         const float w = ImGui::GetContentRegionAvail().x;
         const ImVec2 p = ImGui::GetCursorScreenPos();
@@ -2458,7 +2458,7 @@ void RenderWindow() {
                 Fit(t, (inputMax.x - inputMin.x) * (g_status.empty() ? 0.95f : 0.38f)), 0.85f);
     }
 
-    // ---- the footer (like the exe): channel | write | send · translator | auto | counter
+    // ---- the footer: channel | write | send · translator | auto | counter
     if (g_layout.footer) RenderFooter();
     // Changes of the text: a pause translates it; the typing help follows every key.
     const std::string now = Flat(g_input);
@@ -2516,7 +2516,7 @@ bool LanguageCombo(const char* id, std::wstring& value, const std::wstring& empt
     return changed;
 }
 
-// Our options window: the exe's settings pages as tabs (as far as they make sense inside Nexus). "Save" applies.
+// Our options window, in tabs. "Save" applies.
 void RenderOptionsContent() {
     static Config edit;
     static bool loaded = false;

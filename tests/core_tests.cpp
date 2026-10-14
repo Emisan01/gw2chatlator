@@ -13,25 +13,17 @@
 #include "core/chat_stream.hpp"
 #include "core/chat_tabs.hpp"
 #include "core/cloud_mt_protocol.hpp"
-#include "core/corrections.hpp"
-#include "core/second_look.hpp"
 #include "core/my_words.hpp"
-#include "core/rapid_rec.hpp"
 #include "core/deepl_protocol.hpp"
 #include "core/gw2_text.hpp"
-#include "core/chat_geometry.hpp"
 #include "core/names.hpp"
-#include "core/image.hpp"
 #include "core/languages.hpp"
 #include "core/llm_protocol.hpp"
 #include "core/mumble.hpp"
 #include "core/mymemory_protocol.hpp"
 #include "core/glossary.hpp"
-#include "core/gw2_install.hpp"
-#include "core/housekeeping.hpp"
 #include "core/i18n.hpp"
 #include "core/languagetool_protocol.hpp"
-#include "core/tesseract_tsv.hpp"
 #include "core/typo_memory.hpp"
 #include "core/word_model.hpp"
 #include "core/hotkey.hpp"
@@ -43,7 +35,6 @@
 #include "core/translator.hpp"
 #include "core/voice.hpp"
 #include "core/voice_learn.hpp"
-#include "core/bridge_protocol.hpp"
 #include "core/send_guard.hpp"
 #include "core/chat_code.hpp"
 
@@ -436,57 +427,6 @@ static void TestStream() {
     CHECK(cache.Get(L"b", L"DE", out) && out == L"2");
 }
 
-static void TestImage() {
-    Image img;
-    img.width = 4;
-    img.height = 2;
-    img.bgra.assign(4 * 2 * 4, 20);  // dark background
-    for (int x = 1; x < 3; ++x) {    // purple "text" pixels in row 0
-        uint8_t* p = &img.bgra[(0 * 4 + x) * 4];
-        p[0] = 255; p[1] = 140; p[2] = 200; p[3] = 255;
-    }
-    const Rgb c = SampleTextColor(img, {RectI{0, 0, 4, 2}});
-    CHECK(c == Rgb{200, 140, 255});
-    const Image o = PrepareForOcr(img, 2);
-    CHECK(o.width == 8 && o.height == 4 && o.bgra.size() == 8 * 4 * 4);
-    CHECK(o.bgra[(0 * 8 + 0) * 4] > 200);        // background -> white
-    CHECK(o.bgra[(1 * 8 + 3) * 4] < 100);        // text -> dark
-    CHECK(ImageFingerprint(img) == ImageFingerprint(img));
-    Image img2 = img;
-    img2.bgra[0] = 250;
-    CHECK(ImageFingerprint(img) != ImageFingerprint(img2));
-
-    const std::string bmp = EncodeBmp(img2);
-    CHECK(bmp.size() == 54 + static_cast<size_t>(img2.width) * img2.height * 4);
-    CHECK(bmp[0] == 'B' && bmp[1] == 'M');
-    CHECK(static_cast<uint8_t>(bmp[10]) == 54);
-    CHECK(static_cast<uint8_t>(bmp[28]) == 32);
-    CHECK(EncodeBmp(Image{}).empty());
-
-    CHECK(FullChatPalette().size() >= 17);
-    Image row;
-    row.width = 16;
-    row.height = 12;
-    row.bgra.assign(16 * 12 * 4, 30);  // dark background
-    for (int y = 3; y <= 8; ++y) {
-        for (int x = 4; x <= 6; ++x) {
-            uint8_t* p = &row.bgra[(y * 16 + x) * 4];
-            p[0] = 255; p[1] = 255; p[2] = 255; p[3] = 255;
-        }
-    }
-    const Image proj = ProjectRow(row, FullChatPalette(), true);
-    CHECK(proj.width == row.width && proj.height == row.height);
-    CHECK(proj.bgra[(0 * 16 + 0) * 4] == 255);
-    CHECK(proj.bgra[(5 * 16 + 5) * 4] < proj.bgra[(0 * 16 + 0) * 4]);
-
-    const uint64_t h1 = HashProjectedRow(row, FullChatPalette());
-    Image rowWithMovingBg = row;
-    rowWithMovingBg.bgra[0] = 35;
-    rowWithMovingBg.bgra[1] = 28;
-    CHECK(ImageFingerprint(row) != ImageFingerprint(rowWithMovingBg));
-    const uint64_t h2 = HashProjectedRow(rowWithMovingBg, FullChatPalette());
-    CHECK(h1 == h2);
-}
 
 static void TestGw2Text() {
     CHECK(UnsupportedScript(L"Hallöchen ça va? Łódź").empty());
@@ -796,110 +736,7 @@ static void TestWordModel() {
 }
 
 // A synthetic chat panel: dark background, "letters" as bright stripes.
-static Image FakeChat(int w, int h, int firstTop, int pitch, int textH, int lines) {
-    Image img;
-    img.width = w;
-    img.height = h;
-    img.bgra.assign(static_cast<size_t>(w) * h * 4, 0);
-    for (size_t i = 0; i < img.bgra.size(); i += 4) {
-        img.bgra[i] = 40;
-        img.bgra[i + 1] = 34;
-        img.bgra[i + 2] = 30;
-        img.bgra[i + 3] = 255;
-    }
-    auto ink = [&](int x, int y) {
-        if (x < 0 || y < 0 || x >= w || y >= h) return;
-        uint8_t* p = &img.bgra[(static_cast<size_t>(y) * w + x) * 4];
-        p[0] = 225;
-        p[1] = 230;
-        p[2] = 235;
-    };
-    for (int l = 0; l < lines; ++l)
-        for (int y = firstTop + l * pitch; y < firstTop + l * pitch + textH; ++y)
-            for (int x = 20; x < w - 20; ++x)
-                if ((x / 3) % 2 == 0) ink(x, y);
-    return img;
-}
 
-static void TestChatGeometry() {
-    // 4K-like: lines 20 px apart, ink 14 px high.
-    Image img = FakeChat(400, 260, 30, 20, 14, 10);
-    LineGrid g = FindLineGrid(img, {0, 0, 400, 260});
-    CHECK(g.rows.size() == 10 && g.pitch == 20 && g.textHeight == 14);
-    CHECK(OcrScaleFor(g) == 2);
-    LineGrid small;
-    small.pitch = 10;
-    small.textHeight = 7;
-    CHECK(OcrScaleFor(small) == 3);
-    small.pitch = 31;
-    CHECK(OcrScaleFor(small) == 1);
-
-    // Two lines whose descenders touch read as one run: split again.
-    Image joined = FakeChat(400, 200, 20, 20, 14, 6);
-    for (int x = 20; x < 380; ++x)
-        for (int y = 34; y < 40; ++y) {  // fill the gap between line 1 and 2
-            uint8_t* p = &joined.bgra[(static_cast<size_t>(y) * 400 + x) * 4];
-            if ((x / 3) % 2 == 0) p[0] = p[1] = p[2] = 230;
-        }
-    CHECK(FindLineGrid(joined, {0, 0, 400, 200}).rows.size() == 6);
-
-    // Dark text on a white page (a website in the free screen area): the same grid.
-    Image page = FakeChat(400, 260, 30, 20, 14, 10);
-    for (size_t i = 0; i + 3 < page.bgra.size(); i += 4) {
-        page.bgra[i] = static_cast<uint8_t>(255 - page.bgra[i]);
-        page.bgra[i + 1] = static_cast<uint8_t>(255 - page.bgra[i + 1]);
-        page.bgra[i + 2] = static_cast<uint8_t>(255 - page.bgra[i + 2]);
-    }
-    const LineGrid pg = FindLineGrid(page, {0, 0, 400, 260});
-    CHECK(pg.rows.size() == 10 && pg.pitch == 20);
-
-    // Snapping: the frame cuts the first line mostly away (left out) and the
-    // last line only a little (taken in).
-    SnapResult s = SnapChatArea(img, {0, 40, 400, 165});  // lines at 30,50,...,210
-    CHECK(s.grid.rows.size() == 8);
-    CHECK(s.area.y > 30 && s.area.y <= 50 && s.area.y + s.area.h >= 204);
-    CHECK(RateArea(s) == AreaQuality::Good);
-
-    // Tab bar above and input line below, set apart by wider gaps: dropped.
-    Image panel = FakeChat(400, 300, 60, 20, 14, 8);  // lines 60..200
-    for (int x = 20; x < 380; ++x)
-        for (int y = 20; y < 34; ++y)
-            if ((x / 3) % 2 == 0) panel.bgra[(static_cast<size_t>(y) * 400 + x) * 4 + 1] = 230;  // tab bar at 20
-    for (int x = 20; x < 380; ++x)
-        for (int y = 250; y < 264; ++y)
-            if ((x / 3) % 2 == 0) panel.bgra[(static_cast<size_t>(y) * 400 + x) * 4 + 1] = 230;  // input line at 250
-    s = SnapChatArea(panel, {0, 10, 400, 270});
-    CHECK(s.grid.rows.size() == 8);
-    CHECK(s.area.y >= 34 && s.area.y + s.area.h <= 250);
-
-    // Scroll bar: a narrow bright column at the left edge, apart from the text.
-    Image bar = FakeChat(400, 260, 30, 20, 14, 10);
-    for (int y = 25; y < 235; ++y)
-        for (int x = 4; x < 9; ++x) bar.bgra[(static_cast<size_t>(y) * 400 + x) * 4 + 2] = 230;
-    s = SnapChatArea(bar, {0, 25, 400, 210});
-    std::printf("bar snap: x=%d y=%d w=%d h=%d rows=%zu pitch=%d th=%d\n", s.area.x, s.area.y, s.area.w, s.area.h,
-                s.grid.rows.size(), s.grid.pitch, s.grid.textHeight);
-    CHECK(s.area.x > 9 && s.area.x < 20);
-
-    CHECK(RateArea(SnapChatArea(FakeChat(200, 100, 0, 20, 14, 0), {0, 0, 200, 100})) == AreaQuality::None);
-    // Words of three chat lines reported as one line come apart again, in order.
-    LineGrid three;
-    three.rows = {{10, 14}, {30, 14}, {50, 14}};
-    three.pitch = 20;
-    three.textHeight = 14;
-    auto groups = GroupWordsByRows({{L"c2", {90, 31, 20, 12}}, {L"a1", {5, 11, 20, 12}}, {L"b1", {40, 52, 20, 12}},
-                                    {L"a2", {40, 10, 20, 13}}, {L"b0", {5, 50, 30, 14}}, {L"far", {5, 200, 20, 12}}},
-                                   three);
-    CHECK(groups.size() == 3);
-    if (groups.size() == 3) {
-        CHECK(groups[0].size() == 2 && groups[0][0].text == L"a1" && groups[0][1].text == L"a2");
-        CHECK(groups[1].size() == 1 && groups[1][0].text == L"c2");
-        CHECK(groups[2].size() == 2 && groups[2][0].text == L"b0" && groups[2][1].text == L"b1");
-    }
-
-    const Image up = UpscaleForOcr(Crop(img, {0, 0, 50, 40}), 3);
-    CHECK(up.width == 150 && up.height == 120 && !up.Empty());
-}
 
 static void TestMangledStamps() {
     // Timestamps whose brackets text recognition misread, as seen on real 4K captures.
@@ -1118,39 +955,6 @@ static void TestNames() {
     CHECK(names.Size() == NameList::kMax);
 }
 
-static void TestTesseract() {
-    const std::string tsv =
-        "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"
-        "1\t1\t0\t0\t0\t0\t0\t0\t600\t200\t-1\t\n"
-        "4\t1\t1\t1\t1\t0\t10\t10\t300\t20\t-1\t\n"
-        "5\t1\t1\t1\t1\t1\t10\t10\t60\t20\t95.5\t[19:17]\n"
-        "5\t1\t1\t1\t1\t2\t80\t10\t60\t20\t91.0\tEmi:\n"
-        "5\t1\t1\t1\t1\t3\t150\t10\t60\t20\t12.0\tHallo\n"
-        "5\t1\t1\t1\t2\t1\t10\t40\t60\t20\t5.0\t~~\n"
-        "5\t1\t2\t1\t1\t1\t10\t70\t60\t20\t88.0\tZweite\n"
-        "5\t1\t2\t1\t1\t2\t80\t70\t60\t20\t87.0\tZeile\n";
-    const auto lines = ParseTesseractTsv(tsv, 30);
-    CHECK(lines.size() == 2);
-    if (lines.size() == 2) {
-        CHECK(lines[0].text == L"[19:17] Emi: Hallo");
-        CHECK(lines[0].words.size() == 3 && lines[0].words[1].rect.x == 80);
-        CHECK(lines[1].text == L"Zweite Zeile");
-    }
-    CHECK(TesseractModel(L"DE") == "deu" && TesseractModel(L"EN-GB") == "eng" && TesseractModel(L"ZH-HANS") == "chi_sim");
-    CHECK(TesseractModel(L"ZH-HANT") == "chi_tra" && TesseractModel(L"PT-BR") == "por" && TesseractModel(L"XX").empty());
-    const std::vector<std::string> installed = {"eng", "deu", "osd", "chi_sim", "fra"};
-    CHECK(ChooseTesseractLangs("", installed, false) == "eng+deu+fra");
-    CHECK(ChooseTesseractLangs("", installed, true) == "eng+deu+fra+chi_sim");
-    CHECK(ChooseTesseractLangs("deu+spa", installed, false) == "deu");
-    CHECK(ChooseTesseractLangs("", {"osd", "jpn"}, false) == "jpn");
-    Image img;
-    img.width = 2;
-    img.height = 1;
-    img.bgra = {255, 255, 255, 255, 0, 0, 0, 255};
-    const std::string pgm = EncodePgm(img);
-    CHECK(pgm.rfind("P5\n2 1\n255\n", 0) == 0 && pgm.size() == 11 + 2);
-    CHECK(static_cast<unsigned char>(pgm[11]) >= 254 && pgm[12] == 0);
-}
 
 static void TestLanguageTool() {
     CHECK(LanguageToolLang(L"DE") == L"de-DE" && LanguageToolLang(L"en-GB") == L"en-GB" && LanguageToolLang(L"") == L"auto");
@@ -1225,81 +1029,9 @@ static void TestOcrTimestamps() {
     CHECK(m.stamped && m.speaker.empty() && m.text == L"Krypts hecken etwas Gro\u00dfes");
 }
 
-static std::vector<OcrLine> LoadCapture(const char* path) {
-    std::vector<OcrLine> out;
-    std::ifstream f(path, std::ios::binary);
-    if (!f.is_open()) {
-        std::string fallback = std::string("../") + path;
-        f.open(fallback, std::ios::binary);
-        if (!f.is_open()) {
-            f.open(std::string("../../") + path, std::ios::binary);
-        }
-    }
-    std::string line;
-    while (std::getline(f, line)) {
-        if (!line.empty() && line.back() == '\r') line.pop_back();
-        if (line.empty() || line[0] == '#') continue;
-        // "f6f93a | 95 | 18 | text"
-        std::vector<std::string> parts;
-        size_t s = 0;
-        for (int i = 0; i < 3; ++i) {
-            size_t bar = line.find(" | ", s);
-            if (bar == std::string::npos) break;
-            parts.push_back(line.substr(s, bar - s));
-            s = bar + 3;
-        }
-        if (parts.size() != 3) continue;
-        OcrLine l;
-        RgbFromHex(FromUtf8(parts[0]), l.color);
-        l.top = std::atoi(parts[1].c_str());
-        l.height = std::atoi(parts[2].c_str());
-        l.text = FromUtf8(line.substr(s));
-        out.push_back(l);
-    }
-    return out;
-}
 
-static void TestRealCapture() {
-    // A real capture of the German client read by Windows OCR (lots of errors).
-    const auto lines = LoadCapture("tests/data/real_capture_win_ocr.txt");
-    CHECK(lines.size() == 17);
-    const auto msgs = BuildMessages(lines, DefaultChannelColors());
-    bool tabBar = false, inputLine = false, zapp = false, system = false;
-    for (const ChatMessage& m : msgs) {
-        if (m.text.find(L"cbt") != std::wstring::npos || m.text.find(L"Febt") != std::wstring::npos) tabBar = true;
-        if (m.text.find(L"CK L N") != std::wstring::npos) inputLine = true;
-        if (m.speaker == L"Pell The Unnamed" && m.text == L"Thanks!") zapp = true;
-        if (m.channel == Channel::System && m.text.find(L"Krypts") != std::wstring::npos &&
-            m.text.find(L"Konvergenz") != std::wstring::npos)
-            system = true;  // the wrapped yellow notice is one message
-    }
-    CHECK(!tabBar);
-    CHECK(zapp);
-    CHECK(system);
-    (void)inputLine;
-    for (const ChatMessage& m : msgs) CHECK(!m.text.empty());
-}
 
-static void TestGw2Install() {
-    auto libs = ParseSteamLibraryPaths("\"libraryfolders\"\n{\n\t\"0\"\n\t{\n\t\t\"path\"\t\t\"D:\\\\SteamLibrary\"\n\t}\n}\n");
-    CHECK(libs.size() == 1 && libs[0] == L"D:\\SteamLibrary");
-    CHECK(GameDirFromRegistryValue(L"\"C:\\Games\\GW2\\Gw2-64.exe\" -maploadinfo") == L"C:\\Games\\GW2");
-    CHECK(InstallDirFor(L"C:\\GW2") == L"C:\\GW2\\addons\\GW2ChatTranslator");
-    std::set<std::wstring> files{L"d3d11.dll", L"addons\\Nexus", L"arcdps_unofficial_extras.dll"};
-    auto env = DetectAddons([&](const std::wstring& r) { return files.count(r) > 0; },
-                            [](const std::wstring&) { return std::wstring(L"Nexus"); });
-    CHECK(env.nexus && env.unofficialExtras && env.proxyDll && !env.arcdps);
-    CHECK(HasSwitch(L"\"x.exe\" --wait-for-gw2", L"--wait-for-gw2") && !HasSwitch(L"--wait-for-gw2x", L"--wait-for-gw2"));
-}
 
-static void TestHousekeeping() {
-    std::vector<FileEntry> f = {{L"capture_00.txt", 1000, 100}, {L"capture_00_raw.bmp", 5000, 100},
-                                {L"capture_01.txt", 1000, 200}, {L"keep.ini", 50, 1}, {L"x.tmp", 10, 1}};
-    auto del = SelectForCleanup(f, {2, 0, 0}, 300, IsCaptureFile);
-    CHECK(del.size() == 1 && del[0] == L"capture_00.txt");
-    del = SelectForCleanup(f, {0, 0, 150}, 300, IsStaleTempFile);
-    CHECK(del.size() == 1 && del[0] == L"x.tmp");
-}
 
 static void TestChatTextFilter() {
     CHECK(LooksLikeChatText(L"wer kommt mit zum Tequatl?"));
@@ -1357,56 +1089,7 @@ static void TestCloudMt() {
     CHECK(!ParseLibreResponse(R"({"error":"Invalid API key"})", false, 1)[0].ok);
 }
 
-static void TestCorrections() {
-    CorrectionMemory c;
-    // A corrected line comes back exactly, case and spacing of the source ignored.
-    c.Add(L"wer kommt mit zum Weltboss?", L"EN-GB", L"who comes with to the world boss?", L"Who wants to join the world boss?");
-    std::wstring out;
-    CHECK(c.Lookup(L"Wer  kommt mit zum weltboss?", L"EN-US", &out) && out == L"Who wants to join the world boss?");
-    CHECK(!c.Lookup(L"wer kommt mit zum Weltboss?", L"DE", &out));
-    // Only a few words changed: that phrase is learned and applied to new translations.
-    CHECK(c.Phrases() == 1);  // "who comes with to" -> "Who wants to join" (the end stayed the same)
-    c.Add(L"Weltboss in 5 Minuten", L"EN", L"World Boss in 5 minutes", L"world boss in 5 minutes");
-    CHECK(c.Phrases() == 1);  // only the case changed: no phrase
-    c.Add(L"brauche Hilfe bei der Fraktale", L"EN", L"need help with the fractal", L"need help with the fractals");
-    CHECK(c.Phrases() == 2);
-    CHECK(c.Apply(L"The fractal starts now.", L"EN") == L"The fractals starts now.");
-    CHECK(c.Apply(L"fractalist", L"EN") == L"fractalist");    // whole words only
-    CHECK(c.Apply(L"The fractal", L"DE") == L"The fractal");  // other language untouched
-    std::wstring from, to;
-    CHECK(CorrectionMemory::ChangedPhrase(L"Let's go to Lion's Arc now!", L"Let's go to Lion's Arch now!", &from, &to));
-    CHECK(from == L"Arc" && to == L"Arch");
-    CHECK(!CorrectionMemory::ChangedPhrase(L"a b c d e f", L"u v w x y z", &from, &to));  // everything changed
-    // Saved and loaded again, including tabs and backslashes.
-    c.Add(L"tab\there \\ x", L"EN", L"a", L"b\tc");
-    CorrectionMemory d;
-    d.Parse(c.Serialize());
-    CHECK(d.Lines() == c.Lines() && d.Phrases() == c.Phrases());
-    CHECK(d.Lookup(L"tab\there \\ x", L"EN", &out) && out == L"b\tc");
-    d.Clear();
-    CHECK(d.Lines() == 0 && d.Phrases() == 0);
-}
 
-static void TestSecondLook() {
-    size_t at = 9;
-    CHECK(WordCore(L"(main),", &at) == L"main" && at == 1);
-    CHECK(WordCore(L"*ain") == L"ain");
-    // Worth checking: normal words; not numbers, abbreviations, links, other scripts, very short words.
-    CHECK(WorthSecondLook(L"uvjrde") && WorthSecondLook(L"Weltboss") && WorthSecondLook(L"Lion's"));
-    CHECK(!WorthSecondLook(L"LFG") && !WorthSecondLook(L"WvW") && !WorthSecondLook(L"lvl80"));
-    CHECK(!WorthSecondLook(L"ok") && !WorthSecondLook(L"gw2.com") && !WorthSecondLook(L"привет"));
-    // The second reading replaces only when close: one or two characters differ.
-    CHECK(PlausibleRereading(L"rnain", L"main"));
-    CHECK(PlausibleRereading(L"ain", L"main"));
-    CHECK(PlausibleRereading(L"uvjrde", L"würde"));
-    CHECK(!PlausibleRereading(L"main", L"main"));
-    CHECK(!PlausibleRereading(L"Main", L"main"));            // only the case: nothing to fix
-    CHECK(!PlausibleRereading(L"finds", L"Freunde"));        // another word altogether
-    CHECK(!PlausibleRereading(L"tbe", L"thy"));              // short word: one character only
-    CHECK(IsGamerAbbreviation(L"LF1M") && IsGamerAbbreviation(L"f2p") && IsGamerAbbreviation(L"1v1"));
-    CHECK(!LooksGarbled(L"LF1M") && !LooksGarbled(L"f2p") && !LooksGarbled(L"1v1"));
-    CHECK(LooksGarbled(L"pvg!pyt"));
-}
 
 static void TestMyWords() {
     MyWords w;
@@ -1426,31 +1109,6 @@ static void TestMyWords() {
     CHECK(again.Remove(L"BRB") && again.Size() == 2);
 }
 
-static void TestRapidRec() {
-    // CTC: best class per step, repeats merged, blanks (0) dropped; the last class is a space.
-    const std::vector<std::wstring> dict = {L"a", L"b", L"c"};
-    // steps: a a _ b space c c  (classes: 0 blank, 1 a, 2 b, 3 c, 4 space)
-    const int best[] = {1, 1, 0, 2, 4, 3, 3};
-    std::vector<float> probs(7 * 5, 0.01f);
-    for (int t = 0; t < 7; ++t) probs[static_cast<size_t>(t) * 5 + best[t]] = 0.9f;
-    const RecResult r = CtcDecode(probs.data(), 7, 5, dict);
-    CHECK(r.text == L"ab c" && r.charStep.size() == 4 && r.charStep[0] == 0 && r.charStep[3] == 5);
-    CHECK(r.confidence > 0.89f && r.confidence < 0.91f);
-    RecResult rr = r;
-    rr.inputWidth = 70;  // 10 model pixels per step
-    const std::vector<RecWord> w = RecWords(rr, rr.inputWidth);
-    CHECK(w.size() == 2 && w[0].text == L"ab" && w[1].text == L"c" && w[1].x >= 45 && w[1].x <= 55);
-    // Picture preparation: height 48, at least 320 wide, normalised to -1..1, invert flips.
-    Image img;
-    img.width = 20;
-    img.height = 10;
-    img.bgra.assign(20 * 10 * 4, 255);
-    const RecInput in = PrepareRecInput(img, false);
-    CHECK(in.width == 320 && in.data.size() == static_cast<size_t>(3) * 48 * 320);
-    CHECK(in.data[0] > 0.99f && in.data[200] == 0.0f);  // white pixel; padding at the right stays 0
-    CHECK(PrepareRecInput(img, true).data[0] < -0.99f);
-    CHECK(ParseRecDictionary("a\r\nb\nc").size() == 3);
-}
 
 static void TestWordTriples() {
     WordModel m;
@@ -1709,51 +1367,6 @@ static void TestActiveBottom() {
     CHECK(KeepActiveBottom(all, lines, 20).size() == 2);
 }
 
-static void TestGarbled() {
-    auto has = [](const std::vector<std::wstring>& v, const std::wstring& w) {
-        return std::find(v.begin(), v.end(), w) != v.end();
-    };
-    // Artifacts nobody types.
-    CHECK(LooksGarbled(L"syn!ax"));
-    CHECK(LooksGarbled(L"g9danken"));
-    CHECK(LooksGarbled(L"Plövdsi0Q"));
-    CHECK(LooksGarbled(L"!raining"));
-    CHECK(LooksGarbled(L"9QEine"));
-    CHECK(LooksGarbled(L"pvg!pyt"));
-    CHECK(LooksGarbled(L"sshrei>weisq"));
-    // Ordinary chat.
-    CHECK(!LooksGarbled(L"help!"));
-    CHECK(!LooksGarbled(L"10er"));
-    CHECK(!LooksGarbled(L"4k"));
-    CHECK(!LooksGarbled(L"2nd"));
-    CHECK(!LooksGarbled(L"gw2"));
-    CHECK(!LooksGarbled(L"x2"));
-    CHECK(!LooksGarbled(L"1v1"));
-    CHECK(!LooksGarbled(L"[12:34]"));
-    CHECK(!LooksGarbled(L"Kiro.1234"));
-    CHECK(!LooksGarbled(L"https://x.org/a1b"));
-    CHECK(!LooksGarbled(L"<3"));
-    CHECK(!LooksGarbled(L"output"));
-    CHECK(!LooksGarbled(L"\"Hallo\","));
-    CHECK(!LooksGarbled(L"2day") && !LooksGarbled(L"4ever") && !LooksGarbled(L"2nite") && !LooksGarbled(L"2ND"));
-    CHECK(!LooksGarbled(L"*grins*") && !LooksGarbled(L"#lfg") && !LooksGarbled(L"~hi"));
-    CHECK(!LooksGarbled(L"LF1M") && !LooksGarbled(L"LF2M") && !LooksGarbled(L"f2p") && !LooksGarbled(L"p2w"));
-    CHECK(!LooksGarbled(L"b2b") && !LooksGarbled(L"g2g") && !LooksGarbled(L"2v2"));
-    CHECK(IsGamerAbbreviation(L"LF1M") && IsGamerAbbreviation(L"1v1") && IsGamerAbbreviation(L"f2p"));
-    // The part to repair keeps a mark in front.
-    size_t at = 9;
-    CHECK(GarbledCore(L"(!raining,", &at) == L"!raining" && at == 1);
-    // What a dictionary may pick from.
-    CHECK(has(ConfusionCandidates(L"syn!ax"), L"syntax"));
-    CHECK(has(ConfusionCandidates(L"!raining"), L"training"));
-    CHECK(has(ConfusionCandidates(L"g9danken"), L"gedanken"));
-    CHECK(has(ConfusionCandidates(L"putput"), L"output"));
-    CHECK(has(ConfusionCandidates(L"rnain"), L"main"));
-    CHECK(!has(ConfusionCandidates(L"putput"), L"putput"));
-    CHECK(ConfusionCandidates(L"x9y9z9w9q9", 80).size() <= 80);
-    CHECK(MarksToLetters(L"g9danken") == L"ggdanken");
-    CHECK(MarksToLetters(L"syn!ax") == L"syntax");
-}
 
 static void TestSureLanguage() {
     // Another script decides at once, even short.
@@ -1827,32 +1440,6 @@ static void TestFreeText() {
     CHECK(!LooksLikeFreeText(L"123 456"));
 }
 
-static void TestF16AndLut() {
-    const auto lut = HalfToSrgb8Lut(1.0);
-    CHECK(lut[0x0000] == 0);
-    CHECK(lut[0x3C00] == 255);
-    CHECK(lut[0x3800] > 0 && lut[0x3800] < 255);
-    CHECK(lut[0x8000] == 0);
-    CHECK(lut[0xBC00] == 0);
-
-    const int w = 2, h = 2;
-    const std::vector<uint16_t> pixels = {
-        0x0000, 0x3C00, 0x0000, 0x3C00,
-        0x3C00, 0x0000, 0x3C00, 0x3C00,
-        0x1000, 0x2000, 0x3000, 0x3C00,
-        0x0000, 0x0000, 0x0000, 0x3C00
-    };
-    const float sdrWhite = 2.5f;
-    const std::string encoded = EncodeF16(w, h, sdrWhite, pixels.data());
-    CHECK(!encoded.empty());
-
-    Image img;
-    float decWhite = 0.0f;
-    CHECK(DecodeF16(encoded, img, &decWhite));
-    CHECK(img.width == w && img.height == h);
-    CHECK(std::abs(decWhite - sdrWhite) < 1e-4f);
-    CHECK(img.bgra.size() == static_cast<size_t>(w * h * 4));
-}
 
 // ---- voice input (core/voice) ----------------------------------------------
 static void TestVoiceCatalog() {
@@ -2160,63 +1747,6 @@ static void TestPickVoiceCores() {
     CHECK(PickVoiceCores(idle, six, 0).threads == 6);
 }
 
-static void TestBridgeProtocol() {
-    BridgeMessage m;
-    m.channel = "squad";
-    m.subgroup = 3;
-    m.broadcast = true;
-    m.time = "2026-10-14T11:45:24.888Z";
-    m.account = ":Invented.1234";
-    m.character = "Nora Testwind";
-    m.text = "Stack am Kommandeur, \"jetzt\"\nlos \xE6\xBC\xA2";  // quote, newline, UTF-8
-    const std::string line = EncodeBridgeMessage(m);
-    CHECK(line.size() > 2 && line.back() == '\n' && line.find('\n') == line.size() - 1);  // one line
-    BridgeMessage r;
-    CHECK(DecodeBridgeMessage(line, r));
-    CHECK(r.kind == BridgeMessage::Kind::Chat && r.channel == "squad" && r.subgroup == 3 && r.broadcast);
-    CHECK(r.time == m.time && r.account == m.account && r.character == m.character && r.text == m.text);
-    BridgeMessage h;
-    h.kind = BridgeMessage::Kind::Hello;
-    h.addonVersion = "1.5.0";
-    h.extras = true;
-    CHECK(DecodeBridgeMessage(EncodeBridgeMessage(h), r) && r.kind == BridgeMessage::Kind::Hello && r.addonVersion == "1.5.0" && r.extras);
-    // party line to the whole party; nonsense subgroups become -1
-    // the add-on only reports party/squad: anything else from it is not believed; nonsense subgroups become -1
-    m.channel = "map";
-    CHECK(!DecodeBridgeMessage(EncodeBridgeMessage(m), r));
-    m.channel = "party";
-    m.subgroup = 99;
-    CHECK(DecodeBridgeMessage(EncodeBridgeMessage(m), r) && r.channel == "party" && r.subgroup == -1 && r.src == "extras");
-    // the OCR reader: every channel, an outgoing whisper, unknown channels become ""
-    BridgeMessage o;
-    o.src = "ocr";
-    o.channel = "whisper";
-    o.outgoing = true;
-    o.character = "Nora Testwind";
-    o.text = "bin gleich da";
-    CHECK(DecodeBridgeMessage(EncodeBridgeMessage(o), r) && r.src == "ocr" && r.channel == "whisper" && r.outgoing);
-    o.channel = "combat";
-    CHECK(DecodeBridgeMessage(EncodeBridgeMessage(o), r) && r.channel.empty());
-    // "Events: Chat" through the add-on: every channel
-    o.src = "chat";
-    o.channel = "map";
-    o.outgoing = false;
-    CHECK(DecodeBridgeMessage(EncodeBridgeMessage(o), r) && r.src == "chat" && r.channel == "map");
-    h.chatEvents = true;
-    CHECK(DecodeBridgeMessage(EncodeBridgeMessage(h), r) && r.chatEvents);
-    // an older add-on without "src" counts as the add-on
-    CHECK(DecodeBridgeMessage("{\"v\":1,\"t\":\"chat\",\"ch\":\"squad\",\"text\":\"inc\"}", r) && r.src == "extras");
-    // rejected: other protocol, unknown type, empty text, broken JSON, too long
-    CHECK(!DecodeBridgeMessage("{\"v\":2,\"t\":\"hello\"}", r));
-    CHECK(!DecodeBridgeMessage("{\"v\":1,\"t\":\"send\",\"text\":\"x\"}", r));
-    m.text.clear();
-    CHECK(!DecodeBridgeMessage(EncodeBridgeMessage(m), r));
-    CHECK(!DecodeBridgeMessage("{\"v\":1,", r));
-    CHECK(!DecodeBridgeMessage(std::string(kBridgeMaxLine + 1, ' '), r));
-    // over-long text is cut at a character boundary, never inside a UTF-8 sequence
-    m.text = std::string(1023, 'a') + "\xC3\xA4";
-    CHECK(DecodeBridgeMessage(EncodeBridgeMessage(m), r) && r.text == std::string(1023, 'a'));
-}
 
 static void TestSendGuard() {
     {  // ordinary chatting passes, the same line a few times too
@@ -2346,11 +1876,8 @@ int main() {
     TestUtf();
     TestFreeText();
     TestCloudMt();
-    TestCorrections();
-    TestSecondLook();
     TestMyWords();
     TestSureLanguage();
-    TestGarbled();
     TestActiveBottom();
     TestWordTriples();
     TestWordModelWeights();
@@ -2362,7 +1889,6 @@ int main() {
     TestTypoMemory();
     TestGermanContractions();
     TestGw2Abbreviations();
-    TestRapidRec();
     TestText();
     TestChat();
     TestHotkey();
@@ -2377,7 +1903,6 @@ int main() {
     TestParseLine();
     TestBuildMessages();
     TestStream();
-    TestImage();
     TestGw2Text();
     TestLlm();
     TestDeepLBatch();
@@ -2388,7 +1913,6 @@ int main() {
     TestAsciiEscape();
     TestI18n();
     TestWordModel();
-    TestChatGeometry();
     TestMangledStamps();
     TestNames();
     TestLocateChat();
@@ -2399,15 +1923,10 @@ int main() {
     TestGuessLanguage();
     TestLinks();
     TestStarterWords();
-    TestTesseract();
     TestLanguageTool();
     TestOcrTimestamps();
-    TestRealCapture();
-    TestGw2Install();
-    TestHousekeeping();
     TestModelList();
     TestChatTextFilter();
-    TestF16AndLut();
     TestVoiceCatalog();
     TestFindSpeech();
     TestCleanTranscript();
@@ -2418,7 +1937,6 @@ int main() {
     TestChatCode();
     TestVoiceFixBook();
     TestSendGuard();
-    TestBridgeProtocol();
     TestPickVoiceCores();
     std::printf("%d passed, %d failed\n", g_pass, g_fail);
     return g_fail == 0 ? 0 : 1;

@@ -1,6 +1,6 @@
-# GW2 Keyboard for Nexus – the pure DLL version (docs/NEXUS_KEYBOARD_PLAN.md). The same core and services as the exe;
-# the UI is ImGui (Nexus' 1.80, headers shared with addons/nexus).
-set(GCT_NEXUS_TP ${PROJECT_SOURCE_DIR}/addons/nexus/third_party)
+# GW2 Keyboard for Nexus: the add-on DLL, its voice helper and its self-test.
+# the UI is ImGui 1.80 (Nexus' version, headers in third_party/).
+set(GCT_NEXUS_TP ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
 add_library(gw2keyboard_nexus SHARED
     src/kb_main.cpp
     src/voice_module.cpp
@@ -36,7 +36,7 @@ endif()
 
 if(GCT_WHISPER)
     # The voice helper (gw2kb_voice.exe): whisper outside the game process – its own process affinity on the least busy
-    # cores and below normal priority, as in the exe. Lies next to the add-on's data: <addons>\GW2Keyboard\, its whisper
+    # cores and below normal priority. Lies next to the add-on's data: <addons>\GW2Keyboard\, its whisper
     # DLLs in <addons>\GW2Keyboard\voice.
     add_executable(gw2kb_voice WIN32 src/voice_helper_main.cpp ${PROJECT_SOURCE_DIR}/src/kbd/voice_session.cpp
                    ${PROJECT_SOURCE_DIR}/src/kbd/whisper_engine.cpp ${PROJECT_SOURCE_DIR}/src/app/config.cpp)
