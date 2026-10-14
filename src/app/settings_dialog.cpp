@@ -63,7 +63,7 @@ enum : int {
     kReaderOn, kOcrEngine, kCapture, kTessPath, kTessBrowse, kTessStatus, kTessGet, kChinese, kInterval, kShowSystem, kCaptures,
     kPickRegion, kCover,
     // Writing
-    kSpell, kAutoCorrect, kSuggest, kLearn, kVoiceBoost, kLiveView, kMicMode, kMicKey, kMicGlobalKey, kMicGuard, kMicSens,
+    kSpell, kAutoCorrect, kSuggest, kLearn, kTranslateWriting, kVoiceBoost, kLiveView, kMicMode, kMicKey, kMicGlobalKey, kMicGuard, kMicSens,
     kMicSensValue, kMicPause, kMicPreRoll, kMicMinMs, kMicMute, kForgetAll, kForgetStatus, kLt, kLtUrl, kBackTr, kSendMode, kReturnFocus,
     // Translator
     kEngine, kEngineNote, kLocalModel, kPull, kLocalInfo, kGetOllama, kLlmFindLocal, kPullStatus, kDeepL, kEmail, kLlmUrl, kLlmModel, kLlmLoad, kLlmKey, kFixOcr, kTest, kTestStatus,
@@ -1184,7 +1184,12 @@ private:
     void BuildTranslator() {
         BeginPage();
         int r = 0;
+#ifdef GCT_KEYBOARD_APP
+        // The whole translation of what you write can be switched off: then only the typing help runs.
+        Check(kTranslateWriting, Tr(L"Translate my text"), cfg_.translateWriting, kLabelX, Y(r), kLabelW);
+#else
         Label(Tr(L"Translator"), kLabelX, Y(r), kLabelW);
+#endif
         Combo(kEngine,
               {Tr(L"Automatic (the first one set up)"), Tr(L"MyMemory (free, no account)"),
                Tr(L"Google Translate (free contingent, key)"), Tr(L"Microsoft Translator (free contingent, key)"),
@@ -2275,6 +2280,7 @@ private:
         pick(kVoiceThreads, voiceThreadValues_, &c.voiceThreads);
         pick(kVoiceDevice, voiceDeviceIds_, &c.voiceDevice);
         c.voiceGlossary = Checked(kVoiceGlossary);
+        c.translateWriting = Checked(kTranslateWriting);
         if (Sel(kVoiceBoost) >= 0) c.voiceBoost = Sel(kVoiceBoost);
 #endif
 #ifndef GCT_KEYBOARD_APP  // GW2 Keyboard: no chat reading, no OCR

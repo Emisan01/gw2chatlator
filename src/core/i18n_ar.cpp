@@ -1181,6 +1181,8 @@ extern const I18nEntry kArabicStrings[] = {
      L"ترجم مرة أخرى"},
     {L"Translate chat once now",
      L"ترجمة المحادثة مرة واحدة الآن"},
+    {L"Translate my text",
+     L"ترجمة نصي"},
     {L"Translate the chat into",
      L"ترجمة المحادثة إلى"},
     {L"Translate the chat into:",

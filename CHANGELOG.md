@@ -16,6 +16,9 @@ diagnosis show it.
   (no request at all).
 - **Settings → Translator:** with "Automatic" (MyMemory while no key is set up) the e-mail field for MyMemory's larger
   contingent is there at once.
+- **Translation of what you write can be switched off** (Settings → Translator → "Translate my text"): then only the
+  typing help runs and the text goes out as written (corrected). Choosing a language on the send chip switches it on
+  again.
 - **Compact view** (menu ≡): slim bars, a one-line input, only the line that goes into the chat; the window takes the
   height it needs and gets the old one back.
 

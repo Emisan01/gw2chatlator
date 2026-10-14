@@ -336,6 +336,7 @@ void Config::Load(const std::wstring& dir) {
     if (langs.empty()) langs = ini.Str(L"DeepL", L"TargetLangs", L"");
     if (auto t = ParseLangList(langs); !t.empty()) writeLangs = t;
     backTranslate = ini.Bool(L"Translate", L"BackTranslate", true);
+    translateWriting = ini.Bool(L"Translate", L"Writing", true);
     {
         const std::wstring autoList = ini.Str(L"Translate", L"AutoChannels", L"default");
         autoTranslate = autoList == L"default" ? DefaultAutoTranslate() : ParseChannels(autoList);
@@ -550,6 +551,7 @@ void Config::SaveAll() const {
     for (const std::wstring& c : writeLangs) joined += (joined.empty() ? L"" : L",") + c;
     SaveValue(L"Translate", L"WriteLangs", joined);
     SaveBool(L"Translate", L"BackTranslate", backTranslate);
+    SaveBool(L"Translate", L"Writing", translateWriting);
     SaveValue(L"Translate", L"AutoChannels", SerializeChannels(autoTranslate));
     {
         std::wstring list;
