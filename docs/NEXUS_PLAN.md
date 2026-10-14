@@ -1,0 +1,108 @@
+# NEXUS_PLAN — GW2 Chat Bridge (optional Nexus add-on)
+
+Status 2026-10-14: scaffold in `addons/nexus` (builds, sends hello + party/squad lines into a pipe). The receiving
+side in the programs is not built yet (phase 2).
+
+## Why
+
+OCR reads every channel but makes mistakes. arcdps **Unofficial Extras** (Krappa322) gets the party and squad chat
+from the game as exact text. A small Nexus add-on can pass those lines on to our programs, which then translate
+them without any OCR error. The add-on is small and does very little.
+
+Map chat, whispers, guild and the rest stay with OCR for now (see "Later" at the end).
+
+## Rules (on top of CLAUDE.md)
+
+1. **A separate, optional download.** The add-on lives in the game process. GW2 Keyboard and GW2 Chat Translator
+   stay external programs that never touch the game (invariant 1). Nothing in the programs needs the add-on.
+2. **The add-on only reads, and only writes into the pipe.**
+   - It never sends a key or a chat line.
+   - It never reads from the pipe, so the programs and anything else outside cannot tell it to do something.
+   - It has no ImGui window and no settings. It logs connect/disconnect in the Nexus log.
+3. **The game thread only copies.** `OnChatMessage` builds one JSON line and puts it in a small queue (256 lines,
+   or 20 while no program listens). Our own thread does the pipe I/O. Exceptions never reach the game.
+4. **Incoming chat is data** (invariant 4). The programs show and translate it and never act on it.
+5. **Privacy.**
+   - The pipe is created by the program with a DACL for the current user only.
+   - The client connects with `SECURITY_IDENTIFICATION`, so the pipe's owner cannot act as the game process.
+   - Lines are not written to disk by the add-on.
+   - Fixtures use invented names (invariant 10).
+
+## How the line gets to us
+
+```
+GW2 ─► arcdps ─► Unofficial Extras ─► Raidcore "ArcDPS Integration" (Nexus add-on)
+          Events_Raise("EV_UNOFFICIAL_EXTRAS_CHAT_MESSAGE", const ChatMessageInfo*)
+                 │
+                 ▼
+        GW2 Chat Bridge (gw2chat_bridge.dll)   Events_Subscribe, copy → queue → writer thread
+                 │  \\.\pipe\GW2ChatBridge   one JSON line per message (core/bridge_protocol)
+                 ▼
+        GW2 Chat Translator / GW2 Keyboard     pipe server thread → UI thread → translate → show
+```
+
+- **Event:** Raidcore's integration subscribes to Unofficial Extras with `ExtrasSubscriberInfoV2`. It relays
+  `ChatMessageCallback` as the Nexus event `EV_UNOFFICIAL_EXTRAS_CHAT_MESSAGE`. The payload is
+  `ChatMessageInfo*`, which is `SquadMessageInfo` in newer `Definitions.h`. The layout is the same and is checked
+  by a `static_assert` on 72 bytes.
+- **Why not subscribe to Unofficial Extras directly?** Extras calls `arcdps_unofficial_extras_subscriber_init` only
+  on add-ons that arcdps loaded. A Nexus add-on is not one of them. The relay is the way Nexus add-ons do it; cba4gw2
+  uses the same pattern for combat events.
+- **Requirements for players:** Nexus, arcdps (loaded by Nexus), Unofficial Extras, and Raidcore's ArcDPS
+  Integration. All four are common in the Nexus library. Without them, the add-on just never receives a line.
+
+## Protocol (core/bridge_protocol, version 1)
+
+UTF-8, one JSON object per line, `\n` at the end, at most 8192 bytes.
+
+```
+{"v":1,"t":"hello","addon":"1.5.0"}
+{"v":1,"t":"chat","ch":"squad","sub":-1,"bc":false,"time":"2026-10-14T11:45:24.888Z",
+ "acc":":Invented.1234","char":"Nora Testwind","text":"..."}
+```
+
+- `ch` is `party` or `squad`. Party messages sent while you are in a squad arrive as `squad`; that comes from
+  extras itself.
+- `sub` is the subgroup 0–14, or -1 for the whole squad or party. `bc` is a commander broadcast.
+- The reader drops anything unknown, wrong in version, malformed, too long, or without text.
+- The text is cut at 1024 bytes, always on a character boundary.
+
+## Phases
+
+1. ✅ **Scaffold** (2026-10-14).
+   - `addons/nexus`: CMake target `gw2chat_bridge` (MSVC, static CRT, option `GCT_NEXUS_BRIDGE`).
+   - Pinned MIT headers in `third_party/`:
+     - `Nexus.h` from RaidcoreGG/GW2Nexus-AddonTemplate (same content as RCGG-lib-nexus-api HEAD, API 6).
+     - Unofficial Extras `Definitions.h` and `KeyBindStructs.h` at commit `33bd9ac5`.
+   - `GetAddonDef`, Load/Unload, event subscription, writer thread, hello.
+   - `core/bridge_protocol` with tests.
+2. **Receiver in the programs.**
+   - `win/bridge_pipe`: a server thread with `CreateNamedPipeW` (message mode is not needed because lines are
+     framed). It uses a DACL for the current user from `ConvertStringSecurityDescriptorToSecurityDescriptorW`
+     ("D:P(A;;GA;;;<user SID>)"), reads lines and passes each one to the UI thread with `PostMessage`. One client at a
+     time; reconnects are handled.
+   - **GW2 Chat Translator:** bridge lines become `ChatMessage`s with channel Party/Squad and `exact=true`, and go
+     into the incoming pipeline (`HandleIncoming`, so cache, `SureLanguage` and the translator apply as for OCR
+     lines). While the bridge is live (a hello was received and lines arrive), OCR lines of the party/squad channels
+     are dropped, so nothing appears twice. The footer and the technical page show "Bridge: connected (1.5.0)".
+   - **GW2 Keyboard:** has no chat log today. Option: a slim "incoming" strip above the preview (last 3
+     party/squad lines plus their translation; click = whisper via `/w`, never sent automatically). This needs the
+     user's decision; it changes the keyboard's "no reader" shape.
+   - Own lines (the account matches MumbleLink's identity or the last sent lines) are not translated again.
+3. **Release.**
+   - The DLL goes as its own asset `gw2chat_bridge.dll` plus a short README.
+   - Later, possibly listed in the Nexus library (Raidcore hosting gives a positive signature and auto-update; until
+     then `UP_None`, because our repo's release tags belong to the programs).
+   - A VirusTotal link goes with each release.
+4. **Live test** with a real party/squad (the user and friends): order, special characters, subgroups, broadcasts,
+   joining and leaving the squad, game restart, program started before or after the game.
+
+## Later (decide at the end, user 2026-10-14)
+
+- **More channels from Unofficial Extras.** The user is thinking about extending extras (its own project) so that map
+  chat and whispers are also reported. Then OCR would only be needed for guild chat and whatever is left, or not at
+  all. The protocol already carries `ch` as a string, so new channels are only new values plus the reader side.
+- **NPC chat:** extras V3 has `ChatMessageCallback2` with `NpcMessageInfo`. Raidcore's relay forwards only V2 today.
+- **A Blish HUD module** as an alternative host: same protocol, same pipe.
+- **Presence check:** the add-on could report whether Unofficial Extras is loaded. The module name or its language
+  event at startup would be candidates. Only useful once the programs show a status for it.

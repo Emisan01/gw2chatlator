@@ -49,7 +49,8 @@ add_library(gct_core STATIC
     src/core/housekeeping.cpp
     src/core/voice.cpp
     src/core/voice_learn.cpp
-    src/core/send_guard.cpp)
+    src/core/send_guard.cpp
+    src/core/bridge_protocol.cpp)
 target_include_directories(gct_core PUBLIC src)
 
 option(GCT_BUILD_TESTS "Build the core unit tests and the Windows test doubles" ON)
@@ -285,5 +286,13 @@ if(WIN32)
                     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${GCT_VOICE_DLLS} $<TARGET_FILE_DIR:${t}>/voice)
             endif()
         endforeach()
+    endif()
+
+    # GW2 Chat Bridge: the optional Nexus add-on (lives in the game process – a separate download, docs/NEXUS_PLAN.md).
+    if(MSVC)
+        option(GCT_NEXUS_BRIDGE "Build the optional Nexus add-on GW2 Chat Bridge" ON)
+        if(GCT_NEXUS_BRIDGE)
+            add_subdirectory(addons/nexus)
+        endif()
     endif()
 endif()

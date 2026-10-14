@@ -43,6 +43,7 @@
 #include "core/translator.hpp"
 #include "core/voice.hpp"
 #include "core/voice_learn.hpp"
+#include "core/bridge_protocol.hpp"
 #include "core/send_guard.hpp"
 
 using namespace gct;
@@ -2158,6 +2159,41 @@ static void TestPickVoiceCores() {
     CHECK(PickVoiceCores(idle, six, 0).threads == 6);
 }
 
+static void TestBridgeProtocol() {
+    BridgeMessage m;
+    m.channel = "squad";
+    m.subgroup = 3;
+    m.broadcast = true;
+    m.time = "2026-10-14T11:45:24.888Z";
+    m.account = ":Invented.1234";
+    m.character = "Nora Testwind";
+    m.text = "Stack am Kommandeur, \"jetzt\"\nlos \xE6\xBC\xA2";  // quote, newline, UTF-8
+    const std::string line = EncodeBridgeMessage(m);
+    CHECK(line.size() > 2 && line.back() == '\n' && line.find('\n') == line.size() - 1);  // one line
+    BridgeMessage r;
+    CHECK(DecodeBridgeMessage(line, r));
+    CHECK(r.kind == BridgeMessage::Kind::Chat && r.channel == "squad" && r.subgroup == 3 && r.broadcast);
+    CHECK(r.time == m.time && r.account == m.account && r.character == m.character && r.text == m.text);
+    BridgeMessage h;
+    h.kind = BridgeMessage::Kind::Hello;
+    h.addonVersion = "1.5.0";
+    CHECK(DecodeBridgeMessage(EncodeBridgeMessage(h), r) && r.kind == BridgeMessage::Kind::Hello && r.addonVersion == "1.5.0");
+    // party line to the whole party; nonsense subgroups become -1
+    m.channel = "anything";
+    m.subgroup = 99;
+    CHECK(DecodeBridgeMessage(EncodeBridgeMessage(m), r) && r.channel == "party" && r.subgroup == -1);
+    // rejected: other protocol, unknown type, empty text, broken JSON, too long
+    CHECK(!DecodeBridgeMessage("{\"v\":2,\"t\":\"hello\"}", r));
+    CHECK(!DecodeBridgeMessage("{\"v\":1,\"t\":\"send\",\"text\":\"x\"}", r));
+    m.text.clear();
+    CHECK(!DecodeBridgeMessage(EncodeBridgeMessage(m), r));
+    CHECK(!DecodeBridgeMessage("{\"v\":1,", r));
+    CHECK(!DecodeBridgeMessage(std::string(kBridgeMaxLine + 1, ' '), r));
+    // over-long text is cut at a character boundary, never inside a UTF-8 sequence
+    m.text = std::string(1023, 'a') + "\xC3\xA4";
+    CHECK(DecodeBridgeMessage(EncodeBridgeMessage(m), r) && r.text == std::string(1023, 'a'));
+}
+
 static void TestSendGuard() {
     {  // ordinary chatting passes, the same line a few times too
         SendGuard g;
@@ -2345,6 +2381,7 @@ int main() {
     TestVoiceLearn();
     TestVoiceFixBook();
     TestSendGuard();
+    TestBridgeProtocol();
     TestPickVoiceCores();
     std::printf("%d passed, %d failed\n", g_pass, g_fail);
     return g_fail == 0 ? 0 : 1;
