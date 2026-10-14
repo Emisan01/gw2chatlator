@@ -108,8 +108,16 @@ constexpr size_t kMaxWhisperTabs = 5;
 struct WhisperTab {
     std::wstring name;
     bool unread = false;
-    std::wstring sendLang;  // what you send to this player ("" = like the chat tab, "=" = as written, else a code)
+    std::wstring sendLang;  // what you send from it ("" = like the chat tab, "=" = as written, else a code)
+    // A tab of your own (right-click on the header): a copy of the chat with the channels you choose, writing into
+    // `write` (Unknown = the channel active in GW2). Kept in [NexusTabs] (only its settings, never chat).
+    bool custom = false;
+    uint32_t channels = 0xFFFFFFFFu;
+    Channel write = Channel::Unknown;
+    uint32_t uid = 0;  // its ImGui id
 };
+constexpr size_t kMaxCustomTabs = 6;
+uint32_t g_nextTabUid = 1;
 // The language each player writes in, as far as it is sure (CaseFold(name) -> code). Only for this session, never
 // stored: answering someone in their language (their whisper tab sends in it).
 std::map<std::wstring, std::wstring> g_playerLang;
@@ -118,6 +126,7 @@ std::wstring g_sendOverride;
 std::vector<WhisperTab> g_tabs;
 int g_activeTab = -1;  // -1: the whole chat
 int g_selectTab = -2;  // a tab to select (-1: the chat; -2: none asked)
+int g_tabSettings = -1, g_tabSettingsOpen = -1;  // a tab of your own whose settings are asked for / shown
 std::wstring g_openLink;  // a link clicked in the chat: opened only after your yes
 
 AddonDefinition_t g_def = {};
@@ -1084,10 +1093,13 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
         }
         g_lines.push_back(l);
         while (g_lines.size() > kMaxLines) g_lines.pop_front();
-        if (ch == Channel::Whisper)  // a whisper tab of that player, not in front: marked
-            for (size_t i = 0; i < g_tabs.size(); ++i)
-                if (static_cast<int>(i) != g_activeTab && CaseFold(g_tabs[i].name) == CaseFold(Trim(l.speaker)))
-                    g_tabs[i].unread = true;
+        for (size_t i = 0; i < g_tabs.size(); ++i) {  // a tab not in front that shows this line: marked
+            if (static_cast<int>(i) == g_activeTab) continue;
+            const WhisperTab& t = g_tabs[i];
+            if (t.custom ? (t.channels & ChannelBit(ch)) != 0
+                         : ch == Channel::Whisper && CaseFold(t.name) == CaseFold(Trim(l.speaker)))
+                g_tabs[i].unread = true;
+        }
         g_scrollDown = true;
     }
     if (!own) g_worker.Post([id, t = l.text] { TranslateLine(id, t); });
@@ -1129,13 +1141,20 @@ void OpenWhisperTab(const std::wstring& name) {
     if (who.empty()) return;
     int at = -1;
     for (size_t i = 0; i < g_tabs.size(); ++i)
-        if (CaseFold(g_tabs[i].name) == CaseFold(who)) at = static_cast<int>(i);
+        if (!g_tabs[i].custom && CaseFold(g_tabs[i].name) == CaseFold(who)) at = static_cast<int>(i);
     if (at < 0) {
-        if (g_tabs.size() >= kMaxWhisperTabs) {  // the oldest goes
-            g_tabs.erase(g_tabs.begin());
-            if (g_activeTab >= 0) --g_activeTab;
+        const size_t whispers = std::count_if(g_tabs.begin(), g_tabs.end(), [](const WhisperTab& t) { return !t.custom; });
+        if (whispers >= kMaxWhisperTabs) {  // the oldest whisper tab goes
+            const auto oldest = std::find_if(g_tabs.begin(), g_tabs.end(), [](const WhisperTab& t) { return !t.custom; });
+            const int gone = static_cast<int>(oldest - g_tabs.begin());
+            g_tabs.erase(oldest);
+            if (g_activeTab > gone) --g_activeTab;
+            else if (g_activeTab == gone) g_activeTab = -1;
         }
-        g_tabs.push_back({who, false});
+        WhisperTab t;
+        t.name = who;
+        t.uid = g_nextTabUid++;
+        g_tabs.push_back(t);
         at = static_cast<int>(g_tabs.size()) - 1;
     }
     g_tabs[at].unread = false;
@@ -1156,6 +1175,83 @@ void OpenWhisperTab(const std::wstring& name) {
     ++g_inputGen;  // translated again for this player
     g_inputChanged = GetTickCount64();
 }
+// A tab of your own in front: its channel to write in and its send language (g_mu held).
+void ActivateCustomTab(int i, bool focus = true) {  // focus: the input takes the keyboard (not under its settings)
+    WhisperTab& t = g_tabs[i];
+    t.unread = false;
+    g_activeTab = g_selectTab = i;
+    g_channel = t.write;
+    g_whisperTo.clear();
+    g_sendOverride = t.sendLang;
+    if (focus) g_focusInput = true;
+    ++g_inputGen;
+    g_inputChanged = GetTickCount64();
+}
+void ActivateTab(int i) {  // g_mu held
+    if (g_tabs[i].custom) ActivateCustomTab(i);
+    else OpenWhisperTab(g_tabs[i].name);
+}
+
+void SaveCustomTabs() {  // [NexusTabs]: "name|channels|write|send" per tab of your own (g_mu held)
+    int n = 0;
+    for (const WhisperTab& t : g_tabs) {
+        if (!t.custom) continue;
+        ++n;
+        g_cfg.SaveValue(L"NexusTabs", (L"Tab" + std::to_wstring(n)).c_str(),
+                        AsciiEscape(t.name) + L"|" + std::to_wstring(t.channels) + L"|" +
+                            std::to_wstring(static_cast<int>(t.write)) + L"|" + AsciiEscape(t.sendLang));
+    }
+    g_cfg.SaveValue(L"NexusTabs", L"Count", std::to_wstring(n));
+}
+void LoadCustomTabs() {  // g_mu held
+    const int n = static_cast<int>(GetPrivateProfileIntW(L"NexusTabs", L"Count", 0, g_cfg.iniPath.c_str()));
+    for (int i = 1; i <= std::min<int>(n, static_cast<int>(kMaxCustomTabs)); ++i) {
+        wchar_t buf[512] = {};
+        GetPrivateProfileStringW(L"NexusTabs", (L"Tab" + std::to_wstring(i)).c_str(), L"", buf, 512, g_cfg.iniPath.c_str());
+        std::vector<std::wstring> f;
+        std::wstring cur;
+        for (const wchar_t* c = buf; *c; ++c) {
+            if (*c == L'|') {
+                f.push_back(cur);
+                cur.clear();
+            } else {
+                cur += *c;
+            }
+        }
+        f.push_back(cur);
+        if (f.size() < 3 || f[0].empty()) continue;
+        WhisperTab t;
+        t.custom = true;
+        t.name = AsciiUnescape(f[0]);
+        t.channels = static_cast<uint32_t>(std::wcstoul(f[1].c_str(), nullptr, 10));
+        t.write = static_cast<Channel>(std::clamp(_wtoi(f[2].c_str()), 0, static_cast<int>(Channel::System)));
+        if (f.size() > 3) t.sendLang = AsciiUnescape(f[3]);
+        t.uid = g_nextTabUid++;
+        g_tabs.push_back(t);
+    }
+}
+int NewCustomTab() {  // a copy of the chat: every channel, writing into the active one (g_mu held); -1 = too many
+    if (std::count_if(g_tabs.begin(), g_tabs.end(), [](const WhisperTab& t) { return t.custom; }) >= static_cast<long>(kMaxCustomTabs))
+        return -1;
+    WhisperTab t;
+    t.custom = true;
+    t.uid = g_nextTabUid++;
+    int number = 1;  // "Tab 2", "Tab 3" … – the first free number
+    for (bool taken = true; taken; ++number) {
+        taken = false;
+        for (const WhisperTab& o : g_tabs)
+            if (o.custom && o.name == TrF(L"Tab {1}", {std::to_wstring(number + 1)})) taken = true;
+        if (!taken) t.name = TrF(L"Tab {1}", {std::to_wstring(number + 1)});
+    }
+    const auto firstWhisper = std::find_if(g_tabs.begin(), g_tabs.end(), [](const WhisperTab& o) { return !o.custom; });
+    const int at = static_cast<int>(firstWhisper - g_tabs.begin());  // your own tabs stand before the whisper tabs
+    g_tabs.insert(firstWhisper, t);
+    if (g_activeTab >= at) ++g_activeTab;
+    SaveCustomTabs();
+    ActivateCustomTab(at, false);  // its settings open next; the input's focus would close them
+    return at;
+}
+
 void LeaveWhisperTab() {  // back to the whole chat, writing in the channel active in GW2 (g_mu held)
     g_activeTab = -1;
     g_selectTab = -1;
@@ -2165,7 +2261,7 @@ void RenderWindow() {
     const float gap = std::round(icon * 0.6f);
     const float rightW = (g_cfg.voiceEnabled ? icon + gap : 0) + icon + gap + icon + st.ItemSpacing.x + icon;
     const float tabsW = std::max(60.0f, ImGui::GetContentRegionAvail().x - rightW - gap);
-    bool newTab = false;
+    bool newTab = false, tabMenu = false;
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     ImGui::BeginChild("##hdr", ImVec2(tabsW, icon), false,
                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBackground);
@@ -2182,26 +2278,102 @@ void RenderWindow() {
             bool open = true;
             const ImGuiTabItemFlags f = (g_selectTab == i ? ImGuiTabItemFlags_SetSelected : 0) |
                                         (g_tabs[i].unread ? ImGuiTabItemFlags_UnsavedDocument : 0);
-            if (ImGui::BeginTabItem((UI(g_tabs[i].name) + "###wt_" + U8(CaseFold(g_tabs[i].name))).c_str(), &open, f)) {
+            const bool shown = ImGui::BeginTabItem((UI(g_tabs[i].name) + "###tab" + std::to_string(g_tabs[i].uid)).c_str(), &open, f);
+            if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+                tabMenu = true;  // not the header's menu
+                if (g_tabs[i].custom) g_tabSettings = static_cast<int>(i);
+            }
+            if (shown) {
                 if (g_selectTab == i) g_selectTab = -2;
-                else if (g_selectTab == -2 && g_activeTab != i) OpenWhisperTab(g_tabs[i].name);
+                else if (g_selectTab == -2 && g_activeTab != i) ActivateTab(i);
                 ImGui::EndTabItem();
             }
             if (!open) close = i;
         }
         ImGui::EndTabBar();
         if (close >= 0) {
-            const bool active = close == g_activeTab;
+            const bool active = close == g_activeTab, custom = g_tabs[close].custom;
             g_tabs.erase(g_tabs.begin() + close);
             if (active) LeaveWhisperTab();
             else if (close < g_activeTab) g_selectTab = --g_activeTab;
+            if (custom) SaveCustomTabs();
         }
     }
-    if (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) newTab = true;
+    if (!tabMenu && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+        newTab = true;
     ImGui::EndChild();
-    static bool newTabNext = false;  // asked for in the menu (opened next frame, at this level)
-    if (newTab || newTabNext) ImGui::OpenPopup("##newtab");
+    // Right-click on the header: a tab of your own (a copy of the chat to set up) or a whisper tab.
+    if (newTab) ImGui::OpenPopup("##hdrmenu");
+    static bool newTabNext = false;  // asked for in a menu (opened next frame, at this level)
+    if (ImGui::BeginPopup("##hdrmenu")) {
+        if (ImGui::MenuItem(UI(Tr(L"New tab")).c_str())) {
+            const int at = NewCustomTab();
+            if (at >= 0) g_tabSettings = at;
+            else SetStatus(Tr(L"Six tabs of your own at most – close one first"), 6000);
+        }
+        if (ImGui::MenuItem(UI(Tr(L"New whisper tab …")).c_str())) newTabNext = true;
+        ImGui::EndPopup();
+    }
+    if (newTabNext) ImGui::OpenPopup("##newtab");
     newTabNext = false;
+    // The settings of a tab of your own (right-click on it): name, the channels it shows, where you write from it.
+    if (g_tabSettings >= 0) {
+        g_tabSettingsOpen = g_tabSettings;
+        g_tabSettings = -1;
+        ImGui::OpenPopup("##tabcfg");
+    }
+    if (ImGui::BeginPopup("##tabcfg")) {
+        const int i = g_tabSettingsOpen;
+        if (i < 0 || i >= static_cast<int>(g_tabs.size()) || !g_tabs[i].custom) {
+            ImGui::CloseCurrentPopup();
+        } else {
+            WhisperTab& t = g_tabs[i];
+            static char name[64] = {};
+            if (ImGui::IsWindowAppearing()) strncpy_s(name, U8(t.name).c_str(), _TRUNCATE);
+            bool changed = false;
+            ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+            if (ImGui::InputText(UI(Tr(L"Name") + L"##tabname").c_str(), name, sizeof(name)) && !Trim(W(name)).empty()) {
+                t.name = Trim(W(name));
+                changed = true;
+            }
+            ImGui::TextUnformatted(UI(Tr(L"Shows")).c_str());
+            static const Channel kShown[] = {Channel::Say,   Channel::Map,     Channel::Party, Channel::Squad,
+                                             Channel::Team,  Channel::Guild,   Channel::Whisper, Channel::System};
+            for (int k = 0; k < 8; ++k) {
+                bool on = (t.channels & ChannelBit(kShown[k])) != 0;
+                if (k % 4) ImGui::SameLine(static_cast<float>(k % 4) * ImGui::GetFontSize() * 6.5f);
+                if (ImGui::Checkbox((UI(ChannelLabel(kShown[k])) + "##ch" + std::to_string(k)).c_str(), &on)) {
+                    t.channels = on ? (t.channels | ChannelBit(kShown[k])) : (t.channels & ~ChannelBit(kShown[k]));
+                    if (kShown[k] == Channel::System)  // lines without a channel go with the system lines
+                        t.channels = on ? (t.channels | ChannelBit(Channel::Unknown)) : (t.channels & ~ChannelBit(Channel::Unknown));
+                    changed = true;
+                }
+            }
+            static const Channel kWrite[] = {Channel::Unknown, Channel::Say, Channel::Map,  Channel::Party,
+                                             Channel::Squad,   Channel::Team, Channel::Guild};
+            ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+            if (ImGui::BeginCombo(UI(Tr(L"Write in") + L"##tabwrite").c_str(),
+                                  t.write == Channel::Unknown ? UI(Tr(L"Active channel")).c_str() : UI(ChannelLabel(t.write)).c_str())) {
+                for (Channel c : kWrite)
+                    if (ImGui::Selectable(c == Channel::Unknown ? UI(Tr(L"Active channel")).c_str() : UI(ChannelLabel(c)).c_str(),
+                                          c == t.write)) {
+                        t.write = c;
+                        changed = true;
+                        if (g_activeTab == i) g_channel = c;
+                    }
+                ImGui::EndCombo();
+            }
+            if (ImGui::Button(UI(Tr(L"Remove tab")).c_str())) {
+                g_tabs.erase(g_tabs.begin() + i);
+                if (g_activeTab == i) LeaveWhisperTab();
+                else if (i < g_activeTab) g_selectTab = --g_activeTab;
+                changed = true;
+                ImGui::CloseCurrentPopup();
+            }
+            if (changed) SaveCustomTabs();
+        }
+        ImGui::EndPopup();
+    }
     if (ImGui::BeginPopup("##newtab")) {  // a whisper tab of your own: whom you want to write to
         static char name[96] = {};
         if (ImGui::IsWindowAppearing()) {
@@ -2333,8 +2505,9 @@ void RenderWindow() {
         ImGui::BeginChild("chat", ImVec2(0, h), false, ImGuiWindowFlags_NoScrollbar);
         if (setScroll >= 0) ImGui::SetScrollY(setScroll);
         // The lines of the tab in front: all, or the whispers with one player.
-        const std::wstring tabName = g_activeTab >= 0 && g_activeTab < static_cast<int>(g_tabs.size()) ? CaseFold(g_tabs[g_activeTab].name)
-                                                                                                        : std::wstring();
+        const WhisperTab* front = g_activeTab >= 0 && g_activeTab < static_cast<int>(g_tabs.size()) ? &g_tabs[g_activeTab] : nullptr;
+        const std::wstring tabName = front && !front->custom ? CaseFold(front->name) : std::wstring();
+        const uint32_t tabChannels = front && front->custom ? front->channels : 0xFFFFFFFFu;
         if (g_lines.empty()) {  // nothing arrived yet: what is ready, what is missing, where translation is switched on
             lock.unlock();
             RenderModules(true);
@@ -2342,6 +2515,7 @@ void RenderWindow() {
         }
         for (const ChatLine& l : g_lines) {
             if (!tabName.empty() && (l.channel != Channel::Whisper || CaseFold(Trim(l.speaker)) != tabName)) continue;
+            if (!(tabChannels & ChannelBit(l.channel))) continue;  // a tab of your own: only its channels
             ImGui::PushID(static_cast<int>(l.id));
             if (!l.speaker.empty()) {  // the name in the channel colour – a click: whisper with that player in their tab
                 const std::string name = UI((l.outgoing ? L"> " : L"") + l.speaker + L":");
@@ -3190,6 +3364,7 @@ void AddonLoad(AddonAPI_t* api) {
         g_translator = MakeTranslator(g_cfg);
         g_sendIdx = g_cfg.translateWriting ? 0 : static_cast<int>(g_cfg.writeLangs.size());
         LoadLayout();
+        LoadCustomTabs();
         g_compact = GetPrivateProfileIntW(L"NexusWindow", L"Compact", 0, g_cfg.iniPath.c_str()) != 0;
         std::string words;
         if (ReadFileBytes(g_cfg.dataDir + L"\\my-words.txt", words)) g_myWords.Parse(FromUtf8(words));
@@ -3274,6 +3449,14 @@ extern "C" __declspec(dllexport) void* Gw2KbTestHooks() {  // nexus_kb_selftest 
     g_test.input = g_input;
     g_test.focus = &g_focusInput;
     return &g_test;
+}
+
+extern "C" __declspec(dllexport) void Gw2KbTestNewTab(uint32_t channels, bool settings) {  // nexus_kb_selftest only
+    std::lock_guard<std::mutex> lock(g_mu);
+    const int at = NewCustomTab();
+    if (at < 0) return;
+    g_tabs[at].channels = channels;
+    if (settings) g_tabSettings = at;
 }
 
 extern "C" __declspec(dllexport) void Gw2KbTestWhisper(const char* name) {  // nexus_kb_selftest only: a click on a name
