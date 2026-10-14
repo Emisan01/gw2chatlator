@@ -3,6 +3,27 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.7.0 — 2026-10-14 (GW2 Keyboard for Nexus – the new main version; desktop GW2 Keyboard 1.7.0; GW2 Chat Translator stays 1.4.0)
+
+- **GW2 Keyboard for Nexus:** the typing help as a Nexus add-on inside the game (`GW2Keyboard-Nexus.zip`, unpacked into
+  `Guild Wars 2\addons`).
+  - **The chat:** every channel comes as exact text from Vonsh's **Events: Chat** (Nexus library), foreign lines are
+    translated; hovering a line shows the original; a click on a name whispers back. Events: Chat is installed with
+    one click when missing; "installed but not loaded" is told apart.
+  - **Writing:** the translation and its back-translation before Enter sends; grey completion from Windows' word
+    prediction; three learned suggestions in the word bar; autocorrection with Backspace undo; learning from what you
+    send; a four-line input that wraps.
+  - **Voice:** whisper in a helper process outside the game, on the cores GW2 does not use. Hold the microphone, or
+    right-click it to speak until a pause, or use voice activation (it pauses while Discord & co. use the microphone).
+    An own push-to-talk key that GW2 does not get. Optional: send right after speaking.
+  - **Its window like the desktop version:** status line, microphone / menu / close, the chips channel / write / send
+    · translator, options in tabs. It appears only on a map. Failsafe: an error switches the add-on off, never the game.
+- **Privacy:** the chat can no longer be saved to a file in GW2 Chat Translator (other players' messages).
+- **Desktop:**
+  - Several senders on the keyboard's pipe; the reader mode of GW2 Chat Translator (`--reader`); the bridge also hears
+    Events: Chat.
+  - Settings → General: Events: Chat to load / remove; one switch for the whole OCR module.
+
 ## 1.6.0 — 2026-10-14 (GW2 Keyboard + the optional Nexus add-on GW2 Chat Bridge; GW2 Chat Translator stays 1.4.0)
 
 - **Party and squad chat as exact text, translated, in GW2 Keyboard.** The optional Nexus add-on **GW2 Chat Bridge**

@@ -1,9 +1,33 @@
 # GW2 Keyboard & GW2 Chat Translator
 
-Chat helpers for Guild Wars 2. No hook, no memory reading, nothing injected into the game – a line goes into the chat
-only when you press Enter yourself.
+Chat helpers for Guild Wars 2: **read the chat in your language, write and speak in yours** – the chat gets it
+translated. A line goes into the chat only when you press Enter yourself.
 
-## GW2 Keyboard – write and speak in your language
+## GW2 Keyboard for Nexus – right inside the game (new, main version)
+
+**[⬇ Download GW2 Keyboard for Nexus (ZIP)](https://github.com/Emisan01/gw2chatlator/releases/latest/download/GW2Keyboard-Nexus.zip)**
+– unpack it into your `Guild Wars 2\addons` folder (where [Nexus](https://raidcore.gg/Nexus) keeps its add-ons) and
+load **GW2 Keyboard** in Nexus. SHA-256 `bc78358d…8851442e`.
+
+- **Every channel in your language:** map, whispers, guild, party, squad – foreign lines are translated as they come
+  in; hover a line for the original, click a name to whisper back. The chat comes as exact text from **Events: Chat**
+  by Vonsh, an add-on in the Nexus library – GW2 Keyboard installs it for you with one click if it is missing.
+- **Write in your language,** the chat gets the translation: you see it (and what it means in your language again)
+  before Enter sends it. Translators: MyMemory (free), Google, Microsoft, DeepL, your own LibreTranslate server.
+- **Typing help that learns you:** grey completion from Windows' word prediction (Space or Tab takes it), three
+  suggestions from what you write, autocorrection like a phone keyboard, Backspace undoes it.
+- **Voice input – the first in the Nexus world:** hold the microphone (or your push-to-talk key, GW2 does not get it),
+  right-click it to speak until a pause, or let voice activation listen. Recognition runs **on your PC** (whisper.cpp)
+  in a small helper process on the CPU cores GW2 does not use – the game keeps its frames.
+- **Safe sending:** waits for each frame of the game, refuses to be used as a bot or spam macro. Optional: send right
+  after speaking (off by default – releasing the push-to-talk key counts as your Enter).
+- **Its own window like the desktop version:** status at the top, microphone / menu / close, options with tabs. It
+  appears when you are on a map, never on the character screen.
+
+Needs Nexus and Events: Chat (Nexus → Addons → Library). The voice model is downloaded once in the options.
+
+
+## GW2 Keyboard – the desktop version (without Nexus)
 
 **[⬇ Download GW2 Keyboard (Windows, ZIP, ~6 MB)](https://github.com/Emisan01/gw2chatlator/releases/latest/download/GW2Keyboard-win64.zip)**
 – unpack it anywhere and start `GW2Keyboard.exe` (Settings → Game & start installs it for your Windows user).
@@ -143,10 +167,14 @@ followed. Whatever comes back is only displayed; it can never send anything.
 ArenaNet forbids programs that give an unfair advantage, automate gameplay, allow unattended play or harm others. No
 third-party tool is checked or approved by ArenaNet, so using one is always at your own risk
 ([third-party policy](https://help.guildwars2.com/hc/en-us/articles/360013625034-Policy-Third-Party-Programs)). That is
-why this tool works like this:
+why these tools work like this:
 
-- **A separate exe, not a DLL.** Nothing is loaded into the GW2 process: no hook, no memory reading, no changed game
-  files. Installing only creates our own folder, a Run entry and shortcuts if you choose them.
+- **GW2 Keyboard for Nexus** is a Nexus add-on like the others in the Nexus library. It reads no game memory itself:
+  the chat comes from the Nexus event of Events: Chat. The recognizer of the voice input runs in its own small process
+  outside the game. It never stores other players' chat. (Raidcore: what you do counts – translating is fine,
+  collecting chat data is not.)
+- **The desktop versions are a separate exe, not a DLL.** Nothing is loaded into the GW2 process: no hook, no memory
+  reading, no changed game files. Installing only creates our own folder, a Run entry and shortcuts if you choose them.
 - **It only reads what you see,** in the area you marked yourself. MumbleLink, GW2's official interface, tells it
   whether you are on a map and whether the chat line is open.
 - **It never sends on its own.** One line per Enter you press. A tool that reads chat and answers by itself would be a
