@@ -55,6 +55,7 @@
 #include "nexus/Nexus.h"
 #include "version.h"
 #include "chat_links.hpp"
+#include "map_focus.hpp"
 #include "voice_module.hpp"
 #include "win/deepl_translator.hpp"
 #include "win/els.hpp"
@@ -1901,6 +1902,7 @@ void SaveMyWords() {  // g_mu held
 // codes (the item's name in its colour: a click puts the code into your message). Wrapped lines start under the text
 // (a group), like TextWrapped after the name. True: something in it was clicked.
 bool g_openLinkAsk = false;
+RECT g_winRect{};  // our window (client coordinates of the game): a drag on the world map starts beside it
 bool RichLine(const std::wstring& text, const std::vector<Span>& links, const std::vector<Span>& codes, ImVec4 color) {  // g_mu held
     bool clicked = false;
     const float right = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
@@ -1941,7 +1943,12 @@ bool RichLine(const std::wstring& text, const std::vector<Span>& links, const st
                 }
             } else {  // a chat code: the module draws it (and its details on mouse-over)
                 place(U8(g_links.Label(piece)));
-                if (g_links.Render(piece, [](const std::string& label, ImVec4 c) { LookText(label.c_str(), Bright(c), false); })) {  // into the input, like a shift-click in the game
+                float tx = 0, ty = 0;
+                const bool hit = g_links.Render(piece, [](const std::string& label, ImVec4 c) { LookText(label.c_str(), Bright(c), false); });
+                if (hit && !ImGui::GetIO().KeyShift && g_links.Target(piece, &tx, &ty)) {  // a waypoint: the world map, on it
+                    FocusWorldMap(g_api, tx, ty, g_winRect);
+                    clicked = true;
+                } else if (hit) {  // into the input, like a shift-click in the game
                     const size_t len = std::strlen(g_input);
                     g_edit.active = true;
                     g_edit.startByte = len;
@@ -2055,6 +2062,10 @@ void RenderWindow() {
     }
     ImGui::SetWindowFontScale(std::clamp(g_cfg.fontPercent, 70, 200) / 100.0f);
     g_lastW = ImGui::GetWindowWidth();
+    {
+        const ImVec2 wp = ImGui::GetWindowPos(), ws = ImGui::GetWindowSize();
+        g_winRect = {static_cast<LONG>(wp.x), static_cast<LONG>(wp.y), static_cast<LONG>(wp.x + ws.x), static_cast<LONG>(wp.y + ws.y)};
+    }
     if (!g_collapsed) g_expandedH = ImGui::GetWindowHeight();
     std::unique_lock<std::mutex> lock(g_mu);
     {  // Snap: a move that ends near a screen edge puts the window onto it (not when its size was dragged)
@@ -2294,11 +2305,10 @@ void RenderWindow() {
                 g_worker.Post([id = l.id, t = l.text] { TranslateLine(id, t, true); });
             ImGui::PopID();
         }
-        // New lines scroll along only while you are at the bottom (reading further up stays where it is).
-        if (g_scrollDown) {
-            if (atBottom) ImGui::SetScrollHereY(1.0f);
-            g_scrollDown = false;
-        }
+        // At the bottom it stays at the bottom – also when a line grows later (an item name arrives); reading further up
+        // stays where it is.
+        if (atBottom && setScroll < 0) ImGui::SetScrollHereY(1.0f);
+        g_scrollDown = false;
         scrollY = ImGui::GetScrollY();
         scrollMax = ImGui::GetScrollMaxY();
         viewH = ImGui::GetWindowHeight();
@@ -3069,7 +3079,10 @@ void AddonLoad(AddonAPI_t* api) {
     }
     g_worker.Start();
     g_worker.Post(InitSpelling);
-    g_links.Start(api);
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_links.Start(api, g_cfg.dataDir + L"\\cache");
+    }
     bool voice = false;
     std::wstring dataDir;
     {
@@ -3123,6 +3136,7 @@ void AddonUnload() {
     if (g_download.joinable()) g_download.join();
     if (g_chatEventsThread.joinable()) g_chatEventsThread.join();
     if (g_voiceModuleThread.joinable()) g_voiceModuleThread.join();
+    StopMapFocus();
     g_links.Stop();
     g_voice.Stop();  // the helper ends (it would also end by itself when its input closes)
     g_worker.Stop(FreeWorkerState);  // saved and freed on the worker (it owns them), before the DLL goes

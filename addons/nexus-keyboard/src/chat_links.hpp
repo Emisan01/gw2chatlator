@@ -13,6 +13,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <unordered_map>
 
 #include "imgui/imgui.h"
 #include "nexus/Nexus.h"
@@ -31,9 +32,12 @@ public:
         int level = 0;
         int count = 1;
         uint32_t rgb = 0;           // rarity colour, 0 = none
+        float x = 0, y = 0;         // waypoints / points of interest: continent coordinates
+        std::wstring mapName;       // ... and the map they are on
     };
 
-    void Start(AddonAPI_t* api);  // the thread; `api` for icons (Textures_GetOrCreateFromURL), may be null
+    // The thread; `api` for icons (Textures_GetOrCreateFromURL), may be null; `cacheDir` keeps the waypoint table.
+    void Start(AddonAPI_t* api, const std::wstring& cacheDir);
     void Stop();
     void SetLanguage(const std::wstring& apiLang);  // "en", "de", "fr", "es", "zh"
 
@@ -43,6 +47,8 @@ public:
     bool Render(const std::wstring& code, const std::function<void(const std::string&, ImVec4)>& draw = {});
     // The text Render draws ("[Item name]", "[Waypoint]", or the code while it is looked up) – for line wrapping.
     std::wstring Label(const std::wstring& code);
+    // A waypoint / point of interest whose place is known: its continent coordinates (for the world map).
+    bool Target(const std::wstring& code, float* x, float* y);
 
 private:
     Info Get(const std::wstring& code);  // the cached answer (queues the lookup once)
@@ -50,6 +56,18 @@ private:
     void Run();
     Info Fetch(const std::wstring& code, const std::wstring& lang);
     void Tooltip(const std::wstring& code, const Info& info);
+    // Waypoints and points of interest have no API lookup of their own: the whole table (every map's points with
+    // their coordinates) is loaded once – from the cache file, else from the GW2 API – and kept for 14 days.
+    struct Poi {
+        std::wstring name, mapName;
+        std::string type;  // "waypoint", "landmark", "vista", "unlock"
+        float x = 0, y = 0;
+    };
+    std::unordered_map<uint32_t, Poi> LoadPois(const std::wstring& lang);
+    Info PoiInfo(uint32_t id) const;  // mu_ held
+    std::unordered_map<uint32_t, Poi> pois_;
+    int poisState_ = 0;  // 0 not asked, 1 loading, 2 there, 3 failed
+    std::wstring cacheDir_;
 
     AddonAPI_t* api_ = nullptr;
     std::mutex mu_;

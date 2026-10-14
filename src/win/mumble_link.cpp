@@ -113,6 +113,11 @@ MumbleState MumbleLink::Read() {
     st.uiState = ctx.uiState;
     st.processId = ctx.processId;
     st.uiTick = mem.uiTick;
+    st.mapCenterX = ctx.mapCenterX;
+    st.mapCenterY = ctx.mapCenterY;
+    st.mapScale = ctx.mapScale;
+    st.playerX = ctx.playerX;
+    st.playerY = ctx.playerY;
 
     if (!fresh && ctx.processId) {  // distinguish "loading screen" from "game closed"
         // By its windows, never by a handle to the game process (invariant 1).

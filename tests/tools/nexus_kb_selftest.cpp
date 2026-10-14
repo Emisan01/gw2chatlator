@@ -201,6 +201,7 @@ int wmain(int argc, wchar_t** argv) {
             {bridge::ChatEventsType::Guild, "Eli Mock", "guild missions at 8, see https://example.org/plan"},
             {bridge::ChatEventsType::Whisper, "Finn Fake", "hey, still need help with the fractal?"},
             {bridge::ChatEventsType::Local, "Gia Placeholder", "hello there"},
+            {bridge::ChatEventsType::Map, "Hal Invented", "meet at [&BAwEAAA=] in five"},
         };
         for (const auto& l : lines) {
             bridge::ChatEventsMessage e{};
@@ -209,7 +210,9 @@ int wmain(int argc, wchar_t** argv) {
             e.generic.content = l.say;
             g_chatEvents(&e);
         }
-        for (int i = 0; i < 40; ++i) {
+        wchar_t frames[16] = {};  // GW2KB_SHOT_FRAMES: wait longer (e.g. the waypoint table on its first load)
+        const int n = GetEnvironmentVariableW(L"GW2KB_SHOT_FRAMES", frames, 16) ? _wtoi(frames) : 40;
+        for (int i = 0; i < n; ++i) {
             Frame();
             Sleep(20);
         }
