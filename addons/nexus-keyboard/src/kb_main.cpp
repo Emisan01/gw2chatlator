@@ -33,6 +33,7 @@
 #include "core/chat_line.hpp"
 #include "core/chat_stream.hpp"
 #include "core/gw2_text.hpp"
+#include "core/hotkey.hpp"
 #include "core/i18n.hpp"
 #include "core/json.hpp"
 #include "core/langs.hpp"
@@ -234,7 +235,15 @@ std::wstring g_lastDictated;     // the last recognized text as it came (learnin
 std::wstring g_dictLang;         // its language
 VoiceFixBook g_voiceFixes;       // learned misheard words (<data>\voice-fixes.txt), per language
 bool g_autoSendPending = false;
-bool g_voiceStartPending = false;  // a press came while the helper was still starting  // "send after speaking": the dictation arrived, Enter follows by itself
+std::string g_voicePending;        // a command that waits for the helper to be ready ("begin-auto", "listen")
+bool g_listening = false;          // voice activation listens
+std::wstring g_listenPausedFor;    // ... paused while this voice chat uses the microphone
+bool g_listenWanted = false;       // we asked the helper to listen
+bool g_listenUserOff = false;      // you switched voice activation off with the microphone (this session)
+// The push-to-talk key (our own, through Nexus' WndProc: GW2 does not get it) and "Set key ..." capturing the next one.
+std::atomic<unsigned> g_pttVk{0}, g_pttMods{0};
+std::atomic<bool> g_captureKey{false};
+std::wstring g_capturedKey;        // the captured key, picked up by the options (g_mu)
 
 void SetStatus(const std::wstring& s, ULONGLONG ms = 6000) {  // g_mu held
     g_status = s;
@@ -653,9 +662,10 @@ void VoiceHelper::OnLine(const std::string& line) {
     std::lock_guard<std::mutex> lock(g_mu);
     if (t == "ready") {
         g_voiceReady = true;
-        if (g_voiceStartPending) {  // the press that started the helper: its recording now
-            g_voiceStartPending = false;
-            g_voice.Send("begin-auto");
+        if (!g_voicePending.empty()) {  // what started the helper: it runs now
+            g_voice.Send(g_voicePending.c_str());
+            g_voicePending.clear();
+            SetStatus(L"");
         }
     } else if (t == "started") {
         g_recording = true;
@@ -682,6 +692,14 @@ void VoiceHelper::OnLine(const std::string& line) {
         g_focusInput = true;
         g_autoSendPending = g_cfg.voiceAutoSend;  // your key release was the press; off by default
         SetStatus(L"");
+    } else if (t == "listening") {
+        g_listening = true;
+        g_listenPausedFor.clear();
+    } else if (t == "idle") {
+        g_listening = false;
+    } else if (t == "paused") {
+        g_listening = false;
+        g_listenPausedFor = W(v.GetString("app"));
     } else if (t == "error") {
         g_recording = false;
         g_voiceLive.clear();
@@ -696,41 +714,69 @@ std::wstring HelperExe() {  // <addons>\GW2Keyboard\gw2kb_voice.exe
     return p.substr(0, p.find_last_of(L"\\/") + 1) + L"GW2Keyboard\\gw2kb_voice.exe";
 }
 
-// Push to talk: pressed starts, released ends (the recognized text then waits for your Enter).
-void TalkDown() {
+// The helper starts on first use (like the exe loads its voice module); `cmd` runs as soon as it is ready.
+void VoiceCommand(const char* cmd) {
+    bool ready;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         if (!g_cfg.voiceEnabled) {
             SetStatus(Tr(L"Voice input is off (options of GW2 Keyboard)"));
             return;
         }
-        if (g_recording) return;
-        if (!g_voiceReady) {
-            // Loaded on first use: the helper starts now; the recording begins as soon as it is ready (a pause ends it).
-            g_voiceStartPending = true;
+        ready = g_voiceReady;
+        if (!ready) {
+            g_voicePending = cmd;
             SetStatus(Tr(L"Voice input is starting – a moment"), 0);
         }
     }
-    if (!g_voiceReady) {
-        if (!g_voice.Running()) {
-            if (GetFileAttributesW(HelperExe().c_str()) == INVALID_FILE_ATTRIBUTES ||
-                !g_voice.Start(HelperExe(), g_cfg.dataDir)) {
-                std::lock_guard<std::mutex> lock(g_mu);
-                g_voiceStartPending = false;
-                SetStatus(Tr(L"The voice module is missing"), 10000);
-            }
-        }
+    if (ready) {
+        g_voice.Send(cmd);
         return;
     }
-    g_voice.Send(g_cfg.voiceToggle ? "begin-auto" : "begin");
+    if (!g_voice.Running() &&
+        (GetFileAttributesW(HelperExe().c_str()) == INVALID_FILE_ATTRIBUTES || !g_voice.Start(HelperExe(), g_cfg.dataDir))) {
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_voicePending.clear();
+        SetStatus(Tr(L"The voice module is missing"), 10000);
+    }
 }
-void TalkUp() { g_voice.Send("end"); }
-void TalkLocked() {  // right-click on the microphone: on until a pause (or the next right-click)
+
+// Push to talk: pressed starts, released ends (the recognized text then waits for your Enter). Started while the
+// helper still loads, the recording begins when it is ready and a pause ends it.
+void TalkDown() {
+    bool rec, toggle, ready;
     {
         std::lock_guard<std::mutex> lock(g_mu);
-        if (!g_cfg.voiceEnabled || !g_voiceReady || g_recording) return;
+        rec = g_recording;
+        toggle = g_cfg.voiceToggle;
+        ready = g_voiceReady;
     }
-    g_voice.Send("begin-auto");
+    if (rec) return;
+    VoiceCommand(toggle || !ready ? "begin-auto" : "begin");
+}
+void TalkUp() { g_voice.Send("end"); }
+void TalkLocked() {  // right-click on the microphone: on until a pause is heard
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        if (g_recording) return;
+    }
+    VoiceCommand("begin-auto");
+}
+void StartListening() {  // voice activation: a recording starts when you speak, a pause ends it
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_listenWanted = true;
+    }
+    VoiceCommand("listen");
+}
+void StopListening() {
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_listenWanted = false;
+        g_listening = false;
+        g_listenPausedFor.clear();
+    }
+    g_voice.Send("stop-listen");
 }
 
 void OnTalkKey(const char*, bool release) {
@@ -753,6 +799,49 @@ void OnTalkKey(const char*, bool release) {
     }
     if (release) TalkUp();
     else TalkDown();
+}
+
+UINT OnWndProc(HWND, UINT msg, WPARAM wp, LPARAM lp) {
+    if (g_disabled) return msg;
+    const bool down = msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN, up = msg == WM_KEYUP || msg == WM_SYSKEYUP;
+    if (!down && !up) return msg;
+    const unsigned vk = static_cast<unsigned>(wp);
+    if (vk == VK_CONTROL || vk == VK_SHIFT || vk == VK_MENU || vk == VK_LWIN || vk == VK_RWIN || vk == VK_LCONTROL ||
+        vk == VK_RCONTROL || vk == VK_LSHIFT || vk == VK_RSHIFT || vk == VK_LMENU || vk == VK_RMENU)
+        return msg;
+    const unsigned mods = (GetKeyState(VK_CONTROL) < 0 ? kModCtrl : 0u) | (GetKeyState(VK_MENU) < 0 ? kModAlt : 0u) |
+                          (GetKeyState(VK_SHIFT) < 0 ? kModShift : 0u);
+    try {
+        if (g_captureKey) {  // the options wait for a key
+            if (down) {
+                g_captureKey = false;
+                Hotkey hk;
+                hk.vk = vk;
+                hk.mods = mods;
+                std::lock_guard<std::mutex> lock(g_mu);
+                g_capturedKey = vk == VK_ESCAPE ? L"-" : FormatHotkey(hk);
+            }
+            return 0;
+        }
+        if (!g_pttVk || vk != g_pttVk) return msg;
+        if (down) {
+            if (lp & (1 << 30)) return 0;           // held: the key repeats
+            if (mods != g_pttMods) return msg;
+            OnTalkKey(nullptr, false);
+        } else {
+            OnTalkKey(nullptr, true);
+        }
+        return 0;  // the push-to-talk key is ours
+    } catch (...) {
+        g_disabled = true;
+        return msg;
+    }
+}
+
+void ApplyPushToTalkKey(const std::wstring& key) {
+    const auto hk = ParseHotkey(key);
+    g_pttVk = hk ? hk->vk : 0u;
+    g_pttMods = hk ? hk->mods : 0u;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -1147,7 +1236,7 @@ void InstallChatEventsNow() {  // on your click: newest release, checksum checke
 
 // ---- the header's icons, drawn like the exe's: microphone, menu (three lines), close
 enum class Icon { Mic, Menu, Close };
-bool IconButton(const char* id, Icon kind, bool active, bool* rightClick) {
+bool IconButton(const char* id, Icon kind, bool active, bool* rightClick, ImU32 tint = 0) {
     const float s = ImGui::GetFrameHeight();
     const ImVec2 p = ImGui::GetCursorScreenPos();
     const bool pressed = ImGui::InvisibleButton(id, ImVec2(s, s));
@@ -1155,7 +1244,8 @@ bool IconButton(const char* id, Icon kind, bool active, bool* rightClick) {
     if (rightClick) *rightClick = hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right);
     ImDrawList* dl = ImGui::GetWindowDrawList();
     const ImU32 col = active ? IM_COL32(235, 85, 85, 255)
-                             : ImGui::GetColorU32(hovered ? ImGuiCol_Text : ImGuiCol_TextDisabled);
+                      : tint     ? tint
+                                 : ImGui::GetColorU32(hovered ? ImGuiCol_Text : ImGuiCol_TextDisabled);
     const ImVec2 c(p.x + s * 0.5f, p.y + s * 0.5f);
     const float u = s / 18.0f;
     switch (kind) {
@@ -1190,6 +1280,8 @@ std::string Fit(const std::string& s, float width) {
 std::wstring StatusText() {  // g_mu held
     if (!g_status.empty()) return g_status;
     if (g_recording) return Tr(L"Hearing you … release the key when you are done");
+    if (!g_listenPausedFor.empty()) return TrF(L"Voice activation paused – {1} uses the microphone", {g_listenPausedFor});
+    if (g_listening) return Tr(L"Voice activation listens – just speak");
     if (const std::wstring q = MyMemoryQuotaText(); !q.empty()) return q;
     std::wstring route = SendOriginal() ? Tr(L"as written") : ToUpperAscii(PrimaryLang(SendLang()));
     if (Translating() && g_translator) route += L" · " + g_translator->Name();
@@ -1201,9 +1293,16 @@ bool g_compact = false;    // menu ≡: only the newest lines of the chat
 
 void RenderOptionsContent();
 
+void Hint(const std::string& text) {  // grey and wrapped: long hints are never cut off
+    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+    ImGui::TextWrapped("%s", text.c_str());
+    ImGui::PopStyleColor();
+}
+
 void RenderOptionsWindow() {
     if (!g_showOptions) return;
-    ImGui::SetNextWindowSize(ImVec2(520, 640), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(660, 620), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(600, 420), ImVec2(4000, 4000));
     if (ImGui::Begin((UI(Tr(L"GW2 Keyboard – Options")) + "###kbopts").c_str(), &g_showOptions)) RenderOptionsContent();
     ImGui::End();
 }
@@ -1266,9 +1365,19 @@ void RenderWindow() {
     if (g_cfg.voiceEnabled) {
         // Hold with the left button to speak; a right-click: on until a pause (or the next right-click).
         bool right = false;
-        IconButton("##mic", Icon::Mic, g_recording, &right);
+        const ImU32 tint = g_listening ? IM_COL32(110, 205, 130, 255) : !g_listenPausedFor.empty() ? IM_COL32(240, 190, 90, 255) : 0;
+        const bool clicked = IconButton("##mic", Icon::Mic, g_recording, &right, tint);
         static bool held = false;
-        if (ImGui::IsItemActivated()) {
+        if (g_cfg.voiceActivation) {  // voice activation: a click switches listening on / off
+            if (clicked) {
+                const bool on = g_listening || g_listenWanted;
+                g_listenUserOff = on;
+                lock.unlock();
+                if (on) StopListening();
+                else StartListening();
+                lock.lock();
+            }
+        } else if (ImGui::IsItemActivated()) {
             held = true;
             lock.unlock();
             TalkDown();
@@ -1286,7 +1395,8 @@ void RenderWindow() {
             lock.lock();
         }
         if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("%s", UI(Tr(L"Hold to speak (or the push-to-talk key in Nexus) · right-click: on / off")).c_str());
+            ImGui::SetTooltip("%s", UI(g_cfg.voiceActivation ? Tr(L"Voice activation: click switches it on / off · right-click: speak until a pause")
+                                                         : Tr(L"Hold to speak (or the push-to-talk key) · right-click: speak until a pause")).c_str());
         ImGui::SameLine();
     }
     if (IconButton("##menu", Icon::Menu, false, nullptr)) ImGui::OpenPopup("kbmenu");
@@ -1302,6 +1412,12 @@ void RenderWindow() {
     ImGui::SameLine();
     if (IconButton("##close", Icon::Close, false, nullptr)) g_show = false;
     if (!g_recording && g_micLocked) g_micLocked = false;  // the recording ended (pause, maximum length)
+    // Voice activation listens from the map on (unless you switched it off with the microphone).
+    if (g_cfg.voiceEnabled && g_cfg.voiceActivation && !g_listenWanted && !g_listenUserOff) {
+        lock.unlock();
+        StartListening();
+        lock.lock();
+    }
 
     // ---- the chat (the newest at the bottom): name white – a click answers with a whisper –, text in the channel colour
     const float line = ImGui::GetTextLineHeightWithSpacing();
@@ -1559,7 +1675,7 @@ void RenderOptionsContent() {
             if (ImGui::SliderInt(UI(Tr(L"Transparency") + L" (%)##alpha").c_str(), &transparency, 0, 75))
                 edit.opacity = (100 - transparency) * 255 / 100;
             ImGui::Checkbox(UI(Tr(L"Show the window")).c_str(), &g_show);
-            ImGui::TextDisabled("%s", UI(Tr(L"Keys (show / hide: Ctrl+Alt+K, push to talk, focus the input): Nexus → Keybinds → GW2 Keyboard.")).c_str());
+            Hint(UI(Tr(L"Keys (show / hide: Ctrl+Alt+K, push to talk, focus the input): Nexus → Keybinds → GW2 Keyboard.")));
             ImGui::Separator();
             ImGui::TextUnformatted(UI(Tr(L"The chat")).c_str());
             if (g_chatEventsPresent || g_chatEventsLive) {
@@ -1569,7 +1685,7 @@ void RenderOptionsContent() {
             } else {
                 ImGui::TextWrapped("%s", UI(Tr(L"The chat (map, whispers, guild, party, squad) comes from Events: Chat by Vonsh, an "
                                                L"add-on in the Nexus library. Without it no chat arrives here.")).c_str());
-                if (g_chatEventsInstalling) ImGui::TextDisabled("%s", UI(Tr(L"Loading Events: Chat …")).c_str());
+                if (g_chatEventsInstalling) Hint(UI(Tr(L"Loading Events: Chat …")));
                 else if (ImGui::Button(UI(Tr(L"Install Events: Chat")).c_str())) InstallChatEventsNow();
             }
             ImGui::EndTabItem();
@@ -1652,17 +1768,39 @@ void RenderOptionsContent() {
             for (int i = 1; i <= 8; ++i) threads.push_back(std::to_string(i));
             int ti = std::clamp(edit.voiceThreads, 0, 8);
             if (combo(UI(Tr(L"CPU threads") + L"##thr").c_str(), threads, &ti)) edit.voiceThreads = ti;
-            ImGui::TextDisabled("%s", UI(Tr(L"Automatic: the least busy cores – the ones GW2 does not use.")).c_str());
+            Hint(UI(Tr(L"Automatic: the least busy cores – the ones GW2 does not use.")));
             ImGui::Checkbox(UI(Tr(L"Send right after speaking (releasing the key counts as your Enter)")).c_str(), &edit.voiceAutoSend);
-            ImGui::TextDisabled("%s", UI(Tr(L"Runs on this PC – no sound leaves it, nothing is recorded to disk.")).c_str());
+            Hint(UI(Tr(L"Runs on this PC – no sound leaves it, nothing is recorded to disk.")));
             ImGui::EndTabItem();
         }
         // ---- Microphone
         if (ImGui::BeginTabItem(UI(Tr(L"Microphone")).c_str())) {
-            int mode = edit.voiceToggle ? 1 : 0;
+            int mode = edit.voiceActivation ? 2 : edit.voiceToggle ? 1 : 0;
             if (combo(UI(Tr(L"Starting") + L"##mode").c_str(),
-                      {UI(Tr(L"Hold the button or key while you speak")), UI(Tr(L"Press once – a pause ends it"))}, &mode))
+                      {UI(Tr(L"Hold the button or key while you speak")), UI(Tr(L"Press once – a pause ends it")),
+                       UI(Tr(L"Voice activation – starts when you speak"))},
+                      &mode)) {
                 edit.voiceToggle = mode == 1;
+                edit.voiceActivation = mode == 2;
+            }
+            // The push-to-talk key: ours (GW2 does not get it). "Set key ..." takes the next key you press.
+            {
+                std::lock_guard<std::mutex> lock(g_mu);
+                if (!g_capturedKey.empty()) {
+                    if (g_capturedKey != L"-") edit.voiceGlobalKey = g_capturedKey;
+                    g_capturedKey.clear();
+                }
+            }
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(UI(Tr(L"Push-to-talk key")).c_str());
+            ImGui::SameLine(150);
+            ImGui::TextUnformatted(g_captureKey ? UI(Tr(L"press a key … (Esc: cancel)")).c_str()
+                                                : UI(edit.voiceGlobalKey.empty() ? Tr(L"none") : edit.voiceGlobalKey).c_str());
+            ImGui::SameLine(330);
+            if (ImGui::Button(UI(Tr(L"Set key…")).c_str())) g_captureKey = true;
+            ImGui::SameLine();
+            if (ImGui::Button(UI(Tr(L"None")).c_str())) edit.voiceGlobalKey.clear();
+            Hint(UI(Tr(L"Works while GW2 is in front; GW2 does not get this key. The Nexus keybind (Keybinds > GW2 Keyboard) works too.")));
             std::vector<std::string> names{UI(Tr(L"Windows default"))};
             int mi = 0;
             for (size_t i = 0; i < mics.size(); ++i) {
@@ -1676,7 +1814,19 @@ void RenderOptionsContent() {
                 edit.voiceBoost = boost;
             ImGui::SetNextItemWidth(wide);
             ImGui::SliderInt(UI(Tr(L"Pause to end") + L" (ms)##pause").c_str(), &edit.voicePauseMs, 400, 3000);
-            ImGui::TextDisabled("%s", UI(Tr(L"Right-click on the microphone: on until a pause.")).c_str());
+            Hint(UI(Tr(L"Right-click on the microphone: on until a pause.")));
+            ImGui::Separator();
+            ImGui::TextUnformatted(UI(Tr(L"Voice activation")).c_str());
+            if (!edit.voiceActivation) ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5f);
+            Hint(UI(Tr(L"Voice activation is not exclusive: everything you say goes into the box, and Discord keeps hearing it.")));
+            ImGui::SetNextItemWidth(wide);
+            ImGui::SliderInt(UI(Tr(L"Sensitivity") + L"##sens").c_str(), &edit.voiceSensitivity, 0, 100);
+            ImGui::SetNextItemWidth(wide);
+            ImGui::SliderInt(UI(Tr(L"Pre-roll") + L" (ms)##pre").c_str(), &edit.voicePreRollMs, 0, 1000);
+            ImGui::SetNextItemWidth(wide);
+            ImGui::SliderInt(UI(Tr(L"Speech to start") + L" (ms)##min").c_str(), &edit.voiceMinMs, 100, 1000);
+            ImGui::Checkbox(UI(Tr(L"Pause while a voice chat uses the microphone (Discord, TeamSpeak …)")).c_str(), &edit.voiceChatPause);
+            if (!edit.voiceActivation) ImGui::PopStyleVar();
             ImGui::EndTabItem();
         }
         // ---- Translator
@@ -1775,6 +1925,9 @@ void RenderOptionsContent() {
             InitSpelling();
         });
         else g_worker.Post([learn = edit.learnWords] { if (g_spell) g_spell->SetLearnChoices(learn); });
+        ApplyPushToTalkKey(edit.voiceGlobalKey);
+        if (!edit.voiceActivation || !edit.voiceEnabled) StopListening();
+        else g_listenUserOff = false;  // asked for in the options: it listens (started by the window)
         if (voiceChanged && edit.voiceEnabled && !g_voice.Running() &&
             GetFileAttributesW(HelperExe().c_str()) != INVALID_FILE_ATTRIBUTES)
             g_voice.Start(HelperExe(), edit.dataDir);
@@ -1862,6 +2015,8 @@ void AddonLoad(AddonAPI_t* api) {
         api->InputBinds_RegisterWithString(kFocusBind, OnFocusKey, "(null)");
         api->InputBinds_RegisterWithString(kTalkBind, OnTalkKey, "(null)");
     }
+    ApplyPushToTalkKey(g_cfg.voiceGlobalKey);
+    if (api->WndProc_Register) api->WndProc_Register(OnWndProc);
     if (api->Events_Subscribe) {
         api->Events_Subscribe(bridge::kChatEventsEvent, OnChatEvents);
     }
@@ -1873,6 +2028,7 @@ void AddonUnload() {
         if (g_api->Events_Unsubscribe) {
             g_api->Events_Unsubscribe(bridge::kChatEventsEvent, OnChatEvents);
         }
+        if (g_api->WndProc_Deregister) g_api->WndProc_Deregister(OnWndProc);
         if (g_api->InputBinds_Deregister) {
             g_api->InputBinds_Deregister(kToggleBind);
             g_api->InputBinds_Deregister(kFocusBind);
