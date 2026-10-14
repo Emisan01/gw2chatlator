@@ -8,6 +8,7 @@
 
 #include <condition_variable>
 #include <deque>
+#include <functional>
 #include <map>
 #include <mutex>
 #include <string>
@@ -38,7 +39,8 @@ public:
 
     // Draws the code as the game links it (on the current line); on hover the tooltip. Game thread only.
     // True when it was clicked (the caller may put the code into the message).
-    bool Render(const std::wstring& code);
+    // `draw` draws the label in its colour (the window's look); without it: plain ImGui text.
+    bool Render(const std::wstring& code, const std::function<void(const std::string&, ImVec4)>& draw = {});
     // The text Render draws ("[Item name]", "[Waypoint]", or the code while it is looked up) – for line wrapping.
     std::wstring Label(const std::wstring& code);
 

@@ -222,13 +222,17 @@ std::wstring ChatLinks::Label(const std::wstring& code) {
     return LabelOf(code, Get(code), &color);
 }
 
-bool ChatLinks::Render(const std::wstring& code) {
+bool ChatLinks::Render(const std::wstring& code, const std::function<void(const std::string&, ImVec4)>& draw) {
     const Info info = Get(code);
     ImVec4 color(0.62f, 0.78f, 1.f, 1.f);  // a link without a rarity
     const std::wstring label = LabelOf(code, info, &color);
-    ImGui::PushStyleColor(ImGuiCol_Text, color);
-    ImGui::TextUnformatted(ToUtf8(label).c_str());
-    ImGui::PopStyleColor();
+    if (draw) {
+        draw(ToUtf8(label), color);
+    } else {
+        ImGui::PushStyleColor(ImGuiCol_Text, color);
+        ImGui::TextUnformatted(ToUtf8(label).c_str());
+        ImGui::PopStyleColor();
+    }
     if (ImGui::IsItemHovered()) {
         ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
         Tooltip(code, info);
