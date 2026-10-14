@@ -15,8 +15,12 @@
 #include <windows.h>
 #include <objbase.h>
 #include <psapi.h>
+#include <shellapi.h>
 
 #include <algorithm>
+#include <cfloat>
+#include <cmath>
+#include <map>
 #include <atomic>
 #include <condition_variable>
 #include <cstring>
@@ -30,6 +34,7 @@
 #include "../../nexus/src/chat_events.hpp"
 #include "app/config.hpp"
 #include "app/spell_service.hpp"
+#include "core/chat_code.hpp"
 #include "core/chat_line.hpp"
 #include "core/chat_stream.hpp"
 #include "core/gw2_text.hpp"
@@ -37,6 +42,7 @@
 #include "core/i18n.hpp"
 #include "core/json.hpp"
 #include "core/langs.hpp"
+#include "core/my_words.hpp"
 #include "core/voice.hpp"
 #include "core/languages.hpp"
 #include "core/protect.hpp"
@@ -48,10 +54,12 @@
 #include "imgui/imgui.h"
 #include "nexus/Nexus.h"
 #include "version.h"
+#include "voice_module.hpp"
 #include "win/deepl_translator.hpp"
 #include "win/els.hpp"
 #include "win/extras_install.hpp"
 #include "win/files.hpp"
+#include "win/http.hpp"
 #include "win/gw2_sender.hpp"
 #include "win/mumble_link.hpp"
 #include "win/audio_capture.hpp"
@@ -75,6 +83,25 @@ struct Layout {
     int previewLines = 3;  // the translation and its back-translation
 };
 Layout g_layout;
+// The add-on's own switches ([Nexus] in the settings file).
+struct NexusOptions {
+    bool translateChat = false;  // foreign chat lines into your language (off: a click on a line translates it)
+    bool snap = true;            // the window snaps to the screen edges when you move it there
+    bool setupDone = false;      // the first start loaded Events: Chat, the voice module and the base model
+    bool voiceFallback = true;   // a model too slow twice in a row: the next smaller installed one is used
+};
+NexusOptions g_nx;
+MyWords g_myWords;  // your own words and what they mean (<data>\my-words.txt), g_mu
+// Whisper tabs: each keeps whom you write to (at most kMaxWhisperTabs, for this session).
+constexpr size_t kMaxWhisperTabs = 5;
+struct WhisperTab {
+    std::wstring name;
+    bool unread = false;
+};
+std::vector<WhisperTab> g_tabs;
+int g_activeTab = -1;  // -1: the whole chat
+int g_selectTab = -2;  // a tab to select (-1: the chat; -2: none asked)
+std::wstring g_openLink;  // a link clicked in the chat: opened only after your yes
 
 AddonDefinition_t g_def = {};
 AddonAPI_t* g_api = nullptr;
@@ -263,6 +290,23 @@ std::atomic<unsigned> g_pttVk{0}, g_pttMods{0};
 std::atomic<bool> g_captureKey{false};
 std::wstring g_capturedKey;        // the captured key, picked up by the options (g_mu)
 
+// What each voice model needed when it last recognized you ([VoiceStats] model = peak %,recognize ms,speech ms,
+// highest peak %): shown in Options → Voice, and the reason for the automatic fallback.
+struct VoiceRun {
+    int peak = 0, rms = 0, rec = 0, maxPeak = 0;
+    int slow = 0;  // too slow in a row (this session)
+};
+std::map<std::wstring, VoiceRun> g_voiceRuns;  // g_mu
+void LoadVoiceRuns() {  // g_mu held
+    const VoiceCatalog catalog = LoadVoiceCatalog(g_cfg.dataDir);
+    for (const VoiceModelInfo& m : catalog.models) {
+        wchar_t buf[64] = {};
+        GetPrivateProfileStringW(L"VoiceStats", W(m.id).c_str(), L"", buf, 64, g_cfg.iniPath.c_str());
+        VoiceRun r;
+        if (swscanf_s(buf, L"%d,%d,%d,%d", &r.peak, &r.rms, &r.rec, &r.maxPeak) >= 3) g_voiceRuns[W(m.id)] = r;
+    }
+}
+
 void LoadLayout() {  // g_mu held
     auto get = [](const wchar_t* key, int def) { return static_cast<int>(GetPrivateProfileIntW(L"NexusWindow", key, def, g_cfg.iniPath.c_str())); };
     g_layout.chat = get(L"Chat", 1) != 0;
@@ -271,6 +315,18 @@ void LoadLayout() {  // g_mu held
     g_layout.footer = get(L"Footer", 1) != 0;
     g_layout.inputLines = std::clamp(get(L"InputLines", 4), 1, 8);
     g_layout.previewLines = std::clamp(get(L"PreviewLines", 3), 1, 8);
+    auto nx = [](const wchar_t* key, int def) { return GetPrivateProfileIntW(L"Nexus", key, def, g_cfg.iniPath.c_str()) != 0; };
+    g_nx.translateChat = nx(L"TranslateChat", 0);
+    g_nx.snap = nx(L"Snap", 1);
+    g_nx.setupDone = nx(L"SetupDone", 0);
+    g_nx.voiceFallback = nx(L"VoiceFallback", 1);
+    LoadVoiceRuns();
+}
+void SaveNexusOptions() {  // g_mu held
+    g_cfg.SaveBool(L"Nexus", L"TranslateChat", g_nx.translateChat);
+    g_cfg.SaveBool(L"Nexus", L"Snap", g_nx.snap);
+    g_cfg.SaveBool(L"Nexus", L"SetupDone", g_nx.setupDone);
+    g_cfg.SaveBool(L"Nexus", L"VoiceFallback", g_nx.voiceFallback);
 }
 void SaveLayout() {  // g_mu held
     g_cfg.SaveValue(L"NexusWindow", L"Chat", g_layout.chat ? L"1" : L"0");
@@ -397,13 +453,15 @@ void FreeWorkerState() {
     g_mumbleWorker = nullptr;
 }
 
-// A chat line into your language, when its language is sure and not yours (nor one you understand).
-void TranslateLine(uint64_t id, std::wstring text) {
+// A chat line into your language, when its language is sure and not yours (nor one you understand) – only while
+// "Translate the chat" is on; `asked` (a click on the line) translates it anyway, whatever its language seems to be.
+void TranslateLine(uint64_t id, std::wstring text, bool asked = false) {
     std::shared_ptr<Translator> tr;
     std::wstring target;
     std::vector<std::wstring> understood;
     {
         std::lock_guard<std::mutex> lock(g_mu);
+        if (!g_nx.translateChat && !asked) return;
         tr = g_translator;
         target = TypingLang();
         understood = g_cfg.understoodLangs;
@@ -411,10 +469,13 @@ void TranslateLine(uint64_t id, std::wstring text) {
     if (!tr) return;
     ProtectedText p = ProtectForTranslation(text, nullptr, g_spell ? &g_spell->KeepWords() : &BuiltinKeepWords());
     if (!HasTranslatableText(p.segments)) return;
-    const std::wstring detected = SureLanguage(text, DetectLanguage(text));
-    if (detected.empty() || PrimaryLang(detected) == target) return;
-    for (const std::wstring& u : understood)
-        if (PrimaryLang(u) == PrimaryLang(detected)) return;
+    std::wstring detected = SureLanguage(text, DetectLanguage(text));
+    if (asked && detected.empty()) detected = DetectLanguage(text);
+    if (!asked) {
+        if (detected.empty() || PrimaryLang(detected) == target) return;
+        for (const std::wstring& u : understood)
+            if (PrimaryLang(u) == PrimaryLang(detected)) return;
+    }
     {
         std::lock_guard<std::mutex> lock(g_mu);
         CountMyMemory(CodePointCount(text));
@@ -446,7 +507,12 @@ void TranslateInput(uint64_t gen, std::wstring text) {
     std::wstring result = body;
     std::wstring error;
     if (translating && tr) {
-        ProtectedText p = ProtectForTranslation(body, nullptr, g_spell ? &g_spell->KeepWords() : &BuiltinKeepWords());
+        std::wstring expanded;  // your own words replaced by what they mean (only for the translator)
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            expanded = g_myWords.Expand(body);
+        }
+        ProtectedText p = ProtectForTranslation(expanded, nullptr, g_spell ? &g_spell->KeepWords() : &BuiltinKeepWords());
         if (HasTranslatableText(p.segments)) {
             std::wstring source = DetectLanguage(body);
             if (source.empty()) source = typing;
@@ -698,6 +764,43 @@ private:
 
 VoiceHelper g_voice;
 
+// A recognition finished: how long it took and the CPU peak, for the model in use (g_mu held). Recognizing took
+// longer than the speech itself (and over 2 s) twice in a row → the next smaller installed model, if allowed.
+void NoteVoiceRun(const JsonValue& v) {
+    auto num = [&](const char* key) {
+        const JsonValue* n = v.Get(key);
+        return n && n->type == JsonValue::Type::Number ? static_cast<int>(n->n) : 0;
+    };
+    const int rec = num("rec"), rms = num("rms"), peak = num("peak");
+    if (rec <= 0 && rms <= 0) return;
+    const VoiceCatalog catalog = LoadVoiceCatalog(g_cfg.dataDir);
+    const VoiceModelInfo* m = catalog.Find(U8(g_cfg.voiceModel));
+    if (!m) m = catalog.Recommended();
+    if (!m) return;
+    VoiceRun& r = g_voiceRuns[W(m->id)];
+    r.peak = peak;
+    r.rms = rms;
+    r.rec = rec;
+    r.maxPeak = std::max(r.maxPeak, peak);
+    g_cfg.SaveValue(L"VoiceStats", W(m->id).c_str(), std::to_wstring(peak) + L"," + std::to_wstring(rms) + L"," + std::to_wstring(rec) +
+                                                   L"," + std::to_wstring(r.maxPeak));
+    r.slow = rms > 2000 && rms > rec ? r.slow + 1 : 0;
+    if (!g_nx.voiceFallback || r.slow < 2) return;
+    const VoiceModelInfo* smaller = nullptr;  // the biggest installed one below it
+    for (const VoiceModelInfo& o : catalog.models)
+        if (o.bytes < m->bytes && VoiceModelInstalled(g_cfg.VoiceModelDir(), o) && (!smaller || o.bytes > smaller->bytes))
+            smaller = &o;
+    r.slow = 0;
+    if (!smaller) {
+        SetStatus(TrF(L"{1} is slow on this PC – a smaller model would answer faster (Options → Voice)", {W(m->name)}), 12000);
+        return;
+    }
+    g_cfg.voiceModel = W(smaller->id);
+    g_cfg.SaveValue(L"Voice", L"Model", g_cfg.voiceModel);
+    g_voice.Send("reload");
+    SetStatus(TrF(L"{1} was too slow – switched to {2}", {W(m->name), W(smaller->name)}), 12000);
+}
+
 // A recognized text goes into the input (after what is there, with a space), checked by you, sent by your Enter.
 void VoiceHelper::OnLine(const std::string& line) {
     JsonValue v;
@@ -725,6 +828,7 @@ void VoiceHelper::OnLine(const std::string& line) {
             SetStatus(Tr(L"Nothing recognized – hold the key while you speak"), 5000);
             return;
         }
+        NoteVoiceRun(v);
         g_dictLang = g_cfg.voiceTranslate ? std::wstring(L"EN") : ToUpperAscii(W(v.GetString("lang")));
         const std::wstring fixed = g_voiceFixes.Apply(text, g_dictLang);
         g_lastDictated = fixed;
@@ -758,6 +862,8 @@ std::wstring HelperExe() {  // <addons>\GW2Keyboard\gw2kb_voice.exe
     return p.substr(0, p.find_last_of(L"\\/") + 1) + L"GW2Keyboard\\gw2kb_voice.exe";
 }
 
+void InstallVoiceModuleNow();
+
 // The helper starts on first use (like the exe loads its voice module); `cmd` runs as soon as it is ready.
 void VoiceCommand(const char* cmd) {
     bool ready;
@@ -777,11 +883,25 @@ void VoiceCommand(const char* cmd) {
         g_voice.Send(cmd);
         return;
     }
-    if (!g_voice.Running() &&
-        (GetFileAttributesW(HelperExe().c_str()) == INVALID_FILE_ATTRIBUTES || !g_voice.Start(HelperExe(), g_cfg.dataDir))) {
+    if (g_voice.Running()) return;
+    if (GetFileAttributesW(HelperExe().c_str()) == INVALID_FILE_ATTRIBUTES) {  // only the add-on was copied: load it
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            g_voicePending.clear();
+            SetStatus(Tr(L"Loading the voice module – the microphone works when it is ready"), 10000);
+        }
+        InstallVoiceModuleNow();
+        return;
+    }
+    std::wstring dataDir;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        dataDir = g_cfg.dataDir;
+    }
+    if (!g_voice.Start(HelperExe(), dataDir)) {
         std::lock_guard<std::mutex> lock(g_mu);
         g_voicePending.clear();
-        SetStatus(Tr(L"The voice module is missing"), 10000);
+        SetStatus(Tr(L"The voice module could not be started"), 10000);
     }
 }
 
@@ -896,7 +1016,7 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
     l.channel = ch;
     l.outgoing = outgoing;
     l.speaker = speaker ? SanitizeChatText(W(speaker)) : std::wstring();
-    l.text = SanitizeChatText(W(text));
+    l.text = SanitizeChatText(UnescapeChatText(W(text)));  // Events: Chat escapes brackets: "\[&...\]"
     if (l.text.empty()) return;
     uint64_t id;
     bool own;
@@ -913,6 +1033,10 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
         }
         g_lines.push_back(l);
         while (g_lines.size() > kMaxLines) g_lines.pop_front();
+        if (ch == Channel::Whisper)  // a whisper tab of that player, not in front: marked
+            for (size_t i = 0; i < g_tabs.size(); ++i)
+                if (static_cast<int>(i) != g_activeTab && CaseFold(g_tabs[i].name) == CaseFold(Trim(l.speaker)))
+                    g_tabs[i].unread = true;
         g_scrollDown = true;
     }
     if (!own) g_worker.Post([id, t = l.text] { TranslateLine(id, t); });
@@ -944,6 +1068,34 @@ void OnChatEvents(void* args) {
     } catch (...) {
         g_disabled = true;
     }
+}
+
+// A click on a name: that player's whisper tab (opened, or brought to the front); writing goes to them. g_mu held.
+void OpenWhisperTab(const std::wstring& name) {
+    const std::wstring who = Trim(name);
+    if (who.empty()) return;
+    int at = -1;
+    for (size_t i = 0; i < g_tabs.size(); ++i)
+        if (CaseFold(g_tabs[i].name) == CaseFold(who)) at = static_cast<int>(i);
+    if (at < 0) {
+        if (g_tabs.size() >= kMaxWhisperTabs) {  // the oldest goes
+            g_tabs.erase(g_tabs.begin());
+            if (g_activeTab >= 0) --g_activeTab;
+        }
+        g_tabs.push_back({who, false});
+        at = static_cast<int>(g_tabs.size()) - 1;
+    }
+    g_tabs[at].unread = false;
+    g_activeTab = g_selectTab = at;
+    g_channel = Channel::Whisper;
+    g_whisperTo = g_tabs[at].name;
+    g_focusInput = true;
+}
+void LeaveWhisperTab() {  // back to the whole chat, writing in the channel active in GW2 (g_mu held)
+    g_activeTab = -1;
+    g_selectTab = -1;
+    g_channel = Channel::Unknown;
+    g_whisperTo.clear();
 }
 
 void OnToggle(const char*, bool release) {
@@ -1162,6 +1314,7 @@ void RenderFooter() {  // g_mu held
         for (Channel c : kChannels) {
             const std::string name = c == Channel::Unknown ? UI(Tr(L"Active channel")) : UI(ChannelLabel(c));
             if (ImGui::Selectable(name.c_str(), c == g_channel)) {
+                if (c != Channel::Whisper && g_activeTab >= 0) LeaveWhisperTab();  // the whisper tab is left
                 g_channel = c;
                 if (c != Channel::Whisper) g_whisperTo.clear();
                 g_focusInput = true;
@@ -1190,10 +1343,9 @@ void RenderFooter() {  // g_mu held
         }
         ImGui::EndCombo();
     }
-    // What the chat gets, and who translates (orange like the exe).
+    // What the chat gets (orange like the exe); who translates is told by the status line.
     ImGui::SameLine();
-    std::wstring sendText = SendOriginal() ? Tr(L"as written") : NativeName(SendLang());
-    if (Translating() && g_translator) sendText += L" · " + g_translator->Name();
+    const std::wstring sendText = SendOriginal() ? Tr(L"as written") : NativeName(SendLang());
     const std::string send = UI(TrF(L"Send: {1}", {sendText}));
     ImGui::SetNextItemWidth(chipWidth(send));
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.94f, 0.75f, 0.35f, 1.f));
@@ -1229,8 +1381,16 @@ void RenderFooter() {  // g_mu held
         ImGui::SameLine();
         if (ImGui::Checkbox(UI(Tr(L"auto") + L"##autosend").c_str(), &g_cfg.voiceAutoSend))
             g_cfg.SaveBool(L"Voice", L"AutoSend", g_cfg.voiceAutoSend);
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("%s", UI(Tr(L"Send right after speaking (releasing the key counts as your Enter)")).c_str());
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 26);
+            ImGui::TextUnformatted(UI(Tr(L"auto: send right after speaking")).c_str());
+            ImGui::TextDisabled("%s", UI(Tr(L"When you stop talking (key released, or the pause after speaking), the recognized "
+                                            L"text goes into the GW2 chat at once – translated if a send language is "
+                                            L"chosen. Off: it waits in the box until you press Enter.")).c_str());
+            ImGui::PopTextWrapPos();
+            ImGui::EndTooltip();
+        }
     }
     const std::wstring text = SanitizeChatText(W(Flat(g_input)));
     const size_t n = CodePointCount(text);
@@ -1241,7 +1401,12 @@ void RenderFooter() {  // g_mu held
                                           static_cast<size_t>(g_cfg.maxLength)).size();
         counter += "  (" + std::to_string(parts) + "x)";
     }
-    ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - ImGui::CalcTextSize(counter.c_str()).x);
+    // At the right edge, never over the chips: without room it goes into the next line.
+    const float counterX = ImGui::GetWindowContentRegionMax().x - ImGui::CalcTextSize(counter.c_str()).x;
+    const float after = ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x + ImGui::GetStyle().ItemSpacing.x * 2;
+    if (counterX >= after) ImGui::SameLine(counterX);
+    else ImGui::SetCursorPosX(std::max(counterX, ImGui::GetCursorPosX()));
+    ImGui::AlignTextToFramePadding();
     ImGui::TextDisabled("%s", counter.c_str());
 }
 
@@ -1297,7 +1462,7 @@ void InstallChatEventsNow() {  // on your click: newest release, checksum checke
 }
 
 // ---- the header's icons, drawn like the exe's: microphone, menu (three lines), close
-enum class Icon { Mic, Menu, Close };
+enum class Icon { Mic, Menu, Close, Collapse, Expand };
 bool IconButton(const char* id, Icon kind, bool active, bool* rightClick, ImU32 tint = 0) {
     const float s = ImGui::GetFrameHeight();
     const ImVec2 p = ImGui::GetCursorScreenPos();
@@ -1322,6 +1487,13 @@ bool IconButton(const char* id, Icon kind, bool active, bool* rightClick, ImU32 
             for (int i = -1; i <= 1; ++i)
                 dl->AddLine(ImVec2(c.x - 5.5f * u, c.y + i * 4 * u), ImVec2(c.x + 5.5f * u, c.y + i * 4 * u), col, 1.6f * u);
             break;
+        case Icon::Collapse:  // V: fold the window up
+        case Icon::Expand: {  // A: open it again
+            const float d = kind == Icon::Collapse ? 1.0f : -1.0f;
+            dl->AddLine(ImVec2(c.x - 5 * u, c.y - 2.5f * u * d), ImVec2(c.x, c.y + 2.5f * u * d), col, 1.6f * u);
+            dl->AddLine(ImVec2(c.x, c.y + 2.5f * u * d), ImVec2(c.x + 5 * u, c.y - 2.5f * u * d), col, 1.6f * u);
+            break;
+        }
         case Icon::Close:  // ×
             dl->AddLine(ImVec2(c.x - 4.5f * u, c.y - 4.5f * u), ImVec2(c.x + 4.5f * u, c.y + 4.5f * u), col, 1.6f * u);
             dl->AddLine(ImVec2(c.x - 4.5f * u, c.y + 4.5f * u), ImVec2(c.x + 4.5f * u, c.y - 4.5f * u), col, 1.6f * u);
@@ -1344,14 +1516,428 @@ std::wstring StatusText() {  // g_mu held
     if (g_recording) return Tr(L"Hearing you … release the key when you are done");
     if (!g_listenPausedFor.empty()) return TrF(L"Voice activation paused – {1} uses the microphone", {g_listenPausedFor});
     if (g_listening) return Tr(L"Voice activation listens – just speak");
+    const bool voiceEnglish = g_cfg.voiceEnabled && g_cfg.voiceTranslate;
+    if (!g_nx.translateChat && !Translating())  // nothing goes to a translator: no counter of one
+        return voiceEnglish ? Tr(L"Translation off · speech into English (whisper)") : Tr(L"Translation off");
     if (const std::wstring q = MyMemoryQuotaText(); !q.empty()) return q;
     std::wstring route = SendOriginal() ? Tr(L"as written") : ToUpperAscii(PrimaryLang(SendLang()));
     if (Translating() && g_translator) route += L" · " + g_translator->Name();
     return TrF(L"Send: {1}", {route});
 }
 
+// ---- voice model download (its own thread: minutes, never on the worker or the game's threads)
+std::thread g_download;
+std::atomic<bool> g_downloadCancel{false};
+std::atomic<int> g_downloadPct{-1};  // -1: none running
+
+void StartModelDownload(const VoiceModelInfo& m) {
+    if (g_downloadPct >= 0) return;
+    if (g_download.joinable()) g_download.join();
+    g_downloadCancel = false;
+    g_downloadPct = 0;
+    std::wstring dir;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        dir = g_cfg.VoiceModelDir();
+    }
+    g_download = std::thread([m, dir] {
+        EnsureDir(dir);
+        std::wstring error;
+        const bool ok = DownloadVoiceModel(
+            dir, m,
+            [](uint64_t done, uint64_t total) {
+                if (total) g_downloadPct = static_cast<int>(done * 100 / total);
+                return true;
+            },
+            &g_downloadCancel, &error);
+        g_downloadPct = -1;
+        std::lock_guard<std::mutex> lock(g_mu);
+        SetStatus(ok ? Tr(L"Voice model installed") : error, 10000);
+        if (ok) g_voice.Send("reload");
+    });
+}
+
+// ---- the modules: the chat (Events: Chat), the voice module (gw2kb_voice.exe + whisper DLLs), the voice model
+std::atomic<bool> g_voiceModuleInstalling{false};
+std::atomic<int> g_voiceModulePct{-1};
+std::thread g_voiceModuleThread;
+int g_optionsTab = -1;  // a tab of the options window to bring to the front (General 0, Voice 2, Translator 4)
+
+std::wstring KeyboardDir() { return AddonsDir() + L"GW2Keyboard"; }
+
+struct ModuleState {
+    bool voiceModule = false;  // helper and DLLs are there
+    bool model = false;        // the chosen (or recommended) model is installed
+    std::string modelName;
+};
+ModuleState g_modules;
+ULONGLONG g_modulesNext = 0;
+
+const ModuleState& Modules() {  // looked at every 2 s (file checks), at once after an install
+    if (GetTickCount64() >= g_modulesNext) {
+        g_modulesNext = GetTickCount64() + 2000;
+        Config c;
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            c = g_cfg;
+        }
+        const VoiceCatalog catalog = LoadVoiceCatalog(c.dataDir);
+        const VoiceModelInfo* m = catalog.Find(U8(c.voiceModel));
+        if (!m) m = catalog.Recommended();
+        g_modules.voiceModule = VoiceModulePresent(KeyboardDir());
+        g_modules.model = m && VoiceModelInstalled(c.VoiceModelDir(), *m);
+        g_modules.modelName = m ? m->name : std::string();
+    }
+    return g_modules;
+}
+
+// The voice module from this version's GitHub release (checksum checked); only on your click or the first start.
+void InstallVoiceModuleNow() {
+    if (g_voiceModuleInstalling.exchange(true)) return;
+    if (g_voiceModuleThread.joinable()) g_voiceModuleThread.join();
+    g_voiceModulePct = 0;
+    g_voiceModuleThread = std::thread([dir = KeyboardDir()] {
+        const ExtrasInstallResult r = InstallVoiceModule(dir, W(GCT_VERSION_STR), [](uint64_t done, uint64_t total) {
+            if (total) g_voiceModulePct = static_cast<int>(done * 100 / total);
+            return !g_disabled.load();
+        });
+        g_voiceModulePct = -1;
+        g_voiceModuleInstalling = false;
+        g_modulesNext = 0;
+        std::lock_guard<std::mutex> lock(g_mu);
+        SetStatus(r.code == ExtrasInstallCode::Ok ? Tr(L"Voice module ready")
+                  : r.code == ExtrasInstallCode::NoAnswer ? TrF(L"GitHub did not answer ({1}) – please try again later", {r.detail})
+                                                          : TrF(L"Loading {1} failed: {2}", {Tr(L"the voice module"), r.detail}),
+                  10000);
+    });
+}
+
+// The first start: what GW2 Keyboard needs comes by itself – Events: Chat (Nexus loads it), the voice module and,
+// when no voice model is there yet, the small base model. Then it says what is ready and where translation is switched on.
+void FirstStart() {
+    if (GetFileAttributesW((AddonsDir() + kChatEventsDllName).c_str()) == INVALID_FILE_ATTRIBUTES) InstallChatEventsNow();
+    if (!VoiceModulePresent(KeyboardDir())) InstallVoiceModuleNow();
+    Config c;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        c = g_cfg;
+    }
+    const VoiceCatalog catalog = LoadVoiceCatalog(c.dataDir);
+    const VoiceModelInfo* chosen = catalog.Find(U8(c.voiceModel));
+    if (!chosen) chosen = catalog.Recommended();
+    if (c.voiceEnabled && !(chosen && VoiceModelInstalled(c.VoiceModelDir(), *chosen))) {
+        const VoiceModelInfo* use = nullptr;  // one that is there already, else the base model
+        for (const VoiceModelInfo& m : catalog.models)
+            if (!use && VoiceModelInstalled(c.VoiceModelDir(), m)) use = &m;
+        const bool download = !use;
+        if (!use) use = catalog.Find("base-q5_1");
+        if (use) {
+            {
+                std::lock_guard<std::mutex> lock(g_mu);
+                g_cfg.voiceModel = W(use->id);
+                g_cfg.SaveValue(L"Voice", L"Model", g_cfg.voiceModel);
+            }
+            if (download) StartModelDownload(*use);
+        }
+    }
+    std::lock_guard<std::mutex> lock(g_mu);
+    g_nx.setupDone = true;
+    SaveNexusOptions();
+}
+
+// Starting / ending the voice module by hand (it also starts by itself on the first use of the microphone).
+void LoadVoiceModule() {
+    std::wstring dataDir;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        dataDir = g_cfg.dataDir;
+    }
+    if (!g_voice.Running() && VoiceModulePresent(KeyboardDir())) g_voice.Start(HelperExe(), dataDir);
+}
+void UnloadVoiceModule() {
+    StopListening();
+    g_voice.Stop();  // the helper ends: the model and its memory are freed
+    std::lock_guard<std::mutex> lock(g_mu);
+    g_voicePending.clear();
+    g_recording = g_listening = false;
+    g_listenUserOff = true;  // voice activation does not start it again by itself
+}
+
+void StatusRow(const std::string& what, int state, const std::string& text) {  // state: 2 ready, 1 busy, 0 missing
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextColored(state == 2 ? ImVec4(0.45f, 0.85f, 0.45f, 1.f) : state == 1 ? ImVec4(0.94f, 0.75f, 0.35f, 1.f)
+                                                                                  : ImVec4(0.95f, 0.55f, 0.35f, 1.f),
+                       "%s", state == 2 ? "[OK]" : state == 1 ? "[..]" : "[--]");
+    ImGui::SameLine();
+    ImGui::TextUnformatted(what.c_str());
+    ImGui::SameLine();
+    ImGui::TextDisabled("%s", text.c_str());
+}
+
+// What is ready (chat, voice, model), with the buttons that load what is missing; `guide`: and where to go next.
+void RenderModules(bool guide) {  // g_mu NOT held
+    const ModuleState& m = Modules();
+    ImGui::PushID("modules");
+    // The chat.
+    const bool chatLive = g_chatEventsLive || g_chatEventsPresent;
+    StatusRow(UI(Tr(L"Chat module")), chatLive ? 2 : g_chatEventsInstalling || g_chatEventsFile ? 1 : 0,
+              UI(chatLive ? Tr(L"ready – Events: Chat is loaded")
+                 : g_chatEventsInstalling ? Tr(L"loading Events: Chat …")
+                 : g_chatEventsFile ? Tr(L"installed – Nexus loads it (else: Nexus → Addons → Events: Chat → Load)")
+                                    : Tr(L"Events: Chat is missing")));
+    if (!chatLive && !g_chatEventsFile && !g_chatEventsInstalling) {
+        ImGui::SameLine();
+        if (ImGui::SmallButton(UI(Tr(L"Install Events: Chat")).c_str())) InstallChatEventsNow();
+    }
+    // The voice module and its model.
+    bool enabled, ready;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        enabled = g_cfg.voiceEnabled;
+        ready = g_voiceReady;
+    }
+    if (enabled) {
+        const int pct = g_voiceModulePct;
+        const bool running = g_voice.Running();
+        StatusRow(UI(Tr(L"Voice module")), m.voiceModule ? 2 : g_voiceModuleInstalling ? 1 : 0,
+                  UI(g_voiceModuleInstalling ? TrF(L"loading … {1} %", {std::to_wstring(std::max(pct, 0))})
+                     : !m.voiceModule        ? Tr(L"missing")
+                     : ready                 ? Tr(L"ready – loaded")
+                     : running               ? Tr(L"starting")
+                                             : Tr(L"ready – loads on the first use of the microphone")));
+        ImGui::SameLine();
+        if (!m.voiceModule && !g_voiceModuleInstalling) {
+            if (ImGui::SmallButton(UI(Tr(L"Load voice module")).c_str())) InstallVoiceModuleNow();
+        } else if (m.voiceModule && !running) {
+            if (ImGui::SmallButton(UI(Tr(L"Load")).c_str())) LoadVoiceModule();
+        } else if (running) {
+            if (ImGui::SmallButton(UI(Tr(L"Unload")).c_str())) UnloadVoiceModule();
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Ends the voice module and frees its memory; the microphone loads it again.")).c_str());
+        }
+        const int dl = g_downloadPct;
+        StatusRow(UI(Tr(L"Voice model")), m.model ? 2 : dl >= 0 ? 1 : 0,
+                  dl >= 0 ? UI(TrF(L"downloading … {1} %", {std::to_wstring(dl)}))
+                          : m.modelName + (m.model ? "" : "  " + UI(Tr(L"missing"))));
+        if (!m.model && dl < 0) {
+            ImGui::SameLine();
+            if (ImGui::SmallButton(UI(Tr(L"Download the model")).c_str())) {
+                Config c;
+                {
+                    std::lock_guard<std::mutex> lock(g_mu);
+                    c = g_cfg;
+                }
+                const VoiceCatalog catalog = LoadVoiceCatalog(c.dataDir);
+                const VoiceModelInfo* chosen = catalog.Find(U8(c.voiceModel));
+                if (!chosen) chosen = catalog.Recommended();
+                if (chosen) StartModelDownload(*chosen);
+            }
+        }
+    }
+    if (guide) {
+        ImGui::Spacing();
+        bool chat, mine, voiceEnglish;
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            chat = g_nx.translateChat;
+            mine = g_cfg.translateWriting;
+            voiceEnglish = g_cfg.voiceTranslate;
+        }
+        if (!chat || !mine) {
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextDisabled("%s", UI(Tr(L"Translate the chat or your text: Options → Translator")).c_str());
+            ImGui::SameLine();
+            if (ImGui::SmallButton(UI(Tr(L"Open") + L"##tr").c_str())) {
+                g_showOptions = true;
+                g_optionsTab = 4;
+            }
+        }
+        if (enabled && !voiceEnglish) {
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextDisabled("%s", UI(Tr(L"Turn what you say into English: Options → Voice")).c_str());
+            ImGui::SameLine();
+            if (ImGui::SmallButton(UI(Tr(L"Open") + L"##vo").c_str())) {
+                g_showOptions = true;
+                g_optionsTab = 2;
+            }
+        }
+    }
+    ImGui::PopID();
+}
+
+// ---- chat codes ("[&AgGvWwEA]"): shown as the game shows them – "[Item name]" in its rarity colour. The name comes once
+// per code from the public GW2 API (worker), in the language you write in.
+struct CodeName {
+    int state = 0;  // 0 asked, 1 known, 2 none
+    std::wstring name;
+    uint32_t rgb = 0;
+};
+std::map<std::wstring, CodeName> g_codeNames;  // g_mu
+
+std::wstring ApiLang() {  // the GW2 API speaks en, de, fr, es, zh (g_mu held)
+    const std::wstring p = ToLowerAscii(PrimaryLang(TypingLang()));
+    return p == L"de" || p == L"fr" || p == L"es" || p == L"zh" ? p : L"en";
+}
+
+void FetchCodeName(std::wstring code, std::wstring lang) {  // worker
+    const ChatCode c = DecodeChatCode(code);
+    CodeName out;
+    out.state = 2;
+    auto ask = [&](const std::wstring& path, JsonValue* first) {
+        const HttpResponse r = HttpsRequest(L"GET", L"api.guildwars2.com", path + L"&lang=" + lang, L"", "", nullptr, 1u << 20);
+        JsonValue v;
+        if (!r.transportOk || r.status != 200 || !ParseJson(r.body, v) || !v.IsArray() || v.arr.empty()) return false;
+        *first = v.arr.front();
+        return true;
+    };
+    JsonValue v;
+    if (const std::wstring path = ChatCodeApiPath(c); !path.empty() && ask(path, &v)) {
+        if (c.kind == ChatCodeKind::Recipe) {  // a recipe: the name of what it makes
+            JsonValue item;
+            if (const JsonValue* id = v.Get("output_item_id"); id && id->type == JsonValue::Type::Number &&
+                                                                 ask(L"/v2/items?ids=" + std::to_wstring(static_cast<uint64_t>(id->n)), &item)) {
+                out.name = W(item.GetString("name"));
+                out.rgb = RarityColor(item.GetString("rarity"));
+            }
+        } else {
+            out.name = W(v.GetString("name"));
+            out.rgb = RarityColor(v.GetString("rarity"));
+        }
+        if (!out.name.empty()) {
+            out.state = 1;
+            if (c.kind == ChatCodeKind::Item && c.count > 1) out.name = std::to_wstring(c.count) + L" " + out.name;
+        }
+    }
+    std::lock_guard<std::mutex> lock(g_mu);
+    g_codeNames[code] = out;
+}
+
+// What a chat code shows: "[Name]" once known, else the code (g_mu held; asks for the name once).
+std::wstring CodeLabel(const std::wstring& code, ImVec4* color) {
+    auto it = g_codeNames.find(code);
+    if (it == g_codeNames.end()) {
+        g_codeNames[code] = CodeName{};
+        g_worker.Post([code, lang = ApiLang()] { FetchCodeName(code, lang); });
+        return code;
+    }
+    if (it->second.state != 1) return code;
+    if (it->second.rgb) {
+        const uint32_t rgb = it->second.rgb;
+        *color = ImVec4(((rgb >> 16) & 0xFF) / 255.f, ((rgb >> 8) & 0xFF) / 255.f, (rgb & 0xFF) / 255.f, 1.f);
+    }
+    return L"[" + it->second.name + L"]";
+}
+
+// A word into your language (right-click on a line → a word); the answer is shown in the input box for a while.
+void TranslateWord(std::wstring word, std::wstring line) {
+    std::shared_ptr<Translator> tr;
+    std::wstring target;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        tr = g_translator;
+        target = TypingLang();
+        CountMyMemory(CodePointCount(word));
+    }
+    if (!tr) return;
+    std::wstring source = DetectLanguage(line);  // the line knows its language better than one word
+    if (source.empty() || PrimaryLang(source) == PrimaryLang(target)) source = DetectLanguage(word);
+    const TranslateResult r = tr->Translate({Segment{word, false}}, SourceCode(source), target);
+    std::lock_guard<std::mutex> lock(g_mu);
+    SetStatus(r.ok && !r.text.empty() ? word + L"  >  " + SanitizeChatText(r.text) : r.error, 15000);
+}
+
+// Your own words ("finds = I think"): what the translator gets instead (<data>\my-words.txt), learned on a right-click.
+void SaveMyWords() {  // g_mu held
+    WriteFileAtomic(g_cfg.dataDir + L"\\my-words.txt", ToUtf8(g_myWords.Serialize()));
+}
+
+// A chat line that wraps word by word with its links (blue, underlined: a click asks before anything opens) and chat
+// codes (the item's name in its colour: a click puts the code into your message). Wrapped lines start under the text
+// (a group), like TextWrapped after the name. True: something in it was clicked.
+bool g_openLinkAsk = false;
+bool RichLine(const std::wstring& text, const std::vector<Span>& links, const std::vector<Span>& codes) {  // g_mu held
+    bool clicked = false;
+    const float right = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+    const float space = ImGui::CalcTextSize(" ").x;
+    bool first = true;
+    auto place = [&](const std::string& piece) {  // on this line, or the next when it does not fit any more
+        if (!first) {
+            ImGui::SameLine(0, space);
+            if (ImGui::GetCursorScreenPos().x + ImGui::CalcTextSize(piece.c_str()).x > right) ImGui::NewLine();
+        }
+        first = false;
+    };
+    std::vector<std::pair<Span, bool>> marks;  // (span, is a link)
+    for (const Span& s : links) marks.push_back({s, true});
+    for (const Span& s : codes) marks.push_back({s, false});
+    std::sort(marks.begin(), marks.end(), [](const auto& a, const auto& b) { return a.first.start < b.first.start; });
+    ImGui::BeginGroup();
+    size_t pos = 0, mi = 0;
+    while (pos < text.size()) {
+        while (mi < marks.size() && marks[mi].first.start < pos) ++mi;  // overlapping: the first one wins
+        if (mi < marks.size() && pos == marks[mi].first.start) {
+            const Span s = marks[mi].first;
+            const std::wstring piece = text.substr(s.start, s.length);
+            if (marks[mi].second) {  // a web link
+                const std::string u = U8(piece);
+                place(u);
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.45f, 0.7f, 1.f, 1.f));
+                ImGui::TextUnformatted(u.c_str());
+                ImGui::PopStyleColor();
+                const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
+                ImGui::GetWindowDrawList()->AddLine(ImVec2(a.x, b.y - 1), ImVec2(b.x, b.y - 1), IM_COL32(115, 178, 255, 255));
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                    ImGui::SetTooltip("%s", u.c_str());
+                }
+                if (ImGui::IsItemClicked()) {
+                    g_openLink = piece;
+                    g_openLinkAsk = true;
+                    clicked = true;
+                }
+            } else {  // a chat code
+                ImVec4 color(0.85f, 0.85f, 0.9f, 1.f);
+                const std::string label = UI(CodeLabel(piece, &color));
+                place(label);
+                ImGui::PushStyleColor(ImGuiCol_Text, color);
+                ImGui::TextUnformatted(label.c_str());
+                ImGui::PopStyleColor();
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                    ImGui::SetTooltip("%s", UI(piece + L"\n" + Tr(L"Click: into your message")).c_str());
+                }
+                if (ImGui::IsItemClicked()) {  // into the input, like a shift-click in the game
+                    const size_t len = std::strlen(g_input);
+                    g_edit.active = true;
+                    g_edit.startByte = len;
+                    g_edit.lenBytes = 0;
+                    g_edit.insert = (len && g_input[len - 1] != ' ' ? " " : "") + U8(piece) + " ";
+                    g_focusInput = true;
+                    clicked = true;
+                }
+            }
+            pos = s.start + s.length;
+            ++mi;
+            continue;
+        }
+        const size_t stop = mi < marks.size() ? marks[mi].first.start : text.size();
+        size_t end = text.find(L' ', pos);
+        if (end == std::wstring::npos || end > stop) end = stop;
+        if (end > pos) {
+            const std::string word = U8(text.substr(pos, end - pos));
+            place(word);
+            ImGui::TextUnformatted(word.c_str());
+        }
+        pos = end;
+        while (pos < stop && text[pos] == L' ') ++pos;
+    }
+    ImGui::EndGroup();
+    return clicked;
+}
+
 bool g_micLocked = false;  // right-click on the microphone: on until the next right-click
-bool g_compact = false;    // menu ≡: only the newest lines of the chat
+bool g_compact = false;    // menu ≡: like GW2's own chat – no preview, no word bar; the translation small in the input
+bool g_collapsed = false;  // the V in the header: only the header is left (A opens it again)
+float g_headerH = 0, g_lastW = 520, g_expandedH = 360, g_restoreH = 0;
 
 void RenderOptionsContent();
 
@@ -1367,6 +1953,12 @@ void RenderOptionsWindow() {
     ImGui::SetNextWindowSizeConstraints(ImVec2(600, 420), ImVec2(4000, 4000));
     if (ImGui::Begin((UI(Tr(L"GW2 Keyboard – Options")) + "###kbopts").c_str(), &g_showOptions)) RenderOptionsContent();
     ImGui::End();
+}
+
+// Text drawn into the input box (status, the translation in the compact view): on top, clipped to the box.
+void BoxText(const ImVec2& at, const ImVec4& clip, ImU32 color, const std::string& text, float scale = 1.0f) {
+    ImGui::GetForegroundDrawList()->AddText(ImGui::GetFont(), ImGui::GetFontSize() * scale, at, color, text.c_str(), nullptr,
+                                            0, &clip);
 }
 
 void RenderWindow() {
@@ -1398,32 +1990,127 @@ void RenderWindow() {
     {
         std::lock_guard<std::mutex> lock(g_mu);
         inMap = g_inMap || g_test.forceMap;
+        if (g_focusInput && g_collapsed) {  // something wants the input: the window opens again
+            g_collapsed = false;
+            g_restoreH = g_expandedH;
+        }
     }
     if (!g_show || !inMap) return;
+    // Never smaller than header + input + footer (it cannot vanish when made small); collapsed: only the header.
+    const float minW = 300, minH = 170;
     ImGui::SetNextWindowSize(ImVec2(520, 360), ImGuiCond_FirstUseEver);
+    if (g_collapsed && g_headerH > 0) {
+        ImGui::SetNextWindowSizeConstraints(ImVec2(minW, 0), ImVec2(FLT_MAX, FLT_MAX));
+        ImGui::SetNextWindowSize(ImVec2(g_lastW, g_headerH), ImGuiCond_Always);
+    } else {
+        ImGui::SetNextWindowSizeConstraints(ImVec2(minW, minH), ImVec2(FLT_MAX, FLT_MAX));
+        if (g_restoreH > 0) {
+            ImGui::SetNextWindowSize(ImVec2(g_lastW, g_restoreH), ImGuiCond_Always);
+            g_restoreH = 0;
+        }
+    }
     ImGui::SetNextWindowBgAlpha(std::clamp(g_cfg.opacity, 60, 255) / 255.0f);
-    if (!ImGui::Begin("GW2 Keyboard###kbmain", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse)) {
+    ImGuiWindowFlags wflags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
+                              ImGuiWindowFlags_NoScrollWithMouse;
+    if (g_collapsed) wflags |= ImGuiWindowFlags_NoResize;
+    if (!ImGui::Begin("GW2 Keyboard###kbmain", nullptr, wflags)) {
         ImGui::End();
         return;
     }
     ImGui::SetWindowFontScale(std::clamp(g_cfg.fontPercent, 70, 200) / 100.0f);
+    g_lastW = ImGui::GetWindowWidth();
+    if (!g_collapsed) g_expandedH = ImGui::GetWindowHeight();
     std::unique_lock<std::mutex> lock(g_mu);
+    {  // Snap: a move that ends near a screen edge puts the window onto it (not when its size was dragged)
+        static bool dragging = false;
+        static ImVec2 startPos, startSize;
+        const ImVec2 pos = ImGui::GetWindowPos(), size = ImGui::GetWindowSize();
+        if (ImGui::IsMouseClicked(0) && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows)) {
+            dragging = true;
+            startPos = pos;
+            startSize = size;
+        } else if (dragging && !ImGui::IsMouseDown(0)) {
+            dragging = false;
+            const bool moved = (pos.x != startPos.x || pos.y != startPos.y) && size.x == startSize.x && size.y == startSize.y;
+            if (g_nx.snap && moved) {
+                const float t = 24.0f * std::max(1.0f, io.DisplaySize.y / 1080.0f);
+                ImVec2 p = pos;
+                if (std::fabs(p.x) < t) p.x = 0;
+                else if (std::fabs(p.x + size.x - io.DisplaySize.x) < t) p.x = io.DisplaySize.x - size.x;
+                if (std::fabs(p.y) < t) p.y = 0;
+                else if (std::fabs(p.y + size.y - io.DisplaySize.y) < t) p.y = io.DisplaySize.y - size.y;
+                if (p.x != pos.x || p.y != pos.y) ImGui::SetWindowPos(p);
+            }
+        }
+    }
     if (g_statusUntil && GetTickCount64() > g_statusUntil) {
         g_status.clear();
         g_statusUntil = 0;
     }
     const ImVec4 kAccent(0.94f, 0.75f, 0.35f, 1.f), kPreview(0.59f, 0.80f, 1.f, 1.f);
-    // ---- header: status at the left; microphone, menu, close at the right
+    const ImGuiStyle& st = ImGui::GetStyle();
+
+    // ---- header: the tabs (the chat, whisper tabs; right-click: a new one) · microphone · V / A · menu · close
     const float icon = ImGui::GetFrameHeight();
-    const float spacing = ImGui::GetStyle().ItemSpacing.x;
-    const int icons = g_cfg.voiceEnabled ? 3 : 2;
-    const float statusW = ImGui::GetContentRegionAvail().x - icons * (icon + spacing);
-    const std::string status = UI(StatusText());
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextColored(g_status.empty() ? ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled) : kAccent, "%s",
-                       Fit(status, statusW).c_str());
-    if (ImGui::IsItemHovered() && Fit(status, statusW) != status) ImGui::SetTooltip("%s", status.c_str());
-    ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - icons * (icon + spacing) + spacing);
+    const float gap = std::round(icon * 0.6f);
+    const float rightW = (g_cfg.voiceEnabled ? icon + gap : 0) + icon + gap + icon + st.ItemSpacing.x + icon;
+    const float tabsW = std::max(60.0f, ImGui::GetContentRegionAvail().x - rightW - gap);
+    bool newTab = false;
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+    ImGui::BeginChild("##hdr", ImVec2(tabsW, icon), false,
+                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBackground);
+    ImGui::PopStyleVar();
+    if (ImGui::BeginTabBar("##wtabs", ImGuiTabBarFlags_FittingPolicyResizeDown | ImGuiTabBarFlags_NoTooltip)) {
+        if (ImGui::BeginTabItem((UI(Tr(L"Chat")) + "###wt_all").c_str(), nullptr,
+                                g_selectTab == -1 ? ImGuiTabItemFlags_SetSelected : 0)) {
+            if (g_selectTab == -1) g_selectTab = -2;
+            else if (g_selectTab == -2 && g_activeTab != -1) LeaveWhisperTab();
+            ImGui::EndTabItem();
+        }
+        int close = -1;
+        for (int i = 0; i < static_cast<int>(g_tabs.size()); ++i) {
+            bool open = true;
+            const ImGuiTabItemFlags f = (g_selectTab == i ? ImGuiTabItemFlags_SetSelected : 0) |
+                                        (g_tabs[i].unread ? ImGuiTabItemFlags_UnsavedDocument : 0);
+            if (ImGui::BeginTabItem((UI(g_tabs[i].name) + "###wt_" + U8(CaseFold(g_tabs[i].name))).c_str(), &open, f)) {
+                if (g_selectTab == i) g_selectTab = -2;
+                else if (g_selectTab == -2 && g_activeTab != i) OpenWhisperTab(g_tabs[i].name);
+                ImGui::EndTabItem();
+            }
+            if (!open) close = i;
+        }
+        ImGui::EndTabBar();
+        if (close >= 0) {
+            const bool active = close == g_activeTab;
+            g_tabs.erase(g_tabs.begin() + close);
+            if (active) LeaveWhisperTab();
+            else if (close < g_activeTab) g_selectTab = --g_activeTab;
+        }
+    }
+    if (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) newTab = true;
+    ImGui::EndChild();
+    static bool newTabNext = false;  // asked for in the menu (opened next frame, at this level)
+    if (newTab || newTabNext) ImGui::OpenPopup("##newtab");
+    newTabNext = false;
+    if (ImGui::BeginPopup("##newtab")) {  // a whisper tab of your own: whom you want to write to
+        static char name[96] = {};
+        if (ImGui::IsWindowAppearing()) {
+            name[0] = 0;
+            ImGui::SetKeyboardFocusHere();
+        }
+        ImGui::TextUnformatted(UI(Tr(L"New whisper tab")).c_str());
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 14);
+        bool go = ImGui::InputTextWithHint("##tabname", UI(Tr(L"Character or account name")).c_str(), name, sizeof(name),
+                                           ImGuiInputTextFlags_EnterReturnsTrue);
+        ImGui::SameLine();
+        go |= ImGui::Button(UI(Tr(L"Open")).c_str());
+        if (go && !Trim(W(name)).empty()) {
+            OpenWhisperTab(W(name));
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+    ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - rightW);
     if (g_cfg.voiceEnabled) {
         // Hold with the left button to speak; a right-click: on until a pause (or the next right-click).
         bool right = false;
@@ -1459,12 +2146,19 @@ void RenderWindow() {
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", UI(g_cfg.voiceActivation ? Tr(L"Voice activation: click switches it on / off · right-click: speak until a pause")
                                                          : Tr(L"Hold to speak (or the push-to-talk key) · right-click: speak until a pause")).c_str());
-        ImGui::SameLine();
+        ImGui::SameLine(0, gap);
     }
+    if (IconButton("##fold", g_collapsed ? Icon::Expand : Icon::Collapse, false, nullptr)) {
+        g_collapsed = !g_collapsed;
+        if (!g_collapsed) g_restoreH = g_expandedH;
+    }
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(g_collapsed ? Tr(L"Open the window") : Tr(L"Fold the window up to its header")).c_str());
+    ImGui::SameLine(0, gap);
     if (IconButton("##menu", Icon::Menu, false, nullptr)) ImGui::OpenPopup("kbmenu");
     if (ImGui::BeginPopup("kbmenu")) {
         if (ImGui::MenuItem(UI(Tr(L"Options …")).c_str())) g_showOptions = true;
-        ImGui::MenuItem(UI(Tr(L"Compact view")).c_str(), nullptr, &g_compact);
+        if (ImGui::MenuItem(UI(Tr(L"Compact view")).c_str(), nullptr, &g_compact)) g_cfg.SaveBool(L"NexusWindow", L"Compact", g_compact);
+        if (ImGui::MenuItem(UI(Tr(L"New whisper tab …")).c_str())) newTabNext = true;
         if (!g_chatEventsPresent && !g_chatEventsFile && ImGui::MenuItem(UI(Tr(L"Install Events: Chat (every channel) …")).c_str()))
             g_showOptions = true;
         ImGui::Separator();
@@ -1473,6 +2167,7 @@ void RenderWindow() {
     }
     ImGui::SameLine();
     if (IconButton("##close", Icon::Close, false, nullptr)) g_show = false;
+    g_headerH = ImGui::GetCursorPosY() - st.ItemSpacing.y + st.WindowPadding.y;
     if (!g_recording && g_micLocked) g_micLocked = false;  // the recording ended (pause, maximum length)
     // Voice activation listens from the map on (unless you switched it off with the microphone).
     if (g_cfg.voiceEnabled && g_cfg.voiceActivation && !g_listenWanted && !g_listenUserOff) {
@@ -1480,88 +2175,176 @@ void RenderWindow() {
         StartListening();
         lock.lock();
     }
+    if (g_collapsed) {  // folded up: only the header; what was going on goes on (sending, dictation)
+        if (g_autoSendPending && !g_edit.active && g_input[0]) {
+            g_autoSendPending = false;
+            StartSend();
+        }
+        lock.unlock();
+        ImGui::End();
+        return;
+    }
 
-    // ---- the chat (the newest at the bottom): name white – a click answers with a whisper –, text in the channel colour
+    // ---- the chat (the newest at the bottom): name white – a click opens a whisper tab –, text in the channel colour,
+    // the scroll bar at the left like GW2's own chat
     const float line = ImGui::GetTextLineHeightWithSpacing();
-    const float lowerH = (g_layout.preview ? line * (g_layout.previewLines + 0.2f) + ImGui::GetStyle().ItemSpacing.y : 0) +
-                         (g_layout.words ? ImGui::GetFrameHeightWithSpacing() : 0) +
-                         (g_layout.footer ? ImGui::GetFrameHeightWithSpacing() : 0) +
-                         ImGui::GetTextLineHeight() * g_layout.inputLines + ImGui::GetStyle().FramePadding.y * 2 + 12;
+    const bool showPreview = g_layout.preview && !g_compact, showWords = g_layout.words && !g_compact;
+    const float smallLine = ImGui::GetFontSize() * 0.85f + 2;
+    const float boxH = ImGui::GetTextLineHeight() * g_layout.inputLines + st.FramePadding.y * 2 + (g_compact ? smallLine : 0);
+    const float lowerH = (showPreview ? line * (g_layout.previewLines + 0.2f) + st.ItemSpacing.y : 0) +
+                         (showWords ? ImGui::GetFrameHeightWithSpacing() : 0) +
+                         (g_layout.footer ? ImGui::GetFrameHeightWithSpacing() : 0) + boxH + st.ItemSpacing.y;
     if (g_layout.chat) {
-    ImGui::BeginChild("chat", ImVec2(0, g_compact ? line * 3 + 4 : -lowerH), false);
-    if (g_lines.empty()) {  // where the chat comes from – loaded, installed but not loaded, or missing
-        const bool live = g_chatEventsLive || g_chatEventsPresent;
-        ImGui::PushStyleColor(ImGuiCol_Text, live ? ImVec4(0.45f, 0.85f, 0.45f, 1.f) : ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-        ImGui::TextWrapped("%s", UI(live ? Tr(L"Events: Chat is loaded – the chat appears here as soon as someone writes.")
-                                    : g_chatEventsFile ? Tr(L"Events: Chat is installed but not loaded: Nexus → Addons → Events: Chat → Load.")
-                                                       : Tr(L"The chat (map, whispers, guild, party, squad) comes from Events: Chat by Vonsh, an "
-                                                            L"add-on in the Nexus library. Without it no chat arrives here.")).c_str());
-        ImGui::PopStyleColor();
-        if (!live && !g_chatEventsFile) {
-            if (g_chatEventsInstalling) ImGui::TextDisabled("%s", UI(Tr(L"Loading Events: Chat …")).c_str());
-            else if (ImGui::SmallButton(UI(Tr(L"Install Events: Chat")).c_str())) InstallChatEventsNow();
-        }
-    }
-    const size_t first = g_compact && g_lines.size() > 3 ? g_lines.size() - 3 : 0;
-    for (size_t i = first; i < g_lines.size(); ++i) {
-        const ChatLine& l = g_lines[i];
-        ImGui::PushID(static_cast<int>(l.id));
-        if (!l.speaker.empty()) {
-            const std::string name = UI((l.outgoing ? L"> " : L"") + l.speaker + L":");
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-            if (ImGui::SmallButton(name.c_str()) && !l.own) {
-                g_channel = Channel::Whisper;
-                g_whisperTo = l.speaker;
-                g_focusInput = true;
+        static float scrollY = 0, scrollMax = 0, viewH = 1, dragOffset = 0;
+        static bool atBottom = true;
+        const float h = std::max(line * 2, ImGui::GetContentRegionAvail().y - lowerH);
+        const float sb = std::max(8.0f, st.ScrollbarSize * 0.8f);
+        const ImVec2 track = ImGui::GetCursorScreenPos();
+        float setScroll = -1;
+        ImGui::InvisibleButton("##chatsb", ImVec2(sb, h));
+        {
+            const float grabH = scrollMax > 0 ? std::max(sb * 2, h * viewH / (viewH + scrollMax)) : h;
+            const float grabY = track.y + (scrollMax > 0 ? (h - grabH) * scrollY / scrollMax : 0);
+            if (ImGui::IsItemActivated()) {
+                const float my = io.MousePos.y;
+                dragOffset = my >= grabY && my <= grabY + grabH ? my - grabY : grabH * 0.5f;
             }
-            ImGui::PopStyleColor();
-            ImGui::SameLine(0, 2);
+            if (ImGui::IsItemActive() && scrollMax > 0)
+                setScroll = std::clamp((io.MousePos.y - dragOffset - track.y) / std::max(1.0f, h - grabH), 0.0f, 1.0f) * scrollMax;
+            if (scrollMax > 0) {
+                ImDrawList* dl = ImGui::GetWindowDrawList();
+                dl->AddRectFilled(track, ImVec2(track.x + sb, track.y + h), ImGui::GetColorU32(ImGuiCol_ScrollbarBg), sb * 0.5f);
+                const ImGuiCol gc = ImGui::IsItemActive() ? ImGuiCol_ScrollbarGrabActive
+                                    : ImGui::IsItemHovered() ? ImGuiCol_ScrollbarGrabHovered : ImGuiCol_ScrollbarGrab;
+                dl->AddRectFilled(ImVec2(track.x + 1, grabY), ImVec2(track.x + sb - 1, grabY + grabH), ImGui::GetColorU32(gc), sb * 0.5f);
+            }
         }
-        const std::wstring& shown = l.translated.empty() ? l.text : l.translated;
-        ImGui::PushStyleColor(ImGuiCol_Text, ColorOf(l.channel));
-        ImGui::TextWrapped("%s", U8(shown).c_str());
-        ImGui::PopStyleColor();
-        if (!l.translated.empty() && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", U8(l.text).c_str());
-        ImGui::PopID();
+        ImGui::SameLine(0, 4);
+        ImGui::BeginChild("chat", ImVec2(0, h), false, ImGuiWindowFlags_NoScrollbar);
+        if (setScroll >= 0) ImGui::SetScrollY(setScroll);
+        // The lines of the tab in front: all, or the whispers with one player.
+        const std::wstring tabName = g_activeTab >= 0 && g_activeTab < static_cast<int>(g_tabs.size()) ? CaseFold(g_tabs[g_activeTab].name)
+                                                                                                        : std::wstring();
+        if (g_lines.empty()) {  // nothing arrived yet: what is ready, what is missing, where translation is switched on
+            lock.unlock();
+            RenderModules(true);
+            lock.lock();
+        }
+        for (const ChatLine& l : g_lines) {
+            if (!tabName.empty() && (l.channel != Channel::Whisper || CaseFold(Trim(l.speaker)) != tabName)) continue;
+            ImGui::PushID(static_cast<int>(l.id));
+            if (!l.speaker.empty()) {
+                const std::string name = UI((l.outgoing ? L"> " : L"") + l.speaker + L":");
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+                if (ImGui::SmallButton(name.c_str()) && (!l.own || (l.outgoing && l.channel == Channel::Whisper)))
+                    OpenWhisperTab(l.speaker);  // a click on a name: whisper with that player in their own tab
+                ImGui::PopStyleColor();
+                ImGui::SameLine(0, 2);
+            }
+            const std::wstring& shown = l.translated.empty() ? l.text : l.translated;
+            const std::vector<Span> links = FindLinks(shown), codes = FindChatCodes(shown);
+            ImGui::PushStyleColor(ImGuiCol_Text, ColorOf(l.channel));
+            bool clicked = false;
+            if (links.empty() && codes.empty()) ImGui::TextWrapped("%s", U8(shown).c_str());
+            else clicked = RichLine(shown, links, codes);
+            ImGui::PopStyleColor();
+            if (!l.translated.empty() && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", U8(l.text).c_str());
+            // A click on the text of a line someone else wrote: just this line into your language.
+            if (!clicked && !l.own && l.translated.empty() && ImGui::IsItemClicked())
+                g_worker.Post([id = l.id, t = l.text] { TranslateLine(id, t, true); });
+            // Right-click: translate the line or one of its words, whisper, copy.
+            if (ImGui::BeginPopupContextItem("##linemenu")) {
+                if (!l.own && ImGui::MenuItem(UI(Tr(L"Translate this line")).c_str()))
+                    g_worker.Post([id = l.id, t = l.text] { TranslateLine(id, t, true); });
+                if (ImGui::BeginMenu(UI(Tr(L"Translate a word")).c_str())) {
+                    std::vector<std::wstring> seen;
+                    for (const Span& s : WordSpans(l.text)) {
+                        const std::wstring w = l.text.substr(s.start, s.length);
+                        if (w.size() < 2 || seen.size() >= 16 ||
+                            std::find(seen.begin(), seen.end(), CaseFold(w)) != seen.end())
+                            continue;
+                        seen.push_back(CaseFold(w));
+                        if (ImGui::MenuItem(U8(w).c_str())) g_worker.Post([w, t = l.text] { TranslateWord(w, t); });
+                    }
+                    ImGui::EndMenu();
+                }
+                if (!l.speaker.empty() && !l.own && ImGui::MenuItem(UI(TrF(L"Whisper to {1}", {l.speaker})).c_str()))
+                    OpenWhisperTab(l.speaker);
+                if (ImGui::MenuItem(UI(Tr(L"Copy text")).c_str())) ImGui::SetClipboardText(U8(shown).c_str());
+                ImGui::EndPopup();
+            }
+            ImGui::PopID();
+        }
+        // New lines scroll along only while you are at the bottom (reading further up stays where it is).
+        if (g_scrollDown) {
+            if (atBottom) ImGui::SetScrollHereY(1.0f);
+            g_scrollDown = false;
+        }
+        scrollY = ImGui::GetScrollY();
+        scrollMax = ImGui::GetScrollMaxY();
+        viewH = ImGui::GetWindowHeight();
+        atBottom = scrollY >= scrollMax - 4;
+        ImGui::EndChild();
     }
-    if (g_scrollDown) {
-        ImGui::SetScrollHereY(1.0f);
-        g_scrollDown = false;
+    // A link from the chat opens only after your yes (http / https only).
+    if (g_openLinkAsk) {
+        g_openLinkAsk = false;
+        ImGui::OpenPopup("###openlink");
     }
-    ImGui::EndChild();
+    if (ImGui::BeginPopupModal((UI(Tr(L"Open link")) + "###openlink").c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted(UI(Tr(L"Open this link in your browser?")).c_str());
+        ImGui::TextColored(ImVec4(0.45f, 0.7f, 1.f, 1.f), "%s", Fit(U8(g_openLink), ImGui::GetFontSize() * 30).c_str());
+        ImGui::TextDisabled("%s", UI(Tr(L"Links in the chat come from other players – open only what you trust.")).c_str());
+        if (ImGui::Button(UI(Tr(L"Open")).c_str())) {
+            const std::wstring target = LinkTarget(g_openLink);
+            if (target.rfind(L"https://", 0) == 0 || target.rfind(L"http://", 0) == 0)
+                std::thread([target] {
+                    CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+                    ShellExecuteW(nullptr, L"open", target.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                    CoUninitialize();
+                }).detach();
+            g_openLink.clear();
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button(UI(Tr(L"Cancel")).c_str())) {
+            g_openLink.clear();
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
     }
 
     // ---- the preview (like the exe): what arrives in the GW2 chat, the back-translation small under it
-    if (g_layout.preview) {
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
-    ImGui::BeginChild("preview", ImVec2(0, line * (g_layout.previewLines + 0.2f)), false);
     const bool previewCurrent = g_previewGen == g_inputGen && !g_preview.empty();
-    if (g_recording) {
-        ImGui::TextColored(kPreview, "%s", g_voiceLive.empty() ? "..." : U8(g_voiceLive).c_str());
-    } else if (!g_input[0]) {
-        ImGui::TextDisabled("%s", UI(Tr(L"Write in your language – here you see what arrives in the GW2 chat.")).c_str());
-    } else if (!Translating()) {
-        ImGui::PushStyleColor(ImGuiCol_Text, kPreview);
-        ImGui::TextWrapped("%s", U8(ComposePrefix() + SanitizeChatText(W(Flat(g_input)))).c_str());
-        ImGui::PopStyleColor();
-    } else if (previewCurrent) {
-        ImGui::PushStyleColor(ImGuiCol_Text, kPreview);
-        ImGui::TextWrapped("%s", U8(ComposePrefix() + g_preview).c_str());
-        ImGui::PopStyleColor();
-        if (!g_back.empty()) {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-            ImGui::TextWrapped("%s", U8(g_back).c_str());
+    if (showPreview) {
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
+        ImGui::BeginChild("preview", ImVec2(0, line * (g_layout.previewLines + 0.2f)), false);
+        if (g_recording) {
+            ImGui::TextColored(kPreview, "%s", g_voiceLive.empty() ? "..." : U8(g_voiceLive).c_str());
+        } else if (!g_input[0]) {
+            // empty: no hint text here – the chat above is what you read
+        } else if (!Translating()) {
+            ImGui::PushStyleColor(ImGuiCol_Text, kPreview);
+            ImGui::TextWrapped("%s", U8(ComposePrefix() + SanitizeChatText(W(Flat(g_input)))).c_str());
             ImGui::PopStyleColor();
+        } else if (previewCurrent) {
+            ImGui::PushStyleColor(ImGuiCol_Text, kPreview);
+            ImGui::TextWrapped("%s", U8(ComposePrefix() + g_preview).c_str());
+            ImGui::PopStyleColor();
+            if (!g_back.empty()) {
+                ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+                ImGui::TextWrapped("%s", U8(g_back).c_str());
+                ImGui::PopStyleColor();
+            }
+        } else {
+            ImGui::TextDisabled("%s", UI(Tr(L"translating …")).c_str());
         }
-    } else {
-        ImGui::TextDisabled("%s", UI(Tr(L"translating …")).c_str());
-    }
-    ImGui::EndChild();
-    ImGui::PopStyleColor();
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
     }
 
     // ---- the word bar (like the exe): three cells across the line, what Tab takes in orange
-    if (g_layout.words) {
+    if (showWords) {
         const float w = ImGui::GetContentRegionAvail().x;
         const ImVec2 p = ImGui::GetCursorScreenPos();
         const float h = ImGui::GetFrameHeight();
@@ -1583,23 +2366,23 @@ void RenderWindow() {
             dl->AddText(ImVec2((a.x + b.x - size.x) * 0.5f, a.y + (h - size.y) * 0.5f),
                         pick ? ImGui::GetColorU32(kAccent) : ImGui::GetColorU32(ImGuiCol_Text), word.c_str());
         }
-        ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + h + ImGui::GetStyle().ItemSpacing.y));
+        ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + h + st.ItemSpacing.y));
     }
 
-    // ---- the input line
+    // ---- the input line; momentary messages (status) appear inside it
     if (g_focusInput && !g_sending) {
         ImGui::SetKeyboardFocusHere();
         g_focusInput = false;
     }
-    const ImGuiStyle& st = ImGui::GetStyle();
-    const ImVec2 boxSize(-1, ImGui::GetTextLineHeight() * g_layout.inputLines + st.FramePadding.y * 2);
+    const ImVec2 boxSize(-1, boxH);
     g_wrapWidth = ImGui::GetContentRegionAvail().x - st.FramePadding.x * 2 - st.ScrollbarSize - 4;
     const ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CtrlEnterForNewLine |
                                       ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_CallbackCharFilter |
                                       ImGuiInputTextFlags_CallbackAlways;
     const bool enter = ImGui::InputTextMultiline("##input", g_input, sizeof(g_input), boxSize, flags, InputCallback);
     const ImVec2 inputMin = ImGui::GetItemRectMin(), inputMax = ImGui::GetItemRectMax();
-    if (ImGui::IsItemActive() && !g_history.empty() && !g_edit.active) {
+    const bool inputActive = ImGui::IsItemActive();
+    if (inputActive && !g_history.empty() && !g_edit.active) {
         const bool up = ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_UpArrow));
         const bool down = ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_DownArrow));
         const std::wstring cur = W(Flat(g_input));
@@ -1614,20 +2397,76 @@ void RenderWindow() {
             g_edit.insert = g_historyPos >= 0 ? U8(g_history[g_historyPos]) : std::string();
         }
     }
-    if (const std::wstring rest = GhostRest(); !rest.empty() && ImGui::IsItemActive()) {  // what Space / Tab writes
+    // Right-click in the input: teach a word or abbreviation what it means (the translator gets the meaning).
+    static bool teach = false;
+    if (ImGui::IsMouseHoveringRect(inputMin, inputMax) && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) &&
+        ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+        teach = true;
+    if (teach) {
+        teach = false;
+        ImGui::OpenPopup("##teach");
+    }
+    if (ImGui::BeginPopup("##teach")) {
+        static char word[64] = {}, meaning[160] = {};
+        if (ImGui::IsWindowAppearing()) {  // the last word you typed, and what is known of it
+            const std::wstring text = W(Flat(g_input));
+            const std::vector<Span> spans = WordSpans(text);
+            const std::wstring last = spans.empty() ? std::wstring() : text.substr(spans.back().start, spans.back().length);
+            strncpy_s(word, U8(last).c_str(), _TRUNCATE);
+            strncpy_s(meaning, U8(g_myWords.MeaningOf(last)).c_str(), _TRUNCATE);
+        }
+        ImGui::TextUnformatted(UI(Tr(L"Your word or abbreviation – what it means")).c_str());
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 8);
+        ImGui::InputText("##w", word, sizeof(word));
+        ImGui::SameLine();
+        ImGui::TextUnformatted("=");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 14);
+        const bool go = ImGui::InputTextWithHint("##m", UI(Tr(L"meaning, e.g. I think")).c_str(), meaning, sizeof(meaning),
+                                                 ImGuiInputTextFlags_EnterReturnsTrue);
+        Hint(UI(Tr(L"The translator gets the meaning; your text stays as you wrote it.")));
+        if ((ImGui::Button(UI(Tr(L"Learn")).c_str()) || go) && !Trim(W(word)).empty()) {
+            const std::wstring w = Trim(W(word)), m = Trim(W(meaning));
+            if (m.empty()) g_myWords.Remove(w);
+            else g_myWords.Set(w, m);
+            SaveMyWords();
+            g_worker.Post([w] { if (g_spell) g_spell->AddUserWord(w); });
+            ++g_inputGen;  // translated again with it
+            g_inputChanged = GetTickCount64();
+            SetStatus(m.empty() ? TrF(L"\"{1}\" forgotten", {w}) : TrF(L"Learned: {1} = {2}", {w, m}), 6000);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+    const ImVec4 clip(inputMin.x, inputMin.y, inputMax.x, inputMax.y);
+    const ImVec2 textAt(inputMin.x + st.FramePadding.x, inputMin.y + st.FramePadding.y);
+    if (const std::wstring rest = GhostRest(); !rest.empty() && inputActive) {  // what Space / Tab writes
         // In the line where the text ends (the box is its own child window: drawn on top, clipped to the box).
         const char* lastLine = std::strrchr(g_input, '\n');
         const int lineNo = static_cast<int>(std::count(g_input, g_input + std::strlen(g_input), '\n'));
         const ImVec2 typed = ImGui::CalcTextSize(lastLine ? lastLine + 1 : g_input);
-        const ImVec2 at(inputMin.x + st.FramePadding.x + typed.x,
-                        inputMin.y + st.FramePadding.y + lineNo * ImGui::GetTextLineHeight());
-        if (lineNo < g_layout.inputLines) {
-            const ImVec4 clip(inputMin.x, inputMin.y, inputMax.x, inputMax.y);
-            const std::string ghost = UI(rest);
-            ImGui::GetForegroundDrawList()->AddText(ImGui::GetFont(), ImGui::GetFontSize(), at,
-                                                    ImGui::GetColorU32(ImGuiCol_TextDisabled), ghost.c_str(), nullptr, 0,
-                                                    &clip);
-        }
+        if (lineNo < g_layout.inputLines)
+            BoxText(ImVec2(textAt.x + typed.x, textAt.y + lineNo * ImGui::GetTextLineHeight()), clip,
+                    ImGui::GetColorU32(ImGuiCol_TextDisabled), UI(rest));
+    }
+    // Status: in the empty box where you would write; while you write, a momentary message small at the bottom right.
+    if (!g_input[0]) {
+        if (g_recording && !showPreview && !g_voiceLive.empty())
+            BoxText(textAt, clip, ImGui::GetColorU32(kPreview), U8(g_voiceLive));
+        else
+            BoxText(textAt, clip, g_status.empty() ? ImGui::GetColorU32(ImGuiCol_TextDisabled) : ImGui::GetColorU32(kAccent),
+                    Fit(UI(StatusText()), inputMax.x - textAt.x - st.FramePadding.x));
+    } else if (!g_status.empty()) {
+        const std::string s = Fit(UI(g_status), (inputMax.x - inputMin.x) * 0.6f);
+        const float w = ImGui::CalcTextSize(s.c_str()).x * 0.85f;
+        BoxText(ImVec2(inputMax.x - w - st.FramePadding.x - st.ScrollbarSize, inputMax.y - smallLine - 1), clip,
+                ImGui::GetColorU32(kAccent), s, 0.85f);
+    }
+    // Compact view: what the chat will get, small in the box's last line (instead of the preview above).
+    if (g_compact && g_input[0] && Translating()) {
+        const std::string t = previewCurrent ? "> " + U8(g_preview) : UI(Tr(L"translating …"));
+        BoxText(ImVec2(textAt.x, inputMax.y - smallLine - 1), clip, ImGui::GetColorU32(kPreview),
+                Fit(t, (inputMax.x - inputMin.x) * (g_status.empty() ? 0.95f : 0.38f)), 0.85f);
     }
 
     // ---- the footer (like the exe): channel | write | send · translator | auto | counter
@@ -1658,36 +2497,10 @@ void RenderWindow() {
     ImGui::End();
 }
 
-// ---- voice model download (its own thread: minutes, never on the worker or the game's threads)
-std::thread g_download;
-std::atomic<bool> g_downloadCancel{false};
-std::atomic<int> g_downloadPct{-1};  // -1: none running
-
-void StartModelDownload(const VoiceModelInfo& m) {
-    if (g_downloadPct >= 0) return;
-    if (g_download.joinable()) g_download.join();
-    g_downloadCancel = false;
-    g_downloadPct = 0;
-    std::wstring dir;
-    {
-        std::lock_guard<std::mutex> lock(g_mu);
-        dir = g_cfg.VoiceModelDir();
-    }
-    g_download = std::thread([m, dir] {
-        EnsureDir(dir);
-        std::wstring error;
-        const bool ok = DownloadVoiceModel(
-            dir, m,
-            [](uint64_t done, uint64_t total) {
-                if (total) g_downloadPct = static_cast<int>(done * 100 / total);
-                return true;
-            },
-            &g_downloadCancel, &error);
-        g_downloadPct = -1;
-        std::lock_guard<std::mutex> lock(g_mu);
-        SetStatus(ok ? Tr(L"Voice model installed") : error, 10000);
-        if (ok) g_voice.Send("reload");
-    });
+std::wstring FormatSeconds(int ms) {  // 1234 -> "1.2"
+    wchar_t b[16];
+    swprintf(b, 16, L"%.1f", ms / 1000.0);
+    return b;
 }
 
 // A language combo over Languages(): `value` "" = `emptyLabel`.
@@ -1747,9 +2560,10 @@ void RenderOptionsContent() {
         }
         return changed;
     };
+    auto TabFlag = [](int i) { return g_optionsTab == i ? ImGuiTabItemFlags_SetSelected : 0; };
     if (ImGui::BeginTabBar("##tabs")) {
         // ---- General
-        if (ImGui::BeginTabItem(UI(Tr(L"General")).c_str())) {
+        if (ImGui::BeginTabItem(UI(Tr(L"General")).c_str(), nullptr, TabFlag(0))) {
             ImGui::SetNextItemWidth(wide);
             LanguageCombo(UI(Tr(L"Language of this window") + L"##ui").c_str(), edit.uiLangCode, Tr(L"like Windows"));
             int pt = std::clamp(edit.fontPercent, 70, 200);
@@ -1760,6 +2574,12 @@ void RenderOptionsContent() {
             if (ImGui::SliderInt(UI(Tr(L"Transparency") + L" (%)##alpha").c_str(), &transparency, 0, 75))
                 edit.opacity = (100 - transparency) * 255 / 100;
             ImGui::Checkbox(UI(Tr(L"Show the window")).c_str(), &g_show);
+            {
+                std::lock_guard<std::mutex> lock(g_mu);
+                if (ImGui::Checkbox(UI(Tr(L"Snap to the screen edges")).c_str(), &g_nx.snap)) SaveNexusOptions();
+            }
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", UI(Tr(L"Moved near an edge of the screen, the window sits right on it.")).c_str());
             ImGui::Separator();
             ImGui::TextUnformatted(UI(Tr(L"Window layout")).c_str());
             {
@@ -1779,21 +2599,12 @@ void RenderOptionsContent() {
             }
             Hint(UI(Tr(L"Keys (show / hide: Ctrl+Alt+K, push to talk, focus the input): Nexus → Keybinds → GW2 Keyboard.")));
             ImGui::Separator();
-            ImGui::TextUnformatted(UI(Tr(L"The chat")).c_str());
-            if (g_chatEventsPresent || g_chatEventsLive) {
-                ImGui::TextColored(ImVec4(0.45f, 0.85f, 0.45f, 1.f), "%s", UI(Tr(L"Events: Chat is loaded – every channel arrives exactly.")).c_str());
-            } else if (g_chatEventsFile) {
-                ImGui::TextWrapped("%s", UI(Tr(L"Events: Chat is installed but not loaded: Nexus → Addons → Events: Chat → Load.")).c_str());
-            } else {
-                ImGui::TextWrapped("%s", UI(Tr(L"The chat (map, whispers, guild, party, squad) comes from Events: Chat by Vonsh, an "
-                                               L"add-on in the Nexus library. Without it no chat arrives here.")).c_str());
-                if (g_chatEventsInstalling) Hint(UI(Tr(L"Loading Events: Chat …")));
-                else if (ImGui::Button(UI(Tr(L"Install Events: Chat")).c_str())) InstallChatEventsNow();
-            }
+            ImGui::TextUnformatted(UI(Tr(L"Modules")).c_str());
+            RenderModules(false);
             ImGui::EndTabItem();
         }
         // ---- Writing
-        if (ImGui::BeginTabItem(UI(Tr(L"Writing")).c_str())) {
+        if (ImGui::BeginTabItem(UI(Tr(L"Writing")).c_str(), nullptr, TabFlag(1))) {
             ImGui::SetNextItemWidth(wide);
             LanguageCombo(UI(Tr(L"I write in") + L"##writein").c_str(), edit.writeIn, Tr(L"like Windows"));
             ImGui::Checkbox(UI(Tr(L"Spell checking (Windows, offline)")).c_str(), &edit.spellEnabled);
@@ -1827,14 +2638,17 @@ void RenderOptionsContent() {
                       {UI(Tr(L"Send into the GW2 chat")), UI(Tr(L"Only copy (not a single key reaches the game)"))}, &enterDoes))
                 edit.copyOnly = enterDoes == 1;
             ImGui::TextUnformatted(UI(Tr(L"Focus behaviour")).c_str());
-            ImGui::Checkbox(UI(Tr(L"back here after sending")).c_str(), &edit.returnFocus);
-            ImGui::SameLine();
-            ImGui::Checkbox(UI(Tr(L"here when the GW2 chat opens")).c_str(), &edit.focusOnGameChat);
+            ImGui::Checkbox(UI(Tr(L"After sending, keep typing here")).c_str(), &edit.returnFocus);
+            Hint(UI(Tr(L"The input keeps the keyboard after Enter – the next message goes right after.")));
+            ImGui::Checkbox(UI(Tr(L"Take over the whole focus when the GW2 chat opens")).c_str(), &edit.focusOnGameChat);
+            Hint(UI(Tr(L"Enter in the game (opening its chat line) brings you into this input instead.")));
             ImGui::EndTabItem();
         }
         // ---- Voice
-        if (ImGui::BeginTabItem(UI(Tr(L"Voice")).c_str())) {
+        if (ImGui::BeginTabItem(UI(Tr(L"Voice")).c_str(), nullptr, TabFlag(2))) {
             ImGui::Checkbox(UI(Tr(L"Voice input")).c_str(), &edit.voiceEnabled);
+            RenderModules(false);
+            ImGui::Separator();
             const VoiceCatalog catalog = LoadVoiceCatalog(edit.dataDir);
             const VoiceModelInfo* chosen = catalog.Find(U8(edit.voiceModel));
             if (!chosen) chosen = catalog.Recommended();
@@ -1852,6 +2666,77 @@ void RenderOptionsContent() {
                 if (pct >= 0) ImGui::ProgressBar(pct / 100.f, ImVec2(wide, 0));
                 else if (ImGui::Button(UI(Tr(L"Download the model")).c_str())) StartModelDownload(*chosen);
             }
+            // The installed models: what each needed when it last recognized you; use one, or remove what does not suit.
+            static std::string removeAsked;
+            for (const VoiceModelInfo& m : catalog.models) {
+                if (!VoiceModelInstalled(edit.VoiceModelDir(), m)) continue;
+                ImGui::PushID(m.id.c_str());
+                const bool inUse = chosen && chosen->id == m.id;
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextColored(inUse ? ImVec4(0.45f, 0.85f, 0.45f, 1.f) : ImGui::GetStyleColorVec4(ImGuiCol_Text), "%s  (%d MB)",
+                                   m.name.c_str(), static_cast<int>(m.bytes / (1024 * 1024)));
+                ImGui::SameLine();
+                VoiceRun run;
+                {
+                    std::lock_guard<std::mutex> lock(g_mu);
+                    if (auto it = g_voiceRuns.find(W(m.id)); it != g_voiceRuns.end()) run = it->second;
+                }
+                char ms[96];
+                if (run.rec > 0)
+                    snprintf(ms, sizeof(ms), "%s", UI(TrF(L"peak {1} % CPU (highest {2} %) · {3} s for {4} s speech",
+                                                          {std::to_wstring(run.peak), std::to_wstring(run.maxPeak),
+                                                           FormatSeconds(run.rms), FormatSeconds(run.rec)})).c_str());
+                else
+                    snprintf(ms, sizeof(ms), "%s", UI(Tr(L"not measured yet")).c_str());
+                ImGui::TextDisabled("%s", ms);
+                if (!inUse) {
+                    ImGui::SameLine();
+                    if (ImGui::SmallButton(UI(Tr(L"Use")).c_str())) edit.voiceModel = W(m.id);
+                }
+                ImGui::SameLine();
+                if (removeAsked != m.id) {
+                    if (ImGui::SmallButton(UI(Tr(L"Remove")).c_str())) removeAsked = m.id;
+                } else {
+                    if (ImGui::SmallButton(UI(Tr(L"Really remove")).c_str())) {
+                        const bool ok = DeleteVoiceModel(edit.VoiceModelDir(), m);
+                        std::lock_guard<std::mutex> lock(g_mu);
+                        SetStatus(ok ? TrF(L"{1} removed", {W(m.name)}) : TrF(L"{1} is in use – try again after Unload", {W(m.name)}), 8000);
+                        removeAsked.clear();
+                        g_modulesNext = 0;
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::SmallButton(UI(Tr(L"No")).c_str())) removeAsked.clear();
+                }
+                ImGui::PopID();
+            }
+            {
+                std::lock_guard<std::mutex> lock(g_mu);
+                if (ImGui::Checkbox(UI(Tr(L"Too slow twice in a row: use the next smaller model")).c_str(), &g_nx.voiceFallback))
+                    SaveNexusOptions();
+            }
+            Hint(UI(Tr(L"Too slow = recognizing took longer than you spoke (and over 2 s). Peak = the highest share of the "
+                       L"whole CPU the voice module used.")));
+            // Where it all lies.
+            auto folder = [&](const std::wstring& label, const std::wstring& path) {
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextDisabled("%s", UI(label).c_str());
+                ImGui::SameLine();
+                ImGui::TextUnformatted(Fit(U8(path), ImGui::GetContentRegionAvail().x - ImGui::GetFontSize() * 9).c_str());
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", U8(path).c_str());
+                ImGui::SameLine();
+                ImGui::PushID(U8(path).c_str());
+                if (ImGui::SmallButton(UI(Tr(L"Open folder")).c_str())) {
+                    EnsureDir(path);
+                    std::thread([path] {
+                        CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+                        ShellExecuteW(nullptr, L"open", path.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                        CoUninitialize();
+                    }).detach();
+                }
+                ImGui::PopID();
+            };
+            folder(Tr(L"Models:"), edit.VoiceModelDir());
+            folder(Tr(L"Voice module:"), KeyboardDir());
             std::vector<std::string> langs{UI(Tr(L"Like I write")), UI(Tr(L"Detect it"))};
             std::vector<std::wstring> codes{L"", L"auto"};
             for (const LangInfo& l : Languages()) {
@@ -1876,7 +2761,7 @@ void RenderOptionsContent() {
             ImGui::EndTabItem();
         }
         // ---- Microphone
-        if (ImGui::BeginTabItem(UI(Tr(L"Microphone")).c_str())) {
+        if (ImGui::BeginTabItem(UI(Tr(L"Microphone")).c_str(), nullptr, TabFlag(3))) {
             int mode = edit.voiceActivation ? 2 : edit.voiceToggle ? 1 : 0;
             if (combo(UI(Tr(L"Starting") + L"##mode").c_str(),
                       {UI(Tr(L"Hold the button or key while you speak")), UI(Tr(L"Press once – a pause ends it")),
@@ -1932,8 +2817,14 @@ void RenderOptionsContent() {
             ImGui::EndTabItem();
         }
         // ---- Translator
-        if (ImGui::BeginTabItem(UI(Tr(L"Translator")).c_str())) {
+        if (ImGui::BeginTabItem(UI(Tr(L"Translator")).c_str(), nullptr, TabFlag(4))) {
+            {
+                std::lock_guard<std::mutex> lock(g_mu);
+                if (ImGui::Checkbox(UI(Tr(L"Translate the chat")).c_str(), &g_nx.translateChat)) SaveNexusOptions();
+            }
+            Hint(UI(Tr(L"Foreign lines of other players into your language. Off: a click on a line translates just that one.")));
             ImGui::Checkbox(UI(Tr(L"Translate my text")).c_str(), &edit.translateWriting);
+            Hint(UI(Tr(L"What you write goes into the chat in the language chosen at \"Send\" below the input.")));
             static const Engine kEngines[] = {Engine::Auto, Engine::Basic, Engine::DeepL, Engine::Google, Engine::Microsoft, Engine::Libre};
             static const wchar_t* kNames[] = {L"Automatic", L"MyMemory (free)", L"DeepL", L"Google", L"Microsoft", L"LibreTranslate"};
             int ei = 0;
@@ -1963,17 +2854,13 @@ void RenderOptionsContent() {
             if (edit.engine == Engine::Auto || edit.engine == Engine::Basic) {
                 ImGui::SetNextItemWidth(wide);
                 ImGui::InputText(UI(Tr(L"E-mail for MyMemory (more free text per day)") + L"##mail").c_str(), mailBuf, sizeof(mailBuf));
-            }
-            ImGui::SetNextItemWidth(wide);
-            std::wstring chatLang = edit.writeLangs.empty() ? std::wstring(L"EN-GB") : edit.writeLangs.front();
-            if (LanguageCombo(UI(Tr(L"The chat gets") + L"##sendlang").c_str(), chatLang, L"")) {
-                edit.writeLangs.erase(std::remove(edit.writeLangs.begin(), edit.writeLangs.end(), chatLang), edit.writeLangs.end());
-                edit.writeLangs.insert(edit.writeLangs.begin(), chatLang);
+                Hint(UI(Tr(L"Any made-up address works – MyMemory only counts the free text per address (5,000 characters a "
+                           L"day without one, 50,000 with one).")));
             }
             ImGui::EndTabItem();
         }
         // ---- Technical
-        if (ImGui::BeginTabItem(UI(Tr(L"Technical")).c_str())) {
+        if (ImGui::BeginTabItem(UI(Tr(L"Technical")).c_str(), nullptr, TabFlag(5))) {
             ImGui::SetNextItemWidth(120);
             ImGui::InputInt(UI(Tr(L"Key hold when sending (ms)") + L"##hold").c_str(), &edit.send.keyHoldMs);
             ImGui::SetNextItemWidth(120);
@@ -1987,14 +2874,18 @@ void RenderOptionsContent() {
             ImGui::Text("GW2 Keyboard for Nexus %s", GCT_VERSION_STR);
             ImGui::Text("%s", UI(TrF(L"Game: {1} fps → keys held {2} ms", {std::to_wstring(fps), std::to_wstring(hold)})).c_str());
             ImGui::Text("%s", UI(TrF(L"Translator: {1}", {g_translator ? g_translator->Name() : std::wstring(L"-")})).c_str());
-            if (const std::wstring q = MyMemoryQuotaText(); !q.empty()) ImGui::Text("%s", UI(q).c_str());
+            if (const std::wstring q = MyMemoryQuotaText(); !q.empty() && (g_nx.translateChat || g_cfg.translateWriting))
+                ImGui::Text("%s", UI(q).c_str());
             ImGui::Text("Events: Chat: %s", g_chatEventsPresent || g_chatEventsLive ? "[OK]" : "[--]");
-            ImGui::Text("%s", UI(TrF(L"Voice: {1}", {!g_cfg.voiceEnabled ? Tr(L"off") : g_voiceReady ? Tr(L"ready")
-                                                       : g_voice.Running() ? Tr(L"starting") : Tr(L"The voice module is missing")})).c_str());
+            ImGui::Text("%s", UI(TrF(L"Voice: {1}", {!g_cfg.voiceEnabled ? Tr(L"off") : g_voiceReady ? Tr(L"ready – loaded")
+                                                       : g_voice.Running() ? Tr(L"starting")
+                                                       : g_modules.voiceModule ? Tr(L"ready – loads on the first use of the microphone")
+                                                                               : Tr(L"the voice module is missing")})).c_str());
             ImGui::Text("%s", UI(TrF(L"Chat lines: {1}", {std::to_wstring(g_lines.size())})).c_str());
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();
+        g_optionsTab = -1;
     }
 
     ImGui::Separator();
@@ -2096,6 +2987,9 @@ void AddonLoad(AddonAPI_t* api) {
         g_translator = MakeTranslator(g_cfg);
         g_sendIdx = g_cfg.translateWriting ? 0 : static_cast<int>(g_cfg.writeLangs.size());
         LoadLayout();
+        g_compact = GetPrivateProfileIntW(L"NexusWindow", L"Compact", 0, g_cfg.iniPath.c_str()) != 0;
+        std::string words;
+        if (ReadFileBytes(g_cfg.dataDir + L"\\my-words.txt", words)) g_myWords.Parse(FromUtf8(words));
     }
     g_worker.Start();
     g_worker.Post(InitSpelling);
@@ -2109,6 +3003,12 @@ void AddonLoad(AddonAPI_t* api) {
         if (ReadFileBytes(dataDir + L"\\voice-fixes.txt", fixes)) g_voiceFixes.Parse(FromUtf8(fixes));
     }
     (void)voice;  // the voice helper starts on the first press of the microphone or the key, not now
+    bool first;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        first = !g_nx.setupDone && !g_test.noSend;
+    }
+    if (first) FirstStart();  // Events: Chat, the voice module, a voice model – loaded by themselves once
     if (api->GUI_Register) {
         api->GUI_Register(RT_Render, SafeRender);
         api->GUI_Register(RT_OptionsRender, SafeOptions);
@@ -2145,6 +3045,7 @@ void AddonUnload() {
     g_downloadCancel = true;
     if (g_download.joinable()) g_download.join();
     if (g_chatEventsThread.joinable()) g_chatEventsThread.join();
+    if (g_voiceModuleThread.joinable()) g_voiceModuleThread.join();
     g_voice.Stop();  // the helper ends (it would also end by itself when its input closes)
     g_worker.Stop(FreeWorkerState);  // saved and freed on the worker (it owns them), before the DLL goes
     std::lock_guard<std::mutex> lock(g_mu);

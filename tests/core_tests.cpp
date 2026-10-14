@@ -45,6 +45,7 @@
 #include "core/voice_learn.hpp"
 #include "core/bridge_protocol.hpp"
 #include "core/send_guard.hpp"
+#include "core/chat_code.hpp"
 
 using namespace gct;
 
@@ -2264,6 +2265,18 @@ static void TestVoiceFixBook() {
     CHECK(w.size() == 2 && w[0] == L"Raid");
 }
 
+static void TestChatCode() {
+    const ChatCode item = DecodeChatCode(L"[&AgGvWwEA]");
+    CHECK(item.kind == ChatCodeKind::Item && item.id == 89007 && item.count == 1);
+    CHECK(ChatCodeApiPath(item) == L"/v2/items?ids=89007");
+    CHECK(DecodeChatCode(L"AgGvWwEA").id == 89007);
+    CHECK(DecodeChatCode(L"[&BDgAAAA=]").kind == ChatCodeKind::Poi);
+    CHECK(DecodeChatCode(L"[&#!x]").kind == ChatCodeKind::Unknown);
+    CHECK(ChatCodeApiPath(DecodeChatCode(L"[&BDgAAAA=]")).empty());
+    CHECK(UnescapeChatText(L"look \\[&AgGvWwEA\\] ok") == L"look [&AgGvWwEA] ok");
+    CHECK(RarityColor("Exotic") == 0xFFA405 && RarityColor("x") == 0);
+}
+
 static void TestVoiceLearn() {
     CHECK(VoiceFixes::SoundsAlike(L"Red", L"Raid") && VoiceFixes::SoundsAlike(L"Fracktale", L"Fraktale"));
     CHECK(VoiceFixes::SoundsAlike(L"Löwinstein", L"Löwenstein"));
@@ -2402,6 +2415,7 @@ int main() {
     TestWhisperSettings();
     TestToMono16k();
     TestVoiceLearn();
+    TestChatCode();
     TestVoiceFixBook();
     TestSendGuard();
     TestBridgeProtocol();

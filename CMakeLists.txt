@@ -50,6 +50,7 @@ add_library(gct_core STATIC
     src/core/voice.cpp
     src/core/voice_learn.cpp
     src/core/send_guard.cpp
+    src/core/chat_code.cpp
     src/core/bridge_protocol.cpp)
 target_include_directories(gct_core PUBLIC src)
 

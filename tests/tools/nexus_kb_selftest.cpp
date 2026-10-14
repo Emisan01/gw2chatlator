@@ -70,6 +70,12 @@ int wmain(int argc, wchar_t** argv) {
     int w = 0, h = 0;
     ImGui::GetIO().Fonts->GetTexDataAsRGBA32(&pixels, &w, &h);
 
+    {  // no first start: nothing is downloaded during the test
+        std::wstring dir = argv[1];
+        dir = dir.substr(0, dir.find_last_of(L"\\/") + 1) + L"GW2Keyboard";
+        CreateDirectoryW(dir.c_str(), nullptr);
+        WritePrivateProfileStringW(L"Nexus", L"SetupDone", L"1", (dir + L"\\gw2-chat-translator.ini").c_str());
+    }
     HMODULE dll = LoadLibraryW(argv[1]);
     auto getDef = dll ? reinterpret_cast<AddonDefinition_t* (*)()>(GetProcAddress(dll, "GetAddonDef")) : nullptr;
     AddonDefinition_t* def = getDef ? getDef() : nullptr;

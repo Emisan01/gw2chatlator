@@ -6,7 +6,9 @@
 // standard input and output only:
 //   in  (one command per line): begin | begin-auto (a pause ends it) | end | cancel | listen | stop-listen | reload | quit
 //   out (one JSON object per line): {"t":"ready"} {"t":"started"} {"t":"partial","stable":..,"unsure":..}
-//                                   {"t":"final","text":..,"empty":..,"lang":..,"rec":ms,"rms":ms} {"t":"error","msg":..}
+//                                   {"t":"final","text":..,"empty":..,"lang":..,"rec":ms,"rms":ms,"peak":%}
+//                                   {"t":"error","msg":..}  ("peak": the highest share of the whole CPU this process
+//                                   used while recording + recognizing, measured every 100 ms)
 //                                   voice activation: {"t":"listening"} {"t":"idle"} {"t":"paused","app":..}
 // When the add-on (its parent) goes, standard input closes and the helper ends.
 
@@ -37,6 +39,31 @@ constexpr UINT WM_APP_VOICE = WM_APP + 1;
 constexpr UINT WM_APP_COMMAND = WM_APP + 2;  // lParam: std::string* (owned)
 constexpr UINT_PTR kTimerCores = 1;
 constexpr UINT_PTR kTimerVoiceChat = 2;  // voice activation pauses while a voice chat uses the microphone
+constexpr UINT_PTR kTimerCpu = 3;        // the CPU this process takes, while it works
+
+// The share of the whole CPU (all logical processors) this process used since the last look.
+struct CpuPeak {
+    ULONGLONG lastCpu = 0, lastWall = 0;
+    int peak = 0;
+    static ULONGLONG ProcessCpu() {
+        FILETIME c, e, k, u;
+        if (!GetProcessTimes(GetCurrentProcess(), &c, &e, &k, &u)) return 0;
+        return ((static_cast<ULONGLONG>(k.dwHighDateTime) << 32) | k.dwLowDateTime) +
+               ((static_cast<ULONGLONG>(u.dwHighDateTime) << 32) | u.dwLowDateTime);  // 100 ns units
+    }
+    void Sample(bool busy) {
+        const ULONGLONG cpu = ProcessCpu(), wall = GetTickCount64();
+        if (busy && lastWall && wall > lastWall) {
+            const double used = static_cast<double>(cpu - lastCpu) / 10000.0;  // ms of CPU time
+            const DWORD logical = std::max<DWORD>(1, GetActiveProcessorCount(ALL_PROCESSOR_GROUPS));
+            const int pct = static_cast<int>(used * 100.0 / (static_cast<double>(wall - lastWall) * logical) + 0.5);
+            peak = std::max(peak, std::min(pct, 100));
+        }
+        lastCpu = cpu;
+        lastWall = wall;
+    }
+};
+CpuPeak g_cpu;
 
 Config g_cfg;
 CoreLoad g_cores;
@@ -157,7 +184,10 @@ void OnCommand(const std::string& cmd) {
         AudioError audio = AudioError::None;
         if (g_voice->Listening()) g_voice->Cancel();  // a press while listening: this recording, then listen again
         if (!g_voice->Begin(s, &g_session, &why, &audio)) Write("{\"t\":\"error\"" + Str("msg", why) + "}");
-        else Write("{\"t\":\"started\"}");
+        else {
+            g_cpu.peak = 0;  // measured from this recording on
+            Write("{\"t\":\"started\"}");
+        }
     } else if (cmd == "listen") {
         g_wantListen = true;
         g_pausedFor.clear();
@@ -183,15 +213,19 @@ void OnVoiceEvent(VoiceEvent* raw) {
             Write("{\"t\":\"partial\"" + Str("stable", e->live.stable) + Str("unsure", e->live.unsure) + "}");
             break;
         case VoiceEvent::Kind::Final:
+            g_cpu.Sample(true);
             Write("{\"t\":\"final\"" + Str("text", e->text) + (e->empty ? ",\"empty\":true" : ",\"empty\":false") +
                   Str("lang", FromUtf8(e->language)) + ",\"rec\":" + std::to_string(e->recordMs) +
-                  ",\"rms\":" + std::to_string(e->recognizeMs) + (e->maxReached ? ",\"max\":true" : "") + "}");
+                  ",\"rms\":" + std::to_string(e->recognizeMs) + ",\"peak\":" + std::to_string(g_cpu.peak) +
+                  (e->maxReached ? ",\"max\":true" : "") + "}");
+            g_cpu.peak = 0;
             break;
         case VoiceEvent::Kind::Error:
             Write("{\"t\":\"error\"" + Str("msg", e->message.empty() ? std::wstring(L"voice input failed") : e->message) +
                   "}");
             break;
         case VoiceEvent::Kind::Started:
+            g_cpu.peak = 0;
             Write("{\"t\":\"started\"}");
             break;
     }
@@ -210,6 +244,7 @@ LRESULT CALLBACK Proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
         case WM_TIMER:
             if (wp == kTimerCores) g_cores.Sample();  // the least busy cores, measured all the time
             if (wp == kTimerVoiceChat) CheckVoiceChat();
+            if (wp == kTimerCpu) g_cpu.Sample(g_voice && g_voice->Busy());
             return 0;
     }
     return DefWindowProcW(h, msg, wp, lp);
@@ -252,6 +287,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmdLine, int) {
     g_voice = std::make_unique<VoiceSession>(hwnd, WM_APP_VOICE);
     SetTimer(hwnd, kTimerCores, 300, nullptr);
     SetTimer(hwnd, kTimerVoiceChat, 2000, nullptr);
+    SetTimer(hwnd, kTimerCpu, 100, nullptr);
     g_cores.Sample();
 
     // Commands from the add-on; standard input closing (the add-on or the game went) ends the helper.
