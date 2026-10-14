@@ -3,8 +3,24 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## Unreleased
+## 1.6.0 — 2026-10-14 (GW2 Keyboard + the optional Nexus add-on GW2 Chat Bridge; GW2 Chat Translator stays 1.4.0)
 
+- **Party and squad chat as exact text, translated, in GW2 Keyboard.** The optional Nexus add-on **GW2 Chat Bridge**
+  (in the package under `nexus\`) takes what arcdps' Unofficial Extras reports and hands it to the keyboard; the newest
+  lines appear in a slim band above the preview, translated into your language (a click shows the original). It only
+  reads – it never sends anything to the game, and it reads nothing back from the program. Map chat, whispers and the
+  rest stay with the OCR reader of GW2 Chat Translator.
+- **Settings → General → extensions:** Unofficial Extras and the GW2 Chat Bridge with their status – install, update
+  and remove with one click each (Unofficial Extras like the Nexus library would do it: the newest GitHub release,
+  checksum checked, into `<GW2>\addons`). Switch for reading in Settings → Game & start.
+- **The add-on's page in Nexus** shows what is there (ArcDPS, Unofficial Extras, the program) and installs Unofficial
+  Extras on a click; party and squad can be switched off separately.
+- **Settings → General tidied:** the font next to the size, narrower sliders, keys set in a small window (two keys,
+  a third optional, with a check whether Windows has it free) – also the push-to-talk key.
+- **"Show my windows on screenshots"** (Settings → General): our dialogs are hidden from screenshots by default.
+- **Focus behaviour** in one row on the Writing page: back here after sending / here when the GW2 chat opens.
+- **× puts the window into the tray; Quit (menu ≡ or the tray icon) really ends it** – it used to keep running
+  invisibly when you quit while a dialog was open.
 - **Learned misheard words per language:** "Red = Raid" learned while speaking German no longer touches an English
   "red". The list (Settings → Voice → Learned…) has sections [de], [en] …; lines above them (and older lists) count for
   every language. The recognizer's hint words follow the language you speak.
@@ -21,6 +37,7 @@ diagnosis show it.
   again.
 - **Compact view** (menu ≡): slim bars, a one-line input, only the line that goes into the chat; the window takes the
   height it needs and gets the old one back.
+- VirusTotal link in the README.
 
 ## 1.5.0 — 2026-10-13 (GW2 Keyboard; GW2 Chat Translator stays 1.4.0)
 

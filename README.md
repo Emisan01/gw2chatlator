@@ -22,6 +22,10 @@ Checked by VirusTotal: [1.5.0 ZIP, 0 of 68 scanners](https://www.virustotal.com/
   works while GW2 is in front, and optional voice activation (it pauses while Discord & co. use the microphone).
 - **Safe sending:** waits for each frame of the game, never sends without your Enter, and refuses to be used as a bot
   or spam macro.
+- **Party and squad chat, translated (optional, with Nexus):** the small add-on **GW2 Chat Bridge** (comes with the
+  ZIP) passes party and squad chat from arcdps' *Unofficial Extras* to the keyboard as exact text; the newest lines
+  appear above the input, in your language. Settings → General installs both into your GW2 add-ons folder (and removes
+  them again). The add-on only reads – it never sends anything to the game.
 - English, Deutsch and العربية.
 
 ## GW2 Chat Translator – also read the chat translated
