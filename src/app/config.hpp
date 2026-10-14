@@ -156,6 +156,7 @@ struct Config {
     std::wstring voiceDevice;         // microphone endpoint id; "" = Windows default
     int voiceUnloadMin = 10;          // free the model after this many idle minutes
     bool voiceGlossary = true;        // your names and GW2 words steer the recognizer's spelling
+    bool voiceAutoSend = false;       // GW2 Keyboard for Nexus: send right after speaking (the key release is the press)
     int voiceBoost = 0;               // microphone boost: 0 off, 1 = +6 dB, 2 = +12 dB, 3 = automatic (levels speech)
     bool voiceActivation = false;     // voice activation: listens and starts by itself when you speak
     int voiceGuard = 0;               // ... listens 0 = only after the key anywhere switched it on, 1 = while this

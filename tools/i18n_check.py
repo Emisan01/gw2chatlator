@@ -25,7 +25,7 @@ EXTRA_KEYS = ["Chat"]
 
 def used_keys():
     keys = {k: "default tab names" for k in EXTRA_KEYS}
-    for p in SRC.rglob("*.cpp"):
+    for p in list(SRC.rglob("*.cpp")) + [q for q in (ROOT / "addons").rglob("*.cpp") if "third_party" not in q.parts]:
         if p.name.startswith("i18n_"):
             continue
         text = p.read_text(encoding="utf-8")
