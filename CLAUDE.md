@@ -44,7 +44,9 @@ res/      app.rc (icon id 1, manifest: common controls v6, version info), app.ic
           tools/make_icon.py – a placeholder, a finished icon will follow), app.manifest
 tools/    i18n_check.py (missing/unused translations), make_icon.py (draws app.ico; Pillow)
 addons/nexus-keyboard  GW2 Keyboard as a pure Nexus add-on (docs/NEXUS_KEYBOARD_PLAN.md): ImGui UI on the same
-          core/services; chat from Events: Chat / Unofficial Extras; failsafe (try/catch + SEH, switches itself off);
+          core/services; chat only from Events: Chat (installed on a click when missing; no Unofficial Extras – user,
+          2026-10-14); the window like the exe (status top left, mic/≡/× in the header, own options window; the Nexus
+          options page only opens/closes it); failsafe (try/catch + SEH, switches itself off);
           own data folder <addons>\GW2Keyboard (never DataDir() – that would be the game folder); never set the game
           process' affinity/priority. Voice: helper process gw2kb_voice.exe (stdin/stdout JSON lines, the exe's
           VoiceSession). Worker cleanup must run before the DLL goes (Worker::Stop(last)) – dropped, COM/WinRT objects
