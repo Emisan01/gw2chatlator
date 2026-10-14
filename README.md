@@ -7,31 +7,39 @@ translated. A line goes into the chat only when you press Enter yourself.
 
 **[⬇ Download GW2 Keyboard for Nexus (ZIP)](https://github.com/Emisan01/gw2chatlator/releases/latest/download/GW2Keyboard-Nexus.zip)**
 – unpack it into your `Guild Wars 2\addons` folder (where [Nexus](https://raidcore.gg/Nexus) keeps its add-ons) and
-load **GW2 Keyboard** in Nexus. Checked by VirusTotal: [1.7.1 ZIP, 1 of 66 scanners](https://www.virustotal.com/gui/file/747a7c9fd0a98b4fefbbe1fededad2b13c74dd959ce962a13a725506bebcbad9)
-– only Rising's machine-learning guess ("AI"/RDML), common for new unsigned programs (SHA-256 `747a7c9f…6bebcbad9`).
+load **GW2 Keyboard** in Nexus (version 1.7.5).
+
+> **New in 1.7.5** – the chat window you can play with instead of GW2's own:
+> whisper tabs in the header (click a name, or right-click to open one) · item links like in the game – the name in its
+> rarity colour, details on mouse-over · fold it up to its header with one click · translation only when you want it ·
+> a learning mode for the words you keep correcting yourself · the voice module sets itself up on the first start and
+> shows how much CPU each voice model needs.
 
 - **Every channel in your language:** map, whispers, guild, party, squad – foreign lines are translated as they come
-  in; hover a line for the original, click a name to whisper back. The chat comes as exact text from **Events: Chat**
+  in (switch it on in the options, or click a single line); hover a line for the original, click a name to open a
+  whisper tab. Chat codes show as the game links them – the item's name, and its details on mouse-over. The chat
+  comes as exact text from **Events: Chat**
   by Vonsh, an add-on in the Nexus library – GW2 Keyboard installs it for you with one click if it is missing.
 - **Write in your language,** the chat gets the translation: you see it (and what it means in your language again)
   before Enter sends it. Translators: MyMemory (free), Google, Microsoft, DeepL, your own LibreTranslate server.
 - **Typing help that learns you:** grey completion from Windows' word prediction (Space writes it), three
   suggestions from what you write (Tab picks one, Space writes it), autocorrection like a phone keyboard, Backspace
-  undoes it.
+  undoes it. Right-click in the input: learn the words you keep correcting yourself, and what your abbreviations mean.
 - **Voice input – the first in the Nexus world:** hold the microphone (or your push-to-talk key, GW2 does not get it),
   right-click it to speak until a pause, or let voice activation listen. Recognition runs **on your PC** (whisper.cpp)
   in a small helper process on the CPU cores GW2 does not use – the game keeps its frames.
 - **Safe sending:** waits for each frame of the game, refuses to be used as a bot or spam macro. Optional: send right
   after speaking (off by default – releasing the push-to-talk key counts as your Enter).
-- **Its own window like the desktop version:** status at the top, microphone / menu / close, options with tabs. It
-  appears when you are on a map, never on the character screen.
+- **Its own window, built like GW2's chat:** tabs for whispers at the top, microphone, fold up, menu; it snaps to the
+  screen edges and appears when you are on a map, never on the character screen.
 
-Needs Nexus and Events: Chat (Nexus → Addons → Library). The voice model is downloaded once in the options.
+Needs Nexus and Events: Chat (Nexus → Addons → Library) – on the first start GW2 Keyboard loads Events: Chat, its voice
+module and a small voice model by itself.
 
 
 ## GW2 Keyboard – the desktop version (without Nexus)
 
-**[⬇ Download GW2 Keyboard (Windows, ZIP, ~6 MB)](https://github.com/Emisan01/gw2chatlator/releases/latest/download/GW2Keyboard-win64.zip)**
+**[⬇ Download GW2 Keyboard (Windows, ZIP, ~6 MB)](https://github.com/Emisan01/gw2chatlator/releases/download/v1.7.1/GW2Keyboard-win64.zip)**
 – unpack it anywhere and start `GW2Keyboard.exe` (Settings → Game & start installs it for your Windows user).
 Checked by VirusTotal: [1.5.0 ZIP, 0 of 68 scanners](https://www.virustotal.com/gui/file/a03b7e10d700ccc7d58fe896041699703dc6f4de4f42ce9f1f5af7d8debb88f9)
 (SHA-256 `a03b7e10…debb88f9`). The program is not code-signed, so Windows SmartScreen may warn on the first start
@@ -59,7 +67,7 @@ Checked by VirusTotal: [1.5.0 ZIP, 0 of 68 scanners](https://www.virustotal.com/
 GW2 Keyboard plus a reader: it **translates what others write** – in the GW2 chat (found by itself) or in any area of
 the screen – by reading the screen (text recognition on your PC). In GW2 Keyboard: menu ≡ → "Load extension".
 
-**[⬇ Download GW2 Chat Translator (Windows, ZIP, ~20 MB)](https://github.com/Emisan01/gw2chatlator/releases/latest/download/GW2ChatTranslator-win64.zip)**
+**[⬇ Download GW2 Chat Translator (Windows, ZIP, ~20 MB)](https://github.com/Emisan01/gw2chatlator/releases/download/v1.7.1/GW2ChatTranslator-win64.zip)**
 – unpack it anywhere and start `GW2ChatTranslator.exe`. All versions: [Releases](https://github.com/Emisan01/gw2chatlator/releases) ·
 what changed: [CHANGELOG.md](CHANGELOG.md).
 
