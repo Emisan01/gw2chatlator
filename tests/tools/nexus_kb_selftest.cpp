@@ -6,6 +6,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <algorithm>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -34,6 +35,15 @@ void FakeBind(const char*, INPUTBINDS_PROCESS, const char*) {}
 void FakeUnbind(const char*) {}
 void FakeLog(ELogLevel, const char* channel, const char* text) { std::printf("[%s] %s\n", channel, text); }
 void* Alloc(size_t n, void*) { return std::malloc(n); }
+
+struct TestHooks {  // as in kb_main.cpp
+    bool forceMap = false;
+    bool noSend = false;
+    int sentParts = 0;
+    char lastSent[1024] = {};
+    char* input = nullptr;
+    bool* focus = nullptr;
+};
 void Free(void* p, void*) { std::free(p); }
 
 void Frame() {
@@ -97,6 +107,62 @@ int wmain(int argc, wchar_t** argv) {
     for (int i = 0; i < 30 && ok; ++i) {
         Frame();
         Sleep(20);
+    }
+
+    // Typing: the window without a map, sending only recorded. A long line, Space after a word, Tab, Enter.
+    auto hooks = reinterpret_cast<TestHooks* (*)()>(GetProcAddress(dll, "Gw2KbTestHooks"));
+    TestHooks* th = hooks ? hooks() : nullptr;
+    if (ok && th) {
+        th->forceMap = true;
+        th->noSend = true;
+        ImGuiIO& io = ImGui::GetIO();
+        io.KeyMap[ImGuiKey_Enter] = VK_RETURN;
+        io.KeyMap[ImGuiKey_Tab] = VK_TAB;
+        io.KeyMap[ImGuiKey_Backspace] = VK_BACK;
+        auto frames = [](int n) {
+            for (int i = 0; i < n; ++i) {
+                Frame();
+                Sleep(15);
+            }
+        };
+        auto type = [&](const char* s) {
+            for (const char* c = s; *c; ++c) {
+                io.AddInputCharacter(static_cast<unsigned char>(*c));
+                frames(1);
+            }
+        };
+        auto press = [&](int vk) {
+            io.KeysDown[vk] = true;
+            frames(1);
+            io.KeysDown[vk] = false;
+            frames(1);
+        };
+        frames(60);  // spelling and prediction start on the worker
+        *th->focus = true;
+        frames(3);
+        type("Hallo zusammen, wir gehen jetzt in die Fraktale und dann vielleicht noch ein bisschen in den WvW, wer "
+             "mag kommt einfach mit, ich lade euch ein sobald alle da sind und dann geht es los mit dem ersten Boss");
+        frames(10);
+        const size_t typed = std::strlen(th->input);
+        std::printf("typed %zu bytes, line breaks: %d\n", typed, static_cast<int>(std::count(th->input, th->input + typed, '\n')));
+        type(" teilw");
+        frames(80);  // the typing help for "teilw"
+        type(" ");
+        frames(10);
+        const char* end = th->input + std::strlen(th->input);
+        std::printf("after Space: ...%s\n", std::strlen(th->input) > 30 ? end - 30 : th->input);
+        type("schn");
+        frames(80);
+        press(VK_TAB);
+        frames(5);
+        type(" ");
+        frames(10);
+        end = th->input + std::strlen(th->input);
+        std::printf("after Tab + Space: ...%s\n", std::strlen(th->input) > 30 ? end - 30 : th->input);
+        press(VK_RETURN);
+        frames(60);
+        std::printf("Enter: %d part(s) recorded, input now %zu bytes\n", th->sentParts, std::strlen(th->input));
+        ok = ok && th->sentParts >= 2 && std::strlen(th->input) == 0 && !std::strchr(th->lastSent, '\n');
     }
     std::printf("unload\n");
     def->Unload();
