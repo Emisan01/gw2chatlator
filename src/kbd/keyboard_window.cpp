@@ -1934,7 +1934,7 @@ bool KeyboardWindow::BuildVoiceSettings(const Config& c, VoiceSettings* s, std::
     s->live = c.voiceLive;
     s->maxSeconds = c.voiceMaxSec;
     s->deviceId = c.voiceDevice;
-    s->initialPrompt = c.voiceGlossary ? VoicePrompt() : std::string();
+    s->initialPrompt = c.voiceGlossary ? VoicePrompt(s->language) : std::string();
     s->gainDb = c.voiceBoost == 1 ? 6.0f : c.voiceBoost == 2 ? 12.0f : 0.0f;
     s->levelSpeech = c.voiceBoost == 3;
     s->autoEndMs = c.voiceToggle || c.voiceActivation ? c.voicePauseMs : 0;  // a pause ends it (or the next press)
@@ -1946,14 +1946,14 @@ bool KeyboardWindow::BuildVoiceSettings(const Config& c, VoiceSettings* s, std::
 
 // Steers the recognizer's spelling: GW2, the words it misheard once (as you corrected them), the names you taught.
 // Never anything of the chat. Kept short – whisper's prompt is a hint, not a dictionary.
-std::string KeyboardWindow::VoicePrompt() const {
+std::string KeyboardWindow::VoicePrompt(const std::string& language) const {
     std::vector<std::wstring> words{L"Guild Wars 2"};
     WordSet seen{CaseFold(words[0])};
     auto add = [&](const std::wstring& w) {
         const std::wstring t = Trim(w);
         if (!t.empty() && seen.insert(CaseFold(t)).second) words.push_back(t);
     };
-    for (const std::wstring& w : voiceFixes_.Words()) add(w);
+    for (const std::wstring& w : voiceFixes_.Words(FromUtf8(language))) add(w);
     std::vector<std::wstring> names;
     for (const std::wstring& k : spell_.KeepWords())
         if (k.size() > 1 && k[0] == L'=') names.push_back(k.substr(1));  // "=Name": taught names, exactly as taught
@@ -2183,7 +2183,7 @@ void KeyboardWindow::OnVoiceEvent(VoiceEvent* raw) {
             }
             // The language the text arrives in: English when whisper translated, else what whisper heard.
             dictLang_ = cfg_.voiceTranslate ? std::wstring(L"EN") : ToUpperAscii(FromUtf8(e->language));
-            InsertDictation(voiceFixes_.Apply(text));
+            InsertDictation(voiceFixes_.Apply(text, dictLang_));
             // Quietly, which model ran and how fast (the text itself is in the box to check).
             wchar_t secs[16], rtf[16];
             swprintf(secs, 16, L"%.1f", e->recognizeMs / 1000.0);
@@ -2241,7 +2241,7 @@ void KeyboardWindow::LearnVoiceFixes(const std::wstring& sent) {
     if (!cfg_.learnWords) return;
     const std::wstring dictated = SanitizeChatText(lastDictated_);
     if (dictated.empty() || dictated == sent) return;
-    const std::vector<VoiceFixes::Pair> pairs = voiceFixes_.Learn(dictated, sent);
+    const std::vector<VoiceFixes::Pair> pairs = voiceFixes_.Learn(dictated, sent, dictLang_);
     if (pairs.empty()) return;
     SaveVoiceFixes();
     std::wstring learned = TrF(L"Learned: {1} → {2}", {pairs[0].first, pairs[0].second});

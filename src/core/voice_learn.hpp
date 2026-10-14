@@ -9,6 +9,7 @@
 #pragma once
 
 #include <cstddef>
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
@@ -45,6 +46,24 @@ public:
 private:
     void Add(const std::wstring& heard, const std::wstring& meant);
     std::vector<Pair> pairs_;  // oldest first
+};
+
+// The learned fixes per language: "Red = Raid" learned while speaking German must not touch an English "red".
+// File: "[de]" / "[en]" ... start a language's section; lines before the first section count for every language
+// (also an old file without sections).
+class VoiceFixBook {
+public:
+    void Parse(const std::wstring& text);
+    std::wstring Serialize() const;
+    // `lang`: the language of the dictation ("de", "EN-GB" ... – only the main part counts); "" = every language.
+    std::vector<VoiceFixes::Pair> Learn(const std::wstring& dictated, const std::wstring& sent, const std::wstring& lang);
+    std::wstring Apply(const std::wstring& text, const std::wstring& lang) const;  // that language's, then the common ones
+    std::vector<std::wstring> Words(const std::wstring& lang) const;
+    size_t Size() const;
+
+private:
+    static std::wstring Key(const std::wstring& lang);
+    std::map<std::wstring, VoiceFixes> book_;  // "" = every language
 };
 
 }  // namespace gct

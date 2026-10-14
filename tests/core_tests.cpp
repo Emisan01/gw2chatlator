@@ -2188,6 +2188,23 @@ static void TestSendGuard() {
     }
 }
 
+static void TestVoiceFixBook() {
+    VoiceFixBook b;
+    CHECK(!b.Learn(L"Wir gehen in den Red", L"Wir gehen in den Raid", L"DE").empty());
+    CHECK(b.Apply(L"heute Red um acht", L"de") == L"heute Raid um acht");
+    CHECK(b.Apply(L"the red one", L"EN-GB") == L"the red one");  // learned for German only
+    // an old file without sections counts for every language; sections round-trip
+    b.Parse(L"Fracktale = Fraktale\r\n[de]\r\nRed = Raid\r\n[en]\r\nwold boss = world boss\r\n");
+    CHECK(b.Size() == 3);
+    CHECK(b.Apply(L"Fracktale heute", L"en") == L"Fraktale heute");
+    CHECK(b.Apply(L"the wold boss", L"en") == L"the world boss" && b.Apply(L"the wold boss", L"de") == L"the wold boss");
+    VoiceFixBook c;
+    c.Parse(b.Serialize());
+    CHECK(c.Size() == 3 && c.Apply(L"Red", L"de") == L"Raid");
+    const std::vector<std::wstring> w = c.Words(L"de");
+    CHECK(w.size() == 2 && w[0] == L"Raid");
+}
+
 static void TestVoiceLearn() {
     CHECK(VoiceFixes::SoundsAlike(L"Red", L"Raid") && VoiceFixes::SoundsAlike(L"Fracktale", L"Fraktale"));
     CHECK(VoiceFixes::SoundsAlike(L"Löwinstein", L"Löwenstein"));
@@ -2326,6 +2343,7 @@ int main() {
     TestWhisperSettings();
     TestToMono16k();
     TestVoiceLearn();
+    TestVoiceFixBook();
     TestSendGuard();
     TestPickVoiceCores();
     std::printf("%d passed, %d failed\n", g_pass, g_fail);
