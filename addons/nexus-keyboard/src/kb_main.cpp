@@ -78,6 +78,16 @@ std::atomic<bool> g_chatEventsLive{false};
 std::atomic<bool> g_keyboardFree{true};  // ImGui does not hold the keyboard (keys reach the game)
 std::atomic<int> g_fps{0};
 bool g_show = true;
+// For nexus_kb_selftest (never set in the game): the window without MumbleLink, and sending only recorded.
+struct TestHooks {
+    bool forceMap = false;
+    bool noSend = false;
+    int sentParts = 0;
+    char lastSent[1024] = {};
+    char* input = nullptr;
+    bool* focus = nullptr;
+};
+TestHooks g_test;
 bool g_showOptions = false;  // our own options window (menu ≡ / the button on the Nexus page)
 
 void Log(ELogLevel level, const char* text) {
@@ -220,6 +230,8 @@ struct PendingEdit {
     size_t startByte = 0, lenBytes = 0;
     std::string insert;
 } g_edit;
+int g_pick = -1;  // Tab / Shift+Tab move through the word bar; Space writes the picked word
+
 struct AutoUndo {  // the last autocorrection: Backspace right after it brings the typed word back
     bool active = false;
     std::string after;   // the buffer right after the correction (with its space)
@@ -488,6 +500,12 @@ void ComputeTyping() {
 // Enter: the parts go into the GW2 chat – only now, on your Enter (invariants 1–3).
 void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring learnText) {
     if (parts.empty()) return;
+    if (g_test.noSend) {  // the self-test: what would go into the chat
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_test.sentParts += static_cast<int>(parts.size());
+        strncpy_s(g_test.lastSent, ToUtf8(parts.front()).c_str(), _TRUNCATE);
+        return;
+    }
     {
         std::lock_guard<std::mutex> lock(g_mu);
         g_sending = true;
@@ -926,6 +944,16 @@ std::wstring GhostRest(bool* correction = nullptr) {
     if (correction) *correction = false;
     const std::wstring text = W(Flat(g_input));
     if (g_help.text != text || text.empty()) return {};
+    const WordSuggestions& bar = g_help.bar;
+    if (g_pick >= 0 && g_pick < static_cast<int>(bar.words.size())) {  // picked with Tab
+        const std::wstring& word = bar.words[g_pick];
+        const Span r = bar.replace.end() == text.size() ? bar.replace : Span{text.size(), 0};
+        const std::wstring typed = text.substr(r.start, r.length);
+        if (typed.size() < word.size() && CaseFold(word.substr(0, typed.size())) == CaseFold(typed))
+            return word.substr(typed.size());
+        if (correction) *correction = true;
+        return typed.empty() ? word : L"  > " + word;
+    }
     const WordChoices& c = g_help.choices;
     if (text.back() != L' ' && c.highlight >= 0 && c.highlight < static_cast<int>(c.words.size()) &&
         c.replace.end() == text.size() && !(c.firstIsTyped && c.highlight == 0)) {
@@ -956,26 +984,51 @@ void TakeWord(const std::wstring& word) {
     if (g_spell) g_worker.Post([text, start = r.start, word] { if (g_spell) g_spell->Chose(text, start, word, true); });
 }
 
+// Space at the end of a word: the word picked with Tab, else the grey one (what Space writes – the exe's rule: only
+// strong choices); the change comes in through g_edit, the space with it. False: just a space.
+bool SpaceWrites() {
+    const std::wstring text = W(Flat(g_input));
+    if (g_help.text != text || text.empty() || text.back() == L' ' || g_cfg.autoCorrect == AutoCorrectMode::Off && g_pick < 0)
+        return false;
+    std::wstring word;
+    Span r;
+    bool deliberate = false;
+    const WordSuggestions& bar = g_help.bar;
+    const WordChoices& c = g_help.choices;
+    if (g_pick >= 0 && g_pick < static_cast<int>(bar.words.size())) {
+        word = bar.words[g_pick];
+        r = bar.replace.end() == text.size() ? bar.replace : Span{text.size(), 0};
+        deliberate = true;
+    } else if (c.Changes() && c.highlight >= 0 && c.highlight < static_cast<int>(c.words.size()) &&
+               c.replace.end() == text.size()) {
+        word = c.words[c.highlight];
+        r = c.replace;
+    } else {
+        return false;
+    }
+    g_pick = -1;
+    const std::wstring fixed = text.substr(0, r.start) + word + L" ";
+    g_edit.active = true;
+    g_edit.startByte = U8Offset(text, r.start);
+    g_edit.lenBytes = U8Offset(text, text.size()) - g_edit.startByte;
+    g_edit.insert = U8(word + L" ");
+    g_undo = {true, U8(fixed), U8(text), text.substr(r.start, r.length)};
+    g_worker.Post([text, start = r.start, word, deliberate] { if (g_spell) g_spell->Chose(text, start, word, deliberate); });
+    return true;
+}
+
 int InputCallback(ImGuiInputTextCallbackData* d) {
     switch (d->EventFlag) {
-        case ImGuiInputTextFlags_CallbackCompletion: {  // Tab: take the grey word (completion, correction, next word)
-            bool correction = false;
-            const std::wstring rest = GhostRest(&correction);
-            if (rest.empty() || d->CursorPos != d->BufTextLen) break;
-            if (correction) {
-                const std::wstring text = W(std::string(d->Buf, d->BufTextLen));
-                const Span r = g_help.choices.replace;
-                const std::wstring word = g_help.choices.words[g_help.choices.highlight];
-                const int startByte = static_cast<int>(U8Offset(text, r.start));
-                d->DeleteChars(startByte, d->BufTextLen - startByte);
-                d->InsertChars(startByte, U8(word + L" ").c_str());
-                g_worker.Post([text, start = r.start, word] { if (g_spell) g_spell->Chose(text, start, word, true); });
-            } else {
-                const bool next = !g_input[0] || g_input[std::strlen(g_input) - 1] == ' ' ||
-                                  g_input[std::strlen(g_input) - 1] == '\n';
-                d->InsertChars(d->CursorPos, (U8(rest) + (next ? "" : " ")).c_str());
+        case ImGuiInputTextFlags_CallbackCharFilter: {
+            const ImWchar ch = d->EventChar;
+            if (ch == '\n' || ch == '\r') return 1;  // no line breaks of your own: Enter sends
+            if (ch == '\t') {  // Tab / Shift+Tab: the next / previous word of the bar (Space writes it)
+                const int n = g_help.text == W(Flat(g_input)) ? static_cast<int>(g_help.bar.words.size()) : 0;
+                if (n > 0) g_pick = ImGui::GetIO().KeyShift ? (g_pick <= 0 ? n - 1 : g_pick - 1) : (g_pick + 1) % n;
+                return 1;
             }
-            break;
+            if (ch == ' ') return SpaceWrites() ? 1 : 0;  // the picked / grey word, then the space
+            return 0;
         }
         case ImGuiInputTextFlags_CallbackHistory: {  // Up / Down: what you sent
             if (g_history.empty()) break;
@@ -1030,22 +1083,6 @@ int InputCallback(ImGuiInputTextCallbackData* d) {
                 break;
             }
             if (g_undo.active && now != g_undo.after) g_undo.active = false;
-            // Space after a word: what Space writes (the strong choice for the word just finished).
-            if (!now.empty() && now.back() == ' ' && now != g_lastInput && now.size() == g_lastInput.size() + 1 &&
-                g_cfg.autoCorrect != AutoCorrectMode::Off) {
-                const std::wstring before = W(g_lastInput);
-                if (g_help.text == before && g_help.choices.Changes() && g_help.choices.highlight >= 0 &&
-                    g_help.choices.highlight < static_cast<int>(g_help.choices.words.size())) {
-                    const Span r = g_help.choices.replace;
-                    const std::wstring word = g_help.choices.words[g_help.choices.highlight];
-                    if (r.end() <= before.size()) {
-                        const std::wstring fixed = before.substr(0, r.start) + word + before.substr(r.end()) + L" ";
-                        g_undo = {true, U8(fixed), g_lastInput, before.substr(r.start, r.length)};
-                        d->DeleteChars(0, d->BufTextLen);
-                        d->InsertChars(0, g_undo.after.c_str());
-                    }
-                }
-            }
             break;
         }
         default:
@@ -1335,7 +1372,7 @@ void RenderWindow() {
     bool inMap;
     {
         std::lock_guard<std::mutex> lock(g_mu);
-        inMap = g_inMap;
+        inMap = g_inMap || g_test.forceMap;
     }
     if (!g_show || !inMap) return;
     ImGui::SetNextWindowSize(ImVec2(520, 360), ImGuiCond_FirstUseEver);
@@ -1511,7 +1548,7 @@ void RenderWindow() {
             ImGui::PopID();
             if (hot) dl->AddRectFilled(a, b, ImGui::GetColorU32(ImGuiCol_FrameBgHovered));
             const ImVec2 size = ImGui::CalcTextSize(word.c_str());
-            const bool pick = i == g_help.bar.autoIndex;
+            const bool pick = g_pick >= 0 ? i == g_pick : i == g_help.bar.autoIndex;
             dl->AddText(ImVec2((a.x + b.x - size.x) * 0.5f, a.y + (h - size.y) * 0.5f),
                         pick ? ImGui::GetColorU32(kAccent) : ImGui::GetColorU32(ImGuiCol_Text), word.c_str());
         }
@@ -1526,7 +1563,8 @@ void RenderWindow() {
     const ImGuiStyle& st = ImGui::GetStyle();
     const ImVec2 boxSize(-1, ImGui::GetTextLineHeight() * kInputLines + st.FramePadding.y * 2);
     g_wrapWidth = ImGui::GetContentRegionAvail().x - st.FramePadding.x * 2 - st.ScrollbarSize - 4;
-    const ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackCompletion |
+    const ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CtrlEnterForNewLine |
+                                      ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_CallbackCharFilter |
                                       ImGuiInputTextFlags_CallbackAlways;
     const bool enter = ImGui::InputTextMultiline("##input", g_input, sizeof(g_input), boxSize, flags, InputCallback);
     const ImVec2 inputMin = ImGui::GetItemRectMin(), inputMax = ImGui::GetItemRectMax();
@@ -1555,6 +1593,7 @@ void RenderWindow() {
         g_inputChanged = GetTickCount64();
         ++g_inputGen;
         g_back.clear();
+        g_pick = -1;
         if (!g_helpRequested) {
             g_helpRequested = true;
             g_worker.Post(ComputeTyping);
@@ -2055,6 +2094,12 @@ void AddonUnload() {
 BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID) {
     if (reason == DLL_PROCESS_ATTACH) g_self = module;
     return TRUE;
+}
+
+extern "C" __declspec(dllexport) void* Gw2KbTestHooks() {  // nexus_kb_selftest only
+    g_test.input = g_input;
+    g_test.focus = &g_focusInput;
+    return &g_test;
 }
 
 extern "C" __declspec(dllexport) AddonDefinition_t* GetAddonDef() {
