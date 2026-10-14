@@ -4,14 +4,17 @@
 // there. This small process runs the exe's VoiceSession: the microphone, the speech gate, whisper on the least busy
 // cores below normal priority (its own process affinity – never the game's). It talks to the add-on through its
 // standard input and output only:
-//   in  (one command per line): begin | begin-auto (a pause ends it) | end | cancel | reload | quit
+//   in  (one command per line): begin | begin-auto (a pause ends it) | end | cancel | listen | stop-listen | reload | quit
 //   out (one JSON object per line): {"t":"ready"} {"t":"started"} {"t":"partial","stable":..,"unsure":..}
 //                                   {"t":"final","text":..,"empty":..,"lang":..,"rec":ms,"rms":ms} {"t":"error","msg":..}
+//                                   voice activation: {"t":"listening"} {"t":"idle"} {"t":"paused","app":..}
 // When the add-on (its parent) goes, standard input closes and the helper ends.
 
 #include <windows.h>
 #include <objbase.h>
 
+#include <algorithm>
+#include <cwctype>
 #include <memory>
 #include <string>
 #include <thread>
@@ -23,6 +26,7 @@
 #include "core/voice.hpp"
 #include "kbd/voice_session.hpp"
 #include "win/cpu_cores.hpp"
+#include "win/mic_sessions.hpp"
 #include "win/voice_models.hpp"
 
 using namespace gct;
@@ -32,11 +36,14 @@ namespace {
 constexpr UINT WM_APP_VOICE = WM_APP + 1;
 constexpr UINT WM_APP_COMMAND = WM_APP + 2;  // lParam: std::string* (owned)
 constexpr UINT_PTR kTimerCores = 1;
+constexpr UINT_PTR kTimerVoiceChat = 2;  // voice activation pauses while a voice chat uses the microphone
 
 Config g_cfg;
 CoreLoad g_cores;
 std::unique_ptr<VoiceSession> g_voice;
 unsigned g_session = 0;
+bool g_wantListen = false;      // voice activation is wanted (it may be paused for a voice chat)
+std::wstring g_pausedFor;       // the voice chat that has the microphone now
 HANDLE g_out = nullptr;
 
 void Write(const std::string& json) {
@@ -87,6 +94,51 @@ bool BuildSettings(VoiceSettings* s, std::wstring* why) {
     return true;
 }
 
+// Voice activation: listens; a recording starts by itself when you speak and ends after the pause.
+void StartListen() {
+    VoiceSettings s;
+    std::wstring why;
+    if (!BuildSettings(&s, &why)) {
+        Write("{\"t\":\"error\"" + Str("msg", why) + "}");
+        return;
+    }
+    s.autoEndMs = g_cfg.voicePauseMs;
+    s.thresholdDb = -20.0f - 0.4f * static_cast<float>(std::clamp(g_cfg.voiceSensitivity, 0, 100));  // 50 -> -40 dBFS
+    AudioError audio = AudioError::None;
+    if (g_voice->Listen(s, &why, &audio)) Write("{\"t\":\"listening\"}");
+    else Write("{\"t\":\"error\"" + Str("msg", why) + "}");
+}
+
+// A voice chat (Discord, TeamSpeak ...) has the microphone: what you say is meant for it.
+std::wstring VoiceChatOpen() {
+    std::wstring list = L"," + g_cfg.voiceChatApps + L",";
+    for (wchar_t& c : list) c = static_cast<wchar_t>(towlower(c));
+    for (std::wstring exe : AppsUsingMicrophone(g_cfg.voiceDevice)) {
+        std::wstring low = exe;
+        for (wchar_t& c : low) c = static_cast<wchar_t>(towlower(c));
+        if (list.find(L"," + low + L",") != std::wstring::npos || list.find(L", " + low + L",") != std::wstring::npos)
+            return exe;
+    }
+    return {};
+}
+
+void CheckVoiceChat() {
+    if (!g_wantListen || g_voice->Busy()) return;
+    if (!g_cfg.voiceChatPause) {
+        if (!g_voice->Listening()) StartListen();
+        return;
+    }
+    const std::wstring app = VoiceChatOpen();
+    if (!app.empty() && g_pausedFor.empty()) {
+        g_pausedFor = app;
+        g_voice->Cancel();
+        Write("{\"t\":\"paused\"" + Str("app", app) + "}");
+    } else if (app.empty() && (!g_pausedFor.empty() || !g_voice->Listening())) {
+        g_pausedFor.clear();
+        StartListen();
+    }
+}
+
 void OnCommand(const std::string& cmd) {
     if (cmd == "quit") {
         PostQuitMessage(0);
@@ -103,8 +155,19 @@ void OnCommand(const std::string& cmd) {
             return;
         }
         AudioError audio = AudioError::None;
+        if (g_voice->Listening()) g_voice->Cancel();  // a press while listening: this recording, then listen again
         if (!g_voice->Begin(s, &g_session, &why, &audio)) Write("{\"t\":\"error\"" + Str("msg", why) + "}");
         else Write("{\"t\":\"started\"}");
+    } else if (cmd == "listen") {
+        g_wantListen = true;
+        g_pausedFor.clear();
+        if (!g_voice->Listening()) StartListen();
+        CheckVoiceChat();
+    } else if (cmd == "stop-listen") {
+        g_wantListen = false;
+        g_pausedFor.clear();
+        if (g_voice->Listening()) g_voice->Cancel();
+        Write("{\"t\":\"idle\"}");
     } else if (cmd == "end") {
         g_voice->End();
     } else if (cmd == "cancel") {
@@ -146,6 +209,7 @@ LRESULT CALLBACK Proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
         }
         case WM_TIMER:
             if (wp == kTimerCores) g_cores.Sample();  // the least busy cores, measured all the time
+            if (wp == kTimerVoiceChat) CheckVoiceChat();
             return 0;
     }
     return DefWindowProcW(h, msg, wp, lp);
@@ -187,6 +251,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmdLine, int) {
     }
     g_voice = std::make_unique<VoiceSession>(hwnd, WM_APP_VOICE);
     SetTimer(hwnd, kTimerCores, 300, nullptr);
+    SetTimer(hwnd, kTimerVoiceChat, 2000, nullptr);
     g_cores.Sample();
 
     // Commands from the add-on; standard input closing (the add-on or the game went) ends the helper.
