@@ -35,6 +35,7 @@
 #include "core/i18n.hpp"
 #include "core/json.hpp"
 #include "core/langs.hpp"
+#include "core/voice.hpp"
 #include "core/languages.hpp"
 #include "core/protect.hpp"
 #include "core/send_guard.hpp"
@@ -51,6 +52,7 @@
 #include "win/files.hpp"
 #include "win/gw2_sender.hpp"
 #include "win/mumble_link.hpp"
+#include "win/voice_models.hpp"
 #include "win/online_translators.hpp"
 
 using namespace gct;
@@ -209,6 +211,7 @@ std::wstring g_voiceLive;        // the live text while speaking (only drawn, ne
 std::wstring g_lastDictated;     // the last recognized text as it came (learning misheard words on send)
 std::wstring g_dictLang;         // its language
 VoiceFixBook g_voiceFixes;       // learned misheard words (<data>\voice-fixes.txt), per language
+bool g_autoSendPending = false;  // "send after speaking": the dictation arrived, Enter follows by itself
 
 void SetStatus(const std::wstring& s, ULONGLONG ms = 6000) {  // g_mu held
     g_status = s;
@@ -239,7 +242,12 @@ std::wstring ComposePrefix() {
     return L"";
 }
 
-std::shared_ptr<Translator> MakeTranslator(const Config& c) {
+std::shared_ptr<Translator> MakeTranslator(const Config& c) {  // the exe's choice: the engine you set, else the best key
+    if (c.engine == Engine::Basic) return MakeMyMemoryTranslator(c.basicEmail);
+    if (c.engine == Engine::DeepL && !c.deeplKey.empty()) return MakeDeepLTranslator(c.deeplKey);
+    if (c.engine == Engine::Google && !c.googleKey.empty()) return MakeGoogleTranslator(c.googleKey);
+    if (c.engine == Engine::Microsoft && !c.msKey.empty()) return MakeMicrosoftTranslator(c.msKey, c.msRegion);
+    if (c.engine == Engine::Libre && !c.libreUrl.empty()) return MakeLibreTranslator(c.libreUrl, c.libreKey);
     if (!c.deeplKey.empty()) return MakeDeepLTranslator(c.deeplKey);
     if (!c.googleKey.empty()) return MakeGoogleTranslator(c.googleKey);
     if (!c.msKey.empty()) return MakeMicrosoftTranslator(c.msKey, c.msRegion);
@@ -571,6 +579,7 @@ void VoiceHelper::OnLine(const std::string& line) {
         g_edit.lenBytes = 0;
         g_edit.insert = (len && g_input[len - 1] != ' ' ? " " : "") + U8(fixed);
         g_focusInput = true;
+        g_autoSendPending = g_cfg.voiceAutoSend;  // your key release was the press; off by default
         SetStatus(L"");
     } else if (t == "error") {
         g_recording = false;
@@ -950,6 +959,10 @@ void RenderWindow() {
         }
         if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", U8(Tr(L"Hold to speak (or the push-to-talk key in Nexus)")).c_str());
         ImGui::SameLine();
+        if (ImGui::Checkbox("##autosend", &g_cfg.voiceAutoSend)) g_cfg.SaveBool(L"Voice", L"AutoSend", g_cfg.voiceAutoSend);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", U8(Tr(L"Send right after speaking (releasing the key counts as your Enter)")).c_str());
+        ImGui::SameLine();
     }
     RenderChannelPicker();
     ImGui::SameLine();
@@ -988,25 +1001,232 @@ void RenderWindow() {
         g_worker.Post([gen = g_inputGen, t = SanitizeChatText(W(now))] { TranslateInput(gen, t); });
     }
     if (enter) StartSend();
+    if (g_autoSendPending && !g_edit.active && g_input[0]) {  // the dictation is in the line now
+        g_autoSendPending = false;
+        StartSend();
+    }
     // ---- status
     ImGui::TextDisabled("%s", g_status.empty() ? (g_chatEventsLive ? "" : U8(Tr(L"Waiting for chat lines (Events: Chat or Unofficial Extras)")).c_str())
                                                : U8(g_status).c_str());
     ImGui::End();
 }
 
-void RenderOptions() {
-    if (!ImGui::GetCurrentContext()) return;
-    ImGui::TextWrapped("GW2 Keyboard for Nexus %s – the chat in your language, and what you write in the chat's "
-                       "language. The chat comes from Events: Chat (every channel) or Unofficial Extras (party and "
-                       "squad). Nothing is sent without your Enter; nothing of other players is stored.",
-                       GCT_VERSION_STR);
-    ImGui::Checkbox("Show the window", &g_show);
+// ---- voice model download (its own thread: minutes, never on the worker or the game's threads)
+std::thread g_download;
+std::atomic<bool> g_downloadCancel{false};
+std::atomic<int> g_downloadPct{-1};  // -1: none running
+
+void StartModelDownload(const VoiceModelInfo& m) {
+    if (g_downloadPct >= 0) return;
+    if (g_download.joinable()) g_download.join();
+    g_downloadCancel = false;
+    g_downloadPct = 0;
+    std::wstring dir;
     {
         std::lock_guard<std::mutex> lock(g_mu);
-        ImGui::TextDisabled("Voice: %s", !g_cfg.voiceEnabled ? "off" : g_voiceReady ? "ready" : g_voice.Running() ? "starting" : "module missing");
+        dir = g_cfg.VoiceModelDir();
     }
-    ImGui::TextDisabled(g_chatEventsLive ? "Events: Chat delivers." : "Waiting for chat lines (Events: Chat or "
-                                                                      "Unofficial Extras).");
+    g_download = std::thread([m, dir] {
+        EnsureDir(dir);
+        std::wstring error;
+        const bool ok = DownloadVoiceModel(
+            dir, m,
+            [](uint64_t done, uint64_t total) {
+                if (total) g_downloadPct = static_cast<int>(done * 100 / total);
+                return true;
+            },
+            &g_downloadCancel, &error);
+        g_downloadPct = -1;
+        std::lock_guard<std::mutex> lock(g_mu);
+        SetStatus(ok ? Tr(L"Voice model installed") : error, 10000);
+        if (ok) g_voice.Send("reload");
+    });
+}
+
+// A language combo over Languages(): `value` "" = `emptyLabel`.
+bool LanguageCombo(const char* id, std::wstring& value, const std::wstring& emptyLabel) {
+    std::string current = value.empty() ? U8(emptyLabel) : U8(value);
+    for (const LangInfo& l : Languages())
+        if (PrimaryLang(l.code) == PrimaryLang(value) && !value.empty()) current = U8(std::wstring(l.native) + L" (" + l.code + L")");
+    bool changed = false;
+    if (ImGui::BeginCombo(id, current.c_str())) {
+        if (!emptyLabel.empty() && ImGui::Selectable(U8(emptyLabel).c_str(), value.empty())) {
+            value.clear();
+            changed = true;
+        }
+        for (const LangInfo& l : Languages()) {
+            const std::string n = U8(std::wstring(l.native) + L" (" + l.code + L")");
+            if (ImGui::Selectable(n.c_str(), value == l.code)) {
+                value = l.code;
+                changed = true;
+            }
+        }
+        ImGui::EndCombo();
+    }
+    return changed;
+}
+
+// Nexus → Addons → GW2 Keyboard: the essentials of the exe's settings. Changes apply on "Save".
+void RenderOptions() {
+    if (!ImGui::GetCurrentContext()) return;
+    static Config edit;
+    static bool loaded = false;
+    static char keyBuf[256] = {}, regionBuf[64] = {}, urlBuf[256] = {}, mailBuf[128] = {};
+    if (!loaded) {
+        std::lock_guard<std::mutex> lock(g_mu);
+        edit = g_cfg;
+        loaded = true;
+        const std::string key = U8(edit.engine == Engine::DeepL ? edit.deeplKey : edit.engine == Engine::Google ? edit.googleKey
+                                   : edit.engine == Engine::Microsoft ? edit.msKey : edit.libreKey);
+        strncpy_s(keyBuf, key.c_str(), _TRUNCATE);
+        strncpy_s(regionBuf, U8(edit.msRegion).c_str(), _TRUNCATE);
+        strncpy_s(urlBuf, U8(edit.libreUrl).c_str(), _TRUNCATE);
+        strncpy_s(mailBuf, U8(edit.basicEmail).c_str(), _TRUNCATE);
+    }
+    ImGui::TextWrapped("%s", U8(TrF(L"GW2 Keyboard for Nexus {1} – the chat in your language, what you write in the chat's "
+                                    L"language. The chat comes from Events: Chat (every channel) or Unofficial Extras "
+                                    L"(party and squad). Nothing is sent without your Enter; nothing of other players is "
+                                    L"stored.",
+                                    {GCT_VERSION_WSTR})).c_str());
+    ImGui::Checkbox(U8(Tr(L"Show the window")).c_str(), &g_show);
+    ImGui::Separator();
+
+    // ---- languages
+    ImGui::TextUnformatted(U8(Tr(L"Languages")).c_str());
+    ImGui::SetNextItemWidth(260);
+    LanguageCombo(U8(Tr(L"I write in") + L"##writein").c_str(), edit.writeIn, Tr(L"like Windows"));
+    std::wstring chatLang = edit.writeLangs.empty() ? std::wstring(L"EN-GB") : edit.writeLangs.front();
+    ImGui::SetNextItemWidth(260);
+    if (LanguageCombo(U8(Tr(L"The chat gets") + L"##sendlang").c_str(), chatLang, L"")) {
+        edit.writeLangs.erase(std::remove(edit.writeLangs.begin(), edit.writeLangs.end(), chatLang), edit.writeLangs.end());
+        edit.writeLangs.insert(edit.writeLangs.begin(), chatLang);
+    }
+    ImGui::SetNextItemWidth(260);
+    LanguageCombo(U8(Tr(L"Language of this window") + L"##ui").c_str(), edit.uiLangCode, Tr(L"like Windows"));
+
+    // ---- translator
+    ImGui::Separator();
+    static const Engine kEngines[] = {Engine::Auto, Engine::Basic, Engine::DeepL, Engine::Google, Engine::Microsoft, Engine::Libre};
+    static const wchar_t* kEngineNames[] = {L"Automatic", L"MyMemory (free)", L"DeepL", L"Google", L"Microsoft", L"LibreTranslate"};
+    int engineIdx = 0;
+    for (int i = 0; i < 6; ++i)
+        if (kEngines[i] == edit.engine) engineIdx = i;
+    ImGui::SetNextItemWidth(260);
+    if (ImGui::BeginCombo(U8(Tr(L"Translator") + L"##engine").c_str(), U8(Tr(kEngineNames[engineIdx])).c_str())) {
+        for (int i = 0; i < 6; ++i)
+            if (ImGui::Selectable(U8(Tr(kEngineNames[i])).c_str(), i == engineIdx)) {
+                edit.engine = kEngines[i];
+                const std::wstring k = edit.engine == Engine::DeepL ? edit.deeplKey : edit.engine == Engine::Google ? edit.googleKey
+                                       : edit.engine == Engine::Microsoft ? edit.msKey : edit.libreKey;
+                strncpy_s(keyBuf, U8(k).c_str(), _TRUNCATE);
+            }
+        ImGui::EndCombo();
+    }
+    if (edit.engine == Engine::DeepL || edit.engine == Engine::Google || edit.engine == Engine::Microsoft ||
+        edit.engine == Engine::Libre) {
+        ImGui::SetNextItemWidth(260);
+        ImGui::InputText(U8(Tr(L"API key") + L"##key").c_str(), keyBuf, sizeof(keyBuf), ImGuiInputTextFlags_Password);
+    }
+    if (edit.engine == Engine::Microsoft) {
+        ImGui::SetNextItemWidth(260);
+        ImGui::InputText(U8(Tr(L"Region") + L"##region").c_str(), regionBuf, sizeof(regionBuf));
+    }
+    if (edit.engine == Engine::Libre) {
+        ImGui::SetNextItemWidth(260);
+        ImGui::InputText(U8(Tr(L"Server") + L"##url").c_str(), urlBuf, sizeof(urlBuf));
+    }
+    if (edit.engine == Engine::Auto || edit.engine == Engine::Basic) {
+        ImGui::SetNextItemWidth(260);
+        ImGui::InputText(U8(Tr(L"E-mail for MyMemory (more free text per day)") + L"##mail").c_str(), mailBuf, sizeof(mailBuf));
+    }
+
+    // ---- writing
+    ImGui::Separator();
+    ImGui::Checkbox(U8(Tr(L"Word suggestions while typing")).c_str(), &edit.suggestions);
+    int ac = static_cast<int>(edit.autoCorrect);
+    const std::string acNames[] = {U8(Tr(L"Off")), U8(Tr(L"Safe")), U8(Tr(L"Like a phone keyboard"))};
+    ImGui::SetNextItemWidth(260);
+    if (ImGui::BeginCombo(U8(Tr(L"Autocorrection") + L"##ac").c_str(), acNames[ac].c_str())) {
+        for (int i = 0; i < 3; ++i)
+            if (ImGui::Selectable(acNames[i].c_str(), i == ac)) edit.autoCorrect = static_cast<AutoCorrectMode>(i);
+        ImGui::EndCombo();
+    }
+    ImGui::Checkbox(U8(Tr(L"Learn my words")).c_str(), &edit.learnWords);
+    ImGui::Checkbox(U8(Tr(L"back here after sending")).c_str(), &edit.returnFocus);
+
+    // ---- voice
+    ImGui::Separator();
+    ImGui::Checkbox(U8(Tr(L"Voice input")).c_str(), &edit.voiceEnabled);
+    if (edit.voiceEnabled) {
+        const VoiceCatalog catalog = LoadVoiceCatalog(edit.dataDir);
+        const VoiceModelInfo* chosen = catalog.Find(U8(edit.voiceModel));
+        if (!chosen) chosen = catalog.Recommended();
+        ImGui::SetNextItemWidth(260);
+        if (ImGui::BeginCombo(U8(Tr(L"Model") + L"##model").c_str(), chosen ? chosen->name.c_str() : "-")) {
+            for (const VoiceModelInfo& m : catalog.models) {
+                const std::string label = m.name + (VoiceModelInstalled(edit.VoiceModelDir(), m) ? "  [OK]" : "") +
+                                          "  (" + std::to_string(m.bytes / (1024 * 1024)) + " MB)";
+                if (ImGui::Selectable(label.c_str(), chosen && chosen->id == m.id)) edit.voiceModel = W(m.id);
+            }
+            ImGui::EndCombo();
+        }
+        if (chosen && !VoiceModelInstalled(edit.VoiceModelDir(), *chosen)) {
+            const int pct = g_downloadPct;
+            if (pct >= 0) ImGui::ProgressBar(pct / 100.f, ImVec2(260, 0));
+            else if (ImGui::Button(U8(Tr(L"Download the model")).c_str())) StartModelDownload(*chosen);
+        }
+        ImGui::Checkbox(U8(Tr(L"Translate into English (whisper)")).c_str(), &edit.voiceTranslate);
+        ImGui::SetNextItemWidth(120);
+        ImGui::SliderInt(U8(Tr(L"Threads (0 = automatic: the cores GW2 does not use)") + L"##thr").c_str(), &edit.voiceThreads, 0, 8);
+        int boost = edit.voiceBoost;
+        const std::string boostNames[] = {U8(Tr(L"Off")), "+6 dB", "+12 dB", U8(Tr(L"Automatic"))};
+        ImGui::SetNextItemWidth(260);
+        if (ImGui::BeginCombo(U8(Tr(L"Microphone boost") + L"##boost").c_str(), boostNames[std::clamp(boost, 0, 3)].c_str())) {
+            for (int i = 0; i < 4; ++i)
+                if (ImGui::Selectable(boostNames[i].c_str(), i == boost)) edit.voiceBoost = i;
+            ImGui::EndCombo();
+        }
+        ImGui::Checkbox(U8(Tr(L"Send right after speaking (releasing the key counts as your Enter)")).c_str(), &edit.voiceAutoSend);
+        ImGui::TextDisabled("%s", U8(Tr(L"Push to talk: set the key in Nexus → Keybinds → GW2 Keyboard.")).c_str());
+    }
+
+    ImGui::Separator();
+    if (ImGui::Button(U8(Tr(L"Save")).c_str())) {
+        const std::wstring key = W(keyBuf);
+        if (edit.engine == Engine::DeepL) edit.deeplKey = key;
+        else if (edit.engine == Engine::Google) edit.googleKey = key;
+        else if (edit.engine == Engine::Microsoft) edit.msKey = key;
+        else if (edit.engine == Engine::Libre) edit.libreKey = key;
+        edit.msRegion = W(regionBuf);
+        edit.libreUrl = W(urlBuf);
+        edit.basicEmail = W(mailBuf);
+        edit.uiLang = EffectiveUiLang(edit.uiLangCode);
+        bool typingChanged, voiceChanged;
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            typingChanged = edit.writeIn != g_cfg.writeIn;
+            voiceChanged = edit.voiceEnabled != g_cfg.voiceEnabled;
+            g_cfg = edit;
+            g_cfg.SaveAll();
+            SetUiLang(g_cfg.uiLang);
+            g_translator = MakeTranslator(g_cfg);
+            g_sendIdx = 0;
+            SetStatus(Tr(L"Saved"), 3000);
+        }
+        if (typingChanged) g_worker.Post([] {  // spelling and learned words follow the language you write in
+            FreeWorkerState();
+            InitSpelling();
+        });
+        if (voiceChanged && edit.voiceEnabled && !g_voice.Running() &&
+            GetFileAttributesW(HelperExe().c_str()) != INVALID_FILE_ATTRIBUTES)
+            g_voice.Start(HelperExe(), edit.dataDir);
+        else if (g_voice.Running())
+            g_voice.Send("reload");
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(U8(Tr(L"Undo changes")).c_str())) loaded = false;
+    ImGui::TextDisabled("%s", U8(g_chatEventsLive ? Tr(L"Events: Chat delivers.")
+                                                  : Tr(L"Waiting for chat lines (Events: Chat or Unofficial Extras)")).c_str());
 }
 
 // Every callback runs behind these two: a C++ exception or an access violation ends our add-on, never the game.
@@ -1102,6 +1322,8 @@ void AddonUnload() {
             g_api->GUI_Deregister(SafeOptions);
         }
     }
+    g_downloadCancel = true;
+    if (g_download.joinable()) g_download.join();
     g_voice.Stop();  // the helper ends (it would also end by itself when its input closes)
     g_worker.Stop(FreeWorkerState);  // saved and freed on the worker (it owns them), before the DLL goes
     std::lock_guard<std::mutex> lock(g_mu);

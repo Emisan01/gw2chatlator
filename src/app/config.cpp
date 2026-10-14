@@ -392,6 +392,7 @@ void Config::Load(const std::wstring& dir) {
     voiceUnloadMin = ini.Int(L"Voice", L"UnloadMinutes", 10, 1, 240);
     voiceGlossary = ini.Bool(L"Voice", L"Glossary", true);
     voiceBoost = ini.Int(L"Voice", L"Boost", 0, 0, 3);
+    voiceAutoSend = ini.Bool(L"Voice", L"AutoSend", false);
     voiceActivation = ini.Bool(L"Voice", L"Activation", false);
     voiceGuard = ini.Int(L"Voice", L"ActivationGuard", 0, 0, 2);
     voicePauseMs = ini.Int(L"Voice", L"PauseMs", 1200, 400, 3000);
@@ -604,6 +605,7 @@ void Config::SaveAll() const {
     SaveValue(L"Voice", L"UnloadMinutes", std::to_wstring(voiceUnloadMin));
     SaveBool(L"Voice", L"Glossary", voiceGlossary);
     SaveValue(L"Voice", L"Boost", std::to_wstring(voiceBoost));
+    SaveBool(L"Voice", L"AutoSend", voiceAutoSend);
     SaveBool(L"Voice", L"Activation", voiceActivation);
     SaveValue(L"Voice", L"ActivationGuard", std::to_wstring(voiceGuard));
     SaveValue(L"Voice", L"PauseMs", std::to_wstring(voicePauseMs));
