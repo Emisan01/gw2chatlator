@@ -7,16 +7,16 @@ translated. A line goes into the chat only when you press Enter yourself.
 
 **[⬇ Download GW2 Keyboard for Nexus (ZIP)](https://github.com/Emisan01/gw2chatlator/releases/latest/download/GW2Keyboard-Nexus.zip)**
 – unpack it into your `Guild Wars 2\addons` folder (where [Nexus](https://raidcore.gg/Nexus) keeps its add-ons) and
-load **GW2 Keyboard** in Nexus. Checked by VirusTotal: [1.7.0 ZIP, 1 of 68 scanners](https://www.virustotal.com/gui/file/bc78358d9cbd2484f1e9e11ca5ce750cc770210f9b7f91ef527678268851442e)
-– only Rising's machine-learning guess ("AI"/RDML), common for new unsigned programs (SHA-256 `bc78358d…8851442e`).
+load **GW2 Keyboard** in Nexus (version 1.7.1).
 
 - **Every channel in your language:** map, whispers, guild, party, squad – foreign lines are translated as they come
   in; hover a line for the original, click a name to whisper back. The chat comes as exact text from **Events: Chat**
   by Vonsh, an add-on in the Nexus library – GW2 Keyboard installs it for you with one click if it is missing.
 - **Write in your language,** the chat gets the translation: you see it (and what it means in your language again)
   before Enter sends it. Translators: MyMemory (free), Google, Microsoft, DeepL, your own LibreTranslate server.
-- **Typing help that learns you:** grey completion from Windows' word prediction (Space or Tab takes it), three
-  suggestions from what you write, autocorrection like a phone keyboard, Backspace undoes it.
+- **Typing help that learns you:** grey completion from Windows' word prediction (Space writes it), three
+  suggestions from what you write (Tab picks one, Space writes it), autocorrection like a phone keyboard, Backspace
+  undoes it.
 - **Voice input – the first in the Nexus world:** hold the microphone (or your push-to-talk key, GW2 does not get it),
   right-click it to speak until a pause, or let voice activation listen. Recognition runs **on your PC** (whisper.cpp)
   in a small helper process on the CPU cores GW2 does not use – the game keeps its frames.

@@ -528,6 +528,8 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
         std::lock_guard<std::mutex> lock(g_mu);
         g_test.sentParts += static_cast<int>(parts.size());
         strncpy_s(g_test.lastSent, ToUtf8(parts.front()).c_str(), _TRUNCATE);
+        g_sending = false;  // as after a real send
+        g_history.push_front(typed);
         return;
     }
     {
@@ -1054,14 +1056,6 @@ int InputCallback(ImGuiInputTextCallbackData* d) {
             if (ch == ' ') return SpaceWrites() ? 1 : 0;  // the picked / grey word, then the space
             return 0;
         }
-        case ImGuiInputTextFlags_CallbackHistory: {  // Up / Down: what you sent
-            if (g_history.empty()) break;
-            if (d->EventKey == ImGuiKey_UpArrow) g_historyPos = std::min<int>(g_historyPos + 1, static_cast<int>(g_history.size()) - 1);
-            else if (d->EventKey == ImGuiKey_DownArrow) g_historyPos = std::max(g_historyPos - 1, -1);
-            d->DeleteChars(0, d->BufTextLen);
-            if (g_historyPos >= 0) d->InsertChars(0, U8(g_history[g_historyPos]).c_str());
-            break;
-        }
         case ImGuiInputTextFlags_CallbackAlways: {
             if (g_edit.active) {  // a word of the bar or an autocorrection
                 g_edit.active = false;
@@ -1238,8 +1232,15 @@ void RenderFooter() {  // g_mu held
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", UI(Tr(L"Send right after speaking (releasing the key counts as your Enter)")).c_str());
     }
-    const size_t n = CodePointCount(W(Flat(g_input)));
-    const std::string counter = std::to_string(n) + "/" + std::to_string(g_cfg.maxLength);
+    const std::wstring text = SanitizeChatText(W(Flat(g_input)));
+    const size_t n = CodePointCount(text);
+    std::string counter = std::to_string(n) + "/" + std::to_string(g_cfg.maxLength);
+    if (n > static_cast<size_t>(g_cfg.maxLength)) {  // sent as several chat lines
+        const bool current = g_previewGen == g_inputGen && !g_preview.empty();
+        const size_t parts = SplitForChat(Translating() && current ? g_preview : text, ComposePrefix(),
+                                          static_cast<size_t>(g_cfg.maxLength)).size();
+        counter += "  (" + std::to_string(parts) + "x)";
+    }
     ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - ImGui::CalcTextSize(counter.c_str()).x);
     ImGui::TextDisabled("%s", counter.c_str());
 }
@@ -1598,6 +1599,21 @@ void RenderWindow() {
                                       ImGuiInputTextFlags_CallbackAlways;
     const bool enter = ImGui::InputTextMultiline("##input", g_input, sizeof(g_input), boxSize, flags, InputCallback);
     const ImVec2 inputMin = ImGui::GetItemRectMin(), inputMax = ImGui::GetItemRectMax();
+    if (ImGui::IsItemActive() && !g_history.empty() && !g_edit.active) {
+        const bool up = ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_UpArrow));
+        const bool down = ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_DownArrow));
+        const std::wstring cur = W(Flat(g_input));
+        const bool browsing = cur.empty() || (g_historyPos >= 0 && g_historyPos < static_cast<int>(g_history.size()) &&
+                                              cur == g_history[g_historyPos]);
+        if ((up || down) && browsing) {
+            g_historyPos = up ? std::min<int>(g_historyPos + 1, static_cast<int>(g_history.size()) - 1)
+                              : std::max(g_historyPos - 1, -1);
+            g_edit.active = true;
+            g_edit.startByte = 0;
+            g_edit.lenBytes = std::strlen(g_input);
+            g_edit.insert = g_historyPos >= 0 ? U8(g_history[g_historyPos]) : std::string();
+        }
+    }
     if (const std::wstring rest = GhostRest(); !rest.empty() && ImGui::IsItemActive()) {  // what Space / Tab writes
         // In the line where the text ends (the box is its own child window: drawn on top, clipped to the box).
         const char* lastLine = std::strrchr(g_input, '\n');

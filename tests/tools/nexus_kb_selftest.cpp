@@ -119,6 +119,8 @@ int wmain(int argc, wchar_t** argv) {
         io.KeyMap[ImGuiKey_Enter] = VK_RETURN;
         io.KeyMap[ImGuiKey_Tab] = VK_TAB;
         io.KeyMap[ImGuiKey_Backspace] = VK_BACK;
+        io.KeyMap[ImGuiKey_UpArrow] = VK_UP;
+        io.KeyMap[ImGuiKey_DownArrow] = VK_DOWN;
         auto frames = [](int n) {
             for (int i = 0; i < n; ++i) {
                 Frame();
@@ -163,6 +165,16 @@ int wmain(int argc, wchar_t** argv) {
         frames(60);
         std::printf("Enter: %d part(s) recorded, input now %zu bytes\n", th->sentParts, std::strlen(th->input));
         ok = ok && th->sentParts >= 2 && std::strlen(th->input) == 0 && !std::strchr(th->lastSent, '\n');
+        // Up in the empty box brings the message back, Down empties it again.
+        *th->focus = true;
+        frames(3);
+        press(VK_UP);
+        frames(3);
+        const size_t recalled = std::strlen(th->input);
+        press(VK_DOWN);
+        frames(3);
+        std::printf("history: Up -> %zu bytes, Down -> %zu bytes\n", recalled, std::strlen(th->input));
+        ok = ok && recalled > 100 && std::strlen(th->input) == 0;
     }
     std::printf("unload\n");
     def->Unload();
