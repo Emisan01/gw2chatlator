@@ -27,16 +27,14 @@ std::wstring OwnUserSddl() {
     return sddl;
 }
 
-// Waits for an overlapped operation or the stop event. False = stopped or failed.
-bool Await(HANDLE pipe, OVERLAPPED& ov, HANDLE stop, DWORD* bytes) {
-    const HANDLE events[2] = {ov.hEvent, stop};
-    if (WaitForMultipleObjects(2, events, FALSE, INFINITE) != WAIT_OBJECT_0) {
-        CancelIoEx(pipe, &ov);
-        GetOverlappedResult(pipe, &ov, bytes, TRUE);
-        return false;
-    }
-    return GetOverlappedResult(pipe, &ov, bytes, FALSE) != FALSE;
-}
+// One pipe instance: waiting for a sender, or reading from it.
+struct Slot {
+    HANDLE pipe = INVALID_HANDLE_VALUE;
+    OVERLAPPED ov{};
+    bool reading = false;  // false: waiting for a connection
+    char buf[4096];
+    std::string pending;   // bytes of a line not yet complete
+};
 
 }  // namespace
 
@@ -65,55 +63,125 @@ void BridgePipe::Run() {
         !ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl.c_str(), SDDL_REVISION_1, &sd, nullptr))
         return;  // without a user-only DACL no pipe at all
     SECURITY_ATTRIBUTES sa{sizeof(sa), sd, FALSE};
-    OVERLAPPED ov{};
-    ov.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+    Slot slots[kMaxClients];
+    for (Slot& s : slots) s.ov.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+    bool own = false;  // the name is ours: the first instance was created with FIRST_PIPE_INSTANCE
 
-    while (ov.hEvent && WaitForSingleObject(stop_, 0) != WAIT_OBJECT_0) {
-        // FIRST_PIPE_INSTANCE: if another process (or the other program of ours) holds the name, we wait and retry.
-        HANDLE pipe = CreateNamedPipeW(kBridgePipeName,
-                                       PIPE_ACCESS_INBOUND | FILE_FLAG_OVERLAPPED | FILE_FLAG_FIRST_PIPE_INSTANCE,
-                                       PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS,
-                                       1, 0, 64 * 1024, 0, &sa);
-        if (pipe == INVALID_HANDLE_VALUE) {
-            WaitForSingleObject(stop_, 5000);
+    auto post = [&](WORD kind, int conn, LPARAM lp) {
+        return PostMessageW(target_, msg_, MAKEWPARAM(kind, conn), lp) != FALSE;
+    };
+    // Waits for the next sender on this slot (a new instance if it has none).
+    auto listen = [&](int i) {
+        Slot& s = slots[i];
+        s.reading = false;
+        s.pending.clear();
+        if (s.pipe == INVALID_HANDLE_VALUE) {
+            // FIRST_PIPE_INSTANCE: if another process holds the name, nothing is created (retried later).
+            s.pipe = CreateNamedPipeW(kBridgePipeName,
+                                      PIPE_ACCESS_INBOUND | FILE_FLAG_OVERLAPPED | (own ? 0 : FILE_FLAG_FIRST_PIPE_INSTANCE),
+                                      PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS,
+                                      kMaxClients, 0, 64 * 1024, 0, &sa);
+            if (s.pipe == INVALID_HANDLE_VALUE) return false;
+            own = true;
+        }
+        ResetEvent(s.ov.hEvent);
+        if (ConnectNamedPipe(s.pipe, &s.ov)) {
+            SetEvent(s.ov.hEvent);
+        } else {
+            const DWORD err = GetLastError();
+            if (err == ERROR_PIPE_CONNECTED) SetEvent(s.ov.hEvent);  // connected between create and connect
+            else if (err != ERROR_IO_PENDING) return false;
+        }
+        return true;
+    };
+    auto read = [&](int i) {
+        Slot& s = slots[i];
+        s.reading = true;
+        ResetEvent(s.ov.hEvent);
+        if (!ReadFile(s.pipe, s.buf, sizeof(s.buf), nullptr, &s.ov) && GetLastError() != ERROR_IO_PENDING) return false;
+        return true;  // done or pending: the event tells
+    };
+    auto drop = [&](int i, bool wasConnected) {
+        Slot& s = slots[i];
+        CancelIoEx(s.pipe, &s.ov);
+        DWORD n = 0;
+        GetOverlappedResult(s.pipe, &s.ov, &n, TRUE);
+        DisconnectNamedPipe(s.pipe);
+        if (wasConnected) post(kDisconnected, i, 0);
+        s.reading = false;
+    };
+
+    std::vector<HANDLE> waits;
+    std::vector<int> index;
+    while (WaitForSingleObject(stop_, 0) != WAIT_OBJECT_0) {
+        // Every slot waits for a sender or reads; a slot without an instance tries again on the next round.
+        waits.assign(1, stop_);
+        index.assign(1, -1);
+        for (int i = 0; i < kMaxClients; ++i) {
+            Slot& s = slots[i];
+            if (!s.ov.hEvent) continue;
+            if (s.pipe == INVALID_HANDLE_VALUE && !listen(i)) continue;
+            waits.push_back(s.ov.hEvent);
+            index.push_back(i);
+        }
+        const DWORD r = WaitForMultipleObjects(static_cast<DWORD>(waits.size()), waits.data(), FALSE,
+                                               waits.size() > 1 ? INFINITE : 5000);  // no instance yet: retry
+        if (r == WAIT_OBJECT_0 || r == WAIT_TIMEOUT || r == WAIT_FAILED) continue;
+        const int i = index[r - WAIT_OBJECT_0];
+        Slot& s = slots[i];
+        DWORD n = 0;
+        const bool ok = GetOverlappedResult(s.pipe, &s.ov, &n, FALSE) != FALSE;
+        if (!s.reading) {  // a sender connected
+            if (!ok) {
+                drop(i, false);
+                if (!listen(i)) {
+                    CloseHandle(s.pipe);
+                    s.pipe = INVALID_HANDLE_VALUE;
+                }
+                continue;
+            }
+            post(kConnected, i, 0);
+            if (!read(i)) {
+                drop(i, true);
+                listen(i);
+            }
             continue;
         }
-        ResetEvent(ov.hEvent);
-        DWORD n = 0;
-        bool connected = ConnectNamedPipe(pipe, &ov) != FALSE;
-        if (!connected) {
-            const DWORD err = GetLastError();
-            connected = err == ERROR_PIPE_CONNECTED || (err == ERROR_IO_PENDING && Await(pipe, ov, stop_, &n));
-        }
-        if (connected) {
-            PostMessageW(target_, msg_, kConnected, 0);
-            std::string pending;
-            char buf[4096];
-            for (;;) {
-                ResetEvent(ov.hEvent);
-                n = 0;
-                BOOL ok = ReadFile(pipe, buf, sizeof(buf), &n, &ov);
-                if (!ok && (GetLastError() != ERROR_IO_PENDING || !Await(pipe, ov, stop_, &n))) break;
-                if (ok && !GetOverlappedResult(pipe, &ov, &n, FALSE)) break;
-                if (n == 0) continue;
-                pending.append(buf, n);
-                size_t nl;
-                while ((nl = pending.find('\n')) != std::string::npos) {
-                    BridgeMessage m;
-                    if (DecodeBridgeMessage(pending.substr(0, nl), m)) {
-                        auto* copy = new BridgeMessage(std::move(m));
-                        if (!PostMessageW(target_, msg_, kMessage, reinterpret_cast<LPARAM>(copy))) delete copy;
-                    }
-                    pending.erase(0, nl + 1);
-                }
-                if (pending.size() > kBridgeMaxLine) pending.clear();  // garbage without line ends
+        if (!ok) {  // the sender went away
+            drop(i, true);
+            if (!listen(i)) {
+                CloseHandle(s.pipe);
+                s.pipe = INVALID_HANDLE_VALUE;
             }
-            PostMessageW(target_, msg_, kDisconnected, 0);
+            continue;
         }
-        DisconnectNamedPipe(pipe);
-        CloseHandle(pipe);
+        s.pending.append(s.buf, n);
+        size_t nl;
+        while ((nl = s.pending.find('\n')) != std::string::npos) {
+            BridgeMessage m;
+            if (DecodeBridgeMessage(s.pending.substr(0, nl), m)) {
+                auto* copy = new BridgeMessage(std::move(m));
+                if (!post(kMessage, i, reinterpret_cast<LPARAM>(copy))) delete copy;
+            }
+            s.pending.erase(0, nl + 1);
+        }
+        if (s.pending.size() > kBridgeMaxLine) s.pending.clear();  // garbage without line ends
+        if (!read(i)) {
+            drop(i, true);
+            listen(i);
+        }
     }
-    if (ov.hEvent) CloseHandle(ov.hEvent);
+    for (int i = 0; i < kMaxClients; ++i) {
+        Slot& s = slots[i];
+        if (s.pipe != INVALID_HANDLE_VALUE) {
+            CancelIoEx(s.pipe, &s.ov);
+            DWORD n = 0;
+            GetOverlappedResult(s.pipe, &s.ov, &n, TRUE);
+            DisconnectNamedPipe(s.pipe);
+            CloseHandle(s.pipe);
+        }
+        if (s.ov.hEvent) CloseHandle(s.ov.hEvent);
+    }
     LocalFree(sd);
 }
 

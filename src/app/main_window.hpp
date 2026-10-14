@@ -204,7 +204,7 @@ private:
     // ---- incoming
     void OnSnapshot(ReaderSnapshot* snap);
     // Party/squad lines from the optional Nexus add-on (exact text from Unofficial Extras, docs/NEXUS_PLAN.md).
-    void OnBridge(WPARAM kind, BridgeMessage* msg);
+    void OnBridge(WPARAM wp, BridgeMessage* msg);
     // The bridge delivers party/squad: OCR lines of these channels are dropped so nothing comes twice.
     bool BridgeCarriesParty() const { return cfg_.bridgeRead && bridgeConnected_ && bridgeLines_ > 0; }
     void HandleIncoming(const ChatMessage& m);

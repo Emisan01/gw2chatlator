@@ -26,17 +26,27 @@ int IntOf(const JsonValue& v, const char* key, int def) {
     return x && x->type == JsonValue::Type::Number ? static_cast<int>(x->n) : def;
 }
 
+std::string SourceOf(const std::string& s) { return s == "ocr" ? "ocr" : "extras"; }
+
 }  // namespace
+
+bool IsBridgeChannel(const std::string& c) {
+    return c == "party" || c == "squad" || c == "map" || c == "say" || c == "whisper" || c == "guild" || c == "team" ||
+           c == "system";
+}
 
 std::string EncodeBridgeMessage(const BridgeMessage& m) {
     std::string out = "{\"v\":" + std::to_string(kBridgeProtocol);
     if (m.kind == BridgeMessage::Kind::Hello) {
         out += ",\"t\":\"hello\"";
+        Field(out, "src", SourceOf(m.src));
         Field(out, "addon", CutUtf8(m.addonVersion, 32));
         out += m.extras ? ",\"ex\":true" : ",\"ex\":false";
     } else {
         out += ",\"t\":\"chat\"";
-        Field(out, "ch", m.channel == "squad" ? "squad" : "party");
+        Field(out, "src", SourceOf(m.src));
+        Field(out, "ch", IsBridgeChannel(m.channel) ? m.channel : std::string());
+        if (m.outgoing) out += ",\"out\":true";
         out += ",\"sub\":" + std::to_string(m.subgroup >= 0 && m.subgroup < 15 ? m.subgroup : -1);
         out += m.broadcast ? ",\"bc\":true" : ",\"bc\":false";
         Field(out, "time", CutUtf8(m.time, 40));
@@ -58,6 +68,7 @@ bool DecodeBridgeMessage(const std::string& line, BridgeMessage& out) {
     if (!ParseJson(s, v) || !v.IsObject()) return false;
     if (IntOf(v, "v", 0) != kBridgeProtocol) return false;
     BridgeMessage m;
+    m.src = SourceOf(v.GetString("src"));
     const std::string t = v.GetString("t");
     if (t == "hello") {
         m.kind = BridgeMessage::Kind::Hello;
@@ -66,7 +77,10 @@ bool DecodeBridgeMessage(const std::string& line, BridgeMessage& out) {
     } else if (t == "chat") {
         m.kind = BridgeMessage::Kind::Chat;
         m.channel = v.GetString("ch");
-        if (m.channel != "party" && m.channel != "squad") return false;
+        if (!IsBridgeChannel(m.channel)) m.channel.clear();
+        // The add-on only ever reports party/squad: anything else from it is not believed.
+        if (m.src == "extras" && m.channel != "party" && m.channel != "squad") return false;
+        m.outgoing = v.GetBool("out");
         m.subgroup = IntOf(v, "sub", -1);
         if (m.subgroup < -1 || m.subgroup >= 15) m.subgroup = -1;
         m.broadcast = v.GetBool("bc");

@@ -45,6 +45,10 @@
 #define MOD_NOREPEAT 0x4000
 #endif
 
+#ifndef WDA_EXCLUDEFROMCAPTURE
+#define WDA_EXCLUDEFROMCAPTURE 0x00000011
+#endif
+
 namespace gct {
 
 struct KbdTranslatedMsg {
@@ -609,7 +613,6 @@ void KeyboardWindow::Paint() {
         for (IncomingLine& l : incoming_) {
             l.rect = {m.pad, y, rc.right - m.pad, y + t.smallLineHeight};
             y += t.smallLineHeight;
-            if (!cfg_.bridgeRead) continue;
             const std::wstring name = l.speaker + L": ";
             SelectObject(dc, t.fontSmall);
             SIZE sz{};
@@ -619,7 +622,7 @@ void KeyboardWindow::Paint() {
             tr.left = std::min<LONG>(tr.right, tr.left + sz.cx);
             const bool translated = !l.translated.empty() && !l.showOriginal;
             const std::wstring body = translated ? l.translated : l.text;
-            DrawLine(dc, body, tr, ChannelColorRef(cfg_.palette, l.squad ? Channel::Squad : Channel::Party, Theme::kText),
+            DrawLine(dc, body, tr, ChannelColorRef(cfg_.palette, l.channel, Theme::kText),
                      t.fontSmall, DT_LEFT | DT_END_ELLIPSIS | (IsRtlText(body) ? DT_RTLREADING : 0));
         }
     }
@@ -1427,34 +1430,97 @@ void KeyboardWindow::StartTranslation() {
 }
 
 int KeyboardWindow::IncomingHeight() const {
-    if (!cfg_.bridgeRead || incoming_.empty()) return 0;
+    if (incoming_.empty()) return 0;
     return static_cast<int>(incoming_.size()) * theme_.smallLineHeight + theme_.S(4);
 }
 
-void KeyboardWindow::OnBridge(WPARAM kind, BridgeMessage* raw) {
+bool KeyboardWindow::ExtrasLive() const {
+    for (const BridgeConn& c : bridgeConns_)
+        if (c.connected && c.src == "extras" && c.extras) return true;
+    return false;
+}
+
+bool KeyboardWindow::ReaderConnected() const {
+    for (const BridgeConn& c : bridgeConns_)
+        if (c.connected && c.src == "ocr") return true;
+    return false;
+}
+
+// While the OCR reader is connected our window must never end up in its pictures (invariant 5) – unless you asked
+// for screenshots of it (then readings of our own lines are dropped in OnBridge).
+void KeyboardWindow::UpdateCaptureExclusion() {
+    const bool hide = ReaderConnected() && !cfg_.showOnScreenshots;
+    if (hide == excludedFromCapture_) return;
+    if (SetWindowDisplayAffinity(hwnd_, hide ? WDA_EXCLUDEFROMCAPTURE : WDA_NONE) || !hide) excludedFromCapture_ = hide;
+}
+
+namespace {
+Channel ChannelOfBridge(const std::string& c) {
+    if (c == "party") return Channel::Party;
+    if (c == "squad") return Channel::Squad;
+    if (c == "map") return Channel::Map;
+    if (c == "say") return Channel::Say;
+    if (c == "whisper") return Channel::Whisper;
+    if (c == "guild") return Channel::Guild;
+    if (c == "team") return Channel::Team;
+    if (c == "system") return Channel::System;
+    return Channel::Unknown;
+}
+}  // namespace
+
+void KeyboardWindow::OnBridge(WPARAM wp, BridgeMessage* raw) {
     std::unique_ptr<BridgeMessage> msg(raw);
+    const WORD kind = BridgePipe::KindOf(wp);
+    const int connId = BridgePipe::ConnectionOf(wp);
+    if (connId < 0 || connId >= BridgePipe::kMaxClients) return;
+    BridgeConn& conn = bridgeConns_[connId];
     if (kind == BridgePipe::kConnected || kind == BridgePipe::kDisconnected) {
-        bridgeConnected_ = kind == BridgePipe::kConnected;
-        if (!bridgeConnected_) bridgeExtras_ = false;
+        conn = BridgeConn{};
+        conn.connected = kind == BridgePipe::kConnected;
+        UpdateCaptureExclusion();
         return;
     }
-    if (!msg || !cfg_.bridgeRead) return;
+    if (!msg) return;
+    const bool fromReader = msg->src == "ocr";
     if (msg->kind == BridgeMessage::Kind::Hello) {
-        bridgeExtras_ = msg->extras;
-        if (msg->extras)
+        conn.src = msg->src;
+        conn.extras = msg->extras;
+        UpdateCaptureExclusion();
+        if (fromReader)
+            SetStatus(Tr(L"Chat reader connected: what it reads in the chat area arrives here"), Tone::Ok, 6000);
+        else if (!cfg_.bridgeRead)
+            return;
+        else if (msg->extras)
             SetStatus(Tr(L"Nexus bridge connected: party and squad chat arrive as exact text"), Tone::Ok, 6000);
         else
             SetStatus(Tr(L"Nexus bridge connected – Unofficial Extras is missing: Nexus → Addons → GW2 Chat Bridge installs it"),
                       Tone::Warn, 10000);
         return;
     }
+    if (!fromReader && !cfg_.bridgeRead) return;  // party/squad from the add-on switched off
     IncomingLine l;
     l.id = incomingNextId_++;
-    l.squad = msg->channel == "squad";
+    l.channel = ChannelOfBridge(msg->channel);
     l.speaker = SanitizeChatText(FromUtf8(msg->character));
     l.text = SanitizeChatText(FromUtf8(msg->text));
     l.tick = GetTickCount64();
     if (l.text.empty()) return;
+    const ULONGLONG now = l.tick;
+    while (!recentExact_.empty() && now - recentExact_.front().tick > 30000) recentExact_.pop_front();
+    if (fromReader) {
+        // Party/squad come exactly from the add-on: the reader's reading of them is dropped (docs/READER_PLAN.md) –
+        // by channel, and by text in case the colour put the line into another channel.
+        if (ExtrasLive() && (l.channel == Channel::Party || l.channel == Channel::Squad)) return;
+        for (const RecentLine& r : recentExact_)
+            if (DiceSimilarity(l.text, r.text) >= 0.8) return;
+        if (msg->outgoing) return;  // "To Name: ..." – your own whisper
+        for (const IncomingLine& shown : incoming_)  // our own band read back (screenshots allowed)
+            if (!shown.translated.empty() && DiceSimilarity(l.text, shown.translated) >= 0.8) return;
+        for (auto it = sentLog_.rbegin(); it != sentLog_.rend() && it != sentLog_.rbegin() + 20; ++it)
+            if (DiceSimilarity(l.text, it->sent) >= 0.8) return;  // a line you sent from here
+    } else {
+        recentExact_.push_back({l.text, now});
+    }
     const std::wstring& own = mumbleState_.identity.name;
     if (!own.empty() && CaseFold(Trim(l.speaker)) == CaseFold(own)) return;  // your own line: you know it
     incoming_.push_back(std::move(l));
@@ -2911,6 +2977,7 @@ void KeyboardWindow::ApplySettings(const Config& next) {
         sendIdx_ = cfg_.translateWriting ? std::min<size_t>(sendIdx_ >= sendLangs_.size() ? 0 : sendIdx_, sendLangs_.size())
                                          : sendLangs_.size();
     if (prev.writeIn != cfg_.writeIn) ApplyTypingLanguage();
+    if (prev.showOnScreenshots != cfg_.showOnScreenshots) UpdateCaptureExclusion();
     if (prev.bridgeRead != cfg_.bridgeRead) {  // party/squad lines switched on or off
         incoming_.clear();
         Layout();
@@ -3105,7 +3172,7 @@ LRESULT KeyboardWindow::Handle(UINT msg, WPARAM wp, LPARAM lp) {
             OnBridge(wp, reinterpret_cast<BridgeMessage*>(lp));
             return 0;
         case WM_LBUTTONDOWN:
-            if (cfg_.bridgeRead) {  // a click on a party/squad line: original <-> translation
+            {  // a click on an incoming line: original <-> translation
                 const POINT pt{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)};
                 for (IncomingLine& l : incoming_) {
                     if (!PtInRect(&l.rect, pt)) continue;
