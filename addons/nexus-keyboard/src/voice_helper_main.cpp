@@ -1,7 +1,7 @@
-// voice_helper_main.cpp — gw2kb_voice.exe, the voice helper of GW2 Keyboard for Nexus (docs/NEXUS_KEYBOARD_PLAN.md).
+// voice_helper_main.cpp — gw2kb_voice.exe, the voice helper of GW2 Keyboard for Nexus.
 //
 // The add-on lives in the game process; whisper (a model of several hundred MB, several threads) does not belong
-// there. This small process runs the exe's VoiceSession: the microphone, the speech gate, whisper on the least busy
+// there. This small process runs the VoiceSession: the microphone, the speech gate, whisper on the least busy
 // cores below normal priority (its own process affinity – never the game's). It talks to the add-on through its
 // standard input and output only:
 //   in  (one command per line): begin | begin-auto (a pause ends it) | end | cancel | listen | stop-listen | reload | quit
@@ -83,7 +83,7 @@ std::string Str(const char* key, const std::wstring& value) {
     return std::string(",\"") + key + "\":\"" + JsonEscape(ToUtf8(value)) + "\"";
 }
 
-// The exe's BuildVoiceSettings without its window: model, language, cores, microphone.
+// The voice settings: model, language, cores, microphone.
 bool BuildSettings(VoiceSettings* s, std::wstring* why) {
     const VoiceCatalog catalog = LoadVoiceCatalog(g_cfg.dataDir);
     const VoiceModelInfo* m = catalog.Find(ToUtf8(g_cfg.voiceModel));

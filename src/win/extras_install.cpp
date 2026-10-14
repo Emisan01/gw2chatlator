@@ -8,10 +8,6 @@
 #include "core/text.hpp"
 #include "win/http.hpp"
 
-#ifndef GCT_BRIDGE_DLL
-#include "win/gw2_locate.hpp"
-#endif
-
 namespace gct {
 namespace {
 
@@ -20,9 +16,6 @@ struct ReleaseSource {
     const char* downloadPrefix;  // the only place the file may come from
     const wchar_t* asset;        // its file name
 };
-constexpr ReleaseSource kExtras{L"/repos/Krappa322/arcdps_unofficial_extras_releases/releases/latest",
-                                "https://github.com/Krappa322/arcdps_unofficial_extras_releases/releases/download/",
-                                kExtrasDllName};
 constexpr ReleaseSource kChatEvents{L"/repos/jsantorek/GW2-Chat/releases/latest",
                                     "https://github.com/jsantorek/GW2-Chat/releases/download/", kChatEventsDllName};
 
@@ -80,28 +73,8 @@ static ExtrasInstallResult InstallFromRelease(const ReleaseSource& src, const st
                                 [&](uint64_t, uint64_t) { return !(cancelled && cancelled()); });
 }
 
-ExtrasInstallResult InstallUnofficialExtras(const std::wstring& addonsDir, const std::function<bool()>& cancelled) {
-    return InstallFromRelease(kExtras, addonsDir, cancelled);
-}
-
 ExtrasInstallResult InstallChatEvents(const std::wstring& addonsDir, const std::function<bool()>& cancelled) {
     return InstallFromRelease(kChatEvents, addonsDir, cancelled);
 }
-
-#ifndef GCT_BRIDGE_DLL
-std::wstring Gw2AddonsDir() {
-    const std::wstring dir = FindGw2Dir();
-    if (dir.empty()) return {};
-    std::wstring addons = dir;
-    if (addons.back() != L'\\' && addons.back() != L'/') addons += L'\\';
-    addons += L"addons\\";
-    return GetFileAttributesW(addons.c_str()) != INVALID_FILE_ATTRIBUTES ? addons : std::wstring();
-}
-
-std::wstring BridgeInPackage() {
-    const std::wstring p = CurrentExeDir() + L"\\nexus\\" + kBridgeDllName;
-    return GetFileAttributesW(p.c_str()) != INVALID_FILE_ATTRIBUTES ? p : std::wstring();
-}
-#endif
 
 }  // namespace gct

@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include "../../addons/nexus/src/chat_events.hpp"
+#include "../../addons/nexus-keyboard/src/chat_events.hpp"
 #include "imgui/imgui.h"
 #include "nexus/Nexus.h"
 

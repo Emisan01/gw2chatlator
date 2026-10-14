@@ -1,7 +1,6 @@
-// extras_install.hpp — installs arcdps "Unofficial Extras" (Krappa322) the way the Nexus library installs add-ons:
-// the newest GitHub release, only arcdps_unofficial_extras.dll from that repository, checked against the SHA-256
-// GitHub reports, into <GW2>\addons (Nexus loads it and hands it to ArcDPS). Only ever on the user's click.
-// Used by GW2 Keyboard (Settings → General) and by the Nexus add-on GW2 Chat Bridge (its options page).
+// extras_install.hpp — loads add-on files the way the Nexus library does: an asset of a GitHub release, checked
+// against the SHA-256 GitHub reports for it. Used by GW2 Keyboard for Nexus for Vonsh's "Events: Chat" (into
+// <GW2>\addons, Nexus loads it) and for its own voice module (voice_module.cpp).
 #pragma once
 
 #include <cstdint>
@@ -10,8 +9,6 @@
 
 namespace gct {
 
-constexpr const wchar_t* kExtrasDllName = L"arcdps_unofficial_extras.dll";
-constexpr const wchar_t* kExtrasPage = L"https://github.com/Krappa322/arcdps_unofficial_extras_releases";
 // Vonsh's "Events: Chat" (in the Nexus library): every chat channel as a Nexus event.
 constexpr const wchar_t* kChatEventsDllName = L"Events_Chat.dll";
 constexpr const wchar_t* kChatEventsPage = L"https://github.com/jsantorek/GW2-Chat";
@@ -24,21 +21,14 @@ struct ExtrasInstallResult {
     uint64_t bytes = 0;   // size of the file (known once the release was read)
 };
 
-// Blocking (call it on a worker thread). `addonsDir` ends with a backslash. `cancelled` may be empty.
-ExtrasInstallResult InstallUnofficialExtras(const std::wstring& addonsDir, const std::function<bool()>& cancelled);
-// The same for "Events: Chat" (newest release of jsantorek/GW2-Chat, Events_Chat.dll, SHA-256 checked).
+// The newest release of jsantorek/GW2-Chat, Events_Chat.dll, SHA-256 checked, into `addonsDir` (ends with a
+// backslash). Blocking (call it on a worker thread). `cancelled` may be empty.
 ExtrasInstallResult InstallChatEvents(const std::wstring& addonsDir, const std::function<bool()>& cancelled);
+
 // One asset of a GitHub release (`releaseApiPath` e.g. "/repos/o/r/releases/latest") into `dest`: only from
 // `downloadPrefix`, only with the SHA-256 GitHub reports for it. `progress` returns false to cancel. Blocking.
 ExtrasInstallResult DownloadReleaseAsset(const std::wstring& releaseApiPath, const char* downloadPrefix,
                                          const std::wstring& asset, const std::wstring& dest,
                                          const std::function<bool(uint64_t done, uint64_t total)>& progress);
-
-// <GW2>\addons\ of the installed game (registry / Steam / usual folders, never the game process), empty if none.
-std::wstring Gw2AddonsDir();
-
-// Our Nexus add-on as it comes with the program package: <exe folder>\nexus\gw2chat_bridge.dll (empty if absent).
-constexpr const wchar_t* kBridgeDllName = L"gw2chat_bridge.dll";
-std::wstring BridgeInPackage();
 
 }  // namespace gct
