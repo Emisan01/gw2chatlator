@@ -43,6 +43,10 @@ src/core  portable logic, NO windows.h  text, json, i18n (+ i18n_de / i18n_ar ta
 res/      app.rc (icon id 1, manifest: common controls v6, version info), app.ico (Kassiopeia sketch, drawn by
           tools/make_icon.py – a placeholder, a finished icon will follow), app.manifest
 tools/    i18n_check.py (missing/unused translations), make_icon.py (draws app.ico; Pillow)
+addons/nexus  GW2 Chat Bridge, the OPTIONAL Nexus add-on (separate download, lives in the game process): only
+          subscribes to EV_UNOFFICIAL_EXTRAS_CHAT_MESSAGE (Raidcore ArcDPS Integration relay) and writes party/squad
+          lines as JSON lines (core/bridge_protocol) into the pipe GW2ChatBridge; never sends, never reads the
+          pipe. Pinned MIT headers in third_party/. Plan + receiver phases: docs/NEXUS_PLAN.md
 ```
 
 - `core` must compile on Linux: `g++ -std=c++17 -I src tests/core_tests.cpp src/core/*.cpp` (run from the repo

@@ -7,6 +7,9 @@ only when you press Enter yourself.
 
 **[⬇ Download GW2 Keyboard (Windows, ZIP, ~6 MB)](https://github.com/Emisan01/gw2chatlator/releases/latest/download/GW2Keyboard-win64.zip)**
 – unpack it anywhere and start `GW2Keyboard.exe` (Settings → Game & start installs it for your Windows user).
+Checked by VirusTotal: [1.5.0 ZIP, 0 of 68 scanners](https://www.virustotal.com/gui/file/a03b7e10d700ccc7d58fe896041699703dc6f4de4f42ce9f1f5af7d8debb88f9)
+(SHA-256 `a03b7e10…debb88f9`). The program is not code-signed, so Windows SmartScreen may warn on the first start
+("More info → Run anyway").
 
 - **Write in your language, the chat gets it translated** – the translation above the input box and, small, what it
   means in your language again. Translators: MyMemory (free), Google, Microsoft, DeepL, your own server, an AI model
