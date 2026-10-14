@@ -23,9 +23,9 @@ GW2 Chat Translator – third-party components shipped with the program
    Licence: MIT, Copyright (c) 2022 OpenAI – https://github.com/openai/whisper/blob/main/LICENSE
    The files are checked against their SHA-256 before they are used.
 
-5. Only in the optional Nexus add-on GW2 Chat Bridge (gw2chat_bridge.dll), compiled in as headers:
+5. In GW2 Keyboard for Nexus (gw2keyboard_nexus.dll) and the Nexus add-on GW2 Chat Bridge, compiled in:
    Nexus API header (Nexus.h), Copyright (c) 2023 Raidcore.GG – https://github.com/RaidcoreGG/RCGG-lib-nexus-api
-   arcdps Unofficial Extras API headers, Copyright (c) 2021 Kappa322 –
+   arcdps Unofficial Extras API headers (GW2 Chat Bridge only), Copyright (c) 2021 Kappa322 –
    https://github.com/Krappa322/arcdps_unofficial_extras_releases
    Dear ImGui 1.80, Copyright (c) 2014-2021 Omar Cornut – https://github.com/ocornut/imgui
    Licence: MIT (full texts in addons/nexus/third_party of the source code)
