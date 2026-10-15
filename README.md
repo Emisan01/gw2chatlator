@@ -7,13 +7,19 @@ Nexus add-on, right inside the game. A line goes into the chat only when you pre
 
 Put the DLL into your `Guild Wars 2\addons` folder (where [Nexus](https://raidcore.gg/Nexus) keeps its add-ons) and
 load **GW2 Keyboard** in Nexus – that is all: on the first start it loads Events: Chat, its voice module and a small
-voice model by itself. SHA-256 `24127b74…eaabbe58` ·
+voice model by itself. SHA-256 `87948f6b…b46f9c67` ·
 [the same with the voice module already inside (ZIP)](https://github.com/Emisan01/gw2chatlator/releases/latest/download/GW2Keyboard-Nexus.zip)
 · all versions: [Releases](https://github.com/Emisan01/gw2chatlator/releases) · what changed: [CHANGELOG.md](CHANGELOG.md).
 
 Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustotal.com/gui/file/24127b749fc15c3d4afa630a5c7e19b0f3e7001ead8f331637445a80eaabbe58).
 
-> **New in 1.8** – the keyboard that stays in the background until it is needed:
+> **New in 1.8.1** – clean chat codes via Decoder Ring & honest fallback:
+> chat messages parsed with `ChatLinks::SegmentLine` ·
+> item, skill, trait, recipe, waypoint and build tooltips via Decoder Ring (rarity colours, stats, descriptions, icons) ·
+> removed synthetic mouse-drag map focus ·
+> click copies the link code (`[&...]`) directly to the clipboard, Shift+click inserts it into your message.
+
+> **In 1.8.0** – the keyboard that stays in the background until it is needed:
 > tick the languages you understand – only French, Spanish … is translated by itself, a click translates any line ·
 > a click on a name opens a whisper tab that **answers in that player's language** · **item tooltips like the game's**
 > (food effects with duration, weapon and armour stats, rune bonuses, crafting discipline) in your game's language ·
@@ -39,9 +45,9 @@ Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustot
   text from **Events: Chat** by Vonsh, an add-on in the Nexus library.
 - **A chat window built like GW2's own:** tabs at the top – the chat and up to five whisper tabs (click a name, or
   right-click the header to open one); fold it up to its header (V) and open it again (A); it snaps to the screen edges
-  and appears only on a map, never on the character screen. Waypoints show their name and map – a click opens the
-  world map on the spot. Item links show as the game shows them – the name in its
-  rarity colour, icon, type and description on mouse-over; web links open only after a question.
+  and appears only on a map, never on the character screen. Waypoints and items show their name, map and details on
+  mouse-over via Decoder Ring; a click copies the code (`[&...]`) to your clipboard, Shift+click puts it into your message.
+  Web links open only after a question.
 - **Write in your language,** the chat gets the translation: you see it (and what it means in your language again)
   before Enter sends it. Longer than one chat line: split into several. Translators: MyMemory (free), Google,
   Microsoft, DeepL, your own LibreTranslate server.
@@ -116,8 +122,7 @@ why GW2 Keyboard works like this:
 
 **Text goes only to the translator you chose,** and only while translation is switched on – that includes the chat
 lines of other players you translate. MyMemory is a public translation memory that may store what it receives. API
-keys are stored encrypted for your Windows account. Item names come from the public GW2 API (only the item's number is
-sent).
+keys are stored encrypted for your Windows account. Item and waypoint names are resolved locally or cached via Decoder Ring.
 
 **What it learns stays local.** It learns only from the messages *you* send, never from other players' chat.
 Options → Writing → *Delete everything learned* starts from scratch.
