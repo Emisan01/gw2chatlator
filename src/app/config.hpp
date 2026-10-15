@@ -44,6 +44,7 @@ struct Config {
     bool translateWriting = true;  // GW2 Keyboard: translate what you write (off: sent as written, only corrected)
     ChannelMask autoTranslate = DefaultAutoTranslate();  // translated without a click (others: click a line)
     std::vector<std::wstring> understoodLangs;            // never translated automatically ("EN"); plus readLang
+    bool skipTypingLang = true;                           // chat lines in the language you type in are not translated automatically
     int debounceMs = 500;
 
     // [Basic] MyMemory

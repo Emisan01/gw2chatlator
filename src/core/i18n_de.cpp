@@ -113,6 +113,8 @@ extern const I18nEntry kGermanStrings[] = {
      L"Devanagari"},
 {L"Do not learn",
      L"Nicht lernen"},
+{L"Do not translate the language I write in",
+     L"Sprache, in der ich schreibe, nicht übersetzen"},
 {L"Download cancelled.",
      L"Download abgebrochen."},
 {L"Download failed (HTTP {1}).",

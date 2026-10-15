@@ -113,6 +113,8 @@ extern const I18nEntry kArabicStrings[] = {
      L"الديفاناغارية"},
 {L"Do not learn",
      L"لا تتعلم"},
+{L"Do not translate the language I write in",
+     L"عدم ترجمة اللغة التي أكتب بها"},
 {L"Download cancelled.",
      L"أُلغي التنزيل."},
 {L"Download failed (HTTP {1}).",
