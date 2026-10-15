@@ -516,6 +516,7 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked = false) {
     std::shared_ptr<Translator> tr;
     std::wstring target;
     std::vector<std::wstring> understood;
+    bool skipTyping = true;
     ProtectedText p = ProtectForTranslation(text, nullptr, g_spell ? &g_spell->KeepWords() : &BuiltinKeepWords());
     if (!HasTranslatableText(p.segments)) return;
     std::wstring detected = SureLanguage(text, DetectLanguage(text));  // on this PC (Windows), no translator asked
@@ -528,11 +529,13 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked = false) {
         tr = g_translator;
         target = TypingLang();
         understood = g_cfg.understoodLangs;
+        skipTyping = g_cfg.skipTypingLang;
     }
     if (!tr) return;
     if (asked && detected.empty()) detected = DetectLanguage(text);
     if (!asked) {
-        if (detected.empty() || PrimaryLang(detected) == target) return;
+        if (detected.empty()) return;
+        if (skipTyping && PrimaryLang(detected) == PrimaryLang(target)) return;
         for (const std::wstring& u : understood)
             if (PrimaryLang(u) == PrimaryLang(detected)) return;
     }
@@ -3186,39 +3189,27 @@ void RenderOptionsContent() {
                 if (ImGui::Checkbox(UI(Tr(L"Translate the chat")).c_str(), &g_nx.translateChat)) SaveNexusOptions();
             }
             Hint(UI(Tr(L"Foreign lines of other players into your language. Off: a click on a line translates just that one.")));
+            ImGui::Checkbox(UI(Tr(L"Do not translate the language I write in")).c_str(), &edit.skipTypingLang);
             // Languages you understand: never translated by themselves (a click still does) – only the others are.
             ImGui::TextUnformatted(UI(Tr(L"Languages I understand (not translated by themselves):")).c_str());
             {
                 static const wchar_t* kCommon[] = {L"EN", L"DE", L"FR", L"ES", L"IT", L"PT", L"NL", L"PL",
                                                    L"RU", L"TR", L"ZH", L"KO", L"JA", L"AR"};
-                std::lock_guard<std::mutex> lock(g_mu);
-                const std::wstring own = TypingLang();
-                bool changed = false;
                 int column = 0;
                 for (const wchar_t* code : kCommon) {
-                    const bool mine = PrimaryLang(code) == PrimaryLang(own);  // the language you write in: always
-                    bool on = mine;
-                    for (const std::wstring& u : g_cfg.understoodLangs)
+                    bool on = false;
+                    for (const std::wstring& u : edit.understoodLangs)
                         if (PrimaryLang(u) == PrimaryLang(code)) on = true;
                     if (column % 7) ImGui::SameLine(static_cast<float>(column % 7) * ImGui::GetFontSize() * 4.2f);
                     ++column;
-                    if (mine) ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.55f);
-                    if (ImGui::Checkbox((U8(code) + "##und").c_str(), &on) && !mine) {
-                        auto& list = g_cfg.understoodLangs;
+                    if (ImGui::Checkbox((U8(code) + "##und").c_str(), &on)) {
+                        auto& list = edit.understoodLangs;
                         list.erase(std::remove_if(list.begin(), list.end(),
                                                   [&](const std::wstring& u) { return PrimaryLang(u) == PrimaryLang(code); }),
                                    list.end());
                         if (on) list.push_back(code);
-                        changed = true;
                     }
-                    if (mine) ImGui::PopStyleVar();
                     if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", U8(NativeName(code)).c_str());
-                }
-                if (changed) {
-                    std::wstring joined;
-                    for (const std::wstring& u : g_cfg.understoodLangs) joined += (joined.empty() ? L"" : L",") + u;
-                    g_cfg.SaveValue(L"Translate", L"Understood", joined);
-                    edit.understoodLangs = g_cfg.understoodLangs;
                 }
             }
             Hint(UI(Tr(L"So the keyboard stays in the background: only a French or Spanish line (whatever you did not tick) "
