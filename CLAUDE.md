@@ -12,13 +12,10 @@ something the next agent needs.
 ```
 addons/nexus-keyboard   the add-on
   src/kb_main.cpp       everything the game thread draws (ImGui), the worker thread, sending, options, first start
-  src/chat_links.*      chat codes: "[Item name]" + mouse-over details (GW2 API on its own thread, limits);
-                        waypoints from a table of every point (Tyria + Mists level 1, the public maps on other levels
-                        one by one; <data>\cache\pois_<lang>.tsv, 14 days)
-  src/map_focus.*       a waypoint clicked: Nexus presses the map key (GameBinds GB_MapToggle), MumbleLink's
-                        mapCenterX/Y (continent coords) is measured while the map is dragged onto the spot (closed loop,
-                        synthetic mouse only on the user's click, foreground re-checked, cursor restored); the level /
-                        instance stays as it is – like the game's own links. Shift+click puts the code into the message.
+  src/chat_links.*      chat codes: "[Item name]" in rarity colour + mouse-over details via Decoder Ring;
+                        click copies code to clipboard (Shift+click inserts into input)
+  src/chat/             vendored ChatLinks codec + SpecData (PieUI/Decoder Ring, MIT)
+  src/chat/DecoderRingApi.h  public ABI for Decoder Ring (PieOrCake, MIT)
   src/voice_module.*    loads the voice module (helper + whisper DLLs) from this version's GitHub release
   src/voice_helper_main.cpp  gw2kb_voice.exe: whisper outside the game process (stdin/stdout JSON lines)
   src/chat_events.hpp   our own declaration of Vonsh's "Events: Chat" event (static_asserts)
@@ -41,7 +38,7 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 ## How the add-on works
 
 - **Threads:** the render callback only draws and copies (everything shared sits behind `g_mu`). Translations,
-  spelling, sending run on `g_worker` (below normal priority). Chat codes have their own thread (`ChatLinks`), the voice
+  spelling, sending run on `g_worker` (below normal priority). Chat codes are resolved via Decoder Ring, the voice
   helper its own process. `Worker::Stop(last)` runs the cleanup (COM / WinRT objects) on the worker before the DLL goes
   – without it the add-on crashed on unload.
 - **Failsafe:** every callback runs behind try/catch + SEH (`SafeRender`, `SafeOptions`); an error sets `g_disabled`

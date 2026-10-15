@@ -55,7 +55,7 @@
 #include "nexus/Nexus.h"
 #include "version.h"
 #include "chat_links.hpp"
-#include "map_focus.hpp"
+#include "chat/ChatLinks.h"
 #include "voice_module.hpp"
 #include "win/deepl_translator.hpp"
 #include "win/els.hpp"
@@ -2057,11 +2057,10 @@ void SaveMyWords() {  // g_mu held
 }
 
 // A chat line that wraps word by word with its links (blue, underlined: a click asks before anything opens) and chat
-// codes (the item's name in its colour: a click puts the code into your message). Wrapped lines start under the text
-// (a group), like TextWrapped after the name. True: something in it was clicked.
+// codes (item/skill/waypoint name in rarity colour via Decoder Ring, hover tooltip with details, click copies code).
 bool g_openLinkAsk = false;
-RECT g_winRect{};  // our window (client coordinates of the game): a drag on the world map starts beside it
-bool RichLine(const std::wstring& text, const std::vector<Span>& links, const std::vector<Span>& codes, ImVec4 color) {  // g_mu held
+bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 color) {  // g_mu held
+    (void)text;
     bool clicked = false;
     const float right = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
     const float space = ImGui::CalcTextSize(" ").x;
@@ -2073,63 +2072,88 @@ bool RichLine(const std::wstring& text, const std::vector<Span>& links, const st
         }
         first = false;
     };
-    std::vector<std::pair<Span, bool>> marks;  // (span, is a link)
-    for (const Span& s : links) marks.push_back({s, true});
-    for (const Span& s : codes) marks.push_back({s, false});
-    std::sort(marks.begin(), marks.end(), [](const auto& a, const auto& b) { return a.first.start < b.first.start; });
     ImGui::BeginGroup();
-    size_t pos = 0, mi = 0;
-    while (pos < text.size()) {
-        while (mi < marks.size() && marks[mi].first.start < pos) ++mi;  // overlapping: the first one wins
-        if (mi < marks.size() && pos == marks[mi].first.start) {
-            const Span s = marks[mi].first;
-            const std::wstring piece = text.substr(s.start, s.length);
-            if (marks[mi].second) {  // a web link
-                const std::string u = U8(piece);
-                place(u);
-                LookText(u.c_str(), Bright(ImVec4(0.45f, 0.7f, 1.f, 1.f)), false);
+    for (const auto& seg : segs) {
+        switch (seg.kind) {
+            case PieUI::ChatLinks::SegmentKind::Plain: {
+                size_t pos = 0;
+                while (pos < seg.display.size()) {
+                    size_t end = seg.display.find(' ', pos);
+                    if (end == std::string::npos) end = seg.display.size();
+                    if (end > pos) {
+                        const std::string word = seg.display.substr(pos, end - pos);
+                        place(word);
+                        LookText(word.c_str(), color, false);
+                    }
+                    pos = end;
+                    while (pos < seg.display.size() && seg.display[pos] == ' ') ++pos;
+                }
+                break;
+            }
+            case PieUI::ChatLinks::SegmentKind::Url: {
+                place(seg.display);
+                LookText(seg.display.c_str(), Bright(ImVec4(0.45f, 0.7f, 1.f, 1.f)), false);
                 const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
                 ImGui::GetWindowDrawList()->AddLine(ImVec2(a.x, b.y - 1), ImVec2(b.x, b.y - 1), IM_COL32(115, 178, 255, 255));
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-                    ImGui::SetTooltip("%s", u.c_str());
+                    ImGui::SetTooltip("%s", seg.url.c_str());
                 }
                 if (ImGui::IsItemClicked()) {
-                    g_openLink = piece;
+                    g_openLink = W(seg.url);
                     g_openLinkAsk = true;
                     clicked = true;
                 }
-            } else {  // a chat code: the module draws it (and its details on mouse-over)
-                place(U8(g_links.Label(piece)));
-                float tx = 0, ty = 0;
-                const bool hit = g_links.Render(piece, [](const std::string& label, ImVec4 c) { LookText(label.c_str(), Bright(c), false); });
-                if (hit && !ImGui::GetIO().KeyShift && g_links.Target(piece, &tx, &ty)) {  // a waypoint: the world map, on it
-                    FocusWorldMap(g_api, tx, ty, g_winRect);
-                    clicked = true;
-                } else if (hit) {  // into the input, like a shift-click in the game
-                    const size_t len = std::strlen(g_input);
-                    g_edit.active = true;
-                    g_edit.startByte = len;
-                    g_edit.lenBytes = 0;
-                    g_edit.insert = (len && g_input[len - 1] != ' ' ? " " : "") + U8(piece) + " ";
-                    g_focusInput = true;
-                    clicked = true;
-                }
+                break;
             }
-            pos = s.start + s.length;
-            ++mi;
-            continue;
+            case PieUI::ChatLinks::SegmentKind::Link: {
+                const std::string lbl = g_links.Label(seg);
+                place(lbl);
+                if (g_links.Render(seg, lbl, [](const std::string& l, ImVec4 c) { LookText(l.c_str(), Bright(c), false); })) {
+                    clicked = true;
+                    if (ImGui::GetIO().KeyShift) {
+                        const size_t len = std::strlen(g_input);
+                        g_edit.active = true;
+                        g_edit.startByte = len;
+                        g_edit.lenBytes = 0;
+                        g_edit.insert = (len && g_input[len - 1] != ' ' ? " " : "") + seg.raw + " ";
+                        g_focusInput = true;
+                    } else {
+                        ImGui::SetClipboardText(seg.raw.c_str());
+                    }
+                }
+                break;
+            }
+            case PieUI::ChatLinks::SegmentKind::Ae2: {
+                place(seg.display);
+                LookText(seg.display.c_str(), Bright(ImVec4(0.62f, 0.78f, 1.f, 1.f)), false);
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                    ImGui::BeginTooltip();
+                    ImGui::TextUnformatted(seg.display.c_str());
+                    if (!seg.ae2Profession.empty()) {
+                        ImGui::TextDisabled("%s", seg.ae2Profession.c_str());
+                    }
+                    ImGui::TextDisabled("%s", ToUtf8(Tr(L"Click: copy to clipboard · Shift+click: into your message")).c_str());
+                    ImGui::EndTooltip();
+                }
+                if (ImGui::IsItemClicked()) {
+                    clicked = true;
+                    const std::string toCopy = !seg.ae2ChatLink.empty() ? seg.ae2ChatLink : seg.raw;
+                    if (ImGui::GetIO().KeyShift) {
+                        const size_t len = std::strlen(g_input);
+                        g_edit.active = true;
+                        g_edit.startByte = len;
+                        g_edit.lenBytes = 0;
+                        g_edit.insert = (len && g_input[len - 1] != ' ' ? " " : "") + toCopy + " ";
+                        g_focusInput = true;
+                    } else {
+                        ImGui::SetClipboardText(toCopy.c_str());
+                    }
+                }
+                break;
+            }
         }
-        const size_t stop = mi < marks.size() ? marks[mi].first.start : text.size();
-        size_t end = text.find(L' ', pos);
-        if (end == std::wstring::npos || end > stop) end = stop;
-        if (end > pos) {
-            const std::string word = U8(text.substr(pos, end - pos));
-            place(word);
-            LookText(word.c_str(), color, false);
-        }
-        pos = end;
-        while (pos < stop && text[pos] == L' ') ++pos;
     }
     ImGui::EndGroup();
     return clicked;
@@ -2220,10 +2244,6 @@ void RenderWindow() {
     }
     ImGui::SetWindowFontScale(std::clamp(g_cfg.fontPercent, 70, 200) / 100.0f);
     g_lastW = ImGui::GetWindowWidth();
-    {
-        const ImVec2 wp = ImGui::GetWindowPos(), ws = ImGui::GetWindowSize();
-        g_winRect = {static_cast<LONG>(wp.x), static_cast<LONG>(wp.y), static_cast<LONG>(wp.x + ws.x), static_cast<LONG>(wp.y + ws.y)};
-    }
     if (!g_collapsed) g_expandedH = ImGui::GetWindowHeight();
     std::unique_lock<std::mutex> lock(g_mu);
     {  // Snap: a move that ends near a screen edge puts the window onto it (not when its size was dragged)
@@ -2254,7 +2274,6 @@ void RenderWindow() {
     }
     const ImVec4 kAccent(0.94f, 0.75f, 0.35f, 1.f), kPreview(0.59f, 0.80f, 1.f, 1.f);
     const ImGuiStyle& st = ImGui::GetStyle();
-    g_links.SetLanguage(ApiLang());  // item names in the language you write in
 
     // ---- header: the tabs (the chat, whisper tabs; right-click: a new one) · microphone · V / A · menu · close
     const float icon = ImGui::GetFrameHeight();
@@ -2531,10 +2550,14 @@ void RenderWindow() {
                 ImGui::SameLine(0, ImGui::CalcTextSize(" ").x);
             }
             const std::wstring& shown = l.translated.empty() ? l.text : l.translated;
-            const std::vector<Span> links = FindLinks(shown), codes = FindChatCodes(shown);
+            const std::string u8shown = U8(shown);
+            const auto segs = PieUI::ChatLinks::SegmentLine(u8shown);
             bool clicked = false;
-            if (links.empty() && codes.empty()) LookText(U8(shown).c_str(), ColorOf(l.channel), true);
-            else clicked = RichLine(shown, links, codes, ColorOf(l.channel));
+            if (segs.size() <= 1 && (segs.empty() || segs[0].kind == PieUI::ChatLinks::SegmentKind::Plain)) {
+                LookText(u8shown.c_str(), ColorOf(l.channel), true);
+            } else {
+                clicked = RichLine(shown, segs, ColorOf(l.channel));
+            }
             if (!l.translated.empty() && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", U8(l.text).c_str());
             // A click on the text of a line someone else wrote: just this line into your language.
             if (!clicked && !l.own && l.translated.empty() && (ImGui::IsItemClicked() || ImGui::IsItemClicked(ImGuiMouseButton_Right)))
@@ -3373,7 +3396,7 @@ void AddonLoad(AddonAPI_t* api) {
     g_worker.Post(InitSpelling);
     {
         std::lock_guard<std::mutex> lock(g_mu);
-        g_links.Start(api, g_cfg.dataDir + L"\\cache");
+        g_links.Start(api);
     }
     bool voice = false;
     std::wstring dataDir;
@@ -3428,7 +3451,6 @@ void AddonUnload() {
     if (g_download.joinable()) g_download.join();
     if (g_chatEventsThread.joinable()) g_chatEventsThread.join();
     if (g_voiceModuleThread.joinable()) g_voiceModuleThread.join();
-    StopMapFocus();
     g_links.Stop();
     g_voice.Stop();  // the helper ends (it would also end by itself when its input closes)
     g_worker.Stop(FreeWorkerState);  // saved and freed on the worker (it owns them), before the DLL goes
