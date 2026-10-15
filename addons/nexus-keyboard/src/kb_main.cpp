@@ -72,7 +72,7 @@ using namespace gct;
 
 namespace {
 
-constexpr const char* kName = "GW2 Keyboard";
+constexpr const char* kName = "GW2Chatlator";
 constexpr const char* kToggleBind = "KB_GW2KEYBOARD_TOGGLE";
 constexpr const char* kFocusBind = "KB_GW2KEYBOARD_FOCUS";
 constexpr const char* kTalkBind = "KB_GW2KEYBOARD_TALK";  // push to talk: held while you speak
@@ -2241,7 +2241,7 @@ void RenderWindow() {
     ImGuiWindowFlags wflags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                               ImGuiWindowFlags_NoScrollWithMouse;
     if (g_collapsed) wflags |= ImGuiWindowFlags_NoResize;
-    if (!ImGui::Begin("GW2 Keyboard###kbmain", nullptr, wflags)) {
+    if (!ImGui::Begin("GW2Chatlator###kbmain", nullptr, wflags)) {
         ImGui::End();
         return;
     }
@@ -3262,7 +3262,7 @@ void RenderOptionsContent() {
             std::lock_guard<std::mutex> lock(g_mu);
             const int fps = g_fps;
             const int hold = fps > 0 && g_cfg.send.keyHoldMs == 30 ? std::clamp(1000 / fps + 10, 15, 1010) : g_cfg.send.keyHoldMs;
-            ImGui::Text("GW2 Keyboard for Nexus %s", GCT_VERSION_STR);
+            ImGui::Text("GW2Chatlator for Nexus %s", GCT_VERSION_STR);
             ImGui::Text("%s", UI(TrF(L"Game: {1} fps → keys held {2} ms", {std::to_wstring(fps), std::to_wstring(hold)})).c_str());
             ImGui::Text("%s", UI(TrF(L"Translator: {1}", {g_translator ? g_translator->Name() : std::wstring(L"-")})).c_str());
             if (const std::wstring q = MyMemoryQuotaText(); !q.empty() && (g_nx.translateChat || g_cfg.translateWriting))
@@ -3486,8 +3486,8 @@ extern "C" __declspec(dllexport) AddonDefinition_t* GetAddonDef() {
     g_def.Version.Build = GCT_VER_PATCH;
     g_def.Version.Revision = 0;
     g_def.Author = "Emisan01";
-    g_def.Description = "Typing help for the GW2 chat: the chat in your language, what you write translated and sent "
-                        "on your Enter. The chat comes from \"Events: Chat\" (Nexus library).";
+    g_def.Description = "Smart typing assistance, real-time chat translation, voice-to-text input, and whisper tabs "
+                        "built natively into Guild Wars 2. The chat comes from \"Events: Chat\" (Nexus library).";
     g_def.Load = AddonLoad;
     g_def.Unload = AddonUnload;
     g_def.Flags = AF_None;

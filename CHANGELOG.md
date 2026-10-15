@@ -3,6 +3,11 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.8.4 — 2026-10-15 (GW2Chatlator for Nexus)
+
+- **Name alignment:** updated in-game Nexus add-on definition name and window titles to **GW2Chatlator** to match the official Raidcore listing.
+- **Standalone DLL release:** verified standalone DLL build with version display 1.8.4 in Technical tab.
+
 ## 1.8.3 — 2026-10-15 (GW2 Keyboard for Nexus)
 
 - **Standalone DLL release & version display:** verified standalone DLL release with version display aligned cleanly to 1.8.3 in the Technical tab.
