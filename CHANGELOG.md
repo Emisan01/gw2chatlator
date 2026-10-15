@@ -3,14 +3,14 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## 1.8.2 — 2026-10-15 (GW2 Keyboard for Nexus)
+## 1.8.3 — 2026-10-15 (GW2 Keyboard for Nexus)
 
+- **Standalone DLL release & version display:** verified standalone DLL release with version display aligned cleanly to 1.8.3 in the Technical tab.
 - **Flexible language translation controls:** all language checkboxes in "Languages I understand" can now be checked
   or unchecked freely, including English.
 - **Auto-skip typing language option:** added "Do not translate the language I write in" checkbox (Options → Translator),
   which automatically skips chat messages matching your active typing language without requiring it to be checked in
   the understood list.
-- **Version alignment:** updated project and add-on definition versioning cleanly to 1.8.2.
 
 ## 1.8.1 — 2026-10-15 (GW2 Keyboard for Nexus)
 
