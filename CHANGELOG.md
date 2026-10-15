@@ -3,6 +3,15 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.8.1 — 2026-10-15 (GW2 Keyboard for Nexus)
+
+- **Chat codes via Decoder Ring & SegmentLine:** chat messages are parsed into plain text, web links, and interactive
+  chat links using `ChatLinks::SegmentLine`. Metadata (item/skill/trait/recipe/waypoint names, rarity colors, icons,
+  descriptions, stats/facts) is resolved cleanly via Decoder Ring without manual HTTP scraping.
+- **Removed mouse-drag map focus:** removed synthetic mouse dragging and map toggling.
+- **Chat link click:** clicking a chat link copies its code (`[&...]`) to the clipboard (honest fallback); Shift+click
+  inserts the code into the chat input.
+
 ## 1.8.0 — 2026-10-15 (GW2 Keyboard for Nexus)
 
 - **Translation in the background:** tick the languages you understand (Options → Translator) – only the others are

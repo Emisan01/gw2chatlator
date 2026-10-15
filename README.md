@@ -3,7 +3,7 @@
 The chat of Guild Wars 2 in your language – **read it, write and speak in yours**, the chat gets it translated. A
 Nexus add-on, right inside the game. A line goes into the chat only when you press Enter yourself.
 
-## ⬇ [Download gw2keyboard_nexus.dll – version 1.8.0](https://github.com/Emisan01/gw2chatlator/releases/latest/download/gw2keyboard_nexus.dll)
+## ⬇ [Download gw2keyboard_nexus.dll – version 1.8.1](https://github.com/Emisan01/gw2chatlator/releases/latest/download/gw2keyboard_nexus.dll)
 
 Put the DLL into your `Guild Wars 2\addons` folder (where [Nexus](https://raidcore.gg/Nexus) keeps its add-ons) and
 load **GW2 Keyboard** in Nexus – that is all: on the first start it loads Events: Chat, its voice module and a small
