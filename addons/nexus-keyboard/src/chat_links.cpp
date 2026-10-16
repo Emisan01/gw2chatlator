@@ -168,7 +168,7 @@ void ChatLinks::Tooltip(const PieUI::ChatLinks::LinkSegment& seg, const DecoderR
         }
     }
 
-    ImGui::TextDisabled("%s", (seg.raw + "  ·  " + ToUtf8(Tr(L"Click: open original in game chat · Shift+click: into your message"))).c_str());
+    ImGui::TextDisabled("%s", (seg.raw + "  ·  " + ToUtf8(Tr(L"Click: open original in game chat"))).c_str());
     ImGui::PopTextWrapPos();
     ImGui::EndTooltip();
 }

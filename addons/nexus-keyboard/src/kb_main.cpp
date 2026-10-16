@@ -2265,15 +2265,6 @@ void SaveMyWords() {  // g_mu held
 bool g_openLinkAsk = false;
 
 void HandleChatLinkClick(const std::string& raw, ULONGLONG receivedTime, uint32_t mapId) {
-    if (ImGui::GetIO().KeyShift) {
-        const size_t len = std::strlen(g_input);
-        g_edit.active = true;
-        g_edit.startByte = len;
-        g_edit.lenBytes = 0;
-        g_edit.insert = (len && g_input[len - 1] != ' ' ? " " : "") + raw + " ";
-        g_focusInput = true;
-        return;
-    }
     ImGui::SetClipboardText(raw.c_str());
     const uint32_t curMap = g_mapId.load();
     const bool mapChanged = (mapId != 0 && curMap != 0 && mapId != curMap);
@@ -2356,7 +2347,7 @@ bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::Link
                     if (!seg.ae2Profession.empty()) {
                         ImGui::TextDisabled("%s", seg.ae2Profession.c_str());
                     }
-                    ImGui::TextDisabled("%s", ToUtf8(Tr(L"Click: open original in game chat · Shift+click: into your message")).c_str());
+                    ImGui::TextDisabled("%s", ToUtf8(Tr(L"Click: open original in game chat")).c_str());
                     ImGui::EndTooltip();
                 }
                 if (ImGui::IsItemClicked()) {
