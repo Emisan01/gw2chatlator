@@ -261,6 +261,8 @@ struct ChatLine {
     std::string u8translated;
     std::vector<PieUI::ChatLinks::LinkSegment> textSegs;
     std::vector<PieUI::ChatLinks::LinkSegment> transSegs;
+    ULONGLONG receivedTime = 0;
+    uint32_t mapId = 0;
 };
 
 struct TypingHelp {  // the worker's answer for one text + caret
@@ -279,6 +281,7 @@ bool g_scrollDown = false;
 std::vector<std::wstring> g_context;  // speakers and words of the chat (offered as completions, never learned)
 std::wstring g_ownName;               // your character (MumbleLink)
 std::atomic<int> g_uiSize{-1};        // GW2 UI size (0 small .. 3 larger) from MumbleLink
+std::atomic<uint32_t> g_mapId{0};     // current map ID (MumbleLink)
 // The input line.
 char g_input[1024] = {};
 float g_wrapWidth = 0;  // the input's text width: soft line breaks ('\n' in place of a space) keep words whole
@@ -1159,6 +1162,8 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
         std::lock_guard<std::mutex> lock(g_mu);
         own = outgoing || (!g_ownName.empty() && l.speakerFolded == CaseFold(g_ownName));
         l.own = own;
+        l.receivedTime = GetTickCount64();
+        l.mapId = g_mapId.load();
         l.id = id = g_nextId++;
         if (!own) {  // completions offer the names and words of the chat (never learned – invariant 10)
             if (!l.speaker.empty()) g_context.insert(g_context.begin(), l.speaker);
@@ -1591,6 +1596,18 @@ std::wstring NativeName(const std::wstring& code) {
 bool g_collapsed = false;  // the V / > buttons: window minimizes to bottom-left corner
 float g_headerH = 0, g_lastW = 520, g_expandedH = 360, g_restoreH = 0;
 
+void MinimizeWindow() {  // g_mu held or main thread
+    g_collapsed = true;
+    const ImVec2 p = ImGui::GetWindowPos(), s = ImGui::GetWindowSize();
+    g_lastW = s.x;
+    g_expandedH = s.y;
+    const float bottomY = p.y + s.y;
+    const float iconH = ImGui::GetFrameHeight();
+    const float minBtn = iconH + 8.0f;
+    ImGui::SetWindowPos(ImVec2(p.x, bottomY - minBtn));
+    ImGui::SetWindowSize(ImVec2(minBtn, minBtn));
+}
+
 // The footer chips: channel | "Write: German" | "Send: English (UK) · MyMemory" (orange) | auto | counter.
 void RenderFooter() {  // g_mu held
     static const Channel kChannels[] = {Channel::Unknown, Channel::Say,   Channel::Map,  Channel::Party,
@@ -1600,14 +1617,7 @@ void RenderFooter() {  // g_mu held
 
     // Native minimize button (bottom-left corner of the window)
     if (ImGui::Button(">##minchat", ImVec2(iconH, iconH))) {
-        g_collapsed = true;
-        const ImVec2 p = ImGui::GetWindowPos(), s = ImGui::GetWindowSize();
-        g_lastW = s.x;
-        g_expandedH = s.y;
-        const float bottomY = p.y + s.y;
-        const float minBtn = iconH + 8.0f;
-        ImGui::SetWindowPos(ImVec2(p.x, bottomY - minBtn));
-        ImGui::SetWindowSize(ImVec2(minBtn, minBtn));
+        MinimizeWindow();
     }
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Minimize chat")).c_str());
     ImGui::SameLine();
@@ -2253,7 +2263,34 @@ void SaveMyWords() {  // g_mu held
 // A chat line that wraps word by word with its links (blue, underlined: a click asks before anything opens) and chat
 // codes (item/skill/waypoint name in rarity colour via Decoder Ring, hover tooltip with details, click copies code).
 bool g_openLinkAsk = false;
-bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 color) {  // g_mu held
+
+void HandleChatLinkClick(const std::string& raw, ULONGLONG receivedTime, uint32_t mapId) {
+    if (ImGui::GetIO().KeyShift) {
+        const size_t len = std::strlen(g_input);
+        g_edit.active = true;
+        g_edit.startByte = len;
+        g_edit.lenBytes = 0;
+        g_edit.insert = (len && g_input[len - 1] != ' ' ? " " : "") + raw + " ";
+        g_focusInput = true;
+        return;
+    }
+    ImGui::SetClipboardText(raw.c_str());
+    const uint32_t curMap = g_mapId.load();
+    const bool mapChanged = (mapId != 0 && curMap != 0 && mapId != curMap);
+    const bool tooOld = (receivedTime != 0 && (GetTickCount64() - receivedTime > 90000));
+    if (mapChanged || tooOld) {
+        SetStatus(Tr(L"Chat link expired – no longer in active chat"), 4000);
+    } else {
+        SetStatus(Tr(L"Original chat opened – click link in game chat"), 4000);
+        MinimizeWindow();
+        if (g_api && g_api->GameBinds_InvokeAsync) {
+            g_api->GameBinds_InvokeAsync(GB_UiChatFocus, 20);
+        }
+    }
+}
+
+bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 color,
+              ULONGLONG receivedTime = 0, uint32_t mapId = 0) {  // g_mu held
     (void)text;
     bool clicked = false;
     const float right = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
@@ -2305,16 +2342,7 @@ bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::Link
                 place(lbl);
                 if (g_links.Render(seg, lbl, [](const std::string& l, ImVec4 c) { LookText(l.c_str(), Bright(c), false); })) {
                     clicked = true;
-                    if (ImGui::GetIO().KeyShift) {
-                        const size_t len = std::strlen(g_input);
-                        g_edit.active = true;
-                        g_edit.startByte = len;
-                        g_edit.lenBytes = 0;
-                        g_edit.insert = (len && g_input[len - 1] != ' ' ? " " : "") + seg.raw + " ";
-                        g_focusInput = true;
-                    } else {
-                        ImGui::SetClipboardText(seg.raw.c_str());
-                    }
+                    HandleChatLinkClick(seg.raw, receivedTime, mapId);
                 }
                 break;
             }
@@ -2328,22 +2356,13 @@ bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::Link
                     if (!seg.ae2Profession.empty()) {
                         ImGui::TextDisabled("%s", seg.ae2Profession.c_str());
                     }
-                    ImGui::TextDisabled("%s", ToUtf8(Tr(L"Click: copy to clipboard · Shift+click: into your message")).c_str());
+                    ImGui::TextDisabled("%s", ToUtf8(Tr(L"Click: open original in game chat · Shift+click: into your message")).c_str());
                     ImGui::EndTooltip();
                 }
                 if (ImGui::IsItemClicked()) {
                     clicked = true;
                     const std::string toCopy = !seg.ae2ChatLink.empty() ? seg.ae2ChatLink : seg.raw;
-                    if (ImGui::GetIO().KeyShift) {
-                        const size_t len = std::strlen(g_input);
-                        g_edit.active = true;
-                        g_edit.startByte = len;
-                        g_edit.lenBytes = 0;
-                        g_edit.insert = (len && g_input[len - 1] != ' ' ? " " : "") + toCopy + " ";
-                        g_focusInput = true;
-                    } else {
-                        ImGui::SetClipboardText(toCopy.c_str());
-                    }
+                    HandleChatLinkClick(toCopy, receivedTime, mapId);
                 }
                 break;
             }
@@ -2404,6 +2423,7 @@ void RenderWindow() {
             if (ms.live) {
                 g_ownName = ms.identity.name;
                 g_uiSize.store(ms.identity.uiSize);
+                g_mapId.store(ms.identity.mapId);
             }
             const bool chatOpen = ms.live && ms.TextboxHasFocus();
             if (chatOpen && !chatWasOpen && g_cfg.focusOnGameChat && g_show) g_focusInput = true;
@@ -2832,7 +2852,7 @@ void RenderWindow() {
             if (segs.size() <= 1 && (segs.empty() || segs[0].kind == PieUI::ChatLinks::SegmentKind::Plain)) {
                 LookText(u8shown.c_str(), ColorOf(l.channel), true);
             } else {
-                clicked = RichLine(shown, segs, ColorOf(l.channel));
+                clicked = RichLine(shown, segs, ColorOf(l.channel), l.receivedTime, l.mapId);
             }
             if (!l.translated.empty() && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", l.u8text.c_str());
             // A click on the text of a line someone else wrote: just this line into your language.
