@@ -113,6 +113,18 @@ LinkSafetyInfo AssessLinkSafety(const std::string& url_or_domain) {
         };
     }
 
+    // 1b. Punycode / IDN Homoglyph spoofing (e.g. xn--...):
+    // In game chat, Punycode domains are overwhelmingly used to spoof reputable sites.
+    if (host.find("xn--") != std::string::npos) {
+        return {
+            LinkSafety::Dangerous,
+            host,
+            "punycode_spoofing",
+            Tr(L"[Phishing]"),
+            Tr(L"WARNING: Suspicious or fraudulent link detected!")
+        };
+    }
+
     // 2. Official Guild Wars 2 / ArenaNet / NCSoft
     static const char* const kOfficial[] = {
         "guildwars2.com",
