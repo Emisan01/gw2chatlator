@@ -408,17 +408,29 @@ void SetStatus(const std::wstring& s, ULONGLONG ms = 6000) {  // g_mu held
     g_statusUntil = ms ? GetTickCount64() + ms : 0;
 }
 
-std::wstring TypingLang() {  // the language you write and read in
-    if (!g_cfg.writeIn.empty()) return PrimaryLang(g_cfg.writeIn);
-    wchar_t locale[LOCALE_NAME_MAX_LENGTH] = {};
-    GetUserDefaultLocaleName(locale, LOCALE_NAME_MAX_LENGTH);
-    return PrimaryLang(locale);
+const std::wstring& TypingLang() {  // the language you write and read in
+    static std::wstring s_cachedTyping;
+    static std::wstring s_lastWriteIn;
+    if (s_lastWriteIn != g_cfg.writeIn || s_cachedTyping.empty()) {
+        s_lastWriteIn = g_cfg.writeIn;
+        if (!g_cfg.writeIn.empty()) {
+            s_cachedTyping = PrimaryLang(g_cfg.writeIn);
+        } else {
+            wchar_t locale[LOCALE_NAME_MAX_LENGTH] = {};
+            GetUserDefaultLocaleName(locale, LOCALE_NAME_MAX_LENGTH);
+            s_cachedTyping = PrimaryLang(locale);
+        }
+    }
+    return s_cachedTyping;
 }
 std::wstring TypingLocale() {
     if (g_cfg.writeIn.empty()) {
-        wchar_t locale[LOCALE_NAME_MAX_LENGTH] = {};
-        GetUserDefaultLocaleName(locale, LOCALE_NAME_MAX_LENGTH);
-        return locale;
+        static const std::wstring s_defaultLocale = [] {
+            wchar_t locale[LOCALE_NAME_MAX_LENGTH] = {};
+            GetUserDefaultLocaleName(locale, LOCALE_NAME_MAX_LENGTH);
+            return std::wstring(locale);
+        }();
+        return s_defaultLocale;
     }
     const std::wstring p = ToLowerAscii(PrimaryLang(g_cfg.writeIn));
     return p + L"-" + (p == L"en" ? std::wstring(L"US") : ToUpperAscii(p));
@@ -427,9 +439,11 @@ bool SendOriginal() {
     if (!g_sendOverride.empty()) return g_sendOverride == L"=";
     return g_sendIdx >= static_cast<int>(g_cfg.writeLangs.size());
 }
-std::wstring SendLang() {
-    if (!g_sendOverride.empty()) return g_sendOverride == L"=" ? std::wstring() : g_sendOverride;
-    return SendOriginal() ? std::wstring() : g_cfg.writeLangs[g_sendIdx];
+const std::wstring& SendLang() {
+    static const std::wstring s_empty;
+    if (!g_sendOverride.empty()) return g_sendOverride == L"=" ? s_empty : g_sendOverride;
+    return (SendOriginal() || g_sendIdx < 0 || g_sendIdx >= static_cast<int>(g_cfg.writeLangs.size()))
+               ? s_empty : g_cfg.writeLangs[g_sendIdx];
 }
 // A detected language as the translators take it for sending ("en" -> "EN-GB", "pt" -> "PT-BR", "zh" -> "ZH-HANS").
 std::wstring SendCodeFor(const std::wstring& detected) {
@@ -439,11 +453,28 @@ std::wstring SendCodeFor(const std::wstring& detected) {
     if (p == L"ZH") return L"ZH-HANS";
     return p;
 }
-bool Translating() { return !SendOriginal() && PrimaryLang(SendLang()) != TypingLang(); }
-std::wstring ComposePrefix() {
-    if (g_channel == Channel::Whisper) return g_whisperTo.empty() ? L"/r " : L"/w " + g_whisperTo + L", ";
-    if (const wchar_t* cmd = ChannelCommand(g_channel)) return std::wstring(cmd) + L" ";
-    return L"";
+bool Translating() {
+    if (SendOriginal()) return false;
+    const std::wstring& send = SendLang();
+    if (send.empty()) return false;
+    return PrimaryLang(send) != TypingLang();
+}
+const std::wstring& ComposePrefix() {
+    static std::wstring s_cachedPrefix;
+    static Channel s_cachedChannel = Channel::Unknown;
+    static std::wstring s_cachedWhisper;
+    if (s_cachedChannel != g_channel || (g_channel == Channel::Whisper && s_cachedWhisper != g_whisperTo)) {
+        s_cachedChannel = g_channel;
+        s_cachedWhisper = g_whisperTo;
+        if (g_channel == Channel::Whisper) {
+            s_cachedPrefix = g_whisperTo.empty() ? L"/r " : L"/w " + g_whisperTo + L", ";
+        } else if (const wchar_t* cmd = ChannelCommand(g_channel)) {
+            s_cachedPrefix = std::wstring(cmd) + L" ";
+        } else {
+            s_cachedPrefix.clear();
+        }
+    }
+    return s_cachedPrefix;
 }
 
 std::shared_ptr<Translator> MakeTranslator(const Config& c) {  // the engine you set, else the best key you have
@@ -1140,7 +1171,7 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
             if (static_cast<int>(i) == g_activeTab) continue;
             const WhisperTab& t = g_tabs[i];
             if (t.custom ? (t.channels & ChannelBit(ch)) != 0
-                         : ch == Channel::Whisper && CaseFold(t.name) == g_lines.back().speakerFolded)
+                         : ch == Channel::Whisper && t.nameFolded == g_lines.back().speakerFolded)
                 g_tabs[i].unread = true;
         }
         g_scrollDown = true;
@@ -1182,9 +1213,10 @@ std::wstring NativeName(const std::wstring& code);
 void OpenWhisperTab(const std::wstring& name) {
     const std::wstring who = Trim(name);
     if (who.empty()) return;
+    const std::wstring whoFolded = CaseFold(who);
     int at = -1;
     for (size_t i = 0; i < g_tabs.size(); ++i)
-        if (!g_tabs[i].custom && g_tabs[i].nameFolded == CaseFold(who)) at = static_cast<int>(i);
+        if (!g_tabs[i].custom && g_tabs[i].nameFolded == whoFolded) at = static_cast<int>(i);
     if (at < 0) {
         const size_t whispers = std::count_if(g_tabs.begin(), g_tabs.end(), [](const WhisperTab& t) { return !t.custom; });
         if (whispers >= kMaxWhisperTabs) {  // the oldest whisper tab goes
@@ -1202,7 +1234,7 @@ void OpenWhisperTab(const std::wstring& name) {
     }
     g_tabs[at].unread = false;
     if (g_tabs[at].sendLang.empty()) {  // first time: answer in the language this player writes in
-        auto lang = g_playerLang.find(CaseFold(who));
+        auto lang = g_playerLang.find(whoFolded);
         if (lang != g_playerLang.end() && PrimaryLang(lang->second) != TypingLang()) {
             g_tabs[at].sendLang = SendCodeFor(lang->second);
             SetStatus(TrF(L"{1} writes in {2} – your answers go out in it (Send: change it)",
@@ -1797,11 +1829,14 @@ std::atomic<bool> g_chatEventsFile{false};  // Events_Chat.dll lies in the add-o
 std::atomic<bool> g_chatEventsInstalling{false};
 std::thread g_chatEventsThread;
 
-std::wstring AddonsDir() {  // the folder our DLL lies in: <GW2>\addons\ .
-    wchar_t path[MAX_PATH] = {};
-    GetModuleFileNameW(g_self, path, MAX_PATH);
-    std::wstring p = path;
-    return p.substr(0, p.find_last_of(L"\\/") + 1);
+const std::wstring& AddonsDir() {  // the folder our DLL lies in: <GW2>\addons\ .
+    static const std::wstring s_addonsDir = [] {
+        wchar_t path[MAX_PATH] = {};
+        GetModuleFileNameW(g_self, path, MAX_PATH);
+        std::wstring p = path;
+        return p.substr(0, p.find_last_of(L"\\/") + 1);
+    }();
+    return s_addonsDir;
 }
 
 // A Nexus add-on in this process that says it is "Events: Chat" (its definition is only read). Every 3 s at most.
@@ -2332,7 +2367,13 @@ void RenderOptionsWindow() {
     if (!g_showOptions) return;
     ImGui::SetNextWindowSize(ImVec2(660, 620), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(ImVec2(600, 420), ImVec2(4000, 4000));
-    if (ImGui::Begin((UI(Tr(L"GW2 Keyboard – Options")) + "###kbopts").c_str(), &g_showOptions)) RenderOptionsContent();
+    static std::string s_optsTitle;
+    static UiLang s_optsLang = static_cast<UiLang>(-1);
+    if (s_optsLang != g_cfg.uiLang || s_optsTitle.empty()) {
+        s_optsLang = g_cfg.uiLang;
+        s_optsTitle = UI(Tr(L"GW2 Keyboard – Options")) + "###kbopts";
+    }
+    if (ImGui::Begin(s_optsTitle.c_str(), &g_showOptions)) RenderOptionsContent();
     ImGui::End();
 }
 
@@ -2502,7 +2543,13 @@ void RenderWindow() {
                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBackground);
     ImGui::PopStyleVar();
     if (ImGui::BeginTabBar("##wtabs", ImGuiTabBarFlags_FittingPolicyResizeDown | ImGuiTabBarFlags_NoTooltip)) {
-        if (ImGui::BeginTabItem((UI(Tr(L"Chat")) + "###wt_all").c_str(), nullptr,
+        static std::string s_chatTabLabel;
+        static UiLang s_chatTabLang = static_cast<UiLang>(-1);
+        if (s_chatTabLang != g_cfg.uiLang || s_chatTabLabel.empty()) {
+            s_chatTabLang = g_cfg.uiLang;
+            s_chatTabLabel = UI(Tr(L"Chat")) + "###wt_all";
+        }
+        if (ImGui::BeginTabItem(s_chatTabLabel.c_str(), nullptr,
                                 g_selectTab == -1 ? ImGuiTabItemFlags_SetSelected : 0)) {
             if (g_selectTab == -1) g_selectTab = -2;
             else if (g_selectTab == -2 && g_activeTab != -1) LeaveWhisperTab();
@@ -3363,10 +3410,15 @@ void RenderOptionsContent() {
         // ---- Microphone
         if (ImGui::BeginTabItem(UI(Tr(L"Microphone")).c_str(), nullptr, TabFlag(3))) {
             int mode = edit.voiceActivation ? 2 : edit.voiceToggle ? 1 : 0;
-            if (combo(UI(Tr(L"Starting") + L"##mode").c_str(),
-                      {UI(Tr(L"Hold the button or key while you speak")), UI(Tr(L"Press once – a pause ends it")),
-                       UI(Tr(L"Voice activation – starts when you speak"))},
-                      &mode)) {
+            static std::vector<std::string> s_modeLabels;
+            static UiLang s_modeLang = static_cast<UiLang>(-1);
+            if (s_modeLang != g_cfg.uiLang || s_modeLabels.empty()) {
+                s_modeLang = g_cfg.uiLang;
+                s_modeLabels = {UI(Tr(L"Hold the button or key while you speak")),
+                                UI(Tr(L"Press once – a pause ends it")),
+                                UI(Tr(L"Voice activation – starts when you speak"))};
+            }
+            if (combo(UI(Tr(L"Starting") + L"##mode").c_str(), s_modeLabels, &mode)) {
                 edit.voiceToggle = mode == 1;
                 edit.voiceActivation = mode == 2;
             }
@@ -3397,7 +3449,13 @@ void RenderOptionsContent() {
             if (combo(UI(Tr(L"Microphone") + L"##dev").c_str(), names, &mi))
                 edit.voiceDevice = mi == 0 ? std::wstring() : mics[mi - 1].id;
             int boost = std::clamp(edit.voiceBoost, 0, 3);
-            if (combo(UI(Tr(L"Microphone boost") + L"##boost").c_str(), {UI(Tr(L"Off")), "+6 dB", "+12 dB", UI(Tr(L"Automatic"))}, &boost))
+            static std::vector<std::string> s_boostLabels;
+            static UiLang s_boostLang = static_cast<UiLang>(-1);
+            if (s_boostLang != g_cfg.uiLang || s_boostLabels.empty()) {
+                s_boostLang = g_cfg.uiLang;
+                s_boostLabels = {UI(Tr(L"Off")), "+6 dB", "+12 dB", UI(Tr(L"Automatic"))};
+            }
+            if (combo(UI(Tr(L"Microphone boost") + L"##boost").c_str(), s_boostLabels, &boost))
                 edit.voiceBoost = boost;
             ImGui::SetNextItemWidth(wide);
             ImGui::SliderInt(UI(Tr(L"Pause to end") + L" (ms)##pause").c_str(), &edit.voicePauseMs, 400, 3000);
@@ -3455,9 +3513,14 @@ void RenderOptionsContent() {
             int ei = 0;
             for (int i = 0; i < 6; ++i)
                 if (kEngines[i] == edit.engine) ei = i;
-            std::vector<std::string> engines;
-            for (const wchar_t* n : kNames) engines.push_back(UI(Tr(n)));
-            if (combo(UI(Tr(L"Translator") + L"##engine").c_str(), engines, &ei)) {
+            static std::vector<std::string> s_engines;
+            static UiLang s_engineLang = static_cast<UiLang>(-1);
+            if (s_engineLang != g_cfg.uiLang || s_engines.empty()) {
+                s_engineLang = g_cfg.uiLang;
+                s_engines.clear();
+                for (const wchar_t* n : kNames) s_engines.push_back(UI(Tr(n)));
+            }
+            if (combo(UI(Tr(L"Translator") + L"##engine").c_str(), s_engines, &ei)) {
                 edit.engine = kEngines[ei];
                 const std::wstring k = edit.engine == Engine::DeepL ? edit.deeplKey : edit.engine == Engine::Google ? edit.googleKey
                                        : edit.engine == Engine::Microsoft ? edit.msKey : edit.libreKey;
