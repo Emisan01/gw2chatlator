@@ -33,9 +33,6 @@ class LlmTranslator : public Translator {
 public:
     // Same text in Latin letters (Arabizi, Pinyin ...), not translated.
     virtual TranslateResult Romanize(const std::wstring& text) = 0;
-    // Chat lines read from the screen: translated with obvious OCR errors repaired.
-    virtual std::vector<TranslateResult> TranslateOcrBatch(const std::vector<std::vector<Segment>>& items,
-                                                           const std::wstring& targetLang) = 0;
 };
 
 std::shared_ptr<LlmTranslator> MakeLlmTranslator(const LlmSettings& settings);

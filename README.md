@@ -3,16 +3,22 @@
 The chat of Guild Wars 2 in your language – **read it, write and speak in yours**, the chat gets it translated. A
 Nexus add-on, right inside the game. A line goes into the chat only when you press Enter yourself.
 
-## ⬇ [Download gw2keyboard_nexus.dll – version 1.8.4](https://github.com/Emisan01/gw2chatlator/releases/download/v1.8.4/gw2keyboard_nexus.dll)
+## ⬇ [Download gw2keyboard_nexus.dll – version 1.8.5](https://github.com/Emisan01/gw2chatlator/releases/download/v1.8.5/gw2keyboard_nexus.dll)
 
 Put the DLL into your `Guild Wars 2\addons` folder (where [Nexus](https://raidcore.gg/Nexus) keeps its add-ons) and
 load **GW2Chatlator** in Nexus – that is all: on the first start it loads Events: Chat, its voice module and a small
-voice model by itself. SHA-256 `bea33fe4…1995b9213` ·
+voice model by itself.
 all versions: [Releases](https://github.com/Emisan01/gw2chatlator/releases) · what changed: [CHANGELOG.md](CHANGELOG.md).
 
 Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustotal.com/gui/file/24127b749fc15c3d4afa630a5c7e19b0f3e7001ead8f331637445a80eaabbe58).
 
-> **New in 1.8.4** – official rename to **GW2Chatlator** & Raidcore alignment:
+> **New in 1.8.5** – FPS-adapted automatic timing & performance optimization:
+> dynamic key hold & inter-key step delays based on measured game FPS ·
+> auto-disables automatic timing when adjusting manual sliders in Technical tab ·
+> eliminated unnecessary foreground focus switches and delays when GW2 is already foreground ·
+> cleaned up legacy desktop OCR and dead tabs logic.
+
+> **In 1.8.4** – official rename to **GW2Chatlator** & Raidcore alignment:
 > Nexus add-on definition and window titles updated to **GW2Chatlator** ·
 > all understood language checkboxes can now be toggled freely (including English) ·
 > new option "Do not translate the language I write in" to automatically skip chat lines in your typing language ·

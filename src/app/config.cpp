@@ -59,45 +59,6 @@ const char kTranslateSections[] =
     "Model=\r\n"
     "ApiKey=\r\n"
     "TimeoutSec=60\r\n"
-    "; Repair text-recognition errors in chat lines while translating (1/0)\r\n"
-    "FixOcr=1\r\n"
-    "\r\n"
-    "[Reader]\r\n"
-    "; Read the GW2 chat from the screen and translate it permanently\r\n"
-    "Enabled=1\r\n"
-    "; How often the chat is read (ms)\r\n"
-    "IntervalMs=400\r\n"
-    "; Text recognition: auto (Windows; Tesseract for very small text) | tesseract | windows\r\n"
-    "OcrEngine=auto\r\n"
-    "; Picture: auto (window on Windows 11, screen on Windows 10: no yellow frame) | window | screen\r\n"
-    "Capture=auto\r\n"
-    "; Tesseract: folder or tesseract.exe (empty = search Program Files, PATH, .\\tesseract)\r\n"
-    "TesseractPath=\r\n"
-    "; Tesseract languages, e.g. eng+deu (empty = English, German, French, Spanish where installed)\r\n"
-    "TesseractLang=\r\n"
-    "; Also read Simplified Chinese (needs chi_sim, a bit slower)\r\n"
-    "ReadChinese=0\r\n"
-    "; Windows text recognition language, e.g. de-DE, en-US. Empty = Windows languages.\r\n"
-    "OcrLanguage=\r\n"
-    "; Enlargement before text recognition: 0 = automatic from the measured line spacing, 1-4 = fixed\r\n"
-    "OcrZoom=0\r\n"
-    "; Show system lines (without a speaker)\r\n"
-    "ShowSystem=0\r\n"
-    "; Diagnostics: save pictures and recognized text in the captures folder\r\n"
-    "; (switches itself off after 15 minutes; old files are cleaned up)\r\n"
-    "SaveCaptures=0\r\n"
-    "; Chat area relative to the bottom-left corner of the GW2 window.\r\n"
-    "; Set in the window with \"Set chat area\".\r\n"
-    "RegionLeft=\r\n"
-    "RegionFromBottom=\r\n"
-    "RegionWidth=\r\n"
-    "RegionHeight=\r\n"
-    "; Free screen area instead of the chat: everything inside is translated (FreeArea=1).\r\n"
-    "; FreeRect=left,top,width,height in screen pixels.\r\n"
-    "FreeArea=0\r\n"
-    "FreeRect=\r\n"
-    "; Channel colours (RRGGBB). Right-click a chat line -> \"This line colour is\" calibrates them.\r\n"
-    "; ColorSay= ColorMap= ColorParty= ColorSquad= ColorTeam= ColorWhisper= ColorGuild= ColorSystem=\r\n"
     "\r\n";
 
 const char kRestSections[] =
@@ -151,6 +112,8 @@ const char kRestSections[] =
     "MaxLength=199\r\n"
     "; 1 = back to the translator window after sending, 0 = stay in the game\r\n"
     "ReturnFocus=0\r\n"
+    "; 1 = dynamically adapt key hold and step delays to current FPS, 0 = use manual values below\r\n"
+    "AutoTiming=1\r\n"
     "; Pause between the key presses to GW2 (ms). Raise it at low FPS.\r\n"
     "StepDelayMs=80\r\n"
     "; How long each key is held (ms): GW2 reads the keyboard once per frame. Raise it at low FPS.\r\n"
@@ -170,23 +133,7 @@ const char kRestSections[] =
     "; Show and hide together with the game (1/0)\r\n"
     "FollowGame=1\r\n"
     "; Dock to GW2: the window moves with the game window\r\n"
-    "Dock=0\r\n"
-    "\r\n"
-    "[Tabs]\r\n"
-    "; Tabs like in the GW2 chat; easiest to change by right-clicking a tab.\r\n"
-    "; TabN=Name|channels  (say, map, party, squad, team, guild, whisper, system, other)\r\n"
-    "Tab1=Chat|say,map,party,squad,team,guild,whisper,system,other\r\n"
-        "Active=1\r\n";
-
-struct ColorKey {
-    Channel channel;
-    const wchar_t* key;
-};
-constexpr ColorKey kColorKeys[] = {
-    {Channel::Say, L"ColorSay"},     {Channel::Map, L"ColorMap"},         {Channel::Party, L"ColorParty"},
-    {Channel::Squad, L"ColorSquad"}, {Channel::Team, L"ColorTeam"},       {Channel::Whisper, L"ColorWhisper"},
-    {Channel::Guild, L"ColorGuild"},  {Channel::System, L"ColorSystem"},
-};
+    "Dock=0\r\n";
 
 class Ini {
 public:
@@ -229,15 +176,6 @@ private:
     std::wstring path_;
 };
 
-OcrChoice ParseOcr(const std::wstring& s) {
-    const std::wstring v = ToLowerAscii(s);
-    if (v == L"tesseract") return OcrChoice::Tesseract;
-    if (v == L"windows") return OcrChoice::Windows;
-    if (v == L"rapid" || v == L"rapidocr") return OcrChoice::Rapid;
-    if (v == L"hybrid") return OcrChoice::Auto;  // 1.1.0 only: the second look re-reads artefacts instead
-    return OcrChoice::Auto;
-}
-
 AutoCorrectMode ParseAutoCorrect(const std::wstring& s, AutoCorrectMode def) {
     const std::wstring v = ToLowerAscii(s);
     if (v == L"off" || v == L"0") return AutoCorrectMode::Off;
@@ -258,16 +196,6 @@ Engine ParseEngine(const std::wstring& s) {
 }
 
 }  // namespace
-
-const wchar_t* OcrKey(OcrChoice o) {
-    switch (o) {
-        case OcrChoice::Tesseract: return L"tesseract";
-        case OcrChoice::Windows: return L"windows";
-        case OcrChoice::Rapid: return L"rapid";
-        case OcrChoice::Hybrid: return L"hybrid";
-        default: return L"auto";
-    }
-}
 
 const wchar_t* AutoCorrectKey(AutoCorrectMode m) {
     switch (m) {
@@ -315,10 +243,6 @@ void Config::Load(const std::wstring& dir) {
     const Ini ini(iniPath);
     uiLangCode = ini.Str(L"General", L"UiLanguage", L"");
     uiLang = EffectiveUiLang(uiLangCode);
-    setupDone = ini.Bool(L"General", L"SetupDone", false);
-    startMenu = ini.Bool(L"General", L"StartMenu", true);
-    myMemoryNoticeShown = ini.Bool(L"Basic", L"NoticeShown", false);
-    tourShown = ini.Bool(L"General", L"TourShown", false);
     myMemoryDay = ini.Str(L"Basic", L"UsedDay", L"");
     myMemoryUsed = ini.Int(L"Basic", L"UsedChars", 0, 0, 10000000);
     gw2Dir = AsciiUnescape(ini.Str(L"General", L"Gw2Dir", L""));
@@ -337,12 +261,8 @@ void Config::Load(const std::wstring& dir) {
     if (auto t = ParseLangList(langs); !t.empty()) writeLangs = t;
     backTranslate = ini.Bool(L"Translate", L"BackTranslate", true);
     translateWriting = ini.Bool(L"Translate", L"Writing", true);
-    {
-        const std::wstring autoList = ini.Str(L"Translate", L"AutoChannels", L"default");
-        autoTranslate = autoList == L"default" ? DefaultAutoTranslate() : ParseChannels(autoList);
-        understoodLangs = ParseLangList(ini.Str(L"Translate", L"Understood", L""));
-        skipTypingLang = ini.Bool(L"Translate", L"SkipTypingLang", true);
-    }
+    understoodLangs = ParseLangList(ini.Str(L"Translate", L"Understood", L""));
+    skipTypingLang = ini.Bool(L"Translate", L"SkipTypingLang", true);
     chatLang = ToUpperAscii(ini.Str(L"Translate", L"ChatLang", L"EN-GB"));
     debounceMs = ini.Int(L"Translate", L"DebounceMs", ini.Int(L"DeepL", L"DebounceMs", 500, 150, 5000), 150, 5000);
 
@@ -357,28 +277,8 @@ void Config::Load(const std::wstring& dir) {
     llmModel = AsciiUnescape(ini.Str(L"LLM", L"Model", L""));
     llmKey = UnprotectSecret(ini.Str(L"LLM", L"ApiKey", L""));
     llmTimeoutSec = ini.Int(L"LLM", L"TimeoutSec", 60, 5, 600);
-    llmFixOcr = ini.Bool(L"LLM", L"FixOcr", true);
 
-    readerEnabled = ini.Bool(L"Reader", L"Enabled", true);
-    bridgeRead = ini.Bool(L"Reader", L"Bridge", true);
-    ocrEnabled = ini.Bool(L"Reader", L"Ocr", true);
-    readerIntervalMs = ini.Int(L"Reader", L"IntervalMs", 400, 150, 10000);
-    secondLook = ini.Bool(L"Reader", L"SecondLook", true);
     writeIn = ToUpperAscii(ini.Str(L"Spelling", L"WriteIn", L""));
-    ocr = ParseOcr(ini.Str(L"Reader", L"OcrEngine", L"auto"));
-    {
-        const std::wstring c = ToLowerAscii(ini.Str(L"Reader", L"Capture", L"auto"));
-        captureMode = c == L"window" ? 1 : c == L"screen" ? 2 : 0;
-    }
-    tesseractPath = AsciiUnescape(ini.Str(L"Reader", L"TesseractPath", L""));
-    tesseractLangs = ToUtf8(ini.Str(L"Reader", L"TesseractLang", L""));
-    readChinese = ini.Bool(L"Reader", L"ReadChinese", false);
-    ocrLanguage = ini.Str(L"Reader", L"OcrLanguage", L"");
-    // "OcrZoom" replaced "OcrScale" (fixed 2 by default) when the enlargement became automatic.
-    ocrScale = ini.Int(L"Reader", L"OcrZoom", 0, 0, 4);
-    showSystemLines = ini.Bool(L"Reader", L"ShowSystem", false);
-    onlyTranslations = ini.Bool(L"Reader", L"OnlyTranslations", true);
-    keepAfterMap = ini.Bool(L"Reader", L"KeepAfterMap", false);
     voiceEnabled = ini.Bool(L"Voice", L"Enabled", true);
     voiceModel = AsciiUnescape(ini.Str(L"Voice", L"Model", L""));
     voiceLang = AsciiUnescape(ini.Str(L"Voice", L"Language", L""));
@@ -402,30 +302,6 @@ void Config::Load(const std::wstring& dir) {
     voiceMinMs = ini.Int(L"Voice", L"MinSpeechMs", 250, 100, 1500);
     voiceGlobalKey = ini.Str(L"Voice", L"KeyAnywhere", L"");
     voiceChatPause = ini.Bool(L"Voice", L"PauseForVoiceChat", true);
-    if (ini.Has(L"Voice", L"VoiceChatApps")) voiceChatApps = AsciiUnescape(ini.Str(L"Voice", L"VoiceChatApps", L""));
-    saveCaptures = ini.Bool(L"Reader", L"SaveCaptures", false);
-    regionLeft = ini.Int(L"Reader", L"RegionLeft", 0, -20000, 20000);
-    regionFromBottom = ini.Int(L"Reader", L"RegionFromBottom", 0, -20000, 20000);
-    regionWidth = ini.Int(L"Reader", L"RegionWidth", 0, 0, 20000);
-    regionHeight = ini.Int(L"Reader", L"RegionHeight", 0, 0, 20000);
-    regionSet = regionWidth >= 40 && regionHeight >= 20;
-    freeArea = ini.Bool(L"Reader", L"FreeArea", false);
-    {
-        int v[4] = {0, 0, 0, 0};
-        const std::wstring r = ini.Str(L"Reader", L"FreeRect", L"");
-        if (swscanf_s(r.c_str(), L"%d,%d,%d,%d", &v[0], &v[1], &v[2], &v[3]) == 4 && v[2] > 0 && v[3] > 0)
-            freeRect = {v[0], v[1], v[0] + v[2], v[1] + v[3]};
-    }
-    if (!FreeSet()) freeArea = false;
-
-    palette = DefaultChannelColors();
-    for (const ColorKey& ck : kColorKeys) {
-        Rgb rgb;
-        if (!RgbFromHex(ini.Str(L"Reader", ck.key, L""), rgb)) continue;
-        for (ChannelColor& c : palette)
-            if (c.channel == ck.channel) c.rgb = rgb;
-    }
-
     spellEnabled = ini.Bool(L"Spelling", L"Enabled", true);
     // v0.4 had AutoCorrect=1/0 (Windows' sure fixes only).
     autoCorrect = ParseAutoCorrect(ini.Str(L"Spelling", L"AutoCorrectMode", L""),
@@ -446,6 +322,7 @@ void Config::Load(const std::wstring& dir) {
     maxLength = ini.Int(L"Chat", L"MaxLength", 199, 20, 2000);
     returnFocus = ini.Bool(L"Chat", L"ReturnFocus", false);
     copyOnly = ToLowerAscii(ini.Str(L"Chat", L"SendMode", L"send")) == L"copy";
+    send.autoTiming = ini.Bool(L"Chat", L"AutoTiming", true);
     send.stepDelayMs = ini.Int(L"Chat", L"StepDelayMs", 80, 20, 1000);
     send.keyHoldMs = ini.Int(L"Chat", L"KeyHoldMs", 30, 5, 500);
     send.restoreDelayMs = ini.Int(L"Chat", L"RestoreDelayMs", 250, 50, 3000);
@@ -473,20 +350,6 @@ void Config::Load(const std::wstring& dir) {
     dockWidth = ini.Int(L"Window", L"DockWidth", 0, 0, 20000);
     dockHeight = ini.Int(L"Window", L"DockHeight", 0, 0, 20000);
     dockSet = dockWidth >= 100 && dockHeight >= 100;
-
-    tabs.clear();
-    for (int i = 1; i <= 12; ++i) {
-        ChatTab t;
-        if (ParseTab(AsciiUnescape(ini.Str(L"Tabs", (L"Tab" + std::to_wstring(i)).c_str(), L"")), t)) tabs.push_back(t);
-    }
-    if (tabs.empty()) tabs = DefaultTabs();
-    // The old default "Whisper" tab (everything + whispers only) is gone: one tab, colours tell the channel.
-    // A player's own whisper tab (opened by clicking a name) stays.
-    if (tabs.size() == 2 && tabs[0].channels == AllChannels() && tabs[1].channels == ChannelBit(Channel::Whisper) &&
-        tabs[1].person.empty())
-        tabs.pop_back();
-    for (size_t i = 0; i < tabs.size(); ++i) tabs[i].id = static_cast<uint32_t>(i + 1);
-    activeTab = ini.Int(L"Tabs", L"Active", 1, 1, static_cast<int>(tabs.size())) - 1;
 }
 
 void Config::SaveValue(const wchar_t* section, const wchar_t* key, const std::wstring& value) const {
@@ -506,35 +369,6 @@ void Config::SaveWindowRect(const RECT& rc, float scale) const {
     SaveValue(L"Window", L"Height", std::to_wstring(static_cast<int>((rc.bottom - rc.top) / scale + 0.5f)));
 }
 
-void Config::SaveFreeArea() const {
-    SaveBool(L"Reader", L"FreeArea", freeArea);
-    SaveValue(L"Reader", L"FreeRect",
-              std::to_wstring(freeRect.left) + L"," + std::to_wstring(freeRect.top) + L"," +
-                  std::to_wstring(freeRect.right - freeRect.left) + L"," + std::to_wstring(freeRect.bottom - freeRect.top));
-}
-
-void Config::SaveRegion() const {
-    SaveValue(L"Reader", L"RegionLeft", std::to_wstring(regionLeft));
-    SaveValue(L"Reader", L"RegionFromBottom", std::to_wstring(regionFromBottom));
-    SaveValue(L"Reader", L"RegionWidth", std::to_wstring(regionWidth));
-    SaveValue(L"Reader", L"RegionHeight", std::to_wstring(regionHeight));
-}
-
-void Config::SaveColor(Channel ch, Rgb rgb) {
-    for (ChannelColor& c : palette)
-        if (c.channel == ch) c.rgb = rgb;
-    for (const ColorKey& ck : kColorKeys)
-        if (ck.channel == ch) SaveValue(L"Reader", ck.key, RgbToHex(rgb));
-}
-
-void Config::SaveTabs() const {
-    // Rewrite the whole section so removed tabs disappear.
-    std::wstring data = L"Active=" + std::to_wstring(activeTab + 1) + L'\0';
-    for (size_t i = 0; i < tabs.size(); ++i)
-        data += L"Tab" + std::to_wstring(i + 1) + L"=" + AsciiEscape(SerializeTab(tabs[i])) + L'\0';
-    data += L'\0';
-    WritePrivateProfileSectionW(L"Tabs", data.c_str(), iniPath.c_str());
-}
 
 void Config::SaveDock() const {
     SaveValue(L"Window", L"Dock", dock ? L"1" : L"0");
@@ -546,7 +380,6 @@ void Config::SaveDock() const {
 
 void Config::SaveAll() const {
     SaveValue(L"General", L"UiLanguage", uiLangCode);
-    SaveBool(L"General", L"SetupDone", setupDone);
     SaveValue(L"General", L"Gw2Dir", AsciiEscape(gw2Dir));
     SaveValue(L"Translate", L"Engine", EngineKey(engine));
     SaveValue(L"Translate", L"ChatEngine", chatSameEngine ? std::wstring(L"same") : EngineKey(chatEngine));
@@ -557,7 +390,6 @@ void Config::SaveAll() const {
     SaveValue(L"Translate", L"WriteLangs", joined);
     SaveBool(L"Translate", L"BackTranslate", backTranslate);
     SaveBool(L"Translate", L"Writing", translateWriting);
-    SaveValue(L"Translate", L"AutoChannels", SerializeChannels(autoTranslate));
     {
         std::wstring list;
         for (const std::wstring& l : understoodLangs) list += (list.empty() ? L"" : L",") + l;
@@ -574,25 +406,10 @@ void Config::SaveAll() const {
     SaveValue(L"LLM", L"Url", AsciiEscape(llmUrl));
     SaveValue(L"LLM", L"Model", AsciiEscape(llmModel));
     SaveValue(L"LLM", L"ApiKey", ProtectSecret(llmKey));
-    SaveBool(L"LLM", L"FixOcr", llmFixOcr);
-    SaveBool(L"Reader", L"Enabled", readerEnabled);
-    SaveBool(L"Reader", L"Bridge", bridgeRead);
-    SaveBool(L"Reader", L"Ocr", ocrEnabled);
-    SaveValue(L"Reader", L"IntervalMs", std::to_wstring(readerIntervalMs));
-    SaveValue(L"Reader", L"OcrEngine", OcrKey(ocr));
-    SaveValue(L"Reader", L"Capture", captureMode == 1 ? L"window" : captureMode == 2 ? L"screen" : L"auto");
-    SaveValue(L"Reader", L"OcrZoom", std::to_wstring(ocrScale));
-    SaveBool(L"Reader", L"SecondLook", secondLook);
     SaveValue(L"Spelling", L"WriteIn", writeIn);
-    SaveBool(L"General", L"StartMenu", startMenu);
+    SaveBool(L"Chat", L"AutoTiming", send.autoTiming);
     SaveValue(L"Chat", L"KeyHoldMs", std::to_wstring(send.keyHoldMs));
     SaveValue(L"Chat", L"StepDelayMs", std::to_wstring(send.stepDelayMs));
-    SaveValue(L"Reader", L"TesseractPath", AsciiEscape(tesseractPath));
-    SaveValue(L"Reader", L"TesseractLang", FromUtf8(tesseractLangs));
-    SaveBool(L"Reader", L"ReadChinese", readChinese);
-    SaveBool(L"Reader", L"ShowSystem", showSystemLines);
-    SaveBool(L"Reader", L"OnlyTranslations", onlyTranslations);
-    SaveBool(L"Reader", L"KeepAfterMap", keepAfterMap);
     SaveBool(L"Voice", L"Enabled", voiceEnabled);
     SaveValue(L"Voice", L"Model", AsciiEscape(voiceModel));
     SaveValue(L"Voice", L"Language", AsciiEscape(voiceLang));
@@ -617,7 +434,6 @@ void Config::SaveAll() const {
     SaveValue(L"Voice", L"KeyAnywhere", voiceGlobalKey);
     SaveBool(L"Voice", L"PauseForVoiceChat", voiceChatPause);
     SaveValue(L"Voice", L"VoiceChatApps", AsciiEscape(voiceChatApps));
-    SaveBool(L"Reader", L"SaveCaptures", saveCaptures);
     SaveBool(L"Spelling", L"Enabled", spellEnabled);
     SaveValue(L"Spelling", L"AutoCorrectMode", AutoCorrectKey(autoCorrect));
     SaveBool(L"Spelling", L"Suggestions", suggestions);
@@ -636,11 +452,6 @@ void Config::SaveAll() const {
     SaveBool(L"Window", L"Compact", compact);
     SaveBool(L"Window", L"FocusOnGameChat", focusOnGameChat);
     SaveBool(L"Window", L"Dock", dock);
-}
-
-void Config::ResetColors() {
-    palette = DefaultChannelColors();
-    for (const ColorKey& ck : kColorKeys) WritePrivateProfileStringW(L"Reader", ck.key, nullptr, iniPath.c_str());
 }
 
 }  // namespace gct

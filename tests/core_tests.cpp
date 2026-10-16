@@ -10,8 +10,6 @@
 #include <string>
 
 #include "core/chat_line.hpp"
-#include "core/chat_stream.hpp"
-#include "core/chat_tabs.hpp"
 #include "core/cloud_mt_protocol.hpp"
 #include "core/my_words.hpp"
 #include "core/deepl_protocol.hpp"
@@ -387,45 +385,6 @@ static void TestTypingSlips() {
     CHECK(IsKeepWord(BuiltinSpellIgnore(), L"ohje"));
 }
 
-static void TestDoubleScan() {
-    ChatStream s;
-    const ChatMessage a{Channel::Map, false, L"Tamsin", L"wer kommt mit zum Tequatl", L"", {}};
-    const ChatMessage flash{Channel::Map, false, L"", L"Kiste geoeffnet: 3 Truhen", L"", {}};
-    CHECK(s.Feed({a, flash}, true).empty() && s.HasPending());  // first look: nothing yet
-    auto second = s.Feed({a}, true);                            // the tooltip is gone, the line stays
-    CHECK(second.size() == 1 && second[0].speaker == L"Tamsin" && !s.HasPending());
-    CHECK(s.Feed({a}, true).empty());                           // known now
-    // Read a little differently the second time: still the same line.
-    const ChatMessage b{Channel::Map, false, L"Kiro Vale", L"bin in fuenf Minuten da", L"", {}};
-    const ChatMessage b2{Channel::Map, false, L"Kiro Vale", L"bin in fuenf Minuten da.", L"", {}};
-    CHECK(s.Feed({a, b}, true).empty());
-    CHECK(s.Feed({a, b2}, true).size() == 1);
-}
-
-static void TestStream() {
-    ChatStream s;
-    std::vector<ChatMessage> a = {{Channel::Map, false, L"Alice", L"hello everyone", L"", {}},
-                                  {Channel::Map, false, L"Bob", L"hi alice", L"", {}}};
-    CHECK(s.Feed(a).size() == 2);
-    // Next frame: same lines, one OCR glitch, plus a new one.
-    std::vector<ChatMessage> b = {{Channel::Map, false, L"Alice", L"hello everyone", L"", {}},
-                                  {Channel::Map, false, L"Bob", L"hi alicе", L"", {}},  // Cyrillic e
-                                  {Channel::Map, false, L"Carl", L"lfg tequatl", L"", {}}};
-    auto fresh = s.Feed(b);
-    CHECK(fresh.size() == 1 && fresh[0].speaker == L"Carl");
-    CHECK(DiceSimilarity(L"hello everyone", L"hello everyone") == 1.0);
-    CHECK(DiceSimilarity(L"hello everyone", L"completely different") < 0.3);
-    CHECK(NormalizeForCompare(L"Hi, Alice!") == L"hialice");
-
-    TranslationCache cache(2);
-    cache.Put(L"Hello!", L"DE", L"Hallo!");
-    std::wstring out;
-    CHECK(cache.Get(L"hello", L"DE", out) && out == L"Hallo!");
-    CHECK(!cache.Get(L"hello", L"FR", out));
-    cache.Put(L"a", L"DE", L"1");
-    cache.Put(L"b", L"DE", L"2");  // evicts least recently used ("hello" was used, "a" is older? no: hello used last)
-    CHECK(cache.Get(L"b", L"DE", out) && out == L"2");
-}
 
 
 static void TestGw2Text() {
@@ -564,40 +523,6 @@ static void TestBatchQuota() {
     CHECK(!out[4].ok && out[4].quotaExceeded);
 }
 
-static void TestTabs() {
-    const auto tabs = DefaultTabs();
-    CHECK(tabs.size() == 1);
-    CHECK(TabShows(tabs[0], Channel::Map) && TabShows(tabs[0], Channel::System) && TabShows(tabs[0], Channel::Unknown));
-    CHECK(SoleSendChannel(tabs[0].channels) == Channel::Unknown);
-    // System / unknown lines do not count as a channel you can write to.
-    CHECK(SoleSendChannel(ChannelBit(Channel::Guild) | ChannelBit(Channel::System)) == Channel::Guild);
-    CHECK(SoleSendChannel(ChannelBit(Channel::Party) | ChannelBit(Channel::Squad)) == Channel::Unknown);
-    CHECK(SoleSendChannel(ChannelBit(Channel::System)) == Channel::Unknown);
-
-    ChatTab t;
-    CHECK(ParseTab(L" Gruppe | party, SQUAD ,bogus", t));
-    CHECK(t.name == L"Gruppe" && t.channels == (ChannelBit(Channel::Party) | ChannelBit(Channel::Squad)));
-    CHECK(SerializeTab(t) == L"Gruppe|party,squad");
-    ChatTab back;
-    CHECK(ParseTab(SerializeTab(tabs[0]), back) && back.channels == AllChannels() && back.name == L"Chat");
-    CHECK(!ParseTab(L"Leer|bogus", t));
-    CHECK(SerializeChannels(DefaultAutoTranslate()) == L"say,map,party,squad,team,guild,whisper,other");
-    CHECK(ParseChannels(L" Whisper ,map,bogus") == (ChannelBit(Channel::Whisper) | ChannelBit(Channel::Map)));
-    CHECK(ParseChannels(SerializeChannels(DefaultAutoTranslate())) == DefaultAutoTranslate());
-    ChatTab rook;
-    rook.name = L"Rook";
-    rook.channels = ChannelBit(Channel::Whisper);
-    rook.person = L"Rook Vale";
-    CHECK(SerializeTab(rook) == L"Rook|whisper|@Rook Vale");
-    CHECK(ParseTab(SerializeTab(rook), back) && back.person == L"Rook Vale" && back.channels == rook.channels);
-    CHECK(!ParseTab(L"|party", t));
-    CHECK(!ParseTab(L"kein trenner", t));
-    ChatTab odd;
-    odd.name = L"a|b";
-    odd.channels = ChannelBit(Channel::Map);
-    CHECK(SerializeTab(odd) == L"a b|map");
-    CHECK(TabPresets().size() == 6 && TabPresets()[1].name == L"Party");
-}
 
 static void TestAsciiEscape() {
     const std::wstring name = L"Fl\u00fcstern \u0645\u0631\u062d\u0628\u0627 a\\b";
@@ -1902,14 +1827,12 @@ int main() {
     TestColors();
     TestParseLine();
     TestBuildMessages();
-    TestStream();
     TestGw2Text();
     TestLlm();
     TestDeepLBatch();
     TestMumble();
     TestMyMemory();
     TestBatchQuota();
-    TestTabs();
     TestAsciiEscape();
     TestI18n();
     TestWordModel();
@@ -1918,7 +1841,6 @@ int main() {
     TestLocateChat();
     TestNotChat();
     TestEmoticons();
-    TestDoubleScan();
     TestTypingSlips();
     TestGuessLanguage();
     TestLinks();

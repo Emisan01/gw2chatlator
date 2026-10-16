@@ -43,6 +43,7 @@ std::wstring AsciiUnescape(const std::wstring& s);
 // Enough for DE/EN/FR/ES game text; CJK has no case.
 wchar_t CaseFoldChar(wchar_t c);
 std::wstring CaseFold(const std::wstring& s);
+std::wstring NormalizeForCompare(const std::wstring& s);
 
 // Letters/digits of Latin scripts (incl. umlauts, accents) and anything
 // above U+0250 except common punctuation. Used for whole-word matching.

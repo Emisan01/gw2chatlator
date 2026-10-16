@@ -286,29 +286,19 @@ public:
 
     std::vector<TranslateResult> TranslateBatch(const std::vector<std::vector<Segment>>& items, const std::wstring&,
                                                 const std::wstring& targetLang) override {
-        return Batch(items, targetLang, false);
-    }
-
-    std::vector<TranslateResult> TranslateOcrBatch(const std::vector<std::vector<Segment>>& items,
-                                                   const std::wstring& targetLang) override {
-        return Batch(items, targetLang, true);
-    }
-
-    std::vector<TranslateResult> Batch(const std::vector<std::vector<Segment>>& items, const std::wstring& targetLang,
-                                       bool fromOcr) {
         std::vector<TranslateResult> out(items.size());
         constexpr size_t kChunk = 16;  // keep prompts small for local models
         for (size_t begin = 0; begin < items.size(); begin += kChunk) {
             const size_t end = std::min(items.size(), begin + kChunk);
             const std::vector<std::vector<Segment>> part(items.begin() + begin, items.begin() + end);
             const LlmParsed p =
-                Call(BuildLlmRequest(part, LanguageEnglishName(targetLang), s_.model, fromOcr, local_, ollama_), part.size());
+                Call(BuildLlmRequest(part, LanguageEnglishName(targetLang), s_.model, false, local_, ollama_), part.size());
             if (!p.ok && p.formatError && part.size() > 1) {
                 // Small local models sometimes merge or drop lines in a batch:
                 // ask once per line instead of losing the whole batch.
                 for (size_t i = begin; i < end; ++i) {
                     const LlmParsed one =
-                        Call(BuildLlmRequest({items[i]}, LanguageEnglishName(targetLang), s_.model, fromOcr, local_, ollama_), 1);
+                        Call(BuildLlmRequest({items[i]}, LanguageEnglishName(targetLang), s_.model, false, local_, ollama_), 1);
                     out[i].ok = one.ok;
                     if (one.ok) out[i].text = one.texts[0];
                     else out[i].error = one.error;

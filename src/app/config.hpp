@@ -9,14 +9,12 @@
 #include <vector>
 
 #include "core/chat_line.hpp"
-#include "core/chat_tabs.hpp"
 #include "core/i18n.hpp"
 #include "win/gw2_sender.hpp"
 
 namespace gct {
 
 enum class Engine { Auto, Basic, DeepL, Llm, Google, Microsoft, Libre };
-enum class OcrChoice { Auto, Tesseract, Windows, Rapid, Hybrid };
 enum class AutoCorrectMode { Off, Safe, Phone };
 
 struct Config {
@@ -28,8 +26,6 @@ struct Config {
     // the window can show (English, German, Arabic – other choices show English until they are translated).
     std::wstring uiLangCode;
     UiLang uiLang = UiLang::En;
-    bool setupDone = false;     // the guided setup ran once
-    bool startMenu = true;      // the installed copy keeps a start-menu entry (re-created if missing)
     std::wstring gw2Dir;        // found or chosen game folder
 
     // [Translate]
@@ -42,15 +38,12 @@ struct Config {
     std::wstring chatLang = L"EN-GB";         // into the chat when the writing language has a script GW2 cannot show
     bool backTranslate = true;
     bool translateWriting = true;  // GW2 Keyboard: translate what you write (off: sent as written, only corrected)
-    ChannelMask autoTranslate = DefaultAutoTranslate();  // translated without a click (others: click a line)
     std::vector<std::wstring> understoodLangs;            // never translated automatically ("EN"); plus readLang
     bool skipTypingLang = true;                           // chat lines in the language you type in are not translated automatically
     int debounceMs = 500;
 
     // [Basic] MyMemory
     std::wstring basicEmail;
-    bool myMemoryNoticeShown = false;  // the one-time privacy notice was shown
-    bool tourShown = false;            // "What can this tool do?" was shown once by itself ([General] TourShown)
     std::wstring myMemoryDay;          // "20261006": the day myMemoryUsed counts for
     int myMemoryUsed = 0;              // characters sent today (free: 5,000 a day, 50,000 with an e-mail)
     // [DeepL]
@@ -64,35 +57,6 @@ struct Config {
     // [LLM]
     std::wstring llmUrl, llmModel, llmKey;
     int llmTimeoutSec = 60;
-    bool llmFixOcr = true;  // incoming lines: repair OCR errors while translating
-
-    // [Reader]
-    bool readerEnabled = true;
-    bool ocrEnabled = true;  // GW2 Keyboard: the OCR module at all ([Reader] Ocr) – off: no reader, OCR lines ignored
-    bool bridgeRead = true;  // party/squad chat from the optional Nexus add-on GW2 Chat Bridge ([Reader] Bridge)
-    int readerIntervalMs = 400;  // a look every 0.4 s; text recognition only runs when the picture changed
-    OcrChoice ocr = OcrChoice::Auto;
-    int captureMode = 0;          // 0 auto, 1 window (WGC), 2 screen (DXGI, never a yellow frame)
-    std::wstring tesseractPath;   // empty = search
-    std::string tesseractLangs;   // empty = automatic ("eng+deu+fra+spa")
-    bool readChinese = false;     // add Simplified Chinese to Tesseract
-    std::wstring ocrLanguage;     // Windows OCR: empty = Windows languages
-    int ocrScale = 0;             // 0 = automatic (line spacing), 1-4 fixed
-    bool secondLook = true;       // unknown words are read once more, enlarged more (taken only if then a real word)
-    bool showSystemLines = false;
-    // Like the GW2 chat: a map change (MumbleLink map id) takes the say / map chat out of the log unless kept.
-    // [Reader] KeepAfterMap.
-    bool keepAfterMap = false;
-    bool onlyTranslations = true;  // the log shows only lines that were (or can be) translated
-    bool saveCaptures = false;
-    bool regionSet = false;
-    int regionLeft = 0, regionFromBottom = 0, regionWidth = 0, regionHeight = 0;  // relative to GW2 client area
-    // Free screen area: any text on the screen (a website, a document, another
-    // game), no chat rules, read also outside GW2. Screen pixels.
-    bool freeArea = false;
-    RECT freeRect{};
-    bool FreeSet() const { return freeRect.right - freeRect.left >= 40 && freeRect.bottom - freeRect.top >= 20; }
-    std::vector<ChannelColor> palette;
 
     // [Spelling]
     std::wstring writeIn;  // the language you type in ("DE", "EN-GB"); empty = the keyboard layout's language
@@ -118,10 +82,6 @@ struct Config {
     // (Enter, Ctrl+V, Enter). Not a single key is sent to the game.
     bool copyOnly = false;
     SendOptions send;
-
-    // [Tabs] — like the tabs of the GW2 chat panel
-    std::vector<ChatTab> tabs;  // ids 1..n
-    int activeTab = 0;
 
     // [Window] — position in physical pixels (kAutoPos = place automatically),
     // size in 96-dpi pixels
@@ -175,13 +135,7 @@ struct Config {
     void Load(const std::wstring& dir);
     void SaveWindowRect(HWND wnd, float scale) const;
     void SaveWindowRect(const RECT& rc, float scale) const;
-    void SaveRegion() const;
-    void SaveFreeArea() const;
-    std::wstring RapidDir() const { return dataDir + L"\\rapid"; }  // RapidOCR models
     std::wstring VoiceModelDir() const { return dataDir + L"\\models"; }  // voice models (whisper)
-    void SaveColor(Channel ch, Rgb rgb);
-    void ResetColors();
-    void SaveTabs() const;
     void SaveDock() const;
     // Writes every setting that the settings dialog can change.
     void SaveAll() const;
@@ -191,13 +145,11 @@ struct Config {
     std::wstring UserWordsPath() const;  // your own GW2 words (never marked as errors)
     std::wstring LearnedDir() const { return dataDir + L"\\learned"; }
     std::wstring CacheDir() const { return dataDir + L"\\cache"; }
-    std::wstring CaptureDir() const { return dataDir + L"\\captures"; }
 };
 
 // The window language for a choice ("" = Windows display language): German, Arabic, else English.
 UiLang EffectiveUiLang(const std::wstring& code);
 const wchar_t* EngineKey(Engine e);        // "auto", "basic", "deepl", "llm"
-const wchar_t* OcrKey(OcrChoice o);        // "auto", "tesseract", "windows"
 const wchar_t* AutoCorrectKey(AutoCorrectMode m);  // "off", "safe", "phone"
 
 }  // namespace gct
