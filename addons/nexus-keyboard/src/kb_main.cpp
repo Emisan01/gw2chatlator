@@ -106,6 +106,7 @@ MyWords g_myWords;  // your own words and what they mean (<data>\my-words.txt), 
 constexpr size_t kMaxWhisperTabs = 5;
 struct WhisperTab {
     std::wstring name;
+    std::wstring nameFolded;
     bool unread = false;
     std::wstring sendLang;  // what you send from it ("" = like the chat tab, "=" = as written, else a code)
     // A tab of your own (right-click on the header): a copy of the chat with the channels you choose, writing into
@@ -114,6 +115,14 @@ struct WhisperTab {
     uint32_t channels = 0xFFFFFFFFu;
     Channel write = Channel::Unknown;
     uint32_t uid = 0;  // its ImGui id
+    mutable std::string label;
+
+    void SetName(const std::wstring& n) {
+        name = n;
+        nameFolded = CaseFold(n);
+        label.clear();
+    }
+    const char* Label() const;
 };
 constexpr size_t kMaxCustomTabs = 6;
 uint32_t g_nextTabUid = 1;
@@ -166,6 +175,11 @@ std::string UI(std::wstring w) {
     for (const auto& [from, to] : kSwap)
         for (size_t at; (at = w.find(from)) != std::wstring::npos;) w.replace(at, std::wcslen(from), to);
     return ToUtf8(w);
+}
+
+inline const char* WhisperTab::Label() const {
+    if (label.empty()) label = UI(name) + "###tab" + std::to_string(uid);
+    return label.c_str();
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -273,6 +287,8 @@ std::string Flat(const char* s) {  // the input as it is meant: one line
         if (c == '\n' || c == '\r') c = ' ';
     return f;
 }
+std::string g_flatInput;
+std::wstring g_wFlatInput;
 std::string g_lastInput;
 ULONGLONG g_inputChanged = 0;
 uint64_t g_inputGen = 0;
@@ -646,7 +662,7 @@ void ComputeTyping() {
     {
         std::lock_guard<std::mutex> lock(g_mu);
         g_helpRequested = false;
-        text = W(Flat(g_input));
+        text = g_wFlatInput;
         caret = text.size();  // the help works at the end of the line (where you type)
         mode = g_cfg.autoCorrect;
         context = g_context;
@@ -659,7 +675,7 @@ void ComputeTyping() {
     h.bar = g_spell->Suggestions(text, caret, mode);
     h.choices = g_spell->Choices(text, caret, mode);
     std::lock_guard<std::mutex> lock(g_mu);
-    if (W(Flat(g_input)) == text) g_help = std::move(h);
+    if (g_wFlatInput == text) g_help = std::move(h);
 }
 
 // Enter: the parts go into the GW2 chat – only now, on your Enter (invariants 1–3).
@@ -1168,7 +1184,7 @@ void OpenWhisperTab(const std::wstring& name) {
     if (who.empty()) return;
     int at = -1;
     for (size_t i = 0; i < g_tabs.size(); ++i)
-        if (!g_tabs[i].custom && CaseFold(g_tabs[i].name) == CaseFold(who)) at = static_cast<int>(i);
+        if (!g_tabs[i].custom && g_tabs[i].nameFolded == CaseFold(who)) at = static_cast<int>(i);
     if (at < 0) {
         const size_t whispers = std::count_if(g_tabs.begin(), g_tabs.end(), [](const WhisperTab& t) { return !t.custom; });
         if (whispers >= kMaxWhisperTabs) {  // the oldest whisper tab goes
@@ -1179,7 +1195,7 @@ void OpenWhisperTab(const std::wstring& name) {
             else if (g_activeTab == gone) g_activeTab = -1;
         }
         WhisperTab t;
-        t.name = who;
+        t.SetName(who);
         t.uid = g_nextTabUid++;
         g_tabs.push_back(t);
         at = static_cast<int>(g_tabs.size()) - 1;
@@ -1249,7 +1265,7 @@ void LoadCustomTabs() {  // g_mu held
         if (f.size() < 3 || f[0].empty()) continue;
         WhisperTab t;
         t.custom = true;
-        t.name = AsciiUnescape(f[0]);
+        t.SetName(AsciiUnescape(f[0]));
         t.channels = static_cast<uint32_t>(std::wcstoul(f[1].c_str(), nullptr, 10));
         t.write = static_cast<Channel>(std::clamp(_wtoi(f[2].c_str()), 0, static_cast<int>(Channel::System)));
         if (f.size() > 3) t.sendLang = AsciiUnescape(f[3]);
@@ -1268,7 +1284,7 @@ int NewCustomTab() {  // a copy of the chat: every channel, writing into the act
         taken = false;
         for (const WhisperTab& o : g_tabs)
             if (o.custom && o.name == TrF(L"Tab {1}", {std::to_wstring(number + 1)})) taken = true;
-        if (!taken) t.name = TrF(L"Tab {1}", {std::to_wstring(number + 1)});
+        if (!taken) t.SetName(TrF(L"Tab {1}", {std::to_wstring(number + 1)}));
     }
     const auto firstWhisper = std::find_if(g_tabs.begin(), g_tabs.end(), [](const WhisperTab& o) { return !o.custom; });
     const int at = static_cast<int>(firstWhisper - g_tabs.begin());  // your own tabs stand before the whisper tabs
@@ -1354,9 +1370,8 @@ void LookText(const char* text, ImVec4 color, bool wrap) {
 
 // The grey text after the caret: what Space writes (a completion shows its rest, a
 // correction "> word"); after a space the sure next word or phrase. `replace` gets what Tab takes.
-std::wstring GhostRest(bool* correction = nullptr) {
+std::wstring GhostRest(const std::wstring& text, bool* correction = nullptr) {
     if (correction) *correction = false;
-    const std::wstring text = W(Flat(g_input));
     if (g_help.text != text || text.empty()) return {};
     const WordSuggestions& bar = g_help.bar;
     if (g_pick >= 0 && g_pick < static_cast<int>(bar.words.size())) {  // picked with Tab
@@ -1386,7 +1401,7 @@ std::wstring GhostRest(bool* correction = nullptr) {
 
 // A word of the bar replaces the word at the end (or goes after it), followed by a space.
 void TakeWord(const std::wstring& word) {
-    const std::wstring text = W(Flat(g_input));
+    const std::wstring& text = g_wFlatInput;
     const WordSuggestions& b = g_help.bar;
     Span r = b.replace;
     if (g_help.text != text || r.end() > text.size()) r = Span{text.size(), 0};
@@ -1401,7 +1416,7 @@ void TakeWord(const std::wstring& word) {
 // Space at the end of a word: the word picked with Tab, else the grey one (what Space writes – only
 // strong choices); the change comes in through g_edit, the space with it. False: just a space.
 bool SpaceWrites() {
-    const std::wstring text = W(Flat(g_input));
+    const std::wstring& text = g_wFlatInput;
     if (g_help.text != text || text.empty() || text.back() == L' ' || g_cfg.autoCorrect == AutoCorrectMode::Off && g_pick < 0)
         return false;
     std::wstring word;
@@ -1437,7 +1452,7 @@ int InputCallback(ImGuiInputTextCallbackData* d) {
             const ImWchar ch = d->EventChar;
             if (ch == '\n' || ch == '\r') return 1;  // no line breaks of your own: Enter sends
             if (ch == '\t') {  // Tab / Shift+Tab: the next / previous word of the bar (Space writes it)
-                const int n = g_help.text == W(Flat(g_input)) ? static_cast<int>(g_help.bar.words.size()) : 0;
+                const int n = g_help.text == g_wFlatInput ? static_cast<int>(g_help.bar.words.size()) : 0;
                 if (n > 0) g_pick = ImGui::GetIO().KeyShift ? (g_pick <= 0 ? n - 1 : g_pick - 1) : (g_pick + 1) % n;
                 return 1;
             }
@@ -1499,7 +1514,7 @@ int InputCallback(ImGuiInputTextCallbackData* d) {
 }
 
 void StartSend() {  // Enter (g_mu held)
-    const std::wstring text = SanitizeChatText(W(Flat(g_input)));
+    const std::wstring text = SanitizeChatText(g_wFlatInput);
     if (text.empty() || g_sending) return;
     const SendGuard::Verdict v = g_guard.Check(text, false, false, GetTickCount64());
     if (!v.allow) {
@@ -1514,6 +1529,8 @@ void StartSend() {  // Enter (g_mu held)
     const std::wstring body = split.prefix.empty() ? text : split.body;
     const std::wstring prefix = split.prefix.empty() ? ComposePrefix() : split.prefix;
     g_input[0] = 0;
+    g_flatInput.clear();
+    g_wFlatInput.clear();
     g_lastInput.clear();
     g_historyPos = -1;
     g_undo.active = false;
@@ -1562,26 +1579,69 @@ void RenderFooter() {  // g_mu held
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Minimize chat")).c_str());
     ImGui::SameLine();
 
-    // Channel.
-    std::string label = g_channel == Channel::Unknown ? UI(Tr(L"Active channel")) : UI(ChannelLabel(g_channel));
-    if (g_channel == Channel::Whisper && !g_whisperTo.empty()) label += " " + U8(g_whisperTo);
-    std::string write = UI(TrF(L"Write: {1}", {g_cfg.writeIn.empty() ? Tr(L"like Windows") : NativeName(g_cfg.writeIn)}));
-    const std::wstring sendText = SendOriginal() ? Tr(L"as written") : NativeName(SendLang());
-    std::string send = UI(TrF(L"Send: {1}", {sendText}));
-    {  // too narrow for the full chips: the short forms ("DE", "> EN"), the full text as tooltip
-        const float need = iconH + chipWidth(label) + chipWidth(write) + chipWidth(send) + ImGui::GetFrameHeight() * 4 +
-                           ImGui::CalcTextSize("000/199").x;
-        if (need > ImGui::GetContentRegionAvail().x) {
-            if (g_channel == Channel::Unknown) label = UI(Tr(L"Active"));
-            write = g_cfg.writeIn.empty() ? std::string("Win") : U8(ToUpperAscii(PrimaryLang(g_cfg.writeIn)));
-            send = "> " + (SendOriginal() ? UI(Tr(L"as written")) : U8(ToUpperAscii(PrimaryLang(SendLang()))));
-        }
+    // Footer chips cached: precalculated strings and sizes avoid allocations on idle frames.
+    struct FooterCache {
+        Channel channel = Channel::Unknown;
+        std::wstring whisperTo;
+        std::wstring writeIn;
+        std::wstring sendLang;
+        bool sendOrig = false;
+        std::string labelFull, labelNarrow;
+        std::string labelBtnFull, labelBtnNarrow;
+        std::string writeFull, writeNarrow;
+        std::string writeBtnFull, writeBtnNarrow;
+        std::string sendFull, sendNarrow;
+        std::string sendBtnFull, sendBtnNarrow;
+        float labelWFull = 0, labelWNarrow = 0;
+        float writeWFull = 0, writeWNarrow = 0;
+        float sendWFull = 0, sendWNarrow = 0;
+        float totalNeedFull = 0;
+    };
+    static FooterCache s_fc;
+    const bool sendOrig = SendOriginal();
+    const std::wstring sendLang = SendLang();
+    if (s_fc.channel != g_channel || s_fc.whisperTo != g_whisperTo || s_fc.writeIn != g_cfg.writeIn ||
+        s_fc.sendLang != sendLang || s_fc.sendOrig != sendOrig) {
+        s_fc.channel = g_channel;
+        s_fc.whisperTo = g_whisperTo;
+        s_fc.writeIn = g_cfg.writeIn;
+        s_fc.sendLang = sendLang;
+        s_fc.sendOrig = sendOrig;
+
+        s_fc.labelFull = g_channel == Channel::Unknown ? UI(Tr(L"Active channel")) : UI(ChannelLabel(g_channel));
+        if (g_channel == Channel::Whisper && !g_whisperTo.empty()) s_fc.labelFull += " " + U8(g_whisperTo);
+        s_fc.labelNarrow = g_channel == Channel::Unknown ? UI(Tr(L"Active")) : s_fc.labelFull;
+        s_fc.labelBtnFull = s_fc.labelFull + "##chbtn";
+        s_fc.labelBtnNarrow = s_fc.labelNarrow + "##chbtn";
+
+        s_fc.writeFull = UI(TrF(L"Write: {1}", {g_cfg.writeIn.empty() ? Tr(L"like Windows") : NativeName(g_cfg.writeIn)}));
+        s_fc.writeNarrow = g_cfg.writeIn.empty() ? std::string("Win") : U8(ToUpperAscii(PrimaryLang(g_cfg.writeIn)));
+        s_fc.writeBtnFull = s_fc.writeFull + "##writebtn";
+        s_fc.writeBtnNarrow = s_fc.writeNarrow + "##writebtn";
+
+        const std::wstring sendText = sendOrig ? Tr(L"as written") : NativeName(sendLang);
+        s_fc.sendFull = UI(TrF(L"Send: {1}", {sendText}));
+        s_fc.sendNarrow = "> " + (sendOrig ? UI(Tr(L"as written")) : U8(ToUpperAscii(PrimaryLang(sendLang))));
+        s_fc.sendBtnFull = s_fc.sendFull + "##sendbtn";
+        s_fc.sendBtnNarrow = s_fc.sendNarrow + "##sendbtn";
+
+        s_fc.labelWFull = chipWidth(s_fc.labelFull);
+        s_fc.labelWNarrow = chipWidth(s_fc.labelNarrow);
+        s_fc.writeWFull = chipWidth(s_fc.writeFull);
+        s_fc.writeWNarrow = chipWidth(s_fc.writeNarrow);
+        s_fc.sendWFull = chipWidth(s_fc.sendFull);
+        s_fc.sendWNarrow = chipWidth(s_fc.sendNarrow);
+        s_fc.totalNeedFull = iconH + s_fc.labelWFull + s_fc.writeWFull + s_fc.sendWFull +
+                             ImGui::GetFrameHeight() * 4 + ImGui::CalcTextSize("000/199").x;
     }
 
+    const bool narrow = s_fc.totalNeedFull > ImGui::GetContentRegionAvail().x;
+    const std::string& chBtnLabel = narrow ? s_fc.labelBtnNarrow : s_fc.labelBtnFull;
+    const float chBtnW = narrow ? s_fc.labelWNarrow : s_fc.labelWFull;
+
     const ImVec2 chBtnPos = ImGui::GetCursorScreenPos();
-    const float chBtnW = chipWidth(label);
     ImGui::PushStyleColor(ImGuiCol_Text, NameColorOf(g_channel == Channel::Unknown ? Channel::Say : g_channel));
-    const bool chLeft = ImGui::Button((label + "##chbtn").c_str(), ImVec2(chBtnW, iconH));
+    const bool chLeft = ImGui::Button(chBtnLabel.c_str(), ImVec2(chBtnW, iconH));
     ImGui::PopStyleColor();
     const bool chRight = ImGui::IsItemHovered() && ImGui::IsMouseClicked(1);
 
@@ -1610,8 +1670,9 @@ void RenderFooter() {  // g_mu held
     // The language you write in (spelling, learned words and the prediction follow it).
     ImGui::SameLine();
     const ImVec2 writeBtnPos = ImGui::GetCursorScreenPos();
-    const float writeBtnW = chipWidth(write);
-    const bool writeLeft = ImGui::Button((write + "##writebtn").c_str(), ImVec2(writeBtnW, iconH));
+    const float writeBtnW = narrow ? s_fc.writeWNarrow : s_fc.writeWFull;
+    const std::string& writeBtnLabel = narrow ? s_fc.writeBtnNarrow : s_fc.writeBtnFull;
+    const bool writeLeft = ImGui::Button(writeBtnLabel.c_str(), ImVec2(writeBtnW, iconH));
     const bool writeRight = ImGui::IsItemHovered() && ImGui::IsMouseClicked(1);
     if (writeLeft || writeRight) {
         ImGui::OpenPopup("##write_popup");
@@ -1646,9 +1707,10 @@ void RenderFooter() {  // g_mu held
     // What the chat gets (orange); who translates is told by the status line.
     ImGui::SameLine();
     const ImVec2 sendBtnPos = ImGui::GetCursorScreenPos();
-    const float sendBtnW = chipWidth(send);
+    const float sendBtnW = narrow ? s_fc.sendWNarrow : s_fc.sendWFull;
+    const std::string& sendBtnLabel = narrow ? s_fc.sendBtnNarrow : s_fc.sendBtnFull;
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.94f, 0.75f, 0.35f, 1.f));
-    const bool sendLeft = ImGui::Button((send + "##sendbtn").c_str(), ImVec2(sendBtnW, iconH));
+    const bool sendLeft = ImGui::Button(sendBtnLabel.c_str(), ImVec2(sendBtnW, iconH));
     ImGui::PopStyleColor();
     const bool sendRight = ImGui::IsItemHovered() && ImGui::IsMouseClicked(1);
     if (sendLeft || sendRight) {
@@ -1712,12 +1774,11 @@ void RenderFooter() {  // g_mu held
             ImGui::EndTooltip();
         }
     }
-    const std::wstring text = SanitizeChatText(W(Flat(g_input)));
-    const size_t n = CodePointCount(text);
+    const size_t n = CodePointCount(g_wFlatInput);
     std::string counter = std::to_string(n) + "/" + std::to_string(g_cfg.maxLength);
     if (n > static_cast<size_t>(g_cfg.maxLength)) {  // sent as several chat lines
         const bool current = g_previewGen == g_inputGen && !g_preview.empty();
-        const size_t parts = SplitForChat(Translating() && current ? g_preview : text, ComposePrefix(),
+        const size_t parts = SplitForChat(Translating() && current ? g_preview : g_wFlatInput, ComposePrefix(),
                                           static_cast<size_t>(g_cfg.maxLength)).size();
         counter += "  (" + std::to_string(parts) + "x)";
     }
@@ -1825,9 +1886,18 @@ bool IconButton(const char* id, Icon kind, bool active, bool* rightClick, ImU32 
 // Cut to the width with "…" at the end.
 std::string Fit(const std::string& s, float width) {
     if (ImGui::CalcTextSize(s.c_str()).x <= width) return s;
-    std::wstring w = W(s);
-    while (!w.empty() && ImGui::CalcTextSize((U8(w) + "...").c_str()).x > width) w.pop_back();
-    return U8(w) + "...";
+    const std::wstring w = W(s);
+    const float ellipsisW = ImGui::CalcTextSize("...").x;
+    const float targetW = width - ellipsisW;
+    if (targetW <= 0.0f) return "...";
+    size_t low = 0, high = w.size();
+    while (low < high) {
+        const size_t mid = low + (high - low + 1) / 2;
+        const std::string sub = U8(w.substr(0, mid));
+        if (ImGui::CalcTextSize(sub.c_str()).x <= targetW) low = mid;
+        else high = mid - 1;
+    }
+    return U8(w.substr(0, low)) + "...";
 }
 
 // The status text (drawn in the input box): a message, else what is going on.
@@ -2443,7 +2513,7 @@ void RenderWindow() {
             bool open = true;
             const ImGuiTabItemFlags f = (g_selectTab == i ? ImGuiTabItemFlags_SetSelected : 0) |
                                         (g_tabs[i].unread ? ImGuiTabItemFlags_UnsavedDocument : 0);
-            const bool shown = ImGui::BeginTabItem((UI(g_tabs[i].name) + "###tab" + std::to_string(g_tabs[i].uid)).c_str(), &open, f);
+            const bool shown = ImGui::BeginTabItem(g_tabs[i].Label(), &open, f);
             if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
                 tabMenu = true;  // not the header's menu
                 if (g_tabs[i].custom) g_tabSettings = static_cast<int>(i);
@@ -2498,7 +2568,7 @@ void RenderWindow() {
             bool changed = false;
             ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
             if (ImGui::InputText(UI(Tr(L"Name") + L"##tabname").c_str(), name, sizeof(name)) && !Trim(W(name)).empty()) {
-                t.name = Trim(W(name));
+                t.SetName(Trim(W(name)));
                 changed = true;
             }
             ImGui::TextUnformatted(UI(Tr(L"Shows")).c_str());
@@ -2675,9 +2745,9 @@ void RenderWindow() {
         ImGui::SameLine(0, 4);
         ImGui::BeginChild("chat", ImVec2(0, h), false, ImGuiWindowFlags_NoScrollbar);
         if (setScroll >= 0) ImGui::SetScrollY(setScroll);
-        // The lines of the tab in front: all, or the whispers with one player.
+        static const std::wstring s_emptyW;
         const WhisperTab* front = g_activeTab >= 0 && g_activeTab < static_cast<int>(g_tabs.size()) ? &g_tabs[g_activeTab] : nullptr;
-        const std::wstring tabName = front && !front->custom ? CaseFold(front->name) : std::wstring();
+        const std::wstring& tabName = front && !front->custom ? front->nameFolded : s_emptyW;
         const uint32_t tabChannels = front && front->custom ? front->channels : 0xFFFFFFFFu;
         if (g_lines.empty()) {  // nothing arrived yet: what is ready, what is missing, where translation is switched on
             lock.unlock();
@@ -2766,7 +2836,7 @@ void RenderWindow() {
             // empty: no hint text here – the chat above is what you read
         } else if (!Translating()) {
             ImGui::PushStyleColor(ImGuiCol_Text, kPreview);
-            ImGui::TextWrapped("%s", U8(ComposePrefix() + SanitizeChatText(W(Flat(g_input)))).c_str());
+            ImGui::TextWrapped("%s", U8(ComposePrefix() + SanitizeChatText(g_wFlatInput)).c_str());
             ImGui::PopStyleColor();
         } else if (previewCurrent) {
             ImGui::PushStyleColor(ImGuiCol_Text, kPreview);
@@ -2790,7 +2860,7 @@ void RenderWindow() {
         const ImVec2 p = ImGui::GetCursorScreenPos();
         const float h = ImGui::GetFrameHeight();
         ImDrawList* dl = ImGui::GetWindowDrawList();
-        const bool have = g_cfg.suggestions && g_help.text == W(Flat(g_input));
+        const bool have = g_cfg.suggestions && g_help.text == g_wFlatInput;
         for (int i = 0; i < 3; ++i) {
             const ImVec2 a(p.x + w * i / 3.0f, p.y), b(p.x + w * (i + 1) / 3.0f, p.y + h);
             if (i) dl->AddLine(ImVec2(a.x, a.y + h * 0.25f), ImVec2(a.x, b.y - h * 0.25f), ImGui::GetColorU32(ImGuiCol_Separator));
@@ -2821,12 +2891,17 @@ void RenderWindow() {
                                       ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_CallbackCharFilter |
                                       ImGuiInputTextFlags_CallbackAlways;
     const bool enter = ImGui::InputTextMultiline("##input", g_input, sizeof(g_input), boxSize, flags, InputCallback);
+    const std::string nowFlat = Flat(g_input);
+    if (nowFlat != g_flatInput) {
+        g_flatInput = nowFlat;
+        g_wFlatInput = W(nowFlat);
+    }
     const ImVec2 inputMin = ImGui::GetItemRectMin(), inputMax = ImGui::GetItemRectMax();
     const bool inputActive = ImGui::IsItemActive();
     if (inputActive && !g_history.empty() && !g_edit.active) {
         const bool up = ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_UpArrow));
         const bool down = ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_DownArrow));
-        const std::wstring cur = W(Flat(g_input));
+        const std::wstring& cur = g_wFlatInput;
         const bool browsing = cur.empty() || (g_historyPos >= 0 && g_historyPos < static_cast<int>(g_history.size()) &&
                                               cur == g_history[g_historyPos]);
         if ((up || down) && browsing) {
@@ -2851,7 +2926,7 @@ void RenderWindow() {
     if (ImGui::BeginPopup("##teach")) {
         static char typed[64] = {}, fixed[64] = {}, word[64] = {}, meaning[160] = {};
         if (ImGui::IsWindowAppearing()) {  // the last word you typed, and what is known of it
-            const std::wstring text = W(Flat(g_input));
+            const std::wstring& text = g_wFlatInput;
             const std::vector<Span> spans = WordSpans(text);
             const std::wstring last = spans.empty() ? std::wstring() : text.substr(spans.back().start, spans.back().length);
             typed[0] = 0;
@@ -2920,10 +2995,11 @@ void RenderWindow() {
     }
     const ImVec4 clip(inputMin.x, inputMin.y, inputMax.x, inputMax.y);
     const ImVec2 textAt(inputMin.x + st.FramePadding.x, inputMin.y + st.FramePadding.y);
-    if (const std::wstring rest = GhostRest(); !rest.empty() && inputActive) {  // what Space / Tab writes
+    if (const std::wstring rest = GhostRest(g_wFlatInput); !rest.empty() && inputActive) {  // what Space / Tab writes
         // In the line where the text ends (the box is its own child window: drawn on top, clipped to the box).
+        const size_t inLen = std::strlen(g_input);
         const char* lastLine = std::strrchr(g_input, '\n');
-        const int lineNo = static_cast<int>(std::count(g_input, g_input + std::strlen(g_input), '\n'));
+        const int lineNo = static_cast<int>(std::count(g_input, g_input + inLen, '\n'));
         const ImVec2 typed = ImGui::CalcTextSize(lastLine ? lastLine + 1 : g_input);
         if (lineNo < g_layout.inputLines)
             BoxText(ImVec2(textAt.x + typed.x, textAt.y + lineNo * ImGui::GetTextLineHeight()), clip,
@@ -2933,9 +3009,20 @@ void RenderWindow() {
     if (!g_input[0]) {
         if (g_recording && !showPreview && !g_voiceLive.empty())
             BoxText(textAt, clip, ImGui::GetColorU32(kPreview), U8(g_voiceLive));
-        else
+        else {
+            static std::wstring s_lastStatusW;
+            static std::string s_lastStatusFit;
+            static float s_lastStatusWidth = 0.0f;
+            const float availW = inputMax.x - textAt.x - st.FramePadding.x;
+            const std::wstring stW = StatusText();
+            if (stW != s_lastStatusW || std::abs(availW - s_lastStatusWidth) > 1.0f) {
+                s_lastStatusW = stW;
+                s_lastStatusWidth = availW;
+                s_lastStatusFit = Fit(UI(stW), availW);
+            }
             BoxText(textAt, clip, g_status.empty() ? ImGui::GetColorU32(ImGuiCol_TextDisabled) : ImGui::GetColorU32(kAccent),
-                    Fit(UI(StatusText()), inputMax.x - textAt.x - st.FramePadding.x));
+                    s_lastStatusFit);
+        }
     } else if (!g_status.empty()) {
         const std::string s = Fit(UI(g_status), (inputMax.x - inputMin.x) * 0.6f);
         const float w = ImGui::CalcTextSize(s.c_str()).x * 0.85f;
@@ -2952,10 +3039,9 @@ void RenderWindow() {
     // ---- the footer: channel | write | send · translator | auto | counter
     if (g_layout.footer) RenderFooter();
     // Changes of the text: a pause translates it; the typing help follows every key.
-    const std::string now = Flat(g_input);
-    if (now != g_lastInput) {
-        g_lastInput = now;
-        NoteSelfFix(W(now));
+    if (g_flatInput != g_lastInput) {
+        g_lastInput = g_flatInput;
+        NoteSelfFix(g_wFlatInput);
         g_inputChanged = GetTickCount64();
         ++g_inputGen;
         g_back.clear();
@@ -2965,9 +3051,9 @@ void RenderWindow() {
             g_worker.Post(ComputeTyping);
         }
     }
-    if (g_inputChanged && GetTickCount64() - g_inputChanged > 400 && !now.empty() && Translating()) {
+    if (g_inputChanged && GetTickCount64() - g_inputChanged > 400 && !g_flatInput.empty() && Translating()) {
         g_inputChanged = 0;
-        g_worker.Post([gen = g_inputGen, t = SanitizeChatText(W(now))] { TranslateInput(gen, t); });
+        g_worker.Post([gen = g_inputGen, t = SanitizeChatText(g_wFlatInput)] { TranslateInput(gen, t); });
     }
     if (enter) StartSend();
     if (g_autoSendPending && !g_edit.active && g_input[0]) {  // the dictation is in the line now
