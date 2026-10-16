@@ -124,9 +124,16 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 - `build\Release\voice_bench.exe model lang threads wav…` with recordings in `local\voice`.
 - Not verifiable here: the game itself – test in GW2 with Nexus (copy the DLL + `GW2Keyboard\` into `addons`).
 
-## Releases
+## Releases & Release-Norm (Verbindlicher Standard)
 
 `project(... VERSION)` in CMakeLists.txt → version.h → the add-on's definition. The package `GW2Keyboard-Nexus.zip`:
 `gw2keyboard_nexus.dll` at the root, `GW2Keyboard\` with `gw2kb_voice.exe`, `voice\*.dll`, README.txt,
 THIRD_PARTY_NOTICES.txt. The voice module installer downloads `GW2Keyboard-Nexus.zip` of the release tagged like the
-DLL's version (else the latest) – every release must carry it. No push and no release without the user's word.
+DLL's version (else the latest) – every release must carry it.
+
+**Verbindliche Stufenprüfung (Normierung vor jedem Release für alle):**
+1. **Gate-Audit:** `python tools/verify_release.py` muss alle 8 Gates (Version, Nexus-Def, Unit-Tests, Selftest, Typing-Bench, i18n, Binary, Smoke-Stresstest) mit 0 Fehlern bestehen.
+2. **Pre-Release Staging:** Neue Versionen werden auf GitHub grundsätzlich ZUERST als `Pre-Release` (oder Draft) angelegt – niemals direkt als ungeprüfter Main/Latest-Release.
+3. **Schleifenprüfung & Sichtcheck:** Kein Release wird für alle Spieler (`Latest`) freigeschaltet, bevor der Maintainer die Version selbst in Ruhe in Guild Wars 2 mit Nexus im Spiel gesehen und verifiziert hat.
+4. **Tempo & Demut:** Keine voreiligen Schnellschüsse oder übertriebenes KI-Selbstvertrauen. Wenn der Maintainer müde, krank oder zeitlich gebunden ist, bleibt die Version im Test-Status, bis ein ausgeruhter Check erfolgt ist.
+5. **Kein Push / Release ohne explizite Freigabe des Maintainers.**
