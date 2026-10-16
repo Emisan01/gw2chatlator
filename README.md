@@ -3,7 +3,7 @@
 The chat of Guild Wars 2 in your language – **read it, write and speak in yours**, the chat gets it translated. A
 Nexus add-on, right inside the game. A line goes into the chat only when you press Enter yourself.
 
-## ⬇ [Download gw2keyboard_nexus.dll – version 1.8.5](https://github.com/Emisan01/gw2chatlator/releases/download/v1.8.5/gw2keyboard_nexus.dll)
+## ⬇ [Download gw2keyboard_nexus.dll – version 1.8.6](https://github.com/Emisan01/gw2chatlator/releases/download/v1.8.6/gw2keyboard_nexus.dll)
 
 Put the DLL into your `Guild Wars 2\addons` folder (where [Nexus](https://raidcore.gg/Nexus) keeps its add-ons) and
 load **GW2Chatlator** in Nexus – that is all: on the first start it loads Events: Chat, its voice module and a small
@@ -12,7 +12,14 @@ all versions: [Releases](https://github.com/Emisan01/gw2chatlator/releases) · w
 
 Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustotal.com/gui/file/24127b749fc15c3d4afa630a5c7e19b0f3e7001ead8f331637445a80eaabbe58).
 
-> **New in 1.8.5** – FPS-adapted automatic timing & performance optimization:
+> **New in 1.8.6** – uBlock-style scam/phishing filter, native chat link redirection & UI polish:
+> clickable web links with local scam/phishing detection (`[Phishing]`) and URL shortener warning (`[Shortener]`) ·
+> Level-2 Cloudflare Security DoH (1.1.1.2) background threat check & Cloudflare Radar inspection ·
+> native chat link redirection: clicking in-game waypoints, items, skills or builds opens the native chat with full engine features (map pan, 3D preview) ·
+> pixel-perfect bottom-bar snapping aligned with the native minimal chat button across all UI scales ·
+> upward-opening footer popups and 0-allocation idle performance for rock-solid framerates.
+
+> **In 1.8.5** – FPS-adapted automatic timing & performance optimization:
 > dynamic key hold & inter-key step delays based on measured game FPS ·
 > auto-disables automatic timing when adjusting manual sliders in Technical tab ·
 > eliminated unnecessary foreground focus switches and delays when GW2 is already foreground ·
