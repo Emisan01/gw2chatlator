@@ -36,7 +36,6 @@
 #include "app/spell_service.hpp"
 #include "core/chat_code.hpp"
 #include "core/chat_line.hpp"
-#include "core/chat_stream.hpp"
 #include "core/gw2_text.hpp"
 #include "core/hotkey.hpp"
 #include "core/i18n.hpp"
@@ -674,8 +673,15 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
         std::lock_guard<std::mutex> lock(g_mu);
         so = g_cfg.send;
     }
-    if (const int fps = g_fps; fps > 0 && so.keyHoldMs == 30) {  // GW2 reads the keyboard once per frame
-        const int action = std::clamp(1000 / fps + 10, 15, 1010);
+    if (so.autoTiming) {
+        const int fps = g_fps;
+        if (fps > 0) {
+            const int action = std::clamp(1000 / std::max(fps, 10) + 10, 15, 1010);
+            so.keyHoldMs = action;
+            so.stepDelayMs = action;
+        }
+    } else if (const int fps = g_fps; fps > 0 && so.keyHoldMs == 30) {  // GW2 reads the keyboard once per frame
+        const int action = std::clamp(1000 / std::max(fps, 10) + 10, 15, 1010);
         so.keyHoldMs = action;
         if (so.stepDelayMs == 80) so.stepDelayMs = action;
     }
@@ -3252,16 +3258,25 @@ void RenderOptionsContent() {
         }
         // ---- Technical
         if (ImGui::BeginTabItem(UI(Tr(L"Technical")).c_str(), nullptr, TabFlag(5))) {
+            ImGui::Checkbox(UI(Tr(L"Automatic timing (FPS-adapted)") + L"##autotiming").c_str(), &edit.send.autoTiming);
+            Hint(UI(Tr(L"Calculates key hold and step delays dynamically based on the game's current framerate.")));
+
+            const int oldHold = edit.send.keyHoldMs;
+            const int oldStep = edit.send.stepDelayMs;
             ImGui::SetNextItemWidth(120);
-            ImGui::InputInt(UI(Tr(L"Key hold when sending (ms)") + L"##hold").c_str(), &edit.send.keyHoldMs);
+            if (ImGui::InputInt(UI(Tr(L"Key hold when sending (ms)") + L"##hold").c_str(), &edit.send.keyHoldMs)) {
+                if (edit.send.keyHoldMs != oldHold) edit.send.autoTiming = false;
+            }
             ImGui::SetNextItemWidth(120);
-            ImGui::InputInt(UI(Tr(L"Pause between keys (ms)") + L"##step").c_str(), &edit.send.stepDelayMs);
+            if (ImGui::InputInt(UI(Tr(L"Pause between keys (ms)") + L"##step").c_str(), &edit.send.stepDelayMs)) {
+                if (edit.send.stepDelayMs != oldStep) edit.send.autoTiming = false;
+            }
             edit.send.keyHoldMs = std::clamp(edit.send.keyHoldMs, 10, 500);
             edit.send.stepDelayMs = std::clamp(edit.send.stepDelayMs, 10, 1000);
             ImGui::Separator();
             std::lock_guard<std::mutex> lock(g_mu);
             const int fps = g_fps;
-            const int hold = fps > 0 && g_cfg.send.keyHoldMs == 30 ? std::clamp(1000 / fps + 10, 15, 1010) : g_cfg.send.keyHoldMs;
+            const int hold = (fps > 0 && edit.send.autoTiming) ? std::clamp(1000 / std::max(fps, 10) + 10, 15, 1010) : edit.send.keyHoldMs;
             ImGui::Text("GW2Chatlator for Nexus %s", GCT_VERSION_STR);
             ImGui::Text("%s", UI(TrF(L"Game: {1} fps → keys held {2} ms", {std::to_wstring(fps), std::to_wstring(hold)})).c_str());
             ImGui::Text("%s", UI(TrF(L"Translator: {1}", {g_translator ? g_translator->Name() : std::wstring(L"-")})).c_str());

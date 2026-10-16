@@ -3,6 +3,13 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.8.5 — 2026-10-16 (GW2Chatlator for Nexus)
+
+- **FPS-adapted automatic sending timing:** Key hold and inter-key step delays dynamically adapt to the game's measured framerate, ensuring keys reliably span frame boundaries without lag.
+- **Manual timing override:** Editing key hold or pause between keys in Options → Technical automatically disables the automatic timing mode.
+- **Optimized chat send path:** In-process foreground focus checks now skip redundant foreground switches and pre-send sleeps when Guild Wars 2 is already the foreground window.
+- **Cleanup of legacy desktop OCR & tabs:** Cleaned unused desktop OCR batch logic, dead tab stream files, and redundant translation strings.
+
 ## 1.8.4 — 2026-10-15 (GW2Chatlator for Nexus)
 
 - **Name alignment:** updated in-game Nexus add-on definition name and window titles to **GW2Chatlator** to match the official Raidcore listing.

@@ -274,8 +274,11 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
         return r;
     };
 
-    if (!BringToFront(gw2)) return finish(Tr(L"GW2 cannot be brought to the front"));
-    Sleep(opt.stepDelayMs);
+    const bool wasAlreadyForeground = (GetForegroundWindow() == gw2);
+    if (!wasAlreadyForeground) {
+        if (!BringToFront(gw2)) return finish(Tr(L"GW2 cannot be brought to the front"));
+        Sleep(opt.stepDelayMs);
+    }
 
     // Never type into the wrong window: re-check focus before every step,
     // and let GW2 work through each step before the next one.

@@ -216,6 +216,14 @@ std::wstring CaseFold(const std::wstring& s) {
     return out;
 }
 
+std::wstring NormalizeForCompare(const std::wstring& s) {
+    std::wstring out;
+    out.reserve(s.size());
+    for (wchar_t c : s)
+        if (IsWordChar(c)) out += CaseFoldChar(c);
+    return out;
+}
+
 bool IsWordChar(wchar_t c) {
     const uint32_t u = static_cast<uint32_t>(c);
     if ((u >= '0' && u <= '9') || (u >= 'A' && u <= 'Z') || (u >= 'a' && u <= 'z')) return true;
