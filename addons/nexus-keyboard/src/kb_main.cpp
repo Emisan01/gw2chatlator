@@ -1591,12 +1591,26 @@ void RenderFooter() {  // g_mu held
     }
     // The language you write in (spelling, learned words and the prediction follow it).
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(chipWidth(write));
-    if (ImGui::BeginCombo("##write", write.c_str())) {
+    const ImVec2 writeBtnPos = ImGui::GetCursorScreenPos();
+    const float writeBtnW = chipWidth(write);
+    const bool writeLeft = ImGui::Button((write + "##writebtn").c_str(), ImVec2(writeBtnW, iconH));
+    const bool writeRight = ImGui::IsItemHovered() && ImGui::IsMouseClicked(1);
+    if (writeLeft || writeRight) {
+        ImGui::OpenPopup("##write_popup");
+    }
+    ImGui::SetNextWindowPos(ImVec2(writeBtnPos.x, writeBtnPos.y - 4.0f), ImGuiCond_Always, ImVec2(0.0f, 1.0f));
+    if (ImGui::BeginPopup("##write_popup")) {
         std::wstring chosen = g_cfg.writeIn;
-        if (ImGui::Selectable(UI(Tr(L"like Windows")).c_str(), chosen.empty())) chosen.clear();
-        for (const LangInfo& l : Languages())
-            if (l.latinScript && ImGui::Selectable(U8(l.native).c_str(), g_cfg.writeIn == l.code)) chosen = l.code;
+        if (ImGui::Selectable(UI(Tr(L"like Windows")).c_str(), chosen.empty())) {
+            chosen.clear();
+            ImGui::CloseCurrentPopup();
+        }
+        for (const LangInfo& l : Languages()) {
+            if (l.latinScript && ImGui::Selectable(U8(l.native).c_str(), g_cfg.writeIn == l.code)) {
+                chosen = l.code;
+                ImGui::CloseCurrentPopup();
+            }
+        }
         if (chosen != g_cfg.writeIn) {
             g_cfg.writeIn = chosen;
             g_cfg.SaveValue(L"Spelling", L"WriteIn", chosen);
@@ -1607,15 +1621,22 @@ void RenderFooter() {  // g_mu held
             ++g_inputGen;
             g_inputChanged = GetTickCount64();
         }
-        ImGui::EndCombo();
+        ImGui::EndPopup();
     }
+
     // What the chat gets (orange); who translates is told by the status line.
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(chipWidth(send));
+    const ImVec2 sendBtnPos = ImGui::GetCursorScreenPos();
+    const float sendBtnW = chipWidth(send);
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.94f, 0.75f, 0.35f, 1.f));
-    const bool open = ImGui::BeginCombo("##send", send.c_str());
+    const bool sendLeft = ImGui::Button((send + "##sendbtn").c_str(), ImVec2(sendBtnW, iconH));
     ImGui::PopStyleColor();
-    if (open) {
+    const bool sendRight = ImGui::IsItemHovered() && ImGui::IsMouseClicked(1);
+    if (sendLeft || sendRight) {
+        ImGui::OpenPopup("##send_popup");
+    }
+    ImGui::SetNextWindowPos(ImVec2(sendBtnPos.x, sendBtnPos.y - 4.0f), ImGuiCond_Always, ImVec2(0.0f, 1.0f));
+    if (ImGui::BeginPopup("##send_popup")) {
         for (size_t i = 0; i <= g_cfg.writeLangs.size(); ++i) {
             const std::string n = i == g_cfg.writeLangs.size() ? UI(Tr(L"as written")) : U8(NativeName(g_cfg.writeLangs[i]));
             const bool current = g_sendOverride.empty() ? static_cast<int>(i) == g_sendIdx
@@ -1632,6 +1653,7 @@ void RenderFooter() {  // g_mu held
                 g_preview.clear();
                 g_inputChanged = GetTickCount64();
                 g_focusInput = true;
+                ImGui::CloseCurrentPopup();
             }
         }
         ImGui::Separator();
@@ -1650,9 +1672,10 @@ void RenderFooter() {  // g_mu held
                 ++g_inputGen;
                 g_preview.clear();
                 g_inputChanged = GetTickCount64();
+                ImGui::CloseCurrentPopup();
             }
         }
-        ImGui::EndCombo();
+        ImGui::EndPopup();
     }
     if (g_cfg.voiceEnabled) {  // send right after speaking (off by default)
         ImGui::SameLine();
