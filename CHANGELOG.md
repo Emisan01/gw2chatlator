@@ -3,6 +3,26 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.8.6 — 2026-10-16 (GW2Chatlator for Nexus)
+
+- **uBlock-style scam & phishing filter:**
+  - Real web links (HTTP/HTTPS) are directly clickable in our chat window.
+  - Local domain analyzer detects GW2/ArenaNet impersonation (`guildwars2-gems.xyz`, `arenanet-verification.com`, fake logins) and raw IP addresses immediately $\rightarrow$ marked in red with strikethrough and a `[Phishing]` badge.
+  - Shorteners hiding their true destination (`bit.ly`, `tinyurl`, `is.gd` etc.) are tagged with an amber `[Shortener]` badge.
+  - Asynchronous Level-2 Cloudflare Security DoH (1.1.1.2) check queries `security.cloudflare-dns.com` for unclassified domains without network lag or API keys.
+  - Safe confirmation popup with risk assessment, cancellation as primary action, and optional inspection via Cloudflare Radar.
+  - Toggleable via Options ≡ → Chat text → "Filter suspicious links (phishing & shorteners)".
+- **Native chat link redirection:**
+  - Clicking in-game links (waypoints, items, skills, traits, builds) checks expiration (map changes, 90s age).
+  - Automatically minimizes our window and invokes native chat focus so the game engine displays full native interactions (waypoint map panning, 3D dressing room preview).
+  - Cleaned up obsolete legacy "Shift+click to copy/paste" behavior.
+- **Pixel-perfect bottom bar snapping:**
+  - Screen edge snapping aligns exactly with the upper edge of the native minimal chat button above the bottom bar across all 4 UI scales (Small, Normal, Large, Larger) and resolutions.
+  - Footer dropdown menus (channels, languages) open upwards to prevent clipping below the screen.
+  - Native-style `<` minimize button sits flush at the bottom-left corner.
+- **0-allocation idle performance:**
+  - Pre-cached chat line segment rendering, status text, footer chips, and language lists eliminate all memory allocations per idle frame for rock-solid framerates.
+
 ## 1.8.5 — 2026-10-16 (GW2Chatlator for Nexus)
 
 - **FPS-adapted automatic sending timing:** Key hold and inter-key step delays dynamically adapt to the game's measured framerate, ensuring keys reliably span frame boundaries without lag.
