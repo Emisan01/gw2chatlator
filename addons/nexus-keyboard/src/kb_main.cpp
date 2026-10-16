@@ -55,7 +55,6 @@
 #include "version.h"
 #include "chat_links.hpp"
 #include "chat/ChatLinks.h"
-#include "d3d11_hook.hpp"
 #include "voice_module.hpp"
 #include "win/deepl_translator.hpp"
 #include "win/els.hpp"
@@ -240,6 +239,14 @@ struct ChatLine {
     bool outgoing = false;
     bool own = false;
     std::wstring speaker, text, translated;
+    std::wstring speakerFolded;
+
+    // Pre-parsed/pre-encoded cache for 0-allocation rendering on the main thread
+    std::string speakerDisplay;
+    std::string u8text;
+    std::string u8translated;
+    std::vector<PieUI::ChatLinks::LinkSegment> textSegs;
+    std::vector<PieUI::ChatLinks::LinkSegment> transSegs;
 };
 
 struct TypingHelp {  // the worker's answer for one text + caret
@@ -547,8 +554,13 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked = false) {
     if (!r.ok || r.text.empty()) return;
     const std::wstring t = SanitizeChatText(r.text);
     std::lock_guard<std::mutex> lock(g_mu);
-    for (ChatLine& l : g_lines)
-        if (l.id == id && NormalizeForCompare(t) != NormalizeForCompare(l.text)) l.translated = t;
+    for (ChatLine& l : g_lines) {
+        if (l.id == id && NormalizeForCompare(t) != NormalizeForCompare(l.text)) {
+            l.translated = t;
+            l.u8translated = U8(l.translated);
+            l.transSegs = PieUI::ChatLinks::SegmentLine(l.u8translated);
+        }
+    }
 }
 
 void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring learnText);
@@ -1088,11 +1100,16 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
     l.speaker = speaker ? SanitizeChatText(W(speaker)) : std::wstring();
     l.text = SanitizeChatText(UnescapeChatText(W(text)));  // Events: Chat escapes brackets: "\[&...\]"
     if (l.text.empty()) return;
+    l.speakerFolded = CaseFold(Trim(l.speaker));
+    l.speakerDisplay = l.speaker.empty() ? std::string() : UI((l.outgoing ? L"> " : L"") + l.speaker + L":");
+    l.u8text = U8(l.text);
+    l.textSegs = PieUI::ChatLinks::SegmentLine(l.u8text);
+    const std::wstring rawText = l.text;
     uint64_t id;
     bool own;
     {
         std::lock_guard<std::mutex> lock(g_mu);
-        own = outgoing || (!g_ownName.empty() && CaseFold(Trim(l.speaker)) == CaseFold(g_ownName));
+        own = outgoing || (!g_ownName.empty() && l.speakerFolded == CaseFold(g_ownName));
         l.own = own;
         l.id = id = g_nextId++;
         if (!own) {  // completions offer the names and words of the chat (never learned – invariant 10)
@@ -1101,18 +1118,18 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
                 if (s.length >= 4) g_context.insert(g_context.begin(), l.text.substr(s.start, s.length));
             if (g_context.size() > 80) g_context.resize(80);
         }
-        g_lines.push_back(l);
+        g_lines.push_back(std::move(l));
         while (g_lines.size() > kMaxLines) g_lines.pop_front();
         for (size_t i = 0; i < g_tabs.size(); ++i) {  // a tab not in front that shows this line: marked
             if (static_cast<int>(i) == g_activeTab) continue;
             const WhisperTab& t = g_tabs[i];
             if (t.custom ? (t.channels & ChannelBit(ch)) != 0
-                         : ch == Channel::Whisper && CaseFold(t.name) == CaseFold(Trim(l.speaker)))
+                         : ch == Channel::Whisper && CaseFold(t.name) == g_lines.back().speakerFolded)
                 g_tabs[i].unread = true;
         }
         g_scrollDown = true;
     }
-    if (!own) g_worker.Post([id, t = l.text] { TranslateLine(id, t); });
+    if (!own) g_worker.Post([id, t = rawText] { TranslateLine(id, t); });
 }
 
 void OnChatEvents(void* args) {
@@ -2659,12 +2676,11 @@ void RenderWindow() {
             lock.lock();
         }
         for (const ChatLine& l : g_lines) {
-            if (!tabName.empty() && (l.channel != Channel::Whisper || CaseFold(Trim(l.speaker)) != tabName)) continue;
+            if (!tabName.empty() && (l.channel != Channel::Whisper || l.speakerFolded != tabName)) continue;
             if (!(tabChannels & ChannelBit(l.channel))) continue;  // a tab of your own: only its channels
             ImGui::PushID(static_cast<int>(l.id));
             if (!l.speaker.empty()) {  // the name in the channel colour – a click: whisper with that player in their tab
-                const std::string name = UI((l.outgoing ? L"> " : L"") + l.speaker + L":");
-                LookText(name.c_str(), NameColorOf(l.channel), false);
+                LookText(l.speakerDisplay.c_str(), NameColorOf(l.channel), false);
                 const bool canWhisper = !l.own || (l.outgoing && l.channel == Channel::Whisper);
                 if (canWhisper && ImGui::IsItemHovered()) {
                     ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
@@ -2676,15 +2692,15 @@ void RenderWindow() {
                 ImGui::SameLine(0, ImGui::CalcTextSize(" ").x);
             }
             const std::wstring& shown = l.translated.empty() ? l.text : l.translated;
-            const std::string u8shown = U8(shown);
-            const auto segs = PieUI::ChatLinks::SegmentLine(u8shown);
+            const std::string& u8shown = l.translated.empty() ? l.u8text : l.u8translated;
+            const auto& segs = l.translated.empty() ? l.textSegs : l.transSegs;
             bool clicked = false;
             if (segs.size() <= 1 && (segs.empty() || segs[0].kind == PieUI::ChatLinks::SegmentKind::Plain)) {
                 LookText(u8shown.c_str(), ColorOf(l.channel), true);
             } else {
                 clicked = RichLine(shown, segs, ColorOf(l.channel));
             }
-            if (!l.translated.empty() && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", U8(l.text).c_str());
+            if (!l.translated.empty() && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", l.u8text.c_str());
             // A click on the text of a line someone else wrote: just this line into your language.
             if (!clicked && !l.own && l.translated.empty() && (ImGui::IsItemClicked() || ImGui::IsItemClicked(ImGuiMouseButton_Right)))
                 g_worker.Post([id = l.id, t = l.text] { TranslateLine(id, t, true); });
@@ -3131,10 +3147,6 @@ void RenderOptionsContent() {
             Hint(UI(Tr(L"The input keeps the keyboard after Enter – the next message goes right after.")));
             ImGui::Checkbox(UI(Tr(L"Take over the whole focus when the GW2 chat opens")).c_str(), &edit.focusOnGameChat);
             Hint(UI(Tr(L"Enter in the game (opening its chat line) brings you into this input instead.")));
-            if (ImGui::Checkbox(UI(Tr(L"Hide native chat window")).c_str(), &edit.hideNativeChat)) {
-                D3D11Hook_SetHideChat(edit.hideNativeChat);
-            }
-            Hint(UI(Tr(L"Completely suppresses rendering of the native Guild Wars 2 chat window.")));
             ImGui::EndTabItem();
         }
         // ---- Voice
@@ -3434,7 +3446,6 @@ void RenderOptionsContent() {
             edit.myMemoryDay = g_cfg.myMemoryDay;  // counted meanwhile
             edit.myMemoryUsed = g_cfg.myMemoryUsed;
             g_cfg = edit;
-            D3D11Hook_SetHideChat(g_cfg.hideNativeChat);
             g_cfg.SaveAll();
             SetUiLang(g_cfg.uiLang);
             g_translator = MakeTranslator(g_cfg);
@@ -3458,7 +3469,6 @@ void RenderOptionsContent() {
     ImGui::SameLine();
     if (ImGui::Button(UI(Tr(L"Undo changes")).c_str())) {
         loaded = false;
-        D3D11Hook_SetHideChat(g_cfg.hideNativeChat);
     }
 }
 
@@ -3480,7 +3490,6 @@ void GuardedRender(void (*fn)()) {
     }
 }
 void SafeRender() {
-    D3D11Hook_FrameReset();
     __try {
         GuardedRender(RenderWindow);
     } __except (EXCEPTION_EXECUTE_HANDLER) {
@@ -3560,13 +3569,10 @@ void AddonLoad(AddonAPI_t* api) {
     if (api->Events_Subscribe) {
         api->Events_Subscribe(bridge::kChatEventsEvent, OnChatEvents);
     }
-    D3D11Hook_Init(api);
-    D3D11Hook_SetHideChat(g_cfg.hideNativeChat);
     Log(LOGL_INFO, "loaded");
 }
 
 void AddonUnload() {
-    D3D11Hook_Shutdown();
     if (g_api) {
         if (g_api->Events_Unsubscribe) {
             g_api->Events_Unsubscribe(bridge::kChatEventsEvent, OnChatEvents);
