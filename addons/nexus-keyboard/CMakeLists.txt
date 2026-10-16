@@ -3,6 +3,7 @@
 set(GCT_NEXUS_TP ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
 add_library(gw2keyboard_nexus SHARED
     src/kb_main.cpp
+    src/d3d11_hook.cpp
     src/voice_module.cpp
     src/chat_links.cpp
     src/chat/ChatLinks.cpp
@@ -14,7 +15,7 @@ add_library(gw2keyboard_nexus SHARED
     ${GCT_NEXUS_TP}/imgui/imgui_tables.cpp
     ${GCT_NEXUS_TP}/imgui/imgui_widgets.cpp)
 target_include_directories(gw2keyboard_nexus PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/src ${GCT_NEXUS_TP} ${GCT_NEXUS_TP}/imgui)
-target_link_libraries(gw2keyboard_nexus PRIVATE gct_win)
+target_link_libraries(gw2keyboard_nexus PRIVATE gct_win d3d11)
 target_compile_definitions(gw2keyboard_nexus PRIVATE UNICODE _UNICODE _WIN32_WINNT=0x0A00 WINVER=0x0A00 NOMINMAX
                            WIN32_LEAN_AND_MEAN GCT_NEXUS_KEYBOARD)
 target_compile_options(gw2keyboard_nexus PRIVATE /utf-8 /W4 /permissive-)

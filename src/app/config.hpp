@@ -81,6 +81,7 @@ struct Config {
     // true: Enter only copies the line; you paste it in GW2 yourself
     // (Enter, Ctrl+V, Enter). Not a single key is sent to the game.
     bool copyOnly = false;
+    bool hideNativeChat = false;
     SendOptions send;
 
     // [Window] — position in physical pixels (kAutoPos = place automatically),

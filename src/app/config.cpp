@@ -322,6 +322,7 @@ void Config::Load(const std::wstring& dir) {
     maxLength = ini.Int(L"Chat", L"MaxLength", 199, 20, 2000);
     returnFocus = ini.Bool(L"Chat", L"ReturnFocus", false);
     copyOnly = ToLowerAscii(ini.Str(L"Chat", L"SendMode", L"send")) == L"copy";
+    hideNativeChat = ini.Bool(L"Chat", L"HideNativeChat", false);
     send.autoTiming = ini.Bool(L"Chat", L"AutoTiming", true);
     send.stepDelayMs = ini.Int(L"Chat", L"StepDelayMs", 80, 20, 1000);
     send.keyHoldMs = ini.Int(L"Chat", L"KeyHoldMs", 30, 5, 500);
@@ -444,6 +445,7 @@ void Config::SaveAll() const {
     SaveValue(L"Hotkey", L"Toggle", hotkey);
     SaveValue(L"Chat", L"SendMode", copyOnly ? L"copy" : L"send");
     SaveBool(L"Chat", L"ReturnFocus", returnFocus);
+    SaveBool(L"Chat", L"HideNativeChat", hideNativeChat);
     SaveValue(L"Window", L"Opacity", std::to_wstring(opacity));
     SaveValue(L"Window", L"FontPercent", std::to_wstring(fontPercent));
     SaveValue(L"Window", L"Font", fontFace);

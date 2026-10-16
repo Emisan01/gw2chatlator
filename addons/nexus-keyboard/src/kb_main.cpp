@@ -55,6 +55,7 @@
 #include "version.h"
 #include "chat_links.hpp"
 #include "chat/ChatLinks.h"
+#include "d3d11_hook.hpp"
 #include "voice_module.hpp"
 #include "win/deepl_translator.hpp"
 #include "win/els.hpp"
@@ -3014,6 +3015,10 @@ void RenderOptionsContent() {
             Hint(UI(Tr(L"The input keeps the keyboard after Enter – the next message goes right after.")));
             ImGui::Checkbox(UI(Tr(L"Take over the whole focus when the GW2 chat opens")).c_str(), &edit.focusOnGameChat);
             Hint(UI(Tr(L"Enter in the game (opening its chat line) brings you into this input instead.")));
+            if (ImGui::Checkbox(UI(Tr(L"Hide native chat window")).c_str(), &edit.hideNativeChat)) {
+                D3D11Hook_SetHideChat(edit.hideNativeChat);
+            }
+            Hint(UI(Tr(L"Completely suppresses rendering of the native Guild Wars 2 chat window.")));
             ImGui::EndTabItem();
         }
         // ---- Voice
@@ -3313,6 +3318,7 @@ void RenderOptionsContent() {
             edit.myMemoryDay = g_cfg.myMemoryDay;  // counted meanwhile
             edit.myMemoryUsed = g_cfg.myMemoryUsed;
             g_cfg = edit;
+            D3D11Hook_SetHideChat(g_cfg.hideNativeChat);
             g_cfg.SaveAll();
             SetUiLang(g_cfg.uiLang);
             g_translator = MakeTranslator(g_cfg);
@@ -3334,7 +3340,10 @@ void RenderOptionsContent() {
             g_voice.Send("reload");
     }
     ImGui::SameLine();
-    if (ImGui::Button(UI(Tr(L"Undo changes")).c_str())) loaded = false;
+    if (ImGui::Button(UI(Tr(L"Undo changes")).c_str())) {
+        loaded = false;
+        D3D11Hook_SetHideChat(g_cfg.hideNativeChat);
+    }
 }
 
 // Nexus → Addons → GW2 Keyboard: only the button that opens / closes our own options window.
@@ -3355,6 +3364,7 @@ void GuardedRender(void (*fn)()) {
     }
 }
 void SafeRender() {
+    D3D11Hook_FrameReset();
     __try {
         GuardedRender(RenderWindow);
     } __except (EXCEPTION_EXECUTE_HANDLER) {
@@ -3434,10 +3444,13 @@ void AddonLoad(AddonAPI_t* api) {
     if (api->Events_Subscribe) {
         api->Events_Subscribe(bridge::kChatEventsEvent, OnChatEvents);
     }
+    D3D11Hook_Init(api);
+    D3D11Hook_SetHideChat(g_cfg.hideNativeChat);
     Log(LOGL_INFO, "loaded");
 }
 
 void AddonUnload() {
+    D3D11Hook_Shutdown();
     if (g_api) {
         if (g_api->Events_Unsubscribe) {
             g_api->Events_Unsubscribe(bridge::kChatEventsEvent, OnChatEvents);
