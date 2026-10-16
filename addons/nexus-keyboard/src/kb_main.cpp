@@ -1521,11 +1521,30 @@ std::wstring NativeName(const std::wstring& code) {
     return ToUpperAscii(code);
 }
 
+bool g_collapsed = false;  // the V / > buttons: window minimizes to bottom-left corner
+float g_headerH = 0, g_lastW = 520, g_expandedH = 360, g_restoreH = 0;
+
 // The footer chips: channel | "Write: German" | "Send: English (UK) · MyMemory" (orange) | auto | counter.
 void RenderFooter() {  // g_mu held
     static const Channel kChannels[] = {Channel::Unknown, Channel::Say,   Channel::Map,  Channel::Party,
                                         Channel::Squad,   Channel::Guild, Channel::Team, Channel::Whisper};
     auto chipWidth = [](const std::string& s) { return ImGui::CalcTextSize(s.c_str()).x + ImGui::GetFrameHeight() + 12; };
+    const float iconH = ImGui::GetFrameHeight();
+
+    // Native minimize button (bottom-left corner of the window)
+    if (ImGui::Button(">##minchat", ImVec2(iconH, iconH))) {
+        g_collapsed = true;
+        const ImVec2 p = ImGui::GetWindowPos(), s = ImGui::GetWindowSize();
+        g_lastW = s.x;
+        g_expandedH = s.y;
+        const float bottomY = p.y + s.y;
+        const float minBtn = iconH + 8.0f;
+        ImGui::SetWindowPos(ImVec2(p.x, bottomY - minBtn));
+        ImGui::SetWindowSize(ImVec2(minBtn, minBtn));
+    }
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Minimize chat")).c_str());
+    ImGui::SameLine();
+
     // Channel.
     std::string label = g_channel == Channel::Unknown ? UI(Tr(L"Active channel")) : UI(ChannelLabel(g_channel));
     if (g_channel == Channel::Whisper && !g_whisperTo.empty()) label += " " + U8(g_whisperTo);
@@ -1533,7 +1552,7 @@ void RenderFooter() {  // g_mu held
     const std::wstring sendText = SendOriginal() ? Tr(L"as written") : NativeName(SendLang());
     std::string send = UI(TrF(L"Send: {1}", {sendText}));
     {  // too narrow for the full chips: the short forms ("DE", "> EN"), the full text as tooltip
-        const float need = chipWidth(label) + chipWidth(write) + chipWidth(send) + ImGui::GetFrameHeight() * 4 +
+        const float need = iconH + chipWidth(label) + chipWidth(write) + chipWidth(send) + ImGui::GetFrameHeight() * 4 +
                            ImGui::CalcTextSize("000/199").x;
         if (need > ImGui::GetContentRegionAvail().x) {
             if (g_channel == Channel::Unknown) label = UI(Tr(L"Active"));
@@ -1541,18 +1560,34 @@ void RenderFooter() {  // g_mu held
             send = "> " + (SendOriginal() ? UI(Tr(L"as written")) : U8(ToUpperAscii(PrimaryLang(SendLang()))));
         }
     }
-    ImGui::SetNextItemWidth(chipWidth(label));
-    if (ImGui::BeginCombo("##channel", label.c_str())) {
+
+    const ImVec2 chBtnPos = ImGui::GetCursorScreenPos();
+    const float chBtnW = chipWidth(label);
+    ImGui::PushStyleColor(ImGuiCol_Text, NameColorOf(g_channel == Channel::Unknown ? Channel::Say : g_channel));
+    const bool chLeft = ImGui::Button((label + "##chbtn").c_str(), ImVec2(chBtnW, iconH));
+    ImGui::PopStyleColor();
+    const bool chRight = ImGui::IsItemHovered() && ImGui::IsMouseClicked(1);
+
+    if (chLeft || chRight) {
+        ImGui::OpenPopup("##channel_popup");
+    }
+
+    // Dropdown menu opens UPWARDS directly above the button, overlaying the window upwards!
+    ImGui::SetNextWindowPos(ImVec2(chBtnPos.x, chBtnPos.y - 4.0f), ImGuiCond_Always, ImVec2(0.0f, 1.0f));
+    if (ImGui::BeginPopup("##channel_popup")) {
         for (Channel c : kChannels) {
             const std::string name = c == Channel::Unknown ? UI(Tr(L"Active channel")) : UI(ChannelLabel(c));
+            ImGui::PushStyleColor(ImGuiCol_Text, NameColorOf(c == Channel::Unknown ? Channel::Say : c));
             if (ImGui::Selectable(name.c_str(), c == g_channel)) {
                 if (c != Channel::Whisper && g_activeTab >= 0) LeaveWhisperTab();  // the whisper tab is left
                 g_channel = c;
                 if (c != Channel::Whisper) g_whisperTo.clear();
                 g_focusInput = true;
+                ImGui::CloseCurrentPopup();
             }
+            ImGui::PopStyleColor();
         }
-        ImGui::EndCombo();
+        ImGui::EndPopup();
     }
     // The language you write in (spelling, learned words and the prediction follow it).
     ImGui::SameLine();
@@ -2171,8 +2206,6 @@ bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::Link
 
 bool g_micLocked = false;  // right-click on the microphone: on until the next right-click
 bool g_compact = false;    // menu ≡: like GW2's own chat – no preview, no word bar; the translation small in the input
-bool g_collapsed = false;  // the V in the header: only the header is left (A opens it again)
-float g_headerH = 0, g_lastW = 520, g_expandedH = 360, g_restoreH = 0;
 
 void RenderOptionsContent();
 
@@ -2222,60 +2255,114 @@ void RenderWindow() {
     ChatEventsPresent();
     RenderOptionsWindow();
     bool inMap;
+    static bool s_uncollapseRestore = false;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         inMap = g_inMap || g_test.forceMap;
         if (g_focusInput && g_collapsed) {  // something wants the input: the window opens again
             g_collapsed = false;
             g_restoreH = g_expandedH;
+            s_uncollapseRestore = true;
         }
     }
     if (!g_show || !inMap) return;
-    // Never smaller than header + input + footer (it cannot vanish when made small); collapsed: only the header.
+
+    const float iconH = ImGui::GetFrameHeight();
+    const float minBtn = iconH + 8.0f;
+    if (g_collapsed) {
+        ImGui::SetNextWindowSize(ImVec2(minBtn, minBtn), ImGuiCond_Always);
+        ImGui::SetNextWindowBgAlpha(std::clamp(g_cfg.opacity, 60, 255) / 255.0f);
+        ImGuiWindowFlags minFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                                   ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse |
+                                   ImGuiWindowFlags_NoScrollWithMouse;
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(2, 2));
+        const bool beginOk = ImGui::Begin("GW2Chatlator###kbmain", nullptr, minFlags);
+        ImGui::PopStyleVar();
+        if (beginOk) {
+            if (g_nx.snap && !ImGui::IsMouseDown(0)) {
+                const ImVec2 pos = ImGui::GetWindowPos();
+                if (pos.x < 0.0f || pos.y < 0.0f) {
+                    ImVec2 p = pos;
+                    if (p.x < 0.0f) p.x = 0.0f;
+                    if (p.y < 0.0f) p.y = 0.0f;
+                    if (p.x != pos.x || p.y != pos.y) ImGui::SetWindowPos(p);
+                }
+            }
+            if (ImGui::Button("<##expand", ImVec2(iconH, iconH))) {
+                std::lock_guard<std::mutex> lock(g_mu);
+                g_collapsed = false;
+                const ImVec2 p = ImGui::GetWindowPos(), s = ImGui::GetWindowSize();
+                const float bottomY = p.y + s.y;
+                ImGui::SetWindowPos(ImVec2(p.x, bottomY - g_expandedH));
+                ImGui::SetWindowSize(ImVec2(g_lastW, g_expandedH));
+                g_focusInput = true;
+            }
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Open the window")).c_str());
+            if (g_autoSendPending && !g_edit.active && g_input[0]) {
+                g_autoSendPending = false;
+                StartSend();
+            }
+            ImGui::End();
+            return;
+        }
+        ImGui::End();
+        return;
+    }
+
     const float minW = 300, minH = 170;
     ImGui::SetNextWindowSize(ImVec2(520, 360), ImGuiCond_FirstUseEver);
-    if (g_collapsed && g_headerH > 0) {
-        ImGui::SetNextWindowSizeConstraints(ImVec2(minW, 0), ImVec2(FLT_MAX, FLT_MAX));
-        ImGui::SetNextWindowSize(ImVec2(g_lastW, g_headerH), ImGuiCond_Always);
-    } else {
-        ImGui::SetNextWindowSizeConstraints(ImVec2(minW, minH), ImVec2(FLT_MAX, FLT_MAX));
-        if (g_restoreH > 0) {
-            ImGui::SetNextWindowSize(ImVec2(g_lastW, g_restoreH), ImGuiCond_Always);
-            g_restoreH = 0;
-        }
+    ImGui::SetNextWindowSizeConstraints(ImVec2(minW, minH), ImVec2(FLT_MAX, FLT_MAX));
+    if (g_restoreH > 0) {
+        ImGui::SetNextWindowSize(ImVec2(g_lastW, g_restoreH), ImGuiCond_Always);
+        g_restoreH = 0;
     }
     ImGui::SetNextWindowBgAlpha(std::clamp(g_cfg.opacity, 60, 255) / 255.0f);
     ImGuiWindowFlags wflags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                               ImGuiWindowFlags_NoScrollWithMouse;
-    if (g_collapsed) wflags |= ImGuiWindowFlags_NoResize;
     if (!ImGui::Begin("GW2Chatlator###kbmain", nullptr, wflags)) {
         ImGui::End();
         return;
     }
+    if (s_uncollapseRestore) {
+        s_uncollapseRestore = false;
+        const ImVec2 p = ImGui::GetWindowPos(), s = ImGui::GetWindowSize();
+        const float bottomY = p.y + s.y;
+        ImGui::SetWindowPos(ImVec2(p.x, bottomY - g_expandedH));
+        ImGui::SetWindowSize(ImVec2(g_lastW, g_expandedH));
+    }
     ImGui::SetWindowFontScale(std::clamp(g_cfg.fontPercent, 70, 200) / 100.0f);
     g_lastW = ImGui::GetWindowWidth();
-    if (!g_collapsed) g_expandedH = ImGui::GetWindowHeight();
+    g_expandedH = ImGui::GetWindowHeight();
     std::unique_lock<std::mutex> lock(g_mu);
-    {  // Snap: a move that ends near a screen edge puts the window onto it (not when its size was dragged)
+    {  // Snap: a move that ends near a screen edge puts the window onto it; dragging past screen edge pulls it back
         static bool dragging = false;
-        static ImVec2 startPos, startSize;
+        static ImVec2 startPos;
         const ImVec2 pos = ImGui::GetWindowPos(), size = ImGui::GetWindowSize();
-        if (ImGui::IsMouseClicked(0) && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows)) {
+        if (ImGui::IsMouseClicked(0) && ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows)) {
             dragging = true;
             startPos = pos;
-            startSize = size;
         } else if (dragging && !ImGui::IsMouseDown(0)) {
             dragging = false;
-            const bool moved = (pos.x != startPos.x || pos.y != startPos.y) && size.x == startSize.x && size.y == startSize.y;
+            const bool moved = (pos.x != startPos.x || pos.y != startPos.y);
             if (g_nx.snap && moved) {
-                const float t = 24.0f * std::max(1.0f, io.DisplaySize.y / 1080.0f);
+                const float t = 48.0f * std::max(1.0f, io.DisplaySize.y / 1080.0f);
                 ImVec2 p = pos;
-                if (std::fabs(p.x) < t) p.x = 0;
-                else if (std::fabs(p.x + size.x - io.DisplaySize.x) < t) p.x = io.DisplaySize.x - size.x;
-                if (std::fabs(p.y) < t) p.y = 0;
-                else if (std::fabs(p.y + size.y - io.DisplaySize.y) < t) p.y = io.DisplaySize.y - size.y;
+                // Left: if pushed past screen edge (< 0) or within snap distance (< t), pull back to 0
+                if (p.x < t) p.x = 0.0f;
+                else if (p.x + size.x > io.DisplaySize.x - t) p.x = io.DisplaySize.x - size.x;
+
+                // Top / Bottom:
+                if (p.y < t) p.y = 0.0f;
+                else if (p.y + size.y > io.DisplaySize.y - t) p.y = io.DisplaySize.y - size.y;
+
                 if (p.x != pos.x || p.y != pos.y) ImGui::SetWindowPos(p);
             }
+        } else if (!ImGui::IsMouseDown(0) && g_nx.snap && (pos.x < 0.0f || pos.y < 0.0f)) {
+            // Failsafe: if window ended up off-screen on left or top, pull it back
+            ImVec2 p = pos;
+            if (p.x < 0.0f) p.x = 0.0f;
+            if (p.y < 0.0f) p.y = 0.0f;
+            if (p.x != pos.x || p.y != pos.y) ImGui::SetWindowPos(p);
         }
     }
     if (g_statusUntil && GetTickCount64() > g_statusUntil) {
@@ -2459,11 +2546,17 @@ void RenderWindow() {
                                                          : Tr(L"Hold to speak (or the push-to-talk key) · right-click: speak until a pause")).c_str());
         ImGui::SameLine(0, gap);
     }
-    if (IconButton("##fold", g_collapsed ? Icon::Expand : Icon::Collapse, false, nullptr)) {
-        g_collapsed = !g_collapsed;
-        if (!g_collapsed) g_restoreH = g_expandedH;
+    if (IconButton("##fold", Icon::Collapse, false, nullptr)) {
+        g_collapsed = true;
+        const ImVec2 p = ImGui::GetWindowPos(), s = ImGui::GetWindowSize();
+        g_lastW = s.x;
+        g_expandedH = s.y;
+        const float bottomY = p.y + s.y;
+        const float minHdrBtn = icon + 8.0f;
+        ImGui::SetWindowPos(ImVec2(p.x, bottomY - minHdrBtn));
+        ImGui::SetWindowSize(ImVec2(minHdrBtn, minHdrBtn));
     }
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(g_collapsed ? Tr(L"Open the window") : Tr(L"Fold the window up to its header")).c_str());
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Minimize chat")).c_str());
     ImGui::SameLine(0, gap);
     if (IconButton("##menu", Icon::Menu, false, nullptr)) ImGui::OpenPopup("kbmenu");
     if (ImGui::BeginPopup("kbmenu")) {
