@@ -1591,6 +1591,7 @@ void RenderFooter() {  // g_mu held
 
     // Dropdown menu opens UPWARDS directly above the button, overlaying the window upwards!
     ImGui::SetNextWindowPos(ImVec2(chBtnPos.x, chBtnPos.y - 4.0f), ImGuiCond_Always, ImVec2(0.0f, 1.0f));
+    ImGui::SetNextWindowSizeConstraints(ImVec2(chBtnW, 0.0f), ImVec2(FLT_MAX, ImGui::GetFontSize() * 16.0f));
     if (ImGui::BeginPopup("##channel_popup")) {
         for (Channel c : kChannels) {
             const std::string name = c == Channel::Unknown ? UI(Tr(L"Active channel")) : UI(ChannelLabel(c));
@@ -1616,6 +1617,7 @@ void RenderFooter() {  // g_mu held
         ImGui::OpenPopup("##write_popup");
     }
     ImGui::SetNextWindowPos(ImVec2(writeBtnPos.x, writeBtnPos.y - 4.0f), ImGuiCond_Always, ImVec2(0.0f, 1.0f));
+    ImGui::SetNextWindowSizeConstraints(ImVec2(writeBtnW, 0.0f), ImVec2(FLT_MAX, ImGui::GetFontSize() * 20.0f));
     if (ImGui::BeginPopup("##write_popup")) {
         std::wstring chosen = g_cfg.writeIn;
         if (ImGui::Selectable(UI(Tr(L"like Windows")).c_str(), chosen.empty())) {
@@ -1653,6 +1655,7 @@ void RenderFooter() {  // g_mu held
         ImGui::OpenPopup("##send_popup");
     }
     ImGui::SetNextWindowPos(ImVec2(sendBtnPos.x, sendBtnPos.y - 4.0f), ImGuiCond_Always, ImVec2(0.0f, 1.0f));
+    ImGui::SetNextWindowSizeConstraints(ImVec2(sendBtnW, 0.0f), ImVec2(FLT_MAX, ImGui::GetFontSize() * 20.0f));
     if (ImGui::BeginPopup("##send_popup")) {
         for (size_t i = 0; i <= g_cfg.writeLangs.size(); ++i) {
             const std::string n = i == g_cfg.writeLangs.size() ? UI(Tr(L"as written")) : U8(NativeName(g_cfg.writeLangs[i]));
@@ -2320,17 +2323,20 @@ void RenderWindow() {
         ImGui::PopStyleVar();
         if (beginOk) {
             if (g_nx.snap && !ImGui::IsMouseDown(0)) {
-                const ImVec2 pos = ImGui::GetWindowPos();
-                if (pos.x < 0.0f || pos.y < 0.0f) {
-                    ImVec2 p = pos;
-                    if (p.x < 0.0f) p.x = 0.0f;
-                    if (p.y < 0.0f) p.y = 0.0f;
-                    if (p.x != pos.x || p.y != pos.y) ImGui::SetWindowPos(p);
-                }
+                const float t = 48.0f * std::max(1.0f, io.DisplaySize.y / 1080.0f);
+                const ImVec2 pos = ImGui::GetWindowPos(), size = ImGui::GetWindowSize();
+                ImVec2 p = pos;
+                if (p.x < t) p.x = 0.0f;
+                else if (p.x + size.x > io.DisplaySize.x - t) p.x = io.DisplaySize.x - size.x;
+                if (p.y < t) p.y = 0.0f;
+                else if (p.y + size.y > io.DisplaySize.y - t) p.y = io.DisplaySize.y - size.y;
+                if (p.x != pos.x || p.y != pos.y) ImGui::SetWindowPos(p);
             }
             if (ImGui::Button("<##expand", ImVec2(iconH, iconH))) {
                 std::lock_guard<std::mutex> lock(g_mu);
                 g_collapsed = false;
+                g_restoreH = g_expandedH;
+                s_uncollapseRestore = true;
                 const ImVec2 p = ImGui::GetWindowPos(), s = ImGui::GetWindowSize();
                 const float bottomY = p.y + s.y;
                 ImGui::SetWindowPos(ImVec2(p.x, bottomY - g_expandedH));
@@ -2397,11 +2403,14 @@ void RenderWindow() {
 
                 if (p.x != pos.x || p.y != pos.y) ImGui::SetWindowPos(p);
             }
-        } else if (!ImGui::IsMouseDown(0) && g_nx.snap && (pos.x < 0.0f || pos.y < 0.0f)) {
-            // Failsafe: if window ended up off-screen on left or top, pull it back
+        } else if (!ImGui::IsMouseDown(0) && g_nx.snap &&
+                   (pos.x < 0.0f || pos.y < 0.0f || pos.x + size.x > io.DisplaySize.x || pos.y + size.y > io.DisplaySize.y)) {
+            // Failsafe: if window ended up off-screen on any edge, pull it back
             ImVec2 p = pos;
             if (p.x < 0.0f) p.x = 0.0f;
+            else if (p.x + size.x > io.DisplaySize.x) p.x = std::max(0.0f, io.DisplaySize.x - size.x);
             if (p.y < 0.0f) p.y = 0.0f;
+            else if (p.y + size.y > io.DisplaySize.y) p.y = std::max(0.0f, io.DisplaySize.y - size.y);
             if (p.x != pos.x || p.y != pos.y) ImGui::SetWindowPos(p);
         }
     }
