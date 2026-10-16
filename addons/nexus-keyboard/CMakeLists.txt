@@ -33,6 +33,16 @@ if(GCT_BUILD_TESTS)
     target_compile_options(nexus_kb_selftest PRIVATE /utf-8)
     set_property(TARGET nexus_kb_selftest PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     add_dependencies(nexus_kb_selftest gw2keyboard_nexus)
+
+    # Real-life stress & smoke benchmark: 500 lines, 1000 frames, p99 frame-time profiling
+    add_executable(nexus_kb_smoketest ${PROJECT_SOURCE_DIR}/tests/tools/nexus_kb_smoketest.cpp
+        ${GCT_NEXUS_TP}/imgui/imgui.cpp ${GCT_NEXUS_TP}/imgui/imgui_draw.cpp ${GCT_NEXUS_TP}/imgui/imgui_tables.cpp
+        ${GCT_NEXUS_TP}/imgui/imgui_widgets.cpp)
+    target_include_directories(nexus_kb_smoketest PRIVATE ${GCT_NEXUS_TP} ${GCT_NEXUS_TP}/imgui)
+    target_compile_definitions(nexus_kb_smoketest PRIVATE UNICODE _UNICODE NOMINMAX)
+    target_compile_options(nexus_kb_smoketest PRIVATE /utf-8)
+    set_property(TARGET nexus_kb_smoketest PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    add_dependencies(nexus_kb_smoketest gw2keyboard_nexus)
 endif()
 
 if(GCT_WHISPER)

@@ -10,6 +10,7 @@ Measures all gates required for a release:
   [Gate 5] Typing Assistance Determinism (typing_bench.exe: 0 surprises)
   [Gate 6] Localization Integrity (tools/i18n_check.py: 0 missing, 0 unused)
   [Gate 7] Binary Integrity (Release DLL exists, valid PE64, non-empty)
+  [Gate 8] Real-Life Stress & Smoke Benchmark (nexus_kb_smoketest.exe: PASS)
 
 Exits with code 0 only if ALL gates pass.
 """
@@ -142,9 +143,17 @@ def main():
         sys.exit(1)
     print("    [PASS] DLL binary exists and passes size sanity checks.")
 
+    # Gate 8: Real-Life Stress & Smoke Benchmark (500 lines chat flood, 1000 frames profiling, SLA p99 < 2.5ms)
+    smoketest = ROOT / "build" / "addons" / "nexus-keyboard" / "Release" / "nexus_kb_smoketest.exe"
+    if not smoketest.exists():
+        print(f"    [FAIL] Binary not found: {smoketest}")
+        sys.exit(1)
+    if not run_step("Real-Life Stress & Smoke Benchmark (500 msgs, 1000 frames)", [str(smoketest), str(dll)], expect_substr="SMOKE TEST RESULT: 100% ROCK-SOLID (PASS)"):
+        sys.exit(1)
+
     print("\n==================================================================")
     print(f"   >>> VERDICT: VERSION {version} IS FULLY RELEASE-WORTHY <<<   ")
-    print("   All 7 quality gates passed with zero warnings or failures.    ")
+    print("   All 8 quality gates passed with zero warnings or failures.    ")
     print("==================================================================")
     sys.exit(0)
 
