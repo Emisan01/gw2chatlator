@@ -78,7 +78,10 @@ HttpResponse Request(const wchar_t* method, const std::wstring& host, INTERNET_P
     Handle request{WinHttpOpenRequest(connect.h, method, pathAndQuery.c_str(), nullptr, WINHTTP_NO_REFERER,
                                       WINHTTP_DEFAULT_ACCEPT_TYPES, secure ? WINHTTP_FLAG_SECURE : 0)};
     if (!request.h) return fail(GetLastError());
-    if (receiveTimeoutMs > 0) WinHttpSetTimeouts(request.h, 5000, 5000, 15000, receiveTimeoutMs);
+    if (receiveTimeoutMs > 0) {
+        const int connTimeout = std::min(receiveTimeoutMs, 2000);
+        WinHttpSetTimeouts(request.h, connTimeout, connTimeout, 3000, receiveTimeoutMs);
+    }
 
     const wchar_t* hdr = headers.empty() ? WINHTTP_NO_ADDITIONAL_HEADERS : headers.c_str();
     const DWORD hdrLen = headers.empty() ? 0 : static_cast<DWORD>(-1L);
@@ -122,9 +125,9 @@ HttpResponse Request(const wchar_t* method, const std::wstring& host, INTERNET_P
 
 HttpResponse HttpsRequest(const wchar_t* method, const std::wstring& host, const std::wstring& pathAndQuery,
                           const std::wstring& headers, const std::string& body, const wchar_t* extraHeaderName,
-                          size_t maxBytes) {
+                          size_t maxBytes, int receiveTimeoutMs) {
     return Request(method, host, INTERNET_DEFAULT_HTTPS_PORT, true, pathAndQuery, headers, body, extraHeaderName,
-                   maxBytes, 0);
+                   maxBytes, receiveTimeoutMs);
 }
 
 HttpResponse HttpRequestUrl(const wchar_t* method, const std::wstring& url, const std::wstring& headers,

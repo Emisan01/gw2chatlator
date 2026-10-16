@@ -3,6 +3,15 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.8.8 — 2026-10-16 (GW2Chatlator for Nexus)
+
+- **Window Geometry Failsafe (Anti-Stale Cache):**
+  - Enforced a hard layout reset if ImGui loads corrupted or squished dimensions from a legacy `imgui.ini` (height < 240px or width < 380px resets cleanly to 520 × 360).
+  - Raised window minimum sizing constraints to 380 × 240 to prevent accidental vertical squishing.
+- **Fail-Fast Background Network Timeouts:**
+  - Added a strict 2000ms receive/connect timeout to the asynchronous Cloudflare DoH security check (`HttpsRequest`).
+  - Ensures the worker thread is never stalled by spotty internet connections or network latency, keeping chat translation completely instantaneous.
+
 ## 1.8.7 — 2026-10-16 (GW2Chatlator for Nexus)
 
 - **Nexus Autoupdate Integration:**
