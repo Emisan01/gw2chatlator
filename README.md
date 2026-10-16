@@ -3,7 +3,7 @@
 The chat of Guild Wars 2 in your language – **read it, write and speak in yours**, the chat gets it translated. A
 Nexus add-on, right inside the game. A line goes into the chat only when you press Enter yourself.
 
-## ⬇ [Download gw2keyboard_nexus.dll – version 1.8.7](https://github.com/Emisan01/gw2chatlator/releases/download/v1.8.7/gw2keyboard_nexus.dll)
+## ⬇ [Download gw2keyboard_nexus.dll – version 1.8.8](https://github.com/Emisan01/gw2chatlator/releases/download/v1.8.8/gw2keyboard_nexus.dll)
 
 Put the DLL into your `Guild Wars 2\addons` folder (where [Nexus](https://raidcore.gg/Nexus) keeps its add-ons) and
 load **GW2Chatlator** in Nexus – that is all: on the first start it loads Events: Chat, its voice module and a small
@@ -12,7 +12,12 @@ all versions: [Releases](https://github.com/Emisan01/gw2chatlator/releases) · w
 
 Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustotal.com/gui/file/24127b749fc15c3d4afa630a5c7e19b0f3e7001ead8f331637445a80eaabbe58).
 
-> **New in 1.8.7** – Nexus Autoupdate integration & security hardening:
+> **New in 1.8.8** – Window geometry failsafe & fail-fast network timeouts:
+> window geometry clamp overrides corrupted/squished legacy `imgui.ini` sizes (guaranteed 520 × 360 startup) ·
+> strict 2000ms receive/connect timeout for background Cloudflare DoH security check eliminates any worker stalling ·
+> includes all v1.8.7 Nexus GitHub autoupdate & defense-in-depth security hardening features.
+
+> **In 1.8.7** – Nexus Autoupdate integration & security hardening:
 > automatic updates via Nexus (`UP_GitHub`) directly from GitHub releases ·
 > defense-in-depth security hardening against Unicode spoofing (bidi overrides `\u202E`, zero-width characters stripped) ·
 > Punycode / IDN homoglyph phishing detection (`xn--...`) ·

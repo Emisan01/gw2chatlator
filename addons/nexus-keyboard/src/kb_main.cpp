@@ -280,7 +280,7 @@ LinkSafetyInfo GetEffectiveLinkSafety(const std::string& url) {
             std::wstring hostW = FromUtf8(host);
             std::wstring path = L"/dns-query?name=" + hostW + L"&type=A";
             HttpResponse resp = HttpsRequest(L"GET", L"security.cloudflare-dns.com", path,
-                                             L"Accept: application/dns-json\r\n", "", nullptr, 65536);
+                                             L"Accept: application/dns-json\r\n", "", nullptr, 65536, 2000);
             if (resp.transportOk && resp.status == 200) {
                 JsonValue root;
                 if (ParseJson(resp.body, root)) {
@@ -2648,7 +2648,7 @@ void RenderWindow() {
         return;
     }
 
-    const float minW = 300, minH = 170;
+    const float minW = 380, minH = 240;
     ImGui::SetNextWindowSize(ImVec2(520, 360), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(ImVec2(minW, minH), ImVec2(FLT_MAX, FLT_MAX));
     if (g_restoreH > 0) {
@@ -2672,6 +2672,14 @@ void RenderWindow() {
     ImGui::SetWindowFontScale(std::clamp(g_cfg.fontPercent, 70, 200) / 100.0f);
     g_lastW = ImGui::GetWindowWidth();
     g_expandedH = ImGui::GetWindowHeight();
+    if (g_expandedH < 240.0f) {
+        g_expandedH = 360.0f;
+        ImGui::SetWindowSize(ImVec2(std::max(g_lastW, 520.0f), 360.0f));
+    }
+    if (g_lastW < 380.0f) {
+        g_lastW = 520.0f;
+        ImGui::SetWindowSize(ImVec2(520.0f, g_expandedH));
+    }
     std::unique_lock<std::mutex> lock(g_mu);
     {  // Snap: a move that ends near a screen edge puts the window onto it; dragging past screen edge pulls it back
         static bool dragging = false;

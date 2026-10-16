@@ -17,7 +17,8 @@ struct HttpResponse {
 
 HttpResponse HttpsRequest(const wchar_t* method, const std::wstring& host, const std::wstring& pathAndQuery,
                           const std::wstring& headers, const std::string& body,
-                          const wchar_t* extraHeaderName = nullptr, size_t maxBytes = 16u << 20);
+                          const wchar_t* extraHeaderName = nullptr, size_t maxBytes = 16u << 20,
+                          int receiveTimeoutMs = 0);
 
 // Any http:// or https:// URL incl. port — e.g. a local LLM server
 // (http://localhost:11434/v1/chat/completions). `receiveTimeoutMs` covers
