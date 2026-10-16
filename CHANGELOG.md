@@ -3,6 +3,17 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.8.7 — 2026-10-16 (GW2Chatlator for Nexus)
+
+- **Nexus Autoupdate Integration:**
+  - Configured `UP_GitHub` update provider and repository update link (`https://github.com/Emisan01/gw2chatlator`) in `GetAddonDef()`.
+  - Enables Nexus's built-in update manager to detect new releases and automatically keep the add-on updated for all players.
+- **Security Hardening (Defense-in-Depth):**
+  - **Unicode Spoofing Protection:** Strips bidirectional overrides (`\u202A`–`\u202E`, `\u2066`–`\u2069`), directional isolates, zero-width spaces (`\u200B`–`\u200D`, `\uFEFF`), and soft hyphens in `SanitizeChatText` to prevent text reversal and filter evasion attacks.
+  - **Punycode & IDN Homoglyph Detection:** Flags internationalized domains (`xn--...`) in chat links as `Dangerous` phishing candidates to block visual homoglyph spoofing attacks.
+  - **Hardened URL Execution:** `SafeOpenUrl` strips quotes, control characters, and disallows dangerous URI schemes before browser invocation to eliminate injection risks.
+  - **Anti-Flood & Rate Limiting:** Capped the domain safety cache to 500 entries to prevent memory exhaustion from chat floods, and added a token-bucket rate limiter to incoming chat translation requests (max 8 per 3s) to prevent thread/network saturation during chat spam.
+
 ## 1.8.6 — 2026-10-16 (GW2Chatlator for Nexus)
 
 - **uBlock-style scam & phishing filter:**

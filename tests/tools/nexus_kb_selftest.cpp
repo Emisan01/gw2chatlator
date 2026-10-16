@@ -147,6 +147,7 @@ int wmain(int argc, wchar_t** argv) {
         CreateDirectoryW(dir.c_str(), nullptr);
         WritePrivateProfileStringW(L"Nexus", L"SetupDone", L"1", (dir + L"\\gw2-chat-translator.ini").c_str());
         WritePrivateProfileStringW(L"NexusTabs", nullptr, nullptr, (dir + L"\\gw2-chat-translator.ini").c_str());  // no old tabs
+        WritePrivateProfileStringW(L"Translate", L"WriteLangs", L"DE,EN-GB,FR,ES", (dir + L"\\gw2-chat-translator.ini").c_str());
         wchar_t alpha[16] = {};  // GW2KB_SHOT_ALPHA: the window's opacity for the picture (60-255)
         WritePrivateProfileStringW(L"Window", L"Opacity", GetEnvironmentVariableW(L"GW2KB_SHOT_ALPHA", alpha, 16) ? alpha : L"255",
                                    (dir + L"\\gw2-chat-translator.ini").c_str());
@@ -158,7 +159,11 @@ int wmain(int argc, wchar_t** argv) {
         std::printf("FAIL: no valid GetAddonDef\n");
         return 1;
     }
-    std::printf("add-on: %s %u.%u.%u\n", def->Name, def->Version.Major, def->Version.Minor, def->Version.Build);
+    if (def->Provider != UP_GitHub || !def->UpdateLink || std::string(def->UpdateLink).find("Emisan01/gw2chatlator") == std::string::npos) {
+        std::printf("FAIL: autoupdate provider not set to UP_GitHub (%d, %s)\n", static_cast<int>(def->Provider), def->UpdateLink ? def->UpdateLink : "null");
+        return 1;
+    }
+    std::printf("add-on: %s %u.%u.%u (Provider: %d, UpdateLink: %s)\n", def->Name, def->Version.Major, def->Version.Minor, def->Version.Build, static_cast<int>(def->Provider), def->UpdateLink);
     AddonAPI_t api{};
     api.ImguiContext = ctx;
     api.ImguiMalloc = reinterpret_cast<void*>(&Alloc);

@@ -269,6 +269,9 @@ LinkSafetyInfo GetEffectiveLinkSafety(const std::string& url) {
     LinkSafetyInfo info = AssessLinkSafety(url);
     {
         std::lock_guard<std::mutex> lock(g_linkSafetyMu);
+        if (g_linkSafetyCache.size() >= 500) {
+            g_linkSafetyCache.clear();
+        }
         g_linkSafetyCache[host] = info;
     }
 
@@ -299,7 +302,9 @@ LinkSafetyInfo GetEffectiveLinkSafety(const std::string& url) {
                         updated.label = Tr(L"[Phishing]");
                         updated.description = Tr(L"WARNING: Blocked by Cloudflare Security threat intelligence.");
                         std::lock_guard<std::mutex> lock(g_linkSafetyMu);
-                        g_linkSafetyCache[host] = updated;
+                        if (g_linkSafetyCache.size() < 500) {
+                            g_linkSafetyCache[host] = updated;
+                        }
                     }
                 }
             }
@@ -1208,6 +1213,24 @@ void ApplyPushToTalkKey(const std::wstring& key) {
     g_pttMods = hk ? hk->mods : 0u;
 }
 
+// Rate limiter against chat flood / DoS attacks (max 8 auto-translations per 3s window)
+static bool AllowAutoTranslate() {
+    static std::mutex s_rateMu;
+    static uint64_t s_windowStart = 0;
+    static int s_countInWindow = 0;
+    const uint64_t now = GetTickCount64();
+    std::lock_guard<std::mutex> lock(s_rateMu);
+    if (now - s_windowStart > 3000) {
+        s_windowStart = now;
+        s_countInWindow = 0;
+    }
+    if (s_countInWindow < 8) {
+        s_countInWindow++;
+        return true;
+    }
+    return false;
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // Game thread: a line arrives – copy it, queue its translation.
 void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
@@ -1216,8 +1239,10 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
     l.channel = ch;
     l.outgoing = outgoing;
     l.speaker = speaker ? SanitizeChatText(W(speaker)) : std::wstring();
+    if (l.speaker.size() > 64) l.speaker.resize(64);
     l.text = SanitizeChatText(UnescapeChatText(W(text)));  // Events: Chat escapes brackets: "\[&...\]"
     if (l.text.empty()) return;
+    if (l.text.size() > 600) l.text.resize(600);
     l.speakerFolded = CaseFold(Trim(l.speaker));
     l.speakerDisplay = l.speaker.empty() ? std::string() : UI((l.outgoing ? L"> " : L"") + l.speaker + L":");
     l.u8text = U8(l.text);
@@ -1254,7 +1279,7 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
         }
         g_scrollDown = true;
     }
-    if (!own) g_worker.Post([id, t = rawText] { TranslateLine(id, t); });
+    if (!own && AllowAutoTranslate()) g_worker.Post([id, t = rawText] { TranslateLine(id, t); });
 }
 
 void OnChatEvents(void* args) {
@@ -2511,6 +2536,21 @@ void RenderOptionsWindow() {
     ImGui::End();
 }
 
+static void SafeOpenUrl(const std::wstring& rawLink) {
+    const std::wstring target = LinkTarget(rawLink);
+    if ((target.rfind(L"https://", 0) == 0 || target.rfind(L"http://", 0) == 0) &&
+        target.size() <= 2048 &&
+        target.find(L' ') == std::wstring::npos &&
+        target.find(L'"') == std::wstring::npos &&
+        target.find(L'\'') == std::wstring::npos) {
+        std::thread([target] {
+            CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+            ShellExecuteW(nullptr, L"open", target.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+            CoUninitialize();
+        }).detach();
+    }
+}
+
 // Text drawn into the input box (status, the translation in the compact view): on top, clipped to the box.
 void BoxText(const ImVec2& at, const ImVec4& clip, ImU32 color, const std::string& text, float scale = 1.0f) {
     ImGui::GetForegroundDrawList()->AddText(ImGui::GetFont(), ImGui::GetFontSize() * scale, at, color, text.c_str(), nullptr,
@@ -3012,15 +3052,10 @@ void RenderWindow() {
                     CoUninitialize();
                 }).detach();
             }
+
             ImGui::SameLine();
             if (ImGui::Button(UI(Tr(L"Open anyway (Unsafe)")).c_str())) {
-                const std::wstring target = LinkTarget(g_openLink);
-                if (target.rfind(L"https://", 0) == 0 || target.rfind(L"http://", 0) == 0)
-                    std::thread([target] {
-                        CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-                        ShellExecuteW(nullptr, L"open", target.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-                        CoUninitialize();
-                    }).detach();
+                SafeOpenUrl(g_openLink);
                 g_openLink.clear();
                 ImGui::CloseCurrentPopup();
             }
@@ -3032,13 +3067,7 @@ void RenderWindow() {
             ImGui::TextColored(ImVec4(1.0f, 0.78f, 0.3f, 1.0f), "%s", Fit(U8(g_openLink), ImGui::GetFontSize() * 30).c_str());
             ImGui::Spacing();
             if (ImGui::Button(UI(Tr(L"Open")).c_str())) {
-                const std::wstring target = LinkTarget(g_openLink);
-                if (target.rfind(L"https://", 0) == 0 || target.rfind(L"http://", 0) == 0)
-                    std::thread([target] {
-                        CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-                        ShellExecuteW(nullptr, L"open", target.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-                        CoUninitialize();
-                    }).detach();
+                SafeOpenUrl(g_openLink);
                 g_openLink.clear();
                 ImGui::CloseCurrentPopup();
             }
@@ -3056,13 +3085,7 @@ void RenderWindow() {
             ImGui::TextColored(ImVec4(0.45f, 0.7f, 1.f, 1.f), "%s", Fit(U8(g_openLink), ImGui::GetFontSize() * 30).c_str());
             ImGui::TextDisabled("%s", UI(Tr(L"Links in the chat come from other players – open only what you trust.")).c_str());
             if (ImGui::Button(UI(Tr(L"Open")).c_str())) {
-                const std::wstring target = LinkTarget(g_openLink);
-                if (target.rfind(L"https://", 0) == 0 || target.rfind(L"http://", 0) == 0)
-                    std::thread([target] {
-                        CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-                        ShellExecuteW(nullptr, L"open", target.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-                        CoUninitialize();
-                    }).detach();
+                SafeOpenUrl(g_openLink);
                 g_openLink.clear();
                 ImGui::CloseCurrentPopup();
             }
@@ -4005,6 +4028,7 @@ extern "C" __declspec(dllexport) AddonDefinition_t* GetAddonDef() {
     g_def.Load = AddonLoad;
     g_def.Unload = AddonUnload;
     g_def.Flags = AF_None;
-    g_def.Provider = UP_None;
+    g_def.Provider = UP_GitHub;
+    g_def.UpdateLink = "https://github.com/Emisan01/gw2chatlator";
     return &g_def;
 }

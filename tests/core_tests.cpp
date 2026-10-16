@@ -65,6 +65,9 @@ static void TestUtf() {
 static void TestText() {
     CHECK(SanitizeChatText(L"  hallo\r\nwelt\t ! ") == L"hallo welt !");
     CHECK(SanitizeChatText(L"a   b") == L"a b");
+    // Security hardening: Bidi overrides, Trojan Source, zero-width spaces stripped
+    CHECK(SanitizeChatText(L"safe\u202Ereversed\u202Dtext") == L"safereversedtext");
+    CHECK(SanitizeChatText(L"zero\u200Bwidth\uFEFFspace\u00ADhyphen") == L"zerowidthspacehyphen");
     CHECK(Trim(L"\u3000 x \u00a0") == L"x");
     const auto langs = ParseLangList(L"en-gb, fr ,, ZH-hans ");
     CHECK(langs.size() == 3 && langs[0] == L"EN-GB" && langs[1] == L"FR" && langs[2] == L"ZH-HANS");
@@ -777,6 +780,7 @@ static void TestLinks() {
     }
     CHECK(LinkTarget(L"www.gw2efficiency.com") == L"https://www.gw2efficiency.com");
     CHECK(LinkTarget(L"http://x.y") == L"http://x.y");
+    CHECK(LinkTarget(L"https://example.com/\"injection\"") == L"https://example.com/injection");
     CHECK(FindLinks(L"wer kommt mit? www. ist kein link").empty());
     // Not translated.
     const ProtectedText p = ProtectForTranslation(L"guck hier www.gw2efficiency.com bitte", nullptr, nullptr);
@@ -898,7 +902,19 @@ static void TestLinkSafety() {
         CHECK(s.reason == "ip_literal");
     }
 
-    // 9. AssessLinkSafety: Neutral
+    // 9. AssessLinkSafety: Punycode Spoofing
+    {
+        auto s = AssessLinkSafety("http://xn--guld wars2-s1a.com/free");
+        CHECK(s.safety == LinkSafety::Dangerous);
+        CHECK(s.reason == "punycode_spoofing");
+    }
+    {
+        auto s = AssessLinkSafety("https://xn--rena-net-9db.xyz/");
+        CHECK(s.safety == LinkSafety::Dangerous);
+        CHECK(s.reason == "punycode_spoofing");
+    }
+
+    // 10. AssessLinkSafety: Neutral
     {
         auto s = AssessLinkSafety("https://example.com/some/article");
         CHECK(s.safety == LinkSafety::Neutral);

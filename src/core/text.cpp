@@ -257,13 +257,24 @@ std::vector<Span> WordSpans(const std::wstring& s) {
     return out;
 }
 
+static inline bool IsDangerousOrInvisibleUnicode(wchar_t c) {
+    // Bidi override & directional embedding controls (Trojan Source / RTL spoofing)
+    if ((c >= 0x202A && c <= 0x202E) || (c >= 0x2066 && c <= 0x2069)) return true;
+    if (c == 0x200E || c == 0x200F) return true;
+    // Zero-width spaces & invisible formatting characters
+    if (c >= 0x200B && c <= 0x200D) return true;
+    if (c == 0xFEFF || c == 0x00AD) return true;
+    return false;
+}
+
 std::wstring SanitizeChatText(const std::wstring& s) {
     std::wstring out;
     out.reserve(s.size());
     bool lastSpace = false;
     for (wchar_t c : s) {
         if (c == L'\r' || c == L'\n' || c == L'\t') c = L' ';
-        if (c < 0x20) continue;  // other control characters
+        if (c < 0x20 || (c >= 0x7F && c <= 0x9F)) continue;  // control characters
+        if (IsDangerousOrInvisibleUnicode(c)) continue;
         if (c == L' ') {
             if (lastSpace) continue;
             lastSpace = true;
@@ -365,9 +376,17 @@ std::vector<Span> FindLinks(const std::wstring& s) {
 }
 
 std::wstring LinkTarget(const std::wstring& link) {
-    const std::wstring f = CaseFold(link);
-    if (f.rfind(L"http://", 0) == 0 || f.rfind(L"https://", 0) == 0) return link;
-    return L"https://" + link;
+    std::wstring clean;
+    clean.reserve(link.size() + 8);
+    for (wchar_t c : link) {
+        if (c <= 0x20 || c == L'"' || c == L'\'' || c == L'<' || c == L'>' || c == L'`' || c == L'^' || c == 0x7F) {
+            continue;
+        }
+        clean += c;
+    }
+    const std::wstring f = CaseFold(clean);
+    if (f.rfind(L"http://", 0) == 0 || f.rfind(L"https://", 0) == 0) return clean;
+    return L"https://" + clean;
 }
 
 std::vector<Span> FindChatCodes(const std::wstring& s) {
