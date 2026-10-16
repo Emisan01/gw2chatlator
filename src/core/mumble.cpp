@@ -1,6 +1,9 @@
 // mumble.cpp
 #include "mumble.hpp"
 
+#include <algorithm>
+#include <cmath>
+
 #include "json.hpp"
 #include "text.hpp"
 
@@ -16,6 +19,18 @@ MumbleIdentity ParseMumbleIdentity(const std::wstring& json) {
         id.mapId = static_cast<uint32_t>(m->n);
     id.commander = v.GetBool("commander");
     return id;
+}
+
+float Gw2BottomBarOffset(float displayH, int uiSize) {
+    float uiScale = 1.0f;
+    if (uiSize == 0) uiScale = 0.89f;
+    else if (uiSize == 1) uiScale = 1.0f;
+    else if (uiSize == 2) uiScale = 1.11f;
+    else if (uiSize == 3) uiScale = 1.25f;
+    else uiScale = 0.89f;  // default to Small if unknown
+
+    const float resScale = std::max(1.0f, displayH / 1080.0f);
+    return std::round(48.0f * uiScale * resScale);
 }
 
 }  // namespace gct

@@ -278,6 +278,7 @@ uint64_t g_nextId = 1;
 bool g_scrollDown = false;
 std::vector<std::wstring> g_context;  // speakers and words of the chat (offered as completions, never learned)
 std::wstring g_ownName;               // your character (MumbleLink)
+std::atomic<int> g_uiSize{-1};        // GW2 UI size (0 small .. 3 larger) from MumbleLink
 // The input line.
 char g_input[1024] = {};
 float g_wrapWidth = 0;  // the input's text width: soft line breaks ('\n' in place of a space) keep words whole
@@ -2400,7 +2401,10 @@ void RenderWindow() {
             const MumbleState ms = mumble.Read();
             std::lock_guard<std::mutex> lock(g_mu);
             g_inMap = ms.live && ms.inMap;
-            if (ms.live) g_ownName = ms.identity.name;
+            if (ms.live) {
+                g_ownName = ms.identity.name;
+                g_uiSize.store(ms.identity.uiSize);
+            }
             const bool chatOpen = ms.live && ms.TextboxHasFocus();
             if (chatOpen && !chatWasOpen && g_cfg.focusOnGameChat && g_show) g_focusInput = true;
             chatWasOpen = chatOpen;
@@ -2434,13 +2438,15 @@ void RenderWindow() {
         ImGui::PopStyleVar();
         if (beginOk) {
             if (g_nx.snap && !ImGui::IsMouseDown(0)) {
-                const float t = 48.0f * std::max(1.0f, io.DisplaySize.y / 1080.0f);
+                const float resScale = std::max(1.0f, io.DisplaySize.y / 1080.0f);
+                const float t = 48.0f * resScale;
+                const float maxBottom = std::max(minBtn, io.DisplaySize.y - Gw2BottomBarOffset(io.DisplaySize.y, g_uiSize.load()));
                 const ImVec2 pos = ImGui::GetWindowPos(), size = ImGui::GetWindowSize();
                 ImVec2 p = pos;
                 if (p.x < t) p.x = 0.0f;
                 else if (p.x + size.x > io.DisplaySize.x - t) p.x = io.DisplaySize.x - size.x;
                 if (p.y < t) p.y = 0.0f;
-                else if (p.y + size.y > io.DisplaySize.y - t) p.y = io.DisplaySize.y - size.y;
+                else if (p.y + size.y > maxBottom - t) p.y = maxBottom - size.y;
                 if (p.x != pos.x || p.y != pos.y) ImGui::SetWindowPos(p);
             }
             if (ImGui::Button("<##expand", ImVec2(iconH, iconH))) {
@@ -2495,6 +2501,8 @@ void RenderWindow() {
         static bool dragging = false;
         static ImVec2 startPos;
         const ImVec2 pos = ImGui::GetWindowPos(), size = ImGui::GetWindowSize();
+        const float resScale = std::max(1.0f, io.DisplaySize.y / 1080.0f);
+        const float maxBottom = std::max(minH, io.DisplaySize.y - Gw2BottomBarOffset(io.DisplaySize.y, g_uiSize.load()));
         if (ImGui::IsMouseClicked(0) && ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows)) {
             dragging = true;
             startPos = pos;
@@ -2502,7 +2510,7 @@ void RenderWindow() {
             dragging = false;
             const bool moved = (pos.x != startPos.x || pos.y != startPos.y);
             if (g_nx.snap && moved) {
-                const float t = 48.0f * std::max(1.0f, io.DisplaySize.y / 1080.0f);
+                const float t = 48.0f * resScale;
                 ImVec2 p = pos;
                 // Left: if pushed past screen edge (< 0) or within snap distance (< t), pull back to 0
                 if (p.x < t) p.x = 0.0f;
@@ -2510,18 +2518,18 @@ void RenderWindow() {
 
                 // Top / Bottom:
                 if (p.y < t) p.y = 0.0f;
-                else if (p.y + size.y > io.DisplaySize.y - t) p.y = io.DisplaySize.y - size.y;
+                else if (p.y + size.y > maxBottom - t) p.y = maxBottom - size.y;
 
                 if (p.x != pos.x || p.y != pos.y) ImGui::SetWindowPos(p);
             }
         } else if (!ImGui::IsMouseDown(0) && g_nx.snap &&
-                   (pos.x < 0.0f || pos.y < 0.0f || pos.x + size.x > io.DisplaySize.x || pos.y + size.y > io.DisplaySize.y)) {
+                   (pos.x < 0.0f || pos.y < 0.0f || pos.x + size.x > io.DisplaySize.x || pos.y + size.y > maxBottom)) {
             // Failsafe: if window ended up off-screen on any edge, pull it back
             ImVec2 p = pos;
             if (p.x < 0.0f) p.x = 0.0f;
             else if (p.x + size.x > io.DisplaySize.x) p.x = std::max(0.0f, io.DisplaySize.x - size.x);
             if (p.y < 0.0f) p.y = 0.0f;
-            else if (p.y + size.y > io.DisplaySize.y) p.y = std::max(0.0f, io.DisplaySize.y - size.y);
+            else if (p.y + size.y > maxBottom) p.y = std::max(0.0f, maxBottom - size.y);
             if (p.x != pos.x || p.y != pos.y) ImGui::SetWindowPos(p);
         }
     }

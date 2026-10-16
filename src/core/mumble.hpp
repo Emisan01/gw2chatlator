@@ -24,6 +24,11 @@ struct MumbleIdentity {
 // Parses the identity JSON GW2 writes into LinkedMem::identity.
 MumbleIdentity ParseMumbleIdentity(const std::wstring& json);
 
+// Returns the height (in pixels) of the native GW2 bottom bar (EXP / mastery bar up to the
+// bottom edge of the native chat minimal button) for a given screen display height and GW2
+// uiSize (0=small, 1=normal, 2=large, 3=larger, or -1=unknown).
+float Gw2BottomBarOffset(float displayH, int uiSize = -1);
+
 struct MumbleState {
     bool live = false;          // GW2 is running and updating the block
     // GW2 writes the block every frame only while you are on a map: the tick
