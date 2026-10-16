@@ -303,6 +303,7 @@ uint64_t g_previewGen = 0;
 bool g_sendPending = false;  // Enter before the translation was there
 std::wstring g_status;
 ULONGLONG g_statusUntil = 0;
+ULONGLONG g_suppressChatFocusUntil = 0;
 TypingHelp g_help;
 bool g_helpRequested = false;
 std::deque<std::wstring> g_history;
@@ -2273,6 +2274,7 @@ void HandleChatLinkClick(const std::string& raw, ULONGLONG receivedTime, uint32_
         SetStatus(Tr(L"Chat link expired – no longer in active chat"), 4000);
     } else {
         SetStatus(Tr(L"Original chat opened – click link in game chat"), 4000);
+        g_suppressChatFocusUntil = GetTickCount64() + 4000;
         MinimizeWindow();
         if (g_api && g_api->GameBinds_InvokeAsync) {
             g_api->GameBinds_InvokeAsync(GB_UiChatFocus, 20);
@@ -2417,7 +2419,8 @@ void RenderWindow() {
                 g_mapId.store(ms.identity.mapId);
             }
             const bool chatOpen = ms.live && ms.TextboxHasFocus();
-            if (chatOpen && !chatWasOpen && g_cfg.focusOnGameChat && g_show) g_focusInput = true;
+            if (chatOpen && !chatWasOpen && g_cfg.focusOnGameChat && g_show && GetTickCount64() > g_suppressChatFocusUntil)
+                g_focusInput = true;
             chatWasOpen = chatOpen;
         }
     }
@@ -2465,6 +2468,7 @@ void RenderWindow() {
                 g_collapsed = false;
                 g_restoreH = g_expandedH;
                 s_uncollapseRestore = true;
+                g_suppressChatFocusUntil = 0;
                 const ImVec2 p = ImGui::GetWindowPos(), s = ImGui::GetWindowSize();
                 const float bottomY = p.y + s.y;
                 ImGui::SetWindowPos(ImVec2(p.x, bottomY - g_expandedH));
