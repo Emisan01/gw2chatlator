@@ -50,6 +50,8 @@
 #include "core/text.hpp"
 #include "core/translator.hpp"
 #include "core/voice_learn.hpp"
+#include "core/link_filter.hpp"
+#include "core/json.hpp"
 #include "imgui/imgui.h"
 #include "nexus/Nexus.h"
 #include "version.h"
@@ -99,6 +101,7 @@ struct TextLook {
     bool glow = true;
     int brightness = 100;  // %
     bool gameColors = true;
+    bool filterLinks = true;
 };
 TextLook g_look;
 MyWords g_myWords;  // your own words and what they mean (<data>\my-words.txt), g_mu
@@ -245,6 +248,67 @@ SpellService* g_spell = nullptr;
 SendGuard g_guard;
 MumbleLink* g_mumbleWorker = nullptr;
 
+std::mutex g_linkSafetyMu;
+std::unordered_map<std::string, LinkSafetyInfo> g_linkSafetyCache;
+
+LinkSafetyInfo GetEffectiveLinkSafety(const std::string& url) {
+    if (!g_look.filterLinks) {
+        return {LinkSafety::Neutral, ExtractHost(url), "filter_off", L"", L""};
+    }
+    const std::string host = ExtractHost(url);
+    if (host.empty()) return {};
+
+    {
+        std::lock_guard<std::mutex> lock(g_linkSafetyMu);
+        auto it = g_linkSafetyCache.find(host);
+        if (it != g_linkSafetyCache.end()) {
+            return it->second;
+        }
+    }
+
+    LinkSafetyInfo info = AssessLinkSafety(url);
+    {
+        std::lock_guard<std::mutex> lock(g_linkSafetyMu);
+        g_linkSafetyCache[host] = info;
+    }
+
+    if (info.safety == LinkSafety::Neutral) {
+        g_worker.Post([host] {
+            std::wstring hostW = FromUtf8(host);
+            std::wstring path = L"/dns-query?name=" + hostW + L"&type=A";
+            HttpResponse resp = HttpsRequest(L"GET", L"security.cloudflare-dns.com", path,
+                                             L"Accept: application/dns-json\r\n", "", nullptr, 65536);
+            if (resp.transportOk && resp.status == 200) {
+                JsonValue root;
+                if (ParseJson(resp.body, root)) {
+                    bool blocked = false;
+                    const JsonValue* ans = root.Get("Answer");
+                    if (ans && ans->IsArray()) {
+                        for (const auto& item : ans->arr) {
+                            if (item.GetString("data") == "0.0.0.0") {
+                                blocked = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (blocked) {
+                        LinkSafetyInfo updated;
+                        updated.safety = LinkSafety::Dangerous;
+                        updated.host = host;
+                        updated.reason = "cloudflare_security";
+                        updated.label = Tr(L"[Phishing]");
+                        updated.description = Tr(L"WARNING: Blocked by Cloudflare Security threat intelligence.");
+                        std::lock_guard<std::mutex> lock(g_linkSafetyMu);
+                        g_linkSafetyCache[host] = updated;
+                    }
+                }
+            }
+        });
+    }
+
+    return info;
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // State shared between the game thread (events, drawing) and the worker. All behind g_mu.
 struct ChatLine {
@@ -377,6 +441,7 @@ void LoadLayout() {  // g_mu held
     g_look.glow = get(L"Glow", 1) != 0;
     g_look.brightness = std::clamp(get(L"Brightness", 100), 60, 160);
     g_look.gameColors = get(L"GameColors", 1) != 0;
+    g_look.filterLinks = get(L"FilterLinks", 1) != 0;
     auto nx = [](const wchar_t* key, int def) { return GetPrivateProfileIntW(L"Nexus", key, def, g_cfg.iniPath.c_str()) != 0; };
     g_nx.translateChat = nx(L"TranslateChat", 0);
     g_nx.snap = nx(L"Snap", 1);
@@ -406,6 +471,7 @@ void SaveLayout() {  // g_mu held
     g_cfg.SaveValue(L"NexusWindow", L"Glow", g_look.glow ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"Brightness", std::to_wstring(g_look.brightness));
     g_cfg.SaveValue(L"NexusWindow", L"GameColors", g_look.gameColors ? L"1" : L"0");
+    g_cfg.SaveValue(L"NexusWindow", L"FilterLinks", g_look.filterLinks ? L"1" : L"0");
 }
 
 void SetStatus(const std::wstring& s, ULONGLONG ms = 6000) {  // g_mu held
@@ -1156,6 +1222,11 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
     l.speakerDisplay = l.speaker.empty() ? std::string() : UI((l.outgoing ? L"> " : L"") + l.speaker + L":");
     l.u8text = U8(l.text);
     l.textSegs = PieUI::ChatLinks::SegmentLine(l.u8text);
+    for (const auto& seg : l.textSegs) {
+        if (seg.kind == PieUI::ChatLinks::SegmentKind::Url) {
+            GetEffectiveLinkSafety(seg.url);
+        }
+    }
     const std::wstring rawText = l.text;
     uint64_t id;
     bool own;
@@ -2315,13 +2386,63 @@ bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::Link
                 break;
             }
             case PieUI::ChatLinks::SegmentKind::Url: {
-                place(seg.display);
-                LookText(seg.display.c_str(), Bright(ImVec4(0.45f, 0.7f, 1.f, 1.f)), false);
-                const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
-                ImGui::GetWindowDrawList()->AddLine(ImVec2(a.x, b.y - 1), ImVec2(b.x, b.y - 1), IM_COL32(115, 178, 255, 255));
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-                    ImGui::SetTooltip("%s", seg.url.c_str());
+                const LinkSafetyInfo safety = GetEffectiveLinkSafety(seg.url);
+                if (safety.safety == LinkSafety::Dangerous) {
+                    const std::string tag = UI(safety.label.empty() ? Tr(L"[Phishing]") : safety.label);
+                    place(tag);
+                    LookText(tag.c_str(), ImVec4(1.0f, 0.35f, 0.35f, 1.0f), false);
+                    place(seg.display);
+                    LookText(seg.display.c_str(), ImVec4(1.0f, 0.45f, 0.45f, 1.0f), false);
+                    const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
+                    ImGui::GetWindowDrawList()->AddLine(ImVec2(a.x, b.y - 1), ImVec2(b.x, b.y - 1), IM_COL32(255, 80, 80, 255));
+                    const float midY = (a.y + b.y) * 0.5f;
+                    ImGui::GetWindowDrawList()->AddLine(ImVec2(a.x, midY), ImVec2(b.x, midY), IM_COL32(255, 80, 80, 220));
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                        ImGui::BeginTooltip();
+                        ImGui::TextUnformatted(seg.url.c_str());
+                        ImGui::Spacing();
+                        ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.35f, 1.0f), "%s", UI(safety.description).c_str());
+                        ImGui::EndTooltip();
+                    }
+                } else if (safety.safety == LinkSafety::Suspicious) {
+                    const std::string tag = UI(safety.label.empty() ? Tr(L"[Shortener]") : safety.label);
+                    place(tag);
+                    LookText(tag.c_str(), ImVec4(1.0f, 0.75f, 0.2f, 1.0f), false);
+                    place(seg.display);
+                    LookText(seg.display.c_str(), Bright(ImVec4(1.0f, 0.78f, 0.3f, 1.0f)), false);
+                    const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
+                    ImGui::GetWindowDrawList()->AddLine(ImVec2(a.x, b.y - 1), ImVec2(b.x, b.y - 1), IM_COL32(255, 195, 60, 255));
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                        ImGui::BeginTooltip();
+                        ImGui::TextUnformatted(seg.url.c_str());
+                        ImGui::Spacing();
+                        ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "%s", UI(safety.description).c_str());
+                        ImGui::EndTooltip();
+                    }
+                } else if (safety.safety == LinkSafety::Safe) {
+                    place(seg.display);
+                    LookText(seg.display.c_str(), Bright(ImVec4(0.4f, 0.85f, 0.65f, 1.0f)), false);
+                    const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
+                    ImGui::GetWindowDrawList()->AddLine(ImVec2(a.x, b.y - 1), ImVec2(b.x, b.y - 1), IM_COL32(100, 215, 165, 255));
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                        ImGui::BeginTooltip();
+                        ImGui::TextUnformatted(seg.url.c_str());
+                        ImGui::Spacing();
+                        ImGui::TextColored(ImVec4(0.4f, 0.85f, 0.65f, 1.0f), "%s", UI(safety.description).c_str());
+                        ImGui::EndTooltip();
+                    }
+                } else {
+                    place(seg.display);
+                    LookText(seg.display.c_str(), Bright(ImVec4(0.45f, 0.7f, 1.f, 1.f)), false);
+                    const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
+                    ImGui::GetWindowDrawList()->AddLine(ImVec2(a.x, b.y - 1), ImVec2(b.x, b.y - 1), IM_COL32(115, 178, 255, 255));
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                        ImGui::SetTooltip("%s", seg.url.c_str());
+                    }
                 }
                 if (ImGui::IsItemClicked()) {
                     g_openLink = W(seg.url);
@@ -2871,24 +2992,85 @@ void RenderWindow() {
         ImGui::OpenPopup("###openlink");
     }
     if (ImGui::BeginPopupModal((UI(Tr(L"Open link")) + "###openlink").c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::TextUnformatted(UI(Tr(L"Open this link in your browser?")).c_str());
-        ImGui::TextColored(ImVec4(0.45f, 0.7f, 1.f, 1.f), "%s", Fit(U8(g_openLink), ImGui::GetFontSize() * 30).c_str());
-        ImGui::TextDisabled("%s", UI(Tr(L"Links in the chat come from other players – open only what you trust.")).c_str());
-        if (ImGui::Button(UI(Tr(L"Open")).c_str())) {
-            const std::wstring target = LinkTarget(g_openLink);
-            if (target.rfind(L"https://", 0) == 0 || target.rfind(L"http://", 0) == 0)
-                std::thread([target] {
+        const LinkSafetyInfo safety = GetEffectiveLinkSafety(U8(g_openLink));
+        if (safety.safety == LinkSafety::Dangerous) {
+            ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.35f, 1.0f), "%s", UI(Tr(L"WARNING: Suspicious or fraudulent link detected!")).c_str());
+            ImGui::Spacing();
+            ImGui::TextWrapped("%s", UI(safety.description).c_str());
+            ImGui::Spacing();
+            ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.45f, 1.0f), "%s", Fit(U8(g_openLink), ImGui::GetFontSize() * 30).c_str());
+            ImGui::Spacing();
+            if (ImGui::Button(UI(Tr(L"Cancel")).c_str())) {
+                g_openLink.clear();
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button(UI(Tr(L"Inspect with Cloudflare Radar")).c_str())) {
+                std::thread([] {
                     CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-                    ShellExecuteW(nullptr, L"open", target.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                    ShellExecuteW(nullptr, L"open", L"https://radar.cloudflare.com/scan", nullptr, nullptr, SW_SHOWNORMAL);
                     CoUninitialize();
                 }).detach();
-            g_openLink.clear();
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::SameLine();
-        if (ImGui::Button(UI(Tr(L"Cancel")).c_str())) {
-            g_openLink.clear();
-            ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button(UI(Tr(L"Open anyway (Unsafe)")).c_str())) {
+                const std::wstring target = LinkTarget(g_openLink);
+                if (target.rfind(L"https://", 0) == 0 || target.rfind(L"http://", 0) == 0)
+                    std::thread([target] {
+                        CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+                        ShellExecuteW(nullptr, L"open", target.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                        CoUninitialize();
+                    }).detach();
+                g_openLink.clear();
+                ImGui::CloseCurrentPopup();
+            }
+        } else if (safety.safety == LinkSafety::Suspicious) {
+            ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "%s", UI(Tr(L"Notice: This is a shortened URL. The actual destination is hidden.")).c_str());
+            ImGui::Spacing();
+            ImGui::TextWrapped("%s", UI(safety.description).c_str());
+            ImGui::Spacing();
+            ImGui::TextColored(ImVec4(1.0f, 0.78f, 0.3f, 1.0f), "%s", Fit(U8(g_openLink), ImGui::GetFontSize() * 30).c_str());
+            ImGui::Spacing();
+            if (ImGui::Button(UI(Tr(L"Open")).c_str())) {
+                const std::wstring target = LinkTarget(g_openLink);
+                if (target.rfind(L"https://", 0) == 0 || target.rfind(L"http://", 0) == 0)
+                    std::thread([target] {
+                        CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+                        ShellExecuteW(nullptr, L"open", target.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                        CoUninitialize();
+                    }).detach();
+                g_openLink.clear();
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button(UI(Tr(L"Cancel")).c_str())) {
+                g_openLink.clear();
+                ImGui::CloseCurrentPopup();
+            }
+        } else {
+            if (safety.safety == LinkSafety::Safe) {
+                ImGui::TextColored(ImVec4(0.4f, 0.85f, 0.65f, 1.0f), "%s", UI(Tr(L"Verified site")).c_str());
+            } else {
+                ImGui::TextUnformatted(UI(Tr(L"Open this link in your browser?")).c_str());
+            }
+            ImGui::TextColored(ImVec4(0.45f, 0.7f, 1.f, 1.f), "%s", Fit(U8(g_openLink), ImGui::GetFontSize() * 30).c_str());
+            ImGui::TextDisabled("%s", UI(Tr(L"Links in the chat come from other players – open only what you trust.")).c_str());
+            if (ImGui::Button(UI(Tr(L"Open")).c_str())) {
+                const std::wstring target = LinkTarget(g_openLink);
+                if (target.rfind(L"https://", 0) == 0 || target.rfind(L"http://", 0) == 0)
+                    std::thread([target] {
+                        CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+                        ShellExecuteW(nullptr, L"open", target.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                        CoUninitialize();
+                    }).detach();
+                g_openLink.clear();
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button(UI(Tr(L"Cancel")).c_str())) {
+                g_openLink.clear();
+                ImGui::CloseCurrentPopup();
+            }
         }
         ImGui::EndPopup();
     }
@@ -3245,6 +3427,7 @@ void RenderOptionsContent() {
                 changed |= ImGui::Checkbox(UI(Tr(L"GW2 colours")).c_str(), &g_look.gameColors);
                 if (ImGui::IsItemHovered())
                     ImGui::SetTooltip("%s", UI(Tr(L"The name in the channel colour, the message in a light tint of it – as in the game. Off: the message in the channel colour.")).c_str());
+                changed |= ImGui::Checkbox(UI(Tr(L"Filter suspicious links (phishing & shorteners)")).c_str(), &g_look.filterLinks);
                 ImGui::SetNextItemWidth(wide);
                 changed |= ImGui::SliderInt(UI(Tr(L"Brightness") + L" (%)##bright").c_str(), &g_look.brightness, 60, 160);
                 if (changed) SaveLayout();
