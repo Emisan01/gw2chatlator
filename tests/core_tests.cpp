@@ -485,12 +485,12 @@ static void TestMumble() {
     st.live = true;
     st.uiState = kUiTextboxHasFocus | kUiGameHasFocus;
     CHECK(st.TextboxHasFocus() && st.GameHasFocus());
-    CHECK(Gw2BottomBarOffset(1080.0f, 0) == 43.0f);
-    CHECK(Gw2BottomBarOffset(1080.0f, 1) == 48.0f);
-    CHECK(Gw2BottomBarOffset(1080.0f, 2) == 53.0f);
-    CHECK(Gw2BottomBarOffset(1080.0f, 3) == 60.0f);
-    CHECK(Gw2BottomBarOffset(1080.0f, -1) == 43.0f);
-    CHECK(Gw2BottomBarOffset(2160.0f, 1) == 96.0f);
+    CHECK(Gw2BottomBarOffset(1080.0f, 0) == 25.0f);
+    CHECK(Gw2BottomBarOffset(1080.0f, 1) == 28.0f);
+    CHECK(Gw2BottomBarOffset(1080.0f, 2) == 31.0f);
+    CHECK(Gw2BottomBarOffset(1080.0f, 3) == 35.0f);
+    CHECK(Gw2BottomBarOffset(1080.0f, -1) == 25.0f);
+    CHECK(Gw2BottomBarOffset(2160.0f, 1) == 56.0f);
 }
 
 static void TestMyMemory() {
