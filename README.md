@@ -3,7 +3,7 @@
 The chat of Guild Wars 2 in your language – **read it, write and speak in yours**, the chat gets it translated. A
 Nexus add-on, right inside the game. A line goes into the chat only when you press Enter yourself.
 
-## ⬇ [Download gw2keyboard_nexus.dll – version 1.8.9](https://github.com/Emisan01/gw2chatlator/releases/download/v1.8.9/gw2keyboard_nexus.dll)
+## ⬇ [Download gw2keyboard_nexus.dll – version 1.9.0](https://github.com/Emisan01/gw2chatlator/releases/download/v1.9.0/gw2keyboard_nexus.dll)
 
 Put the DLL into your `Guild Wars 2\addons` folder (where [Nexus](https://raidcore.gg/Nexus) keeps its add-ons) and
 load **GW2Chatlator** in Nexus – that is all: on the first start it loads Events: Chat, its voice module and a small
@@ -12,11 +12,10 @@ all versions: [Releases](https://github.com/Emisan01/gw2chatlator/releases) · w
 
 Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustotal.com/gui/file/24127b749fc15c3d4afa630a5c7e19b0f3e7001ead8f331637445a80eaabbe58).
 
-> **New in 1.8.9** – Rock-solid release hardening, live smoke stress test & window clamp polish:
-> automated 8-gate release verification (`tools/verify_release.py`) ·
-> real-life smoke & stress benchmark (`nexus_kb_smoketest.exe`) ingests 500 combat chat lines in ~13ms with p99 render latency < 0.85ms (zero-stutter SLA) ·
-> consolidated window geometry clamp guarantees clean 520 × 360 startup ·
-> includes all v1.8.8 fail-fast network timeouts and v1.8.7 Nexus GitHub autoupdate & security hardening.
+> **New in 1.9.0** – Chat scroll trap fix & native mini-chat alignment:
+> smooth mouse wheel scrolling (instant release of bottom anchor on upward scroll) ·
+> dynamic bottom bar offset flush with native GW2 speech bubble across all UI scales and resolutions ·
+> magnetic mini-button `<` snap congruently over native chat icon.
 
 > **In 1.8.8** – Window geometry failsafe & fail-fast network timeouts:
 > window geometry clamp overrides corrupted/squished legacy `imgui.ini` sizes (guaranteed 520 × 360 startup) ·
