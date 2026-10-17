@@ -30,7 +30,9 @@ float Gw2BottomBarOffset(float displayH, int uiSize) {
     else uiScale = 0.89f;  // default to Small if unknown
 
     const float resScale = std::max(1.0f, displayH / 1080.0f);
-    return std::round(48.0f * uiScale * resScale);
+    // 28px at 1080p aligns the bottom edge flush with the bottom edge of the native
+    // mini-chat speech bubble icon across all 4 UI scales and resolutions, leaving the XP bar free.
+    return std::round(28.0f * uiScale * resScale);
 }
 
 }  // namespace gct

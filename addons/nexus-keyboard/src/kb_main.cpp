@@ -2589,6 +2589,7 @@ void RenderWindow() {
     RenderOptionsWindow();
     bool inMap;
     static bool s_uncollapseRestore = false;
+    static float s_targetBottomY = -1.0f;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         inMap = g_inMap || g_test.forceMap;
@@ -2612,17 +2613,31 @@ void RenderWindow() {
         const bool beginOk = ImGui::Begin("GW2Chatlator###kbmain", nullptr, minFlags);
         ImGui::PopStyleVar();
         if (beginOk) {
+            const float resScale = std::max(1.0f, io.DisplaySize.y / 1080.0f);
+            const float maxBottom = std::max(minBtn, io.DisplaySize.y - Gw2BottomBarOffset(io.DisplaySize.y, g_uiSize.load()));
+            const ImVec2 pos = ImGui::GetWindowPos(), size = ImGui::GetWindowSize();
             if (g_nx.snap && !ImGui::IsMouseDown(0)) {
-                const float resScale = std::max(1.0f, io.DisplaySize.y / 1080.0f);
-                const float t = 48.0f * resScale;
-                const float maxBottom = std::max(minBtn, io.DisplaySize.y - Gw2BottomBarOffset(io.DisplaySize.y, g_uiSize.load()));
-                const ImVec2 pos = ImGui::GetWindowPos(), size = ImGui::GetWindowSize();
+                const float t = 14.0f * resScale;
                 ImVec2 p = pos;
-                if (p.x < t) p.x = 0.0f;
+                const float uiScale = (g_uiSize.load() == 0 ? 0.89f : g_uiSize.load() == 2 ? 1.11f : g_uiSize.load() == 3 ? 1.25f : 1.0f);
+                const float nativeChatLeft = std::round(10.0f * uiScale * resScale);
+                if (std::abs(p.x - nativeChatLeft) < t) p.x = nativeChatLeft;
+                else if (p.x < t) p.x = 0.0f;
                 else if (p.x + size.x > io.DisplaySize.x - t) p.x = io.DisplaySize.x - size.x;
+
                 if (p.y < t) p.y = 0.0f;
                 else if (p.y + size.y > maxBottom - t) p.y = maxBottom - size.y;
                 if (p.x != pos.x || p.y != pos.y) ImGui::SetWindowPos(p);
+            }
+            // Always prevent being pushed below the bottom bar or off-screen
+            {
+                ImVec2 p = ImGui::GetWindowPos();
+                bool clamped = false;
+                if (p.x < -0.5f) { p.x = 0.0f; clamped = true; }
+                else if (p.x + size.x > io.DisplaySize.x + 0.5f) { p.x = std::max(0.0f, io.DisplaySize.x - size.x); clamped = true; }
+                if (p.y < -0.5f) { p.y = 0.0f; clamped = true; }
+                else if (p.y + size.y > maxBottom + 0.5f) { p.y = std::max(0.0f, maxBottom - size.y); clamped = true; }
+                if (clamped && !ImGui::IsMouseDown(0)) ImGui::SetWindowPos(p);
             }
             if (ImGui::Button("<##expand", ImVec2(iconH, iconH))) {
                 std::lock_guard<std::mutex> lock(g_mu);
@@ -2631,8 +2646,8 @@ void RenderWindow() {
                 s_uncollapseRestore = true;
                 g_suppressChatFocusUntil = 0;
                 const ImVec2 p = ImGui::GetWindowPos(), s = ImGui::GetWindowSize();
-                const float bottomY = p.y + s.y;
-                ImGui::SetWindowPos(ImVec2(p.x, bottomY - g_expandedH));
+                s_targetBottomY = p.y + s.y;
+                ImGui::SetWindowPos(ImVec2(p.x, s_targetBottomY - g_expandedH));
                 ImGui::SetWindowSize(ImVec2(g_lastW, g_expandedH));
                 g_focusInput = true;
             }
@@ -2664,10 +2679,12 @@ void RenderWindow() {
     }
     if (s_uncollapseRestore) {
         s_uncollapseRestore = false;
-        const ImVec2 p = ImGui::GetWindowPos(), s = ImGui::GetWindowSize();
-        const float bottomY = p.y + s.y;
-        ImGui::SetWindowPos(ImVec2(p.x, bottomY - g_expandedH));
-        ImGui::SetWindowSize(ImVec2(g_lastW, g_expandedH));
+        if (s_targetBottomY > 0.0f) {
+            const ImVec2 p = ImGui::GetWindowPos();
+            ImGui::SetWindowPos(ImVec2(p.x, s_targetBottomY - g_expandedH));
+            ImGui::SetWindowSize(ImVec2(g_lastW, g_expandedH));
+            s_targetBottomY = -1.0f;
+        }
     }
     ImGui::SetWindowFontScale(std::clamp(g_cfg.fontPercent, 70, 200) / 100.0f);
     g_lastW = ImGui::GetWindowWidth();
@@ -2691,9 +2708,9 @@ void RenderWindow() {
             dragging = false;
             const bool moved = (pos.x != startPos.x || pos.y != startPos.y);
             if (g_nx.snap && moved) {
-                const float t = 48.0f * resScale;
+                const float t = 14.0f * resScale;
                 ImVec2 p = pos;
-                // Left: if pushed past screen edge (< 0) or within snap distance (< t), pull back to 0
+                // Left / Right:
                 if (p.x < t) p.x = 0.0f;
                 else if (p.x + size.x > io.DisplaySize.x - t) p.x = io.DisplaySize.x - size.x;
 
@@ -2703,15 +2720,16 @@ void RenderWindow() {
 
                 if (p.x != pos.x || p.y != pos.y) ImGui::SetWindowPos(p);
             }
-        } else if (!ImGui::IsMouseDown(0) && g_nx.snap &&
-                   (pos.x < 0.0f || pos.y < 0.0f || pos.x + size.x > io.DisplaySize.x || pos.y + size.y > maxBottom)) {
-            // Failsafe: if window ended up off-screen on any edge, pull it back
-            ImVec2 p = pos;
-            if (p.x < 0.0f) p.x = 0.0f;
-            else if (p.x + size.x > io.DisplaySize.x) p.x = std::max(0.0f, io.DisplaySize.x - size.x);
-            if (p.y < 0.0f) p.y = 0.0f;
-            else if (p.y + size.y > maxBottom) p.y = std::max(0.0f, maxBottom - size.y);
-            if (p.x != pos.x || p.y != pos.y) ImGui::SetWindowPos(p);
+        }
+        // General hard floor & boundary clamp: always prevent window from being pushed below bottom bar or off-screen
+        {
+            ImVec2 p = ImGui::GetWindowPos();
+            bool clamped = false;
+            if (p.x < -0.5f) { p.x = 0.0f; clamped = true; }
+            else if (p.x + size.x > io.DisplaySize.x + 0.5f) { p.x = std::max(0.0f, io.DisplaySize.x - size.x); clamped = true; }
+            if (p.y < -0.5f) { p.y = 0.0f; clamped = true; }
+            else if (p.y + size.y > maxBottom + 0.5f) { p.y = std::max(0.0f, maxBottom - size.y); clamped = true; }
+            if (clamped && !ImGui::IsMouseDown(0)) ImGui::SetWindowPos(p);
         }
     }
     if (g_statusUntil && GetTickCount64() > g_statusUntil) {
