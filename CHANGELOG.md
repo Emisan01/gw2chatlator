@@ -3,6 +3,15 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.9.0 — 2026-10-17 (GW2Chatlator for Nexus)
+
+- **Chat Scroll Fix:**
+  - Resolved mouse wheel scroll trap: releasing bottom anchor immediately on upward wheel scroll so past chat messages can be scrolled smoothly without snapping back to bottom.
+  - Auto-scroll to bottom only triggers on actual new messages or line expansion from item link resolution.
+- **Bottom Snap & Mini-Chat Alignment:**
+  - Dynamic bottom bar offset matching native GW2 speech bubble bottom edge across all UI scales and resolutions.
+  - Magnetic snap for collapsed `<` button directly over native chat icon.
+
 ## 1.8.9 — 2026-10-17 (GW2Chatlator for Nexus)
 
 - **Release Hardening & Automated Gate Protocol:**

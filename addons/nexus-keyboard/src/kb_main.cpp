@@ -2972,8 +2972,9 @@ void RenderWindow() {
                          (showWords ? ImGui::GetFrameHeightWithSpacing() : 0) +
                          (g_layout.footer ? ImGui::GetFrameHeightWithSpacing() : 0) + boxH + st.ItemSpacing.y;
     if (g_layout.chat) {
-        static float scrollY = 0, scrollMax = 0, viewH = 1, dragOffset = 0;
+        static float scrollY = 0, scrollMax = 0, viewH = 1, dragOffset = 0, lastScrollMax = 0;
         static bool atBottom = true;
+        static int lastActiveTab = -999;
         const float h = std::max(line * 2, ImGui::GetContentRegionAvail().y - lowerH);
         const float sb = std::max(8.0f, st.ScrollbarSize * 0.8f);
         const ImVec2 track = ImGui::GetCursorScreenPos();
@@ -2999,6 +3000,17 @@ void RenderWindow() {
         ImGui::SameLine(0, 4);
         ImGui::BeginChild("chat", ImVec2(0, h), false, ImGuiWindowFlags_NoScrollbar);
         if (setScroll >= 0) ImGui::SetScrollY(setScroll);
+        const ImVec2 childP0 = ImGui::GetWindowPos();
+        const ImVec2 childP1 = ImVec2(childP0.x + ImGui::GetWindowSize().x, childP0.y + ImGui::GetWindowSize().y);
+        const bool chatHovered = ImGui::IsMouseHoveringRect(childP0, childP1);
+        const float wheel = io.MouseWheel;
+        if (chatHovered && wheel > 0.0f) {
+            atBottom = false;
+        }
+        if (g_activeTab != lastActiveTab) {
+            lastActiveTab = g_activeTab;
+            atBottom = true;
+        }
         static const std::wstring s_emptyW;
         const WhisperTab* front = g_activeTab >= 0 && g_activeTab < static_cast<int>(g_tabs.size()) ? &g_tabs[g_activeTab] : nullptr;
         const std::wstring& tabName = front && !front->custom ? front->nameFolded : s_emptyW;
@@ -3039,12 +3051,17 @@ void RenderWindow() {
                 g_worker.Post([id = l.id, t = l.text] { TranslateLine(id, t, true); });
             ImGui::PopID();
         }
-        // At the bottom it stays at the bottom – also when a line grows later (an item name arrives); reading further up
-        // stays where it is.
-        if (atBottom && setScroll < 0) ImGui::SetScrollHereY(1.0f);
+        // Auto-scroll to bottom only when new lines arrive or content expands (e.g. item names resolved),
+        // provided the user was at the bottom and is not actively scrolling up with the mouse wheel.
+        const bool contentGrew = (scrollMax > lastScrollMax + 1.0f);
+        const bool shouldScrollDown = (g_scrollDown || contentGrew);
+        if (atBottom && shouldScrollDown && setScroll < 0 && (!chatHovered || wheel <= 0.0f)) {
+            ImGui::SetScrollHereY(1.0f);
+        }
         g_scrollDown = false;
         scrollY = ImGui::GetScrollY();
         scrollMax = ImGui::GetScrollMaxY();
+        lastScrollMax = scrollMax;
         viewH = ImGui::GetWindowHeight();
         atBottom = scrollY >= scrollMax - 4;
         ImGui::EndChild();
