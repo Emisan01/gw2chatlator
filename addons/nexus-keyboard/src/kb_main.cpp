@@ -2672,13 +2672,10 @@ void RenderWindow() {
     ImGui::SetWindowFontScale(std::clamp(g_cfg.fontPercent, 70, 200) / 100.0f);
     g_lastW = ImGui::GetWindowWidth();
     g_expandedH = ImGui::GetWindowHeight();
-    if (g_expandedH < 240.0f) {
-        g_expandedH = 360.0f;
-        ImGui::SetWindowSize(ImVec2(std::max(g_lastW, 520.0f), 360.0f));
-    }
-    if (g_lastW < 380.0f) {
-        g_lastW = 520.0f;
-        ImGui::SetWindowSize(ImVec2(520.0f, g_expandedH));
+    if (g_expandedH < 240.0f || g_lastW < 380.0f) {
+        if (g_expandedH < 240.0f) g_expandedH = 360.0f;
+        if (g_lastW < 380.0f) g_lastW = 520.0f;
+        ImGui::SetWindowSize(ImVec2(g_lastW, g_expandedH));
     }
     std::unique_lock<std::mutex> lock(g_mu);
     {  // Snap: a move that ends near a screen edge puts the window onto it; dragging past screen edge pulls it back
