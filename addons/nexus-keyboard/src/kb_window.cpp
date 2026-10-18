@@ -467,25 +467,31 @@ void RenderWindow() {
     {  // Mini mode and back, the way a Nexus window keeps its place: entering, the window remembers its whole rect;
        // leaving, it gets exactly that rect back – moved by as much as you moved the small window meanwhile (the small
        // one's bottom-left corner is the big one's). Nothing in between grows or anchors it.
-        static bool s_fitted = false;
+        static int s_fitted = -1;  // -1 = the first frame: a game started in the mini mode has no big rect to remember
         static ImVec2 s_beforePos(-1, -1), s_beforeSize(0, 0);
         const ImVec2 wp = ImGui::GetWindowPos(), ws = ImGui::GetWindowSize();
         const bool fitted = !Lay().chat;
-        if (fitted && !s_fitted) {  // entering: this rect, before the fitting below changes anything
+        if (fitted && s_fitted == 0) {  // entering: this rect, before the fitting below changes anything
             s_beforePos = wp;
             s_beforeSize = ws;
             g_fittedMoved = false;
-        } else if (!fitted && s_fitted && s_beforeSize.y > 0 && g_fittedH > 0) {
+        } else if (!fitted && s_fitted == 1 && g_fittedH > 0) {
             // leaving: ImGui has already made it taller this frame (downwards) – where the small window stood is its top
             // plus the height it had last frame
             // only when you dragged the small window (a pixel of fitting is no move – it added up over many toggles)
             const float movedX = g_fittedMoved ? wp.x - s_beforePos.x : 0.0f;
             const float movedY = g_fittedMoved ? (wp.y + g_fittedH) - (s_beforePos.y + s_beforeSize.y) : 0.0f;
-            ImGui::SetWindowSize(s_beforeSize);
-            ImGui::SetWindowPos(ImVec2(std::round(s_beforePos.x + movedX), std::round(s_beforePos.y + movedY)));
+            if (s_beforeSize.y >= 240.0f) {  // the big window it was: exactly that rect again
+                ImGui::SetWindowSize(s_beforeSize);
+                ImGui::SetWindowPos(ImVec2(std::round(s_beforePos.x + movedX), std::round(s_beforePos.y + movedY)));
+            } else {  // started in the mini mode: no big rect known – a normal one above where the small one stood
+                const float h = 360.0f;
+                ImGui::SetWindowSize(ImVec2(ws.x, h));
+                ImGui::SetWindowPos(ImVec2(wp.x, std::max(0.0f, std::round(wp.y + g_fittedH - h))));
+            }
             g_skipGrow = true;  // the content of this frame still measured the old size: no growing on it
         }
-        s_fitted = fitted;
+        s_fitted = fitted ? 1 : 0;
     }
     struct PopFontAtEnd {
         bool on = false;
