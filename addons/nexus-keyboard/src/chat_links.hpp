@@ -25,6 +25,9 @@ public:
     // Label for line wrapping and display (e.g. "[Item name]" or "[Item]")
     std::string Label(const PieUI::ChatLinks::LinkSegment& seg);
 
+    // A waypoint: "Commodore's Quarter Waypoint – Lion's Arch" (Decoder Ring), else "" – where the map has to go.
+    std::string Where(const PieUI::ChatLinks::LinkSegment& seg);
+
     // True if Decoder Ring is currently available
     bool HasDecoder() const;
 

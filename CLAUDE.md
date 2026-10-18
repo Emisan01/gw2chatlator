@@ -13,8 +13,11 @@ something the next agent needs.
 addons/nexus-keyboard   the add-on
   src/kb_main.cpp       everything the game thread draws (ImGui), the worker thread, sending, options, first start
   src/chat_links.*      chat codes: "[Item name]" in rarity colour + mouse-over details via Decoder Ring;
-                        a click copies the code; a waypoint (`HandleChatLinkClick`): the window minimises, you click it
-                        in GW2's own chat, it comes back when MumbleLink reports the map closed again (or 45 s)
+                        a click (`HandleChatLinkClick`) minimises the window and opens GW2's chat line (GameBind
+                        GB_UiChatFocus) – the user clicks the original there; back when the map closed again
+                        (waypoint) / the chat line closed (`g_redirect`, MumbleLink), at most 45 s. A waypoint older
+                        than 15 s: the game map opens (GB_MapToggle) and the status names the spot (`ChatLinks::Where`).
+                        No add-on can trigger the game's own map jump – only a click in GW2's chat does.
   src/chat/             vendored ChatLinks codec + SpecData (PieUI/Decoder Ring, MIT)
   src/chat/DecoderRingApi.h  public ABI for Decoder Ring (PieOrCake, MIT)
   src/voice_module.*    loads the voice module (helper + whisper DLLs) from this version's GitHub release

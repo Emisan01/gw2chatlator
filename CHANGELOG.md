@@ -13,9 +13,13 @@ diagnosis show it.
   you drag it now). Checked by the self-test.
 - **Web links like Discord:** blue and clickable; a click asks "This link goes to … – open it?". No background check
   (no Cloudflare lookups), no warning labels, no link filter option.
-- **Waypoints for squads:** a click on a waypoint moves the window out of the way so you click it in GW2's own chat (the
-  game opens the map on it); the window comes back by itself when the map closes (or after 45 s). Other chat codes: a
-  click copies the code.
+- **Chat codes open the original:** a click on a chat code moves the window out of the way and opens GW2's own chat line
+  (Nexus presses the game's chat key) – you click the link there and the game does its own thing (the map jump for a
+  waypoint, its tooltip for an item). The window comes back when the map closed again (waypoint) or GW2's chat line
+  closes, at the latest after 45 s. The code is copied as well.
+- **Emergency way for waypoints:** a waypoint older than 15 s (its line has probably scrolled away in GW2's chat): the
+  game map opens instead and the window stays, saying where to look ("On the map: Commodore's Quarter Waypoint – Lion's
+  Arch", from Decoder Ring).
 
 ## 1.9.0 — 2026-10-17 (GW2Chatlator for Nexus)
 
