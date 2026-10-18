@@ -2301,26 +2301,35 @@ void SaveMyWords() {  // g_mu held
 // codes (item/skill/waypoint name in rarity colour via Decoder Ring, hover tooltip with details, click copies code).
 bool g_openLinkAsk = false;
 
-// A chat code clicked. A waypoint: our window gets out of the way, you click the waypoint in GW2's own chat (the game
-// opens the world map on it), and the window comes back once the map was open and closed again (or after 45 s).
-// Anything else: the code is copied (Ctrl+V puts it into a message).
+// A chat code clicked: the original in GW2's own chat is what works (the game's own map jump, its own tooltip). Our
+// window gets out of the way and GW2's chat line opens (Nexus presses the game's chat key) – you click the link there.
+// The window comes back when the map was open and closed again (a waypoint) or GW2's chat line closes, at the latest
+// after 45 s. A waypoint older than 15 s (its line has probably scrolled away): the game map opens instead and our
+// window stays, saying where to look. The code is always copied too.
 bool g_minimizeRequest = false, g_expandRequest = false;  // on the main window, never inside the chat area
-int g_waypointWait = 0;                                     // 0 none, 1 waiting for the map, 2 the map is open
-ULONGLONG g_waypointSince = 0;
+int g_redirect = 0;  // 0 none; 1 waypoint, waiting for the map; 2 the map is open; 3 waiting for GW2's chat line; 4 it is open
+ULONGLONG g_redirectSince = 0;
 
-void HandleChatLinkClick(const std::string& raw) {
+void HandleChatLinkClick(const std::string& raw, ULONGLONG receivedTime, const std::string& where) {  // g_mu held
     ImGui::SetClipboardText(raw.c_str());
-    if (DecodeChatCode(W(raw)).kind == ChatCodeKind::Poi) {
-        g_minimizeRequest = true;
-        g_waypointWait = 1;
-        g_waypointSince = GetTickCount64();
-        SetStatus(Tr(L"Click the waypoint in GW2's chat – the window comes back when the map closes"), 8000);
-    } else {
-        SetStatus(Tr(L"Chat code copied – Ctrl+V puts it into a message"), 4000);
+    const bool waypoint = DecodeChatCode(W(raw)).kind == ChatCodeKind::Poi;
+    const bool fresh = receivedTime == 0 || GetTickCount64() - receivedTime < 15000;
+    if (waypoint && !fresh) {  // the emergency way: the game map, and our window says where to look
+        if (g_api && g_api->GameBinds_InvokeAsync) g_api->GameBinds_InvokeAsync(GB_MapToggle, 50);
+        SetStatus(where.empty() ? Tr(L"The map is open – the waypoint code is copied (Ctrl+V)")
+                                : TrF(L"On the map: {1}", {W(where)}),
+                  20000);
+        return;
     }
+    g_minimizeRequest = true;
+    g_redirect = waypoint ? 1 : 3;
+    g_redirectSince = GetTickCount64();
+    g_suppressChatFocusUntil = GetTickCount64() + 2000;  // our own "come back when GW2's chat opens" waits
+    if (g_api && g_api->GameBinds_InvokeAsync) g_api->GameBinds_InvokeAsync(GB_UiChatFocus, 20);
 }
 
-bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 color) {  // g_mu held
+bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 color,
+              ULONGLONG receivedTime) {  // g_mu held
     (void)text;
     bool clicked = false;
     const float right = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
@@ -2372,7 +2381,7 @@ bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::Link
                 place(lbl);
                 if (g_links.Render(seg, lbl, [](const std::string& l, ImVec4 c) { LookText(l.c_str(), Bright(c), false); })) {
                     clicked = true;
-                    HandleChatLinkClick(seg.raw);
+                    HandleChatLinkClick(seg.raw, receivedTime, g_links.Where(seg));
                 }
                 break;
             }
@@ -2386,13 +2395,13 @@ bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::Link
                     if (!seg.ae2Profession.empty()) {
                         ImGui::TextDisabled("%s", seg.ae2Profession.c_str());
                     }
-                    ImGui::TextDisabled("%s", ToUtf8(Tr(L"Click: copy the code")).c_str());
+                    ImGui::TextDisabled("%s", ToUtf8(Tr(L"Click: open it in GW2's chat")).c_str());
                     ImGui::EndTooltip();
                 }
                 if (ImGui::IsItemClicked()) {
                     clicked = true;
                     const std::string toCopy = !seg.ae2ChatLink.empty() ? seg.ae2ChatLink : seg.raw;
-                    HandleChatLinkClick(toCopy);
+                    HandleChatLinkClick(toCopy, receivedTime, std::string());
                 }
                 break;
             }
@@ -2472,13 +2481,17 @@ void RenderWindow() {
             }
             const bool chatOpen = ms.live && ms.TextboxHasFocus();
             if (chatOpen && !chatWasOpen && g_cfg.focusOnGameChat && g_show && GetTickCount64() > g_suppressChatFocusUntil &&
-                g_waypointWait == 0)
+                g_redirect == 0)
                 g_focusInput = true;
-            if (g_waypointWait == 1 && ms.MapOpen()) {
-                g_waypointWait = 2;
-            } else if ((g_waypointWait == 2 && !ms.MapOpen()) ||
-                       (g_waypointWait == 1 && GetTickCount64() - g_waypointSince > 45000)) {
-                g_waypointWait = 0;
+            static bool s_redirectChatSeen = false;  // GW2's chat line was open during this redirect
+            if (g_redirect == 0) s_redirectChatSeen = false;
+            if (g_redirect != 0 && chatOpen) s_redirectChatSeen = true;
+            if (g_redirect == 1 && ms.MapOpen()) g_redirect = 2;       // a waypoint: the map went open …
+            else if (g_redirect == 3 && chatOpen) g_redirect = 4;       // anything else: GW2's chat line is open …
+            const bool done = (g_redirect == 2 && !ms.MapOpen()) || (g_redirect == 4 && !chatOpen && !ms.MapOpen()) ||
+                              (g_redirect == 1 && s_redirectChatSeen && !chatOpen && !ms.MapOpen());  // closed, no map
+            if (done || (g_redirect != 0 && GetTickCount64() - g_redirectSince > 45000)) {  // … and closed again
+                g_redirect = 0;
                 g_expandRequest = true;
             }
             chatWasOpen = chatOpen;
@@ -2559,7 +2572,7 @@ void RenderWindow() {
             if (clickedOpen || g_expandRequest) {  // the bottom edge stays where it is; the window grows upwards
                 std::lock_guard<std::mutex> lock(g_mu);
                 g_expandRequest = false;
-                g_waypointWait = 0;
+                g_redirect = 0;
                 g_collapsed = false;
                 g_restoreH = g_expandedH;
                 s_uncollapseRestore = true;
@@ -2969,7 +2982,7 @@ void RenderWindow() {
             if (segs.size() <= 1 && (segs.empty() || segs[0].kind == PieUI::ChatLinks::SegmentKind::Plain)) {
                 LookText(u8shown.c_str(), ColorOf(l.channel), true);
             } else {
-                clicked = RichLine(shown, segs, ColorOf(l.channel));
+                clicked = RichLine(shown, segs, ColorOf(l.channel), l.receivedTime);
             }
             if (!l.translated.empty() && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", l.u8text.c_str());
             // A click on the text of a line someone else wrote: just this line into your language.
@@ -3930,7 +3943,7 @@ extern "C" __declspec(dllexport) void Gw2KbTestNewTab(uint32_t channels, bool se
 
 extern "C" __declspec(dllexport) void Gw2KbTestWaypoint(int step) {  // nexus_kb_selftest only: 0 click, 1 map closed
     std::lock_guard<std::mutex> lock(g_mu);
-    if (step == 0) HandleChatLinkClick("[&BAwEAAA=]");
+    if (step == 0) HandleChatLinkClick("[&BAwEAAA=]", GetTickCount64(), std::string());
     else g_expandRequest = true;
 }
 
