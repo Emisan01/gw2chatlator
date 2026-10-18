@@ -316,6 +316,30 @@ void LoadVoiceModule() {
     Config::FlushWrites();
     if (!g_voice.Running() && VoiceModulePresent(KeyboardDir())) g_voice.Start(HelperExe(), dataDir);
 }
+// Lean when not in use: the voice helper holds its model in memory (hundreds of MB for the larger ones). Nothing
+// recorded, nothing listening for [Voice] UnloadMinutes (default 10): it ends and gives that memory back; the next
+// press of the microphone or the key starts it again. Voice activation keeps it (it listens). Game thread, once a second.
+void VoiceIdleUnload() {
+    static ULONGLONG s_next = 0, s_lastUse = 0;
+    const ULONGLONG now = GetTickCount64();
+    if (now < s_next) return;
+    s_next = now + 1000;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        const bool idle = g_voice.Running() && !g_recording && !g_listening && !g_listenWanted && g_voicePending.empty();
+        if (!idle || s_lastUse == 0) {
+            s_lastUse = now;  // in use (or not running): the idle time counts from here
+            return;
+        }
+        if (now - s_lastUse < static_cast<ULONGLONG>(std::max(1, g_cfg.voiceUnloadMin)) * 60000) return;
+    }
+    s_lastUse = 0;
+    g_voice.Stop();  // the model's memory goes back; the next press starts the helper again
+    std::lock_guard<std::mutex> lock(g_mu);
+    g_voicePending.clear();
+    g_recording = g_listening = false;
+}
+
 void UnloadVoiceModule() {
     StopListening();
     g_voice.Stop();  // the helper ends: the model and its memory are freed

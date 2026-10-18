@@ -3,6 +3,32 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.0.0 — 2026-10-18 (GW2Chatlator for Nexus)
+
+The big one: rebuilt inside, and everything of the 1.9 line in one – a window made of building blocks with two
+profiles (compact view, mini mode), sharp text in pt, themes (Slate, Grey, CBA with automatic contrast), the
+prediction without the word bar, translation that applies at once, a mouse logic without dead ends, no hangs, no
+creeping windows. What is new in 2.0.0 itself:
+
+
+- **Split into modules.** The one kb_main.cpp (4,700 lines) is nine files now, each with one job: kb_main (only the
+  Nexus glue), kb_state, kb_theme, kb_input, kb_worker, kb_voice, kb_chat, kb_window, kb_options, and kb_shared.hpp for
+  what they share. The code moved byte for byte (a script); every self-test value stayed the same. A change in one
+  part now compiles only that part.
+- **Lean when not in use:** the voice helper holds its model in memory (hundreds of MB for the larger ones) – after
+  10 minutes without recording or listening it ends and gives that memory back ([Voice] UnloadMinutes); the next press
+  of the microphone or the key starts it again. Voice activation keeps it.
+- **Old settings gone:** about 25 settings of the old desktop program (window position, docking, glossary,
+  LanguageTool, "read in", a native-chat switch from an earlier attempt …) are no longer read or written.
+- **"Compact view" and "Mini mode" are profiles** – at the top of Options → Window → Window layout and in the menu. A
+  profile sets the parts below to what it means (compact: header, chat, input, footer; mini: nothing but the input); you
+  can add or remove parts from there – then it is your own layout and the profile's check goes off. Switching a profile
+  off brings back the layout you had before. Without the preview the translation stands small in the input.
+- **The learning window** opens at the window's top right corner, beside it (left of it when there is no room), and can
+  be dragged.
+- **The normal window moves from the input too:** held down for a moment and dragged (a quick drag still selects text).
+- The CBA theme's contrast readout is labelled ("contrast 4.5:1"), quiet when fine, gold when too weak, with a tooltip.
+
 ## 1.9.13 — 2026-10-18 (GW2Chatlator for Nexus)
 
 - **Mini mode without dead ends.** A right-click on a word you wrote opens the learning mode for exactly that word; a

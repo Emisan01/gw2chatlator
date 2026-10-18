@@ -560,7 +560,7 @@ void StartSend();
 std::wstring NativeName(const std::wstring& code);
 
 extern bool g_collapsed;
-extern float g_headerH, g_lastW, g_expandedH, g_restoreH;
+extern float g_lastW, g_expandedH, g_restoreH;
 // The bottom edge the window had when it was minimised: the small button sits exactly on it (its size depends on the
 // text size and ImGui's minimum window size – computing it twice made the window creep up a little every time).
 extern float g_anchorBottom;
@@ -611,6 +611,7 @@ void InstallVoiceModuleNow();
 void FirstStart();
 void LoadVoiceModule();
 void UnloadVoiceModule();
+void VoiceIdleUnload();
 void StatusRow(const std::string& what, int state, const std::string& text);
 void RenderModules(bool guide);
 
@@ -645,8 +646,8 @@ void HandleChatLinkClick(const std::string& raw, ULONGLONG receivedTime, const s
 bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 color, ULONGLONG receivedTime);
 
 extern bool g_micLocked;
-extern bool g_compact;
-extern bool g_mini;
+bool ProfileOn(int profile);
+void SetProfile(int profile, bool on);
 Layout Lay();
 void Hint(const std::string& text);
 void RenderOptionsWindow();

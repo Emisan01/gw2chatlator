@@ -147,8 +147,14 @@ void AddonLoad(AddonAPI_t* api) {
         g_sendIdx = g_cfg.translateWriting ? 0 : static_cast<int>(g_cfg.writeLangs.size());
         LoadLayout();
         LoadCustomTabs();
-        g_compact = GetPrivateProfileIntW(L"NexusWindow", L"Compact", 0, g_cfg.iniPath.c_str()) != 0;
-        g_mini = GetPrivateProfileIntW(L"NexusWindow", L"Mini", 0, g_cfg.iniPath.c_str()) != 0;
+        // 1.9.10 – 1.9.13 kept the views as flags over the parts; now they are presets of the parts themselves.
+        const bool oldMini = GetPrivateProfileIntW(L"NexusWindow", L"Mini", 0, g_cfg.iniPath.c_str()) != 0;
+        const bool oldCompact = GetPrivateProfileIntW(L"NexusWindow", L"Compact", 0, g_cfg.iniPath.c_str()) != 0;
+        if (oldMini || oldCompact) {
+            SetProfile(oldMini ? 1 : 0, true);
+            g_cfg.SaveValue(L"NexusWindow", L"Mini", L"0");
+            g_cfg.SaveValue(L"NexusWindow", L"Compact", L"0");
+        }
         std::string words;
         if (ReadFileBytes(g_cfg.dataDir + L"\\my-words.txt", words)) g_myWords.Parse(FromUtf8(words));
     }
@@ -257,7 +263,7 @@ extern "C" __declspec(dllexport) void Gw2KbTestWaypoint(int step) {  // nexus_kb
 
 extern "C" __declspec(dllexport) void Gw2KbTestMini(int on) {  // nexus_kb_selftest: the mini mode on / off
     std::lock_guard<std::mutex> lock(g_mu);
-    g_mini = on != 0;
+    SetProfile(1, on != 0);
 }
 
 extern "C" __declspec(dllexport) int Gw2KbTestAutoMinimize(int seconds) {  // nexus_kb_selftest: -1 ask, 0 off; 1 = small
@@ -276,7 +282,7 @@ extern "C" __declspec(dllexport) void Gw2KbTestWhisper(const char* name) {  // n
 }
 
 extern "C" __declspec(dllexport) AddonDefinition_t* GetAddonDef() {
-    g_def.Signature = static_cast<uint32_t>(-0x474B4244);  // random negative: not hosted on Raidcore (yet)
+    g_def.Signature = static_cast<uint32_t>(-0x474B4244);  // 0xB8B4BDBC – GW2Chatlator on Raidcore (ID 150)
     g_def.APIVersion = NEXUS_API_VERSION;
     g_def.Name = kName;
     g_def.Version.Major = GCT_VER_MAJOR;

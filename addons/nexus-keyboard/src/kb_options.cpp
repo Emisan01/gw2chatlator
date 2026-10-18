@@ -198,8 +198,10 @@ void RenderCbaTheme() {
             snprintf(buf, sizeof buf, "%.1f:1", ratio);
             ImGui::SameLine();
             const bool ok = ratio >= need;
-            ImGui::TextColored(ok ? ImVec4(0.24f, 0.81f, 0.43f, 1.f) : ImVec4(0.98f, 0.85f, 0.25f, 1.f), "%s%s", buf,
-                               ok ? "" : (" " + UI(Tr(L"low"))).c_str());
+            ImGui::TextColored(ok ? ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled) : ImVec4(0.98f, 0.85f, 0.25f, 1.f),
+                               "%s %s%s", UI(Tr(L"contrast")).c_str(), buf, ok ? "" : (" – " + UI(Tr(L"low"))).c_str());
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", UI(Tr(L"How well it stands out against the window's surfaces (WCAG): readable from 4.5:1 for text, 3:1 for quiet text and accents.")).c_str());
         }
     }
     if (ImGui::Checkbox(UI(Tr(L"Automatic contrast (text always readable)")).c_str(), &g_cbaAutoContrast)) changed = true;
@@ -321,6 +323,15 @@ void RenderOptionsContent() {
             ImGui::TextUnformatted(UI(Tr(L"Window layout")).c_str());
             {
                 std::lock_guard<std::mutex> lock(g_mu);
+                // The two profiles first (presets of the parts below; changing a part switches them off).
+                bool compact = ProfileOn(0), mini = ProfileOn(1);
+                if (ImGui::Checkbox(UI(Tr(L"Compact view")).c_str(), &compact)) SetProfile(0, compact);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("%s", UI(Tr(L"Header, chat, input and footer – no word bar, no preview. Change a part below and it is your own layout again.")).c_str());
+                if (ImGui::Checkbox(UI(Tr(L"Mini mode")).c_str(), &mini)) SetProfile(1, mini);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("%s", UI(Tr(L"Nothing but the input with its help. Three quick clicks on it minimise it; right-click in it: Menu … brings the rest back.")).c_str());
+                ImGui::Spacing();
                 // From top to bottom, as they stand in the window; each one can go.
                 bool changed = ImGui::Checkbox(UI(Tr(L"Header")).c_str(), &g_layout.header);
                 if (ImGui::IsItemHovered())
