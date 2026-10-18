@@ -3,6 +3,20 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.0.2 — 2026-10-18 (GW2Chatlator for Nexus)
+
+- **Everything it brought can be removed again** (Options → General → Modules): a remove button for Events: Chat, the
+  voice module and the voice models (a second click confirms), and "Remove everything of GW2Chatlator …" with a yes –
+  it deletes the folder GW2Keyboard (settings, learned words, your words, voice module and models), Events: Chat too
+  if you tick it, and writes nothing any more afterwards (nothing comes back on unload). The last step it names:
+  Nexus → Addons → Uninstall – a running add-on cannot delete its own DLL. Checked by the self-test on a copy.
+- **The settings file of a new player no longer grows on every start:** an old upgrade path from the desktop program
+  appended the translation settings again each time (about 1.4 KB a start). Gone, and the copies it left are removed
+  on load (only exact copies – what Windows wrote real values into stays).
+- **A new player's settings file holds only what the add-on reads** – no window position, docking, glossary, LLM or
+  LanguageTool of the old desktop program any more.
+- The README is short again: one "New in 2.0" block instead of 25; the history is in this file.
+
 ## 2.0.1 — 2026-10-18 (GW2Chatlator for Nexus)
 
 - **Nothing downloads by itself.** The first start used to load Events: Chat, the voice module (a helper program and
