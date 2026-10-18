@@ -5,6 +5,10 @@
 namespace kb {
 
 bool g_collapsed = false;  // the V / > buttons: window minimizes to bottom-left corner
+float g_fittedH = 0;     // the fitted (mini) window's height last frame
+bool g_skipGrow = false;  // back from the mini mode this frame: no growing on the old measurements
+bool g_fittedMoved = false;  // you dragged the small (mini) window: the big one follows it when it comes back
+float g_grown = 0;        // how much the window grew for a long input (it shrinks back by that)
 float g_lastW = 520, g_expandedH = 360, g_restoreH = 0;
 float g_anchorBottom = -1.0f;
 ImVec2 g_savedPos(-1, -1);   // where the window stood when it was minimised
@@ -460,22 +464,28 @@ void RenderWindow() {
         return;
     }
     if (g_expandRequest) g_expandRequest = false;  // already open
-    {  // Fitted (no chat: the mini mode) and back: the window keeps its place. Entering, it remembers its size; leaving,
-       // it gets that size back with its bottom edge where the small window stood – ImGui's minimum height for the chat
-       // used to grow it downwards first, and on, off, on … it crawled down the screen.
+    {  // Mini mode and back, the way a Nexus window keeps its place: entering, the window remembers its whole rect;
+       // leaving, it gets exactly that rect back – moved by as much as you moved the small window meanwhile (the small
+       // one's bottom-left corner is the big one's). Nothing in between grows or anchors it.
         static bool s_fitted = false;
-        static float s_beforeH = 0, s_lastBottom = -1;
+        static ImVec2 s_beforePos(-1, -1), s_beforeSize(0, 0);
         const ImVec2 wp = ImGui::GetWindowPos(), ws = ImGui::GetWindowSize();
         const bool fitted = !Lay().chat;
-        if (fitted && !s_fitted) {
-            s_beforeH = ws.y;
-        } else if (!fitted && s_fitted && s_beforeH > 0 && s_lastBottom > 0) {
-            const float h = std::max(s_beforeH, 240.0f);
-            ImGui::SetWindowSize(ImVec2(ws.x, h));
-            ImGui::SetWindowPos(ImVec2(wp.x, std::max(0.0f, s_lastBottom - h)));
+        if (fitted && !s_fitted) {  // entering: this rect, before the fitting below changes anything
+            s_beforePos = wp;
+            s_beforeSize = ws;
+            g_fittedMoved = false;
+        } else if (!fitted && s_fitted && s_beforeSize.y > 0 && g_fittedH > 0) {
+            // leaving: ImGui has already made it taller this frame (downwards) – where the small window stood is its top
+            // plus the height it had last frame
+            // only when you dragged the small window (a pixel of fitting is no move – it added up over many toggles)
+            const float movedX = g_fittedMoved ? wp.x - s_beforePos.x : 0.0f;
+            const float movedY = g_fittedMoved ? (wp.y + g_fittedH) - (s_beforePos.y + s_beforeSize.y) : 0.0f;
+            ImGui::SetWindowSize(s_beforeSize);
+            ImGui::SetWindowPos(ImVec2(std::round(s_beforePos.x + movedX), std::round(s_beforePos.y + movedY)));
+            g_skipGrow = true;  // the content of this frame still measured the old size: no growing on it
         }
         s_fitted = fitted;
-        s_lastBottom = ImGui::GetWindowPos().y + ImGui::GetWindowSize().y;  // where its bottom stands, for the next frame
     }
     struct PopFontAtEnd {
         bool on = false;
@@ -512,6 +522,7 @@ void RenderWindow() {
         } else if (dragging && !ImGui::IsMouseDown(0)) {
             dragging = false;
             const bool moved = (pos.x != startPos.x || pos.y != startPos.y);
+            if (moved && !Lay().chat) g_fittedMoved = true;
             if (g_nx.snap && moved) {
                 const float t = 14.0f * resScale;
                 ImVec2 p = pos;
@@ -826,6 +837,7 @@ void RenderWindow() {
             ImGui::SetWindowPos(ImVec2(p.x, p.y + sz.y - want));
         }
         s_setH = sizing ? sz.y : want;
+        g_fittedH = sizing ? sz.y : want;  // the small window's height (leaving the mini mode needs it)
         // Held down for a moment, then dragged: the whole window moves (not only at its edges) – a quick drag still
         // selects text. Not when the press was on an edge (that resizes).
         static ULONGLONG s_downAt = 0;
@@ -844,10 +856,16 @@ void RenderWindow() {
         }
         if (s_moving) {
             const ImVec2 d = ImGui::GetIO().MouseDelta;
-            if (d.x != 0 || d.y != 0) ImGui::SetWindowPos(ImVec2(std::round(p.x + d.x), std::round(p.y + d.y)));
+            if (d.x != 0 || d.y != 0) {
+                ImGui::SetWindowPos(ImVec2(std::round(p.x + d.x), std::round(p.y + d.y)));
+                g_fittedMoved = true;
+            }
         }
+    } else if (g_skipGrow) {  // just back from the mini mode: its old rect, nothing grows this frame
+        g_skipGrow = false;
+        g_grown = 0;
     } else {  // the input grew past the window: the window grows upwards (its bottom stays) and shrinks back afterwards
-        static float s_grown = 0;
+        float& s_grown = g_grown;
         const float need = lowerH + (Lay().chat ? line * 2 : 0) - ImGui::GetContentRegionAvail().y;
         const float delta = need > 0.5f ? need : s_grown > 0 ? -std::min(s_grown, -need) : 0.0f;
         const ImVec2 p = ImGui::GetWindowPos(), sz = ImGui::GetWindowSize();
