@@ -147,6 +147,37 @@ std::wstring LinkHost(const std::wstring& url) {  // "https://www.example.org/a?
 
 AddonDefinition_t g_def = {};
 AddonAPI_t* g_api = nullptr;
+
+// The text of our window as a real font at its size in pt (sharp) instead of Nexus' font scaled (blurry). Nexus builds
+// it from a Windows font file and sends it to OnTextFont; until it arrives (or without Nexus' font functions, as in
+// the self-test) the window scales Nexus' font as before.
+constexpr const char* kTextFontId = "GW2Chatlator_Text";
+std::atomic<ImFont*> g_textFont{nullptr};
+float g_textFontPx = 0;  // the size asked of Nexus (game thread)
+void OnTextFont(const char*, void* font) { g_textFont = static_cast<ImFont*>(font); }
+float PtToPx(int pt) { return std::round(std::clamp(pt, 8, 28) * 96.0f / 72.0f); }
+void RequestTextFont(int pt) {
+    if (!g_api || !g_api->Fonts_AddFromFile) return;
+    const float px = PtToPx(pt);
+    if (px == g_textFontPx) return;
+    if (g_textFontPx > 0 && g_api->Fonts_Resize) {
+        g_api->Fonts_Resize(kTextFontId, px);
+    } else {
+        wchar_t win[MAX_PATH] = {};
+        GetWindowsDirectoryW(win, MAX_PATH);
+        const std::wstring file = std::wstring(win) + L"\\Fonts\\segoeui.ttf";
+        if (GetFileAttributesW(file.c_str()) == INVALID_FILE_ATTRIBUTES) return;
+        // Latin (also the extended letters), Greek, Cyrillic, Arabic (+ its presentation forms), punctuation, arrows,
+        // symbols – what chat and our window show.
+        static const ImWchar kRanges[] = {0x0020, 0x024F, 0x0370, 0x03FF, 0x0400, 0x04FF, 0x0600, 0x06FF, 0x2000, 0x206F,
+                                          0x20A0, 0x20CF, 0x2190, 0x21FF, 0x2200, 0x22FF, 0x25A0, 0x25FF, 0xFB50, 0xFDFF,
+                                          0xFE70, 0xFEFF, 0};
+        static ImFontConfig cfg;
+        cfg.GlyphRanges = kRanges;
+        g_api->Fonts_AddFromFile(kTextFontId, px, ToUtf8(file).c_str(), OnTextFont, &cfg);
+    }
+    g_textFontPx = px;
+}
 HMODULE g_self = nullptr;
 std::atomic<bool> g_disabled{false};  // set after an error: the add-on stays quiet for the rest of the session
 std::atomic<bool> g_chatEventsLive{false};
@@ -2623,7 +2654,7 @@ void RenderWindow() {
         return;
     }
 
-    const float minW = 380, minH = 240;
+    const float minW = 380, minH = g_layout.chat ? 240.0f : 90.0f;  // without the chat it may be just the input
     ImGui::SetNextWindowSize(ImVec2(520, 360), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(ImVec2(minW, minH), ImVec2(FLT_MAX, FLT_MAX));
     if (g_restoreH > 0) {
@@ -2653,11 +2684,25 @@ void RenderWindow() {
         return;
     }
     if (g_expandRequest) g_expandRequest = false;  // already open
-    ImGui::SetWindowFontScale(std::clamp(g_cfg.fontPercent, 70, 200) / 100.0f);
+    struct PopFontAtEnd {
+        bool on = false;
+        ~PopFontAtEnd() { if (on) ImGui::PopFont(); }
+    } popFont;
+    {
+        const float px = PtToPx(g_cfg.fontPt);
+        ImFont* tf = g_textFont.load();
+        if (tf && std::abs(tf->FontSize - px) < 0.5f) {  // sharp: the font built at this size
+            ImGui::SetWindowFontScale(1.0f);
+            ImGui::PushFont(tf);
+            popFont.on = true;
+        } else {  // not (yet) there: Nexus' font scaled
+            ImGui::SetWindowFontScale(px / std::max(1.0f, ImGui::GetFont()->FontSize));
+        }
+    }
     g_lastW = ImGui::GetWindowWidth();
     g_expandedH = ImGui::GetWindowHeight();
-    if (g_expandedH < 240.0f || g_lastW < 380.0f) {
-        if (g_expandedH < 240.0f) g_expandedH = 360.0f;
+    if (g_expandedH < minH || g_lastW < 380.0f) {
+        if (g_expandedH < minH) g_expandedH = g_layout.chat ? 360.0f : minH;
         if (g_lastW < 380.0f) g_lastW = 520.0f;
         ImGui::SetWindowSize(ImVec2(g_lastW, g_expandedH));
     }
@@ -3035,6 +3080,9 @@ void RenderWindow() {
         viewH = ImGui::GetWindowHeight();
         atBottom = scrollY >= scrollMax - 4;
         ImGui::EndChild();
+    } else {  // no chat: the input stays the lowest line, the space above stays empty (see-through like the window)
+        const float fill = ImGui::GetContentRegionAvail().y - lowerH;
+        if (fill > 0) ImGui::Dummy(ImVec2(0, fill));
     }
     // A link from the chat opens only after your yes (http / https only).
     if (g_openLinkAsk) {
@@ -3366,13 +3414,14 @@ void RenderOptionsContent() {
             ImGui::SetNextItemWidth(wide);
             LanguageCombo(UI(Tr(L"Language of this window") + L"##ui").c_str(), edit.uiLangCode, Tr(L"like Windows"));
             // Size and transparency take effect at once and are kept (like the chat text below), not only on "Save".
-            int pt = std::clamp(edit.fontPercent, 70, 200);
+            int pt = std::clamp(edit.fontPt, 8, 28);
             ImGui::SetNextItemWidth(wide);
-            if (ImGui::SliderInt(UI(Tr(L"Text size") + L" (%)##size").c_str(), &pt, 70, 200)) {
+            if (ImGui::SliderInt(UI(Tr(L"Text size") + L" (pt)##size").c_str(), &pt, 8, 28)) {
                 std::lock_guard<std::mutex> lock(g_mu);
-                edit.fontPercent = g_cfg.fontPercent = pt;
-                g_cfg.SaveValue(L"Window", L"FontPercent", std::to_wstring(pt));
+                edit.fontPt = g_cfg.fontPt = pt;
+                g_cfg.SaveValue(L"Window", L"FontPt", std::to_wstring(pt));
             }
+            if (ImGui::IsItemDeactivatedAfterEdit()) RequestTextFont(pt);  // built once you let go (scaled meanwhile)
             int transparency = 100 - (std::clamp(edit.opacity, 0, 255) * 100 + 127) / 255;
             ImGui::SetNextItemWidth(wide);
             if (ImGui::SliderInt(UI(Tr(L"Transparency") + L" (%)##alpha").c_str(), &transparency, 0, 100)) {
@@ -3897,6 +3946,7 @@ void AddonLoad(AddonAPI_t* api) {
         std::string words;
         if (ReadFileBytes(g_cfg.dataDir + L"\\my-words.txt", words)) g_myWords.Parse(FromUtf8(words));
     }
+    RequestTextFont(g_cfg.fontPt);
     Config::DeferWrites(true);  // the ini is written on the worker (KickSave), never on the game thread
     g_worker.Start();
     g_worker.Post(InitSpelling);
@@ -3958,6 +4008,9 @@ void AddonUnload() {
     if (g_chatEventsThread.joinable()) g_chatEventsThread.join();
     if (g_voiceModuleThread.joinable()) g_voiceModuleThread.join();
     g_links.Stop();
+    if (g_api && g_api->Fonts_Release) g_api->Fonts_Release(kTextFontId, OnTextFont);  // no call into a gone DLL
+    g_textFont = nullptr;
+    g_textFontPx = 0;
     g_voice.Stop();  // the helper ends (it would also end by itself when its input closes)
     g_worker.Stop(FreeWorkerState);  // saved and freed on the worker (it owns them), before the DLL goes
     Config::DeferWrites(false);      // what is still waiting goes into the ini now

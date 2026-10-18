@@ -51,8 +51,45 @@ struct TestHooks {  // as in kb_main.cpp
 };
 void Free(void* p, void*) { std::free(p); }
 
+// Nexus' font functions, stood in: the font is built into the atlas before the next frame and sent to the add-on.
+struct FontAsk {
+    std::string id, file;
+    float size = 0;
+    FONTS_RECEIVECALLBACK cb = nullptr;
+    ImFontConfig cfg;
+};
+std::vector<FontAsk> g_fontAsks;
+FontAsk g_fontLast;  // for a resize
+int g_fontsBuilt = 0;
+void FakeFontAdd(const char* id, float size, const char* file, FONTS_RECEIVECALLBACK cb, void* cfg) {
+    FontAsk a;
+    a.id = id;
+    a.file = file;
+    a.size = size;
+    a.cb = cb;
+    if (cfg) a.cfg = *static_cast<ImFontConfig*>(cfg);
+    g_fontLast = a;
+    g_fontAsks.push_back(a);
+}
+void FakeFontResize(const char*, float size) {
+    g_fontLast.size = size;
+    g_fontAsks.push_back(g_fontLast);
+}
+void FakeFontRelease(const char*, FONTS_RECEIVECALLBACK) { g_fontLast.cb = nullptr; }
+
 void Frame() {
     ImGuiIO& io = ImGui::GetIO();
+    for (FontAsk& a : g_fontAsks) {  // between frames, like Nexus
+        ImFont* f = io.Fonts->AddFontFromFileTTF(a.file.c_str(), a.size, &a.cfg);
+        unsigned char* px = nullptr;
+        int tw = 0, th = 0;
+        io.Fonts->GetTexDataAsRGBA32(&px, &tw, &th);
+        if (f && a.cb) {
+            a.cb(a.id.c_str(), f);
+            ++g_fontsBuilt;
+        }
+    }
+    g_fontAsks.clear();
     io.DisplaySize = ImVec2(1920, 1080);
     io.DeltaTime = 1.0f / 60.0f;
     ImGui::NewFrame();
@@ -176,6 +213,9 @@ int wmain(int argc, wchar_t** argv) {
     api.InputBinds_RegisterWithString = FakeBind;
     api.InputBinds_Deregister = FakeUnbind;
     api.Log = FakeLog;
+    api.Fonts_AddFromFile = FakeFontAdd;
+    api.Fonts_Resize = FakeFontResize;
+    api.Fonts_Release = FakeFontRelease;
     std::printf("load\n");
     def->Load(&api);
     std::printf("loaded\n");
@@ -245,6 +285,7 @@ int wmain(int argc, wchar_t** argv) {
                 d[1] = bright ? 0.84f + 0.10f * y / H : 0.27f + 0.08f * y / H;
                 d[2] = bright ? 0.88f : 0.20f;
             }
+        ImGui::GetIO().Fonts->GetTexDataAsRGBA32(&pixels, &w, &h);  // the atlas as it is now (fonts added since)
         Rasterize(ImGui::GetDrawData(), pixels, w, h, img, W, H);
         SaveBmp(shotPath, img, W, H);
         std::printf("picture: %ls\n", shotPath);
@@ -392,6 +433,8 @@ int wmain(int argc, wchar_t** argv) {
         std::printf("reply language for Jean Invented: %s\n", th->sendLang);
         ok = ok && std::strcmp(th->sendLang, "FR") == 0;
     }
+    std::printf("text font built by the stand-in Nexus: %d\n", g_fontsBuilt);
+    ok = ok && g_fontsBuilt >= 1;
     std::printf("unload\n");
     def->Unload();
     ok = ok && g_chatEvents == nullptr;

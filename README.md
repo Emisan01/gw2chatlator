@@ -3,12 +3,16 @@
 The chat of Guild Wars 2 in your language – **read it, write and speak in yours**, the chat gets it translated. A
 Nexus add-on, right inside the game. A line goes into the chat only when you press Enter yourself.
 
-## ⬇ [Download gw2keyboard_nexus.dll – version 1.9.2](https://github.com/Emisan01/gw2chatlator/releases/download/v1.9.2/gw2keyboard_nexus.dll)
+## ⬇ [Download gw2keyboard_nexus.dll – version 1.9.3](https://github.com/Emisan01/gw2chatlator/releases/download/v1.9.3/gw2keyboard_nexus.dll)
 
 Put the DLL into your `Guild Wars 2\addons` folder (where [Nexus](https://raidcore.gg/Nexus) keeps its add-ons) and
 load **GW2Chatlator** in Nexus – that is all: on the first start it loads Events: Chat, its voice module and a small
 voice model by itself.
 all versions: [Releases](https://github.com/Emisan01/gw2chatlator/releases) · what changed: [CHANGELOG.md](CHANGELOG.md).
+
+> **New in 1.9.3** – sharp text in pt, the input stays at the bottom: the text size is set in pt (8–28) and the font is
+> built at that size (Segoe UI) instead of being scaled up blurry · with the chat (and the footer) hidden the input is
+> the lowest line and the window may be small, just the input.
 
 > **New in 1.9.2** – no more hang on "Save", every slider works at once: the settings are written in the
 > background (the game froze for about a second) · text size, transparency, brightness and the dark outline act
