@@ -3,6 +3,15 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.9.4 — 2026-10-18 (GW2Chatlator for Nexus)
+
+- **The header can be hidden** like the other parts (Options → General → Window layout → Header): no tabs, microphone,
+  minimise, menu and close button – the window starts with the chat. A right-click on the window then opens the menu,
+  with what the header offered: the tabs to switch (Chat, whisper tabs, your own), "Minimise", the options, compact
+  view, a new whisper tab, hide – and "Header" to bring it back. A right-click on a chat line still translates it, in
+  the input it is still the learning mode, which then offers "Menu …" as well (for a window with nothing but the
+  input). Push-to-talk keeps working by its key.
+
 ## 1.9.3 — 2026-10-18 (GW2Chatlator for Nexus)
 
 - **Sharp text in pt.** The text size scaled Nexus' font up, which made it blurry. Now it is set in pt (8–28; the old

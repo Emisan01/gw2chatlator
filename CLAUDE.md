@@ -60,7 +60,9 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   on the header → "New tab", a copy of the chat; right-click on such a tab = its settings: name, channels shown,
   channel written in; ≤6, kept in `[NexusTabs]` – settings only, never chat). ImGui id per tab = `uid`.
 - **Window:** shown only on a map (MumbleLink `inMap`). Header: tabs (Chat, your own, whisper tabs),
-  mic · V/A (fold to the header) · ≡ · ×. Status text is drawn inside the input box (`BoxText`). Compact view = no
+  mic · V/A (fold to the header) · ≡ · ×; every part can be hidden (`g_layout`: header, chat, preview, word bar,
+  footer) – without the header a right-click on the window (not a chat line, not the input) opens the menu `kbmenu`
+  with the tabs and "Minimise"; the input's learning popup then has "Menu …". Status text is drawn inside the input box (`BoxText`). Compact view = no
   preview / word bar, the translation small in the box. Scroll bar drawn at the left. Snap to the screen edges.
 - **Right-click** only in the input (learning mode): self-corrections noticed while typing (`NoteSelfFix`) →
   `SpellService::TeachFix` (never a dictionary word), and "my words" (meaning → translator). No menu on chat lines.
