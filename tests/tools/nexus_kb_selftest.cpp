@@ -572,9 +572,32 @@ int wmain(int argc, wchar_t** argv) {
     }
     std::printf("text font built by the stand-in Nexus: %d\n", g_fontsBuilt);
     ok = ok && g_fontsBuilt >= 1;
+    // GW2KB_TEST_REMOVEALL=1 (only on a copy of the add-on – it deletes its GW2Keyboard folder): "remove everything",
+    // then unload – nothing may come back (no ini, no learned words written on unload).
+    std::wstring removeDir;
+    const bool removeAll = GetEnvironmentVariableW(L"GW2KB_TEST_REMOVEALL", nullptr, 0) > 0;
+    if (removeAll) {
+        removeDir = argv[1];
+        removeDir = removeDir.substr(0, removeDir.find_last_of(L"\\/") + 1) + L"GW2Keyboard";
+        if (auto removeFn = reinterpret_cast<int (*)(int)>(GetProcAddress(dll, "Gw2KbTestRemoveAll"))) {
+            removeFn(1);
+            for (int k = 0; k < 400 && removeFn(0) == 0; ++k) {
+                Frame();
+                Sleep(15);
+            }
+            std::printf("remove everything: state %d, folder there before unload: %s\n", removeFn(0),
+                        GetFileAttributesW(removeDir.c_str()) != INVALID_FILE_ATTRIBUTES ? "yes" : "no");
+        }
+    }
     std::printf("unload\n");
     def->Unload();
     ok = ok && g_chatEvents == nullptr;
+    if (removeAll) {
+        const bool back = GetFileAttributesW(removeDir.c_str()) != INVALID_FILE_ATTRIBUTES;
+        std::printf("remove everything: folder there after unload: %s\n", back ? "yes" : "no");
+        if (back) std::printf("FAIL: something wrote into the removed folder again\n");
+        ok = ok && !back;
+    }
     FreeLibrary(dll);
     ImGui::DestroyContext(ctx);
     std::printf(ok ? "PASS\n" : "FAIL\n");

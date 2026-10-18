@@ -287,7 +287,7 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
         std::lock_guard<std::mutex> lock(g_mu);
         if (ok && !g_lastDictated.empty()) {
             if (!g_voiceFixes.Learn(g_lastDictated, learnText, g_dictLang).empty())
-                WriteFileAtomic(g_cfg.dataDir + L"\\voice-fixes.txt", ToUtf8(g_voiceFixes.Serialize()));
+                if (!g_wiped) WriteFileAtomic(g_cfg.dataDir + L"\\voice-fixes.txt", ToUtf8(g_voiceFixes.Serialize()));
             g_lastDictated.clear();
         }
     }

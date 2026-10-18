@@ -324,12 +324,14 @@ void Config::Load(const std::wstring& dir) {
 namespace {
 std::mutex g_writeMu;
 bool g_deferWrites = false;
+bool g_blockWrites = false;
 std::map<std::tuple<std::wstring, std::wstring, std::wstring>, std::wstring> g_pendingWrites;  // file, section, key
 }  // namespace
 
 void Config::SaveValue(const wchar_t* section, const wchar_t* key, const std::wstring& value) const {
     {
         std::lock_guard<std::mutex> lock(g_writeMu);
+        if (g_blockWrites) return;
         if (g_deferWrites) {
             g_pendingWrites[std::make_tuple(iniPath, std::wstring(section), std::wstring(key))] = value;
             return;
@@ -349,6 +351,12 @@ void Config::DeferWrites(bool on) {
 bool Config::WritesPending() {
     std::lock_guard<std::mutex> lock(g_writeMu);
     return !g_pendingWrites.empty();
+}
+
+void Config::BlockWrites() {
+    std::lock_guard<std::mutex> lock(g_writeMu);
+    g_blockWrites = true;
+    g_pendingWrites.clear();
 }
 
 void Config::FlushWrites() {

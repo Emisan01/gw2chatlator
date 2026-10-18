@@ -342,6 +342,46 @@ void VoiceIdleUnload() {
     g_recording = g_listening = false;
 }
 
+// Options → General → Modules: the voice module goes (the helper ends first; voice input is switched off) …
+void RemoveVoiceModuleNow() {  // game thread
+    UnloadVoiceModule();
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_cfg.voiceEnabled = false;
+        g_cfg.SaveBool(L"Voice", L"Enabled", false);
+    }
+    g_worker.Post([] {
+        bool ok = false;
+        for (int i = 0; i < 10 && !ok; ++i) {  // the helper may still be closing its files
+            ok = RemoveVoiceModule(KeyboardDir());
+            if (!ok) Sleep(300);
+        }
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_modulesNext = 0;
+        SetStatus(ok ? Tr(L"Voice module removed") : Tr(L"The voice module could not be removed completely – a file is in use"), 6000);
+    });
+}
+
+// … or every downloaded voice model (the helper ends first, it may hold one).
+void RemoveVoiceModelsNow() {  // game thread
+    UnloadVoiceModule();
+    std::wstring dir;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        dir = g_cfg.VoiceModelDir();
+    }
+    g_worker.Post([dir] {
+        bool ok = false;
+        for (int i = 0; i < 10 && !ok; ++i) {
+            ok = RemoveFolder(dir);
+            if (!ok) Sleep(300);
+        }
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_modulesNext = 0;
+        SetStatus(ok ? Tr(L"Voice models removed") : Tr(L"The voice models could not be removed completely – a file is in use"), 6000);
+    });
+}
+
 void UnloadVoiceModule() {
     StopListening();
     g_voice.Stop();  // the helper ends: the model and its memory are freed

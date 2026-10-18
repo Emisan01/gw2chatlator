@@ -277,6 +277,12 @@ extern "C" __declspec(dllexport) void Gw2KbTestWhisper(const char* name) {  // n
     OpenWhisperTab(W(name));
 }
 
+extern "C" __declspec(dllexport) int Gw2KbTestRemoveAll(int start) {  // nexus_kb_selftest only: 1 start, 0 ask
+    if (!TestHost()) return -1;
+    if (start) RemoveEverythingNow(false);
+    return g_wipeDone;
+}
+
 extern "C" __declspec(dllexport) AddonDefinition_t* GetAddonDef() {
     g_def.Signature = static_cast<uint32_t>(-0x474B4244);  // 0xB8B4BDBC – GW2Chatlator on Raidcore (ID 150)
     g_def.APIVersion = NEXUS_API_VERSION;
