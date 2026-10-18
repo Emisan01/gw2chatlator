@@ -100,6 +100,7 @@ struct TextLook {
     bool glow = true;
     int brightness = 100;  // %
     bool gameColors = true;
+    bool chatBg = true;  // the darker field behind the chat (it fades with the window's transparency); off: none
 };
 TextLook g_look;
 MyWords g_myWords;  // your own words and what they mean (<data>\my-words.txt), g_mu
@@ -384,6 +385,7 @@ void LoadLayout() {  // g_mu held
     g_look.glow = get(L"Glow", 1) != 0;
     g_look.brightness = std::clamp(get(L"Brightness", 100), 60, 160);
     g_look.gameColors = get(L"GameColors", 1) != 0;
+    g_look.chatBg = get(L"ChatBg", 1) != 0;
     auto nx = [](const wchar_t* key, int def) { return GetPrivateProfileIntW(L"Nexus", key, def, g_cfg.iniPath.c_str()) != 0; };
     g_nx.translateChat = nx(L"TranslateChat", 0);
     g_nx.snap = nx(L"Snap", 1);
@@ -413,6 +415,7 @@ void SaveLayout() {  // g_mu held
     g_cfg.SaveValue(L"NexusWindow", L"Glow", g_look.glow ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"Brightness", std::to_wstring(g_look.brightness));
     g_cfg.SaveValue(L"NexusWindow", L"GameColors", g_look.gameColors ? L"1" : L"0");
+    g_cfg.SaveValue(L"NexusWindow", L"ChatBg", g_look.chatBg ? L"1" : L"0");
 }
 
 void SetStatus(const std::wstring& s, ULONGLONG ms = 6000) {  // g_mu held
@@ -905,6 +908,16 @@ private:
 
 VoiceHelper g_voice;
 
+// The helper reads the ini itself: what still waits (Config::DeferWrites) is written first – on the worker, it can be
+// many writes after "Save". Safe from any thread.
+void VoiceReload() {
+    g_worker.Post([] {
+        Config::FlushWrites();
+        std::lock_guard<std::mutex> lock(g_mu);
+        if (g_voice.Running()) g_voice.Send("reload");
+    });
+}
+
 // A recognition finished: how long it took and the CPU peak, for the model in use (g_mu held). Recognizing took
 // longer than the speech itself (and over 2 s) twice in a row → the next smaller installed model, if allowed.
 void NoteVoiceRun(const JsonValue& v) {
@@ -938,7 +951,7 @@ void NoteVoiceRun(const JsonValue& v) {
     }
     g_cfg.voiceModel = W(smaller->id);
     g_cfg.SaveValue(L"Voice", L"Model", g_cfg.voiceModel);
-    g_voice.Send("reload");
+    VoiceReload();
     SetStatus(TrF(L"{1} was too slow – switched to {2}", {W(m->name), W(smaller->name)}), 12000);
 }
 
@@ -1039,6 +1052,7 @@ void VoiceCommand(const char* cmd) {
         std::lock_guard<std::mutex> lock(g_mu);
         dataDir = g_cfg.dataDir;
     }
+    Config::FlushWrites();  // the helper reads the ini when it starts (normally nothing waits)
     if (!g_voice.Start(HelperExe(), dataDir)) {
         std::lock_guard<std::mutex> lock(g_mu);
         g_voicePending.clear();
@@ -1394,9 +1408,11 @@ constexpr ChannelLook kChannelLook[] = {
     {Channel::Guild, 0xF5C850, 0xF5E6B4},   {Channel::System, 0xF7F92E, 0xF7F978},
 };
 ImVec4 Rgb32(uint32_t rgb) { return ImVec4(((rgb >> 16) & 0xFF) / 255.f, ((rgb >> 8) & 0xFF) / 255.f, (rgb & 0xFF) / 255.f, 1.f); }
-ImVec4 Bright(ImVec4 c) {  // the brightness of your choice
+ImVec4 Bright(ImVec4 c) {  // the brightness of your choice: below 100 % darker, above it lighter towards white
     const float b = g_look.brightness / 100.0f;
-    return ImVec4(std::min(1.0f, c.x * b), std::min(1.0f, c.y * b), std::min(1.0f, c.z * b), c.w);
+    if (b <= 1.0f) return ImVec4(c.x * b, c.y * b, c.z * b, c.w);
+    const float t = std::min(1.0f, (b - 1.0f) / 0.6f) * 0.75f;  // 160 %: three quarters of the way (the light
+    return ImVec4(c.x + (1 - c.x) * t, c.y + (1 - c.y) * t, c.z + (1 - c.z) * t, c.w);  // tints were cut off at 1)
 }
 const ChannelLook* LookOf(Channel ch) {
     for (const ChannelLook& l : kChannelLook)
@@ -2026,7 +2042,7 @@ void StartModelDownload(const VoiceModelInfo& m) {
         g_downloadPct = -1;
         std::lock_guard<std::mutex> lock(g_mu);
         SetStatus(ok ? Tr(L"Voice model installed") : error, 10000);
-        if (ok) g_voice.Send("reload");
+        if (ok) VoiceReload();
     });
 }
 
@@ -2125,6 +2141,7 @@ void LoadVoiceModule() {
         std::lock_guard<std::mutex> lock(g_mu);
         dataDir = g_cfg.dataDir;
     }
+    Config::FlushWrites();
     if (!g_voice.Running() && VoiceModulePresent(KeyboardDir())) g_voice.Start(HelperExe(), dataDir);
 }
 void UnloadVoiceModule() {
@@ -2457,8 +2474,18 @@ void BoxText(const ImVec2& at, const ImVec4& clip, ImU32 color, const std::strin
                                             0, &clip);
 }
 
+// Settings changed on the game thread reach the ini on the worker, at most every half second (a slider dragged writes
+// once). A job dropped in a flood is posted again while writes still wait.
+void KickSave() {
+    static ULONGLONG s_posted = 0;
+    if (GetTickCount64() - s_posted < 500 || !Config::WritesPending()) return;
+    s_posted = GetTickCount64();
+    g_worker.Post([] { Config::FlushWrites(); });
+}
+
 void RenderWindow() {
     if (!ImGui::GetCurrentContext()) return;  // failsafe: no context, no drawing
+    KickSave();
     ImGuiIO& io = ImGui::GetIO();
     if (io.DisplaySize.x <= 0 || io.DisplaySize.y <= 0) return;
     g_keyboardFree = !io.WantCaptureKeyboard;
@@ -2603,7 +2630,7 @@ void RenderWindow() {
         ImGui::SetNextWindowSize(ImVec2(g_lastW, g_restoreH), ImGuiCond_Always);
         g_restoreH = 0;
     }
-    ImGui::SetNextWindowBgAlpha(std::clamp(g_cfg.opacity, 60, 255) / 255.0f);
+    ImGui::SetNextWindowBgAlpha(std::clamp(g_cfg.opacity, 0, 255) / 255.0f);  // up to fully see-through (the small button keeps 60)
     ImGuiWindowFlags wflags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                               ImGuiWindowFlags_NoScrollWithMouse;
     if (!ImGui::Begin("GW2Chatlator###kbmain", nullptr, wflags)) {
@@ -2937,7 +2964,11 @@ void RenderWindow() {
             }
         }
         ImGui::SameLine(0, 4);
+        ImVec4 chatBg = ImGui::GetStyleColorVec4(ImGuiCol_ChildBg);  // fades with the window, like everything but text
+        chatBg.w = g_look.chatBg ? chatBg.w * std::clamp(g_cfg.opacity, 0, 255) / 255.0f : 0.0f;
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, chatBg);
         ImGui::BeginChild("chat", ImVec2(0, h), false, ImGuiWindowFlags_NoScrollbar);
+        ImGui::PopStyleColor();
         if (setScroll >= 0) ImGui::SetScrollY(setScroll);
         const ImVec2 childP0 = ImGui::GetWindowPos();
         const ImVec2 childP1 = ImVec2(childP0.x + ImGui::GetWindowSize().x, childP0.y + ImGui::GetWindowSize().y);
@@ -3034,27 +3065,18 @@ void RenderWindow() {
     // ---- the preview: what arrives in the GW2 chat, the back-translation small under it
     const bool previewCurrent = g_previewGen == g_inputGen && !g_preview.empty();
     if (showPreview) {
-        ImVec4 quiet = ImGui::GetStyleColorVec4(ImGuiCol_FrameBg);
-        quiet.w *= g_input[0] ? 0.6f : 0.25f;  // nearly invisible while there is nothing to show
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, quiet);
+        // The same light field as the input below: the two belong together.
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
         ImGui::BeginChild("preview", ImVec2(0, line * (g_layout.previewLines + 0.2f)), false);
         if (g_recording) {
             ImGui::TextColored(kPreview, "%s", g_voiceLive.empty() ? "..." : U8(g_voiceLive).c_str());
         } else if (!g_input[0]) {
             // empty: no hint text here – the chat above is what you read
         } else if (!Translating()) {
-            ImGui::PushStyleColor(ImGuiCol_Text, kPreview);
-            ImGui::TextWrapped("%s", U8(ComposePrefix() + SanitizeChatText(g_wFlatInput)).c_str());
-            ImGui::PopStyleColor();
+            LookText(U8(ComposePrefix() + SanitizeChatText(g_wFlatInput)).c_str(), Bright(kPreview), true);
         } else if (previewCurrent) {
-            ImGui::PushStyleColor(ImGuiCol_Text, kPreview);
-            ImGui::TextWrapped("%s", U8(ComposePrefix() + g_preview).c_str());
-            ImGui::PopStyleColor();
-            if (!g_back.empty()) {
-                ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-                ImGui::TextWrapped("%s", U8(g_back).c_str());
-                ImGui::PopStyleColor();
-            }
+            LookText(U8(ComposePrefix() + g_preview).c_str(), Bright(kPreview), true);
+            if (!g_back.empty()) LookText(U8(g_back).c_str(), Bright(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled)), true);
         } else {
             ImGui::TextDisabled("%s", UI(Tr(L"translating …")).c_str());
         }
@@ -3098,7 +3120,9 @@ void RenderWindow() {
     const ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CtrlEnterForNewLine |
                                       ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_CallbackCharFilter |
                                       ImGuiInputTextFlags_CallbackAlways;
+    ImGui::PushStyleColor(ImGuiCol_Text, Bright(ImGui::GetStyleColorVec4(ImGuiCol_Text)));  // your brightness here too
     const bool enter = ImGui::InputTextMultiline("##input", g_input, sizeof(g_input), boxSize, flags, InputCallback);
+    ImGui::PopStyleColor();
     const std::string nowFlat = Flat(g_input);
     if (nowFlat != g_flatInput) {
         g_flatInput = nowFlat;
@@ -3303,14 +3327,14 @@ bool LanguageCombo(const char* id, std::wstring& value, const std::wstring& empt
 
 // Our options window, in tabs. "Save" applies.
 void RenderOptionsContent() {
-    static Config edit;
+    static Config edit, opened;  // `opened`: g_cfg when the page was filled
     static bool loaded = false;
     static char keyBuf[256] = {}, regionBuf[64] = {}, urlBuf[256] = {}, mailBuf[128] = {};
     static std::vector<AudioDevice> mics;
     static bool forgetAsked = false;
     if (!loaded) {
         std::lock_guard<std::mutex> lock(g_mu);
-        edit = g_cfg;
+        edit = opened = g_cfg;
         loaded = true;
         const std::string key = U8(edit.engine == Engine::DeepL ? edit.deeplKey : edit.engine == Engine::Google ? edit.googleKey
                                    : edit.engine == Engine::Microsoft ? edit.msKey : edit.libreKey);
@@ -3341,13 +3365,21 @@ void RenderOptionsContent() {
         if (ImGui::BeginTabItem(UI(Tr(L"General")).c_str(), nullptr, TabFlag(0))) {
             ImGui::SetNextItemWidth(wide);
             LanguageCombo(UI(Tr(L"Language of this window") + L"##ui").c_str(), edit.uiLangCode, Tr(L"like Windows"));
+            // Size and transparency take effect at once and are kept (like the chat text below), not only on "Save".
             int pt = std::clamp(edit.fontPercent, 70, 200);
             ImGui::SetNextItemWidth(wide);
-            if (ImGui::SliderInt(UI(Tr(L"Text size") + L" (%)##size").c_str(), &pt, 70, 200)) edit.fontPercent = pt;
-            int transparency = 100 - std::clamp(edit.opacity, 60, 255) * 100 / 255;
+            if (ImGui::SliderInt(UI(Tr(L"Text size") + L" (%)##size").c_str(), &pt, 70, 200)) {
+                std::lock_guard<std::mutex> lock(g_mu);
+                edit.fontPercent = g_cfg.fontPercent = pt;
+                g_cfg.SaveValue(L"Window", L"FontPercent", std::to_wstring(pt));
+            }
+            int transparency = 100 - (std::clamp(edit.opacity, 0, 255) * 100 + 127) / 255;
             ImGui::SetNextItemWidth(wide);
-            if (ImGui::SliderInt(UI(Tr(L"Transparency") + L" (%)##alpha").c_str(), &transparency, 0, 75))
-                edit.opacity = (100 - transparency) * 255 / 100;
+            if (ImGui::SliderInt(UI(Tr(L"Transparency") + L" (%)##alpha").c_str(), &transparency, 0, 100)) {
+                std::lock_guard<std::mutex> lock(g_mu);
+                edit.opacity = g_cfg.opacity = (100 - transparency) * 255 / 100;
+                g_cfg.SaveValue(L"Window", L"Opacity", std::to_wstring(g_cfg.opacity));
+            }
             ImGui::Checkbox(UI(Tr(L"Show the window")).c_str(), &g_show);
             {
                 std::lock_guard<std::mutex> lock(g_mu);
@@ -3376,11 +3408,15 @@ void RenderOptionsContent() {
             ImGui::TextUnformatted(UI(Tr(L"Chat text")).c_str());
             {
                 std::lock_guard<std::mutex> lock(g_mu);
-                bool changed = ImGui::Checkbox(UI(Tr(L"Glow like GW2's chat")).c_str(), &g_look.glow);
+                bool changed = ImGui::Checkbox(UI(Tr(L"Dark outline (readable when see-through)")).c_str(), &g_look.glow);
                 if (ImGui::IsItemHovered())
                     ImGui::SetTooltip("%s", UI(Tr(L"A dark halo around the letters, like the game draws its chat – readable on any background.")).c_str());
                 ImGui::SameLine();
                 changed |= ImGui::Checkbox(UI(Tr(L"GW2 colours")).c_str(), &g_look.gameColors);
+                ImGui::SameLine();
+                changed |= ImGui::Checkbox(UI(Tr(L"Background behind the chat")).c_str(), &g_look.chatBg);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("%s", UI(Tr(L"Off: only the text stands over the game – with the dark outline it stays readable.")).c_str());
                 if (ImGui::IsItemHovered())
                     ImGui::SetTooltip("%s", UI(Tr(L"The name in the channel colour, the message in a light tint of it – as in the game. Off: the message in the channel colour.")).c_str());
                 ImGui::SetNextItemWidth(wide);
@@ -3764,7 +3800,12 @@ void RenderOptionsContent() {
             voiceChanged = edit.voiceEnabled != g_cfg.voiceEnabled;
             edit.myMemoryDay = g_cfg.myMemoryDay;  // counted meanwhile
             edit.myMemoryUsed = g_cfg.myMemoryUsed;
-            g_cfg = edit;
+            // Changed outside this page meanwhile (footer: "auto", a language added; a slow model switched) and not
+            // here: the newer value stays – "Save" used to turn them back.
+            if (edit.voiceAutoSend == opened.voiceAutoSend) edit.voiceAutoSend = g_cfg.voiceAutoSend;
+            if (edit.writeLangs == opened.writeLangs) edit.writeLangs = g_cfg.writeLangs;
+            if (edit.voiceModel == opened.voiceModel) edit.voiceModel = g_cfg.voiceModel;
+            g_cfg = opened = edit;
             g_cfg.SaveAll();
             SetUiLang(g_cfg.uiLang);
             g_translator = MakeTranslator(g_cfg);
@@ -3781,9 +3822,13 @@ void RenderOptionsContent() {
         else g_listenUserOff = false;  // asked for in the options: it listens (started by the window)
         if (voiceChanged && edit.voiceEnabled && !g_voice.Running() &&
             GetFileAttributesW(HelperExe().c_str()) != INVALID_FILE_ATTRIBUTES)
-            g_voice.Start(HelperExe(), edit.dataDir);
+            g_worker.Post([dir = edit.dataDir] {  // after the ini is written: the helper reads it when it starts
+                Config::FlushWrites();
+                std::lock_guard<std::mutex> lock(g_mu);
+                if (!g_voice.Running()) g_voice.Start(HelperExe(), dir);
+            });
         else if (g_voice.Running())
-            g_voice.Send("reload");
+            VoiceReload();
     }
     ImGui::SameLine();
     if (ImGui::Button(UI(Tr(L"Undo changes")).c_str())) {
@@ -3852,6 +3897,7 @@ void AddonLoad(AddonAPI_t* api) {
         std::string words;
         if (ReadFileBytes(g_cfg.dataDir + L"\\my-words.txt", words)) g_myWords.Parse(FromUtf8(words));
     }
+    Config::DeferWrites(true);  // the ini is written on the worker (KickSave), never on the game thread
     g_worker.Start();
     g_worker.Post(InitSpelling);
     {
@@ -3914,6 +3960,7 @@ void AddonUnload() {
     g_links.Stop();
     g_voice.Stop();  // the helper ends (it would also end by itself when its input closes)
     g_worker.Stop(FreeWorkerState);  // saved and freed on the worker (it owns them), before the DLL goes
+    Config::DeferWrites(false);      // what is still waiting goes into the ini now
     std::lock_guard<std::mutex> lock(g_mu);
     g_lines.clear();
     g_translator.reset();

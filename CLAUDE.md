@@ -114,6 +114,9 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 - Never call `MinimizeWindow` / `SetWindowPos` from inside a child (the chat area): it moves the child. Ask with
   `g_minimizeRequest` / `g_expandRequest`, done on the main window. The minimised button keeps the window's bottom edge
   through `g_anchorBottom` – computing its size twice (text size, `WindowMinSize`) made the window creep up.
+- The ini: every `WritePrivateProfileString` rewrites the whole file (~15 ms; "Save" in the options = 70 of them =
+  the game hung ~1 s). The add-on runs `Config::DeferWrites(true)`: `SaveValue` only queues, `KickSave` (render, every
+  0.5 s at most) has the worker write them, unload flushes the rest. Never write the ini directly on the game thread.
 - Web links: a Discord-like question only, no lookups in the background (the Cloudflare check sent every domain).
 - Visual Studio may report itself incomplete after an update; then pin `CMAKE_GENERATOR_INSTANCE` with `,version=`.
 
