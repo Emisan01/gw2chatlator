@@ -65,7 +65,11 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   with the tabs and "Minimise"; the input's learning popup then has "Menu …". Without the footer its "<" minimise
   button stands left of the input. "Info texts" off hides every grey status line (never the prediction's grey word).
   The window's theme (`Theme`: Nexus / Slate / Grey / Cyan, `ColoursOf`, `PushTheme` for everything we draw) is only
-  the window – the chat text keeps its channel colours (`kChannelLook`). Compact view never hides the word bar. Status text is drawn inside the input box (`BoxText`). Compact view = no
+  the window – the chat text keeps its channel colours (`kChannelLook`). Compact view never hides the word bar.
+  Minimising: the ">" (optional, `minButton`), three quick clicks on the window (not the input), and "Minimise when not
+  in use" (`autoMinimize` after `minimizeAfter` s; `g_lastUse` – input, hover, menus, sending, voice, GW2's chat line
+  count as use). "Open again when GW2's chat opens" (`autoOpen`) only opens; the focus key always opens; taking over
+  the focus stays `focusOnGameChat`. All of it goes through `g_minimizeRequest` / `g_expandRequest`. Status text is drawn inside the input box (`BoxText`). Compact view = no
   preview / word bar, the translation small in the box. Scroll bar drawn at the left. Snap to the screen edges.
 - **Right-click** only in the input (learning mode): self-corrections noticed while typing (`NoteSelfFix`) →
   `SpellService::TeachFix` (never a dictionary word), and "my words" (meaning → translator). No menu on chat lines.
@@ -113,7 +117,7 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 - `SetSelected` on a tab takes effect next frame – `g_selectTab` stays until the tab reports itself.
 - Sending: every key is held `KeyHoldMs` (30 ms, or one frame + 10 ms); down+up in one `SendInput` got lost. A
   whisper: "/w " typed, the name pasted + Tab, then the message pasted.
-- `small` is a macro (rpcndr.h); `FoldString` is a macro → `CaseFold`. `GetPrivateProfileInt` turns negatives into 0.
+- `small` and `near` are macros (rpcndr.h / windef.h); `FoldString` is a macro → `CaseFold`. `GetPrivateProfileInt` turns negatives into 0.
 - Python/heredoc edits turned `\n` / `\r` escapes into real control characters more than once – check C++ string
   literals after scripted edits (or use the Edit tool).
 - Never call `MinimizeWindow` / `SetWindowPos` from inside a child (the chat area): it moves the child. Ask with

@@ -408,6 +408,57 @@ int wmain(int argc, wchar_t** argv) {
                 const bool back = std::fabs(p2.x - p0.x) < 2 && std::fabs(p2.y - p0.y) < 2 && std::fabs(s2.y - s0.y) < 2;
                 if (!shrunk || !back) std::printf("FAIL: the window did not come back where it was\n");
                 ok = ok && shrunk && back;
+                // Three quick clicks on the chat area minimise the window too; it opens again the same way.
+                auto click = [&](ImVec2 at) {
+                    ImGuiIO& io = ImGui::GetIO();
+                    io.MousePos = at;
+                    io.MouseDown[0] = true;
+                    frames(1);
+                    io.MouseDown[0] = false;
+                    frames(1);
+                };
+                const ImVec2 inChat(p2.x + 200, p2.y + 80);
+                click(inChat);
+                click(inChat);
+                frames(1);
+                const ImVec2 s2b = size();  // two clicks: nothing yet
+                click(inChat);
+                frames(3);
+                const ImVec2 s3 = size();
+                ImGui::GetIO().MousePos = ImVec2(-1000, -1000);
+                waypoint(1);
+                frames(6);
+                const ImVec2 s4 = size();
+                std::printf("three clicks: two %.0fx%.0f  three %.0fx%.0f  open again %.0fx%.0f\n", s2b.x, s2b.y, s3.x, s3.y, s4.x, s4.y);
+                const bool clicks = std::fabs(s2b.y - s2.y) < 2 && s3.y < s2.y && std::fabs(s4.y - s2.y) < 2;
+                if (!clicks) std::printf("FAIL: three quick clicks did not minimise the window (or two did)\n");
+                ok = ok && clicks;
+            }
+            // Minimise when not in use: the input had the focus, a click into the game, then nothing for the set time –
+            // the window goes down to the small button; the focus key opens it again.
+            if (auto autoMin = reinterpret_cast<int (*)(int)>(GetProcAddress(dll, "Gw2KbTestAutoMinimize"))) {
+                autoMin(1);
+                *th->focus = true;
+                frames(4);
+                ImGuiIO& io = ImGui::GetIO();
+                io.MousePos = ImVec2(1200, 300);  // the game, far from our window
+                io.MouseDown[0] = true;
+                frames(1);
+                io.MouseDown[0] = false;
+                frames(3);
+                const int right = autoMin(-1);  // not yet: the time has not passed
+                Sleep(1300);
+                frames(4);
+                const int later = autoMin(-1);
+                io.MousePos = ImVec2(-1000, -1000);
+                *th->focus = true;
+                frames(6);
+                const int key = autoMin(-1);
+                autoMin(0);
+                std::printf("minimise when not in use: at once %d  after the time %d  focus key %d\n", right, later, key);
+                const bool mins = right == 0 && later == 1 && key == 0;
+                if (!mins) std::printf("FAIL: the window did not minimise when not in use / open again\n");
+                ok = ok && mins;
             }
             *th->focus = true;  // back from the map the window does not take the keyboard by itself
             frames(3);

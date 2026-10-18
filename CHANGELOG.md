@@ -3,6 +3,20 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.9.6 — 2026-10-18 (GW2Chatlator for Nexus)
+
+- **Minimise when not in use** (Window → When not in use, off by default): nobody writes, points at the window, talks
+  or has GW2's chat line open for the seconds you set (2–120) – the window goes down to the small button.
+- **Open again when GW2's chat opens (Enter)** (off by default): only opens it. The focus key (Nexus → Keybinds)
+  always opens it; taking over the focus stays its own setting under Writing. Checked by the self-test (minimise
+  after the time, the focus key opens it again).
+- **Three quick clicks on the window minimise it** (Fallen's idea) – not in the input, where clicks place the caret.
+  Checked by the self-test (two clicks do nothing, three minimise, it opens again at the same size).
+- **The minimise button can be hidden** (Window → Minimize button) – in the footer and, without the footer, next to
+  the input.
+- **The Cyan theme only colours what is ours to press and read:** buttons, tabs, check marks and the window's text;
+  backgrounds and fields stay grey (1.9.5 filled the whole window with teal).
+
 ## 1.9.5 — 2026-10-18 (GW2Chatlator for Nexus)
 
 - **A window made of building blocks.** The options have a new tab "Window": the parts from top to bottom, each one to

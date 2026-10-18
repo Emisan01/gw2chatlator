@@ -82,6 +82,10 @@ constexpr size_t kHistoryMax = 50;
 struct Layout {
     bool chat = true, preview = true, words = true, footer = true;
     bool header = true;  // the tabs, microphone, minimise, menu, close; hidden: a right-click on the window is the menu
+    bool minButton = true;
+    bool autoMinimize = false;  // not in use for `minimizeAfter` s: down to the small button
+    int minimizeAfter = 10;
+    bool autoOpen = false;      // GW2's chat line opening (Enter) opens it from the small button (the focus key always does)  // the small ">" that minimises (in the footer, without it left of the input)
     bool infoText = true;  // the grey status lines (what is going on, modules, counter); never the prediction's grey word
     int inputLines = 4;    // the input box, wrapping
     int previewLines = 3;  // the translation and its back-translation
@@ -134,12 +138,13 @@ const ThemeColours* ColoursOf(Theme t) {
         Rgb(0x444444, 160), Rgb(0x2C2C2C, 235), Rgb(0x383838), Rgb(0x444444), Rgb(0x2C2C2C, 235),
         Rgb(0x3C3C3C), Rgb(0x4C4C4C), Rgb(0x1E1E1E, 235), Rgb(0x3C3C3C), Rgb(0x444444), Rgb(0xDDDDDD),
         Rgb(0x6B6B6B), Rgb(0xAAAAAA), Rgb(0xFFFFFF, 46)};
-    // Cyan: deep teal structure, cyan only where something is active – the cyan palette (bg 001A18 … light E8FFFE).
+    // Cyan: the grey window – only buttons, tabs, check marks and the window's own text take the cyan palette
+    // (struktur 003D3B, tief 006B68, kern 00C9C0, aufgehellt 5EEAE4, hell B0F5F2); fields and backgrounds stay grey.
     static const ThemeColours kCyan = {
-        Rgb(0xE8FFFE), Rgb(0x6F9E9B), Rgb(0x001A18, 240), Rgb(0x000E0D, 128), Rgb(0x00201E, 248), Rgb(0x003D3B),
-        Rgb(0x003D3B), Rgb(0x003D3B, 235), Rgb(0x00524F), Rgb(0x006B68), Rgb(0x003D3B, 235),
-        Rgb(0x00524F), Rgb(0x006B68), Rgb(0x002B29, 235), Rgb(0x006B68), Rgb(0x005C59), Rgb(0x5EEAE4),
-        Rgb(0x00C9C0), Rgb(0x5EEAE4), Rgb(0x00C9C0, 90)};
+        Rgb(0xB0F5F2), Rgb(0x8A8A8A), Rgb(0x111111, 240), Rgb(0x1E1E1E, 140), Rgb(0x161616, 248), Rgb(0x2C2C2C),
+        Rgb(0x444444, 160), Rgb(0x2C2C2C, 235), Rgb(0x383838), Rgb(0x444444), Rgb(0x003D3B, 235),
+        Rgb(0x006B68), Rgb(0x008F8A), Rgb(0x1E1E1E, 235), Rgb(0x006B68), Rgb(0x003D3B), Rgb(0x5EEAE4),
+        Rgb(0x006B68), Rgb(0x00C9C0), Rgb(0x00C9C0, 70)};
     switch (t) {
         case Theme::Slate: return &kSlate;
         case Theme::Grey: return &kGrey;
@@ -423,6 +428,10 @@ Channel g_channel = Channel::Unknown;  // Unknown = the channel active in GW2
 std::wstring g_whisperTo;
 int g_sendIdx = 0;                     // index into g_cfg.writeLangs; == size: send as written
 bool g_sending = false;
+// "Minimise when not in use" (g_layout.autoMinimize): the last moment the window was in use – the input had the focus,
+// the mouse was over it, a menu was open, it was sending or recording, GW2's chat line was open. 0: count from now.
+ULONGLONG g_lastUse = 0;
+bool g_gameChatOpen = false;  // GW2's chat line (MumbleLink), g_mu
 bool g_focusInput = false;
 // An edit the worker or a click wants in the input (applied by the input callback on the game thread).
 struct PendingEdit {
@@ -484,6 +493,10 @@ void LoadLayout() {  // g_mu held
     g_layout.footer = get(L"Footer", 1) != 0;
     g_layout.header = get(L"Header", 1) != 0;
     g_layout.infoText = get(L"InfoText", 1) != 0;
+    g_layout.minButton = get(L"MinButton", 1) != 0;
+    g_layout.autoMinimize = get(L"AutoMinimize", 0) != 0;
+    g_layout.minimizeAfter = std::clamp(get(L"MinimizeAfter", 10), 2, 120);
+    g_layout.autoOpen = get(L"AutoOpen", 0) != 0;
     g_layout.inputLines = std::clamp(get(L"InputLines", 4), 1, 8);
     g_layout.previewLines = std::clamp(get(L"PreviewLines", 3), 1, 8);
     g_look.glow = get(L"Glow", 1) != 0;
@@ -523,6 +536,10 @@ void SaveLayout() {  // g_mu held
     g_cfg.SaveValue(L"NexusWindow", L"Footer", g_layout.footer ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"Header", g_layout.header ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"InfoText", g_layout.infoText ? L"1" : L"0");
+    g_cfg.SaveValue(L"NexusWindow", L"MinButton", g_layout.minButton ? L"1" : L"0");
+    g_cfg.SaveValue(L"NexusWindow", L"AutoMinimize", g_layout.autoMinimize ? L"1" : L"0");
+    g_cfg.SaveValue(L"NexusWindow", L"MinimizeAfter", std::to_wstring(g_layout.minimizeAfter));
+    g_cfg.SaveValue(L"NexusWindow", L"AutoOpen", g_layout.autoOpen ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"InputLines", std::to_wstring(g_layout.inputLines));
     g_cfg.SaveValue(L"NexusWindow", L"PreviewLines", std::to_wstring(g_layout.previewLines));
     g_cfg.SaveValue(L"NexusWindow", L"Glow", g_look.glow ? L"1" : L"0");
@@ -1783,11 +1800,11 @@ void RenderFooter() {  // g_mu held
     const float iconH = ImGui::GetFrameHeight();
 
     // Native minimize button (bottom-left corner of the window)
-    if (ImGui::Button(">##minchat", ImVec2(iconH, iconH))) {
-        MinimizeWindow();
+    if (g_layout.minButton) {
+        if (ImGui::Button(">##minchat", ImVec2(iconH, iconH))) MinimizeWindow();
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Minimize chat")).c_str());
+        ImGui::SameLine();
     }
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Minimize chat")).c_str());
-    ImGui::SameLine();
 
     // Footer chips cached: precalculated strings and sizes avoid allocations on idle frames.
     struct FooterCache {
@@ -2630,9 +2647,11 @@ void RenderWindow() {
                 g_mapId.store(ms.identity.mapId);
             }
             const bool chatOpen = ms.live && ms.TextboxHasFocus();
-            if (chatOpen && !chatWasOpen && g_cfg.focusOnGameChat && g_show && GetTickCount64() > g_suppressChatFocusUntil &&
-                g_redirect == 0)
-                g_focusInput = true;
+            g_gameChatOpen = chatOpen;
+            const bool chatOpened = chatOpen && !chatWasOpen && g_show && GetTickCount64() > g_suppressChatFocusUntil &&
+                                    g_redirect == 0;
+            if (chatOpened && g_cfg.focusOnGameChat) g_focusInput = true;   // the focus comes over (opens it as well)
+            else if (chatOpened && g_layout.autoOpen && g_collapsed) g_expandRequest = true;  // only opened
             static bool s_redirectChatSeen = false;  // GW2's chat line was open during this redirect
             if (g_redirect == 0) s_redirectChatSeen = false;
             if (g_redirect != 0 && chatOpen) s_redirectChatSeen = true;
@@ -2667,6 +2686,7 @@ void RenderWindow() {
     const float iconH = ImGui::GetFrameHeight();
     const float minBtn = iconH + 8.0f;
     if (g_collapsed) {
+        g_lastUse = 0;  // opened again: "not in use" counts from then
         ImGui::SetNextWindowSize(ImVec2(minBtn, minBtn), ImGuiCond_Always);
         ImGui::SetNextWindowBgAlpha(std::clamp(g_cfg.opacity, 60, 255) / 255.0f);
         ImGuiWindowFlags minFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
@@ -3277,7 +3297,7 @@ void RenderWindow() {
         ImGui::SetKeyboardFocusHere();
         g_focusInput = false;
     }
-    if (!g_layout.footer) {  // no footer: its minimise button stands left of the input, at the input's bottom
+    if (!g_layout.footer && g_layout.minButton) {  // no footer: its minimise button stands left of the input, at its bottom
         const float btn = ImGui::GetFrameHeight(), rowY = ImGui::GetCursorPosY();
         ImGui::SetCursorPosY(rowY + std::max(0.0f, boxH - btn));
         if (ImGui::Button(">##mininput", ImVec2(btn, btn))) g_minimizeRequest = true;
@@ -3300,6 +3320,19 @@ void RenderWindow() {
     }
     const ImVec2 inputMin = ImGui::GetItemRectMin(), inputMax = ImGui::GetItemRectMax();
     const bool inputActive = ImGui::IsItemActive();
+    // Minimise when not in use: nobody wrote, pointed at it or talked for a while – down to the small button.
+    {
+        const ULONGLONG now = GetTickCount64();
+        const bool inUse = inputActive || g_sending || g_sendPending || g_focusInput || g_recording || g_showOptions ||
+                           g_gameChatOpen || g_redirect != 0 || ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId) ||
+                           ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+        if (inUse || g_lastUse == 0) {
+            g_lastUse = now;
+        } else if (g_layout.autoMinimize && now - g_lastUse > static_cast<ULONGLONG>(g_layout.minimizeAfter) * 1000) {
+            g_minimizeRequest = true;  // done on the main window next frame
+            g_lastUse = 0;
+        }
+    }
     if (inputActive && !g_history.empty() && !g_edit.active) {
         const bool up = ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_UpArrow));
         const bool down = ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_DownArrow));
@@ -3326,6 +3359,29 @@ void RenderWindow() {
         ImGui::OpenPopup("kbmenu");  // without the header the window's own right-click is the menu
     if (!ImGui::IsMouseDown(ImGuiMouseButton_Right) && !ImGui::IsMouseReleased(ImGuiMouseButton_Right))
         s_lineRightClick = false;
+    // Three quick left clicks on the window (not in the input – there clicks place the caret and pick words –, not on a
+    // button) minimise it (Fallen's idea): the way when header, footer and the minimise button are hidden.
+    {
+        static ULONGLONG s_clicks[3] = {};
+        static ImVec2 s_firstAt;
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) &&
+            !ImGui::IsMouseHoveringRect(inputMin, inputMax) && !ImGui::IsAnyItemHovered() &&
+            !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId)) {
+            const ULONGLONG now = GetTickCount64();
+            const float radius = ImGui::GetFontSize() * 2;
+            if (now - s_clicks[2] > 700 || std::abs(io.MousePos.x - s_firstAt.x) > radius || std::abs(io.MousePos.y - s_firstAt.y) > radius) {
+                s_clicks[0] = s_clicks[1] = 0;  // a new series
+                s_firstAt = io.MousePos;
+            }
+            s_clicks[0] = s_clicks[1];
+            s_clicks[1] = s_clicks[2];
+            s_clicks[2] = now;
+            if (s_clicks[0] && now - s_clicks[0] <= 900) {
+                s_clicks[0] = s_clicks[1] = s_clicks[2] = 0;
+                g_minimizeRequest = true;  // done on the main window next frame
+            }
+        }
+    }
     if (teach) {
         teach = false;
         ImGui::OpenPopup("##teach");
@@ -3611,7 +3667,21 @@ void RenderOptionsContent() {
                 changed |= ImGui::Checkbox(UI(Tr(L"Translation preview")).c_str(), &g_layout.preview);
                 changed |= ImGui::Checkbox(UI(Tr(L"Word bar")).c_str(), &g_layout.words);
                 changed |= ImGui::Checkbox(UI(Tr(L"Footer")).c_str(), &g_layout.footer);
+                changed |= ImGui::Checkbox(UI(Tr(L"Minimize button")).c_str(), &g_layout.minButton);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("%s", UI(Tr(L"The small > in the footer (without the footer: left of the input). Hidden: three quick clicks on the window minimise it, or the header, or the right-click menu.")).c_str());
                 changed |= ImGui::Checkbox(UI(Tr(L"Info texts")).c_str(), &g_layout.infoText);
+                ImGui::Separator();
+                ImGui::TextUnformatted(UI(Tr(L"When not in use")).c_str());
+                changed |= ImGui::Checkbox(UI(Tr(L"Minimize after") + L"##automin").c_str(), &g_layout.autoMinimize);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("%s", UI(Tr(L"Nobody writes, points at the window or talks: it goes down to the small button.")).c_str());
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(ImGui::GetFontSize() * 8);
+                changed |= ImGui::SliderInt(UI(Tr(L"seconds") + L"##minafter").c_str(), &g_layout.minimizeAfter, 2, 120);
+                changed |= ImGui::Checkbox(UI(Tr(L"Open again when GW2's chat opens (Enter)")).c_str(), &g_layout.autoOpen);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("%s", UI(Tr(L"Only opens it. The focus key (Nexus > Keybinds) always opens it; taking over the focus is its own setting (Writing).")).c_str());
                 if (ImGui::IsItemHovered())
                     ImGui::SetTooltip("%s", UI(Tr(L"The grey status lines: what is going on, the modules, the counter. The grey word of the prediction stays.")).c_str());
                 ImGui::SetNextItemWidth(wide);
@@ -4209,6 +4279,16 @@ extern "C" __declspec(dllexport) void Gw2KbTestWaypoint(int step) {  // nexus_kb
     std::lock_guard<std::mutex> lock(g_mu);
     if (step == 0) HandleChatLinkClick("[&BAwEAAA=]", GetTickCount64(), std::string());
     else g_expandRequest = true;
+}
+
+extern "C" __declspec(dllexport) int Gw2KbTestAutoMinimize(int seconds) {  // nexus_kb_selftest: -1 ask, 0 off; 1 = small
+    std::lock_guard<std::mutex> lock(g_mu);
+    if (seconds >= 0) {
+        g_layout.autoMinimize = seconds > 0;
+        g_layout.minimizeAfter = seconds;
+        g_lastUse = 0;
+    }
+    return g_collapsed ? 1 : 0;
 }
 
 extern "C" __declspec(dllexport) void Gw2KbTestWhisper(const char* name) {  // nexus_kb_selftest only: a click on a name
