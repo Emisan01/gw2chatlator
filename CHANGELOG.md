@@ -3,6 +3,14 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.9.10 — 2026-10-18 (GW2Chatlator for Nexus)
+
+- **Two views in the menu (≡ / right-click):** "Mini mode" (instead of "Header") – nothing but the grey input with all
+  its help, one line that grows with longer text; three quick clicks on it minimise it, right-click in it → "Menu …"
+  brings the rest back. "Compact view" now means header, chat, input and footer – no word bar, no preview (the
+  translation stands small in the input while something is translated). Both sit over your settings of the parts
+  (Options → Window) and never change them.
+
 ## 1.9.9 — 2026-10-18 (GW2Chatlator for Nexus)
 
 - **What you set applies at once.** Switching on "Translate the chat" translates the lines that are already there (the
