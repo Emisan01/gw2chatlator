@@ -162,7 +162,9 @@ void VoiceCommand(const char* cmd) {
     if (!g_voice.Start(HelperExe(), dataDir)) {
         std::lock_guard<std::mutex> lock(g_mu);
         g_voicePending.clear();
-        SetStatus(Tr(L"The voice module could not be started"), 10000);
+        SetStatus(VoiceModulePresent(KeyboardDir()) ? Tr(L"The voice module could not be started")
+                                                    : Tr(L"The voice module is not loaded yet – Options → General → Modules."),
+                  10000);
     }
 }
 

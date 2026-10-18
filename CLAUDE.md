@@ -97,9 +97,11 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 - **Right-click** only in the input with a word you wrote (learning mode; empty input without the header: the menu),
   docked to the window's top right corner (1 px), an X closes it: self-corrections noticed while typing (`NoteSelfFix`) →
   `SpellService::TeachFix` (never a dictionary word), and "my words" (meaning → translator). No menu on chat lines.
-- **First start** (`[Nexus] SetupDone=0`, `FirstStart`, user's decision): loads Events: Chat into `<GW2>\addons`, the
-  voice module (`voice_module.cpp`: release ZIP via `DownloadReleaseAsset`, tar.exe, only gw2kb_voice.exe +
-  voice\*.dll copied) and, if no voice model is there, whisper base. Later only on a click.
+- **Nothing downloads by itself** (user, 2026-10-18): `FirstStart` only marks the setup done. The modules list (empty
+  chat, Options → General → Modules) offers each on a click: Events: Chat first (reading), then – only after voice
+  input is switched on (off for new users unless the voice module is already there) – the voice module
+  (`voice_module.cpp`: release ZIP via `DownloadReleaseAsset`, tar.exe, only gw2kb_voice.exe + voice\*.dll copied)
+  and then a voice model. Unload: the voice helper ends after [Voice] UnloadMinutes without use.
 - **Voice:** helper commands `begin | begin-auto | end | cancel | listen | stop-listen | reload | quit`, events
   `ready started partial final error listening idle paused`; `final` carries `rec`, `rms` (ms) and `peak` (% of all
   logical CPUs, 100 ms samples) → `[VoiceStats]` per model; two too-slow runs → next smaller installed model.
@@ -112,7 +114,9 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 
 1. Never send anything to the game without the user's own key press. No auto-replies, no timers that send. The only
    exception the user asked for: `[Voice] AutoSend` (off by default) – the push-to-talk release counts as the Enter.
-   "Only copy" mode must stay a mode in which not a single synthetic key reaches the game.
+   "Only copy" mode must stay a mode in which not a single synthetic key reaches the game. There is no other way to
+   send: no Nexus event, no DataLink, no export another add-on could call; the `Gw2KbTest…` exports work only outside
+   GW2 (`TestHost`). One Enter sends at most `kMaxPartsPerEnter` (3) chat lines.
 2. The old clipboard is restored only after the game processed the paste (`WaitForTargetToDrain`, MumbleLink chat
    line closing) – a fixed sleep pasted the *old* clipboard once (privacy leak).
 3. Re-check `GetForegroundWindow() == gw2` before every injected step.
@@ -123,8 +127,8 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 6. Privacy: the word model learns only from what the user sends, never from other players' chat; no chat log is
    saved. **Never commit real screenshots, recordings or other players' names/messages** — the repo is public. Real
    test material lives in `local/` (git-ignored); fixtures use invented names.
-7. Files in the game folder: only our DLL's own folder `<addons>\GW2Keyboard\`, and Events_Chat.dll (first start or
-   a click). Never the game process' memory, affinity or priority.
+7. Files in the game folder: only our DLL's own folder `<addons>\GW2Keyboard\`, and Events_Chat.dll (only on your
+   click). Never the game process' memory, affinity or priority.
 
 ## Conventions
 

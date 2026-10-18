@@ -211,6 +211,13 @@ void ComputeTyping() {
 // Enter: the parts go into the GW2 chat – only now, on your Enter (invariants 1–3).
 void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring learnText) {
     if (parts.empty()) return;
+    if (parts.size() > kMaxPartsPerEnter) {  // the translation came out longer (sent when it arrived): not sent either
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_history.push_front(typed);
+        SetStatus(TrF(L"Not sent: {1} chat lines – at most 3 per Enter. Shorten it (Up brings it back).",
+                      {std::to_wstring(parts.size())}), 10000);
+        return;
+    }
     if (g_test.noSend) {  // the self-test: what would go into the chat
         std::lock_guard<std::mutex> lock(g_mu);
         g_test.sentParts += static_cast<int>(parts.size());
@@ -315,6 +322,14 @@ void StartSend() {  // Enter (g_mu held)
     const ChatSplit split = SplitChatCommand(text);
     const std::wstring body = split.prefix.empty() ? text : split.body;
     const std::wstring prefix = split.prefix.empty() ? ComposePrefix() : split.prefix;
+    {  // one Enter never pours a block of lines into the game: at most kMaxPartsPerEnter chat lines (the text stays)
+        const bool ready = Translating() && g_previewGen == g_inputGen && !g_preview.empty();
+        const size_t parts = SplitForChat(ready ? g_preview : body, prefix, static_cast<size_t>(g_cfg.maxLength)).size();
+        if ((!Translating() || ready) && parts > kMaxPartsPerEnter) {
+            SetStatus(TrF(L"Not sent: {1} chat lines – at most 3 per Enter. Shorten it.", {std::to_wstring(parts)}), 8000);
+            return;
+        }
+    }
     g_input[0] = 0;
     g_flatInput.clear();
     g_wFlatInput.clear();
