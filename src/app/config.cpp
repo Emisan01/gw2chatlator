@@ -4,6 +4,7 @@
 #include "win/secret.hpp"
 
 #include <algorithm>
+#include <cstring>
 #include <cwchar>
 #include <iterator>
 #include <map>
@@ -17,19 +18,85 @@ namespace gct {
 namespace {
 
 // ASCII only, so GetPrivateProfileString reads it the same in every locale.
-const char kHeader[] =
-    "; GW2 Chat Translator - settings\r\n"
-    "; Everything here can also be changed in the window: menu (=) -> Settings.\r\n"
-    "; Changes made in this file apply on the next start.\r\n"
+// The ini a new player gets: only what the add-on reads (everything can be changed in Options).
+const char kTemplate[] =
+    "; GW2Chatlator - settings\r\n"
+    "; Everything here can also be changed in the add-on: menu (=) -> Options. Changes here apply on the next start.\r\n"
     "\r\n"
     "[General]\r\n"
-    "; Language of the window: en (English), de (Deutsch), ar (Arabic)\r\n"
-    "UiLanguage=en\r\n"
-    "; Guild Wars 2 folder (found automatically; used for the install and the add-on check)\r\n"
-    "Gw2Dir=\r\n"
-    "\r\n";
+    "; Language of the window: empty = Windows language, en (English), de (Deutsch), ar (Arabic)\r\n"
+    "UiLanguage=\r\n"
+    "\r\n"
+    "[Translate]\r\n"
+    "; Translator: auto | basic | deepl | google | microsoft | libre\r\n"
+    ";   auto  = DeepL, Google, Microsoft or your server if a key / address is set, else basic\r\n"
+    ";   basic = MyMemory: free, no account, limited daily quota\r\n"
+    "Engine=auto\r\n"
+    "; Languages for \"Send\" (the footer's choice); the chat is read in the language you write in\r\n"
+    "WriteLangs=EN-GB,FR,ES,DE\r\n"
+    "; Translate your message back into your language as a check (1/0)\r\n"
+    "BackTranslate=1\r\n"
+    "; Languages you understand: not translated by themselves (a click still translates), e.g. EN,DE\r\n"
+    "Understood=\r\n"
+    "\r\n"
+    "[Basic]\r\n"
+    "; Optional: your e-mail address raises the free MyMemory quota (5,000 -> 50,000 characters/day).\r\n"
+    "Email=\r\n"
+    "\r\n"
+    "[DeepL]\r\n"
+    "; Optional, best quality: https://www.deepl.com/pro-api  (free keys end in :fx)\r\n"
+    "ApiKey=\r\n"
+    "\r\n"
+    "[Google]\r\n"
+    "; Optional: Google Cloud Translation, 500,000 characters a month free (Engine=google)\r\n"
+    "ApiKey=\r\n"
+    "\r\n"
+    "[Microsoft]\r\n"
+    "; Optional: Microsoft Translator, free tier F0 (Engine=microsoft). Region e.g. westeurope\r\n"
+    "ApiKey=\r\n"
+    "Region=\r\n"
+    "\r\n"
+    "[Libre]\r\n"
+    "; Optional: own LibreTranslate-compatible server, e.g. http://localhost:5000 (Engine=libre)\r\n"
+    "Url=\r\n"
+    "ApiKey=\r\n"
+    "\r\n"
+    "[Spelling]\r\n"
+    "; Windows spell checking (offline). It follows the language you write in.\r\n"
+    "Enabled=1\r\n"
+    "; Autocorrection while typing: off | safe (only Windows' sure fixes) | phone (like a phone keyboard)\r\n"
+    "AutoCorrectMode=phone\r\n"
+    "; Word suggestions: the word bar and the grey word that finishes yours (Tab takes it)\r\n"
+    "Suggestions=1\r\n"
+    "; Learn the words you send (saved per language in the learned folder)\r\n"
+    "Learn=1\r\n"
+    "\r\n"
+    "[Chat]\r\n"
+    "; How your message gets into the chat:\r\n"
+    ";   send = your Enter sends the line into GW2's chat (Enter, paste, Enter) - only ever on your Enter\r\n"
+    ";   copy = Enter only copies; you paste it in GW2 yourself. Not a single key goes to the game.\r\n"
+    "SendMode=send\r\n"
+    "; GW2 allows 199 characters per chat line; longer messages are split (at most 3 lines per Enter)\r\n"
+    "MaxLength=199\r\n"
+    "; 1 = back to the input after sending, 0 = stay in the game\r\n"
+    "ReturnFocus=0\r\n"
+    "; 1 = key hold and pauses follow the game's FPS, 0 = the values below\r\n"
+    "AutoTiming=1\r\n"
+    "StepDelayMs=80\r\n"
+    "KeyHoldMs=30\r\n"
+    "RestoreDelayMs=250\r\n"
+    "\r\n"
+    "[Window]\r\n"
+    "; 0 (fully see-through) to 255 (not see-through at all)\r\n"
+    "Opacity=255\r\n"
+    "; Text size in pt (8 - 28)\r\n"
+    "FontPt=11\r\n";
 
-const char kTranslateSections[] =
+// Versions before 2.0.2 appended this block on every start to an ini without the old [Reader] section (an upgrade
+// path from the desktop program's v0.2) – the ini of a new player grew by it each time. Removed again on load: the
+// copies are byte for byte what was appended (Windows writes into the first copy of a section only).
+const char kOldAppended[] =
+    "\r\n; --- new in v0.3 ---\r\n"
     "[Translate]\r\n"
     "; Translator: auto | basic | deepl | google | microsoft | libre | llm\r\n"
     ";   auto  = DeepL, Google, Microsoft or your server if set, else the LLM if a model is set, else basic\r\n"
@@ -63,80 +130,6 @@ const char kTranslateSections[] =
     "ApiKey=\r\n"
     "TimeoutSec=60\r\n"
     "\r\n";
-
-const char kRestSections[] =
-    "[DeepL]\r\n"
-    "; Optional, best quality: https://www.deepl.com/pro-api  (free keys end in :fx)\r\n"
-    "ApiKey=\r\n"
-    "\r\n"
-    "[Google]\r\n"
-    "; Optional: Google Cloud Translation, 500,000 characters a month free (Engine=google)\r\n"
-    "ApiKey=\r\n"
-    "\r\n"
-    "[Microsoft]\r\n"
-    "; Optional: Microsoft Translator, free tier F0 (Engine=microsoft). Region e.g. westeurope\r\n"
-    "ApiKey=\r\n"
-    "Region=\r\n"
-    "\r\n"
-    "[Libre]\r\n"
-    "; Optional: own LibreTranslate-compatible server, e.g. http://localhost:5000 (Engine=libre)\r\n"
-    "Url=\r\n"
-    "ApiKey=\r\n"
-    "\r\n"
-    "[Spelling]\r\n"
-    "; Windows spell checking (offline). It follows your keyboard layout.\r\n"
-    "Enabled=1\r\n"
-    "; Autocorrection while typing: off | safe (only Windows' sure fixes) | phone (like a phone keyboard)\r\n"
-    "AutoCorrectMode=phone\r\n"
-    "; Word bar above the input: completions and the next word (Tab takes the highlighted one)\r\n"
-    "Suggestions=1\r\n"
-    "; Learn the words you send (saved per language in the learned folder)\r\n"
-    "Learn=1\r\n"
-    "; Optional grammar check with LanguageTool (public server: max. 20 checks per minute)\r\n"
-    "LanguageTool=0\r\n"
-    "LanguageToolUrl=https://api.languagetool.org\r\n"
-    "\r\n"
-    "[Glossary]\r\n"
-    "; Official GW2 names (maps, professions, elite specializations, WvW objectives, mounts)\r\n"
-    "; from the GW2 API: Loewenstein becomes Lion's Arch instead of a literal translation.\r\n"
-    "Enabled=1\r\n"
-    "RefreshDays=14\r\n"
-    "\r\n"
-    "[Hotkey]\r\n"
-    "; Show / hide the window. Examples: Ctrl+Alt+T, Ctrl+Shift+F9, F10\r\n"
-    "Toggle=Ctrl+Alt+T\r\n"
-    "\r\n"
-    "[Chat]\r\n"
-    "; How your message gets into the chat:\r\n"
-    ";   send = Enter in the window brings GW2 to the front and sends the line (Enter, paste, Enter)\r\n"
-    ";   copy = Enter only copies; you paste it in GW2 yourself. Not a single key goes to the game.\r\n"
-    "SendMode=send\r\n"
-    "; GW2 allows 199 characters per chat line; longer messages are split\r\n"
-    "MaxLength=199\r\n"
-    "; 1 = back to the translator window after sending, 0 = stay in the game\r\n"
-    "ReturnFocus=0\r\n"
-    "; 1 = dynamically adapt key hold and step delays to current FPS, 0 = use manual values below\r\n"
-    "AutoTiming=1\r\n"
-    "; Pause between the key presses to GW2 (ms). Raise it at low FPS.\r\n"
-    "StepDelayMs=80\r\n"
-    "; How long each key is held (ms): GW2 reads the keyboard once per frame. Raise it at low FPS.\r\n"
-    "KeyHoldMs=30\r\n"
-    "RestoreDelayMs=250\r\n"
-    "\r\n"
-    "[Window]\r\n"
-    "; Position empty = automatic. Saved when you move the window.\r\n"
-    "X=\r\n"
-    "Y=\r\n"
-    "Width=520\r\n"
-    "Height=460\r\n"
-    "; 60 (very transparent) to 255 (not transparent at all)\r\n"
-    "Opacity=255\r\n"
-    "; Text size in percent (90, 100, 115, 135)\r\n"
-    "FontPercent=100\r\n"
-    "; Show and hide together with the game (1/0)\r\n"
-    "FollowGame=1\r\n"
-    "; Dock to GW2: the window moves with the game window\r\n"
-    "Dock=0\r\n";
 
 class Ini {
 public:
@@ -237,10 +230,13 @@ void Config::Load(const std::wstring& dir) {
     dataDir = dir;
     iniPath = dir + L"\\gw2-chat-translator.ini";
     if (GetFileAttributesW(iniPath.c_str()) == INVALID_FILE_ATTRIBUTES) {
-        WriteFileAtomic(iniPath, std::string(kHeader) + kTranslateSections + kRestSections);
-    } else if (!Ini(iniPath).HasSection(L"Reader")) {
-        // INI from v0.2: append the new sections so the options are visible.
-        AppendFileBytes(iniPath, std::string("\r\n; --- new in v0.3 ---\r\n") + kTranslateSections);
+        WriteFileAtomic(iniPath, kTemplate);
+    } else {
+        std::string text;
+        if (ReadFileBytes(iniPath, text) && text.find(kOldAppended) != std::string::npos) {
+            for (size_t at; (at = text.find(kOldAppended)) != std::string::npos;) text.erase(at, std::strlen(kOldAppended));
+            WriteFileAtomic(iniPath, text);
+        }
     }
 
     const Ini ini(iniPath);
