@@ -3,7 +3,7 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## Unreleased
+## 1.9.1 — 2026-10-18 (GW2Chatlator for Nexus)
 
 - **The window no longer creeps up.** Minimising measured the small button differently (text size, ImGui's minimum
   window size) than the minimised window itself, so every minimise / open moved the window – upwards with larger

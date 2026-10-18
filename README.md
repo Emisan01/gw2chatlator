@@ -3,12 +3,17 @@
 The chat of Guild Wars 2 in your language – **read it, write and speak in yours**, the chat gets it translated. A
 Nexus add-on, right inside the game. A line goes into the chat only when you press Enter yourself.
 
-## ⬇ [Download gw2keyboard_nexus.dll – version 1.9.0](https://github.com/Emisan01/gw2chatlator/releases/download/v1.9.0/gw2keyboard_nexus.dll)
+## ⬇ [Download gw2keyboard_nexus.dll – version 1.9.1](https://github.com/Emisan01/gw2chatlator/releases/download/v1.9.1/gw2keyboard_nexus.dll)
 
 Put the DLL into your `Guild Wars 2\addons` folder (where [Nexus](https://raidcore.gg/Nexus) keeps its add-ons) and
 load **GW2Chatlator** in Nexus – that is all: on the first start it loads Events: Chat, its voice module and a small
 voice model by itself.
 all versions: [Releases](https://github.com/Emisan01/gw2chatlator/releases) · what changed: [CHANGELOG.md](CHANGELOG.md).
+
+> **New in 1.9.1** – the window stays where you put it, links like Discord, chat codes open the original:
+> minimising and opening no longer moves the window (also at the screen edge) · web links ask "This link goes to … –
+> open it?", no background checks · a click on a chat code opens it in GW2's own chat (the game's own map jump for
+> waypoints); older waypoints open the game map with a hint where to look.
 
 Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustotal.com/gui/file/24127b749fc15c3d4afa630a5c7e19b0f3e7001ead8f331637445a80eaabbe58).
 
