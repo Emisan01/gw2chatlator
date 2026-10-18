@@ -262,7 +262,7 @@ void NoteSelfFix(const std::wstring& text) {  // g_mu held; the text changed
 
 // Your own words ("finds = I think"): what the translator gets instead (<data>\my-words.txt), learned on a right-click.
 void SaveMyWords() {  // g_mu held
-    WriteFileAtomic(g_cfg.dataDir + L"\\my-words.txt", ToUtf8(g_myWords.Serialize()));
+    if (!g_wiped) WriteFileAtomic(g_cfg.dataDir + L"\\my-words.txt", ToUtf8(g_myWords.Serialize()));
 }
 
 // The word under the mouse in the input ("" when the mouse is not over a word): the line by its height, the letter by

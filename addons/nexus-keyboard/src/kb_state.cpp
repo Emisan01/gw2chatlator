@@ -357,6 +357,36 @@ void SetProfile(int profile, bool on) {  // g_mu held
 }
 Layout Lay() { return g_layout; }
 
+// Remove everything of GW2Chatlator (Options → General → Modules, after a yes): the voice helper ends, nothing is
+// written any more (settings, learned words, my words, voice fixes), the worker drops the spelling without saving it,
+// then our whole folder <addons>\GW2Keyboard\ goes – and Events: Chat too when asked (it is its own add-on). The DLL
+// itself cannot remove itself while it runs: the notice says the last step (Nexus → Addons → Uninstall).
+bool g_wiped = false;
+std::atomic<int> g_wipeDone{0};  // 0 not asked, 1 removed, 2 something was left
+void RemoveEverythingNow(bool chatEventsToo) {  // game thread
+    UnloadVoiceModule();
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_wiped = true;
+        g_show = false;
+        g_showOptions = false;
+    }
+    Config::BlockWrites();
+    if (chatEventsToo) RemoveChatEventsNow();
+    g_worker.Post([dir = KeyboardDir()] {
+        if (g_spell) {  // the learned words would be saved on unload – they are what we remove
+            delete g_spell;
+            g_spell = nullptr;
+        }
+        bool ok = false;
+        for (int i = 0; i < 10 && !ok; ++i) {
+            ok = RemoveFolder(dir);
+            if (!ok) Sleep(300);
+        }
+        g_wipeDone = ok ? 1 : 2;
+    });
+}
+
 // Settings changed on the game thread reach the ini on the worker, at most every half second (a slider dragged writes
 // once). A job dropped in a flood is posted again while writes still wait.
 void KickSave() {

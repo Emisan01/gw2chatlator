@@ -236,6 +236,16 @@ std::atomic<bool> g_chatEventsInstalling{false};
 std::thread g_chatEventsThread;
 
 // A Nexus add-on in this process that says it is "Events: Chat" (its definition is only read). Every 3 s at most.
+void RemoveChatEventsNow() {  // game thread
+    const std::wstring dll = AddonsDir() + kChatEventsDllName;
+    const bool gone = DeleteFileW(dll.c_str()) || GetFileAttributesW(dll.c_str()) == INVALID_FILE_ATTRIBUTES;
+    if (gone) g_chatEventsFile = false;
+    std::lock_guard<std::mutex> lock(g_mu);
+    SetStatus(gone ? Tr(L"Events: Chat removed")
+                   : Tr(L"Events: Chat is loaded – remove it in Nexus → Addons → Events: Chat (other add-ons may use it)"),
+              10000);
+}
+
 bool ChatEventsPresent() {
     static ULONGLONG next = 0;
     if (GetTickCount64() < next) return g_chatEventsPresent;

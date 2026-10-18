@@ -321,6 +321,10 @@ void RenderWindow() {
             chatWasOpen = chatOpen;
         }
     }
+    if (g_wipeDone != 0) {  // everything removed: only the notice with the last step
+        RenderRemovedNotice();
+        return;
+    }
     ChatEventsPresent();
     RenderOptionsWindow();
     bool inMap;

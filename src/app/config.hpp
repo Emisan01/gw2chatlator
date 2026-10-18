@@ -109,6 +109,8 @@ struct Config {
     static void DeferWrites(bool on);
     static bool WritesPending();
     static void FlushWrites();
+    // Everything of the add-on was removed: from now on nothing is written (pending writes are dropped).
+    static void BlockWrites();
 
     std::wstring UserWordsPath() const;  // your own GW2 words (never marked as errors)
     std::wstring LearnedDir() const { return dataDir + L"\\learned"; }

@@ -15,6 +15,11 @@ namespace gct {
 // `kbDir` = <addons>\GW2Keyboard (no trailing backslash).
 bool VoiceModulePresent(const std::wstring& kbDir);
 
+// Removes what InstallVoiceModule copied (the helper, voice\*.dll, its two texts); true when nothing of it is left.
+bool RemoveVoiceModule(const std::wstring& kbDir);
+// Removes a folder with everything in it; true when it is gone.
+bool RemoveFolder(const std::wstring& dir);
+
 // Blocking (own thread). `progress` gets the download's bytes and returns false to cancel.
 ExtrasInstallResult InstallVoiceModule(const std::wstring& kbDir, const std::wstring& version,
                                        const std::function<bool(uint64_t done, uint64_t total)>& progress);

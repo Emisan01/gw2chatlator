@@ -168,7 +168,9 @@ Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustot
    modules – **Events: Chat** (reads the chat; typing help works without it) with an "Install" button, and the voice
    module only once you switch voice input on (Options → General → Modules); its model comes after that, each on your
    click.
-4. Translation is yours to switch on: menu ≡ → Options → Translator (the chat, your text), Options → Voice (speech
+4. To remove it again: Options → General → Modules has a remove button for everything it brought (Events: Chat, the
+   voice module, the voice models) and "Remove everything of GW2Chatlator …"; then Nexus → Addons → Uninstall.
+5. Translation is yours to switch on: menu ≡ → Options → Translator (the chat, your text), Options → Voice (speech
    into English).
 
 Updating: replace the DLL (or unpack the newer ZIP over the old one) (settings and learned words stay in `addons\GW2Keyboard`).

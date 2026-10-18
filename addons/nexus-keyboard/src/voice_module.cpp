@@ -64,6 +64,18 @@ bool Unpack(const std::wstring& zip, const std::wstring& to) {
 
 }  // namespace
 
+bool RemoveVoiceModule(const std::wstring& kbDir) {
+    DeleteFileW((kbDir + L"\\gw2kb_voice.exe").c_str());
+    RemoveTree(kbDir + L"\\voice");
+    for (const wchar_t* text : {L"README.txt", L"THIRD_PARTY_NOTICES.txt"}) DeleteFileW((kbDir + L"\\" + text).c_str());
+    return !Exists(kbDir + L"\\gw2kb_voice.exe") && !Exists(kbDir + L"\\voice");
+}
+
+bool RemoveFolder(const std::wstring& dir) {
+    RemoveTree(dir);
+    return !Exists(dir);
+}
+
 bool VoiceModulePresent(const std::wstring& kbDir) {
     return Exists(kbDir + L"\\gw2kb_voice.exe") && Exists(kbDir + L"\\voice\\whisper.dll");
 }

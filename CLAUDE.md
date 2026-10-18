@@ -102,6 +102,12 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   input is switched on (off for new users unless the voice module is already there) – the voice module
   (`voice_module.cpp`: release ZIP via `DownloadReleaseAsset`, tar.exe, only gw2kb_voice.exe + voice\*.dll copied)
   and then a voice model. Unload: the voice helper ends after [Voice] UnloadMinutes without use.
+- **Everything removable** (user: what we brought gets a remove button): Options → General → Modules – Events: Chat
+  (only while Nexus does not hold it, else the way via Nexus), the voice module, the voice models (each with a second
+  click), and "Remove everything of GW2Chatlator …" (a yes): `RemoveEverythingNow` ends the helper, blocks every
+  write (`Config::BlockWrites`, `g_wiped`, the spelling dropped unsaved), deletes `<addons>\GW2Keyboard\`, optionally
+  Events_Chat.dll, then a notice names the last step (Nexus → Addons → Uninstall – the DLL cannot delete itself).
+  Self-test: `GW2KB_TEST_REMOVEALL=1` – only on a copy of the add-on.
 - **Voice:** helper commands `begin | begin-auto | end | cancel | listen | stop-listen | reload | quit`, events
   `ready started partial final error listening idle paused`; `final` carries `rec`, `rms` (ms) and `peak` (% of all
   logical CPUs, 100 ms samples) → `[VoiceStats]` per model; two too-slow runs → next smaller installed model.

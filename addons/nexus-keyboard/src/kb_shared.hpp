@@ -613,6 +613,13 @@ void FirstStart();
 void LoadVoiceModule();
 void UnloadVoiceModule();
 void VoiceIdleUnload();
+void RemoveVoiceModuleNow();
+void RemoveVoiceModelsNow();
+void RemoveChatEventsNow();
+void RemoveEverythingNow(bool chatEventsToo);
+void RenderRemovedNotice();
+extern bool g_wiped;
+extern std::atomic<int> g_wipeDone;
 void StatusRow(const std::string& what, int state, const std::string& text);
 void RenderModules(bool guide);
 
