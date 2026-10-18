@@ -3,6 +3,14 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.0.3 — 2026-10-18 (GW2Chatlator for Nexus)
+
+- **The window no longer crawls when the mini mode goes on and off.** Leaving the mini mode (or switching the chat
+  back on), ImGui's minimum height for the chat grew the window downwards before it could keep its bottom edge – on,
+  off, on … it crawled down the screen like a caterpillar. Now the window remembers its size when it becomes the small
+  input and gets exactly that size back, its bottom edge where the small window stood. The self-test switches the mini
+  mode on and off four times and runs five minimise / open cycles near the screen edges – the window must stay put.
+
 ## 2.0.2 — 2026-10-18 (GW2Chatlator for Nexus)
 
 - **Everything it brought can be removed again** (Options → General → Modules): a remove button for Events: Chat, the
