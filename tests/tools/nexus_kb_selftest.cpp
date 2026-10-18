@@ -175,6 +175,7 @@ int wmain(int argc, wchar_t** argv) {
     setvbuf(stdout, nullptr, _IONBF, 0);
     ImGui::SetAllocatorFunctions(Alloc, Free);
     ImGuiContext* ctx = ImGui::CreateContext();
+    ImGui::GetIO().IniFilename = nullptr;  // no imgui.ini: window sizes of an earlier run must not change this one
     unsigned char* pixels = nullptr;
     int w = 0, h = 0;
     ImGui::GetIO().Fonts->GetTexDataAsRGBA32(&pixels, &w, &h);
@@ -284,6 +285,9 @@ int wmain(int argc, wchar_t** argv) {
         }
         for (int i = 0; i < n; ++i) {
             Frame();
+            if (i == 2)  // bottom left, where it stands in the game (no imgui.ini remembers a place)
+                if (ImGuiWindow* w = ImGui::FindWindowByName("GW2Chatlator###kbmain"))
+                    ImGui::SetWindowPos("GW2Chatlator###kbmain", ImVec2(0, 1080 - 28 - w->Size.y));
             Sleep(20);
         }
         const int W = 1920, H = 1080;
@@ -415,7 +419,7 @@ int wmain(int argc, wchar_t** argv) {
                 const ImVec2 p2 = pos(), s2 = size();
                 std::printf("waypoint: before %.0f,%.0f %.0fx%.0f  out of the way %.0f,%.0f %.0fx%.0f  back %.0f,%.0f %.0fx%.0f\n",
                             p0.x, p0.y, s0.x, s0.y, p1.x, p1.y, s1.x, s1.y, p2.x, p2.y, s2.x, s2.y);
-                const bool shrunk = s1.x < s0.x && s1.y < s0.y && std::fabs((p1.y + s1.y) - (p0.y + s0.y)) < 2;
+                const bool shrunk = s1.x < s0.x && s1.y <= s0.y && std::fabs((p1.y + s1.y) - (p0.y + s0.y)) < 2;
                 const bool back = std::fabs(p2.x - p0.x) < 2 && std::fabs(p2.y - p0.y) < 2 && std::fabs(s2.y - s0.y) < 2;
                 if (!shrunk || !back) std::printf("FAIL: the window did not come back where it was\n");
                 ok = ok && shrunk && back;
@@ -428,6 +432,7 @@ int wmain(int argc, wchar_t** argv) {
                     io.MouseDown[0] = false;
                     frames(1);
                 };
+                const bool roomToClick = s2.y > 100;  // nothing but the input (a minimal layout): no place to click
                 const ImVec2 inChat(p2.x + 200, p2.y + 80);
                 click(inChat);
                 click(inChat);
@@ -441,9 +446,25 @@ int wmain(int argc, wchar_t** argv) {
                 frames(6);
                 const ImVec2 s4 = size();
                 std::printf("three clicks: two %.0fx%.0f  three %.0fx%.0f  open again %.0fx%.0f\n", s2b.x, s2b.y, s3.x, s3.y, s4.x, s4.y);
-                const bool clicks = std::fabs(s2b.y - s2.y) < 2 && s3.y < s2.y && std::fabs(s4.y - s2.y) < 2;
+                const bool clicks = !roomToClick || (std::fabs(s2b.y - s2.y) < 2 && s3.y < s2.y && std::fabs(s4.y - s2.y) < 2);
                 if (!clicks) std::printf("FAIL: three quick clicks did not minimise the window (or two did)\n");
                 ok = ok && clicks;
+                // Too small for the chat and all parts: it grows upwards once (whole pixels), its bottom stays, then it
+                // stands still (a fraction of a pixel used to move it up every frame without resizing it).
+                ImGui::SetWindowSize("GW2Chatlator###kbmain", ImVec2(520, 251));
+                frames(3);
+                const ImVec2 g0 = pos(), gs0 = size();
+                frames(60);
+                const ImVec2 g1 = pos(), gs1 = size();
+                std::printf("too small: after 3 frames %.0f,%.0f %.0fx%.0f  after 60 more %.0f,%.0f %.0fx%.0f\n", g0.x, g0.y,
+                            gs0.x, gs0.y, g1.x, g1.y, gs1.x, gs1.y);
+                const bool stands = std::fabs(g1.y - g0.y) < 1 && std::fabs(gs1.y - gs0.y) < 1 &&
+                                    std::fabs((g1.y + gs1.y) - (p2.y + 251)) < 1;  // the bottom of the 251 px window
+                if (!stands) std::printf("FAIL: the too small window crept\n");
+                ok = ok && stands;
+                ImGui::SetWindowSize("GW2Chatlator###kbmain", s2);
+                ImGui::SetWindowPos("GW2Chatlator###kbmain", p2);
+                frames(3);
             }
             // Minimise when not in use: the input had the focus, a click into the game, then nothing for the set time –
             // the window goes down to the small button; the focus key opens it again.

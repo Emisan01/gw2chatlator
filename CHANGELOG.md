@@ -3,6 +3,17 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.9.8 — 2026-10-18 (GW2Chatlator for Nexus)
+
+- **A real mini mode.** Without the chat the window is exactly as high as its parts, with a thin edge – down to
+  nothing but the grey input with all its help (the grey word, Tab, Space, growing with longer text). With the word bar
+  on, its top is the window's top. The bottom-left corner stays where you put it.
+- **No more creeping when the window was a little too small** for the chat and all parts: it grew by a fraction of a
+  pixel, ImGui rounded the size back down while the position moved – up by almost a pixel every frame. Sizes are whole
+  pixels now and the position moves only by what the size really changed. The self-test checks a too small window
+  stands still, and runs its window checks in the minimal layouts too.
+- The self-test no longer keeps an imgui.ini (a size from an earlier run changed the next one).
+
 ## 1.9.7 — 2026-10-18 (GW2Chatlator for Nexus)
 
 - **The prediction without the word bar.** The prediction never depended on the bar (Tab and Space wrote the

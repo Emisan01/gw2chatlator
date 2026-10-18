@@ -2774,7 +2774,8 @@ void RenderWindow() {
         return;
     }
 
-    const float minW = 380, minH = g_layout.chat ? 240.0f : 90.0f;  // without the chat it may be just the input
+    // Without the chat the window is exactly its parts (fitted below, down to nothing but the input).
+    const float minW = 380, minH = g_layout.chat ? 240.0f : 16.0f;
     ImGui::SetNextWindowSize(ImVec2(520, 360), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(ImVec2(minW, minH), ImVec2(FLT_MAX, FLT_MAX));
     if (g_restoreH > 0) {
@@ -2784,7 +2785,11 @@ void RenderWindow() {
     ImGui::SetNextWindowBgAlpha(std::clamp(g_cfg.opacity, 0, 255) / 255.0f);  // up to fully see-through (the small button keeps 60)
     ImGuiWindowFlags wflags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                               ImGuiWindowFlags_NoScrollWithMouse;
-    if (!ImGui::Begin("GW2Chatlator###kbmain", nullptr, wflags)) {
+    // Without the chat: a thin edge only, the window is hardly more than its parts (the grey input in the end).
+    if (!g_layout.chat) ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
+    const bool begun = ImGui::Begin("GW2Chatlator###kbmain", nullptr, wflags);
+    if (!g_layout.chat) ImGui::PopStyleVar();
+    if (!begun) {
         ImGui::End();
         return;
     }
@@ -3125,15 +3130,26 @@ void RenderWindow() {
     const float lowerH = (showPreview ? line * (g_layout.previewLines + 0.2f) + st.ItemSpacing.y : 0) +
                          (showWords ? ImGui::GetFrameHeightWithSpacing() : 0) +
                          (g_layout.footer ? ImGui::GetFrameHeightWithSpacing() : 0) + boxH + st.ItemSpacing.y;
-    {  // the input grew past the window: the window grows upwards (its bottom stays) and shrinks back afterwards
+    if (!g_layout.chat) {  // no chat: the window is exactly as high as its parts – its bottom stays where it is
+        // + the thin bottom edge (above); never below ImGui's own minimum – it would raise the window again and the bottom
+        // anchor below would push it down a little every frame (it crept 3 px per frame).
+        // Whole pixels: ImGui rounds a window's size down – a fraction would move the window without resizing it.
+        const float want = std::ceil(std::max(ImGui::GetCursorPosY() + lowerH - st.ItemSpacing.y + 4.0f, st.WindowMinSize.y));
+        const ImVec2 p = ImGui::GetWindowPos(), sz = ImGui::GetWindowSize();
+        if (want != sz.y) {
+            ImGui::SetWindowSize(ImVec2(sz.x, want));
+            ImGui::SetWindowPos(ImVec2(p.x, p.y + sz.y - want));
+        }
+    } else {  // the input grew past the window: the window grows upwards (its bottom stays) and shrinks back afterwards
         static float s_grown = 0;
         const float need = lowerH + (g_layout.chat ? line * 2 : 0) - ImGui::GetContentRegionAvail().y;
         const float delta = need > 0.5f ? need : s_grown > 0 ? -std::min(s_grown, -need) : 0.0f;
-        if (std::fabs(delta) > 0.5f) {
-            const ImVec2 p = ImGui::GetWindowPos(), sz = ImGui::GetWindowSize();
-            ImGui::SetWindowSize(ImVec2(sz.x, sz.y + delta));
-            ImGui::SetWindowPos(ImVec2(p.x, p.y - delta));
-            s_grown = std::max(0.0f, s_grown + delta);
+        const ImVec2 p = ImGui::GetWindowPos(), sz = ImGui::GetWindowSize();
+        const float newH = std::ceil(sz.y + delta);  // whole pixels (ImGui rounds sizes down; 0.8 px crept it upwards)
+        if (std::fabs(delta) > 0.01f && newH != sz.y) {
+            ImGui::SetWindowSize(ImVec2(sz.x, newH));
+            ImGui::SetWindowPos(ImVec2(p.x, p.y + sz.y - newH));  // only what the size really changed
+            s_grown = std::max(0.0f, s_grown + newH - sz.y);
         }
     }
     if (g_layout.chat) {
