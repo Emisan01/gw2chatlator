@@ -337,6 +337,8 @@ void Config::Load(const std::wstring& dir) {
     h = ini.Int(L"Window", L"Height", 460, 300, 4000);
     opacity = ini.Int(L"Window", L"Opacity", 255, 0, 255);
     fontPercent = ini.Int(L"Window", L"FontPercent", 100, 70, 300);
+    fontPt = ini.Int(L"Window", L"FontPt", 0, 0, 40);
+    if (fontPt == 0) fontPt = std::clamp((11 * fontPercent + 50) / 100, 8, 28);  // from the older percent
     fontFace = ini.Str(L"Window", L"Font", L"Segoe UI");
     followGame = ini.Bool(L"Window", L"FollowGame", true);
     showOnScreenshots = ini.Bool(L"Window", L"Screenshots", false);
@@ -488,6 +490,7 @@ void Config::SaveAll() const {
     SaveBool(L"Chat", L"HideNativeChat", hideNativeChat);
     SaveValue(L"Window", L"Opacity", std::to_wstring(opacity));
     SaveValue(L"Window", L"FontPercent", std::to_wstring(fontPercent));
+    SaveValue(L"Window", L"FontPt", std::to_wstring(fontPt));
     SaveValue(L"Window", L"Font", fontFace);
     SaveBool(L"Window", L"FollowGame", followGame);
     SaveBool(L"Window", L"Screenshots", showOnScreenshots);

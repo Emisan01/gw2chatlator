@@ -3,6 +3,18 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.9.3 — 2026-10-18 (GW2Chatlator for Nexus)
+
+- **Sharp text in pt.** The text size scaled Nexus' font up, which made it blurry. Now it is set in pt (8–28; the old
+  percent is taken over, 100 % = 11 pt) and Nexus builds the font at exactly that size (Segoe UI from Windows: Latin,
+  Greek, Cyrillic, Arabic). While you drag the slider the text is scaled, the sharp font comes when you let go. Without
+  Nexus' font functions or the font file the window scales as before. The self-test stands in for Nexus' font
+  functions and checks the font is built and used.
+- **The input stays at the bottom.** With the chat hidden, everything slid up and left an empty block under it (with
+  the footer hidden too it looked broken). Now the input is the lowest line, the space above stays empty and
+  see-through, and without the chat the window may be as small as the input (it was held at 240 px, below that it even
+  jumped back to 360).
+
 ## 1.9.2 — 2026-10-18 (GW2Chatlator for Nexus)
 
 - **No more hang on "Save".** The options wrote the ini with about 70 single writes on the game thread, each one

@@ -89,7 +89,8 @@ struct Config {
     static constexpr int kAutoPos = -100000;
     int x = kAutoPos, y = kAutoPos, w = 520, h = 460;
     int opacity = 255;
-    int fontPercent = 100;            // chat text: 100 % = 11 pt
+    int fontPercent = 100;            // chat text: 100 % = 11 pt (older ini; FontPt wins)
+    int fontPt = 11;                  // chat text size in pt – the add-on builds the font at this size (sharp)
     std::wstring fontFace = L"Segoe UI";
     bool followGame = true;
     bool showOnScreenshots = false;  // GW2 Keyboard: our windows are not hidden from screenshots ([Window] Screenshots)
