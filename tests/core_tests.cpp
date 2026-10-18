@@ -35,6 +35,7 @@
 #include "core/voice_learn.hpp"
 #include "core/send_guard.hpp"
 #include "core/chat_code.hpp"
+#include "core/contrast.hpp"
 
 using namespace gct;
 
@@ -1808,7 +1809,35 @@ static void TestVoiceLearn() {
     CHECK(q.Size() == VoiceFixes::kMaxPairs && q.Entries().front().first == L"hx10" && q.Words().front() == L"mx509");
 }
 
+// The window's own theme: WCAG contrast, kept readable, shared as a code (pasted text is data).
+static void TestContrast() {
+    CHECK(std::fabs(ContrastRatio(0x000000, 0xFFFFFF) - 21.0) < 0.01);
+    CHECK(std::fabs(ContrastRatio(0x123456, 0x123456) - 1.0) < 1e-9);
+    CHECK(std::fabs(ContrastRatio(0x767676, 0xFFFFFF) - 4.54) < 0.02);  // the classic 4.5:1 grey on white
+    CHECK(ContrastRatio(0xFFFFFF, 0x767676) == ContrastRatio(0x767676, 0xFFFFFF));
+    CHECK(MixRgb(0x000000, 0xFFFFFF, 0.5) == 0x808080);
+    // Already readable: left alone. Too weak: lifted until it is, the change as small as it gets.
+    CHECK(EnsureContrast(0xDDDDDD, {0x111111, 0x2C2C2C}, 4.5) == 0xDDDDDD);
+    const uint32_t lifted = EnsureContrast(0x777777, {0x111111, 0x2C2C2C}, 4.5);
+    CHECK(lifted != 0x777777 && MinContrast(lifted, {0x111111, 0x2C2C2C}) >= 4.5 &&
+          RelativeLuminance(lifted) > RelativeLuminance(0x777777));
+    const uint32_t darkened = EnsureContrast(0x999999, {0xF0F0F0}, 4.5);  // on light fields it goes darker
+    CHECK(MinContrast(darkened, {0xF0F0F0}) >= 4.5 && RelativeLuminance(darkened) < RelativeLuminance(0x999999));
+    const std::vector<uint32_t> theme = {0x111111, 0x2C2C2C, 0x0D2B45, 0x4A73A3, 0x163D5E, 0xDDDDDD, 0x8A8A8A, 0xB8D8F8};
+    const std::string code = MakeThemeCode(theme);
+    CHECK(code == "GW2C1:111111-2C2C2C-0D2B45-4A73A3-163D5E-DDDDDD-8A8A8A-B8D8F8");
+    std::vector<uint32_t> back;
+    CHECK(ParseThemeCode(code, 8, &back) && back == theme);
+    CHECK(ParseThemeCode(" GW2C1:111111-2c2c2c-0d2b45-4a73a3-\n163d5e-dddddd-8a8a8a-b8d8f8 ", 8, &back) && back == theme);
+    CHECK(!ParseThemeCode("GW2C2:111111-2C2C2C-0D2B45-4A73A3-163D5E-DDDDDD-8A8A8A-B8D8F8", 8, &back));  // other prefix
+    CHECK(!ParseThemeCode("GW2C1:111111-2C2C2C-0D2B45-4A73A3-163D5E-DDDDDD-8A8A8A", 8, &back));         // too few
+    CHECK(!ParseThemeCode("GW2C1:11111G-2C2C2C-0D2B45-4A73A3-163D5E-DDDDDD-8A8A8A-B8D8F8", 8, &back));  // not hex
+    CHECK(!ParseThemeCode("GW2C1:111111+2C2C2C-0D2B45-4A73A3-163D5E-DDDDDD-8A8A8A-B8D8F8", 8, &back));  // separator
+    CHECK(!ParseThemeCode("", 8, &back));
+}
+
 int main() {
+    TestContrast();
     TestUtf();
     TestFreeText();
     TestCloudMt();
