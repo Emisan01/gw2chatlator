@@ -3,6 +3,15 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.9.12 — 2026-10-18 (GW2Chatlator for Nexus)
+
+- **"Learn your corrections" stays put:** it docks to our window's top right corner, 1 px above it (below it when the
+  window stands in the top third of the screen) – in every mode. It used to open where the mouse was, jumped and was
+  pushed to the screen edge.
+- **Only with a word you wrote:** a right-click in an empty input does not open it (without the header the right-click
+  opens the menu there).
+- **An X at its top right** closes it.
+
 ## 1.9.11 — 2026-10-18 (GW2Chatlator for Nexus)
 
 - **"Translate the chat once" stands on its own:** what you see of the chat in our window goes into the language you
