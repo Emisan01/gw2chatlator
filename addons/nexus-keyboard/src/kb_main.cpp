@@ -707,7 +707,7 @@ void FreeWorkerState() {
 
 // A chat line into your language, when its language is sure and not yours (nor one you understand) – only while
 // "Translate the chat" is on; `asked` (a click on the line) translates it anyway, whatever its language seems to be.
-void TranslateLine(uint64_t id, std::wstring text, bool asked = false) {
+void TranslateLine(uint64_t id, std::wstring text, bool asked = false, bool once = false) {
     std::shared_ptr<Translator> tr;
     std::wstring target;
     std::vector<std::wstring> understood;
@@ -720,7 +720,7 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked = false) {
         if (!detected.empty())  // what this player writes in (answering them in it)
             for (const ChatLine& l : g_lines)
                 if (l.id == id && !l.speaker.empty()) g_playerLang[CaseFold(Trim(l.speaker))] = detected;
-        if (!g_nx.translateChat && !asked) return;
+        if (!g_nx.translateChat && !asked && !once) return;
         tr = g_translator;
         target = TypingLang();
         understood = g_cfg.understoodLangs;
@@ -752,6 +752,21 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked = false) {
 }
 
 void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring learnText);
+
+// The chat that is already there, into the language you write in (the chat is read in it) – when "Translate the chat"
+// is switched on, when the language you write in changes, or once from the menu. The newest lines of other players
+// (at most 20: each one counts against a free contingent); a translation into another language is redone.
+void TranslateRecentLines(bool once) {  // g_mu held
+    int n = 0;
+    for (auto it = g_lines.rbegin(); it != g_lines.rend() && n < 20; ++it) {
+        if (it->own || it->speaker.empty()) continue;
+        it->translated.clear();
+        it->u8translated.clear();
+        it->transSegs.clear();
+        g_worker.Post([id = it->id, t = it->text, once] { TranslateLine(id, t, false, once); });
+        ++n;
+    }
+}
 
 // The input into the chat's language.
 void TranslateInput(uint64_t gen, std::wstring text) {
@@ -1933,6 +1948,7 @@ void RenderFooter() {  // g_mu held
             });
             ++g_inputGen;
             g_inputChanged = GetTickCount64();
+            if (g_nx.translateChat) TranslateRecentLines(false);  // the chat is read in the language you write in
         }
         ImGui::EndPopup();
     }
@@ -3087,6 +3103,9 @@ void RenderWindow() {
         if (ImGui::MenuItem(UI(Tr(L"Options …")).c_str())) g_showOptions = true;
         if (ImGui::MenuItem(UI(Tr(L"Header")).c_str(), nullptr, &g_layout.header)) SaveLayout();
         if (ImGui::MenuItem(UI(Tr(L"Compact view")).c_str(), nullptr, &g_compact)) g_cfg.SaveBool(L"NexusWindow", L"Compact", g_compact);
+        if (ImGui::MenuItem(UI(Tr(L"Translate the chat once")).c_str())) TranslateRecentLines(true);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", UI(Tr(L"The newest lines of other players into the language you write in – once, whatever \"Translate the chat\" is set to.")).c_str());
         if (ImGui::MenuItem(UI(Tr(L"New whisper tab …")).c_str())) newTabNext = true;
         if (!g_chatEventsPresent && !g_chatEventsFile && ImGui::MenuItem(UI(Tr(L"Install Events: Chat (every channel) …")).c_str()))
             g_showOptions = true;
@@ -3401,8 +3420,9 @@ void RenderWindow() {
     {
         static ULONGLONG s_clicks[3] = {};
         static ImVec2 s_firstAt;
-        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) &&
-            !ImGui::IsMouseHoveringRect(inputMin, inputMax) && !ImGui::IsAnyItemHovered() &&
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
+            ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) &&
+            (!g_layout.chat || (!ImGui::IsMouseHoveringRect(inputMin, inputMax) && !ImGui::IsAnyItemHovered())) &&
             !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId)) {
             const ULONGLONG now = GetTickCount64();
             const float radius = ImGui::GetFontSize() * 2;
@@ -3997,7 +4017,10 @@ void RenderOptionsContent() {
         if (ImGui::BeginTabItem(UI(Tr(L"Translator")).c_str(), nullptr, TabFlag(5))) {
             {
                 std::lock_guard<std::mutex> lock(g_mu);
-                if (ImGui::Checkbox(UI(Tr(L"Translate the chat")).c_str(), &g_nx.translateChat)) SaveNexusOptions();
+                if (ImGui::Checkbox(UI(Tr(L"Translate the chat")).c_str(), &g_nx.translateChat)) {
+                    SaveNexusOptions();
+                    if (g_nx.translateChat) TranslateRecentLines(false);  // what is already there too
+                }
             }
             Hint(UI(Tr(L"Foreign lines of other players into your language. Off: a click on a line translates just that one.")));
             ImGui::Checkbox(UI(Tr(L"Do not translate the language I write in")).c_str(), &edit.skipTypingLang);
@@ -4127,11 +4150,17 @@ void RenderOptionsContent() {
             if (edit.voiceAutoSend == opened.voiceAutoSend) edit.voiceAutoSend = g_cfg.voiceAutoSend;
             if (edit.writeLangs == opened.writeLangs) edit.writeLangs = g_cfg.writeLangs;
             if (edit.voiceModel == opened.voiceModel) edit.voiceModel = g_cfg.voiceModel;
+            const bool engineChanged = edit.engine != g_cfg.engine;
             g_cfg = opened = edit;
             g_cfg.SaveAll();
             SetUiLang(g_cfg.uiLang);
             g_translator = MakeTranslator(g_cfg);
             g_sendIdx = g_cfg.translateWriting ? 0 : static_cast<int>(g_cfg.writeLangs.size());
+            g_sendOverride.clear();
+            g_preview.clear();  // what you have written goes through the translator as it is set now
+            ++g_inputGen;
+            g_inputChanged = GetTickCount64();
+            if (g_nx.translateChat && (typingChanged || engineChanged)) TranslateRecentLines(false);
             SetStatus(Tr(L"Saved"), 3000);
         }
         if (typingChanged) g_worker.Post([] {  // spelling and learned words follow the language you write in

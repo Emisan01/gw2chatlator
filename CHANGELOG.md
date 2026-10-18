@@ -3,6 +3,20 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.9.9 — 2026-10-18 (GW2Chatlator for Nexus)
+
+- **What you set applies at once.** Switching on "Translate the chat" translates the lines that are already there (the
+  newest 20 of other players – each one counts against a free contingent). "Save" in the options sends the text you
+  have written through the translator as it is set now (switching on "Translate my text" showed the old text before).
+  A new language you write in, or a new translator, translates the chat again.
+- **Three languages at once:** the chat is read in the language you write in (as before, now also redone when it
+  changes), what you send goes into the language at "Send" – "Languages I understand" and "Do not translate the
+  language I write in" still apply.
+- **"Translate the chat once"** in the menu: the newest lines into the language you write in, whatever "Translate the
+  chat" is set to.
+- **Three quick clicks minimise the mini mode too** – there the input counts, there is nothing else to click. Checked
+  by the self-test in the input-only, input + word bar and full layouts.
+
 ## 1.9.8 — 2026-10-18 (GW2Chatlator for Nexus)
 
 - **A real mini mode.** Without the chat the window is exactly as high as its parts, with a thin edge – down to
