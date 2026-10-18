@@ -59,17 +59,22 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 - **Tabs** (`WhisperTab`): whisper tabs (session only, ≤5, a click on a name) and tabs of your own (`custom`: right-click
   on the header → "New tab", a copy of the chat; right-click on such a tab = its settings: name, channels shown,
   channel written in; ≤6, kept in `[NexusTabs]` – settings only, never chat). ImGui id per tab = `uid`.
-- **Window:** shown only on a map (MumbleLink `inMap`). Header: tabs (Chat, your own, whisper tabs),
+- **Window:** shown only on a map (MumbleLink `inMap`), never over the open world map (`g_mapOpen`; except
+  `g_showOnMapUntil` while it names a waypoint's spot). Header: tabs (Chat, your own, whisper tabs),
   mic · V/A (fold to the header) · ≡ · ×; every part can be hidden (`g_layout`: header, chat, preview, word bar,
   footer) – without the header a right-click on the window (not a chat line, not the input) opens the menu `kbmenu`
   with the tabs and "Minimise"; the input's learning popup then has "Menu …". Without the footer its "<" minimise
   button stands left of the input. "Info texts" off hides every grey status line (never the prediction's grey word).
-  The window's theme (`Theme`: Nexus / Slate / Grey / Cyan, `ColoursOf`, `PushTheme` for everything we draw) is only
+  The window's theme (`Theme`: Nexus / Slate / Grey, `ColoursOf`, `PushTheme` for everything we draw) is only
   the window – the chat text keeps its channel colours (`kChannelLook`). Compact view never hides the word bar.
   Minimising: the ">" (optional, `minButton`), three quick clicks on the window (not the input), and "Minimise when not
   in use" (`autoMinimize` after `minimizeAfter` s; `g_lastUse` – input, hover, menus, sending, voice, GW2's chat line
   count as use). "Open again when GW2's chat opens" (`autoOpen`) only opens; the focus key always opens; taking over
-  the focus stays `focusOnGameChat`. All of it goes through `g_minimizeRequest` / `g_expandRequest`. Status text is drawn inside the input box (`BoxText`). Compact view = no
+  the focus stays `focusOnGameChat`. All of it goes through `g_minimizeRequest` / `g_expandRequest`.
+  The input grows with its soft-wrapped lines (`g_boxLines`, up to 8) and the window grows upwards when it must
+  (bottom kept, shrinks back). Without the word bar the grey word also shows its highlighted completion (what Tab
+  takes; Space alone still keeps a valid word). The first Tab takes the highlighted word.
+  `GW2KB_SHOT_TYPE=<text>` types into the input before the self-test's picture. Status text is drawn inside the input box (`BoxText`). Compact view = no
   preview / word bar, the translation small in the box. Scroll bar drawn at the left. Snap to the screen edges.
 - **Right-click** only in the input (learning mode): self-corrections noticed while typing (`NoteSelfFix`) →
   `SpellService::TeachFix` (never a dictionary word), and "my words" (meaning → translator). No menu on chat lines.
