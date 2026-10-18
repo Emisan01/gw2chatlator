@@ -48,7 +48,9 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 - **Failsafe:** every callback runs behind try/catch + SEH (`SafeRender`, `SafeOptions`); an error sets `g_disabled`
   for the session, never takes the game down.
 - **Chat in:** Events: Chat (`EV_CHAT:Message`) → `OnChatEvents` → `AddLine` (`UnescapeChatText`, sanitised) →
-  translated on the worker only when `[Nexus] TranslateChat=1` (default 0) or a click on the line asks for it
+  translated on the worker only when `[Nexus] TranslateChat=1` (default 0) or a click on the line asks for it – into
+  the language you write in (the chat is read in it). `TranslateRecentLines` redoes the newest 20 when the translation
+  is switched on, the language you write in or the translator changes, or once from the menu
   (`SureLanguage`, understood languages skipped – Translator tab "Languages I understand", `[Translate] Understood`).
   The detection runs for every line (local, no translator): `g_playerLang` (session only) remembers each player's
   language; their whisper tab then sends in it (`WhisperTab::sendLang` → `g_sendOverride`, "=" = as written; the

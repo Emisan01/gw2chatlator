@@ -432,8 +432,8 @@ int wmain(int argc, wchar_t** argv) {
                     io.MouseDown[0] = false;
                     frames(1);
                 };
-                const bool roomToClick = s2.y > 100;  // nothing but the input (a minimal layout): no place to click
-                const ImVec2 inChat(p2.x + 200, p2.y + 80);
+                // In the mini mode (nothing but the input) the clicks go into the input – there is nothing else.
+                const ImVec2 inChat = s2.y > 100 ? ImVec2(p2.x + 200, p2.y + 80) : ImVec2(p2.x + 200, p2.y + s2.y * 0.5f);
                 click(inChat);
                 click(inChat);
                 frames(1);
@@ -446,7 +446,7 @@ int wmain(int argc, wchar_t** argv) {
                 frames(6);
                 const ImVec2 s4 = size();
                 std::printf("three clicks: two %.0fx%.0f  three %.0fx%.0f  open again %.0fx%.0f\n", s2b.x, s2b.y, s3.x, s3.y, s4.x, s4.y);
-                const bool clicks = !roomToClick || (std::fabs(s2b.y - s2.y) < 2 && s3.y < s2.y && std::fabs(s4.y - s2.y) < 2);
+                const bool clicks = std::fabs(s2b.x - s2.x) < 2 && s3.x < s2.x && std::fabs(s4.x - s2.x) < 2;
                 if (!clicks) std::printf("FAIL: three quick clicks did not minimise the window (or two did)\n");
                 ok = ok && clicks;
                 // Too small for the chat and all parts: it grows upwards once (whole pixels), its bottom stays, then it
