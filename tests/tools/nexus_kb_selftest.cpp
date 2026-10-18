@@ -271,6 +271,17 @@ int wmain(int argc, wchar_t** argv) {
             swscanf_s(hover, L"%f,%f", &hx, &hy);
             ImGui::GetIO().MousePos = ImVec2(hx, hy);
         }
+        wchar_t typed[1024] = {};  // GW2KB_SHOT_TYPE=<text>: typed into the input first (the box, the grey word, …)
+        if (GetEnvironmentVariableW(L"GW2KB_SHOT_TYPE", typed, 1024)) {
+            for (int i = 0; i < 60; ++i) Frame();  // spelling and prediction start on the worker
+            *hooks0()->focus = true;
+            for (int i = 0; i < 3; ++i) Frame();
+            for (const wchar_t* c = typed; *c; ++c) {
+                ImGui::GetIO().AddInputCharacter(*c);
+                Frame();
+                Sleep(5);
+            }
+        }
         for (int i = 0; i < n; ++i) {
             Frame();
             Sleep(20);

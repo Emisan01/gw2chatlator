@@ -113,7 +113,7 @@ TextLook g_look;
 // The window's own theme – only the window itself (frames, tabs, buttons, fields), never the chat text with its
 // channel colours. "Nexus" keeps whatever theme is chosen in Nexus (its "Classic" one is blue / purple); the others
 // look the same on every PC. Pushed for everything we draw: the options, our window, its popups.
-enum class Theme { Nexus, Slate, Grey, Cyan };
+enum class Theme { Nexus, Slate, Grey };
 struct ThemeColours {
     uint32_t text, textDim, bg, child, popup, border, separator;
     uint32_t frame, frameHovered, frameActive;     // input, preview, sliders
@@ -138,17 +138,9 @@ const ThemeColours* ColoursOf(Theme t) {
         Rgb(0x444444, 160), Rgb(0x2C2C2C, 235), Rgb(0x383838), Rgb(0x444444), Rgb(0x2C2C2C, 235),
         Rgb(0x3C3C3C), Rgb(0x4C4C4C), Rgb(0x1E1E1E, 235), Rgb(0x3C3C3C), Rgb(0x444444), Rgb(0xDDDDDD),
         Rgb(0x6B6B6B), Rgb(0xAAAAAA), Rgb(0xFFFFFF, 46)};
-    // Cyan: the grey window – only buttons, tabs, check marks and the window's own text take the cyan palette
-    // (struktur 003D3B, tief 006B68, kern 00C9C0, aufgehellt 5EEAE4, hell B0F5F2); fields and backgrounds stay grey.
-    static const ThemeColours kCyan = {
-        Rgb(0xB0F5F2), Rgb(0x8A8A8A), Rgb(0x111111, 240), Rgb(0x1E1E1E, 140), Rgb(0x161616, 248), Rgb(0x2C2C2C),
-        Rgb(0x444444, 160), Rgb(0x2C2C2C, 235), Rgb(0x383838), Rgb(0x444444), Rgb(0x003D3B, 235),
-        Rgb(0x006B68), Rgb(0x008F8A), Rgb(0x1E1E1E, 235), Rgb(0x006B68), Rgb(0x003D3B), Rgb(0x5EEAE4),
-        Rgb(0x006B68), Rgb(0x00C9C0), Rgb(0x00C9C0, 70)};
     switch (t) {
         case Theme::Slate: return &kSlate;
         case Theme::Grey: return &kGrey;
-        case Theme::Cyan: return &kCyan;
         default: return nullptr;
     }
 }
@@ -176,7 +168,7 @@ int PushTheme() {
     return static_cast<int>(std::size(colours));
 }
 const wchar_t* ThemeKey(Theme t) {
-    return t == Theme::Nexus ? L"nexus" : t == Theme::Grey ? L"grey" : t == Theme::Cyan ? L"cyan" : L"slate";
+    return t == Theme::Nexus ? L"nexus" : t == Theme::Grey ? L"grey" : L"slate";
 }
 
 MyWords g_myWords;  // your own words and what they mean (<data>\my-words.txt), g_mu
@@ -414,6 +406,8 @@ uint64_t g_inputGen = 0;
 std::wstring g_preview;  // the translation of the input
 std::wstring g_back;     // ... and that translated back into your language (small, under it)
 bool g_inMap = false;    // MumbleLink: a map is loaded (not character select, not a loading screen)
+bool g_mapOpen = false;  // MumbleLink: the world map is open – the window steps aside like GW2's own chat
+ULONGLONG g_showOnMapUntil = 0;  // except while it names a waypoint's spot on the map (the emergency way)
 uint64_t g_previewGen = 0;
 bool g_sendPending = false;  // Enter before the translation was there
 std::wstring g_status;
@@ -439,6 +433,7 @@ struct PendingEdit {
     size_t startByte = 0, lenBytes = 0;
     std::string insert;
 } g_edit;
+int g_boxLines = 4;  // the input's lines this frame: your setting, more while a longer text waits to be sent
 int g_pick = -1;  // Tab / Shift+Tab move through the word bar; Space writes the picked word
 
 struct AutoUndo {  // the last autocorrection: Backspace right after it brings the typed word back
@@ -507,7 +502,7 @@ void LoadLayout() {  // g_mu held
         wchar_t theme[16] = {};
         GetPrivateProfileStringW(L"NexusWindow", L"Theme", L"", theme, 16, g_cfg.iniPath.c_str());
         const std::wstring t = theme;
-        g_theme = t == L"nexus" ? Theme::Nexus : t == L"grey" ? Theme::Grey : t == L"cyan" ? Theme::Cyan
+        g_theme = t == L"nexus" ? Theme::Nexus : t == L"grey" ? Theme::Grey  // 1.9.5's "cyan": Slate
                 : t.empty() && get(L"OwnColours", 1) == 0 ? Theme::Nexus : Theme::Slate;
     }
     auto nx = [](const wchar_t* key, int def) { return GetPrivateProfileIntW(L"Nexus", key, def, g_cfg.iniPath.c_str()) != 0; };
@@ -1609,6 +1604,15 @@ std::wstring GhostRest(const std::wstring& text, bool* correction = nullptr) {
     const WordSuggestions& b = g_help.bar;
     if (b.kind == WordSuggestions::Kind::Next && !b.words.empty() && text.back() == L' ')
         return b.phrase.empty() ? b.words[0] : b.phrase;
+    // Without the word bar nothing shows what Tab would take: its highlighted completion becomes the grey word (Tab takes
+    // it, Space writes it then). Space alone still keeps a valid word as typed – no surprises.
+    if (!g_layout.words && b.kind != WordSuggestions::Kind::Next && b.autoIndex >= 0 &&
+        b.autoIndex < static_cast<int>(b.words.size()) && b.replace.end() == text.size() && text.back() != L' ') {
+        const std::wstring& word = b.words[b.autoIndex];
+        const std::wstring typed = text.substr(b.replace.start, b.replace.length);
+        if (!typed.empty() && typed.size() < word.size() && CaseFold(word.substr(0, typed.size())) == CaseFold(typed))
+            return word.substr(typed.size());
+    }
     return {};
 }
 
@@ -1666,7 +1670,9 @@ int InputCallback(ImGuiInputTextCallbackData* d) {
             if (ch == '\n' || ch == '\r') return 1;  // no line breaks of your own: Enter sends
             if (ch == '\t') {  // Tab / Shift+Tab: the next / previous word of the bar (Space writes it)
                 const int n = g_help.text == g_wFlatInput ? static_cast<int>(g_help.bar.words.size()) : 0;
-                if (n > 0) g_pick = ImGui::GetIO().KeyShift ? (g_pick <= 0 ? n - 1 : g_pick - 1) : (g_pick + 1) % n;
+                const int first = g_help.bar.autoIndex >= 0 && g_help.bar.autoIndex < n ? g_help.bar.autoIndex : 0;
+                if (n > 0 && g_pick < 0 && !ImGui::GetIO().KeyShift) g_pick = first;  // what the bar / grey word offered
+                else if (n > 0) g_pick = ImGui::GetIO().KeyShift ? (g_pick <= 0 ? n - 1 : g_pick - 1) : (g_pick + 1) % n;
                 return 1;
             }
             if (ch == ' ') return SpaceWrites() ? 1 : 0;  // the picked / grey word, then the space
@@ -2470,6 +2476,7 @@ void HandleChatLinkClick(const std::string& raw, ULONGLONG receivedTime, const s
         SetStatus(where.empty() ? Tr(L"The map is open – the waypoint code is copied (Ctrl+V)")
                                 : TrF(L"On the map: {1}", {W(where)}),
                   20000);
+        g_showOnMapUntil = GetTickCount64() + 20000;  // the window stays over the map while it names the spot
         return;
     }
     g_minimizeRequest = true;
@@ -2641,6 +2648,7 @@ void RenderWindow() {
             const MumbleState ms = mumble.Read();
             std::lock_guard<std::mutex> lock(g_mu);
             g_inMap = ms.live && ms.inMap;
+            g_mapOpen = ms.live && ms.MapOpen();
             if (ms.live) {
                 g_ownName = ms.identity.name;
                 g_uiSize.store(ms.identity.uiSize);
@@ -2673,7 +2681,7 @@ void RenderWindow() {
     static ImVec2 s_restorePos(-1, -1);
     {
         std::lock_guard<std::mutex> lock(g_mu);
-        inMap = g_inMap || g_test.forceMap;
+        inMap = (g_inMap || g_test.forceMap) && (!g_mapOpen || GetTickCount64() < g_showOnMapUntil);
         if (g_focusInput && g_collapsed) {  // something wants the input: the window opens again
             g_collapsed = false;
             g_restoreH = g_expandedH;
@@ -3108,13 +3116,26 @@ void RenderWindow() {
     const float line = ImGui::GetTextLineHeightWithSpacing();
     const bool showPreview = g_layout.preview && !g_compact, showWords = g_layout.words;
     const float smallLine = ImGui::GetFontSize() * 0.85f + 2;
-    // Compact view adds the small translation line only while something is translated (prediction only: none – the box
-    // keeps exactly the lines you set).
-    const float boxH = ImGui::GetTextLineHeight() * g_layout.inputLines + st.FramePadding.y * 2 +
+    // The input grows with what you write (its soft-wrapped lines) up to 8 lines and falls back once it is sent. A small
+    // extra line at its bottom: the translation in compact view (only while something is translated).
+    const int textLines = 1 + static_cast<int>(std::count(g_input, g_input + std::strlen(g_input), '\n'));
+    g_boxLines = std::clamp(textLines, g_layout.inputLines, std::max(8, g_layout.inputLines));
+    const float boxH = ImGui::GetTextLineHeight() * g_boxLines + st.FramePadding.y * 2 +
                        (g_compact && Translating() ? smallLine : 0);
     const float lowerH = (showPreview ? line * (g_layout.previewLines + 0.2f) + st.ItemSpacing.y : 0) +
                          (showWords ? ImGui::GetFrameHeightWithSpacing() : 0) +
                          (g_layout.footer ? ImGui::GetFrameHeightWithSpacing() : 0) + boxH + st.ItemSpacing.y;
+    {  // the input grew past the window: the window grows upwards (its bottom stays) and shrinks back afterwards
+        static float s_grown = 0;
+        const float need = lowerH + (g_layout.chat ? line * 2 : 0) - ImGui::GetContentRegionAvail().y;
+        const float delta = need > 0.5f ? need : s_grown > 0 ? -std::min(s_grown, -need) : 0.0f;
+        if (std::fabs(delta) > 0.5f) {
+            const ImVec2 p = ImGui::GetWindowPos(), sz = ImGui::GetWindowSize();
+            ImGui::SetWindowSize(ImVec2(sz.x, sz.y + delta));
+            ImGui::SetWindowPos(ImVec2(p.x, p.y - delta));
+            s_grown = std::max(0.0f, s_grown + delta);
+        }
+    }
     if (g_layout.chat) {
         static float scrollY = 0, scrollMax = 0, viewH = 1, dragOffset = 0, lastScrollMax = 0;
         static bool atBottom = true;
@@ -3475,7 +3496,7 @@ void RenderWindow() {
         const char* lastLine = std::strrchr(g_input, '\n');
         const int lineNo = static_cast<int>(std::count(g_input, g_input + inLen, '\n'));
         const ImVec2 typed = ImGui::CalcTextSize(lastLine ? lastLine + 1 : g_input);
-        if (lineNo < g_layout.inputLines)
+        if (lineNo < g_boxLines)
             BoxText(ImVec2(textAt.x + typed.x, textAt.y + lineNo * ImGui::GetTextLineHeight()), clip,
                     ImGui::GetColorU32(ImGuiCol_TextDisabled), UI(rest));
     }
@@ -3619,11 +3640,11 @@ void RenderOptionsContent() {
         if (ImGui::BeginTabItem(UI(Tr(L"Window")).c_str(), nullptr, TabFlag(1))) {
             {
                 std::lock_guard<std::mutex> lock(g_mu);
-                const std::wstring names[] = {Tr(L"Nexus (its own theme)"), Tr(L"Slate"), Tr(L"Grey"), Tr(L"Cyan")};
+                const std::wstring names[] = {Tr(L"Nexus (its own theme)"), Tr(L"Slate"), Tr(L"Grey")};
                 int ti = static_cast<int>(g_theme);
                 ImGui::SetNextItemWidth(wide);
                 if (ImGui::BeginCombo(UI(Tr(L"Theme of the window") + L"##theme").c_str(), UI(names[ti]).c_str())) {
-                    for (int i = 0; i < 4; ++i)
+                    for (int i = 0; i < 3; ++i)
                         if (ImGui::Selectable(UI(names[i]).c_str(), i == ti)) {
                             g_theme = static_cast<Theme>(i);
                             SaveLayout();
@@ -3671,6 +3692,14 @@ void RenderOptionsContent() {
                 if (ImGui::IsItemHovered())
                     ImGui::SetTooltip("%s", UI(Tr(L"The small > in the footer (without the footer: left of the input). Hidden: three quick clicks on the window minimise it, or the header, or the right-click menu.")).c_str());
                 changed |= ImGui::Checkbox(UI(Tr(L"Info texts")).c_str(), &g_layout.infoText);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("%s", UI(Tr(L"The grey status lines: what is going on, the modules, the counter. The grey word of the prediction stays.")).c_str());
+                ImGui::SetNextItemWidth(wide);
+                changed |= ImGui::SliderInt(UI(Tr(L"Lines of the input") + L"##inl").c_str(), &g_layout.inputLines, 1, 8);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("%s", UI(Tr(L"Longer text makes the input grow (up to 8 lines) until it is sent.")).c_str());
+                ImGui::SetNextItemWidth(wide);
+                changed |= ImGui::SliderInt(UI(Tr(L"Lines of the preview") + L"##prl").c_str(), &g_layout.previewLines, 1, 8);
                 ImGui::Separator();
                 ImGui::TextUnformatted(UI(Tr(L"When not in use")).c_str());
                 changed |= ImGui::Checkbox(UI(Tr(L"Minimize after") + L"##automin").c_str(), &g_layout.autoMinimize);
@@ -3682,12 +3711,6 @@ void RenderOptionsContent() {
                 changed |= ImGui::Checkbox(UI(Tr(L"Open again when GW2's chat opens (Enter)")).c_str(), &g_layout.autoOpen);
                 if (ImGui::IsItemHovered())
                     ImGui::SetTooltip("%s", UI(Tr(L"Only opens it. The focus key (Nexus > Keybinds) always opens it; taking over the focus is its own setting (Writing).")).c_str());
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("%s", UI(Tr(L"The grey status lines: what is going on, the modules, the counter. The grey word of the prediction stays.")).c_str());
-                ImGui::SetNextItemWidth(wide);
-                changed |= ImGui::SliderInt(UI(Tr(L"Lines of the input") + L"##inl").c_str(), &g_layout.inputLines, 1, 8);
-                ImGui::SetNextItemWidth(wide);
-                changed |= ImGui::SliderInt(UI(Tr(L"Lines of the preview") + L"##prl").c_str(), &g_layout.previewLines, 1, 8);
                 if (changed) SaveLayout();
             }
             ImGui::Separator();

@@ -3,6 +3,20 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.9.7 — 2026-10-18 (GW2Chatlator for Nexus)
+
+- **The prediction without the word bar.** The prediction never depended on the bar (Tab and Space wrote the
+  suggestion either way – the self-test shows the same with and without it), but without it you could not see what
+  Tab takes. Now the grey word finishes the word with it (Tab takes it, then Space writes it); Space alone still keeps a
+  valid word as you typed it. The first Tab takes the highlighted word (the bar's orange one), not always the first.
+- **The input grows with your text:** past the lines you set it grows up to 8 lines and falls back once the text is
+  sent; when the window is too small it grows upwards (its bottom stays) and shrinks back afterwards.
+- **The window steps aside on the world map** like GW2's own chat (it already did at character select and on loading
+  screens) – except while it names a waypoint's spot on the map (the emergency way for older waypoints).
+- **The Cyan theme is gone** (it becomes Slate).
+- Options: the "Info texts" tooltip sat on "Open again …", the line sliders stood under "When not in use".
+- The self-test can type into the input before its picture (`GW2KB_SHOT_TYPE`).
+
 ## 1.9.6 — 2026-10-18 (GW2Chatlator for Nexus)
 
 - **Minimise when not in use** (Window → When not in use, off by default): nobody writes, points at the window, talks
