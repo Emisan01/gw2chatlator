@@ -6,6 +6,9 @@
 #include <algorithm>
 #include <cwchar>
 #include <iterator>
+#include <map>
+#include <mutex>
+#include <tuple>
 
 #include "core/text.hpp"
 #include "win/files.hpp"
@@ -332,7 +335,7 @@ void Config::Load(const std::wstring& dir) {
     y = ini.Int(L"Window", L"Y", kAutoPos, kAutoPos, 32000);
     w = ini.Int(L"Window", L"Width", 520, 380, 4000);
     h = ini.Int(L"Window", L"Height", 460, 300, 4000);
-    opacity = ini.Int(L"Window", L"Opacity", 255, 60, 255);
+    opacity = ini.Int(L"Window", L"Opacity", 255, 0, 255);
     fontPercent = ini.Int(L"Window", L"FontPercent", 100, 70, 300);
     fontFace = ini.Str(L"Window", L"Font", L"Segoe UI");
     followGame = ini.Bool(L"Window", L"FollowGame", true);
@@ -353,8 +356,45 @@ void Config::Load(const std::wstring& dir) {
     dockSet = dockWidth >= 100 && dockHeight >= 100;
 }
 
+namespace {
+std::mutex g_writeMu;
+bool g_deferWrites = false;
+std::map<std::tuple<std::wstring, std::wstring, std::wstring>, std::wstring> g_pendingWrites;  // file, section, key
+}  // namespace
+
 void Config::SaveValue(const wchar_t* section, const wchar_t* key, const std::wstring& value) const {
+    {
+        std::lock_guard<std::mutex> lock(g_writeMu);
+        if (g_deferWrites) {
+            g_pendingWrites[std::make_tuple(iniPath, std::wstring(section), std::wstring(key))] = value;
+            return;
+        }
+    }
     WritePrivateProfileStringW(section, key, value.c_str(), iniPath.c_str());
+}
+
+void Config::DeferWrites(bool on) {
+    {
+        std::lock_guard<std::mutex> lock(g_writeMu);
+        g_deferWrites = on;
+    }
+    if (!on) FlushWrites();
+}
+
+bool Config::WritesPending() {
+    std::lock_guard<std::mutex> lock(g_writeMu);
+    return !g_pendingWrites.empty();
+}
+
+void Config::FlushWrites() {
+    std::map<std::tuple<std::wstring, std::wstring, std::wstring>, std::wstring> writes;
+    {
+        std::lock_guard<std::mutex> lock(g_writeMu);
+        writes.swap(g_pendingWrites);
+    }
+    for (const auto& w : writes)
+        WritePrivateProfileStringW(std::get<1>(w.first).c_str(), std::get<2>(w.first).c_str(), w.second.c_str(),
+                                   std::get<0>(w.first).c_str());
 }
 
 void Config::SaveWindowRect(HWND wnd, float scale) const {

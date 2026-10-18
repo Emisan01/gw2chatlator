@@ -142,6 +142,11 @@ struct Config {
     void SaveAll() const;
     void SaveValue(const wchar_t* section, const wchar_t* key, const std::wstring& value) const;
     void SaveBool(const wchar_t* section, const wchar_t* key, bool v) const { SaveValue(section, key, v ? L"1" : L"0"); }
+    // Each WritePrivateProfileString rewrites the whole file (~15 ms, more with a virus scanner) – the game hung on the
+    // game thread. Deferred (the add-on), writes wait in memory, the newest per key, until FlushWrites (any thread).
+    static void DeferWrites(bool on);
+    static bool WritesPending();
+    static void FlushWrites();
 
     std::wstring UserWordsPath() const;  // your own GW2 words (never marked as errors)
     std::wstring LearnedDir() const { return dataDir + L"\\learned"; }

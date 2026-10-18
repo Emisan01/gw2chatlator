@@ -3,6 +3,22 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.9.2 — 2026-10-18 (GW2Chatlator for Nexus)
+
+- **No more hang on "Save".** The options wrote the ini with about 70 single writes on the game thread, each one
+  rewriting the whole file – the game froze for about a second (a dragged slider wrote every frame). Settings now wait
+  in memory and the background thread writes them, at most every half second; the rest when the add-on unloads. The
+  voice helper reloads only after they are written.
+- **"Save" kept what you changed elsewhere.** With the options open, switching "auto" in the footer, adding a language
+  or an automatic switch to a smaller voice model was turned back by "Save". Now the newer value stays.
+- **Every slider acts at once:** text size and transparency no longer wait for "Save". Brightness above 100 % lightens
+  towards white (the light GW2 tints were cut off before, so it seemed to do nothing). Brightness also reaches the
+  preview and the input, the dark outline the preview.
+- **See-through up to 100 %:** the chat field fades with the window's transparency; "Background behind the chat" off
+  leaves only the text over the game. The small minimised button stays visible. "Glow like GW2's chat" is now called
+  "Dark outline (readable when see-through)".
+- **The preview has the same light field as the input**, so the two read as one.
+
 ## 1.9.1 — 2026-10-18 (GW2Chatlator for Nexus)
 
 - **The window no longer creeps up.** Minimising measured the small button differently (text size, ImGui's minimum
