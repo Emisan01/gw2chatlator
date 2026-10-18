@@ -352,6 +352,8 @@ int wmain(int argc, wchar_t** argv) {
                     ImGuiWindow* w = ImGui::FindWindowByName("GW2Chatlator###kbmain");
                     return w ? w->Size : ImVec2(-1, -1);
                 };
+                ImGui::SetWindowPos("GW2Chatlator###kbmain", ImVec2(0, 1080 - 28 - 360));  // right at the edge
+                frames(5);
                 const ImVec2 p0 = pos(), s0 = size();
                 waypoint(0);
                 frames(6);

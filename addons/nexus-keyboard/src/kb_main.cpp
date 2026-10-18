@@ -1626,6 +1626,14 @@ float g_headerH = 0, g_lastW = 520, g_expandedH = 360, g_restoreH = 0;
 // The bottom edge the window had when it was minimised: the small button sits exactly on it (its size depends on the
 // text size and ImGui's minimum window size – computing it twice made the window creep up a little every time).
 float g_anchorBottom = -1.0f;
+ImVec2 g_savedPos(-1, -1);   // where the window stood when it was minimised
+bool g_buttonMoved = false;  // ... and whether you dragged the small button since (then it opens from there)
+ImVec2 g_buttonBottomLeft(-1, -1);  // the small button's bottom-left corner (where a moved button opens from)
+ImVec2 RestorePos() {  // where the window opens again
+    if (!g_buttonMoved && g_savedPos.x >= 0) return g_savedPos;
+    if (g_buttonBottomLeft.x >= 0) return ImVec2(g_buttonBottomLeft.x, g_buttonBottomLeft.y - g_expandedH);
+    return ImVec2(-1, -1);
+}
 
 void MinimizeWindow() {  // g_mu held or main thread
     g_collapsed = true;
@@ -1633,6 +1641,8 @@ void MinimizeWindow() {  // g_mu held or main thread
     g_lastW = s.x;
     g_expandedH = s.y;
     g_anchorBottom = p.y + s.y;  // the small button takes its place on the next frame
+    g_savedPos = p;
+    g_buttonMoved = false;
 }
 
 // The footer chips: channel | "Write: German" | "Send: English (UK) · MyMemory" (orange) | auto | counter.
@@ -2478,7 +2488,7 @@ void RenderWindow() {
     RenderOptionsWindow();
     bool inMap;
     static bool s_uncollapseRestore = false;
-    static float s_targetBottomY = -1.0f;
+    static ImVec2 s_restorePos(-1, -1);
     {
         std::lock_guard<std::mutex> lock(g_mu);
         inMap = g_inMap || g_test.forceMap;
@@ -2486,6 +2496,7 @@ void RenderWindow() {
             g_collapsed = false;
             g_restoreH = g_expandedH;
             s_uncollapseRestore = true;
+            s_restorePos = RestorePos();
         }
     }
     if (!g_show || !inMap) return;
@@ -2510,18 +2521,29 @@ void RenderWindow() {
             const float resScale = std::max(1.0f, io.DisplaySize.y / 1080.0f);
             const float maxBottom = std::max(minBtn, io.DisplaySize.y - Gw2BottomBarOffset(io.DisplaySize.y, g_uiSize.load()));
             const ImVec2 pos = ImGui::GetWindowPos(), size = ImGui::GetWindowSize();
-            if (g_nx.snap && !ImGui::IsMouseDown(0)) {
-                const float t = 14.0f * resScale;
-                ImVec2 p = pos;
-                const float uiScale = (g_uiSize.load() == 0 ? 0.89f : g_uiSize.load() == 2 ? 1.11f : g_uiSize.load() == 3 ? 1.25f : 1.0f);
-                const float nativeChatLeft = std::round(10.0f * uiScale * resScale);
-                if (std::abs(p.x - nativeChatLeft) < t) p.x = nativeChatLeft;
-                else if (p.x < t) p.x = 0.0f;
-                else if (p.x + size.x > io.DisplaySize.x - t) p.x = io.DisplaySize.x - size.x;
-
-                if (p.y < t) p.y = 0.0f;
-                else if (p.y + size.y > maxBottom - t) p.y = maxBottom - size.y;
-                if (p.x != pos.x || p.y != pos.y) ImGui::SetWindowPos(p);
+            g_buttonBottomLeft = ImVec2(pos.x, pos.y + size.y);
+            static bool s_btnDrag = false;
+            static ImVec2 s_btnStart;
+            if (ImGui::IsMouseClicked(0) && ImGui::IsWindowHovered()) {
+                s_btnDrag = true;
+                s_btnStart = pos;
+            } else if (s_btnDrag && !ImGui::IsMouseDown(0)) {
+                s_btnDrag = false;
+                if (pos.x != s_btnStart.x || pos.y != s_btnStart.y) {  // you moved it: it opens from here, snapped
+                    g_buttonMoved = true;
+                    if (g_nx.snap) {
+                        const float t = 14.0f * resScale;
+                        ImVec2 p = pos;
+                        const float uiScale = (g_uiSize.load() == 0 ? 0.89f : g_uiSize.load() == 2 ? 1.11f : g_uiSize.load() == 3 ? 1.25f : 1.0f);
+                        const float nativeChatLeft = std::round(10.0f * uiScale * resScale);
+                        if (std::abs(p.x - nativeChatLeft) < t) p.x = nativeChatLeft;
+                        else if (p.x < t) p.x = 0.0f;
+                        else if (p.x + size.x > io.DisplaySize.x - t) p.x = io.DisplaySize.x - size.x;
+                        if (p.y < t) p.y = 0.0f;
+                        else if (p.y + size.y > maxBottom - t) p.y = maxBottom - size.y;
+                        if (p.x != pos.x || p.y != pos.y) ImGui::SetWindowPos(p);
+                    }
+                }
             }
             // Always prevent being pushed below the bottom bar or off-screen
             {
@@ -2543,8 +2565,9 @@ void RenderWindow() {
                 s_uncollapseRestore = true;
                 g_suppressChatFocusUntil = 0;
                 const ImVec2 p = ImGui::GetWindowPos(), s = ImGui::GetWindowSize();
-                s_targetBottomY = p.y + s.y;
-                ImGui::SetWindowPos(ImVec2(p.x, s_targetBottomY - g_expandedH));
+                g_buttonBottomLeft = ImVec2(p.x, p.y + s.y);
+                s_restorePos = RestorePos();
+                ImGui::SetWindowPos(s_restorePos);
                 ImGui::SetWindowSize(ImVec2(g_lastW, g_expandedH));
                 if (clickedOpen) g_focusInput = true;
             }
@@ -2574,13 +2597,12 @@ void RenderWindow() {
         ImGui::End();
         return;
     }
-    if (s_uncollapseRestore) {
+    if (s_uncollapseRestore) {  // opened again: exactly where it stood (or above the moved button)
         s_uncollapseRestore = false;
-        if (s_targetBottomY > 0.0f) {
-            const ImVec2 p = ImGui::GetWindowPos();
-            ImGui::SetWindowPos(ImVec2(p.x, s_targetBottomY - g_expandedH));
+        if (s_restorePos.x >= 0) {
+            ImGui::SetWindowPos(s_restorePos);
             ImGui::SetWindowSize(ImVec2(g_lastW, g_expandedH));
-            s_targetBottomY = -1.0f;
+            s_restorePos = ImVec2(-1, -1);
         }
     }
     if (g_minimizeRequest) {  // asked from inside the chat area (a waypoint click): done on the main window
@@ -2830,6 +2852,8 @@ void RenderWindow() {
         g_lastW = s.x;
         g_expandedH = s.y;
         g_anchorBottom = p.y + s.y;  // the small button takes its place on the next frame
+        g_savedPos = p;
+        g_buttonMoved = false;
     }
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Minimize chat")).c_str());
     ImGui::SameLine(0, gap);

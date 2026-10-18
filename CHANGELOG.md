@@ -8,7 +8,9 @@ diagnosis show it.
 - **The window no longer creeps up.** Minimising measured the small button differently (text size, ImGui's minimum
   window size) than the minimised window itself, so every minimise / open moved the window – upwards with larger
   text. A click on a chat code even minimised the chat area instead of the window. Now the button sits exactly on the
-  window's bottom edge and the window comes back to the same place (checked by the self-test).
+  window's bottom edge and the window comes back to exactly the same place – also at the screen edge, where the small
+  button used to snap onto the native chat icon every frame and pull the window away from the edge (it snaps only when
+  you drag it now). Checked by the self-test.
 - **Web links like Discord:** blue and clickable; a click asks "This link goes to … – open it?". No background check
   (no Cloudflare lookups), no warning labels, no link filter option.
 - **Waypoints for squads:** a click on a waypoint moves the window out of the way so you click it in GW2's own chat (the
