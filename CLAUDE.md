@@ -64,7 +64,9 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 - **Window:** shown only on a map (MumbleLink `inMap`), never over the open world map (`g_mapOpen`; except
   `g_showOnMapUntil` while it names a waypoint's spot). Header: tabs (Chat, your own, whisper tabs),
   mic · V/A (fold to the header) · ≡ · ×; every part can be hidden (`g_layout`: header, chat, preview, word bar,
-  footer) – without the header a right-click on the window (not a chat line, not the input) opens the menu `kbmenu`
+  footer) – read them through `Lay()`: the menu's views "Mini mode" (`g_mini`, nothing but a one-line input) and
+  "Compact view" (`g_compact`: no word bar, no preview) sit over your settings and never change them.
+  Without the header a right-click on the window (not a chat line, not the input) opens the menu `kbmenu`
   with the tabs and "Minimise"; the input's learning popup then has "Menu …". Without the footer its "<" minimise
   button stands left of the input. "Info texts" off hides every grey status line (never the prediction's grey word).
   The window's theme (`Theme`: Nexus / Slate / Grey, `ColoursOf`, `PushTheme` for everything we draw) is only
