@@ -460,6 +460,23 @@ void RenderWindow() {
         return;
     }
     if (g_expandRequest) g_expandRequest = false;  // already open
+    {  // Fitted (no chat: the mini mode) and back: the window keeps its place. Entering, it remembers its size; leaving,
+       // it gets that size back with its bottom edge where the small window stood – ImGui's minimum height for the chat
+       // used to grow it downwards first, and on, off, on … it crawled down the screen.
+        static bool s_fitted = false;
+        static float s_beforeH = 0, s_lastBottom = -1;
+        const ImVec2 wp = ImGui::GetWindowPos(), ws = ImGui::GetWindowSize();
+        const bool fitted = !Lay().chat;
+        if (fitted && !s_fitted) {
+            s_beforeH = ws.y;
+        } else if (!fitted && s_fitted && s_beforeH > 0 && s_lastBottom > 0) {
+            const float h = std::max(s_beforeH, 240.0f);
+            ImGui::SetWindowSize(ImVec2(ws.x, h));
+            ImGui::SetWindowPos(ImVec2(wp.x, std::max(0.0f, s_lastBottom - h)));
+        }
+        s_fitted = fitted;
+        s_lastBottom = ImGui::GetWindowPos().y + ImGui::GetWindowSize().y;  // where its bottom stands, for the next frame
+    }
     struct PopFontAtEnd {
         bool on = false;
         ~PopFontAtEnd() { if (on) ImGui::PopFont(); }
