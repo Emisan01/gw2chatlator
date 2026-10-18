@@ -3,6 +3,19 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.0.1 — 2026-10-18 (GW2Chatlator for Nexus)
+
+- **Nothing downloads by itself.** The first start used to load Events: Chat, the voice module (a helper program and
+  the speech engine) and a voice model on its own. Now the modules list – in the empty chat and under Options →
+  General → Modules – offers each with a button: Events: Chat first (it reads the chat; the typing help works without
+  it), the voice module only after you switch voice input on (it explains what it downloads: about 6 MB from this
+  release on GitHub, SHA-256 checked, its own process outside the game), and the voice model after that. Voice input
+  is off for new players; whoever already has the voice module keeps it on.
+- **Sending hardened:** the add-on's test functions work only outside GW2, so no other add-on can reach our input
+  through them; one Enter sends at most 3 chat lines (a longer text stays in the input – a translation that comes out
+  longer is refused as well, Up brings it back). There is no other way to send than your Enter.
+- The microphone without the voice module says where to load it.
+
 ## 2.0.0 — 2026-10-18 (GW2Chatlator for Nexus)
 
 The big one: rebuilt inside, and everything of the 1.9 line in one – a window made of building blocks with two
