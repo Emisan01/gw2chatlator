@@ -3,6 +3,17 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.9.13 — 2026-10-18 (GW2Chatlator for Nexus)
+
+- **Mini mode without dead ends.** A right-click on a word you wrote opens the learning mode for exactly that word; a
+  right-click anywhere else (between words, an empty input) opens the menu – so the mini mode can always be left
+  again. Held down for a quarter second and dragged, the whole window moves (a quick drag still selects text). Its top
+  or bottom edge sets the lines of the input in whole steps – "Lines of the input" in the options follows at once; the
+  mini mode uses your number of lines now (it was always one). Checked by the self-test (hold and drag).
+- **Long words break in the line too:** a code or a link longer than the line used to run out of the box; it is broken
+  inside the word now (an invisible mark that is not sent – the self-test checks a broken code arrives whole), the
+  caret keeps its place, Backspace at the start of such a line takes the last letter above.
+
 ## 1.9.12 — 2026-10-18 (GW2Chatlator for Nexus)
 
 - **"Learn your corrections" stays put:** it docks to our window's top right corner, 1 px above it (below it when the

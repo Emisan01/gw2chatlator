@@ -22,6 +22,7 @@
 #include <cmath>
 #include <map>
 #include <atomic>
+#include <cwctype>
 #include <condition_variable>
 #include <cstring>
 #include <deque>
@@ -437,11 +438,34 @@ std::atomic<uint32_t> g_mapId{0};     // current map ID (MumbleLink)
 // The input line.
 char g_input[1024] = {};
 float g_wrapWidth = 0;  // the input's text width: soft line breaks ('\n' in place of a space) keep words whole
-std::string Flat(const char* s) {  // the input as it is meant: one line
-    std::string f = s;
-    for (char& c : f)
-        if (c == '\n' || c == '\r') c = ' ';
+// The input as it is meant: one line. A soft break at a space is '\n' (it stands for the space); a word longer than
+// the line (a code, a link) is broken by "\r\n" (it stands for nothing). '\r' never comes from you – the filter drops it.
+std::string Flat(const char* s) {
+    std::string f;
+    for (const char* p = s; *p; ++p) {
+        if (*p == '\r') {
+            if (p[1] == '\n') ++p;  // a break inside a word: nothing
+            continue;
+        }
+        f += *p == '\n' ? ' ' : *p;
+    }
     return f;
+}
+std::wstring g_teachWord;  // the word a right-click hit (the learning window starts with it)
+
+// Where byte `flatByte` of Flat(raw) stands in `raw` (the input with its soft breaks).
+size_t RawOffset(const char* raw, size_t rawLen, size_t flatByte) {
+    size_t flat = 0, i = 0;
+    while (i < rawLen && flat < flatByte) {
+        if (raw[i] == '\r') {
+            i += (i + 1 < rawLen && raw[i + 1] == '\n') ? 2 : 1;
+            continue;
+        }
+        ++flat;
+        ++i;
+    }
+    while (i < rawLen && raw[i] == '\r') i += (i + 1 < rawLen && raw[i + 1] == '\n') ? 2 : 1;  // after a word break
+    return i;
 }
 std::string g_flatInput;
 std::wstring g_wFlatInput;
@@ -1758,35 +1782,65 @@ int InputCallback(ImGuiInputTextCallbackData* d) {
         case ImGuiInputTextFlags_CallbackAlways: {
             if (g_edit.active) {  // a word of the bar or an autocorrection
                 g_edit.active = false;
-                if (g_edit.startByte + g_edit.lenBytes <= static_cast<size_t>(d->BufTextLen)) {
-                    d->DeleteChars(static_cast<int>(g_edit.startByte), static_cast<int>(g_edit.lenBytes));
-                    d->InsertChars(static_cast<int>(g_edit.startByte), g_edit.insert.c_str());
+                const size_t len = static_cast<size_t>(d->BufTextLen);
+                const size_t from = RawOffset(d->Buf, len, g_edit.startByte);  // flat offsets -> the box's own
+                const size_t to = std::max(from, RawOffset(d->Buf, len, g_edit.startByte + g_edit.lenBytes));
+                if (from <= len) {
+                    d->DeleteChars(static_cast<int>(from), static_cast<int>(to - from));
+                    d->InsertChars(static_cast<int>(from), g_edit.insert.c_str());
                     d->CursorPos = d->SelectionStart = d->SelectionEnd = d->BufTextLen;
                 }
                 break;
             }
-            // Soft line breaks: the text is broken at spaces to the box's width (only when it changed).
+            // Soft line breaks: the text is broken to the box's width (only when it changed) – at the last space of a line,
+            // or inside a word that is longer than the line (a code, a link). The caret keeps its place in the text.
             if (g_wrapWidth > 0) {
                 static std::string lastSeen;
-                const std::string raw(d->Buf, d->BufTextLen);
+                std::string raw(d->Buf, d->BufTextLen);
+                int cursor = d->CursorPos;
+                for (size_t i = 0; i < raw.size(); ++i)  // Backspace took the line end of a broken word: the letter before
+                    if (raw[i] == '\r' && (i + 1 >= raw.size() || raw[i + 1] != '\n')) {
+                        size_t start = i;
+                        while (start > 0 && (static_cast<unsigned char>(raw[start - 1]) & 0xC0) == 0x80) --start;
+                        if (start > 0) --start;  // the first byte of the letter before
+                        raw.erase(start, i + 1 - start);
+                        cursor = static_cast<int>(start);
+                        break;
+                    }
                 if (raw != lastSeen) {
-                    std::string wrapped = Flat(raw.c_str());
+                    const std::string flat = Flat(raw.c_str());
+                    const size_t flatCursor = Flat(raw.substr(0, std::min<size_t>(cursor, raw.size())).c_str()).size();
+                    std::string out;
                     size_t lineStart = 0, lastSpace = std::string::npos;
-                    for (size_t i = 0; i < wrapped.size(); ++i) {
-                        if (wrapped[i] == ' ') lastSpace = i;
-                        if ((static_cast<unsigned char>(wrapped[i]) & 0xC0) == 0x80) continue;  // inside a character
-                        if (lastSpace != std::string::npos && lastSpace >= lineStart &&
-                            ImGui::CalcTextSize(wrapped.data() + lineStart, wrapped.data() + i + 1).x > g_wrapWidth) {
-                            wrapped[lastSpace] = '\n';
+                    for (size_t i = 0; i < flat.size();) {
+                        size_t n = 1;  // one character (UTF-8)
+                        while (i + n < flat.size() && (static_cast<unsigned char>(flat[i + n]) & 0xC0) == 0x80) ++n;
+                        if (flat[i] == ' ') lastSpace = out.size();
+                        out.append(flat, i, n);
+                        i += n;
+                        if (ImGui::CalcTextSize(out.data() + lineStart, out.data() + out.size()).x <= g_wrapWidth) continue;
+                        if (lastSpace != std::string::npos && lastSpace >= lineStart) {
+                            out[lastSpace] = '\n';
                             lineStart = lastSpace + 1;
                             lastSpace = std::string::npos;
+                        } else if (out.size() - n > lineStart) {  // no space in this line: break before this letter
+                            out.insert(out.size() - n, "\r\n");
+                            lineStart = out.size() - n;
                         }
                     }
-                    if (wrapped != raw) {
-                        std::memcpy(d->Buf, wrapped.data(), wrapped.size());
-                        d->BufDirty = true;
+                    if (out != std::string(d->Buf, d->BufTextLen)) {
+                        size_t at = 0, seen = 0;  // the caret: the same place in the text
+                        while (at < out.size() && seen < flatCursor) {
+                            if (out[at] == '\r') { at += 2; continue; }
+                            ++seen;
+                            ++at;
+                        }
+                        if (at + 1 < out.size() && out[at] == '\r') at += 2;
+                        d->DeleteChars(0, d->BufTextLen);
+                        d->InsertChars(0, out.c_str());
+                        d->CursorPos = d->SelectionStart = d->SelectionEnd = static_cast<int>(std::min(at, out.size()));
                     }
-                    lastSeen = wrapped;
+                    lastSeen = out;
                 }
             }
             const std::string now = Flat(std::string(d->Buf, d->BufTextLen).c_str());
@@ -2654,7 +2708,6 @@ Layout Lay() {
     Layout l = g_layout;
     if (g_mini) {
         l.header = l.chat = l.preview = l.words = l.footer = l.minButton = false;
-        l.inputLines = 1;  // one line that grows with what you write
     } else if (g_compact) {
         l.words = false;
         l.preview = false;
@@ -2703,6 +2756,41 @@ static void SafeOpenUrl(const std::wstring& rawLink) {
 void BoxText(const ImVec2& at, const ImVec4& clip, ImU32 color, const std::string& text, float scale = 1.0f) {
     ImGui::GetForegroundDrawList()->AddText(ImGui::GetFont(), ImGui::GetFontSize() * scale, at, color, text.c_str(), nullptr,
                                             0, &clip);
+}
+
+// The word under the mouse in the input ("" when the mouse is not over a word): the line by its height, the letter by
+// width, then the word around it in the text as it is meant (Flat).
+std::wstring WordAtMouse(const ImVec2& textAt) {  // g_mu held
+    const ImVec2 m = ImGui::GetIO().MousePos;
+    const float lh = ImGui::GetTextLineHeight();
+    if (m.y < textAt.y || m.x < textAt.x || !g_input[0]) return {};
+    const char* p = g_input;
+    for (int k = static_cast<int>((m.y - textAt.y) / lh); k > 0 && p; --k) {
+        p = std::strchr(p, '\n');
+        if (p) ++p;
+    }
+    if (!p || !*p) return {};
+    const char* end = std::strchr(p, '\n');
+    if (!end) end = p + std::strlen(p);
+    const char* hit = nullptr;
+    for (const char* q = p; q < end;) {
+        const char* next = q + 1;
+        while (next < end && (static_cast<unsigned char>(*next) & 0xC0) == 0x80) ++next;
+        if (m.x < textAt.x + ImGui::CalcTextSize(p, next).x) {
+            hit = q;
+            break;
+        }
+        q = next;
+    }
+    if (!hit || *hit == ' ' || *hit == '\r') return {};
+    const std::wstring& flat = g_wFlatInput;
+    const size_t at = W(Flat(std::string(g_input, static_cast<size_t>(hit - g_input)).c_str())).size();
+    auto inWord = [](wchar_t c) { return std::iswalnum(c) || c == L'\'' || c == L'-' || c == L'_'; };
+    if (at >= flat.size() || !inWord(flat[at])) return {};
+    size_t a = at, b = at;
+    while (a > 0 && inWord(flat[a - 1])) --a;
+    while (b < flat.size() && inWord(flat[b])) ++b;
+    return flat.substr(a, b - a);
 }
 
 // Settings changed on the game thread reach the ini on the worker, at most every half second (a slider dragged writes
@@ -3231,9 +3319,41 @@ void RenderWindow() {
         // Whole pixels: ImGui rounds a window's size down – a fraction would move the window without resizing it.
         const float want = std::ceil(std::max(ImGui::GetCursorPosY() + lowerH - st.ItemSpacing.y + 4.0f, st.WindowMinSize.y));
         const ImVec2 p = ImGui::GetWindowPos(), sz = ImGui::GetWindowSize();
-        if (want != sz.y) {
+        // You drag its top (or bottom) edge: the height becomes whole lines of the input – "Lines of the input" in the
+        // options follows at once; while the mouse is down the window keeps your size, then it fits to the lines.
+        static float s_setH = -1;
+        const bool sizing = s_setH > 0 && std::fabs(sz.y - s_setH) > 1.0f && ImGui::IsMouseDown(ImGuiMouseButton_Left);
+        if (sizing) {
+            const float lh = ImGui::GetTextLineHeight();
+            const int lines = std::clamp(static_cast<int>(std::lround((sz.y - (want - lh * g_boxLines)) / lh)), 1, 8);
+            if (lines != g_layout.inputLines) {
+                g_layout.inputLines = lines;
+                SaveLayout();
+            }
+        } else if (want != sz.y) {
             ImGui::SetWindowSize(ImVec2(sz.x, want));
             ImGui::SetWindowPos(ImVec2(p.x, p.y + sz.y - want));
+        }
+        s_setH = sizing ? sz.y : want;
+        // Held down for a moment, then dragged: the whole window moves (not only at its edges) – a quick drag still
+        // selects text. Not when the press was on an edge (that resizes).
+        static ULONGLONG s_downAt = 0;
+        static bool s_moving = false;
+        const ImVec2 mp = ImGui::GetIO().MousePos;
+        const float edge = 6.0f;
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
+            ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) &&
+            mp.y > p.y + edge && mp.y < p.y + sz.y - edge && mp.x > p.x + edge && mp.x < p.x + sz.x - edge)
+            s_downAt = GetTickCount64();
+        if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+            s_downAt = 0;
+            s_moving = false;
+        } else if (s_downAt && !s_moving && !sizing && GetTickCount64() - s_downAt > 250) {
+            s_moving = true;
+        }
+        if (s_moving) {
+            const ImVec2 d = ImGui::GetIO().MouseDelta;
+            if (d.x != 0 || d.y != 0) ImGui::SetWindowPos(ImVec2(std::round(p.x + d.x), std::round(p.y + d.y)));
         }
     } else {  // the input grew past the window: the window grows upwards (its bottom stays) and shrinks back afterwards
         static float s_grown = 0;
@@ -3485,12 +3605,17 @@ void RenderWindow() {
     // Right-click in the input (your own words only): the learning mode – what you corrected yourself while typing is
     // learned (autocorrection writes it right next time), and abbreviations get their meaning (for the translator).
     static bool teach = false, s_menuNext = false;
-    // Only with a word you wrote yourself in the input; an empty input has nothing to learn (without the header the
-    // right-click is the menu then).
+    // A right-click on a word you wrote: the learning mode for that word. Anywhere else in the input (no word under the
+    // mouse, an empty input): the menu – so it is always there, in the mini mode too.
     if (ImGui::IsMouseHoveringRect(inputMin, inputMax) && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) &&
         ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
-        if (!Trim(g_wFlatInput).empty()) teach = true;
-        else if (!Lay().header && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId)) ImGui::OpenPopup("kbmenu");
+        const std::wstring hit = WordAtMouse(ImVec2(inputMin.x + st.FramePadding.x, inputMin.y + st.FramePadding.y));
+        if (!hit.empty()) {
+            g_teachWord = hit;
+            teach = true;
+        } else if (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId)) {
+            ImGui::OpenPopup("kbmenu");
+        }
     }
     else if (!Lay().header && !s_lineRightClick && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) &&
              ImGui::IsMouseReleased(ImGuiMouseButton_Right) && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId))
@@ -3537,7 +3662,8 @@ void RenderWindow() {
         if (ImGui::IsWindowAppearing()) {  // the last word you typed, and what is known of it
             const std::wstring& text = g_wFlatInput;
             const std::vector<Span> spans = WordSpans(text);
-            const std::wstring last = spans.empty() ? std::wstring() : text.substr(spans.back().start, spans.back().length);
+            const std::wstring last = !g_teachWord.empty() ? g_teachWord  // the word you right-clicked
+                                      : spans.empty() ? std::wstring() : text.substr(spans.back().start, spans.back().length);
             typed[0] = 0;
             strncpy_s(fixed, U8(last).c_str(), _TRUNCATE);
             strncpy_s(word, U8(last).c_str(), _TRUNCATE);
@@ -4514,6 +4640,11 @@ extern "C" __declspec(dllexport) void Gw2KbTestWaypoint(int step) {  // nexus_kb
     std::lock_guard<std::mutex> lock(g_mu);
     if (step == 0) HandleChatLinkClick("[&BAwEAAA=]", GetTickCount64(), std::string());
     else g_expandRequest = true;
+}
+
+extern "C" __declspec(dllexport) void Gw2KbTestMini(int on) {  // nexus_kb_selftest: the mini mode on / off
+    std::lock_guard<std::mutex> lock(g_mu);
+    g_mini = on != 0;
 }
 
 extern "C" __declspec(dllexport) int Gw2KbTestAutoMinimize(int seconds) {  // nexus_kb_selftest: -1 ask, 0 off; 1 = small

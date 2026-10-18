@@ -344,6 +344,23 @@ int wmain(int argc, wchar_t** argv) {
         frames(10);
         const size_t typed = std::strlen(th->input);
         std::printf("typed %zu bytes, line breaks: %d\n", typed, static_cast<int>(std::count(th->input, th->input + typed, '\n')));
+        {  // a word longer than the line (a theme code): broken inside the word, sent whole
+            const char* code = " GW2C1:111111-1E1E1E-0D2B45-4A73A3-163D5E-DDDDDD-8A8A8A-B8D8F8-111111-1E1E1E-0D2B45";
+            type(code);
+            frames(10);
+            std::string flat;
+            for (const char* p = th->input; *p; ++p) {
+                if (*p == '\r') { if (p[1] == '\n') ++p; continue; }
+                flat += *p == '\n' ? ' ' : *p;
+            }
+            const int breaks = static_cast<int>(std::count(th->input, th->input + std::strlen(th->input), '\r'));
+            const bool whole = flat.size() >= std::strlen(code) && flat.compare(flat.size() - std::strlen(code), std::string::npos, code) == 0;
+            std::printf("long word: %d break(s) inside it, flat text whole: %s\n", breaks, whole ? "yes" : "no");
+            if (breaks < 1 || !whole) std::printf("FAIL: a word longer than the line was not broken (or not kept whole)\n");
+            ok = ok && breaks >= 1 && whole;
+            for (size_t k = 0; k < std::strlen(code); ++k) press(VK_BACK);  // back to the sentence
+            frames(5);
+        }
         type(" teilw");
         frames(80);  // the typing help for "teilw"
         type(" ");
@@ -465,6 +482,43 @@ int wmain(int argc, wchar_t** argv) {
                 ImGui::SetWindowSize("GW2Chatlator###kbmain", s2);
                 ImGui::SetWindowPos("GW2Chatlator###kbmain", p2);
                 frames(3);
+            }
+            // The mini mode: held down for a moment and dragged, the whole window moves (not only at its edges).
+            if (auto mini = reinterpret_cast<void (*)(int)>(GetProcAddress(dll, "Gw2KbTestMini"))) {
+                auto wpos = [] {
+                    ImGuiWindow* w = ImGui::FindWindowByName("GW2Chatlator###kbmain");
+                    return w ? w->Pos : ImVec2(-1, -1);
+                };
+                auto wsize = [] {
+                    ImGuiWindow* w = ImGui::FindWindowByName("GW2Chatlator###kbmain");
+                    return w ? w->Size : ImVec2(-1, -1);
+                };
+                mini(1);
+                frames(5);
+                ImGui::SetWindowPos("GW2Chatlator###kbmain", ImVec2(300, 600));
+                frames(3);
+                const ImVec2 m0 = wpos(), ms = wsize();
+                ImGuiIO& io = ImGui::GetIO();
+                io.MousePos = ImVec2(m0.x + ms.x * 0.5f, m0.y + ms.y * 0.5f);
+                io.MouseDown[0] = true;
+                frames(1);
+                Sleep(320);  // held a moment
+                frames(1);
+                for (int k = 0; k < 10; ++k) {
+                    io.MousePos.x += 6;
+                    io.MousePos.y -= 4;
+                    frames(1);
+                }
+                io.MouseDown[0] = false;
+                frames(2);
+                const ImVec2 m1 = wpos();
+                io.MousePos = ImVec2(-1000, -1000);
+                mini(0);
+                frames(5);
+                std::printf("mini mode, hold and drag: %.0f,%.0f -> %.0f,%.0f (%.0fx%.0f)\n", m0.x, m0.y, m1.x, m1.y, ms.x, ms.y);
+                const bool moved = std::fabs((m1.x - m0.x) - 60) < 8 && std::fabs((m1.y - m0.y) + 40) < 8;
+                if (!moved) std::printf("FAIL: the mini window did not follow the mouse\n");
+                ok = ok && moved;
             }
             // Minimise when not in use: the input had the focus, a click into the game, then nothing for the set time –
             // the window goes down to the small button; the focus key opens it again.
