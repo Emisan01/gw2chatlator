@@ -69,6 +69,7 @@ constexpr const char* kFocusBind = "KB_GW2KEYBOARD_FOCUS";
 constexpr const char* kTalkBind = "KB_GW2KEYBOARD_TALK";  // push to talk: held while you speak
 constexpr size_t kMaxLines = 200;
 constexpr size_t kHistoryMax = 50;
+constexpr size_t kMaxPartsPerEnter = 3;  // one Enter never pours more chat lines than this into the game
 // The window is built from parts you can switch on / off and size (Options → General → Window layout).
 struct Layout {
     bool chat = true, preview = true, words = true, footer = true;

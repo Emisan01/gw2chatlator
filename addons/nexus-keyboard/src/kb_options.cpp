@@ -39,6 +39,15 @@ void RenderModules(bool guide) {  // g_mu NOT held
         enabled = g_cfg.voiceEnabled;
         ready = g_voiceReady;
     }
+    if (!enabled) {  // optional: speech to text needs the voice module – switched on here, nothing loads before
+        StatusRow(UI(Tr(L"Voice module")), 0, UI(Tr(L"off – speech to text, optional")));
+        ImGui::SameLine();
+        if (ImGui::SmallButton(UI(Tr(L"Switch on") + L"##voiceon").c_str())) {
+            std::lock_guard<std::mutex> lock(g_mu);
+            g_cfg.voiceEnabled = true;
+            g_cfg.SaveBool(L"Voice", L"Enabled", true);
+        }
+    }
     if (enabled) {
         const int pct = g_voiceModulePct;
         const bool running = g_voice.Running();
@@ -51,6 +60,8 @@ void RenderModules(bool guide) {  // g_mu NOT held
         ImGui::SameLine();
         if (!m.voiceModule && !g_voiceModuleInstalling) {
             if (ImGui::SmallButton(UI(Tr(L"Load voice module")).c_str())) InstallVoiceModuleNow();
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", UI(Tr(L"Downloads a helper program (about 6 MB) and the speech engine from this version's release on GitHub (checked with SHA-256). It runs as its own process outside the game.")).c_str());
         } else if (m.voiceModule && !running) {
             if (ImGui::SmallButton(UI(Tr(L"Load")).c_str())) LoadVoiceModule();
         } else if (running) {

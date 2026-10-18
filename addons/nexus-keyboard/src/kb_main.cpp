@@ -66,32 +66,7 @@ void OnFocusKey(const char*, bool release) {
 
 // The first start: what GW2 Keyboard needs comes by itself – Events: Chat (Nexus loads it), the voice module and,
 // when no voice model is there yet, the small base model. Then it says what is ready and where translation is switched on.
-void FirstStart() {
-    if (GetFileAttributesW((AddonsDir() + kChatEventsDllName).c_str()) == INVALID_FILE_ATTRIBUTES) InstallChatEventsNow();
-    if (!VoiceModulePresent(KeyboardDir())) InstallVoiceModuleNow();
-    Config c;
-    {
-        std::lock_guard<std::mutex> lock(g_mu);
-        c = g_cfg;
-    }
-    const VoiceCatalog catalog = LoadVoiceCatalog(c.dataDir);
-    const VoiceModelInfo* chosen = catalog.Find(U8(c.voiceModel));
-    if (!chosen) chosen = catalog.Recommended();
-    if (c.voiceEnabled && !(chosen && VoiceModelInstalled(c.VoiceModelDir(), *chosen))) {
-        const VoiceModelInfo* use = nullptr;  // one that is there already, else the base model
-        for (const VoiceModelInfo& m : catalog.models)
-            if (!use && VoiceModelInstalled(c.VoiceModelDir(), m)) use = &m;
-        const bool download = !use;
-        if (!use) use = catalog.Find("base-q5_1");
-        if (use) {
-            {
-                std::lock_guard<std::mutex> lock(g_mu);
-                g_cfg.voiceModel = W(use->id);
-                g_cfg.SaveValue(L"Voice", L"Model", g_cfg.voiceModel);
-            }
-            if (download) StartModelDownload(*use);
-        }
-    }
+void FirstStart() {  // nothing is downloaded by itself: the empty chat shows the modules, each loaded on your click
     std::lock_guard<std::mutex> lock(g_mu);
     g_nx.setupDone = true;
     SaveNexusOptions();
@@ -147,6 +122,11 @@ void AddonLoad(AddonAPI_t* api) {
         g_sendIdx = g_cfg.translateWriting ? 0 : static_cast<int>(g_cfg.writeLangs.size());
         LoadLayout();
         LoadCustomTabs();
+        {  // voice input is something you switch on (it needs the voice module): off unless you chose it or the module is there
+            wchar_t on[8] = {};
+            GetPrivateProfileStringW(L"Voice", L"Enabled", L"", on, 8, g_cfg.iniPath.c_str());
+            if (!on[0]) g_cfg.voiceEnabled = VoiceModulePresent(KeyboardDir());
+        }
         // 1.9.10 – 1.9.13 kept the views as flags over the parts; now they are presets of the parts themselves.
         const bool oldMini = GetPrivateProfileIntW(L"NexusWindow", L"Mini", 0, g_cfg.iniPath.c_str()) != 0;
         const bool oldCompact = GetPrivateProfileIntW(L"NexusWindow", L"Compact", 0, g_cfg.iniPath.c_str()) != 0;
@@ -241,13 +221,25 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID) {
     return TRUE;
 }
 
+// The test exports work only outside the game (nexus_kb_selftest, the smoke test): inside GW2 no other add-on can reach
+// our input or our sending through them.
+static bool TestHost() {
+    wchar_t path[MAX_PATH] = {};
+    GetModuleFileNameW(nullptr, path, MAX_PATH);
+    const wchar_t* name = wcsrchr(path, L'\\');
+    name = name ? name + 1 : path;
+    return _wcsicmp(name, L"Gw2-64.exe") != 0 && _wcsicmp(name, L"Gw2.exe") != 0;
+}
+
 extern "C" __declspec(dllexport) void* Gw2KbTestHooks() {  // nexus_kb_selftest only
+    if (!TestHost()) return nullptr;
     g_test.input = g_input;
     g_test.focus = &g_focusInput;
     return &g_test;
 }
 
 extern "C" __declspec(dllexport) void Gw2KbTestNewTab(uint32_t channels, bool settings) {  // nexus_kb_selftest only
+    if (!TestHost()) return;
     std::lock_guard<std::mutex> lock(g_mu);
     const int at = NewCustomTab();
     if (at < 0) return;
@@ -256,17 +248,20 @@ extern "C" __declspec(dllexport) void Gw2KbTestNewTab(uint32_t channels, bool se
 }
 
 extern "C" __declspec(dllexport) void Gw2KbTestWaypoint(int step) {  // nexus_kb_selftest only: 0 click, 1 map closed
+    if (!TestHost()) return;
     std::lock_guard<std::mutex> lock(g_mu);
     if (step == 0) HandleChatLinkClick("[&BAwEAAA=]", GetTickCount64(), std::string());
     else g_expandRequest = true;
 }
 
 extern "C" __declspec(dllexport) void Gw2KbTestMini(int on) {  // nexus_kb_selftest: the mini mode on / off
+    if (!TestHost()) return;
     std::lock_guard<std::mutex> lock(g_mu);
     SetProfile(1, on != 0);
 }
 
 extern "C" __declspec(dllexport) int Gw2KbTestAutoMinimize(int seconds) {  // nexus_kb_selftest: -1 ask, 0 off; 1 = small
+    if (!TestHost()) return 0;
     std::lock_guard<std::mutex> lock(g_mu);
     if (seconds >= 0) {
         g_layout.autoMinimize = seconds > 0;
@@ -277,6 +272,7 @@ extern "C" __declspec(dllexport) int Gw2KbTestAutoMinimize(int seconds) {  // ne
 }
 
 extern "C" __declspec(dllexport) void Gw2KbTestWhisper(const char* name) {  // nexus_kb_selftest only: a click on a name
+    if (!TestHost()) return;
     std::lock_guard<std::mutex> lock(g_mu);
     OpenWhisperTab(W(name));
 }

@@ -54,6 +54,7 @@ def main():
             "GW2Chatlator for Nexus\n"
             "Put gw2keyboard_nexus.dll in your Guild Wars 2\\addons folder.\n"
             "The GW2Keyboard folder contains the optional voice helper and whisper libraries.\n"
+            "Nothing is downloaded by itself: Events: Chat and a voice model are offered in the add-on, on your click.\n"
         )
         z.writestr("GW2Keyboard/README.txt", readme_text)
 

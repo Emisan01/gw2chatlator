@@ -6,8 +6,9 @@ Nexus add-on, right inside the game. A line goes into the chat only when you pre
 ## ⬇ [Download gw2keyboard_nexus.dll – version 2.0.0](https://github.com/Emisan01/gw2chatlator/releases/download/v2.0.0/gw2keyboard_nexus.dll)
 
 Put the DLL into your `Guild Wars 2\addons` folder (where [Nexus](https://raidcore.gg/Nexus) keeps its add-ons) and
-load **GW2Chatlator** in Nexus – that is all: on the first start it loads Events: Chat, its voice module and a small
-voice model by itself.
+load **GW2Chatlator** in Nexus. Nothing is downloaded by itself: the window shows what is there and what you can add
+with one click – **Events: Chat** (to read the chat) first, the voice module and a voice model only if you switch voice
+input on.
 all versions: [Releases](https://github.com/Emisan01/gw2chatlator/releases) · what changed: [CHANGELOG.md](CHANGELOG.md).
 
 > **New in 2.0.0** – rebuilt inside, shaped by you: lean inside: the add-on is split into modules, the voice model is freed after 10 minutes without
@@ -159,8 +160,10 @@ Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustot
 1. Install [Nexus](https://raidcore.gg/Nexus) if you do not have it.
 2. Put `gw2keyboard_nexus.dll` into `Guild Wars 2\addons`, next to the other add-ons (or unpack the ZIP there: the DLL
    and the folder `GW2Keyboard` beside it).
-3. In the game: Nexus → Addons → **GW2 Keyboard** → Load. On the first start it loads **Events: Chat**, its voice
-   module and a small voice model by itself, and tells you what is ready.
+3. In the game: Nexus → Addons → **GW2Chatlator** → Load. Nothing is downloaded by itself: the empty chat shows the
+   modules – **Events: Chat** (reads the chat; typing help works without it) with an "Install" button, and the voice
+   module only once you switch voice input on (Options → General → Modules); its model comes after that, each on your
+   click.
 4. Translation is yours to switch on: menu ≡ → Options → Translator (the chat, your text), Options → Voice (speech
    into English).
 
