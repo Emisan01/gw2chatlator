@@ -14,6 +14,7 @@
 
 #include "../../addons/nexus-keyboard/src/chat_events.hpp"
 #include "imgui/imgui.h"
+#include "imgui/imgui_internal.h"
 #include "nexus/Nexus.h"
 
 namespace {
@@ -315,6 +316,59 @@ int wmain(int argc, wchar_t** argv) {
         frames(3);
         std::printf("history: Up -> %zu bytes, Down -> %zu bytes\n", recalled, std::strlen(th->input));
         ok = ok && recalled > 100 && std::strlen(th->input) == 0;
+        // The window stays where it was put – idle, while chat arrives, while typing (it once kept sliding up).
+        {
+            auto pos = [] {
+                ImGuiWindow* w = ImGui::FindWindowByName("GW2Chatlator###kbmain");
+                return w ? w->Pos : ImVec2(-1, -1);
+            };
+            ImGui::SetWindowPos("GW2Chatlator###kbmain", ImVec2(10, 1080 - 28 - 380));
+            frames(5);
+            const ImVec2 start = pos();
+            frames(150);
+            const ImVec2 idle = pos();
+            for (int k = 0; k < 30; ++k) {
+                bridge::ChatEventsMessage e{};
+                e.type = bridge::ChatEventsType::Map;
+                e.generic.characterName = "Drift Test";
+                e.generic.content = "a line that arrives while the window should stand still";
+                g_chatEvents(&e);
+                frames(3);
+            }
+            const ImVec2 chat = pos();
+            type("hello there");
+            frames(30);
+            const ImVec2 typing = pos();
+            for (int k = 0; k < 11; ++k) press(VK_BACK);
+            frames(10);
+            std::printf("window: start %.0f,%.0f  idle %.0f,%.0f  chat %.0f,%.0f  typing %.0f,%.0f\n", start.x, start.y, idle.x,
+                        idle.y, chat.x, chat.y, typing.x, typing.y);
+            const bool still = std::fabs(idle.y - start.y) < 1 && std::fabs(chat.y - start.y) < 1 && std::fabs(typing.y - start.y) < 1;
+            if (!still) std::printf("FAIL: the window moved by itself\n");
+            ok = ok && still;
+            // A waypoint click: the window gets out of the way (its bottom edge stays) and comes back to the same place.
+            if (auto waypoint = reinterpret_cast<void (*)(int)>(GetProcAddress(dll, "Gw2KbTestWaypoint"))) {
+                auto size = [] {
+                    ImGuiWindow* w = ImGui::FindWindowByName("GW2Chatlator###kbmain");
+                    return w ? w->Size : ImVec2(-1, -1);
+                };
+                const ImVec2 p0 = pos(), s0 = size();
+                waypoint(0);
+                frames(6);
+                const ImVec2 p1 = pos(), s1 = size();
+                waypoint(1);
+                frames(6);
+                const ImVec2 p2 = pos(), s2 = size();
+                std::printf("waypoint: before %.0f,%.0f %.0fx%.0f  out of the way %.0f,%.0f %.0fx%.0f  back %.0f,%.0f %.0fx%.0f\n",
+                            p0.x, p0.y, s0.x, s0.y, p1.x, p1.y, s1.x, s1.y, p2.x, p2.y, s2.x, s2.y);
+                const bool shrunk = s1.x < s0.x && s1.y < s0.y && std::fabs((p1.y + s1.y) - (p0.y + s0.y)) < 2;
+                const bool back = std::fabs(p2.x - p0.x) < 2 && std::fabs(p2.y - p0.y) < 2 && std::fabs(s2.y - s0.y) < 2;
+                if (!shrunk || !back) std::printf("FAIL: the window did not come back where it was\n");
+                ok = ok && shrunk && back;
+            }
+            *th->focus = true;  // back from the map the window does not take the keyboard by itself
+            frames(3);
+        }
         // Learning mode: a word you retype yourself after its space ("Gildne " -> "Gilden ") is noticed.
         type("wir Gildne ");
         frames(40);

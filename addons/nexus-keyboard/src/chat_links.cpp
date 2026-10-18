@@ -168,7 +168,9 @@ void ChatLinks::Tooltip(const PieUI::ChatLinks::LinkSegment& seg, const DecoderR
         }
     }
 
-    ImGui::TextDisabled("%s", (seg.raw + "  ·  " + ToUtf8(Tr(L"Click: open original in game chat"))).c_str());
+    ImGui::TextDisabled("%s", (seg.raw + "  ·  " + ToUtf8(seg.linkType == PieUI::ChatLinks::LINK_MAP
+                                                            ? Tr(L"Click: find it in GW2's chat (it opens the map)")
+                                                            : Tr(L"Click: copy the code"))).c_str());
     ImGui::PopTextWrapPos();
     ImGui::EndTooltip();
 }

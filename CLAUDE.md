@@ -13,7 +13,8 @@ something the next agent needs.
 addons/nexus-keyboard   the add-on
   src/kb_main.cpp       everything the game thread draws (ImGui), the worker thread, sending, options, first start
   src/chat_links.*      chat codes: "[Item name]" in rarity colour + mouse-over details via Decoder Ring;
-                        click copies code to clipboard (Shift+click inserts into input)
+                        a click copies the code; a waypoint (`HandleChatLinkClick`): the window minimises, you click it
+                        in GW2's own chat, it comes back when MumbleLink reports the map closed again (or 45 s)
   src/chat/             vendored ChatLinks codec + SpecData (PieUI/Decoder Ring, MIT)
   src/chat/DecoderRingApi.h  public ABI for Decoder Ring (PieOrCake, MIT)
   src/voice_module.*    loads the voice module (helper + whisper DLLs) from this version's GitHub release
@@ -107,6 +108,10 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 - `small` is a macro (rpcndr.h); `FoldString` is a macro → `CaseFold`. `GetPrivateProfileInt` turns negatives into 0.
 - Python/heredoc edits turned `\n` / `\r` escapes into real control characters more than once – check C++ string
   literals after scripted edits (or use the Edit tool).
+- Never call `MinimizeWindow` / `SetWindowPos` from inside a child (the chat area): it moves the child. Ask with
+  `g_minimizeRequest` / `g_expandRequest`, done on the main window. The minimised button keeps the window's bottom edge
+  through `g_anchorBottom` – computing its size twice (text size, `WindowMinSize`) made the window creep up.
+- Web links: a Discord-like question only, no lookups in the background (the Cloudflare check sent every domain).
 - Visual Studio may report itself incomplete after an update; then pin `CMAKE_GENERATOR_INSTANCE` with `,version=`.
 
 ## Testing

@@ -50,7 +50,6 @@
 #include "core/text.hpp"
 #include "core/translator.hpp"
 #include "core/voice_learn.hpp"
-#include "core/link_filter.hpp"
 #include "core/json.hpp"
 #include "imgui/imgui.h"
 #include "nexus/Nexus.h"
@@ -101,7 +100,6 @@ struct TextLook {
     bool glow = true;
     int brightness = 100;  // %
     bool gameColors = true;
-    bool filterLinks = true;
 };
 TextLook g_look;
 MyWords g_myWords;  // your own words and what they mean (<data>\my-words.txt), g_mu
@@ -139,6 +137,12 @@ int g_activeTab = -1;  // -1: the whole chat
 int g_selectTab = -2;  // a tab to select (-1: the chat; -2: none asked)
 int g_tabSettings = -1, g_tabSettingsOpen = -1;  // a tab of your own whose settings are asked for / shown
 std::wstring g_openLink;  // a link clicked in the chat: opened only after your yes
+std::wstring LinkHost(const std::wstring& url) {  // "https://www.example.org/a?b" -> "www.example.org"
+    size_t a = url.find(L"://");
+    a = a == std::wstring::npos ? 0 : a + 3;
+    const size_t b = url.find_first_of(L"/?#:", a);
+    return url.substr(a, b == std::wstring::npos ? std::wstring::npos : b - a);
+}
 
 AddonDefinition_t g_def = {};
 AddonAPI_t* g_api = nullptr;
@@ -247,72 +251,6 @@ Worker g_worker;
 SpellService* g_spell = nullptr;
 SendGuard g_guard;
 MumbleLink* g_mumbleWorker = nullptr;
-
-std::mutex g_linkSafetyMu;
-std::unordered_map<std::string, LinkSafetyInfo> g_linkSafetyCache;
-
-LinkSafetyInfo GetEffectiveLinkSafety(const std::string& url) {
-    if (!g_look.filterLinks) {
-        return {LinkSafety::Neutral, ExtractHost(url), "filter_off", L"", L""};
-    }
-    const std::string host = ExtractHost(url);
-    if (host.empty()) return {};
-
-    {
-        std::lock_guard<std::mutex> lock(g_linkSafetyMu);
-        auto it = g_linkSafetyCache.find(host);
-        if (it != g_linkSafetyCache.end()) {
-            return it->second;
-        }
-    }
-
-    LinkSafetyInfo info = AssessLinkSafety(url);
-    {
-        std::lock_guard<std::mutex> lock(g_linkSafetyMu);
-        if (g_linkSafetyCache.size() >= 500) {
-            g_linkSafetyCache.clear();
-        }
-        g_linkSafetyCache[host] = info;
-    }
-
-    if (info.safety == LinkSafety::Neutral) {
-        g_worker.Post([host] {
-            std::wstring hostW = FromUtf8(host);
-            std::wstring path = L"/dns-query?name=" + hostW + L"&type=A";
-            HttpResponse resp = HttpsRequest(L"GET", L"security.cloudflare-dns.com", path,
-                                             L"Accept: application/dns-json\r\n", "", nullptr, 65536, 2000);
-            if (resp.transportOk && resp.status == 200) {
-                JsonValue root;
-                if (ParseJson(resp.body, root)) {
-                    bool blocked = false;
-                    const JsonValue* ans = root.Get("Answer");
-                    if (ans && ans->IsArray()) {
-                        for (const auto& item : ans->arr) {
-                            if (item.GetString("data") == "0.0.0.0") {
-                                blocked = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (blocked) {
-                        LinkSafetyInfo updated;
-                        updated.safety = LinkSafety::Dangerous;
-                        updated.host = host;
-                        updated.reason = "cloudflare_security";
-                        updated.label = Tr(L"[Phishing]");
-                        updated.description = Tr(L"WARNING: Blocked by Cloudflare Security threat intelligence.");
-                        std::lock_guard<std::mutex> lock(g_linkSafetyMu);
-                        if (g_linkSafetyCache.size() < 500) {
-                            g_linkSafetyCache[host] = updated;
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    return info;
-}
 
 // ---------------------------------------------------------------------------------------------------------------
 // State shared between the game thread (events, drawing) and the worker. All behind g_mu.
@@ -446,7 +384,6 @@ void LoadLayout() {  // g_mu held
     g_look.glow = get(L"Glow", 1) != 0;
     g_look.brightness = std::clamp(get(L"Brightness", 100), 60, 160);
     g_look.gameColors = get(L"GameColors", 1) != 0;
-    g_look.filterLinks = get(L"FilterLinks", 1) != 0;
     auto nx = [](const wchar_t* key, int def) { return GetPrivateProfileIntW(L"Nexus", key, def, g_cfg.iniPath.c_str()) != 0; };
     g_nx.translateChat = nx(L"TranslateChat", 0);
     g_nx.snap = nx(L"Snap", 1);
@@ -476,7 +413,6 @@ void SaveLayout() {  // g_mu held
     g_cfg.SaveValue(L"NexusWindow", L"Glow", g_look.glow ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"Brightness", std::to_wstring(g_look.brightness));
     g_cfg.SaveValue(L"NexusWindow", L"GameColors", g_look.gameColors ? L"1" : L"0");
-    g_cfg.SaveValue(L"NexusWindow", L"FilterLinks", g_look.filterLinks ? L"1" : L"0");
 }
 
 void SetStatus(const std::wstring& s, ULONGLONG ms = 6000) {  // g_mu held
@@ -1247,11 +1183,6 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
     l.speakerDisplay = l.speaker.empty() ? std::string() : UI((l.outgoing ? L"> " : L"") + l.speaker + L":");
     l.u8text = U8(l.text);
     l.textSegs = PieUI::ChatLinks::SegmentLine(l.u8text);
-    for (const auto& seg : l.textSegs) {
-        if (seg.kind == PieUI::ChatLinks::SegmentKind::Url) {
-            GetEffectiveLinkSafety(seg.url);
-        }
-    }
     const std::wstring rawText = l.text;
     uint64_t id;
     bool own;
@@ -1692,17 +1623,16 @@ std::wstring NativeName(const std::wstring& code) {
 
 bool g_collapsed = false;  // the V / > buttons: window minimizes to bottom-left corner
 float g_headerH = 0, g_lastW = 520, g_expandedH = 360, g_restoreH = 0;
+// The bottom edge the window had when it was minimised: the small button sits exactly on it (its size depends on the
+// text size and ImGui's minimum window size – computing it twice made the window creep up a little every time).
+float g_anchorBottom = -1.0f;
 
 void MinimizeWindow() {  // g_mu held or main thread
     g_collapsed = true;
     const ImVec2 p = ImGui::GetWindowPos(), s = ImGui::GetWindowSize();
     g_lastW = s.x;
     g_expandedH = s.y;
-    const float bottomY = p.y + s.y;
-    const float iconH = ImGui::GetFrameHeight();
-    const float minBtn = iconH + 8.0f;
-    ImGui::SetWindowPos(ImVec2(p.x, bottomY - minBtn));
-    ImGui::SetWindowSize(ImVec2(minBtn, minBtn));
+    g_anchorBottom = p.y + s.y;  // the small button takes its place on the next frame
 }
 
 // The footer chips: channel | "Write: German" | "Send: English (UK) · MyMemory" (orange) | auto | counter.
@@ -2361,25 +2291,26 @@ void SaveMyWords() {  // g_mu held
 // codes (item/skill/waypoint name in rarity colour via Decoder Ring, hover tooltip with details, click copies code).
 bool g_openLinkAsk = false;
 
-void HandleChatLinkClick(const std::string& raw, ULONGLONG receivedTime, uint32_t mapId) {
+// A chat code clicked. A waypoint: our window gets out of the way, you click the waypoint in GW2's own chat (the game
+// opens the world map on it), and the window comes back once the map was open and closed again (or after 45 s).
+// Anything else: the code is copied (Ctrl+V puts it into a message).
+bool g_minimizeRequest = false, g_expandRequest = false;  // on the main window, never inside the chat area
+int g_waypointWait = 0;                                     // 0 none, 1 waiting for the map, 2 the map is open
+ULONGLONG g_waypointSince = 0;
+
+void HandleChatLinkClick(const std::string& raw) {
     ImGui::SetClipboardText(raw.c_str());
-    const uint32_t curMap = g_mapId.load();
-    const bool mapChanged = (mapId != 0 && curMap != 0 && mapId != curMap);
-    const bool tooOld = (receivedTime != 0 && (GetTickCount64() - receivedTime > 90000));
-    if (mapChanged || tooOld) {
-        SetStatus(Tr(L"Chat link expired – no longer in active chat"), 4000);
+    if (DecodeChatCode(W(raw)).kind == ChatCodeKind::Poi) {
+        g_minimizeRequest = true;
+        g_waypointWait = 1;
+        g_waypointSince = GetTickCount64();
+        SetStatus(Tr(L"Click the waypoint in GW2's chat – the window comes back when the map closes"), 8000);
     } else {
-        SetStatus(Tr(L"Original chat opened – click link in game chat"), 4000);
-        g_suppressChatFocusUntil = GetTickCount64() + 4000;
-        MinimizeWindow();
-        if (g_api && g_api->GameBinds_InvokeAsync) {
-            g_api->GameBinds_InvokeAsync(GB_UiChatFocus, 20);
-        }
+        SetStatus(Tr(L"Chat code copied – Ctrl+V puts it into a message"), 4000);
     }
 }
 
-bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 color,
-              ULONGLONG receivedTime = 0, uint32_t mapId = 0) {  // g_mu held
+bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 color) {  // g_mu held
     (void)text;
     bool clicked = false;
     const float right = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
@@ -2410,64 +2341,14 @@ bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::Link
                 }
                 break;
             }
-            case PieUI::ChatLinks::SegmentKind::Url: {
-                const LinkSafetyInfo safety = GetEffectiveLinkSafety(seg.url);
-                if (safety.safety == LinkSafety::Dangerous) {
-                    const std::string tag = UI(safety.label.empty() ? Tr(L"[Phishing]") : safety.label);
-                    place(tag);
-                    LookText(tag.c_str(), ImVec4(1.0f, 0.35f, 0.35f, 1.0f), false);
-                    place(seg.display);
-                    LookText(seg.display.c_str(), ImVec4(1.0f, 0.45f, 0.45f, 1.0f), false);
-                    const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
-                    ImGui::GetWindowDrawList()->AddLine(ImVec2(a.x, b.y - 1), ImVec2(b.x, b.y - 1), IM_COL32(255, 80, 80, 255));
-                    const float midY = (a.y + b.y) * 0.5f;
-                    ImGui::GetWindowDrawList()->AddLine(ImVec2(a.x, midY), ImVec2(b.x, midY), IM_COL32(255, 80, 80, 220));
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-                        ImGui::BeginTooltip();
-                        ImGui::TextUnformatted(seg.url.c_str());
-                        ImGui::Spacing();
-                        ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.35f, 1.0f), "%s", UI(safety.description).c_str());
-                        ImGui::EndTooltip();
-                    }
-                } else if (safety.safety == LinkSafety::Suspicious) {
-                    const std::string tag = UI(safety.label.empty() ? Tr(L"[Shortener]") : safety.label);
-                    place(tag);
-                    LookText(tag.c_str(), ImVec4(1.0f, 0.75f, 0.2f, 1.0f), false);
-                    place(seg.display);
-                    LookText(seg.display.c_str(), Bright(ImVec4(1.0f, 0.78f, 0.3f, 1.0f)), false);
-                    const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
-                    ImGui::GetWindowDrawList()->AddLine(ImVec2(a.x, b.y - 1), ImVec2(b.x, b.y - 1), IM_COL32(255, 195, 60, 255));
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-                        ImGui::BeginTooltip();
-                        ImGui::TextUnformatted(seg.url.c_str());
-                        ImGui::Spacing();
-                        ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "%s", UI(safety.description).c_str());
-                        ImGui::EndTooltip();
-                    }
-                } else if (safety.safety == LinkSafety::Safe) {
-                    place(seg.display);
-                    LookText(seg.display.c_str(), Bright(ImVec4(0.4f, 0.85f, 0.65f, 1.0f)), false);
-                    const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
-                    ImGui::GetWindowDrawList()->AddLine(ImVec2(a.x, b.y - 1), ImVec2(b.x, b.y - 1), IM_COL32(100, 215, 165, 255));
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-                        ImGui::BeginTooltip();
-                        ImGui::TextUnformatted(seg.url.c_str());
-                        ImGui::Spacing();
-                        ImGui::TextColored(ImVec4(0.4f, 0.85f, 0.65f, 1.0f), "%s", UI(safety.description).c_str());
-                        ImGui::EndTooltip();
-                    }
-                } else {
-                    place(seg.display);
-                    LookText(seg.display.c_str(), Bright(ImVec4(0.45f, 0.7f, 1.f, 1.f)), false);
-                    const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
-                    ImGui::GetWindowDrawList()->AddLine(ImVec2(a.x, b.y - 1), ImVec2(b.x, b.y - 1), IM_COL32(115, 178, 255, 255));
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-                        ImGui::SetTooltip("%s", seg.url.c_str());
-                    }
+            case PieUI::ChatLinks::SegmentKind::Url: {  // a web link: blue, underlined; a click asks first
+                place(seg.display);
+                LookText(seg.display.c_str(), Bright(ImVec4(0.45f, 0.7f, 1.f, 1.f)), false);
+                const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
+                ImGui::GetWindowDrawList()->AddLine(ImVec2(a.x, b.y - 1), ImVec2(b.x, b.y - 1), IM_COL32(115, 178, 255, 255));
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                    ImGui::SetTooltip("%s", seg.url.c_str());
                 }
                 if (ImGui::IsItemClicked()) {
                     g_openLink = W(seg.url);
@@ -2481,7 +2362,7 @@ bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::Link
                 place(lbl);
                 if (g_links.Render(seg, lbl, [](const std::string& l, ImVec4 c) { LookText(l.c_str(), Bright(c), false); })) {
                     clicked = true;
-                    HandleChatLinkClick(seg.raw, receivedTime, mapId);
+                    HandleChatLinkClick(seg.raw);
                 }
                 break;
             }
@@ -2495,13 +2376,13 @@ bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::Link
                     if (!seg.ae2Profession.empty()) {
                         ImGui::TextDisabled("%s", seg.ae2Profession.c_str());
                     }
-                    ImGui::TextDisabled("%s", ToUtf8(Tr(L"Click: open original in game chat")).c_str());
+                    ImGui::TextDisabled("%s", ToUtf8(Tr(L"Click: copy the code")).c_str());
                     ImGui::EndTooltip();
                 }
                 if (ImGui::IsItemClicked()) {
                     clicked = true;
                     const std::string toCopy = !seg.ae2ChatLink.empty() ? seg.ae2ChatLink : seg.raw;
-                    HandleChatLinkClick(toCopy, receivedTime, mapId);
+                    HandleChatLinkClick(toCopy);
                 }
                 break;
             }
@@ -2580,8 +2461,16 @@ void RenderWindow() {
                 g_mapId.store(ms.identity.mapId);
             }
             const bool chatOpen = ms.live && ms.TextboxHasFocus();
-            if (chatOpen && !chatWasOpen && g_cfg.focusOnGameChat && g_show && GetTickCount64() > g_suppressChatFocusUntil)
+            if (chatOpen && !chatWasOpen && g_cfg.focusOnGameChat && g_show && GetTickCount64() > g_suppressChatFocusUntil &&
+                g_waypointWait == 0)
                 g_focusInput = true;
+            if (g_waypointWait == 1 && ms.MapOpen()) {
+                g_waypointWait = 2;
+            } else if ((g_waypointWait == 2 && !ms.MapOpen()) ||
+                       (g_waypointWait == 1 && GetTickCount64() - g_waypointSince > 45000)) {
+                g_waypointWait = 0;
+                g_expandRequest = true;
+            }
             chatWasOpen = chatOpen;
         }
     }
@@ -2613,6 +2502,11 @@ void RenderWindow() {
         const bool beginOk = ImGui::Begin("GW2Chatlator###kbmain", nullptr, minFlags);
         ImGui::PopStyleVar();
         if (beginOk) {
+            if (g_anchorBottom > 0) {  // just minimised: the button's bottom edge = the window's bottom edge
+                const ImVec2 wp = ImGui::GetWindowPos();
+                ImGui::SetWindowPos(ImVec2(wp.x, g_anchorBottom - ImGui::GetWindowSize().y));
+                g_anchorBottom = -1.0f;
+            }
             const float resScale = std::max(1.0f, io.DisplaySize.y / 1080.0f);
             const float maxBottom = std::max(minBtn, io.DisplaySize.y - Gw2BottomBarOffset(io.DisplaySize.y, g_uiSize.load()));
             const ImVec2 pos = ImGui::GetWindowPos(), size = ImGui::GetWindowSize();
@@ -2639,8 +2533,11 @@ void RenderWindow() {
                 else if (p.y + size.y > maxBottom + 0.5f) { p.y = std::max(0.0f, maxBottom - size.y); clamped = true; }
                 if (clamped && !ImGui::IsMouseDown(0)) ImGui::SetWindowPos(p);
             }
-            if (ImGui::Button("<##expand", ImVec2(iconH, iconH))) {
+            const bool clickedOpen = ImGui::Button("<##expand", ImVec2(iconH, iconH));
+            if (clickedOpen || g_expandRequest) {  // the bottom edge stays where it is; the window grows upwards
                 std::lock_guard<std::mutex> lock(g_mu);
+                g_expandRequest = false;
+                g_waypointWait = 0;
                 g_collapsed = false;
                 g_restoreH = g_expandedH;
                 s_uncollapseRestore = true;
@@ -2649,7 +2546,7 @@ void RenderWindow() {
                 s_targetBottomY = p.y + s.y;
                 ImGui::SetWindowPos(ImVec2(p.x, s_targetBottomY - g_expandedH));
                 ImGui::SetWindowSize(ImVec2(g_lastW, g_expandedH));
-                g_focusInput = true;
+                if (clickedOpen) g_focusInput = true;
             }
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Open the window")).c_str());
             if (g_autoSendPending && !g_edit.active && g_input[0]) {
@@ -2686,6 +2583,14 @@ void RenderWindow() {
             s_targetBottomY = -1.0f;
         }
     }
+    if (g_minimizeRequest) {  // asked from inside the chat area (a waypoint click): done on the main window
+        g_minimizeRequest = false;
+        g_expandRequest = false;
+        MinimizeWindow();
+        ImGui::End();
+        return;
+    }
+    if (g_expandRequest) g_expandRequest = false;  // already open
     ImGui::SetWindowFontScale(std::clamp(g_cfg.fontPercent, 70, 200) / 100.0f);
     g_lastW = ImGui::GetWindowWidth();
     g_expandedH = ImGui::GetWindowHeight();
@@ -2924,10 +2829,7 @@ void RenderWindow() {
         const ImVec2 p = ImGui::GetWindowPos(), s = ImGui::GetWindowSize();
         g_lastW = s.x;
         g_expandedH = s.y;
-        const float bottomY = p.y + s.y;
-        const float minHdrBtn = icon + 8.0f;
-        ImGui::SetWindowPos(ImVec2(p.x, bottomY - minHdrBtn));
-        ImGui::SetWindowSize(ImVec2(minHdrBtn, minHdrBtn));
+        g_anchorBottom = p.y + s.y;  // the small button takes its place on the next frame
     }
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Minimize chat")).c_str());
     ImGui::SameLine(0, gap);
@@ -3043,7 +2945,7 @@ void RenderWindow() {
             if (segs.size() <= 1 && (segs.empty() || segs[0].kind == PieUI::ChatLinks::SegmentKind::Plain)) {
                 LookText(u8shown.c_str(), ColorOf(l.channel), true);
             } else {
-                clicked = RichLine(shown, segs, ColorOf(l.channel), l.receivedTime, l.mapId);
+                clicked = RichLine(shown, segs, ColorOf(l.channel));
             }
             if (!l.translated.empty() && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", l.u8text.c_str());
             // A click on the text of a line someone else wrote: just this line into your language.
@@ -3071,69 +2973,23 @@ void RenderWindow() {
         g_openLinkAsk = false;
         ImGui::OpenPopup("###openlink");
     }
-    if (ImGui::BeginPopupModal((UI(Tr(L"Open link")) + "###openlink").c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        const LinkSafetyInfo safety = GetEffectiveLinkSafety(U8(g_openLink));
-        if (safety.safety == LinkSafety::Dangerous) {
-            ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.35f, 1.0f), "%s", UI(Tr(L"WARNING: Suspicious or fraudulent link detected!")).c_str());
-            ImGui::Spacing();
-            ImGui::TextWrapped("%s", UI(safety.description).c_str());
-            ImGui::Spacing();
-            ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.45f, 1.0f), "%s", Fit(U8(g_openLink), ImGui::GetFontSize() * 30).c_str());
-            ImGui::Spacing();
-            if (ImGui::Button(UI(Tr(L"Cancel")).c_str())) {
-                g_openLink.clear();
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::SameLine();
-            if (ImGui::Button(UI(Tr(L"Inspect with Cloudflare Radar")).c_str())) {
-                std::thread([] {
-                    CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-                    ShellExecuteW(nullptr, L"open", L"https://radar.cloudflare.com/scan", nullptr, nullptr, SW_SHOWNORMAL);
-                    CoUninitialize();
-                }).detach();
-            }
-
-            ImGui::SameLine();
-            if (ImGui::Button(UI(Tr(L"Open anyway (Unsafe)")).c_str())) {
-                SafeOpenUrl(g_openLink);
-                g_openLink.clear();
-                ImGui::CloseCurrentPopup();
-            }
-        } else if (safety.safety == LinkSafety::Suspicious) {
-            ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "%s", UI(Tr(L"Notice: This is a shortened URL. The actual destination is hidden.")).c_str());
-            ImGui::Spacing();
-            ImGui::TextWrapped("%s", UI(safety.description).c_str());
-            ImGui::Spacing();
-            ImGui::TextColored(ImVec4(1.0f, 0.78f, 0.3f, 1.0f), "%s", Fit(U8(g_openLink), ImGui::GetFontSize() * 30).c_str());
-            ImGui::Spacing();
-            if (ImGui::Button(UI(Tr(L"Open")).c_str())) {
-                SafeOpenUrl(g_openLink);
-                g_openLink.clear();
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::SameLine();
-            if (ImGui::Button(UI(Tr(L"Cancel")).c_str())) {
-                g_openLink.clear();
-                ImGui::CloseCurrentPopup();
-            }
-        } else {
-            if (safety.safety == LinkSafety::Safe) {
-                ImGui::TextColored(ImVec4(0.4f, 0.85f, 0.65f, 1.0f), "%s", UI(Tr(L"Verified site")).c_str());
-            } else {
-                ImGui::TextUnformatted(UI(Tr(L"Open this link in your browser?")).c_str());
-            }
-            ImGui::TextColored(ImVec4(0.45f, 0.7f, 1.f, 1.f), "%s", Fit(U8(g_openLink), ImGui::GetFontSize() * 30).c_str());
-            ImGui::TextDisabled("%s", UI(Tr(L"Links in the chat come from other players – open only what you trust.")).c_str());
-            if (ImGui::Button(UI(Tr(L"Open")).c_str())) {
-                SafeOpenUrl(g_openLink);
-                g_openLink.clear();
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::SameLine();
-            if (ImGui::Button(UI(Tr(L"Cancel")).c_str())) {
-                g_openLink.clear();
-                ImGui::CloseCurrentPopup();
-            }
+    if (ImGui::BeginPopupModal((UI(Tr(L"Leaving GW2Chatlator")) + "###openlink").c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        // Like Discord: where it goes, big; the whole link small; you decide.
+        ImGui::TextUnformatted(UI(Tr(L"This link goes to")).c_str());
+        ImGui::TextColored(ImVec4(0.45f, 0.7f, 1.f, 1.f), "%s", U8(LinkHost(g_openLink)).c_str());
+        ImGui::TextDisabled("%s", Fit(U8(g_openLink), ImGui::GetFontSize() * 30).c_str());
+        ImGui::Spacing();
+        ImGui::TextUnformatted(UI(Tr(L"Are you sure you want to open it?")).c_str());
+        ImGui::Spacing();
+        if (ImGui::Button(UI(Tr(L"Open link")).c_str())) {
+            SafeOpenUrl(g_openLink);
+            g_openLink.clear();
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button(UI(Tr(L"Go back")).c_str()) || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape))) {
+            g_openLink.clear();
+            ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();
     }
@@ -3490,7 +3346,6 @@ void RenderOptionsContent() {
                 changed |= ImGui::Checkbox(UI(Tr(L"GW2 colours")).c_str(), &g_look.gameColors);
                 if (ImGui::IsItemHovered())
                     ImGui::SetTooltip("%s", UI(Tr(L"The name in the channel colour, the message in a light tint of it – as in the game. Off: the message in the channel colour.")).c_str());
-                changed |= ImGui::Checkbox(UI(Tr(L"Filter suspicious links (phishing & shorteners)")).c_str(), &g_look.filterLinks);
                 ImGui::SetNextItemWidth(wide);
                 changed |= ImGui::SliderInt(UI(Tr(L"Brightness") + L" (%)##bright").c_str(), &g_look.brightness, 60, 160);
                 if (changed) SaveLayout();
@@ -4047,6 +3902,12 @@ extern "C" __declspec(dllexport) void Gw2KbTestNewTab(uint32_t channels, bool se
     if (at < 0) return;
     g_tabs[at].channels = channels;
     if (settings) g_tabSettings = at;
+}
+
+extern "C" __declspec(dllexport) void Gw2KbTestWaypoint(int step) {  // nexus_kb_selftest only: 0 click, 1 map closed
+    std::lock_guard<std::mutex> lock(g_mu);
+    if (step == 0) HandleChatLinkClick("[&BAwEAAA=]");
+    else g_expandRequest = true;
 }
 
 extern "C" __declspec(dllexport) void Gw2KbTestWhisper(const char* name) {  // nexus_kb_selftest only: a click on a name
