@@ -81,6 +81,7 @@ constexpr size_t kHistoryMax = 50;
 // The window is built from parts you can switch on / off and size (Options → General → Window layout).
 struct Layout {
     bool chat = true, preview = true, words = true, footer = true;
+    bool header = true;  // the tabs, microphone, minimise, menu, close; hidden: a right-click on the window is the menu
     int inputLines = 4;    // the input box, wrapping
     int previewLines = 3;  // the translation and its back-translation
 };
@@ -411,6 +412,7 @@ void LoadLayout() {  // g_mu held
     g_layout.preview = get(L"Preview", 1) != 0;
     g_layout.words = get(L"WordBar", 1) != 0;
     g_layout.footer = get(L"Footer", 1) != 0;
+    g_layout.header = get(L"Header", 1) != 0;
     g_layout.inputLines = std::clamp(get(L"InputLines", 4), 1, 8);
     g_layout.previewLines = std::clamp(get(L"PreviewLines", 3), 1, 8);
     g_look.glow = get(L"Glow", 1) != 0;
@@ -441,6 +443,7 @@ void SaveLayout() {  // g_mu held
     g_cfg.SaveValue(L"NexusWindow", L"Preview", g_layout.preview ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"WordBar", g_layout.words ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"Footer", g_layout.footer ? L"1" : L"0");
+    g_cfg.SaveValue(L"NexusWindow", L"Header", g_layout.header ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"InputLines", std::to_wstring(g_layout.inputLines));
     g_cfg.SaveValue(L"NexusWindow", L"PreviewLines", std::to_wstring(g_layout.previewLines));
     g_cfg.SaveValue(L"NexusWindow", L"Glow", g_look.glow ? L"1" : L"0");
@@ -2757,52 +2760,55 @@ void RenderWindow() {
     const float rightW = (g_cfg.voiceEnabled ? icon + gap : 0) + icon + gap + icon + st.ItemSpacing.x + icon;
     const float tabsW = std::max(60.0f, ImGui::GetContentRegionAvail().x - rightW - gap);
     bool newTab = false, tabMenu = false;
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-    ImGui::BeginChild("##hdr", ImVec2(tabsW, icon), false,
-                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBackground);
-    ImGui::PopStyleVar();
-    if (ImGui::BeginTabBar("##wtabs", ImGuiTabBarFlags_FittingPolicyResizeDown | ImGuiTabBarFlags_NoTooltip)) {
-        static std::string s_chatTabLabel;
-        static UiLang s_chatTabLang = static_cast<UiLang>(-1);
-        if (s_chatTabLang != g_cfg.uiLang || s_chatTabLabel.empty()) {
-            s_chatTabLang = g_cfg.uiLang;
-            s_chatTabLabel = UI(Tr(L"Chat")) + "###wt_all";
-        }
-        if (ImGui::BeginTabItem(s_chatTabLabel.c_str(), nullptr,
-                                g_selectTab == -1 ? ImGuiTabItemFlags_SetSelected : 0)) {
-            if (g_selectTab == -1) g_selectTab = -2;
-            else if (g_selectTab == -2 && g_activeTab != -1) LeaveWhisperTab();
-            ImGui::EndTabItem();
-        }
-        int close = -1;
-        for (int i = 0; i < static_cast<int>(g_tabs.size()); ++i) {
-            bool open = true;
-            const ImGuiTabItemFlags f = (g_selectTab == i ? ImGuiTabItemFlags_SetSelected : 0) |
-                                        (g_tabs[i].unread ? ImGuiTabItemFlags_UnsavedDocument : 0);
-            const bool shown = ImGui::BeginTabItem(g_tabs[i].Label(), &open, f);
-            if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
-                tabMenu = true;  // not the header's menu
-                if (g_tabs[i].custom) g_tabSettings = static_cast<int>(i);
+    static bool s_lineRightClick = false;  // a right-click on a chat line (it translates the line, no menu)
+    if (g_layout.header) {
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        ImGui::BeginChild("##hdr", ImVec2(tabsW, icon), false,
+                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBackground);
+        ImGui::PopStyleVar();
+        if (ImGui::BeginTabBar("##wtabs", ImGuiTabBarFlags_FittingPolicyResizeDown | ImGuiTabBarFlags_NoTooltip)) {
+            static std::string s_chatTabLabel;
+            static UiLang s_chatTabLang = static_cast<UiLang>(-1);
+            if (s_chatTabLang != g_cfg.uiLang || s_chatTabLabel.empty()) {
+                s_chatTabLang = g_cfg.uiLang;
+                s_chatTabLabel = UI(Tr(L"Chat")) + "###wt_all";
             }
-            if (shown) {
-                if (g_selectTab == i) g_selectTab = -2;
-                else if (g_selectTab == -2 && g_activeTab != i) ActivateTab(i);
+            if (ImGui::BeginTabItem(s_chatTabLabel.c_str(), nullptr,
+                                    g_selectTab == -1 ? ImGuiTabItemFlags_SetSelected : 0)) {
+                if (g_selectTab == -1) g_selectTab = -2;
+                else if (g_selectTab == -2 && g_activeTab != -1) LeaveWhisperTab();
                 ImGui::EndTabItem();
             }
-            if (!open) close = i;
+            int close = -1;
+            for (int i = 0; i < static_cast<int>(g_tabs.size()); ++i) {
+                bool open = true;
+                const ImGuiTabItemFlags f = (g_selectTab == i ? ImGuiTabItemFlags_SetSelected : 0) |
+                                            (g_tabs[i].unread ? ImGuiTabItemFlags_UnsavedDocument : 0);
+                const bool shown = ImGui::BeginTabItem(g_tabs[i].Label(), &open, f);
+                if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+                    tabMenu = true;  // not the header's menu
+                    if (g_tabs[i].custom) g_tabSettings = static_cast<int>(i);
+                }
+                if (shown) {
+                    if (g_selectTab == i) g_selectTab = -2;
+                    else if (g_selectTab == -2 && g_activeTab != i) ActivateTab(i);
+                    ImGui::EndTabItem();
+                }
+                if (!open) close = i;
+            }
+            ImGui::EndTabBar();
+            if (close >= 0) {
+                const bool active = close == g_activeTab, custom = g_tabs[close].custom;
+                g_tabs.erase(g_tabs.begin() + close);
+                if (active) LeaveWhisperTab();
+                else if (close < g_activeTab) g_selectTab = --g_activeTab;
+                if (custom) SaveCustomTabs();
+            }
         }
-        ImGui::EndTabBar();
-        if (close >= 0) {
-            const bool active = close == g_activeTab, custom = g_tabs[close].custom;
-            g_tabs.erase(g_tabs.begin() + close);
-            if (active) LeaveWhisperTab();
-            else if (close < g_activeTab) g_selectTab = --g_activeTab;
-            if (custom) SaveCustomTabs();
-        }
+        if (!tabMenu && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+            newTab = true;
+        ImGui::EndChild();
     }
-    if (!tabMenu && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
-        newTab = true;
-    ImGui::EndChild();
     // Right-click on the header: a tab of your own (a copy of the chat to set up) or a whisper tab.
     if (newTab) ImGui::OpenPopup("##hdrmenu");
     static bool newTabNext = false;  // asked for in a menu (opened next frame, at this level)
@@ -2893,58 +2899,71 @@ void RenderWindow() {
         }
         ImGui::EndPopup();
     }
-    ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - rightW);
-    if (g_cfg.voiceEnabled) {
-        // Hold with the left button to speak; a right-click: on until a pause (or the next right-click).
-        bool right = false;
-        const ImU32 tint = g_listening ? IM_COL32(110, 205, 130, 255) : !g_listenPausedFor.empty() ? IM_COL32(240, 190, 90, 255) : 0;
-        const bool clicked = IconButton("##mic", Icon::Mic, g_recording, &right, tint);
-        static bool held = false;
-        if (g_cfg.voiceActivation) {  // voice activation: a click switches listening on / off
-            if (clicked) {
-                const bool on = g_listening || g_listenWanted;
-                g_listenUserOff = on;
+    if (g_layout.header) {
+        ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - rightW);
+        if (g_cfg.voiceEnabled) {
+            // Hold with the left button to speak; a right-click: on until a pause (or the next right-click).
+            bool right = false;
+            const ImU32 tint = g_listening ? IM_COL32(110, 205, 130, 255) : !g_listenPausedFor.empty() ? IM_COL32(240, 190, 90, 255) : 0;
+            const bool clicked = IconButton("##mic", Icon::Mic, g_recording, &right, tint);
+            static bool held = false;
+            if (g_cfg.voiceActivation) {  // voice activation: a click switches listening on / off
+                if (clicked) {
+                    const bool on = g_listening || g_listenWanted;
+                    g_listenUserOff = on;
+                    lock.unlock();
+                    if (on) StopListening();
+                    else StartListening();
+                    lock.lock();
+                }
+            } else if (ImGui::IsItemActivated()) {
+                held = true;
                 lock.unlock();
-                if (on) StopListening();
-                else StartListening();
+                TalkDown();
+                lock.lock();
+            } else if (held && !ImGui::IsItemActive()) {
+                held = false;
+                if (!g_micLocked && !g_cfg.voiceToggle) TalkUp();
+            }
+            if (right) {
+                const bool stop = g_recording;
+                g_micLocked = !stop;
+                lock.unlock();
+                if (stop) TalkUp();
+                else TalkLocked();
                 lock.lock();
             }
-        } else if (ImGui::IsItemActivated()) {
-            held = true;
-            lock.unlock();
-            TalkDown();
-            lock.lock();
-        } else if (held && !ImGui::IsItemActive()) {
-            held = false;
-            if (!g_micLocked && !g_cfg.voiceToggle) TalkUp();
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", UI(g_cfg.voiceActivation ? Tr(L"Voice activation: click switches it on / off · right-click: speak until a pause")
+                                                             : Tr(L"Hold to speak (or the push-to-talk key) · right-click: speak until a pause")).c_str());
+            ImGui::SameLine(0, gap);
         }
-        if (right) {
-            const bool stop = g_recording;
-            g_micLocked = !stop;
-            lock.unlock();
-            if (stop) TalkUp();
-            else TalkLocked();
-            lock.lock();
+        if (IconButton("##fold", Icon::Collapse, false, nullptr)) {
+            g_collapsed = true;
+            const ImVec2 p = ImGui::GetWindowPos(), s = ImGui::GetWindowSize();
+            g_lastW = s.x;
+            g_expandedH = s.y;
+            g_anchorBottom = p.y + s.y;  // the small button takes its place on the next frame
+            g_savedPos = p;
+            g_buttonMoved = false;
         }
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("%s", UI(g_cfg.voiceActivation ? Tr(L"Voice activation: click switches it on / off · right-click: speak until a pause")
-                                                         : Tr(L"Hold to speak (or the push-to-talk key) · right-click: speak until a pause")).c_str());
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Minimize chat")).c_str());
         ImGui::SameLine(0, gap);
+        if (IconButton("##menu", Icon::Menu, false, nullptr)) ImGui::OpenPopup("kbmenu");
     }
-    if (IconButton("##fold", Icon::Collapse, false, nullptr)) {
-        g_collapsed = true;
-        const ImVec2 p = ImGui::GetWindowPos(), s = ImGui::GetWindowSize();
-        g_lastW = s.x;
-        g_expandedH = s.y;
-        g_anchorBottom = p.y + s.y;  // the small button takes its place on the next frame
-        g_savedPos = p;
-        g_buttonMoved = false;
-    }
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Minimize chat")).c_str());
-    ImGui::SameLine(0, gap);
-    if (IconButton("##menu", Icon::Menu, false, nullptr)) ImGui::OpenPopup("kbmenu");
     if (ImGui::BeginPopup("kbmenu")) {
+        if (!g_layout.header) {  // what the header offers: the tabs, minimise
+            if (ImGui::MenuItem(UI(Tr(L"Chat")).c_str(), nullptr, g_activeTab < 0)) LeaveWhisperTab();
+            for (int i = 0; i < static_cast<int>(g_tabs.size()); ++i)
+                if (ImGui::MenuItem(g_tabs[i].Label(), nullptr, g_activeTab == i)) {
+                    ActivateTab(i);
+                    g_selectTab = i;  // the tab bar follows when the header comes back
+                }
+            if (ImGui::MenuItem(UI(Tr(L"Minimize chat")).c_str())) g_minimizeRequest = true;
+            ImGui::Separator();
+        }
         if (ImGui::MenuItem(UI(Tr(L"Options …")).c_str())) g_showOptions = true;
+        if (ImGui::MenuItem(UI(Tr(L"Header")).c_str(), nullptr, &g_layout.header)) SaveLayout();
         if (ImGui::MenuItem(UI(Tr(L"Compact view")).c_str(), nullptr, &g_compact)) g_cfg.SaveBool(L"NexusWindow", L"Compact", g_compact);
         if (ImGui::MenuItem(UI(Tr(L"New whisper tab …")).c_str())) newTabNext = true;
         if (!g_chatEventsPresent && !g_chatEventsFile && ImGui::MenuItem(UI(Tr(L"Install Events: Chat (every channel) …")).c_str()))
@@ -2953,8 +2972,10 @@ void RenderWindow() {
         if (ImGui::MenuItem(UI(Tr(L"Hide (Ctrl+Alt+K shows it again)")).c_str())) g_show = false;
         ImGui::EndPopup();
     }
-    ImGui::SameLine();
-    if (IconButton("##close", Icon::Close, false, nullptr)) g_show = false;
+    if (g_layout.header) {
+        ImGui::SameLine();
+        if (IconButton("##close", Icon::Close, false, nullptr)) g_show = false;
+    }
     g_headerH = ImGui::GetCursorPosY() - st.ItemSpacing.y + st.WindowPadding.y;
     if (!g_recording && g_micLocked) g_micLocked = false;  // the recording ended (pause, maximum length)
     // Voice activation listens from the map on (unless you switched it off with the microphone).
@@ -3062,6 +3083,7 @@ void RenderWindow() {
             }
             if (!l.translated.empty() && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", l.u8text.c_str());
             // A click on the text of a line someone else wrote: just this line into your language.
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) s_lineRightClick = true;
             if (!clicked && !l.own && l.translated.empty() && (ImGui::IsItemClicked() || ImGui::IsItemClicked(ImGuiMouseButton_Right)))
                 g_worker.Post([id = l.id, t = l.text] { TranslateLine(id, t, true); });
             ImGui::PopID();
@@ -3195,10 +3217,15 @@ void RenderWindow() {
     }
     // Right-click in the input (your own words only): the learning mode – what you corrected yourself while typing is
     // learned (autocorrection writes it right next time), and abbreviations get their meaning (for the translator).
-    static bool teach = false;
+    static bool teach = false, s_menuNext = false;
     if (ImGui::IsMouseHoveringRect(inputMin, inputMax) && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) &&
         ImGui::IsMouseReleased(ImGuiMouseButton_Right))
         teach = true;
+    else if (!g_layout.header && !s_lineRightClick && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) &&
+             ImGui::IsMouseReleased(ImGuiMouseButton_Right) && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId))
+        ImGui::OpenPopup("kbmenu");  // without the header the window's own right-click is the menu
+    if (!ImGui::IsMouseDown(ImGuiMouseButton_Right) && !ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+        s_lineRightClick = false;
     if (teach) {
         teach = false;
         ImGui::OpenPopup("##teach");
@@ -3271,7 +3298,18 @@ void RenderWindow() {
             SetStatus(m.empty() ? TrF(L"\"{1}\" forgotten", {w}) : TrF(L"Learned: {1} = {2}", {w, m}), 6000);
         }
         Hint(UI(Tr(L"The translator gets the meaning; your text stays as you wrote it.")));
+        if (!g_layout.header) {  // without the header (maybe nothing but the input left): the way to the menu
+            ImGui::Separator();
+            if (ImGui::Selectable(UI(Tr(L"Menu …")).c_str())) {
+                s_menuNext = true;
+                ImGui::CloseCurrentPopup();
+            }
+        }
         ImGui::EndPopup();
+    }
+    if (s_menuNext) {  // opened here, at the window's level, where the menu lives
+        s_menuNext = false;
+        ImGui::OpenPopup("kbmenu");
     }
     const ImVec4 clip(inputMin.x, inputMin.y, inputMax.x, inputMax.y);
     const ImVec2 textAt(inputMin.x + st.FramePadding.x, inputMin.y + st.FramePadding.y);
@@ -3447,6 +3485,10 @@ void RenderOptionsContent() {
                 changed |= ImGui::Checkbox(UI(Tr(L"Word bar")).c_str(), &g_layout.words);
                 ImGui::SameLine();
                 changed |= ImGui::Checkbox(UI(Tr(L"Footer")).c_str(), &g_layout.footer);
+                ImGui::SameLine();
+                changed |= ImGui::Checkbox(UI(Tr(L"Header")).c_str(), &g_layout.header);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("%s", UI(Tr(L"Hidden: a right-click on the window opens the menu (tabs, minimise, options).")).c_str());
                 ImGui::SetNextItemWidth(wide);
                 changed |= ImGui::SliderInt(UI(Tr(L"Lines of the input") + L"##inl").c_str(), &g_layout.inputLines, 1, 8);
                 ImGui::SetNextItemWidth(wide);
