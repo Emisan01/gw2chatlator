@@ -82,7 +82,8 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   takes; Space alone still keeps a valid word). The first Tab takes the highlighted word.
   `GW2KB_SHOT_TYPE=<text>` types into the input before the self-test's picture. Status text is drawn inside the input box (`BoxText`). Compact view = no
   preview / word bar, the translation small in the box. Scroll bar drawn at the left. Snap to the screen edges.
-- **Right-click** only in the input (learning mode): self-corrections noticed while typing (`NoteSelfFix`) →
+- **Right-click** only in the input with a word you wrote (learning mode; empty input without the header: the menu),
+  docked to the window's top right corner (1 px), an X closes it: self-corrections noticed while typing (`NoteSelfFix`) →
   `SpellService::TeachFix` (never a dictionary word), and "my words" (meaning → translator). No menu on chat lines.
 - **First start** (`[Nexus] SetupDone=0`, `FirstStart`, user's decision): loads Events: Chat into `<GW2>\addons`, the
   voice module (`voice_module.cpp`: release ZIP via `DownloadReleaseAsset`, tar.exe, only gw2kb_voice.exe +

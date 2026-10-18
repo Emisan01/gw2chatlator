@@ -3485,9 +3485,13 @@ void RenderWindow() {
     // Right-click in the input (your own words only): the learning mode – what you corrected yourself while typing is
     // learned (autocorrection writes it right next time), and abbreviations get their meaning (for the translator).
     static bool teach = false, s_menuNext = false;
+    // Only with a word you wrote yourself in the input; an empty input has nothing to learn (without the header the
+    // right-click is the menu then).
     if (ImGui::IsMouseHoveringRect(inputMin, inputMax) && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) &&
-        ImGui::IsMouseReleased(ImGuiMouseButton_Right))
-        teach = true;
+        ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
+        if (!Trim(g_wFlatInput).empty()) teach = true;
+        else if (!Lay().header && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId)) ImGui::OpenPopup("kbmenu");
+    }
     else if (!Lay().header && !s_lineRightClick && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) &&
              ImGui::IsMouseReleased(ImGuiMouseButton_Right) && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId))
         ImGui::OpenPopup("kbmenu");  // without the header the window's own right-click is the menu
@@ -3521,6 +3525,13 @@ void RenderWindow() {
         teach = false;
         ImGui::OpenPopup("##teach");
     }
+    {  // docked to our window's top right corner, 1 px above it (below it when the window stands at the top of the
+       // screen) – in every mode, never where the mouse was (it jumped and was pushed to the screen edge)
+        const ImVec2 wp = ImGui::GetWindowPos(), ws = ImGui::GetWindowSize();
+        const bool below = wp.y < ImGui::GetIO().DisplaySize.y * 0.35f;
+        ImGui::SetNextWindowPos(below ? ImVec2(wp.x + ws.x, wp.y + ws.y + 1) : ImVec2(wp.x + ws.x, wp.y - 1), ImGuiCond_Always,
+                                below ? ImVec2(1, 0) : ImVec2(1, 1));
+    }
     if (ImGui::BeginPopup("##teach")) {
         static char typed[64] = {}, fixed[64] = {}, word[64] = {}, meaning[160] = {};
         if (ImGui::IsWindowAppearing()) {  // the last word you typed, and what is known of it
@@ -3539,7 +3550,10 @@ void RenderWindow() {
                 SetStatus(ok ? TrF(L"Learned: {1} > {2}", {t, f}) : TrF(L"\"{1}\" is a real word – not learned as a typo", {t}), 6000);
             });
         };
+        ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted(UI(Tr(L"Learn your corrections")).c_str());
+        ImGui::SameLine(std::max(ImGui::GetCursorPosX(), ImGui::GetWindowContentRegionMax().x - ImGui::GetFrameHeight()));
+        if (IconButton("##teachclose", Icon::Close, false, nullptr)) ImGui::CloseCurrentPopup();  // the X: top right
         Hint(UI(Tr(L"What you corrected yourself while typing: learned once, autocorrection writes it right next time.")));
         int learned = -1;
         for (size_t i = 0; i < g_selfFixes.size(); ++i) {
