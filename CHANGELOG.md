@@ -3,6 +3,23 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.9.5 — 2026-10-18 (GW2Chatlator for Nexus)
+
+- **A window made of building blocks.** The options have a new tab "Window": the parts from top to bottom, each one to
+  switch off – header, chat, translation preview, word bar, footer – and "Info texts": off, every grey status line
+  goes (the status in the empty input such as "Translation off", the module lines in the empty chat, "translating …",
+  the counter while you do not write). The grey word of the prediction always stays, orange messages too. Text size,
+  transparency, snapping, the lines and the chat text's look moved there as well; General keeps language and modules.
+- **"Prediction only":** with the chat and your text not translated and voice input off, the input says so.
+- **Themes for the window itself** (Window → Theme of the window): Slate (dark greys, slate accent – the default),
+  Grey (black, white and grey only), Cyan (deep teal, cyan where something is active) or Nexus (whatever theme is
+  chosen in Nexus – its "Classic" one made tabs and fields blue / purple). Only frames, tabs, buttons and fields – the
+  chat keeps its channel colours.
+- **Without the footer the minimise button stays:** it stands left of the input, in the input's line.
+- **Compact view no longer hides the word bar** (the input slid up into its place) **and no longer adds a line** to the
+  input when nothing is translated – one line set is one line.
+- The tooltip of "GW2 colours" showed on the wrong checkbox.
+
 ## 1.9.4 — 2026-10-18 (GW2Chatlator for Nexus)
 
 - **The header can be hidden** like the other parts (Options → General → Window layout → Header): no tabs, microphone,

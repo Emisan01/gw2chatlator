@@ -82,6 +82,7 @@ constexpr size_t kHistoryMax = 50;
 struct Layout {
     bool chat = true, preview = true, words = true, footer = true;
     bool header = true;  // the tabs, microphone, minimise, menu, close; hidden: a right-click on the window is the menu
+    bool infoText = true;  // the grey status lines (what is going on, modules, counter); never the prediction's grey word
     int inputLines = 4;    // the input box, wrapping
     int previewLines = 3;  // the translation and its back-translation
 };
@@ -104,6 +105,75 @@ struct TextLook {
     bool chatBg = true;  // the darker field behind the chat (it fades with the window's transparency); off: none
 };
 TextLook g_look;
+
+// The window's own theme – only the window itself (frames, tabs, buttons, fields), never the chat text with its
+// channel colours. "Nexus" keeps whatever theme is chosen in Nexus (its "Classic" one is blue / purple); the others
+// look the same on every PC. Pushed for everything we draw: the options, our window, its popups.
+enum class Theme { Nexus, Slate, Grey, Cyan };
+struct ThemeColours {
+    uint32_t text, textDim, bg, child, popup, border, separator;
+    uint32_t frame, frameHovered, frameActive;     // input, preview, sliders
+    uint32_t button, buttonHovered, buttonActive;  // buttons, menu entries
+    uint32_t tab, tabHovered, tabActive;
+    uint32_t check, grab, grabActive;              // check marks, slider and scroll bar grips
+    uint32_t selection;
+};
+constexpr uint32_t Rgb(uint32_t rgb, uint32_t alpha = 255) {  // 0xRRGGBB + alpha -> ImGui's ABGR
+    return ((rgb >> 16) & 0xFF) | (rgb & 0xFF00) | ((rgb & 0xFF) << 16) | (alpha << 24);
+}
+const ThemeColours* ColoursOf(Theme t) {
+    // Slate: dark greys with a cool slate accent (the look of 1.9.5).
+    static const ThemeColours kSlate = {
+        Rgb(0xEBEBF0), Rgb(0x8C919B), Rgb(0x121214, 240), Rgb(0x08080A, 115), Rgb(0x141417, 248), Rgb(0x52545E, 128),
+        Rgb(0x575963, 128), Rgb(0x333A47, 230), Rgb(0x404A59, 242), Rgb(0x475466), Rgb(0x36404F, 230),
+        Rgb(0x4A596E), Rgb(0x596B85), Rgb(0x262B36, 230), Rgb(0x4F5E75), Rgb(0x404D61), Rgb(0xDBE3ED),
+        Rgb(0x8C99AD), Rgb(0xA8B8CC), Rgb(0x5C759E, 128)};
+    // Grey: black, white and grey only – quiet, nothing coloured.
+    static const ThemeColours kGrey = {
+        Rgb(0xDDDDDD), Rgb(0x8A8A8A), Rgb(0x111111, 240), Rgb(0x1E1E1E, 140), Rgb(0x161616, 248), Rgb(0x2C2C2C),
+        Rgb(0x444444, 160), Rgb(0x2C2C2C, 235), Rgb(0x383838), Rgb(0x444444), Rgb(0x2C2C2C, 235),
+        Rgb(0x3C3C3C), Rgb(0x4C4C4C), Rgb(0x1E1E1E, 235), Rgb(0x3C3C3C), Rgb(0x444444), Rgb(0xDDDDDD),
+        Rgb(0x6B6B6B), Rgb(0xAAAAAA), Rgb(0xFFFFFF, 46)};
+    // Cyan: deep teal structure, cyan only where something is active – the cyan palette (bg 001A18 … light E8FFFE).
+    static const ThemeColours kCyan = {
+        Rgb(0xE8FFFE), Rgb(0x6F9E9B), Rgb(0x001A18, 240), Rgb(0x000E0D, 128), Rgb(0x00201E, 248), Rgb(0x003D3B),
+        Rgb(0x003D3B), Rgb(0x003D3B, 235), Rgb(0x00524F), Rgb(0x006B68), Rgb(0x003D3B, 235),
+        Rgb(0x00524F), Rgb(0x006B68), Rgb(0x002B29, 235), Rgb(0x006B68), Rgb(0x005C59), Rgb(0x5EEAE4),
+        Rgb(0x00C9C0), Rgb(0x5EEAE4), Rgb(0x00C9C0, 90)};
+    switch (t) {
+        case Theme::Slate: return &kSlate;
+        case Theme::Grey: return &kGrey;
+        case Theme::Cyan: return &kCyan;
+        default: return nullptr;
+    }
+}
+Theme g_theme = Theme::Slate;
+int PushTheme() {
+    const ThemeColours* c = ColoursOf(g_theme);
+    if (!c) return 0;  // Nexus' own
+    const std::pair<ImGuiCol, uint32_t> colours[] = {
+        {ImGuiCol_Text, c->text}, {ImGuiCol_TextDisabled, c->textDim}, {ImGuiCol_WindowBg, c->bg},
+        {ImGuiCol_ChildBg, c->child}, {ImGuiCol_PopupBg, c->popup}, {ImGuiCol_Border, c->border},
+        {ImGuiCol_FrameBg, c->frame}, {ImGuiCol_FrameBgHovered, c->frameHovered}, {ImGuiCol_FrameBgActive, c->frameActive},
+        {ImGuiCol_TitleBg, c->bg}, {ImGuiCol_TitleBgActive, c->tab}, {ImGuiCol_TitleBgCollapsed, c->bg},
+        {ImGuiCol_ScrollbarBg, Rgb(0x000000, 38)}, {ImGuiCol_ScrollbarGrab, c->grab},
+        {ImGuiCol_ScrollbarGrabHovered, c->grabActive}, {ImGuiCol_ScrollbarGrabActive, c->check},
+        {ImGuiCol_CheckMark, c->check}, {ImGuiCol_SliderGrab, c->grab}, {ImGuiCol_SliderGrabActive, c->grabActive},
+        {ImGuiCol_Button, c->button}, {ImGuiCol_ButtonHovered, c->buttonHovered}, {ImGuiCol_ButtonActive, c->buttonActive},
+        {ImGuiCol_Header, c->button}, {ImGuiCol_HeaderHovered, c->buttonHovered}, {ImGuiCol_HeaderActive, c->buttonActive},
+        {ImGuiCol_Separator, c->separator}, {ImGuiCol_SeparatorHovered, c->grab}, {ImGuiCol_SeparatorActive, c->grabActive},
+        {ImGuiCol_ResizeGrip, c->button}, {ImGuiCol_ResizeGripHovered, c->grab}, {ImGuiCol_ResizeGripActive, c->grabActive},
+        {ImGuiCol_Tab, c->tab}, {ImGuiCol_TabHovered, c->tabHovered}, {ImGuiCol_TabActive, c->tabActive},
+        {ImGuiCol_TabUnfocused, c->tab}, {ImGuiCol_TabUnfocusedActive, c->tabActive},
+        {ImGuiCol_TextSelectedBg, c->selection}, {ImGuiCol_NavHighlight, c->grabActive},
+    };
+    for (const auto& col : colours) ImGui::PushStyleColor(col.first, col.second);
+    return static_cast<int>(std::size(colours));
+}
+const wchar_t* ThemeKey(Theme t) {
+    return t == Theme::Nexus ? L"nexus" : t == Theme::Grey ? L"grey" : t == Theme::Cyan ? L"cyan" : L"slate";
+}
+
 MyWords g_myWords;  // your own words and what they mean (<data>\my-words.txt), g_mu
 // Whisper tabs: each keeps whom you write to (at most kMaxWhisperTabs, for this session).
 constexpr size_t kMaxWhisperTabs = 5;
@@ -413,12 +483,20 @@ void LoadLayout() {  // g_mu held
     g_layout.words = get(L"WordBar", 1) != 0;
     g_layout.footer = get(L"Footer", 1) != 0;
     g_layout.header = get(L"Header", 1) != 0;
+    g_layout.infoText = get(L"InfoText", 1) != 0;
     g_layout.inputLines = std::clamp(get(L"InputLines", 4), 1, 8);
     g_layout.previewLines = std::clamp(get(L"PreviewLines", 3), 1, 8);
     g_look.glow = get(L"Glow", 1) != 0;
     g_look.brightness = std::clamp(get(L"Brightness", 100), 60, 160);
     g_look.gameColors = get(L"GameColors", 1) != 0;
     g_look.chatBg = get(L"ChatBg", 1) != 0;
+    {  // the window's theme ([NexusWindow] Theme; 1.9.5's OwnColours=0 meant Nexus' own)
+        wchar_t theme[16] = {};
+        GetPrivateProfileStringW(L"NexusWindow", L"Theme", L"", theme, 16, g_cfg.iniPath.c_str());
+        const std::wstring t = theme;
+        g_theme = t == L"nexus" ? Theme::Nexus : t == L"grey" ? Theme::Grey : t == L"cyan" ? Theme::Cyan
+                : t.empty() && get(L"OwnColours", 1) == 0 ? Theme::Nexus : Theme::Slate;
+    }
     auto nx = [](const wchar_t* key, int def) { return GetPrivateProfileIntW(L"Nexus", key, def, g_cfg.iniPath.c_str()) != 0; };
     g_nx.translateChat = nx(L"TranslateChat", 0);
     g_nx.snap = nx(L"Snap", 1);
@@ -444,12 +522,14 @@ void SaveLayout() {  // g_mu held
     g_cfg.SaveValue(L"NexusWindow", L"WordBar", g_layout.words ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"Footer", g_layout.footer ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"Header", g_layout.header ? L"1" : L"0");
+    g_cfg.SaveValue(L"NexusWindow", L"InfoText", g_layout.infoText ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"InputLines", std::to_wstring(g_layout.inputLines));
     g_cfg.SaveValue(L"NexusWindow", L"PreviewLines", std::to_wstring(g_layout.previewLines));
     g_cfg.SaveValue(L"NexusWindow", L"Glow", g_look.glow ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"Brightness", std::to_wstring(g_look.brightness));
     g_cfg.SaveValue(L"NexusWindow", L"GameColors", g_look.gameColors ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"ChatBg", g_look.chatBg ? L"1" : L"0");
+    g_cfg.SaveValue(L"NexusWindow", L"Theme", ThemeKey(g_theme));
 }
 
 void SetStatus(const std::wstring& s, ULONGLONG ms = 6000) {  // g_mu held
@@ -1917,6 +1997,7 @@ void RenderFooter() {  // g_mu held
     const float after = ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x + ImGui::GetStyle().ItemSpacing.x * 2;
     if (counterX >= after) ImGui::SameLine(counterX);
     else ImGui::SetCursorPosX(std::max(counterX, ImGui::GetCursorPosX()));
+    if (!g_layout.infoText && !g_input[0]) return;  // info texts off: the counter only while you write
     ImGui::AlignTextToFramePadding();
     ImGui::TextDisabled("%s", counter.c_str());
 }
@@ -2040,8 +2121,10 @@ std::wstring StatusText() {  // g_mu held
     if (!g_listenPausedFor.empty()) return TrF(L"Voice activation paused – {1} uses the microphone", {g_listenPausedFor});
     if (g_listening) return Tr(L"Voice activation listens – just speak");
     const bool voiceEnglish = g_cfg.voiceEnabled && g_cfg.voiceTranslate;
-    if (!g_nx.translateChat && !Translating())  // nothing goes to a translator: no counter of one
+    if (!g_nx.translateChat && !Translating()) {  // nothing goes to a translator: no counter of one
+        if (!g_cfg.voiceEnabled) return Tr(L"Prediction only");  // the typing help is all that is on
         return voiceEnglish ? Tr(L"Translation off · speech into English (whisper)") : Tr(L"Translation off");
+    }
     if (const std::wstring q = MyMemoryQuotaText(); !q.empty()) return q;
     std::wstring route = SendOriginal() ? Tr(L"as written") : ToUpperAscii(PrimaryLang(SendLang()));
     if (Translating() && g_translator) route += L" · " + g_translator->Name();
@@ -2084,7 +2167,7 @@ void StartModelDownload(const VoiceModelInfo& m) {
 std::atomic<bool> g_voiceModuleInstalling{false};
 std::atomic<int> g_voiceModulePct{-1};
 std::thread g_voiceModuleThread;
-int g_optionsTab = -1;  // a tab of the options window to bring to the front (General 0, Voice 2, Translator 4)
+int g_optionsTab = -1;  // a tab of the options window to bring to the front (General 0, Window 1, Voice 3, Translator 5)
 
 std::wstring KeyboardDir() { return AddonsDir() + L"GW2Keyboard"; }
 
@@ -2272,7 +2355,7 @@ void RenderModules(bool guide) {  // g_mu NOT held
             ImGui::SameLine();
             if (ImGui::SmallButton(UI(Tr(L"Open") + L"##tr").c_str())) {
                 g_showOptions = true;
-                g_optionsTab = 4;
+                g_optionsTab = 5;
             }
         }
         if (enabled && !voiceEnglish) {
@@ -2281,7 +2364,7 @@ void RenderModules(bool guide) {  // g_mu NOT held
             ImGui::SameLine();
             if (ImGui::SmallButton(UI(Tr(L"Open") + L"##vo").c_str())) {
                 g_showOptions = true;
-                g_optionsTab = 2;
+                g_optionsTab = 3;
             }
         }
     }
@@ -2463,7 +2546,8 @@ bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::Link
 }
 
 bool g_micLocked = false;  // right-click on the microphone: on until the next right-click
-bool g_compact = false;    // menu ≡: like GW2's own chat – no preview, no word bar; the translation small in the input
+bool g_compact = false;    // menu ≡: like GW2's own chat – no preview, the translation small in the input (the word bar
+                           // is its own building block: compact view leaves it alone)
 
 void RenderOptionsContent();
 
@@ -2522,6 +2606,11 @@ void RenderWindow() {
     KickSave();
     ImGuiIO& io = ImGui::GetIO();
     if (io.DisplaySize.x <= 0 || io.DisplaySize.y <= 0) return;
+    struct PopColoursAtEnd {
+        int n = 0;
+        ~PopColoursAtEnd() { if (n) ImGui::PopStyleColor(n); }
+    } popColours;
+    popColours.n = PushTheme();  // for everything drawn below: the options, our window, its popups
     g_keyboardFree = !io.WantCaptureKeyboard;
     g_fps = static_cast<int>(io.Framerate);
     {
@@ -2997,9 +3086,12 @@ void RenderWindow() {
     // ---- the chat (the newest at the bottom): name white – a click opens a whisper tab –, text in the channel colour,
     // the scroll bar at the left like GW2's own chat
     const float line = ImGui::GetTextLineHeightWithSpacing();
-    const bool showPreview = g_layout.preview && !g_compact, showWords = g_layout.words && !g_compact;
+    const bool showPreview = g_layout.preview && !g_compact, showWords = g_layout.words;
     const float smallLine = ImGui::GetFontSize() * 0.85f + 2;
-    const float boxH = ImGui::GetTextLineHeight() * g_layout.inputLines + st.FramePadding.y * 2 + (g_compact ? smallLine : 0);
+    // Compact view adds the small translation line only while something is translated (prediction only: none – the box
+    // keeps exactly the lines you set).
+    const float boxH = ImGui::GetTextLineHeight() * g_layout.inputLines + st.FramePadding.y * 2 +
+                       (g_compact && Translating() ? smallLine : 0);
     const float lowerH = (showPreview ? line * (g_layout.previewLines + 0.2f) + st.ItemSpacing.y : 0) +
                          (showWords ? ImGui::GetFrameHeightWithSpacing() : 0) +
                          (g_layout.footer ? ImGui::GetFrameHeightWithSpacing() : 0) + boxH + st.ItemSpacing.y;
@@ -3051,7 +3143,7 @@ void RenderWindow() {
         const WhisperTab* front = g_activeTab >= 0 && g_activeTab < static_cast<int>(g_tabs.size()) ? &g_tabs[g_activeTab] : nullptr;
         const std::wstring& tabName = front && !front->custom ? front->nameFolded : s_emptyW;
         const uint32_t tabChannels = front && front->custom ? front->channels : 0xFFFFFFFFu;
-        if (g_lines.empty()) {  // nothing arrived yet: what is ready, what is missing, where translation is switched on
+        if (g_lines.empty() && g_layout.infoText) {  // nothing arrived yet: what is ready, what is missing, where translation is switched on
             lock.unlock();
             RenderModules(true);
             lock.lock();
@@ -3147,7 +3239,7 @@ void RenderWindow() {
         } else if (previewCurrent) {
             LookText(U8(ComposePrefix() + g_preview).c_str(), Bright(kPreview), true);
             if (!g_back.empty()) LookText(U8(g_back).c_str(), Bright(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled)), true);
-        } else {
+        } else if (g_layout.infoText) {
             ImGui::TextDisabled("%s", UI(Tr(L"translating …")).c_str());
         }
         ImGui::EndChild();
@@ -3185,8 +3277,16 @@ void RenderWindow() {
         ImGui::SetKeyboardFocusHere();
         g_focusInput = false;
     }
+    if (!g_layout.footer) {  // no footer: its minimise button stands left of the input, at the input's bottom
+        const float btn = ImGui::GetFrameHeight(), rowY = ImGui::GetCursorPosY();
+        ImGui::SetCursorPosY(rowY + std::max(0.0f, boxH - btn));
+        if (ImGui::Button(">##mininput", ImVec2(btn, btn))) g_minimizeRequest = true;
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Minimize chat")).c_str());
+        ImGui::SameLine();
+        ImGui::SetCursorPosY(rowY);
+    }
     const ImVec2 boxSize(-1, boxH);
-    g_wrapWidth = ImGui::GetContentRegionAvail().x - st.FramePadding.x * 2 - st.ScrollbarSize - 4;
+    g_wrapWidth =ImGui::GetContentRegionAvail().x - st.FramePadding.x * 2 - st.ScrollbarSize - 4;
     const ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CtrlEnterForNewLine |
                                       ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_CallbackCharFilter |
                                       ImGuiInputTextFlags_CallbackAlways;
@@ -3338,8 +3438,9 @@ void RenderWindow() {
                 s_lastStatusWidth = availW;
                 s_lastStatusFit = Fit(UI(stW), availW);
             }
-            BoxText(textAt, clip, g_status.empty() ? ImGui::GetColorU32(ImGuiCol_TextDisabled) : ImGui::GetColorU32(kAccent),
-                    s_lastStatusFit);
+            if (g_layout.infoText || !g_status.empty())
+                BoxText(textAt, clip, g_status.empty() ? ImGui::GetColorU32(ImGuiCol_TextDisabled) : ImGui::GetColorU32(kAccent),
+                        s_lastStatusFit);
         }
     } else if (!g_status.empty()) {
         const std::string s = Fit(UI(g_status), (inputMax.x - inputMin.x) * 0.6f);
@@ -3348,7 +3449,7 @@ void RenderWindow() {
                 ImGui::GetColorU32(kAccent), s, 0.85f);
     }
     // Compact view: what the chat will get, small in the box's last line (instead of the preview above).
-    if (g_compact && g_input[0] && Translating()) {
+    if (g_compact && g_input[0] && Translating() && (previewCurrent || g_layout.infoText)) {
         const std::string t = previewCurrent ? "> " + U8(g_preview) : UI(Tr(L"translating …"));
         BoxText(ImVec2(textAt.x, inputMax.y - smallLine - 1), clip, ImGui::GetColorU32(kPreview),
                 Fit(t, (inputMax.x - inputMin.x) * (g_status.empty() ? 0.95f : 0.38f)), 0.85f);
@@ -3451,6 +3552,31 @@ void RenderOptionsContent() {
         if (ImGui::BeginTabItem(UI(Tr(L"General")).c_str(), nullptr, TabFlag(0))) {
             ImGui::SetNextItemWidth(wide);
             LanguageCombo(UI(Tr(L"Language of this window") + L"##ui").c_str(), edit.uiLangCode, Tr(L"like Windows"));
+            ImGui::Checkbox(UI(Tr(L"Show the window")).c_str(), &g_show);
+            Hint(UI(Tr(L"Keys (show / hide: Ctrl+Alt+K, push to talk, focus the input): Nexus → Keybinds → GW2 Keyboard.")));
+            ImGui::Separator();
+            ImGui::TextUnformatted(UI(Tr(L"Modules")).c_str());
+            RenderModules(false);
+            ImGui::EndTabItem();
+        }
+        // ---- Window: its building blocks, size, transparency, how the chat text looks
+        if (ImGui::BeginTabItem(UI(Tr(L"Window")).c_str(), nullptr, TabFlag(1))) {
+            {
+                std::lock_guard<std::mutex> lock(g_mu);
+                const std::wstring names[] = {Tr(L"Nexus (its own theme)"), Tr(L"Slate"), Tr(L"Grey"), Tr(L"Cyan")};
+                int ti = static_cast<int>(g_theme);
+                ImGui::SetNextItemWidth(wide);
+                if (ImGui::BeginCombo(UI(Tr(L"Theme of the window") + L"##theme").c_str(), UI(names[ti]).c_str())) {
+                    for (int i = 0; i < 4; ++i)
+                        if (ImGui::Selectable(UI(names[i]).c_str(), i == ti)) {
+                            g_theme = static_cast<Theme>(i);
+                            SaveLayout();
+                        }
+                    ImGui::EndCombo();
+                }
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("%s", UI(Tr(L"Only the window itself: frames, tabs, buttons. The chat keeps its channel colours.")).c_str());
+            }
             // Size and transparency take effect at once and are kept (like the chat text below), not only on "Save".
             int pt = std::clamp(edit.fontPt, 8, 28);
             ImGui::SetNextItemWidth(wide);
@@ -3467,7 +3593,6 @@ void RenderOptionsContent() {
                 edit.opacity = g_cfg.opacity = (100 - transparency) * 255 / 100;
                 g_cfg.SaveValue(L"Window", L"Opacity", std::to_wstring(g_cfg.opacity));
             }
-            ImGui::Checkbox(UI(Tr(L"Show the window")).c_str(), &g_show);
             {
                 std::lock_guard<std::mutex> lock(g_mu);
                 if (ImGui::Checkbox(UI(Tr(L"Snap to the screen edges")).c_str(), &g_nx.snap)) SaveNexusOptions();
@@ -3478,17 +3603,17 @@ void RenderOptionsContent() {
             ImGui::TextUnformatted(UI(Tr(L"Window layout")).c_str());
             {
                 std::lock_guard<std::mutex> lock(g_mu);
-                bool changed = ImGui::Checkbox(UI(Tr(L"Chat")).c_str(), &g_layout.chat);
-                ImGui::SameLine();
-                changed |= ImGui::Checkbox(UI(Tr(L"Translation preview")).c_str(), &g_layout.preview);
-                ImGui::SameLine();
-                changed |= ImGui::Checkbox(UI(Tr(L"Word bar")).c_str(), &g_layout.words);
-                ImGui::SameLine();
-                changed |= ImGui::Checkbox(UI(Tr(L"Footer")).c_str(), &g_layout.footer);
-                ImGui::SameLine();
-                changed |= ImGui::Checkbox(UI(Tr(L"Header")).c_str(), &g_layout.header);
+                // From top to bottom, as they stand in the window; each one can go.
+                bool changed = ImGui::Checkbox(UI(Tr(L"Header")).c_str(), &g_layout.header);
                 if (ImGui::IsItemHovered())
                     ImGui::SetTooltip("%s", UI(Tr(L"Hidden: a right-click on the window opens the menu (tabs, minimise, options).")).c_str());
+                changed |= ImGui::Checkbox(UI(Tr(L"Chat")).c_str(), &g_layout.chat);
+                changed |= ImGui::Checkbox(UI(Tr(L"Translation preview")).c_str(), &g_layout.preview);
+                changed |= ImGui::Checkbox(UI(Tr(L"Word bar")).c_str(), &g_layout.words);
+                changed |= ImGui::Checkbox(UI(Tr(L"Footer")).c_str(), &g_layout.footer);
+                changed |= ImGui::Checkbox(UI(Tr(L"Info texts")).c_str(), &g_layout.infoText);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("%s", UI(Tr(L"The grey status lines: what is going on, the modules, the counter. The grey word of the prediction stays.")).c_str());
                 ImGui::SetNextItemWidth(wide);
                 changed |= ImGui::SliderInt(UI(Tr(L"Lines of the input") + L"##inl").c_str(), &g_layout.inputLines, 1, 8);
                 ImGui::SetNextItemWidth(wide);
@@ -3504,12 +3629,13 @@ void RenderOptionsContent() {
                     ImGui::SetTooltip("%s", UI(Tr(L"A dark halo around the letters, like the game draws its chat – readable on any background.")).c_str());
                 ImGui::SameLine();
                 changed |= ImGui::Checkbox(UI(Tr(L"GW2 colours")).c_str(), &g_look.gameColors);
-                ImGui::SameLine();
-                changed |= ImGui::Checkbox(UI(Tr(L"Background behind the chat")).c_str(), &g_look.chatBg);
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("%s", UI(Tr(L"Off: only the text stands over the game – with the dark outline it stays readable.")).c_str());
                 if (ImGui::IsItemHovered())
                     ImGui::SetTooltip("%s", UI(Tr(L"The name in the channel colour, the message in a light tint of it – as in the game. Off: the message in the channel colour.")).c_str());
+                ImGui::SameLine();
+                changed |= ImGui::Checkbox(UI(Tr(L"Background behind the chat")).c_str(), &g_look.chatBg);
+
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("%s", UI(Tr(L"Off: only the text stands over the game – with the dark outline it stays readable.")).c_str());
                 ImGui::SetNextItemWidth(wide);
                 changed |= ImGui::SliderInt(UI(Tr(L"Brightness") + L" (%)##bright").c_str(), &g_look.brightness, 60, 160);
                 if (changed) SaveLayout();
@@ -3532,14 +3658,10 @@ void RenderOptionsContent() {
                 if (ImGui::IsItemHovered())
                     ImGui::SetTooltip("%s", UI(Tr(L"Choose the language your game runs in – item links and waypoints then read as in its own chat.")).c_str());
             }
-            Hint(UI(Tr(L"Keys (show / hide: Ctrl+Alt+K, push to talk, focus the input): Nexus → Keybinds → GW2 Keyboard.")));
-            ImGui::Separator();
-            ImGui::TextUnformatted(UI(Tr(L"Modules")).c_str());
-            RenderModules(false);
             ImGui::EndTabItem();
         }
         // ---- Writing
-        if (ImGui::BeginTabItem(UI(Tr(L"Writing")).c_str(), nullptr, TabFlag(1))) {
+        if (ImGui::BeginTabItem(UI(Tr(L"Writing")).c_str(), nullptr, TabFlag(2))) {
             ImGui::SetNextItemWidth(wide);
             LanguageCombo(UI(Tr(L"I write in") + L"##writein").c_str(), edit.writeIn, Tr(L"like Windows"));
             ImGui::Checkbox(UI(Tr(L"Spell checking (Windows, offline)")).c_str(), &edit.spellEnabled);
@@ -3580,7 +3702,7 @@ void RenderOptionsContent() {
             ImGui::EndTabItem();
         }
         // ---- Voice
-        if (ImGui::BeginTabItem(UI(Tr(L"Voice")).c_str(), nullptr, TabFlag(2))) {
+        if (ImGui::BeginTabItem(UI(Tr(L"Voice")).c_str(), nullptr, TabFlag(3))) {
             ImGui::Checkbox(UI(Tr(L"Voice input")).c_str(), &edit.voiceEnabled);
             RenderModules(false);
             ImGui::Separator();
@@ -3696,7 +3818,7 @@ void RenderOptionsContent() {
             ImGui::EndTabItem();
         }
         // ---- Microphone
-        if (ImGui::BeginTabItem(UI(Tr(L"Microphone")).c_str(), nullptr, TabFlag(3))) {
+        if (ImGui::BeginTabItem(UI(Tr(L"Microphone")).c_str(), nullptr, TabFlag(4))) {
             int mode = edit.voiceActivation ? 2 : edit.voiceToggle ? 1 : 0;
             static std::vector<std::string> s_modeLabels;
             static UiLang s_modeLang = static_cast<UiLang>(-1);
@@ -3763,7 +3885,7 @@ void RenderOptionsContent() {
             ImGui::EndTabItem();
         }
         // ---- Translator
-        if (ImGui::BeginTabItem(UI(Tr(L"Translator")).c_str(), nullptr, TabFlag(4))) {
+        if (ImGui::BeginTabItem(UI(Tr(L"Translator")).c_str(), nullptr, TabFlag(5))) {
             {
                 std::lock_guard<std::mutex> lock(g_mu);
                 if (ImGui::Checkbox(UI(Tr(L"Translate the chat")).c_str(), &g_nx.translateChat)) SaveNexusOptions();
@@ -3836,7 +3958,7 @@ void RenderOptionsContent() {
             ImGui::EndTabItem();
         }
         // ---- Technical
-        if (ImGui::BeginTabItem(UI(Tr(L"Technical")).c_str(), nullptr, TabFlag(5))) {
+        if (ImGui::BeginTabItem(UI(Tr(L"Technical")).c_str(), nullptr, TabFlag(6))) {
             ImGui::Checkbox(UI(Tr(L"Automatic timing (FPS-adapted)") + L"##autotiming").c_str(), &edit.send.autoTiming);
             Hint(UI(Tr(L"Calculates key hold and step delays dynamically based on the game's current framerate.")));
 
