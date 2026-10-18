@@ -3,8 +3,14 @@
 set(GCT_NEXUS_TP ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
 add_library(gw2keyboard_nexus SHARED
     src/kb_main.cpp
-    src/kb_logic.cpp
-    src/kb_ui.cpp
+    src/kb_state.cpp
+    src/kb_theme.cpp
+    src/kb_input.cpp
+    src/kb_worker.cpp
+    src/kb_voice.cpp
+    src/kb_chat.cpp
+    src/kb_window.cpp
+    src/kb_options.cpp
     src/voice_module.cpp
     src/chat_links.cpp
     src/chat/ChatLinks.cpp
