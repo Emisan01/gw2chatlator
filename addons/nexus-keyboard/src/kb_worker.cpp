@@ -334,6 +334,9 @@ void StartSend() {  // Enter (g_mu held)
     g_flatInput.clear();
     g_wFlatInput.clear();
     g_lastInput.clear();
+    g_lastWords.clear();  // learning mode: the next message starts fresh (its words were compared with the sent one's)
+    g_finishedLast.clear();
+    g_finishedAt = 0;
     g_historyPos = -1;
     g_undo.active = false;
     ImGui::SetWindowFocus(nullptr);  // let go of the keyboard: the keys must reach the game

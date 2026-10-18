@@ -3,6 +3,16 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.0.5 — 2026-10-18 (GW2Chatlator for Nexus)
+
+- **The window no longer stays too tall after the mini mode.** A long input had made the big window taller; you
+  switched to the mini mode, sent there, and back the big window kept the extra height for good. It shrinks back now.
+- **Minimised in the mini mode, the button moved, the mini mode switched off in the options:** the big window opens
+  at the button, not where it stood long before.
+- **Learning mode right after sending:** a word you corrected yourself in the next message was not noticed (the
+  state of the sent message was still around) – until the new one was longer than the old. Sending starts it fresh.
+- The self-test checks all three (long input → mini → sent → back; the correction after a send).
+
 ## 2.0.4 — 2026-10-18 (GW2Chatlator for Nexus)
 
 - **Mini mode and back like a Nexus window: the window comes back exactly where it was.** 2.0.3 still let it slide

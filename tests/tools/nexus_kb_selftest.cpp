@@ -542,6 +542,39 @@ int wmain(int argc, wchar_t** argv) {
                     if (!still) std::printf("FAIL: the window crawled while the mini mode went on and off\n");
                     ok = ok && still;
                 }
+                {  // a long input made the big window taller; mini on, sent there, mini off: back to its normal height
+                    const ImVec2 keepSize = wsize();
+                    ImGui::SetWindowSize("GW2Chatlator###kbmain", ImVec2(keepSize.x, 250));  // small: a long input must grow it
+                    ImGui::SetWindowPos("GW2Chatlator###kbmain", ImVec2(300, 500));
+                    frames(4);
+                    const ImVec2 g0 = wpos(), gs0 = wsize();
+                    *th->focus = true;
+                    frames(3);
+                    type("Wer kommt mit in die Fraktale heute Abend, wir brauchen noch zwei Leute fuer die Bosse und danach "
+                         "wollen wir noch eine Runde im WvW drehen, Treffpunkt ist wie immer am Wegpunkt vor der Festung, "
+                         "bringt bitte Essen und Werkzeug mit und sagt kurz Bescheid wenn ihr spaeter kommt, wir warten "
+                         "gern ein paar Minuten auf euch, bis dann und viel Spass beim Spielen euch allen heute Abend");
+                    frames(10);
+                    const float grownH = wsize().y;
+                    mini(1);
+                    frames(4);
+                    *th->focus = true;
+                    frames(3);
+                    const int partsBefore = th->sentParts;
+                    press(VK_RETURN);
+                    frames(60);
+                    mini(0);
+                    frames(10);
+                    const ImVec2 g1 = wpos(), gs1 = wsize();
+                    std::printf("long input, mini, sent, back: %.0f high -> grown %.0f -> sent %d part(s) -> %.0f,%.0f %.0f high\n",
+                                gs0.y, grownH, th->sentParts - partsBefore, g1.x, g1.y, gs1.y);
+                    const bool back = grownH > gs0.y && th->sentParts > partsBefore && std::fabs(gs1.y - gs0.y) < 1 &&
+                                      std::fabs((g1.y + gs1.y) - (g0.y + gs0.y)) < 1;
+                    if (!back) std::printf("FAIL: the big window did not come back to its normal size after the mini mode\n");
+                    ok = ok && back;
+                    ImGui::SetWindowSize("GW2Chatlator###kbmain", keepSize);
+                    frames(3);
+                }
                 mini(1);
                 frames(5);
                 ImGui::SetWindowPos("GW2Chatlator###kbmain", ImVec2(300, 600));
