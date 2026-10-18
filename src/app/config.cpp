@@ -248,17 +248,8 @@ void Config::Load(const std::wstring& dir) {
     uiLang = EffectiveUiLang(uiLangCode);
     myMemoryDay = ini.Str(L"Basic", L"UsedDay", L"");
     myMemoryUsed = ini.Int(L"Basic", L"UsedChars", 0, 0, 10000000);
-    gw2Dir = AsciiUnescape(ini.Str(L"General", L"Gw2Dir", L""));
     engine = ParseEngine(ini.Str(L"Translate", L"Engine", L"auto"));
-    {
-        const std::wstring ce = ToLowerAscii(ini.Str(L"Translate", L"ChatEngine", L"same"));
-        chatSameEngine = ce.empty() || ce == L"same";
-        chatEngine = chatSameEngine ? Engine::Auto : ParseEngine(ce);
-    }
-    keyboardOnly = ini.Bool(L"Basic", L"KeyboardOnly", true);  // the start mode: only the typing help
-    // v0.2 had SourceLang/TargetLangs under [DeepL]; used as fallbacks.
-    readLang = ToUpperAscii(ini.Has(L"Translate", L"ReadLang") ? ini.Str(L"Translate", L"ReadLang", L"")
-                                                                : ini.Str(L"DeepL", L"SourceLang", L""));
+    // v0.2 had TargetLangs under [DeepL]; used as a fallback.
     std::wstring langs = ini.Str(L"Translate", L"WriteLangs", L"");
     if (langs.empty()) langs = ini.Str(L"DeepL", L"TargetLangs", L"");
     if (auto t = ParseLangList(langs); !t.empty()) writeLangs = t;
@@ -266,8 +257,6 @@ void Config::Load(const std::wstring& dir) {
     translateWriting = ini.Bool(L"Translate", L"Writing", true);
     understoodLangs = ParseLangList(ini.Str(L"Translate", L"Understood", L""));
     skipTypingLang = ini.Bool(L"Translate", L"SkipTypingLang", true);
-    chatLang = ToUpperAscii(ini.Str(L"Translate", L"ChatLang", L"EN-GB"));
-    debounceMs = ini.Int(L"Translate", L"DebounceMs", ini.Int(L"DeepL", L"DebounceMs", 500, 150, 5000), 150, 5000);
 
     basicEmail = AsciiUnescape(ini.Str(L"Basic", L"Email", L""));
     deeplKey = UnprotectSecret(ini.Str(L"DeepL", L"ApiKey", L""));
@@ -279,26 +268,21 @@ void Config::Load(const std::wstring& dir) {
     llmUrl = AsciiUnescape(ini.Str(L"LLM", L"Url", L"http://localhost:11434"));
     llmModel = AsciiUnescape(ini.Str(L"LLM", L"Model", L""));
     llmKey = UnprotectSecret(ini.Str(L"LLM", L"ApiKey", L""));
-    llmTimeoutSec = ini.Int(L"LLM", L"TimeoutSec", 60, 5, 600);
 
     writeIn = ToUpperAscii(ini.Str(L"Spelling", L"WriteIn", L""));
     voiceEnabled = ini.Bool(L"Voice", L"Enabled", true);
     voiceModel = AsciiUnescape(ini.Str(L"Voice", L"Model", L""));
     voiceLang = AsciiUnescape(ini.Str(L"Voice", L"Language", L""));
     voiceTranslate = ini.Bool(L"Voice", L"IntoEnglish", false);
-    voiceKey = ini.Has(L"Voice", L"Key") ? ini.Str(L"Voice", L"Key", L"") : std::wstring(L"F8");
     voiceToggle = ini.Str(L"Voice", L"Mode", L"hold") == L"toggle";
-    voiceAppend = ini.Str(L"Voice", L"NewAttempt", L"replace") == L"append";
     voiceMaxSec = ini.Int(L"Voice", L"MaxSeconds", 30, 5, 120);
     voiceLive = ini.Bool(L"Voice", L"Live", true);
     voiceThreads = ini.Int(L"Voice", L"Threads", 0, 0, 16);
     voiceDevice = AsciiUnescape(ini.Str(L"Voice", L"Device", L""));
     voiceUnloadMin = ini.Int(L"Voice", L"UnloadMinutes", 10, 1, 240);
-    voiceGlossary = ini.Bool(L"Voice", L"Glossary", true);
     voiceBoost = ini.Int(L"Voice", L"Boost", 0, 0, 3);
     voiceAutoSend = ini.Bool(L"Voice", L"AutoSend", false);
     voiceActivation = ini.Bool(L"Voice", L"Activation", false);
-    voiceGuard = ini.Int(L"Voice", L"ActivationGuard", 0, 0, 2);
     voicePauseMs = ini.Int(L"Voice", L"PauseMs", 1200, 400, 3000);
     voicePreRollMs = ini.Int(L"Voice", L"PreRollMs", 300, 0, 1000);
     voiceSensitivity = ini.Int(L"Voice", L"Sensitivity", 50, 0, 100);
@@ -313,36 +297,21 @@ void Config::Load(const std::wstring& dir) {
     suggestions = ini.Bool(L"Spelling", L"Suggestions", true);
     learnWords = ini.Bool(L"Spelling", L"Learn", true);
     learnLater = ini.Bool(L"Spelling", L"LearnLater", false);
-    languageTool = ini.Bool(L"Spelling", L"LanguageTool", false);
-    languageToolUrl = ini.Str(L"Spelling", L"LanguageToolUrl", L"https://api.languagetool.org");
 
-    glossaryEnabled = ini.Bool(L"Glossary", L"Enabled", true);
-    glossaryRefreshDays = ini.Int(L"Glossary", L"RefreshDays", 14, 1, 365);
 
-    // Three keys by default: fewer clashes with other programs and game add-ons. Empty = no hotkey.
-    hotkey = ini.Str(L"Hotkey", L"Toggle", L"Ctrl+Alt+Shift+T");
 
     maxLength = ini.Int(L"Chat", L"MaxLength", 199, 20, 2000);
     returnFocus = ini.Bool(L"Chat", L"ReturnFocus", false);
     copyOnly = ToLowerAscii(ini.Str(L"Chat", L"SendMode", L"send")) == L"copy";
-    hideNativeChat = ini.Bool(L"Chat", L"HideNativeChat", false);
     send.autoTiming = ini.Bool(L"Chat", L"AutoTiming", true);
     send.stepDelayMs = ini.Int(L"Chat", L"StepDelayMs", 80, 20, 1000);
     send.keyHoldMs = ini.Int(L"Chat", L"KeyHoldMs", 30, 5, 500);
     send.restoreDelayMs = ini.Int(L"Chat", L"RestoreDelayMs", 250, 50, 3000);
 
-    x = ini.Int(L"Window", L"X", kAutoPos, kAutoPos, 32000);
-    y = ini.Int(L"Window", L"Y", kAutoPos, kAutoPos, 32000);
-    w = ini.Int(L"Window", L"Width", 520, 380, 4000);
-    h = ini.Int(L"Window", L"Height", 460, 300, 4000);
     opacity = ini.Int(L"Window", L"Opacity", 255, 0, 255);
     fontPercent = ini.Int(L"Window", L"FontPercent", 100, 70, 300);
     fontPt = ini.Int(L"Window", L"FontPt", 0, 0, 40);
     if (fontPt == 0) fontPt = std::clamp((11 * fontPercent + 50) / 100, 8, 28);  // from the older percent
-    fontFace = ini.Str(L"Window", L"Font", L"Segoe UI");
-    followGame = ini.Bool(L"Window", L"FollowGame", true);
-    showOnScreenshots = ini.Bool(L"Window", L"Screenshots", false);
-    compact = ini.Bool(L"Window", L"Compact", false);
     focusOnGameChat = ini.Bool(L"Window", L"FocusOnGameChat", false);
     typingDay = ini.Int(L"Typing", L"Day", 0, 0, 99991231);
     dayKeys = ini.Int(L"Typing", L"DayKeys", 0, 0, 2000000000);
@@ -350,12 +319,6 @@ void Config::Load(const std::wstring& dir) {
     totalKeys = ini.Int(L"Typing", L"TotalKeys", 0, 0, 2000000000);
     totalChars = ini.Int(L"Typing", L"TotalChars", 0, 0, 2000000000);
     totalMessages = ini.Int(L"Typing", L"TotalMessages", 0, 0, 2000000000);
-    dock = ini.Bool(L"Window", L"Dock", false);
-    dockLeft = ini.Int(L"Window", L"DockLeft", 0, -20000, 20000);
-    dockFromBottom = ini.Int(L"Window", L"DockFromBottom", 0, -20000, 20000);
-    dockWidth = ini.Int(L"Window", L"DockWidth", 0, 0, 20000);
-    dockHeight = ini.Int(L"Window", L"DockHeight", 0, 0, 20000);
-    dockSet = dockWidth >= 100 && dockHeight >= 100;
 }
 
 namespace {
@@ -399,35 +362,9 @@ void Config::FlushWrites() {
                                    std::get<0>(w.first).c_str());
 }
 
-void Config::SaveWindowRect(HWND wnd, float scale) const {
-    RECT rc;
-    if (!wnd || !GetWindowRect(wnd, &rc)) return;
-    SaveWindowRect(rc, scale);
-}
-
-void Config::SaveWindowRect(const RECT& rc, float scale) const {
-    SaveValue(L"Window", L"X", std::to_wstring(rc.left));
-    SaveValue(L"Window", L"Y", std::to_wstring(rc.top));
-    SaveValue(L"Window", L"Width", std::to_wstring(static_cast<int>((rc.right - rc.left) / scale + 0.5f)));
-    SaveValue(L"Window", L"Height", std::to_wstring(static_cast<int>((rc.bottom - rc.top) / scale + 0.5f)));
-}
-
-
-void Config::SaveDock() const {
-    SaveValue(L"Window", L"Dock", dock ? L"1" : L"0");
-    SaveValue(L"Window", L"DockLeft", std::to_wstring(dockLeft));
-    SaveValue(L"Window", L"DockFromBottom", std::to_wstring(dockFromBottom));
-    SaveValue(L"Window", L"DockWidth", std::to_wstring(dockWidth));
-    SaveValue(L"Window", L"DockHeight", std::to_wstring(dockHeight));
-}
-
 void Config::SaveAll() const {
     SaveValue(L"General", L"UiLanguage", uiLangCode);
-    SaveValue(L"General", L"Gw2Dir", AsciiEscape(gw2Dir));
     SaveValue(L"Translate", L"Engine", EngineKey(engine));
-    SaveValue(L"Translate", L"ChatEngine", chatSameEngine ? std::wstring(L"same") : EngineKey(chatEngine));
-    SaveBool(L"Basic", L"KeyboardOnly", keyboardOnly);
-    SaveValue(L"Translate", L"ReadLang", readLang);
     std::wstring joined;
     for (const std::wstring& c : writeLangs) joined += (joined.empty() ? L"" : L",") + c;
     SaveValue(L"Translate", L"WriteLangs", joined);
@@ -457,19 +394,15 @@ void Config::SaveAll() const {
     SaveValue(L"Voice", L"Model", AsciiEscape(voiceModel));
     SaveValue(L"Voice", L"Language", AsciiEscape(voiceLang));
     SaveBool(L"Voice", L"IntoEnglish", voiceTranslate);
-    SaveValue(L"Voice", L"Key", voiceKey);
     SaveValue(L"Voice", L"Mode", voiceToggle ? L"toggle" : L"hold");
-    SaveValue(L"Voice", L"NewAttempt", voiceAppend ? L"append" : L"replace");
     SaveValue(L"Voice", L"MaxSeconds", std::to_wstring(voiceMaxSec));
     SaveBool(L"Voice", L"Live", voiceLive);
     SaveValue(L"Voice", L"Threads", std::to_wstring(voiceThreads));
     SaveValue(L"Voice", L"Device", AsciiEscape(voiceDevice));
     SaveValue(L"Voice", L"UnloadMinutes", std::to_wstring(voiceUnloadMin));
-    SaveBool(L"Voice", L"Glossary", voiceGlossary);
     SaveValue(L"Voice", L"Boost", std::to_wstring(voiceBoost));
     SaveBool(L"Voice", L"AutoSend", voiceAutoSend);
     SaveBool(L"Voice", L"Activation", voiceActivation);
-    SaveValue(L"Voice", L"ActivationGuard", std::to_wstring(voiceGuard));
     SaveValue(L"Voice", L"PauseMs", std::to_wstring(voicePauseMs));
     SaveValue(L"Voice", L"PreRollMs", std::to_wstring(voicePreRollMs));
     SaveValue(L"Voice", L"Sensitivity", std::to_wstring(voiceSensitivity));
@@ -482,21 +415,12 @@ void Config::SaveAll() const {
     SaveBool(L"Spelling", L"Suggestions", suggestions);
     SaveBool(L"Spelling", L"Learn", learnWords);
     SaveBool(L"Spelling", L"LearnLater", learnLater);
-    SaveBool(L"Spelling", L"LanguageTool", languageTool);
-    SaveValue(L"Spelling", L"LanguageToolUrl", AsciiEscape(languageToolUrl));
-    SaveValue(L"Hotkey", L"Toggle", hotkey);
     SaveValue(L"Chat", L"SendMode", copyOnly ? L"copy" : L"send");
     SaveBool(L"Chat", L"ReturnFocus", returnFocus);
-    SaveBool(L"Chat", L"HideNativeChat", hideNativeChat);
     SaveValue(L"Window", L"Opacity", std::to_wstring(opacity));
     SaveValue(L"Window", L"FontPercent", std::to_wstring(fontPercent));
     SaveValue(L"Window", L"FontPt", std::to_wstring(fontPt));
-    SaveValue(L"Window", L"Font", fontFace);
-    SaveBool(L"Window", L"FollowGame", followGame);
-    SaveBool(L"Window", L"Screenshots", showOnScreenshots);
-    SaveBool(L"Window", L"Compact", compact);
     SaveBool(L"Window", L"FocusOnGameChat", focusOnGameChat);
-    SaveBool(L"Window", L"Dock", dock);
 }
 
 }  // namespace gct

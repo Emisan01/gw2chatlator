@@ -5,7 +5,7 @@
 namespace kb {
 
 bool g_collapsed = false;  // the V / > buttons: window minimizes to bottom-left corner
-float g_headerH = 0, g_lastW = 520, g_expandedH = 360, g_restoreH = 0;
+float g_lastW = 520, g_expandedH = 360, g_restoreH = 0;
 float g_anchorBottom = -1.0f;
 ImVec2 g_savedPos(-1, -1);   // where the window stood when it was minimised
 bool g_buttonMoved = false;  // ... and whether you dragged the small button since (then it opens from there)
@@ -274,6 +274,7 @@ std::wstring StatusText() {  // g_mu held
 void RenderWindow() {
     if (!ImGui::GetCurrentContext()) return;  // failsafe: no context, no drawing
     KickSave();
+    VoiceIdleUnload();
     ImGuiIO& io = ImGui::GetIO();
     if (io.DisplaySize.x <= 0 || io.DisplaySize.y <= 0) return;
     struct PopColoursAtEnd {
@@ -731,10 +732,11 @@ void RenderWindow() {
             ImGui::Separator();
         }
         if (ImGui::MenuItem(UI(Tr(L"Options …")).c_str())) g_showOptions = true;
-        if (ImGui::MenuItem(UI(Tr(L"Mini mode")).c_str(), nullptr, &g_mini)) g_cfg.SaveBool(L"NexusWindow", L"Mini", g_mini);
+        if (const bool mini = ProfileOn(1); ImGui::MenuItem(UI(Tr(L"Mini mode")).c_str(), nullptr, mini)) SetProfile(1, !mini);
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", UI(Tr(L"Nothing but the input with its help. Three quick clicks on it minimise it; right-click in it: Menu … brings the rest back.")).c_str());
-        if (ImGui::MenuItem(UI(Tr(L"Compact view")).c_str(), nullptr, &g_compact)) g_cfg.SaveBool(L"NexusWindow", L"Compact", g_compact);
+        if (const bool compact = ProfileOn(0); ImGui::MenuItem(UI(Tr(L"Compact view")).c_str(), nullptr, compact))
+            SetProfile(0, !compact);
         if (ImGui::MenuItem(UI(Tr(L"Translate the chat once")).c_str()) && TranslateRecentLines(true) == 0)
             SetStatus(Tr(L"No chat lines of other players in view"), 4000);
         if (ImGui::IsItemHovered())
@@ -750,7 +752,6 @@ void RenderWindow() {
         ImGui::SameLine();
         if (IconButton("##close", Icon::Close, false, nullptr)) g_show = false;
     }
-    g_headerH = ImGui::GetCursorPosY() - st.ItemSpacing.y + st.WindowPadding.y;
     if (!g_recording && g_micLocked) g_micLocked = false;  // the recording ended (pause, maximum length)
     // Voice activation listens from the map on (unless you switched it off with the microphone).
     if (g_cfg.voiceEnabled && g_cfg.voiceActivation && !g_listenWanted && !g_listenUserOff) {
@@ -771,14 +772,14 @@ void RenderWindow() {
     // ---- the chat (the newest at the bottom): name white – a click opens a whisper tab –, text in the channel colour,
     // the scroll bar at the left like GW2's own chat
     const float line = ImGui::GetTextLineHeightWithSpacing();
-    const bool showPreview = Lay().preview && !g_compact, showWords = Lay().words;
+    const bool showPreview = Lay().preview, showWords = Lay().words;
     const float smallLine = ImGui::GetFontSize() * 0.85f + 2;
     // The input grows with what you write (its soft-wrapped lines) up to 8 lines and falls back once it is sent. A small
     // extra line at its bottom: the translation in compact view (only while something is translated).
     const int textLines = 1 + static_cast<int>(std::count(g_input, g_input + std::strlen(g_input), '\n'));
     g_boxLines = std::clamp(textLines, Lay().inputLines, std::max(8, Lay().inputLines));
     const float boxH = ImGui::GetTextLineHeight() * g_boxLines + st.FramePadding.y * 2 +
-                       (g_compact && Translating() ? smallLine : 0);
+                       (!showPreview && Translating() ? smallLine : 0);  // no preview: the translation small in the box
     const float lowerH = (showPreview ? line * (g_layout.previewLines + 0.2f) + st.ItemSpacing.y : 0) +
                          (showWords ? ImGui::GetFrameHeightWithSpacing() : 0) +
                          (Lay().footer ? ImGui::GetFrameHeightWithSpacing() : 0) + boxH + st.ItemSpacing.y;
@@ -1091,6 +1092,25 @@ void RenderWindow() {
         ImGui::OpenPopup("kbmenu");  // without the header the window's own right-click is the menu
     if (!ImGui::IsMouseDown(ImGuiMouseButton_Right) && !ImGui::IsMouseReleased(ImGuiMouseButton_Right))
         s_lineRightClick = false;
+    // The normal window: held down in the input for a moment and dragged, it moves too (elsewhere ImGui moves it by
+    // itself; a quick drag in the input still selects text). The mini mode does this in its fitting above.
+    if (Lay().chat) {
+        static ULONGLONG s_inDownAt = 0;
+        static bool s_inMoving = false;
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsMouseHoveringRect(inputMin, inputMax) &&
+            ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
+            s_inDownAt = GetTickCount64();
+        if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+            s_inDownAt = 0;
+            s_inMoving = false;
+        } else if (s_inDownAt && !s_inMoving && GetTickCount64() - s_inDownAt > 250) {
+            s_inMoving = true;
+        }
+        if (s_inMoving) {
+            const ImVec2 d = io.MouseDelta, wp = ImGui::GetWindowPos();
+            if (d.x != 0 || d.y != 0) ImGui::SetWindowPos(ImVec2(std::round(wp.x + d.x), std::round(wp.y + d.y)));
+        }
+    }
     // Three quick left clicks on the window (not in the input – there clicks place the caret and pick words –, not on a
     // button) minimise it (Fallen's idea): the way when header, footer and the minimise button are hidden.
     {
@@ -1119,12 +1139,12 @@ void RenderWindow() {
         teach = false;
         ImGui::OpenPopup("##teach");
     }
-    {  // docked to our window's top right corner, 1 px above it (below it when the window stands at the top of the
-       // screen) – in every mode, never where the mouse was (it jumped and was pushed to the screen edge)
+    {  // opens at our window's top right corner, beside it (1 px; on its left when there is no room to the right) –
+       // in every mode, never where the mouse was. Placed when it opens: then you can drag it wherever you like.
         const ImVec2 wp = ImGui::GetWindowPos(), ws = ImGui::GetWindowSize();
-        const bool below = wp.y < ImGui::GetIO().DisplaySize.y * 0.35f;
-        ImGui::SetNextWindowPos(below ? ImVec2(wp.x + ws.x, wp.y + ws.y + 1) : ImVec2(wp.x + ws.x, wp.y - 1), ImGuiCond_Always,
-                                below ? ImVec2(1, 0) : ImVec2(1, 1));
+        const bool right = wp.x + ws.x + ImGui::GetFontSize() * 26 < ImGui::GetIO().DisplaySize.x;
+        ImGui::SetNextWindowPos(right ? ImVec2(wp.x + ws.x + 1, wp.y) : ImVec2(wp.x - 1, wp.y), ImGuiCond_Appearing,
+                                right ? ImVec2(0, 0) : ImVec2(1, 0));
     }
     if (ImGui::BeginPopup("##teach")) {
         static char typed[64] = {}, fixed[64] = {}, word[64] = {}, meaning[160] = {};
@@ -1249,7 +1269,7 @@ void RenderWindow() {
                 ImGui::GetColorU32(kAccent), s, 0.85f);
     }
     // Compact view: what the chat will get, small in the box's last line (instead of the preview above).
-    if (g_compact && g_input[0] && Translating() && (previewCurrent || g_layout.infoText)) {
+    if (!showPreview && g_input[0] && Translating() && (previewCurrent || g_layout.infoText)) {
         const std::string t = previewCurrent ? "> " + U8(g_preview) : UI(Tr(L"translating …"));
         BoxText(ImVec2(textAt.x, inputMax.y - smallLine - 1), clip, ImGui::GetColorU32(kPreview),
                 Fit(t, (inputMax.x - inputMin.x) * (g_status.empty() ? 0.95f : 0.38f)), 0.85f);

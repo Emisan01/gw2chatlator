@@ -11,7 +11,17 @@ something the next agent needs.
 
 ```
 addons/nexus-keyboard   the add-on
-  src/kb_main.cpp       everything the game thread draws (ImGui), the worker thread, sending, options, first start
+  src/kb_main.cpp       the Nexus glue only: load / unload, keybinds, callbacks, first start, test exports
+  src/kb_shared.hpp     what the modules share: types, `extern` state, function declarations (keep its order: it was
+                        generated from the one kb_main.cpp, things are declared before they are used)
+  src/kb_state.cpp      the shared state, layout load / save, window profiles (`ProfileOn` / `SetProfile`), languages
+  src/kb_theme.cpp      themes (CBA too), the text font, chat colours, LookText, icons
+  src/kb_input.cpp      the input: soft breaks, the grey word, Tab / Space, words under the mouse, your corrections
+  src/kb_worker.cpp     worker jobs: spelling, translation, typing help, sending
+  src/kb_voice.cpp      the voice helper (idle unload after [Voice] UnloadMinutes), push to talk, models
+  src/kb_chat.cpp       incoming chat, tabs, Events: Chat, chat codes and links
+  src/kb_window.cpp     the main window: header, chat, preview, word bar, input, footer, minimise / restore
+  src/kb_options.cpp    the options window and the modules list
   src/chat_links.*      chat codes: "[Item name]" in rarity colour + mouse-over details via Decoder Ring;
                         a click (`HandleChatLinkClick`) minimises the window and opens GW2's chat line (GameBind
                         GB_UiChatFocus) – the user clicks the original there; back when the map closed again
@@ -66,8 +76,10 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 - **Window:** shown only on a map (MumbleLink `inMap`), never over the open world map (`g_mapOpen`; except
   `g_showOnMapUntil` while it names a waypoint's spot). Header: tabs (Chat, your own, whisper tabs),
   mic · V/A (fold to the header) · ≡ · ×; every part can be hidden (`g_layout`: header, chat, preview, word bar,
-  footer) – read them through `Lay()`: the menu's views "Mini mode" (`g_mini`, nothing but a one-line input) and
-  "Compact view" (`g_compact`: no word bar, no preview) sit over your settings and never change them.
+  footer) – read them through `Lay()`. "Compact view" and "Mini mode" (menu, and the top of Options → Window →
+  Window layout) are presets of the parts (`SetProfile`): a profile is on exactly while the parts match it, changing
+  a part switches it off, switching it off brings back the layout from before. No preview: the translation stands
+  small in the input.
   Without the header a right-click on the window (not a chat line, not the input) opens the menu `kbmenu`
   with the tabs and "Minimise"; the input's learning popup then has "Menu …". Without the footer its "<" minimise
   button stands left of the input. "Info texts" off hides every grey status line (never the prediction's grey word).
@@ -144,6 +156,8 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   `RawOffset()` maps flat offsets into the box (every `g_edit`). '' never comes from the user (the filter drops it).
 - Fitted window (no chat): hold the left button ¼ s and drag = move; dragging its top/bottom edge sets
   `inputLines`; right-click on a word = learning (`WordAtMouse`), elsewhere = the menu.
+- After changing a struct in a shared header (app/config.hpp, kb_shared.hpp) build with `--clean-first`: MSBuild
+  once left objects with the old layout (the self-test failed in strange places until a clean build).
 - Window size by code: whole pixels only. ImGui rounds a window's size down, so a 0.8 px growth plus the matching
   position change moved the window up every frame without resizing it. Change the size with `std::ceil`, then move
   the position by the size change that really happened (the bottom-left corner stays). Without the chat the window

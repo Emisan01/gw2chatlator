@@ -318,18 +318,44 @@ const std::wstring& AddonsDir() {  // the folder our DLL lies in: <GW2>\addons\ 
 
 std::wstring KeyboardDir() { return AddonsDir() + L"GW2Keyboard"; }
 bool g_micLocked = false;  // right-click on the microphone: on until the next right-click
-bool g_compact = false;    // menu ≡: header, chat, input, footer – no word bar, no preview (the translation small in the input)
-bool g_mini = false;       // menu ≡: nothing but the input (your settings of the parts stay as they are underneath)
-Layout Lay() {
-    Layout l = g_layout;
-    if (g_mini) {
-        l.header = l.chat = l.preview = l.words = l.footer = l.minButton = false;
-    } else if (g_compact) {
-        l.words = false;
-        l.preview = false;
-    }
-    return l;
+// The two window profiles (menu and Options → Window → Window layout): presets of the window's parts. A profile is on
+// exactly while the parts are what it says – change one part and it is your own layout again (its check goes off).
+// Switching a profile off brings back the layout you had before it (this session; else every part shown).
+Layout g_layoutBefore;
+bool g_haveBefore = false;
+bool ProfileOn(int profile) {  // 0 compact view, 1 mini mode (g_mu held)
+    const Layout& l = g_layout;
+    return profile == 0 ? l.header && l.chat && !l.preview && !l.words && l.footer
+                        : !l.header && !l.chat && !l.preview && !l.words && !l.footer && !l.minButton;
 }
+void SetProfile(int profile, bool on) {  // g_mu held
+    Layout& l = g_layout;
+    if (on) {
+        if (!ProfileOn(0) && !ProfileOn(1)) {  // your own layout: kept to come back to
+            g_layoutBefore = l;
+            g_haveBefore = true;
+        }
+        if (profile == 0) {  // compact: header, chat, input, footer – no word bar, no preview
+            l.header = l.chat = l.footer = true;
+            l.preview = l.words = false;
+        } else {  // mini: nothing but the input
+            l.header = l.chat = l.preview = l.words = l.footer = l.minButton = false;
+        }
+    } else if (ProfileOn(profile)) {
+        const Layout& b = g_layoutBefore;
+        const bool back = g_haveBefore && !(profile == 0 ? b.header && b.chat && !b.preview && !b.words && b.footer
+                                                         : !b.header && !b.chat && !b.footer);
+        l.header = back ? b.header : true;
+        l.chat = back ? b.chat : true;
+        l.preview = back ? b.preview : true;
+        l.words = back ? b.words : true;
+        l.footer = back ? b.footer : true;
+        l.minButton = back ? b.minButton : true;
+        g_haveBefore = false;
+    }
+    SaveLayout();
+}
+Layout Lay() { return g_layout; }
 
 // Settings changed on the game thread reach the ini on the worker, at most every half second (a slider dragged writes
 // once). A job dropped in a flood is posted again while writes still wait.
