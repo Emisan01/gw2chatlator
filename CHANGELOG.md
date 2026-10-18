@@ -3,6 +3,21 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 1.9.11 — 2026-10-18 (GW2Chatlator for Nexus)
+
+- **"Translate the chat once" stands on its own:** what you see of the chat in our window goes into the language you
+  write in – whatever "Translate the chat", "Languages I understand" or "Do not translate the language I write in"
+  say; only lines already in the language you write in are left as they are. Every click starts afresh: change the
+  language you write in, click again, and it is the new language.
+- **Only what is in view:** translating what is already there (switching "Translate the chat" on, a new language you
+  write in, a new translator, or once) takes only the lines you can see in our window – an old chat is never
+  translated in full (each line counts against a free contingent).
+- **The CBA theme** (Window → Theme of the window → CBA): your own colours in eight roles (window, fields, buttons,
+  active buttons, active tab, text, quiet text, accent), starting from Slate, Grey or CBA blue. "Automatic contrast"
+  moves text just as far as needed to stay readable on every surface (WCAG 4.5:1, quiet text and accents 3:1) and
+  shows the contrast each one reaches. A theme code (GW2C1:…) to copy and paste – a pasted code is only read as
+  colours. The contrast math comes from cba4gw2, here the exact WCAG formula, unit-tested.
+
 ## 1.9.10 — 2026-10-18 (GW2Chatlator for Nexus)
 
 - **Two views in the menu (≡ / right-click):** "Mini mode" (instead of "Header") – nothing but the grey input with all

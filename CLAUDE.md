@@ -50,7 +50,9 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 - **Chat in:** Events: Chat (`EV_CHAT:Message`) → `OnChatEvents` → `AddLine` (`UnescapeChatText`, sanitised) →
   translated on the worker only when `[Nexus] TranslateChat=1` (default 0) or a click on the line asks for it – into
   the language you write in (the chat is read in it). `TranslateRecentLines` redoes the newest 20 when the translation
-  is switched on, the language you write in or the translator changes, or once from the menu
+  is switched on, the language you write in or the translator changes, or once from the menu – only the lines in view
+  (`g_visibleLines`), never an old chat in full. "Translate the chat once" (`TranslateLine(.., once)`) follows none of
+  the chat settings: everything in view that is not already in the language you write in
   (`SureLanguage`, understood languages skipped – Translator tab "Languages I understand", `[Translate] Understood`).
   The detection runs for every line (local, no translator): `g_playerLang` (session only) remembers each player's
   language; their whisper tab then sends in it (`WhisperTab::sendLang` → `g_sendOverride`, "=" = as written; the
@@ -69,7 +71,7 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   Without the header a right-click on the window (not a chat line, not the input) opens the menu `kbmenu`
   with the tabs and "Minimise"; the input's learning popup then has "Menu …". Without the footer its "<" minimise
   button stands left of the input. "Info texts" off hides every grey status line (never the prediction's grey word).
-  The window's theme (`Theme`: Nexus / Slate / Grey, `ColoursOf`, `PushTheme` for everything we draw) is only
+  The window's theme (`Theme`: Nexus / Slate / Grey / Cba, `ColoursOf`, `PushTheme` for everything we draw) is only
   the window – the chat text keeps its channel colours (`kChannelLook`). Compact view never hides the word bar.
   Minimising: the ">" (optional, `minButton`), three quick clicks on the window (not the input), and "Minimise when not
   in use" (`autoMinimize` after `minimizeAfter` s; `g_lastUse` – input, hover, menus, sending, voice, GW2's chat line
@@ -139,6 +141,9 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   position change moved the window up every frame without resizing it. Change the size with `std::ceil`, then move
   the position by the size change that really happened (the bottom-left corner stays). Without the chat the window
   is fitted to its parts (never below `WindowMinSize`, else the same creep). The self-test keeps no imgui.ini.
+- The CBA theme: eight roles (`g_cbaRoles`, [NexusTheme] Colours = a theme code), everything else derived in
+  `ColoursOf`; `CbaShown` keeps text 4.5:1 and quiet text / accents 3:1 on every fill (core/contrast: WCAG with sRGB
+  linearisation, unit-tested). A pasted theme code is data: `ParseThemeCode` accepts only its exact form.
 - Web links: a Discord-like question only, no lookups in the background (the Cloudflare check sent every domain).
 - Visual Studio may report itself incomplete after an update; then pin `CMAKE_GENERATOR_INSTANCE` with `,version=`.
 

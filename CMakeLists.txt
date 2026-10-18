@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(GW2KeyboardNexus VERSION 1.9.10 LANGUAGES CXX)
+project(GW2KeyboardNexus VERSION 1.9.11 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -36,7 +36,8 @@ add_library(gct_core STATIC
     src/core/languagetool_protocol.cpp
     src/core/voice.cpp
     src/core/voice_learn.cpp
-    src/core/send_guard.cpp)
+    src/core/send_guard.cpp
+    src/core/contrast.cpp)
 target_include_directories(gct_core PUBLIC src)
 
 option(GCT_BUILD_TESTS "Build the core unit tests and the add-on's self-test" ON)

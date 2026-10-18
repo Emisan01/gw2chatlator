@@ -35,6 +35,7 @@
 #include "app/config.hpp"
 #include "app/spell_service.hpp"
 #include "core/chat_code.hpp"
+#include "core/contrast.hpp"
 #include "core/chat_line.hpp"
 #include "core/gw2_text.hpp"
 #include "core/hotkey.hpp"
@@ -114,7 +115,7 @@ TextLook g_look;
 // The window's own theme – only the window itself (frames, tabs, buttons, fields), never the chat text with its
 // channel colours. "Nexus" keeps whatever theme is chosen in Nexus (its "Classic" one is blue / purple); the others
 // look the same on every PC. Pushed for everything we draw: the options, our window, its popups.
-enum class Theme { Nexus, Slate, Grey };
+enum class Theme { Nexus, Slate, Grey, Cba };
 struct ThemeColours {
     uint32_t text, textDim, bg, child, popup, border, separator;
     uint32_t frame, frameHovered, frameActive;     // input, preview, sliders
@@ -126,6 +127,31 @@ struct ThemeColours {
 constexpr uint32_t Rgb(uint32_t rgb, uint32_t alpha = 255) {  // 0xRRGGBB + alpha -> ImGui's ABGR
     return ((rgb >> 16) & 0xFF) | (rgb & 0xFF00) | ((rgb & 0xFF) << 16) | (alpha << 24);
 }
+// The CBA theme (from cba4gw2): your own colours in eight roles, the rest derived from them; with "automatic contrast"
+// the text is moved just as far as needed to stay readable (WCAG 4.5:1, quiet text and accents 3:1) on every fill.
+enum CbaRole { kRoleBg, kRoleField, kRoleButton, kRoleButtonActive, kRoleTabActive, kRoleText, kRoleTextDim, kRoleAccent,
+               kRoleCount };
+std::vector<uint32_t> g_cbaRoles;  // 0xRRGGBB per role ([NexusTheme] Colours, a theme code)
+bool g_cbaAutoContrast = true;
+const std::vector<uint32_t>& CbaPreset(int i) {  // 0 Slate, 1 Grey, 2 CBA blue (the palette approved in cba4gw2)
+    static const std::vector<uint32_t> kPresets[3] = {
+        {0x121214, 0x333A47, 0x36404F, 0x596B85, 0x404D61, 0xEBEBF0, 0x8C919B, 0xDBE3ED},
+        {0x111111, 0x2C2C2C, 0x2C2C2C, 0x4C4C4C, 0x444444, 0xDDDDDD, 0x8A8A8A, 0xDDDDDD},
+        {0x111111, 0x1E1E1E, 0x0D2B45, 0x4A73A3, 0x163D5E, 0xDDDDDD, 0x8A8A8A, 0xB8D8F8},
+    };
+    return kPresets[std::clamp(i, 0, 2)];
+}
+// The text colours as shown: with automatic contrast lifted (or darkened) until they stand out on every fill.
+uint32_t CbaShown(int role) {
+    const std::vector<uint32_t>& r = g_cbaRoles;
+    if (!g_cbaAutoContrast) return r[role];
+    if (role == kRoleText)
+        return EnsureContrast(r[kRoleText], {r[kRoleBg], r[kRoleField], r[kRoleButton], r[kRoleButtonActive], r[kRoleTabActive]}, 4.5);
+    if (role == kRoleTextDim) return EnsureContrast(r[kRoleTextDim], {r[kRoleBg], r[kRoleField]}, 3.0);
+    if (role == kRoleAccent) return EnsureContrast(r[kRoleAccent], {r[kRoleBg], r[kRoleField]}, 3.0);
+    return r[role];
+}
+
 const ThemeColours* ColoursOf(Theme t) {
     // Slate: dark greys with a cool slate accent (the look of 1.9.5).
     static const ThemeColours kSlate = {
@@ -139,6 +165,24 @@ const ThemeColours* ColoursOf(Theme t) {
         Rgb(0x444444, 160), Rgb(0x2C2C2C, 235), Rgb(0x383838), Rgb(0x444444), Rgb(0x2C2C2C, 235),
         Rgb(0x3C3C3C), Rgb(0x4C4C4C), Rgb(0x1E1E1E, 235), Rgb(0x3C3C3C), Rgb(0x444444), Rgb(0xDDDDDD),
         Rgb(0x6B6B6B), Rgb(0xAAAAAA), Rgb(0xFFFFFF, 46)};
+    if (t == Theme::Cba && g_cbaRoles.size() == kRoleCount) {
+        static ThemeColours s_cba;
+        static std::vector<uint32_t> s_built;
+        static bool s_builtAuto = false;
+        if (s_built != g_cbaRoles || s_builtAuto != g_cbaAutoContrast) {  // derived once per change, not per frame
+            const std::vector<uint32_t>& r = g_cbaRoles;
+            const uint32_t bg = r[kRoleBg], field = r[kRoleField], text = CbaShown(kRoleText), accent = CbaShown(kRoleAccent);
+            s_cba = {Rgb(text), Rgb(CbaShown(kRoleTextDim)), Rgb(bg, 240), Rgb(MixRgb(bg, 0x000000, 0.35), 115),
+                     Rgb(MixRgb(bg, 0xFFFFFF, 0.04), 248), Rgb(MixRgb(bg, text, 0.25), 128), Rgb(MixRgb(bg, text, 0.25), 160),
+                     Rgb(field, 235), Rgb(MixRgb(field, text, 0.08)), Rgb(MixRgb(field, text, 0.14)),
+                     Rgb(r[kRoleButton], 235), Rgb(MixRgb(r[kRoleButton], r[kRoleButtonActive], 0.5)), Rgb(r[kRoleButtonActive]),
+                     Rgb(MixRgb(bg, r[kRoleButton], 0.5), 235), Rgb(r[kRoleButtonActive]), Rgb(r[kRoleTabActive]),
+                     Rgb(accent), Rgb(MixRgb(accent, bg, 0.35)), Rgb(accent), Rgb(accent, 90)};
+            s_built = g_cbaRoles;
+            s_builtAuto = g_cbaAutoContrast;
+        }
+        return &s_cba;
+    }
     switch (t) {
         case Theme::Slate: return &kSlate;
         case Theme::Grey: return &kGrey;
@@ -169,7 +213,7 @@ int PushTheme() {
     return static_cast<int>(std::size(colours));
 }
 const wchar_t* ThemeKey(Theme t) {
-    return t == Theme::Nexus ? L"nexus" : t == Theme::Grey ? L"grey" : L"slate";
+    return t == Theme::Nexus ? L"nexus" : t == Theme::Grey ? L"grey" : t == Theme::Cba ? L"cba" : L"slate";
 }
 
 MyWords g_myWords;  // your own words and what they mean (<data>\my-words.txt), g_mu
@@ -503,8 +547,14 @@ void LoadLayout() {  // g_mu held
         wchar_t theme[16] = {};
         GetPrivateProfileStringW(L"NexusWindow", L"Theme", L"", theme, 16, g_cfg.iniPath.c_str());
         const std::wstring t = theme;
-        g_theme = t == L"nexus" ? Theme::Nexus : t == L"grey" ? Theme::Grey  // 1.9.5's "cyan": Slate
+        g_theme = t == L"nexus" ? Theme::Nexus : t == L"grey" ? Theme::Grey : t == L"cba" ? Theme::Cba  // "cyan": Slate
                 : t.empty() && get(L"OwnColours", 1) == 0 ? Theme::Nexus : Theme::Slate;
+    }
+    {  // the CBA theme's colours, as a theme code (ASCII), and whether the text keeps its contrast by itself
+        wchar_t code[128] = {};
+        GetPrivateProfileStringW(L"NexusTheme", L"Colours", L"", code, 128, g_cfg.iniPath.c_str());
+        if (!ParseThemeCode(ToUtf8(code), kRoleCount, &g_cbaRoles)) g_cbaRoles = CbaPreset(2);
+        g_cbaAutoContrast = GetPrivateProfileIntW(L"NexusTheme", L"AutoContrast", 1, g_cfg.iniPath.c_str()) != 0;
     }
     auto nx = [](const wchar_t* key, int def) { return GetPrivateProfileIntW(L"Nexus", key, def, g_cfg.iniPath.c_str()) != 0; };
     g_nx.translateChat = nx(L"TranslateChat", 0);
@@ -543,6 +593,8 @@ void SaveLayout() {  // g_mu held
     g_cfg.SaveValue(L"NexusWindow", L"GameColors", g_look.gameColors ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"ChatBg", g_look.chatBg ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"Theme", ThemeKey(g_theme));
+    if (g_cbaRoles.size() == kRoleCount) g_cfg.SaveValue(L"NexusTheme", L"Colours", W(MakeThemeCode(g_cbaRoles)));
+    g_cfg.SaveValue(L"NexusTheme", L"AutoContrast", g_cbaAutoContrast ? L"1" : L"0");
 }
 
 void SetStatus(const std::wstring& s, ULONGLONG ms = 6000) {  // g_mu held
@@ -721,15 +773,17 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked = false, bool once
         if (!detected.empty())  // what this player writes in (answering them in it)
             for (const ChatLine& l : g_lines)
                 if (l.id == id && !l.speaker.empty()) g_playerLang[CaseFold(Trim(l.speaker))] = detected;
-        if (!g_nx.translateChat && !asked && !once) return;
+        if (!g_nx.translateChat && !asked && !once) return;  // once / a click: whatever "Translate the chat" says
         tr = g_translator;
         target = TypingLang();
         understood = g_cfg.understoodLangs;
         skipTyping = g_cfg.skipTypingLang;
     }
     if (!tr) return;
-    if (asked && detected.empty()) detected = DetectLanguage(text);
-    if (!asked) {
+    if ((asked || once) && detected.empty()) detected = DetectLanguage(text);
+    if (once) {  // independent of every chat setting: into the language you write in – unless it already is in it
+        if (!detected.empty() && PrimaryLang(detected) == PrimaryLang(target)) return;
+    } else if (!asked) {
         if (detected.empty()) return;
         if (skipTyping && PrimaryLang(detected) == PrimaryLang(target)) return;
         for (const std::wstring& u : understood)
@@ -754,19 +808,26 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked = false, bool once
 
 void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring learnText);
 
-// The chat that is already there, into the language you write in (the chat is read in it) – when "Translate the chat"
-// is switched on, when the language you write in changes, or once from the menu. The newest lines of other players
-// (at most 20: each one counts against a free contingent); a translation into another language is redone.
-void TranslateRecentLines(bool once) {  // g_mu held
+// The chat lines of other players that stand in our window right now (the visible part of the chat; filled while the
+// chat is drawn, g_mu). Only these are translated in one go – an old chat is never translated in full.
+std::vector<uint64_t> g_visibleLines;
+
+// What can be seen of the chat, into the language you write in (the chat is read in it) – when "Translate the chat" is
+// switched on, when the language you write in changes, or once from the menu. Every call starts afresh: a translation
+// into another language is cleared and done again in the language you write in now. `once` (the menu) follows none of
+// the chat settings: everything not already in the language you write in.
+int TranslateRecentLines(bool once) {  // g_mu held; how many lines went to the translator
     int n = 0;
-    for (auto it = g_lines.rbegin(); it != g_lines.rend() && n < 20; ++it) {
-        if (it->own || it->speaker.empty()) continue;
-        it->translated.clear();
-        it->u8translated.clear();
-        it->transSegs.clear();
-        g_worker.Post([id = it->id, t = it->text, once] { TranslateLine(id, t, false, once); });
+    for (ChatLine& l : g_lines) {
+        if (l.own || l.speaker.empty() || std::find(g_visibleLines.begin(), g_visibleLines.end(), l.id) == g_visibleLines.end())
+            continue;
+        l.translated.clear();
+        l.u8translated.clear();
+        l.transSegs.clear();
+        g_worker.Post([id = l.id, t = l.text, once] { TranslateLine(id, t, false, once); });
         ++n;
     }
+    return n;
 }
 
 // The input into the chat's language.
@@ -3117,9 +3178,10 @@ void RenderWindow() {
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", UI(Tr(L"Nothing but the input with its help. Three quick clicks on it minimise it; right-click in it: Menu … brings the rest back.")).c_str());
         if (ImGui::MenuItem(UI(Tr(L"Compact view")).c_str(), nullptr, &g_compact)) g_cfg.SaveBool(L"NexusWindow", L"Compact", g_compact);
-        if (ImGui::MenuItem(UI(Tr(L"Translate the chat once")).c_str())) TranslateRecentLines(true);
+        if (ImGui::MenuItem(UI(Tr(L"Translate the chat once")).c_str()) && TranslateRecentLines(true) == 0)
+            SetStatus(Tr(L"No chat lines of other players in view"), 4000);
         if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("%s", UI(Tr(L"The newest lines of other players into the language you write in – once, whatever \"Translate the chat\" is set to.")).c_str());
+            ImGui::SetTooltip("%s", UI(Tr(L"What you see of the chat, into the language you write in – once, whatever the chat settings say. Again after you changed the language: in the new one.")).c_str());
         if (ImGui::MenuItem(UI(Tr(L"New whisper tab …")).c_str())) newTabNext = true;
         if (!g_chatEventsPresent && !g_chatEventsFile && ImGui::MenuItem(UI(Tr(L"Install Events: Chat (every channel) …")).c_str()))
             g_showOptions = true;
@@ -3238,6 +3300,7 @@ void RenderWindow() {
             RenderModules(true);
             lock.lock();
         }
+        g_visibleLines.clear();
         for (const ChatLine& l : g_lines) {
             if (!tabName.empty() && (l.channel != Channel::Whisper || l.speakerFolded != tabName)) continue;
             if (!(tabChannels & ChannelBit(l.channel))) continue;  // a tab of your own: only its channels
@@ -3265,6 +3328,7 @@ void RenderWindow() {
             }
             if (!l.translated.empty() && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", l.u8text.c_str());
             // A click on the text of a line someone else wrote: just this line into your language.
+            if (!l.own && ImGui::IsItemVisible()) g_visibleLines.push_back(l.id);  // in view: "translate once" takes it
             if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) s_lineRightClick = true;
             if (!clicked && !l.own && l.translated.empty() && (ImGui::IsItemClicked() || ImGui::IsItemClicked(ImGuiMouseButton_Right)))
                 g_worker.Post([id = l.id, t = l.text] { TranslateLine(id, t, true); });
@@ -3639,6 +3703,79 @@ bool LanguageCombo(const char* id, std::wstring& value, const std::wstring& empt
     return changed;
 }
 
+// The CBA theme's own section (Options → Window, only when it is chosen; g_mu held): a start, the eight roles, the
+// contrast each text reaches, automatic contrast, and the theme code to share.
+void RenderCbaTheme() {
+    if (g_cbaRoles.size() != kRoleCount) g_cbaRoles = CbaPreset(2);
+    bool changed = false;
+    ImGui::Indent();
+    ImGui::TextUnformatted(UI(Tr(L"Start from")).c_str());
+    const std::wstring presets[] = {Tr(L"Slate"), Tr(L"Grey"), Tr(L"CBA blue")};
+    for (int i = 0; i < 3; ++i) {
+        ImGui::SameLine();
+        if (ImGui::SmallButton((UI(presets[i]) + "##cbapre" + std::to_string(i)).c_str())) {
+            g_cbaRoles = CbaPreset(i);
+            changed = true;
+        }
+    }
+    const std::wstring kRoleNames[kRoleCount] = {Tr(L"Window background"), Tr(L"Fields (input, preview)"), Tr(L"Buttons"),
+                                                 Tr(L"Buttons – active"), Tr(L"Tab – active"), Tr(L"Text"),
+                                                 Tr(L"Text – quiet"), Tr(L"Accent (checks, sliders)")};
+    for (int i = 0; i < kRoleCount; ++i) {
+        const uint32_t v = g_cbaRoles[i];
+        float c[3] = {((v >> 16) & 0xFF) / 255.f, ((v >> 8) & 0xFF) / 255.f, (v & 0xFF) / 255.f};
+        if (ImGui::ColorEdit3((UI(kRoleNames[i]) + "##cbarole" + std::to_string(i)).c_str(), c,
+                              ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_DisplayHex)) {
+            g_cbaRoles[i] = (static_cast<uint32_t>(std::lround(c[0] * 255)) << 16) |
+                            (static_cast<uint32_t>(std::lround(c[1] * 255)) << 8) | static_cast<uint32_t>(std::lround(c[2] * 255));
+            changed = true;
+        }
+        // The contrast each text reaches as shown (WCAG): 4.5:1 for text, 3:1 for quiet text and accents.
+        const std::vector<uint32_t>& r = g_cbaRoles;
+        double ratio = 0, need = 0;
+        if (i == kRoleText) {
+            ratio = MinContrast(CbaShown(i), {r[kRoleBg], r[kRoleField], r[kRoleButton], r[kRoleButtonActive], r[kRoleTabActive]});
+            need = 4.5;
+        } else if (i == kRoleTextDim || i == kRoleAccent) {
+            ratio = MinContrast(CbaShown(i), {r[kRoleBg], r[kRoleField]});
+            need = 3.0;
+        }
+        if (need > 0) {
+            char buf[32];
+            snprintf(buf, sizeof buf, "%.1f:1", ratio);
+            ImGui::SameLine();
+            const bool ok = ratio >= need;
+            ImGui::TextColored(ok ? ImVec4(0.24f, 0.81f, 0.43f, 1.f) : ImVec4(0.98f, 0.85f, 0.25f, 1.f), "%s%s", buf,
+                               ok ? "" : (" " + UI(Tr(L"low"))).c_str());
+        }
+    }
+    if (ImGui::Checkbox(UI(Tr(L"Automatic contrast (text always readable)")).c_str(), &g_cbaAutoContrast)) changed = true;
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("%s", UI(Tr(L"Text, quiet text and accents are moved just as far as needed to stand out on every surface (WCAG 4.5:1, 3:1).")).c_str());
+    // A theme code to share (and to take over one): whatever is pasted is only read as colours.
+    static char code[96] = {};
+    if (ImGui::SmallButton(UI(Tr(L"Copy theme code")).c_str())) {
+        ImGui::SetClipboardText(MakeThemeCode(g_cbaRoles).c_str());
+        SetStatus(Tr(L"Theme code copied"), 3000);
+    }
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 14);
+    ImGui::InputTextWithHint("##cbacode", "GW2C1:...", code, sizeof code);
+    ImGui::SameLine();
+    if (ImGui::SmallButton(UI(Tr(L"Apply") + L"##cbaapply").c_str())) {
+        std::vector<uint32_t> roles;
+        if (ParseThemeCode(code, kRoleCount, &roles)) {
+            g_cbaRoles = roles;
+            code[0] = 0;
+            changed = true;
+        } else {
+            SetStatus(Tr(L"That is not a theme code"), 5000);
+        }
+    }
+    ImGui::Unindent();
+    if (changed) SaveLayout();
+}
+
 // Our options window, in tabs. "Save" applies.
 void RenderOptionsContent() {
     static Config edit, opened;  // `opened`: g_cfg when the page was filled
@@ -3690,11 +3827,11 @@ void RenderOptionsContent() {
         if (ImGui::BeginTabItem(UI(Tr(L"Window")).c_str(), nullptr, TabFlag(1))) {
             {
                 std::lock_guard<std::mutex> lock(g_mu);
-                const std::wstring names[] = {Tr(L"Nexus (its own theme)"), Tr(L"Slate"), Tr(L"Grey")};
+                const std::wstring names[] = {Tr(L"Nexus (its own theme)"), Tr(L"Slate"), Tr(L"Grey"), Tr(L"CBA (your own colours)")};
                 int ti = static_cast<int>(g_theme);
                 ImGui::SetNextItemWidth(wide);
                 if (ImGui::BeginCombo(UI(Tr(L"Theme of the window") + L"##theme").c_str(), UI(names[ti]).c_str())) {
-                    for (int i = 0; i < 3; ++i)
+                    for (int i = 0; i < 4; ++i)
                         if (ImGui::Selectable(UI(names[i]).c_str(), i == ti)) {
                             g_theme = static_cast<Theme>(i);
                             SaveLayout();
@@ -3703,6 +3840,7 @@ void RenderOptionsContent() {
                 }
                 if (ImGui::IsItemHovered())
                     ImGui::SetTooltip("%s", UI(Tr(L"Only the window itself: frames, tabs, buttons. The chat keeps its channel colours.")).c_str());
+                if (g_theme == Theme::Cba) RenderCbaTheme();
             }
             // Size and transparency take effect at once and are kept (like the chat text below), not only on "Save".
             int pt = std::clamp(edit.fontPt, 8, 28);
