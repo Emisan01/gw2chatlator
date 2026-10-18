@@ -131,6 +131,10 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 - The ini: every `WritePrivateProfileString` rewrites the whole file (~15 ms; "Save" in the options = 70 of them =
   the game hung ~1 s). The add-on runs `Config::DeferWrites(true)`: `SaveValue` only queues, `KickSave` (render, every
   0.5 s at most) has the worker write them, unload flushes the rest. Never write the ini directly on the game thread.
+- Window size by code: whole pixels only. ImGui rounds a window's size down, so a 0.8 px growth plus the matching
+  position change moved the window up every frame without resizing it. Change the size with `std::ceil`, then move
+  the position by the size change that really happened (the bottom-left corner stays). Without the chat the window
+  is fitted to its parts (never below `WindowMinSize`, else the same creep). The self-test keeps no imgui.ini.
 - Web links: a Discord-like question only, no lookups in the background (the Cloudflare check sent every domain).
 - Visual Studio may report itself incomplete after an update; then pin `CMAKE_GENERATOR_INSTANCE` with `,version=`.
 
