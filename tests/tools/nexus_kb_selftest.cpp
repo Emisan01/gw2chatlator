@@ -466,6 +466,35 @@ int wmain(int argc, wchar_t** argv) {
                 const bool clicks = std::fabs(s2b.x - s2.x) < 2 && s3.x < s2.x && std::fabs(s4.x - s2.x) < 2;
                 if (!clicks) std::printf("FAIL: three quick clicks did not minimise the window (or two did)\n");
                 ok = ok && clicks;
+                // Minimise and open five times by three quick clicks, near (not at) the screen edges: the window must come
+                // back to exactly where it stood every time (a click remembered from before minimising snapped it).
+                {
+                    const ImVec2 cycleAt(7, 1080 - 28 - s2.y - 6);
+                    ImGui::SetWindowPos("GW2Chatlator###kbmain", cycleAt);
+                    frames(3);
+                    const ImVec2 c0 = pos();
+                    ImVec2 cN = c0;
+                    std::printf("cycles near the edge: start %.0f,%.0f", c0.x, c0.y);
+                    for (int c = 0; c < 5; ++c) {
+                        const ImVec2 inside(cN.x + 200, cN.y + 80);
+                        click(inside);
+                        click(inside);
+                        click(inside);
+                        frames(3);
+                        ImGui::GetIO().MousePos = ImVec2(-1000, -1000);
+                        frames(2);
+                        waypoint(1);
+                        frames(4);
+                        cN = pos();
+                        std::printf("  %d: %.0f,%.0f", c + 1, cN.x, cN.y);
+                    }
+                    std::printf("\n");
+                    const bool stays = std::fabs(cN.x - c0.x) < 1 && std::fabs(cN.y - c0.y) < 1;
+                    if (!stays) std::printf("FAIL: the window wandered over minimise / open cycles\n");
+                    ok = ok && stays;
+                    ImGui::SetWindowPos("GW2Chatlator###kbmain", p2);
+                    frames(3);
+                }
                 // Too small for the chat and all parts: it grows upwards once (whole pixels), its bottom stays, then it
                 // stands still (a fraction of a pixel used to move it up every frame without resizing it).
                 ImGui::SetWindowSize("GW2Chatlator###kbmain", ImVec2(520, 251));
@@ -493,6 +522,26 @@ int wmain(int argc, wchar_t** argv) {
                     ImGuiWindow* w = ImGui::FindWindowByName("GW2Chatlator###kbmain");
                     return w ? w->Size : ImVec2(-1, -1);
                 };
+                {  // mini mode on, off, on, off …: the window must not crawl (its bottom stays, its size comes back)
+                    ImGui::SetWindowPos("GW2Chatlator###kbmain", ImVec2(300, 500));
+                    frames(4);
+                    const ImVec2 t0 = wpos(), ts0 = wsize();
+                    std::printf("mini on / off: start %.0f,%.0f %.0fx%.0f", t0.x, t0.y, ts0.x, ts0.y);
+                    for (int c = 0; c < 4; ++c) {
+                        mini(1);
+                        frames(4);
+                        const ImVec2 on = wpos(), son = wsize();
+                        mini(0);
+                        frames(4);
+                        const ImVec2 off = wpos(), soff = wsize();
+                        std::printf("  [on %.0f,%.0f %.0f / off %.0f,%.0f %.0f]", on.x, on.y, son.y, off.x, off.y, soff.y);
+                    }
+                    const ImVec2 t1 = wpos(), ts1 = wsize();
+                    std::printf("\n");
+                    const bool still = std::fabs(t1.y - t0.y) < 1 && std::fabs(ts1.y - ts0.y) < 1 && std::fabs(t1.x - t0.x) < 1;
+                    if (!still) std::printf("FAIL: the window crawled while the mini mode went on and off\n");
+                    ok = ok && still;
+                }
                 mini(1);
                 frames(5);
                 ImGui::SetWindowPos("GW2Chatlator###kbmain", ImVec2(300, 600));
