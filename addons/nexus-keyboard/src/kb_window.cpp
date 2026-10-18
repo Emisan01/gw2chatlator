@@ -16,7 +16,10 @@ bool g_buttonMoved = false;  // ... and whether you dragged the small button sin
 ImVec2 g_buttonBottomLeft(-1, -1);  // the small button's bottom-left corner (where a moved button opens from)
 ImVec2 RestorePos() {  // where the window opens again
     if (!g_buttonMoved && g_savedPos.x >= 0) return g_savedPos;
-    if (g_buttonBottomLeft.x >= 0) return ImVec2(g_buttonBottomLeft.x, g_buttonBottomLeft.y - g_expandedH);
+    if (g_buttonBottomLeft.x >= 0) {  // you moved the button: a big window waiting behind the mini mode follows it too
+        g_fittedMoved = true;
+        return ImVec2(g_buttonBottomLeft.x, g_buttonBottomLeft.y - g_expandedH);
+    }
     return ImVec2(-1, -1);
 }
 
@@ -867,9 +870,8 @@ void RenderWindow() {
                 g_fittedMoved = true;
             }
         }
-    } else if (g_skipGrow) {  // just back from the mini mode: its old rect, nothing grows this frame
-        g_skipGrow = false;
-        g_grown = 0;
+    } else if (g_skipGrow) {  // just back from the mini mode: its old rect, nothing grows this frame (what it had grown
+        g_skipGrow = false;    // for a long input before stays counted – it shrinks back by that once the input is short)
     } else {  // the input grew past the window: the window grows upwards (its bottom stays) and shrinks back afterwards
         float& s_grown = g_grown;
         const float need = lowerH + (Lay().chat ? line * 2 : 0) - ImGui::GetContentRegionAvail().y;
@@ -1075,7 +1077,7 @@ void RenderWindow() {
         ImGui::SetCursorPosY(rowY);
     }
     const ImVec2 boxSize(-1, boxH);
-    g_wrapWidth =ImGui::GetContentRegionAvail().x - st.FramePadding.x * 2 - st.ScrollbarSize - 4;
+    g_wrapWidth = ImGui::GetContentRegionAvail().x - st.FramePadding.x * 2 - st.ScrollbarSize - 4;
     const ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CtrlEnterForNewLine |
                                       ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_CallbackCharFilter |
                                       ImGuiInputTextFlags_CallbackAlways;

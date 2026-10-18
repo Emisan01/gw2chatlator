@@ -172,6 +172,12 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   position change moved the window up every frame without resizing it. Change the size with `std::ceil`, then move
   the position by the size change that really happened (the bottom-left corner stays). Without the chat the window
   is fitted to its parts (never below `WindowMinSize`, else the same creep). The self-test keeps no imgui.ini.
+- Mini mode on / off: the big window gets back exactly the rect it had (like a Nexus window); it follows only a real
+  move of the small window (`g_fittedMoved`: hold-drag, a drag release, a moved button). Never derive a "move" from
+  the fitted window's position – every pixel of fitting / clamping added up over toggles (2.0.3 slid down in game).
+  `g_grown` survives the mini mode (the rect includes it, it shrinks back by it).
+- Sending clears the learning-mode state (`g_lastWords`, `g_finishedLast/At`) with the input – the box never shows
+  the empty text in between, and the old state blocked self-corrections in the next message.
 - The CBA theme: eight roles (`g_cbaRoles`, [NexusTheme] Colours = a theme code), everything else derived in
   `ColoursOf`; `CbaShown` keeps text 4.5:1 and quiet text / accents 3:1 on every fill (core/contrast: WCAG with sRGB
   linearisation, unit-tested). A pasted theme code is data: `ParseThemeCode` accepts only its exact form.
