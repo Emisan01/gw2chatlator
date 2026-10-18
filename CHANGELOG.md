@@ -3,6 +3,18 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## Unreleased
+
+- **The window no longer creeps up.** Minimising measured the small button differently (text size, ImGui's minimum
+  window size) than the minimised window itself, so every minimise / open moved the window – upwards with larger
+  text. A click on a chat code even minimised the chat area instead of the window. Now the button sits exactly on the
+  window's bottom edge and the window comes back to the same place (checked by the self-test).
+- **Web links like Discord:** blue and clickable; a click asks "This link goes to … – open it?". No background check
+  (no Cloudflare lookups), no warning labels, no link filter option.
+- **Waypoints for squads:** a click on a waypoint moves the window out of the way so you click it in GW2's own chat (the
+  game opens the map on it); the window comes back by itself when the map closes (or after 45 s). Other chat codes: a
+  click copies the code.
+
 ## 1.9.0 — 2026-10-17 (GW2Chatlator for Nexus)
 
 - **Chat Scroll Fix:**

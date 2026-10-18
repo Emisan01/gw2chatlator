@@ -36,8 +36,7 @@ add_library(gct_core STATIC
     src/core/languagetool_protocol.cpp
     src/core/voice.cpp
     src/core/voice_learn.cpp
-    src/core/send_guard.cpp
-    src/core/link_filter.cpp)
+    src/core/send_guard.cpp)
 target_include_directories(gct_core PUBLIC src)
 
 option(GCT_BUILD_TESTS "Build the core unit tests and the add-on's self-test" ON)

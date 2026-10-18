@@ -35,7 +35,6 @@
 #include "core/voice_learn.hpp"
 #include "core/send_guard.hpp"
 #include "core/chat_code.hpp"
-#include "core/link_filter.hpp"
 
 using namespace gct;
 
@@ -787,140 +786,6 @@ static void TestLinks() {
     CHECK(p.segments.size() == 3 && p.segments[1].keep && p.segments[1].text == L"www.gw2efficiency.com");
 }
 
-static void TestLinkSafety() {
-    // 1. ExtractHost
-    CHECK(ExtractHost("https://wiki.guildwars2.com/wiki/Tequatl") == "wiki.guildwars2.com");
-    CHECK(ExtractHost("http://user:pass@bit.ly:8080/path?q=1#frag") == "bit.ly");
-    CHECK(ExtractHost("GW2EFFICIENCY.COM/") == "gw2efficiency.com");
-    CHECK(ExtractHost("http://192.168.1.1:80/evil") == "192.168.1.1");
-    CHECK(ExtractHost("https://[2001:db8::1]:8080/") == "[2001:db8::1]");
-    CHECK(ExtractHost("  example.com.  ") == "example.com");
-
-    // 2. IsDomainOrSubdomain
-    CHECK(IsDomainOrSubdomain("wiki.guildwars2.com", "guildwars2.com"));
-    CHECK(IsDomainOrSubdomain("guildwars2.com", "guildwars2.com"));
-    CHECK(IsDomainOrSubdomain("account.arena.net", "arena.net"));
-    CHECK(!IsDomainOrSubdomain("fakeguildwars2.com", "guildwars2.com"));
-    CHECK(!IsDomainOrSubdomain("guildwars2.com.attacker.com", "guildwars2.com"));
-
-    // 3. IsIpLiteral
-    CHECK(IsIpLiteral("192.168.1.1"));
-    CHECK(IsIpLiteral("127.0.0.1"));
-    CHECK(IsIpLiteral("45.33.32.1"));
-    CHECK(IsIpLiteral("[::1]"));
-    CHECK(!IsIpLiteral("gw2efficiency.com"));
-    CHECK(!IsIpLiteral("1.2.3"));
-    CHECK(!IsIpLiteral("999.1.1.1"));
-
-    // 4. AssessLinkSafety: Official
-    {
-        auto s = AssessLinkSafety("https://wiki.guildwars2.com/wiki/Legendary_weapon");
-        CHECK(s.safety == LinkSafety::Safe);
-        CHECK(s.reason == "official");
-    }
-    {
-        auto s = AssessLinkSafety("http://arena.net/careers");
-        CHECK(s.safety == LinkSafety::Safe);
-        CHECK(s.reason == "official");
-    }
-    {
-        auto s = AssessLinkSafety("https://account.ncsoft.com/login");
-        CHECK(s.safety == LinkSafety::Safe);
-        CHECK(s.reason == "official");
-    }
-
-    // 5. AssessLinkSafety: Community & Platforms
-    {
-        auto s = AssessLinkSafety("https://gw2efficiency.com/crafting/calculator");
-        CHECK(s.safety == LinkSafety::Safe);
-        CHECK(s.reason == "community");
-    }
-    {
-        auto s = AssessLinkSafety("https://snowcrows.com/builds/raids");
-        CHECK(s.safety == LinkSafety::Safe);
-        CHECK(s.reason == "community");
-    }
-    {
-        auto s = AssessLinkSafety("https://discord.gg/guildwars2");
-        CHECK(s.safety == LinkSafety::Safe);
-        CHECK(s.reason == "trusted_platform");
-    }
-    {
-        auto s = AssessLinkSafety("https://youtube.com/watch?v=123");
-        CHECK(s.safety == LinkSafety::Safe);
-        CHECK(s.reason == "trusted_platform");
-    }
-
-    // 6. AssessLinkSafety: Shorteners
-    {
-        auto s = AssessLinkSafety("https://bit.ly/3abcde");
-        CHECK(s.safety == LinkSafety::Suspicious);
-        CHECK(s.reason == "shortener");
-    }
-    {
-        auto s = AssessLinkSafety("http://tinyurl.com/gw2gold");
-        CHECK(s.safety == LinkSafety::Suspicious);
-        CHECK(s.reason == "shortener");
-    }
-    {
-        auto s = AssessLinkSafety("https://is.gd/xyz");
-        CHECK(s.safety == LinkSafety::Suspicious);
-        CHECK(s.reason == "shortener");
-    }
-
-    // 7. AssessLinkSafety: GW2 Impersonation / Phishing
-    {
-        auto s = AssessLinkSafety("http://guildwars2-free-gems.xyz/claim");
-        CHECK(s.safety == LinkSafety::Dangerous);
-        CHECK(s.reason == "gw2_impersonation");
-    }
-    {
-        auto s = AssessLinkSafety("https://arenanet-account-verify.com/login");
-        CHECK(s.safety == LinkSafety::Dangerous);
-        CHECK(s.reason == "gw2_impersonation");
-    }
-    {
-        auto s = AssessLinkSafety("http://ncsoft-support.ru/");
-        CHECK(s.safety == LinkSafety::Dangerous);
-        CHECK(s.reason == "gw2_impersonation");
-    }
-    {
-        auto s = AssessLinkSafety("https://fakeguildwars2.com");
-        CHECK(s.safety == LinkSafety::Dangerous);
-        CHECK(s.reason == "gw2_impersonation");
-    }
-    {
-        auto s = AssessLinkSafety("http://gw2gems-store.com/buy");
-        CHECK(s.safety == LinkSafety::Dangerous);
-        CHECK(s.reason == "gw2_impersonation");
-    }
-
-    // 8. AssessLinkSafety: Raw IP
-    {
-        auto s = AssessLinkSafety("http://185.220.101.5/login");
-        CHECK(s.safety == LinkSafety::Dangerous);
-        CHECK(s.reason == "ip_literal");
-    }
-
-    // 9. AssessLinkSafety: Punycode Spoofing
-    {
-        auto s = AssessLinkSafety("http://xn--guld wars2-s1a.com/free");
-        CHECK(s.safety == LinkSafety::Dangerous);
-        CHECK(s.reason == "punycode_spoofing");
-    }
-    {
-        auto s = AssessLinkSafety("https://xn--rena-net-9db.xyz/");
-        CHECK(s.safety == LinkSafety::Dangerous);
-        CHECK(s.reason == "punycode_spoofing");
-    }
-
-    // 10. AssessLinkSafety: Neutral
-    {
-        auto s = AssessLinkSafety("https://example.com/some/article");
-        CHECK(s.safety == LinkSafety::Neutral);
-        CHECK(s.reason == "unclassified");
-    }
-}
 
 static void TestNotChat() {
     // The character selection shows character data where the chat is: no
@@ -1990,7 +1855,6 @@ int main() {
     TestTypingSlips();
     TestGuessLanguage();
     TestLinks();
-    TestLinkSafety();
     TestStarterWords();
     TestLanguageTool();
     TestOcrTimestamps();
