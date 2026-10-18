@@ -3,6 +3,14 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.0.4 — 2026-10-18 (GW2Chatlator for Nexus)
+
+- **Mini mode and back like a Nexus window: the window comes back exactly where it was.** 2.0.3 still let it slide
+  down slowly in the game – each time it took over a pixel of the small window's fitting as a move. Now the window
+  remembers its whole rect when the mini mode goes on and gets exactly that rect back when it goes off. It follows
+  only when you really moved the small window (hold and drag, or the edge drag) – then by just as much. A game started
+  in the mini mode opens the big window right above where the small one stands.
+
 ## 2.0.3 — 2026-10-18 (GW2Chatlator for Nexus)
 
 - **The window no longer crawls when the mini mode goes on and off.** Leaving the mini mode (or switching the chat
