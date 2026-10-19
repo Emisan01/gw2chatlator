@@ -307,9 +307,10 @@ extern "C" __declspec(dllexport) int Gw2KbTestChatSource(int cmd, ChatSourceTest
     return 0;
 }
 
-extern "C" __declspec(dllexport) int Gw2KbTestCosts(FrameCosts* out) {  // nexus_kb_smoketest: the frame by part
-    if (!TestHost() || !out) return -1;
-    *out = CostsNow();
+extern "C" __declspec(dllexport) int Gw2KbTestCosts(FrameCosts* out, int reset) {  // nexus_kb_smoketest: the frame by part
+    if (!TestHost()) return -1;
+    if (reset) CostReset();
+    if (out) *out = CostsNow();
     return 0;
 }
 

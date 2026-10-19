@@ -421,8 +421,20 @@ CostFrame::~CostFrame() {
     LARGE_INTEGER now;
     QueryPerformanceCounter(&now);
     constexpr double a = 0.05;  // rolling average over the last ~20 frames
-    for (int i = 0; i < kCostParts; ++i) g_cost.avg.ms[i] += a * (g_cost.frame[i] - g_cost.avg.ms[i]);
-    g_cost.avg.totalMs += a * (TicksToMs(now.QuadPart - g_cost.frameStart.QuadPart) - g_cost.avg.totalMs);
+    const double total = TicksToMs(now.QuadPart - g_cost.frameStart.QuadPart);
+    for (int i = 0; i < kCostParts; ++i) {
+        g_cost.avg.ms[i] += a * (g_cost.frame[i] - g_cost.avg.ms[i]);
+        g_cost.avg.sumMs[i] += g_cost.frame[i];
+    }
+    g_cost.avg.totalMs += a * (total - g_cost.avg.totalMs);
+    g_cost.avg.sumTotalMs += total;
+    ++g_cost.avg.frames;
+}
+
+void CostReset() {
+    for (double& v : g_cost.avg.sumMs) v = 0;
+    g_cost.avg.sumTotalMs = 0;
+    g_cost.avg.frames = 0;
 }
 
 void CostMark(int part) {
