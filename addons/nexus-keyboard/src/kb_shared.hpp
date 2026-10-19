@@ -37,7 +37,6 @@
 #include "core/protect.hpp"
 #include "core/send_guard.hpp"
 #include "core/soft_wrap.hpp"
-#include "core/link_find.hpp"
 #include "core/slang.hpp"
 #include "core/text.hpp"
 #include "core/translator.hpp"
@@ -69,7 +68,6 @@ constexpr const char* kName = "GW2Chatlator";
 constexpr const char* kToggleBind = "KB_GW2KEYBOARD_TOGGLE";
 constexpr const char* kFocusBind = "KB_GW2KEYBOARD_FOCUS";
 constexpr const char* kTalkBind = "KB_GW2KEYBOARD_TALK";  // push to talk: held while you speak
-constexpr const char* kClickTestBind = "KB_GW2KEYBOARD_CLICKTEST";  // one synthetic click where the mouse is (a test)
 constexpr size_t kMaxLines = 500;  // only the lines in view are drawn: more history costs a placeholder each
 constexpr size_t kHistoryMax = 50;
 constexpr size_t kMaxPartsPerEnter = 3;  // one Enter never pours more chat lines than this into the game
@@ -93,7 +91,6 @@ struct NexusOptions {
     bool setupDone = false;      // the first start loaded Events: Chat, the voice module and the base model
     bool voiceFallback = true;   // a model too slow twice in a row: the next smaller installed one is used
     std::wstring namesLang;      // item / place names: "en", "de", "fr", "es", "zh"; "" = the language you write in
-    bool nativeWaypointClick = false;  // a waypoint clicked here clicks the original in GW2's chat (kb_waypoint.cpp)
 };
 extern NexusOptions g_nx;
 // How chat text looks ([NexusWindow] Glow, Brightness, GameColors): GW2's colours (the name in the channel colour, the
@@ -485,7 +482,6 @@ namespace kb {
 
 }  // namespace kb
 #include "kb_chatsource.hpp"
-#include "kb_waypoint.hpp"
 namespace kb {
 
 // ---- chat codes: their own module (chat_links) – "[Item name]" as the game links them, the details on mouse-over.
@@ -515,10 +511,8 @@ extern bool g_openLinkAsk;
 extern bool g_minimizeRequest, g_expandRequest;
 extern int g_redirect;
 extern ULONGLONG g_redirectSince;
-void HandleChatLinkClick(const std::string& raw, ULONGLONG receivedTime, const std::string& where,
-                         const ChatLineHint& line = {});  // line: who wrote it, its text, the link ("" = unknown)
-bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 color, ULONGLONG receivedTime,
-              const std::wstring& speaker = std::wstring());
+void HandleChatLinkClick(const std::string& raw, ULONGLONG receivedTime, const std::string& where);
+bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 color, ULONGLONG receivedTime);
 
 extern bool g_micLocked;
 bool ProfileOn(int profile);

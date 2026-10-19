@@ -10,7 +10,6 @@ add_library(gw2keyboard_nexus SHARED
     src/kb_voice.cpp
     src/kb_chat.cpp
     src/kb_chatsource.cpp
-    src/kb_waypoint.cpp
     src/kb_window.cpp
     src/kb_options.cpp
     src/voice_module.cpp
@@ -19,7 +18,6 @@ add_library(gw2keyboard_nexus SHARED
     ${PROJECT_SOURCE_DIR}/src/app/config.cpp
     ${PROJECT_SOURCE_DIR}/src/app/spell_service.cpp
     ${PROJECT_SOURCE_DIR}/src/win/spellcheck.cpp
-    ${PROJECT_SOURCE_DIR}/src/win/ocr.cpp
     ${GCT_NEXUS_TP}/imgui/imgui.cpp
     ${GCT_NEXUS_TP}/imgui/imgui_draw.cpp
     ${GCT_NEXUS_TP}/imgui/imgui_tables.cpp

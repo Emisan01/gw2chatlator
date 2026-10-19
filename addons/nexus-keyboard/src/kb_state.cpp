@@ -143,7 +143,6 @@ void LoadLayout() {  // g_mu held
     g_nx.snap = nx(L"Snap", 1);
     g_nx.setupDone = nx(L"SetupDone", 0);
     g_nx.voiceFallback = nx(L"VoiceFallback", 1);
-    g_nx.nativeWaypointClick = nx(L"NativeWaypointClick", 0);
     {
         wchar_t lang[8] = {};
         GetPrivateProfileStringW(L"Nexus", L"NamesLang", L"", lang, 8, g_cfg.iniPath.c_str());
@@ -156,7 +155,6 @@ void SaveNexusOptions() {  // g_mu held
     g_cfg.SaveBool(L"Nexus", L"Snap", g_nx.snap);
     g_cfg.SaveBool(L"Nexus", L"SetupDone", g_nx.setupDone);
     g_cfg.SaveBool(L"Nexus", L"VoiceFallback", g_nx.voiceFallback);
-    g_cfg.SaveBool(L"Nexus", L"NativeWaypointClick", g_nx.nativeWaypointClick);
     g_cfg.SaveValue(L"Nexus", L"NamesLang", g_nx.namesLang);
 }
 void SaveLayout() {  // g_mu held

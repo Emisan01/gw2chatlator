@@ -274,8 +274,7 @@ bool g_minimizeRequest = false, g_expandRequest = false;  // on the main window,
 int g_redirect = 0;  // 0 none; 1 waypoint, waiting for the map; 2 the map is open; 3 waiting for GW2's chat line; 4 it is open
 ULONGLONG g_redirectSince = 0;
 
-void HandleChatLinkClick(const std::string& raw, ULONGLONG receivedTime, const std::string& where,
-                         const ChatLineHint& line) {  // g_mu held
+void HandleChatLinkClick(const std::string& raw, ULONGLONG receivedTime, const std::string& where) {  // g_mu held
     ImGui::SetClipboardText(raw.c_str());
     const bool waypoint = DecodeChatCode(W(raw)).kind == ChatCodeKind::Poi;
     const bool fresh = receivedTime == 0 || GetTickCount64() - receivedTime < 15000;
@@ -292,18 +291,11 @@ void HandleChatLinkClick(const std::string& raw, ULONGLONG receivedTime, const s
     g_redirectSince = GetTickCount64();
     g_suppressChatFocusUntil = GetTickCount64() + 2000;  // our own "come back when GW2's chat opens" waits
     if (g_api && g_api->GameBinds_InvokeAsync) g_api->GameBinds_InvokeAsync(GB_UiChatFocus, 20);
-    // The quantum macro (optional): within 10 s the line still stands at the bottom of GW2's chat – the original is
-    // clicked for you, found by its name, who wrote it and what it says.
-    const bool alive = receivedTime == 0 || GetTickCount64() - receivedTime < 10000;
-    if (waypoint && alive && g_nx.nativeWaypointClick && !line.label.empty()) StartWaypointClick(line);
 }
 
 bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 color,
-              ULONGLONG receivedTime, const std::wstring& speaker) {  // g_mu held
+              ULONGLONG receivedTime) {  // g_mu held
     (void)text;
-    std::wstring asShown;  // the line as GW2 shows it: chat codes as their "[Name]" (the waypoint click finds it)
-    for (const auto& seg : segs)
-        asShown += W(seg.kind == PieUI::ChatLinks::SegmentKind::Link ? g_links.Label(seg) : seg.display);
     bool clicked = false;
     const float right = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
     const float space = ImGui::CalcTextSize(" ").x;
@@ -354,9 +346,7 @@ bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::Link
                 place(lbl);
                 if (g_links.Render(seg, lbl, [](const std::string& l, ImVec4 c) { LookText(l.c_str(), Bright(c), false); })) {
                     clicked = true;
-                    const std::string where = g_links.Where(seg);  // empty: Decoder Ring does not know it
-                    HandleChatLinkClick(seg.raw, receivedTime, where,
-                                        ChatLineHint{speaker, asShown, where.empty() ? std::wstring() : W(lbl)});
+                    HandleChatLinkClick(seg.raw, receivedTime, g_links.Where(seg));
                 }
                 break;
             }
