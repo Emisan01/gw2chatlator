@@ -3,7 +3,7 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## Unreleased (GW2Chatlator for Nexus)
+## 2.1.0 — 2026-10-19 (GW2Chatlator for Nexus)
 
 - **An update of Events: Chat can no longer take the game down.** Nexus updates Events: Chat over night, unasked; if
   its layout ever changed, reading it the old way could have crashed the game. Now one guarded piece of code copies
