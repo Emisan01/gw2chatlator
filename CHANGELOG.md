@@ -3,6 +3,19 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## Unreleased (GW2Chatlator for Nexus)
+
+- **The chat draws only what you see.** Every line keeps its height; out of view it costs nothing but its place. Our
+  share of a frame on GW2's render thread went from 0.22 ms to 0.06 ms – with 500 lines of history instead of 200.
+- **The window's place is one small formula.** Four numbers – the bottom-left corner, the width, the big window's
+  height – give its rect in every mode (big, mini, minimised). Growing for a long input and shrinking back, the mini
+  mode, minimising and opening again cannot move it any more, by construction. Same behaviour as before.
+- **For the developer:** Options > Technical shows what our frame costs on GW2's render thread, by part (window,
+  header, chat, input, footer, options), and what a chat line costs.
+- Under the hood: equations that must hold for every input – the window's place, sending (no character lost, a chat
+  code never cut), translation protection, the settings file, the soft line breaks, the chat source (every line
+  counted exactly once) – checked with thousands of random inputs in every build.
+
 ## 2.1.1 — 2026-10-19 (GW2Chatlator for Nexus)
 
 - **Leaner: protection instead of switching on and off.** Updates and compatibility are the business of Nexus and
