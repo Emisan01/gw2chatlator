@@ -67,7 +67,7 @@ constexpr const char* kName = "GW2Chatlator";
 constexpr const char* kToggleBind = "KB_GW2KEYBOARD_TOGGLE";
 constexpr const char* kFocusBind = "KB_GW2KEYBOARD_FOCUS";
 constexpr const char* kTalkBind = "KB_GW2KEYBOARD_TALK";  // push to talk: held while you speak
-constexpr size_t kMaxLines = 200;
+constexpr size_t kMaxLines = 500;  // only the lines in view are drawn: more history costs a placeholder each
 constexpr size_t kHistoryMax = 50;
 constexpr size_t kMaxPartsPerEnter = 3;  // one Enter never pours more chat lines than this into the game
 // The window is built from parts you can switch on / off and size (Options → General → Window layout).
@@ -291,6 +291,10 @@ struct ChatLine {
     std::vector<PieUI::ChatLinks::LinkSegment> transSegs;
     ULONGLONG receivedTime = 0;
     uint32_t mapId = 0;
+    // Its height in the chat as last drawn, and what for (width, font, text length): out of view it costs only a
+    // placeholder this high – no measuring, no chat code lookups (render thread only).
+    float rowH = -1, rowW = -1, rowFont = -1;
+    size_t rowLen = 0;
 };
 
 struct TypingHelp {  // the worker's answer for one text + caret
