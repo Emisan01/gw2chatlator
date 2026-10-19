@@ -3,7 +3,7 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## Unreleased (GW2Chatlator for Nexus)
+## 2.2.0 — 2026-10-19 (GW2Chatlator for Nexus)
 
 - **The chat draws only what you see.** Every line keeps its height; out of view it costs nothing but its place. Our
   share of a frame on GW2's render thread went from 0.22 ms to 0.06 ms – with 500 lines of history instead of 200.
