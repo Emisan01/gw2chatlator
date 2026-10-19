@@ -9,6 +9,7 @@ add_library(gw2keyboard_nexus SHARED
     src/kb_worker.cpp
     src/kb_voice.cpp
     src/kb_chat.cpp
+    src/kb_chatsource.cpp
     src/kb_window.cpp
     src/kb_options.cpp
     src/voice_module.cpp

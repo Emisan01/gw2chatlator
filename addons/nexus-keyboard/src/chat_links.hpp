@@ -38,4 +38,6 @@ private:
     AddonAPI_t* api_ = nullptr;
 };
 
+bool DecoderRingFaulted();  // Decoder Ring faulted once: not asked again this session
+
 }  // namespace gct

@@ -75,33 +75,7 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
     if (!own && AllowAutoTranslate()) g_worker.Post([id, t = rawText] { TranslateLine(id, t); });
 }
 
-void OnChatEvents(void* args) {
-    if (g_disabled) return;
-    try {
-        const auto* m = static_cast<const bridge::ChatEventsMessage*>(args);
-        if (!m) return;
-        g_chatEventsLive = true;
-        using T = bridge::ChatEventsType;
-        Channel ch;
-        switch (m->type) {
-            case T::Party: ch = Channel::Party; break;
-            case T::Squad: ch = Channel::Squad; break;
-            case T::SquadMessage:
-            case T::SquadBroadcast: AddLine(Channel::Squad, false, "", m->squadMessage); return;
-            case T::Map: ch = Channel::Map; break;
-            case T::Local: ch = Channel::Say; break;
-            case T::Whisper: ch = Channel::Whisper; break;
-            case T::Guild: ch = Channel::Guild; break;
-            case T::TeamPvP:
-            case T::TeamWvW: ch = Channel::Team; break;
-            default: return;
-        }
-        AddLine(ch, m->type == T::Whisper && (m->flags & bridge::kChatEventsWhisperFromMe) != 0,
-                m->generic.characterName, m->generic.content);
-    } catch (...) {
-        g_disabled = true;
-    }
-}
+// OnChatEvents: kb_chatsource.cpp (the guard between Events: Chat and us).
 
 // A click on a name: that player's whisper tab (opened, or brought to the front); writing goes to them. g_mu held.
 void OpenWhisperTab(const std::wstring& name) {
@@ -246,24 +220,30 @@ void RemoveChatEventsNow() {  // game thread
               10000);
 }
 
-bool ChatEventsPresent() {
+bool ChatEventsPresent(bool now) {
     static ULONGLONG next = 0;
-    if (GetTickCount64() < next) return g_chatEventsPresent;
+    if (!now && GetTickCount64() < next) return g_chatEventsPresent;
     next = GetTickCount64() + 3000;
     bool found = false;
+    std::wstring version;  // Events: Chat's version (its probation and protocol)
     HMODULE mods[1024];
     DWORD needed = 0;
     if (K32EnumProcessModules(GetCurrentProcess(), mods, sizeof(mods), &needed)) {
         const DWORD n = std::min<DWORD>(needed / sizeof(HMODULE), 1024);
-        using GetDef = AddonDefinition_t* (*)();
         for (DWORD i = 0; i < n && !found; ++i) {
             if (mods[i] == g_self) continue;
-            if (auto get = reinterpret_cast<GetDef>(GetProcAddress(mods[i], "GetAddonDef"))) {
-                const AddonDefinition_t* def = get();
-                found = def && def->Signature == bridge::kChatEventsSignature;
+            if (FARPROC get = GetProcAddress(mods[i], "GetAddonDef")) {  // another add-on's code: behind a guard
+                uint32_t sig = 0;
+                AddonVersion_t v{};
+                if (ReadAddonDefGuarded(reinterpret_cast<void*>(get), &sig, &v) && sig == bridge::kChatEventsSignature) {
+                    found = true;
+                    version = std::to_wstring(v.Major) + L"." + std::to_wstring(v.Minor) + L"." + std::to_wstring(v.Build) +
+                              L"." + std::to_wstring(v.Revision);
+                }
             }
         }
     }
+    ChatSourceSetVersion(version);
     g_chatEventsPresent = found;
     g_chatEventsFile = GetFileAttributesW((AddonsDir() + kChatEventsDllName).c_str()) != INVALID_FILE_ATTRIBUTES;
     return found;

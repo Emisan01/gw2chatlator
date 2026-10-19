@@ -1,6 +1,9 @@
 #include "chat_links.hpp"
 
+#include <windows.h>
+
 #include <algorithm>
+#include <atomic>
 #include <string>
 
 #include "core/i18n.hpp"
@@ -41,11 +44,53 @@ std::wstring KindName(PieUI::ChatLinks::ChatLinkType kind) {
     }
 }
 
+// Decoder Ring is another add-on (Nexus updates it unasked, like Events: Chat): its Resolve runs behind a guard, into a
+// record with room to spare – a newer Decoder Ring with a longer record cannot write past ours –, every string is ended
+// inside it, and after one fault it is not asked again this session (the chat codes stay plain text).
+std::atomic<bool> g_decoderFault{false};
+
+struct RecordRoom {
+    DecoderRecord rec;
+    unsigned char spare[sizeof(DecoderRecord)];
+};
+
+int ResolveRaw(DecoderRingApi* dr, uint8_t type, uint32_t id, const char* code, DecoderRecord* out) {  // SEH: no objects
+    __try {
+        auto fn = dr->Resolve;
+        if (!fn) return -1;  // zeroed while it unloads
+        return static_cast<int>(fn(type, id, code, out));
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return -2;
+    }
+}
+
+bool ResolveGuarded(DecoderRingApi* dr, const PieUI::ChatLinks::LinkSegment& seg, DecoderRecord& rec) {
+    rec = DecoderRecord{};
+    if (!dr || g_decoderFault) return false;
+    RecordRoom room{};
+    const int r = ResolveRaw(dr, static_cast<uint8_t>(seg.linkType), seg.primaryId, seg.raw.c_str(), &room.rec);
+    if (r == -2) g_decoderFault = true;
+    if (r != DR_Resolved || room.rec.schemaVersion == 0) return false;
+    rec = room.rec;
+    rec.name[sizeof(rec.name) - 1] = 0;
+    rec.iconUrl[sizeof(rec.iconUrl) - 1] = 0;
+    rec.description[sizeof(rec.description) - 1] = 0;
+    rec.mapName[sizeof(rec.mapName) - 1] = 0;
+    for (DecoderFact& f : rec.facts) {
+        f.icon[sizeof(f.icon) - 1] = 0;
+        f.text[sizeof(f.text) - 1] = 0;
+    }
+    if (rec.factCount > 16) rec.factCount = 16;
+    return true;
+}
+
 void OnDecoderReady(void*) {}
 void OnDecoderUnloading(void*) {}
 void OnDecoderResolved(void*) {}
 
 }  // namespace
+
+bool DecoderRingFaulted() { return g_decoderFault; }
 
 void ChatLinks::Start(AddonAPI_t* api) {
     api_ = api;
@@ -74,6 +119,7 @@ void ChatLinks::Stop() {
 
 DecoderRingApi* ChatLinks::GetDecoder() const {
     if (!api_ || !api_->DataLink_Get) return nullptr;
+    if (g_decoderFault) return nullptr;
     auto* p = static_cast<DecoderRingApi*>(api_->DataLink_Get(DECODER_RING_DATALINK));
     return (p && p->apiVersion >= DECODER_RING_API_VERSION) ? p : nullptr;
 }
@@ -83,39 +129,24 @@ bool ChatLinks::HasDecoder() const {
 }
 
 std::string ChatLinks::Label(const PieUI::ChatLinks::LinkSegment& seg) {
-    DecoderRingApi* dr = GetDecoder();
-    if (dr) {
-        DecoderRecord rec{};
-        if (dr->Resolve(static_cast<uint8_t>(seg.linkType), seg.primaryId, seg.raw.c_str(), &rec) == DR_Resolved) {
-            if (rec.name[0] != '\0') {
-                return "[" + (seg.count > 1 ? std::to_string(seg.count) + " " : "") + std::string(rec.name) + "]";
-            }
-        }
-    }
+    DecoderRecord rec;
+    if (ResolveGuarded(GetDecoder(), seg, rec) && rec.name[0] != '\0')
+        return "[" + (seg.count > 1 ? std::to_string(seg.count) + " " : "") + std::string(rec.name) + "]";
     if (!seg.display.empty()) return seg.display;
     const std::string kn = ToUtf8(KindName(seg.linkType));
     return "[" + kn + "]";
 }
 
 std::string ChatLinks::Where(const PieUI::ChatLinks::LinkSegment& seg) {
-    DecoderRingApi* dr = GetDecoder();
-    DecoderRecord rec{};
-    if (!dr || dr->Resolve(static_cast<uint8_t>(seg.linkType), seg.primaryId, seg.raw.c_str(), &rec) != DR_Resolved ||
-        rec.name[0] == '\0')
-        return {};
+    DecoderRecord rec;
+    if (!ResolveGuarded(GetDecoder(), seg, rec) || rec.name[0] == '\0') return {};
     return rec.mapName[0] ? std::string(rec.name) + " – " + rec.mapName : std::string(rec.name);
 }
 
 bool ChatLinks::Render(const PieUI::ChatLinks::LinkSegment& seg, const std::string& label,
                        const std::function<void(const std::string&, ImVec4)>& draw) {
-    DecoderRingApi* dr = GetDecoder();
-    DecoderRecord rec{};
-    bool resolved = false;
-    if (dr) {
-        if (dr->Resolve(static_cast<uint8_t>(seg.linkType), seg.primaryId, seg.raw.c_str(), &rec) == DR_Resolved) {
-            resolved = true;
-        }
-    }
+    DecoderRecord rec;
+    const bool resolved = ResolveGuarded(GetDecoder(), seg, rec);
     const ImVec4 col = resolved ? RarityColor(rec.rarity) : ImVec4(0.62f, 0.78f, 1.f, 1.f);
     if (draw) {
         draw(label, col);

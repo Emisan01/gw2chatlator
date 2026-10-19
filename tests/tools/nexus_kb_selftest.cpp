@@ -17,6 +17,51 @@
 #include "imgui/imgui_internal.h"
 #include "nexus/Nexus.h"
 
+#include "../../addons/nexus-keyboard/src/chat/DecoderRingApi.h"
+
+// Events: Chat as the add-on finds it: this program exports GetAddonDef with Events: Chat's signature and a version the
+// test changes – a new version of the other add-on, as Nexus pulls it over night.
+AddonVersion_t g_fakeChatVersion{9, 9, 9, 0};
+extern "C" __declspec(dllexport) AddonDefinition_t* GetAddonDef() {
+    static AddonDefinition_t d{};
+    d.Signature = bridge::kChatEventsSignature;
+    d.Version = g_fakeChatVersion;
+    d.Name = "Events: Chat (stand-in)";
+    return &d;
+}
+
+namespace {
+
+// Decoder Ring stood in, the way a broken update could behave: 1 = a longer record than ours, without string ends;
+// 2 = it crashes inside Resolve.
+int g_decoderMode = 0;
+DecoderStatus FakeResolve(uint8_t type, uint32_t id, const char*, DecoderRecord* out) {
+    if (g_decoderMode == 2) {
+        volatile int* p = nullptr;
+        *p = 1;
+    }
+    std::memset(out, 0xC3, sizeof(DecoderRecord) + sizeof(DecoderRecord) / 2);
+    out->schemaVersion = 9;
+    out->linkType = type;
+    out->status = DR_Resolved;
+    out->id = id;
+    out->factCount = 255;
+    return DR_Resolved;
+}
+DecoderRingApi g_fakeDecoder{DECODER_RING_API_VERSION, FakeResolve, nullptr, nullptr};
+void* FakeDataLink(const char* id) {
+    return g_decoderMode && std::strcmp(id, DECODER_RING_DATALINK) == 0 ? &g_fakeDecoder : nullptr;
+}
+
+struct ChatSourceTest {  // as in kb_shared.hpp
+    int reading = 0, pause = 0, probeLines = 0, probeFails = 0, shown = 0, dropped = 0, marker = 0;
+    int disabled = 0, decoderFault = 0;
+    char version[32] = {}, verified[32] = {}, bad[32] = {}, probing[32] = {};
+};
+std::wstring g_markerPath;  // <GW2Keyboard>\chat-source-check.txt
+
+}  // namespace
+
 namespace {
 
 std::vector<GUI_RENDER> g_renders;
@@ -191,6 +236,22 @@ int wmain(int argc, wchar_t** argv) {
         WritePrivateProfileStringW(L"Window", L"Opacity", GetEnvironmentVariableW(L"GW2KB_SHOT_ALPHA", alpha, 16) ? alpha : L"255",
                                    (dir + L"\\gw2-chat-translator.ini").c_str());
     }
+    {  // The chat source guard: no verdicts of an earlier run. Outside picture mode the last session "ended while 9.9.9.0
+       // was being checked" (its marker file is there): reading must stay off for it until "Read anyway".
+        std::wstring dir = argv[1];
+        dir = dir.substr(0, dir.find_last_of(L"\\/") + 1) + L"GW2Keyboard";
+        const std::wstring ini = dir + L"\\gw2-chat-translator.ini";
+        WritePrivateProfileStringW(L"ChatSource", nullptr, nullptr, ini.c_str());
+        g_markerPath = dir + L"\\chat-source-check.txt";
+        DeleteFileW(g_markerPath.c_str());
+        // GW2KB_SHOT_PAUSED=1: the picture with reading off (the notice in the chat area)
+        if (GetEnvironmentVariableW(L"GW2KB_SHOT", nullptr, 0) > 0 && !GetEnvironmentVariableW(L"GW2KB_SHOT_PAUSED", nullptr, 0)) {
+            WritePrivateProfileStringW(L"ChatSource", L"VerifiedVersion", L"9.9.9.0", ini.c_str());
+        } else if (FILE* f = _wfopen(g_markerPath.c_str(), L"wb")) {
+            std::fputs("9.9.9.0", f);
+            std::fclose(f);
+        }
+    }
     HMODULE dll = LoadLibraryW(argv[1]);
     auto getDef = dll ? reinterpret_cast<AddonDefinition_t* (*)()>(GetProcAddress(dll, "GetAddonDef")) : nullptr;
     AddonDefinition_t* def = getDef ? getDef() : nullptr;
@@ -217,6 +278,7 @@ int wmain(int argc, wchar_t** argv) {
     api.Fonts_AddFromFile = FakeFontAdd;
     api.Fonts_Resize = FakeFontResize;
     api.Fonts_Release = FakeFontRelease;
+    api.DataLink_Get = FakeDataLink;
     std::printf("load\n");
     def->Load(&api);
     std::printf("loaded\n");
@@ -235,6 +297,40 @@ int wmain(int argc, wchar_t** argv) {
     for (int i = 0; i < 30 && ok; ++i) {
         Frame();
         Sleep(20);
+    }
+
+    // The chat source guard (1): the marker file said the last session ended while 9.9.9.0 was being checked – reading
+    // stays off for it (the line above was not shown) until "Read anyway".
+    const bool shotMode = GetEnvironmentVariableW(L"GW2KB_SHOT", nullptr, 0) > 0;
+    auto src = reinterpret_cast<int (*)(int, ChatSourceTest*, char*)>(GetProcAddress(dll, "Gw2KbTestChatSource"));
+    auto srcState = [&] {
+        ChatSourceTest st{};
+        if (src) src(0, &st, nullptr);
+        return st;
+    };
+    if (ok && !src) {
+        std::printf("FAIL: no Gw2KbTestChatSource\n");
+        ok = false;
+    }
+    if (ok && !shotMode) {
+        ChatSourceTest st = srcState();
+        std::printf("chat source after an unclean end: version %s, off for %s (reason %d), shown %d, dropped %d, marker %d\n",
+                    st.version, st.bad, st.pause, st.shown, st.dropped, st.marker);
+        const bool off = std::strcmp(st.version, "9.9.9.0") == 0 && std::strcmp(st.bad, "9.9.9.0") == 0 && st.pause == 2 &&
+                         st.shown == 0 && st.dropped >= 1 && st.marker == 0;
+        if (!off) std::printf("FAIL: reading did not stay off after the unclean end\n");
+        ok = ok && off;
+        src(2, nullptr, nullptr);  // "Read anyway"
+        bridge::ChatEventsMessage again{};
+        again.type = bridge::ChatEventsType::Map;
+        again.generic.characterName = "Kai Example";
+        again.generic.content = "Hallo zusammen, wer kommt mit zum Weltboss?";
+        g_chatEvents(&again);
+        st = srcState();
+        std::printf("chat source, read anyway: shown %d, checked %s\n", st.shown, st.verified);
+        const bool reads = st.shown == 1 && std::strcmp(st.verified, "9.9.9.0") == 0 && st.pause == 0;
+        if (!reads) std::printf("FAIL: \"Read anyway\" did not read\n");
+        ok = ok && reads;
     }
 
     // GW2KB_SHOT: chat lines of every channel (invented names), then the window as a picture – and nothing else.
@@ -652,6 +748,209 @@ int wmain(int argc, wchar_t** argv) {
         std::printf("reply language for Jean Invented: %s\n", th->sendLang);
         ok = ok && std::strcmp(th->sendLang, "FR") == 0;
     }
+    // The chat source guard (2): what an update of Events: Chat could hand over – a new version on probation, a changed
+    // layout, unreadable memory, endless strings, thousands of random lines – and a broken Decoder Ring. Nothing may take
+    // the process down; garbage is never shown; reading pauses by itself and comes back by hand.
+    if (ok && src && !shotMode) {
+        auto frames4 = [](int n) {
+            for (int i = 0; i < n; ++i) {
+                Frame();
+                Sleep(15);
+            }
+        };
+        auto raise = [&](int type, const char* who, const char* say) {
+            bridge::ChatEventsMessage e{};
+            e.type = static_cast<bridge::ChatEventsType>(type);
+            e.generic.characterName = who;
+            e.generic.content = say;
+            g_chatEvents(&e);
+        };
+        auto newVersion = [&](uint16_t build) {
+            g_fakeChatVersion = AddonVersion_t{9, 9, build, 0};
+            src(1, nullptr, nullptr);
+        };
+        constexpr int kMap = 4;
+        bool good = true;
+        auto expect = [&](bool cond, const char* what) {
+            if (!cond) std::printf("FAIL: chat source - %s\n", what);
+            good = good && cond;
+        };
+        // A. A new version: on probation – the marker file names it while it runs, 5 good lines pass it.
+        newVersion(10);
+        raise(kMap, "Ana Sample", "first line of the new version");
+        ChatSourceTest st = srcState();
+        expect(std::strcmp(st.probing, "9.9.10.0") == 0 && st.marker == 1 && st.probeLines == 1,
+               "the probation did not start with its marker");
+        for (int i = 0; i < 4; ++i) raise(kMap, "Ana Sample", "another plain line");
+        st = srcState();
+        std::printf("chat source, new version: checked %s, marker %d, shown %d\n", st.verified, st.marker, st.shown);
+        expect(std::strcmp(st.verified, "9.9.10.0") == 0 && st.marker == 0 && st.probing[0] == 0, "5 good lines did not pass");
+        // B. A changed layout (a new field moved every pointer by 8 bytes): the probation fails, reading pauses.
+        newVersion(11);
+        const int shownB = srcState().shown;
+        for (int i = 0; i < 2; ++i) {
+            alignas(8) unsigned char raw[72] = {};
+            const char* name = "Bo Shifted";
+            const char* account = "Bo.1234";
+            const char* text2 = "a line in the new layout";
+            raw[8] = kMap;  // type at 8, flags at 12, then the new field (8 bytes), the GUID (16), the three pointers
+            for (int k = 0; k < 16; ++k) raw[24 + k] = static_cast<unsigned char>(0x9A + 13 * k);
+            std::memcpy(raw + 40, &name, 8);
+            std::memcpy(raw + 48, &account, 8);
+            std::memcpy(raw + 56, &text2, 8);
+            g_chatEvents(raw);
+        }
+        raise(kMap, "Ana Sample", "a good line while paused");
+        st = srcState();
+        std::printf("chat source, changed layout: off for %s (reason %d), shown +%d\n", st.bad, st.pause, st.shown - shownB);
+        expect(std::strcmp(st.bad, "9.9.11.0") == 0 && st.pause == 1 && st.shown == shownB && st.marker == 0,
+               "a changed layout was not caught");
+        src(3, nullptr, nullptr);  // "Check again": a new probation – good lines this time pass it
+        for (int i = 0; i < 5; ++i) raise(kMap, "Ana Sample", "plain again");
+        st = srcState();
+        expect(std::strcmp(st.verified, "9.9.11.0") == 0 && st.pause == 0 && st.bad[0] == 0,
+               "\"Check again\" did not pass good lines");
+        // C. The shield: memory that cannot be read. Each time reading pauses for the session; "Read anyway" resumes.
+        void* reserved = VirtualAlloc(nullptr, 1 << 16, MEM_RESERVE, PAGE_NOACCESS);
+        auto* pages = static_cast<unsigned char*>(VirtualAlloc(nullptr, 2 * 4096, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+        DWORD oldProt = 0;
+        VirtualProtect(pages + 4096, 4096, PAGE_NOACCESS, &oldProt);
+        std::memset(pages + 4096 - 100, 'A', 100);  // a string running into a page that cannot be read: no end
+        int trips = 0;
+        auto tripped = [&] {
+            const ChatSourceTest t = srcState();
+            if (t.pause != 3) return false;
+            ++trips;
+            src(2, nullptr, nullptr);
+            return true;
+        };
+        raise(kMap, static_cast<const char*>(reserved) + 64, "a name in memory nobody owns");
+        expect(tripped(), "a name in unreadable memory did not stop reading");
+        raise(kMap, "Ana Sample", reinterpret_cast<const char*>(pages + 4096 - 100));
+        expect(tripped(), "a text running into an unreadable page did not stop reading");
+        g_chatEvents(reinterpret_cast<void*>(static_cast<uintptr_t>(0x1234)));
+        expect(tripped(), "a line pointer outside user memory did not stop reading");
+        g_chatEvents(static_cast<unsigned char*>(reserved) + 256);
+        expect(tripped(), "a line in unreadable memory did not stop reading");
+        g_chatEvents(nullptr);  // no line at all
+        expect(srcState().pause == 0, "an empty event paused reading");
+        const std::string endless(5000, 'A');  // readable, but no end within the bound: never shown, no pause
+        const int shownC = srcState().shown;
+        raise(kMap, "Ana Sample", endless.c_str());
+        raise(77, "Ana Sample", "a type nobody knows");
+        raise(kMap, "Ana \x01 Sample", "a control character in the name");
+        raise(kMap, "Ana Sample", "\xFF\xFE not utf-8");
+        st = srcState();
+        expect(st.shown == shownC && st.pause == 0, "garbage was shown (or paused a read-anyway version)");
+        // D. Thousands of random lines: random heads, pointers into random bytes, unreadable memory, nowhere.
+        std::vector<std::vector<char>> pool(64);
+        uint64_t rng = 0x9E3779B97F4A7C15ull;
+        auto next = [&rng] {
+            rng ^= rng << 13;
+            rng ^= rng >> 7;
+            rng ^= rng << 17;
+            return rng;
+        };
+        for (auto& b : pool) {
+            b.resize(16 + next() % 3000);
+            for (char& c : b) c = static_cast<char>(next() % 3 ? 0x20 + next() % 95 : next());
+            if (next() % 2) b.back() = 0;
+        }
+        auto pick = [&]() -> const char* {
+            switch (next() % 6) {
+                case 0: return nullptr;
+                case 1: return reinterpret_cast<const char*>(static_cast<uintptr_t>(next() % 0x10000));
+                case 2: return static_cast<const char*>(reserved) + next() % 0x8000;
+                case 3: return reinterpret_cast<const char*>(static_cast<uintptr_t>(next()));
+                default: {
+                    const auto& b = pool[next() % pool.size()];
+                    return b.data() + next() % b.size();
+                }
+            }
+        };
+        const int shownD = srcState().shown;
+        int fuzzTrips = 0;
+        for (int k = 0; k < 3000; ++k) {
+            alignas(8) unsigned char raw[64];
+            for (auto& c : raw) c = static_cast<unsigned char>(next());
+            auto* e = reinterpret_cast<bridge::ChatEventsMessage*>(raw);
+            if (next() % 4) e->type = static_cast<bridge::ChatEventsType>(next() % 14);
+            if (next() % 4) {
+                e->generic.characterName = pick();
+                e->generic.accountName = pick();
+                e->generic.content = pick();
+            }
+            g_chatEvents(raw);
+            if (srcState().pause != 0) {
+                ++fuzzTrips;
+                src(2, nullptr, nullptr);
+            }
+            if (k % 100 == 0) Frame();
+        }
+        frames4(5);
+        st = srcState();
+        std::printf("chat source, 3000 random lines: shown %d, reading stopped and resumed %d times, add-on %s\n",
+                    st.shown - shownD, fuzzTrips, st.disabled ? "OFF" : "alive");
+        raise(kMap, "Ana Sample", "still here after the noise");
+        expect(srcState().shown == st.shown + 1 && !st.disabled, "reading did not come back after the random lines");
+        // E. A version that passed, then its lines stop fitting (5 of 20 bad): reading pauses; "Check again" resumes.
+        newVersion(13);
+        for (int i = 0; i < 5; ++i) raise(kMap, "Ana Sample", "plain");
+        for (int i = 0; i < 5; ++i) raise(77, "Ana Sample", "garbage type");
+        st = srcState();
+        std::printf("chat source, lines stopped fitting: checked %s, reason %d\n", st.verified, st.pause);
+        expect(std::strcmp(st.verified, "9.9.13.0") == 0 && st.pause == 4, "bad lines after the check did not pause reading");
+        src(3, nullptr, nullptr);
+        const int shownE = srcState().shown;
+        raise(kMap, "Ana Sample", "back again");
+        expect(srcState().shown == shownE + 1, "\"Check again\" did not resume a checked version");
+        // F. By hand: reading off – not a byte is touched (an unreadable line does not even trip); on again.
+        src(4, nullptr, nullptr);
+        const int shownF = srcState().shown;
+        raise(kMap, "Ana Sample", "while off");
+        g_chatEvents(static_cast<unsigned char*>(reserved) + 512);
+        st = srcState();
+        expect(st.shown == shownF && st.pause == 0 && st.reading == 0, "reading off still read");
+        src(5, nullptr, nullptr);
+        raise(kMap, "Ana Sample", "on again");
+        expect(srcState().shown == shownF + 1, "reading on did not read");
+        // G. The protocol: versions, types, lengths, rules – never a name, never chat text.
+        std::vector<char> prot(4096);
+        src(6, nullptr, prot.data());
+        const std::string p(prot.data());
+        std::printf("chat source protocol: %zu bytes, first line: %s\n", p.size(), p.substr(0, p.find('\n')).c_str());
+        expect(p.find("9.9.13.0") != std::string::npos && p.find("type ") != std::string::npos,
+               "the protocol lacks versions or lines");
+        expect(p.find("Ana") == std::string::npos && p.find("Sample") == std::string::npos &&
+                   p.find("plain") == std::string::npos && p.find("garbage") == std::string::npos &&
+                   p.find("Kai") == std::string::npos,
+               "the protocol holds names or text");
+        // H. A broken Decoder Ring: a longer record without string ends, then a crash inside it – the chat codes stay
+        // plain, our add-on stays on. The chat tab in front, so the codes are drawn (and resolved).
+        if (hooks0) hooks0()->forceMap = true;
+        src(7, nullptr, nullptr);
+        frames4(5);
+        g_decoderMode = 1;
+        raise(kMap, "Ana Sample", "look at [&AgGvWwEA] and [&BAwEAAA=]");
+        frames4(10);
+        st = srcState();
+        expect(!st.disabled && !st.decoderFault, "a longer Decoder Ring record broke something");
+        g_decoderMode = 2;
+        raise(kMap, "Ana Sample", "again [&AgEEYQAA]");
+        frames4(10);
+        st = srcState();
+        std::printf("Decoder Ring broken: fault caught %d, add-on %s\n", st.decoderFault, st.disabled ? "OFF" : "alive");
+        expect(st.decoderFault && !st.disabled, "a crash inside Decoder Ring was not caught");
+        g_decoderMode = 0;
+        // I. A probation still running when the add-on unloads is a clean end, no crash: its marker goes (checked after
+        // the unload below).
+        newVersion(14);
+        raise(kMap, "Ana Sample", "the first line of yet another version");
+        st = srcState();
+        expect(st.marker == 1 && std::strcmp(st.probing, "9.9.14.0") == 0, "the last probation did not start");
+        std::printf("chat source guard: %s (the shield caught %d unreadable lines)\n", good ? "ok" : "FAILED", trips + fuzzTrips);
+        ok = ok && good;
+    }
     std::printf("text font built by the stand-in Nexus: %d\n", g_fontsBuilt);
     ok = ok && g_fontsBuilt >= 1;
     // GW2KB_TEST_REMOVEALL=1 (only on a copy of the add-on – it deletes its GW2Keyboard folder): "remove everything",
@@ -674,6 +973,12 @@ int wmain(int argc, wchar_t** argv) {
     std::printf("unload\n");
     def->Unload();
     ok = ok && g_chatEvents == nullptr;
+    if (src && !shotMode && !removeAll) {  // the probation running at the unload was no crash: its marker is gone
+        const bool left = GetFileAttributesW(g_markerPath.c_str()) != INVALID_FILE_ATTRIBUTES;
+        std::printf("chat source marker after a clean unload: %s\n", left ? "still there" : "gone");
+        if (left) std::printf("FAIL: a clean unload left the probation marker (the next start would call it a crash)\n");
+        ok = ok && !left;
+    }
     if (removeAll) {
         const bool back = GetFileAttributesW(removeDir.c_str()) != INVALID_FILE_ATTRIBUTES;
         std::printf("remove everything: folder there after unload: %s\n", back ? "yes" : "no");

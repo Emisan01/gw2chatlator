@@ -122,6 +122,7 @@ void AddonLoad(AddonAPI_t* api) {
         g_sendIdx = g_cfg.translateWriting ? 0 : static_cast<int>(g_cfg.writeLangs.size());
         LoadLayout();
         LoadCustomTabs();
+        ChatSourceLoad();  // what Events: Chat passed / failed before, and whether the last session ended in its check
         {  // voice input is something you switch on (it needs the voice module): off unless you chose it or the module is there
             wchar_t on[8] = {};
             GetPrivateProfileStringW(L"Voice", L"Enabled", L"", on, 8, g_cfg.iniPath.c_str());
@@ -184,6 +185,7 @@ void AddonUnload() {
         if (g_api->Events_Unsubscribe) {
             g_api->Events_Unsubscribe(bridge::kChatEventsEvent, OnChatEvents);
         }
+        ChatSourceUnload();  // a clean end: a check still running is no crash
         if (g_api->WndProc_Deregister) g_api->WndProc_Deregister(OnWndProc);
         if (g_api->InputBinds_Deregister) {
             g_api->InputBinds_Deregister(kToggleBind);
@@ -275,6 +277,29 @@ extern "C" __declspec(dllexport) void Gw2KbTestWhisper(const char* name) {  // n
     if (!TestHost()) return;
     std::lock_guard<std::mutex> lock(g_mu);
     OpenWhisperTab(W(name));
+}
+
+// nexus_kb_selftest only – the chat source guard: 0 ask, 1 scan the modules now, 2 read anyway, 3 check again,
+// 4 reading off, 5 reading on, 6 the protocol into `text` (4096 bytes), 7 the chat tab in front.
+extern "C" __declspec(dllexport) int Gw2KbTestChatSource(int cmd, ChatSourceTest* state, char* text) {
+    if (!TestHost()) return -1;
+    switch (cmd) {
+        case 1: ChatEventsPresent(true); break;
+        case 2: ChatSourceReadAnyway(false); break;
+        case 3: ChatSourceCheckAgain(false); break;
+        case 4: ChatSourceSetReading(false, false); break;
+        case 5: ChatSourceSetReading(true, false); break;
+        case 6: if (text) strncpy_s(text, 4096, ChatSourceProtocolText().c_str(), _TRUNCATE); break;
+        case 7: {  // the chat tab in front, the window open (lines drawn: chat codes resolved)
+            std::lock_guard<std::mutex> lock(g_mu);
+            g_selectTab = -1;
+            if (g_collapsed) g_expandRequest = true;
+            break;
+        }
+        default: break;
+    }
+    if (state) ChatSourceTestState(state);
+    return 0;
 }
 
 extern "C" __declspec(dllexport) int Gw2KbTestRemoveAll(int start) {  // nexus_kb_selftest only: 1 start, 0 ask
