@@ -944,9 +944,22 @@ void RenderWindow() {
             lock.lock();
         }
         g_visibleLines.clear();
-        for (const ChatLine& l : g_lines) {
+        // Only what is in view is drawn: a line measured before (same width, font, text) that lies outside the view
+        // (plus a margin) is just a placeholder of its height – the layout stays exactly the same.
+        const float rowWrap = ImGui::GetContentRegionAvail().x, rowFont = ImGui::GetFontSize();
+        const float viewTop = ImGui::GetScrollY() - line * 4;
+        const float viewBottom = ImGui::GetScrollY() + ImGui::GetWindowHeight() + line * 4;
+        const float rowGap = ImGui::GetStyle().ItemSpacing.y;
+        for (ChatLine& l : g_lines) {
             if (!tabName.empty() && (l.channel != Channel::Whisper || l.speakerFolded != tabName)) continue;
             if (!(tabChannels & ChannelBit(l.channel))) continue;  // a tab of your own: only its channels
+            const size_t rowLen = l.translated.empty() ? l.text.size() : l.translated.size() + 1;
+            const float y0 = ImGui::GetCursorPosY();
+            if (l.rowH > 0 && l.rowW == rowWrap && l.rowFont == rowFont && l.rowLen == rowLen &&
+                (y0 + l.rowH < viewTop || y0 > viewBottom)) {
+                ImGui::Dummy(ImVec2(1.0f, std::max(0.0f, l.rowH - rowGap)));
+                continue;
+            }
             ImGui::PushID(static_cast<int>(l.id));
             if (!l.speaker.empty()) {  // the name in the channel colour – a click: whisper with that player in their tab
                 LookText(l.speakerDisplay.c_str(), NameColorOf(l.channel), false);
@@ -976,6 +989,10 @@ void RenderWindow() {
             if (!clicked && !l.own && l.translated.empty() && (ImGui::IsItemClicked() || ImGui::IsItemClicked(ImGuiMouseButton_Right)))
                 g_worker.Post([id = l.id, t = l.text] { TranslateLine(id, t, true); });
             ImGui::PopID();
+            l.rowH = ImGui::GetCursorPosY() - y0;  // what it took, for the frames it is out of view
+            l.rowW = rowWrap;
+            l.rowFont = rowFont;
+            l.rowLen = rowLen;
         }
         // Auto-scroll to bottom only when new lines arrive or content expands (e.g. item names resolved),
         // provided the user was at the bottom and is not actively scrolling up with the mouse wheel.

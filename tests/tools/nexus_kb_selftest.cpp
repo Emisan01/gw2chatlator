@@ -927,6 +927,44 @@ int wmain(int argc, wchar_t** argv) {
         std::printf("Decoder Ring broken: fault caught %d, add-on %s\n", st.decoderFault, st.disabled ? "OFF" : "alive");
         expect(st.decoderFault && !st.disabled, "a crash inside Decoder Ring was not caught");
         g_decoderMode = 0;
+        // G2. The chat draws only what is in view (the height cache): the content height – so every line's place – is
+        // the same whether a line was measured this frame or comes from the cache: at the bottom, scrolled to the
+        // middle, frames later; after a width change it settles at once and stays.
+        src(7, nullptr, nullptr);
+        for (int i = 0; i < 300; ++i)
+            raise(kMap, "Ana Sample", i % 3 ? "a short line"
+                                            : "a long line that wraps over the width of the chat window at least once or "
+                                              "twice when the window is narrow enough to make it wrap");
+        auto chatWin = []() -> ImGuiWindow* {
+            for (ImGuiWindow* w : static_cast<ImGuiContext*>(ImGui::GetCurrentContext())->Windows)
+                if (std::strncmp(w->Name, "GW2Chatlator###kbmain/chat", 26) == 0) return w;
+            return nullptr;
+        };
+        frames4(2);
+        ImGuiWindow* cw = chatWin();
+        expect(cw != nullptr, "the chat area was not found");
+        if (cw) {
+            const float hBottom = cw->ScrollMax.y;
+            frames4(5);
+            const float hLater = cw->ScrollMax.y;
+            cw->ScrollTarget.y = cw->ScrollMax.y * 0.5f;  // scrolled up to the middle
+            cw->ScrollTargetCenterRatio.y = 0.0f;
+            frames4(5);
+            const float hMiddle = cw->ScrollMax.y, atY = cw->Scroll.y;
+            const ImVec2 mainSize = ImGui::FindWindowByName("GW2Chatlator###kbmain")->Size;
+            ImGui::SetWindowSize("GW2Chatlator###kbmain", ImVec2(mainSize.x + 140, mainSize.y));  // wider: other wraps
+            frames4(2);
+            const float hWide = cw->ScrollMax.y;
+            frames4(6);
+            const float hWideLater = cw->ScrollMax.y;
+            ImGui::SetWindowSize("GW2Chatlator###kbmain", mainSize);
+            frames4(3);
+            std::printf("chat height cache: content %.0f bottom / %.0f later / %.0f in the middle (at %.0f), wider %.0f / %.0f\n",
+                        hBottom, hLater, hMiddle, atY, hWide, hWideLater);
+            expect(hBottom > 0 && hBottom == hLater && hLater == hMiddle && atY > 0 && atY < hMiddle,
+                   "the chat's content height changed with the height cache (lines would jump)");
+            expect(hWide == hWideLater && hWide < hMiddle, "after a width change the chat did not settle at once");
+        }
         // H. For the developer: Options > Technical draws the version, the counts and the last lines.
         src(8, nullptr, nullptr);
         frames4(6);
