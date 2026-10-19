@@ -126,15 +126,6 @@ std::string ChatRuleNames(uint32_t rules) {
     return out.empty() ? "ok" : out;
 }
 
-ChatSourceProbe::Result ChatSourceProbe::Feed(bool failed) {
-    ++lines_;
-    if (failed) ++fails_;
-    if (fails_ >= 2) return Result::Failed;
-    if (fails_ == 0 && lines_ >= kLines) return Result::Passed;
-    if (lines_ >= 2 * kLines) return Result::Passed;  // one bad line among ten
-    return Result::Running;
-}
-
 bool ChatSourceWatch::Feed(bool failed) {
     last_.push_back(failed);
     if (last_.size() > 20) last_.pop_front();
@@ -160,7 +151,8 @@ ChatSourceRecord RecordOf(const ChatSourceLine& l, const ChatLineVerdict& v) {
 std::string ChatSourceProtocol(const ChatSourceReport& r) {
     std::string out = "GW2Chatlator " + r.addonVersion + " - chat source check\n";
     out += "Events: Chat " + (r.sourceVersion.empty() ? std::string("?") : r.sourceVersion);
-    out += " (last checked: " + (r.verifiedVersion.empty() ? std::string("none") : r.verifiedVersion) + ")\n";
+    if (!r.previousVersion.empty()) out += " (new since the last session, before: " + r.previousVersion + ")";
+    out += "\n";
     out += "State: " + r.state + "\n";
     out += "Lines (newest last; lengths in bytes, no text, no names):\n";
     if (r.lines.empty()) out += "  none yet\n";

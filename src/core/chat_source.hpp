@@ -3,8 +3,7 @@
 // changed layout must never crash the game and never show garbage. The copy itself is made in the add-on (behind an
 // exception guard, the only code that touches the other add-on's memory); this part, portable and unit-tested, says:
 //   - is a copied line plausible (hard rules: a failing line is never shown; notes: only written into the protocol),
-//   - does a new version of the source pass its probation (5 good lines; one bad one: 9 of 10; two bad ones: it fails),
-//   - when does reading pause for a version that passed (5 bad lines among the last 20).
+//   - when does reading pause (5 bad lines among the last 20).
 // The protocol counts lengths and rules only – never a name, never chat text (it may end up in a public issue).
 #pragma once
 
@@ -66,22 +65,7 @@ bool IsValidUtf8(const char* s);
 ChatLineVerdict CheckChatLine(const ChatSourceLine& l, uint64_t nowFiletime);
 std::string ChatRuleNames(uint32_t rules);  // "utf8, length" – for the protocol
 
-// Probation of a new version: Feed every line that was read (a type not shown does not count).
-class ChatSourceProbe {
-public:
-    enum class Result { Running, Passed, Failed };
-    void Reset() { lines_ = fails_ = 0; }
-    Result Feed(bool failed);
-    int Lines() const { return lines_; }
-    int Fails() const { return fails_; }
-    static constexpr int kLines = 5;
-
-private:
-    int lines_ = 0, fails_ = 0;
-};
-
-// A version that passed: reading pauses when 5 of the last 20 lines failed (the source changed under us, e.g. a GW2
-// patch made it hand over garbage).
+// Reading pauses when 5 of the last 20 lines failed (the source changed under us).
 class ChatSourceWatch {
 public:
     bool Feed(bool failed);  // true: pause
@@ -101,7 +85,7 @@ struct ChatSourceRecord {
 ChatSourceRecord RecordOf(const ChatSourceLine& l, const ChatLineVerdict& v);
 
 struct ChatSourceReport {
-    std::string addonVersion, sourceVersion, verifiedVersion, state;
+    std::string addonVersion, sourceVersion, previousVersion, state;  // previous: the last session had another one
     std::vector<ChatSourceRecord> lines;
 };
 std::string ChatSourceProtocol(const ChatSourceReport& r);

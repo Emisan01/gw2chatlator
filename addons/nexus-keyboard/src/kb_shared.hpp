@@ -625,20 +625,18 @@ void RenderModules(bool guide);
 
 // kb_chatsource.cpp: the guard between Events: Chat (another add-on, updated unasked) and us.
 struct ChatSourceTest {  // nexus_kb_selftest reads this
-    int reading = 0, pause = 0, probeLines = 0, probeFails = 0, shown = 0, dropped = 0, marker = 0;
-    int disabled = 0, decoderFault = 0;
-    char version[32] = {}, verified[32] = {}, bad[32] = {}, probing[32] = {};
+    int reading = 0, pause = 0, shown = 0, dropped = 0, unreadable = 0, disabled = 0, decoderFault = 0;
+    char version[32] = {}, before[32] = {};
 };
 bool ReadAddonDefGuarded(void* proc, uint32_t* signature, AddonVersion_t* version);
 void ChatSourceLoad();    // g_mu held
-void ChatSourceUnload();
-void ChatSourceSetVersion(const std::wstring& version);
+void ChatSourceSetVersion(const std::wstring& version);  // g_mu NOT held
 void ChatSourceSetReading(bool on, bool muHeld);
-void ChatSourceReadAnyway(bool muHeld);
-void ChatSourceCheckAgain(bool muHeld);
+void ChatSourceResume();
 std::string ChatSourceProtocolText();
-void RenderChatSourceRow();     // g_mu NOT held
-void RenderChatSourceNotice();  // g_mu held
+void RenderChatSourceRow();      // g_mu NOT held
+void RenderChatSourceNotice();   // g_mu held
+void RenderChatSourceDetails();  // g_mu held (Options > Technical)
 void ChatSourceTestState(ChatSourceTest* t);
 
 // ---- chat codes: their own module (chat_links) – "[Item name]" as the game links them, the details on mouse-over.

@@ -1837,7 +1837,7 @@ static void TestContrast() {
     CHECK(!ParseThemeCode("", 8, &back));
 }
 
-// The chat source (Events: Chat, another add-on): plausible lines pass, garbage never, probation and pause, a protocol
+// The chat source (Events: Chat, another add-on): plausible lines pass, garbage never, the pause, a protocol
 // without names or text.
 static ChatSourceLine SrcLine(int32_t type, const char* name, const char* text, const char* account = nullptr) {
     ChatSourceLine l;
@@ -1900,18 +1900,6 @@ static void TestChatSource() {
     bad.nameBadPtr = true;
     CHECK(CheckChatLine(bad, now).rules & kRulePointer);
     CHECK(IsValidUtf8("") && IsValidUtf8("abc") && IsValidUtf8("\xF4\x8F\xBF\xBF") && !IsValidUtf8("\xF4\x90\x80\x80"));
-    // Probation: 5 good lines pass; one bad line needs 9 of 10; two bad lines fail.
-    ChatSourceProbe p;
-    for (int i = 0; i < 4; ++i) CHECK(p.Feed(false) == ChatSourceProbe::Result::Running);
-    CHECK(p.Feed(false) == ChatSourceProbe::Result::Passed);
-    p.Reset();
-    CHECK(p.Feed(true) == ChatSourceProbe::Result::Running);
-    for (int i = 0; i < 8; ++i) CHECK(p.Feed(false) == ChatSourceProbe::Result::Running);
-    CHECK(p.Feed(false) == ChatSourceProbe::Result::Passed);
-    p.Reset();
-    p.Feed(false);
-    CHECK(p.Feed(true) == ChatSourceProbe::Result::Running);
-    CHECK(p.Feed(true) == ChatSourceProbe::Result::Failed);
     // The watch: 4 bad lines among 20 keep reading, the 5th pauses.
     ChatSourceWatch w;
     bool paused = false;
@@ -1924,7 +1912,7 @@ static void TestChatSource() {
     ChatSourceReport rep;
     rep.addonVersion = "2.1.0";
     rep.sourceVersion = "0.2.4.0";
-    rep.verifiedVersion = "0.2.3.0";
+    rep.previousVersion = "0.2.3.0";
     rep.state = "paused";
     rep.lines.push_back(RecordOf(ok, CheckChatLine(ok, now)));
     ChatSourceLine garbage = SrcLine(kSrcMap, "Kai Example", "\xFF secret text");

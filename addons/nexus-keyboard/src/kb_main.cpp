@@ -122,7 +122,7 @@ void AddonLoad(AddonAPI_t* api) {
         g_sendIdx = g_cfg.translateWriting ? 0 : static_cast<int>(g_cfg.writeLangs.size());
         LoadLayout();
         LoadCustomTabs();
-        ChatSourceLoad();  // what Events: Chat passed / failed before, and whether the last session ended in its check
+        ChatSourceLoad();  // reading on / off, the version of Events: Chat the last session had
         {  // voice input is something you switch on (it needs the voice module): off unless you chose it or the module is there
             wchar_t on[8] = {};
             GetPrivateProfileStringW(L"Voice", L"Enabled", L"", on, 8, g_cfg.iniPath.c_str());
@@ -185,7 +185,6 @@ void AddonUnload() {
         if (g_api->Events_Unsubscribe) {
             g_api->Events_Unsubscribe(bridge::kChatEventsEvent, OnChatEvents);
         }
-        ChatSourceUnload();  // a clean end: a check still running is no crash
         if (g_api->WndProc_Deregister) g_api->WndProc_Deregister(OnWndProc);
         if (g_api->InputBinds_Deregister) {
             g_api->InputBinds_Deregister(kToggleBind);
@@ -279,14 +278,13 @@ extern "C" __declspec(dllexport) void Gw2KbTestWhisper(const char* name) {  // n
     OpenWhisperTab(W(name));
 }
 
-// nexus_kb_selftest only – the chat source guard: 0 ask, 1 scan the modules now, 2 read anyway, 3 check again,
-// 4 reading off, 5 reading on, 6 the protocol into `text` (4096 bytes), 7 the chat tab in front.
+// nexus_kb_selftest only – the chat source guard: 0 ask, 1 scan the modules now, 2 resume, 4 reading off, 5 reading on,
+// 6 the protocol into `text` (4096 bytes), 7 the chat tab in front, 8 Options > Technical open, 9 the options closed.
 extern "C" __declspec(dllexport) int Gw2KbTestChatSource(int cmd, ChatSourceTest* state, char* text) {
     if (!TestHost()) return -1;
     switch (cmd) {
         case 1: ChatEventsPresent(true); break;
-        case 2: ChatSourceReadAnyway(false); break;
-        case 3: ChatSourceCheckAgain(false); break;
+        case 2: ChatSourceResume(); break;
         case 4: ChatSourceSetReading(false, false); break;
         case 5: ChatSourceSetReading(true, false); break;
         case 6: if (text) strncpy_s(text, 4096, ChatSourceProtocolText().c_str(), _TRUNCATE); break;
@@ -294,6 +292,13 @@ extern "C" __declspec(dllexport) int Gw2KbTestChatSource(int cmd, ChatSourceTest
             std::lock_guard<std::mutex> lock(g_mu);
             g_selectTab = -1;
             if (g_collapsed) g_expandRequest = true;
+            break;
+        }
+        case 8:
+        case 9: {
+            std::lock_guard<std::mutex> lock(g_mu);
+            g_showOptions = cmd == 8;
+            if (cmd == 8) g_optionsTab = 6;
             break;
         }
         default: break;
