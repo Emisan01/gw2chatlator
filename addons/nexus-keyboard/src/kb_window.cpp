@@ -1,37 +1,84 @@
 // kb_window.cpp — the main window: header, chat, preview, word bar, input, footer, minimise / restore.
 
 #include "kb_shared.hpp"
+#include "core/window_layout.hpp"
+#include "imgui/imgui_internal.h"  // FindWindowByName, MovingWindow
 
 namespace kb {
 
-bool g_collapsed = false;  // the V / > buttons: window minimizes to bottom-left corner
-float g_fittedH = 0;     // the fitted (mini) window's height last frame
-bool g_skipGrow = false;  // back from the mini mode this frame: no growing on the old measurements
-bool g_fittedMoved = false;  // you dragged the small (mini) window: the big one follows it when it comes back
-float g_grown = 0;        // how much the window grew for a long input (it shrinks back by that)
-float g_lastW = 520, g_expandedH = 360, g_restoreH = 0;
-float g_anchorBottom = -1.0f;
-ImVec2 g_savedPos(-1, -1);   // where the window stood when it was minimised
-bool g_buttonMoved = false;  // ... and whether you dragged the small button since (then it opens from there)
-ImVec2 g_buttonBottomLeft(-1, -1);  // the small button's bottom-left corner (where a moved button opens from)
-ImVec2 RestorePos() {  // where the window opens again
-    if (!g_buttonMoved && g_savedPos.x >= 0) return g_savedPos;
-    if (g_buttonBottomLeft.x >= 0) {  // you moved the button: a big window waiting behind the mini mode follows it too
-        g_fittedMoved = true;
-        return ImVec2(g_buttonBottomLeft.x, g_buttonBottomLeft.y - g_expandedH);
-    }
-    return ImVec2(-1, -1);
+bool g_collapsed = false;  // minimised to the small button (its bottom-left corner is the window's)
+
+// The window's place is one small formula (core/window_layout): four numbers – the bottom-left corner, the width, the
+// big window's height – and every frame's rect follows from them and the mode. Nothing accumulates: the mini mode,
+// minimising, growing for a long input and shrinking back cannot move it. Measured each frame for the next one: the
+// fitted window's parts, and what the big window's content needs at least.
+namespace {
+WinAnchor g_win;
+float g_winFittedH = 0, g_winNeedH = 0;
+WinRect g_winWas;              // the rect the window had at the end of the last frame (what we set, or what it was)
+WinMode g_winMode = WinMode::Big;
+bool g_winHolding = false;     // the left mouse went down on the window: ImGui may move or resize it now
+bool g_winOwnDrag = false;     // ... our own hold-and-drag moves it (the formula keeps placing it)
+bool g_winSizing = false;      // its size changed while held: you drag an edge
+WinAnchor g_winPressed;        // where it was when the mouse went down (a move snaps when it ends)
+
+WinSpace WindowSpace(float button) {
+    const ImGuiIO& io = ImGui::GetIO();
+    WinSpace s;
+    s.screenW = io.DisplaySize.x;
+    s.screenBottom = std::max(button, io.DisplaySize.y - Gw2BottomBarOffset(io.DisplaySize.y, g_uiSize.load()));
+    s.fittedH = g_winFittedH;
+    s.needH = g_winNeedH;
+    s.button = button;
+    s.minSizeW = ImGui::GetStyle().WindowMinSize.x;  // what ImGui enlarges any window to
+    s.minSizeH = ImGui::GetStyle().WindowMinSize.y;
+    return s;
 }
 
-void MinimizeWindow() {  // g_mu held or main thread
-    g_collapsed = true;
-    const ImVec2 p = ImGui::GetWindowPos(), s = ImGui::GetWindowSize();
-    g_lastW = s.x;
-    g_expandedH = s.y;
-    g_anchorBottom = p.y + s.y;  // the small button takes its place on the next frame
-    g_savedPos = p;
-    g_buttonMoved = false;
+// Before Begin: what changed the window since the last frame (you, ImGui's ini, anyone) is taken over first; then the
+// formula sets this frame's rect – not while ImGui moves or resizes it under your mouse (a new mode ends that hold).
+void PlaceWindow(WinMode mode, const WinSpace& s) {
+    if (ImGuiWindow* w = ImGui::FindWindowByName("GW2Chatlator###kbmain")) {  // the rect it has is the last mode's
+        const WinRect now{w->Pos.x, w->Pos.y, w->SizeFull.x, w->SizeFull.y};  // SizeFull: a resize since lands there
+        if (g_winHolding && !g_winOwnDrag && std::fabs(now.h - g_winWas.h) > 0.5f) g_winSizing = true;
+        g_win = AdoptRect(g_winMode, g_win, now, g_winWas);
+        g_winWas = now;
+    }
+    if (mode != g_winMode) g_winHolding = g_winOwnDrag = g_winSizing = false;
+    g_winMode = mode;
+    if (!g_win.known || (g_winHolding && !g_winOwnDrag)) return;
+    const WinRect r = LayoutWindow(mode, g_win, s);
+    ImGui::SetNextWindowPos(ImVec2(r.x, r.y), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(r.w, r.h), ImGuiCond_Always);
+    g_winWas = r;
 }
+
+// After Begin: the mouse – a press on the window starts a hold, letting go after a move snaps the corner to an edge
+// near it (the button also onto GW2's chat edge, `chatLeft`).
+void TakeWindow(WinMode mode, const WinSpace& s, float chatLeft) {
+    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows)) {
+        g_winHolding = true;
+        g_winPressed = g_win;
+    } else if (g_winHolding && !ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+        g_winHolding = g_winOwnDrag = g_winSizing = false;
+        const bool moved = g_win.left != g_winPressed.left || g_win.bottom != g_winPressed.bottom;
+        if (moved && g_nx.snap)
+            g_win = SnapAnchor(mode, g_win, s, 14.0f * std::max(1.0f, ImGui::GetIO().DisplaySize.y / 1080.0f), chatLeft);
+    }
+}
+
+// Our own hold-and-drag (the mini window anywhere, the big one in its input): the corner follows the mouse – unless
+// ImGui already moves the window itself.
+void DragWindow(const ImVec2& d) {
+    if (d.x == 0 && d.y == 0) return;
+    if (ImGui::GetCurrentContext()->MovingWindow == ImGui::GetCurrentWindow()) return;
+    g_winOwnDrag = true;
+    g_win.left = std::round(g_win.left + d.x);
+    g_win.bottom = std::round(g_win.bottom + d.y);
+}
+}  // namespace
+
+void MinimizeWindow() { g_collapsed = true; }  // the button takes the window's corner (g_mu held or main thread)
 
 // The footer chips: channel | "Write: German" | "Send: English (UK) · MyMemory" (orange) | auto | counter.
 void RenderFooter() {  // g_mu held
@@ -338,17 +385,10 @@ void RenderWindow() {
     RenderOptionsWindow();
     CostMark(kCostWindow);
     bool inMap;
-    static bool s_uncollapseRestore = false;
-    static ImVec2 s_restorePos(-1, -1);
     {
         std::lock_guard<std::mutex> lock(g_mu);
         inMap = (g_inMap || g_test.forceMap) && (!g_mapOpen || GetTickCount64() < g_showOnMapUntil);
-        if (g_focusInput && g_collapsed) {  // something wants the input: the window opens again
-            g_collapsed = false;
-            g_restoreH = g_expandedH;
-            s_uncollapseRestore = true;
-            s_restorePos = RestorePos();
-        }
+        if (g_focusInput && g_collapsed) g_collapsed = false;  // something wants the input: the window opens (at its corner)
     }
     if (!g_show || !inMap) return;
 
@@ -356,7 +396,10 @@ void RenderWindow() {
     const float minBtn = iconH + 8.0f;
     if (g_collapsed) {
         g_lastUse = 0;  // opened again: "not in use" counts from then
-        ImGui::SetNextWindowSize(ImVec2(minBtn, minBtn), ImGuiCond_Always);
+        const WinSpace space = WindowSpace(minBtn);
+        PlaceWindow(WinMode::Button, space);
+        ImGui::SetNextWindowSize(ImVec2(std::max(space.button, space.minSizeW), std::max(space.button, space.minSizeH)),
+                                 ImGuiCond_Always);  // as the formula has it
         ImGui::SetNextWindowBgAlpha(std::clamp(g_cfg.opacity, 60, 255) / 255.0f);
         ImGuiWindowFlags minFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
                                    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse |
@@ -365,62 +408,16 @@ void RenderWindow() {
         const bool beginOk = ImGui::Begin("GW2Chatlator###kbmain", nullptr, minFlags);
         ImGui::PopStyleVar();
         if (beginOk) {
-            if (g_anchorBottom > 0) {  // just minimised: the button's bottom edge = the window's bottom edge
-                const ImVec2 wp = ImGui::GetWindowPos();
-                ImGui::SetWindowPos(ImVec2(wp.x, g_anchorBottom - ImGui::GetWindowSize().y));
-                g_anchorBottom = -1.0f;
-            }
             const float resScale = std::max(1.0f, io.DisplaySize.y / 1080.0f);
-            const float maxBottom = std::max(minBtn, io.DisplaySize.y - Gw2BottomBarOffset(io.DisplaySize.y, g_uiSize.load()));
-            const ImVec2 pos = ImGui::GetWindowPos(), size = ImGui::GetWindowSize();
-            g_buttonBottomLeft = ImVec2(pos.x, pos.y + size.y);
-            static bool s_btnDrag = false;
-            static ImVec2 s_btnStart;
-            if (ImGui::IsMouseClicked(0) && ImGui::IsWindowHovered()) {
-                s_btnDrag = true;
-                s_btnStart = pos;
-            } else if (s_btnDrag && !ImGui::IsMouseDown(0)) {
-                s_btnDrag = false;
-                if (pos.x != s_btnStart.x || pos.y != s_btnStart.y) {  // you moved it: it opens from here, snapped
-                    g_buttonMoved = true;
-                    if (g_nx.snap) {
-                        const float t = 14.0f * resScale;
-                        ImVec2 p = pos;
-                        const float uiScale = (g_uiSize.load() == 0 ? 0.89f : g_uiSize.load() == 2 ? 1.11f : g_uiSize.load() == 3 ? 1.25f : 1.0f);
-                        const float nativeChatLeft = std::round(10.0f * uiScale * resScale);
-                        if (std::abs(p.x - nativeChatLeft) < t) p.x = nativeChatLeft;
-                        else if (p.x < t) p.x = 0.0f;
-                        else if (p.x + size.x > io.DisplaySize.x - t) p.x = io.DisplaySize.x - size.x;
-                        if (p.y < t) p.y = 0.0f;
-                        else if (p.y + size.y > maxBottom - t) p.y = maxBottom - size.y;
-                        if (p.x != pos.x || p.y != pos.y) ImGui::SetWindowPos(p);
-                    }
-                }
-            }
-            // Always prevent being pushed below the bottom bar or off-screen
-            {
-                ImVec2 p = ImGui::GetWindowPos();
-                bool clamped = false;
-                if (p.x < -0.5f) { p.x = 0.0f; clamped = true; }
-                else if (p.x + size.x > io.DisplaySize.x + 0.5f) { p.x = std::max(0.0f, io.DisplaySize.x - size.x); clamped = true; }
-                if (p.y < -0.5f) { p.y = 0.0f; clamped = true; }
-                else if (p.y + size.y > maxBottom + 0.5f) { p.y = std::max(0.0f, maxBottom - size.y); clamped = true; }
-                if (clamped && !ImGui::IsMouseDown(0)) ImGui::SetWindowPos(p);
-            }
+            const float uiScale = (g_uiSize.load() == 0 ? 0.89f : g_uiSize.load() == 2 ? 1.11f : g_uiSize.load() == 3 ? 1.25f : 1.0f);
+            TakeWindow(WinMode::Button, space, std::round(10.0f * uiScale * resScale));  // also onto GW2's chat edge
             const bool clickedOpen = ImGui::Button("<##expand", ImVec2(iconH, iconH));
-            if (clickedOpen || g_expandRequest) {  // the bottom edge stays where it is; the window grows upwards
+            if (clickedOpen || g_expandRequest) {  // the window opens at its corner, upwards
                 std::lock_guard<std::mutex> lock(g_mu);
                 g_expandRequest = false;
                 g_redirect = 0;
                 g_collapsed = false;
-                g_restoreH = g_expandedH;
-                s_uncollapseRestore = true;
                 g_suppressChatFocusUntil = 0;
-                const ImVec2 p = ImGui::GetWindowPos(), s = ImGui::GetWindowSize();
-                g_buttonBottomLeft = ImVec2(p.x, p.y + s.y);
-                s_restorePos = RestorePos();
-                ImGui::SetWindowPos(s_restorePos);
-                ImGui::SetWindowSize(ImVec2(g_lastW, g_expandedH));
                 if (clickedOpen) g_focusInput = true;
             }
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Open the window")).c_str());
@@ -436,13 +433,11 @@ void RenderWindow() {
     }
 
     // Without the chat the window is exactly its parts (fitted below, down to nothing but the input).
-    const float minW = 380, minH = Lay().chat ? 240.0f : 16.0f;
+    const WinMode winMode = Lay().chat ? WinMode::Big : WinMode::Fitted;
+    const WinSpace space = WindowSpace(minBtn);
     ImGui::SetNextWindowSize(ImVec2(520, 360), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSizeConstraints(ImVec2(minW, minH), ImVec2(FLT_MAX, FLT_MAX));
-    if (g_restoreH > 0) {
-        ImGui::SetNextWindowSize(ImVec2(g_lastW, g_restoreH), ImGuiCond_Always);
-        g_restoreH = 0;
-    }
+    ImGui::SetNextWindowSizeConstraints(ImVec2(space.minW, Lay().chat ? space.minH : 16.0f), ImVec2(FLT_MAX, FLT_MAX));
+    PlaceWindow(winMode, space);
     ImGui::SetNextWindowBgAlpha(std::clamp(g_cfg.opacity, 0, 255) / 255.0f);  // up to fully see-through (the small button keeps 60)
     ImGuiWindowFlags wflags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                               ImGuiWindowFlags_NoScrollWithMouse;
@@ -454,14 +449,7 @@ void RenderWindow() {
         ImGui::End();
         return;
     }
-    if (s_uncollapseRestore) {  // opened again: exactly where it stood (or above the moved button)
-        s_uncollapseRestore = false;
-        if (s_restorePos.x >= 0) {
-            ImGui::SetWindowPos(s_restorePos);
-            ImGui::SetWindowSize(ImVec2(g_lastW, g_expandedH));
-            s_restorePos = ImVec2(-1, -1);
-        }
-    }
+    TakeWindow(winMode, space, 0.0f);
     if (g_minimizeRequest) {  // asked from inside the chat area (a waypoint click): done on the main window
         g_minimizeRequest = false;
         g_expandRequest = false;
@@ -470,35 +458,6 @@ void RenderWindow() {
         return;
     }
     if (g_expandRequest) g_expandRequest = false;  // already open
-    {  // Mini mode and back, the way a Nexus window keeps its place: entering, the window remembers its whole rect;
-       // leaving, it gets exactly that rect back – moved by as much as you moved the small window meanwhile (the small
-       // one's bottom-left corner is the big one's). Nothing in between grows or anchors it.
-        static int s_fitted = -1;  // -1 = the first frame: a game started in the mini mode has no big rect to remember
-        static ImVec2 s_beforePos(-1, -1), s_beforeSize(0, 0);
-        const ImVec2 wp = ImGui::GetWindowPos(), ws = ImGui::GetWindowSize();
-        const bool fitted = !Lay().chat;
-        if (fitted && s_fitted == 0) {  // entering: this rect, before the fitting below changes anything
-            s_beforePos = wp;
-            s_beforeSize = ws;
-            g_fittedMoved = false;
-        } else if (!fitted && s_fitted == 1 && g_fittedH > 0) {
-            // leaving: ImGui has already made it taller this frame (downwards) – where the small window stood is its top
-            // plus the height it had last frame
-            // only when you dragged the small window (a pixel of fitting is no move – it added up over many toggles)
-            const float movedX = g_fittedMoved ? wp.x - s_beforePos.x : 0.0f;
-            const float movedY = g_fittedMoved ? (wp.y + g_fittedH) - (s_beforePos.y + s_beforeSize.y) : 0.0f;
-            if (s_beforeSize.y >= 240.0f) {  // the big window it was: exactly that rect again
-                ImGui::SetWindowSize(s_beforeSize);
-                ImGui::SetWindowPos(ImVec2(std::round(s_beforePos.x + movedX), std::round(s_beforePos.y + movedY)));
-            } else {  // started in the mini mode: no big rect known – a normal one above where the small one stood
-                const float h = 360.0f;
-                ImGui::SetWindowSize(ImVec2(ws.x, h));
-                ImGui::SetWindowPos(ImVec2(wp.x, std::max(0.0f, std::round(wp.y + g_fittedH - h))));
-            }
-            g_skipGrow = true;  // the content of this frame still measured the old size: no growing on it
-        }
-        s_fitted = fitted ? 1 : 0;
-    }
     struct PopFontAtEnd {
         bool on = false;
         ~PopFontAtEnd() { if (on) ImGui::PopFont(); }
@@ -514,52 +473,7 @@ void RenderWindow() {
             ImGui::SetWindowFontScale(px / std::max(1.0f, ImGui::GetFont()->FontSize));
         }
     }
-    g_lastW = ImGui::GetWindowWidth();
-    g_expandedH = ImGui::GetWindowHeight();
-    if (g_expandedH < minH || g_lastW < 380.0f) {
-        if (g_expandedH < minH) g_expandedH = Lay().chat ? 360.0f : minH;
-        if (g_lastW < 380.0f) g_lastW = 520.0f;
-        ImGui::SetWindowSize(ImVec2(g_lastW, g_expandedH));
-    }
     std::unique_lock<std::mutex> lock(g_mu);
-    {  // Snap: a move that ends near a screen edge puts the window onto it; dragging past screen edge pulls it back
-        static bool dragging = false;
-        static ImVec2 startPos;
-        const ImVec2 pos = ImGui::GetWindowPos(), size = ImGui::GetWindowSize();
-        const float resScale = std::max(1.0f, io.DisplaySize.y / 1080.0f);
-        const float maxBottom = std::max(minH, io.DisplaySize.y - Gw2BottomBarOffset(io.DisplaySize.y, g_uiSize.load()));
-        if (ImGui::IsMouseClicked(0) && ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows)) {
-            dragging = true;
-            startPos = pos;
-        } else if (dragging && !ImGui::IsMouseDown(0)) {
-            dragging = false;
-            const bool moved = (pos.x != startPos.x || pos.y != startPos.y);
-            if (moved && !Lay().chat) g_fittedMoved = true;
-            if (g_nx.snap && moved) {
-                const float t = 14.0f * resScale;
-                ImVec2 p = pos;
-                // Left / Right:
-                if (p.x < t) p.x = 0.0f;
-                else if (p.x + size.x > io.DisplaySize.x - t) p.x = io.DisplaySize.x - size.x;
-
-                // Top / Bottom:
-                if (p.y < t) p.y = 0.0f;
-                else if (p.y + size.y > maxBottom - t) p.y = maxBottom - size.y;
-
-                if (p.x != pos.x || p.y != pos.y) ImGui::SetWindowPos(p);
-            }
-        }
-        // General hard floor & boundary clamp: always prevent window from being pushed below bottom bar or off-screen
-        {
-            ImVec2 p = ImGui::GetWindowPos();
-            bool clamped = false;
-            if (p.x < -0.5f) { p.x = 0.0f; clamped = true; }
-            else if (p.x + size.x > io.DisplaySize.x + 0.5f) { p.x = std::max(0.0f, io.DisplaySize.x - size.x); clamped = true; }
-            if (p.y < -0.5f) { p.y = 0.0f; clamped = true; }
-            else if (p.y + size.y > maxBottom + 0.5f) { p.y = std::max(0.0f, maxBottom - size.y); clamped = true; }
-            if (clamped && !ImGui::IsMouseDown(0)) ImGui::SetWindowPos(p);
-        }
-    }
     if (g_statusUntil && GetTickCount64() > g_statusUntil) {
         g_status.clear();
         g_statusUntil = 0;
@@ -753,13 +667,7 @@ void RenderWindow() {
             ImGui::SameLine(0, gap);
         }
         if (IconButton("##fold", Icon::Collapse, false, nullptr)) {
-            g_collapsed = true;
-            const ImVec2 p = ImGui::GetWindowPos(), s = ImGui::GetWindowSize();
-            g_lastW = s.x;
-            g_expandedH = s.y;
-            g_anchorBottom = p.y + s.y;  // the small button takes its place on the next frame
-            g_savedPos = p;
-            g_buttonMoved = false;
+            MinimizeWindow();
         }
         if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Minimize chat")).c_str());
         ImGui::SameLine(0, gap);
@@ -829,29 +737,21 @@ void RenderWindow() {
     const float lowerH = (showPreview ? line * (g_layout.previewLines + 0.2f) + st.ItemSpacing.y : 0) +
                          (showWords ? ImGui::GetFrameHeightWithSpacing() : 0) +
                          (Lay().footer ? ImGui::GetFrameHeightWithSpacing() : 0) + boxH + st.ItemSpacing.y;
-    if (!Lay().chat) {  // no chat: the window is exactly as high as its parts – its bottom stays where it is
-        // + the thin bottom edge (above); never below ImGui's own minimum – it would raise the window again and the bottom
-        // anchor below would push it down a little every frame (it crept 3 px per frame).
-        // Whole pixels: ImGui rounds a window's size down – a fraction would move the window without resizing it.
+    if (!Lay().chat) {  // no chat: the window is exactly as high as its parts – the layout keeps its bottom where it is
+        // + the thin bottom edge (above); never below ImGui's own minimum (the layout rounds to whole pixels).
         const float want = std::ceil(std::max(ImGui::GetCursorPosY() + lowerH - st.ItemSpacing.y + 4.0f, st.WindowMinSize.y));
+        g_winFittedH = want;
         const ImVec2 p = ImGui::GetWindowPos(), sz = ImGui::GetWindowSize();
         // You drag its top (or bottom) edge: the height becomes whole lines of the input – "Lines of the input" in the
         // options follows at once; while the mouse is down the window keeps your size, then it fits to the lines.
-        static float s_setH = -1;
-        const bool sizing = s_setH > 0 && std::fabs(sz.y - s_setH) > 1.0f && ImGui::IsMouseDown(ImGuiMouseButton_Left);
-        if (sizing) {
+        if (g_winSizing) {
             const float lh = ImGui::GetTextLineHeight();
             const int lines = std::clamp(static_cast<int>(std::lround((sz.y - (want - lh * g_boxLines)) / lh)), 1, 8);
             if (lines != g_layout.inputLines) {
                 g_layout.inputLines = lines;
                 SaveLayout();
             }
-        } else if (want != sz.y) {
-            ImGui::SetWindowSize(ImVec2(sz.x, want));
-            ImGui::SetWindowPos(ImVec2(p.x, p.y + sz.y - want));
         }
-        s_setH = sizing ? sz.y : want;
-        g_fittedH = sizing ? sz.y : want;  // the small window's height (leaving the mini mode needs it)
         // Held down for a moment, then dragged: the whole window moves (not only at its edges) – a quick drag still
         // selects text. Not when the press was on an edge (that resizes).
         static ULONGLONG s_downAt = 0;
@@ -865,29 +765,14 @@ void RenderWindow() {
         if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
             s_downAt = 0;
             s_moving = false;
-        } else if (s_downAt && !s_moving && !sizing && GetTickCount64() - s_downAt > 250) {
+        } else if (s_downAt && !s_moving && !g_winSizing && GetTickCount64() - s_downAt > 250) {
             s_moving = true;
         }
         if (s_moving) {
-            const ImVec2 d = ImGui::GetIO().MouseDelta;
-            if (d.x != 0 || d.y != 0) {
-                ImGui::SetWindowPos(ImVec2(std::round(p.x + d.x), std::round(p.y + d.y)));
-                g_fittedMoved = true;
-            }
+            DragWindow(ImGui::GetIO().MouseDelta);
         }
-    } else if (g_skipGrow) {  // just back from the mini mode: its old rect, nothing grows this frame (what it had grown
-        g_skipGrow = false;    // for a long input before stays counted – it shrinks back by that once the input is short)
-    } else {  // the input grew past the window: the window grows upwards (its bottom stays) and shrinks back afterwards
-        float& s_grown = g_grown;
-        const float need = lowerH + (Lay().chat ? line * 2 : 0) - ImGui::GetContentRegionAvail().y;
-        const float delta = need > 0.5f ? need : s_grown > 0 ? -std::min(s_grown, -need) : 0.0f;
-        const ImVec2 p = ImGui::GetWindowPos(), sz = ImGui::GetWindowSize();
-        const float newH = std::ceil(sz.y + delta);  // whole pixels (ImGui rounds sizes down; 0.8 px crept it upwards)
-        if (std::fabs(delta) > 0.01f && newH != sz.y) {
-            ImGui::SetWindowSize(ImVec2(sz.x, newH));
-            ImGui::SetWindowPos(ImVec2(p.x, p.y + sz.y - newH));  // only what the size really changed
-            s_grown = std::max(0.0f, s_grown + newH - sz.y);
-        }
+    } else {  // the big window: what its content needs at least – a long input grows it upwards, it shrinks back by itself
+        g_winNeedH = ImGui::GetWindowSize().y + lowerH + line * 2 - ImGui::GetContentRegionAvail().y;
     }
     if (Lay().chat) {
         static float scrollY = 0, scrollMax = 0, viewH = 1, dragOffset = 0, lastScrollMax = 0;
@@ -1178,8 +1063,7 @@ void RenderWindow() {
             s_inMoving = true;
         }
         if (s_inMoving) {
-            const ImVec2 d = io.MouseDelta, wp = ImGui::GetWindowPos();
-            if (d.x != 0 || d.y != 0) ImGui::SetWindowPos(ImVec2(std::round(wp.x + d.x), std::round(wp.y + d.y)));
+            DragWindow(io.MouseDelta);
         }
     }
     // Three quick left clicks on the window (not in the input – there clicks place the caret and pick words –, not on a

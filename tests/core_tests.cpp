@@ -36,6 +36,7 @@
 #include "core/send_guard.hpp"
 #include "core/chat_code.hpp"
 #include "core/chat_source.hpp"
+#include "core/window_layout.hpp"
 #include "core/contrast.hpp"
 
 using namespace gct;
@@ -1924,7 +1925,109 @@ static void TestChatSource() {
           prot.find("world boss") == std::string::npos);
 }
 
+// The window's place as a formula: equations that must hold for every state (random ones, thousands) – true or false.
+static void TestWindowLayout() {
+    uint64_t rng = 0x2545F4914F6CDD1Dull;
+    auto rnd = [&rng](float lo, float hi) {
+        rng ^= rng << 13;
+        rng ^= rng >> 7;
+        rng ^= rng << 17;
+        return lo + (hi - lo) * static_cast<float>(rng % 100000) / 100000.0f;
+    };
+    const WinMode modes[] = {WinMode::Big, WinMode::Fitted, WinMode::Button};
+    int bad[8] = {};
+    for (int i = 0; i < 20000; ++i) {
+        WinSpace s;
+        s.screenW = std::round(rnd(800, 3840));
+        s.screenBottom = std::round(rnd(600, 2160));
+        s.fittedH = rnd(16, 300);
+        s.needH = rnd(0, 700);
+        s.button = std::round(rnd(20, 48));
+        WinAnchor a;
+        a.left = std::round(rnd(-200, s.screenW + 200));
+        a.bottom = std::round(rnd(-100, s.screenBottom + 300));
+        a.width = std::round(rnd(100, 1400));
+        a.height = std::round(rnd(100, 1200));
+        a.known = true;
+        for (WinMode m : modes) {
+            const WinRect r = LayoutWindow(m, a, s);
+            // 1. Whole pixels (ImGui rounds sizes down: a fraction moved the window without resizing it).
+            if (r.x != std::round(r.x) || r.y != std::round(r.y) || r.w != std::round(r.w) || r.h != std::round(r.h)) ++bad[0];
+            // 2. On the screen: never left of it, never above it, never right of it, never below the bottom bar
+            //    (unless it is taller than the space – then it starts at the top).
+            if (r.x < 0 || r.y < 0 || (r.w <= s.screenW && r.x + r.w > s.screenW) ||
+                (r.h <= s.screenBottom && r.Bottom() > s.screenBottom))
+                ++bad[1];
+            // 3. A fixed point: taking the rect back as the state and laying it out again gives the same rect – nothing
+            //    creeps over frames, whatever the mode.
+            const WinAnchor back = AdoptRect(m, a, r, r);  // nothing changed: exactly the state again (an identity)
+            if (back.left != a.left || back.bottom != a.bottom || back.width != a.width || back.height != a.height)
+                ++bad[2];
+            // 3b. Moved by (dx, dy): the window lands exactly where it was dropped.
+            const float dx = std::round(rnd(-40, 40)), dy = std::round(rnd(-40, 40));
+            const WinRect dropped{r.x + dx, r.y + dy, r.w, r.h};
+            const WinRect landed = LayoutWindow(m, AdoptRect(m, a, dropped, r), s);
+            if (dropped.x >= 0 && dropped.y >= 0 && dropped.x + dropped.w <= s.screenW && dropped.Bottom() <= s.screenBottom &&
+                (landed.x != dropped.x || landed.y != dropped.y))
+                ++bad[7];
+            // 4. Snapping twice is snapping once.
+            const WinAnchor s1 = SnapAnchor(m, a, s, 14, 10), s2 = SnapAnchor(m, s1, s, 14, 10);
+            if (s1.left != s2.left || s1.bottom != s2.bottom) ++bad[3];
+        }
+        // 5. The modes share the corner: where there is room, the big window, the fitted one and the button have the same
+        //    bottom-left corner – minimising, the mini mode and back cannot move it.
+        if (a.left >= 0 && a.left + std::max(a.width, s.minW) + 1 < s.screenW && a.bottom <= s.screenBottom &&
+            a.bottom >= std::max({a.height, s.needH, s.minH, s.fittedH, s.button}) + 1) {
+            const WinRect big = LayoutWindow(WinMode::Big, a, s), fit = LayoutWindow(WinMode::Fitted, a, s),
+                          btn = LayoutWindow(WinMode::Button, a, s);
+            if (big.x != fit.x || big.x != btn.x || big.Bottom() != fit.Bottom() || big.Bottom() != btn.Bottom() ||
+                big.Bottom() != a.bottom)
+                ++bad[4];
+        }
+        // 6. A long input grows the big window upwards and it shrinks back exactly: no state is left behind.
+        WinSpace grown = s, back = s;
+        grown.needH = a.height + 200;
+        back.needH = 0;
+        const WinRect before = LayoutWindow(WinMode::Big, a, back);
+        LayoutWindow(WinMode::Big, a, grown);
+        const WinRect after = LayoutWindow(WinMode::Big, a, back);
+        if (before.x != after.x || before.y != after.y || before.h != after.h) ++bad[5];
+        // 7. Mini mode on and off four times (adopting every frame's rect, as the window does): the big rect is the same.
+        WinAnchor t = a;
+        const WinRect start = LayoutWindow(WinMode::Big, t, s);
+        for (int k = 0; k < 4; ++k) {
+            const WinRect f = LayoutWindow(WinMode::Fitted, t, s);
+            t = AdoptRect(WinMode::Fitted, t, f, f);
+            const WinRect b = LayoutWindow(WinMode::Big, t, s);
+            t = AdoptRect(WinMode::Big, t, b, b);
+        }
+        const WinRect end = LayoutWindow(WinMode::Big, t, s);
+        if (start.x != end.x || start.y != end.y || start.w != end.w || start.h != end.h) ++bad[6];
+    }
+    for (int k = 0; k < 8; ++k) {
+        if (bad[k]) std::printf("window layout equation %d failed %d times\n", k + 1, bad[k]);
+        CHECK(bad[k] == 0);
+    }
+    // Plain cases: the corner is the bottom-left; the fitted window is as high as its parts; the button too.
+    WinSpace s;
+    WinAnchor a;
+    a.left = 300;
+    a.bottom = 847;
+    a.width = 520;
+    a.height = 347;
+    s.fittedH = 73.4f;
+    const WinRect big = LayoutWindow(WinMode::Big, a, s), fit = LayoutWindow(WinMode::Fitted, a, s);
+    CHECK(big.x == 300 && big.y == 500 && big.w == 520 && big.h == 347);
+    CHECK(fit.x == 300 && fit.y == 773 && fit.h == 74);
+    const WinAnchor snapped = SnapAnchor(WinMode::Big, a, s, 14, 0);
+    CHECK(snapped.left == 300 && snapped.bottom == 847);  // nowhere near an edge: stays
+    a.left = 9;
+    CHECK(SnapAnchor(WinMode::Big, a, s, 14, 0).left == 0);
+    CHECK(SnapAnchor(WinMode::Button, a, s, 14, 10).left == 10);  // the button: onto GW2's chat edge
+}
+
 int main() {
+    TestWindowLayout();
     TestChatSource();
     TestContrast();
     TestUtf();
