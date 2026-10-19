@@ -396,4 +396,53 @@ void KickSave() {
     g_worker.Post([] { Config::FlushWrites(); });
 }
 
+namespace {
+struct CostClock {  // render thread only (the line costs are atomics: chat lines may come from another thread)
+    LARGE_INTEGER freq{}, frameStart{}, partStart{};
+    int part = kCostPre;
+    double frame[kCostParts] = {};
+    FrameCosts avg;
+    std::atomic<long long> lineTicks{0}, lines{0};
+} g_cost;
+
+double TicksToMs(long long t) { return 1000.0 * static_cast<double>(t) / static_cast<double>(g_cost.freq.QuadPart); }
+}  // namespace
+
+CostFrame::CostFrame() {
+    if (!g_cost.freq.QuadPart) QueryPerformanceFrequency(&g_cost.freq);
+    QueryPerformanceCounter(&g_cost.frameStart);
+    g_cost.partStart = g_cost.frameStart;
+    g_cost.part = kCostPre;
+    for (double& f : g_cost.frame) f = 0;
+}
+
+CostFrame::~CostFrame() {
+    CostMark(kCostPre);  // closes the running part
+    LARGE_INTEGER now;
+    QueryPerformanceCounter(&now);
+    constexpr double a = 0.05;  // rolling average over the last ~20 frames
+    for (int i = 0; i < kCostParts; ++i) g_cost.avg.ms[i] += a * (g_cost.frame[i] - g_cost.avg.ms[i]);
+    g_cost.avg.totalMs += a * (TicksToMs(now.QuadPart - g_cost.frameStart.QuadPart) - g_cost.avg.totalMs);
+}
+
+void CostMark(int part) {
+    LARGE_INTEGER now;
+    QueryPerformanceCounter(&now);
+    g_cost.frame[g_cost.part] += TicksToMs(now.QuadPart - g_cost.partStart.QuadPart);
+    g_cost.partStart = now;
+    g_cost.part = part;
+}
+
+void CostLine(double us) {
+    g_cost.lineTicks += static_cast<long long>(us * 1000.0);  // in nanoseconds
+    ++g_cost.lines;
+}
+
+FrameCosts CostsNow() {
+    FrameCosts c = g_cost.avg;
+    c.lines = g_cost.lines;
+    c.lineUs = c.lines ? static_cast<double>(g_cost.lineTicks) / 1000.0 / static_cast<double>(c.lines) : 0;
+    return c;
+}
+
 }  // namespace kb

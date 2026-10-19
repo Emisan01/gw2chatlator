@@ -215,6 +215,16 @@ void ChatSourceSetVersion(const std::wstring& version) {  // from the module sca
 void OnChatEvents(void* args) {
     if (g_disabled || g_wiped) return;
     g_chatEventsLive = true;
+    struct Timed {  // what a line costs us on the thread Events: Chat calls from (Options > Technical)
+        LARGE_INTEGER t0;
+        Timed() { QueryPerformanceCounter(&t0); }
+        ~Timed() {
+            LARGE_INTEGER t1, f;
+            QueryPerformanceCounter(&t1);
+            QueryPerformanceFrequency(&f);
+            CostLine(1e6 * static_cast<double>(t1.QuadPart - t0.QuadPart) / static_cast<double>(f.QuadPart));
+        }
+    } timed;
     std::wstring ver, status;
     {
         std::lock_guard<std::mutex> lock(g_src.mu);
@@ -368,6 +378,19 @@ void RenderChatSourceDetails() {  // Options > Technical (g_mu held): for the de
     StatusRow(UI(Tr(L"Reading")), v.level, UI(v.text));
     ImGui::Text("%s", UI(TrF(L"Lines: {1} shown, {2} dropped, {3} unreadable",
                              {std::to_wstring(shown), std::to_wstring(dropped), std::to_wstring(unreadable)})).c_str());
+    {  // what we cost on GW2's render thread – the parts add up to the whole
+        const FrameCosts c = CostsNow();
+        auto ms = [](double v) {
+            wchar_t b[16];
+            swprintf_s(b, L"%.3f", v);
+            return std::wstring(b);
+        };
+        ImGui::Text("%s", UI(TrF(L"Our frame: {1} ms – window {2}, header {3}, chat {4}, input {5}, footer {6}, options {7}",
+                                 {ms(c.totalMs), ms(c.ms[kCostWindow] + c.ms[kCostPre]), ms(c.ms[kCostHeader]),
+                                  ms(c.ms[kCostChat]), ms(c.ms[kCostInput]), ms(c.ms[kCostFooter]),
+                                  ms(c.ms[kCostOptions])})).c_str());
+        ImGui::Text("%s", UI(TrF(L"Per chat line: {1} µs", {ms(c.lineUs)})).c_str());
+    }
     Buttons(v, true);
     ImGui::SameLine();
     if (ImGui::SmallButton(UI(Tr(L"Copy protocol")).c_str())) ImGui::SetClipboardText(ChatSourceProtocolText().c_str());

@@ -623,6 +623,23 @@ extern std::atomic<int> g_wipeDone;
 void StatusRow(const std::string& what, int state, const std::string& text);
 void RenderModules(bool guide);
 
+// What our frame costs on GW2's render thread, by part (Options > Technical; the smoke test checks the parts add up to
+// the whole). A few QueryPerformanceCounter calls per frame, rolling averages – no measurable cost of its own.
+enum CostPart { kCostPre, kCostOptions, kCostWindow, kCostHeader, kCostChat, kCostInput, kCostFooter, kCostParts };
+struct FrameCosts {
+    double ms[kCostParts] = {};  // rolling average per part
+    double totalMs = 0;          // rolling average of the whole RenderWindow
+    double lineUs = 0;           // average per chat line arriving (OnChatEvents)
+    long long lines = 0;
+};
+struct CostFrame {  // RenderWindow: starts the frame, ends it on every return
+    CostFrame();
+    ~CostFrame();
+};
+void CostMark(int part);  // the running part ends, `part` starts
+void CostLine(double us);
+FrameCosts CostsNow();
+
 // kb_chatsource.cpp: the guard between Events: Chat (another add-on, updated unasked) and us.
 struct ChatSourceTest {  // nexus_kb_selftest reads this
     int reading = 0, pause = 0, shown = 0, dropped = 0, unreadable = 0, disabled = 0, decoderFault = 0;
