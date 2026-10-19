@@ -26,7 +26,6 @@ addons/nexus-keyboard   the add-on
   src/kb_chatsource.cpp the guard between Events: Chat and us: `OnChatEvents`, the shield (`CopyLineGuarded`:
                         VirtualQuery first, SEH last), the pause, reading on-off by hand, the technical details
   src/kb_window.cpp     the main window: header, chat, preview, word bar, input, footer, minimise / restore
-  src/kb_waypoint.cpp   the waypoint "quantum macro" (optional) and the click-test key – see Invariant 1
   src/kb_options.cpp    the options window and the modules list
   src/chat_links.*      chat codes: "[Item name]" in rarity colour + mouse-over details via Decoder Ring;
                         a click (`HandleChatLinkClick`) minimises the window and opens GW2's chat line (GameBind
@@ -45,12 +44,11 @@ src/kbd                 voice_session (WASAPI + whisper worker), whisper_engine 
 src/win                 Windows services without UI: http (WinHTTP), translators (MyMemory, DeepL, Google,
                         Microsoft, LibreTranslate), els (language detection), gw2_sender, mumble_link, spellcheck,
                         text_prediction, keyboard_layout, audio_capture, mic_sessions, cpu_cores, voice_models,
-                        extras_install (GitHub release assets, SHA-256 checked), secret (DPAPI), files, hash,
-                        ocr (Windows.Media.Ocr through the raw WinRT ABI – the waypoint macro)
+                        extras_install (GitHub release assets, SHA-256 checked), secret (DPAPI), files, hash
 src/core                portable logic, NO windows.h: text, json, i18n (+ de / ar tables), chat_line (channels),
                         chat_code, protect, slang, word_model, typo_memory, my_words, voice, voice_learn, send_guard,
                         chat_source (the rules for lines of Events: Chat), window_layout (the window's place as a
-                        formula), link_find (a waypoint's line among recognized rows), translator protocols
+                        formula), translator protocols
 ```
 
 - `core` compiles on any OS: `g++ -std=c++17 -I src tests/core_tests.cpp src/core/*.cpp`.
@@ -80,16 +78,6 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   leftovers are removed at load. Other add-ons' code runs only behind a guard too:
   `ReadAddonDefGuarded` (the module scan calls every add-on's GetAddonDef), `ResolveGuarded` (Decoder Ring: a record
   with room to spare, strings ended, one fault = not asked again this session).
-- **Waypoint quantum macro** (user, 2026-10-19; `[Nexus] NativeWaypointClick`, off by default, Options > Window): no
-  add-on can call GW2's own map jump without a hook, so a click on a waypoint / POI in our chat (within 10 s of its
-  line) clicks the original in GW2's chat: `HandleChatLinkClick` opens GW2's chat line (as before), `kb_waypoint`
-  waits for it (MumbleLink), asks the render thread for one frame (`WaypointFrameTick`: the swap chain's back
-  buffer – the game's picture, before any add-on draws – copied to a staging texture, read two frames later), reads
-  it with Windows' own text recognition (tiles; then GW2's usual chat corner enlarged), frees it, finds the very line
-  (`FindChatLink`: the link's name from Decoder Ring, then the speaker and the rest of the message; below `kMinFit`
-  no click – better none than a wrong one) and clicks its centre once (`SyntheticClick`: foreground checked before
-  every step, held one frame, the cursor goes back). Not found: the chat line stays open, the user clicks it. Its
-  own thread, ended on unload (`StopWaypointMacro`). Decoder Ring's language must be the game's (else no match).
 - **Chat in:** Events: Chat (`EV_CHAT:Message`) → `OnChatEvents` (the guard above) → `AddLine` (`UnescapeChatText`, sanitised) →
   translated on the worker only when `[Nexus] TranslateChat=1` (default 0) or a click on the line asks for it – into
   the language you write in (the chat is read in it). `TranslateRecentLines` redoes the newest 20 when the translation
@@ -156,9 +144,6 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
    "Only copy" mode must stay a mode in which not a single synthetic key reaches the game. There is no other way to
    send: no Nexus event, no DataLink, no export another add-on could call; the `Gw2KbTest…` exports work only outside
    GW2 (`TestHost`). One Enter sends at most `kMaxPartsPerEnter` (3) chat lines.
-   Synthetic mouse input exists for two things only, both one click as the direct result of the user's own action
-   (user's decision, 2026-10-19): the waypoint quantum macro (opt-in) and the click-test key (`KB_GW2KEYBOARD_CLICKTEST`,
-   unbound). Never more than one click, never a sequence, never without GW2 in front.
 2. The old clipboard is restored only after the game processed the paste (`WaitForTargetToDrain`, MumbleLink chat
    line closing) – a fixed sleep pasted the *old* clipboard once (privacy leak).
 3. Re-check `GetForegroundWindow() == gw2` before every injected step.
@@ -172,8 +157,7 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
    saved. **Never commit real screenshots, recordings or other players' names/messages** — the repo is public. Real
    test material lives in `local/` (git-ignored); fixtures use invented names.
 7. Files in the game folder: only our DLL's own folder `<addons>\GW2Keyboard\`, and Events_Chat.dll (only on your
-   click). Never the game process' memory, affinity or priority. The one picture the waypoint macro reads (the swap
-   chain's back buffer: what is on the screen, not game state) stays in memory and is freed right after the search.
+   click). Never the game process' memory, affinity or priority.
 
 ## Conventions
 

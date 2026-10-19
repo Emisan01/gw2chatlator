@@ -389,14 +389,6 @@ void RenderOptionsContent() {
             }
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", UI(Tr(L"Moved near an edge of the screen, the window sits right on it.")).c_str());
-            {
-                std::lock_guard<std::mutex> lock(g_mu);
-                if (ImGui::Checkbox(UI(Tr(L"Waypoints: click the original in GW2's chat for me (experimental)")).c_str(),
-                                    &g_nx.nativeWaypointClick))
-                    SaveNexusOptions();
-            }
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("%s", UI(Tr(L"A click on a waypoint here (within 10 s of its line) opens GW2's chat, finds the same line there – the waypoint's name, who wrote it, what it says; one picture of the game, only in memory, Windows' own text recognition – and clicks the waypoint once: the game then flies the map there. Not found: you click it in GW2's chat as before.")).c_str());
             ImGui::Separator();
             ImGui::TextUnformatted(UI(Tr(L"Window layout")).c_str());
             {

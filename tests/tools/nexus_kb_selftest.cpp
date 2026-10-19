@@ -986,25 +986,6 @@ int wmain(int argc, wchar_t** argv) {
                     srcState().unreadable);
         ok = ok && good;
     }
-    // The waypoint quantum macro: in the test there is no GW2 window and no swap chain – it must never click, give up
-    // with a note, and its thread must end cleanly, also when the add-on unloads while it still runs.
-    auto waypointHook = reinterpret_cast<void (*)(int)>(GetProcAddress(dll, "Gw2KbTestWaypoint"));
-    auto synthetic = reinterpret_cast<int (*)()>(GetProcAddress(dll, "Gw2KbTestSyntheticInputs"));
-    if (ok && waypointHook && synthetic && !shotMode) {
-        const int before = synthetic();
-        waypointHook(3);  // the test key: no GW2 in front – no click
-        Sleep(400);
-        waypointHook(2);  // the macro: no chat, no frame – no click
-        for (int i = 0; i < 120; ++i) {
-            Frame();
-            Sleep(20);
-        }
-        const int sent = synthetic() - before;
-        std::printf("quantum macro without GW2: %d synthetic mouse inputs sent\n", sent);
-        if (sent != 0) std::printf("FAIL: the macro sent mouse input without GW2 in front\n");
-        ok = ok && sent == 0;
-        waypointHook(2);  // started again: the unload below must end it
-    }
     std::printf("text font built by the stand-in Nexus: %d\n", g_fontsBuilt);
     ok = ok && g_fontsBuilt >= 1;
     // GW2KB_TEST_REMOVEALL=1 (only on a copy of the add-on – it deletes its GW2Keyboard folder): "remove everything",
@@ -1025,12 +1006,7 @@ int wmain(int argc, wchar_t** argv) {
         }
     }
     std::printf("unload\n");
-    const ULONGLONG unloadAt = GetTickCount64();
     def->Unload();
-    const ULONGLONG unloadMs = GetTickCount64() - unloadAt;  // a thread that does not end would hang it
-    std::printf("unload took %llu ms\n", unloadMs);
-    if (unloadMs > 3000) std::printf("FAIL: the unload hung (a thread did not end)\n");
-    ok = ok && unloadMs <= 3000;
     ok = ok && g_chatEvents == nullptr;
     if (src && !shotMode && !removeAll) {  // the next session compares with the version this one ended with
         wchar_t last[64] = {};
