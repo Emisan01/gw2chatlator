@@ -328,6 +328,7 @@ std::wstring StatusText() {  // g_mu held
 void RenderWindow() {
     if (!ImGui::GetCurrentContext()) return;  // failsafe: no context, no drawing
     CostFrame costFrame;  // what this frame costs on GW2's render thread, by part (Options > Technical)
+    WaypointFrameTick();  // the waypoint click asked for one frame of the game (kb_waypoint.cpp)
     KickSave();
     VoiceIdleUnload();
     ImGuiIO& io = ImGui::GetIO();
@@ -865,7 +866,7 @@ void RenderWindow() {
             if (segs.size() <= 1 && (segs.empty() || segs[0].kind == PieUI::ChatLinks::SegmentKind::Plain)) {
                 LookText(u8shown.c_str(), ColorOf(l.channel), true);
             } else {
-                clicked = RichLine(shown, segs, ColorOf(l.channel), l.receivedTime);
+                clicked = RichLine(shown, segs, ColorOf(l.channel), l.receivedTime, l.speaker);
             }
             if (!l.translated.empty() && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", l.u8text.c_str());
             // A click on the text of a line someone else wrote: just this line into your language.
