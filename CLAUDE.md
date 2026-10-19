@@ -44,7 +44,8 @@ src/win                 Windows services without UI: http (WinHTTP), translators
                         extras_install (GitHub release assets, SHA-256 checked), secret (DPAPI), files, hash
 src/core                portable logic, NO windows.h: text, json, i18n (+ de / ar tables), chat_line (channels),
                         chat_code, protect, slang, word_model, typo_memory, my_words, voice, voice_learn, send_guard,
-                        chat_source (the rules for lines of Events: Chat), translator protocols
+                        chat_source (the rules for lines of Events: Chat), window_layout (the window's place as a
+                        formula), translator protocols
 ```
 
 - `core` compiles on any OS: `g++ -std=c++17 -I src tests/core_tests.cpp src/core/*.cpp`.
@@ -173,28 +174,29 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 - `small` and `near` are macros (rpcndr.h / windef.h); `FoldString` is a macro → `CaseFold`. `GetPrivateProfileInt` turns negatives into 0.
 - Python/heredoc edits turned `\n` / `\r` escapes into real control characters more than once – check C++ string
   literals after scripted edits (or use the Edit tool).
-- Never call `MinimizeWindow` / `SetWindowPos` from inside a child (the chat area): it moves the child. Ask with
-  `g_minimizeRequest` / `g_expandRequest`, done on the main window. The minimised button keeps the window's bottom edge
-  through `g_anchorBottom` – computing its size twice (text size, `WindowMinSize`) made the window creep up.
+- Never minimise or move the window from inside a child (the chat area): ask with `g_minimizeRequest` /
+  `g_expandRequest`, done on the main window. The window's rect is set in one place only – `PlaceWindow`, before
+  `Begin`, from the formula; no `SetWindowPos` / `SetWindowSize` anywhere else (our own hold-drag moves the corner:
+  `DragWindow`).
 - The ini: every `WritePrivateProfileString` rewrites the whole file (~15 ms; "Save" in the options = 70 of them =
   the game hung ~1 s). The add-on runs `Config::DeferWrites(true)`: `SaveValue` only queues, `KickSave` (render, every
   0.5 s at most) has the worker write them, unload flushes the rest. Never write the ini directly on the game thread.
-- Soft breaks: '
-' stands for a space, "
-" for nothing (a word longer than the line); `Flat()` turns them back,
-  `RawOffset()` maps flat offsets into the box (every `g_edit`). '' never comes from the user (the filter drops it).
+- Soft breaks: '\n' stands for a space, "\r\n" for nothing (a word longer than the line); `Flat()` turns them back,
+  `RawOffset()` maps flat offsets into the box (every `g_edit`). '\r' never comes from the user (the filter drops it).
 - Fitted window (no chat): hold the left button ¼ s and drag = move; dragging its top/bottom edge sets
   `inputLines`; right-click on a word = learning (`WordAtMouse`), elsewhere = the menu.
 - After changing a struct in a shared header (app/config.hpp, kb_shared.hpp) build with `--clean-first`: MSBuild
   once left objects with the old layout (the self-test failed in strange places until a clean build).
-- Window size by code: whole pixels only. ImGui rounds a window's size down, so a 0.8 px growth plus the matching
-  position change moved the window up every frame without resizing it. Change the size with `std::ceil`, then move
-  the position by the size change that really happened (the bottom-left corner stays). Without the chat the window
-  is fitted to its parts (never below `WindowMinSize`, else the same creep). The self-test keeps no imgui.ini.
-- Mini mode on / off: the big window gets back exactly the rect it had (like a Nexus window); it follows only a real
-  move of the small window (`g_fittedMoved`: hold-drag, a drag release, a moved button). Never derive a "move" from
-  the fitted window's position – every pixel of fitting / clamping added up over toggles (2.0.3 slid down in game).
-  `g_grown` survives the mini mode (the rect includes it, it shrinks back by it).
+- The window's place is a formula (`core/window_layout`): four numbers – the bottom-left corner, the width, the big
+  window's height – give each frame's rect per mode (big: at least what its content needs, so a long input grows it
+  and it shrinks back; fitted: its parts; the button). `AdoptRect` takes over only what changed against the rect the
+  window had, in the mode it had – never a grown height as yours. Every incremental "move by the size change" before
+  it crept (2.0.3 slid down in game). The equations are in core_tests (fixed point, shared corner, a drop lands where
+  dropped, snapping twice = once, grow and shrink back, mini on/off), the self-test checks the real window.
+- The formula must never ask ImGui for less than it allows: whole pixels (ceil), and at least `WindowMinSize`
+  (`WinSpace::minSize*`) – ImGui enlarges a smaller window and the corner moves (the button and the mini window's
+  first frame did). Read the window before `Begin` from `SizeFull`: `SetWindowSize` writes it, `Size` follows only
+  at the next `Begin`. The self-test keeps no imgui.ini.
 - Sending clears the learning-mode state (`g_lastWords`, `g_finishedLast/At`) with the input – the box never shows
   the empty text in between, and the old state blocked self-corrections in the next message.
 - The CBA theme: eight roles (`g_cbaRoles`, [NexusTheme] Colours = a theme code), everything else derived in

@@ -565,14 +565,6 @@ void StartSend();
 std::wstring NativeName(const std::wstring& code);
 
 extern bool g_collapsed;
-extern float g_lastW, g_expandedH, g_restoreH;
-// The bottom edge the window had when it was minimised: the small button sits exactly on it (its size depends on the
-// text size and ImGui's minimum window size – computing it twice made the window creep up a little every time).
-extern float g_anchorBottom;
-extern ImVec2 g_savedPos;
-extern bool g_buttonMoved;
-extern ImVec2 g_buttonBottomLeft;
-ImVec2 RestorePos();
 void MinimizeWindow();
 void RenderFooter();
 
