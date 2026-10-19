@@ -152,6 +152,7 @@ int wmain(int argc, wchar_t** argv) {
     // -------------------------------------------------------------------------
     // Phase 1: Massive WvW / World Boss Chat Flood (500 distinct messages)
     // -------------------------------------------------------------------------
+    bool failed = false;  // checks that fail say so at the end – after the add-on was unloaded cleanly
     std::printf("[*] Phase 1: Ingesting 500 High-Intensity Chat Lines ...\n");
     const struct MsgTemplate {
         bridge::ChatEventsType type;
@@ -202,7 +203,7 @@ int wmain(int argc, wchar_t** argv) {
         std::printf("    chat source guard: %d shown, %d dropped, pause %d\n", st.shown, st.dropped, st.pause);
         if (st.shown != 500 || st.dropped != 0 || st.pause != 0) {
             std::printf("    [FAIL] The chat source guard rejected realistic lines!\n");
-            return 1;
+            failed = true;
         }
     }
 
@@ -210,6 +211,16 @@ int wmain(int argc, wchar_t** argv) {
     // Phase 2: High-Resolution Frame-Time Profiling (1,000 Frames)
     // -------------------------------------------------------------------------
     std::printf("[*] Phase 2: Profiling 1,000 Render Frames with Full Chat Buffer ...\n");
+    struct CostSums {  // as FrameCosts in kb_shared.hpp
+        double ms[7];
+        double totalMs, lineUs;
+        long long lines;
+        double sumMs[7];
+        double sumTotalMs;
+        long long frames;
+    };
+    auto costs = reinterpret_cast<int (*)(CostSums*, int)>(GetProcAddress(dll, "Gw2KbTestCosts"));
+    if (costs) costs(nullptr, 1);  // the sums start with these frames
     std::vector<double> frameTimes;
     frameTimes.reserve(1000);
 
@@ -248,31 +259,31 @@ int wmain(int argc, wchar_t** argv) {
     bool perfOk = (avg < 0.80) && (p99 < 2.50) && (maxMs < 5.00);
     if (!perfOk) {
         std::printf("    [FAIL] Render latency exceeded acceptable thresholds!\n");
-        return 1;
+        failed = true;
+    } else {
+        std::printf("    [PASS] Zero-Stutter SLA satisfied (< 0.8ms avg, < 2.5ms p99)\n");
     }
-    std::printf("    [PASS] Zero-Stutter SLA satisfied (< 0.8ms avg, < 2.5ms p99)\n");
-    // The formula must add up: our parts sum to our whole, and our whole fits inside the frame measured from outside
-    // (the rest is ImGui's own work: NewFrame, the options callback, Render).
-    if (auto costs = reinterpret_cast<int (*)(void*)>(GetProcAddress(dll, "Gw2KbTestCosts"))) {
-        struct {  // as FrameCosts in kb_shared.hpp
-            double ms[7];
-            double totalMs, lineUs;
-            long long lines;
-        } c{};
-        costs(&c);
+    // The formula must add up, like with like over the same 1000 frames: our parts sum to our whole, and our whole lies
+    // inside the frames measured from outside (the rest is ImGui's own work: NewFrame, the options callback, Render).
+    if (costs) {
+        CostSums c{};
+        costs(&c, 0);
         double parts = 0;
-        for (double v : c.ms) parts += v;
-        std::printf("    Our frame on the render thread: %.3f ms = pre %.3f + options %.3f + window %.3f + header %.3f"
-                    " + chat %.3f + input %.3f + footer %.3f (parts %.3f)\n",
-                    c.totalMs, c.ms[0], c.ms[1], c.ms[2], c.ms[3], c.ms[4], c.ms[5], c.ms[6], parts);
-        std::printf("    Outside it (ImGui itself): %.3f ms of %.3f ms; per chat line: %.2f us (%lld lines)\n", avg - c.totalMs,
-                    avg, c.lineUs, c.lines);
-        const bool addsUp = std::fabs(parts - c.totalMs) <= 0.02 * c.totalMs + 0.002 && c.totalMs <= avg * 1.05;
+        for (double v : c.sumMs) parts += v;
+        const double n = c.frames > 0 ? static_cast<double>(c.frames) : 1.0;
+        std::printf("    Our frame on the render thread: %.4f ms = pre %.4f + options %.4f + window %.4f + header %.4f"
+                    " + chat %.4f + input %.4f + footer %.4f (%lld frames)\n",
+                    c.sumTotalMs / n, c.sumMs[0] / n, c.sumMs[1] / n, c.sumMs[2] / n, c.sumMs[3] / n, c.sumMs[4] / n,
+                    c.sumMs[5] / n, c.sumMs[6] / n, c.frames);
+        std::printf("    Outside it (ImGui itself): %.4f ms of %.4f ms; per chat line: %.2f us (%lld lines)\n",
+                    avg - c.sumTotalMs / n, avg, c.lineUs, c.lines);
+        const bool addsUp = c.frames == 1000 && std::fabs(parts - c.sumTotalMs) <= 0.001 * n && c.sumTotalMs <= sum;
         if (!addsUp) {
             std::printf("    [FAIL] The frame formula does not add up!\n");
-            return 1;
+            failed = true;
+        } else {
+            std::printf("    [PASS] The frame formula adds up.\n");
         }
-        std::printf("    [PASS] The frame formula adds up.\n");
     }
 
     // -------------------------------------------------------------------------
@@ -318,9 +329,10 @@ int wmain(int argc, wchar_t** argv) {
         std::printf("    Sent parts: %d, remaining input: %zu\n", th->sentParts, std::strlen(th->input));
         if (th->sentParts < 1 || std::strlen(th->input) != 0) {
             std::printf("    [FAIL] Send failed under heavy load!\n");
-            return 1;
+            failed = true;
+        } else {
+            std::printf("    [PASS] Interactive send verified successfully.\n");
         }
-        std::printf("    [PASS] Interactive send verified successfully.\n");
     }
 
     // -------------------------------------------------------------------------
@@ -331,6 +343,10 @@ int wmain(int argc, wchar_t** argv) {
     FreeLibrary(dll);
     ImGui::DestroyContext(ctx);
     std::printf("    [PASS] Add-on unloaded cleanly without crash or leak.\n");
+    if (failed) {
+        std::printf("\n   >>> SMOKE TEST RESULT: FAIL (see above) <<<\n");
+        return 1;
+    }
 
     std::printf("\n==================================================================\n");
     std::printf("   >>> SMOKE TEST RESULT: 100%% ROCK-SOLID (PASS) <<<            \n");

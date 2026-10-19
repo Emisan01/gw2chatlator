@@ -635,6 +635,9 @@ struct FrameCosts {
     double totalMs = 0;          // rolling average of the whole RenderWindow
     double lineUs = 0;           // average per chat line arriving (OnChatEvents)
     long long lines = 0;
+    double sumMs[kCostParts] = {};  // exact sums since CostReset (the smoke test's equation: like with like)
+    double sumTotalMs = 0;
+    long long frames = 0;
 };
 struct CostFrame {  // RenderWindow: starts the frame, ends it on every return
     CostFrame();
@@ -643,6 +646,7 @@ struct CostFrame {  // RenderWindow: starts the frame, ends it on every return
 void CostMark(int part);  // the running part ends, `part` starts
 void CostLine(double us);
 FrameCosts CostsNow();
+void CostReset();  // the sums start again
 
 // kb_chatsource.cpp: the guard between Events: Chat (another add-on, updated unasked) and us.
 struct ChatSourceTest {  // nexus_kb_selftest reads this
