@@ -3,6 +3,20 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## Unreleased (GW2Chatlator for Nexus)
+
+- **Leaner: protection instead of switching on and off.** Updates and compatibility are the business of Nexus and
+  Events: Chat; ours is that GW2Chatlator never crashes the game and never shows garbage. So the probation of every
+  new version is gone again (no more reading switched off, no marker file); what stays: every line is copied behind
+  a guard and checked, and reading pauses for the session when Events: Chat hands over unreadable data or many lines
+  stop fitting – "Resume" reads again.
+- **The guard looks before it reads:** the memory is checked first (committed, readable, no guard page), so not even
+  a caught fault is left behind for another thread.
+- **For the developer:** Options > Technical shows the version of Events: Chat, says when it is new since the last
+  session (a note once), counts shown, dropped and unreadable lines, and lists the last lines as lengths and rules –
+  "Copy protocol", never text or names.
+- What 2.1.0's probation left (a marker file, three ini keys) is removed on load.
+
 ## 2.1.0 — 2026-10-19 (GW2Chatlator for Nexus)
 
 - **An update of Events: Chat can no longer take the game down.** Nexus updates Events: Chat over night, unasked; if

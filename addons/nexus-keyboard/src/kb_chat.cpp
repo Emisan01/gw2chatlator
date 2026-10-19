@@ -225,7 +225,7 @@ bool ChatEventsPresent(bool now) {
     if (!now && GetTickCount64() < next) return g_chatEventsPresent;
     next = GetTickCount64() + 3000;
     bool found = false;
-    std::wstring version;  // Events: Chat's version (its probation and protocol)
+    std::wstring version;  // Events: Chat's version (the technical details, the protocol)
     HMODULE mods[1024];
     DWORD needed = 0;
     if (K32EnumProcessModules(GetCurrentProcess(), mods, sizeof(mods), &needed)) {

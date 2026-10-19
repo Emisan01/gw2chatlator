@@ -801,7 +801,7 @@ void RenderOptionsContent() {
             ImGui::Text("%s", UI(TrF(L"Translator: {1}", {g_translator ? g_translator->Name() : std::wstring(L"-")})).c_str());
             if (const std::wstring q = MyMemoryQuotaText(); !q.empty() && (g_nx.translateChat || g_cfg.translateWriting))
                 ImGui::Text("%s", UI(q).c_str());
-            ImGui::Text("Events: Chat: %s", g_chatEventsPresent || g_chatEventsLive ? "[OK]" : "[--]");
+            RenderChatSourceDetails();  // the version of Events: Chat, reading, the counts, the last lines (no text)
             ImGui::Text("%s", UI(TrF(L"Voice: {1}", {!g_cfg.voiceEnabled ? Tr(L"off") : g_voiceReady ? Tr(L"ready – loaded")
                                                        : g_voice.Running() ? Tr(L"starting")
                                                        : g_modules.voiceModule ? Tr(L"ready – loads on the first use of the microphone")

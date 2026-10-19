@@ -20,8 +20,8 @@ addons/nexus-keyboard   the add-on
   src/kb_worker.cpp     worker jobs: spelling, translation, typing help, sending
   src/kb_voice.cpp      the voice helper (idle unload after [Voice] UnloadMinutes), push to talk, models
   src/kb_chat.cpp       incoming chat, tabs, Events: Chat, chat codes and links
-  src/kb_chatsource.cpp the guard between Events: Chat and us: `OnChatEvents`, the shield (`CopyLineGuarded`, SEH),
-                        probation / watch / crash marker, reading on-off by hand, the protocol
+  src/kb_chatsource.cpp the guard between Events: Chat and us: `OnChatEvents`, the shield (`CopyLineGuarded`:
+                        VirtualQuery first, SEH last), the pause, reading on-off by hand, the technical details
   src/kb_window.cpp     the main window: header, chat, preview, word bar, input, footer, minimise / restore
   src/kb_options.cpp    the options window and the modules list
   src/chat_links.*      chat codes: "[Item name]" in rarity colour + mouse-over details via Decoder Ring;
@@ -59,18 +59,19 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   – without it the add-on crashed on unload.
 - **Failsafe:** every callback runs behind try/catch + SEH (`SafeRender`, `SafeOptions`); an error sets `g_disabled`
   for the session, never takes the game down.
-- **Chat source guard** (user, 2026-10-19: Nexus updates Events: Chat over night, unasked – a changed layout must never
-  take the game down): `OnChatEvents` (kb_chatsource.cpp) copies each line in `CopyLineGuarded` – the only code that
-  reads the other add-on's memory: pointers outside user memory are never touched, strings bounded, SEH; unreadable
-  memory pauses reading for the session. Every copy is checked (`core/chat_source`: hard rules = what garbage does and
-  the real source never does – type, pointer, UTF-8, missing end, control characters, name > 40; the time, the account
-  pattern and flags are notes only: Vonsh's time source is not public). A new version of Events: Chat is on probation
-  (5 good lines; 1 bad: 9 of 10; 2 bad: `BadVersion`, paused); before its first line is copied
-  `<GW2Keyboard>\chat-source-check.txt` names it, a clean unload deletes it – found at load = the game ended during
-  the probation: reading stays off for that version. A checked version (`[ChatSource] VerifiedVersion`) is watched:
-  5 bad of the last 20 pause it for the session. By hand (Options → Modules, the notice in the chat area, the status in
-  the input in the mini mode): "Read the chat" (`[ChatSource] Reading`), "Read anyway", "Check again", "Copy
-  protocol" (lengths and rules only – never text or names). Other add-ons' code runs only behind a guard too:
+- **Chat source guard** (user, 2026-10-19: Nexus updates Events: Chat over night, unasked; updates and compatibility
+  are Nexus' and Vonsh's business, ours is never to crash and never to show garbage – no on / off logic per version):
+  `OnChatEvents` (kb_chatsource.cpp) copies each line in `CopyLineGuarded` – the only code that reads the other
+  add-on's memory: it looks first (`VirtualQuery`: committed, readable, no guard page – catching a guard page fault
+  would take another thread's stack guard), pointers outside user memory are never touched, strings bounded, SEH as the
+  last net. Every copy is checked (`core/chat_source`: hard rules = what garbage does and the real source never does –
+  type, pointer, UTF-8, missing end, control characters, name > 40; the time, the account pattern and flags are notes
+  only: Vonsh's time source is not public). Reading pauses for the session on unreadable memory or when 5 of the last
+  20 lines fail; "Resume" by hand; "Read the chat" off (`[ChatSource] Reading`) touches nothing. For the developer:
+  Options > Technical (`RenderChatSourceDetails`) – the version of Events: Chat, new since the last session
+  (`[ChatSource] LastVersion`; then a note once), the counts, the last lines as lengths and rules ("Copy protocol":
+  never text or names). 2.1.0's probation (marker file, VerifiedVersion / BadVersion) was taken out again; its
+  leftovers are removed at load. Other add-ons' code runs only behind a guard too:
   `ReadAddonDefGuarded` (the module scan calls every add-on's GetAddonDef), `ResolveGuarded` (Decoder Ring: a record
   with room to spare, strings ended, one fault = not asked again this session).
 - **Chat in:** Events: Chat (`EV_CHAT:Message`) → `OnChatEvents` (the guard above) → `AddLine` (`UnescapeChatText`, sanitised) →
@@ -216,9 +217,10 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   frame into a BMP (software, no GPU). Chat text: `LookText` (GW2 palette `kChannelLook`: name strong, message light;
   a dark halo = 4 diagonal copies; `[NexusWindow] Glow / Brightness / GameColors`).
 - The self-test poses as Events: Chat itself (it exports GetAddonDef with Vonsh's signature, `g_fakeChatVersion`)
-  and as a broken Decoder Ring (`FakeDataLink`): crash marker at start, probation, a shifted layout, unreadable
-  memory, endless strings, 3000 random lines, the watch, reading off, the protocol, a marker-free clean unload. Without
-  the shield the process crashes there (checked once). `GW2KB_SHOT_PAUSED=1`: the picture with reading paused. The smoke
+  and as a broken Decoder Ring (`FakeDataLink`): a version new since the last session, a shifted layout, unreadable
+  memory, a guard page (it must stay a guard page), endless strings, 3000 random lines, the pause and "Resume", reading
+  off, the protocol, the version remembered after the unload. Without the look-first and the SEH the process crashes
+  there (checked). The smoke
   test checks that all 500 realistic lines pass the guard (a rule too strict would pause reading for everyone).
 - `build\Release\typing_bench.exe [n]` after every change to the typing help: SURPRISES must stay 0.
 - `build\Release\voice_bench.exe model lang threads wav…` with recordings in `local\voice`.
