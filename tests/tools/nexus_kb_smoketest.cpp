@@ -251,6 +251,29 @@ int wmain(int argc, wchar_t** argv) {
         return 1;
     }
     std::printf("    [PASS] Zero-Stutter SLA satisfied (< 0.8ms avg, < 2.5ms p99)\n");
+    // The formula must add up: our parts sum to our whole, and our whole fits inside the frame measured from outside
+    // (the rest is ImGui's own work: NewFrame, the options callback, Render).
+    if (auto costs = reinterpret_cast<int (*)(void*)>(GetProcAddress(dll, "Gw2KbTestCosts"))) {
+        struct {  // as FrameCosts in kb_shared.hpp
+            double ms[7];
+            double totalMs, lineUs;
+            long long lines;
+        } c{};
+        costs(&c);
+        double parts = 0;
+        for (double v : c.ms) parts += v;
+        std::printf("    Our frame on the render thread: %.3f ms = pre %.3f + options %.3f + window %.3f + header %.3f"
+                    " + chat %.3f + input %.3f + footer %.3f (parts %.3f)\n",
+                    c.totalMs, c.ms[0], c.ms[1], c.ms[2], c.ms[3], c.ms[4], c.ms[5], c.ms[6], parts);
+        std::printf("    Outside it (ImGui itself): %.3f ms of %.3f ms; per chat line: %.2f us (%lld lines)\n", avg - c.totalMs,
+                    avg, c.lineUs, c.lines);
+        const bool addsUp = std::fabs(parts - c.totalMs) <= 0.02 * c.totalMs + 0.002 && c.totalMs <= avg * 1.05;
+        if (!addsUp) {
+            std::printf("    [FAIL] The frame formula does not add up!\n");
+            return 1;
+        }
+        std::printf("    [PASS] The frame formula adds up.\n");
+    }
 
     // -------------------------------------------------------------------------
     // Phase 3: Interactive Typing & Sending Under Heavy Chat

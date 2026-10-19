@@ -280,6 +280,7 @@ std::wstring StatusText() {  // g_mu held
 
 void RenderWindow() {
     if (!ImGui::GetCurrentContext()) return;  // failsafe: no context, no drawing
+    CostFrame costFrame;  // what this frame costs on GW2's render thread, by part (Options > Technical)
     KickSave();
     VoiceIdleUnload();
     ImGuiIO& io = ImGui::GetIO();
@@ -333,7 +334,9 @@ void RenderWindow() {
         return;
     }
     ChatEventsPresent();
+    CostMark(kCostOptions);
     RenderOptionsWindow();
+    CostMark(kCostWindow);
     bool inMap;
     static bool s_uncollapseRestore = false;
     static ImVec2 s_restorePos(-1, -1);
@@ -564,6 +567,7 @@ void RenderWindow() {
     const ImVec4 kAccent(0.94f, 0.75f, 0.35f, 1.f), kPreview(0.59f, 0.80f, 1.f, 1.f);
     const ImGuiStyle& st = ImGui::GetStyle();
 
+    CostMark(kCostHeader);
     // ---- header: the tabs (the chat, whisper tabs; right-click: a new one) · microphone · V / A · menu · close
     const float icon = ImGui::GetFrameHeight();
     const float gap = std::round(icon * 0.6f);
@@ -810,6 +814,7 @@ void RenderWindow() {
         return;
     }
 
+    CostMark(kCostChat);
     // ---- the chat (the newest at the bottom): name white – a click opens a whisper tab –, text in the channel colour,
     // the scroll bar at the left like GW2's own chat
     const float line = ImGui::GetTextLineHeightWithSpacing();
@@ -1016,6 +1021,7 @@ void RenderWindow() {
         ImGui::EndPopup();
     }
 
+    CostMark(kCostInput);
     // ---- the preview: what arrives in the GW2 chat, the back-translation small under it
     const bool previewCurrent = g_previewGen == g_inputGen && !g_preview.empty();
     if (showPreview) {
@@ -1323,6 +1329,7 @@ void RenderWindow() {
                 Fit(t, (inputMax.x - inputMin.x) * (g_status.empty() ? 0.95f : 0.38f)), 0.85f);
     }
 
+    CostMark(kCostFooter);
     // ---- the footer: channel | write | send · translator | auto | counter
     if (Lay().footer) RenderFooter();
     // Changes of the text: a pause translates it; the typing help follows every key.
