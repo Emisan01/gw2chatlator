@@ -4,35 +4,8 @@
 
 namespace kb {
 
-// The input as it is meant: one line. A soft break at a space is '\n' (it stands for the space); a word longer than
-// the line (a code, a link) is broken by "\r\n" (it stands for nothing). '\r' never comes from you – the filter drops it.
-std::string Flat(const char* s) {
-    std::string f;
-    for (const char* p = s; *p; ++p) {
-        if (*p == '\r') {
-            if (p[1] == '\n') ++p;  // a break inside a word: nothing
-            continue;
-        }
-        f += *p == '\n' ? ' ' : *p;
-    }
-    return f;
-}
+// Flat / RawOffset (the soft breaks): core/soft_wrap.
 std::wstring g_teachWord;  // the word a right-click hit (the learning window starts with it)
-
-// Where byte `flatByte` of Flat(raw) stands in `raw` (the input with its soft breaks).
-size_t RawOffset(const char* raw, size_t rawLen, size_t flatByte) {
-    size_t flat = 0, i = 0;
-    while (i < rawLen && flat < flatByte) {
-        if (raw[i] == '\r') {
-            i += (i + 1 < rawLen && raw[i + 1] == '\n') ? 2 : 1;
-            continue;
-        }
-        ++flat;
-        ++i;
-    }
-    while (i < rawLen && raw[i] == '\r') i += (i + 1 < rawLen && raw[i + 1] == '\n') ? 2 : 1;  // after a word break
-    return i;
-}
 
 // The grey text after the caret: what Space writes (a completion shows its rest, a
 // correction "> word"); after a space the sure next word or phrase. `replace` gets what Tab takes.

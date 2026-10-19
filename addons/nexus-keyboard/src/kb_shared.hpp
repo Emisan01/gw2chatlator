@@ -36,6 +36,7 @@
 #include "core/languages.hpp"
 #include "core/protect.hpp"
 #include "core/send_guard.hpp"
+#include "core/soft_wrap.hpp"
 #include "core/slang.hpp"
 #include "core/text.hpp"
 #include "core/translator.hpp"
@@ -317,9 +318,7 @@ extern std::atomic<uint32_t> g_mapId;
 // The input line.
 extern char g_input[1024];
 extern float g_wrapWidth;
-std::string Flat(const char* s);
 extern std::wstring g_teachWord;
-size_t RawOffset(const char* raw, size_t rawLen, size_t flatByte);
 extern std::string g_flatInput;
 extern std::wstring g_wFlatInput;
 extern std::string g_lastInput;
@@ -643,6 +642,7 @@ void CostReset();  // the sums start again
 // kb_chatsource.cpp: the guard between Events: Chat (another add-on, updated unasked) and us.
 struct ChatSourceTest {  // nexus_kb_selftest reads this
     int reading = 0, pause = 0, shown = 0, dropped = 0, unreadable = 0, disabled = 0, decoderFault = 0;
+    int received = 0, ignored = 0;
     char version[32] = {}, before[32] = {};
 };
 bool ReadAddonDefGuarded(void* proc, uint32_t* signature, AddonVersion_t* version);
