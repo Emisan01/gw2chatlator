@@ -13,7 +13,10 @@ something the next agent needs.
 addons/nexus-keyboard   the add-on
   src/kb_main.cpp       the Nexus glue only: load / unload, keybinds, callbacks, first start, test exports
   src/kb_shared.hpp     what the modules share: types, `extern` state, function declarations (keep its order: it was
-                        generated from the one kb_main.cpp, things are declared before they are used)
+                        generated from the one kb_main.cpp, things are declared before they are used). Its bigger
+                        pieces stand in their own headers, included by it at their place: kb_worker.hpp (the worker
+                        thread), kb_voice_helper.hpp, kb_cost.hpp (the frame profiler), kb_chatsource.hpp – a .cpp
+                        includes kb_shared.hpp, never those directly
   src/kb_state.cpp      the shared state, layout load / save, window profiles (`ProfileOn` / `SetProfile`), languages
   src/kb_theme.cpp      themes (CBA too), the text font, chat colours, LookText, icons
   src/kb_input.cpp      the input: soft breaks, the grey word, Tab / Space, words under the mouse, your corrections

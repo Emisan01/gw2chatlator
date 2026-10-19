@@ -211,63 +211,9 @@ inline const char* WhisperTab::Label() const {
     return label.c_str();
 }
 
-// ---------------------------------------------------------------------------------------------------------------
-// One worker thread: translations, spelling and sending never run on the game's threads.
-class Worker {
-public:
-    void Start() {
-        stop_ = false;
-        thread_ = std::thread([this] { Run(); });
-    }
-    // Pending jobs are dropped; `last` still runs on the worker (it frees what the worker owns) before it ends.
-    void Stop(std::function<void()> last = {}) {
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            jobs_.clear();
-            if (last) jobs_.push_back(std::move(last));
-            stop_ = true;
-        }
-        cv_.notify_all();
-        if (thread_.joinable()) thread_.join();
-    }
-    void Post(std::function<void()> job) {
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            if (jobs_.size() > 96) jobs_.pop_front();  // a flood (WvW): the oldest wait no longer
-            jobs_.push_back(std::move(job));
-        }
-        cv_.notify_one();
-    }
-
-private:
-    void Run() {
-        SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
-        CoInitializeEx(nullptr, COINIT_MULTITHREADED);  // language detection, spell checker, word prediction
-        for (;;) {
-            std::function<void()> job;
-            {
-                std::unique_lock<std::mutex> lock(mu_);
-                cv_.wait(lock, [this] { return stop_ || !jobs_.empty(); });
-                if (jobs_.empty()) break;  // stopped, nothing left
-                job = std::move(jobs_.front());
-                jobs_.pop_front();
-            }
-            try {
-                job();
-            } catch (...) {
-                Log(LOGL_WARNING, "a background job failed");
-            }
-        }
-        CoUninitialize();
-    }
-    std::mutex mu_;
-    std::condition_variable cv_;
-    std::deque<std::function<void()>> jobs_;
-    bool stop_ = false;
-    std::thread thread_;
-};
-
-extern Worker g_worker;
+}  // namespace kb
+#include "kb_worker.hpp"
+namespace kb {
 
 // Only the worker touches these (no lock needed).
 extern SpellService* g_spell;
@@ -422,97 +368,9 @@ void TranslateInput(uint64_t gen, std::wstring text);
 void ComputeTyping();
 void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring learnText);
 
-// ---------------------------------------------------------------------------------------------------------------
-// The voice helper: a hidden process with pipes; its events are read on our own thread.
-class VoiceHelper {
-public:
-    bool Start(const std::wstring& exe, const std::wstring& dataDir) {
-        Stop();
-        SECURITY_ATTRIBUTES sa{sizeof(sa), nullptr, TRUE};
-        HANDLE inRead = nullptr, outWrite = nullptr;
-        if (!CreatePipe(&inRead, &inWrite_, &sa, 0)) return false;
-        if (!CreatePipe(&outRead_, &outWrite, &sa, 0)) {
-            CloseHandle(inRead);
-            Close();
-            return false;
-        }
-        SetHandleInformation(inWrite_, HANDLE_FLAG_INHERIT, 0);  // our ends stay ours
-        SetHandleInformation(outRead_, HANDLE_FLAG_INHERIT, 0);
-        STARTUPINFOW si{};
-        si.cb = sizeof(si);
-        si.dwFlags = STARTF_USESTDHANDLES;
-        si.hStdInput = inRead;
-        si.hStdOutput = outWrite;
-        si.hStdError = outWrite;
-        std::wstring cmd = L"\"" + exe + L"\" --data \"" + dataDir + L"\"";
-        PROCESS_INFORMATION pi{};
-        const BOOL ok = CreateProcessW(exe.c_str(), cmd.data(), nullptr, nullptr, TRUE,
-                                       CREATE_NO_WINDOW | BELOW_NORMAL_PRIORITY_CLASS, nullptr, nullptr, &si, &pi);
-        CloseHandle(inRead);
-        CloseHandle(outWrite);
-        if (!ok) {
-            Close();
-            return false;
-        }
-        CloseHandle(pi.hThread);
-        process_ = pi.hProcess;
-        reader_ = std::thread([this] { Read(); });
-        return true;
-    }
-    void Send(const char* cmd) {
-        if (!inWrite_) return;
-        const std::string line = std::string(cmd) + "\n";
-        DWORD n = 0;
-        WriteFile(inWrite_, line.data(), static_cast<DWORD>(line.size()), &n, nullptr);
-    }
-    void Stop() {
-        if (process_) {
-            Send("quit");
-            if (WaitForSingleObject(process_, 2000) != WAIT_OBJECT_0) TerminateProcess(process_, 0);
-        }
-        Close();
-        if (reader_.joinable()) reader_.join();  // its pipe is closed: ReadFile returns
-    }
-    bool Running() const { return process_ != nullptr; }
-
-private:
-    void Close() {
-        if (inWrite_) CloseHandle(inWrite_);
-        if (process_) CloseHandle(process_);
-        inWrite_ = process_ = nullptr;
-        if (outRead_ && !reader_.joinable()) {
-            CloseHandle(outRead_);
-            outRead_ = nullptr;
-        }
-    }
-    void Read() {
-        std::string pending;
-        char buf[2048];
-        DWORD n = 0;
-        while (ReadFile(outRead_, buf, sizeof(buf), &n, nullptr) && n > 0) {
-            pending.append(buf, n);
-            size_t nl;
-            while ((nl = pending.find('\n')) != std::string::npos) {
-                const std::string line = pending.substr(0, nl);
-                pending.erase(0, nl + 1);
-                try {
-                    OnLine(line);
-                } catch (...) {
-                }
-            }
-        }
-        CloseHandle(outRead_);
-        outRead_ = nullptr;
-        std::lock_guard<std::mutex> lock(g_mu);
-        g_voiceReady = g_recording = false;
-        g_voiceLive.clear();
-    }
-    static void OnLine(const std::string& line);
-    HANDLE process_ = nullptr, inWrite_ = nullptr, outRead_ = nullptr;
-    std::thread reader_;
-};
-
-extern VoiceHelper g_voice;
+}  // namespace kb
+#include "kb_voice_helper.hpp"
+namespace kb {
 void VoiceReload();
 void NoteVoiceRun(const JsonValue& v);
 std::wstring HelperExe();
@@ -618,43 +476,13 @@ extern std::atomic<int> g_wipeDone;
 void StatusRow(const std::string& what, int state, const std::string& text);
 void RenderModules(bool guide);
 
-// What our frame costs on GW2's render thread, by part (Options > Technical; the smoke test checks the parts add up to
-// the whole). A few QueryPerformanceCounter calls per frame, rolling averages – no measurable cost of its own.
-enum CostPart { kCostPre, kCostOptions, kCostWindow, kCostHeader, kCostChat, kCostInput, kCostFooter, kCostParts };
-struct FrameCosts {
-    double ms[kCostParts] = {};  // rolling average per part
-    double totalMs = 0;          // rolling average of the whole RenderWindow
-    double lineUs = 0;           // average per chat line arriving (OnChatEvents)
-    long long lines = 0;
-    double sumMs[kCostParts] = {};  // exact sums since CostReset (the smoke test's equation: like with like)
-    double sumTotalMs = 0;
-    long long frames = 0;
-};
-struct CostFrame {  // RenderWindow: starts the frame, ends it on every return
-    CostFrame();
-    ~CostFrame();
-};
-void CostMark(int part);  // the running part ends, `part` starts
-void CostLine(double us);
-FrameCosts CostsNow();
-void CostReset();  // the sums start again
+}  // namespace kb
+#include "kb_cost.hpp"
+namespace kb {
 
-// kb_chatsource.cpp: the guard between Events: Chat (another add-on, updated unasked) and us.
-struct ChatSourceTest {  // nexus_kb_selftest reads this
-    int reading = 0, pause = 0, shown = 0, dropped = 0, unreadable = 0, disabled = 0, decoderFault = 0;
-    int received = 0, ignored = 0;
-    char version[32] = {}, before[32] = {};
-};
-bool ReadAddonDefGuarded(void* proc, uint32_t* signature, AddonVersion_t* version);
-void ChatSourceLoad();    // g_mu held
-void ChatSourceSetVersion(const std::wstring& version);  // g_mu NOT held
-void ChatSourceSetReading(bool on, bool muHeld);
-void ChatSourceResume();
-std::string ChatSourceProtocolText();
-void RenderChatSourceRow();      // g_mu NOT held
-void RenderChatSourceNotice();   // g_mu held
-void RenderChatSourceDetails();  // g_mu held (Options > Technical)
-void ChatSourceTestState(ChatSourceTest* t);
+}  // namespace kb
+#include "kb_chatsource.hpp"
+namespace kb {
 
 // ---- chat codes: their own module (chat_links) – "[Item name]" as the game links them, the details on mouse-over.
 extern ChatLinks g_links;
