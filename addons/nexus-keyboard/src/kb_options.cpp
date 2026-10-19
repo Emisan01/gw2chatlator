@@ -67,6 +67,7 @@ void RenderModules(bool guide) {  // g_mu NOT held
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", UI(Tr(L"Events: Chat is its own add-on – other add-ons may use it too.")).c_str());
     }
+    if (!guide && chatLive) RenderChatSourceRow();  // reading it: checked, paused, by hand
     // The voice module and its model.
     bool enabled, ready;
     {

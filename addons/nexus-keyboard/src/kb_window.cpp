@@ -932,6 +932,7 @@ void RenderWindow() {
         const WhisperTab* front = g_activeTab >= 0 && g_activeTab < static_cast<int>(g_tabs.size()) ? &g_tabs[g_activeTab] : nullptr;
         const std::wstring& tabName = front && !front->custom ? front->nameFolded : s_emptyW;
         const uint32_t tabChannels = front && front->custom ? front->channels : 0xFFFFFFFFu;
+        RenderChatSourceNotice();  // reading Events: Chat is off or paused: why, and what you can do
         if (g_lines.empty() && g_layout.infoText) {  // nothing arrived yet: what is ready, what is missing, where translation is switched on
             lock.unlock();
             RenderModules(true);

@@ -3,6 +3,20 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## Unreleased (GW2Chatlator for Nexus)
+
+- **An update of Events: Chat can no longer take the game down.** Nexus updates Events: Chat over night, unasked; if
+  its layout ever changed, reading it the old way could have crashed the game. Now one guarded piece of code copies
+  every line (pointers checked, texts bounded; unreadable memory only pauses reading), every line is checked before
+  it is shown, and a new version of Events: Chat is on probation for its first five lines. If the game still ended
+  during that check, the next start keeps reading off for that version. Writing and sending always keep working.
+- **Reading the chat by hand** (Options → General → Modules): switch it off, "Read anyway", "Check again", and
+  "Copy protocol" – versions and the rule each line failed, no chat text and no names, ready for a GitHub issue.
+  When reading pauses, the chat area (or the input, in the mini mode) says why.
+- **Decoder Ring** (the names of chat codes) runs behind a guard as well: a broken update leaves the codes plain.
+- The self-test poses as Events: Chat and as a broken Decoder Ring: a changed layout, unreadable memory, endless
+  texts, 3000 random lines – nothing crashes, garbage is never shown.
+
 ## 2.0.5 — 2026-10-18 (GW2Chatlator for Nexus)
 
 - **The window no longer stays too tall after the mini mode.** A long input had made the big window taller; you

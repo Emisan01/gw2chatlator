@@ -192,6 +192,19 @@ int wmain(int argc, wchar_t** argv) {
     auto endIngest = std::chrono::high_resolution_clock::now();
     double ingestMs = std::chrono::duration<double, std::milli>(endIngest - startIngest).count();
     std::printf("    [PASS] 500 lines ingested in %.2f ms (%.2f lines/ms)\n", ingestMs, 500.0 / ingestMs);
+    // The chat source guard must take every realistic line (Unicode, chat codes, links, tricks): none rejected, no pause.
+    if (auto src = reinterpret_cast<int (*)(int, void*, char*)>(GetProcAddress(dll, "Gw2KbTestChatSource"))) {
+        struct {  // as ChatSourceTest in kb_shared.hpp
+            int reading, pause, probeLines, probeFails, shown, dropped, marker, disabled, decoderFault;
+            char version[32], verified[32], bad[32], probing[32];
+        } st{};
+        src(0, &st, nullptr);
+        std::printf("    chat source guard: %d shown, %d dropped, pause %d\n", st.shown, st.dropped, st.pause);
+        if (st.shown != 500 || st.dropped != 0 || st.pause != 0) {
+            std::printf("    [FAIL] The chat source guard rejected realistic lines!\n");
+            return 1;
+        }
+    }
 
     // -------------------------------------------------------------------------
     // Phase 2: High-Resolution Frame-Time Profiling (1,000 Frames)

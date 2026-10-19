@@ -35,6 +35,7 @@
 #include "core/voice_learn.hpp"
 #include "core/send_guard.hpp"
 #include "core/chat_code.hpp"
+#include "core/chat_source.hpp"
 #include "core/contrast.hpp"
 
 using namespace gct;
@@ -1836,7 +1837,107 @@ static void TestContrast() {
     CHECK(!ParseThemeCode("", 8, &back));
 }
 
+// The chat source (Events: Chat, another add-on): plausible lines pass, garbage never, probation and pause, a protocol
+// without names or text.
+static ChatSourceLine SrcLine(int32_t type, const char* name, const char* text, const char* account = nullptr) {
+    ChatSourceLine l;
+    l.type = type;
+    l.read = ChatSourceTypeHasName(type) || ChatSourceTypeTextOnly(type);
+    if (name) {
+        l.nameNull = false;
+        std::snprintf(l.name, sizeof(l.name), "%s", name);
+    }
+    if (account) {
+        l.accountNull = false;
+        std::snprintf(l.account, sizeof(l.account), "%s", account);
+    }
+    if (text) {
+        l.contentNull = false;
+        std::snprintf(l.content, sizeof(l.content), "%s", text);
+    }
+    return l;
+}
+
+static void TestChatSource() {
+    const uint64_t now = 133000000000000000ull;
+    // Plausible lines: no hard rule, whatever the time (the source's time is not documented: only a note).
+    ChatSourceLine ok = SrcLine(kSrcMap, "Kai Example", "anyone up for the world boss?", "Kai.1234");
+    ok.time = now;
+    CHECK(!CheckChatLine(ok, now).Hard());
+    CHECK(CheckChatLine(ok, now).rules == 0);
+    ok.time = 0;
+    CHECK(!CheckChatLine(ok, now).Hard() && (CheckChatLine(ok, now).rules & kNoteTime));
+    CHECK(!CheckChatLine(SrcLine(kSrcWhisper, "Zo\xC3\xAB Fake", "gr\xC3\xBC\xC3\x9F" "e \xF0\x9F\x98\x80"), now).Hard());
+    CHECK(!CheckChatLine(SrcLine(kSrcSquadMessage, nullptr, "stack on tag"), now).Hard());
+    CHECK(!CheckChatLine(SrcLine(kSrcGuild, "Eli Mock", "hi", ":Eli.4321"), now).Hard());
+    // A type we do not show: only its head was read, no failure.
+    ChatSourceLine emote = SrcLine(kSrcEmote, nullptr, nullptr);
+    CHECK(!CheckChatLine(emote, now).Hard() && (CheckChatLine(emote, now).rules & kNoteNotShown));
+    // Notes only: an odd account, unknown flags, no text.
+    ChatSourceLine odd = SrcLine(kSrcMap, "Kai Example", "x", "no account");
+    odd.flags = 1u << 9;
+    const uint32_t oddRules = CheckChatLine(odd, now).rules;
+    CHECK(!CheckChatLine(odd, now).Hard() && (oddRules & kNoteAccount) && (oddRules & kNoteFlags));
+    CHECK((CheckChatLine(SrcLine(kSrcMap, "Kai", nullptr), now).rules & kNoteEmpty) != 0);
+    CHECK(!CheckChatLine(SrcLine(kSrcMap, "Kai", nullptr), now).Hard());
+    // Garbage: hard.
+    CHECK(CheckChatLine(SrcLine(-1, "a", "b"), now).rules & kRuleType);
+    CHECK(CheckChatLine(SrcLine(14, "a", "b"), now).rules & kRuleType);
+    CHECK(CheckChatLine(SrcLine(0x4F2A11, "a", "b"), now).Hard());
+    CHECK(CheckChatLine(SrcLine(kSrcMap, "Kai", "\xFF\xFE garbage"), now).rules & kRuleUtf8);
+    CHECK(CheckChatLine(SrcLine(kSrcMap, "Kai", "\xC0\xAF"), now).rules & kRuleUtf8);        // overlong '/'
+    CHECK(CheckChatLine(SrcLine(kSrcMap, "Kai", "\xED\xA0\x80"), now).rules & kRuleUtf8);    // a surrogate
+    CHECK(CheckChatLine(SrcLine(kSrcMap, "Kai", "\xE2\x82"), now).rules & kRuleUtf8);        // cut in the middle
+    CHECK(CheckChatLine(SrcLine(kSrcMap, "K\x01i", "x"), now).rules & kRuleControl);
+    CHECK(CheckChatLine(SrcLine(kSrcMap, "Kai", "x", "a\x07" "b.1234"), now).rules & kRuleControl);
+    CHECK(CheckChatLine(SrcLine(kSrcMap, "Abcdefghijklmnopqrstuvwxyzabcdefghijklmno", "x"), now).rules & kRuleNameLength);
+    CHECK(!CheckChatLine(SrcLine(kSrcMap, "Abcdefghijklmnopqrs", "x"), now).Hard());  // 19: the longest GW2 name
+    ChatSourceLine cut = SrcLine(kSrcMap, "Kai", "x");
+    cut.contentCut = true;
+    CHECK(CheckChatLine(cut, now).rules & kRuleLength);
+    ChatSourceLine bad = SrcLine(kSrcMap, nullptr, "x");
+    bad.nameNull = false;
+    bad.nameBadPtr = true;
+    CHECK(CheckChatLine(bad, now).rules & kRulePointer);
+    CHECK(IsValidUtf8("") && IsValidUtf8("abc") && IsValidUtf8("\xF4\x8F\xBF\xBF") && !IsValidUtf8("\xF4\x90\x80\x80"));
+    // Probation: 5 good lines pass; one bad line needs 9 of 10; two bad lines fail.
+    ChatSourceProbe p;
+    for (int i = 0; i < 4; ++i) CHECK(p.Feed(false) == ChatSourceProbe::Result::Running);
+    CHECK(p.Feed(false) == ChatSourceProbe::Result::Passed);
+    p.Reset();
+    CHECK(p.Feed(true) == ChatSourceProbe::Result::Running);
+    for (int i = 0; i < 8; ++i) CHECK(p.Feed(false) == ChatSourceProbe::Result::Running);
+    CHECK(p.Feed(false) == ChatSourceProbe::Result::Passed);
+    p.Reset();
+    p.Feed(false);
+    CHECK(p.Feed(true) == ChatSourceProbe::Result::Running);
+    CHECK(p.Feed(true) == ChatSourceProbe::Result::Failed);
+    // The watch: 4 bad lines among 20 keep reading, the 5th pauses.
+    ChatSourceWatch w;
+    bool paused = false;
+    for (int i = 0; i < 40; ++i) paused = paused || w.Feed(i % 5 == 0);  // 4 of every 20
+    CHECK(!paused);
+    w.Reset();
+    for (int i = 0; i < 4; ++i) CHECK(!w.Feed(true));
+    CHECK(w.Feed(true));
+    // The protocol: versions, types, lengths, rules – never a name or text.
+    ChatSourceReport rep;
+    rep.addonVersion = "2.1.0";
+    rep.sourceVersion = "0.2.4.0";
+    rep.verifiedVersion = "0.2.3.0";
+    rep.state = "paused";
+    rep.lines.push_back(RecordOf(ok, CheckChatLine(ok, now)));
+    ChatSourceLine garbage = SrcLine(kSrcMap, "Kai Example", "\xFF secret text");
+    rep.lines.push_back(RecordOf(garbage, CheckChatLine(garbage, now)));
+    const std::string prot = ChatSourceProtocol(rep);
+    CHECK(prot.find("0.2.4.0") != std::string::npos && prot.find("0.2.3.0") != std::string::npos);
+    CHECK(prot.find("utf8") != std::string::npos && prot.find("name 11") != std::string::npos);
+    CHECK(prot.find("Kai") == std::string::npos && prot.find("secret") == std::string::npos &&
+          prot.find("world boss") == std::string::npos);
+}
+
 int main() {
+    TestChatSource();
     TestContrast();
     TestUtf();
     TestFreeText();

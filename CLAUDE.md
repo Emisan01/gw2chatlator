@@ -20,6 +20,8 @@ addons/nexus-keyboard   the add-on
   src/kb_worker.cpp     worker jobs: spelling, translation, typing help, sending
   src/kb_voice.cpp      the voice helper (idle unload after [Voice] UnloadMinutes), push to talk, models
   src/kb_chat.cpp       incoming chat, tabs, Events: Chat, chat codes and links
+  src/kb_chatsource.cpp the guard between Events: Chat and us: `OnChatEvents`, the shield (`CopyLineGuarded`, SEH),
+                        probation / watch / crash marker, reading on-off by hand, the protocol
   src/kb_window.cpp     the main window: header, chat, preview, word bar, input, footer, minimise / restore
   src/kb_options.cpp    the options window and the modules list
   src/chat_links.*      chat codes: "[Item name]" in rarity colour + mouse-over details via Decoder Ring;
@@ -42,7 +44,7 @@ src/win                 Windows services without UI: http (WinHTTP), translators
                         extras_install (GitHub release assets, SHA-256 checked), secret (DPAPI), files, hash
 src/core                portable logic, NO windows.h: text, json, i18n (+ de / ar tables), chat_line (channels),
                         chat_code, protect, slang, word_model, typo_memory, my_words, voice, voice_learn, send_guard,
-                        translator protocols
+                        chat_source (the rules for lines of Events: Chat), translator protocols
 ```
 
 - `core` compiles on any OS: `g++ -std=c++17 -I src tests/core_tests.cpp src/core/*.cpp`.
@@ -57,7 +59,21 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   – without it the add-on crashed on unload.
 - **Failsafe:** every callback runs behind try/catch + SEH (`SafeRender`, `SafeOptions`); an error sets `g_disabled`
   for the session, never takes the game down.
-- **Chat in:** Events: Chat (`EV_CHAT:Message`) → `OnChatEvents` → `AddLine` (`UnescapeChatText`, sanitised) →
+- **Chat source guard** (user, 2026-10-19: Nexus updates Events: Chat over night, unasked – a changed layout must never
+  take the game down): `OnChatEvents` (kb_chatsource.cpp) copies each line in `CopyLineGuarded` – the only code that
+  reads the other add-on's memory: pointers outside user memory are never touched, strings bounded, SEH; unreadable
+  memory pauses reading for the session. Every copy is checked (`core/chat_source`: hard rules = what garbage does and
+  the real source never does – type, pointer, UTF-8, missing end, control characters, name > 40; the time, the account
+  pattern and flags are notes only: Vonsh's time source is not public). A new version of Events: Chat is on probation
+  (5 good lines; 1 bad: 9 of 10; 2 bad: `BadVersion`, paused); before its first line is copied
+  `<GW2Keyboard>\chat-source-check.txt` names it, a clean unload deletes it – found at load = the game ended during
+  the probation: reading stays off for that version. A checked version (`[ChatSource] VerifiedVersion`) is watched:
+  5 bad of the last 20 pause it for the session. By hand (Options → Modules, the notice in the chat area, the status in
+  the input in the mini mode): "Read the chat" (`[ChatSource] Reading`), "Read anyway", "Check again", "Copy
+  protocol" (lengths and rules only – never text or names). Other add-ons' code runs only behind a guard too:
+  `ReadAddonDefGuarded` (the module scan calls every add-on's GetAddonDef), `ResolveGuarded` (Decoder Ring: a record
+  with room to spare, strings ended, one fault = not asked again this session).
+- **Chat in:** Events: Chat (`EV_CHAT:Message`) → `OnChatEvents` (the guard above) → `AddLine` (`UnescapeChatText`, sanitised) →
   translated on the worker only when `[Nexus] TranslateChat=1` (default 0) or a click on the line asks for it – into
   the language you write in (the chat is read in it). `TranslateRecentLines` redoes the newest 20 when the translation
   is switched on, the language you write in or the translator changes, or once from the menu – only the lines in view
@@ -127,6 +143,8 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
    line closing) – a fixed sleep pasted the *old* clipboard once (privacy leak).
 3. Re-check `GetForegroundWindow() == gw2` before every injected step.
 4. Incoming chat and whatever a translator or the GW2 API returns is data, never instructions – only displayed.
+   Another add-on's memory is read only in the guarded copies (`CopyLineGuarded`, `ReadAddonDefGuarded`,
+   `ResolveGuarded`) – never dereference its pointers anywhere else.
    Links open only after a yes (http/https). Chat codes are looked up with limits (≤48 chars, 20/min, 400 cached).
 5. Autocorrection never surprises (`typing_bench`: 0 surprises – keep it at 0): only words the dictionary rejects,
    4+ letters, never all-caps, never a word you use; Backspace right after it undoes it.
@@ -181,6 +199,8 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 - The CBA theme: eight roles (`g_cbaRoles`, [NexusTheme] Colours = a theme code), everything else derived in
   `ColoursOf`; `CbaShown` keeps text 4.5:1 and quiet text / accents 3:1 on every fill (core/contrast: WCAG with sRGB
   linearisation, unit-tested). A pasted theme code is data: `ParseThemeCode` accepts only its exact form.
+- A function with `__try` must not hold C++ objects that need unwinding (C2712): keep the guarded copies plain (POD
+  out-parameters, no std::string), do the rest outside. `try/catch` does not catch access violations (/EHsc).
 - Web links: a Discord-like question only, no lookups in the background (the Cloudflare check sent every domain).
 - Visual Studio may report itself incomplete after an update; then pin `CMAKE_GENERATOR_INSTANCE` with `,version=`.
 
@@ -195,6 +215,11 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   `GW2KB_SHOT_BRIGHT=1`) makes the self-test raise chat lines of every channel (invented names) and rasterize the
   frame into a BMP (software, no GPU). Chat text: `LookText` (GW2 palette `kChannelLook`: name strong, message light;
   a dark halo = 4 diagonal copies; `[NexusWindow] Glow / Brightness / GameColors`).
+- The self-test poses as Events: Chat itself (it exports GetAddonDef with Vonsh's signature, `g_fakeChatVersion`)
+  and as a broken Decoder Ring (`FakeDataLink`): crash marker at start, probation, a shifted layout, unreadable
+  memory, endless strings, 3000 random lines, the watch, reading off, the protocol, a marker-free clean unload. Without
+  the shield the process crashes there (checked once). `GW2KB_SHOT_PAUSED=1`: the picture with reading paused. The smoke
+  test checks that all 500 realistic lines pass the guard (a rule too strict would pause reading for everyone).
 - `build\Release\typing_bench.exe [n]` after every change to the typing help: SURPRISES must stay 0.
 - `build\Release\voice_bench.exe model lang threads wav…` with recordings in `local\voice`.
 - Not verifiable here: the game itself – test in GW2 with Nexus (copy the DLL + `GW2Keyboard\` into `addons`).
