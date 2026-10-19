@@ -197,11 +197,12 @@ int wmain(int argc, wchar_t** argv) {
     if (auto src = reinterpret_cast<int (*)(int, void*, char*)>(GetProcAddress(dll, "Gw2KbTestChatSource"))) {
         struct {  // as ChatSourceTest in kb_shared.hpp
             int reading, pause, shown, dropped, unreadable, disabled, decoderFault;
+            int received, ignored;
             char version[32], before[32];
         } st{};
         src(0, &st, nullptr);
         std::printf("    chat source guard: %d shown, %d dropped, pause %d\n", st.shown, st.dropped, st.pause);
-        if (st.shown != 500 || st.dropped != 0 || st.pause != 0) {
+        if (st.shown != 500 || st.dropped != 0 || st.pause != 0 || st.received != st.shown + st.dropped + st.ignored) {
             std::printf("    [FAIL] The chat source guard rejected realistic lines!\n");
             failed = true;
         }

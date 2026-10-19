@@ -103,7 +103,9 @@ struct SourceState {
     bool announced = false;     // the pause was said once in the window (also in the mini mode)
     gct::ChatSourceWatch watch;
     std::deque<gct::ChatSourceRecord> recent;  // the last 20 lines: types, lengths, rules – never text
-    int shown = 0, dropped = 0, unreadable = 0;
+    // Every line lands in exactly one pot: received == shown + dropped + ignored (a known type we do not show, an
+    // empty event) – nothing disappears unnoticed (the self-test and the smoke test check the equation).
+    int received = 0, shown = 0, dropped = 0, ignored = 0, unreadable = 0;
 };
 SourceState g_src;
 
@@ -187,7 +189,7 @@ void ChatSourceLoad() {  // g_mu held, after the ini was read
     g_src.announced = false;
     g_src.watch.Reset();
     g_src.recent.clear();
-    g_src.shown = g_src.dropped = g_src.unreadable = 0;
+    g_src.received = g_src.shown = g_src.dropped = g_src.ignored = g_src.unreadable = 0;
 }
 
 void ChatSourceSetVersion(const std::wstring& version) {  // from the module scan (every 3 s; g_mu NOT held)
@@ -228,6 +230,7 @@ void OnChatEvents(void* args) {
     std::wstring ver, status;
     {
         std::lock_guard<std::mutex> lock(g_src.mu);
+        ++g_src.received;
         if (!g_src.reading || g_src.pause != kPauseNone) {
             ++g_src.dropped;
             return;  // off or paused: not a byte of the line is touched
@@ -236,7 +239,11 @@ void OnChatEvents(void* args) {
     }
     gct::ChatSourceLine line;
     const int got = CopyLineGuarded(args, &line);
-    if (got == 0) return;
+    if (got == 0) {  // no line at all
+        std::lock_guard<std::mutex> lock(g_src.mu);
+        ++g_src.ignored;
+        return;
+    }
     gct::ChatLineVerdict v;
     if (got < 0) v.rules = gct::kRuleUnreadable;
     else v = gct::CheckChatLine(line, NowFiletime());
@@ -246,7 +253,8 @@ void OnChatEvents(void* args) {
         g_src.recent.push_back(gct::RecordOf(line, v));
         if (g_src.recent.size() > 20) g_src.recent.pop_front();
         if (show) ++g_src.shown;
-        else if (got < 0 || v.Hard()) ++g_src.dropped;  // a known type we do not show is no failure
+        else if (got < 0 || v.Hard()) ++g_src.dropped;
+        else ++g_src.ignored;  // a known type we do not show: no failure
         int pause = kPauseNone;
         if (got < 0) {
             ++g_src.unreadable;
@@ -413,6 +421,8 @@ void ChatSourceTestState(ChatSourceTest* t) {
     t->shown = g_src.shown;
     t->dropped = g_src.dropped;
     t->unreadable = g_src.unreadable;
+    t->received = g_src.received;
+    t->ignored = g_src.ignored;
     t->disabled = g_disabled ? 1 : 0;
     t->decoderFault = gct::DecoderRingFaulted() ? 1 : 0;
     strncpy_s(t->version, U8(g_src.version).c_str(), _TRUNCATE);

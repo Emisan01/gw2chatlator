@@ -55,6 +55,7 @@ void* FakeDataLink(const char* id) {
 
 struct ChatSourceTest {  // as in kb_shared.hpp
     int reading = 0, pause = 0, shown = 0, dropped = 0, unreadable = 0, disabled = 0, decoderFault = 0;
+    int received = 0, ignored = 0;
     char version[32] = {}, before[32] = {};
 };
 std::wstring g_iniPath;  // <GW2Keyboard>\gw2-chat-translator.ini
@@ -975,6 +976,12 @@ int wmain(int argc, wchar_t** argv) {
         // I. The version this session ends with is what the next one compares with (checked after the unload).
         newVersion(14);
         expect(std::strcmp(srcState().before, "9.9.13.0") == 0, "the version before was not named");
+        {  // E5: every line in exactly one pot
+            const ChatSourceTest c = srcState();
+            std::printf("chat source pots: %d received = %d shown + %d dropped + %d ignored\n", c.received, c.shown,
+                        c.dropped, c.ignored);
+            expect(c.received > 0 && c.received == c.shown + c.dropped + c.ignored, "a line disappeared unnoticed");
+        }
         std::printf("chat source guard: %s (the shield caught %d unreadable lines)\n", good ? "ok" : "FAILED",
                     srcState().unreadable);
         ok = ok && good;

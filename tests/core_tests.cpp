@@ -37,6 +37,7 @@
 #include "core/chat_code.hpp"
 #include "core/chat_source.hpp"
 #include "core/window_layout.hpp"
+#include "core/soft_wrap.hpp"
 #include "core/contrast.hpp"
 
 using namespace gct;
@@ -2026,7 +2027,93 @@ static void TestWindowLayout() {
     CHECK(SnapAnchor(WinMode::Button, a, s, 14, 10).left == 10);  // the button: onto GW2's chat edge
 }
 
+// Equations of the other elements – true or false for every random input, never "about".
+static void TestEquations() {
+    uint64_t rng = 0x9E3779B97F4A7C15ull;
+    auto next = [&rng] {
+        rng ^= rng << 13;
+        rng ^= rng >> 7;
+        rng ^= rng << 17;
+        return rng;
+    };
+    static const wchar_t* kWords[] = {L"hallo", L"zusammen", L"wer", L"kommt", L"mit", L"[&AgGvWwEA]", L"[&BAwEAAA=]",
+                                      L"Tequatl", L"ärger", L"你好", L"\U0001F600", L"https://example.org/plan",
+                                      L"WvW", L"Abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz0123456789", L"!", L"ok."};
+    auto randomText = [&](int maxWords) {
+        std::wstring t;
+        const int n = 1 + static_cast<int>(next() % maxWords);
+        for (int i = 0; i < n; ++i) {
+            if (i) t += next() % 9 ? L" " : L"  ";
+            t += kWords[next() % (sizeof(kWords) / sizeof(kWords[0]))];
+        }
+        return t;
+    };
+    auto noSpaces = [](const std::wstring& s) {
+        std::wstring r;
+        for (wchar_t c : s)
+            if (c != L' ') r += c;
+        return r;
+    };
+    int bad[6] = {};
+    for (int i = 0; i < 3000; ++i) {
+        const std::wstring t = randomText(80);
+        // E1. Sending: SplitForChat loses and adds no character, every part has the prefix and fits, a chat code is
+        // never cut (a cut code is a broken link in GW2).
+        static const wchar_t* kPrefixes[] = {L"", L"/m ", L"/w Kai Example "};
+        const std::wstring prefix = kPrefixes[next() % 3];
+        const size_t limit = 60 + next() % 140;
+        const auto parts = SplitForChat(t, prefix, limit);
+        std::wstring bodies;
+        for (const std::wstring& p : parts) {
+            if (p.compare(0, prefix.size(), prefix) != 0 || CodePointCount(p) > limit) ++bad[0];
+            const std::wstring body = p.substr(std::min(prefix.size(), p.size()));
+            bodies += body;
+            const size_t open = body.rfind(L"[&");
+            if (open != std::wstring::npos && body.find(L']', open) == std::wstring::npos) ++bad[1];
+        }
+        if (noSpaces(bodies) != noSpaces(t)) ++bad[2];
+        // E2. Translation: protecting is lossless (joined again it is the text), and every chat code is kept whole.
+        const ProtectedText pt = ProtectForTranslation(t, nullptr, nullptr);
+        if (JoinSegments(pt.segments) != t) ++bad[3];
+        for (const Segment& s : pt.segments)
+            if (!s.keep && s.text.find(L"[&") != std::wstring::npos) ++bad[3];
+        // E4. The ini: escaping to ASCII and back is the identity.
+        if (AsciiUnescape(AsciiEscape(t)) != t) ++bad[4];
+    }
+    // E3. Soft breaks: wrapping a flat text (spaces become '\n', long words get "\r\n") and flattening it again is the
+    // identity; RawOffset finds every flat byte in the wrapped text.
+    for (int i = 0; i < 3000; ++i) {
+        const std::string flat = ToUtf8(randomText(30));
+        std::string raw;
+        for (size_t k = 0; k < flat.size(); ++k) {
+            if (flat[k] == ' ' && next() % 3 == 0) {
+                raw += '\n';
+                continue;
+            }
+            raw += flat[k];
+            if (flat[k] != ' ' && (static_cast<unsigned char>(flat[k]) & 0xC0) != 0x80 && k + 1 < flat.size() &&
+                (static_cast<unsigned char>(flat[k + 1]) & 0xC0) != 0x80 && flat[k + 1] != ' ' && next() % 17 == 0)
+                raw += "\r\n";  // a break inside a word (never inside a UTF-8 sequence)
+        }
+        if (Flat(raw.c_str()) != flat) ++bad[5];
+        for (size_t k = 0; k <= flat.size(); ++k) {
+            const size_t at = RawOffset(raw.c_str(), raw.size(), k);
+            if (Flat(raw.substr(0, at).c_str()) != flat.substr(0, k)) {
+                ++bad[5];
+                break;
+            }
+        }
+    }
+    static const char* kNames[] = {"E1 parts fit and keep the prefix", "E1 a chat code was cut", "E1 characters lost",
+                                   "E2 protecting lost text", "E4 ini escaping", "E3 soft breaks"};
+    for (int k = 0; k < 6; ++k) {
+        if (bad[k]) std::printf("equation failed: %s (%d times)\n", kNames[k], bad[k]);
+        CHECK(bad[k] == 0);
+    }
+}
+
 int main() {
+    TestEquations();
     TestWindowLayout();
     TestChatSource();
     TestContrast();
