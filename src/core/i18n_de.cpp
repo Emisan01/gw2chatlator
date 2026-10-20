@@ -459,8 +459,6 @@ extern const I18nEntry kGermanStrings[] = {
      L"Modell"},
     {L"Models:",
      L"Modelle:"},
-    {L"Modules",
-     L"Module"},
     {L"Moved near an edge of the screen, the window sits right on it.",
      L"Nah an einen Bildschirmrand geschoben, sitzt das Fenster genau daran."},
     {L"MyMemory daily quota is used up",

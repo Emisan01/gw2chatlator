@@ -459,8 +459,6 @@ extern const I18nEntry kArabicStrings[] = {
      L"النموذج"},
     {L"Models:",
      L"النماذج:"},
-    {L"Modules",
-     L"الوحدات"},
     {L"Moved near an edge of the screen, the window sits right on it.",
      L"عند تحريك النافذة قرب حافة الشاشة تلتصق بها."},
     {L"MyMemory daily quota is used up",

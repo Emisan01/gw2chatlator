@@ -21,6 +21,8 @@ bool g_winHolding = false;     // the left mouse went down on the window: ImGui 
 bool g_winOwnDrag = false;     // ... our own hold-and-drag moves it (the formula keeps placing it)
 bool g_winSizing = false;      // its size changed while held: you drag an edge
 WinAnchor g_winPressed;        // where it was when the mouse went down (a move snaps when it ends)
+ULONGLONG g_ownDownAt = 0;     // our own hold-and-drag (the input, the mini window): when the press began – in this
+bool g_ownMoving = false;      // shape only; a new mode ends it (a stale press once dragged the opened window along)
 
 WinSpace WindowSpace(float button) {
     const ImGuiIO& io = ImGui::GetIO();
@@ -48,6 +50,8 @@ void PlaceWindow(WinMode mode, const WinSpace& s) {
     if (mode != g_winMode) {  // a new mode ends every hold – ImGui's own move too: a press on the chat (a link that
         // minimises) had ImGui drag the button to where the big window was grabbed, the corner crept up each time
         g_winHolding = g_winOwnDrag = g_winSizing = false;
+        g_ownDownAt = 0;
+        g_ownMoving = false;
         ImGuiContext& g = *ImGui::GetCurrentContext();
         if (w && g.MovingWindow && g.MovingWindow->RootWindow == w) {
             g.MovingWindow = nullptr;
@@ -768,21 +772,19 @@ void RenderWindow() {
         }
         // Held down for a moment, then dragged: the whole window moves (not only at its edges) – a quick drag still
         // selects text. Not when the press was on an edge (that resizes).
-        static ULONGLONG s_downAt = 0;
-        static bool s_moving = false;
         const ImVec2 mp = ImGui::GetIO().MousePos;
         const float edge = 6.0f;
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
             ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) &&
             mp.y > p.y + edge && mp.y < p.y + sz.y - edge && mp.x > p.x + edge && mp.x < p.x + sz.x - edge)
-            s_downAt = GetTickCount64();
+            g_ownDownAt = GetTickCount64();
         if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
-            s_downAt = 0;
-            s_moving = false;
-        } else if (s_downAt && !s_moving && !g_winSizing && GetTickCount64() - s_downAt > 250) {
-            s_moving = true;
+            g_ownDownAt = 0;
+            g_ownMoving = false;
+        } else if (g_ownDownAt && !g_ownMoving && !g_winSizing && GetTickCount64() - g_ownDownAt > 250) {
+            g_ownMoving = true;
         }
-        if (s_moving) {
+        if (g_ownMoving) {
             DragWindow(ImGui::GetIO().MouseDelta);
         }
     } else {  // the big window: what its content needs at least – a long input grows it upwards, it shrinks back by itself
@@ -1065,18 +1067,16 @@ void RenderWindow() {
     // The normal window: held down in the input for a moment and dragged, it moves too (elsewhere ImGui moves it by
     // itself; a quick drag in the input still selects text). The mini mode does this in its fitting above.
     if (Lay().chat) {
-        static ULONGLONG s_inDownAt = 0;
-        static bool s_inMoving = false;
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsMouseHoveringRect(inputMin, inputMax) &&
             ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
-            s_inDownAt = GetTickCount64();
+            g_ownDownAt = GetTickCount64();
         if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
-            s_inDownAt = 0;
-            s_inMoving = false;
-        } else if (s_inDownAt && !s_inMoving && GetTickCount64() - s_inDownAt > 250) {
-            s_inMoving = true;
+            g_ownDownAt = 0;
+            g_ownMoving = false;
+        } else if (g_ownDownAt && !g_ownMoving && GetTickCount64() - g_ownDownAt > 250) {
+            g_ownMoving = true;
         }
-        if (s_inMoving) {
+        if (g_ownMoving) {
             DragWindow(io.MouseDelta);
         }
     }

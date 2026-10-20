@@ -481,6 +481,20 @@ extern bool g_wiped;
 extern std::atomic<int> g_wipeDone;
 void StatusRow(const std::string& what, int state, const std::string& text);
 void RenderModules(bool guide);
+// A number for the eye (Options > Technical): smoothed over about the last 20 frames, shown at most 4 times a second.
+struct Steady {
+    double avg = -1, shown = 0;
+    ULONGLONG at = 0;
+    double operator()(double v) {
+        avg = avg < 0 ? v : avg * 0.9 + v * 0.1;
+        const ULONGLONG now = GetTickCount64();
+        if (at == 0 || now - at >= 250) {
+            shown = avg;
+            at = now;
+        }
+        return shown;
+    }
+};
 
 }  // namespace kb
 #include "kb_cost.hpp"

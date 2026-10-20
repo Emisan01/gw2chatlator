@@ -142,13 +142,14 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   docked to the window's top right corner (1 px), an X closes it: self-corrections noticed while typing (`NoteSelfFix`) →
   `SpellService::TeachFix` (never a dictionary word), and "my words" (meaning → translator). No menu on chat lines.
 - **Nothing downloads by itself** (user, 2026-10-18): `FirstStart` only marks the setup done. The modules list (empty
-  chat, Options → General → Modules) offers each on a click: Events: Chat first (reading), then – only after voice
+  chat; Options → Technical for Events: Chat, Options → Voice for the voice module) offers each on a click: Events: Chat first (reading), then – only after voice
   input is switched on (off for new users unless the voice module is already there) – the voice module
   (`voice_module.cpp`: release ZIP via `DownloadReleaseAsset`, tar.exe, only gw2kb_voice.exe + voice\*.dll copied)
   and then a voice model. Unload: the voice helper ends after [Voice] UnloadMinutes without use.
-- **Everything removable** (user: what we brought gets a remove button): Options → General → Modules – Events: Chat
-  (only while Nexus does not hold it, else the way via Nexus), the voice module, the voice models (each with a second
-  click), and "Remove everything of GW2Chatlator …" (a yes): `RemoveEverythingNow` ends the helper, blocks every
+- **Everything removable** (user: what we brought gets a remove button; each in its place, user 2026-10-20):
+  Options → Technical – Events: Chat (only while Nexus does not hold it, else the way via Nexus) and reading it;
+  Options → Voice – the voice module, the voice models (each with a second click); once, at the very bottom of
+  Options → Technical, "Remove everything of GW2Chatlator …" (a yes): `RemoveEverythingNow` ends the helper, blocks every
   write (`Config::BlockWrites`, `g_wiped`, the spelling dropped unsaved), deletes `<addons>\GW2Keyboard\`, optionally
   Events_Chat.dll, then a notice names the last step (Nexus → Addons → Uninstall – the DLL cannot delete itself).
   Self-test: `GW2KB_TEST_REMOVEALL=1` – only on a copy of the add-on.
@@ -223,6 +224,12 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   window had, in the mode it had – never a grown height as yours. Every incremental "move by the size change" before
   it crept (2.0.3 slid down in game). The equations are in core_tests (fixed point, shared corner, a drop lands where
   dropped, snapping twice = once, grow and shrink back, mini on/off), the self-test checks the real window.
+- A hold never survives a new shape (big / fitted / button): `PlaceWindow` ends ours (`g_winHolding`, our own drag
+  `g_ownDownAt`) and ImGui's own move (`g.MovingWindow`) on every mode change. Before, a press on a link that
+  minimised the window had ImGui drag the button to where the big window was grabbed, and a press left over from
+  before minimising made the opened window follow the mouse – both read back by the formula as the user's move (in
+  game: "after a few clicks the window stood at the top"). Every size we give ImGui is the formula's, in whole
+  pixels (ImGui floors a window's size; a raw button size of Nexus' font crept a pixel a frame).
 - The formula must never ask ImGui for less than it allows: whole pixels (ceil), and at least `WindowMinSize`
   (`WinSpace::minSize*`) – ImGui enlarges a smaller window and the corner moves (the button and the mini window's
   first frame did). Read the window before `Begin` from `SizeFull`: `SetWindowSize` writes it, `Size` follows only
@@ -254,6 +261,11 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   off, the protocol, the version remembered after the unload. Without the look-first and the SEH the process crashes
   there (checked). The smoke
   test checks that all 500 realistic lines pass the guard (a rule too strict would pause reading for everyone).
+- The window's corner against random walks: 400 steps (minimise, open, mini mode, clicks, a press held while the
+  shape changes and the mouse moves, fractional frame heights) – the bottom-left corner must never move;
+  `GW2KB_TEST_SEED=<n>` walks another way (it found the stale own-drag press on its first run).
+- Self-test and smoke test refuse to run while GW2 runs (exit 3): they would read its MumbleLink, and a test must
+  never reach a game. `FindGw2Window(pid)` returns only that process' window, never another GW2.
 - `build\Release\typing_bench.exe [n]` after every change to the typing help: SURPRISES must stay 0.
 - `build\Release\voice_bench.exe model lang threads wav…` with recordings in `local\voice`.
 - Not verifiable here: the game itself – test in GW2 with Nexus (copy the DLL + `GW2Keyboard\` into `addons`).
