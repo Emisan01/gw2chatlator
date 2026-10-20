@@ -46,7 +46,8 @@ src/win                 Windows services without UI: http (WinHTTP), translators
 src/core                portable logic, NO windows.h: text, json, i18n (+ de / ar tables), chat_line (channels),
                         chat_code, protect, slang, word_model, typo_memory, my_words, voice, voice_learn, send_guard,
                         chat_source (the rules for lines of Events: Chat), window_layout (the window's place as a
-                        formula), snippets (your text blocks),
+                        formula), snippets (your text blocks), send_route (where a message goes: the footer's
+                        "Send", a whisper tab, "Translate what I say" – one pure function), steady (Technical's numbers),
                         translator protocols
 ```
 
@@ -273,6 +274,11 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   (`GW2KB_MUMBLE`, `MumbleLink::DefaultName` – never set in the game), the clipboard stays in the test process,
   `FindGw2Window(pid)` returns only that process' window (never another GW2), so no click can reach the game.
 - `build\Release\typing_bench.exe [n]` after every change to the typing help: SURPRISES must stay 0.
+- The equations (core_tests `TestEquations` E1–E5, `TestEquations2` E6–E10): thousands of random inputs each – sending,
+  protection, ini, soft breaks, chat source; text blocks saved = loaded, protocol counts, no invisible mark reaches the
+  window (`WithoutInvisible` in `UI()`), the steady number, where a message goes (`RouteMessage`: typed exactly as
+  before 2.3.0, "as written" exactly when there is no language). A new part gets its equation. `i18n_check.py` also
+  fails on a translation whose `{1}` placeholders differ from the English text, or on an invisible mark in it.
 - While working: `python tools/verify_release.py --changed [base]` runs only the gates the changed files can touch
   (core tests, selftest, typing bench, smoke test by path; version, Nexus definition, i18n, binary always) – never a
   release verdict. A release: the full run. The self-test starts from a fresh ini every run (a half-failed run used
