@@ -27,6 +27,8 @@ public:
 
     // A waypoint: "Commodore's Quarter Waypoint – Lion's Arch" (Decoder Ring), else "" – where the map has to go.
     std::string Where(const PieUI::ChatLinks::LinkSegment& seg);
+    // A map link's kind as Decoder Ring knows it: 0 waypoint, 1 point of interest, 2 vista; -1 unknown / no map link.
+    int PoiKind(const PieUI::ChatLinks::LinkSegment& seg);
 
     // True if Decoder Ring is currently available
     bool HasDecoder() const;

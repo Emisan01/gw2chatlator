@@ -12,13 +12,15 @@ diagnosis show it.
   mode, minimising and opening again cannot move it any more, by construction. Same behaviour as before.
 - **For the developer:** Options > Technical shows what our frame costs on GW2's render thread, by part (window,
   header, chat, input, footer, options), and what a chat line costs.
-- **Waypoints straight onto the map (experimental, off by default):** Options > Window > "Waypoints: click the
-  original in GW2's chat for me". A click on a waypoint or point of interest here (within 10 s of its line) opens
+- **Waypoint/POI click (experimental, off by default):** Options > Window > More > "Waypoint/POI click". Only
+  waypoints and points of interest: a click on one here (within 10 s of its line) opens
   GW2's chat, finds the very same line there – the waypoint's name, who wrote it, what it says – and clicks the
   waypoint once, so the game flies the map there as if you had clicked it yourself. One picture of the game, read
   only in memory with Windows' own text recognition; nothing downloaded, nothing stored. Not found: you click it
-  in GW2's chat as before. A test key in Nexus' keybinds ("KB_GW2KEYBOARD_CLICKTEST") makes one click where the
-  mouse is – to see whether GW2 takes it.
+  in GW2's chat as before. While it clicks, our window lets the mouse through. Its three pauses (before the click,
+  held, after it) can be set under the option, from – to in milliseconds (3 – 25 by default), each thrown anew.
+  A test key in Nexus' keybinds ("KB_GW2KEYBOARD_CLICKTEST") makes one click where the mouse is – to see whether
+  GW2 takes it.
 - Under the hood: equations that must hold for every input – the window's place, sending (no character lost, a chat
   code never cut), translation protection, the settings file, the soft line breaks, the chat source (every line
   counted exactly once) – checked with thousands of random inputs in every build.

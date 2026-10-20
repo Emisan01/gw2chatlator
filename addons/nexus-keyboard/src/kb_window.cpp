@@ -406,6 +406,7 @@ void RenderWindow() {
                                    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse |
                                    ImGuiWindowFlags_NoScrollWithMouse;
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(2, 2));
+        if (WaypointPassThrough()) minFlags |= ImGuiWindowFlags_NoInputs;  // the Waypoint/POI click: the mouse goes through
         const bool beginOk = ImGui::Begin("GW2Chatlator###kbmain", nullptr, minFlags);
         ImGui::PopStyleVar();
         if (beginOk) {
@@ -444,6 +445,7 @@ void RenderWindow() {
                               ImGuiWindowFlags_NoScrollWithMouse;
     // Without the chat: a thin edge only, the window is hardly more than its parts (the grey input in the end).
     if (!Lay().chat) ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
+    if (WaypointPassThrough()) wflags |= ImGuiWindowFlags_NoInputs;  // the Waypoint/POI click: the mouse goes through
     const bool begun = ImGui::Begin("GW2Chatlator###kbmain", nullptr, wflags);
     if (!Lay().chat) ImGui::PopStyleVar();
     if (!begun) {
@@ -866,7 +868,7 @@ void RenderWindow() {
             if (segs.size() <= 1 && (segs.empty() || segs[0].kind == PieUI::ChatLinks::SegmentKind::Plain)) {
                 LookText(u8shown.c_str(), ColorOf(l.channel), true);
             } else {
-                clicked = RichLine(shown, segs, ColorOf(l.channel), l.receivedTime, l.speaker);
+                clicked = RichLine(shown, segs, ColorOf(l.channel), l.receivedTime, l.speaker, l.id);
             }
             if (!l.translated.empty() && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", l.u8text.c_str());
             // A click on the text of a line someone else wrote: just this line into your language.
