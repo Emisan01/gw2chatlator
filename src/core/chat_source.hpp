@@ -75,11 +75,9 @@ private:
     std::deque<bool> last_;
 };
 
-// What the protocol keeps of a line: never its text, never a name.
+// What the guard keeps of a line: only the rules it broke – no text, no name, no channel, no length (other players'
+// messages are theirs; the protocol only counts).
 struct ChatSourceRecord {
-    int32_t type = 0;
-    uint32_t flags = 0;
-    int nameLen = -1, accountLen = -1, contentLen = -1;  // bytes; -1 = none
     uint32_t rules = 0;
 };
 ChatSourceRecord RecordOf(const ChatSourceLine& l, const ChatLineVerdict& v);

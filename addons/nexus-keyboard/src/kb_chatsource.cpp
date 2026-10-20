@@ -403,10 +403,10 @@ void RenderChatSourceDetails() {  // Options > Technical (g_mu held): for the de
     ImGui::SameLine();
     if (ImGui::SmallButton(UI(Tr(L"Copy protocol")).c_str())) ImGui::SetClipboardText(ChatSourceProtocolText().c_str());
     if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("%s", UI(Tr(L"Versions and the rule each line failed – no chat text, no names. For a GitHub issue.")).c_str());
-    if (ImGui::TreeNode(UI(Tr(L"The last lines – no text, no names")).c_str())) {
+        ImGui::SetTooltip("%s", UI(Tr(L"Versions and how often the last lines broke which rule – nothing of a single message. For a GitHub issue.")).c_str());
+    if (ImGui::TreeNode(UI(Tr(L"The last lines, counted")).c_str())) {
         const std::string p = ChatSourceProtocolText();
-        const size_t at = p.find("Lines (");
+        const size_t at = p.find("Last ");
         ImGui::TextDisabled("%s", at == std::string::npos ? p.c_str() : p.c_str() + at);
         ImGui::TreePop();
     }
