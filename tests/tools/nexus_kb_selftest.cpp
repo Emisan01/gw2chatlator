@@ -520,6 +520,25 @@ int wmain(int argc, wchar_t** argv) {
                 const bool back = std::fabs(p2.x - p0.x) < 2 && std::fabs(p2.y - p0.y) < 2 && std::fabs(s2.y - s0.y) < 2;
                 if (!shrunk || !back) std::printf("FAIL: the window did not come back where it was\n");
                 ok = ok && shrunk && back;
+                // The minimised button stands still – also with a frame height in fractional pixels (Nexus' font in the
+                // game): ImGui floors a window's size, and a size not in whole pixels let the button creep up a pixel a frame.
+                {
+                    ImGuiStyle& st = ImGui::GetStyle();
+                    const float padY = st.FramePadding.y;
+                    st.FramePadding.y += 3.3f;  // the button above ImGui's 32 px minimum, not in whole pixels
+                    waypoint(0);
+                    frames(4);
+                    const ImVec2 b0 = pos();
+                    frames(60);
+                    const ImVec2 b1 = pos();
+                    st.FramePadding.y = padY;
+                    waypoint(1);
+                    frames(6);
+                    std::printf("minimised button over 60 frames: %.0f,%.0f -> %.0f,%.0f\n", b0.x, b0.y, b1.x, b1.y);
+                    const bool still = std::fabs(b1.x - b0.x) < 0.5f && std::fabs(b1.y - b0.y) < 0.5f;
+                    if (!still) std::printf("FAIL: the minimised button moved by itself\n");
+                    ok = ok && still;
+                }
                 // Three quick clicks on the chat area minimise the window too; it opens again the same way.
                 auto click = [&](ImVec2 at) {
                     ImGuiIO& io = ImGui::GetIO();
