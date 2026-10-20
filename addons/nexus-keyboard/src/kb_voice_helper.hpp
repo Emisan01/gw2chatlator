@@ -8,6 +8,7 @@ namespace kb {
 // The voice helper: a hidden process with pipes; its events are read on our own thread.
 class VoiceHelper {
 public:
+    static void OnLine(const std::string& line);  // one line of the helper (its reader; the self-test feeds one)
     bool Start(const std::wstring& exe, const std::wstring& dataDir) {
         Stop();
         SECURITY_ATTRIBUTES sa{sizeof(sa), nullptr, TRUE};
@@ -89,7 +90,6 @@ private:
         g_voiceReady = g_recording = false;
         g_voiceLive.clear();
     }
-    static void OnLine(const std::string& line);
     HANDLE process_ = nullptr, inWrite_ = nullptr, outRead_ = nullptr;
     std::thread reader_;
 };

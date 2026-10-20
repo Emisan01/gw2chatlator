@@ -18,6 +18,10 @@ diagnosis show it.
   saved yet); the typing focus, named plainly (Enter in the game opens our input; keep typing after sending); and
   what is ready, the same box as in the empty chat. Voice in any language: with "Translate my text" on, what you
   say goes through your translator like your text.
+- **Translate what I say:** a new switch (Options > Voice and the dashboard). When you speak and it is on, what you
+  said goes into the language at "Send" below the input – before "Translate my text"; into English whisper does it
+  on your PC, other languages go through your translator. Off, or typed: everything as before. (It replaces "Into
+  English": that setting carries over.)
 - **Everything in its place:** Events: Chat (loaded, install, remove) and "Read the chat" are in Options >
   Technical, the voice module and its models in Options > Voice, "Remove everything of GW2Chatlator" once, at the
   very bottom of Technical. The empty chat still shows what is ready and what is missing.

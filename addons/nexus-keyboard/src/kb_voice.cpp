@@ -91,10 +91,11 @@ void VoiceHelper::OnLine(const std::string& line) {
             return;
         }
         NoteVoiceRun(v);
-        g_dictLang = g_cfg.voiceTranslate ? std::wstring(L"EN") : ToUpperAscii(W(v.GetString("lang")));
+        g_dictLang = g_cfg.voiceIntoEnglish ? std::wstring(L"EN") : ToUpperAscii(W(v.GetString("lang")));
         const std::wstring fixed = g_voiceFixes.Apply(text, g_dictLang);
         g_lastDictated = fixed;
         const size_t len = std::strlen(g_input);
+        if (len == 0) g_inputSpoken = true;  // it began with what you said: "Translate what I say" decides
         g_edit.active = true;
         g_edit.startByte = len;
         g_edit.lenBytes = 0;
@@ -124,11 +125,22 @@ std::wstring HelperExe() {  // <addons>\GW2Keyboard\gw2kb_voice.exe
     return p.substr(0, p.find_last_of(L"\\/") + 1) + L"GW2Keyboard\\gw2kb_voice.exe";
 }
 
+// Whisper translates itself only when what you say goes into English (g_mu held); true: changed – the helper reads it
+// again before the next recording.
+bool KeepWhisperEnglish() {
+    const bool en = g_cfg.voiceTranslate && PrimaryLang(VoiceLang()) == L"EN";
+    if (en == g_cfg.voiceIntoEnglish) return false;
+    g_cfg.voiceIntoEnglish = en;
+    g_cfg.SaveBool(L"Voice", L"IntoEnglish", en);
+    return true;
+}
+
 // The helper starts on first use; `cmd` runs as soon as it is ready.
 void VoiceCommand(const char* cmd) {
-    bool ready;
+    bool ready, english;
     {
         std::lock_guard<std::mutex> lock(g_mu);
+        english = KeepWhisperEnglish();
         if (!g_cfg.voiceEnabled) {
             SetStatus(Tr(L"Voice input is off (options of GW2 Keyboard)"));
             return;
@@ -140,6 +152,10 @@ void VoiceCommand(const char* cmd) {
         }
     }
     if (ready) {
+        if (english) {  // rare: "Send" went between English and another language
+            Config::FlushWrites();
+            g_voice.Send("reload");
+        }
         g_voice.Send(cmd);
         return;
     }

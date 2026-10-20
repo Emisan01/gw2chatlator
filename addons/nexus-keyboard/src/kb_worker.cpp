@@ -120,7 +120,7 @@ void TranslateInput(uint64_t gen, std::wstring text) {
         std::lock_guard<std::mutex> lock(g_mu);
         tr = g_translator;
         target = SendLang();
-        typing = TypingLang();
+        typing = VoiceFirst() && !g_dictLang.empty() ? g_dictLang : TypingLang();  // what you said: its language
         translating = Translating();
     }
     const ChatSplit split = SplitChatCommand(text);

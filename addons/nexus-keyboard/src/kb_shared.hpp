@@ -352,6 +352,9 @@ void SaveLayout();
 void SetStatus(const std::wstring& s, ULONGLONG ms = 6000);
 const std::wstring& TypingLang();
 std::wstring TypingLocale();
+extern bool g_inputSpoken;  // g_mu: the input began with what you said (a voice result into an empty input)
+bool VoiceFirst();          // g_mu: spoken and "Translate what I say" on – that has priority
+const std::wstring& VoiceLang();  // g_mu: what you say goes into
 bool SendOriginal();
 const std::wstring& SendLang();
 std::wstring SendCodeFor(const std::wstring& detected);
