@@ -26,15 +26,11 @@ addons/nexus-keyboard   the add-on
   src/kb_chatsource.cpp the guard between Events: Chat and us: `OnChatEvents`, the shield (`CopyLineGuarded`:
                         VirtualQuery first, SEH last), the pause, reading on-off by hand, the technical details
   src/kb_window.cpp     the main window: header, chat, preview, word bar, input, footer, minimise / restore
-  src/kb_waypoint.cpp   the waypoint "quantum macro" (optional) and the click-test key – see Invariant 1
   src/kb_options.cpp    the options window and the modules list
-  src/chat_links.*      chat codes: "[Item name]" in rarity colour + mouse-over details via Decoder Ring;
-                        a click (`HandleChatLinkClick`) on an item & co. minimises the window and opens GW2's chat line
-                        (GameBind GB_UiChatFocus) – the user clicks the original there; back when the chat line closed
-                        (`g_redirect`, MumbleLink), at most 45 s. A waypoint / POI / vista never (2.3.0, in game: the
-                        chat line is typing mode, a link click there does not fly the map; GW2's map key opens the
-                        map without a target): the Waypoint/POI click clicks it, else the code is copied and the
-                        status says why. No add-on can trigger the game's own map jump – only a click in GW2's chat.
+  src/chat_links.*      chat codes: "[Item name]" in rarity colour + mouse-over details via Decoder Ring. A click on a
+                        chat code does nothing (2.3.1, user: the click logic – copy, GW2's chat line, the waypoint
+                        "quantum macro" with its screen reading and synthetic mouse – crashed the game in 2.3.0 and is
+                        gone; copying was in the way too). No add-on can trigger the game's own map jump.
   src/chat/             vendored ChatLinks codec + SpecData (PieUI/Decoder Ring, MIT)
   src/chat/DecoderRingApi.h  public ABI for Decoder Ring (PieOrCake, MIT)
   src/voice_module.*    loads the voice module (helper + whisper DLLs) from this version's GitHub release
@@ -46,12 +42,11 @@ src/kbd                 voice_session (WASAPI + whisper worker), whisper_engine 
 src/win                 Windows services without UI: http (WinHTTP), translators (MyMemory, DeepL, Google,
                         Microsoft, LibreTranslate), els (language detection), gw2_sender, mumble_link, spellcheck,
                         text_prediction, keyboard_layout, audio_capture, mic_sessions, cpu_cores, voice_models,
-                        extras_install (GitHub release assets, SHA-256 checked), secret (DPAPI), files, hash,
-                        ocr (Windows.Media.Ocr through the raw WinRT ABI – the waypoint macro)
+                        extras_install (GitHub release assets, SHA-256 checked), secret (DPAPI), files, hash
 src/core                portable logic, NO windows.h: text, json, i18n (+ de / ar tables), chat_line (channels),
                         chat_code, protect, slang, word_model, typo_memory, my_words, voice, voice_learn, send_guard,
                         chat_source (the rules for lines of Events: Chat), window_layout (the window's place as a
-                        formula), link_find (a waypoint's line among recognized rows), snippets (your text blocks),
+                        formula), snippets (your text blocks),
                         translator protocols
 ```
 
@@ -82,28 +77,10 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   leftovers are removed at load. Other add-ons' code runs only behind a guard too:
   `ReadAddonDefGuarded` (the module scan calls every add-on's GetAddonDef), `ResolveGuarded` (Decoder Ring: a record
   with room to spare, strings ended, one fault = not asked again this session).
-- **Waypoint/POI click** ("quantum macro"; user, 2026-10-19/20; `[Nexus] WaypointPoiClick`, off by default, Options >
-  Window > More): no add-on can call GW2's own map jump without a hook, so a click on a waypoint or point of interest
-  (Decoder Ring's kind `DP_Waypoint` / `DP_PointOfInterest` – never a vista, never another chat code) in our chat
-  clicks the original in GW2's chat – only while it can still stand in view (`OriginalStillThere`, the user's "still
-  alive" logic: not its age, not a map change – its place from the bottom, at most `kWpNewerLines` (8) lines after
-  it; then also when older than 15 s; never a macro into nothing; GW2's chat is never scrolled; whether GW2 emptied
-  its chat only the screen tells – no line seen, no click). Independent of our window (user, in-game 2026-10-20):
-  `HandleChatLinkClick` neither minimises it nor opens GW2's chat line nor the map – GW2's chat line open = typing
-  mode, there a click on a link does not fly the map, so the click happens only while it is closed (MumbleLink).
-  `kb_waypoint` asks the render thread for one frame (`WaypointFrameTick`: the swap chain's back
-  buffer – the game's picture, before any add-on draws – copied to a staging texture, read two frames later), reads
-  it with Windows' own text recognition (tiles; then GW2's usual chat corner enlarged), frees it, finds the very line
-  (`FindChatLink`: the link's name from Decoder Ring, then the speaker and the rest of the message; below `kMinFit`
-  no click – better none than a wrong one) and clicks its centre once (`SyntheticClick`: our window lets the mouse
-  through meanwhile – `WaypointPassThrough` → `ImGuiWindowFlags_NoInputs`, two frames counted before the cursor moves,
-  so ImGui / Nexus never keep the click; foreground checked before every step; right before the button goes down the
-  point must lie on GW2's own window (`WindowFromPoint`), the cursor where we put it (else the user's hand took over),
-  no button held, GW2's chat line closed; the three pauses – before, held, after – each thrown anew within the user's
-  from-to range, `[Nexus] WpBefore / WpHeld / WpAfter`, default 40-70 / 40-70 / 10-25 ms (2.3.0: at least two frames; 3-25 ms was
-  "brutally fast" and could fall between two frames), the user's "dice logic", set under the
-  checkbox; the cursor goes back). Not found: the code is copied, the user clicks it. Its own thread, ended on
-  unload (`StopWaypointMacro`). Decoder Ring's language must be the game's (else no match).
+- **The waypoint click is gone** (2.3.1): the opt-in "quantum macro" (2.2.0–2.3.0: one frame of the game read with
+  Windows' text recognition, then a synthetic click on the original link in GW2's chat, on its own thread) crashed the
+  game on a link click once Decoder Ring named the links – a thread outside `SafeRender`'s net. If it ever comes back:
+  every thread of ours behind its own SEH, and in the branch history (`experiment/waypoint-macro`, tag v2.3.0).
 - **Chat in:** Events: Chat (`EV_CHAT:Message`) → `OnChatEvents` (the guard above) → `AddLine` (`UnescapeChatText`, sanitised) →
   translated on the worker only when `[Nexus] TranslateChat=1` (default 0) or a click on the line asks for it – into
   the language you write in (the chat is read in it). `TranslateRecentLines` redoes the newest 20 when the translation
@@ -190,10 +167,8 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
    exception the user asked for: `[Voice] AutoSend` (off by default) – the push-to-talk release counts as the Enter.
    "Only copy" mode must stay a mode in which not a single synthetic key reaches the game. There is no other way to
    send: no Nexus event, no DataLink, no export another add-on could call; the `Gw2KbTest…` exports work only outside
-   GW2 (`TestHost`). One Enter sends at most `kMaxPartsPerEnter` (3) chat lines.
-   Synthetic mouse input exists for two things only, both one click as the direct result of the user's own action
-   (user's decision, 2026-10-19): the waypoint quantum macro (opt-in) and the click-test key (`KB_GW2KEYBOARD_CLICKTEST`,
-   unbound). Never more than one click, never a sequence, never without GW2 in front.
+   GW2 (`TestHost`). One Enter sends at most `kMaxPartsPerEnter` (3) chat lines. No synthetic mouse input at all
+   (the waypoint macro and its click-test key are gone since 2.3.1).
 2. The old clipboard is restored only after the game processed the paste (`WaitForTargetToDrain`, MumbleLink chat
    line closing) – a fixed sleep pasted the *old* clipboard once (privacy leak).
 3. Re-check `GetForegroundWindow() == gw2` before every injected step.
@@ -206,9 +181,8 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 6. Privacy: the word model learns only from what the user sends, never from other players' chat; no chat log is
    saved. **Never commit real screenshots, recordings or other players' names/messages** — the repo is public. Real
    test material lives in `local/` (git-ignored); fixtures use invented names.
-7. Files in the game folder: only our DLL's own folder `<addons>\GW2Keyboard\`, and Events_Chat.dll (only on your
-   click). Never the game process' memory, affinity or priority. The one picture the waypoint macro reads (the swap
-   chain's back buffer: what is on the screen, not game state) stays in memory and is freed right after the search.
+7. Files in the game folder: only our DLL's own folder `<addons>\GW2Keyboard\`, and Events_Chat.dll / DecoderRing.dll
+   (only on your click). Never the game process' memory, affinity or priority, never the game's picture.
 
 ## Conventions
 

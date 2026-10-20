@@ -137,19 +137,6 @@ std::string ChatLinks::Label(const PieUI::ChatLinks::LinkSegment& seg) {
     return "[" + kn + "]";
 }
 
-std::string ChatLinks::Where(const PieUI::ChatLinks::LinkSegment& seg) {
-    DecoderRecord rec;
-    if (!ResolveGuarded(GetDecoder(), seg, rec) || rec.name[0] == '\0') return {};
-    return rec.mapName[0] ? std::string(rec.name) + " – " + rec.mapName : std::string(rec.name);
-}
-
-int ChatLinks::PoiKind(const PieUI::ChatLinks::LinkSegment& seg) {
-    if (seg.linkType != PieUI::ChatLinks::LINK_MAP) return -1;
-    DecoderRecord rec;
-    if (!ResolveGuarded(GetDecoder(), seg, rec) || rec.name[0] == '\0') return -1;
-    return rec.poiType;
-}
-
 bool ChatLinks::Render(const PieUI::ChatLinks::LinkSegment& seg, const std::string& label,
                        const std::function<void(const std::string&, ImVec4)>& draw) {
     DecoderRecord rec;
@@ -215,9 +202,7 @@ void ChatLinks::Tooltip(const PieUI::ChatLinks::LinkSegment& seg, const DecoderR
         }
     }
 
-    ImGui::TextDisabled("%s", (seg.raw + "  ·  " + ToUtf8(seg.linkType == PieUI::ChatLinks::LINK_MAP
-                                                            ? Tr(L"Click: the code is copied – clicked in GW2's chat, it flies the map there")
-                                                            : Tr(L"Click: open it in GW2's chat"))).c_str());
+    ImGui::TextDisabled("%s", seg.raw.c_str());
     ImGui::PopTextWrapPos();
     ImGui::EndTooltip();
 }

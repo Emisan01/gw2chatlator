@@ -302,58 +302,10 @@ std::wstring ApiLang() {  // the GW2 API speaks en, de, fr, es, zh (g_mu held)
 }
 bool g_openLinkAsk = false;
 bool g_minimizeRequest = false, g_expandRequest = false;  // on the main window, never inside the chat area
-int g_redirect = 0;  // 0 none; 3 waiting for GW2's chat line; 4 it is open (1 and 2 were the waypoint's, gone in 2.3.0)
-ULONGLONG g_redirectSince = 0;
-
-// The Waypoint/POI click starts only while GW2's original can still stand in view at the bottom of its chat – never
-// into nothing. Not its age (two minutes old and still the newest line), not a map change (it need not empty the
-// chat): its place from the bottom – at most kWpNewerLines lines came after it (Events: Chat counts them; lines of
-// channels GW2's tab hides count too: rather no macro than one into nothing). Whether GW2 emptied its chat only the
-// screen tells: the very line must be seen there (FindChatLink), else no click. GW2's chat is never scrolled.
-constexpr uint64_t kWpNewerLines = 8;
-
-bool OriginalStillThere(uint64_t lineId) {  // g_mu held
-    if (lineId == 0 || g_nextId - 1 - lineId > kWpNewerLines) return false;
-    const auto it = std::lower_bound(g_lines.begin(), g_lines.end(), lineId,
-                                     [](const ChatLine& l, uint64_t id) { return l.id < id; });  // ids rise
-    return it != g_lines.end() && it->id == lineId;
-}
-
-void HandleChatLinkClick(const std::string& raw, ULONGLONG receivedTime, const std::string& where,
-                         const ChatLineHint& line, uint64_t lineId) {  // g_mu held
-    ImGui::SetClipboardText(raw.c_str());
-    const bool waypoint = DecodeChatCode(W(raw)).kind == ChatCodeKind::Poi;
-    // Waypoints and points of interest (and vistas): never GW2's chat line – open, it is typing mode and a click on a
-    // link there does not fly the map – and never the map from us (GW2's map key opens it without a target). Only a
-    // real click on the original flies the map: the Waypoint/POI click does it (`line.label` is set for a waypoint or a
-    // point of interest Decoder Ring has named), else the code is copied and the status says why and where to click.
-    (void)receivedTime;
-    if (waypoint) {
-        if (g_nx.waypointPoiClick && !line.label.empty()) {
-            if (OriginalStillThere(lineId)) StartWaypointClick(line);
-            else SetStatus(TrF(L"{1} is copied – too far up in GW2's chat to click it for you.", {line.label}), 12000);
-        } else if (g_nx.waypointPoiClick && where.empty()) {
-            SetStatus(Tr(L"Decoder Ring has not named this one yet – click again in a moment (the code is copied)."), 10000);
-        } else {
-            SetStatus(where.empty() ? Tr(L"The code is copied – click it in GW2's chat, the map flies there.")
-                                    : TrF(L"{1} – the code is copied: click it in GW2's chat, the map flies there.", {W(where)}),
-                      12000);
-        }
-        return;
-    }
-    g_minimizeRequest = true;  // any other link: GW2's chat line opens, you click the original there
-    g_redirect = 3;
-    g_redirectSince = GetTickCount64();
-    g_suppressChatFocusUntil = GetTickCount64() + 2000;  // our own "come back when GW2's chat opens" waits
-    if (g_api && g_api->GameBinds_InvokeAsync) g_api->GameBinds_InvokeAsync(GB_UiChatFocus, 20);
-}
-
-bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 color,
-              ULONGLONG receivedTime, const std::wstring& speaker, uint64_t lineId) {  // g_mu held
-    (void)text;
-    std::wstring asShown;  // the line as GW2 shows it: chat codes as their "[Name]" (the waypoint click finds it)
-    for (const auto& seg : segs)
-        asShown += W(seg.kind == PieUI::ChatLinks::SegmentKind::Link ? g_links.Label(seg) : seg.display);
+// A chat line with its web links (a click asks first) and chat codes (shown by name, details on hover). A click on a
+// chat code does nothing (2.3.1 – the click on chat codes crashed the game; copying the code was in the way too): it is
+// swallowed, so it does not translate the line either.
+bool RichLine(const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 color) {  // g_mu held
     bool clicked = false;
     const float right = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
     const float space = ImGui::CalcTextSize(" ").x;
@@ -402,14 +354,8 @@ bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::Link
             case PieUI::ChatLinks::SegmentKind::Link: {
                 const std::string lbl = g_links.Label(seg);
                 place(lbl);
-                if (g_links.Render(seg, lbl, [](const std::string& l, ImVec4 c) { LookText(l.c_str(), Bright(c), false); })) {
-                    clicked = true;
-                    const std::string where = g_links.Where(seg);  // empty: Decoder Ring does not know it
-                    const int kind = g_links.PoiKind(seg);          // the Waypoint/POI click: only these two
-                    const bool wpPoi = kind == DP_Waypoint || kind == DP_PointOfInterest;
-                    HandleChatLinkClick(seg.raw, receivedTime, where,
-                                        ChatLineHint{speaker, asShown, wpPoi ? W(lbl) : std::wstring()}, lineId);
-                }
+                if (g_links.Render(seg, lbl, [](const std::string& l, ImVec4 c) { LookText(l.c_str(), Bright(c), false); }))
+                    clicked = true;  // nothing happens
                 break;
             }
             case PieUI::ChatLinks::SegmentKind::Ae2: {
@@ -422,14 +368,9 @@ bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::Link
                     if (!seg.ae2Profession.empty()) {
                         ImGui::TextDisabled("%s", seg.ae2Profession.c_str());
                     }
-                    ImGui::TextDisabled("%s", ToUtf8(Tr(L"Click: open it in GW2's chat")).c_str());
                     ImGui::EndTooltip();
                 }
-                if (ImGui::IsItemClicked()) {
-                    clicked = true;
-                    const std::string toCopy = !seg.ae2ChatLink.empty() ? seg.ae2ChatLink : seg.raw;
-                    HandleChatLinkClick(toCopy, receivedTime, std::string());
-                }
+                if (ImGui::IsItemClicked()) clicked = true;  // nothing happens
                 break;
             }
         }

@@ -81,8 +81,7 @@ void FakeUnsubscribe(const char* id, EVENT_CONSUME) {
 }
 void FakeBind(const char*, INPUTBINDS_PROCESS, const char*) {}
 void FakeUnbind(const char*) {}
-int g_gameKeys = 0;  // GW2 keys the add-on asked Nexus to press (GameBinds_InvokeAsync)
-void FakeGameBind(EGameBinds, int32_t) { ++g_gameKeys; }
+void FakeGameBind(EGameBinds, int32_t) {}  // GW2 keys the add-on asks Nexus to press: none happen in the test
 void FakeLog(ELogLevel, const char* channel, const char* text) { std::printf("[%s] %s\n", channel, text); }
 void* Alloc(size_t n, void*) { return std::malloc(n); }
 
@@ -532,8 +531,8 @@ int wmain(int argc, wchar_t** argv) {
             const bool still = std::fabs(idle.y - start.y) < 1 && std::fabs(chat.y - start.y) < 1 && std::fabs(typing.y - start.y) < 1;
             if (!still) std::printf("FAIL: the window moved by itself\n");
             ok = ok && still;
-            // A waypoint click: the window gets out of the way (its bottom edge stays) and comes back to the same place.
-            if (auto waypoint = reinterpret_cast<void (*)(int)>(GetProcAddress(dll, "Gw2KbTestWaypoint"))) {
+            // Minimised: the window gets out of the way (its bottom edge stays) and comes back to the same place.
+            if (auto waypoint = reinterpret_cast<void (*)(int)>(GetProcAddress(dll, "Gw2KbTestShape"))) {
                 auto size = [] {
                     ImGuiWindow* w = ImGui::FindWindowByName("GW2Chatlator###kbmain");
                     return w ? w->Size : ImVec2(-1, -1);
@@ -553,21 +552,6 @@ int wmain(int argc, wchar_t** argv) {
                 const bool back = std::fabs(p2.x - p0.x) < 2 && std::fabs(p2.y - p0.y) < 2 && std::fabs(s2.y - s0.y) < 2;
                 if (!shrunk || !back) std::printf("FAIL: the window did not come back where it was\n");
                 ok = ok && shrunk && back;
-                // A waypoint never opens GW2's chat line (typing mode stops the map flight) nor the map, and our window
-                // stays (in game the old way "every link opens GW2's chat line" took it whenever Decoder Ring had not
-                // named it yet).
-                {
-                    const int keys = g_gameKeys;
-                    const ImVec2 w0 = size();
-                    waypoint(4);
-                    frames(6);
-                    const ImVec2 w1 = size();
-                    std::printf("waypoint click: game keys %d, window %.0fx%.0f -> %.0fx%.0f\n", g_gameKeys - keys, w0.x, w0.y,
-                                w1.x, w1.y);
-                    const bool quiet = g_gameKeys == keys && std::fabs(w1.x - w0.x) < 1 && std::fabs(w1.y - w0.y) < 1;
-                    if (!quiet) std::printf("FAIL: a waypoint click pressed a GW2 key or moved our window\n");
-                    ok = ok && quiet;
-                }
                 // The minimised button stands still – also with a frame height in fractional pixels (Nexus' font in the
                 // game): ImGui floors a window's size, and a size not in whole pixels let the button creep up a pixel a frame.
                 {
@@ -811,7 +795,7 @@ int wmain(int argc, wchar_t** argv) {
             // frames – and after every step the bottom-left corner stands exactly where it stood. A fixed seed: a
             // failure comes back the same way.
             {
-                auto shape = reinterpret_cast<void (*)(int)>(GetProcAddress(dll, "Gw2KbTestWaypoint"));
+                auto shape = reinterpret_cast<void (*)(int)>(GetProcAddress(dll, "Gw2KbTestShape"));
                 auto miniMode = reinterpret_cast<void (*)(int)>(GetProcAddress(dll, "Gw2KbTestMini"));
                 auto rect = [] {
                     ImGuiWindow* w = ImGui::FindWindowByName("GW2Chatlator###kbmain");
@@ -1217,25 +1201,6 @@ int wmain(int argc, wchar_t** argv) {
         std::printf("chat source guard: %s (the shield caught %d unreadable lines)\n", good ? "ok" : "FAILED",
                     srcState().unreadable);
         ok = ok && good;
-    }
-    // The waypoint quantum macro: in the test there is no GW2 window and no swap chain – it must never click, give up
-    // with a note, and its thread must end cleanly, also when the add-on unloads while it still runs.
-    auto waypointHook = reinterpret_cast<void (*)(int)>(GetProcAddress(dll, "Gw2KbTestWaypoint"));
-    auto synthetic = reinterpret_cast<int (*)()>(GetProcAddress(dll, "Gw2KbTestSyntheticInputs"));
-    if (ok && waypointHook && synthetic && !shotMode) {
-        const int before = synthetic();
-        waypointHook(3);  // the test key: no GW2 in front – no click
-        Sleep(400);
-        waypointHook(2);  // the macro: no chat, no frame – no click
-        for (int i = 0; i < 120; ++i) {
-            Frame();
-            Sleep(20);
-        }
-        const int sent = synthetic() - before;
-        std::printf("quantum macro without GW2: %d synthetic mouse inputs sent\n", sent);
-        if (sent != 0) std::printf("FAIL: the macro sent mouse input without GW2 in front\n");
-        ok = ok && sent == 0;
-        waypointHook(2);  // started again: the unload below must end it
     }
     std::printf("text font built by the stand-in Nexus: %d\n", g_fontsBuilt);
     ok = ok && g_fontsBuilt >= 1;
