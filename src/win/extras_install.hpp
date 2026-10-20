@@ -12,6 +12,8 @@ namespace gct {
 // Vonsh's "Events: Chat" (in the Nexus library): every chat channel as a Nexus event.
 constexpr const wchar_t* kChatEventsDllName = L"Events_Chat.dll";
 constexpr const wchar_t* kChatEventsPage = L"https://github.com/jsantorek/GW2-Chat";
+// PieOrCake's "Decoder Ring" (in the Nexus library): names, maps and details of chat codes, through a DataLink.
+constexpr const wchar_t* kDecoderRingDllName = L"DecoderRing.dll";
 
 enum class ExtrasInstallCode { Ok, NoAnswer, NotChecked, DownloadFailed };
 
@@ -24,6 +26,8 @@ struct ExtrasInstallResult {
 // The newest release of jsantorek/GW2-Chat, Events_Chat.dll, SHA-256 checked, into `addonsDir` (ends with a
 // backslash). Blocking (call it on a worker thread). `cancelled` may be empty.
 ExtrasInstallResult InstallChatEvents(const std::wstring& addonsDir, const std::function<bool()>& cancelled);
+// The newest release of PieOrCake/decoder_ring, DecoderRing.dll, SHA-256 checked, into `addonsDir`. Blocking.
+ExtrasInstallResult InstallDecoderRing(const std::wstring& addonsDir, const std::function<bool()>& cancelled);
 
 // One asset of a GitHub release (`releaseApiPath` e.g. "/repos/o/r/releases/latest") into `dest`: only from
 // `downloadPrefix`, only with the SHA-256 GitHub reports for it. `progress` returns false to cancel. Blocking.

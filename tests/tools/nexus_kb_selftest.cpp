@@ -215,19 +215,24 @@ void SaveBmp(const wchar_t* path, const std::vector<float>& img, int W, int H) {
 
 }  // namespace
 
+// The test's clipboard: in memory – a link click in the test must not overwrite yours while you play.
+std::string g_testClipboard;
+void TestSetClipboard(void*, const char* text) { g_testClipboard = text ? text : ""; }
+const char* TestGetClipboard(void*) { return g_testClipboard.c_str(); }
+
 int wmain(int argc, wchar_t** argv) {
     if (argc < 2) {
         std::printf("usage: nexus_kb_selftest <gw2keyboard_nexus.dll>\n");
         return 2;
     }
-    if (FindWindowW(L"ArenaNet_Gr_Window_Class", nullptr)) {  // GW2 runs: its MumbleLink (chat line, map, loading
-        // screens) would steer the add-on under test, and nothing of a test may ever reach a game
-        std::printf("GW2 is running - close it first (the test would read its MumbleLink)\n");
-        return 3;
-    }
+    // Nothing of a running game reaches the test, nothing of the test the game: the add-on reads its own, empty
+    // MumbleLink, the clipboard stays in this process (see TestClipboard), clicks find no GW2 window of this process.
+    SetEnvironmentVariableW(L"GW2KB_MUMBLE", L"GW2KB_TEST_NO_MUMBLE");
     setvbuf(stdout, nullptr, _IONBF, 0);
     ImGui::SetAllocatorFunctions(Alloc, Free);
     ImGuiContext* ctx = ImGui::CreateContext();
+    ImGui::GetIO().SetClipboardTextFn = TestSetClipboard;
+    ImGui::GetIO().GetClipboardTextFn = TestGetClipboard;
     ImGui::GetIO().IniFilename = nullptr;  // no imgui.ini: window sizes of an earlier run must not change this one
     unsigned char* pixels = nullptr;
     int w = 0, h = 0;

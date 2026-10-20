@@ -446,6 +446,10 @@ extern std::thread g_chatEventsThread;
 const std::wstring& AddonsDir();
 bool ChatEventsPresent(bool now = false);  // `now`: scan the modules at once (else every 3 s)
 void InstallChatEventsNow();
+extern std::atomic<bool> g_decoderFile, g_decoderInstalling;  // Decoder Ring: the file there, being loaded
+extern std::thread g_decoderThread;
+void InstallDecoderRingNow();
+void RemoveDecoderRingNow();
 
 // ---- the header's icons: microphone, menu (three lines), close
 enum class Icon { Mic, Menu, Close, Collapse, Expand };
@@ -482,7 +486,7 @@ void VoiceIdleUnload();
 void RemoveVoiceModuleNow();
 void RemoveVoiceModelsNow();
 void RemoveChatEventsNow();
-void RemoveEverythingNow(bool chatEventsToo);
+void RemoveEverythingNow(bool chatEventsToo, bool decoderToo);
 void RenderRemovedNotice();
 extern bool g_wiped;
 extern std::atomic<int> g_wipeDone;

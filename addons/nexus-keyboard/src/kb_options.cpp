@@ -49,7 +49,8 @@ void RenderRemovedNotice() {
     ImGui::End();
 }
 
-// Events: Chat – loaded, installed, missing; install / remove (g_mu NOT held). Options > Technical and the guide.
+// Events: Chat and Decoder Ring – loaded, installed, missing; install / remove (g_mu NOT held). Options > Technical and
+// the guide.
 void RenderChatModule(bool guide) {
     ImGui::PushID("modules");
     const bool chatLive = g_chatEventsLive || g_chatEventsPresent;
@@ -65,6 +66,21 @@ void RenderChatModule(bool guide) {
         if (RemoveButton("chatevents")) RemoveChatEventsNow();
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", UI(Tr(L"Events: Chat is its own add-on – other add-ons may use it too.")).c_str());
+    }
+    // Decoder Ring (optional): without it a chat code shows only its kind.
+    const bool decoderLive = g_links.HasDecoder();
+    StatusRow("Decoder Ring", decoderLive ? 2 : g_decoderInstalling || g_decoderFile ? 1 : 0,
+              UI(decoderLive          ? Tr(L"ready – names, maps and details of chat codes")
+                 : g_decoderInstalling ? Tr(L"loading Decoder Ring …")
+                 : g_decoderFile       ? Tr(L"installed – Nexus loads it (else: Nexus → Addons → Decoder Ring → Load)")
+                                       : Tr(L"missing – chat codes show only their kind")));
+    if (!decoderLive && !g_decoderFile && !g_decoderInstalling) {
+        ImGui::SameLine();
+        if (ImGui::SmallButton(UI(Tr(L"Install Decoder Ring")).c_str())) InstallDecoderRingNow();
+    } else if (!guide && (decoderLive || g_decoderFile) && !g_decoderInstalling) {
+        if (RemoveButton("decoderring")) RemoveDecoderRingNow();
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", UI(Tr(L"Decoder Ring is its own add-on – other add-ons may use it too.")).c_str());
     }
     ImGui::PopID();
 }
@@ -180,12 +196,13 @@ void RenderRemoveEverything() {
         if (ImGui::SmallButton(UI(Tr(L"Remove everything of GW2Chatlator …")).c_str())) ImGui::OpenPopup("###removeall");
         if (ImGui::BeginPopupModal((UI(Tr(L"Remove everything of GW2Chatlator")) + "###removeall").c_str(), nullptr,
                                    ImGuiWindowFlags_AlwaysAutoResize)) {
-            static bool chatEventsToo = false;
+            static bool chatEventsToo = false, decoderToo = false;
             ImGui::TextUnformatted(UI(Tr(L"This deletes the folder GW2Keyboard in your addons folder: settings, learned words, my words, the voice module and its models. It cannot be undone.")).c_str());
             ImGui::Checkbox(UI(Tr(L"Events: Chat too (other add-ons may use it)")).c_str(), &chatEventsToo);
+            ImGui::Checkbox(UI(Tr(L"Decoder Ring too (other add-ons may use it)")).c_str(), &decoderToo);
             if (ImGui::Button(UI(Tr(L"Remove everything")).c_str())) {
                 ImGui::CloseCurrentPopup();
-                RemoveEverythingNow(chatEventsToo);
+                RemoveEverythingNow(chatEventsToo, decoderToo);
             }
             ImGui::SameLine();
             if (ImGui::Button(UI(Tr(L"Cancel")).c_str()) || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape)))
@@ -425,6 +442,12 @@ void RenderDashboard(Config& edit, const Config& saved) {
     DashState("translator", UI(Tr(L"Translator")), UI(engine), true, 5);
     ImGui::TableNextColumn();
     DashState("reading", UI(Tr(L"Reading the chat")), UI(!chatThere ? Tr(L"Events: Chat is missing") : readingText), reading, 6);
+    ImGui::TableNextRow();
+    ImGui::TableNextColumn();
+    const bool decoderLive = g_links.HasDecoder();
+    DashState("decoder", "Decoder Ring",
+              UI(decoderLive ? Tr(L"ready – names, maps and details of chat codes") : Tr(L"missing – chat codes show only their kind")),
+              decoderLive, 6);
     ImGui::EndTable();
     if (edit.translateWriting != saved.translateWriting || edit.voiceEnabled != saved.voiceEnabled ||
         edit.voiceTranslate != saved.voiceTranslate)

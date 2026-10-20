@@ -153,7 +153,10 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   docked to the window's top right corner (1 px), an X closes it: self-corrections noticed while typing (`NoteSelfFix`) →
   `SpellService::TeachFix` (never a dictionary word), and "my words" (meaning → translator). No menu on chat lines.
 - **Nothing downloads by itself** (user, 2026-10-18): `FirstStart` only marks the setup done. The modules list (empty
-  chat; Options → Technical for Events: Chat, Options → Voice for the voice module) offers each on a click: Events: Chat first (reading), then – only after voice
+  chat; Options → Technical for Events: Chat and Decoder Ring, Options → Voice for the voice module) offers each on a
+  click: Events: Chat first (reading), Decoder Ring (optional, 2.3.0: `InstallDecoderRingNow` – the newest release of
+  PieOrCake/decoder_ring, `DecoderRing.dll`, SHA-256 checked; `RemoveDecoderRingNow` while Nexus does not hold it;
+  live = `g_links.HasDecoder()`, file = `g_decoderFile`), then – only after voice
   input is switched on (off for new users unless the voice module is already there) – the voice module
   (`voice_module.cpp`: release ZIP via `DownloadReleaseAsset`, tar.exe, only gw2kb_voice.exe + voice\*.dll copied)
   and then a voice model. Unload: the voice helper ends after [Voice] UnloadMinutes without use.
@@ -287,8 +290,9 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 - The window's corner against random walks: 400 steps (minimise, open, mini mode, clicks, a press held while the
   shape changes and the mouse moves, fractional frame heights) – the bottom-left corner must never move;
   `GW2KB_TEST_SEED=<n>` walks another way (it found the stale own-drag press on its first run).
-- Self-test and smoke test refuse to run while GW2 runs (exit 3): they would read its MumbleLink, and a test must
-  never reach a game. `FindGw2Window(pid)` returns only that process' window, never another GW2.
+- Self-test and smoke test run while you play: the add-on under test reads its own, empty MumbleLink
+  (`GW2KB_MUMBLE`, `MumbleLink::DefaultName` – never set in the game), the clipboard stays in the test process,
+  `FindGw2Window(pid)` returns only that process' window (never another GW2), so no click can reach the game.
 - `build\Release\typing_bench.exe [n]` after every change to the typing help: SURPRISES must stay 0.
 - While working: `python tools/verify_release.py --changed [base]` runs only the gates the changed files can touch
   (core tests, selftest, typing bench, smoke test by path; version, Nexus definition, i18n, binary always) – never a

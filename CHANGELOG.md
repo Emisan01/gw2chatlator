@@ -3,11 +3,14 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## 2.3.0 — unreleased (GW2Chatlator for Nexus)
+## 2.3.0 — 2026-10-20 (GW2Chatlator for Nexus)
 
 - **Nothing of other players' messages leaves your PC:** "Copy protocol" (Options > Technical, for a GitHub issue)
   listed every recent line with its channel and the lengths of name, account and message. Now it only counts which
   rules the last lines broke, and how often; the guard itself keeps nothing else of a line.
+- **Decoder Ring as a module:** next to Events: Chat (Options > Technical, "What is ready", the empty chat) and as a
+  tile on the dashboard – loaded or missing, "Install Decoder Ring" (its newest release, checked like Events: Chat),
+  remove; "Remove everything" may take it too. Nothing is installed by itself – only on your click.
 - **A waypoint link no longer opens GW2's chat line or the map:** in game a click on a waypoint here opened GW2's
   chat line – typing mode, where a click on a link does not fly the map – and older ones the map without a target,
   with the Waypoint/POI click on or off alike (it fell back to the old "every link opens GW2's chat" way whenever
