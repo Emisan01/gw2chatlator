@@ -2152,7 +2152,7 @@ static void TestEquations2() {
         rng ^= rng << 17;
         return rng;
     };
-    int bad[5] = {};
+    int bad[6] = {};
     // E6 text blocks: what is saved comes back the same; never more than kMax, never longer than kMaxChars, never half a
     // surrogate pair, never empty, never twice.
     static const wchar_t* kBits[] = {L"a", L"\\", L"\\n", L"n", L"\n", L"\r", L" ", L"ä", L"\xD83D\xDE00", L"[&AgGvWwEA]", L"x y"};
@@ -2297,9 +2297,37 @@ static void TestEquations2() {
         ok = ok && r.translating == (!r.lang.empty() && PrimaryLang(r.lang) != PrimaryLang(source));
         if (!ok) ++bad[4];
     }
+    // E11 plain punctuation (a font without the General Punctuation block draws "?"): none of the typographic marks is
+    // left, everything else stays in order, twice = once.
+    static const wchar_t kTypo[] = {0x2013, 0x2014, 0x2212, 0x2018, 0x2019, 0x201C, 0x201D, 0x201E, 0x2026, 0x2022, 0x2009, 0x202F};
+    static const wchar_t kOther[] = L"abä·«»-\"' [&]ا";
+    for (int round = 0; round < 500; ++round) {
+        std::wstring s, other;
+        const int len = static_cast<int>(next() % 30);
+        for (int i = 0; i < len; ++i) {
+            if (next() % 3 == 0) {
+                s += kTypo[next() % (sizeof(kTypo) / sizeof(*kTypo))];
+            } else {
+                const wchar_t c = kOther[next() % (sizeof(kOther) / sizeof(*kOther) - 1)];
+                s += c;
+                other += c;
+            }
+        }
+        const std::wstring p = PlainPunctuation(s);
+        bool ok = PlainPunctuation(p) == p;
+        for (wchar_t t : kTypo) ok = ok && p.find(t) == std::wstring::npos;
+        size_t at = 0;  // the other characters, in their order
+        for (wchar_t c : other) {
+            at = p.find(c, at);
+            ok = ok && at != std::wstring::npos;
+            if (at == std::wstring::npos) break;
+            ++at;
+        }
+        if (!ok) ++bad[5];
+    }
     static const char* kNames[] = {"E6 text blocks", "E7 protocol counts", "E8 invisible marks", "E9 steady number",
-                                   "E10 where a message goes"};
-    for (int k = 0; k < 5; ++k) {
+                                   "E10 where a message goes", "E11 plain punctuation"};
+    for (int k = 0; k < 6; ++k) {
         if (bad[k]) std::printf("equation failed: %s (%d times)\n", kNames[k], bad[k]);
         CHECK(bad[k] == 0);
     }

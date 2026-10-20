@@ -58,6 +58,9 @@ std::wstring SanitizeChatText(const std::wstring& s);
 // `s` without the invisible and direction marks SanitizeChatText drops too (bidi controls, zero width, BOM, soft
 // hyphen): ImGui draws no text direction – such a mark would only be a "?" in the window.
 std::wstring WithoutInvisible(const std::wstring& s);
+// Typographic punctuation in its plain form: dashes and the minus "-", curly quotes ' and ", "…" "...", bullets "·",
+// special spaces " ". A font without the General Punctuation block (the one Nexus builds for our chat) would draw "?".
+std::wstring PlainPunctuation(const std::wstring& s);
 
 // Comma separated language list ("en-gb, fr ,ZH-HANS") -> {"EN-GB","FR","ZH-HANS"}
 std::vector<std::wstring> ParseLangList(const std::wstring& s);

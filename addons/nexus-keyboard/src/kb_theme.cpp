@@ -139,7 +139,20 @@ ImVec4 NameColorOf(Channel ch) {  // the name in front of it
 
 // Text as GW2 draws it: a soft dark halo around the letters (when on), then the letters. `wrap`: lines wrap at the
 // right edge and stand under each other at the same x (like TextWrapped). It is an item: hover and click work.
+// Text for the font it is drawn in: when the text holds General Punctuation (dashes, curly quotes, "…" – players
+// write them, DeepL's German quotes) and the font lacks it, its plain forms; else as it is. Only the drawing – the
+// line itself (and what the translator gets) stays as it came.
+const char* FontSafe(const char* text, std::string& buf) {
+    if (!std::strstr(text, "\xE2\x80")) return text;  // U+2000..U+203F start with these two bytes in UTF-8
+    ImFont* font = ImGui::GetFont();
+    if (font && font->FindGlyphNoFallback(0x2013) && font->FindGlyphNoFallback(0x201C)) return text;
+    buf = ToUtf8(PlainPunctuation(FromUtf8(text)));
+    return buf.c_str();
+}
+
 void LookText(const char* text, ImVec4 color, bool wrap) {
+    std::string plain;
+    text = FontSafe(text, plain);
     ImFont* font = ImGui::GetFont();
     const float fs = ImGui::GetFontSize();
     const float wrapW = wrap ? std::max(1.0f, ImGui::GetContentRegionAvail().x) : 0.0f;
@@ -214,8 +227,9 @@ std::string Fit(const std::string& s, float width) {
 
 // Text drawn into the input box (status, the translation in the compact view): on top, clipped to the box.
 void BoxText(const ImVec2& at, const ImVec4& clip, ImU32 color, const std::string& text, float scale) {
-    ImGui::GetForegroundDrawList()->AddText(ImGui::GetFont(), ImGui::GetFontSize() * scale, at, color, text.c_str(), nullptr,
-                                            0, &clip);
+    std::string plain;
+    ImGui::GetForegroundDrawList()->AddText(ImGui::GetFont(), ImGui::GetFontSize() * scale, at, color,
+                                            FontSafe(text.c_str(), plain), nullptr, 0, &clip);
 }
 
 }  // namespace kb

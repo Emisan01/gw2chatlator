@@ -3,6 +3,13 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.3.3 — 2026-10-20 (GW2Chatlator for Nexus)
+
+- **No more "?" in the chat window:** its font has no dashes, curly quotes or "…" – "ready – Events: Chat is loaded"
+  showed "ready ? Events: Chat is loaded". Our texts now use the plain forms (-, ", ...), and chat lines and
+  translations that bring such characters (DeepL's German quotes, players writing from a phone) are drawn with the
+  plain forms whenever the font lacks them – the text itself, and what the translator gets, stays as it is.
+
 ## 2.3.2 — 2026-10-20 (GW2Chatlator for Nexus)
 
 - **The game never goes down with us – also not from a background task.** Translating, spelling, downloads and the

@@ -37,11 +37,12 @@ size_t U8Offset(const std::wstring& w, size_t idx) { return ToUtf8(w.substr(0, s
 // For drawing UI text: Nexus' font has no ≡ → … ▾ and curly quotes – plain stand-ins instead of "?".
 std::string UI(std::wstring w) {
     static const std::pair<const wchar_t*, const wchar_t*> kSwap[] = {
-        {L"\u2026", L"..."}, {L"\u2192", L">"}, {L"\u2190", L"<"}, {L"\u2261", L"menu"}, {L"\u25BE", L""},
-        {L"\u201C", L"\""}, {L"\u201D", L"\""}, {L"\u201E", L"\""}, {L"\u2018", L"'"}, {L"\u2019", L"'"}};
+        {L"\u2192", L">"}, {L"\u2190", L"<"}, {L"\u2261", L"menu"}, {L"\u25BE", L""}};
     for (const auto& [from, to] : kSwap)
         for (size_t at; (at = w.find(from)) != std::wstring::npos;) w.replace(at, std::wcslen(from), to);
-    return ToUtf8(WithoutInvisible(w));  // a direction mark or a zero-width space would only be a "?" in the window
+    // Dashes, curly quotes, "\u2026" plain (our chat font lacks them: "ready \u2013 \u2026" showed "ready ? \u2026"); a direction mark or a
+    // zero-width space would only be a "?" too.
+    return ToUtf8(WithoutInvisible(PlainPunctuation(w)));
 }
 Worker g_worker;
 SpellService* g_spell = nullptr;
