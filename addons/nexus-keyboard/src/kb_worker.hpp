@@ -38,15 +38,18 @@ private:
         CoInitializeEx(nullptr, COINIT_MULTITHREADED);  // language detection, spell checker, word prediction
         for (;;) {
             std::function<void()> job;
+            bool stopping;
             {
                 std::unique_lock<std::mutex> lock(mu_);
                 cv_.wait(lock, [this] { return stop_ || !jobs_.empty(); });
                 if (jobs_.empty()) break;  // stopped, nothing left
                 job = std::move(jobs_.front());
                 jobs_.pop_front();
+                stopping = stop_;
             }
+            if (g_disabled && !stopping) continue;  // switched off by a fault: only the last job (the cleanup) runs
             try {
-                job();
+                if (!Shielded(job)) Log(LOGL_CRITICAL, "a background job faulted – switched off for this session");
             } catch (...) {
                 Log(LOGL_WARNING, "a background job failed");
             }

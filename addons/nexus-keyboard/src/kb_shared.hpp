@@ -183,6 +183,14 @@ float PtToPx(int pt);
 void RequestTextFont(int pt);
 extern HMODULE g_self;
 extern std::atomic<bool> g_disabled;
+// Work of a thread of ours behind the same net as the render callbacks: a fault (an access violation & co. – not a C++
+// exception, that goes on to its catch) switches our add-on off for the session (g_disabled), never the game; with /EHa
+// everything on the way is unwound (locks given back). False: it caught one.
+bool ShieldedCall(void (*fn)(void*), void* arg);
+template <class F>
+bool Shielded(F&& f) {
+    return ShieldedCall([](void* p) { (*static_cast<std::remove_reference_t<F>*>(p))(); }, &f);
+}
 extern std::atomic<bool> g_chatEventsLive;
 extern std::atomic<bool> g_keyboardFree;
 extern std::atomic<int> g_fps;

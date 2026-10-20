@@ -79,7 +79,8 @@ private:
                 const std::string line = pending.substr(0, nl);
                 pending.erase(0, nl + 1);
                 try {
-                    OnLine(line);
+                    if (!g_disabled && !Shielded([&line] { OnLine(line); }))
+                        Log(LOGL_CRITICAL, "the voice helper's answer faulted – switched off for this session");
                 } catch (...) {
                 }
             }

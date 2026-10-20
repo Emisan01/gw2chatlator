@@ -1,6 +1,9 @@
 # GW2 Keyboard for Nexus: the add-on DLL, its voice helper and its self-test.
 # the UI is ImGui 1.80 (Nexus' version, headers in third_party/).
 set(GCT_NEXUS_TP ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
+# The add-on DLL with /EHa, the rest here with /EHsc: a fault in one of our threads, caught by its shield (Shielded,
+# SafeRender), still unwinds – g_mu and every lock are given back, nothing hangs the game after it.
+string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 add_library(gw2keyboard_nexus SHARED
     src/kb_main.cpp
     src/kb_state.cpp
@@ -26,7 +29,7 @@ target_include_directories(gw2keyboard_nexus PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 target_link_libraries(gw2keyboard_nexus PRIVATE gct_win)
 target_compile_definitions(gw2keyboard_nexus PRIVATE UNICODE _UNICODE _WIN32_WINNT=0x0A00 WINVER=0x0A00 NOMINMAX
                            WIN32_LEAN_AND_MEAN GCT_NEXUS_KEYBOARD)
-target_compile_options(gw2keyboard_nexus PRIVATE /utf-8 /W4 /permissive-)
+target_compile_options(gw2keyboard_nexus PRIVATE /utf-8 /W4 /permissive- /EHa)
 set_source_files_properties(${GCT_NEXUS_TP}/imgui/imgui.cpp ${GCT_NEXUS_TP}/imgui/imgui_draw.cpp
     ${GCT_NEXUS_TP}/imgui/imgui_tables.cpp ${GCT_NEXUS_TP}/imgui/imgui_widgets.cpp PROPERTIES COMPILE_OPTIONS "/W0")
 # Static CRT, like the bridge: independent of the runtime the game has loaded.
@@ -39,7 +42,7 @@ if(GCT_BUILD_TESTS)
         ${GCT_NEXUS_TP}/imgui/imgui_widgets.cpp)
     target_include_directories(nexus_kb_selftest PRIVATE ${GCT_NEXUS_TP} ${GCT_NEXUS_TP}/imgui)
     target_compile_definitions(nexus_kb_selftest PRIVATE UNICODE _UNICODE NOMINMAX)
-    target_compile_options(nexus_kb_selftest PRIVATE /utf-8)
+    target_compile_options(nexus_kb_selftest PRIVATE /utf-8 /EHsc)
     set_property(TARGET nexus_kb_selftest PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     add_dependencies(nexus_kb_selftest gw2keyboard_nexus)
 
@@ -49,7 +52,7 @@ if(GCT_BUILD_TESTS)
         ${GCT_NEXUS_TP}/imgui/imgui_widgets.cpp)
     target_include_directories(nexus_kb_smoketest PRIVATE ${GCT_NEXUS_TP} ${GCT_NEXUS_TP}/imgui)
     target_compile_definitions(nexus_kb_smoketest PRIVATE UNICODE _UNICODE NOMINMAX)
-    target_compile_options(nexus_kb_smoketest PRIVATE /utf-8)
+    target_compile_options(nexus_kb_smoketest PRIVATE /utf-8 /EHsc)
     set_property(TARGET nexus_kb_smoketest PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     add_dependencies(nexus_kb_smoketest gw2keyboard_nexus)
 endif()
@@ -64,7 +67,7 @@ if(GCT_WHISPER)
     target_link_libraries(gw2kb_voice PRIVATE gct_win whisper ggml delayimp)
     target_compile_definitions(gw2kb_voice PRIVATE UNICODE _UNICODE _WIN32_WINNT=0x0A00 WINVER=0x0A00 NOMINMAX
                                GCT_HAVE_WHISPER=1)
-    target_compile_options(gw2kb_voice PRIVATE /utf-8 /W4 /permissive-)
+    target_compile_options(gw2kb_voice PRIVATE /utf-8 /W4 /permissive- /EHsc)
     target_link_options(gw2kb_voice PRIVATE /DELAYLOAD:whisper.dll /DELAYLOAD:ggml.dll /MANIFEST:NO)
     set_target_properties(gw2kb_voice PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
                           RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/GW2Keyboard)

@@ -82,6 +82,15 @@ void GuardedRender(void (*fn)()) {
         Log(LOGL_CRITICAL, "an error – switched off for this session");
     }
 }
+bool ShieldedCall(void (*fn)(void*), void* arg) {
+    __try {
+        fn(arg);
+        return true;
+    } __except (GetExceptionCode() == 0xE06D7363 ? EXCEPTION_CONTINUE_SEARCH : EXCEPTION_EXECUTE_HANDLER) {  // C++: on
+        g_disabled = true;
+        return false;
+    }
+}
 void SafeRender() {
     __try {
         GuardedRender(RenderWindow);
@@ -249,6 +258,23 @@ extern "C" __declspec(dllexport) void Gw2KbTestNewTab(uint32_t channels, bool se
     if (at < 0) return;
     g_tabs[at].channels = channels;
     if (settings) g_tabSettings = at;
+}
+
+// nexus_kb_selftest only: a fault in a worker job while it holds g_mu (step 1); step 0: the add-on is off (1) and g_mu
+// is free again (2) – the fault did not take the process down, nothing stays locked.
+extern "C" __declspec(dllexport) int Gw2KbTestFault(int step) {
+    if (!TestHost()) return -1;
+    if (step == 1) {
+        g_worker.Post([] {
+            std::lock_guard<std::mutex> lock(g_mu);
+            volatile int* nowhere = nullptr;
+            *nowhere = 1;  // an access violation, on purpose
+        });
+        return 0;
+    }
+    const bool free = g_mu.try_lock();
+    if (free) g_mu.unlock();
+    return (g_disabled ? 1 : 0) + (free ? 2 : 0);
 }
 
 // nexus_kb_selftest only: the window's shape – 0 minimise (as the menu does), 1 open again.

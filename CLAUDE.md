@@ -61,7 +61,12 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   helper its own process. `Worker::Stop(last)` runs the cleanup (COM / WinRT objects) on the worker before the DLL goes
   – without it the add-on crashed on unload.
 - **Failsafe:** every callback runs behind try/catch + SEH (`SafeRender`, `SafeOptions`); an error sets `g_disabled`
-  for the session, never takes the game down.
+  for the session, never takes the game down. Every thread of ours too (since the 2.3.0 crash came from one outside
+  that net): `Shielded(...)` (kb_main `ShieldedCall`: catches faults only – a C++ exception goes on to its catch) around
+  every worker job (after a fault the worker runs nothing but the last cleanup job), the voice helper's reader, the
+  downloads, the "open link / folder" threads. The add-on DLL is built with `/EHa` (the rest with `/EHsc`): a caught
+  fault still unwinds, so `g_mu` and every lock are given back – nothing hangs the game after it. A new thread gets its
+  `Shielded` too. The self-test faults a worker job holding `g_mu` on purpose (`Gw2KbTestFault`).
 - **Chat source guard** (user, 2026-10-19: Nexus updates Events: Chat over night, unasked; updates and compatibility
   are Nexus' and Vonsh's business, ours is never to crash and never to show garbage – no on / off logic per version):
   `OnChatEvents` (kb_chatsource.cpp) copies each line in `CopyLineGuarded` – the only code that reads the other
