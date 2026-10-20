@@ -267,6 +267,14 @@ static inline bool IsDangerousOrInvisibleUnicode(wchar_t c) {
     return false;
 }
 
+std::wstring WithoutInvisible(const std::wstring& s) {
+    std::wstring out;
+    out.reserve(s.size());
+    for (wchar_t c : s)
+        if (!IsDangerousOrInvisibleUnicode(c)) out += c;
+    return out;
+}
+
 std::wstring SanitizeChatText(const std::wstring& s) {
     std::wstring out;
     out.reserve(s.size());

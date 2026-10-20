@@ -10,6 +10,12 @@ diagnosis show it.
   happened in 2.3.0). Now each of them runs behind the same net as the window: an error switches GW2Chatlator off for
   the session, the game goes on – and nothing stays locked behind it.
 - What the waypoint click left in the settings file is removed on load.
+- **New equations, true for every input** (thousands of random ones in every build): text blocks come back exactly as
+  saved (they did not when one held a carriage return – fixed), the chat protocol counts every line and every rule,
+  no invisible direction mark ever reaches the window (one sat in an Arabic text – it would have shown as "?"), the
+  numbers in Technical stay within what came in and change at most four times a second, and where a message goes:
+  typed exactly as before, spoken with "Translate what I say" on never "as written" while you have a language.
+  Every translation keeps the {1} placeholders of its English text – checked in every build.
 
 ## 2.3.1 — 2026-10-20 (GW2Chatlator for Nexus)
 

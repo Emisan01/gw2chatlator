@@ -55,7 +55,9 @@ std::wstring Snippets::Serialize() const {
 }
 
 Snippets::Added Snippets::Add(const std::wstring& text) {
-    std::wstring s = Trimmed(text);
+    std::wstring s = text;
+    s.erase(std::remove(s.begin(), s.end(), L'\r'), s.end());  // as the file keeps it (E6: saved = loaded)
+    s = Trimmed(s);
     if (s.size() > kMaxChars) {
         size_t cut = kMaxChars;
         if (s[cut - 1] >= 0xD800 && s[cut - 1] <= 0xDBFF) --cut;  // never half a surrogate pair

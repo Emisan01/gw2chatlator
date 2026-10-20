@@ -22,6 +22,7 @@ add_library(gct_core STATIC
     src/core/typo_memory.cpp
     src/core/my_words.cpp
     src/core/snippets.cpp
+    src/core/send_route.cpp
     src/core/deepl_protocol.cpp
     src/core/mymemory_protocol.cpp
     src/core/llm_protocol.cpp

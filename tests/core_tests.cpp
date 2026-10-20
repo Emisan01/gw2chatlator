@@ -13,6 +13,8 @@
 #include "core/cloud_mt_protocol.hpp"
 #include "core/my_words.hpp"
 #include "core/snippets.hpp"
+#include "core/send_route.hpp"
+#include "core/steady.hpp"
 #include "core/deepl_protocol.hpp"
 #include "core/gw2_text.hpp"
 #include "core/names.hpp"
@@ -2141,7 +2143,170 @@ static void TestEquations() {
     }
 }
 
+// Equations of the newer parts (2.3.x), each for thousands of random inputs – true or false (the "math filter").
+static void TestEquations2() {
+    uint64_t rng = 0xD1B54A32D192ED03ull;
+    auto next = [&rng] {
+        rng ^= rng << 13;
+        rng ^= rng >> 7;
+        rng ^= rng << 17;
+        return rng;
+    };
+    int bad[5] = {};
+    // E6 text blocks: what is saved comes back the same; never more than kMax, never longer than kMaxChars, never half a
+    // surrogate pair, never empty, never twice.
+    static const wchar_t* kBits[] = {L"a", L"\\", L"\\n", L"n", L"\n", L"\r", L" ", L"ä", L"\xD83D\xDE00", L"[&AgGvWwEA]", L"x y"};
+    for (int round = 0; round < 300; ++round) {
+        Snippets s;
+        const int n = static_cast<int>(next() % 40);
+        for (int i = 0; i < n; ++i) {
+            std::wstring t;
+            const int parts = static_cast<int>(next() % 12);
+            for (int k = 0; k < parts; ++k) t += kBits[next() % (sizeof(kBits) / sizeof(*kBits))];
+            if (next() % 10 == 0) t.append(700, L'q');
+            s.Add(t);
+        }
+        Snippets back;
+        back.Parse(s.Serialize());
+        bool ok = back.Items() == s.Items() && s.Items().size() <= Snippets::kMax;
+        for (size_t i = 0; i < s.Items().size(); ++i) {
+            const std::wstring& b = s.Items()[i];
+            ok = ok && !b.empty() && b.size() <= Snippets::kMaxChars && !(b.back() >= 0xD800 && b.back() <= 0xDBFF);
+            for (size_t j = 0; j < i; ++j) ok = ok && s.Items()[j] != b;
+        }
+        if (!ok) ++bad[0];
+    }
+    // E7 the chat source protocol counts: the lines are all counted, "fine" are those without a hard rule, every rule
+    // as often as lines broke it – and nothing else of a line.
+    static const uint32_t kRules[] = {kRuleType, kRulePointer, kRuleUtf8, kRuleLength, kRuleControl, kRuleNameLength,
+                                      kRuleUnreadable, kNoteTime, kNoteAccount, kNoteFlags, kNoteEmpty, kNoteNotShown};
+    for (int round = 0; round < 300; ++round) {
+        ChatSourceReport rep;
+        rep.addonVersion = "1";
+        rep.sourceVersion = "2";
+        const int n = static_cast<int>(next() % 25);
+        int fine = 0;
+        std::map<std::string, int> want;
+        for (int i = 0; i < n; ++i) {
+            ChatSourceRecord r;
+            for (uint32_t b : kRules)
+                if (next() % 6 == 0) r.rules |= b;
+            if (!(r.rules & kHardRules)) ++fine;
+            for (uint32_t b : kRules)
+                if (r.rules & b) ++want[ChatRuleNames(b)];
+            rep.lines.push_back(r);
+        }
+        const std::string p = ChatSourceProtocol(rep);
+        bool ok = p.find("Last " + std::to_string(n) + " lines") != std::string::npos &&
+                  p.find(": " + std::to_string(fine) + " fine") != std::string::npos;
+        for (const auto& [name, count] : want) {
+            const std::string item = ", " + name + " " + std::to_string(count);
+            ok = ok && (p.find(item + ",") != std::string::npos || p.find(item + "\n") != std::string::npos);
+        }
+        if (!ok) ++bad[1];
+    }
+    // E8 no invisible mark ever reaches the window: exactly the marks go, everything else stays in order; twice = once.
+    static const wchar_t kMarks[] = {0x200E, 0x200F, 0x202A, 0x202E, 0x2066, 0x2069, 0x200B, 0x200D, 0xFEFF, 0x00AD};
+    static const wchar_t kPlain[] = L"abcäöü\xD83D\xDE00 [&]";
+    for (int round = 0; round < 500; ++round) {
+        std::wstring s, keep;
+        const int len = static_cast<int>(next() % 30);
+        for (int i = 0; i < len; ++i) {
+            if (next() % 4 == 0) {
+                s += kMarks[next() % 10];
+            } else {
+                const wchar_t c = kPlain[next() % 12];
+                s += c;
+                keep += c;
+            }
+        }
+        const std::wstring w = WithoutInvisible(s);
+        if (w != keep || WithoutInvisible(w) != w) ++bad[2];
+    }
+    // E9 the steady number: always within what came in, changes at most once per period, settles on a constant input.
+    for (int round = 0; round < 200; ++round) {
+        SteadyNumber st;
+        uint64_t now = 1000 + next() % 1000;
+        double lo = 1e300, hi = -1e300, lastShown = 0;
+        uint64_t lastChange = 0;
+        bool ok = true;
+        for (int i = 0; i < 400; ++i) {
+            const double v = static_cast<double>(next() % 1000) / 10.0;
+            lo = std::min(lo, v);
+            hi = std::max(hi, v);
+            now += 1 + next() % 40;
+            const double shown = st.Next(v, now);
+            ok = ok && shown >= lo - 1e-9 && shown <= hi + 1e-9;
+            if (i == 0) {
+                lastChange = now;
+            } else if (shown != lastShown) {
+                ok = ok && now - lastChange >= 250;
+                lastChange = now;
+            }
+            lastShown = shown;
+        }
+        for (int i = 0; i < 300; ++i) {
+            now += 20;
+            st.Next(42.0, now);
+        }
+        ok = ok && std::fabs(st.Next(42.0, now + 300) - 42.0) < 1e-6;
+        if (!ok) ++bad[3];
+    }
+    // E10 where a message goes: typed – as before 2.3.0 and the voice switch has no say; spoken with the switch off – as
+    // typed; spoken with the switch on – never "as written" while you have a language, and only into a language you
+    // chose; the translator has work exactly when the language differs from the one it was written / said in.
+    static const wchar_t* kLangs[] = {L"DE", L"EN-GB", L"FR", L"ES"};
+    static const wchar_t* kTabs[] = {L"", L"", L"=", L"FR", L"EN-GB"};
+    static const wchar_t* kDict[] = {L"", L"EN", L"de", L"FR"};
+    static const wchar_t* kTyping[] = {L"DE", L"EN", L"FR"};
+    auto before230 = [](const SendState& s) {  // the footer's choice and a whisper tab, as they always were
+        const std::vector<std::wstring>& langs = *s.writeLangs;
+        if (!s.tabLang.empty()) return s.tabLang == L"=" ? std::wstring() : s.tabLang;
+        return s.sendIdx >= 0 && s.sendIdx < static_cast<int>(langs.size()) ? langs[static_cast<size_t>(s.sendIdx)]
+                                                                            : std::wstring();
+    };
+    for (int round = 0; round < 20000; ++round) {
+        std::vector<std::wstring> langs;
+        for (const wchar_t* l : kLangs)
+            if (next() % 2) langs.push_back(l);
+        SendState s;
+        s.spoken = next() % 2;
+        s.voiceOn = next() % 2;
+        s.voiceTranslate = next() % 2;
+        s.tabLang = kTabs[next() % 5];
+        s.sendIdx = static_cast<int>(next() % 6) - 1;
+        s.writeLangs = &langs;
+        s.dictLang = kDict[next() % 4];
+        s.typingLang = kTyping[next() % 3];
+        const SendRoute r = RouteMessage(s);
+        SendState typed = s;
+        typed.spoken = false;
+        const SendRoute t = RouteMessage(typed);
+        SendState flipped = typed;
+        flipped.voiceOn = !flipped.voiceOn;
+        flipped.voiceTranslate = !flipped.voiceTranslate;
+        flipped.dictLang = L"ZH";
+        const SendRoute f = RouteMessage(flipped);
+        const bool voiceFirst = s.spoken && s.voiceOn && s.voiceTranslate;
+        bool ok = t.lang == before230(typed) && f.lang == t.lang && f.translating == t.translating;
+        if (!voiceFirst) ok = ok && r.lang == t.lang && r.translating == t.translating;
+        if (voiceFirst && !langs.empty()) ok = ok && !r.lang.empty();
+        if (voiceFirst && !r.lang.empty())
+            ok = ok && (r.lang == s.tabLang || std::find(langs.begin(), langs.end(), r.lang) != langs.end());
+        const std::wstring& source = voiceFirst && !s.dictLang.empty() ? s.dictLang : s.typingLang;
+        ok = ok && r.translating == (!r.lang.empty() && PrimaryLang(r.lang) != PrimaryLang(source));
+        if (!ok) ++bad[4];
+    }
+    static const char* kNames[] = {"E6 text blocks", "E7 protocol counts", "E8 invisible marks", "E9 steady number",
+                                   "E10 where a message goes"};
+    for (int k = 0; k < 5; ++k) {
+        if (bad[k]) std::printf("equation failed: %s (%d times)\n", kNames[k], bad[k]);
+        CHECK(bad[k] == 0);
+    }
+}
+
 int main() {
+    TestEquations2();
     TestEquations();
     TestWindowLayout();
     TestChatSource();
