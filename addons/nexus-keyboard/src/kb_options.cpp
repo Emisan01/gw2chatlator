@@ -320,6 +320,111 @@ void RenderCbaTheme() {
     if (changed) SaveLayout();
 }
 
+// The dashboard (Options > General): one switch – a chip, green on, grey off, amber changed and not saved yet ("Save"
+// applies it, as everywhere in this window) – its name, and below it in grey what it does right now.
+bool DashSwitch(const char* id, const std::string& name, const std::string& detail, bool* on, bool pending, bool usable) {
+    const ImVec4 col = !usable  ? ImVec4(0.5f, 0.5f, 0.5f, 1.f)
+                       : pending ? ImVec4(0.94f, 0.75f, 0.35f, 1.f)
+                       : *on     ? ImVec4(0.45f, 0.85f, 0.45f, 1.f)
+                                 : ImVec4(0.62f, 0.62f, 0.62f, 1.f);
+    const std::string onText = UI(Tr(L"on")), offText = UI(Tr(L"off"));
+    const float chipW = std::ceil(std::max(ImGui::CalcTextSize(onText.c_str()).x, ImGui::CalcTextSize(offText.c_str()).x) +
+                                  ImGui::GetStyle().FramePadding.x * 2 + 6);
+    ImGui::PushID(id);
+    ImGui::PushStyleColor(ImGuiCol_Text, col);
+    ImGui::PushStyleColor(ImGuiCol_Border, col);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+    const bool clicked = ImGui::Button((*on ? onText : offText).c_str(), ImVec2(chipW, 0)) && usable;
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor(2);
+    if (clicked) *on = !*on;
+    ImGui::SameLine();
+    ImGui::AlignTextToFramePadding();
+    if (usable) ImGui::TextUnformatted(name.c_str());
+    else ImGui::TextDisabled("%s", name.c_str());
+    Hint(detail);
+    ImGui::PopID();
+    return clicked;
+}
+
+// A state of the dashboard that is switched elsewhere: the chip ([OK] / [--]) opens that tab.
+void DashState(const char* id, const std::string& name, const std::string& detail, bool fine, int tab) {
+    const ImVec4 col = fine ? ImVec4(0.45f, 0.85f, 0.45f, 1.f) : ImVec4(0.95f, 0.55f, 0.35f, 1.f);
+    const std::string onText = UI(Tr(L"on")), offText = UI(Tr(L"off"));
+    const float chipW = std::ceil(std::max(ImGui::CalcTextSize(onText.c_str()).x, ImGui::CalcTextSize(offText.c_str()).x) +
+                                  ImGui::GetStyle().FramePadding.x * 2 + 6);
+    ImGui::PushID(id);
+    ImGui::PushStyleColor(ImGuiCol_Text, col);
+    ImGui::PushStyleColor(ImGuiCol_Border, col);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+    if (ImGui::Button(fine ? "OK" : "--", ImVec2(chipW, 0))) g_optionsTab = tab;
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor(2);
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Open")).c_str());
+    ImGui::SameLine();
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(name.c_str());
+    Hint(detail);
+    ImGui::PopID();
+}
+
+// What is on, at a glance (g_mu NOT held): the chat's translation applies at once (as in the Translator tab), the rest
+// with "Save".
+void RenderDashboard(Config& edit, const Config& saved) {
+    bool chatOn, voiceReady;
+    std::wstring writeIn, engine;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        chatOn = g_nx.translateChat;
+        voiceReady = g_voiceReady;
+        writeIn = g_cfg.writeIn;
+        engine = g_translator ? g_translator->Name() : std::wstring(L"-");
+    }
+    const ModuleState& m = Modules();
+    std::wstring readingText;
+    const bool chatThere = g_chatEventsLive || g_chatEventsPresent;
+    const bool reading = chatThere && ChatSourceStatus(&readingText) == 2;
+    ImGui::TextUnformatted(UI(Tr(L"At a glance")).c_str());
+    if (!ImGui::BeginTable("##dashboard", 2, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_BordersInnerV)) return;
+    ImGui::TableNextRow();
+    ImGui::TableNextColumn();
+    if (DashSwitch("chat", UI(Tr(L"Translate the chat")),
+                   UI(chatOn ? TrF(L"into {1}", {NativeName(writeIn)}) : Tr(L"a click on a line translates just that one")),
+                   &chatOn, false, true)) {
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_nx.translateChat = chatOn;
+        SaveNexusOptions();
+        if (chatOn) TranslateRecentLines(false);  // what is already there too
+    }
+    ImGui::TableNextColumn();
+    DashSwitch("mine", UI(Tr(L"Translate my text")),
+               UI(edit.translateWriting ? Tr(L"into the language chosen at \"Send\" below the input") : Tr(L"sent as you write it")),
+               &edit.translateWriting, edit.translateWriting != saved.translateWriting, true);
+    ImGui::TableNextRow();
+    ImGui::TableNextColumn();
+    DashSwitch("voice", UI(Tr(L"Voice input")),
+               UI(!edit.voiceEnabled ? Tr(L"off – speech to text, optional")
+                  : !m.voiceModule   ? Tr(L"the voice module is missing")
+                  : voiceReady       ? Tr(L"ready – loaded")
+                                     : Tr(L"ready – loads on the first use of the microphone")),
+               &edit.voiceEnabled, edit.voiceEnabled != saved.voiceEnabled, true);
+    ImGui::TableNextColumn();
+    DashSwitch("voiceen", UI(Tr(L"Voice into English")),
+               UI(edit.voiceTranslate     ? Tr(L"on this PC (whisper)")
+                  : edit.translateWriting ? Tr(L"what you say goes through your translator, like your text")
+                                          : Tr(L"as you say it")),
+               &edit.voiceTranslate, edit.voiceTranslate != saved.voiceTranslate, edit.voiceEnabled);
+    ImGui::TableNextRow();
+    ImGui::TableNextColumn();
+    DashState("translator", UI(Tr(L"Translator")), UI(engine), true, 5);
+    ImGui::TableNextColumn();
+    DashState("reading", UI(Tr(L"Reading the chat")), UI(!chatThere ? Tr(L"Events: Chat is missing") : readingText), reading, 6);
+    ImGui::EndTable();
+    if (edit.translateWriting != saved.translateWriting || edit.voiceEnabled != saved.voiceEnabled ||
+        edit.voiceTranslate != saved.voiceTranslate)
+        Hint(UI(Tr(L"Amber: changed – \"Save\" applies it.")));
+}
+
 // Our options window, in tabs. "Save" applies.
 void RenderOptionsContent() {
     static Config edit, opened;  // `opened`: g_cfg when the page was filled
@@ -362,6 +467,17 @@ void RenderOptionsContent() {
             LanguageCombo(UI(Tr(L"Language of this window") + L"##ui").c_str(), edit.uiLangCode, Tr(L"like Windows"));
             ImGui::Checkbox(UI(Tr(L"Show the window")).c_str(), &g_show);
             Hint(UI(Tr(L"Keys (show / hide: Ctrl+Alt+K, push to talk, focus the input): Nexus → Keybinds → GW2 Keyboard.")));
+            ImGui::Separator();
+            RenderDashboard(edit, opened);  // what is on, switched right here
+            ImGui::Separator();
+            ImGui::TextUnformatted(UI(Tr(L"Typing focus")).c_str());
+            ImGui::Checkbox(UI(Tr(L"Enter in the game opens GW2Chatlator's input")).c_str(), &edit.focusOnGameChat);
+            Hint(UI(Tr(L"Instead of GW2's own chat line: you type here, with the typing help and the translation.")));
+            ImGui::Checkbox(UI(Tr(L"After sending, keep typing in GW2Chatlator")).c_str(), &edit.returnFocus);
+            Hint(UI(Tr(L"The input keeps the keyboard after Enter – the next message goes right after.")));
+            ImGui::Separator();
+            ImGui::TextUnformatted(UI(Tr(L"What is ready")).c_str());
+            RenderModules(true);  // the same box as in the empty chat
             ImGui::EndTabItem();
         }
         // ---- Window: its building blocks, size, transparency, how the chat text looks
@@ -478,7 +594,7 @@ void RenderOptionsContent() {
                 changed |= ImGui::SliderInt(UI(Tr(L"seconds") + L"##minafter").c_str(), &g_layout.minimizeAfter, 2, 120);
                 changed |= ImGui::Checkbox(UI(Tr(L"Open again when GW2's chat opens (Enter)")).c_str(), &g_layout.autoOpen);
                 if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("%s", UI(Tr(L"Only opens it. The focus key (Nexus > Keybinds) always opens it; taking over the focus is its own setting (Writing).")).c_str());
+                    ImGui::SetTooltip("%s", UI(Tr(L"Only opens it. The focus key (Nexus > Keybinds) always opens it; taking over the focus is its own setting (General).")).c_str());
                 if (changed) SaveLayout();
             }
             ImGui::Separator();
@@ -555,11 +671,6 @@ void RenderOptionsContent() {
             if (combo(UI(Tr(L"Enter does") + L"##enter").c_str(),
                       {UI(Tr(L"Send into the GW2 chat")), UI(Tr(L"Only copy (not a single key reaches the game)"))}, &enterDoes))
                 edit.copyOnly = enterDoes == 1;
-            ImGui::TextUnformatted(UI(Tr(L"Focus behaviour")).c_str());
-            ImGui::Checkbox(UI(Tr(L"After sending, keep typing here")).c_str(), &edit.returnFocus);
-            Hint(UI(Tr(L"The input keeps the keyboard after Enter – the next message goes right after.")));
-            ImGui::Checkbox(UI(Tr(L"Take over the whole focus when the GW2 chat opens")).c_str(), &edit.focusOnGameChat);
-            Hint(UI(Tr(L"Enter in the game (opening its chat line) brings you into this input instead.")));
             ImGui::EndTabItem();
         }
         // ---- Voice

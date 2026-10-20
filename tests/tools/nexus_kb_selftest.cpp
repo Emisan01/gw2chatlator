@@ -345,6 +345,12 @@ int wmain(int argc, wchar_t** argv) {
             g_chatEvents(&e);
         }
         if (src && GetEnvironmentVariableW(L"GW2KB_SHOT_TECH", nullptr, 0)) src(8, nullptr, nullptr);  // Options > Technical
+        wchar_t optTab[8] = {};  // GW2KB_SHOT_OPTIONS=<tab>: the options open on that tab (0 General … 6 Technical)
+        if (src && GetEnvironmentVariableW(L"GW2KB_SHOT_OPTIONS", optTab, 8)) {
+            char tab[8] = {};
+            WideCharToMultiByte(CP_UTF8, 0, optTab, -1, tab, sizeof tab, nullptr, nullptr);
+            src(8, nullptr, tab);
+        }
         wchar_t frames[16] = {};  // GW2KB_SHOT_FRAMES: wait longer (e.g. the waypoint table on its first load)
         const int n = GetEnvironmentVariableW(L"GW2KB_SHOT_FRAMES", frames, 16) ? _wtoi(frames) : 40;
         wchar_t tabMask[16] = {};  // GW2KB_SHOT_TAB=<channel bits>: a tab of your own in front, its settings open

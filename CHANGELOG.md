@@ -13,6 +13,11 @@ diagnosis show it.
 - **For the developer:** Options > Technical shows what our frame costs on GW2's render thread, by part (window,
   header, chat, input, footer, options), and what a chat line costs – smoothed, updated four times a second, like
   the game's frame rate there.
+- **Options > General is a dashboard:** what is on at a glance – translating the chat, your text, voice input,
+  voice into English, the translator, reading the chat – each switched right there (green on, grey off, amber not
+  saved yet); the typing focus, named plainly (Enter in the game opens our input; keep typing after sending); and
+  what is ready, the same box as in the empty chat. Voice in any language: with "Translate my text" on, what you
+  say goes through your translator like your text.
 - **Everything in its place:** Events: Chat (loaded, install, remove) and "Read the chat" are in Options >
   Technical, the voice module and its models in Options > Voice, "Remove everything of GW2Chatlator" once, at the
   very bottom of Technical. The empty chat still shows what is ready and what is missing.

@@ -16,6 +16,7 @@ void ChatSourceSetVersion(const std::wstring& version);  // g_mu NOT held
 void ChatSourceSetReading(bool on, bool muHeld);
 void ChatSourceResume();
 std::string ChatSourceProtocolText();
+int ChatSourceStatus(std::wstring* text);  // any thread: 2 reading, 0 off or paused
 void RenderChatSourceNotice();   // g_mu held
 void RenderChatSourceDetails();  // g_mu held (Options > Technical)
 void ChatSourceTestState(ChatSourceTest* t);

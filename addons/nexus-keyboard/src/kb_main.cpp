@@ -322,7 +322,7 @@ extern "C" __declspec(dllexport) int Gw2KbTestChatSource(int cmd, ChatSourceTest
         case 9: {
             std::lock_guard<std::mutex> lock(g_mu);
             g_showOptions = cmd == 8;
-            if (cmd == 8) g_optionsTab = 6;
+            if (cmd == 8) g_optionsTab = text && *text ? std::atoi(text) : 6;  // a tab by its number, else Technical
             break;
         }
         default: break;
