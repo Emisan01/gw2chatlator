@@ -439,7 +439,7 @@ void RenderWindow() {
             }
             const bool chatOpen = ms.live && ms.TextboxHasFocus();
             g_gameChatOpen = chatOpen;
-            const bool chatOpened = chatOpen && !chatWasOpen && g_show && GetTickCount64() > g_suppressChatFocusUntil;
+            const bool chatOpened = chatOpen && !chatWasOpen && g_show;
             if (chatOpened && g_cfg.focusOnGameChat) g_focusInput = true;   // the focus comes over (opens it as well)
             else if (chatOpened && g_layout.autoOpen && g_collapsed) g_expandRequest = true;  // only opened
             chatWasOpen = chatOpen;
@@ -487,7 +487,6 @@ void RenderWindow() {
                 std::lock_guard<std::mutex> lock(g_mu);
                 g_expandRequest = false;
                 g_collapsed = false;
-                g_suppressChatFocusUntil = 0;
                 if (clickedOpen) g_focusInput = true;
             }
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Open the window")).c_str());
