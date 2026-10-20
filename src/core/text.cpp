@@ -267,6 +267,40 @@ static inline bool IsDangerousOrInvisibleUnicode(wchar_t c) {
     return false;
 }
 
+std::wstring PlainPunctuation(const std::wstring& s) {
+    std::wstring out;
+    out.reserve(s.size());
+    for (wchar_t c : s) {
+        switch (c) {
+            case 0x2010: case 0x2011: case 0x2012: case 0x2013: case 0x2014: case 0x2015: case 0x2212:
+                out += L'-';
+                break;
+            case 0x2018: case 0x2019: case 0x201A: case 0x201B: case 0x2032:
+                out += L'\'';
+                break;
+            case 0x201C: case 0x201D: case 0x201E: case 0x201F: case 0x2033:
+                out += L'"';
+                break;
+            case 0x2026:
+                out += L"...";
+                break;
+            case 0x2022: case 0x2027:
+                out += L'·';
+                break;
+            case 0x2039:
+                out += L'<';
+                break;
+            case 0x203A:
+                out += L'>';
+                break;
+            default:
+                if ((c >= 0x2000 && c <= 0x200A) || c == 0x202F || c == 0x205F) out += L' ';
+                else out += c;
+        }
+    }
+    return out;
+}
+
 std::wstring WithoutInvisible(const std::wstring& s) {
     std::wstring out;
     out.reserve(s.size());
