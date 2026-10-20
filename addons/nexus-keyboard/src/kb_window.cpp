@@ -399,8 +399,10 @@ void RenderWindow() {
         g_lastUse = 0;  // opened again: "not in use" counts from then
         const WinSpace space = WindowSpace(minBtn);
         PlaceWindow(WinMode::Button, space);
-        ImGui::SetNextWindowSize(ImVec2(std::max(space.button, space.minSizeW), std::max(space.button, space.minSizeH)),
-                                 ImGuiCond_Always);  // as the formula has it
+        // Its size exactly as the formula has it – whole pixels: ImGui floors a window's size, and the raw button size
+        // (Nexus' font: not whole pixels) let the formula see a pixel less each frame and move the button up by it.
+        const WinRect btn = LayoutWindow(WinMode::Button, g_win, space);
+        ImGui::SetNextWindowSize(ImVec2(btn.w, btn.h), ImGuiCond_Always);
         ImGui::SetNextWindowBgAlpha(std::clamp(g_cfg.opacity, 60, 255) / 255.0f);
         ImGuiWindowFlags minFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
                                    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse |
