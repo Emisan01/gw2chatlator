@@ -266,13 +266,16 @@ void StartModelDownload(const VoiceModelInfo& m) {
     g_download = std::thread([m, dir] {
         EnsureDir(dir);
         std::wstring error;
-        const bool ok = DownloadVoiceModel(
-            dir, m,
-            [](uint64_t done, uint64_t total) {
-                if (total) g_downloadPct = static_cast<int>(done * 100 / total);
-                return true;
-            },
-            &g_downloadCancel, &error);
+        bool ok = false;
+        Shielded([&] {
+            ok = DownloadVoiceModel(
+                dir, m,
+                [](uint64_t done, uint64_t total) {
+                    if (total) g_downloadPct = static_cast<int>(done * 100 / total);
+                    return true;
+                },
+                &g_downloadCancel, &error);
+        });
         g_downloadPct = -1;
         std::lock_guard<std::mutex> lock(g_mu);
         SetStatus(ok ? Tr(L"Voice model installed") : error, 10000);
@@ -309,10 +312,14 @@ void InstallVoiceModuleNow() {
     if (g_voiceModuleThread.joinable()) g_voiceModuleThread.join();
     g_voiceModulePct = 0;
     g_voiceModuleThread = std::thread([dir = KeyboardDir()] {
-        const ExtrasInstallResult r = InstallVoiceModule(dir, W(GCT_VERSION_STR), [](uint64_t done, uint64_t total) {
-            if (total) g_voiceModulePct = static_cast<int>(done * 100 / total);
-            return !g_disabled.load();
-        });
+        ExtrasInstallResult r;
+        if (!Shielded([&] {
+                r = InstallVoiceModule(dir, W(GCT_VERSION_STR), [](uint64_t done, uint64_t total) {
+                    if (total) g_voiceModulePct = static_cast<int>(done * 100 / total);
+                    return !g_disabled.load();
+                });
+            }))
+            r.code = ExtrasInstallCode::DownloadFailed;
         g_voiceModulePct = -1;
         g_voiceModuleInstalling = false;
         g_modulesNext = 0;

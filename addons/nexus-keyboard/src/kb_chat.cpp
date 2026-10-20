@@ -254,7 +254,8 @@ void InstallChatEventsNow() {  // on your click: newest release, checksum checke
     if (g_chatEventsInstalling.exchange(true)) return;
     if (g_chatEventsThread.joinable()) g_chatEventsThread.join();
     g_chatEventsThread = std::thread([dir = AddonsDir()] {
-        const ExtrasInstallResult r = InstallChatEvents(dir, [] { return g_disabled.load(); });
+        ExtrasInstallResult r;
+        if (!Shielded([&] { r = InstallChatEvents(dir, [] { return g_disabled.load(); }); })) r.code = ExtrasInstallCode::DownloadFailed;
         g_chatEventsInstalling = false;
         std::lock_guard<std::mutex> lock(g_mu);
         SetStatus(r.code == ExtrasInstallCode::Ok ? Tr(L"Events: Chat installed – Nexus loads it (restart GW2 if no chat arrives)")
@@ -272,7 +273,8 @@ void InstallDecoderRingNow() {  // on your click: newest release, checksum check
     if (g_decoderInstalling.exchange(true)) return;
     if (g_decoderThread.joinable()) g_decoderThread.join();
     g_decoderThread = std::thread([dir = AddonsDir()] {
-        const ExtrasInstallResult r = InstallDecoderRing(dir, [] { return g_disabled.load(); });
+        ExtrasInstallResult r;
+        if (!Shielded([&] { r = InstallDecoderRing(dir, [] { return g_disabled.load(); }); })) r.code = ExtrasInstallCode::DownloadFailed;
         g_decoderInstalling = false;
         if (r.code == ExtrasInstallCode::Ok) g_decoderFile = true;
         std::lock_guard<std::mutex> lock(g_mu);
@@ -387,9 +389,11 @@ void SafeOpenUrl(const std::wstring& rawLink) {
         target.find(L'"') == std::wstring::npos &&
         target.find(L'\'') == std::wstring::npos) {
         std::thread([target] {
-            CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-            ShellExecuteW(nullptr, L"open", target.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-            CoUninitialize();
+            Shielded([&target] {
+                CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+                ShellExecuteW(nullptr, L"open", target.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                CoUninitialize();
+            });
         }).detach();
     }
 }

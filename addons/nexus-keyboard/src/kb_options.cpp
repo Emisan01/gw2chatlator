@@ -756,9 +756,11 @@ void RenderOptionsContent() {
                 if (ImGui::SmallButton(UI(Tr(L"Open folder")).c_str())) {
                     EnsureDir(path);
                     std::thread([path] {
-                        CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-                        ShellExecuteW(nullptr, L"open", path.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-                        CoUninitialize();
+                        Shielded([&path] {
+                            CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+                            ShellExecuteW(nullptr, L"open", path.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                            CoUninitialize();
+                        });
                     }).detach();
                 }
                 ImGui::PopID();

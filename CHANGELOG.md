@@ -3,6 +3,14 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## Unreleased
+
+- **The game never goes down with us – also not from a background task.** Translating, spelling, downloads and the
+  voice module's answers run on threads of their own; an error there could take the game with it (that is what
+  happened in 2.3.0). Now each of them runs behind the same net as the window: an error switches GW2Chatlator off for
+  the session, the game goes on – and nothing stays locked behind it.
+- What the waypoint click left in the settings file is removed on load.
+
 ## 2.3.1 — 2026-10-20 (GW2Chatlator for Nexus)
 
 - **Stable again: a click on a chat code does nothing.** In 2.3.0 a click on a link could crash the game. Everything

@@ -1202,6 +1202,24 @@ int wmain(int argc, wchar_t** argv) {
                     srcState().unreadable);
         ok = ok && good;
     }
+    // A fault in one of our threads (a worker job, holding g_mu): the process goes on, the add-on switches itself off
+    // for the session, g_mu is free again (/EHa unwinds) – and the unload below still works. The 2.3.0 crash came from a
+    // thread outside the render callback's net.
+    if (ok && !shotMode) {
+        if (auto fault = reinterpret_cast<int (*)(int)>(GetProcAddress(dll, "Gw2KbTestFault"))) {
+            fault(1);
+            int state = 0;
+            for (int i = 0; i < 100 && (state & 1) == 0; ++i) {
+                Sleep(20);
+                state = fault(0);
+            }
+            for (int i = 0; i < 5; ++i) Frame();  // drawing goes on (nothing: the add-on is off)
+            state = fault(0);
+            std::printf("a fault in a worker job: add-on off %d, g_mu free %d\n", state & 1, (state & 2) >> 1);
+            if (state != 3) std::printf("FAIL: a fault in a thread of ours was not shielded (or left g_mu locked)\n");
+            ok = ok && state == 3;
+        }
+    }
     std::printf("text font built by the stand-in Nexus: %d\n", g_fontsBuilt);
     ok = ok && g_fontsBuilt >= 1;
     // GW2KB_TEST_REMOVEALL=1 (only on a copy of the add-on – it deletes its GW2Keyboard folder): "remove everything",
