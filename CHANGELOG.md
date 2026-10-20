@@ -3,6 +3,12 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.3.0 — unreleased (GW2Chatlator for Nexus)
+
+- **Nothing of other players' messages leaves your PC:** "Copy protocol" (Options > Technical, for a GitHub issue)
+  listed every recent line with its channel and the lengths of name, account and message. Now it only counts which
+  rules the last lines broke, and how often; the guard itself keeps nothing else of a line.
+
 ## 2.2.0 — 2026-10-20 (GW2Chatlator for Nexus)
 
 - **The chat draws only what you see.** Every line keeps its height; out of view it costs nothing but its place. Our

@@ -2,6 +2,7 @@
 
 #include "core/chat_source.hpp"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 
@@ -134,17 +135,9 @@ bool ChatSourceWatch::Feed(bool failed) {
     return bad >= 5;
 }
 
-ChatSourceRecord RecordOf(const ChatSourceLine& l, const ChatLineVerdict& v) {
+ChatSourceRecord RecordOf(const ChatSourceLine&, const ChatLineVerdict& v) {
     ChatSourceRecord r;
-    r.type = l.type;
-    r.flags = l.flags;
     r.rules = v.rules;
-    if (l.read) {
-        auto len = [](const char* s, bool isNull, bool bad) { return isNull || bad ? -1 : static_cast<int>(std::strlen(s)); };
-        r.nameLen = len(l.name, l.nameNull, l.nameBadPtr);
-        r.accountLen = len(l.account, l.accountNull, l.accountBadPtr);
-        r.contentLen = len(l.content, l.contentNull, l.contentBadPtr);
-    }
     return r;
 }
 
@@ -154,14 +147,23 @@ std::string ChatSourceProtocol(const ChatSourceReport& r) {
     if (!r.previousVersion.empty()) out += " (new since the last session, before: " + r.previousVersion + ")";
     out += "\n";
     out += "State: " + r.state + "\n";
-    out += "Lines (newest last; lengths in bytes, no text, no names):\n";
-    if (r.lines.empty()) out += "  none yet\n";
+    // Counted, never listed: which rules the last lines broke, how often – nothing of a single message.
+    int fine = 0;
+    std::vector<std::pair<std::string, int>> broke;
     for (const ChatSourceRecord& l : r.lines) {
-        char head[96];
-        std::snprintf(head, sizeof(head), "  type %d flags 0x%X name %d account %d text %d: ", static_cast<int>(l.type),
-                      static_cast<unsigned>(l.flags), l.nameLen, l.accountLen, l.contentLen);
-        out += head + ChatRuleNames(l.rules) + "\n";
+        if (!(l.rules & kHardRules)) ++fine;  // notes only: still a fine line (the notes are counted below)
+        for (uint32_t bit = 1; bit; bit <<= 1) {
+            if (!(l.rules & bit)) continue;
+            const std::string name = ChatRuleNames(bit);
+            auto it = std::find_if(broke.begin(), broke.end(), [&](const auto& b) { return b.first == name; });
+            if (it == broke.end()) broke.emplace_back(name, 1);
+            else ++it->second;
+        }
     }
+    out += "Last " + std::to_string(r.lines.size()) + " lines, counted (nothing of a line itself): " +
+           std::to_string(fine) + " fine";
+    for (const auto& b : broke) out += ", " + b.first + " " + std::to_string(b.second);
+    out += "\n";
     return out;
 }
 

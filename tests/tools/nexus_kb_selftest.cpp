@@ -1095,13 +1095,14 @@ int wmain(int argc, wchar_t** argv) {
         src(5, nullptr, nullptr);
         raise(kMap, "Ana Sample", "on again");
         expect(srcState().shown == shownE + 1, "reading on did not read");
-        // F. The protocol: versions, types, lengths, rules – never a name, never chat text.
+        // F. The protocol: versions and the rules counted – never a name, a text, a channel or a length of a line.
         std::vector<char> prot(4096);
         src(6, nullptr, prot.data());
         const std::string p(prot.data());
         std::printf("chat source protocol: %zu bytes, first line: %s\n", p.size(), p.substr(0, p.find('\n')).c_str());
-        expect(p.find("9.9.13.0") != std::string::npos && p.find("type ") != std::string::npos,
-               "the protocol lacks versions or lines");
+        expect(p.find("9.9.13.0") != std::string::npos && p.find("lines, counted") != std::string::npos &&
+                   p.find("flags 0x") == std::string::npos,  // the old list of single lines: "type 1 flags 0x0 name 9 …"
+               "the protocol lacks versions or the counts – or lists single lines");
         expect(p.find("Ana") == std::string::npos && p.find("Sample") == std::string::npos &&
                    p.find("plain") == std::string::npos && p.find("garbage") == std::string::npos &&
                    p.find("Kai") == std::string::npos,

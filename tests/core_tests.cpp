@@ -1911,7 +1911,7 @@ static void TestChatSource() {
     w.Reset();
     for (int i = 0; i < 4; ++i) CHECK(!w.Feed(true));
     CHECK(w.Feed(true));
-    // The protocol: versions, types, lengths, rules – never a name or text.
+    // The protocol: versions and the rules counted – never a name, a text, a channel or a length of a line.
     ChatSourceReport rep;
     rep.addonVersion = "2.1.0";
     rep.sourceVersion = "0.2.4.0";
@@ -1922,7 +1922,10 @@ static void TestChatSource() {
     rep.lines.push_back(RecordOf(garbage, CheckChatLine(garbage, now)));
     const std::string prot = ChatSourceProtocol(rep);
     CHECK(prot.find("0.2.4.0") != std::string::npos && prot.find("0.2.3.0") != std::string::npos);
-    CHECK(prot.find("utf8") != std::string::npos && prot.find("name 11") != std::string::npos);
+    CHECK(prot.find("Last 2 lines") != std::string::npos && prot.find("1 fine") != std::string::npos &&
+          prot.find("utf8 1") != std::string::npos);
+    CHECK(prot.find("name 11") == std::string::npos && prot.find("type ") == std::string::npos &&
+          prot.find("text ") == std::string::npos);  // no lengths, no channels any more
     CHECK(prot.find("Kai") == std::string::npos && prot.find("secret") == std::string::npos &&
           prot.find("world boss") == std::string::npos);
 }
