@@ -713,7 +713,10 @@ int wmain(int argc, wchar_t** argv) {
                     frames(3);
                     const int partsBefore = th->sentParts;
                     press(VK_RETURN);
-                    frames(60);
+                    // Until it is really sent (the input empty again) – a fixed 60 frames were too few for the first run
+                    // of a fresh build (the virus scanner reads the new DLL, nothing is cached yet).
+                    for (int k = 0; k < 400 && (th->sentParts == partsBefore || th->input[0]); ++k) frames(1);
+                    frames(10);
                     mini(0);
                     frames(10);
                     const ImVec2 g1 = wpos(), gs1 = wsize();

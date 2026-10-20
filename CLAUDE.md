@@ -99,7 +99,8 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   so ImGui / Nexus never keep the click; foreground checked before every step; right before the button goes down the
   point must lie on GW2's own window (`WindowFromPoint`), the cursor where we put it (else the user's hand took over),
   no button held, GW2's chat line closed; the three pauses – before, held, after – each thrown anew within the user's
-  from-to range, `[Nexus] WpBefore / WpHeld / WpAfter`, default 3-25 ms, the user's "dice logic", set under the
+  from-to range, `[Nexus] WpBefore / WpHeld / WpAfter`, default 40-70 / 40-70 / 10-25 ms (2.3.0: at least two frames; 3-25 ms was
+  "brutally fast" and could fall between two frames), the user's "dice logic", set under the
   checkbox; the cursor goes back). Not found: the code is copied, the user clicks it. Its own thread, ended on
   unload (`StopWaypointMacro`). Decoder Ring's language must be the game's (else no match).
 - **Chat in:** Events: Chat (`EV_CHAT:Message`) → `OnChatEvents` (the guard above) → `AddLine` (`UnescapeChatText`, sanitised) →

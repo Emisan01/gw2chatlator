@@ -8,6 +8,9 @@ diagnosis show it.
 - **Nothing of other players' messages leaves your PC:** "Copy protocol" (Options > Technical, for a GitHub issue)
   listed every recent line with its channel and the lengths of name, account and message. Now it only counts which
   rules the last lines broke, and how often; the guard itself keeps nothing else of a line.
+- **Waypoint/POI click, slower by default:** its pauses now start at 40 – 70 ms before the click, 40 – 70 ms held
+  and 10 – 25 ms after it (was 3 – 25 ms each) – at least two frames, GW2 reads the mouse once a frame. Values you
+  set yourself stay.
 - **Text blocks:** menu ≡ → "Text blocks …". Save what is in the input as a block, put it back with a click, delete
   it with x – up to 30 blocks, only your own text, kept in GW2Keyboard\snippets.txt ("Remove everything" takes them
   too).

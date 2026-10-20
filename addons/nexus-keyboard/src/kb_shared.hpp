@@ -97,7 +97,8 @@ struct NexusOptions {
     bool waypointPoiClick = false;  // Waypoint/POI click: the original in GW2's chat is clicked (kb_waypoint.cpp)
     // Its three pauses, each thrown anew within its range (ms): before the click (the mouse on the link), held (down
     // to up), after it (up, then the mouse back) – [Nexus] WpBefore / WpHeld / WpAfter = "from-to".
-    int wpBefore[2] = {3, 25}, wpHeld[2] = {3, 25}, wpAfter[2] = {3, 25};
+    // Defaults at least two frames at 60 fps (GW2 reads the mouse once a frame; 3-25 ms could fall between two frames).
+    int wpBefore[2] = {40, 70}, wpHeld[2] = {40, 70}, wpAfter[2] = {10, 25};
 };
 extern NexusOptions g_nx;
 // How chat text looks ([NexusWindow] Glow, Brightness, GameColors): GW2's colours (the name in the channel colour, the
