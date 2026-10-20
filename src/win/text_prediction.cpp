@@ -1,5 +1,5 @@
-// text_prediction.cpp — Windows.Data.Text.TextPredictionGenerator through the raw WinRT ABI (like ocr.cpp; no
-// C++/WinRT). Interface IDs and vtable order from the Windows SDK header windows.data.text.h.
+// text_prediction.cpp — Windows.Data.Text.TextPredictionGenerator through the raw WinRT ABI (no C++/WinRT).
+// Interface IDs and vtable order from the Windows SDK header windows.data.text.h.
 #include "text_prediction.hpp"
 
 #include <windows.h>

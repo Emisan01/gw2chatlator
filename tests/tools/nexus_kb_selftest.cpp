@@ -362,7 +362,7 @@ int wmain(int argc, wchar_t** argv) {
             WideCharToMultiByte(CP_UTF8, 0, optTab, -1, tab, sizeof tab, nullptr, nullptr);
             src(8, nullptr, tab);
         }
-        wchar_t frames[16] = {};  // GW2KB_SHOT_FRAMES: wait longer (e.g. the waypoint table on its first load)
+        wchar_t frames[16] = {};  // GW2KB_SHOT_FRAMES: wait longer (e.g. Decoder Ring on its first load)
         const int n = GetEnvironmentVariableW(L"GW2KB_SHOT_FRAMES", frames, 16) ? _wtoi(frames) : 40;
         wchar_t tabMask[16] = {};  // GW2KB_SHOT_TAB=<channel bits>: a tab of your own in front, its settings open
         if (GetEnvironmentVariableW(L"GW2KB_SHOT_TAB", tabMask, 16))
@@ -532,7 +532,7 @@ int wmain(int argc, wchar_t** argv) {
             if (!still) std::printf("FAIL: the window moved by itself\n");
             ok = ok && still;
             // Minimised: the window gets out of the way (its bottom edge stays) and comes back to the same place.
-            if (auto waypoint = reinterpret_cast<void (*)(int)>(GetProcAddress(dll, "Gw2KbTestShape"))) {
+            if (auto shapeOf = reinterpret_cast<void (*)(int)>(GetProcAddress(dll, "Gw2KbTestShape"))) {
                 auto size = [] {
                     ImGuiWindow* w = ImGui::FindWindowByName("GW2Chatlator###kbmain");
                     return w ? w->Size : ImVec2(-1, -1);
@@ -540,13 +540,13 @@ int wmain(int argc, wchar_t** argv) {
                 ImGui::SetWindowPos("GW2Chatlator###kbmain", ImVec2(0, 1080 - 28 - 360));  // right at the edge
                 frames(5);
                 const ImVec2 p0 = pos(), s0 = size();
-                waypoint(0);
+                shapeOf(0);
                 frames(6);
                 const ImVec2 p1 = pos(), s1 = size();
-                waypoint(1);
+                shapeOf(1);
                 frames(6);
                 const ImVec2 p2 = pos(), s2 = size();
-                std::printf("waypoint: before %.0f,%.0f %.0fx%.0f  out of the way %.0f,%.0f %.0fx%.0f  back %.0f,%.0f %.0fx%.0f\n",
+                std::printf("minimise: before %.0f,%.0f %.0fx%.0f  out of the way %.0f,%.0f %.0fx%.0f  back %.0f,%.0f %.0fx%.0f\n",
                             p0.x, p0.y, s0.x, s0.y, p1.x, p1.y, s1.x, s1.y, p2.x, p2.y, s2.x, s2.y);
                 const bool shrunk = s1.x < s0.x && s1.y <= s0.y && std::fabs((p1.y + s1.y) - (p0.y + s0.y)) < 2;
                 const bool back = std::fabs(p2.x - p0.x) < 2 && std::fabs(p2.y - p0.y) < 2 && std::fabs(s2.y - s0.y) < 2;
@@ -558,20 +558,20 @@ int wmain(int argc, wchar_t** argv) {
                     ImGuiStyle& st = ImGui::GetStyle();
                     const float padY = st.FramePadding.y;
                     st.FramePadding.y += 3.3f;  // the button above ImGui's 32 px minimum, not in whole pixels
-                    waypoint(0);
+                    shapeOf(0);
                     frames(4);
                     const ImVec2 b0 = pos();
                     frames(60);
                     const ImVec2 b1 = pos();
                     st.FramePadding.y = padY;
-                    waypoint(1);
+                    shapeOf(1);
                     frames(6);
                     std::printf("minimised button over 60 frames: %.0f,%.0f -> %.0f,%.0f\n", b0.x, b0.y, b1.x, b1.y);
                     const bool still = std::fabs(b1.x - b0.x) < 0.5f && std::fabs(b1.y - b0.y) < 0.5f;
                     if (!still) std::printf("FAIL: the minimised button moved by itself\n");
                     ok = ok && still;
                 }
-                // A press on the chat that minimises the window (a link) must not carry ImGui's window move into the button:
+                // A press held while the window minimises (three quick clicks, the menu) must not carry ImGui's window move into the button:
                 // the mouse moved a few pixels before it let go, and the corner went up by the big window's height (in the
                 // game: "after a few clicks the window stood at the top").
                 {
@@ -581,14 +581,14 @@ int wmain(int argc, wchar_t** argv) {
                     frames(2);
                     io.MouseDown[0] = true;
                     frames(2);
-                    waypoint(0);  // the link minimises the window while the mouse is still held
+                    shapeOf(0);  // minimised while the mouse is still held (a press on the chat, then the menu or a key)
                     frames(3);
                     io.MousePos = ImVec2(q0.x + 204, q0.y + 77);
                     frames(3);
                     io.MouseDown[0] = false;
                     frames(3);
                     io.MousePos = ImVec2(-1000, -1000);
-                    waypoint(1);
+                    shapeOf(1);
                     frames(6);
                     const ImVec2 q1 = pos(), z1 = size();
                     std::printf("press, minimise, move, let go, open: corner %.0f,%.0f -> %.0f,%.0f\n", q0.x, q0.y + z0.y,
@@ -617,7 +617,7 @@ int wmain(int argc, wchar_t** argv) {
                 frames(3);
                 const ImVec2 s3 = size();
                 ImGui::GetIO().MousePos = ImVec2(-1000, -1000);
-                waypoint(1);
+                shapeOf(1);
                 frames(6);
                 const ImVec2 s4 = size();
                 std::printf("three clicks: two %.0fx%.0f  three %.0fx%.0f  open again %.0fx%.0f\n", s2b.x, s2b.y, s3.x, s3.y, s4.x, s4.y);
@@ -641,7 +641,7 @@ int wmain(int argc, wchar_t** argv) {
                         frames(3);
                         ImGui::GetIO().MousePos = ImVec2(-1000, -1000);
                         frames(2);
-                        waypoint(1);
+                        shapeOf(1);
                         frames(4);
                         cN = pos();
                         std::printf("  %d: %.0f,%.0f", c + 1, cN.x, cN.y);

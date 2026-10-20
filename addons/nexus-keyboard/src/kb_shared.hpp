@@ -282,7 +282,6 @@ extern uint64_t g_previewGen;
 extern bool g_sendPending;
 extern std::wstring g_status;
 extern ULONGLONG g_statusUntil;
-extern ULONGLONG g_suppressChatFocusUntil;
 extern TypingHelp g_help;
 extern bool g_helpRequested;
 extern std::deque<std::wstring> g_history;
