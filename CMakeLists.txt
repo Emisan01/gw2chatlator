@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(GW2KeyboardNexus VERSION 2.3.0 LANGUAGES CXX)
+project(GW2KeyboardNexus VERSION 2.3.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -42,7 +42,7 @@ add_library(gct_core STATIC
     src/core/chat_source.cpp
     src/core/window_layout.cpp
     src/core/soft_wrap.cpp
-    src/core/link_find.cpp)
+)
 target_include_directories(gct_core PUBLIC src)
 
 option(GCT_BUILD_TESTS "Build the core unit tests and the add-on's self-test" ON)

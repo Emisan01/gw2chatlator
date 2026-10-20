@@ -173,7 +173,6 @@ void AddonLoad(AddonAPI_t* api) {
         api->InputBinds_RegisterWithString(kToggleBind, OnToggle, "CTRL+ALT+K");
         api->InputBinds_RegisterWithString(kFocusBind, OnFocusKey, "(null)");
         api->InputBinds_RegisterWithString(kTalkBind, OnTalkKey, "(null)");
-        api->InputBinds_RegisterWithString(kClickTestBind, OnClickTestKey, "(null)");
     }
     ApplyPushToTalkKey(g_cfg.voiceGlobalKey);
     if (api->WndProc_Register) api->WndProc_Register(OnWndProc);
@@ -193,14 +192,12 @@ void AddonUnload() {
             g_api->InputBinds_Deregister(kToggleBind);
             g_api->InputBinds_Deregister(kFocusBind);
             g_api->InputBinds_Deregister(kTalkBind);
-            g_api->InputBinds_Deregister(kClickTestBind);
         }
         if (g_api->GUI_Deregister) {
             g_api->GUI_Deregister(SafeRender);
             g_api->GUI_Deregister(SafeOptions);
         }
     }
-    StopWaypointMacro();  // no click thread outlives the DLL
     g_downloadCancel = true;
     if (g_download.joinable()) g_download.join();
     if (g_chatEventsThread.joinable()) g_chatEventsThread.join();
@@ -254,37 +251,12 @@ extern "C" __declspec(dllexport) void Gw2KbTestNewTab(uint32_t channels, bool se
     if (settings) g_tabSettings = at;
 }
 
-extern "C" __declspec(dllexport) int Gw2KbTestSyntheticInputs() {  // nexus_kb_selftest: synthetic mouse inputs sent
-    return TestHost() ? SyntheticInputs() : -1;
-}
-
-// nexus_kb_selftest only: 0 click, 1 map closed, 2 a click with the quantum macro on (in the test there is no GW2
-// window: it may never click – it must give up and end cleanly, also when the add-on unloads meanwhile), 3 the test key.
-extern "C" __declspec(dllexport) void Gw2KbTestWaypoint(int step) {
+// nexus_kb_selftest only: the window's shape – 0 minimise (as the menu does), 1 open again.
+extern "C" __declspec(dllexport) void Gw2KbTestShape(int step) {
     if (!TestHost()) return;
-    if (step == 3) {
-        OnClickTestKey(nullptr, false);
-        return;
-    }
-    if (step == 2) AddLine(Channel::Map, false, "Kai Example", "meet at [&BAwEAAA=] in five");  // the line clicked
     std::lock_guard<std::mutex> lock(g_mu);
-    if (step == 0) {  // an item link: GW2's chat line opens, our window gets out of the way
-        HandleChatLinkClick("[&AgGvWwEA]", GetTickCount64(), std::string());
-    } else if (step == 4) {  // a waypoint, the Waypoint/POI click off: nothing of GW2 is touched, the code is copied
-        const bool was = g_nx.waypointPoiClick;
-        g_nx.waypointPoiClick = false;
-        HandleChatLinkClick("[&BAwEAAA=]", GetTickCount64(), "Lion's Arch Waypoint");
-        g_nx.waypointPoiClick = was;
-    } else if (step == 2) {
-        const bool was = g_nx.waypointPoiClick;
-        g_nx.waypointPoiClick = true;
-        HandleChatLinkClick("[&BAwEAAA=]", GetTickCount64(), "Lion's Arch Waypoint",
-                            ChatLineHint{L"Kai Example", L"meet at [Lion's Arch Waypoint] in five", L"[Lion's Arch Waypoint]"},
-                            g_lines.empty() ? 0 : g_lines.back().id);
-        g_nx.waypointPoiClick = was;
-    } else {
-        g_expandRequest = true;
-    }
+    if (step == 0) g_minimizeRequest = true;
+    else g_expandRequest = true;
 }
 
 // nexus_kb_selftest, "Translate what I say": what a message does with "Send" at "as written" – spoken or typed, the

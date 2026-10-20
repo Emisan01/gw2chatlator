@@ -3,7 +3,7 @@
 The chat of Guild Wars 2 in your language – **read it, write and speak in yours**, the chat gets it translated. A
 Nexus add-on, right inside the game. A line goes into the chat only when you press Enter yourself.
 
-## ⬇ [Download gw2keyboard_nexus.dll – version 2.3.0](https://github.com/Emisan01/gw2chatlator/releases/download/v2.3.0/gw2keyboard_nexus.dll)
+## ⬇ [Download gw2keyboard_nexus.dll – version 2.3.1](https://github.com/Emisan01/gw2chatlator/releases/download/v2.3.1/gw2keyboard_nexus.dll)
 
 Put the DLL into your `Guild Wars 2\addons` folder (where [Nexus](https://raidcore.gg/Nexus) keeps its add-ons) and
 load **GW2Chatlator** in Nexus. Nothing is downloaded by itself: the window shows what is there and what you can add
@@ -32,9 +32,7 @@ Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustot
 - **A chat window built like GW2's own:** tabs at the top – the chat and up to five whisper tabs (click a name, or
   right-click the header to open one); fold it up to its header (V) and open it again (A); it snaps to the screen edges
   and appears only on a map, never on the character screen. Waypoints and items show their name, map and details on
-  mouse-over via Decoder Ring; a click copies the code (`[&...]`) to your clipboard, Shift+click puts it into your message.
-  Optional and experimental: the Waypoint/POI click (Options > Window > More) clicks the original in GW2's chat for you.
-  Web links open only after a question.
+  mouse-over via Decoder Ring. Web links open only after a question.
 - **Write in your language,** the chat gets the translation: you see it (and what it means in your language again)
   before Enter sends it. Longer than one chat line: split into several. Translators: MyMemory (free), Google,
   Microsoft, DeepL, your own LibreTranslate server.

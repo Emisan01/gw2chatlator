@@ -3,6 +3,13 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.3.1 — 2026-10-20 (GW2Chatlator for Nexus)
+
+- **Stable again: a click on a chat code does nothing.** In 2.3.0 a click on a link could crash the game. Everything
+  that hung on that click is gone: the Waypoint/POI click (it read a picture of the game and clicked the original in
+  GW2's chat), its test key and its settings, opening GW2's chat line, and copying the code (it was in the way).
+  Chat codes still show their name and their details when you point at them; everything else stays as it was.
+
 ## 2.3.0 — 2026-10-20 (GW2Chatlator for Nexus)
 
 - **Nothing of other players' messages leaves your PC:** "Copy protocol" (Options > Technical, for a GitHub issue)

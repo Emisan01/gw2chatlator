@@ -18,17 +18,12 @@ public:
     void Stop();
     void SetLanguage(const std::wstring& /*apiLang*/) {}
 
-    // Renders the link segment. Returns true if clicked.
+    // Renders the link segment (details on hover). Returns true if clicked – the caller does nothing with it.
     bool Render(const PieUI::ChatLinks::LinkSegment& seg, const std::string& label,
                 const std::function<void(const std::string&, ImVec4)>& draw = {});
 
     // Label for line wrapping and display (e.g. "[Item name]" or "[Item]")
     std::string Label(const PieUI::ChatLinks::LinkSegment& seg);
-
-    // A waypoint: "Commodore's Quarter Waypoint – Lion's Arch" (Decoder Ring), else "" – where the map has to go.
-    std::string Where(const PieUI::ChatLinks::LinkSegment& seg);
-    // A map link's kind as Decoder Ring knows it: 0 waypoint, 1 point of interest, 2 vista; -1 unknown / no map link.
-    int PoiKind(const PieUI::ChatLinks::LinkSegment& seg);
 
     // True if Decoder Ring is currently available
     bool HasDecoder() const;

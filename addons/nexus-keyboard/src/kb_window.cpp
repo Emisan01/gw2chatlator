@@ -405,7 +405,6 @@ std::wstring StatusText() {  // g_mu held
 void RenderWindow() {
     if (!ImGui::GetCurrentContext()) return;  // failsafe: no context, no drawing
     CostFrame costFrame;  // what this frame costs on GW2's render thread, by part (Options > Technical)
-    WaypointFrameTick();  // the waypoint click asked for one frame of the game (kb_waypoint.cpp)
     {
         std::lock_guard<std::mutex> lock(g_mu);
         if (!g_input[0] && !g_edit.active) g_inputSpoken = false;  // empty again (sent, deleted): the next one decides
@@ -440,16 +439,9 @@ void RenderWindow() {
             }
             const bool chatOpen = ms.live && ms.TextboxHasFocus();
             g_gameChatOpen = chatOpen;
-            const bool chatOpened = chatOpen && !chatWasOpen && g_show && GetTickCount64() > g_suppressChatFocusUntil &&
-                                    g_redirect == 0;
+            const bool chatOpened = chatOpen && !chatWasOpen && g_show && GetTickCount64() > g_suppressChatFocusUntil;
             if (chatOpened && g_cfg.focusOnGameChat) g_focusInput = true;   // the focus comes over (opens it as well)
             else if (chatOpened && g_layout.autoOpen && g_collapsed) g_expandRequest = true;  // only opened
-            if (g_redirect == 3 && chatOpen) g_redirect = 4;           // a link: GW2's chat line is open …
-            const bool done = g_redirect == 4 && !chatOpen && !ms.MapOpen();
-            if (done || (g_redirect != 0 && GetTickCount64() - g_redirectSince > 45000)) {  // … and closed again
-                g_redirect = 0;
-                g_expandRequest = true;
-            }
             chatWasOpen = chatOpen;
         }
     }
@@ -484,7 +476,6 @@ void RenderWindow() {
                                    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse |
                                    ImGuiWindowFlags_NoScrollWithMouse;
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(2, 2));
-        if (WaypointPassThrough()) minFlags |= ImGuiWindowFlags_NoInputs;  // the Waypoint/POI click: the mouse goes through
         const bool beginOk = ImGui::Begin("GW2Chatlator###kbmain", nullptr, minFlags);
         ImGui::PopStyleVar();
         if (beginOk) {
@@ -495,7 +486,6 @@ void RenderWindow() {
             if (clickedOpen || g_expandRequest) {  // the window opens at its corner, upwards
                 std::lock_guard<std::mutex> lock(g_mu);
                 g_expandRequest = false;
-                g_redirect = 0;
                 g_collapsed = false;
                 g_suppressChatFocusUntil = 0;
                 if (clickedOpen) g_focusInput = true;
@@ -523,7 +513,6 @@ void RenderWindow() {
                               ImGuiWindowFlags_NoScrollWithMouse;
     // Without the chat: a thin edge only, the window is hardly more than its parts (the grey input in the end).
     if (!Lay().chat) ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
-    if (WaypointPassThrough()) wflags |= ImGuiWindowFlags_NoInputs;  // the Waypoint/POI click: the mouse goes through
     const bool begun = ImGui::Begin("GW2Chatlator###kbmain", nullptr, wflags);
     if (!Lay().chat) ImGui::PopStyleVar();
     if (!begun) {
@@ -531,7 +520,7 @@ void RenderWindow() {
         return;
     }
     TakeWindow(winMode, space, 0.0f);
-    if (g_minimizeRequest) {  // asked from inside the chat area (a waypoint click): done on the main window
+    if (g_minimizeRequest) {  // asked from elsewhere (the menu, a test): done on the main window
         g_minimizeRequest = false;
         g_expandRequest = false;
         MinimizeWindow();
@@ -941,14 +930,13 @@ void RenderWindow() {
                 if (canWhisper && ImGui::IsItemClicked()) OpenWhisperTab(l.speaker);
                 ImGui::SameLine(0, ImGui::CalcTextSize(" ").x);
             }
-            const std::wstring& shown = l.translated.empty() ? l.text : l.translated;
             const std::string& u8shown = l.translated.empty() ? l.u8text : l.u8translated;
             const auto& segs = l.translated.empty() ? l.textSegs : l.transSegs;
             bool clicked = false;
             if (segs.size() <= 1 && (segs.empty() || segs[0].kind == PieUI::ChatLinks::SegmentKind::Plain)) {
                 LookText(u8shown.c_str(), ColorOf(l.channel), true);
             } else {
-                clicked = RichLine(shown, segs, ColorOf(l.channel), l.receivedTime, l.speaker, l.id);
+                clicked = RichLine(segs, ColorOf(l.channel));
             }
             if (!l.translated.empty() && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", l.u8text.c_str());
             // A click on the text of a line someone else wrote: just this line into your language.
@@ -1087,7 +1075,7 @@ void RenderWindow() {
     {
         const ULONGLONG now = GetTickCount64();
         const bool inUse = inputActive || g_sending || g_sendPending || g_focusInput || g_recording || g_showOptions ||
-                           g_gameChatOpen || g_redirect != 0 || ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId) ||
+                           g_gameChatOpen || ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId) ||
                            ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
         if (inUse || g_lastUse == 0) {
             g_lastUse = now;

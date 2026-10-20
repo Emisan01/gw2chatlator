@@ -37,7 +37,6 @@
 #include "core/protect.hpp"
 #include "core/send_guard.hpp"
 #include "core/soft_wrap.hpp"
-#include "core/link_find.hpp"
 #include "core/snippets.hpp"
 #include "core/slang.hpp"
 #include "core/text.hpp"
@@ -70,7 +69,6 @@ constexpr const char* kName = "GW2Chatlator";
 constexpr const char* kToggleBind = "KB_GW2KEYBOARD_TOGGLE";
 constexpr const char* kFocusBind = "KB_GW2KEYBOARD_FOCUS";
 constexpr const char* kTalkBind = "KB_GW2KEYBOARD_TALK";  // push to talk: held while you speak
-constexpr const char* kClickTestBind = "KB_GW2KEYBOARD_CLICKTEST";  // one synthetic click where the mouse is (a test)
 constexpr size_t kMaxLines = 500;  // only the lines in view are drawn: more history costs a placeholder each
 constexpr size_t kHistoryMax = 50;
 constexpr size_t kMaxPartsPerEnter = 3;  // one Enter never pours more chat lines than this into the game
@@ -94,11 +92,6 @@ struct NexusOptions {
     bool setupDone = false;      // the first start loaded Events: Chat, the voice module and the base model
     bool voiceFallback = true;   // a model too slow twice in a row: the next smaller installed one is used
     std::wstring namesLang;      // item / place names: "en", "de", "fr", "es", "zh"; "" = the language you write in
-    bool waypointPoiClick = false;  // Waypoint/POI click: the original in GW2's chat is clicked (kb_waypoint.cpp)
-    // Its three pauses, each thrown anew within its range (ms): before the click (the mouse on the link), held (down
-    // to up), after it (up, then the mouse back) – [Nexus] WpBefore / WpHeld / WpAfter = "from-to".
-    // Defaults at least two frames at 60 fps (GW2 reads the mouse once a frame; 3-25 ms could fall between two frames).
-    int wpBefore[2] = {40, 70}, wpHeld[2] = {40, 70}, wpAfter[2] = {10, 25};
 };
 extern NexusOptions g_nx;
 // How chat text looks ([NexusWindow] Glow, Brightness, GameColors): GW2's colours (the name in the channel colour, the
@@ -513,7 +506,6 @@ namespace kb {
 
 }  // namespace kb
 #include "kb_chatsource.hpp"
-#include "kb_waypoint.hpp"
 namespace kb {
 
 // ---- chat codes: their own module (chat_links) – "[Item name]" as the game links them, the details on mouse-over.
@@ -532,22 +524,10 @@ void NoteSelfFix(const std::wstring& text);
 void SaveMyWords();
 
 // A chat line that wraps word by word with its links (blue, underlined: a click asks before anything opens) and chat
-// codes (item/skill/waypoint name in rarity colour via Decoder Ring, hover tooltip with details, click copies code).
+// codes (item/skill/waypoint name in rarity colour via Decoder Ring, hover tooltip with details; a click does nothing).
 extern bool g_openLinkAsk;
-
-// A chat code clicked: the original in GW2's own chat is what works (the game's own map jump, its own tooltip). Our
-// window gets out of the way and GW2's chat line opens (Nexus presses the game's chat key) – you click the link there.
-// The window comes back when the map was open and closed again (a waypoint) or GW2's chat line closes, at the latest
-// after 45 s. A waypoint older than 15 s (its line has probably scrolled away): the game map opens instead and our
-// window stays, saying where to look. The code is always copied too.
-extern bool g_minimizeRequest, g_expandRequest;
-extern int g_redirect;
-extern ULONGLONG g_redirectSince;
-void HandleChatLinkClick(const std::string& raw, ULONGLONG receivedTime, const std::string& where,
-                         const ChatLineHint& line = {},  // line: who wrote it, its text, the link ("" = unknown)
-                         uint64_t lineId = 0);           // our ChatLine (the Waypoint/POI click: is the original there?)
-bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 color, ULONGLONG receivedTime,
-              const std::wstring& speaker = std::wstring(), uint64_t lineId = 0);
+extern bool g_minimizeRequest, g_expandRequest;  // on the main window, never inside the chat area
+bool RichLine(const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 color);
 
 extern bool g_micLocked;
 bool ProfileOn(int profile);

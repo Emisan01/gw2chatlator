@@ -144,19 +144,6 @@ void LoadLayout() {  // g_mu held
     g_nx.snap = nx(L"Snap", 1);
     g_nx.setupDone = nx(L"SetupDone", 0);
     g_nx.voiceFallback = nx(L"VoiceFallback", 1);
-    g_nx.waypointPoiClick = nx(L"WaypointPoiClick", 0);
-    auto range = [](const wchar_t* key, int* v) {  // "from-to" in ms, 0..500
-        wchar_t buf[32] = {};
-        GetPrivateProfileStringW(L"Nexus", key, L"", buf, 32, g_cfg.iniPath.c_str());
-        int a = 0, b = 0;
-        if (swscanf_s(buf, L"%d-%d", &a, &b) == 2) {
-            v[0] = std::clamp(std::min(a, b), 0, 500);
-            v[1] = std::clamp(std::max(a, b), 0, 500);
-        }
-    };
-    range(L"WpBefore", g_nx.wpBefore);
-    range(L"WpHeld", g_nx.wpHeld);
-    range(L"WpAfter", g_nx.wpAfter);
     {
         wchar_t lang[8] = {};
         GetPrivateProfileStringW(L"Nexus", L"NamesLang", L"", lang, 8, g_cfg.iniPath.c_str());
@@ -169,11 +156,6 @@ void SaveNexusOptions() {  // g_mu held
     g_cfg.SaveBool(L"Nexus", L"Snap", g_nx.snap);
     g_cfg.SaveBool(L"Nexus", L"SetupDone", g_nx.setupDone);
     g_cfg.SaveBool(L"Nexus", L"VoiceFallback", g_nx.voiceFallback);
-    g_cfg.SaveBool(L"Nexus", L"WaypointPoiClick", g_nx.waypointPoiClick);
-    auto range = [](const int* v) { return std::to_wstring(v[0]) + L"-" + std::to_wstring(v[1]); };
-    g_cfg.SaveValue(L"Nexus", L"WpBefore", range(g_nx.wpBefore));
-    g_cfg.SaveValue(L"Nexus", L"WpHeld", range(g_nx.wpHeld));
-    g_cfg.SaveValue(L"Nexus", L"WpAfter", range(g_nx.wpAfter));
     g_cfg.SaveValue(L"Nexus", L"NamesLang", g_nx.namesLang);
 }
 void SaveLayout() {  // g_mu held

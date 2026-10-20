@@ -550,36 +550,6 @@ void RenderOptionsContent() {
             }
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", UI(Tr(L"Moved near an edge of the screen, the window sits right on it.")).c_str());
-            if (ImGui::TreeNode(UI(Tr(L"More")).c_str())) {  // tucked away: the experimental Waypoint/POI click
-                {
-                    std::lock_guard<std::mutex> lock(g_mu);
-                    if (ImGui::Checkbox(UI(Tr(L"Waypoint/POI click (experimental)")).c_str(), &g_nx.waypointPoiClick))
-                        SaveNexusOptions();
-                }
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("%s", UI(Tr(L"Only waypoints and points of interest: a click on one here (while its line still stands at the bottom of GW2's chat – at most 8 lines below it) finds the same line in GW2's chat – its name, who wrote it, what it says; one picture of the game, only in memory, Windows' own text recognition – and clicks the original once: the game flies the map there. GW2's chat line must be closed (open, a click on a link does not fly the map). Not found: the code is copied, you click it in GW2's chat yourself.")).c_str());
-                bool changed = false;
-                {
-                    std::lock_guard<std::mutex> lock(g_mu);
-                    if (g_nx.waypointPoiClick) {  // the click's three pauses, from-to in ms (each thrown anew)
-                        auto row = [&](const std::wstring& label, int* v) {
-                            ImGui::SetNextItemWidth(ImGui::GetFontSize() * 7);
-                            if (ImGui::InputInt2(UI(label).c_str(), v)) {
-                                v[0] = std::clamp(v[0], 0, 500);
-                                v[1] = std::clamp(v[1], 0, 500);
-                                changed = true;
-                            }
-                            if (ImGui::IsItemHovered())
-                                ImGui::SetTooltip("%s", UI(Tr(L"From – to, in milliseconds: each click throws its pause anew within it.")).c_str());
-                        };
-                        row(Tr(L"Before the click (ms)"), g_nx.wpBefore);
-                        row(Tr(L"Held (ms)"), g_nx.wpHeld);
-                        row(Tr(L"After the click (ms)"), g_nx.wpAfter);
-                        if (changed) SaveNexusOptions();
-                    }
-                }
-                ImGui::TreePop();
-            }
             ImGui::Separator();
             ImGui::TextUnformatted(UI(Tr(L"Window layout")).c_str());
             {
