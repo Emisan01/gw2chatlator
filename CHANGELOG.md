@@ -13,11 +13,10 @@ diagnosis show it.
 - **For the developer:** Options > Technical shows what our frame costs on GW2's render thread, by part (window,
   header, chat, input, footer, options), and what a chat line costs – smoothed, updated four times a second, like
   the game's frame rate there.
-- **Options > General is a dashboard:** what is on at a glance – translating the chat, your text, voice input,
-  voice into English, the translator, reading the chat – each switched right there (green on, grey off, amber not
-  saved yet); the typing focus, named plainly (Enter in the game opens our input; keep typing after sending); and
-  what is ready, the same box as in the empty chat. Voice in any language: with "Translate my text" on, what you
-  say goes through your translator like your text.
+- **Options > General is a dashboard:** what is on at a glance – translating the chat, your text, what you say, voice
+  input, the translator, reading the chat – each switched right there (green on, grey off, amber not saved yet); the
+  typing focus, named plainly (Enter in the game opens our input; keep typing after sending); and what is ready, the
+  same box as in the empty chat.
 - **Translate what I say:** a new switch (Options > Voice and the dashboard). When you speak and it is on, what you
   said goes into the language at "Send" below the input – before "Translate my text"; into English whisper does it
   on your PC, other languages go through your translator. Off, or typed: everything as before. (It replaces "Into
@@ -33,12 +32,11 @@ diagnosis show it.
   at most 8 lines below it, however old – finds the very same line in GW2's chat – its name, who wrote it, what it
   says – and clicks the original once, so the game flies the map there as if you had clicked it yourself. GW2's
   chat line is never opened for it (there a click on a link does not fly the map), our window stays where it is,
-  no map is opened by us. One picture of the game, read
-  only in memory with Windows' own text recognition; nothing downloaded, nothing stored. Not found: the code is
-  copied and you click it in GW2's chat yourself. While it clicks, our window lets the mouse through. Its three pauses (before the click,
-  held, after it) can be set under the option, from – to in milliseconds (3 – 25 by default), each thrown anew.
-  A test key in Nexus' keybinds ("KB_GW2KEYBOARD_CLICKTEST") makes one click where the mouse is – to see whether
-  GW2 takes it.
+  no map is opened by us. One picture of the game, read only in memory with Windows' own text recognition; nothing
+  downloaded, nothing stored. Not found: the code is copied and you click it in GW2's chat yourself. While it
+  clicks, our window lets the mouse through. Its three pauses (before the click, held, after it) can be set under
+  the option, from – to in milliseconds (3 – 25 by default), each thrown anew. A test key in Nexus' keybinds
+  ("KB_GW2KEYBOARD_CLICKTEST") makes one click where the mouse is – to see whether GW2 takes it.
 - Under the hood: equations that must hold for every input – the window's place, sending (no character lost, a chat
   code never cut), translation protection, the settings file, the soft line breaks, the chat source (every line
   counted exactly once) – checked with thousands of random inputs in every build.
