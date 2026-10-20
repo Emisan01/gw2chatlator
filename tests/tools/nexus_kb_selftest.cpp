@@ -217,6 +217,11 @@ int wmain(int argc, wchar_t** argv) {
         std::printf("usage: nexus_kb_selftest <gw2keyboard_nexus.dll>\n");
         return 2;
     }
+    if (FindWindowW(L"ArenaNet_Gr_Window_Class", nullptr)) {  // GW2 runs: its MumbleLink (chat line, map, loading
+        // screens) would steer the add-on under test, and nothing of a test may ever reach a game
+        std::printf("GW2 is running - close it first (the test would read its MumbleLink)\n");
+        return 3;
+    }
     setvbuf(stdout, nullptr, _IONBF, 0);
     ImGui::SetAllocatorFunctions(Alloc, Free);
     ImGuiContext* ctx = ImGui::CreateContext();
@@ -538,6 +543,33 @@ int wmain(int argc, wchar_t** argv) {
                     const bool still = std::fabs(b1.x - b0.x) < 0.5f && std::fabs(b1.y - b0.y) < 0.5f;
                     if (!still) std::printf("FAIL: the minimised button moved by itself\n");
                     ok = ok && still;
+                }
+                // A press on the chat that minimises the window (a link) must not carry ImGui's window move into the button:
+                // the mouse moved a few pixels before it let go, and the corner went up by the big window's height (in the
+                // game: "after a few clicks the window stood at the top").
+                {
+                    ImGuiIO& io = ImGui::GetIO();
+                    const ImVec2 q0 = pos(), z0 = size();
+                    io.MousePos = ImVec2(q0.x + 200, q0.y + 80);
+                    frames(2);
+                    io.MouseDown[0] = true;
+                    frames(2);
+                    waypoint(0);  // the link minimises the window while the mouse is still held
+                    frames(3);
+                    io.MousePos = ImVec2(q0.x + 204, q0.y + 77);
+                    frames(3);
+                    io.MouseDown[0] = false;
+                    frames(3);
+                    io.MousePos = ImVec2(-1000, -1000);
+                    waypoint(1);
+                    frames(6);
+                    const ImVec2 q1 = pos(), z1 = size();
+                    std::printf("press, minimise, move, let go, open: corner %.0f,%.0f -> %.0f,%.0f\n", q0.x, q0.y + z0.y,
+                                q1.x, q1.y + z1.y);
+                    const bool kept = std::fabs(q1.x - q0.x) < 0.5f && std::fabs((q1.y + z1.y) - (q0.y + z0.y)) < 0.5f;
+                    if (!kept) std::printf("FAIL: a press that minimised the window moved its corner\n");
+                    ok = ok && kept;
+                    Sleep(800);  // longer than the three quick clicks' 700 ms: this press is no first click of the next test
                 }
                 // Three quick clicks on the chat area minimise the window too; it opens again the same way.
                 auto click = [&](ImVec2 at) {

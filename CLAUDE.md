@@ -86,8 +86,10 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   clicks the original in GW2's chat – only while it can still stand in view (`OriginalStillThere`, the user's "still
   alive" logic: not its age, not a map change – its place from the bottom, at most `kWpNewerLines` (8) lines after
   it; then also when older than 15 s; never a macro into nothing; GW2's chat is never scrolled; whether GW2 emptied
-  its chat only the screen tells – no line seen, no click): `HandleChatLinkClick` opens GW2's chat line (as before), `kb_waypoint`
-  waits for it (MumbleLink), asks the render thread for one frame (`WaypointFrameTick`: the swap chain's back
+  its chat only the screen tells – no line seen, no click). Independent of our window (user, in-game 2026-10-20):
+  `HandleChatLinkClick` neither minimises it nor opens GW2's chat line nor the map – GW2's chat line open = typing
+  mode, there a click on a link does not fly the map, so the click happens only while it is closed (MumbleLink).
+  `kb_waypoint` asks the render thread for one frame (`WaypointFrameTick`: the swap chain's back
   buffer – the game's picture, before any add-on draws – copied to a staging texture, read two frames later), reads
   it with Windows' own text recognition (tiles; then GW2's usual chat corner enlarged), frees it, finds the very line
   (`FindChatLink`: the link's name from Decoder Ring, then the speaker and the rest of the message; below `kMinFit`
@@ -95,9 +97,9 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   through meanwhile – `WaypointPassThrough` → `ImGuiWindowFlags_NoInputs`, two frames counted before the cursor moves,
   so ImGui / Nexus never keep the click; foreground checked before every step; right before the button goes down the
   point must lie on GW2's own window (`WindowFromPoint`), the cursor where we put it (else the user's hand took over),
-  no button held, GW2's chat line open; the three pauses – before, held, after – each thrown anew within the user's
+  no button held, GW2's chat line closed; the three pauses – before, held, after – each thrown anew within the user's
   from-to range, `[Nexus] WpBefore / WpHeld / WpAfter`, default 3-25 ms, the user's "dice logic", set under the
-  checkbox; the cursor goes back). Not found: the chat line stays open, the user clicks it. Its own thread, ended on
+  checkbox; the cursor goes back). Not found: the code is copied, the user clicks it. Its own thread, ended on
   unload (`StopWaypointMacro`). Decoder Ring's language must be the game's (else no match).
 - **Chat in:** Events: Chat (`EV_CHAT:Message`) → `OnChatEvents` (the guard above) → `AddLine` (`UnescapeChatText`, sanitised) →
   translated on the worker only when `[Nexus] TranslateChat=1` (default 0) or a click on the line asks for it – into

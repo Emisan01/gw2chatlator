@@ -33,6 +33,7 @@ Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustot
   right-click the header to open one); fold it up to its header (V) and open it again (A); it snaps to the screen edges
   and appears only on a map, never on the character screen. Waypoints and items show their name, map and details on
   mouse-over via Decoder Ring; a click copies the code (`[&...]`) to your clipboard, Shift+click puts it into your message.
+  Optional and experimental: the Waypoint/POI click (Options > Window > More) clicks the original in GW2's chat for you.
   Web links open only after a question.
 - **Write in your language,** the chat gets the translation: you see it (and what it means in your language again)
   before Enter sends it. Longer than one chat line: split into several. Translators: MyMemory (free), Google,

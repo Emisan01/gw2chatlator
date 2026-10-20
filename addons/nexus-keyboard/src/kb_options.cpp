@@ -396,7 +396,7 @@ void RenderOptionsContent() {
                         SaveNexusOptions();
                 }
                 if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("%s", UI(Tr(L"Only waypoints and points of interest: a click on one here (within 10 s of its line) opens GW2's chat, finds the same line there – its name, who wrote it, what it says; one picture of the game, only in memory, Windows' own text recognition – and clicks the original once: the game flies the map there. Not found: you click it in GW2's chat as before.")).c_str());
+                    ImGui::SetTooltip("%s", UI(Tr(L"Only waypoints and points of interest: a click on one here (while its line still stands at the bottom of GW2's chat – at most 8 lines below it) finds the same line in GW2's chat – its name, who wrote it, what it says; one picture of the game, only in memory, Windows' own text recognition – and clicks the original once: the game flies the map there. GW2's chat line must be closed (open, a click on a link does not fly the map). Not found: the code is copied, you click it in GW2's chat yourself.")).c_str());
                 bool changed = false;
                 {
                     std::lock_guard<std::mutex> lock(g_mu);

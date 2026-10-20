@@ -94,9 +94,9 @@ void MoveCursor(POINT at) {  // as a real mouse would: absolute, over the whole 
 // the cursor goes there, a pause, the button down, held, up, a pause, the cursor back – the three pauses thrown within
 // the user's ranges. Every step only while GW2 is in front (invariant 3). Right before the button goes down: the point
 // lies on GW2's own window (no other window over it), the cursor is still where we put it (else your hand took over:
-// no click, the cursor stays yours), no button of yours is held, and – for a waypoint – GW2's chat line is still open.
+// no click, the cursor stays yours), no button of yours is held, and – for a waypoint – GW2's chat line is closed.
 // A button that went down always comes up again.
-bool SyntheticClick(POINT at, bool needChatLine) {
+bool SyntheticClick(POINT at, bool needChatClosed) {
     const Pauses pause = CurrentPauses();
     const HWND gw2 = FindGw2Window(GetCurrentProcessId());
     auto front = [gw2] { return gw2 && GetForegroundWindow() == gw2; };
@@ -115,7 +115,7 @@ bool SyntheticClick(POINT at, bool needChatLine) {
     if (std::abs(now.x - at.x) > 2 || std::abs(now.y - at.y) > 2) return false;  // your hand moved it: yours
     const HWND under = WindowFromPoint(at);
     const bool buttonHeld = (GetAsyncKeyState(VK_LBUTTON) | GetAsyncKeyState(VK_RBUTTON) | GetAsyncKeyState(VK_MBUTTON)) & 0x8000;
-    if (!front() || !under || GetAncestor(under, GA_ROOT) != gw2 || buttonHeld || (needChatLine && !ChatLineOpen())) {
+    if (!front() || !under || GetAncestor(under, GA_ROOT) != gw2 || buttonHeld || (needChatClosed && ChatLineOpen())) {
         MoveCursor(was);
         return false;
     }
@@ -195,22 +195,17 @@ void ReadText(OcrEngine& ocr, const OcrImage& frame, int x0, int y0, int x1, int
 
 void RunWaypoint(ChatLineHint line) {
     const std::wstring& label = line.label;
-    // 1. GW2's chat line was asked to open (HandleChatLinkClick): MumbleLink read here every 10 ms (the render
-    //    thread looks only every 250 ms), then a few frames for its lines.
-    {
-        MumbleLink mumble;
-        for (int waited = 0; waited < 1500 && !g_macroStop; waited += 10) {
-            const MumbleState ms = mumble.Read();
-            if (ms.live && ms.TextboxHasFocus()) break;
-            Sleep(10);
-        }
+    // 1. GW2's chat as it stands: its chat line must be closed (open = typing mode, there a click on a link does not
+    //    fly the map) – it is never opened for this.
+    if (ChatLineOpen()) {
+        Say(TrF(L"{1} is copied – close GW2's chat line (Esc) and click it again.", {label}), 12000);
+        return;
     }
-    Sleep(FrameMs() * 3);
     if (g_macroStop) return;
     // 2. One frame of the game, only in memory.
     OcrImage frame;
     if (!GrabFrame(frame)) {
-        Say(Tr(L"The waypoint is copied – click it in GW2's chat (the frame could not be read)."), 12000);
+        Say(TrF(L"{1} is copied – click it in GW2's chat (the frame could not be read).", {label}), 12000);
         return;
     }
     // 3. The very line: its link's name, then who wrote it and what else it says (core/link_find) – better no click

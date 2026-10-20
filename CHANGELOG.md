@@ -3,7 +3,7 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## 2.2.0 — 2026-10-19 (GW2Chatlator for Nexus)
+## 2.2.0 — 2026-10-20 (GW2Chatlator for Nexus)
 
 - **The chat draws only what you see.** Every line keeps its height; out of view it costs nothing but its place. Our
   share of a frame on GW2's render thread went from 0.22 ms to 0.06 ms – with 500 lines of history instead of 200.
@@ -13,11 +13,13 @@ diagnosis show it.
 - **For the developer:** Options > Technical shows what our frame costs on GW2's render thread, by part (window,
   header, chat, input, footer, options), and what a chat line costs.
 - **Waypoint/POI click (experimental, off by default):** Options > Window > More > "Waypoint/POI click". Only
-  waypoints and points of interest: a click on one here (within 10 s of its line) opens
-  GW2's chat, finds the very same line there – the waypoint's name, who wrote it, what it says – and clicks the
-  waypoint once, so the game flies the map there as if you had clicked it yourself. One picture of the game, read
-  only in memory with Windows' own text recognition; nothing downloaded, nothing stored. Not found: you click it
-  in GW2's chat as before. While it clicks, our window lets the mouse through. Its three pauses (before the click,
+  waypoints and points of interest: a click on one here – while its line still stands at the bottom of GW2's chat,
+  at most 8 lines below it, however old – finds the very same line in GW2's chat – its name, who wrote it, what it
+  says – and clicks the original once, so the game flies the map there as if you had clicked it yourself. GW2's
+  chat line is never opened for it (there a click on a link does not fly the map), our window stays where it is,
+  no map is opened by us. One picture of the game, read
+  only in memory with Windows' own text recognition; nothing downloaded, nothing stored. Not found: the code is
+  copied and you click it in GW2's chat yourself. While it clicks, our window lets the mouse through. Its three pauses (before the click,
   held, after it) can be set under the option, from – to in milliseconds (3 – 25 by default), each thrown anew.
   A test key in Nexus' keybinds ("KB_GW2KEYBOARD_CLICKTEST") makes one click where the mouse is – to see whether
   GW2 takes it.

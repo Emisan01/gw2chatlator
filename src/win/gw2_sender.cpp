@@ -178,7 +178,7 @@ bool WaitForTargetToDrain(HWND target, UINT timeoutMs) {
 }  // namespace
 
 HWND FindGw2Window(DWORD processId) {
-    if (processId) {  // exact match through MumbleLink (several clients, renamed windows)
+    if (processId) {  // exactly that process (several clients, renamed windows) – never another GW2 instead
         struct Search {
             DWORD pid;
             HWND found;
@@ -193,7 +193,7 @@ HWND FindGw2Window(DWORD processId) {
                 return FALSE;
             },
             reinterpret_cast<LPARAM>(&search));
-        if (search.found) return search.found;
+        return search.found;  // the add-on asks for its own process: a test host has no GW2 window, and must not get one
     }
     HWND h = FindWindowW(L"ArenaNet_Gr_Window_Class", nullptr);
     if (!h) h = FindWindowW(nullptr, L"Guild Wars 2");
