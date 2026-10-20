@@ -41,7 +41,7 @@ std::string UI(std::wstring w) {
         {L"\u201C", L"\""}, {L"\u201D", L"\""}, {L"\u201E", L"\""}, {L"\u2018", L"'"}, {L"\u2019", L"'"}};
     for (const auto& [from, to] : kSwap)
         for (size_t at; (at = w.find(from)) != std::wstring::npos;) w.replace(at, std::wcslen(from), to);
-    return ToUtf8(w);
+    return ToUtf8(WithoutInvisible(w));  // a direction mark or a zero-width space would only be a "?" in the window
 }
 Worker g_worker;
 SpellService* g_spell = nullptr;
@@ -221,26 +221,24 @@ bool g_inputSpoken = false;
 
 bool VoiceFirst() { return g_inputSpoken && g_cfg.voiceEnabled && g_cfg.voiceTranslate; }
 
-// What you say goes into ("Translate what I say"): the language at "Send" – there "as written": the first of yours.
-const std::wstring& VoiceLang() {
-    static const std::wstring s_empty;
-    if (!g_sendOverride.empty() && g_sendOverride != L"=") return g_sendOverride;
-    if (g_sendIdx >= 0 && g_sendIdx < static_cast<int>(g_cfg.writeLangs.size())) return g_cfg.writeLangs[g_sendIdx];
-    return g_cfg.writeLangs.empty() ? s_empty : g_cfg.writeLangs[0];
+// The message's route (core/send_route: one pure function, its equations in core_tests). g_mu held.
+gct::SendRoute CurrentRoute(bool asSpokenWithSwitch = false) {
+    gct::SendState s;
+    s.spoken = asSpokenWithSwitch || g_inputSpoken;
+    s.voiceOn = asSpokenWithSwitch || g_cfg.voiceEnabled;
+    s.voiceTranslate = asSpokenWithSwitch || g_cfg.voiceTranslate;
+    s.tabLang = g_sendOverride;
+    s.sendIdx = g_sendIdx;
+    s.writeLangs = &g_cfg.writeLangs;
+    s.dictLang = g_dictLang;
+    s.typingLang = TypingLang();
+    return gct::RouteMessage(s);
 }
 
-bool SendOriginal() {
-    if (VoiceFirst()) return false;  // what you said, "Translate what I say" on: it has priority
-    if (!g_sendOverride.empty()) return g_sendOverride == L"=";
-    return g_sendIdx >= static_cast<int>(g_cfg.writeLangs.size());
-}
-const std::wstring& SendLang() {
-    static const std::wstring s_empty;
-    if (VoiceFirst()) return VoiceLang();
-    if (!g_sendOverride.empty()) return g_sendOverride == L"=" ? s_empty : g_sendOverride;
-    return (SendOriginal() || g_sendIdx < 0 || g_sendIdx >= static_cast<int>(g_cfg.writeLangs.size()))
-               ? s_empty : g_cfg.writeLangs[g_sendIdx];
-}
+// What you say goes into ("Translate what I say"): the language at "Send" – there "as written": the first of yours.
+std::wstring VoiceLang() { return CurrentRoute(true).lang; }
+bool SendOriginal() { return CurrentRoute().lang.empty(); }  // what you said, the switch on: it has priority
+std::wstring SendLang() { return CurrentRoute().lang; }
 // A detected language as the translators take it for sending ("en" -> "EN-GB", "pt" -> "PT-BR", "zh" -> "ZH-HANS").
 std::wstring SendCodeFor(const std::wstring& detected) {
     const std::wstring p = ToUpperAscii(PrimaryLang(detected));
@@ -249,12 +247,7 @@ std::wstring SendCodeFor(const std::wstring& detected) {
     if (p == L"ZH") return L"ZH-HANS";
     return p;
 }
-bool Translating() {
-    if (SendOriginal()) return false;
-    const std::wstring& send = SendLang();
-    if (send.empty()) return false;
-    return PrimaryLang(send) != (VoiceFirst() && !g_dictLang.empty() ? PrimaryLang(g_dictLang) : TypingLang());
-}
+bool Translating() { return CurrentRoute().translating; }
 const std::wstring& ComposePrefix() {
     static std::wstring s_cachedPrefix;
     static Channel s_cachedChannel = Channel::Unknown;

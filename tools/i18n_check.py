@@ -75,7 +75,20 @@ def main():
         for k in sorted(unused):
             print(f"  unused:  {k!r}")
         bad += len(missing)
+        # Equations every entry must hold: the same placeholders as the English text ({1} in, {1} out – else a name or
+        # a number is missing in the game), and no invisible marks (ImGui draws no text direction: a "?" box).
+        holes = [(k, v) for k, v in t.items()
+                 if sorted(re.findall(r"\{\d\}", k)) != sorted(re.findall(r"\{\d\}", v))]
+        marks = [k for k, v in t.items() if INVISIBLE.search(v) or INVISIBLE.search(k)]
+        for k, v in holes:
+            print(f"  placeholders differ: {k!r} -> {v!r}")
+        for k in marks:
+            print(f"  invisible mark in: {k!r}")
+        bad += len(holes) + len(marks)
     return 1 if bad else 0
+
+# Bidi controls, direction marks, zero width, BOM, soft hyphen (core/text: IsDangerousOrInvisibleUnicode).
+INVISIBLE = re.compile("[‪-‮⁦-⁩​-‏﻿­]")
 
 if __name__ == "__main__":
     sys.exit(main())

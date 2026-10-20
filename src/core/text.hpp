@@ -55,6 +55,9 @@ std::vector<Span> WordSpans(const std::wstring& s);
 
 // GW2 chat is single-line: newlines/tabs become spaces, runs collapse, trimmed.
 std::wstring SanitizeChatText(const std::wstring& s);
+// `s` without the invisible and direction marks SanitizeChatText drops too (bidi controls, zero width, BOM, soft
+// hyphen): ImGui draws no text direction – such a mark would only be a "?" in the window.
+std::wstring WithoutInvisible(const std::wstring& s);
 
 // Comma separated language list ("en-gb, fr ,ZH-HANS") -> {"EN-GB","FR","ZH-HANS"}
 std::vector<std::wstring> ParseLangList(const std::wstring& s);

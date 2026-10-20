@@ -37,7 +37,9 @@
 #include "core/protect.hpp"
 #include "core/send_guard.hpp"
 #include "core/soft_wrap.hpp"
+#include "core/send_route.hpp"
 #include "core/snippets.hpp"
+#include "core/steady.hpp"
 #include "core/slang.hpp"
 #include "core/text.hpp"
 #include "core/translator.hpp"
@@ -358,9 +360,9 @@ const std::wstring& TypingLang();
 std::wstring TypingLocale();
 extern bool g_inputSpoken;  // g_mu: the input began with what you said (a voice result into an empty input)
 bool VoiceFirst();          // g_mu: spoken and "Translate what I say" on – that has priority
-const std::wstring& VoiceLang();  // g_mu: what you say goes into
-bool SendOriginal();
-const std::wstring& SendLang();
+std::wstring VoiceLang();  // g_mu: what you say goes into
+bool SendOriginal();       // g_mu: core/send_route – "as written" exactly when there is no language
+std::wstring SendLang();
 std::wstring SendCodeFor(const std::wstring& detected);
 bool Translating();
 const std::wstring& ComposePrefix();
@@ -494,17 +496,8 @@ void StatusRow(const std::string& what, int state, const std::string& text);
 void RenderModules(bool guide);
 // A number for the eye (Options > Technical): smoothed over about the last 20 frames, shown at most 4 times a second.
 struct Steady {
-    double avg = -1, shown = 0;
-    ULONGLONG at = 0;
-    double operator()(double v) {
-        avg = avg < 0 ? v : avg * 0.9 + v * 0.1;
-        const ULONGLONG now = GetTickCount64();
-        if (at == 0 || now - at >= 250) {
-            shown = avg;
-            at = now;
-        }
-        return shown;
-    }
+    gct::SteadyNumber n;  // core/steady: its equations in core_tests
+    double operator()(double v) { return n.Next(v, GetTickCount64()); }
 };
 
 }  // namespace kb

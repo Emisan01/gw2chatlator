@@ -178,7 +178,7 @@ extern const I18nEntry kArabicStrings[] = {
     {L"General",
      L"عام"},
     {L"GitHub did not answer ({1}) – please try again later",
-     L"لم يستجب GitHub ‏({1}) – يرجى المحاولة لاحقًا"},
+     L"لم يستجب GitHub ({1}) – يرجى المحاولة لاحقًا"},
     {L"Install Decoder Ring",
      L"تثبيت Decoder Ring"},
     {L"Instead of GW2's own chat line: you type here, with the typing help and the translation.",
