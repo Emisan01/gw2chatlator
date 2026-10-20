@@ -61,6 +61,8 @@ char g_input[1024] = {};
 float g_wrapWidth = 0;  // the input's text width: soft line breaks ('\n' in place of a space) keep words whole
 std::string g_flatInput;
 std::wstring g_wFlatInput;
+gct::Snippets g_snippets;
+bool g_openSnippets = false;
 std::string g_lastInput;
 ULONGLONG g_inputChanged = 0;
 uint64_t g_inputGen = 0;

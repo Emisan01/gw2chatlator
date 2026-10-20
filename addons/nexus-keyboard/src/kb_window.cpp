@@ -91,6 +91,69 @@ void DragWindow(const ImVec2& d) {
 }
 }  // namespace
 
+// Text blocks (menu ≡): your own text, saved from the input, a click puts one back into it (after what is there).
+// In the main window, g_mu held (the window body holds it).
+void RenderSnippets() {
+    if (g_openSnippets) {  // at our window's top left, over the chat – not wherever the mouse happens to be
+        g_openSnippets = false;
+        ImGui::OpenPopup("kbsnippets");
+        ImGui::SetNextWindowPos(ImVec2(ImGui::GetWindowPos().x + 8, ImGui::GetWindowPos().y + 8), ImGuiCond_Always);
+    }
+    if (!ImGui::BeginPopup("kbsnippets")) return;
+    ImGui::TextUnformatted(UI(Tr(L"Text blocks")).c_str());
+    ImGui::Separator();
+    if (!Trim(g_wFlatInput).empty() && ImGui::Selectable(UI(Tr(L"Save the input as a text block")).c_str())) {
+        switch (g_snippets.Add(g_wFlatInput)) {
+            case gct::Snippets::Added::Yes:
+                SaveSnippets();
+                SetStatus(Tr(L"Text block saved"), 3000);
+                break;
+            case gct::Snippets::Added::Twice: SetStatus(Tr(L"This text block is already saved"), 3000); break;
+            case gct::Snippets::Added::Full:
+                SetStatus(TrF(L"{1} text blocks – delete one first", {std::to_wstring(gct::Snippets::kMax)}), 5000);
+                break;
+            default: break;
+        }
+    }
+    const auto& items = g_snippets.Items();
+    if (items.empty()) ImGui::TextDisabled("%s", UI(Tr(L"No text blocks yet – write one in the input and save it here.")).c_str());
+    int remove = -1;
+    for (size_t i = 0; i < items.size(); ++i) {
+        ImGui::PushID(static_cast<int>(i));
+        if (ImGui::SmallButton("x")) remove = static_cast<int>(i);
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Delete")).c_str());
+        ImGui::SameLine();
+        const std::wstring& b = items[i];
+        std::wstring shown = b.size() > 56 ? b.substr(0, 55) + L"…" : b;
+        for (wchar_t& c : shown)
+            if (c == L'\n') c = L' ';
+        if (ImGui::Selectable(UI(shown).c_str())) {
+            const size_t len = std::strlen(g_input);
+            const std::string add = (len && g_input[len - 1] != ' ' && g_input[len - 1] != '\n' ? " " : "") + U8(b);
+            if (len + add.size() >= sizeof(g_input)) {
+                SetStatus(Tr(L"The text block does not fit into the input – send or shorten it first."), 5000);
+            } else {
+                g_edit.active = true;
+                g_edit.startByte = len;
+                g_edit.lenBytes = 0;
+                g_edit.insert = add;
+                g_focusInput = true;
+            }
+            ImGui::CloseCurrentPopup();
+        }
+        if (ImGui::IsItemHovered() && b.size() > 56) {
+            ImGui::BeginTooltip();
+            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 24.0f);
+            ImGui::TextUnformatted(UI(b).c_str());
+            ImGui::PopTextWrapPos();
+            ImGui::EndTooltip();
+        }
+        ImGui::PopID();
+    }
+    if (remove >= 0 && g_snippets.Remove(static_cast<size_t>(remove))) SaveSnippets();
+    ImGui::EndPopup();
+}
+
 void MinimizeWindow() { g_collapsed = true; }  // the button takes the window's corner (g_mu held or main thread)
 
 // The footer chips: channel | "Write: German" | "Send: English (UK) · MyMemory" (orange) | auto | counter.
@@ -718,12 +781,16 @@ void RenderWindow() {
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", UI(Tr(L"What you see of the chat, into the language you write in – once, whatever the chat settings say. Again after you changed the language: in the new one.")).c_str());
         if (ImGui::MenuItem(UI(Tr(L"New whisper tab …")).c_str())) newTabNext = true;
+        if (ImGui::MenuItem(UI(Tr(L"Text blocks …")).c_str())) g_openSnippets = true;
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", UI(Tr(L"Your own text, saved from the input – a click puts it back.")).c_str());
         if (!g_chatEventsPresent && !g_chatEventsFile && ImGui::MenuItem(UI(Tr(L"Install Events: Chat (every channel) …")).c_str()))
             g_showOptions = true;
         ImGui::Separator();
         if (ImGui::MenuItem(UI(Tr(L"Hide (Ctrl+Alt+K shows it again)")).c_str())) g_show = false;
         ImGui::EndPopup();
     }
+    RenderSnippets();
     if (Lay().header) {
         ImGui::SameLine();
         if (IconButton("##close", Icon::Close, false, nullptr)) g_show = false;
