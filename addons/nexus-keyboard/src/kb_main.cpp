@@ -263,15 +263,17 @@ extern "C" __declspec(dllexport) void Gw2KbTestWaypoint(int step) {
         OnClickTestKey(nullptr, false);
         return;
     }
+    if (step == 2) AddLine(Channel::Map, false, "Kai Example", "meet at [&BAwEAAA=] in five");  // the line clicked
     std::lock_guard<std::mutex> lock(g_mu);
     if (step == 0) {
         HandleChatLinkClick("[&BAwEAAA=]", GetTickCount64(), std::string());
     } else if (step == 2) {
-        const bool was = g_nx.nativeWaypointClick;
-        g_nx.nativeWaypointClick = true;
+        const bool was = g_nx.waypointPoiClick;
+        g_nx.waypointPoiClick = true;
         HandleChatLinkClick("[&BAwEAAA=]", GetTickCount64(), "Lion's Arch Waypoint",
-                            ChatLineHint{L"Kai Example", L"meet at [Lion's Arch Waypoint] in five", L"[Lion's Arch Waypoint]"});
-        g_nx.nativeWaypointClick = was;
+                            ChatLineHint{L"Kai Example", L"meet at [Lion's Arch Waypoint] in five", L"[Lion's Arch Waypoint]"},
+                            g_lines.empty() ? 0 : g_lines.back().id);
+        g_nx.waypointPoiClick = was;
     } else {
         g_expandRequest = true;
     }

@@ -93,7 +93,10 @@ struct NexusOptions {
     bool setupDone = false;      // the first start loaded Events: Chat, the voice module and the base model
     bool voiceFallback = true;   // a model too slow twice in a row: the next smaller installed one is used
     std::wstring namesLang;      // item / place names: "en", "de", "fr", "es", "zh"; "" = the language you write in
-    bool nativeWaypointClick = false;  // a waypoint clicked here clicks the original in GW2's chat (kb_waypoint.cpp)
+    bool waypointPoiClick = false;  // Waypoint/POI click: the original in GW2's chat is clicked (kb_waypoint.cpp)
+    // Its three pauses, each thrown anew within its range (ms): before the click (the mouse on the link), held (down
+    // to up), after it (up, then the mouse back) – [Nexus] WpBefore / WpHeld / WpAfter = "from-to".
+    int wpBefore[2] = {3, 25}, wpHeld[2] = {3, 25}, wpAfter[2] = {3, 25};
 };
 extern NexusOptions g_nx;
 // How chat text looks ([NexusWindow] Glow, Brightness, GameColors): GW2's colours (the name in the channel colour, the
@@ -516,9 +519,10 @@ extern bool g_minimizeRequest, g_expandRequest;
 extern int g_redirect;
 extern ULONGLONG g_redirectSince;
 void HandleChatLinkClick(const std::string& raw, ULONGLONG receivedTime, const std::string& where,
-                         const ChatLineHint& line = {});  // line: who wrote it, its text, the link ("" = unknown)
+                         const ChatLineHint& line = {},  // line: who wrote it, its text, the link ("" = unknown)
+                         uint64_t lineId = 0);           // our ChatLine (the Waypoint/POI click: is the original there?)
 bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 color, ULONGLONG receivedTime,
-              const std::wstring& speaker = std::wstring());
+              const std::wstring& speaker = std::wstring(), uint64_t lineId = 0);
 
 extern bool g_micLocked;
 bool ProfileOn(int profile);

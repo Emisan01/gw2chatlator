@@ -80,16 +80,25 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   leftovers are removed at load. Other add-ons' code runs only behind a guard too:
   `ReadAddonDefGuarded` (the module scan calls every add-on's GetAddonDef), `ResolveGuarded` (Decoder Ring: a record
   with room to spare, strings ended, one fault = not asked again this session).
-- **Waypoint quantum macro** (user, 2026-10-19; `[Nexus] NativeWaypointClick`, off by default, Options > Window): no
-  add-on can call GW2's own map jump without a hook, so a click on a waypoint / POI in our chat (within 10 s of its
-  line) clicks the original in GW2's chat: `HandleChatLinkClick` opens GW2's chat line (as before), `kb_waypoint`
+- **Waypoint/POI click** ("quantum macro"; user, 2026-10-19/20; `[Nexus] WaypointPoiClick`, off by default, Options >
+  Window > More): no add-on can call GW2's own map jump without a hook, so a click on a waypoint or point of interest
+  (Decoder Ring's kind `DP_Waypoint` / `DP_PointOfInterest` – never a vista, never another chat code) in our chat
+  clicks the original in GW2's chat – only while it can still stand in view (`OriginalStillThere`, the user's "still
+  alive" logic: not its age, not a map change – its place from the bottom, at most `kWpNewerLines` (8) lines after
+  it; then also when older than 15 s; never a macro into nothing; GW2's chat is never scrolled; whether GW2 emptied
+  its chat only the screen tells – no line seen, no click): `HandleChatLinkClick` opens GW2's chat line (as before), `kb_waypoint`
   waits for it (MumbleLink), asks the render thread for one frame (`WaypointFrameTick`: the swap chain's back
   buffer – the game's picture, before any add-on draws – copied to a staging texture, read two frames later), reads
   it with Windows' own text recognition (tiles; then GW2's usual chat corner enlarged), frees it, finds the very line
   (`FindChatLink`: the link's name from Decoder Ring, then the speaker and the rest of the message; below `kMinFit`
-  no click – better none than a wrong one) and clicks its centre once (`SyntheticClick`: foreground checked before
-  every step, held one frame, the cursor goes back). Not found: the chat line stays open, the user clicks it. Its
-  own thread, ended on unload (`StopWaypointMacro`). Decoder Ring's language must be the game's (else no match).
+  no click – better none than a wrong one) and clicks its centre once (`SyntheticClick`: our window lets the mouse
+  through meanwhile – `WaypointPassThrough` → `ImGuiWindowFlags_NoInputs`, two frames counted before the cursor moves,
+  so ImGui / Nexus never keep the click; foreground checked before every step; right before the button goes down the
+  point must lie on GW2's own window (`WindowFromPoint`), the cursor where we put it (else the user's hand took over),
+  no button held, GW2's chat line open; the three pauses – before, held, after – each thrown anew within the user's
+  from-to range, `[Nexus] WpBefore / WpHeld / WpAfter`, default 3-25 ms, the user's "dice logic", set under the
+  checkbox; the cursor goes back). Not found: the chat line stays open, the user clicks it. Its own thread, ended on
+  unload (`StopWaypointMacro`). Decoder Ring's language must be the game's (else no match).
 - **Chat in:** Events: Chat (`EV_CHAT:Message`) → `OnChatEvents` (the guard above) → `AddLine` (`UnescapeChatText`, sanitised) →
   translated on the worker only when `[Nexus] TranslateChat=1` (default 0) or a click on the line asks for it – into
   the language you write in (the chat is read in it). `TranslateRecentLines` redoes the newest 20 when the translation

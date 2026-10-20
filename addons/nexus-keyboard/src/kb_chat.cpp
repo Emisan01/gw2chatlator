@@ -274,12 +274,29 @@ bool g_minimizeRequest = false, g_expandRequest = false;  // on the main window,
 int g_redirect = 0;  // 0 none; 1 waypoint, waiting for the map; 2 the map is open; 3 waiting for GW2's chat line; 4 it is open
 ULONGLONG g_redirectSince = 0;
 
+// The Waypoint/POI click starts only while GW2's original can still stand in view at the bottom of its chat – never
+// into nothing. Not its age (two minutes old and still the newest line), not a map change (it need not empty the
+// chat): its place from the bottom – at most kWpNewerLines lines came after it (Events: Chat counts them; lines of
+// channels GW2's tab hides count too: rather no macro than one into nothing). Whether GW2 emptied its chat only the
+// screen tells: the very line must be seen there (FindChatLink), else no click. GW2's chat is never scrolled.
+constexpr uint64_t kWpNewerLines = 8;
+
+bool OriginalStillThere(uint64_t lineId) {  // g_mu held
+    if (lineId == 0 || g_nextId - 1 - lineId > kWpNewerLines) return false;
+    const auto it = std::lower_bound(g_lines.begin(), g_lines.end(), lineId,
+                                     [](const ChatLine& l, uint64_t id) { return l.id < id; });  // ids rise
+    return it != g_lines.end() && it->id == lineId;
+}
+
 void HandleChatLinkClick(const std::string& raw, ULONGLONG receivedTime, const std::string& where,
-                         const ChatLineHint& line) {  // g_mu held
+                         const ChatLineHint& line, uint64_t lineId) {  // g_mu held
     ImGui::SetClipboardText(raw.c_str());
     const bool waypoint = DecodeChatCode(W(raw)).kind == ChatCodeKind::Poi;
+    // The Waypoint/POI click (optional; `line.label` is set only for a waypoint or a point of interest): the original
+    // is clicked for you, found by its name, who wrote it and what it says.
+    const bool macro = waypoint && g_nx.waypointPoiClick && !line.label.empty() && OriginalStillThere(lineId);
     const bool fresh = receivedTime == 0 || GetTickCount64() - receivedTime < 15000;
-    if (waypoint && !fresh) {  // the emergency way: the game map, and our window says where to look
+    if (waypoint && !fresh && !macro) {  // the emergency way: the game map, and our window says where to look
         if (g_api && g_api->GameBinds_InvokeAsync) g_api->GameBinds_InvokeAsync(GB_MapToggle, 50);
         SetStatus(where.empty() ? Tr(L"The map is open – the waypoint code is copied (Ctrl+V)")
                                 : TrF(L"On the map: {1}", {W(where)}),
@@ -292,14 +309,11 @@ void HandleChatLinkClick(const std::string& raw, ULONGLONG receivedTime, const s
     g_redirectSince = GetTickCount64();
     g_suppressChatFocusUntil = GetTickCount64() + 2000;  // our own "come back when GW2's chat opens" waits
     if (g_api && g_api->GameBinds_InvokeAsync) g_api->GameBinds_InvokeAsync(GB_UiChatFocus, 20);
-    // The quantum macro (optional): within 10 s the line still stands at the bottom of GW2's chat – the original is
-    // clicked for you, found by its name, who wrote it and what it says.
-    const bool alive = receivedTime == 0 || GetTickCount64() - receivedTime < 10000;
-    if (waypoint && alive && g_nx.nativeWaypointClick && !line.label.empty()) StartWaypointClick(line);
+    if (macro) StartWaypointClick(line);
 }
 
 bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 color,
-              ULONGLONG receivedTime, const std::wstring& speaker) {  // g_mu held
+              ULONGLONG receivedTime, const std::wstring& speaker, uint64_t lineId) {  // g_mu held
     (void)text;
     std::wstring asShown;  // the line as GW2 shows it: chat codes as their "[Name]" (the waypoint click finds it)
     for (const auto& seg : segs)
@@ -355,8 +369,10 @@ bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::Link
                 if (g_links.Render(seg, lbl, [](const std::string& l, ImVec4 c) { LookText(l.c_str(), Bright(c), false); })) {
                     clicked = true;
                     const std::string where = g_links.Where(seg);  // empty: Decoder Ring does not know it
+                    const int kind = g_links.PoiKind(seg);          // the Waypoint/POI click: only these two
+                    const bool wpPoi = kind == DP_Waypoint || kind == DP_PointOfInterest;
                     HandleChatLinkClick(seg.raw, receivedTime, where,
-                                        ChatLineHint{speaker, asShown, where.empty() ? std::wstring() : W(lbl)});
+                                        ChatLineHint{speaker, asShown, wpPoi ? W(lbl) : std::wstring()}, lineId);
                 }
                 break;
             }

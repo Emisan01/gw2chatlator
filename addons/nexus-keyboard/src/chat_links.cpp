@@ -143,6 +143,13 @@ std::string ChatLinks::Where(const PieUI::ChatLinks::LinkSegment& seg) {
     return rec.mapName[0] ? std::string(rec.name) + " – " + rec.mapName : std::string(rec.name);
 }
 
+int ChatLinks::PoiKind(const PieUI::ChatLinks::LinkSegment& seg) {
+    if (seg.linkType != PieUI::ChatLinks::LINK_MAP) return -1;
+    DecoderRecord rec;
+    if (!ResolveGuarded(GetDecoder(), seg, rec) || rec.name[0] == '\0') return -1;
+    return rec.poiType;
+}
+
 bool ChatLinks::Render(const PieUI::ChatLinks::LinkSegment& seg, const std::string& label,
                        const std::function<void(const std::string&, ImVec4)>& draw) {
     DecoderRecord rec;

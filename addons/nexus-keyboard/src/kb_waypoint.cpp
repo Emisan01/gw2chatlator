@@ -1,9 +1,10 @@
-// kb_waypoint.cpp — the "quantum macro" for waypoints (optional: [Nexus] NativeWaypointClick, off by default). A click
-// on a waypoint or point of interest in our chat clicks the original link in GW2's own chat – the game then does what
-// it always does (the map opens and flies to the spot). No hook, no game memory: GW2's chat line is opened, one frame
-// of the game is read (the swap chain's back buffer, before any add-on draws, only in memory), the link found by its
-// name (Decoder Ring, Windows' own text recognition) and clicked once – one click of yours, one click of ours, every
-// step only while GW2 is in front. Not found: the chat line stays open and you click it there, as before.
+// kb_waypoint.cpp — the Waypoint/POI click, the "quantum macro" (optional: [Nexus] WaypointPoiClick, off by default).
+// A click on a waypoint or point of interest (never anything else) in our chat clicks the original link in GW2's own
+// chat – the game then does what it always does (the map opens and flies to the spot). No hook, no game memory: GW2's
+// chat line is opened, one frame of the game is read (the swap chain's back buffer, before any add-on draws, only in
+// memory), the link found by its name (Decoder Ring, Windows' own text recognition) and clicked once – one click of
+// yours, one click of ours, every step only while GW2 is in front. Not found: the chat line stays open and you click
+// it there, as before.
 // A test key (Nexus keybinds, unbound): one click where the mouse stands – does GW2 take a synthetic click?
 
 #include "kb_shared.hpp"
@@ -11,6 +12,8 @@
 #include "win/ocr.hpp"
 
 #include <d3d11.h>
+
+#include <random>
 
 namespace kb {
 
@@ -25,6 +28,8 @@ void Send(INPUT& in) {
 }
 
 std::atomic<bool> g_macroBusy{false}, g_macroStop{false};
+std::atomic<bool> g_passThrough{false};  // our window lets the mouse through (kb_window: ImGuiWindowFlags_NoInputs)
+std::atomic<unsigned> g_frames{0};       // frames drawn (WaypointFrameTick): waits counted in frames, not guessed
 
 // The frame (render thread): asked → copied into a staging texture → read two frames later (no wait on the GPU).
 enum GrabState { kGrabIdle, kGrabAsked, kGrabCopied, kGrabDone, kGrabFailed };
@@ -36,11 +41,42 @@ std::mutex g_grabMu;
 OcrImage g_frame;  // g_grabMu
 
 int FrameMs() { return 1000 / std::max(10, static_cast<int>(g_fps)); }
-int HoldMs() { return std::clamp(FrameMs() + 10, 15, 120); }  // as the keys when sending: one frame and a bit
+struct Pauses {  // the user's from-to ranges (ms), copied when a click starts
+    int before[2], held[2], after[2];
+};
+
+Pauses CurrentPauses() {
+    std::lock_guard<std::mutex> lock(g_mu);
+    Pauses p;
+    std::memcpy(p.before, g_nx.wpBefore, sizeof(p.before));
+    std::memcpy(p.held, g_nx.wpHeld, sizeof(p.held));
+    std::memcpy(p.after, g_nx.wpAfter, sizeof(p.after));
+    return p;
+}
+
+int DiceMs(const int* range) {  // every pause thrown anew within its range (the user's "dice logic", as since GW1)
+    thread_local std::mt19937 dice(static_cast<unsigned>(GetTickCount64() ^ GetCurrentThreadId()));
+    return std::uniform_int_distribution<int>(std::min(range[0], range[1]), std::max(range[0], range[1]))(dice);
+}
 
 void Say(const std::wstring& text, ULONGLONG ms) {
     std::lock_guard<std::mutex> lock(g_mu);
     SetStatus(text, ms);
+}
+
+bool WaitFrames(unsigned n) {  // until the render thread drew n more frames (at most half a second)
+    const unsigned from = g_frames;
+    for (int waited = 0; waited < 500 && !g_macroStop; waited += 2) {
+        if (g_frames - from >= n) return true;
+        Sleep(2);
+    }
+    return false;
+}
+
+bool ChatLineOpen() {
+    MumbleLink mumble;
+    const MumbleState ms = mumble.Read();
+    return ms.live && ms.TextboxHasFocus();
 }
 
 void MoveCursor(POINT at) {  // as a real mouse would: absolute, over the whole virtual desktop
@@ -54,17 +90,32 @@ void MoveCursor(POINT at) {  // as a real mouse would: absolute, over the whole 
     Send(in);
 }
 
-// One left click at `at` (screen pixels): the cursor goes there, the button is held one frame, the cursor comes back.
-// Every step only while GW2 is in front (invariant 3); a button that went down always comes up again.
-bool SyntheticClick(POINT at) {
+// One left click at `at` (screen pixels): our window lets the mouse through (two frames, so ImGui no longer holds it),
+// the cursor goes there, a pause, the button down, held, up, a pause, the cursor back – the three pauses thrown within
+// the user's ranges. Every step only while GW2 is in front (invariant 3). Right before the button goes down: the point
+// lies on GW2's own window (no other window over it), the cursor is still where we put it (else your hand took over:
+// no click, the cursor stays yours), no button of yours is held, and – for a waypoint – GW2's chat line is still open.
+// A button that went down always comes up again.
+bool SyntheticClick(POINT at, bool needChatLine) {
+    const Pauses pause = CurrentPauses();
     const HWND gw2 = FindGw2Window(GetCurrentProcessId());
     auto front = [gw2] { return gw2 && GetForegroundWindow() == gw2; };
     POINT was{};
     GetCursorPos(&was);
     if (!front()) return false;
+    struct Through {  // our window lets the mouse through only while this click runs
+        Through() { g_passThrough = true; }
+        ~Through() { g_passThrough = false; }
+    } through;
+    if (!WaitFrames(2) || !front()) return false;
     MoveCursor(at);
-    Sleep(HoldMs());  // GW2 sees the cursor there before the click
-    if (!front()) {
+    Sleep(DiceMs(pause.before));  // GW2 sees the cursor there before the click
+    POINT now{};
+    GetCursorPos(&now);
+    if (std::abs(now.x - at.x) > 2 || std::abs(now.y - at.y) > 2) return false;  // your hand moved it: yours
+    const HWND under = WindowFromPoint(at);
+    const bool buttonHeld = (GetAsyncKeyState(VK_LBUTTON) | GetAsyncKeyState(VK_RBUTTON) | GetAsyncKeyState(VK_MBUTTON)) & 0x8000;
+    if (!front() || !under || GetAncestor(under, GA_ROOT) != gw2 || buttonHeld || (needChatLine && !ChatLineOpen())) {
         MoveCursor(was);
         return false;
     }
@@ -72,10 +123,10 @@ bool SyntheticClick(POINT at) {
     in.type = INPUT_MOUSE;
     in.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
     Send(in);
-    Sleep(HoldMs());
+    Sleep(DiceMs(pause.held));
     in.mi.dwFlags = MOUSEEVENTF_LEFTUP;
     Send(in);
-    Sleep(HoldMs());
+    Sleep(DiceMs(pause.after));
     MoveCursor(was);
     return true;
 }
@@ -144,15 +195,15 @@ void ReadText(OcrEngine& ocr, const OcrImage& frame, int x0, int y0, int x1, int
 
 void RunWaypoint(ChatLineHint line) {
     const std::wstring& label = line.label;
-    // 1. GW2's chat line was asked to open (HandleChatLinkClick): wait for it, then a few frames for its lines.
-    for (int waited = 0; waited < 1500 && !g_macroStop; waited += 25) {
-        bool open;
-        {
-            std::lock_guard<std::mutex> lock(g_mu);
-            open = g_gameChatOpen;
+    // 1. GW2's chat line was asked to open (HandleChatLinkClick): MumbleLink read here every 10 ms (the render
+    //    thread looks only every 250 ms), then a few frames for its lines.
+    {
+        MumbleLink mumble;
+        for (int waited = 0; waited < 1500 && !g_macroStop; waited += 10) {
+            const MumbleState ms = mumble.Read();
+            if (ms.live && ms.TextboxHasFocus()) break;
+            Sleep(10);
         }
-        if (open) break;
-        Sleep(25);
     }
     Sleep(FrameMs() * 3);
     if (g_macroStop) return;
@@ -163,7 +214,7 @@ void RunWaypoint(ChatLineHint line) {
         return;
     }
     // 3. The very line: its link's name, then who wrote it and what else it says (core/link_find) – better no click
-    //    than a wrong one. The whole frame; if not found, GW2's usual chat corner enlarged.
+    //    than a wrong one. GW2's usual chat corner enlarged first, then the whole frame.
     OcrEngine ocr;
     std::string error;
     TextBox hit;
@@ -173,11 +224,11 @@ void RunWaypoint(ChatLineHint line) {
     };
     if (ocr.Init(&error)) {
         std::vector<TextRow> rows;
-        ReadText(ocr, frame, 0, 0, frame.width, frame.height, 1, rows);
+        ReadText(ocr, frame, 0, frame.height * 2 / 5, frame.width / 2, frame.height, 2, rows);  // GW2's chat corner
         found = find(rows);
-        if (!found && !g_macroStop) {
+        if (!found && !g_macroStop) {  // the chat moved elsewhere: the whole frame
             rows.clear();
-            ReadText(ocr, frame, 0, frame.height * 2 / 5, frame.width / 2, frame.height, 2, rows);
+            ReadText(ocr, frame, 0, 0, frame.width, frame.height, 1, rows);
             found = find(rows);
         }
     }
@@ -187,15 +238,17 @@ void RunWaypoint(ChatLineHint line) {
         Say(TrF(L"{1} is copied – click it in GW2's chat (not found on the screen).", {label}), 12000);
         return;
     }
-    // 4. The frame's pixels on the screen: GW2's client area (it may be scaled), then the click.
+    // 4. The frame's pixels on the screen: GW2's client area (it may be scaled), then the click – our window lets the
+    //    mouse through meanwhile (the minimised button may stand over GW2's chat).
+    const float cx = hit.x + hit.w / 2.0f, cy = hit.y + hit.h / 2.0f;
     const HWND gw2 = FindGw2Window(GetCurrentProcessId());
     RECT client{};
     if (!gw2 || !GetClientRect(gw2, &client)) return;
     const float sx = static_cast<float>(client.right) / std::max(1, frameW);
     const float sy = static_cast<float>(client.bottom) / std::max(1, frameH);
-    POINT at{static_cast<LONG>((hit.x + hit.w / 2.0f) * sx), static_cast<LONG>((hit.y + hit.h / 2.0f) * sy)};
+    POINT at{static_cast<LONG>(cx * sx), static_cast<LONG>(cy * sy)};
     ClientToScreen(gw2, &at);
-    if (!SyntheticClick(at)) Say(TrF(L"{1} is copied – click it in GW2's chat.", {label}), 12000);
+    if (!SyntheticClick(at, true)) Say(TrF(L"{1} is copied – click it in GW2's chat.", {label}), 12000);
 }
 
 void ConvertRow(const uint8_t* src, uint8_t* dst, int width, DXGI_FORMAT f) {  // one row into BGRA
@@ -229,6 +282,7 @@ bool Readable(DXGI_FORMAT f) {
 // Render thread, every frame: the frame the macro asked for. The back buffer holds the game's own picture here –
 // Nexus draws the add-ons later in the same frame, so none of our windows is in it.
 void WaypointFrameTick() {
+    ++g_frames;
     const int st = g_grab;
     if (st == kGrabAsked) {
         auto* chain = g_api ? static_cast<IDXGISwapChain*>(g_api->SwapChain) : nullptr;
@@ -307,13 +361,15 @@ void OnClickTestKey(const char*, bool release) {  // the test key: one click whe
         Sleep(200);  // the key is let go first
         POINT at{};
         GetCursorPos(&at);
-        Say(SyntheticClick(at) ? Tr(L"Click test: one click where the mouse is.")
+        Say(SyntheticClick(at, false) ? Tr(L"Click test: one click where the mouse is.")
                                : Tr(L"Click test: GW2 is not in front – no click."),
             8000);
     });
 }
 
 int SyntheticInputs() { return g_synthetic; }
+
+bool WaypointPassThrough() { return g_passThrough; }
 
 void StopWaypointMacro() {  // unload: the macro ends before the DLL goes
     g_macroStop = true;

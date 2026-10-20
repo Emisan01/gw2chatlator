@@ -9,5 +9,6 @@ void StartWaypointClick(const ChatLineHint& line);     // g_mu held: click the o
 void OnClickTestKey(const char*, bool release);        // the test key: one click where the mouse is
 void StopWaypointMacro();                              // unload
 int SyntheticInputs();                                 // the self-test: how many synthetic mouse inputs were sent
+bool WaypointPassThrough();                            // while the click runs our window lets the mouse through
 
 }  // namespace kb
