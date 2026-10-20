@@ -292,11 +292,20 @@ void HandleChatLinkClick(const std::string& raw, ULONGLONG receivedTime, const s
                          const ChatLineHint& line, uint64_t lineId) {  // g_mu held
     ImGui::SetClipboardText(raw.c_str());
     const bool waypoint = DecodeChatCode(W(raw)).kind == ChatCodeKind::Poi;
-    // The Waypoint/POI click (optional; `line.label` is set only for a waypoint or a point of interest): the original
-    // is clicked for you, found by its name, who wrote it and what it says.
-    const bool macro = waypoint && g_nx.waypointPoiClick && !line.label.empty() && OriginalStillThere(lineId);
+    // The Waypoint/POI click (optional; `line.label` is set only for a waypoint or a point of interest): only the real
+    // click on the original, found by its name, who wrote it and what it says – independent of our window (it stays
+    // as it is and lets the mouse through), GW2's chat line stays closed (open = typing mode: there a click on a link
+    // does not fly the map), and never the map from us. Too far up in GW2's chat: the code is copied, nothing else.
+    if (waypoint && g_nx.waypointPoiClick && !line.label.empty()) {
+        if (OriginalStillThere(lineId)) {
+            StartWaypointClick(line);
+        } else {
+            SetStatus(TrF(L"{1} is copied – too far up in GW2's chat to click it for you.", {line.label}), 12000);
+        }
+        return;
+    }
     const bool fresh = receivedTime == 0 || GetTickCount64() - receivedTime < 15000;
-    if (waypoint && !fresh && !macro) {  // the emergency way: the game map, and our window says where to look
+    if (waypoint && !fresh) {  // the emergency way: the game map, and our window says where to look
         if (g_api && g_api->GameBinds_InvokeAsync) g_api->GameBinds_InvokeAsync(GB_MapToggle, 50);
         SetStatus(where.empty() ? Tr(L"The map is open – the waypoint code is copied (Ctrl+V)")
                                 : TrF(L"On the map: {1}", {W(where)}),
@@ -309,7 +318,6 @@ void HandleChatLinkClick(const std::string& raw, ULONGLONG receivedTime, const s
     g_redirectSince = GetTickCount64();
     g_suppressChatFocusUntil = GetTickCount64() + 2000;  // our own "come back when GW2's chat opens" waits
     if (g_api && g_api->GameBinds_InvokeAsync) g_api->GameBinds_InvokeAsync(GB_UiChatFocus, 20);
-    if (macro) StartWaypointClick(line);
 }
 
 bool RichLine(const std::wstring& text, const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 color,

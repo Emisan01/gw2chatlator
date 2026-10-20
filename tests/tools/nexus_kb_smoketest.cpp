@@ -80,6 +80,11 @@ void Frame() {
 }  // namespace
 
 int wmain(int argc, wchar_t** argv) {
+    if (FindWindowW(L"ArenaNet_Gr_Window_Class", nullptr)) {  // GW2 runs: its MumbleLink (chat line, map, loading
+        // screens) would steer the add-on under test, and nothing of a test may ever reach a game
+        std::printf("GW2 is running - close it first (the test would read its MumbleLink)\n");
+        return 3;
+    }
     if (argc < 2) {
         std::printf("usage: nexus_kb_smoketest.exe <path-to-gw2keyboard_nexus.dll>\n");
         return 2;

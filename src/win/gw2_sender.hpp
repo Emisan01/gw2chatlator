@@ -31,6 +31,7 @@ struct SendOutcome {
 };
 
 // `processId` from MumbleLink when known (exact), else by window class/title.
+// processId given: only a window of that process (nullptr if it has none); 0: GW2's window by its class / title.
 HWND FindGw2Window(DWORD processId = 0);
 
 // Blocks for roughly 3 * stepDelayMs + restoreDelayMs (longer if GW2 is

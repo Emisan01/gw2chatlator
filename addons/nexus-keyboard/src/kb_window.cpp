@@ -38,13 +38,22 @@ WinSpace WindowSpace(float button) {
 // Before Begin: what changed the window since the last frame (you, ImGui's ini, anyone) is taken over first; then the
 // formula sets this frame's rect – not while ImGui moves or resizes it under your mouse (a new mode ends that hold).
 void PlaceWindow(WinMode mode, const WinSpace& s) {
-    if (ImGuiWindow* w = ImGui::FindWindowByName("GW2Chatlator###kbmain")) {  // the rect it has is the last mode's
+    ImGuiWindow* w = ImGui::FindWindowByName("GW2Chatlator###kbmain");
+    if (w) {  // the rect it has is the last mode's
         const WinRect now{w->Pos.x, w->Pos.y, w->SizeFull.x, w->SizeFull.y};  // SizeFull: a resize since lands there
         if (g_winHolding && !g_winOwnDrag && std::fabs(now.h - g_winWas.h) > 0.5f) g_winSizing = true;
         g_win = AdoptRect(g_winMode, g_win, now, g_winWas);
         g_winWas = now;
     }
-    if (mode != g_winMode) g_winHolding = g_winOwnDrag = g_winSizing = false;
+    if (mode != g_winMode) {  // a new mode ends every hold – ImGui's own move too: a press on the chat (a link that
+        // minimises) had ImGui drag the button to where the big window was grabbed, the corner crept up each time
+        g_winHolding = g_winOwnDrag = g_winSizing = false;
+        ImGuiContext& g = *ImGui::GetCurrentContext();
+        if (w && g.MovingWindow && g.MovingWindow->RootWindow == w) {
+            g.MovingWindow = nullptr;
+            ImGui::ClearActiveID();
+        }
+    }
     g_winMode = mode;
     if (!g_win.known || (g_winHolding && !g_winOwnDrag)) return;
     const WinRect r = LayoutWindow(mode, g_win, s);
