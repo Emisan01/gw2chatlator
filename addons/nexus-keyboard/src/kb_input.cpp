@@ -234,6 +234,11 @@ void NoteSelfFix(const std::wstring& text) {  // g_mu held; the text changed
 }
 
 // Your own words ("finds = I think"): what the translator gets instead (<data>\my-words.txt), learned on a right-click.
+// Your text blocks (<data>\snippets.txt): only your own text, saved from the input.
+void SaveSnippets() {  // g_mu held
+    if (!g_wiped) WriteFileAtomic(g_cfg.dataDir + L"\\snippets.txt", ToUtf8(g_snippets.Serialize()));
+}
+
 void SaveMyWords() {  // g_mu held
     if (!g_wiped) WriteFileAtomic(g_cfg.dataDir + L"\\my-words.txt", ToUtf8(g_myWords.Serialize()));
 }

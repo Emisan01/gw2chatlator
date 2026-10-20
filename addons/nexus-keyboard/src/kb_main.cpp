@@ -138,6 +138,8 @@ void AddonLoad(AddonAPI_t* api) {
         }
         std::string words;
         if (ReadFileBytes(g_cfg.dataDir + L"\\my-words.txt", words)) g_myWords.Parse(FromUtf8(words));
+        std::string blocks;
+        if (ReadFileBytes(g_cfg.dataDir + L"\\snippets.txt", blocks)) g_snippets.Parse(FromUtf8(blocks));
     }
     RequestTextFont(g_cfg.fontPt);
     Config::DeferWrites(true);  // the ini is written on the worker (KickSave), never on the game thread
@@ -350,6 +352,13 @@ extern "C" __declspec(dllexport) int Gw2KbTestChatSource(int cmd, ChatSourceTest
             std::lock_guard<std::mutex> lock(g_mu);
             g_selectTab = -1;
             if (g_collapsed) g_expandRequest = true;
+            break;
+        }
+        case 10: {  // the picture: the text blocks open (invented ones, not saved)
+            std::lock_guard<std::mutex> lock(g_mu);
+            g_snippets.Add(L"Meet at the waypoint in five, bring food and repair kits.");
+            g_snippets.Add(L"LFG fractals T4, need 2 – whisper me.");
+            g_openSnippets = true;
             break;
         }
         case 8:

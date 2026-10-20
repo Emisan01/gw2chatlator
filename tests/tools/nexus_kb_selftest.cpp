@@ -348,6 +348,7 @@ int wmain(int argc, wchar_t** argv) {
             g_chatEvents(&e);
         }
         if (src && GetEnvironmentVariableW(L"GW2KB_SHOT_TECH", nullptr, 0)) src(8, nullptr, nullptr);  // Options > Technical
+        const bool shotSnippets = src && GetEnvironmentVariableW(L"GW2KB_SHOT_SNIPPETS", nullptr, 0) > 0;  // text blocks
         wchar_t optTab[8] = {};  // GW2KB_SHOT_OPTIONS=<tab>: the options open on that tab (0 General … 6 Technical)
         if (src && GetEnvironmentVariableW(L"GW2KB_SHOT_OPTIONS", optTab, 8)) {
             char tab[8] = {};
@@ -378,6 +379,7 @@ int wmain(int argc, wchar_t** argv) {
             }
         }
         for (int i = 0; i < n; ++i) {
+            if (shotSnippets && i == 10) src(10, nullptr, nullptr);  // opened once the windows stand (as by a click)
             Frame();
             if (i == 2)  // bottom left, where it stands in the game (no imgui.ini remembers a place)
                 if (ImGuiWindow* w = ImGui::FindWindowByName("GW2Chatlator###kbmain"))
@@ -399,6 +401,14 @@ int wmain(int argc, wchar_t** argv) {
         SaveBmp(shotPath, img, W, H);
         std::printf("picture: %ls\n", shotPath);
         if (src) src(9, nullptr, nullptr);  // the options closed again (they count as "in use")
+        if (GetEnvironmentVariableW(L"GW2KB_SHOT_SNIPPETS", nullptr, 0)) {  // the text blocks closed: a click beside them
+            ImGui::GetIO().MousePos = ImVec2(1800, 100);
+            ImGui::GetIO().MouseDown[0] = true;
+            Frame();
+            ImGui::GetIO().MouseDown[0] = false;
+            Frame();
+            ImGui::GetIO().MousePos = ImVec2(-1000, -1000);
+        }
     }
 
     // Typing: the window without a map, sending only recorded. A long line, Space after a word, Tab, Enter.

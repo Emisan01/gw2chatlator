@@ -50,7 +50,8 @@ src/win                 Windows services without UI: http (WinHTTP), translators
 src/core                portable logic, NO windows.h: text, json, i18n (+ de / ar tables), chat_line (channels),
                         chat_code, protect, slang, word_model, typo_memory, my_words, voice, voice_learn, send_guard,
                         chat_source (the rules for lines of Events: Chat), window_layout (the window's place as a
-                        formula), link_find (a waypoint's line among recognized rows), translator protocols
+                        formula), link_find (a waypoint's line among recognized rows), snippets (your text blocks),
+                        translator protocols
 ```
 
 - `core` compiles on any OS: `g++ -std=c++17 -I src tests/core_tests.cpp src/core/*.cpp`.
@@ -143,6 +144,10 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   tab; the chat's translation applies at once like in the Translator tab), states switched elsewhere as chips that
   open their tab (`DashState`), the typing focus (`focusOnGameChat`, `returnFocus` – moved from Writing), then
   `RenderModules(true)` – the empty chat's box. Picture of a tab: `GW2KB_SHOT_OPTIONS=<tab>` (0 General … 6 Technical).
+- **Text blocks** (user, 2026-10-20; `core/snippets`, `RenderSnippets`): menu ≡ → "Text blocks …" – save the input,
+  a click puts one back after what is in the input (refused with a note when it would not fit the 1024 bytes),
+  x deletes; ≤ 30 blocks of ≤ 600 characters, only your own text, `<data>\snippets.txt`. The popup opens at
+  the window's top left (`g_openSnippets`, opened in the main window). Picture: `GW2KB_SHOT_SNIPPETS=1`.
 - **Right-click** only in the input with a word you wrote (learning mode; empty input without the header: the menu),
   docked to the window's top right corner (1 px), an X closes it: self-corrections noticed while typing (`NoteSelfFix`) →
   `SpellService::TeachFix` (never a dictionary word), and "my words" (meaning → translator). No menu on chat lines.
@@ -173,7 +178,7 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   `FindSpeech` gates silence (whisper invents text otherwise). The helper sets its own process affinity / priority,
   never the game's.
 - **Data:** `<addons>\GW2Keyboard\` (never the game folder itself): `gw2-chat-translator.ini`, `learned\`,
-  `my-words.txt`, `voice-fixes.txt`, `models\`, `gw2kb_voice.exe`, `voice\`.
+  `my-words.txt`, `snippets.txt`, `voice-fixes.txt`, `models\`, `gw2kb_voice.exe`, `voice\`.
 
 ## Invariants (do not break)
 
@@ -253,6 +258,9 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 - The CBA theme: eight roles (`g_cbaRoles`, [NexusTheme] Colours = a theme code), everything else derived in
   `ColoursOf`; `CbaShown` keeps text 4.5:1 and quiet text / accents 3:1 on every fill (core/contrast: WCAG with sRGB
   linearisation, unit-tested). A pasted theme code is data: `ParseThemeCode` accepts only its exact form.
+- `g_mu` is a plain `std::mutex`: locking it again on the same thread throws (MSVC) – `SafeRender` then switches the
+  add-on off for the session. The window body holds it (`kb_window`, from the header on); what it calls must not lock
+  it again (the text blocks popup did – only when open, so only its picture caught it).
 - A function with `__try` must not hold C++ objects that need unwinding (C2712): keep the guarded copies plain (POD
   out-parameters, no std::string), do the rest outside. `try/catch` does not catch access violations (/EHsc).
 - Web links: a Discord-like question only, no lookups in the background (the Cloudflare check sent every domain).

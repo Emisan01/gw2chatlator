@@ -38,6 +38,7 @@
 #include "core/send_guard.hpp"
 #include "core/soft_wrap.hpp"
 #include "core/link_find.hpp"
+#include "core/snippets.hpp"
 #include "core/slang.hpp"
 #include "core/text.hpp"
 #include "core/translator.hpp"
@@ -273,6 +274,9 @@ extern float g_wrapWidth;
 extern std::wstring g_teachWord;
 extern std::string g_flatInput;
 extern std::wstring g_wFlatInput;
+extern gct::Snippets g_snippets;  // your text blocks (<data>\snippets.txt), g_mu
+extern bool g_openSnippets;       // the menu asked for the text blocks (opened in the main window)
+void SaveSnippets();              // g_mu held
 extern std::string g_lastInput;
 extern ULONGLONG g_inputChanged;
 extern uint64_t g_inputGen;

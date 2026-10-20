@@ -12,6 +12,7 @@
 #include "core/chat_line.hpp"
 #include "core/cloud_mt_protocol.hpp"
 #include "core/my_words.hpp"
+#include "core/snippets.hpp"
 #include "core/deepl_protocol.hpp"
 #include "core/gw2_text.hpp"
 #include "core/names.hpp"
@@ -1031,6 +1032,31 @@ static void TestCloudMt() {
 }
 
 
+
+// Text blocks: what goes in comes back the same after saving and loading; trimmed, never twice, never more than 30,
+// never longer than 600 characters (and never cut inside a surrogate pair).
+static void TestSnippets() {
+    Snippets s;
+    CHECK(s.Add(L"  meet at the waypoint  ") == Snippets::Added::Yes && s.Items().back() == L"meet at the waypoint");
+    CHECK(s.Add(L"meet at the waypoint") == Snippets::Added::Twice && s.Add(L" \t ") == Snippets::Added::Empty);
+    CHECK(s.Add(L"two\nlines with a \\ backslash \\n") == Snippets::Added::Yes);
+    Snippets back;
+    back.Parse(s.Serialize());
+    CHECK(back.Items() == s.Items());
+    CHECK(back.Remove(0) && back.Items().size() == 1 && !back.Remove(5));
+    Snippets full;
+    for (int i = 0; i < 40; ++i) full.Add(L"block " + std::to_wstring(i));
+    CHECK(full.Items().size() == Snippets::kMax && full.Add(L"one more") == Snippets::Added::Full);
+    std::wstring longText(Snippets::kMaxChars - 1, L'a');
+    longText += L"\xD83D\xDE00 tail";  // an emoji (a surrogate pair) right at the limit
+    Snippets cut;
+    CHECK(cut.Add(longText) == Snippets::Added::Yes);
+    const std::wstring& c = cut.Items().back();
+    CHECK(c.size() <= Snippets::kMaxChars && !(c.back() >= 0xD800 && c.back() <= 0xDBFF));
+    Snippets parsed;  // more than 30 in the file: the first 30
+    parsed.Parse(full.Serialize() + L"extra one\n");
+    CHECK(parsed.Items().size() == Snippets::kMax);
+}
 
 static void TestMyWords() {
     MyWords w;
@@ -2183,6 +2209,7 @@ int main() {
     TestFreeText();
     TestCloudMt();
     TestMyWords();
+    TestSnippets();
     TestSureLanguage();
     TestActiveBottom();
     TestWordTriples();

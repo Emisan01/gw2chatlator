@@ -21,6 +21,7 @@ add_library(gct_core STATIC
     src/core/cloud_mt_protocol.cpp
     src/core/typo_memory.cpp
     src/core/my_words.cpp
+    src/core/snippets.cpp
     src/core/deepl_protocol.cpp
     src/core/mymemory_protocol.cpp
     src/core/llm_protocol.cpp
