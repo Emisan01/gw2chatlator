@@ -229,12 +229,26 @@ std::wstring TypingLocale() {
     const std::wstring p = ToLowerAscii(PrimaryLang(g_cfg.writeIn));
     return p + L"-" + (p == L"en" ? std::wstring(L"US") : ToUpperAscii(p));
 }
+bool g_inputSpoken = false;
+
+bool VoiceFirst() { return g_inputSpoken && g_cfg.voiceEnabled && g_cfg.voiceTranslate; }
+
+// What you say goes into ("Translate what I say"): the language at "Send" – there "as written": the first of yours.
+const std::wstring& VoiceLang() {
+    static const std::wstring s_empty;
+    if (!g_sendOverride.empty() && g_sendOverride != L"=") return g_sendOverride;
+    if (g_sendIdx >= 0 && g_sendIdx < static_cast<int>(g_cfg.writeLangs.size())) return g_cfg.writeLangs[g_sendIdx];
+    return g_cfg.writeLangs.empty() ? s_empty : g_cfg.writeLangs[0];
+}
+
 bool SendOriginal() {
+    if (VoiceFirst()) return false;  // what you said, "Translate what I say" on: it has priority
     if (!g_sendOverride.empty()) return g_sendOverride == L"=";
     return g_sendIdx >= static_cast<int>(g_cfg.writeLangs.size());
 }
 const std::wstring& SendLang() {
     static const std::wstring s_empty;
+    if (VoiceFirst()) return VoiceLang();
     if (!g_sendOverride.empty()) return g_sendOverride == L"=" ? s_empty : g_sendOverride;
     return (SendOriginal() || g_sendIdx < 0 || g_sendIdx >= static_cast<int>(g_cfg.writeLangs.size()))
                ? s_empty : g_cfg.writeLangs[g_sendIdx];
@@ -251,7 +265,7 @@ bool Translating() {
     if (SendOriginal()) return false;
     const std::wstring& send = SendLang();
     if (send.empty()) return false;
-    return PrimaryLang(send) != TypingLang();
+    return PrimaryLang(send) != (VoiceFirst() && !g_dictLang.empty() ? PrimaryLang(g_dictLang) : TypingLang());
 }
 const std::wstring& ComposePrefix() {
     static std::wstring s_cachedPrefix;

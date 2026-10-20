@@ -327,10 +327,11 @@ std::wstring StatusText() {  // g_mu held
     if (g_recording) return Tr(L"Hearing you … release the key when you are done");
     if (!g_listenPausedFor.empty()) return TrF(L"Voice activation paused – {1} uses the microphone", {g_listenPausedFor});
     if (g_listening) return Tr(L"Voice activation listens – just speak");
-    const bool voiceEnglish = g_cfg.voiceEnabled && g_cfg.voiceTranslate;
+    const bool voiceOn = g_cfg.voiceEnabled && g_cfg.voiceTranslate;
     if (!g_nx.translateChat && !Translating()) {  // nothing goes to a translator: no counter of one
         if (!g_cfg.voiceEnabled) return Tr(L"Prediction only");  // the typing help is all that is on
-        return voiceEnglish ? Tr(L"Translation off · speech into English (whisper)") : Tr(L"Translation off");
+        return voiceOn ? TrF(L"Translation off · what you say: into {1}", {ToUpperAscii(PrimaryLang(VoiceLang()))})
+                       : Tr(L"Translation off");
     }
     if (const std::wstring q = MyMemoryQuotaText(); !q.empty()) return q;
     std::wstring route = SendOriginal() ? Tr(L"as written") : ToUpperAscii(PrimaryLang(SendLang()));
@@ -342,6 +343,10 @@ void RenderWindow() {
     if (!ImGui::GetCurrentContext()) return;  // failsafe: no context, no drawing
     CostFrame costFrame;  // what this frame costs on GW2's render thread, by part (Options > Technical)
     WaypointFrameTick();  // the waypoint click asked for one frame of the game (kb_waypoint.cpp)
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        if (!g_input[0] && !g_edit.active) g_inputSpoken = false;  // empty again (sent, deleted): the next one decides
+    }
     KickSave();
     VoiceIdleUnload();
     ImGuiIO& io = ImGui::GetIO();
@@ -1042,6 +1047,7 @@ void RenderWindow() {
             g_edit.startByte = 0;
             g_edit.lenBytes = std::strlen(g_input);
             g_edit.insert = g_historyPos >= 0 ? U8(g_history[g_historyPos]) : std::string();
+            g_inputSpoken = false;  // a message from the history: as typed
         }
     }
     // Right-click in the input (your own words only): the learning mode – what you corrected yourself while typing is

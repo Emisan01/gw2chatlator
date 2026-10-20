@@ -149,7 +149,7 @@ void RenderModules(bool guide) {
             std::lock_guard<std::mutex> lock(g_mu);
             chat = g_nx.translateChat;
             mine = g_cfg.translateWriting;
-            voiceEnglish = g_cfg.voiceTranslate;
+            voiceEnglish = g_cfg.voiceTranslate;  // "Translate what I say"
         }
         if (!chat || !mine) {
             ImGui::AlignTextToFramePadding();
@@ -162,7 +162,7 @@ void RenderModules(bool guide) {
         }
         if (enabled && !voiceEnglish) {
             ImGui::AlignTextToFramePadding();
-            ImGui::TextDisabled("%s", UI(Tr(L"Turn what you say into English: Options → Voice")).c_str());
+            ImGui::TextDisabled("%s", UI(Tr(L"Translate what you say: Options → Voice")).c_str());
             ImGui::SameLine();
             if (ImGui::SmallButton(UI(Tr(L"Open") + L"##vo").c_str())) {
                 g_showOptions = true;
@@ -409,10 +409,16 @@ void RenderDashboard(Config& edit, const Config& saved) {
                                      : Tr(L"ready – loads on the first use of the microphone")),
                &edit.voiceEnabled, edit.voiceEnabled != saved.voiceEnabled, true);
     ImGui::TableNextColumn();
-    DashSwitch("voiceen", UI(Tr(L"Voice into English")),
-               UI(edit.voiceTranslate     ? Tr(L"on this PC (whisper)")
-                  : edit.translateWriting ? Tr(L"what you say goes through your translator, like your text")
-                                          : Tr(L"as you say it")),
+    std::wstring voiceTo;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        voiceTo = VoiceLang();
+    }
+    const bool voiceEnglish = PrimaryLang(voiceTo) == L"EN";
+    DashSwitch("voiceen", UI(Tr(L"Translate what I say")),
+               UI(!edit.voiceTranslate ? Tr(L"as you say it")
+                  : voiceEnglish       ? TrF(L"into {1} – on this PC (whisper)", {NativeName(voiceTo)})
+                                       : TrF(L"into {1} – with your translator", {NativeName(voiceTo)})),
                &edit.voiceTranslate, edit.voiceTranslate != saved.voiceTranslate, edit.voiceEnabled);
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
@@ -776,7 +782,8 @@ void RenderOptionsContent() {
             for (size_t i = 0; i < codes.size(); ++i)
                 if (codes[i] == edit.voiceLang) li = static_cast<int>(i);
             if (combo(UI(Tr(L"Language") + L"##vlang").c_str(), langs, &li)) edit.voiceLang = codes[li];
-            ImGui::Checkbox(UI(Tr(L"Translate into English (whisper)")).c_str(), &edit.voiceTranslate);
+            ImGui::Checkbox(UI(Tr(L"Translate what I say")).c_str(), &edit.voiceTranslate);
+            Hint(UI(Tr(L"What you said goes into the language at \"Send\" below the input – before \"Translate my text\". English: whisper does it on this PC; other languages: your translator.")));
             ImGui::Checkbox(UI(Tr(L"Live text while speaking (more CPU)")).c_str(), &edit.voiceLive);
             ImGui::SetNextItemWidth(wide);
             ImGui::SliderInt(UI(Tr(L"Longest recording") + L" (s)##max").c_str(), &edit.voiceMaxSec, 5, 60);

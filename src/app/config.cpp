@@ -269,7 +269,8 @@ void Config::Load(const std::wstring& dir) {
     voiceEnabled = ini.Bool(L"Voice", L"Enabled", true);
     voiceModel = AsciiUnescape(ini.Str(L"Voice", L"Model", L""));
     voiceLang = AsciiUnescape(ini.Str(L"Voice", L"Language", L""));
-    voiceTranslate = ini.Bool(L"Voice", L"IntoEnglish", false);
+    voiceIntoEnglish = ini.Bool(L"Voice", L"IntoEnglish", false);
+    voiceTranslate = ini.Bool(L"Voice", L"Translate", voiceIntoEnglish);  // up to 2.1 the switch was "into English"
     voiceToggle = ini.Str(L"Voice", L"Mode", L"hold") == L"toggle";
     voiceMaxSec = ini.Int(L"Voice", L"MaxSeconds", 30, 5, 120);
     voiceLive = ini.Bool(L"Voice", L"Live", true);
@@ -397,7 +398,8 @@ void Config::SaveAll() const {
     SaveBool(L"Voice", L"Enabled", voiceEnabled);
     SaveValue(L"Voice", L"Model", AsciiEscape(voiceModel));
     SaveValue(L"Voice", L"Language", AsciiEscape(voiceLang));
-    SaveBool(L"Voice", L"IntoEnglish", voiceTranslate);
+    SaveBool(L"Voice", L"Translate", voiceTranslate);
+    SaveBool(L"Voice", L"IntoEnglish", voiceIntoEnglish);
     SaveValue(L"Voice", L"Mode", voiceToggle ? L"toggle" : L"hold");
     SaveValue(L"Voice", L"MaxSeconds", std::to_wstring(voiceMaxSec));
     SaveBool(L"Voice", L"Live", voiceLive);

@@ -235,6 +235,9 @@ int wmain(int argc, wchar_t** argv) {
         std::wstring dir = argv[1];
         dir = dir.substr(0, dir.find_last_of(L"\\/") + 1) + L"GW2Keyboard";
         CreateDirectoryW(dir.c_str(), nullptr);
+        // A fresh ini every run: a run that failed half-way skipped its restoring steps (the mini mode, the layout) and the
+        // next run started from that – and failed somewhere else.
+        DeleteFileW((dir + L"\\gw2-chat-translator.ini").c_str());
         WritePrivateProfileStringW(L"Nexus", L"SetupDone", L"1", (dir + L"\\gw2-chat-translator.ini").c_str());
         WritePrivateProfileStringW(L"NexusTabs", nullptr, nullptr, (dir + L"\\gw2-chat-translator.ini").c_str());  // no old tabs
         WritePrivateProfileStringW(L"Translate", L"WriteLangs", L"DE,EN-GB,FR,ES", (dir + L"\\gw2-chat-translator.ini").c_str());
@@ -883,6 +886,35 @@ int wmain(int argc, wchar_t** argv) {
         frames(10);
         std::printf("self-correction: %d noticed, newest %s (input: %s)\n", th->selfFixes, th->lastFix, th->input);
         ok = ok && th->selfFixes >= 1;
+        // "Translate what I say": spoken and the switch on has priority – with "Send" at "as written" it goes into the
+        // first of your languages; spoken with the switch off, and typed, exactly as before. A voice result in an empty
+        // input marks it spoken; sent, the mark is gone.
+        {
+            auto route = reinterpret_cast<int (*)(int, int, char*)>(GetProcAddress(dll, "Gw2KbTestVoiceRoute"));
+            auto voiceFinal = reinterpret_cast<int (*)(const char*)>(GetProcAddress(dll, "Gw2KbTestVoiceFinal"));
+            if (route && voiceFinal) {
+                char lang[16] = {};
+                const int spokenOn = route(1, 1, lang);
+                const std::string into = lang;
+                const int spokenOff = route(1, 0, lang);
+                const int typedOn = route(0, 1, lang);
+                for (int i = 0; i < 16; ++i) press(VK_BACK);  // the input empty
+                frames(3);
+                voiceFinal("hello there");
+                frames(3);
+                const int marked = voiceFinal(nullptr);
+                const std::string said = th->input;
+                press(VK_RETURN);
+                frames(10);
+                const int afterSend = voiceFinal(nullptr);
+                std::printf("translate what I say: spoken+on %d (into %s)  spoken+off %d  typed+on %d  marked %d (%s)  after sending %d\n",
+                            spokenOn, into.c_str(), spokenOff, typedOn, marked, said.c_str(), afterSend);
+                const bool voiceOk = spokenOn == 1 && !into.empty() && spokenOff == 0 && typedOn == 0 && marked == 1 &&
+                                     said.find("hello there") != std::string::npos && afterSend == 0;
+                if (!voiceOk) std::printf("FAIL: \"Translate what I say\" does not decide as it should\n");
+                ok = ok && voiceOk;
+            }
+        }
         // Answering in their language: a French line, then a click on the name – that tab sends in French.
         bridge::ChatEventsMessage fr{};
         fr.type = bridge::ChatEventsType::Map;

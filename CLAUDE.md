@@ -158,6 +158,15 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   write (`Config::BlockWrites`, `g_wiped`, the spelling dropped unsaved), deletes `<addons>\GW2Keyboard\`, optionally
   Events_Chat.dll, then a notice names the last step (Nexus → Addons → Uninstall – the DLL cannot delete itself).
   Self-test: `GW2KB_TEST_REMOVEALL=1` – only on a copy of the add-on.
+- **Translate what I say** (user, 2026-10-20 – kept small: "is voice input used and the switch on, that has priority,
+  everything else as before"): `[Voice] Translate` (`voiceTranslate`). A voice result into an empty input marks it
+  `g_inputSpoken` (gone when the input is empty again or a history message comes); `VoiceFirst()` = spoken + voice on
+  + the switch on – then `SendOriginal()` / `SendLang()` give `VoiceLang()` (the language at "Send", there "as
+  written": the first of `writeLangs`) and everything downstream (preview, sending, status) follows. Switch off or
+  typed: exactly as before (the footer's choice – "Translate my text" only sets its default). English: whisper itself
+  – `[Voice] IntoEnglish` (`voiceIntoEnglish`) is no longer the user's switch but kept by the add-on
+  (`KeepWhisperEnglish`, before each recording: the switch on and English at "Send"; changed → flush + "reload", the
+  helper reads its ini again – old helpers too). Whisper translates only into English (every model size).
 - **Voice:** helper commands `begin | begin-auto | end | cancel | listen | stop-listen | reload | quit`, events
   `ready started partial final error listening idle paused`; `final` carries `rec`, `rms` (ms) and `peak` (% of all
   logical CPUs, 100 ms samples) → `[VoiceStats]` per model; two too-slow runs → next smaller installed model.
@@ -272,6 +281,10 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 - Self-test and smoke test refuse to run while GW2 runs (exit 3): they would read its MumbleLink, and a test must
   never reach a game. `FindGw2Window(pid)` returns only that process' window, never another GW2.
 - `build\Release\typing_bench.exe [n]` after every change to the typing help: SURPRISES must stay 0.
+- While working: `python tools/verify_release.py --changed [base]` runs only the gates the changed files can touch
+  (core tests, selftest, typing bench, smoke test by path; version, Nexus definition, i18n, binary always) – never a
+  release verdict. A release: the full run. The self-test starts from a fresh ini every run (a half-failed run used
+  to leave its layout for the next one).
 - `build\Release\voice_bench.exe model lang threads wav…` with recordings in `local\voice`.
 - Not verifiable here: the game itself – test in GW2 with Nexus (copy the DLL + `GW2Keyboard\` into `addons`).
 

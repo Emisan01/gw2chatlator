@@ -279,6 +279,40 @@ extern "C" __declspec(dllexport) void Gw2KbTestWaypoint(int step) {
     }
 }
 
+// nexus_kb_selftest, "Translate what I say": what a message does with "Send" at "as written" – spoken or typed, the
+// switch on or off, said in English – 1 translated (into `lang`), 0 as written. The state is put back afterwards.
+extern "C" __declspec(dllexport) int Gw2KbTestVoiceRoute(int spoken, int voiceTranslate, char* lang) {
+    if (!TestHost()) return -1;
+    std::lock_guard<std::mutex> lock(g_mu);
+    const bool wasSpoken = g_inputSpoken, wasOn = g_cfg.voiceEnabled, wasTr = g_cfg.voiceTranslate;
+    const int wasIdx = g_sendIdx;
+    const std::wstring wasOverride = g_sendOverride, wasDict = g_dictLang;
+    g_inputSpoken = spoken != 0;
+    g_cfg.voiceEnabled = true;
+    g_cfg.voiceTranslate = voiceTranslate != 0;
+    g_sendOverride.clear();
+    g_sendIdx = static_cast<int>(g_cfg.writeLangs.size());  // "Send": as written
+    g_dictLang = L"EN";
+    const int translated = Translating() ? 1 : 0;
+    if (lang) strncpy_s(lang, 16, U8(SendLang()).c_str(), _TRUNCATE);
+    g_inputSpoken = wasSpoken;
+    g_cfg.voiceEnabled = wasOn;
+    g_cfg.voiceTranslate = wasTr;
+    g_sendIdx = wasIdx;
+    g_sendOverride = wasOverride;
+    g_dictLang = wasDict;
+    return translated;
+}
+
+// nexus_kb_selftest: a voice result as the helper sends it (`text`, or nullptr: none) – returns whether the input counts
+// as spoken now.
+extern "C" __declspec(dllexport) int Gw2KbTestVoiceFinal(const char* text) {
+    if (!TestHost()) return -1;
+    if (text) VoiceHelper::OnLine(std::string("{\"t\":\"final\",\"text\":\"") + text + "\",\"lang\":\"en\"}");
+    std::lock_guard<std::mutex> lock(g_mu);
+    return g_inputSpoken ? 1 : 0;
+}
+
 extern "C" __declspec(dllexport) void Gw2KbTestMini(int on) {  // nexus_kb_selftest: the mini mode on / off
     if (!TestHost()) return;
     std::lock_guard<std::mutex> lock(g_mu);

@@ -78,7 +78,9 @@ struct Config {
     bool voiceEnabled = true;
     std::wstring voiceModel;          // catalog id ("small-q5_1"); "" = the catalog's recommended one
     std::wstring voiceLang;           // "" = the language you write in, "auto" = detect, else a language code
-    bool voiceTranslate = false;      // speak any language, get English (whisper's own translation)
+    bool voiceTranslate = false;      // "Translate what I say": what you said goes into the language at "Send"
+    bool voiceIntoEnglish = false;    // whisper's own translation into English – the add-on keeps it (the switch on and
+                                      // English at "Send"); the voice helper reads it
     bool voiceToggle = false;         // false: hold to talk; true: press to start, press again to stop
     int voiceMaxSec = 30;             // then the recording ends by itself
     bool voiceLive = true;            // live text while speaking (repeated passes, more CPU)
