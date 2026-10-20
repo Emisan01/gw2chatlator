@@ -138,6 +138,11 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   takes; Space alone still keeps a valid word). The first Tab takes the highlighted word.
   `GW2KB_SHOT_TYPE=<text>` types into the input before the self-test's picture. Status text is drawn inside the input box (`BoxText`). Compact view = no
   preview / word bar, the translation small in the box. Scroll bar drawn at the left. Snap to the screen edges.
+- **Options > General = the dashboard** (user, 2026-10-20; `RenderDashboard`): the modes at a glance, each a chip
+  switch (`DashSwitch`: green on, grey off, amber = `edit` differs from the saved config – "Save" applies, as in every
+  tab; the chat's translation applies at once like in the Translator tab), states switched elsewhere as chips that
+  open their tab (`DashState`), the typing focus (`focusOnGameChat`, `returnFocus` – moved from Writing), then
+  `RenderModules(true)` – the empty chat's box. Picture of a tab: `GW2KB_SHOT_OPTIONS=<tab>` (0 General … 6 Technical).
 - **Right-click** only in the input with a word you wrote (learning mode; empty input without the header: the menu),
   docked to the window's top right corner (1 px), an X closes it: self-corrections noticed while typing (`NoteSelfFix`) →
   `SpellService::TeachFix` (never a dictionary word), and "my words" (meaning → translator). No menu on chat lines.

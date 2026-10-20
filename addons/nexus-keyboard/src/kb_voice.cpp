@@ -163,7 +163,7 @@ void VoiceCommand(const char* cmd) {
         std::lock_guard<std::mutex> lock(g_mu);
         g_voicePending.clear();
         SetStatus(VoiceModulePresent(KeyboardDir()) ? Tr(L"The voice module could not be started")
-                                                    : Tr(L"The voice module is not loaded yet – Options → General → Modules."),
+                                                    : Tr(L"The voice module is not loaded yet – Options → Voice."),
                   10000);
     }
 }
@@ -342,7 +342,7 @@ void VoiceIdleUnload() {
     g_recording = g_listening = false;
 }
 
-// Options → General → Modules: the voice module goes (the helper ends first; voice input is switched off) …
+// Options → Voice: the voice module goes (the helper ends first; voice input is switched off) …
 void RemoveVoiceModuleNow() {  // game thread
     UnloadVoiceModule();
     {

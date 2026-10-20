@@ -375,7 +375,7 @@ void SetProfile(int profile, bool on) {  // g_mu held
 }
 Layout Lay() { return g_layout; }
 
-// Remove everything of GW2Chatlator (Options → General → Modules, after a yes): the voice helper ends, nothing is
+// Remove everything of GW2Chatlator (Options → Technical, at the bottom, after a yes): the voice helper ends, nothing is
 // written any more (settings, learned words, my words, voice fixes), the worker drops the spelling without saving it,
 // then our whole folder <addons>\GW2Keyboard\ goes – and Events: Chat too when asked (it is its own add-on). The DLL
 // itself cannot remove itself while it runs: the notice says the last step (Nexus → Addons → Uninstall).
