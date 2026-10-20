@@ -42,13 +42,17 @@ Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustot
   from what you write (Tab picks one, Space writes it), autocorrection like a phone keyboard (Backspace undoes it).
   **Right-click in the input:** the words you corrected yourself while typing – learned once, written right from then
   on – and your abbreviations with their meaning for the translator ("finds = I think").
+  **Text blocks** (menu ≡): save what you wrote, put it back with a click.
 - **Voice input – the first in the Nexus world:** hold the microphone (or your push-to-talk key, GW2 does not get it),
   right-click it to speak until a pause, or let voice activation listen (it pauses while Discord & co. use the
   microphone). Recognition runs **on your PC** (whisper.cpp) in a small helper process on the CPU cores GW2 does not
   use – the game keeps its frames. Each voice model shows its CPU peak and time; one that is too slow hands over to the
-  next smaller one.
+  next smaller one. **Translate what I say:** speak your language, send another – into English on your PC, into other
+  languages through your translator.
 - **Safe sending:** waits for each frame of the game, refuses to be used as a bot or spam macro. Optional: send right
   after speaking (off by default – releasing the push-to-talk key counts as your Enter).
+- **At a glance:** Options → General shows what is on – translating the chat, your text, what you say, voice input,
+  the translator, reading the chat – and switches it right there.
 - **Failsafe:** an error switches the add-on off for the session, never the game.
 - English, Deutsch and العربية.
 
@@ -119,6 +123,10 @@ keys are stored encrypted for your Windows account. Item and waypoint names are 
 **What it learns stays local.** It learns only from the messages *you* send, never from other players' chat.
 Options → Writing → *Delete everything learned* starts from scratch.
 
+**Nothing of other players' messages is kept or exported.** No chat log is saved; a player's language is known only
+for the session. "Copy protocol" (Options → Technical, for a bug report) holds versions and counts only – how often
+the last lines broke which rule – never a text, a name, a channel or a length.
+
 ## Files
 
 In `Guild Wars 2\addons\GW2Keyboard\`:
@@ -128,6 +136,7 @@ In `Guild Wars 2\addons\GW2Keyboard\`:
 | `gw2-chat-translator.ini` | settings (keys encrypted) |
 | `learned\` | words, pairs and triples learned from what you sent, your typical typos (safe to delete) |
 | `my-words.txt`, `voice-fixes.txt` | your words and abbreviations, words the recognizer misheard |
+| `snippets.txt` | your text blocks (menu ≡ → Text blocks) |
 | `models\` | voice models (Options → Voice: use, remove, open the folder) |
 | `gw2kb_voice.exe`, `voice\` | the voice module |
 
