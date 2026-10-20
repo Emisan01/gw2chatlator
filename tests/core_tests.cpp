@@ -38,6 +38,7 @@
 #include "core/chat_source.hpp"
 #include "core/window_layout.hpp"
 #include "core/soft_wrap.hpp"
+#include "core/link_find.hpp"
 #include "core/contrast.hpp"
 
 using namespace gct;
@@ -2112,7 +2113,65 @@ static void TestEquations() {
     }
 }
 
+// Finding a chat link's text among OCR words (the waypoint click in GW2's own chat).
+static void TestLinkFind() {
+    auto row = [](std::initializer_list<TextBox> w) { return TextRow{std::vector<TextBox>(w)}; };
+    std::vector<TextRow> rows = {
+        row({{L"[12:01]", 10, 600, 40, 14}, {L"Kai:", 55, 600, 30, 14}, {L"meet", 90, 600, 30, 14}, {L"at", 125, 600, 12, 14},
+             {L"[Löwenstein-", 140, 600, 80, 14}, {L"Wegmarke]", 222, 600, 60, 14}}),
+        row({{L"Ana:", 55, 640, 30, 14}, {L"[Lowenstein-Wegmarke]", 90, 640, 150, 14}}),  // a misread ö, lower: newer
+        row({{L"Bo:", 55, 680, 30, 14}, {L"[Götterfels-Wegmarke]", 90, 680, 150, 14}}),
+    };
+    TextBox hit;
+    CHECK(FindLinkText(rows, L"[Löwenstein-Wegmarke]", &hit));
+    CHECK(hit.y == 640 && hit.x == 90 && hit.w == 150);  // the lowest of the two (the newest line)
+    rows.pop_back();
+    rows.erase(rows.begin() + 1);
+    CHECK(FindLinkText(rows, L"Löwenstein-Wegmarke", &hit));  // split over two words, without brackets
+    CHECK(hit.x == 140 && hit.y == 600 && hit.w == 142);
+    CHECK(!FindLinkText(rows, L"[Götterfels-Wegmarke]", &hit));        // not there
+    CHECK(!FindLinkText(rows, L"[Wegmarke des Löwensteins]", &hit));   // other words
+    CHECK(!FindLinkText(rows, L"[ab]", &hit));                         // too short to be sure
+    CHECK(!FindLinkText({}, L"[Löwenstein-Wegmarke]", &hit));
+}
+
+// The right row in GW2's chat: the link's name, then who wrote it and what else the line says.
+static void TestChatLinkRow() {
+    auto row = [](std::initializer_list<TextBox> w) { return TextRow{std::vector<TextBox>(w)}; };
+    const std::vector<TextRow> rows = {
+        row({{L"[12:01]", 10, 560, 40, 14}, {L"Kai", 55, 560, 25, 14}, {L"Example:", 82, 560, 60, 14},
+             {L"meet", 145, 560, 30, 14}, {L"at", 178, 560, 12, 14}, {L"[Löwenstein-Wegmarke]", 194, 560, 150, 14},
+             {L"in", 347, 560, 12, 14}, {L"five", 362, 560, 28, 14}}),
+        row({{L"[12:02]", 10, 600, 40, 14}, {L"Ana", 55, 600, 25, 14}, {L"Sample:", 82, 600, 55, 14},
+             {L"wp", 140, 600, 18, 14}, {L"[Löwenstein-Wegmarke]", 161, 600, 150, 14}}),
+        // a long message wrapped by GW2: its second row holds the link, the speaker stands in the first
+        row({{L"[12:03]", 10, 640, 40, 14}, {L"Bo", 55, 640, 20, 14}, {L"Shifted:", 78, 640, 55, 14},
+             {L"everyone", 136, 640, 60, 14}, {L"gather", 199, 640, 45, 14}, {L"for", 247, 640, 20, 14},
+             {L"the", 270, 640, 22, 14}, {L"world", 295, 640, 38, 14}, {L"boss", 336, 640, 30, 14}}),
+        row({{L"at", 55, 658, 12, 14}, {L"[Götterfels-Wegmarke]", 70, 658, 150, 14}, {L"right", 223, 658, 35, 14},
+             {L"now", 261, 658, 25, 14}}),
+    };
+    TextBox hit;
+    double fit = 0;
+    // The same waypoint twice: Kai's line is the upper one – the speaker and the message decide, not the position.
+    CHECK(FindChatLink(rows, {L"Kai Example", L"meet at [Löwenstein-Wegmarke] in five", L"[Löwenstein-Wegmarke]"}, &hit, &fit));
+    CHECK(hit.y == 560 && hit.x == 194 && fit > 0.95);
+    CHECK(FindChatLink(rows, {L"Ana Sample", L"wp [Löwenstein-Wegmarke]", L"[Löwenstein-Wegmarke]"}, &hit, &fit));
+    CHECK(hit.y == 600 && fit > 0.95);
+    // Wrapped: the link stands in the second row, which holds no speaker – it belongs to the message all the same.
+    CHECK(FindChatLink(rows, {L"Bo Shifted", L"everyone gather for the world boss at [Götterfels-Wegmarke] right now",
+                              L"[Götterfels-Wegmarke]"}, &hit, &fit));
+    CHECK(hit.y == 658 && hit.x == 70 && fit > 0.95);
+    // Our line is no longer on the screen, someone else's with the same waypoint is: no click (better none than wrong).
+    CHECK(!FindChatLink(rows, {L"Finn Fake", L"anyone at [Götterfels-Wegmarke] for the meta?", L"[Götterfels-Wegmarke]"},
+                        &hit, &fit));
+    CHECK(fit < kMinFit);
+    CHECK(!FindChatLink(rows, {L"Kai Example", L"meet at [Fort Marriner] now", L"[Fort Marriner]"}, &hit, &fit));
+}
+
 int main() {
+    TestChatLinkRow();
+    TestLinkFind();
     TestEquations();
     TestWindowLayout();
     TestChatSource();
