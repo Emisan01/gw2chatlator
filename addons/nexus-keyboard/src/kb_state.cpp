@@ -396,7 +396,7 @@ Layout Lay() { return g_layout; }
 // itself cannot remove itself while it runs: the notice says the last step (Nexus → Addons → Uninstall).
 bool g_wiped = false;
 std::atomic<int> g_wipeDone{0};  // 0 not asked, 1 removed, 2 something was left
-void RemoveEverythingNow(bool chatEventsToo) {  // game thread
+void RemoveEverythingNow(bool chatEventsToo, bool decoderToo) {  // game thread
     UnloadVoiceModule();
     {
         std::lock_guard<std::mutex> lock(g_mu);
@@ -406,6 +406,7 @@ void RemoveEverythingNow(bool chatEventsToo) {  // game thread
     }
     Config::BlockWrites();
     if (chatEventsToo) RemoveChatEventsNow();
+    if (decoderToo) RemoveDecoderRingNow();
     g_worker.Post([dir = KeyboardDir()] {
         if (g_spell) {  // the learned words would be saved on unload – they are what we remove
             delete g_spell;

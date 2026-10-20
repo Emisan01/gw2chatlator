@@ -204,6 +204,7 @@ void AddonUnload() {
     g_downloadCancel = true;
     if (g_download.joinable()) g_download.join();
     if (g_chatEventsThread.joinable()) g_chatEventsThread.join();
+    if (g_decoderThread.joinable()) g_decoderThread.join();
     if (g_voiceModuleThread.joinable()) g_voiceModuleThread.join();
     g_links.Stop();
     if (g_api && g_api->Fonts_Release) g_api->Fonts_Release(kTextFontId, OnTextFont);  // no call into a gone DLL
@@ -388,7 +389,7 @@ extern "C" __declspec(dllexport) int Gw2KbTestCosts(FrameCosts* out, int reset) 
 
 extern "C" __declspec(dllexport) int Gw2KbTestRemoveAll(int start) {  // nexus_kb_selftest only: 1 start, 0 ask
     if (!TestHost()) return -1;
-    if (start) RemoveEverythingNow(false);
+    if (start) RemoveEverythingNow(false, false);
     return g_wipeDone;
 }
 

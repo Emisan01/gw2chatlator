@@ -13,7 +13,13 @@ namespace gct {
 
 class MumbleLink {
 public:
-    explicit MumbleLink(std::wstring name = L"MumbleLink") : name_(std::move(name)) {}
+    // GW2's block "MumbleLink" – unless GW2KB_MUMBLE names another (the tests: an empty one, so a running game never
+    // steers the add-on under test). The game never sets it.
+    static std::wstring DefaultName() {
+        wchar_t name[64] = {};
+        return GetEnvironmentVariableW(L"GW2KB_MUMBLE", name, 64) > 0 ? std::wstring(name) : std::wstring(L"MumbleLink");
+    }
+    explicit MumbleLink(std::wstring name = DefaultName()) : name_(std::move(name)) {}
     ~MumbleLink();
     MumbleLink(const MumbleLink&) = delete;
     MumbleLink& operator=(const MumbleLink&) = delete;
