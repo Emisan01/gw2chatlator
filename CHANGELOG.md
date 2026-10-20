@@ -3,7 +3,7 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## Unreleased
+## 2.3.2 — 2026-10-20 (GW2Chatlator for Nexus)
 
 - **The game never goes down with us – also not from a background task.** Translating, spelling, downloads and the
   voice module's answers run on threads of their own; an error there could take the game with it (that is what
