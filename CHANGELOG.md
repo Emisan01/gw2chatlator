@@ -8,6 +8,11 @@ diagnosis show it.
 - **Nothing of other players' messages leaves your PC:** "Copy protocol" (Options > Technical, for a GitHub issue)
   listed every recent line with its channel and the lengths of name, account and message. Now it only counts which
   rules the last lines broke, and how often; the guard itself keeps nothing else of a line.
+- **A waypoint link no longer opens GW2's chat line or the map:** in game a click on a waypoint here opened GW2's
+  chat line – typing mode, where a click on a link does not fly the map – and older ones the map without a target,
+  with the Waypoint/POI click on or off alike (it fell back to the old "every link opens GW2's chat" way whenever
+  Decoder Ring had not named the waypoint yet). Now: the Waypoint/POI click clicks the original; otherwise the code is
+  copied and the status line says why and where to click. Items and other links as before.
 - **Waypoint/POI click, slower by default:** its pauses now start at 40 – 70 ms before the click, 40 – 70 ms held
   and 10 – 25 ms after it (was 3 – 25 ms each) – at least two frames, GW2 reads the mouse once a frame. Values you
   set yourself stay.

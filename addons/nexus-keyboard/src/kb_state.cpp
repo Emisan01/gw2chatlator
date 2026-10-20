@@ -70,7 +70,6 @@ std::wstring g_preview;  // the translation of the input
 std::wstring g_back;     // ... and that translated back into your language (small, under it)
 bool g_inMap = false;    // MumbleLink: a map is loaded (not character select, not a loading screen)
 bool g_mapOpen = false;  // MumbleLink: the world map is open – the window steps aside like GW2's own chat
-ULONGLONG g_showOnMapUntil = 0;  // except while it names a waypoint's spot on the map (the emergency way)
 uint64_t g_previewGen = 0;
 bool g_sendPending = false;  // Enter before the translation was there
 std::wstring g_status;

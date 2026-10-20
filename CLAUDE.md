@@ -29,11 +29,12 @@ addons/nexus-keyboard   the add-on
   src/kb_waypoint.cpp   the waypoint "quantum macro" (optional) and the click-test key – see Invariant 1
   src/kb_options.cpp    the options window and the modules list
   src/chat_links.*      chat codes: "[Item name]" in rarity colour + mouse-over details via Decoder Ring;
-                        a click (`HandleChatLinkClick`) minimises the window and opens GW2's chat line (GameBind
-                        GB_UiChatFocus) – the user clicks the original there; back when the map closed again
-                        (waypoint) / the chat line closed (`g_redirect`, MumbleLink), at most 45 s. A waypoint older
-                        than 15 s: the game map opens (GB_MapToggle) and the status names the spot (`ChatLinks::Where`).
-                        No add-on can trigger the game's own map jump – only a click in GW2's chat does.
+                        a click (`HandleChatLinkClick`) on an item & co. minimises the window and opens GW2's chat line
+                        (GameBind GB_UiChatFocus) – the user clicks the original there; back when the chat line closed
+                        (`g_redirect`, MumbleLink), at most 45 s. A waypoint / POI / vista never (2.3.0, in game: the
+                        chat line is typing mode, a link click there does not fly the map; GW2's map key opens the
+                        map without a target): the Waypoint/POI click clicks it, else the code is copied and the
+                        status says why. No add-on can trigger the game's own map jump – only a click in GW2's chat.
   src/chat/             vendored ChatLinks codec + SpecData (PieUI/Decoder Ring, MIT)
   src/chat/DecoderRingApi.h  public ABI for Decoder Ring (PieOrCake, MIT)
   src/voice_module.*    loads the voice module (helper + whisper DLLs) from this version's GitHub release
@@ -119,8 +120,7 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 - **Tabs** (`WhisperTab`): whisper tabs (session only, ≤5, a click on a name) and tabs of your own (`custom`: right-click
   on the header → "New tab", a copy of the chat; right-click on such a tab = its settings: name, channels shown,
   channel written in; ≤6, kept in `[NexusTabs]` – settings only, never chat). ImGui id per tab = `uid`.
-- **Window:** shown only on a map (MumbleLink `inMap`), never over the open world map (`g_mapOpen`; except
-  `g_showOnMapUntil` while it names a waypoint's spot). Header: tabs (Chat, your own, whisper tabs),
+- **Window:** shown only on a map (MumbleLink `inMap`), never over the open world map (`g_mapOpen`). Header: tabs (Chat, your own, whisper tabs),
   mic · V/A (fold to the header) · ≡ · ×; every part can be hidden (`g_layout`: header, chat, preview, word bar,
   footer) – read them through `Lay()`. "Compact view" and "Mini mode" (menu, and the top of Options → Window →
   Window layout) are presets of the parts (`SetProfile`): a profile is on exactly while the parts match it, changing

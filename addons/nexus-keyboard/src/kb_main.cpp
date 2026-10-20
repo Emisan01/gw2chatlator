@@ -267,8 +267,13 @@ extern "C" __declspec(dllexport) void Gw2KbTestWaypoint(int step) {
     }
     if (step == 2) AddLine(Channel::Map, false, "Kai Example", "meet at [&BAwEAAA=] in five");  // the line clicked
     std::lock_guard<std::mutex> lock(g_mu);
-    if (step == 0) {
-        HandleChatLinkClick("[&BAwEAAA=]", GetTickCount64(), std::string());
+    if (step == 0) {  // an item link: GW2's chat line opens, our window gets out of the way
+        HandleChatLinkClick("[&AgGvWwEA]", GetTickCount64(), std::string());
+    } else if (step == 4) {  // a waypoint, the Waypoint/POI click off: nothing of GW2 is touched, the code is copied
+        const bool was = g_nx.waypointPoiClick;
+        g_nx.waypointPoiClick = false;
+        HandleChatLinkClick("[&BAwEAAA=]", GetTickCount64(), "Lion's Arch Waypoint");
+        g_nx.waypointPoiClick = was;
     } else if (step == 2) {
         const bool was = g_nx.waypointPoiClick;
         g_nx.waypointPoiClick = true;
