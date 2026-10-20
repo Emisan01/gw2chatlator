@@ -11,7 +11,14 @@ diagnosis show it.
   height – give its rect in every mode (big, mini, minimised). Growing for a long input and shrinking back, the mini
   mode, minimising and opening again cannot move it any more, by construction. Same behaviour as before.
 - **For the developer:** Options > Technical shows what our frame costs on GW2's render thread, by part (window,
-  header, chat, input, footer, options), and what a chat line costs.
+  header, chat, input, footer, options), and what a chat line costs – smoothed, updated four times a second, like
+  the game's frame rate there.
+- **Everything in its place:** Events: Chat (loaded, install, remove) and "Read the chat" are in Options >
+  Technical, the voice module and its models in Options > Voice, "Remove everything of GW2Chatlator" once, at the
+  very bottom of Technical. The empty chat still shows what is ready and what is missing.
+- **The window stays where you put it:** a click on a link no longer lets it creep upwards, the minimised button
+  no longer slides up, and opening it with the mouse held no longer drags it along – checked with thousands of
+  random steps in every build.
 - **Waypoint/POI click (experimental, off by default):** Options > Window > More > "Waypoint/POI click". Only
   waypoints and points of interest: a click on one here – while its line still stands at the bottom of GW2's chat,
   at most 8 lines below it, however old – finds the very same line in GW2's chat – its name, who wrote it, what it

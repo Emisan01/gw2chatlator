@@ -344,14 +344,6 @@ void Buttons(const View& v, bool muHeld) {
 
 }  // namespace
 
-void RenderChatSourceRow() {  // Options > Modules (g_mu NOT held)
-    const View v = StateView();
-    ImGui::PushID("chatsource");
-    StatusRow(UI(Tr(L"Reading")), v.level, UI(v.text));
-    Buttons(v, false);
-    ImGui::PopID();
-}
-
 void RenderChatSourceNotice() {  // the chat area (g_mu held): only while reading is off or paused
     if (!g_chatEventsLive && !g_chatEventsPresent) return;  // no Events: Chat: the modules list says so
     const View v = StateView();
@@ -388,16 +380,18 @@ void RenderChatSourceDetails() {  // Options > Technical (g_mu held): for the de
                              {std::to_wstring(shown), std::to_wstring(dropped), std::to_wstring(unreadable)})).c_str());
     {  // what we cost on GW2's render thread – the parts add up to the whole
         const FrameCosts c = CostsNow();
+        static Steady s_total, s_part[6], s_line;  // smoothed, shown 4 times a second
         auto ms = [](double v) {
             wchar_t b[16];
             swprintf_s(b, L"%.3f", v);
             return std::wstring(b);
         };
         ImGui::Text("%s", UI(TrF(L"Our frame: {1} ms – window {2}, header {3}, chat {4}, input {5}, footer {6}, options {7}",
-                                 {ms(c.totalMs), ms(c.ms[kCostWindow] + c.ms[kCostPre]), ms(c.ms[kCostHeader]),
-                                  ms(c.ms[kCostChat]), ms(c.ms[kCostInput]), ms(c.ms[kCostFooter]),
-                                  ms(c.ms[kCostOptions])})).c_str());
-        ImGui::Text("%s", UI(TrF(L"Per chat line: {1} µs", {ms(c.lineUs)})).c_str());
+                                 {ms(s_total(c.totalMs)), ms(s_part[0](c.ms[kCostWindow] + c.ms[kCostPre])),
+                                  ms(s_part[1](c.ms[kCostHeader])), ms(s_part[2](c.ms[kCostChat])),
+                                  ms(s_part[3](c.ms[kCostInput])), ms(s_part[4](c.ms[kCostFooter])),
+                                  ms(s_part[5](c.ms[kCostOptions]))})).c_str());
+        ImGui::Text("%s", UI(TrF(L"Per chat line: {1} µs", {ms(s_line(c.lineUs))})).c_str());
     }
     Buttons(v, true);
     ImGui::SameLine();

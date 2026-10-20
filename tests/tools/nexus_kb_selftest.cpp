@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -758,6 +759,111 @@ int wmain(int argc, wchar_t** argv) {
                 const bool mins = right == 0 && later == 1 && key == 0;
                 if (!mins) std::printf("FAIL: the window did not minimise when not in use / open again\n");
                 ok = ok && mins;
+            }
+            // The corner against everything that is no move of yours (user, 2026-10-20: "such window bugs never again"):
+            // 400 random steps – minimise, open, the mini mode on / off, a click on the window, a press held while the
+            // window changes its shape and a mouse that moves before it lets go, frame heights in fractional pixels, idle
+            // frames – and after every step the bottom-left corner stands exactly where it stood. A fixed seed: a
+            // failure comes back the same way.
+            {
+                auto shape = reinterpret_cast<void (*)(int)>(GetProcAddress(dll, "Gw2KbTestWaypoint"));
+                auto miniMode = reinterpret_cast<void (*)(int)>(GetProcAddress(dll, "Gw2KbTestMini"));
+                auto rect = [] {
+                    ImGuiWindow* w = ImGui::FindWindowByName("GW2Chatlator###kbmain");
+                    return w ? ImVec4(w->Pos.x, w->Pos.y, w->SizeFull.x, w->SizeFull.y) : ImVec4(-1, -1, 0, 0);
+                };
+                auto corner = [&] {
+                    const ImVec4 r = rect();
+                    return ImVec2(r.x, r.y + r.w);
+                };
+                if (shape && miniMode) {
+                    ImGuiIO& io = ImGui::GetIO();
+                    ImGuiStyle& st = ImGui::GetStyle();
+                    const float padY = st.FramePadding.y;
+                    const float pads[] = {0.0f, 0.3f, 1.7f, 3.3f};
+                    ImGui::SetWindowPos("GW2Chatlator###kbmain", ImVec2(300, 800 - rect().w));
+                    frames(5);
+                    const ImVec2 c0 = corner();
+                    ImVec2 cFail = c0;
+                    wchar_t seedText[16] = {};  // GW2KB_TEST_SEED: another random walk (the default one in every build)
+                    const unsigned seed = GetEnvironmentVariableW(L"GW2KB_TEST_SEED", seedText, 16)
+                                              ? static_cast<unsigned>(_wtoi(seedText)) : 20261020u;
+                    std::mt19937 rnd(seed);
+                    bool miniOn = false;
+                    int failedAt = -1;
+                    const char* what = "";
+                    const char* from = "";
+                    for (int step = 0; step < 400 && failedAt < 0; ++step) {
+                        const ImVec4 r = rect();
+                        const bool button = r.z < 80;  // the minimised button
+                        from = button ? "the button" : miniOn ? "the mini window" : "the big window";
+                        const ImVec2 inside(r.x + std::min(200.0f, r.z * 0.5f), r.y + std::min(80.0f, r.w * 0.5f));
+                        switch (rnd() % 7) {
+                            case 0:
+                                what = "minimise";
+                                if (!button) shape(0);
+                                break;
+                            case 1:
+                                what = "open";
+                                if (button) shape(1);
+                                break;
+                            case 2:
+                                what = "mini mode on / off";
+                                if (!button) {
+                                    miniOn = !miniOn;
+                                    miniMode(miniOn ? 1 : 0);
+                                }
+                                break;
+                            case 3:  // down and up on the spot (three of them in a row minimise: a shape, no move)
+                                what = "click";
+                                io.MousePos = inside;
+                                frames(1);
+                                io.MouseDown[0] = true;
+                                frames(1);
+                                io.MouseDown[0] = false;
+                                frames(1);
+                                break;
+                            case 4:  // held while the window changes its shape; the mouse moves a little before it lets go
+                                what = "press, new shape, move, let go";
+                                io.MousePos = inside;
+                                frames(1);
+                                io.MouseDown[0] = true;
+                                frames(2);
+                                shape(button ? 1 : 0);
+                                frames(2);
+                                io.MousePos = ImVec2(inside.x + static_cast<float>(static_cast<int>(rnd() % 17) - 8),
+                                                     inside.y + static_cast<float>(static_cast<int>(rnd() % 17) - 8));
+                                frames(2);
+                                io.MouseDown[0] = false;
+                                frames(1);
+                                break;
+                            case 5:
+                                what = "frame height in fractional pixels";
+                                st.FramePadding.y = padY + pads[rnd() % 4];
+                                break;
+                            default:
+                                what = "idle";
+                                break;
+                        }
+                        io.MousePos = ImVec2(-1000, -1000);
+                        frames(3);
+                        const ImVec2 c = corner();
+                        if (std::fabs(c.x - c0.x) > 0.5f || std::fabs(c.y - c0.y) > 0.5f) {
+                            failedAt = step;
+                            cFail = c;
+                        }
+                    }
+                    st.FramePadding.y = padY;
+                    if (rect().z < 80) shape(1);
+                    frames(3);
+                    if (miniOn) miniMode(0);
+                    frames(5);
+                    std::printf("corner over 400 random steps: %.0f,%.0f%s\n", c0.x, c0.y, failedAt < 0 ? " – stood still" : "");
+                    if (failedAt >= 0)
+                        std::printf("FAIL: step %d (%s, from %s) moved the window's corner to %.0f,%.0f\n", failedAt, what, from,
+                                    cFail.x, cFail.y);
+                    ok = ok && failedAt < 0;
+                }
             }
             *th->focus = true;  // back from the map the window does not take the keyboard by itself
             frames(3);

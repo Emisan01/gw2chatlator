@@ -49,10 +49,9 @@ void RenderRemovedNotice() {
     ImGui::End();
 }
 
-void RenderModules(bool guide) {  // g_mu NOT held
-    const ModuleState& m = Modules();
+// Events: Chat – loaded, installed, missing; install / remove (g_mu NOT held). Options > Technical and the guide.
+void RenderChatModule(bool guide) {
     ImGui::PushID("modules");
-    // The chat.
     const bool chatLive = g_chatEventsLive || g_chatEventsPresent;
     StatusRow(UI(Tr(L"Chat module")), chatLive ? 2 : g_chatEventsInstalling || g_chatEventsFile ? 1 : 0,
               UI(chatLive ? Tr(L"ready – Events: Chat is loaded")
@@ -67,8 +66,14 @@ void RenderModules(bool guide) {  // g_mu NOT held
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", UI(Tr(L"Events: Chat is its own add-on – other add-ons may use it too.")).c_str());
     }
-    if (!guide && chatLive) RenderChatSourceRow();  // reading it: checked, paused, by hand
-    // The voice module and its model.
+    ImGui::PopID();
+}
+
+// The voice module and its model – load, unload, remove (g_mu NOT held). Options > Voice and the guide.
+// Returns whether voice input is on.
+bool RenderVoiceModule(bool guide) {
+    const ModuleState& m = Modules();
+    ImGui::PushID("modules");
     bool enabled, ready;
     {
         std::lock_guard<std::mutex> lock(g_mu);
@@ -128,6 +133,15 @@ void RenderModules(bool guide) {  // g_mu NOT held
             }
         }
     }
+    ImGui::PopID();
+    return enabled;
+}
+
+// The empty chat: what is ready, what is missing, where translation is switched on (g_mu NOT held).
+void RenderModules(bool guide) {
+    RenderChatModule(guide);
+    const bool enabled = RenderVoiceModule(guide);
+    ImGui::PushID("modules");
     if (guide) {
         ImGui::Spacing();
         bool chat, mine, voiceEnglish;
@@ -156,8 +170,13 @@ void RenderModules(bool guide) {  // g_mu NOT held
             }
         }
     }
-    if (!guide) {  // everything of the tool, reversed – after a yes
-        ImGui::Spacing();
+    ImGui::PopID();
+}
+
+// Everything of the tool, reversed – after a yes (g_mu NOT held). Once, at the bottom of Options > Technical.
+void RenderRemoveEverything() {
+    ImGui::PushID("modules");
+    {
         if (ImGui::SmallButton(UI(Tr(L"Remove everything of GW2Chatlator …")).c_str())) ImGui::OpenPopup("###removeall");
         if (ImGui::BeginPopupModal((UI(Tr(L"Remove everything of GW2Chatlator")) + "###removeall").c_str(), nullptr,
                                    ImGuiWindowFlags_AlwaysAutoResize)) {
@@ -343,9 +362,6 @@ void RenderOptionsContent() {
             LanguageCombo(UI(Tr(L"Language of this window") + L"##ui").c_str(), edit.uiLangCode, Tr(L"like Windows"));
             ImGui::Checkbox(UI(Tr(L"Show the window")).c_str(), &g_show);
             Hint(UI(Tr(L"Keys (show / hide: Ctrl+Alt+K, push to talk, focus the input): Nexus → Keybinds → GW2 Keyboard.")));
-            ImGui::Separator();
-            ImGui::TextUnformatted(UI(Tr(L"Modules")).c_str());
-            RenderModules(false);
             ImGui::EndTabItem();
         }
         // ---- Window: its building blocks, size, transparency, how the chat text looks
@@ -549,7 +565,7 @@ void RenderOptionsContent() {
         // ---- Voice
         if (ImGui::BeginTabItem(UI(Tr(L"Voice")).c_str(), nullptr, TabFlag(3))) {
             ImGui::Checkbox(UI(Tr(L"Voice input")).c_str(), &edit.voiceEnabled);
-            RenderModules(false);
+            RenderVoiceModule(false);
             ImGui::Separator();
             const VoiceCatalog catalog = LoadVoiceCatalog(edit.dataDir);
             const VoiceModelInfo* chosen = catalog.Find(U8(edit.voiceModel));
@@ -823,20 +839,26 @@ void RenderOptionsContent() {
             edit.send.keyHoldMs = std::clamp(edit.send.keyHoldMs, 10, 500);
             edit.send.stepDelayMs = std::clamp(edit.send.stepDelayMs, 10, 1000);
             ImGui::Separator();
-            std::lock_guard<std::mutex> lock(g_mu);
-            const int fps = g_fps;
-            const int hold = (fps > 0 && edit.send.autoTiming) ? std::clamp(1000 / std::max(fps, 10) + 10, 15, 1010) : edit.send.keyHoldMs;
-            ImGui::Text("GW2Chatlator for Nexus %s", GCT_VERSION_STR);
-            ImGui::Text("%s", UI(TrF(L"Game: {1} fps → keys held {2} ms", {std::to_wstring(fps), std::to_wstring(hold)})).c_str());
-            ImGui::Text("%s", UI(TrF(L"Translator: {1}", {g_translator ? g_translator->Name() : std::wstring(L"-")})).c_str());
-            if (const std::wstring q = MyMemoryQuotaText(); !q.empty() && (g_nx.translateChat || g_cfg.translateWriting))
-                ImGui::Text("%s", UI(q).c_str());
-            RenderChatSourceDetails();  // the version of Events: Chat, reading, the counts, the last lines (no text)
-            ImGui::Text("%s", UI(TrF(L"Voice: {1}", {!g_cfg.voiceEnabled ? Tr(L"off") : g_voiceReady ? Tr(L"ready – loaded")
-                                                       : g_voice.Running() ? Tr(L"starting")
-                                                       : g_modules.voiceModule ? Tr(L"ready – loads on the first use of the microphone")
-                                                                               : Tr(L"the voice module is missing")})).c_str());
-            ImGui::Text("%s", UI(TrF(L"Chat lines: {1}", {std::to_wstring(g_lines.size())})).c_str());
+            RenderChatModule(false);  // Events: Chat: loaded, install / remove – reading it follows in the details
+            {
+                std::lock_guard<std::mutex> lock(g_mu);
+                static Steady s_fps;
+                const int fps = static_cast<int>(std::lround(s_fps(g_fps)));
+                const int hold = (fps > 0 && edit.send.autoTiming) ? std::clamp(1000 / std::max(fps, 10) + 10, 15, 1010) : edit.send.keyHoldMs;
+                ImGui::Text("GW2Chatlator for Nexus %s", GCT_VERSION_STR);
+                ImGui::Text("%s", UI(TrF(L"Game: {1} fps → keys held {2} ms", {std::to_wstring(fps), std::to_wstring(hold)})).c_str());
+                ImGui::Text("%s", UI(TrF(L"Translator: {1}", {g_translator ? g_translator->Name() : std::wstring(L"-")})).c_str());
+                if (const std::wstring q = MyMemoryQuotaText(); !q.empty() && (g_nx.translateChat || g_cfg.translateWriting))
+                    ImGui::Text("%s", UI(q).c_str());
+                RenderChatSourceDetails();  // the version of Events: Chat, reading, the counts, the last lines (no text)
+                ImGui::Text("%s", UI(TrF(L"Voice: {1}", {!g_cfg.voiceEnabled ? Tr(L"off") : g_voiceReady ? Tr(L"ready – loaded")
+                                                           : g_voice.Running() ? Tr(L"starting")
+                                                           : g_modules.voiceModule ? Tr(L"ready – loads on the first use of the microphone")
+                                                                                   : Tr(L"the voice module is missing")})).c_str());
+                ImGui::Text("%s", UI(TrF(L"Chat lines: {1}", {std::to_wstring(g_lines.size())})).c_str());
+            }
+            ImGui::Separator();
+            RenderRemoveEverything();  // once, at the very bottom
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();
