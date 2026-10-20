@@ -444,13 +444,8 @@ void RenderWindow() {
                                     g_redirect == 0;
             if (chatOpened && g_cfg.focusOnGameChat) g_focusInput = true;   // the focus comes over (opens it as well)
             else if (chatOpened && g_layout.autoOpen && g_collapsed) g_expandRequest = true;  // only opened
-            static bool s_redirectChatSeen = false;  // GW2's chat line was open during this redirect
-            if (g_redirect == 0) s_redirectChatSeen = false;
-            if (g_redirect != 0 && chatOpen) s_redirectChatSeen = true;
-            if (g_redirect == 1 && ms.MapOpen()) g_redirect = 2;       // a waypoint: the map went open …
-            else if (g_redirect == 3 && chatOpen) g_redirect = 4;       // anything else: GW2's chat line is open …
-            const bool done = (g_redirect == 2 && !ms.MapOpen()) || (g_redirect == 4 && !chatOpen && !ms.MapOpen()) ||
-                              (g_redirect == 1 && s_redirectChatSeen && !chatOpen && !ms.MapOpen());  // closed, no map
+            if (g_redirect == 3 && chatOpen) g_redirect = 4;           // a link: GW2's chat line is open …
+            const bool done = g_redirect == 4 && !chatOpen && !ms.MapOpen();
             if (done || (g_redirect != 0 && GetTickCount64() - g_redirectSince > 45000)) {  // … and closed again
                 g_redirect = 0;
                 g_expandRequest = true;
@@ -469,7 +464,7 @@ void RenderWindow() {
     bool inMap;
     {
         std::lock_guard<std::mutex> lock(g_mu);
-        inMap = (g_inMap || g_test.forceMap) && (!g_mapOpen || GetTickCount64() < g_showOnMapUntil);
+        inMap = (g_inMap || g_test.forceMap) && !g_mapOpen;
         if (g_focusInput && g_collapsed) g_collapsed = false;  // something wants the input: the window opens (at its corner)
     }
     if (!g_show || !inMap) return;

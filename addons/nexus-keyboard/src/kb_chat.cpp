@@ -271,7 +271,7 @@ std::wstring ApiLang() {  // the GW2 API speaks en, de, fr, es, zh (g_mu held)
 }
 bool g_openLinkAsk = false;
 bool g_minimizeRequest = false, g_expandRequest = false;  // on the main window, never inside the chat area
-int g_redirect = 0;  // 0 none; 1 waypoint, waiting for the map; 2 the map is open; 3 waiting for GW2's chat line; 4 it is open
+int g_redirect = 0;  // 0 none; 3 waiting for GW2's chat line; 4 it is open (1 and 2 were the waypoint's, gone in 2.3.0)
 ULONGLONG g_redirectSince = 0;
 
 // The Waypoint/POI click starts only while GW2's original can still stand in view at the bottom of its chat – never
@@ -292,29 +292,26 @@ void HandleChatLinkClick(const std::string& raw, ULONGLONG receivedTime, const s
                          const ChatLineHint& line, uint64_t lineId) {  // g_mu held
     ImGui::SetClipboardText(raw.c_str());
     const bool waypoint = DecodeChatCode(W(raw)).kind == ChatCodeKind::Poi;
-    // The Waypoint/POI click (optional; `line.label` is set only for a waypoint or a point of interest): only the real
-    // click on the original, found by its name, who wrote it and what it says – independent of our window (it stays
-    // as it is and lets the mouse through), GW2's chat line stays closed (open = typing mode: there a click on a link
-    // does not fly the map), and never the map from us. Too far up in GW2's chat: the code is copied, nothing else.
-    if (waypoint && g_nx.waypointPoiClick && !line.label.empty()) {
-        if (OriginalStillThere(lineId)) {
-            StartWaypointClick(line);
+    // Waypoints and points of interest (and vistas): never GW2's chat line – open, it is typing mode and a click on a
+    // link there does not fly the map – and never the map from us (GW2's map key opens it without a target). Only a
+    // real click on the original flies the map: the Waypoint/POI click does it (`line.label` is set for a waypoint or a
+    // point of interest Decoder Ring has named), else the code is copied and the status says why and where to click.
+    (void)receivedTime;
+    if (waypoint) {
+        if (g_nx.waypointPoiClick && !line.label.empty()) {
+            if (OriginalStillThere(lineId)) StartWaypointClick(line);
+            else SetStatus(TrF(L"{1} is copied – too far up in GW2's chat to click it for you.", {line.label}), 12000);
+        } else if (g_nx.waypointPoiClick && where.empty()) {
+            SetStatus(Tr(L"Decoder Ring has not named this one yet – click again in a moment (the code is copied)."), 10000);
         } else {
-            SetStatus(TrF(L"{1} is copied – too far up in GW2's chat to click it for you.", {line.label}), 12000);
+            SetStatus(where.empty() ? Tr(L"The code is copied – click it in GW2's chat, the map flies there.")
+                                    : TrF(L"{1} – the code is copied: click it in GW2's chat, the map flies there.", {W(where)}),
+                      12000);
         }
         return;
     }
-    const bool fresh = receivedTime == 0 || GetTickCount64() - receivedTime < 15000;
-    if (waypoint && !fresh) {  // the emergency way: the game map, and our window says where to look
-        if (g_api && g_api->GameBinds_InvokeAsync) g_api->GameBinds_InvokeAsync(GB_MapToggle, 50);
-        SetStatus(where.empty() ? Tr(L"The map is open – the waypoint code is copied (Ctrl+V)")
-                                : TrF(L"On the map: {1}", {W(where)}),
-                  20000);
-        g_showOnMapUntil = GetTickCount64() + 20000;  // the window stays over the map while it names the spot
-        return;
-    }
-    g_minimizeRequest = true;
-    g_redirect = waypoint ? 1 : 3;
+    g_minimizeRequest = true;  // any other link: GW2's chat line opens, you click the original there
+    g_redirect = 3;
     g_redirectSince = GetTickCount64();
     g_suppressChatFocusUntil = GetTickCount64() + 2000;  // our own "come back when GW2's chat opens" waits
     if (g_api && g_api->GameBinds_InvokeAsync) g_api->GameBinds_InvokeAsync(GB_UiChatFocus, 20);

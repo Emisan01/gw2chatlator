@@ -285,7 +285,6 @@ extern std::wstring g_preview;
 extern std::wstring g_back;
 extern bool g_inMap;
 extern bool g_mapOpen;
-extern ULONGLONG g_showOnMapUntil;
 extern uint64_t g_previewGen;
 extern bool g_sendPending;
 extern std::wstring g_status;
