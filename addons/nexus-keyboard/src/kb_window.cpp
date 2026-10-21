@@ -759,7 +759,7 @@ void RenderWindow() {
             ImGui::SetTooltip("%s", UI(Tr(L"Nothing but the input with its help. Three quick clicks on it minimise it; right-click in it: Menu … brings the rest back.")).c_str());
         if (const bool compact = ProfileOn(0); ImGui::MenuItem(UI(Tr(L"Compact view")).c_str(), nullptr, compact))
             SetProfile(0, !compact);
-        if (ImGui::MenuItem(UI(Tr(L"Translate the chat once")).c_str()) && TranslateRecentLines(true) == 0)
+        if (ImGui::MenuItem(UI(Tr(L"Translate visible chat once")).c_str()) && TranslateRecentLines(true) == 0)
             SetStatus(Tr(L"No chat lines of other players in view"), 4000);
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", UI(Tr(L"What you see of the chat, into the language you write in – once, whatever the chat settings say. Again after you changed the language: in the new one.")).c_str());
