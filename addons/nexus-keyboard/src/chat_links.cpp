@@ -156,15 +156,24 @@ bool ChatLinks::Render(const PieUI::ChatLinks::LinkSegment& seg, const std::stri
     return ImGui::IsItemClicked();
 }
 
+Texture_t* GetTextureGuarded(AddonAPI_t* api, const char* url) {  // SEH: no C++ unwinding
+    __try {
+        if (!api || !api->Textures_GetOrCreateFromURL || !url || url[0] == '\0') return nullptr;
+        return api->Textures_GetOrCreateFromURL(url, url, "");
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return nullptr;
+    }
+}
+
 void ChatLinks::Tooltip(const PieUI::ChatLinks::LinkSegment& seg, const DecoderRecord& rec, bool resolved) {
     ImGui::BeginTooltip();
     ImGui::PushTextWrapPos(ImGui::GetFontSize() * 24.0f);
 
     Texture_t* iconTex = nullptr;
-    if (resolved && rec.iconUrl[0] != '\0' && api_ && api_->Textures_GetOrCreateFromURL) {
-        iconTex = api_->Textures_GetOrCreateFromURL(rec.iconUrl, rec.iconUrl, nullptr);
+    if (resolved && rec.iconUrl[0] != '\0') {
+        iconTex = GetTextureGuarded(api_, rec.iconUrl);
     }
-    if (iconTex && iconTex->Resource) {
+    if (iconTex && iconTex->Resource && iconTex->Width > 0 && iconTex->Height > 0) {
         const float sz = ImGui::GetFontSize() * 2.2f;
         ImGui::Image(iconTex->Resource, ImVec2(sz, sz));
         ImGui::SameLine();

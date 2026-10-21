@@ -77,6 +77,9 @@ void GuardedRender(void (*fn)()) {
     if (g_disabled) return;
     try {
         fn();
+    } catch (const std::exception& e) {
+        g_disabled = true;
+        Log(LOGL_CRITICAL, ("an error – switched off: " + std::string(e.what())).c_str());
     } catch (...) {
         g_disabled = true;
         Log(LOGL_CRITICAL, "an error – switched off for this session");

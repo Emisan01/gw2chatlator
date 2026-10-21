@@ -3,6 +3,11 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.3.4 — 2026-10-21 (GW2Chatlator for Nexus)
+
+- **Hardened chat links:** hovering item and waypoint links in the chat window can no longer crash the game when textures load; texture requests are shielded with an SEH guard and check readiness before rendering.
+- **Clearer UI & options:** "Translate visible chat once" in the window menu now clearly states its scope with a tooltip; the options title and Nexus menu button are unified to "GW2Chatlator"; the General tab shows a compact overview of your configured hotkeys; chat focus options are gathered under a single "Chat focus & behavior" section; the dashboard is cleanly grouped into active switches and module status; obsolete and redundant settings are removed.
+
 ## 2.3.3 — 2026-10-20 (GW2Chatlator for Nexus)
 
 - **No more "?" in the chat window:** its font has no dashes, curly quotes or "…" – "ready – Events: Chat is loaded"
