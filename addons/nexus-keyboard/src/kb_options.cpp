@@ -981,7 +981,11 @@ void RenderOptionsContent() {
                                                            : g_voice.Running() ? Tr(L"starting")
                                                            : g_modules.voiceModule ? Tr(L"ready – loads on the first use of the microphone")
                                                                                    : Tr(L"the voice module is missing")})).c_str());
-                ImGui::Text("%s", UI(TrF(L"Chat lines: {1}", {std::to_wstring(g_lines.size())})).c_str());
+                const size_t nLines = g_lines.size();
+                wchar_t ramBuf[32];
+                swprintf_s(ramBuf, L"%.1f", static_cast<double>(nLines * 750) / (1024.0 * 1024.0));
+                ImGui::Text("%s", UI(TrF(L"Chat history buffer: {1} / {2} lines (~{3} MB RAM)",
+                                         {std::to_wstring(nLines), std::to_wstring(kMaxLines), ramBuf})).c_str());
             }
             ImGui::Separator();
             RenderRemoveEverything();  // once, at the very bottom

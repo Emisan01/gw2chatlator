@@ -29,6 +29,32 @@ bool AllowAutoTranslate() {
     return false;
 }
 
+// Trims oldest lines when exceeding total buffer quota (kMaxLines).
+// Intelligent separation: Public channels (Map, Say, System) are pruned first so that
+// private Whispers and Group channels (Guild, Party, Squad) are protected against flood.
+static void TrimChatLines() {  // g_mu held
+    while (g_lines.size() > kMaxLines) {
+        // Priority 1: Drop oldest public flood line (Map, Say, System, etc.)
+        auto it = std::find_if(g_lines.begin(), g_lines.end(), [](const ChatLine& x) {
+            return GroupOfChannel(x.channel) == ChannelGroup::Public;
+        });
+        if (it != g_lines.end()) {
+            g_lines.erase(it);
+            continue;
+        }
+        // Priority 2: Drop oldest group line (Guild, Party, Squad)
+        it = std::find_if(g_lines.begin(), g_lines.end(), [](const ChatLine& x) {
+            return GroupOfChannel(x.channel) == ChannelGroup::Group;
+        });
+        if (it != g_lines.end()) {
+            g_lines.erase(it);
+            continue;
+        }
+        // Priority 3: All lines are Whispers: drop oldest line
+        g_lines.pop_front();
+    }
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // Game thread: a line arrives – copy it, queue its translation.
 void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
@@ -62,7 +88,7 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
             if (g_context.size() > 80) g_context.resize(80);
         }
         g_lines.push_back(std::move(l));
-        while (g_lines.size() > kMaxLines) g_lines.pop_front();
+        TrimChatLines();
         for (size_t i = 0; i < g_tabs.size(); ++i) {  // a tab not in front that shows this line: marked
             if (static_cast<int>(i) == g_activeTab) continue;
             const WhisperTab& t = g_tabs[i];

@@ -71,7 +71,32 @@ constexpr const char* kName = "GW2Chatlator";
 constexpr const char* kToggleBind = "KB_GW2KEYBOARD_TOGGLE";
 constexpr const char* kFocusBind = "KB_GW2KEYBOARD_FOCUS";
 constexpr const char* kTalkBind = "KB_GW2KEYBOARD_TALK";  // push to talk: held while you speak
-constexpr size_t kMaxLines = 500;  // only the lines in view are drawn: more history costs a placeholder each
+// Intelligent chat buffer quotas: 2000 lines total buffer (~1.4 MB RAM).
+// Mass-traffic channels (Map, Say, System) are capped so they never purge private Whispers or Group channels.
+constexpr size_t kMaxLines = 2000;
+constexpr size_t kMaxWhisperLines = 400;
+constexpr size_t kMaxGroupLines = 600;
+constexpr size_t kMaxPublicLines = 1400;
+
+enum class ChannelGroup : uint8_t { Public, Group, Whisper };
+
+inline ChannelGroup GroupOfChannel(Channel ch) {
+    switch (ch) {
+    case Channel::Whisper:
+        return ChannelGroup::Whisper;
+    case Channel::Guild:
+    case Channel::Party:
+    case Channel::Squad:
+        return ChannelGroup::Group;
+    case Channel::Map:
+    case Channel::Say:
+    case Channel::System:
+    case Channel::Team:
+    default:
+        return ChannelGroup::Public;
+    }
+}
+
 constexpr size_t kHistoryMax = 50;
 constexpr size_t kMaxPartsPerEnter = 3;  // one Enter never pours more chat lines than this into the game
 // The window is built from parts you can switch on / off and size (Options → General → Window layout).

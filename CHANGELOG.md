@@ -3,6 +3,11 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.3.5 — 2026-10-21 (GW2Chatlator for Nexus)
+
+- **Intelligent chat buffer & quota protection:** chat history capacity expanded from 500 to 2,000 lines (~1.4 MB RAM) with intelligent channel pruning; high-volume public channels (Map, Say, System) are pruned first during traffic bursts so private Whispers and Group discussions (Guild, Party, Squad) are protected from being purged.
+- **Buffer diagnostic indicator:** the Technical options tab now features a real-time buffer monitor displaying current line count, capacity, and estimated RAM usage.
+
 ## 2.3.4 — 2026-10-21 (GW2Chatlator for Nexus)
 
 - **Hardened chat links:** hovering item and waypoint links in the chat window can no longer crash the game when textures load; texture requests are shielded with an SEH guard and check readiness before rendering.
