@@ -45,6 +45,7 @@
 #include "core/translate_policy.hpp"
 #include "core/translation_cache.hpp"
 #include "core/translator.hpp"
+#include "core/local_mt_protocol.hpp"
 #include "core/voice_learn.hpp"
 #include "core/json.hpp"
 #include "imgui/imgui.h"
@@ -62,6 +63,8 @@
 #include "win/mumble_link.hpp"
 #include "win/audio_capture.hpp"
 #include "win/voice_models.hpp"
+#include "win/local_mt_packages.hpp"
+#include "win/local_mt_translator.hpp"
 #include "win/online_translators.hpp"
 
 using namespace gct;
@@ -207,7 +210,7 @@ extern AddonAPI_t* g_api;
 constexpr const char* kTextFontId = "GW2Chatlator_Text";
 extern std::atomic<ImFont*> g_textFont;
 extern float g_textFontPx;
-int FollowPt();  // fontPt 0 ("like the game"): GW2's interface size from MumbleLink on 11 pt
+int FollowPt();  // fontPt 0: GW2's interface size, at least 14 pt for the first-use chat UI
 void OnTextFont(const char*, void* font);
 float PtToPx(int pt);
 // The fonts to choose beside the size (user, 2026-10-22): files every Windows has, each with Latin, Greek, Cyrillic.
@@ -218,7 +221,7 @@ struct FontFace {
 extern const FontFace kFontFaces[3];
 void RequestTextFont(int pt, const std::wstring& face);
 void ReleaseTextFont();  // before the DLL goes, and before another face is asked for
-// The options window: Segoe UI at Nexus' UI size (never the chat's size), every letter of the UI languages.
+// The options window: Segoe UI at least 14 pt, raised further when Nexus' UI is larger; independent of chat size.
 constexpr const char* kUiFontId = "GW2Chatlator_UI";
 extern std::atomic<ImFont*> g_uiFont;
 void RequestUiFont(float px);
@@ -514,6 +517,9 @@ void StartModelDownload(const VoiceModelInfo& m);
 extern std::atomic<bool> g_voiceModuleInstalling;
 extern std::atomic<int> g_voiceModulePct;
 extern std::thread g_voiceModuleThread;
+extern std::atomic<bool> g_localMtBusy;
+extern std::atomic<int> g_localMtPct;
+extern std::thread g_localMtThread;
 extern int g_optionsTab;
 std::wstring KeyboardDir();
 
@@ -539,6 +545,8 @@ extern bool g_wiped;
 extern std::atomic<int> g_wipeDone;
 void StatusRow(const std::string& what, int state, const std::string& text);
 void RenderModules(bool guide);
+bool RemoveButton(const char* id);
+void RenderLocalMtOptions(const Config& edit);
 // A number for the eye (Options > Technical): smoothed over about the last 20 frames, shown at most 4 times a second.
 struct Steady {
     gct::SteadyNumber n;  // core/steady: its equations in core_tests

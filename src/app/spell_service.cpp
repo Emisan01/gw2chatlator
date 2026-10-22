@@ -17,6 +17,27 @@ bool HasDigit(const std::wstring& w) {
     return std::any_of(w.begin(), w.end(), [](wchar_t c) { return c >= L'0' && c <= L'9'; });
 }
 
+bool SentenceStart(const std::wstring& text, size_t pos) {
+    while (pos > 0 && (text[pos - 1] == L' ' || text[pos - 1] == L'\t')) --pos;
+    while (pos > 0 && (text[pos - 1] == L'"' || text[pos - 1] == L'\'' || text[pos - 1] == 0x201C ||
+                       text[pos - 1] == 0x201D || text[pos - 1] == 0x201E || text[pos - 1] == 0x2019 ||
+                       text[pos - 1] == L')' || text[pos - 1] == L']'))
+        --pos;
+    return pos == 0 || text[pos - 1] == L'.' || text[pos - 1] == L'!' || text[pos - 1] == L'?';
+}
+
+std::wstring SentenceCase(const std::wstring& word, bool sentenceStart) {
+    if (!sentenceStart || word.empty() || CaseFoldChar(word[0]) != word[0] ||
+        static_cast<wchar_t>(std::towupper(word[0])) == word[0])
+        return word;
+    // Preserve mixed-case names such as iPhone; only fix an ordinary lowercase word.
+    for (size_t i = 1; i < word.size(); ++i)
+        if (CaseFoldChar(word[i]) != word[i]) return word;
+    std::wstring out = word;
+    out[0] = static_cast<wchar_t>(std::towupper(out[0]));
+    return out;
+}
+
 }  // namespace
 
 bool SpellService::Init(const std::vector<std::wstring>& tags, const std::wstring& userWordsPath) {
@@ -577,19 +598,25 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
         if (prev.empty()) return s;
         std::wstring p1, p2;
         WordsBefore(text, caret, &p1, &p2);
-        s.words = model_.Next(prev, 3, p2);
+        const std::wstring sure = model_.NextSure(prev, p2);
+        if (!sure.empty()) s.words = model_.Next(prev, 3, p2);
         if (!s.words.empty()) {
             s.kind = WordSuggestions::Kind::Next;
             s.replace = {caret, 0};
-            // Almost always this word here: it is offered grey after the caret (Tab or → takes it).
-            const std::wstring sure = model_.NextSure(prev, p2);
-            if (!sure.empty() && WordKey(sure) == WordKey(s.words[0])) {
-                s.autoIndex = 0;
-                // A phrase you write again and again: the whole sure rest.
-                const std::vector<std::wstring> rest = model_.ContinueSure(prev, p2);
-                if (rest.size() >= 2)
-                    for (const std::wstring& w : rest) s.phrase += (s.phrase.empty() ? L"" : L" ") + w;
+            // Only a repeated, clear winner is shown; one-off message sequences made noisy predictions.
+            if (WordKey(sure) != WordKey(s.words[0])) {
+                const auto it = std::find_if(s.words.begin(), s.words.end(), [&](const std::wstring& w) {
+                    return WordKey(w) == WordKey(sure);
+                });
+                if (it == s.words.end()) s.words.insert(s.words.begin(), sure);
+                else std::rotate(s.words.begin(), it, it + 1);
+                if (s.words.size() > 3) s.words.resize(3);
             }
+            s.autoIndex = 0;
+            // A phrase you write again and again: the whole sure rest.
+            const std::vector<std::wstring> rest = model_.ContinueSure(prev, p2);
+            if (rest.size() >= 2)
+                for (const std::wstring& w : rest) s.phrase += (s.phrase.empty() ? L"" : L" ") + w;
         }
         return s;
     }
@@ -608,6 +635,13 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
     std::wstring p1, p2;
     WordsBefore(text, start, &p1, &p2);
     std::vector<std::wstring> words;
+    const bool wholeWord = end == caret;
+    if (wholeWord && !partial.empty() && !HasDigit(partial) && IsValidWord(partial)) {
+        const std::wstring name = NameFor(partial);
+        const std::wstring exact = name.empty() ? SentenceCase(partial, SentenceStart(text, start)) : name;
+        words.push_back(exact);  // keep the recognized full word selectable before longer completions
+        if (exact != partial) s.kind = WordSuggestions::Kind::Correction;
+    }
     for (const auto& [k, n] : names_)  // names you taught come first
         if (words.size() < 3 && k.size() > WordKey(partial).size() && k.compare(0, WordKey(partial).size(), WordKey(partial)) == 0)
             words.push_back(n);
@@ -652,7 +686,7 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
         }
     }
     if (!words.empty()) {
-        s.kind = WordSuggestions::Kind::Completion;
+        if (s.kind == WordSuggestions::Kind::None) s.kind = WordSuggestions::Kind::Completion;
         s.words = words;
         s.autoIndex = 0;
     }
@@ -685,6 +719,14 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
     const std::wstring prev = text.substr(b, e - b);
 
     const bool valid = IsValidWord(typed) || (!checker_.Ready() && PredictedExactly(typed));
+    if (valid) {
+        const std::wstring cased = SentenceCase(typed, SentenceStart(text, start));
+        if (cased != typed) {
+            c.words = {cased, typed};
+            c.highlight = 0;
+            return c;
+        }
+    }
     std::wstring p1, p2;
     WordsBefore(text, start, &p1, &p2);
     // What Space may write without asking: your own words (learned, names) and clear slips on the keyboard. The

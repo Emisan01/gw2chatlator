@@ -277,6 +277,7 @@ std::shared_ptr<Translator> MakeTranslator(const Config& c) {  // the engine you
     if (c.engine == Engine::Google && !c.googleKey.empty()) return MakeGoogleTranslator(c.googleKey);
     if (c.engine == Engine::Microsoft && !c.msKey.empty()) return MakeMicrosoftTranslator(c.msKey, c.msRegion);
     if (c.engine == Engine::Libre && !c.libreUrl.empty()) return MakeLibreTranslator(c.libreUrl, c.libreKey);
+    if (c.engine == Engine::Local) return MakeLocalMtTranslator(AddonsDir() + L"GW2Keyboard\\gw2kb_translate.exe", c.dataDir);
     if (!c.deeplKey.empty()) return MakeDeepLTranslator(c.deeplKey);
     if (!c.googleKey.empty()) return MakeGoogleTranslator(c.googleKey);
     if (!c.msKey.empty()) return MakeMicrosoftTranslator(c.msKey, c.msRegion);
@@ -327,7 +328,11 @@ std::wstring MyMemoryLeftText() {  // "4.9k left today" beside "Translate visibl
 
 // Whether the translator has a contingent (or costs per character): every one but LibreTranslate – your own server
 // has no limit, so the chat's automatic translation is not braked for it (g_mu held).
-bool LimitedContingent() { return !g_translator || g_translator->Name() != L"LibreTranslate"; }
+bool LimitedContingent() {
+    if (!g_translator) return true;
+    const std::wstring name = g_translator->Name();
+    return name != L"LibreTranslate" && name != L"OPUS-MT (local)";
+}
 
 // A language's own name as the font in use draws it, else its English name – never a "?" (a font without those
 // letters made "Tieng Viet" or "Cestina" look misspelled, user 2026-10-22). Render thread.
@@ -399,16 +404,20 @@ bool g_wiped = false;
 std::atomic<int> g_wipeDone{0};  // 0 not asked, 1 removed, 2 something was left
 void RemoveEverythingNow(bool chatEventsToo, bool decoderToo) {  // game thread
     UnloadVoiceModule();
+    std::shared_ptr<Translator> localTranslator;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         g_wiped = true;
         g_show = false;
         g_showOptions = false;
+        localTranslator = g_translator;
+        g_translator.reset();
     }
     Config::BlockWrites();
     if (chatEventsToo) RemoveChatEventsNow();
     if (decoderToo) RemoveDecoderRingNow();
-    g_worker.Post([dir = KeyboardDir()] {
+    g_worker.Post([dir = KeyboardDir(), localTranslator] {
+        gct::StopLocalMtTranslator(localTranslator);
         if (g_spell) {  // the learned words would be saved on unload – they are what we remove
             delete g_spell;
             g_spell = nullptr;

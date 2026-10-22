@@ -1,0 +1,185 @@
+// gw2kb_translate.exe — isolated local OPUS-MT inference process. No model or ML runtime is loaded in GW2.
+#include <windows.h>
+
+#include <algorithm>
+#include <chrono>
+#include <iostream>
+#include <list>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include <ctranslate2/translator.h>
+#include <sentencepiece_processor.h>
+
+#include "core/json.hpp"
+#include "core/local_mt_protocol.hpp"
+#include "core/text.hpp"
+#include "core/voice.hpp"
+#include "win/cpu_cores.hpp"
+#include "win/files.hpp"
+
+using namespace gct;
+namespace {
+
+constexpr size_t kMaxLoadedPairs = 2;
+constexpr size_t kThreadsPerPair = 2;
+
+struct PairModel {
+    std::string id;
+    std::string sourcePrefix;
+    sentencepiece::SentencePieceProcessor source, target;
+    std::unique_ptr<ctranslate2::Translator> translator;
+    ULONGLONG used = 0;
+};
+
+std::wstring g_data;
+std::list<std::unique_ptr<PairModel>> g_models;  // most recently used at the front
+int g_unloadMinutes = 10;
+ULONGLONG g_lastRequest = 0;
+
+std::string JsonString(const char* key, const std::string& value) {
+    return std::string(",\"") + key + "\":\"" + JsonEscape(value) + "\"";
+}
+
+void Emit(const std::string& json) {
+    std::cout << json << '\n' << std::flush;
+}
+
+std::wstring PairPath(const std::string& id) {
+    return g_data + L"\\translate\\" + FromUtf8(id);
+}
+
+PairModel* LoadPair(const std::string& id, std::string& error) {
+    for (auto it = g_models.begin(); it != g_models.end(); ++it) {
+        if ((*it)->id != id) continue;
+        (*it)->used = GetTickCount64();
+        g_models.splice(g_models.begin(), g_models, it);
+        return g_models.front().get();
+    }
+
+    const ULONGLONG start = GetTickCount64();
+    const std::wstring dir = PairPath(id);
+    auto model = std::make_unique<PairModel>();
+    model->id = id;
+    std::string metadata;
+    if (ReadFileBytes(dir + L"\\pair.json", metadata)) {
+        JsonValue json;
+        if (ParseJson(metadata, json) && json.IsObject()) model->sourcePrefix = json.GetString("source_prefix");
+    }
+    if (!model->source.Load(ToUtf8(dir + L"\\source.spm")).ok() ||
+        !model->target.Load(ToUtf8(dir + L"\\target.spm")).ok()) {
+        error = "tokenizer files are missing or invalid";
+        return nullptr;
+    }
+    ctranslate2::models::ModelLoader loader(ToUtf8(dir));
+    loader.device = ctranslate2::Device::CPU;
+    loader.compute_type = ctranslate2::ComputeType::INT8;
+    loader.num_replicas_per_device = 1;
+    ctranslate2::ReplicaPoolConfig pool;
+    pool.num_threads_per_replica = kThreadsPerPair;
+    pool.max_queued_batches = 1;
+    try {
+        model->translator = std::make_unique<ctranslate2::Translator>(loader, pool);
+    } catch (const std::exception& e) {
+        error = e.what();
+        return nullptr;
+    }
+    model->used = GetTickCount64();
+    if (g_models.size() == kMaxLoadedPairs) g_models.pop_back();
+    g_models.push_front(std::move(model));
+    Emit("{\"evt\":\"loaded\"" + JsonString("pair", id) + ",\"ms\":" +
+         std::to_string(GetTickCount64() - start) + "}");
+    return g_models.front().get();
+}
+
+void Translate(const std::string& line) {
+    LocalMtRequest request;
+    if (!ParseLocalMtRequest(line, request)) return;
+    g_lastRequest = GetTickCount64();
+    const std::string pair = request.source + "-" + request.target;
+    std::string error;
+    PairModel* model = LoadPair(pair, error);
+    if (!model) {
+        Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) + JsonString("msg", error) + "}");
+        return;
+    }
+
+    std::vector<std::string> sourceTokens;
+    if (!model->source.Encode(request.text, &sourceTokens).ok()) {
+        Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) +
+             JsonString("msg", "source tokenization failed") + "}");
+        return;
+    }
+    if (!model->sourcePrefix.empty()) sourceTokens.insert(sourceTokens.begin(), model->sourcePrefix);
+    sourceTokens.emplace_back("</s>");
+    ctranslate2::TranslationOptions options;
+    options.beam_size = 1;
+    options.return_end_token = false;
+    options.max_decoding_length = std::clamp<size_t>(sourceTokens.size() * 2, 32, 256);
+    try {
+        const auto results = model->translator->translate_batch({sourceTokens}, options);
+        if (results.empty() || results.front().hypotheses.empty()) {
+            Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) +
+                 JsonString("msg", "the model returned no translation") + "}");
+            return;
+        }
+        std::string text;
+        if (!model->target.Decode(results.front().hypotheses.front(), &text).ok()) {
+            Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) +
+                 JsonString("msg", "target detokenization failed") + "}");
+            return;
+        }
+        Emit("{\"evt\":\"result\",\"id\":" + std::to_string(request.id) + JsonString("text", text) + "}");
+    } catch (const std::exception& e) {
+        Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) + JsonString("msg", e.what()) + "}");
+    }
+}
+
+void SelectCores() {
+    CoreLoad load;
+    load.Sample();
+    Sleep(120);
+    load.Sample();
+    const VoiceCorePick pick = PickVoiceCores(load.Busy(), PhysicalCores(), 2);
+    if (pick.threads > 0) {
+        const uint64_t mask = CoreMask(pick.logical);
+        if (mask) SetProcessAffinityMask(GetCurrentProcess(), static_cast<DWORD_PTR>(mask));
+    }
+}
+
+}  // namespace
+
+int wmain(int argc, wchar_t** argv) {
+    SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS);
+    SelectCores();
+    for (int i = 1; i + 1 < argc; ++i)
+        if (std::wstring(argv[i]) == L"--data") g_data = argv[++i];
+    if (g_data.empty()) return 2;
+    const std::wstring ini = g_data + L"\\gw2-chat-translator.ini";
+    g_unloadMinutes = std::clamp<int>(static_cast<int>(GetPrivateProfileIntW(L"Translate", L"UnloadMinutes", 10,
+                                                                              ini.c_str())), 1, 120);
+    g_lastRequest = GetTickCount64();
+    Emit("{\"evt\":\"ready\"}");
+
+    HANDLE in = GetStdHandle(STD_INPUT_HANDLE);
+    std::string pending;
+    char buffer[4096];
+    bool quit = false;
+    while (!quit && GetTickCount64() - g_lastRequest < static_cast<ULONGLONG>(g_unloadMinutes) * 60'000) {
+        DWORD available = 0;
+        if (!PeekNamedPipe(in, nullptr, 0, nullptr, &available, nullptr)) break;
+        if (!available) { Sleep(5); continue; }
+        DWORD read = 0;
+        if (!ReadFile(in, buffer, std::min<DWORD>(available, sizeof(buffer)), &read, nullptr) || !read) break;
+        pending.append(buffer, read);
+        size_t nl = 0;
+        while (!quit && (nl = pending.find('\n')) != std::string::npos) {
+            std::string line = pending.substr(0, nl);
+            pending.erase(0, nl + 1);
+            if (line == "{\"cmd\":\"quit\"}") quit = true;
+            else Translate(line);
+        }
+    }
+    return 0;
+}

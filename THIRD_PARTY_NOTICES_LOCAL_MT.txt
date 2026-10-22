@@ -1,0 +1,27 @@
+GW2Chatlator optional local translation helper
+==============================================
+
+This optional package contains gw2kb_translate.exe, a separate-process CPU runtime for OPUS-MT models.
+It uses no CUDA runtime and does not load into the GW2 process.
+
+1. CTranslate2 v4.8.3
+   https://github.com/OpenNMT/CTranslate2
+   Copyright (c) 2018- SYSTRAN; Copyright (c) 2019- The OpenNMT Authors
+   License: MIT. Full text: LICENSE-CTranslate2-MIT.txt
+
+2. oneDNN v3.9.1
+   https://github.com/uxlfoundation/oneDNN
+   Copyright Intel Corporation and other contributors, as listed in LICENSE-oneDNN-Apache-2.0.txt
+   License: Apache-2.0. Full text: LICENSE-oneDNN-Apache-2.0.txt
+
+3. SentencePiece v0.2.0
+   https://github.com/google/sentencepiece
+   Copyright 2023 Google LLC
+   License: Apache-2.0. Full text: LICENSE-Apache-2.0.txt
+
+4. OPUS-MT model packages
+   Each model archive contains MODEL_NOTICE.txt with its exact upstream model repository, attribution,
+   license identifier, license link, and conversion notice. Model licenses are read per model card; they
+   are not assumed to be uniform across the Helsinki-NLP collection.
+
+This notice file applies to the helper module. OPUS-MT weights are separate, optional downloads.

@@ -14,7 +14,7 @@
 
 namespace gct {
 
-enum class Engine { Auto, Basic, DeepL, Llm, Google, Microsoft, Libre };
+enum class Engine { Auto, Basic, DeepL, Llm, Google, Microsoft, Libre, Local };
 enum class AutoCorrectMode { Off, Safe, Phone };
 
 struct Config {
@@ -68,7 +68,7 @@ struct Config {
 
     int opacity = 255;
     int fontPercent = 100;            // chat text: 100 % = 11 pt (older ini; FontPt wins)
-    int fontPt = 0;                   // 0 = like the game's interface size (first use); else the chat text size in pt – the add-on builds the font at this size (sharp)
+    int fontPt = 0;                   // 0 = game's UI size, at least 14 pt on first use; else the selected chat size in pt
     std::wstring fontFace = L"segoeui";  // its font: a file in Windows\Fonts (segoeui, seguisb, tahoma – kFontFaces)
     bool focusOnGameChat = false;  // focus input when in-game chat box gains focus
     // Key presses vs. letters sent (the word help's benefit): today and in total.

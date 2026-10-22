@@ -6,7 +6,7 @@ Measures all gates required for a release:
   [Gate 1] Version & Documentation Consistency (CMakeLists.txt, CHANGELOG.md, README.md)
   [Gate 2] Nexus Addon Definition & Autoupdate Verification (UP_GitHub, UpdateLink)
   [Gate 3] Core Unit Test Suite (core_tests.exe: 0 failures)
-  [Gate 4] Nexus In-Process Lifecycle & Input Selftest (nexus_kb_selftest.exe: PASS)
+  [Gate 4] Nexus lifecycle plus local translator process selftests: both must PASS
   [Gate 5] Typing Assistance Determinism (typing_bench.exe: 0 surprises)
   [Gate 6] Localization Integrity (tools/i18n_check.py: 0 missing, 0 unused)
   [Gate 7] Binary Integrity (Release DLL exists, valid PE64, non-empty)
@@ -14,9 +14,8 @@ Measures all gates required for a release:
 
 Exits with code 0 only if ALL gates pass.
 
---changed [base]: only the gates the changed files can touch (git diff against base, default HEAD = the work not yet
-committed, plus new files). Version, Nexus definition, localization and binary always run (they are cheap); core
-tests, selftest, typing bench and smoke test only when their parts changed. Its verdict is never a release verdict.
+  --changed [base]: only checks affected by changed files and changed CMake targets (default HEAD = uncommitted work,
+including new files). --plan prints that selection without running checks. Its verdict is never a release verdict.
 """
 
 import os
@@ -62,22 +61,68 @@ TYPING_PARTS = ("spell_service", "text_prediction", "spellcheck", "word_model", 
                 "kb_input", "keyboard_layout", "typing_bench")
 SMOKE_PARTS = ("kb_chatsource", "chat_events", "chat_source", "kb_chat.", "kb_window.", "kb_cost", "kb_worker.",
                "nexus_kb_smoketest")
+CODE_SUFFIXES = (".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx", ".inl")
 
 
-def gates_for(files: set) -> set:
-    """Which of the expensive gates the changed files can touch."""
+def changed_cmake_lines(base: str) -> str:
+    paths = ["CMakeLists.txt", "addons/nexus-keyboard/CMakeLists.txt"]
+    proc = subprocess.run(["git", "diff", "--unified=0", base, "--", *paths], cwd=ROOT,
+                          capture_output=True, text=True)
+    return "\n".join(line[1:] for line in proc.stdout.splitlines()
+                     if line.startswith(("+", "-")) and not line.startswith(("+++", "---")))
+
+
+def gates_for(files: set, cmake_changes: str = "") -> set:
+    """Select checks by changed behavior/source and explicit CMake target references."""
     need = set()
-    for f in files:
-        if f.startswith("src/core/") or f == "tests/core_tests.cpp":
-            need |= {"core", "selftest"}  # the add-on is built on core
-        if f.startswith(("addons/", "src/app/", "src/win/", "src/kbd/")) or f.endswith("nexus_kb_selftest.cpp"):
-            need.add("selftest")
+    normalized = {f.replace("\\", "/") for f in files}
+    for f in normalized:
+        name = Path(f).name
+        if f in ("CHANGELOG.md", "README.md"):
+            need.add("version")
+        if f == "CMakeLists.txt" and re.search(r"project\s*\(\s*GW2KeyboardNexus\s+VERSION", cmake_changes,
+                                                re.IGNORECASE):
+            need.add("version")
+        if f == "addons/nexus-keyboard/src/kb_main.cpp":
+            need.add("addon")
+        if (f.startswith("src/core/") and f.endswith(CODE_SUFFIXES)) or f == "tests/core_tests.cpp":
+            need.add("core")
+        is_code = f.endswith(CODE_SUFFIXES)
+        if ((f.startswith("addons/nexus-keyboard/") and is_code and name != "translate_helper_main.cpp") or
+                (f.startswith(("src/app/", "src/kbd/")) and is_code) or
+                (f.startswith("src/win/") and is_code and "local_mt_" not in name) or
+                f.endswith("nexus_kb_selftest.cpp")):
+            need.add("nexus_selftest")
+        if ("local_mt_" in name or name in ("kb_local_mt.cpp", "translate_helper_main.cpp",
+                                             "local_mt_fake_helper.cpp", "local_mt_translator_selftest.cpp")):
+            need.add("local_mt_selftest")
         if any(k in f for k in TYPING_PARTS):
             need.add("typing")
         if any(k in f for k in SMOKE_PARTS):
             need.add("smoke")
-        if f in ("CMakeLists.txt",) or f.startswith("third_party/") or f.endswith("CMakeLists.txt"):
-            need |= {"core", "selftest", "typing", "smoke"}  # the build itself changed
+        if f.startswith("src/core/i18n_") or f.startswith("addons/nexus-keyboard/src/kb_options") or \
+                f.startswith("addons/nexus-keyboard/src/kb_window") or \
+                (f.startswith("src/app/") and f.endswith(CODE_SUFFIXES)) or f == "tools/i18n_check.py":
+            need.add("i18n")
+        if (f.startswith(("src/core/", "src/app/", "src/win/", "src/kbd/")) and is_code) or \
+                (f.startswith("addons/nexus-keyboard/") and is_code and name != "translate_helper_main.cpp"):
+            need.add("binary")
+        if f.startswith("third_party/") and not f.startswith("third_party/licenses/") and f.endswith(CODE_SUFFIXES):
+            need.add("binary")
+
+    cmake = cmake_changes.lower()
+    if re.search(r"gct_core|core_tests|src/core/", cmake):
+        need.add("core")
+    if re.search(r"gw2keyboard_nexus|nexus_kb_selftest|src/kb_(main|state|window|options|worker|input|theme|chat|local_mt)", cmake):
+        need.update(("nexus_selftest", "binary"))
+    if re.search(r"local_mt_|gw2kb_translate|translate_helper_main|kb_local_mt", cmake):
+        need.add("local_mt_selftest")
+    if re.search(r"typing_bench|text_prediction|spell_service|spellcheck|word_model", cmake):
+        need.add("typing")
+    if re.search(r"nexus_kb_smoketest|kb_chatsource|chat_events|chat_source|kb_window|kb_worker", cmake):
+        need.add("smoke")
+    if re.search(r"gct_core|src/core/|src/win/|gw2keyboard_nexus", cmake):
+        need.add("binary")
     return need
 
 
@@ -130,24 +175,37 @@ def main():
     print("      GW2Chatlator — Release Quality Verification Protocol        ")
     print("==================================================================")
     
-    only = None  # None: every gate (a release)
+    only = None  # None: every check (a release)
+    plan = "--plan" in sys.argv
     if "--changed" in sys.argv:
         at = sys.argv.index("--changed")
         base = sys.argv[at + 1] if at + 1 < len(sys.argv) and not sys.argv[at + 1].startswith("-") else "HEAD"
         files = changed_files(base)
-        only = gates_for(files)
-        print(f"[*] Changed since {base}: {len(files)} file(s) -> expensive gates: {', '.join(sorted(only)) or 'none'}")
+        only = gates_for(files, changed_cmake_lines(base))
+        print(f"[*] Changed since {base}: {len(files)} file(s) -> selected checks: {', '.join(sorted(only)) or 'none'}")
+    elif plan:
+        print("[!] --plan requires --changed [base].")
+        sys.exit(2)
     def wanted(gate: str) -> bool:
         if only is None or gate in only:
             return True
-        print(f"[-] Skipped: {gate} (nothing it covers changed)")
+        print(f"[-] Skipped: {gate} (no related changed files or CMake target)")
         return False
 
-    ver_ok, version = check_version_consistency()
-    if not ver_ok:
-        sys.exit(1)
+    if plan:
+        print("[*] Plan only: no checks or tests were run.")
+        sys.exit(0)
 
-    if not check_addon_def():
+    if wanted("version"):
+        ver_ok, version = check_version_consistency()
+        if not ver_ok:
+            sys.exit(1)
+    else:
+        match = re.search(r"project\s*\(\s*GW2KeyboardNexus\s+VERSION\s+([0-9\.]+)",
+                          (ROOT / "CMakeLists.txt").read_text(encoding="utf-8"))
+        version = match.group(1) if match else "unknown"
+
+    if wanted("addon") and not check_addon_def():
         sys.exit(1)
 
     # Gate 3: Core tests
@@ -162,17 +220,30 @@ def main():
 
     # Gate 4: Nexus lifecycle & selftest
     selftest = ROOT / "build" / "addons" / "nexus-keyboard" / "Release" / "nexus_kb_selftest.exe"
+    local_mt_selftest = ROOT / "build" / "Release" / "local_mt_translator_selftest.exe"
+    local_mt_fake = ROOT / "build" / "Release" / "local_mt_fake_helper.exe"
     dll = ROOT / "build" / "addons" / "nexus-keyboard" / "Release" / "gw2keyboard_nexus.dll"
-    if not dll.exists():
+    need_nexus_selftest = wanted("nexus_selftest")
+    need_local_mt_selftest = wanted("local_mt_selftest")
+    need_binary = wanted("binary")
+    need_smoke = wanted("smoke")
+    if (need_nexus_selftest or need_binary or need_smoke) and not dll.exists():
         print(f"    [FAIL] Binary not found: {dll}")
         sys.exit(1)
-    if not wanted("selftest"):
+    if not need_nexus_selftest:
         pass
     elif not selftest.exists():
         print(f"    [FAIL] Binary not found: {selftest}")
         sys.exit(1)
     elif not run_step("Nexus In-Process Selftest", [str(selftest), str(dll)], expect_substr="PASS"):
         sys.exit(1)
+    if need_local_mt_selftest:
+        if not local_mt_selftest.exists() or not local_mt_fake.exists():
+            print("    [FAIL] Local translator self-test binaries are missing.")
+            sys.exit(1)
+        elif not run_step("Local Translator Process Selftest",
+                          [str(local_mt_selftest), str(local_mt_fake)], expect_substr="PASS"):
+            sys.exit(1)
 
     # Gate 5: Typing benchmark determinism
     typing_bench = ROOT / "build" / "Release" / "typing_bench.exe"
@@ -186,22 +257,23 @@ def main():
 
     # Gate 6: Localization check
     i18n_script = ROOT / "tools" / "i18n_check.py"
-    if not run_step("Localization Completeness", [sys.executable, str(i18n_script)], expect_substr="0 missing, 0 unused"):
+    if wanted("i18n") and not run_step("Localization Completeness", [sys.executable, str(i18n_script)], expect_substr="0 missing, 0 unused"):
         sys.exit(1)
 
     # Gate 7: Binary inspection
-    print("[*] Gate 7: Binary Verification ...", flush=True)
-    size = dll.stat().st_size
-    print(f"    DLL Path: {dll}")
-    print(f"    DLL Size: {size:,} bytes")
-    if size < 500000:
-        print("    [FAIL] DLL size unexpectedly small (< 500 KB)!")
-        sys.exit(1)
-    print("    [PASS] DLL binary exists and passes size sanity checks.")
+    if need_binary:
+        print("[*] Gate 7: Binary Verification ...", flush=True)
+        size = dll.stat().st_size
+        print(f"    DLL Path: {dll}")
+        print(f"    DLL Size: {size:,} bytes")
+        if size < 500000:
+            print("    [FAIL] DLL size unexpectedly small (< 500 KB)!")
+            sys.exit(1)
+        print("    [PASS] DLL binary exists and passes size sanity checks.")
 
     # Gate 8: Real-Life Stress & Smoke Benchmark (500 lines chat flood, 1000 frames profiling, SLA p99 < 2.5ms)
     smoketest = ROOT / "build" / "addons" / "nexus-keyboard" / "Release" / "nexus_kb_smoketest.exe"
-    if not wanted("smoke"):
+    if not need_smoke:
         pass
     elif not smoketest.exists():
         print(f"    [FAIL] Binary not found: {smoketest}")

@@ -5,33 +5,40 @@ tools/pack_release.py — Packages GW2Chatlator release assets.
 Outputs to build/dist:
   - gw2keyboard_nexus.dll
   - GW2Keyboard-Nexus.zip
+  - GW2Keyboard-LocalMT.zip (when GCT_LOCAL_MT was built)
 """
 
 import os
+import argparse
 import shutil
 import sys
 import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-BUILD_REL = ROOT / "build" / "addons" / "nexus-keyboard" / "Release"
-DIST_DIR = ROOT / "build" / "dist"
 
 def main():
-    dll = BUILD_REL / "gw2keyboard_nexus.dll"
-    voice_exe = BUILD_REL / "GW2Keyboard" / "gw2kb_voice.exe"
-    voice_dir = BUILD_REL / "GW2Keyboard" / "voice"
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--build-dir", type=Path, default=ROOT / "build",
+                        help="CMake build directory (default: build)")
+    args = parser.parse_args()
+    build_rel = args.build_dir / "addons" / "nexus-keyboard" / "Release"
+    dist_dir = args.build_dir / "dist"
+    dll = build_rel / "gw2keyboard_nexus.dll"
+    voice_exe = build_rel / "GW2Keyboard" / "gw2kb_voice.exe"
+    voice_dir = build_rel / "GW2Keyboard" / "voice"
+    local_mt_exe = build_rel / "GW2Keyboard" / "gw2kb_translate.exe"
 
     if not dll.exists():
         print(f"[FAIL] Release DLL not found: {dll}")
         sys.exit(1)
 
-    DIST_DIR.mkdir(parents=True, exist_ok=True)
-    out_dll = DIST_DIR / "gw2keyboard_nexus.dll"
+    dist_dir.mkdir(parents=True, exist_ok=True)
+    out_dll = dist_dir / "gw2keyboard_nexus.dll"
     shutil.copy2(dll, out_dll)
     print(f"[*] Copied standalone DLL to {out_dll} ({out_dll.stat().st_size:,} bytes)")
 
-    out_zip = DIST_DIR / "GW2Keyboard-Nexus.zip"
+    out_zip = dist_dir / "GW2Keyboard-Nexus.zip"
     with zipfile.ZipFile(out_zip, "w", zipfile.ZIP_DEFLATED) as z:
         # 1. Root DLL
         z.write(dll, "gw2keyboard_nexus.dll")
@@ -59,6 +66,29 @@ def main():
         z.writestr("GW2Keyboard/README.txt", readme_text)
 
     print(f"[*] Packaged {out_zip} ({out_zip.stat().st_size:,} bytes)")
+
+    # CTranslate2 is a separate, optional executable: the add-on downloads it only when selected by the user.
+    if local_mt_exe.exists():
+        out_local_mt = dist_dir / "GW2Keyboard-LocalMT.zip"
+        licenses = ROOT / "third_party" / "licenses"
+        local_notice = ROOT / "THIRD_PARTY_NOTICES_LOCAL_MT.txt"
+        required = {
+            "LICENSE-CTranslate2-MIT.txt": licenses / "CTranslate2-MIT.txt",
+            "LICENSE-oneDNN-Apache-2.0.txt": licenses / "oneDNN-Apache-2.0.txt",
+            "LICENSE-Apache-2.0.txt": licenses / "Apache-2.0.txt",
+        }
+        missing = [str(path) for path in [local_notice, *required.values()] if not path.is_file()]
+        if missing:
+            print("[FAIL] Local MT license files missing: " + ", ".join(missing))
+            sys.exit(1)
+        with zipfile.ZipFile(out_local_mt, "w", zipfile.ZIP_DEFLATED) as z:
+            z.write(local_mt_exe, "GW2Keyboard/gw2kb_translate.exe")
+            z.write(local_notice, "GW2Keyboard/THIRD_PARTY_NOTICES_LOCAL_MT.txt")
+            for archive_name, path in required.items():
+                z.write(path, f"GW2Keyboard/{archive_name}")
+        print(f"[*] Packaged {out_local_mt} ({out_local_mt.stat().st_size:,} bytes)")
+    else:
+        print("[-] Local MT helper absent; no GW2Keyboard-LocalMT.zip created.")
     print("[PASS] Packaging completed successfully.")
 
 if __name__ == "__main__":
