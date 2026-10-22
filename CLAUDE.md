@@ -139,6 +139,11 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 - **Writing:** the multi-line input (soft wrap = '\n' in place of a space, `Flat()` turns it back) → `ComputeTyping`
   (word bar, grey completion, what Space writes) → debounce → `TranslateInput` (`MyWords::Expand` first, protected
   segments, back-translation) → Enter → `StartSend` → `SplitForChat` (199) → `SendNow` → `SendToGw2Chat`.
+  Nothing goes out half done (user, 2026-10-22): while your own dictation is still being recognized (`g_userRecording`
+  and `g_recording`) Enter waits with a note; a send that waits for its translation (`g_sendPending`) is not sent when
+  the translation fails – the text comes back into the input and the status names the error (never the original in
+  the wrong language). "auto" (hands-free) goes the same way: whisper's final result first (also its English), then
+  `StartSend`, then the translator.
 - **Tabs** (`WhisperTab`): whisper tabs (session only, ≤5, a click on a name) and tabs of your own (`custom`: right-click
   on the header → "New tab", a copy of the chat; right-click on such a tab = its settings: name, channels shown,
   channel written in; ≤6, kept in `[NexusTabs]` – settings only, never chat). ImGui id per tab = `uid`.
@@ -215,7 +220,10 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 ## Invariants (do not break)
 
 1. Never send anything to the game without the user's own key press. No auto-replies, no timers that send. The only
-   exception the user asked for: `[Voice] AutoSend` (off by default) – the push-to-talk release counts as the Enter.
+   exception the user asked for: `[Voice] AutoSend` (off by default, the footer's "auto", shown only while voice
+   activation is on) – hands-free only (user, 2026-10-22): with voice activation the pause that ends the sentence
+   (`[Voice] PauseMs`) counts as the Enter. Push-to-talk and the right-click never send by themselves
+   (`g_userRecording`): the text waits in the input to be changed (replace or add), then Enter.
    "Only copy" mode must stay a mode in which not a single synthetic key reaches the game. There is no other way to
    send: no Nexus event, no DataLink, no export another add-on could call; the `Gw2KbTest…` exports work only outside
    GW2 (`TestHost`). One Enter sends at most `kMaxPartsPerEnter` (3) chat lines. No synthetic mouse input at all

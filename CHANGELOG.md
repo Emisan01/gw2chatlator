@@ -18,6 +18,12 @@ diagnosis show it.
   your message is always translated (into the first language at "Send") – never sent as written.
 - **Arabic is gone:** ImGui draws Arabic letters unjoined and left to right, so the Arabic window language and Arabic as
   a language to write in were taken out. Arabic lines of other players are still recognised and translated.
+- **Nothing is sent half done:** if the translation fails (quota used up, no connection), the message is not sent in
+  the wrong language – it comes back into the input and the status line says why. Enter waits while what you said
+  is still being recognized.
+- **"auto" is hands-free only:** with voice activation, the pause after you speak ends the sentence and sends it.
+  Push-to-talk and the right-click never send by themselves any more – what you said waits in the input, where you
+  can still change it. The "auto" switch shows in the footer only while voice activation is on.
 - **Seven new window languages:** French, Spanish, Italian, Polish, Portuguese (Brazil), Turkish and Russian, besides
   English and German. The options window is drawn with the same font as the chat, so every letter of them shows.
 - **A font to choose:** Options → Window offers Segoe UI, Segoe UI Semibold and Tahoma beside the text size.

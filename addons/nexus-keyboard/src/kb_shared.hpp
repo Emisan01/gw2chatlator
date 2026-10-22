@@ -370,6 +370,7 @@ extern std::wstring g_lastDictated;
 extern std::wstring g_dictLang;
 extern VoiceFixBook g_voiceFixes;
 extern bool g_autoSendPending;
+extern bool g_userRecording;  // g_mu: your key or click started the recording (push-to-talk, right-click) - never sent by itself
 extern std::string g_voicePending;
 extern bool g_listening;
 extern std::wstring g_listenPausedFor;

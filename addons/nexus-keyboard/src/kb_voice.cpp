@@ -101,7 +101,10 @@ void VoiceHelper::OnLine(const std::string& line) {
         g_edit.lenBytes = 0;
         g_edit.insert = (len && g_input[len - 1] != ' ' && g_input[len - 1] != '\n' ? " " : "") + U8(fixed);
         g_focusInput = true;
-        g_autoSendPending = g_cfg.voiceAutoSend;  // your key release was the press; off by default
+        // Hands-free only (user, 2026-10-22): a recording of voice activation, ended by the pause after speaking, goes
+        // out by itself while "auto" is on; push-to-talk and the right-click wait for your Enter.
+        g_autoSendPending = g_cfg.voiceAutoSend && g_cfg.voiceActivation && !g_userRecording;
+        g_userRecording = false;
         SetStatus(L"");
     } else if (t == "listening") {
         g_listening = true;
@@ -113,6 +116,7 @@ void VoiceHelper::OnLine(const std::string& line) {
         g_listenPausedFor = W(v.GetString("app"));
     } else if (t == "error") {
         g_recording = false;
+        g_userRecording = false;
         g_voiceLive.clear();
         SetStatus(W(v.GetString("msg")), 10000);
     }
@@ -195,6 +199,10 @@ void TalkDown() {
         ready = g_voiceReady;
     }
     if (rec) return;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_userRecording = true;
+    }
     VoiceCommand(toggle || !ready ? "begin-auto" : "begin");
 }
 void TalkUp() { g_voice.Send("end"); }
@@ -202,6 +210,7 @@ void TalkLocked() {  // right-click on the microphone: on until a pause is heard
     {
         std::lock_guard<std::mutex> lock(g_mu);
         if (g_recording) return;
+        g_userRecording = true;
     }
     VoiceCommand("begin-auto");
 }
@@ -362,7 +371,7 @@ void VoiceIdleUnload() {
     g_voice.Stop();  // the model's memory goes back; the next press starts the helper again
     std::lock_guard<std::mutex> lock(g_mu);
     g_voicePending.clear();
-    g_recording = g_listening = false;
+    g_recording = g_listening = g_userRecording = false;
 }
 
 // Options → Voice: the voice module goes (the helper ends first; voice input is switched off) …
@@ -410,7 +419,7 @@ void UnloadVoiceModule() {
     g_voice.Stop();  // the helper ends: the model and its memory are freed
     std::lock_guard<std::mutex> lock(g_mu);
     g_voicePending.clear();
-    g_recording = g_listening = false;
+    g_recording = g_listening = g_userRecording = false;
     g_listenUserOff = true;  // voice activation does not start it again by itself
 }
 

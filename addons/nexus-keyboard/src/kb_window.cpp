@@ -355,17 +355,19 @@ void RenderFooter() {  // g_mu held
         }
         ImGui::EndPopup();
     }
-    if (g_cfg.voiceEnabled) {  // send right after speaking (off by default)
+    // "auto" = hands-free only (user, 2026-10-22): voice activation, the pause ends the sentence and sends it (off by
+    // default). Push-to-talk and the right-click never send by themselves: the text waits in the input to be changed.
+    if (g_cfg.voiceEnabled && g_cfg.voiceActivation) {
         ImGui::SameLine();
         if (ImGui::Checkbox(UI(Tr(L"auto") + L"##autosend").c_str(), &g_cfg.voiceAutoSend))
             g_cfg.SaveBool(L"Voice", L"AutoSend", g_cfg.voiceAutoSend);
         if (ImGui::IsItemHovered()) {
             ImGui::BeginTooltip();
             ImGui::PushTextWrapPos(ImGui::GetFontSize() * 26);
-            ImGui::TextUnformatted(UI(Tr(L"auto: send right after speaking")).c_str());
-            ImGui::TextDisabled("%s", UI(Tr(L"When you stop talking (key released, or the pause after speaking), the recognized "
+            ImGui::TextUnformatted(UI(Tr(L"auto: hands-free sending")).c_str());
+            ImGui::TextDisabled("%s", UI(Tr(L"With voice activation the pause after you speak ends the sentence: the recognized "
                                             L"text goes into the GW2 chat at once – translated if a send language is "
-                                            L"chosen. Off: it waits in the box until you press Enter.")).c_str());
+                                            L"chosen. Push-to-talk and the right-click put it into the input, where you can still change it.")).c_str());
             ImGui::PopTextWrapPos();
             ImGui::EndTooltip();
         }

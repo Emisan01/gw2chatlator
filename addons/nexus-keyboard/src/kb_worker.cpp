@@ -180,6 +180,14 @@ void TranslateInput(uint64_t gen, std::wstring text) {
         if (!error.empty()) SetStatus(error);
         if (g_sendPending && gen == g_inputGen) {
             g_sendPending = false;
+            if (!error.empty()) {  // the translation failed: nothing goes out in the wrong language – the text comes back
+                if (g_input[0] == 0) {
+                    const std::string again = U8(text);
+                    strncpy_s(g_input, again.c_str(), _TRUNCATE);
+                }
+                SetStatus(TrF(L"Not sent: the translation failed – {1}", {error}), 10000);
+                return;
+            }
             const std::wstring prefix = split.prefix.empty() ? ComposePrefix() : split.prefix;
             parts = SplitForChat(g_preview, prefix, static_cast<size_t>(g_cfg.maxLength));
             sendNow = true;
@@ -315,6 +323,10 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
 void StartSend() {  // Enter (g_mu held)
     const std::wstring text = SanitizeChatText(g_wFlatInput);
     if (text.empty() || g_sending) return;
+    if (g_userRecording && g_recording) {  // what you said is still being recognized: it comes into the input first
+        SetStatus(Tr(L"Not sent yet: what you said is still being recognized"), 4000);
+        return;
+    }
     const SendGuard::Verdict v = g_guard.Check(text, false, false, GetTickCount64());
     if (!v.allow) {
         SetStatus(v.reason == SendGuard::Reason::Repeat ? Tr(L"Not sent: the same line too often in a short time.")

@@ -892,7 +892,7 @@ void RenderOptionsContent() {
             int ti = std::clamp(edit.voiceThreads, 0, 8);
             if (combo(UI(Tr(L"CPU threads") + L"##thr").c_str(), threads, &ti)) edit.voiceThreads = ti;
             Hint(UI(Tr(L"Automatic: the least busy cores – the ones GW2 does not use.")));
-            ImGui::Checkbox(UI(Tr(L"Send right after speaking (releasing the key counts as your Enter)")).c_str(), &edit.voiceAutoSend);
+            ImGui::Checkbox(UI(Tr(L"Hands-free: with voice activation, the pause after speaking sends it (push-to-talk waits for your Enter)")).c_str(), &edit.voiceAutoSend);
             Hint(UI(Tr(L"Runs on this PC – no sound leaves it, nothing is recorded to disk.")));
             ImGui::EndTabItem();
         }
