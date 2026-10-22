@@ -520,6 +520,9 @@ extern std::thread g_voiceModuleThread;
 extern std::atomic<bool> g_localMtBusy;
 extern std::atomic<int> g_localMtPct;
 extern std::thread g_localMtThread;
+extern std::wstring g_localMtBusyText;
+extern std::wstring g_localMtStatus;
+extern ULONGLONG g_localMtStatusUntil;
 extern int g_optionsTab;
 std::wstring KeyboardDir();
 

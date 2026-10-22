@@ -75,10 +75,14 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   source prefix from the installed `pair.json`. Hallucinated music-note artifacts absent from the input are stripped;
   output must still contain a word, while other unexpected decorative symbols remain a validation error. Models load
   only on first use.
-- Local helper and each individual model pair are offered in Options → Translator and download only on the user's
+- Local helper and model pairs are offered in Options → Translator and download only on the user's
   click. `DownloadReleaseAsset` checks GitHub's SHA-256 digest. The helper release asset is
   `GW2Keyboard-LocalMT.zip`; model assets are `GW2Keyboard-OPUS-MT-<pair>.zip` and unpack below
-  `<addons>\GW2Keyboard\translate\<pair>`. Model packaging uses `tools/package_local_mt_models.py` against
+  `<addons>\GW2Keyboard\translate\<pair>`. Downloads are protected against duplicate requests via atomic
+  `compare_exchange` on `g_localMtBusy`, showing active queue progress, `ImGui::ProgressBar`, and a 5-second
+  result feedback (`[OK]` / `[--]`). In addition to single pairs folded in an `ImGui::TreeNode`, logical bundles
+  ("My language", "Europe package", "West & Central Europe", "Eastern Europe") allow one-click sequential batch
+  installation skipping already installed pairs. Model packaging uses `tools/package_local_mt_models.py` against
   converted folders under ignored `local/translation-spike/models`; `--convert` fetches the exact Helsinki-NLP model
   named in the core catalog and converts it to int8. The package builder emits only converted pairs that exist.
   CTranslate2, oneDNN and SentencePiece notices travel with the helper; each OPUS-MT model carries its own model-card
