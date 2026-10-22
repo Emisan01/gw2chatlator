@@ -3,6 +3,10 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.5.5 — 2026-10-22 (GW2Chatlator for Nexus)
+
+- **Stable again:** no stray "Debug" window, no crash in the send-language menu (the 2.5.4 test builds had both); every module and language package is in the release again.
+
 ## 2.5.4 — 2026-10-22 (GW2Chatlator for Nexus)
 
 - **Consistent primary output language:** Selected send language in the main window immediately becomes primary, persists to configuration, and is preserved when clicking Save in Options (no unwanted fallback to earlier languages).
