@@ -31,8 +31,9 @@ Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustot
   text from **Events: Chat** by Vonsh, an add-on in the Nexus library.
 - **A chat window built like GW2's own:** tabs at the top – the chat and up to five whisper tabs (click a name, or
   right-click the header to open one); fold it up to its header (V) and open it again (A); it snaps to the screen edges
-  and appears only on a map, never on the character screen. Waypoints and items show their name, map and details on
-  mouse-over via Decoder Ring. Web links open only after a question.
+  and appears only on a map, never on the character screen. Chat codes (waypoints, items …) are found by
+  GW2Chatlator itself; names and details on mouse-over still need the optional, outdated Decoder Ring add-on
+  (Options → Technical) until our own lookup replaces it. Web links open only after a question.
 - **Write in your language,** the chat gets the translation: you see it (and what it means in your language again)
   before Enter sends it. Longer than one chat line: split into several. Translators: MyMemory (free), Google,
   Microsoft, DeepL, your own LibreTranslate server.
@@ -60,8 +61,7 @@ Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustot
 2. Put `gw2keyboard_nexus.dll` into `Guild Wars 2\addons`, next to the other add-ons (or unpack the ZIP there: the DLL
    and the folder `GW2Keyboard` beside it).
 3. In the game: Nexus → Addons → **GW2Chatlator** → Load. Nothing is downloaded by itself: the empty chat shows the
-   modules – **Events: Chat** (reads the chat; typing help works without it) with an "Install" button, **Decoder Ring**
-   (optional: names, maps and details of chat codes), and the voice
+   modules – **Events: Chat** (reads the chat; typing help works without it) with an "Install" button, and the voice
    module only once you switch voice input on (Options → Voice); its model comes after that, each on your
    click.
 4. To remove it again: everything it brought has a remove button – Events: Chat in Options → Technical, the voice

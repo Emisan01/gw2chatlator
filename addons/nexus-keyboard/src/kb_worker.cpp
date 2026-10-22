@@ -64,6 +64,7 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
         tr = g_translator;
         what.target = TypingLang();
         understood = g_cfg.understoodLangs;
+        what.skipTarget = g_cfg.skipTypingLang;
     }
     what.understood = &understood;
     if (!tr || !ShouldTranslate(what)) return;

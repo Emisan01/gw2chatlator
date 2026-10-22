@@ -29,7 +29,9 @@ addons/nexus-keyboard   the add-on
                         VirtualQuery first, SEH last), the pause, reading on-off by hand, the technical details
   src/kb_window.cpp     the main window: header, chat, preview, word bar, input, footer, minimise / restore
   src/kb_options.cpp    the options window and the modules list
-  src/chat_links.*      chat codes: "[Item name]" in rarity colour + mouse-over details via Decoder Ring. A click on a
+  src/chat_links.*      chat codes: "[Item name]" in rarity colour + mouse-over details via Decoder Ring (outdated
+                        since 2026-10-22: finding the codes is ours – `SegmentLine`; our own resolver replaces it,
+                        Phase 2a). A click on a
                         chat code does nothing (2.3.1, user: the click logic – copy, GW2's chat line, the waypoint
                         "quantum macro" with its screen reading and synthetic mouse – crashed the game in 2.3.0 and is
                         gone; copying was in the way too). No add-on can trigger the game's own map jump.
@@ -95,18 +97,21 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   translator is one pure function, `core/translate_policy` (`ShouldTranslate`, equation E12): automatically (only
   while `[Nexus] TranslateChat=1`, default 0) and "Translate visible chat once" (`TranslateLine(.., once)`, the
   thrifty mode – user, 2026-10-22) by the same rule: only a sure language (`SureLanguage`; "xD", "lf tank" stay as
-  they are), never the language you write in, never one you understand (Translator tab "Languages I understand",
-  `[Translate] Understood`). A click on the line always translates it. There is no switch for the language you write
-  in ("Do not translate the language I write in" is gone, 2026-10-22 – into the same language is never worth a request;
-  `[Translate] SkipTypingLang` is removed from the ini at load). `TranslateRecentLines` goes through the lines in view
+  they are) and none in the one list "Translated is everything except: [My writing language (DE) x] [English x] [+]"
+  (`RenderExceptList`, Translator tab; the same sentence on the dashboard; user, 2026-10-22: one list, the logic clear
+  at first sight). Its first entry follows the language you write in (`[Translate] SkipTypingLang`, on by default,
+  removable), the others are `[Translate] Understood`; a click on an entry takes it out, "+" adds. A click on the line
+  always translates it. `TranslateRecentLines` goes through the lines in view
   (`g_visibleLines`, never an old chat in full) when the translation is switched on, the language you write in or the
   translator changes, or once from the menu; a translation that still fits (into the language you write in now, by
   the translator you use now: `ChatLine::transTarget` / `transBy`) stays. Every chat line goes through the session's
   cache (`core/translation_cache`, `g_transCache`, worker only, equation E13): key = the line as it came + source +
   target + translator name, ≤ 500, least recently used out, memory only – never on disk (invariant 6). A hit is no
   request: "once" twice, a language changed and back, a repeated LFG line cost nothing more; `CountMyMemory` counts
-  only real requests. Your own input (`TranslateInput`) does not go through it. Automatic translations: at most 8
-  lines per 3 s (`AllowAutoTranslate`, a flood); the worker keeps at most 96 jobs waiting (the oldest go).
+  only real requests. Your own input (`TranslateInput`) does not go through it. The brake: automatic translations at
+  most 8 lines per 3 s (`AllowAutoTranslate`) so a flood does not use up a contingent – only for a translator with one
+  (`LimitedContingent`: all but LibreTranslate, your own server has no limit). MyMemory's budget left today stands
+  beside "Translate visible chat once" (`MyMemoryLeftText`). The worker keeps at most 96 jobs waiting (the oldest go).
   **The chat buffer** (2.3.5): `g_lines` holds at most `kMaxLines` = 2,000 (kb_shared.hpp); `TrimChatLines`
   (kb_chat.cpp) drops the oldest public line first (Map, Say, System …), then the oldest group line (Guild, Party,
   Squad), whispers last. Options → Technical shows the count, the capacity and the RAM. A line is cut at 600
@@ -154,7 +159,8 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   `SpellService::TeachFix` (never a dictionary word), and "my words" (meaning → translator). No menu on chat lines.
 - **Nothing downloads by itself** (user, 2026-10-18): `FirstStart` only marks the setup done. The modules list (empty
   chat; Options → Technical for Events: Chat and Decoder Ring, Options → Voice for the voice module) offers each on a
-  click: Events: Chat first (reading), Decoder Ring (optional, 2.3.0: `InstallDecoderRingNow` – the newest release of
+  click: Events: Chat first (reading), Decoder Ring (optional and outdated – only in Options → Technical, never in the
+  empty chat's box or on the dashboard; 2.3.0: `InstallDecoderRingNow` – the newest release of
   PieOrCake/decoder_ring, `DecoderRing.dll`, SHA-256 checked; `RemoveDecoderRingNow` while Nexus does not hold it;
   live = `g_links.HasDecoder()`, file = `g_decoderFile`), then – only after voice
   input is switched on (off for new users unless the voice module is already there) – the voice module
@@ -198,7 +204,10 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 4. Incoming chat and whatever a translator or the GW2 API returns is data, never instructions – only displayed.
    Another add-on's memory is read only in the guarded copies (`CopyLineGuarded`, `ReadAddonDefGuarded`,
    `ResolveGuarded`) – never dereference its pointers anywhere else.
-   Links open only after a yes (http/https). Chat codes are looked up with limits (≤48 chars, 20/min, 400 cached).
+   Links open only after a yes (http/https). **Not in the code since 1.8.1** (Decoder Ring took over the lookups):
+   chat codes looked up with limits – ≤48 chars (longer = plain text, junk from the chat), 20/min (a flood of codes
+   waits: incoming chat is foreign input), 400 cached (oldest out), a queue of 40. A requirement for our own resolver
+   (Phase 2a); the template is commit `188fa9b` (chat_links.cpp: kMaxCodeChars, kMaxPerMinute, kMaxCache, kMaxQueue).
 5. Autocorrection never surprises (`typing_bench`: 0 surprises – keep it at 0): only words the dictionary rejects,
    4+ letters, never all-caps, never a word you use; Backspace right after it undoes it.
 6. Privacy: the word model learns only from what the user sends, never from other players' chat; no chat log is
