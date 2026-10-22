@@ -80,6 +80,7 @@ bool g_helpRequested = false;
 std::deque<std::wstring> g_history;
 int g_historyPos = -1;
 Channel g_channel = Channel::Unknown;  // Unknown = the channel active in GW2
+Channel g_lastObservedChannel = Channel::Unknown;  // dynamically updated from chat activity
 std::wstring g_whisperTo;
 int g_sendIdx = 0;                     // index into g_cfg.writeLangs; == size: send as written
 bool g_sending = false;

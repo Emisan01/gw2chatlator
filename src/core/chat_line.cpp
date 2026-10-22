@@ -22,6 +22,12 @@ Channel ChannelFromBridge(const std::string& c) {
     if (c == "say") return Channel::Say;
     if (c == "whisper") return Channel::Whisper;
     if (c == "guild") return Channel::Guild;
+    if (c == "guild1" || c == "g1") return Channel::Guild1;
+    if (c == "guild2" || c == "g2") return Channel::Guild2;
+    if (c == "guild3" || c == "g3") return Channel::Guild3;
+    if (c == "guild4" || c == "g4") return Channel::Guild4;
+    if (c == "guild5" || c == "g5") return Channel::Guild5;
+    if (c == "guild6" || c == "g6") return Channel::Guild6;
     if (c == "team") return Channel::Team;
     if (c == "system") return Channel::System;
     return Channel::Unknown;
@@ -36,6 +42,12 @@ std::wstring ChannelLabel(Channel c) {
         case Channel::Team: return Tr(L"Team");
         case Channel::Whisper: return Tr(L"Whisper");
         case Channel::Guild: return Tr(L"Guild");
+        case Channel::Guild1: return L"G1";
+        case Channel::Guild2: return L"G2";
+        case Channel::Guild3: return L"G3";
+        case Channel::Guild4: return L"G4";
+        case Channel::Guild5: return L"G5";
+        case Channel::Guild6: return L"G6";
         case Channel::System: return Tr(L"System");
         default: return L"";
     }
@@ -49,6 +61,12 @@ const wchar_t* ChannelCommand(Channel c) {
         case Channel::Squad: return L"/d";
         case Channel::Team: return L"/t";
         case Channel::Guild: return L"/g";
+        case Channel::Guild1: return L"/g1";
+        case Channel::Guild2: return L"/g2";
+        case Channel::Guild3: return L"/g3";
+        case Channel::Guild4: return L"/g4";
+        case Channel::Guild5: return L"/g5";
+        case Channel::Guild6: return L"/g6";
         case Channel::Whisper: return L"/w";
         default: return nullptr;
     }
@@ -171,7 +189,9 @@ Channel TagChannel(const std::wstring& tagIn) {
     };
     for (const auto& [name, ch] : tags)
         if (t == name) return ch;
-    if (t.size() == 2 && t[0] == L'g' && t[1] >= L'1' && t[1] <= L'6') return Channel::Guild;  // [G1]..[G6]
+    if (t.size() == 2 && t[0] == L'g' && t[1] >= L'1' && t[1] <= L'6') {
+        return static_cast<Channel>(static_cast<uint8_t>(Channel::Guild1) + (t[1] - L'1'));
+    }
     // Notices of the contact list ("[Kontakte] X hat sich angemeldet") and similar.
     static const wchar_t* systemTags[] = {L"kontakte", L"contacts", L"freunde", L"friends", L"contactos",
                                           L"amis", L"system", L"kampf", L"combat"};

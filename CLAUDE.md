@@ -142,9 +142,12 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   (`LimitedContingent`: all but LibreTranslate, your own server has no limit). MyMemory's budget left today stands
   beside "Translate visible chat once" (`MyMemoryLeftText`). The worker keeps at most 96 jobs waiting (the oldest go).
   **The chat buffer** (2.3.5): `g_lines` holds at most `kMaxLines` = 2,000 (kb_shared.hpp); `TrimChatLines`
-  (kb_chat.cpp) drops the oldest public line first (Map, Say, System …), then the oldest group line (Guild, Party,
+  (kb_chat.cpp) drops the oldest public line first (Map, Say, System …), then the oldest group line (Guild / G1–G6, Party,
   Squad), whispers last. Options → Technical shows the count, the capacity and the RAM. A line is cut at 600
   characters, a name at 64. Trimming the buffer protects the memory, not the translation contingent – that is the cache.
+  The channel selector and custom tabs support all native guild channels (Guild `/g`, and Guild 1–6 `/g1`..`/g6`).
+  When "Active channel" is selected, the button dynamically reflects the last observed chat channel ("Active (G1)",
+  "Active (Map)", etc.).
   The detection runs for every line (local, no translator): `g_playerLang` (session only) remembers each player's
   language; their whisper tab then sends in it (`WhisperTab::sendLang` → `g_sendOverride`, "=" = as written; the
   footer's choice in a tab changes only that tab). Nothing of other players is stored (privacy, Raidcore).

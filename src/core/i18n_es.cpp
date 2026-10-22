@@ -31,6 +31,8 @@ extern const I18nEntry kSpanishStrings[] = {
      L"Activo"},
     {L"Active channel",
      L"Canal activo"},
+    {L"Active ({1})",
+     L"Activo ({1})"},
     {L"Active features",
      L"Funciones activas"},
     {L"After sending, keep typing in GW2Chatlator",
