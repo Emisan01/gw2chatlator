@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(GW2KeyboardNexus VERSION 2.3.5 LANGUAGES CXX)
+project(GW2KeyboardNexus VERSION 2.4.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -35,7 +35,13 @@ add_library(gct_core STATIC
     src/core/mumble.cpp
     src/core/i18n.cpp
     src/core/i18n_de.cpp
-    src/core/i18n_ar.cpp
+    src/core/i18n_fr.cpp
+    src/core/i18n_es.cpp
+    src/core/i18n_it.cpp
+    src/core/i18n_pl.cpp
+    src/core/i18n_pt.cpp
+    src/core/i18n_tr.cpp
+    src/core/i18n_ru.cpp
     src/core/word_model.cpp
     src/core/languagetool_protocol.cpp
     src/core/voice.cpp

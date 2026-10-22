@@ -3,14 +3,27 @@
 #include <atomic>
 #include <cwctype>
 #include <unordered_map>
+#include <vector>
 
 namespace gct {
 
-// Defined in i18n_de.cpp / i18n_ar.cpp.
+// Defined in i18n_<code>.cpp, one table per language.
 extern const I18nEntry kGermanStrings[];
 extern const size_t kGermanCount;
-extern const I18nEntry kArabicStrings[];
-extern const size_t kArabicCount;
+extern const I18nEntry kFrenchStrings[];
+extern const size_t kFrenchCount;
+extern const I18nEntry kSpanishStrings[];
+extern const size_t kSpanishCount;
+extern const I18nEntry kItalianStrings[];
+extern const size_t kItalianCount;
+extern const I18nEntry kPolishStrings[];
+extern const size_t kPolishCount;
+extern const I18nEntry kPortugueseStrings[];
+extern const size_t kPortugueseCount;
+extern const I18nEntry kTurkishStrings[];
+extern const size_t kTurkishCount;
+extern const I18nEntry kRussianStrings[];
+extern const size_t kRussianCount;
 
 namespace {
 
@@ -19,31 +32,44 @@ std::atomic<uint8_t> g_lang{static_cast<uint8_t>(UiLang::En)};
 using Table = std::unordered_map<std::wstring, const wchar_t*>;
 
 const Table& TableFor(UiLang lang) {
-    static const Table de = [] {
-        Table t;
-        for (size_t i = 0; i < kGermanCount; ++i) t.emplace(kGermanStrings[i].en, kGermanStrings[i].text);
+    struct Source {
+        UiLang lang;
+        const I18nEntry* entries;
+        const size_t* count;
+    };
+    static const std::vector<Table> tables = [] {  // all at once, the first time (a thread-safe static)
+        const Source sources[] = {
+            {UiLang::De, kGermanStrings, &kGermanCount},
+            {UiLang::Fr, kFrenchStrings, &kFrenchCount},
+            {UiLang::Es, kSpanishStrings, &kSpanishCount},
+            {UiLang::It, kItalianStrings, &kItalianCount},
+            {UiLang::Pl, kPolishStrings, &kPolishCount},
+            {UiLang::Pt, kPortugueseStrings, &kPortugueseCount},
+            {UiLang::Tr, kTurkishStrings, &kTurkishCount},
+            {UiLang::Ru, kRussianStrings, &kRussianCount},
+        };
+        std::vector<Table> t(static_cast<size_t>(UiLang::Ru) + 1);  // English: the empty table
+        for (const Source& s : sources)
+            for (size_t i = 0; i < *s.count; ++i) t[static_cast<size_t>(s.lang)].emplace(s.entries[i].en, s.entries[i].text);
         return t;
     }();
-    static const Table ar = [] {
-        Table t;
-        for (size_t i = 0; i < kArabicCount; ++i) t.emplace(kArabicStrings[i].en, kArabicStrings[i].text);
-        return t;
-    }();
-    static const Table none;
-    switch (lang) {
-        case UiLang::De: return de;
-        case UiLang::Ar: return ar;
-        default: return none;
-    }
+    const size_t i = static_cast<size_t>(lang);
+    return i < tables.size() ? tables[i] : tables[0];
 }
 
 }  // namespace
 
 const std::vector<UiLangInfo>& UiLanguages() {
     static const std::vector<UiLangInfo> langs = {
-        {UiLang::En, L"en", L"English", false},
-        {UiLang::De, L"de", L"Deutsch", false},
-        {UiLang::Ar, L"ar", L"العربية", true},
+        {UiLang::En, L"en", L"English"},
+        {UiLang::De, L"de", L"Deutsch"},
+        {UiLang::Fr, L"fr", L"Fran\u00e7ais"},
+        {UiLang::Es, L"es", L"Espa\u00f1ol"},
+        {UiLang::It, L"it", L"Italiano"},
+        {UiLang::Pl, L"pl", L"Polski"},
+        {UiLang::Pt, L"pt", L"Portugu\u00eas (Brasil)"},
+        {UiLang::Tr, L"tr", L"T\u00fcrk\u00e7e"},
+        {UiLang::Ru, L"ru", L"\u0420\u0443\u0441\u0441\u043a\u0438\u0439"},
     };
     return langs;
 }
@@ -51,8 +77,6 @@ const std::vector<UiLangInfo>& UiLanguages() {
 void SetUiLang(UiLang lang) { g_lang.store(static_cast<uint8_t>(lang)); }
 
 UiLang GetUiLang() { return static_cast<UiLang>(g_lang.load()); }
-
-bool UiRtl() { return GetUiLang() == UiLang::Ar; }
 
 UiLang UiLangFromCode(const std::wstring& code, UiLang fallback) {
     std::wstring c;

@@ -278,7 +278,7 @@ void RenderFooter() {  // g_mu held
             ImGui::CloseCurrentPopup();
         }
         for (const LangInfo& l : Languages()) {
-            // every language our window draws – Arabic, Cyrillic, Greek too: sent, it is always translated (send_route)
+            // every language our window draws – Cyrillic, Greek too: sent, it is always translated (send_route)
             if (DrawnInOurWindow(l) && ImGui::Selectable(U8(NativeName(l.code)).c_str(), g_cfg.writeIn == l.code)) {
                 chosen = l.code;
                 ImGui::CloseCurrentPopup();

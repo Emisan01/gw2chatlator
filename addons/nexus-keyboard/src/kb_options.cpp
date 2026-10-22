@@ -234,8 +234,12 @@ void RenderOptionsWindow() {
         s_optsLang = g_cfg.uiLang;
         s_optsTitle = UI(Tr(L"GW2Chatlator – Options")) + "###kbopts";
     }
+    // Our text font here too: Nexus' font lacks letters of the UI languages (Polish ł, Turkish ş ğ) – they were "?".
+    ImFont* tf = g_textFont.load();
+    if (tf) ImGui::PushFont(tf);
     if (ImGui::Begin(s_optsTitle.c_str(), &g_showOptions)) RenderOptionsContent();
     ImGui::End();
+    if (tf) ImGui::PopFont();
 }
 
 std::wstring FormatSeconds(int ms) {  // 1234 -> "1.2"
@@ -407,7 +411,7 @@ std::string ExceptText(const Config& c) {
 }
 void RenderExceptList(Config& edit) {
     static const wchar_t* kCommon[] = {L"EN", L"DE", L"FR", L"ES", L"IT", L"PT", L"NL", L"PL",
-                                       L"RU", L"TR", L"AR"};  // what our window draws (no CJK)
+                                       L"RU", L"TR"};  // what our window draws (no CJK, no Arabic)
     bool first = true;
     auto chip = [&first](const std::string& label) {  // one entry; the row wraps where it no longer fits
         const float w = ImGui::CalcTextSize(label.c_str(), nullptr, true).x + ImGui::GetStyle().FramePadding.x * 2;
@@ -557,10 +561,10 @@ void RenderOptionsContent() {
         // ---- General
         if (ImGui::BeginTabItem(UI(Tr(L"General")).c_str(), nullptr, TabFlag(0))) {
             ImGui::SetNextItemWidth(wide);
-            {  // only the languages this window has texts in (English, German, Arabic)
+            {  // only the languages this window has texts in (core/i18n: UiLanguages)
                 std::string current = UI(Tr(L"like Windows"));
                 for (const UiLangInfo& l : UiLanguages())
-                    if (ToLowerAscii(PrimaryLang(edit.uiLangCode)) == l.code) current = U8(l.native);  // "AR" of old too
+                    if (ToLowerAscii(PrimaryLang(edit.uiLangCode)) == l.code) current = U8(l.native);  // "DE" of old too
                 if (ImGui::BeginCombo(UI(Tr(L"Language of this window") + L"##ui").c_str(), current.c_str())) {
                     if (ImGui::Selectable(UI(Tr(L"like Windows")).c_str(), edit.uiLangCode.empty())) edit.uiLangCode.clear();
                     for (const UiLangInfo& l : UiLanguages())

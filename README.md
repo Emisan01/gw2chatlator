@@ -3,7 +3,7 @@
 The chat of Guild Wars 2 in your language – **read it, write and speak in yours**, the chat gets it translated. A
 Nexus add-on, right inside the game. A line goes into the chat only when you press Enter yourself.
 
-## ⬇ [Download gw2keyboard_nexus.dll – version 2.3.5](https://github.com/Emisan01/gw2chatlator/releases/download/v2.3.5/gw2keyboard_nexus.dll)
+## ⬇ [Download gw2keyboard_nexus.dll – version 2.4.0](https://github.com/Emisan01/gw2chatlator/releases/download/v2.4.0/gw2keyboard_nexus.dll)
 
 Put the DLL into your `Guild Wars 2\addons` folder (where [Nexus](https://raidcore.gg/Nexus) keeps its add-ons) and
 load **GW2Chatlator** in Nexus. Nothing is downloaded by itself: the window shows what is there and what you can add
@@ -150,8 +150,8 @@ In `Guild Wars 2\addons\GW2Keyboard\`:
 stand-in Nexus API) and types, sends and unloads; `core_tests` runs the core on any system
 (`g++ -std=c++17 -I src tests/core_tests.cpp src/core/*.cpp`). More in [CLAUDE.md](CLAUDE.md).
 
-**Translations:** all UI text is English in the code, wrapped in `Tr()`. The German and Arabic tables are
-`src/core/i18n_de.cpp` and `src/core/i18n_ar.cpp`. `python3 tools/i18n_check.py` lists missing entries.
+**Translations:** all UI text is English in the code, wrapped in `Tr()`. The tables (German, French, Spanish,
+Italian, Polish, Portuguese, Turkish, Russian) are `src/core/i18n_<code>.cpp`. `python3 tools/i18n_check.py` lists missing entries.
 
 ## Dedicated to Kassiopeia 🐢
 
