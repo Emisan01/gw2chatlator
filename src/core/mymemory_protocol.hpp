@@ -12,7 +12,7 @@ std::string UrlEncode(const std::string& utf8);
 // DeepL-style code -> MyMemory/RFC 3066 code: "EN-GB" -> "en-GB", "ZH-HANS" -> "zh-CN", "DE" -> "de".
 std::wstring MyMemoryLang(const std::wstring& code);
 
-// Path + query for GET https://api.mymemory.translated.net
+// Path + query for GET https://api.mymemory.translated.net – its machine translation only, never its public memory.
 std::wstring BuildMyMemoryPath(const std::wstring& text, const std::wstring& sourceLang, const std::wstring& targetLang,
                                const std::wstring& email);
 

@@ -59,6 +59,9 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 - `core` compiles on any OS: `g++ -std=c++17 -I src tests/core_tests.cpp src/core/*.cpp`.
 - Translation backends implement `core/translator.hpp` (thread-safe, blocking, called from worker threads; `keep`
   segments come back unchanged; set `quotaExceeded` when a free contingent is used up).
+- MyMemory: its machine translation only (`&onlyprivate=1` without a key – no public memory). Its public memory
+  answered with other sentences' translations (misaligned corpora, quality 0: "ah alles klar" → "All these great
+  people.", "Wer kommt mit?" → "Seen it?"; user, 2026-10-22).
 
 ## How the add-on works
 
@@ -243,7 +246,8 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   0.5 s at most) has the worker write them, unload flushes the rest. Never write the ini directly on the game thread.
 - Soft breaks: '\n' stands for a space, "\r\n" for nothing (a word longer than the line); `Flat()` turns them back,
   `RawOffset()` maps flat offsets into the box (every `g_edit`). '\r' never comes from the user (the filter drops it).
-- Fitted window (no chat): hold the left button ¼ s and drag = move; dragging its top/bottom edge sets
+- The normal window's input is text only: a press there, held or not, selects – it never moves the window (user,
+  2026-10-22). Fitted window (mini mode, no chat): hold the left button ¼ s and drag = move; dragging its top/bottom edge sets
   `inputLines`; right-click on a word = learning (`WordAtMouse`), elsewhere = the menu.
 - After changing a struct in a shared header (app/config.hpp, kb_shared.hpp) build with `--clean-first`: MSBuild
   once left objects with the old layout (the self-test failed in strange places until a clean build).

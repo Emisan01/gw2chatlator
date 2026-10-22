@@ -5,6 +5,11 @@ diagnosis show it.
 
 ## Unreleased
 
+- **No more wrong translations from MyMemory's public memory:** MyMemory now answers with its machine translation
+  only. Its public memory sometimes returned the translation of a different sentence ("ah alles klar" became "All
+  these great people.").
+- **The mouse in the input selects text:** holding the left button in the input no longer moves the window (only the
+  mini mode's small window still moves that way).
 - **"Translate visible chat once" is the thrifty mode:** it now follows the same rule as the automatic translation –
   lines in your own language, in languages you understand, or too short to tell ("xD", "lf tank") are left as they
   are. A click on a single line still translates it, whatever its language.

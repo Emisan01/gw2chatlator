@@ -506,7 +506,7 @@ static void TestMyMemory() {
     CHECK(MyMemoryLang(L"EN-GB") == L"en-GB");
     CHECK(MyMemoryLang(L"ZH-HANS") == L"zh-CN");
     CHECK(MyMemoryLang(L"DE") == L"de");
-    CHECK(BuildMyMemoryPath(L"Hallo Welt", L"DE", L"EN-GB", L"") == L"/get?q=Hallo%20Welt&langpair=de%7Cen-GB&mt=1");
+    CHECK(BuildMyMemoryPath(L"Hallo Welt", L"DE", L"EN-GB", L"") == L"/get?q=Hallo%20Welt&langpair=de%7Cen-GB&mt=1&onlyprivate=1");
     auto r = ParseMyMemoryResponse(R"({"responseData":{"translatedText":"Hello world","match":0.98},"quotaFinished":false,"responseDetails":"","responseStatus":200})");
     CHECK(r.ok && r.text == L"Hello world");
     r = ParseMyMemoryResponse(R"({"responseData":{"translatedText":"MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS FOR TODAY"},"responseStatus":429})");
