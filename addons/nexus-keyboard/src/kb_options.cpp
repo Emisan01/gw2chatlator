@@ -262,8 +262,8 @@ void RenderOptionsWindow() {
         ImGui::SetWindowFontScale(nexusPx * globalScale / currentPx);
     }
     if (visible) RenderOptionsContent();
+    if (ours) ImGui::PopFont();  // before End: PopFont works on the current window
     ImGui::End();
-    if (ours) ImGui::PopFont();
 }
 
 std::wstring FormatSeconds(int ms) {  // 1234 -> "1.2"

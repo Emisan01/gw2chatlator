@@ -540,7 +540,13 @@ void RenderWindow() {
     if (g_expandRequest) g_expandRequest = false;  // already open
     struct PopFontAtEnd {
         bool on = false;
-        ~PopFontAtEnd() { if (on) ImGui::PopFont(); }
+        // PopFont works on the current window: always BEFORE ImGui::End() (after it, it popped the wrong window's
+        // texture stack - a silent corruption in a release build). The destructor only covers an exception.
+        void Pop() {
+            if (on) ImGui::PopFont();
+            on = false;
+        }
+        ~PopFontAtEnd() { Pop(); }
     } popFont;
     {
         // The chat's size: yours, or the game's interface size until you set one (fontPt 0, the first use).
@@ -813,6 +819,7 @@ void RenderWindow() {
             StartSend();
         }
         lock.unlock();
+        popFont.Pop();
         ImGui::End();
         return;
     }
@@ -1337,6 +1344,7 @@ void RenderWindow() {
         StartSend();
     }
     lock.unlock();
+    popFont.Pop();
     ImGui::End();
 }
 
