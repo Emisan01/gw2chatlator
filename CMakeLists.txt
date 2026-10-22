@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(GW2KeyboardNexus VERSION 2.4.1 LANGUAGES CXX)
+project(GW2KeyboardNexus VERSION 2.5.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -19,6 +19,7 @@ add_library(gct_core STATIC
     src/core/protect.cpp
     src/core/slang.cpp
     src/core/cloud_mt_protocol.cpp
+    src/core/local_mt_protocol.cpp
     src/core/typo_memory.cpp
     src/core/my_words.cpp
     src/core/snippets.cpp
@@ -72,6 +73,8 @@ endif()
 add_library(gct_win STATIC
     src/win/files.cpp
     src/win/extras_install.cpp
+    src/win/local_mt_packages.cpp
+    src/win/local_mt_translator.cpp
     src/win/http.cpp
     src/win/deepl_translator.cpp
     src/win/online_translators.cpp
@@ -169,3 +172,87 @@ endif()
 
 # ---- GW2 Keyboard for Nexus: the add-on, its voice helper, its self-test
 add_subdirectory(addons/nexus-keyboard)
+
+if(GCT_BUILD_TESTS)
+    add_executable(local_mt_fake_helper tests/tools/local_mt_fake_helper.cpp)
+    target_include_directories(local_mt_fake_helper PRIVATE src)
+    target_link_libraries(local_mt_fake_helper PRIVATE gct_core)
+    target_compile_definitions(local_mt_fake_helper PRIVATE UNICODE _UNICODE _WIN32_WINNT=0x0A00 WINVER=0x0A00
+                               NOMINMAX WIN32_LEAN_AND_MEAN)
+    target_compile_options(local_mt_fake_helper PRIVATE /utf-8 /W4 /permissive- /EHsc)
+    set_property(TARGET local_mt_fake_helper PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
+    add_executable(local_mt_translator_selftest tests/tools/local_mt_translator_selftest.cpp)
+    target_include_directories(local_mt_translator_selftest PRIVATE src)
+    target_link_libraries(local_mt_translator_selftest PRIVATE gct_win)
+    target_compile_definitions(local_mt_translator_selftest PRIVATE UNICODE _UNICODE _WIN32_WINNT=0x0A00 WINVER=0x0A00
+                               NOMINMAX WIN32_LEAN_AND_MEAN)
+    target_compile_options(local_mt_translator_selftest PRIVATE /utf-8 /W4 /permissive- /EHsc)
+    set_property(TARGET local_mt_translator_selftest PROPERTY MSVC_RUNTIME_LIBRARY
+                 "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    add_dependencies(local_mt_translator_selftest local_mt_fake_helper)
+    add_test(NAME local_mt_translator_selftest
+             COMMAND local_mt_translator_selftest $<TARGET_FILE:local_mt_fake_helper>)
+endif()
+
+# The native local translation helper is optional: normal add-on builds don't fetch its much larger ML toolchain.
+# Release builders enable GCT_LOCAL_MT and package the resulting gw2kb_translate.exe separately for click-to-install.
+option(GCT_LOCAL_MT "Build the optional native CTranslate2 + OPUS-MT helper" OFF)
+if(GCT_LOCAL_MT)
+    include(FetchContent)
+    # Keep the self-contained helper and every static inference dependency on the same CRT.
+    if(MSVC)
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    endif()
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+    set(BUILD_CLI OFF CACHE BOOL "" FORCE)
+    set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(WITH_MKL OFF CACHE BOOL "" FORCE)
+    set(WITH_DNNL ON CACHE BOOL "" FORCE)
+    set(OPENMP_RUNTIME NONE CACHE STRING "" FORCE)
+    set(ONEDNN_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(ONEDNN_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(ONEDNN_BUILD_GRAPH OFF CACHE BOOL "" FORCE)
+    set(DNNL_BUILD_DOC OFF CACHE BOOL "" FORCE)
+    set(DNNL_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(DNNL_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(DNNL_BUILD_FOR_CI OFF CACHE BOOL "" FORCE)
+    set(DNNL_ENABLE_WORKLOAD INFERENCE CACHE STRING "" FORCE)
+    set(DNNL_ENABLE_PRIMITIVE_GPU_ISA "" CACHE STRING "" FORCE)
+    set(ONEDNN_LIBRARY_TYPE STATIC CACHE STRING "" FORCE)
+    set(ONEDNN_CPU_RUNTIME SEQ CACHE STRING "" FORCE)
+    FetchContent_Declare(onednn
+        GIT_REPOSITORY https://github.com/uxlfoundation/oneDNN.git
+        GIT_TAG v3.9.1 GIT_SHALLOW TRUE)
+    FetchContent_MakeAvailable(onednn)
+    set(DNNL_INCLUDE_DIR "${onednn_SOURCE_DIR}/include" CACHE PATH "" FORCE)
+    set(DNNL_LIBRARY dnnl CACHE STRING "" FORCE)
+    FetchContent_Declare(ctranslate2
+        GIT_REPOSITORY https://github.com/OpenNMT/CTranslate2.git
+        GIT_TAG v4.8.3 GIT_SHALLOW TRUE GIT_SUBMODULES_RECURSE TRUE)
+    FetchContent_MakeAvailable(ctranslate2)
+    FetchContent_Declare(sentencepiece
+        GIT_REPOSITORY https://github.com/google/sentencepiece.git
+        GIT_TAG v0.2.0 GIT_SHALLOW TRUE)
+    set(SPM_ENABLE_SHARED OFF CACHE BOOL "" FORCE)
+    set(SPM_BUILD_TEST OFF CACHE BOOL "" FORCE)
+    set(SPM_BUILD_TRAINING OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(sentencepiece)
+
+    if(MSVC)
+        foreach(target dnnl dnnl_common dnnl_cpu dnnl_cpu_x64 ctranslate2 sentencepiece-static)
+            if(TARGET ${target})
+                set_property(TARGET ${target} PROPERTY MSVC_RUNTIME_LIBRARY "${CMAKE_MSVC_RUNTIME_LIBRARY}")
+            endif()
+        endforeach()
+    endif()
+
+    add_executable(gw2kb_translate addons/nexus-keyboard/src/translate_helper_main.cpp)
+    target_link_libraries(gw2kb_translate PRIVATE gct_core gct_win ctranslate2 dnnl sentencepiece-static)
+    target_include_directories(gw2kb_translate PRIVATE src "${sentencepiece_SOURCE_DIR}/src")
+    target_compile_definitions(gw2kb_translate PRIVATE UNICODE _UNICODE _WIN32_WINNT=0x0A00 WINVER=0x0A00
+                               NOMINMAX WIN32_LEAN_AND_MEAN)
+    target_compile_options(gw2kb_translate PRIVATE /utf-8 /W4 /permissive- /EHsc)
+    set_target_properties(gw2kb_translate PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+                          RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/addons/nexus-keyboard/$<CONFIG>/GW2Keyboard)
+endif()

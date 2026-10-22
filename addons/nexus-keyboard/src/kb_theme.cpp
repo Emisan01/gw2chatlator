@@ -100,12 +100,12 @@ void ReleaseTextFont() {
     g_textFont = nullptr;  // until the next one arrives the window scales Nexus' font – never one Nexus may have freed
     g_textFontPx = 0;
 }
-// "Like the game" (fontPt 0, the first use; user 2026-10-22): GW2's own interface size (MumbleLink uisz: small,
-// normal, large, larger - the factors of Gw2BottomBarOffset) on 11 pt; not known yet (no map, the self-test): 11 pt.
+// "Like the game" (fontPt 0, the first use): GW2's interface size, with a 14 pt minimum so the main window is
+// readable at first use. The font slider remains free to choose a smaller or larger size afterwards.
 int FollowPt() {
     static const float kScale[] = {0.89f, 1.0f, 1.11f, 1.25f};
     const int s = g_uiSize.load();
-    return s >= 0 && s <= 3 ? static_cast<int>(std::lround(11 * kScale[s])) : 11;
+    return std::max(14, s >= 0 && s <= 3 ? static_cast<int>(std::lround(11 * kScale[s])) : 11);
 }
 void RequestTextFont(int pt, const std::wstring& face) {  // pt 0: like the game
     if (!g_api || !g_api->Fonts_AddFromFile) return;

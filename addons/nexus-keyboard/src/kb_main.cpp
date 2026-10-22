@@ -215,6 +215,7 @@ void AddonUnload() {
     if (g_chatEventsThread.joinable()) g_chatEventsThread.join();
     if (g_decoderThread.joinable()) g_decoderThread.join();
     if (g_voiceModuleThread.joinable()) g_voiceModuleThread.join();
+    if (g_localMtThread.joinable()) g_localMtThread.join();
     g_links.Stop();
     ReleaseTextFont();  // no call into a gone DLL
     ReleaseUiFont();

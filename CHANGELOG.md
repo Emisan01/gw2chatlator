@@ -3,12 +3,19 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.5.0 — 2026-10-22 (GW2Chatlator for Nexus)
+
+- **Local OPUS-MT translation:** optional CTranslate2 + SentencePiece CPU helper runs outside GW2. The add-on downloads the helper and selected model packages only on the user's click; installs are SHA-256 checked and removable. The initial release includes the `de-en` and `en-de` model packages.
+- The helper is isolated from the game, uses bounded JSON-line IPC, request timeouts and restart handling, and a kill-on-close Windows Job Object where supported. Local translations stay on the PC.
+- Music-note artifacts absent from the source are cleaned while unusable output is rejected; translated text is never silently sent after a failure.
+- **Typing suggestions:** a clear learned next word is moved to the top, and a valid full word with corrected sentence casing is offered explicitly.
+- **Readable first use:** the options and chat UI start at a minimum of 14 pt; the chat size remains adjustable.
+- **Compact send choice:** “as written” leads the send menu and its footer label no longer clips.
+
 ## 2.4.1 — 2026-10-22 (GW2Chatlator for Nexus)
 
-- **The options window keeps Nexus' size:** in 2.4.0 it took the chat's text size. Now it always has the size of
-  Nexus' own windows (in a font with every letter of the window languages); the text size applies to the chat window only.
-- **The chat follows the game's size:** until you set a text size of your own, the chat window takes GW2's interface
-  size (small, normal, large, larger) and follows it; the slider starts at that size.
+- **The options window keeps Nexus' size:** it follows Nexus' own UI size in our UI font, independently of the chat text size.
+- **The chat follows the game's size:** until you set a text size of your own, the chat window follows GW2's interface size (small, normal, large, larger).
 
 ## 2.4.0 — 2026-10-22 (GW2Chatlator for Nexus)
 

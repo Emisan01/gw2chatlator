@@ -211,9 +211,11 @@ void RenderFooter() {  // g_mu held
         s_fc.writeBtnFull = s_fc.writeFull + "##writebtn";
         s_fc.writeBtnNarrow = s_fc.writeNarrow + "##writebtn";
 
-        const std::wstring sendText = sendOrig ? Tr(L"as written") : NativeName(sendLang);
-        s_fc.sendFull = UI(TrF(L"Send: {1}", {sendText}));
-        s_fc.sendNarrow = "> " + (sendOrig ? UI(Tr(L"as written")) : U8(ToUpperAscii(PrimaryLang(sendLang))));
+        const std::wstring sendText = NativeName(sendLang);
+        // The selected mode is already clear from the selector; omit the redundant "Send:" prefix and keep
+        // "as written" the same length in both footer layouts.
+        s_fc.sendFull = sendOrig ? UI(Tr(L"as written")) : UI(TrF(L"Send: {1}", {sendText}));
+        s_fc.sendNarrow = sendOrig ? UI(Tr(L"as written")) : "> " + U8(ToUpperAscii(PrimaryLang(sendLang)));
         s_fc.sendBtnFull = s_fc.sendFull + "##sendbtn";
         s_fc.sendBtnNarrow = s_fc.sendNarrow + "##sendbtn";
 
@@ -313,26 +315,29 @@ void RenderFooter() {  // g_mu held
     ImGui::SetNextWindowPos(ImVec2(sendBtnPos.x, sendBtnPos.y - 4.0f), ImGuiCond_Always, ImVec2(0.0f, 1.0f));
     ImGui::SetNextWindowSizeConstraints(ImVec2(sendBtnW, 0.0f), ImVec2(FLT_MAX, ImGui::GetFontSize() * 20.0f));
     if (ImGui::BeginPopup("##send_popup")) {
-        // "as written" only when GW2's chat shows the language you write in
-        const size_t rows = g_cfg.writeLangs.size() + (SendableInGw2(TypingLang()) ? 1 : 0);
-        for (size_t i = 0; i < rows; ++i) {
-            const std::string n = i == g_cfg.writeLangs.size() ? UI(Tr(L"as written")) : U8(NativeName(g_cfg.writeLangs[i]));
-            const bool current = g_sendOverride.empty() ? static_cast<int>(i) == g_sendIdx
-                                 : i == g_cfg.writeLangs.size() ? g_sendOverride == L"="
-                                                                : g_sendOverride == g_cfg.writeLangs[i];
-            if (ImGui::Selectable(n.c_str(), current)) {
-                if (g_activeTab >= 0 && g_activeTab < static_cast<int>(g_tabs.size())) {  // this player's tab only
-                    g_tabs[g_activeTab].sendLang = i == g_cfg.writeLangs.size() ? std::wstring(L"=") : g_cfg.writeLangs[i];
-                    g_sendOverride = g_tabs[g_activeTab].sendLang;
-                } else {
-                    g_sendIdx = static_cast<int>(i);
-                }
-                ++g_inputGen;
-                g_preview.clear();
-                g_inputChanged = GetTickCount64();
-                g_focusInput = true;
-                ImGui::CloseCurrentPopup();
+        // "as written" leads the menu, when GW2 can display the typing language.
+        auto chooseSend = [&](size_t i) {
+            if (g_activeTab >= 0 && g_activeTab < static_cast<int>(g_tabs.size())) {  // this player's tab only
+                g_tabs[g_activeTab].sendLang = i == g_cfg.writeLangs.size() ? std::wstring(L"=") : g_cfg.writeLangs[i];
+                g_sendOverride = g_tabs[g_activeTab].sendLang;
+            } else {
+                g_sendIdx = static_cast<int>(i);
             }
+            ++g_inputGen;
+            g_preview.clear();
+            g_inputChanged = GetTickCount64();
+            g_focusInput = true;
+            ImGui::CloseCurrentPopup();
+        };
+        const bool canSendAsWritten = SendableInGw2(TypingLang());
+        if (canSendAsWritten) {
+            const bool current = g_sendOverride.empty() ? g_sendIdx == static_cast<int>(g_cfg.writeLangs.size())
+                                                        : g_sendOverride == L"=";
+            if (ImGui::Selectable(UI(Tr(L"as written")).c_str(), current)) chooseSend(g_cfg.writeLangs.size());
+        }
+        for (size_t i = 0; i < g_cfg.writeLangs.size(); ++i) {
+            const bool current = g_sendOverride.empty() ? g_sendIdx == static_cast<int>(i) : g_sendOverride == g_cfg.writeLangs[i];
+            if (ImGui::Selectable(U8(NativeName(g_cfg.writeLangs[i])).c_str(), current)) chooseSend(i);
         }
         ImGui::Separator();
         for (const LangInfo& l : Languages()) {  // more languages: the chosen one becomes the first

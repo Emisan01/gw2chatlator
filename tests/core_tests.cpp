@@ -4,6 +4,7 @@
 #include <cmath>
 #include <map>
 #include <cstdio>
+#include <random>
 #include <fstream>
 #include <set>
 #include <sstream>
@@ -22,6 +23,7 @@
 #include "core/names.hpp"
 #include "core/languages.hpp"
 #include "core/llm_protocol.hpp"
+#include "core/local_mt_protocol.hpp"
 #include "core/mumble.hpp"
 #include "core/mymemory_protocol.hpp"
 #include "core/glossary.hpp"
@@ -152,6 +154,69 @@ static void TestJson() {
     CHECK(ParseJson(" [1, -2.5e3, true, false, null, \"x\"] ", v) && v.arr.size() == 6);
     CHECK(v.arr[1].n == -2500.0);
     CHECK(ParseJson(R"({"elite":true})", v) && v.GetBool("elite") && !v.GetBool("missing"));
+}
+
+// E14: local helper requests preserve every UTF-8 byte through JSON line framing.
+// E15: routes prefer a direct installed pair; pivot routes use two installed English pairs at most.
+static void TestLocalMtProtocol() {
+    std::mt19937 rng(0x4C4D5431u);
+    const std::wstring alphabet = L"abc XYZ,\\\"\n\tüß漢字😀!?";
+    for (int i = 0; i < 2000; ++i) {
+        std::wstring text;
+        const int n = static_cast<int>(rng() % 160);
+        for (int j = 0; j < n; ++j) text += alphabet[rng() % alphabet.size()];
+        const std::string utf8 = ToUtf8(text);
+        const std::string line = BuildLocalMtRequest(i, "DE", "EN", utf8);
+        LocalMtRequest request;
+        CHECK(ParseLocalMtRequest(line, request));
+        CHECK(request.id == i && request.source == "de" && request.target == "en" && request.text == utf8);
+    }
+
+    LocalMtMessage message;
+    CHECK(ParseLocalMtMessage(R"({"evt":"ready"})", message) && message.kind == LocalMtMessage::Kind::Ready);
+    CHECK(ParseLocalMtMessage(R"({"evt":"loaded","pair":"de-en","ms":123})", message) &&
+          message.kind == LocalMtMessage::Kind::Loaded && message.pair == "de-en" && message.milliseconds == 123);
+    CHECK(ParseLocalMtMessage(R"({"evt":"result","id":7,"text":"h\u00e9llo"})", message) &&
+          message.kind == LocalMtMessage::Kind::Result && message.id == 7 && message.text == "h\xC3\xA9llo");
+    CHECK(ParseLocalMtMessage(R"({"evt":"error","id":9,"msg":"gone"})", message) &&
+          message.kind == LocalMtMessage::Kind::Error && message.id == 9 && message.error == "gone");
+    CHECK(!ParseLocalMtMessage(R"({"evt":"result","id":-1,"text":"x"})", message));
+
+    const std::vector<std::string> pairs{"de-en", "en-fr", "en-it", "de-fr"};
+    CHECK(LocalMtRoute(L"DE", L"FR", pairs) == std::vector<std::string>{"de-fr"});
+    CHECK(LocalMtRoute(L"IT", L"DE", pairs).empty());
+    CHECK(LocalMtRoute(L"de-DE", L"fr-FR", {"de-en", "en-fr"}) ==
+          std::vector<std::string>({"de-en", "en-fr"}));
+    CHECK(LocalMtRoute(L"en-GB", L"DE", {"en-de"}) == std::vector<std::string>{"en-de"});
+    CHECK(LocalMtRoute(L"DE", L"EN", {"de-en", "en-de"}) == std::vector<std::string>{"de-en"});
+    CHECK(LocalMtRoute(L"DE", L"DE", {"de-en", "en-de"}).empty());
+    const auto& modelCatalog = LocalMtModelCatalog();
+    CHECK(modelCatalog.size() == 16);
+    const auto modelFor = [&](const char* pair) -> const LocalMtModelInfo* {
+        for (const auto& model : modelCatalog)
+            if (std::string(model.pair) == pair) return &model;
+        return nullptr;
+    };
+    CHECK(modelFor("de-en") && std::string(modelFor("de-en")->model) == "Helsinki-NLP/opus-mt-de-en");
+    CHECK(modelFor("de-en") && std::string(modelFor("de-en")->license) == "Apache-2.0");
+    CHECK(modelFor("en-de") && std::string(modelFor("en-de")->license) == "CC-BY-4.0");
+    CHECK(modelFor("ru-en") && std::string(modelFor("ru-en")->license) == "CC-BY-4.0");
+    CHECK(modelFor("en-pl") && std::string(modelFor("en-pl")->sourcePrefix) == ">>pol<<");
+    CHECK(modelFor("en-pt") && std::string(modelFor("en-pt")->sourcePrefix) == ">>pt<<");
+    CHECK(modelFor("en-tr") && std::string(modelFor("en-tr")->sourcePrefix) == ">>tur<<");
+    CHECK(IsPlausibleLocalMtOutput(L"Ah, alles klar.", L"All right."));
+    CHECK(IsPlausibleLocalMtOutput(L"hello", L"Привет"));
+    CHECK(IsPlausibleLocalMtOutput(L"hello", L"こんにちは"));
+    CHECK(!IsPlausibleLocalMtOutput(L"Ah, alles klar.", L"♪ All right ♪"));
+    CHECK(CleanLocalMtOutput(L"ah alles klar", L"♪ All right ♪") == L"All right");
+    CHECK(IsPlausibleLocalMtOutput(L"ah alles klar", CleanLocalMtOutput(L"ah alles klar", L"♪ All right ♪")));
+    CHECK(CleanLocalMtOutput(L"♪ ah ♪", L"♪ Okay ♪") == L"♪ Okay ♪");
+    CHECK(CleanLocalMtOutput(L"hello", L"Hello 😀") == L"Hello 😀");
+    CHECK(IsPlausibleLocalMtOutput(L"♪ ah ♪", L"♪ Okay ♪"));
+    CHECK(!IsPlausibleLocalMtOutput(L"hello", L"!? …"));
+    CHECK(!IsPlausibleLocalMtOutput(L"hello", L"！？…"));
+    CHECK(!IsPlausibleLocalMtOutput(L"hello", L""));
+    CHECK(!IsPlausibleLocalMtOutput(L"hello", L"Hello 😀"));
 }
 
 static void TestLangs() {
@@ -2444,6 +2509,7 @@ int main() {
     TestChat();
     TestHotkey();
     TestJson();
+    TestLocalMtProtocol();
     TestLangs();
     TestNameTable();
     TestGlossary();

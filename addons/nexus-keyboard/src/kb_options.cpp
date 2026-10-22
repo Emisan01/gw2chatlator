@@ -6,6 +6,10 @@ namespace kb {
 
 int g_optionsTab = -1;  // a tab of the options window to bring to the front (General 0, Window 1, Voice 3, Translator 5)
 
+namespace {
+std::atomic<float> s_nexusOptionsFontPx{0};  // sampled inside Nexus' own OptionsRender window
+}
+
 void StatusRow(const std::string& what, int state, const std::string& text) {  // state: 2 ready, 1 busy, 0 missing
     ImGui::AlignTextToFramePadding();
     ImGui::TextColored(state == 2 ? ImVec4(0.45f, 0.85f, 0.45f, 1.f) : state == 1 ? ImVec4(0.94f, 0.75f, 0.35f, 1.f)
@@ -41,7 +45,7 @@ void RenderRemovedNotice() {
     ImGui::SetNextWindowPos(ImVec2(ds.x * 0.5f, ds.y * 0.4f), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
     if (ImGui::Begin(UI(Tr(L"GW2Chatlator removed") + L"###removed").c_str(), nullptr,
                      ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse)) {
-        ImGui::TextUnformatted(UI(g_wipeDone == 1 ? Tr(L"Everything GW2Chatlator had put on your PC is removed – settings, learned words, voice module and models.")
+        ImGui::TextUnformatted(UI(g_wipeDone == 1 ? Tr(L"Everything GW2Chatlator had put on your PC is removed – settings, learned words, voice and local translation modules and models.")
                                                   : Tr(L"Most is removed; a file was still in use – delete the folder GW2Keyboard in your addons folder by hand.")).c_str());
         ImGui::TextUnformatted(UI(Tr(L"Last step: Nexus → Addons → GW2Chatlator → Uninstall (the add-on cannot delete itself while it runs).")).c_str());
         if (ImGui::Button(UI(Tr(L"OK")).c_str())) g_disabled = true;  // quiet for the rest of the session
@@ -202,10 +206,12 @@ void RenderRemoveEverything() {
         if (ImGui::BeginPopupModal((UI(Tr(L"Remove everything of GW2Chatlator")) + "###removeall").c_str(), nullptr,
                                    ImGuiWindowFlags_AlwaysAutoResize)) {
             static bool chatEventsToo = false, decoderToo = false;
-            ImGui::TextUnformatted(UI(Tr(L"This deletes the folder GW2Keyboard in your addons folder: settings, learned words, my words, the voice module and its models. It cannot be undone.")).c_str());
+            ImGui::TextUnformatted(UI(Tr(L"This deletes the folder GW2Keyboard in your addons folder: settings, learned words, my words, the voice and local translation modules and their models. It cannot be undone.")).c_str());
             ImGui::Checkbox(UI(Tr(L"Events: Chat too (other add-ons may use it)")).c_str(), &chatEventsToo);
             ImGui::Checkbox(UI(Tr(L"Decoder Ring too (other add-ons may use it)")).c_str(), &decoderToo);
-            if (ImGui::Button(UI(Tr(L"Remove everything")).c_str())) {
+            if (g_localMtBusy) {
+                ImGui::TextDisabled("%s", UI(Tr(L"Wait for the local translation operation to finish.")).c_str());
+            } else if (ImGui::Button(UI(Tr(L"Remove everything")).c_str())) {
                 ImGui::CloseCurrentPopup();
                 RemoveEverythingNow(chatEventsToo, decoderToo);
             }
@@ -234,14 +240,28 @@ void RenderOptionsWindow() {
         s_optsLang = g_cfg.uiLang;
         s_optsTitle = UI(Tr(L"GW2Chatlator – Options")) + "###kbopts";
     }
-    // Nexus' UI size, never the chat's (user, 2026-10-22) – in our UI font, which has every letter of the UI languages
-    // (Nexus' font lacks Polish ł, Turkish ş ğ, Cyrillic). Until it is there (or without Nexus' fonts): Nexus' font.
-    const float nexusPx = std::round(ImGui::GetFont()->FontSize);  // its built size: Nexus' own scaling applies to both alike
+    // Nexus' per-window scale is not in FontDefault; sample its actual rendered size from RenderNexusOptions below.
+    // Divide out ImGui's global scale before building our font, which will receive that global scale itself.
+    ImGuiIO& io = ImGui::GetIO();
+    ImFont* nexusFont = io.FontDefault ? io.FontDefault : io.Fonts->Fonts[0];
+    const float globalScale = std::max(0.1f, io.FontGlobalScale);
+    const float sampledPx = s_nexusOptionsFontPx.load();
+    const float nexusPx = std::max(PtToPx(14), std::round(sampledPx > 0.0f ? sampledPx / globalScale
+                                                                            : nexusFont->FontSize * nexusFont->Scale));
     RequestUiFont(nexusPx);
     ImFont* uf = g_uiFont.load();
     const bool ours = uf && std::abs(uf->FontSize - nexusPx) < 0.5f;
-    if (ours) ImGui::PushFont(uf);
-    if (ImGui::Begin(s_optsTitle.c_str(), &g_showOptions)) RenderOptionsContent();
+    const bool visible = ImGui::Begin(s_optsTitle.c_str(), &g_showOptions);
+    if (ours) {
+        ImGui::SetWindowFontScale(1.0f);  // the requested font already has the minimum size
+        ImGui::PushFont(uf);
+    } else {
+        // Keep the minimum readable while Nexus builds our font or when its font API is unavailable.
+        // This fallback may be softer, but it must not silently fall back to Nexus' tiny default size.
+        const float currentPx = std::max(1.0f, ImGui::GetFontSize());
+        ImGui::SetWindowFontScale(nexusPx * globalScale / currentPx);
+    }
+    if (visible) RenderOptionsContent();
     ImGui::End();
     if (ours) ImGui::PopFont();
 }
@@ -984,10 +1004,10 @@ void RenderOptionsContent() {
                        L"that player's language.")));
             ImGui::Checkbox(UI(Tr(L"Translate my text")).c_str(), &edit.translateWriting);
             Hint(UI(Tr(L"What you write goes into the chat in the language chosen at \"Send\" below the input.")));
-            static const Engine kEngines[] = {Engine::Auto, Engine::Basic, Engine::DeepL, Engine::Google, Engine::Microsoft, Engine::Libre};
-            static const wchar_t* kNames[] = {L"Automatic", L"MyMemory (free)", L"DeepL", L"Google", L"Microsoft", L"LibreTranslate"};
+            static const Engine kEngines[] = {Engine::Auto, Engine::Basic, Engine::DeepL, Engine::Google, Engine::Microsoft, Engine::Libre, Engine::Local};
+            static const wchar_t* kNames[] = {L"Automatic", L"MyMemory (free)", L"DeepL", L"Google", L"Microsoft", L"LibreTranslate", L"OPUS-MT (local)"};
             int ei = 0;
-            for (int i = 0; i < 6; ++i)
+            for (int i = 0; i < 7; ++i)
                 if (kEngines[i] == edit.engine) ei = i;
             static std::vector<std::string> s_engines;
             static UiLang s_engineLang = static_cast<UiLang>(-1);
@@ -1021,6 +1041,8 @@ void RenderOptionsContent() {
                 Hint(UI(Tr(L"Any made-up address works – MyMemory only counts the free text per address (5,000 characters a "
                            L"day without one, 50,000 with one).")));
             }
+            ImGui::Separator();
+            RenderLocalMtOptions(edit);
             ImGui::EndTabItem();
         }
         // ---- Technical
@@ -1134,6 +1156,8 @@ void RenderOptionsContent() {
 // Nexus → Addons → GW2 Keyboard: only the button that opens / closes our own options window.
 void RenderNexusOptions() {
     if (!ImGui::GetCurrentContext()) return;
+    if (ImGui::GetFont() && ImGui::GetFontSize() > 0.0f)
+        s_nexusOptionsFontPx.store(ImGui::GetFontSize());  // includes Nexus' per-window scale and the active Windows/game DPI scale
     if (ImGui::Button(U8(g_showOptions ? Tr(L"Close the GW2Chatlator options") : Tr(L"Open the GW2Chatlator options")).c_str()))
         g_showOptions = !g_showOptions;
 }

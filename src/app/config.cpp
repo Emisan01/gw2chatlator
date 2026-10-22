@@ -28,7 +28,7 @@ const char kTemplate[] =
     "UiLanguage=\r\n"
     "\r\n"
     "[Translate]\r\n"
-    "; Translator: auto | basic | deepl | google | microsoft | libre\r\n"
+    "; Translator: auto | basic | deepl | google | microsoft | libre | local\r\n"
     ";   auto  = DeepL, Google, Microsoft or your server if a key / address is set, else basic\r\n"
     ";   basic = MyMemory: free, no account, limited daily quota\r\n"
     "Engine=auto\r\n"
@@ -89,8 +89,8 @@ const char kTemplate[] =
     "[Window]\r\n"
     "; 0 (fully see-through) to 255 (not see-through at all)\r\n"
     "Opacity=255\r\n"
-    "; Text size in pt (8 - 28)\r\n"
-    "FontPt=11\r\n";
+    "; Text size in pt (8 - 28); new installations start at 14 pt\r\n"
+    "FontPt=14\r\n";
 
 // Versions before 2.0.2 appended this block on every start to an ini without the old [Reader] section (an upgrade
 // path from the desktop program's v0.2) – the ini of a new player grew by it each time. Removed again on load: the
@@ -188,6 +188,7 @@ Engine ParseEngine(const std::wstring& s) {
     if (v == L"google") return Engine::Google;
     if (v == L"microsoft") return Engine::Microsoft;
     if (v == L"libre" || v == L"libretranslate") return Engine::Libre;
+    if (v == L"local" || v == L"opus" || v == L"opus-mt") return Engine::Local;
     return Engine::Auto;
 }
 
@@ -216,6 +217,7 @@ const wchar_t* EngineKey(Engine e) {
         case Engine::Google: return L"google";
         case Engine::Microsoft: return L"microsoft";
         case Engine::Libre: return L"libre";
+        case Engine::Local: return L"local";
         default: return L"auto";
     }
 }

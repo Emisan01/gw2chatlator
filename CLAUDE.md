@@ -4,8 +4,8 @@ A Nexus add-on (C++17, MSVC x64, ImGui 1.80 from Nexus) – the chat of Guild Wa
 voice input. This repository holds only the add-on. The old desktop programs (GW2 Keyboard exe, GW2 Chat Translator,
 the OCR reader, the GW2 Chat Bridge) live in the branch `desktop-archive` and are not part of main (user, 2026-10-14);
 an OCR module may come back later as an optional download – not now. Read this before changing anything. Several
-agents/LLMs work on this repo: keep changes small, build + test before every commit, update this file when you learn
-something the next agent needs. **This file and the code never contradict each other** (user, 2026-10-22): when they
+agents/LLMs work on this repo: keep changes small, build and run the affected checks before every commit using the
+change-scoped policy below, update this file when you learn something the next agent needs. **This file and the code never contradict each other** (user, 2026-10-22): when they
 do, report it – never quietly change one of them to match the other. Every change of behaviour updates this file in
 the same commit.
 
@@ -29,6 +29,7 @@ addons/nexus-keyboard   the add-on
                         VirtualQuery first, SEH last), the pause, reading on-off by hand, the technical details
   src/kb_window.cpp     the main window: header, chat, preview, word bar, input, footer, minimise / restore
   src/kb_options.cpp    the options window and the modules list
+  src/kb_local_mt.cpp  local translation helper and per-pair model downloads/removal
   src/chat_links.*      chat codes: "[Item name]" in rarity colour + mouse-over details via Decoder Ring (outdated
                         since 2026-10-22: finding the codes is ours – `SegmentLine`; our own resolver replaces it,
                         Phase 2a). A click on a
@@ -46,14 +47,15 @@ src/kbd                 voice_session (WASAPI + whisper worker), whisper_engine 
 src/win                 Windows services without UI: http (WinHTTP), translators (MyMemory, DeepL, Google,
                         Microsoft, LibreTranslate), els (language detection), gw2_sender, mumble_link, spellcheck,
                         text_prediction, keyboard_layout, audio_capture, mic_sessions, cpu_cores, voice_models,
-                        extras_install (GitHub release assets, SHA-256 checked), secret (DPAPI), files, hash
+                        extras_install (GitHub release assets, SHA-256 checked), local_mt_packages, secret (DPAPI), files, hash
 src/core                portable logic, NO windows.h: text, json, i18n (+ de / ar tables), chat_line (channels),
                         chat_code, protect, slang, word_model, typo_memory, my_words, voice, voice_learn, send_guard,
                         chat_source (the rules for lines of Events: Chat), window_layout (the window's place as a
                         formula), snippets (your text blocks), send_route (where a message goes: the footer's
                         "Send", a whisper tab, "Translate what I say" – one pure function), steady (Technical's numbers),
                         translate_policy (whether a chat line goes to the translator – one pure function),
-                        translation_cache (the session's chat translations, memory only), translator protocols
+                        translation_cache (the session's chat translations, memory only), translator protocols,
+                        `local_mt_protocol` (JSON lines, OPUS-MT routes and output validation)
 ```
 
 - `core` compiles on any OS: `g++ -std=c++17 -I src tests/core_tests.cpp src/core/*.cpp`.
@@ -62,6 +64,26 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 - MyMemory: its machine translation only (`&onlyprivate=1` without a key – no public memory). Its public memory
   answered with other sentences' translations (misaligned corpora, quality 0: "ah alles klar" → "All these great
   people.", "Wer kommt mit?" → "Seen it?"; user, 2026-10-22).
+- **Local OPUS-MT** (`Engine::Local`, INI value `local`): CTranslate2 + SentencePiece in the separate
+  `gw2kb_translate.exe` child process; int8 on CPU, two worker threads per model, below-normal process priority,
+  at most two loaded pairs (LRU), idle exit after `[Translate] UnloadMinutes` (default 10). The add-on sends newline
+  JSON through bounded pipes; a request times out after 5 s, a helper fault becomes a translation error, and the
+  existing send guard never sends the untranslated text after an error. The helper uses a kill-on-close Windows Job
+  Object when the host permits it; otherwise timeout, removal and normal shutdown still stop it explicitly. Installed
+  model-pair discovery is cached for at most 1 s. `local_mt_protocol` selects an installed direct pair first, then at
+  most two pairs through English. Marian source input ends with `</s>`; multilingual models receive their required
+  source prefix from the installed `pair.json`. Hallucinated music-note artifacts absent from the input are stripped;
+  output must still contain a word, while other unexpected decorative symbols remain a validation error. Models load
+  only on first use.
+- Local helper and each individual model pair are offered in Options → Translator and download only on the user's
+  click. `DownloadReleaseAsset` checks GitHub's SHA-256 digest. The helper release asset is
+  `GW2Keyboard-LocalMT.zip`; model assets are `GW2Keyboard-OPUS-MT-<pair>.zip` and unpack below
+  `<addons>\GW2Keyboard\translate\<pair>`. Model packaging uses `tools/package_local_mt_models.py` against
+  converted folders under ignored `local/translation-spike/models`; `--convert` fetches the exact Helsinki-NLP model
+  named in the core catalog and converts it to int8. The package builder emits only converted pairs that exist.
+  CTranslate2, oneDNN and SentencePiece notices travel with the helper; each OPUS-MT model carries its own model-card
+  license, attribution, upstream URL and conversion notice. Do not assume one license covers the model family:
+  `en-de` and `ru-en` currently declare CC-BY-4.0; this catalog stores each model's exact declared license.
 
 ## How the add-on works
 
@@ -135,8 +157,10 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   lists only the UI languages (`UiLanguages`: English, German, French, Spanish, Italian, Polish, Portuguese, Turkish, Russian). The text font's ranges include Vietnamese
   (1E00–1EFF). **No Arabic anywhere** (user, 2026-10-22): ImGui 1.80 has no shaping and no right-to-left – single
   letters, left to right. Not in the UI, not to write in, not in the font; Arabic lines of others are still detected and
-  translated. The options window keeps Nexus' UI size (never the chat's, user 2026-10-22) in our UI font (`RequestUiFont`,
-  `kUiFontId`: Segoe UI at the built size of Nexus' font, so Nexus' own scaling applies alike; it has ł, ş, ğ and
+  translated. The options window samples Nexus' effective font size in its `OptionsRender` callback (including the Nexus
+  window scale and global Windows/game scaling), then rebuilds our UI font at that size with a 14 pt minimum; while it
+  loads, the fallback is scaled to the same minimum. It never reads the chat's `FontPt`. `RequestUiFont`, `kUiFontId`:
+  Segoe UI; it has ł, ş, ğ and
   Cyrillic, Nexus' font does not).
 - **Writing:** the multi-line input (soft wrap = '\n' in place of a space, `Flat()` turns it back) → `ComputeTyping`
   (word bar, grey completion, what Space writes) → debounce → `TranslateInput` (`MyWords::Expand` first, protected
@@ -165,16 +189,18 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   in use" (`autoMinimize` after `minimizeAfter` s; `g_lastUse` – input, hover, menus, sending, voice, GW2's chat line
   count as use). "Open again when GW2's chat opens" (`autoOpen`) only opens; the focus key always opens; taking over
   the focus stays `focusOnGameChat`. All of it goes through `g_minimizeRequest` / `g_expandRequest`.
-  Text size and font (Options → Window): the size follows the game's interface size until you set one (`[Window] FontPt`
-  0, the first use; `FollowPt`: MumbleLink uisz small/normal/large/larger = 10/11/12/14 pt, unknown 11; the slider
-  starts there), the options window always has Nexus' size.
+  Text size and font (Options → Window): a new chat starts at 14 pt, or larger if the game's UI scale calls for it
+  (`[Window] FontPt=14`; the slider remains adjustable from 8–28 pt). The options window is independent of the chat
+  slider and uses at least 14 pt, or Nexus' effective size when larger.
   The fonts: Segoe UI, Segoe UI Semibold, Tahoma (`kFontFaces`, `[Window] FontFace`; each
   has Latin, Greek, Cyrillic); one Nexus font name per face, `ReleaseTextFont` before
   another is asked for (the window scales Nexus' font until it arrives).
   The input grows with its soft-wrapped lines (`g_boxLines`, up to 8) from one line (`inputLines`, default 1), the
   preview the same (`g_previewRows`, what it drew last frame; `previewLines`, default 1), and the window grows upwards when it must
-  (bottom kept, shrinks back). Without the word bar the grey word also shows its highlighted completion (what Tab
-  takes; Space alone still keeps a valid word). The first Tab takes the highlighted word.
+  (bottom kept, shrinks back). The word bar puts a complete valid word before longer completions, corrects ordinary
+  lowercase sentence starts, and shows next-word predictions only after a repeated clear context; one-off phrases do
+  not produce guesses. Without the word bar the grey word also shows its highlighted completion (what Tab takes;
+  Space alone still keeps a valid word). The first Tab takes the highlighted word.
   `GW2KB_SHOT_TYPE=<text>` types into the input before the self-test's picture. Status text is drawn inside the input box (`BoxText`). Compact view = no
   preview / word bar, the translation small in the box. Scroll bar drawn at the left. Snap to the screen edges.
 - **Options > General = the dashboard** (user, 2026-10-20; `RenderDashboard`): the modes at a glance, each a chip
@@ -198,6 +224,11 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   input is switched on (off for new users unless the voice module is already there) – the voice module
   (`voice_module.cpp`: release ZIP via `DownloadReleaseAsset`, tar.exe, only gw2kb_voice.exe + voice\*.dll copied)
   and then a voice model. Unload: the voice helper ends after [Voice] UnloadMinutes without use.
+- The local translation helper is separate from the voice module and is not built by default. A native release build
+  sets `-DGCT_LOCAL_MT=ON`; `tools/pack_release.py` adds `GW2Keyboard-LocalMT.zip` only when the helper was built.
+  Converted model packages are built independently with `tools/package_local_mt_models.py` and uploaded as separate
+  release assets. No model is downloaded or loaded when the add-on starts. Options → Translator owns install and
+  remove controls; Remove everything stops the helper before deleting `GW2Keyboard`.
 - **Everything removable** (user: what we brought gets a remove button; each in its place, user 2026-10-20):
   Options → Technical – Events: Chat (only while Nexus does not hold it, else the way via Nexus) and reading it;
   Options → Voice – the voice module, the voice models (each with a second click); once, at the very bottom of
@@ -337,17 +368,30 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   (`GW2KB_MUMBLE`, `MumbleLink::DefaultName` – never set in the game), the clipboard stays in the test process,
   `FindGw2Window(pid)` returns only that process' window (never another GW2), so no click can reach the game.
 - `build\Release\typing_bench.exe [n]` after every change to the typing help: SURPRISES must stay 0.
-- The equations (core_tests `TestEquations` E1–E5, `TestEquations2` E6–E13): thousands of random inputs each – sending,
+- `local_mt_translator_selftest.exe <local_mt_fake_helper.exe>` covers the local translator's real child process:
+  protected segments, music-note cleanup, decorative-only output, helper crash + restart, and a five-second timeout.
+  It is part of Gate 4.
+- The equations (core_tests `TestEquations` E1–E5, `TestEquations2` E6–E13, `TestLocalMtProtocol` E14–E15): thousands of random inputs each – sending,
   protection, ini, soft breaks, chat source; text blocks saved = loaded, protocol counts, no invisible mark reaches the
   window (`WithoutInvisible` in `UI()`), the steady number, where a message goes (`RouteMessage`: typed exactly as
   before 2.3.0, "as written" exactly when there is no language), plain punctuation (E11), what goes to the translator
   (E12: "once" = automatic while on, a click always), the translation cache (E13: a hit asks nobody, LRU against a
-  plain list). A new part gets its equation. `i18n_check.py` also
+  plain list); local MT helper JSON requests preserve UTF-8 text byte for byte (E14), and local model routing prefers
+  an installed direct pair before a route of at most two installed pairs through English (E15). Hallucinated musical
+  notation is stripped by `CleanLocalMtOutput`; empty/punctuation-only output and other unexpected decorative symbols
+  are rejected by `IsPlausibleLocalMtOutput`. A new part gets its
+  equation. `i18n_check.py` also
   fails on a translation whose `{1}` placeholders differ from the English text, or on an invisible mark in it.
-- While working: `python tools/verify_release.py --changed [base]` runs only the gates the changed files can touch
-  (core tests, selftest, typing bench, smoke test by path; version, Nexus definition, i18n, binary always) – never a
-  release verdict. A release: the full run. The self-test starts from a fresh ini every run (a half-failed run used
-  to leave its layout for the next one).
+- **Change-scoped verification is the default for every agent.** Map the edited behavior and files to the narrowest
+  checks that can catch regressions, run those checks, and skip unrelated suites. Do not treat a protocol checklist as
+  a command to run every listed test: use it as a coverage map, and add a focused check only where the existing checks
+  leave a real gap. For model work, check only the changed/available model pair and route; do not benchmark every
+  catalog entry. Documentation and license-only edits do not trigger runtime tests. A CMake edit is scoped by the
+  targets and sources in its diff; it never turns on every test by itself.
+- `python tools/verify_release.py --changed --plan` shows the selected checks without running them;
+  `python tools/verify_release.py --changed [base]` runs only those affected checks and is never a release verdict.
+  The mapping is maintained in `tools/verify_release.py`. The full release run still executes all eight gates. The
+  self-test starts from a fresh ini every run (a half-failed run used to leave its layout for the next one).
 - `build\Release\voice_bench.exe model lang threads wav…` with recordings in `local\voice`.
 - Not verifiable here: the game itself – test in GW2 with Nexus (copy the DLL + `GW2Keyboard\` into `addons`).
 
