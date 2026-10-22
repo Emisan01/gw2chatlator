@@ -127,13 +127,15 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   "Send" translates with MyMemory (engine "Automatic" without a key). Minimising when not in use, opening with GW2's
   chat line and every focus behaviour are off; reading the chat is on once Events: Chat is there.
 - **Languages offered** (user, 2026-10-22: the choice clean, an unsure script left out – stability before features):
-  every menu offers only what our window draws (`DrawnInOurWindow`: Latin, Greek, Cyrillic, Arabic – no CJK,
+  every menu offers only what our window draws (`DrawnInOurWindow`: Latin, Greek, Cyrillic – no Arabic, CJK,
   Devanagari, Thai, Hebrew); a name the font in use cannot draw is shown in English (`NativeName` – never a "?", that
   read as misspelled names). "I write in" offers all of them; "Send" only what GW2's chat shows (`SendableInGw2`:
-  Latin script). Written in Arabic, Cyrillic or Greek a message is never sent as written: `RouteMessage` takes the
+  Latin script). Written in Cyrillic or Greek a message is never sent as written: `RouteMessage` takes the
   first of yours (EN-GB without any), and "Send" offers no "as written" then (equation E10). "Language of this window"
-  lists only English, German, Arabic (`UiLanguages` – the texts we have). The text font's ranges include Vietnamese
-  (1E00–1EFF). Arabic is drawn unshaped: ImGui 1.80 has no shaping and no right-to-left – single letters, left to right.
+  lists only the UI languages (`UiLanguages`: English, German, French, Spanish, Italian, Polish, Portuguese, Turkish, Russian). The text font's ranges include Vietnamese
+  (1E00–1EFF). **No Arabic anywhere** (user, 2026-10-22): ImGui 1.80 has no shaping and no right-to-left – single
+  letters, left to right. Not in the UI, not to write in, not in the font; Arabic lines of others are still detected and
+  translated. The options window is drawn with our text font too (`RenderOptionsWindow`: Nexus' font lacks ł, ş, ğ).
 - **Writing:** the multi-line input (soft wrap = '\n' in place of a space, `Flat()` turns it back) → `ComputeTyping`
   (word bar, grey completion, what Space writes) → debounce → `TranslateInput` (`MyWords::Expand` first, protected
   segments, back-translation) → Enter → `StartSend` → `SplitForChat` (199) → `SendNow` → `SendToGw2Chat`.
@@ -157,7 +159,7 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   count as use). "Open again when GW2's chat opens" (`autoOpen`) only opens; the focus key always opens; taking over
   the focus stays `focusOnGameChat`. All of it goes through `g_minimizeRequest` / `g_expandRequest`.
   Text size and font (Options → Window): Segoe UI, Segoe UI Semibold, Tahoma (`kFontFaces`, `[Window] FontFace`; each
-  has Arabic – Bahnschrift has none and is not offered); one Nexus font name per face, `ReleaseTextFont` before
+  has Latin, Greek, Cyrillic); one Nexus font name per face, `ReleaseTextFont` before
   another is asked for (the window scales Nexus' font until it arrives).
   The input grows with its soft-wrapped lines (`g_boxLines`, up to 8) from one line (`inputLines`, default 1), the
   preview the same (`g_previewRows`, what it drew last frame; `previewLines`, default 1), and the window grows upwards when it must
@@ -239,8 +241,8 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 ## Conventions
 
 - **UI text is English in the code and always wrapped:** `Tr(L"...")`, `TrF(L"... {1}", {x})`, drawn through `UI()`
-  (Nexus' font has no ≡ → … ▾ or curly quotes). Add the German and Arabic entries to `src/core/i18n_de.cpp` /
-  `i18n_ar.cpp` and run `python tools/i18n_check.py` — 0 missing, 0 unused.
+  (Nexus' font has no ≡ → … ▾ or curly quotes). Add the entries to every table `src/core/i18n_<code>.cpp`
+  (de, fr, es, it, pl, pt, tr, ru) and run `python tools/i18n_check.py` — 0 missing, 0 unused.
 - INI is ASCII only (`AsciiEscape`/`AsciiUnescape`). API keys: `ProtectSecret` (DPAPI).
 - All Win32 calls use the explicit `W` variants. Status markers in text are ASCII (`[OK]`, `[--]`).
 

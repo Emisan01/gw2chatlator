@@ -48,6 +48,8 @@ def used_keys():
         keys.setdefault("".join(unescape(x) for x in LIT.findall(m.group(1))), path)
     return keys
 
+LANGS = ("de", "fr", "es", "it", "pl", "pt", "tr", "ru")  # the UI languages besides English (core/i18n)
+
 def table(lang):
     text = (SRC / "core" / f"i18n_{lang}.cpp").read_text(encoding="utf-8")
     pairs = re.findall(r'\{\s*((?:L"(?:[^"\\]|\\.)*"\s*)+),\s*((?:L"(?:[^"\\]|\\.)*"\s*)+)\}', text)
@@ -59,13 +61,13 @@ def table(lang):
 def main():
     keys = used_keys()
     if "--missing" in sys.argv:
-        de, ar = table("de"), table("ar")
+        tables = [table(l) for l in LANGS]
         for k in sorted(keys):
-            if k not in de or k not in ar:
+            if any(k not in t for t in tables):
                 print(k.encode("unicode_escape").decode("ascii"))
         return 0
     bad = 0
-    for lang in ("de", "ar"):
+    for lang in LANGS:
         t = table(lang)
         missing = [k for k in keys if k not in t]
         unused = [k for k in t if k not in keys]

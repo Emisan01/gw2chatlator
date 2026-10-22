@@ -561,17 +561,16 @@ static void TestI18n() {
     CHECK(Tr(L"Map") == L"Map");
     CHECK(TrF(L"Sent {1} of {2}", {L"1", L"3"}) == L"Sent 1 of 3");
     CHECK(FormatArgs(L"{1}{1}{3}", {L"a"}) == L"aa{3}");
-    CHECK(UiLangFromCode(L"de-AT") == UiLang::De && UiLangFromCode(L"AR") == UiLang::Ar);
-    CHECK(UiLangFromCode(L"fr", UiLang::En) == UiLang::En);
+    CHECK(UiLangFromCode(L"de-AT") == UiLang::De && UiLangFromCode(L"pt-BR") == UiLang::Pt);
+    CHECK(UiLangFromCode(L"ar", UiLang::En) == UiLang::En);  // no Arabic UI (unjoined in ImGui 1.80)
     SetUiLang(UiLang::De);
     CHECK(Tr(L"Map") == L"Karte");
     CHECK(Tr(L"no such text, falls back") == L"no such text, falls back");
-    SetUiLang(UiLang::Ar);
-    CHECK(UiRtl());
-    CHECK(Tr(L"Map") != L"Map");
+    for (const UiLangInfo& l : UiLanguages()) {  // every UI language has its table, as complete as German's
+        SetUiLang(l.lang);
+        CHECK(l.lang == UiLang::En || (Tr(L"Map") != L"Map" && TranslationCount(l.lang) == TranslationCount(UiLang::De)));
+    }
     SetUiLang(UiLang::En);
-    CHECK(!UiRtl());
-    CHECK(TranslationCount(UiLang::De) > 50 && TranslationCount(UiLang::Ar) > 50);
 }
 
 static void TestWordModel() {

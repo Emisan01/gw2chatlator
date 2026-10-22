@@ -24,7 +24,7 @@ const char kTemplate[] =
     "; Everything here can also be changed in the add-on: menu (=) -> Options. Changes here apply on the next start.\r\n"
     "\r\n"
     "[General]\r\n"
-    "; Language of the window: empty = Windows language, en (English), de (Deutsch), ar (Arabic)\r\n"
+    "; Language of the window: empty = Windows language, en, de, fr, es, it, pl, pt, tr\r\n"
     "UiLanguage=\r\n"
     "\r\n"
     "[Translate]\r\n"
@@ -223,7 +223,17 @@ const wchar_t* EngineKey(Engine e) {
 UiLang EffectiveUiLang(const std::wstring& code) {
     if (!Trim(code).empty()) return UiLangFromCode(code, UiLang::En);
     const LANGID winUi = PRIMARYLANGID(GetUserDefaultUILanguage());
-    return winUi == LANG_GERMAN ? UiLang::De : winUi == LANG_ARABIC ? UiLang::Ar : UiLang::En;
+    switch (winUi) {
+        case LANG_GERMAN: return UiLang::De;
+        case LANG_FRENCH: return UiLang::Fr;
+        case LANG_SPANISH: return UiLang::Es;
+        case LANG_ITALIAN: return UiLang::It;
+        case LANG_POLISH: return UiLang::Pl;
+        case LANG_PORTUGUESE: return UiLang::Pt;
+        case LANG_TURKISH: return UiLang::Tr;
+        case LANG_RUSSIAN: return UiLang::Ru;
+        default: return UiLang::En;
+    }
 }
 
 void Config::Load(const std::wstring& dir) {

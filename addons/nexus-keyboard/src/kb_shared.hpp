@@ -209,8 +209,7 @@ extern std::atomic<ImFont*> g_textFont;
 extern float g_textFontPx;
 void OnTextFont(const char*, void* font);
 float PtToPx(int pt);
-// The fonts to choose beside the size (user, 2026-10-22): files every Windows has, each with Arabic. Bahnschrift has
-// none – not offered.
+// The fonts to choose beside the size (user, 2026-10-22): files every Windows has, each with Latin, Greek, Cyrillic.
 struct FontFace {
     const wchar_t* file;  // in Windows\Fonts, without ".ttf"
     const char* name;

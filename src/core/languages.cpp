@@ -53,7 +53,7 @@ const std::vector<LangInfo>& Languages() {
 bool DrawnInOurWindow(const LangInfo& l) {
     if (l.latinScript) return true;
     const std::wstring p = PrimaryLang(l.code);
-    return p == L"EL" || p == L"BG" || p == L"RU" || p == L"UK" || p == L"AR";
+    return p == L"EL" || p == L"BG" || p == L"RU" || p == L"UK";
 }
 
 bool SendableInGw2(const std::wstring& code) {

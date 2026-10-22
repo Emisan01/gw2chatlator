@@ -121,12 +121,10 @@ void RequestTextFont(int pt, const std::wstring& face) {
     }
     ReleaseTextFont();
     {
-        // Latin (also the extended letters), Greek, Cyrillic, Arabic (+ its presentation forms), punctuation, arrows,
-        // symbols – what chat and our window show.
-        static const ImWchar kRanges[] = {0x0020, 0x024F, 0x0370, 0x03FF, 0x0400, 0x04FF, 0x0600, 0x06FF, 0x1E00, 0x1EFF,
-                                          0x2000, 0x206F,
-                                          0x20A0, 0x20CF, 0x2190, 0x21FF, 0x2200, 0x22FF, 0x25A0, 0x25FF, 0xFB50, 0xFDFF,
-                                          0xFE70, 0xFEFF, 0};
+        // Latin (also the extended letters and Vietnamese), Greek, Cyrillic, punctuation, arrows, symbols – what chat
+        // and our window show (no Arabic: ImGui 1.80 draws it unjoined, user 2026-10-22).
+        static const ImWchar kRanges[] = {0x0020, 0x024F, 0x0370, 0x03FF, 0x0400, 0x04FF, 0x1E00, 0x1EFF, 0x2000, 0x206F,
+                                          0x20A0, 0x20CF, 0x2190, 0x21FF, 0x2200, 0x22FF, 0x25A0, 0x25FF, 0};
         static ImFontConfig cfg;
         cfg.GlyphRanges = kRanges;
         g_api->Fonts_AddFromFile(key.c_str(), px, ToUtf8(file).c_str(), OnTextFont, &cfg);

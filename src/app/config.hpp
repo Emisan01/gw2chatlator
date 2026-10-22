@@ -23,7 +23,7 @@ struct Config {
 
     // [General]
     // Language of this window as chosen ("" = Windows language, else a code like "FR" or "de"); `uiLang` is the one
-    // the window can show (English, German, Arabic – other choices show English until they are translated).
+    // the window can show (core/i18n: UiLanguages).
     std::wstring uiLangCode;
     UiLang uiLang = UiLang::En;
 
@@ -120,7 +120,7 @@ struct Config {
     std::wstring CacheDir() const { return dataDir + L"\\cache"; }
 };
 
-// The window language for a choice ("" = Windows display language): German, Arabic, else English.
+// The window language for a choice ("" = Windows display language): one of UiLanguages, else English.
 UiLang EffectiveUiLang(const std::wstring& code);
 const wchar_t* EngineKey(Engine e);        // "auto", "basic", "deepl", "llm"
 const wchar_t* AutoCorrectKey(AutoCorrectMode m);  // "off", "safe", "phone"
