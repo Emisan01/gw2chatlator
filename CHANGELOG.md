@@ -5,7 +5,9 @@ diagnosis show it.
 
 ## 2.5.3 — 2026-10-22 (GW2Chatlator for Nexus)
 
+- **Guild subchannels G1–G6 & active channel detection:** Added dedicated G1–G6 guild chat channels matching the native Guild Wars 2 chat layout and commands (`/g1` to `/g6`), with unified guild coloring and dynamic active channel indicator (`Active (G1)`, `Active (Map)`, etc.).
 - **Local MT packages and bundle installer:** Added logical packages in Options → Translator ("My language", "Europe package", "West & Central Europe", "Eastern Europe") and folded single pairs view with sort order (`en -> X`, `X -> en`), progress bar, and 5-second completion status feedback.
+- **Main window module info guide:** Local OPUS-MT translation module is now directly offered in the chat's empty status/module guide with one-click installation.
 - **Double-download guard:** Atomic `compare_exchange` on local MT jobs prevents duplicate downloads, buttons hide during active downloads, and already installed pairs are safely skipped.
 - **Full OPUS-MT package suite:** All 16 language pairs built, verified, and exact package sizes recorded in catalog.
 
