@@ -92,26 +92,46 @@ std::atomic<ImFont*> g_textFont{nullptr};
 float g_textFontPx = 0;  // the size asked of Nexus (game thread)
 void OnTextFont(const char*, void* font) { g_textFont = static_cast<ImFont*>(font); }
 float PtToPx(int pt) { return std::round(std::clamp(pt, 8, 28) * 96.0f / 72.0f); }
-void RequestTextFont(int pt) {
+const FontFace kFontFaces[3] = {{L"segoeui", "Segoe UI"}, {L"seguisb", "Segoe UI Semibold"}, {L"tahoma", "Tahoma"}};
+std::string g_textFontKey;  // the font asked of Nexus now (game thread): one name per face
+void ReleaseTextFont() {
+    if (!g_textFontKey.empty() && g_api && g_api->Fonts_Release) g_api->Fonts_Release(g_textFontKey.c_str(), OnTextFont);
+    g_textFontKey.clear();
+    g_textFont = nullptr;  // until the next one arrives the window scales Nexus' font – never one Nexus may have freed
+    g_textFontPx = 0;
+}
+void RequestTextFont(int pt, const std::wstring& face) {
     if (!g_api || !g_api->Fonts_AddFromFile) return;
     const float px = PtToPx(pt);
-    if (px == g_textFontPx) return;
-    if (g_textFontPx > 0 && g_api->Fonts_Resize) {
-        g_api->Fonts_Resize(kTextFontId, px);
-    } else {
-        wchar_t win[MAX_PATH] = {};
-        GetWindowsDirectoryW(win, MAX_PATH);
-        const std::wstring file = std::wstring(win) + L"\\Fonts\\segoeui.ttf";
+    wchar_t win[MAX_PATH] = {};
+    GetWindowsDirectoryW(win, MAX_PATH);
+    std::wstring stem = face;
+    std::wstring file = std::wstring(win) + L"\\Fonts\\" + stem + L".ttf";
+    if (GetFileAttributesW(file.c_str()) == INVALID_FILE_ATTRIBUTES) {  // missing: Segoe UI
+        stem = L"segoeui";
+        file = std::wstring(win) + L"\\Fonts\\segoeui.ttf";
         if (GetFileAttributesW(file.c_str()) == INVALID_FILE_ATTRIBUTES) return;
+    }
+    // Segoe UI keeps the name it always had; another face gets its own (a released one is not asked for by that name).
+    const std::string key = stem == L"segoeui" ? std::string(kTextFontId) : std::string(kTextFontId) + "_" + ToUtf8(stem);
+    if (key == g_textFontKey) {  // the same face: only its size
+        if (px != g_textFontPx && g_api->Fonts_Resize) g_api->Fonts_Resize(key.c_str(), px);
+        g_textFontPx = px;
+        return;
+    }
+    ReleaseTextFont();
+    {
         // Latin (also the extended letters), Greek, Cyrillic, Arabic (+ its presentation forms), punctuation, arrows,
         // symbols – what chat and our window show.
-        static const ImWchar kRanges[] = {0x0020, 0x024F, 0x0370, 0x03FF, 0x0400, 0x04FF, 0x0600, 0x06FF, 0x2000, 0x206F,
+        static const ImWchar kRanges[] = {0x0020, 0x024F, 0x0370, 0x03FF, 0x0400, 0x04FF, 0x0600, 0x06FF, 0x1E00, 0x1EFF,
+                                          0x2000, 0x206F,
                                           0x20A0, 0x20CF, 0x2190, 0x21FF, 0x2200, 0x22FF, 0x25A0, 0x25FF, 0xFB50, 0xFDFF,
                                           0xFE70, 0xFEFF, 0};
         static ImFontConfig cfg;
         cfg.GlyphRanges = kRanges;
-        g_api->Fonts_AddFromFile(kTextFontId, px, ToUtf8(file).c_str(), OnTextFont, &cfg);
+        g_api->Fonts_AddFromFile(key.c_str(), px, ToUtf8(file).c_str(), OnTextFont, &cfg);
     }
+    g_textFontKey = key;
     g_textFontPx = px;
 }
 ImVec4 Rgb32(uint32_t rgb) { return ImVec4(((rgb >> 16) & 0xFF) / 255.f, ((rgb >> 8) & 0xFF) / 255.f, (rgb & 0xFF) / 255.f, 1.f); }

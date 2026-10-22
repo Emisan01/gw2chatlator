@@ -31,7 +31,7 @@ struct Config {
     Engine engine = Engine::Auto;   // translates what you write
     std::vector<std::wstring> writeLangs{L"EN-GB", L"FR", L"ES", L"DE"};
     bool backTranslate = true;
-    bool translateWriting = true;  // GW2 Keyboard: translate what you write (off: sent as written, only corrected)
+    bool translateWriting = false;  // translate what you write (off, the first use: sent as written, only corrected)
     std::vector<std::wstring> understoodLangs;            // never translated automatically ("EN")
     bool skipTypingLang = true;                           // nor the language you write in (the list's first entry)
 
@@ -69,6 +69,7 @@ struct Config {
     int opacity = 255;
     int fontPercent = 100;            // chat text: 100 % = 11 pt (older ini; FontPt wins)
     int fontPt = 11;                  // chat text size in pt – the add-on builds the font at this size (sharp)
+    std::wstring fontFace = L"segoeui";  // its font: a file in Windows\Fonts (segoeui, seguisb, tahoma – kFontFaces)
     bool focusOnGameChat = false;  // focus input when in-game chat box gains focus
     // Key presses vs. letters sent (the word help's benefit): today and in total.
     int typingDay = 0;  // yyyymmdd

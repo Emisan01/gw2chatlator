@@ -244,11 +244,11 @@ std::wstring FormatSeconds(int ms) {  // 1234 -> "1.2"
     return b;
 }
 
-// A language combo over Languages(): `value` "" = `emptyLabel`.
+// A language combo over the languages our window draws (DrawnInOurWindow): `value` "" = `emptyLabel`.
 bool LanguageCombo(const char* id, std::wstring& value, const std::wstring& emptyLabel) {
     std::string current = value.empty() ? U8(emptyLabel) : U8(value);
     for (const LangInfo& l : Languages())
-        if (PrimaryLang(l.code) == PrimaryLang(value) && !value.empty()) current = U8(std::wstring(l.native) + L" (" + l.code + L")");
+        if (PrimaryLang(l.code) == PrimaryLang(value) && !value.empty()) current = U8(NativeName(l.code) + L" (" + l.code + L")");
     bool changed = false;
     if (ImGui::BeginCombo(id, current.c_str())) {
         if (!emptyLabel.empty() && ImGui::Selectable(U8(emptyLabel).c_str(), value.empty())) {
@@ -256,7 +256,8 @@ bool LanguageCombo(const char* id, std::wstring& value, const std::wstring& empt
             changed = true;
         }
         for (const LangInfo& l : Languages()) {
-            const std::string n = U8(std::wstring(l.native) + L" (" + l.code + L")");
+            if (!DrawnInOurWindow(l)) continue;
+            const std::string n = U8(NativeName(l.code) + L" (" + l.code + L")");
             if (ImGui::Selectable(n.c_str(), value == l.code)) {
                 value = l.code;
                 changed = true;
@@ -406,7 +407,7 @@ std::string ExceptText(const Config& c) {
 }
 void RenderExceptList(Config& edit) {
     static const wchar_t* kCommon[] = {L"EN", L"DE", L"FR", L"ES", L"IT", L"PT", L"NL", L"PL",
-                                       L"RU", L"TR", L"ZH", L"KO", L"JA", L"AR"};
+                                       L"RU", L"TR", L"AR"};  // what our window draws (no CJK)
     bool first = true;
     auto chip = [&first](const std::string& label) {  // one entry; the row wraps where it no longer fits
         const float w = ImGui::CalcTextSize(label.c_str(), nullptr, true).x + ImGui::GetStyle().FramePadding.x * 2;
@@ -556,7 +557,18 @@ void RenderOptionsContent() {
         // ---- General
         if (ImGui::BeginTabItem(UI(Tr(L"General")).c_str(), nullptr, TabFlag(0))) {
             ImGui::SetNextItemWidth(wide);
-            LanguageCombo(UI(Tr(L"Language of this window") + L"##ui").c_str(), edit.uiLangCode, Tr(L"like Windows"));
+            {  // only the languages this window has texts in (English, German, Arabic)
+                std::string current = UI(Tr(L"like Windows"));
+                for (const UiLangInfo& l : UiLanguages())
+                    if (ToLowerAscii(PrimaryLang(edit.uiLangCode)) == l.code) current = U8(l.native);  // "AR" of old too
+                if (ImGui::BeginCombo(UI(Tr(L"Language of this window") + L"##ui").c_str(), current.c_str())) {
+                    if (ImGui::Selectable(UI(Tr(L"like Windows")).c_str(), edit.uiLangCode.empty())) edit.uiLangCode.clear();
+                    for (const UiLangInfo& l : UiLanguages())
+                        if (ImGui::Selectable(U8(l.native).c_str(), ToLowerAscii(PrimaryLang(edit.uiLangCode)) == l.code))
+                            edit.uiLangCode = l.code;
+                    ImGui::EndCombo();
+                }
+            }
             ImGui::Checkbox(UI(Tr(L"Show the window")).c_str(), &g_show);
             {
                 auto drawBadge = [](const char* key, const char* label) {
@@ -625,7 +637,27 @@ void RenderOptionsContent() {
                 edit.fontPt = g_cfg.fontPt = pt;
                 g_cfg.SaveValue(L"Window", L"FontPt", std::to_wstring(pt));
             }
-            if (ImGui::IsItemDeactivatedAfterEdit()) RequestTextFont(pt);  // built once you let go (scaled meanwhile)
+            if (ImGui::IsItemDeactivatedAfterEdit()) RequestTextFont(pt, edit.fontFace);  // built once you let go (scaled meanwhile)
+            {  // the font beside its size – taken at once and kept, like the size
+                int at = 0;
+                for (int i = 0; i < 3; ++i)
+                    if (edit.fontFace == kFontFaces[i].file) at = i;
+                int chosen = at;
+                ImGui::SetNextItemWidth(wide);
+                if (ImGui::BeginCombo(UI(Tr(L"Font") + L"##face").c_str(), kFontFaces[at].name)) {
+                    for (int i = 0; i < 3; ++i)
+                        if (ImGui::Selectable(kFontFaces[i].name, i == at)) chosen = i;
+                    ImGui::EndCombo();
+                }
+                if (chosen != at) {
+                    {
+                        std::lock_guard<std::mutex> lock(g_mu);
+                        edit.fontFace = g_cfg.fontFace = kFontFaces[chosen].file;
+                        g_cfg.SaveValue(L"Window", L"FontFace", edit.fontFace);
+                    }
+                    RequestTextFont(edit.fontPt, edit.fontFace);
+                }
+            }
             int transparency = 100 - (std::clamp(edit.opacity, 0, 255) * 100 + 127) / 255;
             ImGui::SetNextItemWidth(wide);
             if (ImGui::SliderInt(UI(Tr(L"Transparency") + L" (%)##alpha").c_str(), &transparency, 0, 100)) {
@@ -838,7 +870,8 @@ void RenderOptionsContent() {
             std::vector<std::string> langs{UI(Tr(L"Like I write")), UI(Tr(L"Detect it"))};
             std::vector<std::wstring> codes{L"", L"auto"};
             for (const LangInfo& l : Languages()) {
-                langs.push_back(U8(l.native));
+                if (!DrawnInOurWindow(l)) continue;
+                langs.push_back(U8(NativeName(l.code)));
                 codes.push_back(l.code);
             }
             int li = 0;

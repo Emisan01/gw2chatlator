@@ -2260,7 +2260,7 @@ static void TestEquations2() {
     static const wchar_t* kLangs[] = {L"DE", L"EN-GB", L"FR", L"ES"};
     static const wchar_t* kTabs[] = {L"", L"", L"=", L"FR", L"EN-GB"};
     static const wchar_t* kDict[] = {L"", L"EN", L"de", L"FR"};
-    static const wchar_t* kTyping[] = {L"DE", L"EN", L"FR"};
+    static const wchar_t* kTyping[] = {L"DE", L"EN", L"FR", L"AR", L"RU"};
     auto before230 = [](const SendState& s) {  // the footer's choice and a whisper tab, as they always were
         const std::vector<std::wstring>& langs = *s.writeLangs;
         if (!s.tabLang.empty()) return s.tabLang == L"=" ? std::wstring() : s.tabLang;
@@ -2279,7 +2279,7 @@ static void TestEquations2() {
         s.sendIdx = static_cast<int>(next() % 6) - 1;
         s.writeLangs = &langs;
         s.dictLang = kDict[next() % 4];
-        s.typingLang = kTyping[next() % 3];
+        s.typingLang = kTyping[next() % 5];
         const SendRoute r = RouteMessage(s);
         SendState typed = s;
         typed.spoken = false;
@@ -2290,11 +2290,15 @@ static void TestEquations2() {
         flipped.dictLang = L"ZH";
         const SendRoute f = RouteMessage(flipped);
         const bool voiceFirst = s.spoken && s.voiceOn && s.voiceTranslate;
-        bool ok = t.lang == before230(typed) && f.lang == t.lang && f.translating == t.translating;
+        // typed in a script GW2 cannot show: never "as written" – the first of yours (EN-GB without any)
+        const std::wstring firstOrEn = langs.empty() ? std::wstring(L"EN-GB") : langs.front();
+        const std::wstring expected = !before230(typed).empty() || SendableInGw2(typed.typingLang) ? before230(typed) : firstOrEn;
+        bool ok = t.lang == expected && f.lang == t.lang && f.translating == t.translating;
         if (!voiceFirst) ok = ok && r.lang == t.lang && r.translating == t.translating;
         if (voiceFirst && !langs.empty()) ok = ok && !r.lang.empty();
         if (voiceFirst && !r.lang.empty())
-            ok = ok && (r.lang == s.tabLang || std::find(langs.begin(), langs.end(), r.lang) != langs.end());
+            ok = ok && (r.lang == s.tabLang || r.lang == firstOrEn || std::find(langs.begin(), langs.end(), r.lang) != langs.end());
+        if (r.lang.empty()) ok = ok && SendableInGw2(voiceFirst && !s.dictLang.empty() ? s.dictLang : s.typingLang);
         const std::wstring& source = voiceFirst && !s.dictLang.empty() ? s.dictLang : s.typingLang;
         ok = ok && r.translating == (!r.lang.empty() && PrimaryLang(r.lang) != PrimaryLang(source));
         if (!ok) ++bad[4];

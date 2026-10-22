@@ -8,6 +8,15 @@ diagnosis show it.
 - **No more wrong translations from MyMemory's public memory:** MyMemory now answers with its machine translation
   only. Its public memory sometimes returned the translation of a different sentence ("ah alles klar" became "All
   these great people.").
+- **First use translates nothing by itself:** your text goes out as written until you choose a language at "Send"
+  (then MyMemory translates it); the input and the preview start with one line and grow with what you write.
+- **Mini mode's right-click menu:** only Options, Compact view and Mini mode – nothing that needs the chat.
+- **Clean language menus:** no language names with "?" any more (a name the font cannot draw shows in English);
+  only languages the window can actually draw are offered – Chinese, Japanese, Korean, Hindi, Thai and Hebrew are
+  gone from the menus. "Language of this window" lists only the languages it has texts in (English, German, Arabic).
+- **Arabic, Russian, Greek to write in:** choose them at "I write in"; since GW2's chat cannot show them, your message
+  is always translated (into the first language at "Send") – never sent as written.
+- **A font to choose:** Options → Window offers Segoe UI, Segoe UI Semibold and Tahoma beside the text size.
 - **The mouse in the input selects text:** holding the left button in the input no longer moves the window (only the
   mini mode's small window still moves that way).
 - **"Translate visible chat once" is the thrifty mode:** it now follows the same rule as the automatic translation –

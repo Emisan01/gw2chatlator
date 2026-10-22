@@ -122,6 +122,18 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   The detection runs for every line (local, no translator): `g_playerLang` (session only) remembers each player's
   language; their whisper tab then sends in it (`WhisperTab::sendLang` → `g_sendOverride`, "=" = as written; the
   footer's choice in a tab changes only that tab). Nothing of other players is stored (privacy, Raidcore).
+- **First use** (user, 2026-10-22): nothing is translated – `[Translate] Writing` 0 (the footer's "Send": as written),
+  `[Nexus] TranslateChat` 0; the prediction is on, in the system language (`writeIn` empty); choosing a language at
+  "Send" translates with MyMemory (engine "Automatic" without a key). Minimising when not in use, opening with GW2's
+  chat line and every focus behaviour are off; reading the chat is on once Events: Chat is there.
+- **Languages offered** (user, 2026-10-22: the choice clean, an unsure script left out – stability before features):
+  every menu offers only what our window draws (`DrawnInOurWindow`: Latin, Greek, Cyrillic, Arabic – no CJK,
+  Devanagari, Thai, Hebrew); a name the font in use cannot draw is shown in English (`NativeName` – never a "?", that
+  read as misspelled names). "I write in" offers all of them; "Send" only what GW2's chat shows (`SendableInGw2`:
+  Latin script). Written in Arabic, Cyrillic or Greek a message is never sent as written: `RouteMessage` takes the
+  first of yours (EN-GB without any), and "Send" offers no "as written" then (equation E10). "Language of this window"
+  lists only English, German, Arabic (`UiLanguages` – the texts we have). The text font's ranges include Vietnamese
+  (1E00–1EFF). Arabic is drawn unshaped: ImGui 1.80 has no shaping and no right-to-left – single letters, left to right.
 - **Writing:** the multi-line input (soft wrap = '\n' in place of a space, `Flat()` turns it back) → `ComputeTyping`
   (word bar, grey completion, what Space writes) → debounce → `TranslateInput` (`MyWords::Expand` first, protected
   segments, back-translation) → Enter → `StartSend` → `SplitForChat` (199) → `SendNow` → `SendToGw2Chat`.
@@ -135,7 +147,8 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   a part switches it off, switching it off brings back the layout from before. No preview: the translation stands
   small in the input.
   Without the header a right-click on the window (not a chat line, not the input) opens the menu `kbmenu`
-  with the tabs and "Minimise"; the input's learning popup then has "Menu …". Without the footer its "<" minimise
+  with the tabs and "Minimise"; the input's learning popup then has "Menu …". Without the chat (the mini mode: nothing
+  but the input) the menu holds only "Options …", "Compact view", "Mini mode" (ticked) – in that order (user, 2026-10-22). Without the footer its "<" minimise
   button stands left of the input. "Info texts" off hides every grey status line (never the prediction's grey word).
   The window's theme (`Theme`: Nexus / Slate / Grey / Cba, `ColoursOf`, `PushTheme` for everything we draw) is only
   the window – the chat text keeps its channel colours (`kChannelLook`). Compact view never hides the word bar.
@@ -143,7 +156,11 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   in use" (`autoMinimize` after `minimizeAfter` s; `g_lastUse` – input, hover, menus, sending, voice, GW2's chat line
   count as use). "Open again when GW2's chat opens" (`autoOpen`) only opens; the focus key always opens; taking over
   the focus stays `focusOnGameChat`. All of it goes through `g_minimizeRequest` / `g_expandRequest`.
-  The input grows with its soft-wrapped lines (`g_boxLines`, up to 8) and the window grows upwards when it must
+  Text size and font (Options → Window): Segoe UI, Segoe UI Semibold, Tahoma (`kFontFaces`, `[Window] FontFace`; each
+  has Arabic – Bahnschrift has none and is not offered); one Nexus font name per face, `ReleaseTextFont` before
+  another is asked for (the window scales Nexus' font until it arrives).
+  The input grows with its soft-wrapped lines (`g_boxLines`, up to 8) from one line (`inputLines`, default 1), the
+  preview the same (`g_previewRows`, what it drew last frame; `previewLines`, default 1), and the window grows upwards when it must
   (bottom kept, shrinks back). Without the word bar the grey word also shows its highlighted completion (what Tab
   takes; Space alone still keeps a valid word). The first Tab takes the highlighted word.
   `GW2KB_SHOT_TYPE=<text>` types into the input before the self-test's picture. Status text is drawn inside the input box (`BoxText`). Compact view = no

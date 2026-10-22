@@ -250,7 +250,7 @@ void Config::Load(const std::wstring& dir) {
     if (langs.empty()) langs = ini.Str(L"DeepL", L"TargetLangs", L"");
     if (auto t = ParseLangList(langs); !t.empty()) writeLangs = t;
     backTranslate = ini.Bool(L"Translate", L"BackTranslate", true);
-    translateWriting = ini.Bool(L"Translate", L"Writing", true);
+    translateWriting = ini.Bool(L"Translate", L"Writing", false);  // first use: sent as written
     understoodLangs = ParseLangList(ini.Str(L"Translate", L"Understood", L""));
     skipTypingLang = ini.Bool(L"Translate", L"SkipTypingLang", true);
 
@@ -309,6 +309,8 @@ void Config::Load(const std::wstring& dir) {
     fontPercent = ini.Int(L"Window", L"FontPercent", 100, 70, 300);
     fontPt = ini.Int(L"Window", L"FontPt", 0, 0, 40);
     if (fontPt == 0) fontPt = std::clamp((11 * fontPercent + 50) / 100, 8, 28);  // from the older percent
+    fontFace = ToLowerAscii(ini.Str(L"Window", L"FontFace", L"segoeui"));
+    if (fontFace != L"seguisb" && fontFace != L"tahoma") fontFace = L"segoeui";  // only what we offer
     focusOnGameChat = ini.Bool(L"Window", L"FocusOnGameChat", false);
     typingDay = ini.Int(L"Typing", L"Day", 0, 0, 99991231);
     dayKeys = ini.Int(L"Typing", L"DayKeys", 0, 0, 2000000000);
@@ -426,6 +428,7 @@ void Config::SaveAll() const {
     SaveValue(L"Window", L"Opacity", std::to_wstring(opacity));
     SaveValue(L"Window", L"FontPercent", std::to_wstring(fontPercent));
     SaveValue(L"Window", L"FontPt", std::to_wstring(fontPt));
+    SaveValue(L"Window", L"FontFace", fontFace);
     SaveBool(L"Window", L"FocusOnGameChat", focusOnGameChat);
 }
 
