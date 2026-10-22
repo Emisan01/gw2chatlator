@@ -231,7 +231,15 @@ void Hint(const std::string& text) {  // grey and wrapped: long hints are never 
     ImGui::PopStyleColor();
 }
 
+void RenderOptionsContent();
+static bool s_optionsLoaded = false;
+
 void RenderOptionsWindow() {
+    static bool s_wasShowOptions = false;
+    if (g_showOptions && !s_wasShowOptions) {
+        s_optionsLoaded = false;
+    }
+    s_wasShowOptions = g_showOptions;
     if (!g_showOptions) return;
     ImGui::SetNextWindowSize(ImVec2(660, 620), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(ImVec2(600, 420), ImVec2(4000, 4000));
@@ -550,14 +558,13 @@ void RenderDashboard(Config& edit, const Config& saved) {
 // Our options window, in tabs. "Save" applies.
 void RenderOptionsContent() {
     static Config edit, opened;  // `opened`: g_cfg when the page was filled
-    static bool loaded = false;
     static char keyBuf[256] = {}, regionBuf[64] = {}, urlBuf[256] = {}, mailBuf[128] = {};
     static std::vector<AudioDevice> mics;
     static bool forgetAsked = false;
-    if (!loaded) {
+    if (!s_optionsLoaded) {
         std::lock_guard<std::mutex> lock(g_mu);
         edit = opened = g_cfg;
-        loaded = true;
+        s_optionsLoaded = true;
         const std::string key = U8(edit.engine == Engine::DeepL ? edit.deeplKey : edit.engine == Engine::Google ? edit.googleKey
                                    : edit.engine == Engine::Microsoft ? edit.msKey : edit.libreKey);
         strncpy_s(keyBuf, key.c_str(), _TRUNCATE);
@@ -1118,11 +1125,24 @@ void RenderOptionsContent() {
             if (edit.writeLangs == opened.writeLangs) edit.writeLangs = g_cfg.writeLangs;
             if (edit.voiceModel == opened.voiceModel) edit.voiceModel = g_cfg.voiceModel;
             const bool engineChanged = edit.engine != g_cfg.engine;
+            const std::wstring activeLang = SendLang();
+            const bool activeOrig = SendOriginal();
             g_cfg = opened = edit;
             g_cfg.SaveAll();
             SetUiLang(g_cfg.uiLang);
             g_translator = MakeTranslator(g_cfg);
-            g_sendIdx = g_cfg.translateWriting ? 0 : static_cast<int>(g_cfg.writeLangs.size());
+            if (!g_cfg.translateWriting || activeOrig) {
+                g_sendIdx = static_cast<int>(g_cfg.writeLangs.size());
+            } else {
+                int matched = -1;
+                for (size_t i = 0; i < g_cfg.writeLangs.size(); ++i) {
+                    if (g_cfg.writeLangs[i] == activeLang) {
+                        matched = static_cast<int>(i);
+                        break;
+                    }
+                }
+                g_sendIdx = matched >= 0 ? matched : 0;
+            }
             g_sendOverride.clear();
             g_preview.clear();  // what you have written goes through the translator as it is set now
             ++g_inputGen;
@@ -1150,7 +1170,7 @@ void RenderOptionsContent() {
     }
     ImGui::SameLine();
     if (ImGui::Button(UI(Tr(L"Undo changes")).c_str())) {
-        loaded = false;
+        s_optionsLoaded = false;
     }
 }
 

@@ -3,6 +3,11 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.5.4 — 2026-10-22 (GW2Chatlator for Nexus)
+
+- **Consistent primary output language:** Selected send language in the main window immediately becomes primary, persists to configuration, and is preserved when clicking Save in Options (no unwanted fallback to earlier languages).
+- **Unified UI and hover tooltip scaling:** The main window, mini mode, and collapsed button now share a single font-driven scaling logic, ensuring hover tooltips and controls are uniformly sized across all window modes.
+
 ## 2.5.3 — 2026-10-22 (GW2Chatlator for Nexus)
 
 - **Guild subchannels G1–G6 & active channel detection:** Added dedicated G1–G6 guild chat channels matching the native Guild Wars 2 chat layout and commands (`/g1` to `/g6`), with unified guild coloring and dynamic active channel indicator (`Active (G1)`, `Active (Map)`, etc.).
