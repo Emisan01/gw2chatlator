@@ -1120,22 +1120,8 @@ void RenderWindow() {
         ImGui::OpenPopup("kbmenu");  // without the header the window's own right-click is the menu
     if (!ImGui::IsMouseDown(ImGuiMouseButton_Right) && !ImGui::IsMouseReleased(ImGuiMouseButton_Right))
         s_lineRightClick = false;
-    // The normal window: held down in the input for a moment and dragged, it moves too (elsewhere ImGui moves it by
-    // itself; a quick drag in the input still selects text). The mini mode does this in its fitting above.
-    if (Lay().chat) {
-        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsMouseHoveringRect(inputMin, inputMax) &&
-            ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
-            g_ownDownAt = GetTickCount64();
-        if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
-            g_ownDownAt = 0;
-            g_ownMoving = false;
-        } else if (g_ownDownAt && !g_ownMoving && GetTickCount64() - g_ownDownAt > 250) {
-            g_ownMoving = true;
-        }
-        if (g_ownMoving) {
-            DragWindow(io.MouseDelta);
-        }
-    }
+    // The normal window: the mouse in the input is text only – a press, held or not, selects (user, 2026-10-22); the
+    // window moves by ImGui elsewhere. Only the mini mode's fitted window moves on a held press (its fitting above).
     // Three quick left clicks on the window (not in the input – there clicks place the caret and pick words –, not on a
     // button) minimise it (Fallen's idea): the way when header, footer and the minimise button are hidden.
     {

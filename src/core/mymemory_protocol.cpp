@@ -41,7 +41,10 @@ std::wstring BuildMyMemoryPath(const std::wstring& text, const std::wstring& sou
                                const std::wstring& email) {
     std::string q = "/get?q=" + UrlEncode(ToUtf8(text));
     q += "&langpair=" + UrlEncode(ToUtf8(MyMemoryLang(sourceLang) + L"|" + MyMemoryLang(targetLang)));
-    q += "&mt=1";
+    // Its machine translation only (onlyprivate without a key: no public memory). The public memory answered with the
+    // translations of other sentences – misaligned corpora rated quality 0: "ah alles klar" -> "All these great people.",
+    // "Wer kommt mit?" -> "Seen it?" (user, 2026-10-22).
+    q += "&mt=1&onlyprivate=1";
     if (!Trim(email).empty()) q += "&de=" + UrlEncode(ToUtf8(Trim(email)));
     return FromUtf8(q);
 }
