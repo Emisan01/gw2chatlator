@@ -881,7 +881,6 @@ void RenderOptionsContent() {
                 }
             }
             Hint(UI(Tr(L"Foreign lines of other players into your language. Off: a click on a line translates just that one.")));
-            ImGui::Checkbox(UI(Tr(L"Do not translate the language I write in")).c_str(), &edit.skipTypingLang);
             // Languages you understand: never translated by themselves (a click still does) – only the others are.
             ImGui::TextUnformatted(UI(Tr(L"Languages I understand (not translated by themselves):")).c_str());
             {

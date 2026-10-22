@@ -33,7 +33,6 @@ struct Config {
     bool backTranslate = true;
     bool translateWriting = true;  // GW2 Keyboard: translate what you write (off: sent as written, only corrected)
     std::vector<std::wstring> understoodLangs;            // never translated automatically ("EN")
-    bool skipTypingLang = true;                           // chat lines in the language you type in are not translated automatically
 
     // [Basic] MyMemory
     std::wstring basicEmail;

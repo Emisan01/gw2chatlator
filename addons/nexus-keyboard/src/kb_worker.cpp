@@ -44,37 +44,31 @@ void FreeWorkerState() {
     g_mumbleWorker = nullptr;
 }
 
-// A chat line into your language, when its language is sure and not yours (nor one you understand) – only while
-// "Translate the chat" is on; `asked` (a click on the line) translates it anyway, whatever its language seems to be.
+// A chat line into your language – whether is core/translate_policy's (`ShouldTranslate`): automatically (only while
+// "Translate the chat" is on) and `once` from the menu by the same rule; `asked` (a click on the line) always.
 void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
     std::shared_ptr<Translator> tr;
-    std::wstring target;
     std::vector<std::wstring> understood;
-    bool skipTyping = true;
+    LineToTranslate what;
+    what.trigger = asked ? TranslateTrigger::LineClick : once ? TranslateTrigger::Once : TranslateTrigger::Auto;
     ProtectedText p = ProtectForTranslation(text, nullptr, g_spell ? &g_spell->KeepWords() : &BuiltinKeepWords());
     if (!HasTranslatableText(p.segments)) return;
-    std::wstring detected = SureLanguage(text, DetectLanguage(text));  // on this PC (Windows), no translator asked
+    const std::wstring els = DetectLanguage(text);  // on this PC (Windows), no translator asked
+    what.detected = SureLanguage(text, els);
     {
         std::lock_guard<std::mutex> lock(g_mu);
-        if (!detected.empty())  // what this player writes in (answering them in it)
+        if (!what.detected.empty())  // what this player writes in (answering them in it)
             for (const ChatLine& l : g_lines)
-                if (l.id == id && !l.speaker.empty()) g_playerLang[CaseFold(Trim(l.speaker))] = detected;
-        if (!g_nx.translateChat && !asked && !once) return;  // once / a click: whatever "Translate the chat" says
+                if (l.id == id && !l.speaker.empty()) g_playerLang[CaseFold(Trim(l.speaker))] = what.detected;
+        what.chatOn = g_nx.translateChat;
         tr = g_translator;
-        target = TypingLang();
+        what.target = TypingLang();
         understood = g_cfg.understoodLangs;
-        skipTyping = g_cfg.skipTypingLang;
     }
-    if (!tr) return;
-    if ((asked || once) && detected.empty()) detected = DetectLanguage(text);
-    if (once) {  // independent of every chat setting: into the language you write in – unless it already is in it
-        if (!detected.empty() && PrimaryLang(detected) == PrimaryLang(target)) return;
-    } else if (!asked) {
-        if (detected.empty()) return;
-        if (skipTyping && PrimaryLang(detected) == PrimaryLang(target)) return;
-        for (const std::wstring& u : understood)
-            if (PrimaryLang(u) == PrimaryLang(detected)) return;
-    }
+    what.understood = &understood;
+    if (!tr || !ShouldTranslate(what)) return;
+    const std::wstring& target = what.target;
+    const std::wstring detected = what.detected.empty() ? els : what.detected;  // a click: the best guess, sure or not
     {
         std::lock_guard<std::mutex> lock(g_mu);
         CountMyMemory(CodePointCount(text));
@@ -95,8 +89,8 @@ std::vector<uint64_t> g_visibleLines;
 
 // What can be seen of the chat, into the language you write in (the chat is read in it) – when "Translate the chat" is
 // switched on, when the language you write in changes, or once from the menu. Every call starts afresh: a translation
-// into another language is cleared and done again in the language you write in now. `once` (the menu) follows none of
-// the chat settings: everything not already in the language you write in.
+// into another language is cleared and done again in the language you write in now. `once` (the menu) follows the
+// automatic translation's rule without it being switched on (core/translate_policy).
 int TranslateRecentLines(bool once) {  // g_mu held; how many lines went to the translator
     int n = 0;
     for (ChatLine& l : g_lines) {
