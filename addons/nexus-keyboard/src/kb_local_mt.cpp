@@ -108,7 +108,7 @@ std::string PairLabel(const gct::LocalMtModelInfo& model) {
     const std::string pair(model.pair);
     const size_t dash = pair.find('-');
     if (dash == std::string::npos) return pair;
-    return U8(NativeName(W(pair.substr(0, dash)))) + " â " + U8(NativeName(W(pair.substr(dash + 1))));
+    return U8(NativeName(W(pair.substr(0, dash)))) + " -> " + U8(NativeName(W(pair.substr(dash + 1))));
 }
 }  // namespace
 
@@ -161,7 +161,7 @@ void RenderLocalMtOptions(const Config& edit) {
         ImGui::EndCombo();
     }
     const auto& model = catalog[selected];
-    ImGui::TextDisabled("%s  â¢  %s", model.model, model.license);
+    ImGui::TextDisabled("%s  -  %s", model.model, model.license);  // ASCII: Nexus' font lacks the bullet
     size_t installed = 0;
     for (bool present : s_state.models) installed += present ? 1 : 0;
     ImGui::TextDisabled("%s", UI(TrF(L"Installed pairs: {1} of {2}",
