@@ -269,7 +269,8 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 - Look at the window without the game: `GW2KB_SHOT=local\shots\x.bmp` (optional `GW2KB_SHOT_ALPHA=150`,
   `GW2KB_SHOT_BRIGHT=1`) makes the self-test raise chat lines of every channel (invented names) and rasterize the
   frame into a BMP (software, no GPU). Chat text: `LookText` (GW2 palette `kChannelLook`: name strong, message light;
-  a dark halo = 4 diagonal copies; `[NexusWindow] Glow / Brightness / GameColors`).
+  a dark halo = 8 copies round the letters, alpha 220 – check it without `chatBg`, on a dark fill it adds little; the
+  brightness (`Bright`) is the message's only, a name keeps GW2's palette; `[NexusWindow] Glow / Brightness / GameColors`).
 - The self-test poses as Events: Chat itself (it exports GetAddonDef with Vonsh's signature, `g_fakeChatVersion`)
   and as a broken Decoder Ring (`FakeDataLink`): a version new since the last session, a shifted layout, unreadable
   memory, a guard page (it must stay a guard page), endless strings, 3000 random lines, the pause and "Resume", reading

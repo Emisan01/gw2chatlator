@@ -115,7 +115,7 @@ void RequestTextFont(int pt) {
     g_textFontPx = px;
 }
 ImVec4 Rgb32(uint32_t rgb) { return ImVec4(((rgb >> 16) & 0xFF) / 255.f, ((rgb >> 8) & 0xFF) / 255.f, (rgb & 0xFF) / 255.f, 1.f); }
-ImVec4 Bright(ImVec4 c) {  // the brightness of your choice: below 100 % darker, above it lighter towards white
+ImVec4 Bright(ImVec4 c) {  // the message's brightness of your choice (never a name's): below 100 % darker, above it lighter towards white
     const float b = g_look.brightness / 100.0f;
     if (b <= 1.0f) return ImVec4(c.x * b, c.y * b, c.z * b, c.w);
     const float t = std::min(1.0f, (b - 1.0f) / 0.6f) * 0.75f;  // 160 %: three quarters of the way (the light
@@ -131,10 +131,10 @@ ImVec4 ColorOf(Channel ch) {  // the message
     if (!l) return Bright(ImVec4(0.9f, 0.9f, 0.92f, 1.f));
     return Bright(Rgb32(g_look.gameColors ? l->light : l->strong));
 }
-ImVec4 NameColorOf(Channel ch) {  // the name in front of it
-    const ChannelLook* l = LookOf(ch);
-    if (!g_look.gameColors || !l) return Bright(ImVec4(0.95f, 0.95f, 0.97f, 1.f));
-    return Bright(Rgb32(l->strong));
+ImVec4 NameColorOf(Channel ch) {  // the name in front of it: GW2's palette as it is – the brightness never touches it
+    const ChannelLook* l = LookOf(ch);  // (user, 2026-10-22: the salmon map name turned pinkish white)
+    if (!g_look.gameColors || !l) return ImVec4(0.95f, 0.95f, 0.97f, 1.f);
+    return Rgb32(l->strong);
 }
 
 // Text as GW2 draws it: a soft dark halo around the letters (when on), then the letters. `wrap`: lines wrap at the
@@ -161,10 +161,15 @@ void LookText(const char* text, ImVec4 color, bool wrap) {
     ImGui::Dummy(ImVec2(size.x, std::max(size.y, ImGui::GetTextLineHeight())));
     if (!ImGui::IsItemVisible()) return;
     ImDrawList* dl = ImGui::GetWindowDrawList();
-    if (g_look.glow) {
+    // The halo: 8 copies round the letters (the 4 diagonals alone left the edges above, below and beside them open).
+    // A renderer that cannot split a draw list past 65536 vertices (16-bit indices) gets no halo near that limit.
+    const bool room = (ImGui::GetIO().BackendFlags & ImGuiBackendFlags_RendererHasVtxOffset) ||
+                      dl->_VtxCurrentIdx + std::strlen(text) * 4 * 9 < 60000;
+    if (g_look.glow && room) {
         const float d = std::max(1.0f, std::round(fs / 15.0f));
-        const ImU32 halo = IM_COL32(0, 0, 0, 160);
-        const ImVec2 offsets[] = {ImVec2(-d, -d), ImVec2(d, -d), ImVec2(-d, d), ImVec2(d, d)};
+        const ImU32 halo = IM_COL32(0, 0, 0, 220);
+        const ImVec2 offsets[] = {ImVec2(-d, -d), ImVec2(d, -d), ImVec2(-d, d), ImVec2(d, d),
+                                  ImVec2(-d, 0),  ImVec2(d, 0),  ImVec2(0, -d), ImVec2(0, d)};
         for (const ImVec2& o : offsets) dl->AddText(font, fs, ImVec2(p.x + o.x, p.y + o.y), halo, text, nullptr, wrapW);
     }
     dl->AddText(font, fs, p, ImGui::GetColorU32(color), text, nullptr, wrapW);
