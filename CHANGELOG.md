@@ -3,6 +3,10 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.5.7 — 2026-10-23 (GW2Chatlator for Nexus)
+
+- **Stability:** the chat and options windows give their font back before they close (it was given back after - a hidden memory fault that could crash later).
+
 ## 2.5.6 — 2026-10-22 (GW2Chatlator for Nexus)
 
 - **Crash fix:** back to the stable code of 2.5.2. The changes of 2.5.3 to 2.5.5 (guild channels G1-G6, language bundles) are withdrawn until the crash is found.
