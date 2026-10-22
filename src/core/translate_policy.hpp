@@ -16,11 +16,12 @@ struct LineToTranslate {
     bool chatOn = false;        // "Translate the chat" ([Nexus] TranslateChat) – only Auto asks it
     std::wstring detected;      // SureLanguage: "" = unsure
     std::wstring target;        // the language you write in (the chat is read in it)
+    bool skipTarget = true;     // "My writing language" stands in the list of what is not translated by itself
     const std::vector<std::wstring>* understood = nullptr;  // "Languages I understand"
 };
 
 // LineClick: always. Auto (only while the chat's translation is on) and Once: only a line whose language is sure, not
-// the language it would go into and not one you understand.
+// one you understand and – while `skipTarget` – not the language it would go into.
 bool ShouldTranslate(const LineToTranslate& l);
 
 }  // namespace gct

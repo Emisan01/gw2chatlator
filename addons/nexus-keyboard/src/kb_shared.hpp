@@ -400,6 +400,8 @@ bool UsingMyMemory();
 std::wstring Today();
 void CountMyMemory(size_t chars);
 std::wstring MyMemoryQuotaText();
+std::wstring MyMemoryLeftText();
+bool LimitedContingent();
 void InitSpelling();
 void FreeWorkerState();
 void TranslateLine(uint64_t id, std::wstring text, bool asked = false, bool once = false);

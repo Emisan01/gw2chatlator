@@ -144,12 +144,11 @@ void LoadLayout() {  // g_mu held
     g_nx.snap = nx(L"Snap", 1);
     g_nx.setupDone = nx(L"SetupDone", 0);
     g_nx.voiceFallback = nx(L"VoiceFallback", 1);
-    {  // what the waypoint click (2.2.0 – 2.3.0) and "Do not translate the language I write in" (gone: the language
-       // you write in is never translated by itself) left in the ini goes (only written when it is there)
+    {  // what the waypoint click (2.2.0 – 2.3.0) left in the ini goes (only written when it is there)
         wchar_t old[8] = {};
         static const std::pair<const wchar_t*, const wchar_t*> kGone[] = {
             {L"Nexus", L"WaypointPoiClick"}, {L"Nexus", L"NativeWaypointClick"}, {L"Nexus", L"WpBefore"},
-            {L"Nexus", L"WpHeld"}, {L"Nexus", L"WpAfter"}, {L"Translate", L"SkipTypingLang"}};
+            {L"Nexus", L"WpHeld"}, {L"Nexus", L"WpAfter"}};
         for (const auto& [section, key] : kGone)
             if (GetPrivateProfileStringW(section, key, L"\x01", old, 8, g_cfg.iniPath.c_str()) != 1 || old[0] != 1)
                 WritePrivateProfileStringW(section, key, nullptr, g_cfg.iniPath.c_str());
@@ -306,18 +305,28 @@ void CountMyMemory(size_t chars) {  // the free contingent of a day (g_mu held)
     g_cfg.SaveValue(L"Basic", L"UsedChars", std::to_wstring(g_cfg.myMemoryUsed));
 }
 
+static std::wstring Kilo(int v) {  // 25, 4.9k
+    wchar_t b[16];
+    if (v < 1000) swprintf(b, 16, L"%d", v);
+    else swprintf(b, 16, L"%.1fk", v / 1000.0);
+    return b;
+}
+static int MyMemoryLimit() { return Trim(g_cfg.basicEmail).empty() ? 5000 : 50000; }  // characters a day (g_mu held)
+static int MyMemoryUsedToday() { return g_cfg.myMemoryDay == Today() ? g_cfg.myMemoryUsed : 0; }
+
 std::wstring MyMemoryQuotaText() {  // "MyMemory 25 / 5.0k today" (g_mu held)
     if (!UsingMyMemory()) return {};
-    const int used = g_cfg.myMemoryDay == Today() ? g_cfg.myMemoryUsed : 0;
-    const int limit = Trim(g_cfg.basicEmail).empty() ? 5000 : 50000;
-    auto k = [](int v) {
-        wchar_t b[16];
-        if (v < 1000) swprintf(b, 16, L"%d", v);
-        else swprintf(b, 16, L"%.1fk", v / 1000.0);
-        return std::wstring(b);
-    };
-    return TrF(L"MyMemory {1} / {2} today", {k(std::min(used, limit)), k(limit)});
+    return TrF(L"MyMemory {1} / {2} today", {Kilo(std::min(MyMemoryUsedToday(), MyMemoryLimit())), Kilo(MyMemoryLimit())});
 }
+
+std::wstring MyMemoryLeftText() {  // "4.9k left today" beside "Translate visible chat once" (g_mu held)
+    if (!UsingMyMemory()) return {};
+    return TrF(L"{1} left today", {Kilo(std::max(0, MyMemoryLimit() - MyMemoryUsedToday()))});
+}
+
+// Whether the translator has a contingent (or costs per character): every one but LibreTranslate – your own server
+// has no limit, so the chat's automatic translation is not braked for it (g_mu held).
+bool LimitedContingent() { return !g_translator || g_translator->Name() != L"LibreTranslate"; }
 
 std::wstring NativeName(const std::wstring& code) {
     if (const LangInfo* l = FindLanguage(code)) return l->native;

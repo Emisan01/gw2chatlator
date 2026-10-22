@@ -252,6 +252,7 @@ void Config::Load(const std::wstring& dir) {
     backTranslate = ini.Bool(L"Translate", L"BackTranslate", true);
     translateWriting = ini.Bool(L"Translate", L"Writing", true);
     understoodLangs = ParseLangList(ini.Str(L"Translate", L"Understood", L""));
+    skipTypingLang = ini.Bool(L"Translate", L"SkipTypingLang", true);
 
     basicEmail = AsciiUnescape(ini.Str(L"Basic", L"Email", L""));
     deeplKey = UnprotectSecret(ini.Str(L"DeepL", L"ApiKey", L""));
@@ -379,6 +380,7 @@ void Config::SaveAll() const {
         for (const std::wstring& l : understoodLangs) list += (list.empty() ? L"" : L",") + l;
         SaveValue(L"Translate", L"Understood", list);
     }
+    SaveBool(L"Translate", L"SkipTypingLang", skipTypingLang);
     SaveValue(L"Basic", L"Email", AsciiEscape(basicEmail));
     SaveValue(L"DeepL", L"ApiKey", ProtectSecret(deeplKey));
     SaveValue(L"Google", L"ApiKey", ProtectSecret(googleKey));

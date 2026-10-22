@@ -11,7 +11,8 @@ std::wstring LinkHost(const std::wstring& url) {  // "https://www.example.org/a?
     return url.substr(a, b == std::wstring::npos ? std::wstring::npos : b - a);
 }
 
-// Rate limiter against chat flood / DoS attacks (max 8 auto-translations per 3s window)
+// The brake: at most 8 automatic translations per 3 s – a flood must not use up a contingent (only for a translator
+// with one: LimitedContingent; your own LibreTranslate server is not braked). The cache saves before it has to.
 bool AllowAutoTranslate() {
     static std::mutex s_rateMu;
     static uint64_t s_windowStart = 0;
@@ -73,10 +74,11 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
     l.textSegs = PieUI::ChatLinks::SegmentLine(l.u8text);
     const std::wstring rawText = l.text;
     uint64_t id;
-    bool own;
+    bool own, brake;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         own = outgoing || (!g_ownName.empty() && l.speakerFolded == CaseFold(g_ownName));
+        brake = LimitedContingent();
         l.own = own;
         l.receivedTime = GetTickCount64();
         l.mapId = g_mapId.load();
@@ -98,7 +100,7 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
         }
         g_scrollDown = true;
     }
-    if (!own && AllowAutoTranslate()) g_worker.Post([id, t = rawText] { TranslateLine(id, t); });
+    if (!own && (!brake || AllowAutoTranslate())) g_worker.Post([id, t = rawText] { TranslateLine(id, t); });
 }
 
 // OnChatEvents: kb_chatsource.cpp (the guard between Events: Chat and us).

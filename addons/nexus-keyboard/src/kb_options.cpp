@@ -67,9 +67,14 @@ void RenderChatModule(bool guide) {
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", UI(Tr(L"Events: Chat is its own add-on – other add-ons may use it too.")).c_str());
     }
-    // Decoder Ring (optional): without it a chat code shows only its kind.
+    // Decoder Ring (optional, outdated since 2026-10-22 – our own resolver comes, Phase 2a): only in Options >
+    // Technical, never in the guide. Without it a chat code shows only its kind; finding the codes is ours anyway.
+    if (guide) {
+        ImGui::PopID();
+        return;
+    }
     const bool decoderLive = g_links.HasDecoder();
-    StatusRow("Decoder Ring", decoderLive ? 2 : g_decoderInstalling || g_decoderFile ? 1 : 0,
+    StatusRow(UI(Tr(L"Decoder Ring (optional, outdated)")), decoderLive ? 2 : g_decoderInstalling || g_decoderFile ? 1 : 0,
               UI(decoderLive          ? Tr(L"ready – names, maps and details of chat codes")
                  : g_decoderInstalling ? Tr(L"loading Decoder Ring …")
                  : g_decoderFile       ? Tr(L"installed – Nexus loads it (else: Nexus → Addons → Decoder Ring → Load)")
@@ -77,7 +82,7 @@ void RenderChatModule(bool guide) {
     if (!decoderLive && !g_decoderFile && !g_decoderInstalling) {
         ImGui::SameLine();
         if (ImGui::SmallButton(UI(Tr(L"Install Decoder Ring")).c_str())) InstallDecoderRingNow();
-    } else if (!guide && (decoderLive || g_decoderFile) && !g_decoderInstalling) {
+    } else if ((decoderLive || g_decoderFile) && !g_decoderInstalling) {
         if (RemoveButton("decoderring")) RemoveDecoderRingNow();
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", UI(Tr(L"Decoder Ring is its own add-on – other add-ons may use it too.")).c_str());
@@ -387,6 +392,58 @@ void DashState(const char* id, const std::string& name, const std::string& detai
 
 // What is on, at a glance (g_mu NOT held): the chat's translation applies at once (as in the Translator tab), the rest
 // with "Save".
+// "Translated is everything except: ..." – the one list of what is never translated by itself (core/translate_policy):
+// your writing language (it follows when you change it; on by default, removable – [Translate] SkipTypingLang) and the
+// languages you understand ([Translate] Understood). g_mu NOT held.
+std::wstring WritingLangNow() {
+    std::lock_guard<std::mutex> lock(g_mu);
+    return PrimaryLang(TypingLang());
+}
+std::string ExceptText(const Config& c) {
+    std::wstring out = c.skipTypingLang ? TrF(L"My writing language ({1})", {WritingLangNow()}) : std::wstring();
+    for (const std::wstring& u : c.understoodLangs) out += (out.empty() ? L"" : L", ") + NativeName(u);
+    return UI(out.empty() ? Tr(L"nothing") : out);
+}
+void RenderExceptList(Config& edit) {
+    static const wchar_t* kCommon[] = {L"EN", L"DE", L"FR", L"ES", L"IT", L"PT", L"NL", L"PL",
+                                       L"RU", L"TR", L"ZH", L"KO", L"JA", L"AR"};
+    bool first = true;
+    auto chip = [&first](const std::string& label) {  // one entry; the row wraps where it no longer fits
+        const float w = ImGui::CalcTextSize(label.c_str(), nullptr, true).x + ImGui::GetStyle().FramePadding.x * 2;
+        if (!first) {
+            ImGui::SameLine();
+            if (ImGui::GetContentRegionAvail().x < w) ImGui::NewLine();
+        }
+        first = false;
+        const bool clicked = ImGui::SmallButton(label.c_str());
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Click: translated again")).c_str());
+        return clicked;
+    };
+    ImGui::PushID("except");
+    if (edit.skipTypingLang && chip(UI(TrF(L"My writing language ({1})", {WritingLangNow()})) + " x##mine"))
+        edit.skipTypingLang = false;
+    auto& list = edit.understoodLangs;
+    for (size_t i = 0; i < list.size(); ++i)
+        if (chip(U8(NativeName(list[i])) + " x##" + U8(list[i]))) {
+            list.erase(list.begin() + static_cast<std::ptrdiff_t>(i));
+            break;
+        }
+    if (!first) ImGui::SameLine();
+    if (ImGui::SmallButton("+")) ImGui::OpenPopup("add");
+    if (ImGui::BeginPopup("add")) {
+        if (!edit.skipTypingLang && ImGui::Selectable(UI(TrF(L"My writing language ({1})", {WritingLangNow()})).c_str()))
+            edit.skipTypingLang = true;
+        for (const wchar_t* code : kCommon) {
+            const bool in = std::any_of(list.begin(), list.end(), [code](const std::wstring& u) {
+                return PrimaryLang(u) == PrimaryLang(code);
+            });
+            if (!in && ImGui::Selectable((U8(NativeName(code)) + " (" + U8(code) + ")").c_str())) list.push_back(code);
+        }
+        ImGui::EndPopup();
+    }
+    ImGui::PopID();
+}
+
 void RenderDashboard(Config& edit, const Config& saved) {
     bool chatOn, voiceReady;
     std::wstring writeIn, engine;
@@ -454,12 +511,10 @@ void RenderDashboard(Config& edit, const Config& saved) {
         DashState("reading", UI(Tr(L"Reading the chat")), UI(!chatThere ? Tr(L"Events: Chat is missing") : readingText), reading, 6);
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
-        const bool decoderLive = g_links.HasDecoder();
-        DashState("decoder", "Decoder Ring",
-                  UI(decoderLive ? Tr(L"ready – names, maps and details of chat codes") : Tr(L"missing – chat codes show only their kind")),
-                  decoderLive, 6);
+        DashState("except", UI(Tr(L"Translated is everything except:")), ExceptText(edit), true, 5);
         ImGui::EndTable();
     }
+    Hint(UI(Tr(L"A click on a line always translates it.")));
 }
 
 // Our options window, in tabs. "Save" applies.
@@ -881,30 +936,10 @@ void RenderOptionsContent() {
                 }
             }
             Hint(UI(Tr(L"Foreign lines of other players into your language. Off: a click on a line translates just that one.")));
-            // Languages you understand: never translated by themselves (a click still does) – only the others are.
-            ImGui::TextUnformatted(UI(Tr(L"Languages I understand (not translated by themselves):")).c_str());
-            {
-                static const wchar_t* kCommon[] = {L"EN", L"DE", L"FR", L"ES", L"IT", L"PT", L"NL", L"PL",
-                                                   L"RU", L"TR", L"ZH", L"KO", L"JA", L"AR"};
-                int column = 0;
-                for (const wchar_t* code : kCommon) {
-                    bool on = false;
-                    for (const std::wstring& u : edit.understoodLangs)
-                        if (PrimaryLang(u) == PrimaryLang(code)) on = true;
-                    if (column % 7) ImGui::SameLine(static_cast<float>(column % 7) * ImGui::GetFontSize() * 4.2f);
-                    ++column;
-                    if (ImGui::Checkbox((U8(code) + "##und").c_str(), &on)) {
-                        auto& list = edit.understoodLangs;
-                        list.erase(std::remove_if(list.begin(), list.end(),
-                                                  [&](const std::wstring& u) { return PrimaryLang(u) == PrimaryLang(code); }),
-                                   list.end());
-                        if (on) list.push_back(code);
-                    }
-                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", U8(NativeName(code)).c_str());
-                }
-            }
-            Hint(UI(Tr(L"So the keyboard stays in the background: only a French or Spanish line (whatever you did not tick) "
-                       L"is translated. A click on a name opens a whisper tab that answers in that player's language.")));
+            ImGui::TextUnformatted(UI(Tr(L"Translated is everything except:")).c_str());
+            RenderExceptList(edit);
+            Hint(UI(Tr(L"A click on a line always translates it. A click on a name opens a whisper tab that answers in "
+                       L"that player's language.")));
             ImGui::Checkbox(UI(Tr(L"Translate my text")).c_str(), &edit.translateWriting);
             Hint(UI(Tr(L"What you write goes into the chat in the language chosen at \"Send\" below the input.")));
             static const Engine kEngines[] = {Engine::Auto, Engine::Basic, Engine::DeepL, Engine::Google, Engine::Microsoft, Engine::Libre};

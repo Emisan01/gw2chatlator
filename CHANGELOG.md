@@ -12,8 +12,15 @@ diagnosis show it.
   lines, never written to disk). Pressing "once" twice, switching your language back and forth, or the same LFG line
   posted again costs no new request, and the MyMemory counter counts only real requests. (2.3.5 called its chat
   buffer trimming "quota protection" – that protects memory; this is the part that protects your contingent.)
-- **"Do not translate the language I write in" is gone:** lines in your own language are never translated by
-  themselves – translating into the same language never helped and only used up the contingent.
+- **One list instead of two settings:** Options → Translator now reads "Translated is everything except: [My writing
+  language] [English] [+]". The first entry follows your writing language (on by default, a click removes it); the
+  same sentence stands on the General page. A click on a line always translates it.
+- **The brake only where it saves something:** the limit of 8 automatic translations per 3 seconds now applies only to
+  translators with a contingent – not to your own LibreTranslate server. With MyMemory, the menu shows next to
+  "Translate visible chat once" how much of today's budget is left.
+- **Decoder Ring is outdated:** it no longer appears in the empty chat's module box or on the General page; it stays
+  in Options → Technical as optional. GW2Chatlator finds chat codes itself; names and details on mouse-over still
+  come from Decoder Ring until our own lookup replaces it.
 - **Names keep GW2's colours:** the brightness slider changes only the message text; the map channel's salmon name no
   longer turns pinkish white.
 - **Stronger halo:** the dark outline around chat text now closes on all sides (8 directions instead of 4 diagonals).

@@ -2329,7 +2329,8 @@ static void TestEquations2() {
     }
     // E12 whether a chat line goes to the translator (core/translate_policy): "once" decides exactly as the automatic
     // translation while it is on; while it is off nothing goes by itself; a click always translates; a line goes by
-    // itself exactly when its language is sure, not the one it would go into and none you understand.
+    // itself exactly when its language is sure, none you understand and – while the list holds "My writing language" –
+    // not the one it would go into.
     static const wchar_t* kDetected[] = {L"", L"DE", L"de", L"EN", L"EN-GB", L"FR", L"RU", L"AR"};
     static const wchar_t* kTargets[] = {L"DE", L"EN-US", L"FR"};
     static const wchar_t* kKnown[] = {L"EN", L"ru", L"AR", L"ES", L"de"};
@@ -2342,6 +2343,7 @@ static void TestEquations2() {
         l.target = kTargets[next() % 3];
         l.understood = next() % 5 ? &understood : nullptr;
         l.chatOn = next() % 2;
+        l.skipTarget = next() % 4 != 0;
         auto with = [&l](TranslateTrigger t, bool on) {
             LineToTranslate x = l;
             x.trigger = t;
@@ -2351,7 +2353,8 @@ static void TestEquations2() {
         bool known = false;
         if (l.understood)
             for (const std::wstring& u : understood) known = known || PrimaryLang(u) == PrimaryLang(l.detected);
-        const bool wanted = !l.detected.empty() && PrimaryLang(l.detected) != PrimaryLang(l.target) && !known;
+        const bool same = PrimaryLang(l.detected) == PrimaryLang(l.target);
+        const bool wanted = !l.detected.empty() && !(l.skipTarget && same) && !known;
         const bool once = with(TranslateTrigger::Once, l.chatOn);
         bool ok = once == with(TranslateTrigger::Auto, true) && once == with(TranslateTrigger::Once, !l.chatOn);
         ok = ok && !with(TranslateTrigger::Auto, false) && with(TranslateTrigger::LineClick, l.chatOn);
