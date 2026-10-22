@@ -509,18 +509,6 @@ void RenderWindow() {
     const float minBtn = iconH + 8.0f;
 
     if (g_collapsed) {
-        struct PopFontAtEnd {
-            bool on = false;
-            ~PopFontAtEnd() { if (on) ImGui::PopFont(); }
-        } popFont;
-        if (tf && std::abs(tf->FontSize - px) < 0.5f) {
-            ImGui::SetWindowFontScale(1.0f);
-            ImGui::PushFont(tf);
-            popFont.on = true;
-        } else {
-            ImGui::SetWindowFontScale(px / std::max(1.0f, ImGui::GetFont()->FontSize));
-        }
-
         g_lastUse = 0;  // opened again: "not in use" counts from then
         const WinSpace space = WindowSpace(minBtn);
         PlaceWindow(WinMode::Button, space);
@@ -536,6 +524,18 @@ void RenderWindow() {
         const bool beginOk = ImGui::Begin("GW2Chatlator###kbmain", nullptr, minFlags);
         ImGui::PopStyleVar();
         if (beginOk) {
+            struct PopFontAtEnd {
+                bool on = false;
+                ~PopFontAtEnd() { if (on) ImGui::PopFont(); }
+            } popFont;
+            if (tf && std::abs(tf->FontSize - px) < 0.5f) {
+                ImGui::SetWindowFontScale(1.0f);
+                ImGui::PushFont(tf);
+                popFont.on = true;
+            } else {
+                ImGui::SetWindowFontScale(px / std::max(1.0f, ImGui::GetFont()->FontSize));
+            }
+
             const float resScale = std::max(1.0f, io.DisplaySize.y / 1080.0f);
             const float uiScale = (g_uiSize.load() == 0 ? 0.89f : g_uiSize.load() == 2 ? 1.11f : g_uiSize.load() == 3 ? 1.25f : 1.0f);
             TakeWindow(WinMode::Button, space, std::round(10.0f * uiScale * resScale));  // also onto GW2's chat edge
