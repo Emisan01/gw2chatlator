@@ -8,17 +8,12 @@
 
 namespace gct {
 
-enum class Channel : uint8_t { Unknown, Say, Map, Party, Squad, Team, Whisper, Guild, Guild1, Guild2, Guild3, Guild4, Guild5, Guild6, System };
+enum class Channel : uint8_t { Unknown, Say, Map, Party, Squad, Team, Whisper, Guild, System };
 
 inline uint32_t ChannelBit(Channel c) { return 1u << static_cast<uint32_t>(c); }
-inline bool IsGuildChannel(Channel c) {
-    return c == Channel::Guild ||
-           (static_cast<uint8_t>(c) >= static_cast<uint8_t>(Channel::Guild1) &&
-            static_cast<uint8_t>(c) <= static_cast<uint8_t>(Channel::Guild6));
-}
 
-std::wstring ChannelLabel(Channel c);      // UI label in the UI language: "Map", "Party", "G1" ...
-const wchar_t* ChannelCommand(Channel c);  // "/m", "/p", "/g1" ... or nullptr
+std::wstring ChannelLabel(Channel c);      // UI label in the UI language: "Map", "Party" ...
+const wchar_t* ChannelCommand(Channel c);  // "/m", "/p" ... or nullptr
 // A channel as the chat senders write it (core/bridge_protocol: "party", "map" ...); anything else = Unknown.
 Channel ChannelFromBridge(const std::string& c);
 

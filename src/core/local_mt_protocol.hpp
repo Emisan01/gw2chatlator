@@ -26,7 +26,6 @@ struct LocalMtModelInfo {
     const char* model;         // upstream Helsinki-NLP repository
     const char* sourcePrefix;  // required only by multilingual source models
     const char* license;       // license declared by this exact upstream model card
-    uint64_t sizeBytes = 0;    // exact package size in release ZIP
 };
 
 // OPUS-MT packages available to the add-on. Every language can route through English when both directions are installed.

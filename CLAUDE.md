@@ -75,14 +75,10 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   source prefix from the installed `pair.json`. Hallucinated music-note artifacts absent from the input are stripped;
   output must still contain a word, while other unexpected decorative symbols remain a validation error. Models load
   only on first use.
-- Local helper and model pairs are offered in Options → Translator and download only on the user's
+- Local helper and each individual model pair are offered in Options → Translator and download only on the user's
   click. `DownloadReleaseAsset` checks GitHub's SHA-256 digest. The helper release asset is
   `GW2Keyboard-LocalMT.zip`; model assets are `GW2Keyboard-OPUS-MT-<pair>.zip` and unpack below
-  `<addons>\GW2Keyboard\translate\<pair>`. Downloads are protected against duplicate requests via atomic
-  `compare_exchange` on `g_localMtBusy`, showing active queue progress, `ImGui::ProgressBar`, and a 5-second
-  result feedback (`[OK]` / `[--]`). In addition to single pairs folded in an `ImGui::TreeNode`, logical bundles
-  ("My language", "Europe package", "West & Central Europe", "Eastern Europe") allow one-click sequential batch
-  installation skipping already installed pairs. Model packaging uses `tools/package_local_mt_models.py` against
+  `<addons>\GW2Keyboard\translate\<pair>`. Model packaging uses `tools/package_local_mt_models.py` against
   converted folders under ignored `local/translation-spike/models`; `--convert` fetches the exact Helsinki-NLP model
   named in the core catalog and converts it to int8. The package builder emits only converted pairs that exist.
   CTranslate2, oneDNN and SentencePiece notices travel with the helper; each OPUS-MT model carries its own model-card
@@ -142,12 +138,9 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   (`LimitedContingent`: all but LibreTranslate, your own server has no limit). MyMemory's budget left today stands
   beside "Translate visible chat once" (`MyMemoryLeftText`). The worker keeps at most 96 jobs waiting (the oldest go).
   **The chat buffer** (2.3.5): `g_lines` holds at most `kMaxLines` = 2,000 (kb_shared.hpp); `TrimChatLines`
-  (kb_chat.cpp) drops the oldest public line first (Map, Say, System …), then the oldest group line (Guild / G1–G6, Party,
+  (kb_chat.cpp) drops the oldest public line first (Map, Say, System …), then the oldest group line (Guild, Party,
   Squad), whispers last. Options → Technical shows the count, the capacity and the RAM. A line is cut at 600
   characters, a name at 64. Trimming the buffer protects the memory, not the translation contingent – that is the cache.
-  The channel selector and custom tabs support all native guild channels (Guild `/g`, and Guild 1–6 `/g1`..`/g6`).
-  When "Active channel" is selected, the button dynamically reflects the last observed chat channel ("Active (G1)",
-  "Active (Map)", etc.).
   The detection runs for every line (local, no translator): `g_playerLang` (session only) remembers each player's
   language; their whisper tab then sends in it (`WhisperTab::sendLang` → `g_sendOverride`, "=" = as written; the
   footer's choice in a tab changes only that tab). Nothing of other players is stored (privacy, Raidcore).

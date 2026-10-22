@@ -201,7 +201,6 @@ static void TestLocalMtProtocol() {
     CHECK(modelFor("de-en") && std::string(modelFor("de-en")->license) == "Apache-2.0");
     CHECK(modelFor("en-de") && std::string(modelFor("en-de")->license) == "CC-BY-4.0");
     CHECK(modelFor("ru-en") && std::string(modelFor("ru-en")->license) == "CC-BY-4.0");
-    CHECK(modelFor("de-en") && modelFor("de-en")->sizeBytes == 77066388);
     CHECK(modelFor("en-pl") && std::string(modelFor("en-pl")->sourcePrefix) == ">>pol<<");
     CHECK(modelFor("en-pt") && std::string(modelFor("en-pt")->sourcePrefix) == ">>pt<<");
     CHECK(modelFor("en-tr") && std::string(modelFor("en-tr")->sourcePrefix) == ">>tur<<");
@@ -1030,13 +1029,6 @@ static void TestOcrTimestamps() {
     CHECK(FuzzyTagLength(L"[Sagen) Bob: x", &ch) == 7 && ch == Channel::Say);
     CHECK(FuzzyTagLength(L"CKontakteJ Emi ist online", &ch) == 10 && ch == Channel::System);
     CHECK(FuzzyTagLength(L"[Gilde] Carl: x", &ch) == 7 && ch == Channel::Guild);
-    CHECK(FuzzyTagLength(L"[G1] Carl: x", &ch) == 4 && ch == Channel::Guild1);
-    CHECK(FuzzyTagLength(L"[G6] Carl: x", &ch) == 4 && ch == Channel::Guild6);
-    CHECK(std::wstring(ChannelCommand(Channel::Guild1)) == L"/g1");
-    CHECK(std::wstring(ChannelCommand(Channel::Guild6)) == L"/g6");
-    CHECK(ChannelLabel(Channel::Guild1) == L"G1");
-    CHECK(ChannelLabel(Channel::Guild6) == L"G6");
-    CHECK(IsGuildChannel(Channel::Guild) && IsGuildChannel(Channel::Guild3) && !IsGuildChannel(Channel::Map));
     CHECK(FuzzyTagLength(L"Couch: x", &ch) == 0);
     auto m = ParseChatLine(L"19:42 JCSJ Pell The Unnamed: Thanks!");
     CHECK(m.stamped && m.speaker == L"Pell The Unnamed" && m.text == L"Thanks!");
