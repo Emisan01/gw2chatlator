@@ -135,7 +135,9 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   lists only the UI languages (`UiLanguages`: English, German, French, Spanish, Italian, Polish, Portuguese, Turkish, Russian). The text font's ranges include Vietnamese
   (1E00–1EFF). **No Arabic anywhere** (user, 2026-10-22): ImGui 1.80 has no shaping and no right-to-left – single
   letters, left to right. Not in the UI, not to write in, not in the font; Arabic lines of others are still detected and
-  translated. The options window is drawn with our text font too (`RenderOptionsWindow`: Nexus' font lacks ł, ş, ğ).
+  translated. The options window keeps Nexus' UI size (never the chat's, user 2026-10-22) in our UI font (`RequestUiFont`,
+  `kUiFontId`: Segoe UI at the built size of Nexus' font, so Nexus' own scaling applies alike; it has ł, ş, ğ and
+  Cyrillic, Nexus' font does not).
 - **Writing:** the multi-line input (soft wrap = '\n' in place of a space, `Flat()` turns it back) → `ComputeTyping`
   (word bar, grey completion, what Space writes) → debounce → `TranslateInput` (`MyWords::Expand` first, protected
   segments, back-translation) → Enter → `StartSend` → `SplitForChat` (199) → `SendNow` → `SendToGw2Chat`.
@@ -163,7 +165,10 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   in use" (`autoMinimize` after `minimizeAfter` s; `g_lastUse` – input, hover, menus, sending, voice, GW2's chat line
   count as use). "Open again when GW2's chat opens" (`autoOpen`) only opens; the focus key always opens; taking over
   the focus stays `focusOnGameChat`. All of it goes through `g_minimizeRequest` / `g_expandRequest`.
-  Text size and font (Options → Window): Segoe UI, Segoe UI Semibold, Tahoma (`kFontFaces`, `[Window] FontFace`; each
+  Text size and font (Options → Window): the size follows the game's interface size until you set one (`[Window] FontPt`
+  0, the first use; `FollowPt`: MumbleLink uisz small/normal/large/larger = 10/11/12/14 pt, unknown 11; the slider
+  starts there), the options window always has Nexus' size.
+  The fonts: Segoe UI, Segoe UI Semibold, Tahoma (`kFontFaces`, `[Window] FontFace`; each
   has Latin, Greek, Cyrillic); one Nexus font name per face, `ReleaseTextFont` before
   another is asked for (the window scales Nexus' font until it arrives).
   The input grows with its soft-wrapped lines (`g_boxLines`, up to 8) from one line (`inputLines`, default 1), the

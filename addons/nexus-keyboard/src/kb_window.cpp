@@ -538,7 +538,9 @@ void RenderWindow() {
         ~PopFontAtEnd() { if (on) ImGui::PopFont(); }
     } popFont;
     {
-        const float px = PtToPx(g_cfg.fontPt);
+        // The chat's size: yours, or the game's interface size until you set one (fontPt 0, the first use).
+        const float px = PtToPx(g_cfg.fontPt > 0 ? g_cfg.fontPt : FollowPt());
+        if (g_cfg.fontPt <= 0 && px != g_textFontPx) RequestTextFont(0, g_cfg.fontFace);  // the game's size changed
         ImFont* tf = g_textFont.load();
         if (tf && std::abs(tf->FontSize - px) < 0.5f) {  // sharp: the font built at this size
             ImGui::SetWindowFontScale(1.0f);

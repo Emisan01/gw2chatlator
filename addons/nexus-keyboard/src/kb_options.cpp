@@ -234,12 +234,16 @@ void RenderOptionsWindow() {
         s_optsLang = g_cfg.uiLang;
         s_optsTitle = UI(Tr(L"GW2Chatlator – Options")) + "###kbopts";
     }
-    // Our text font here too: Nexus' font lacks letters of the UI languages (Polish ł, Turkish ş ğ) – they were "?".
-    ImFont* tf = g_textFont.load();
-    if (tf) ImGui::PushFont(tf);
+    // Nexus' UI size, never the chat's (user, 2026-10-22) – in our UI font, which has every letter of the UI languages
+    // (Nexus' font lacks Polish ł, Turkish ş ğ, Cyrillic). Until it is there (or without Nexus' fonts): Nexus' font.
+    const float nexusPx = std::round(ImGui::GetFont()->FontSize);  // its built size: Nexus' own scaling applies to both alike
+    RequestUiFont(nexusPx);
+    ImFont* uf = g_uiFont.load();
+    const bool ours = uf && std::abs(uf->FontSize - nexusPx) < 0.5f;
+    if (ours) ImGui::PushFont(uf);
     if (ImGui::Begin(s_optsTitle.c_str(), &g_showOptions)) RenderOptionsContent();
     ImGui::End();
-    if (tf) ImGui::PopFont();
+    if (ours) ImGui::PopFont();
 }
 
 std::wstring FormatSeconds(int ms) {  // 1234 -> "1.2"
@@ -634,7 +638,8 @@ void RenderOptionsContent() {
                 if (g_theme == Theme::Cba) RenderCbaTheme();
             }
             // Size and transparency take effect at once and are kept (like the chat text below), not only on "Save".
-            int pt = std::clamp(edit.fontPt, 8, 28);
+            // starts at the game's interface size while you have none of your own (fontPt 0)
+            int pt = edit.fontPt > 0 ? std::clamp(edit.fontPt, 8, 28) : FollowPt();
             ImGui::SetNextItemWidth(wide);
             if (ImGui::SliderInt(UI(Tr(L"Text size") + L" (pt)##size").c_str(), &pt, 8, 28)) {
                 std::lock_guard<std::mutex> lock(g_mu);

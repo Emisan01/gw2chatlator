@@ -207,6 +207,7 @@ extern AddonAPI_t* g_api;
 constexpr const char* kTextFontId = "GW2Chatlator_Text";
 extern std::atomic<ImFont*> g_textFont;
 extern float g_textFontPx;
+int FollowPt();  // fontPt 0 ("like the game"): GW2's interface size from MumbleLink on 11 pt
 void OnTextFont(const char*, void* font);
 float PtToPx(int pt);
 // The fonts to choose beside the size (user, 2026-10-22): files every Windows has, each with Latin, Greek, Cyrillic.
@@ -217,6 +218,11 @@ struct FontFace {
 extern const FontFace kFontFaces[3];
 void RequestTextFont(int pt, const std::wstring& face);
 void ReleaseTextFont();  // before the DLL goes, and before another face is asked for
+// The options window: Segoe UI at Nexus' UI size (never the chat's size), every letter of the UI languages.
+constexpr const char* kUiFontId = "GW2Chatlator_UI";
+extern std::atomic<ImFont*> g_uiFont;
+void RequestUiFont(float px);
+void ReleaseUiFont();
 extern HMODULE g_self;
 extern std::atomic<bool> g_disabled;
 // Work of a thread of ours behind the same net as the render callbacks: a fault (an access violation & co. – not a C++
