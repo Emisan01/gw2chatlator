@@ -69,38 +69,48 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
     if (!tr || !ShouldTranslate(what)) return;
     const std::wstring& target = what.target;
     const std::wstring detected = what.detected.empty() ? els : what.detected;  // a click: the best guess, sure or not
-    {
-        std::lock_guard<std::mutex> lock(g_mu);
-        CountMyMemory(CodePointCount(text));
-    }
-    const TranslateResult r = tr->Translate(p.segments, SourceCode(detected), target);
+    const std::wstring by = tr->Name();
+    const TranslateResult r = g_transCache.Through({text, SourceCode(detected), target, by}, [&] {
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            CountMyMemory(CodePointCount(text));  // only a real request counts, never a line from the cache
+        }
+        return tr->Translate(p.segments, SourceCode(detected), target);
+    });
     if (!r.ok || r.text.empty()) return;
     const std::wstring t = SanitizeChatText(r.text);
     std::lock_guard<std::mutex> lock(g_mu);
     for (ChatLine& l : g_lines) {
         if (l.id == id && NormalizeForCompare(t) != NormalizeForCompare(l.text)) {
             l.translated = t;
+            l.transTarget = target;
+            l.transBy = by;
             l.u8translated = U8(l.translated);
             l.transSegs = PieUI::ChatLinks::SegmentLine(l.u8translated);
         }
     }
 }
 std::vector<uint64_t> g_visibleLines;
+TranslationCache g_transCache;
 
 // What can be seen of the chat, into the language you write in (the chat is read in it) – when "Translate the chat" is
-// switched on, when the language you write in changes, or once from the menu. Every call starts afresh: a translation
-// into another language is cleared and done again in the language you write in now. `once` (the menu) follows the
-// automatic translation's rule without it being switched on (core/translate_policy).
-int TranslateRecentLines(bool once) {  // g_mu held; how many lines went to the translator
+// switched on, when the language you write in changes, or once from the menu. A translation into the language you
+// write in now, by the translator you use now, stays (nothing paid twice); another one is cleared and done again – what
+// was asked before comes from the session's cache (g_transCache). `once` (the menu) follows the automatic
+// translation's rule without it being switched on (core/translate_policy).
+int TranslateRecentLines(bool once) {  // g_mu held; how many lines of other players are in view
+    const std::wstring& target = TypingLang();
+    const std::wstring by = g_translator ? g_translator->Name() : std::wstring();
     int n = 0;
     for (ChatLine& l : g_lines) {
         if (l.own || l.speaker.empty() || std::find(g_visibleLines.begin(), g_visibleLines.end(), l.id) == g_visibleLines.end())
             continue;
+        ++n;
+        if (!l.translated.empty() && l.transTarget == target && l.transBy == by) continue;
         l.translated.clear();
         l.u8translated.clear();
         l.transSegs.clear();
         g_worker.Post([id = l.id, t = l.text, once] { TranslateLine(id, t, false, once); });
-        ++n;
     }
     return n;
 }
