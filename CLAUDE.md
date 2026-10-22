@@ -5,7 +5,9 @@ voice input. This repository holds only the add-on. The old desktop programs (GW
 the OCR reader, the GW2 Chat Bridge) live in the branch `desktop-archive` and are not part of main (user, 2026-10-14);
 an OCR module may come back later as an optional download – not now. Read this before changing anything. Several
 agents/LLMs work on this repo: keep changes small, build + test before every commit, update this file when you learn
-something the next agent needs.
+something the next agent needs. **This file and the code never contradict each other** (user, 2026-10-22): when they
+do, report it – never quietly change one of them to match the other. Every change of behaviour updates this file in
+the same commit.
 
 ## Layers (dependencies point downwards only)
 
@@ -48,7 +50,8 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
                         chat_source (the rules for lines of Events: Chat), window_layout (the window's place as a
                         formula), snippets (your text blocks), send_route (where a message goes: the footer's
                         "Send", a whisper tab, "Translate what I say" – one pure function), steady (Technical's numbers),
-                        translator protocols
+                        translate_policy (whether a chat line goes to the translator – one pure function),
+                        translation_cache (the session's chat translations, memory only), translator protocols
 ```
 
 - `core` compiles on any OS: `g++ -std=c++17 -I src tests/core_tests.cpp src/core/*.cpp`.
@@ -79,7 +82,7 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   20 lines fail; "Resume" by hand; "Read the chat" off (`[ChatSource] Reading`) touches nothing. For the developer:
   Options > Technical (`RenderChatSourceDetails`) – the version of Events: Chat, new since the last session
   (`[ChatSource] LastVersion`; then a note once), the counts, the last lines as lengths and rules ("Copy protocol":
-  never text or names). 2.1.0's probation (marker file, VerifiedVersion / BadVersion) was taken out again; its
+  counts only – never a text, a name or a length). 2.1.0's probation (marker file, VerifiedVersion / BadVersion) was taken out again; its
   leftovers are removed at load. Other add-ons' code runs only behind a guard too:
   `ReadAddonDefGuarded` (the module scan calls every add-on's GetAddonDef), `ResolveGuarded` (Decoder Ring: a record
   with room to spare, strings ended, one fault = not asked again this session).
@@ -94,7 +97,7 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   thrifty mode – user, 2026-10-22) by the same rule: only a sure language (`SureLanguage`; "xD", "lf tank" stay as
   they are), never the language you write in, never one you understand (Translator tab "Languages I understand",
   `[Translate] Understood`). A click on the line always translates it. There is no switch for the language you write
-  in (2.3.6: "Do not translate the language I write in" is gone – into the same language is never worth a request;
+  in ("Do not translate the language I write in" is gone, 2026-10-22 – into the same language is never worth a request;
   `[Translate] SkipTypingLang` is removed from the ini at load). `TranslateRecentLines` goes through the lines in view
   (`g_visibleLines`, never an old chat in full) when the translation is switched on, the language you write in or the
   translator changes, or once from the menu; a translation that still fits (into the language you write in now, by
@@ -102,7 +105,12 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   cache (`core/translation_cache`, `g_transCache`, worker only, equation E13): key = the line as it came + source +
   target + translator name, ≤ 500, least recently used out, memory only – never on disk (invariant 6). A hit is no
   request: "once" twice, a language changed and back, a repeated LFG line cost nothing more; `CountMyMemory` counts
-  only real requests. Your own input (`TranslateInput`) does not go through it.
+  only real requests. Your own input (`TranslateInput`) does not go through it. Automatic translations: at most 8
+  lines per 3 s (`AllowAutoTranslate`, a flood); the worker keeps at most 96 jobs waiting (the oldest go).
+  **The chat buffer** (2.3.5): `g_lines` holds at most `kMaxLines` = 2,000 (kb_shared.hpp); `TrimChatLines`
+  (kb_chat.cpp) drops the oldest public line first (Map, Say, System …), then the oldest group line (Guild, Party,
+  Squad), whispers last. Options → Technical shows the count, the capacity and the RAM. A line is cut at 600
+  characters, a name at 64. Trimming the buffer protects the memory, not the translation contingent – that is the cache.
   The detection runs for every line (local, no translator): `g_playerLang` (session only) remembers each player's
   language; their whisper tab then sends in it (`WhisperTab::sendLang` → `g_sendOverride`, "=" = as written; the
   footer's choice in a tab changes only that tab). Nothing of other players is stored (privacy, Raidcore).
@@ -284,10 +292,12 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   (`GW2KB_MUMBLE`, `MumbleLink::DefaultName` – never set in the game), the clipboard stays in the test process,
   `FindGw2Window(pid)` returns only that process' window (never another GW2), so no click can reach the game.
 - `build\Release\typing_bench.exe [n]` after every change to the typing help: SURPRISES must stay 0.
-- The equations (core_tests `TestEquations` E1–E5, `TestEquations2` E6–E10): thousands of random inputs each – sending,
+- The equations (core_tests `TestEquations` E1–E5, `TestEquations2` E6–E13): thousands of random inputs each – sending,
   protection, ini, soft breaks, chat source; text blocks saved = loaded, protocol counts, no invisible mark reaches the
   window (`WithoutInvisible` in `UI()`), the steady number, where a message goes (`RouteMessage`: typed exactly as
-  before 2.3.0, "as written" exactly when there is no language). A new part gets its equation. `i18n_check.py` also
+  before 2.3.0, "as written" exactly when there is no language), plain punctuation (E11), what goes to the translator
+  (E12: "once" = automatic while on, a click always), the translation cache (E13: a hit asks nobody, LRU against a
+  plain list). A new part gets its equation. `i18n_check.py` also
   fails on a translation whose `{1}` placeholders differ from the English text, or on an invisible mark in it.
 - While working: `python tools/verify_release.py --changed [base]` runs only the gates the changed files can touch
   (core tests, selftest, typing bench, smoke test by path; version, Nexus definition, i18n, binary always) – never a
