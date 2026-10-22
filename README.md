@@ -123,7 +123,8 @@ keys are stored encrypted for your Windows account. Item and waypoint names are 
 Options → Writing → *Delete everything learned* starts from scratch.
 
 **Nothing of other players' messages is kept or exported.** No chat log is saved; a player's language is known only
-for the session. "Copy protocol" (Options → Technical, for a bug report) holds versions and counts only – how often
+for the session, and so are the translations of chat lines (kept in memory so the same line is never
+paid twice, gone when the game closes). "Copy protocol" (Options → Technical, for a bug report) holds versions and counts only – how often
 the last lines broke which rule – never a text, a name, a channel or a length.
 
 ## Files

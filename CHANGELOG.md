@@ -3,6 +3,21 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## Unreleased
+
+- **"Translate visible chat once" is the thrifty mode:** it now follows the same rule as the automatic translation –
+  lines in your own language, in languages you understand, or too short to tell ("xD", "lf tank") are left as they
+  are. A click on a single line still translates it, whatever its language.
+- **Real quota protection – a translation cache:** every chat line translated in this session is kept in memory (500
+  lines, never written to disk). Pressing "once" twice, switching your language back and forth, or the same LFG line
+  posted again costs no new request, and the MyMemory counter counts only real requests. (2.3.5 called its chat
+  buffer trimming "quota protection" – that protects memory; this is the part that protects your contingent.)
+- **"Do not translate the language I write in" is gone:** lines in your own language are never translated by
+  themselves – translating into the same language never helped and only used up the contingent.
+- **Names keep GW2's colours:** the brightness slider changes only the message text; the map channel's salmon name no
+  longer turns pinkish white.
+- **Stronger halo:** the dark outline around chat text now closes on all sides (8 directions instead of 4 diagonals).
+
 ## 2.3.5 — 2026-10-21 (GW2Chatlator for Nexus)
 
 - **Intelligent chat buffer & quota protection:** chat history capacity expanded from 500 to 2,000 lines (~1.4 MB RAM) with intelligent channel pruning; high-volume public channels (Map, Say, System) are pruned first during traffic bursts so private Whispers and Group discussions (Guild, Party, Squad) are protected from being purged.
