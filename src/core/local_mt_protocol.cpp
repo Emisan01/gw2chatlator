@@ -54,22 +54,22 @@ bool IsWordCodepoint(uint32_t cp) {
 
 const std::vector<LocalMtModelInfo>& LocalMtModelCatalog() {
     static const std::vector<LocalMtModelInfo> models = {
-        {"de-en", "Helsinki-NLP/opus-mt-de-en", "", "Apache-2.0"},
-        {"en-de", "Helsinki-NLP/opus-mt-en-de", "", "CC-BY-4.0"},
-        {"fr-en", "Helsinki-NLP/opus-mt-fr-en", "", "Apache-2.0"},
-        {"en-fr", "Helsinki-NLP/opus-mt-en-fr", "", "Apache-2.0"},
-        {"es-en", "Helsinki-NLP/opus-mt-es-en", "", "Apache-2.0"},
-        {"en-es", "Helsinki-NLP/opus-mt-en-es", "", "Apache-2.0"},
-        {"it-en", "Helsinki-NLP/opus-mt-it-en", "", "Apache-2.0"},
-        {"en-it", "Helsinki-NLP/opus-mt-en-it", "", "Apache-2.0"},
-        {"pl-en", "Helsinki-NLP/opus-mt-pl-en", "", "Apache-2.0"},
-        {"en-pl", "Helsinki-NLP/opus-mt-en-zlw", ">>pol<<", "Apache-2.0"},
-        {"pt-en", "Helsinki-NLP/opus-mt-ROMANCE-en", "", "Apache-2.0"},
-        {"en-pt", "Helsinki-NLP/opus-mt-en-ROMANCE", ">>pt<<", "Apache-2.0"},
-        {"tr-en", "Helsinki-NLP/opus-mt-tr-en", "", "Apache-2.0"},
-        {"en-tr", "Helsinki-NLP/opus-mt-en-trk", ">>tur<<", "Apache-2.0"},
-        {"ru-en", "Helsinki-NLP/opus-mt-ru-en", "", "CC-BY-4.0"},
-        {"en-ru", "Helsinki-NLP/opus-mt-en-ru", "", "Apache-2.0"},
+        {"de-en", "Helsinki-NLP/opus-mt-de-en", "", "Apache-2.0", 77066388},
+        {"en-de", "Helsinki-NLP/opus-mt-en-de", "", "CC-BY-4.0", 77054675},
+        {"fr-en", "Helsinki-NLP/opus-mt-fr-en", "", "Apache-2.0", 77807028},
+        {"en-fr", "Helsinki-NLP/opus-mt-en-fr", "", "Apache-2.0", 77807028},
+        {"es-en", "Helsinki-NLP/opus-mt-es-en", "", "Apache-2.0", 80732850},
+        {"en-es", "Helsinki-NLP/opus-mt-en-es", "", "Apache-2.0", 80732850},
+        {"it-en", "Helsinki-NLP/opus-mt-it-en", "", "Apache-2.0", 88911579},
+        {"en-it", "Helsinki-NLP/opus-mt-en-it", "", "Apache-2.0", 88730368},
+        {"pl-en", "Helsinki-NLP/opus-mt-pl-en", "", "Apache-2.0", 79918234},
+        {"en-pl", "Helsinki-NLP/opus-mt-en-zlw", ">>pol<<", "Apache-2.0", 77078002},
+        {"pt-en", "Helsinki-NLP/opus-mt-ROMANCE-en", "", "Apache-2.0", 80684165},
+        {"en-pt", "Helsinki-NLP/opus-mt-en-ROMANCE", ">>pt<<", "Apache-2.0", 80682455},
+        {"tr-en", "Helsinki-NLP/opus-mt-tr-en", "", "Apache-2.0", 79351104},
+        {"en-tr", "Helsinki-NLP/opus-mt-en-trk", ">>tur<<", "Apache-2.0", 79078197},
+        {"ru-en", "Helsinki-NLP/opus-mt-ru-en", "", "CC-BY-4.0", 79550626},
+        {"en-ru", "Helsinki-NLP/opus-mt-en-ru", "", "Apache-2.0", 79562339},
     };
     return models;
 }

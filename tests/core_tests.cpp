@@ -201,6 +201,7 @@ static void TestLocalMtProtocol() {
     CHECK(modelFor("de-en") && std::string(modelFor("de-en")->license) == "Apache-2.0");
     CHECK(modelFor("en-de") && std::string(modelFor("en-de")->license) == "CC-BY-4.0");
     CHECK(modelFor("ru-en") && std::string(modelFor("ru-en")->license) == "CC-BY-4.0");
+    CHECK(modelFor("de-en") && modelFor("de-en")->sizeBytes == 77066388);
     CHECK(modelFor("en-pl") && std::string(modelFor("en-pl")->sourcePrefix) == ">>pol<<");
     CHECK(modelFor("en-pt") && std::string(modelFor("en-pt")->sourcePrefix) == ">>pt<<");
     CHECK(modelFor("en-tr") && std::string(modelFor("en-tr")->sourcePrefix) == ">>tur<<");

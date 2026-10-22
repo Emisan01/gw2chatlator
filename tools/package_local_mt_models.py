@@ -22,14 +22,20 @@ ROOT = Path(__file__).resolve().parent.parent
 CATALOG_CPP = ROOT / "src" / "core" / "local_mt_protocol.cpp"
 DEFAULT_MODELS = ROOT / "local" / "translation-spike" / "models"
 DEFAULT_OUTPUT = ROOT / "build" / "dist"
-ROW = re.compile(r'\{"([^\"]+)",\s*"([^\"]+)",\s*"([^\"]*)",\s*"([^\"]+)"\}')
+ROW = re.compile(r'\{"([^\"]+)",\s*"([^\"]+)",\s*"([^\"]*)",\s*"([^\"]+)"(?:,\s*([0-9]+))?\}')
 
 
 def catalog():
     text = CATALOG_CPP.read_text(encoding="utf-8")
     models = {
-        pair: {"pair": pair, "model": model, "source_prefix": prefix, "license": license_name}
-        for pair, model, prefix, license_name in ROW.findall(text)
+        pair: {
+            "pair": pair,
+            "model": model,
+            "source_prefix": prefix,
+            "license": license_name,
+            "size_bytes": int(size_str) if size_str else 0,
+        }
+        for pair, model, prefix, license_name, size_str in ROW.findall(text)
     }
     if not models:
         raise RuntimeError(f"Could not read model catalog from {CATALOG_CPP}")
@@ -42,7 +48,16 @@ def convert(model, target):
         raise RuntimeError("ct2-transformers-converter was not found; install ctranslate2 and transformers first")
     target.mkdir(parents=True, exist_ok=True)
     if not (target / "model.bin").is_file():
-        command = [converter, "--model", model["model"], "--output_dir", str(target), "--quantization", "int8"]
+        command = [
+            converter,
+            "--model",
+            model["model"],
+            "--output_dir",
+            str(target),
+            "--quantization",
+            "int8",
+            "--force",
+        ]
         print("[*] Converting", model["pair"], "from", model["model"], flush=True)
         subprocess.run(command, check=True)
     # CTranslate2 converts the weights and vocabulary, but our helper tokenizes with SentencePiece itself.

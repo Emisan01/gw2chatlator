@@ -3,6 +3,12 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.5.3 — 2026-10-22 (GW2Chatlator for Nexus)
+
+- **Local MT packages and bundle installer:** Added logical packages in Options → Translator ("My language", "Europe package", "West & Central Europe", "Eastern Europe") and folded single pairs view with sort order (`en -> X`, `X -> en`), progress bar, and 5-second completion status feedback.
+- **Double-download guard:** Atomic `compare_exchange` on local MT jobs prevents duplicate downloads, buttons hide during active downloads, and already installed pairs are safely skipped.
+- **Full OPUS-MT package suite:** All 16 language pairs built, verified, and exact package sizes recorded in catalog.
+
 ## 2.5.2 — 2026-10-22 (GW2Chatlator for Nexus)
 
 - **A chat line that cannot be translated says why:** e.g. a missing local language pack (French needs fr-en) now shows in the status line instead of nothing happening.
