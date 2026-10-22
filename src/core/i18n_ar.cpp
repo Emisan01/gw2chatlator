@@ -167,6 +167,8 @@ extern const I18nEntry kArabicStrings[] = {
      L"فُقد التركيز – أُلغي الإرسال"},
     {L"Focus lost – the text may still be in the chat line",
      L"فُقد التركيز – قد يكون النص ما زال في سطر المحادثة"},
+    {L"Font",
+     L"الخط"},
     {L"Footer",
      L"التذييل"},
     {L"Foreign lines of other players into your language. Off: a click on a line translates just that one.",

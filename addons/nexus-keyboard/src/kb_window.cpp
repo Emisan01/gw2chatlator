@@ -21,6 +21,7 @@ bool g_winHolding = false;     // the left mouse went down on the window: ImGui 
 bool g_winOwnDrag = false;     // ... our own hold-and-drag moves it (the formula keeps placing it)
 bool g_winSizing = false;      // its size changed while held: you drag an edge
 WinAnchor g_winPressed;        // where it was when the mouse went down (a move snaps when it ends)
+int g_previewRows = 1;         // the preview's wrapped lines as last drawn (it grows with them, like the input)
 ULONGLONG g_ownDownAt = 0;     // our own hold-and-drag (the input, the mini window): when the press began – in this
 bool g_ownMoving = false;      // shape only; a new mode ends it (a stale press once dragged the opened window along)
 
@@ -277,7 +278,8 @@ void RenderFooter() {  // g_mu held
             ImGui::CloseCurrentPopup();
         }
         for (const LangInfo& l : Languages()) {
-            if (l.latinScript && ImGui::Selectable(U8(l.native).c_str(), g_cfg.writeIn == l.code)) {
+            // every language our window draws – Arabic, Cyrillic, Greek too: sent, it is always translated (send_route)
+            if (DrawnInOurWindow(l) && ImGui::Selectable(U8(NativeName(l.code)).c_str(), g_cfg.writeIn == l.code)) {
                 chosen = l.code;
                 ImGui::CloseCurrentPopup();
             }
@@ -311,7 +313,9 @@ void RenderFooter() {  // g_mu held
     ImGui::SetNextWindowPos(ImVec2(sendBtnPos.x, sendBtnPos.y - 4.0f), ImGuiCond_Always, ImVec2(0.0f, 1.0f));
     ImGui::SetNextWindowSizeConstraints(ImVec2(sendBtnW, 0.0f), ImVec2(FLT_MAX, ImGui::GetFontSize() * 20.0f));
     if (ImGui::BeginPopup("##send_popup")) {
-        for (size_t i = 0; i <= g_cfg.writeLangs.size(); ++i) {
+        // "as written" only when GW2's chat shows the language you write in
+        const size_t rows = g_cfg.writeLangs.size() + (SendableInGw2(TypingLang()) ? 1 : 0);
+        for (size_t i = 0; i < rows; ++i) {
             const std::string n = i == g_cfg.writeLangs.size() ? UI(Tr(L"as written")) : U8(NativeName(g_cfg.writeLangs[i]));
             const bool current = g_sendOverride.empty() ? static_cast<int>(i) == g_sendIdx
                                  : i == g_cfg.writeLangs.size() ? g_sendOverride == L"="
@@ -334,7 +338,7 @@ void RenderFooter() {  // g_mu held
         for (const LangInfo& l : Languages()) {  // more languages: the chosen one becomes the first
             if (!l.latinScript || std::find(g_cfg.writeLangs.begin(), g_cfg.writeLangs.end(), l.code) != g_cfg.writeLangs.end())
                 continue;
-            if (ImGui::Selectable(U8(l.native).c_str(), false)) {
+            if (ImGui::Selectable(U8(NativeName(l.code)).c_str(), false)) {
                 g_cfg.writeLangs.insert(g_cfg.writeLangs.begin(), l.code);
                 g_cfg.SaveAll();
                 if (g_activeTab >= 0 && g_activeTab < static_cast<int>(g_tabs.size())) {  // this player's tab only
@@ -743,35 +747,43 @@ void RenderWindow() {
         if (IconButton("##menu", Icon::Menu, false, nullptr)) ImGui::OpenPopup("kbmenu");
     }
     if (ImGui::BeginPopup("kbmenu")) {
-        if (!Lay().header) {  // what the header offers: the tabs, minimise
-            if (ImGui::MenuItem(UI(Tr(L"Chat")).c_str(), nullptr, g_activeTab < 0)) LeaveWhisperTab();
-            for (int i = 0; i < static_cast<int>(g_tabs.size()); ++i)
-                if (ImGui::MenuItem(g_tabs[i].Label(), nullptr, g_activeTab == i)) {
-                    ActivateTab(i);
-                    g_selectTab = i;  // the tab bar follows when the header comes back
-                }
-            if (ImGui::MenuItem(UI(Tr(L"Minimize chat")).c_str())) g_minimizeRequest = true;
+        // The mini mode (nothing but the input): only the way out – Options, Compact view, Mini mode (user, 2026-10-22).
+        if (!Lay().chat) {
+            if (ImGui::MenuItem(UI(Tr(L"Options …")).c_str())) g_showOptions = true;
+            if (const bool compact = ProfileOn(0); ImGui::MenuItem(UI(Tr(L"Compact view")).c_str(), nullptr, compact))
+                SetProfile(0, !compact);
+            if (const bool mini = ProfileOn(1); ImGui::MenuItem(UI(Tr(L"Mini mode")).c_str(), nullptr, mini)) SetProfile(1, !mini);
+        } else {
+            if (!Lay().header) {  // what the header offers: the tabs, minimise
+                if (ImGui::MenuItem(UI(Tr(L"Chat")).c_str(), nullptr, g_activeTab < 0)) LeaveWhisperTab();
+                for (int i = 0; i < static_cast<int>(g_tabs.size()); ++i)
+                    if (ImGui::MenuItem(g_tabs[i].Label(), nullptr, g_activeTab == i)) {
+                        ActivateTab(i);
+                        g_selectTab = i;  // the tab bar follows when the header comes back
+                    }
+                if (ImGui::MenuItem(UI(Tr(L"Minimize chat")).c_str())) g_minimizeRequest = true;
+                ImGui::Separator();
+            }
+            if (ImGui::MenuItem(UI(Tr(L"Options …")).c_str())) g_showOptions = true;
+            if (const bool mini = ProfileOn(1); ImGui::MenuItem(UI(Tr(L"Mini mode")).c_str(), nullptr, mini)) SetProfile(1, !mini);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", UI(Tr(L"Nothing but the input with its help. Three quick clicks on it minimise it; right-click in it: Menu … brings the rest back.")).c_str());
+            if (const bool compact = ProfileOn(0); ImGui::MenuItem(UI(Tr(L"Compact view")).c_str(), nullptr, compact))
+                SetProfile(0, !compact);
+            if (ImGui::MenuItem(UI(Tr(L"Translate visible chat once")).c_str(), UI(MyMemoryLeftText()).c_str()) &&
+                TranslateRecentLines(true) == 0)
+                SetStatus(Tr(L"No chat lines of other players in view"), 4000);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", UI(Tr(L"What you see of the chat, into the language you write in – once, by the automatic translation's rule: lines in your language, in languages you understand or too short to tell stay as they are (a click on a line translates it anyway).")).c_str());
+            if (ImGui::MenuItem(UI(Tr(L"New whisper tab …")).c_str())) newTabNext = true;
+            if (ImGui::MenuItem(UI(Tr(L"Text blocks …")).c_str())) g_openSnippets = true;
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", UI(Tr(L"Your own text, saved from the input – a click puts it back.")).c_str());
+            if (!g_chatEventsPresent && !g_chatEventsFile && ImGui::MenuItem(UI(Tr(L"Install Events: Chat (every channel) …")).c_str()))
+                g_showOptions = true;
             ImGui::Separator();
+            if (ImGui::MenuItem(UI(Tr(L"Hide (Ctrl+Alt+K shows it again)")).c_str())) g_show = false;
         }
-        if (ImGui::MenuItem(UI(Tr(L"Options …")).c_str())) g_showOptions = true;
-        if (const bool mini = ProfileOn(1); ImGui::MenuItem(UI(Tr(L"Mini mode")).c_str(), nullptr, mini)) SetProfile(1, !mini);
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("%s", UI(Tr(L"Nothing but the input with its help. Three quick clicks on it minimise it; right-click in it: Menu … brings the rest back.")).c_str());
-        if (const bool compact = ProfileOn(0); ImGui::MenuItem(UI(Tr(L"Compact view")).c_str(), nullptr, compact))
-            SetProfile(0, !compact);
-        if (ImGui::MenuItem(UI(Tr(L"Translate visible chat once")).c_str(), UI(MyMemoryLeftText()).c_str()) &&
-            TranslateRecentLines(true) == 0)
-            SetStatus(Tr(L"No chat lines of other players in view"), 4000);
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("%s", UI(Tr(L"What you see of the chat, into the language you write in – once, by the automatic translation's rule: lines in your language, in languages you understand or too short to tell stay as they are (a click on a line translates it anyway).")).c_str());
-        if (ImGui::MenuItem(UI(Tr(L"New whisper tab …")).c_str())) newTabNext = true;
-        if (ImGui::MenuItem(UI(Tr(L"Text blocks …")).c_str())) g_openSnippets = true;
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("%s", UI(Tr(L"Your own text, saved from the input – a click puts it back.")).c_str());
-        if (!g_chatEventsPresent && !g_chatEventsFile && ImGui::MenuItem(UI(Tr(L"Install Events: Chat (every channel) …")).c_str()))
-            g_showOptions = true;
-        ImGui::Separator();
-        if (ImGui::MenuItem(UI(Tr(L"Hide (Ctrl+Alt+K shows it again)")).c_str())) g_show = false;
         ImGui::EndPopup();
     }
     RenderSnippets();
@@ -808,7 +820,9 @@ void RenderWindow() {
     g_boxLines = std::clamp(textLines, Lay().inputLines, std::max(8, Lay().inputLines));
     const float boxH = ImGui::GetTextLineHeight() * g_boxLines + st.FramePadding.y * 2 +
                        (!showPreview && Translating() ? smallLine : 0);  // no preview: the translation small in the box
-    const float lowerH = (showPreview ? line * (g_layout.previewLines + 0.2f) + st.ItemSpacing.y : 0) +
+    // The preview grows with its wrapped lines like the input (what it needed last frame), up to 8.
+    const int previewRows = std::clamp(g_previewRows, g_layout.previewLines, std::max(8, g_layout.previewLines));
+    const float lowerH = (showPreview ? line * (previewRows + 0.2f) + st.ItemSpacing.y : 0) +
                          (showWords ? ImGui::GetFrameHeightWithSpacing() : 0) +
                          (Lay().footer ? ImGui::GetFrameHeightWithSpacing() : 0) + boxH + st.ItemSpacing.y;
     if (!Lay().chat) {  // no chat: the window is exactly as high as its parts – the layout keeps its bottom where it is
@@ -1000,7 +1014,7 @@ void RenderWindow() {
     if (showPreview) {
         // The same light field as the input below: the two belong together.
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
-        ImGui::BeginChild("preview", ImVec2(0, line * (g_layout.previewLines + 0.2f)), false);
+        ImGui::BeginChild("preview", ImVec2(0, line * (previewRows + 0.2f)), false);
         if (g_recording) {
             ImGui::TextColored(kPreview, "%s", g_voiceLive.empty() ? "..." : U8(g_voiceLive).c_str());
         } else if (!g_input[0]) {
@@ -1013,6 +1027,8 @@ void RenderWindow() {
         } else if (g_layout.infoText) {
             ImGui::TextDisabled("%s", UI(Tr(L"translating …")).c_str());
         }
+        // the fewest rows whose height (line * (rows + 0.2)) holds what was drawn
+        g_previewRows = std::max(1, static_cast<int>(std::ceil((ImGui::GetCursorPosY() - st.ItemSpacing.y) / line - 0.2f)));
         ImGui::EndChild();
         ImGui::PopStyleColor();
     }

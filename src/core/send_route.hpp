@@ -25,7 +25,8 @@ struct SendRoute {
 };
 
 // Spoken and "Translate what I say" on (and voice on): the tab's language, else the footer's, else – the footer says
-// "as written" – the first of yours. Otherwise: the tab's language, else the footer's choice.
+// "as written" – the first of yours. Otherwise: the tab's language, else the footer's choice. Never "as written" for a
+// language GW2's chat cannot show (SendableInGw2): then the first of yours (EN-GB without any).
 SendRoute RouteMessage(const SendState& s);
 
 }  // namespace gct

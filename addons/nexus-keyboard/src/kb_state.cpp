@@ -120,8 +120,8 @@ void LoadLayout() {  // g_mu held
     g_layout.autoMinimize = get(L"AutoMinimize", 0) != 0;
     g_layout.minimizeAfter = std::clamp(get(L"MinimizeAfter", 10), 2, 120);
     g_layout.autoOpen = get(L"AutoOpen", 0) != 0;
-    g_layout.inputLines = std::clamp(get(L"InputLines", 4), 1, 8);
-    g_layout.previewLines = std::clamp(get(L"PreviewLines", 3), 1, 8);
+    g_layout.inputLines = std::clamp(get(L"InputLines", 1), 1, 8);
+    g_layout.previewLines = std::clamp(get(L"PreviewLines", 1), 1, 8);
     g_look.glow = get(L"Glow", 1) != 0;
     g_look.brightness = std::clamp(get(L"Brightness", 100), 60, 160);
     g_look.gameColors = get(L"GameColors", 1) != 0;
@@ -328,9 +328,15 @@ std::wstring MyMemoryLeftText() {  // "4.9k left today" beside "Translate visibl
 // has no limit, so the chat's automatic translation is not braked for it (g_mu held).
 bool LimitedContingent() { return !g_translator || g_translator->Name() != L"LibreTranslate"; }
 
+// A language's own name as the font in use draws it, else its English name – never a "?" (a font without those
+// letters made "Tieng Viet" or "Cestina" look misspelled, user 2026-10-22). Render thread.
 std::wstring NativeName(const std::wstring& code) {
-    if (const LangInfo* l = FindLanguage(code)) return l->native;
-    return ToUpperAscii(code);
+    const LangInfo* l = FindLanguage(code);
+    if (!l) return ToUpperAscii(code);
+    if (ImFont* f = ImGui::GetCurrentContext() ? ImGui::GetFont() : nullptr)
+        for (const wchar_t* c = l->native; *c; ++c)
+            if (*c >= 0x80 && !f->FindGlyphNoFallback(static_cast<ImWchar>(*c))) return l->english;
+    return l->native;
 }
 
 const std::wstring& AddonsDir() {  // the folder our DLL lies in: <GW2>\addons\ .

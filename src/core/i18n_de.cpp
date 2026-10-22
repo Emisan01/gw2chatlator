@@ -167,6 +167,8 @@ extern const I18nEntry kGermanStrings[] = {
      L"Fokus verloren – abgebrochen"},
     {L"Focus lost – the text may still be in the chat line",
      L"Fokus verloren – Text steht evtl. noch im Chatfeld"},
+    {L"Font",
+     L"Schriftart"},
     {L"Footer",
      L"Fußzeile"},
     {L"Foreign lines of other players into your language. Off: a click on a line translates just that one.",

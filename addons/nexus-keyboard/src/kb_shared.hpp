@@ -110,8 +110,8 @@ struct Layout {
     int minimizeAfter = 10;
     bool autoOpen = false;      // GW2's chat line opening (Enter) opens it from the small button (the focus key always does)  // the small ">" that minimises (in the footer, without it left of the input)
     bool infoText = true;  // the grey status lines (what is going on, modules, counter); never the prediction's grey word
-    int inputLines = 4;    // the input box, wrapping
-    int previewLines = 3;  // the translation and its back-translation
+    int inputLines = 1;    // the input box at least: one line, it grows with its wrapped lines (user, 2026-10-22)
+    int previewLines = 1;  // the translation and its back-translation at least – grows the same way
 };
 extern Layout g_layout;
 // The add-on's own switches ([Nexus] in the settings file).
@@ -209,7 +209,15 @@ extern std::atomic<ImFont*> g_textFont;
 extern float g_textFontPx;
 void OnTextFont(const char*, void* font);
 float PtToPx(int pt);
-void RequestTextFont(int pt);
+// The fonts to choose beside the size (user, 2026-10-22): files every Windows has, each with Arabic. Bahnschrift has
+// none – not offered.
+struct FontFace {
+    const wchar_t* file;  // in Windows\Fonts, without ".ttf"
+    const char* name;
+};
+extern const FontFace kFontFaces[3];
+void RequestTextFont(int pt, const std::wstring& face);
+void ReleaseTextFont();  // before the DLL goes, and before another face is asked for
 extern HMODULE g_self;
 extern std::atomic<bool> g_disabled;
 // Work of a thread of ours behind the same net as the render callbacks: a fault (an access violation & co. – not a C++

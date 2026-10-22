@@ -153,7 +153,7 @@ void AddonLoad(AddonAPI_t* api) {
         std::string blocks;
         if (ReadFileBytes(g_cfg.dataDir + L"\\snippets.txt", blocks)) g_snippets.Parse(FromUtf8(blocks));
     }
-    RequestTextFont(g_cfg.fontPt);
+    RequestTextFont(g_cfg.fontPt, g_cfg.fontFace);
     Config::DeferWrites(true);  // the ini is written on the worker (KickSave), never on the game thread
     g_worker.Start();
     g_worker.Post(InitSpelling);
@@ -216,9 +216,7 @@ void AddonUnload() {
     if (g_decoderThread.joinable()) g_decoderThread.join();
     if (g_voiceModuleThread.joinable()) g_voiceModuleThread.join();
     g_links.Stop();
-    if (g_api && g_api->Fonts_Release) g_api->Fonts_Release(kTextFontId, OnTextFont);  // no call into a gone DLL
-    g_textFont = nullptr;
-    g_textFontPx = 0;
+    ReleaseTextFont();  // no call into a gone DLL
     g_voice.Stop();  // the helper ends (it would also end by itself when its input closes)
     g_worker.Stop(FreeWorkerState);  // saved and freed on the worker (it owns them), before the DLL goes
     Config::DeferWrites(false);      // what is still waiting goes into the ini now
