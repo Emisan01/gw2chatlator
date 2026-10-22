@@ -248,7 +248,10 @@ void RenderFooter() {  // g_mu held
     const float chBtnW = narrow ? s_fc.labelWNarrow : s_fc.labelWFull;
 
     const ImVec2 chBtnPos = ImGui::GetCursorScreenPos();
-    ImGui::PushStyleColor(ImGuiCol_Text, NameColorOf(g_channel == Channel::Unknown ? Channel::Say : g_channel));
+    const Channel colorCh = (g_channel == Channel::Unknown && g_lastObservedChannel != Channel::Unknown)
+                                ? g_lastObservedChannel
+                                : (g_channel == Channel::Unknown ? Channel::Say : g_channel);
+    ImGui::PushStyleColor(ImGuiCol_Text, NameColorOf(colorCh));
     const bool chLeft = ImGui::Button(chBtnLabel.c_str(), ImVec2(chBtnW, iconH));
     ImGui::PopStyleColor();
     const bool chRight = ImGui::IsItemHovered() && ImGui::IsMouseClicked(1);
