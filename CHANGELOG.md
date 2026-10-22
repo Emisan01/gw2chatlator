@@ -3,6 +3,10 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.5.1 — 2026-10-22 (GW2Chatlator for Nexus)
+
+- **Local model list readable:** no more broken characters in the language-pair list; each pair shows its size, where it is installed, and the installed pairs with their total.
+
 ## 2.5.0 — 2026-10-22 (GW2Chatlator for Nexus)
 
 - **Local OPUS-MT translation:** optional CTranslate2 + SentencePiece CPU helper runs outside GW2. The add-on downloads the helper and selected model packages only on the user's click; installs are SHA-256 checked and removable. The initial release includes the `de-en` and `en-de` model packages.
