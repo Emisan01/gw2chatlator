@@ -78,7 +78,13 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
         }
         return tr->Translate(p.segments, SourceCode(detected), target);
     });
-    if (!r.ok || r.text.empty()) return;
+    if (!r.ok || r.text.empty()) {  // never silent: the status says why (a missing language pack, the quota …)
+        if (!r.error.empty()) {
+            std::lock_guard<std::mutex> lock(g_mu);
+            SetStatus(r.error, 8000);
+        }
+        return;
+    }
     const std::wstring t = SanitizeChatText(r.text);
     std::lock_guard<std::mutex> lock(g_mu);
     for (ChatLine& l : g_lines) {

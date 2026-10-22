@@ -3,6 +3,11 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.5.2 — 2026-10-22 (GW2Chatlator for Nexus)
+
+- **A chat line that cannot be translated says why:** e.g. a missing local language pack (French needs fr-en) now shows in the status line instead of nothing happening.
+- **Dashboard:** "Translate the chat - into" names your language also when it is "like Windows".
+
 ## 2.5.1 — 2026-10-22 (GW2Chatlator for Nexus)
 
 - **Local model list readable:** no more broken characters in the language-pair list; each pair shows its size, where it is installed, and the installed pairs with their total.

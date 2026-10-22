@@ -975,6 +975,8 @@ extern const I18nEntry kRussianStrings[] = {
      L"Установлено в: {1}"},
     {L"together {1} MB",
      L"всего {1} МБ"},
+    {L"No local language pack for {1} > {2} - install it: Options > Translator",
+     L"Нет локального языкового пакета для {1} > {2} - установите: Настройки > Переводчик"},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

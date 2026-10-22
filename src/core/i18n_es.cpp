@@ -975,6 +975,8 @@ extern const I18nEntry kSpanishStrings[] = {
      L"Instalado en: {1}"},
     {L"together {1} MB",
      L"en total {1} MB"},
+    {L"No local language pack for {1} > {2} - install it: Options > Translator",
+     L"No hay paquete de idioma local para {1} > {2} - instálalo: Opciones > Traductor"},
 };
 extern const size_t kSpanishCount = sizeof(kSpanishStrings) / sizeof(kSpanishStrings[0]);
 
