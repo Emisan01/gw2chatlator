@@ -480,7 +480,7 @@ void RenderDashboard(Config& edit, const Config& saved) {
         std::lock_guard<std::mutex> lock(g_mu);
         chatOn = g_nx.translateChat;
         voiceReady = g_voiceReady;
-        writeIn = g_cfg.writeIn;
+        writeIn = g_cfg.writeIn.empty() ? TypingLang() : g_cfg.writeIn;  // "like Windows": the language that is
         engine = g_translator ? g_translator->Name() : std::wstring(L"-");
     }
     const ModuleState& m = Modules();

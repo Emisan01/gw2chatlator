@@ -975,6 +975,8 @@ extern const I18nEntry kTurkishStrings[] = {
      L"Kurulum yeri: {1}"},
     {L"together {1} MB",
      L"toplam {1} MB"},
+    {L"No local language pack for {1} > {2} - install it: Options > Translator",
+     L"{1} > {2} için yerel dil paketi yok - kur: Seçenekler > Çevirmen"},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

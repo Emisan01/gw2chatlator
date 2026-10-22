@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "core/i18n.hpp"
 #include "core/langs.hpp"
 #include "core/local_mt_protocol.hpp"
 #include "core/text.hpp"
@@ -66,7 +67,8 @@ public:
         }
         const auto route = LocalMtRoute(source, target, CachedInstalledPairs());
         if (route.empty()) {
-            result.error = L"No installed local model can translate this language pair";
+            result.error = TrF(L"No local language pack for {1} > {2} - install it: Options > Translator",
+                               {source, target});
             return result;
         }
 
