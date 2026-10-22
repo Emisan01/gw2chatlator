@@ -722,7 +722,8 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
     if (valid) {
         const std::wstring cased = SentenceCase(typed, SentenceStart(text, start));
         if (cased != typed) {
-            c.words = {cased, typed};
+            c.words = {typed, cased};
+            c.firstIsTyped = true;
             c.highlight = 0;
             return c;
         }
