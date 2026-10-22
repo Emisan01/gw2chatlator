@@ -556,6 +556,7 @@ extern std::atomic<int> g_wipeDone;
 void StatusRow(const std::string& what, int state, const std::string& text);
 void RenderModules(bool guide);
 bool RemoveButton(const char* id);
+void RenderLocalMtModule(bool guide);
 void RenderLocalMtOptions(const Config& edit);
 // A number for the eye (Options > Technical): smoothed over about the last 20 frames, shown at most 4 times a second.
 struct Steady {
