@@ -337,19 +337,8 @@ void RenderFooter() {  // g_mu held
             if (g_activeTab >= 0 && g_activeTab < static_cast<int>(g_tabs.size())) {  // this player's tab only
                 g_tabs[g_activeTab].sendLang = i == g_cfg.writeLangs.size() ? std::wstring(L"=") : g_cfg.writeLangs[i];
                 g_sendOverride = g_tabs[g_activeTab].sendLang;
-            } else if (i == g_cfg.writeLangs.size()) {
-                g_cfg.translateWriting = false;
-                g_sendIdx = static_cast<int>(g_cfg.writeLangs.size());
-                g_cfg.SaveBool(L"Translate", L"Writing", false);
             } else {
-                g_cfg.translateWriting = true;
-                if (i > 0 && i < g_cfg.writeLangs.size()) {
-                    const std::wstring picked = g_cfg.writeLangs[i];
-                    g_cfg.writeLangs.erase(g_cfg.writeLangs.begin() + i);
-                    g_cfg.writeLangs.insert(g_cfg.writeLangs.begin(), picked);
-                }
-                g_sendIdx = 0;
-                g_cfg.SaveAll();
+                g_sendIdx = static_cast<int>(i);
             }
             ++g_inputGen;
             g_preview.clear();
@@ -372,7 +361,6 @@ void RenderFooter() {  // g_mu held
             if (!l.latinScript || std::find(g_cfg.writeLangs.begin(), g_cfg.writeLangs.end(), l.code) != g_cfg.writeLangs.end())
                 continue;
             if (ImGui::Selectable(U8(NativeName(l.code)).c_str(), false)) {
-                g_cfg.translateWriting = true;
                 g_cfg.writeLangs.insert(g_cfg.writeLangs.begin(), l.code);
                 g_cfg.SaveAll();
                 if (g_activeTab >= 0 && g_activeTab < static_cast<int>(g_tabs.size())) {  // this player's tab only
@@ -501,13 +489,8 @@ void RenderWindow() {
     }
     if (!g_show || !inMap) return;
 
-    const float px = PtToPx(g_cfg.fontPt > 0 ? g_cfg.fontPt : FollowPt());
-    if (g_cfg.fontPt <= 0 && px != g_textFontPx) RequestTextFont(0, g_cfg.fontFace);
-    ImFont* tf = g_textFont.load();
-    const float fontPx = (tf && std::abs(tf->FontSize - px) < 0.5f) ? tf->FontSize : px;
-    const float iconH = std::round(fontPx + ImGui::GetStyle().FramePadding.y * 2.0f);
+    const float iconH = ImGui::GetFrameHeight();
     const float minBtn = iconH + 8.0f;
-
     if (g_collapsed) {
         g_lastUse = 0;  // opened again: "not in use" counts from then
         const WinSpace space = WindowSpace(minBtn);
@@ -524,18 +507,6 @@ void RenderWindow() {
         const bool beginOk = ImGui::Begin("GW2Chatlator###kbmain", nullptr, minFlags);
         ImGui::PopStyleVar();
         if (beginOk) {
-            struct PopFontAtEnd {
-                bool on = false;
-                ~PopFontAtEnd() { if (on) ImGui::PopFont(); }
-            } popFont;
-            if (tf && std::abs(tf->FontSize - px) < 0.5f) {
-                ImGui::SetWindowFontScale(1.0f);
-                ImGui::PushFont(tf);
-                popFont.on = true;
-            } else {
-                ImGui::SetWindowFontScale(px / std::max(1.0f, ImGui::GetFont()->FontSize));
-            }
-
             const float resScale = std::max(1.0f, io.DisplaySize.y / 1080.0f);
             const float uiScale = (g_uiSize.load() == 0 ? 0.89f : g_uiSize.load() == 2 ? 1.11f : g_uiSize.load() == 3 ? 1.25f : 1.0f);
             TakeWindow(WinMode::Button, space, std::round(10.0f * uiScale * resScale));  // also onto GW2's chat edge
@@ -590,6 +561,9 @@ void RenderWindow() {
     } popFont;
     {
         // The chat's size: yours, or the game's interface size until you set one (fontPt 0, the first use).
+        const float px = PtToPx(g_cfg.fontPt > 0 ? g_cfg.fontPt : FollowPt());
+        if (g_cfg.fontPt <= 0 && px != g_textFontPx) RequestTextFont(0, g_cfg.fontFace);  // the game's size changed
+        ImFont* tf = g_textFont.load();
         if (tf && std::abs(tf->FontSize - px) < 0.5f) {  // sharp: the font built at this size
             ImGui::SetWindowFontScale(1.0f);
             ImGui::PushFont(tf);
