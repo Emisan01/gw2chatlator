@@ -1030,6 +1030,13 @@ static void TestOcrTimestamps() {
     CHECK(FuzzyTagLength(L"[Sagen) Bob: x", &ch) == 7 && ch == Channel::Say);
     CHECK(FuzzyTagLength(L"CKontakteJ Emi ist online", &ch) == 10 && ch == Channel::System);
     CHECK(FuzzyTagLength(L"[Gilde] Carl: x", &ch) == 7 && ch == Channel::Guild);
+    CHECK(FuzzyTagLength(L"[G1] Carl: x", &ch) == 4 && ch == Channel::Guild1);
+    CHECK(FuzzyTagLength(L"[G6] Carl: x", &ch) == 4 && ch == Channel::Guild6);
+    CHECK(std::wstring(ChannelCommand(Channel::Guild1)) == L"/g1");
+    CHECK(std::wstring(ChannelCommand(Channel::Guild6)) == L"/g6");
+    CHECK(ChannelLabel(Channel::Guild1) == L"G1");
+    CHECK(ChannelLabel(Channel::Guild6) == L"G6");
+    CHECK(IsGuildChannel(Channel::Guild) && IsGuildChannel(Channel::Guild3) && !IsGuildChannel(Channel::Map));
     CHECK(FuzzyTagLength(L"Couch: x", &ch) == 0);
     auto m = ParseChatLine(L"19:42 JCSJ Pell The Unnamed: Thanks!");
     CHECK(m.stamped && m.speaker == L"Pell The Unnamed" && m.text == L"Thanks!");

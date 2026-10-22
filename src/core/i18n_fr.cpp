@@ -31,6 +31,8 @@ extern const I18nEntry kFrenchStrings[] = {
      L"Actif"},
     {L"Active channel",
      L"Canal actif"},
+    {L"Active ({1})",
+     L"Actif ({1})"},
     {L"Active features",
      L"Fonctions actives"},
     {L"After sending, keep typing in GW2Chatlator",

@@ -159,8 +159,10 @@ void MinimizeWindow() { g_collapsed = true; }  // the button takes the window's 
 
 // The footer chips: channel | "Write: German" | "Send: English (UK) · MyMemory" (orange) | auto | counter.
 void RenderFooter() {  // g_mu held
-    static const Channel kChannels[] = {Channel::Unknown, Channel::Say,   Channel::Map,  Channel::Party,
-                                        Channel::Squad,   Channel::Guild, Channel::Team, Channel::Whisper};
+    static const Channel kChannels[] = {
+        Channel::Unknown, Channel::Say,    Channel::Map,    Channel::Party,  Channel::Squad,
+        Channel::Guild,   Channel::Guild1, Channel::Guild2, Channel::Guild3, Channel::Guild4,
+        Channel::Guild5,  Channel::Guild6, Channel::Team,   Channel::Whisper};
     auto chipWidth = [](const std::string& s) { return ImGui::CalcTextSize(s.c_str()).x + ImGui::GetFrameHeight() + 12; };
     const float iconH = ImGui::GetFrameHeight();
 
@@ -174,6 +176,7 @@ void RenderFooter() {  // g_mu held
     // Footer chips cached: precalculated strings and sizes avoid allocations on idle frames.
     struct FooterCache {
         Channel channel = Channel::Unknown;
+        Channel observed = Channel::Unknown;
         std::wstring whisperTo;
         std::wstring writeIn;
         std::wstring sendLang;
@@ -192,17 +195,28 @@ void RenderFooter() {  // g_mu held
     static FooterCache s_fc;
     const bool sendOrig = SendOriginal();
     const std::wstring sendLang = SendLang();
-    if (s_fc.channel != g_channel || s_fc.whisperTo != g_whisperTo || s_fc.writeIn != g_cfg.writeIn ||
-        s_fc.sendLang != sendLang || s_fc.sendOrig != sendOrig) {
+    if (s_fc.channel != g_channel || s_fc.observed != g_lastObservedChannel || s_fc.whisperTo != g_whisperTo ||
+        s_fc.writeIn != g_cfg.writeIn || s_fc.sendLang != sendLang || s_fc.sendOrig != sendOrig) {
         s_fc.channel = g_channel;
+        s_fc.observed = g_lastObservedChannel;
         s_fc.whisperTo = g_whisperTo;
         s_fc.writeIn = g_cfg.writeIn;
         s_fc.sendLang = sendLang;
         s_fc.sendOrig = sendOrig;
 
-        s_fc.labelFull = g_channel == Channel::Unknown ? UI(Tr(L"Active channel")) : UI(ChannelLabel(g_channel));
-        if (g_channel == Channel::Whisper && !g_whisperTo.empty()) s_fc.labelFull += " " + U8(g_whisperTo);
-        s_fc.labelNarrow = g_channel == Channel::Unknown ? UI(Tr(L"Active")) : s_fc.labelFull;
+        if (g_channel == Channel::Unknown) {
+            if (g_lastObservedChannel != Channel::Unknown) {
+                s_fc.labelFull = UI(TrF(L"Active ({1})", {ChannelLabel(g_lastObservedChannel)}));
+                s_fc.labelNarrow = UI(TrF(L"Active ({1})", {ChannelLabel(g_lastObservedChannel)}));
+            } else {
+                s_fc.labelFull = UI(Tr(L"Active channel"));
+                s_fc.labelNarrow = UI(Tr(L"Active"));
+            }
+        } else {
+            s_fc.labelFull = UI(ChannelLabel(g_channel));
+            if (g_channel == Channel::Whisper && !g_whisperTo.empty()) s_fc.labelFull += " " + U8(g_whisperTo);
+            s_fc.labelNarrow = s_fc.labelFull;
+        }
         s_fc.labelBtnFull = s_fc.labelFull + "##chbtn";
         s_fc.labelBtnNarrow = s_fc.labelNarrow + "##chbtn";
 
@@ -245,7 +259,7 @@ void RenderFooter() {  // g_mu held
 
     // Dropdown menu opens UPWARDS directly above the button, overlaying the window upwards!
     ImGui::SetNextWindowPos(ImVec2(chBtnPos.x, chBtnPos.y - 4.0f), ImGuiCond_Always, ImVec2(0.0f, 1.0f));
-    ImGui::SetNextWindowSizeConstraints(ImVec2(chBtnW, 0.0f), ImVec2(FLT_MAX, ImGui::GetFontSize() * 16.0f));
+    ImGui::SetNextWindowSizeConstraints(ImVec2(chBtnW, 0.0f), ImVec2(FLT_MAX, ImGui::GetFontSize() * 24.0f));
     if (ImGui::BeginPopup("##channel_popup")) {
         for (Channel c : kChannels) {
             const std::string name = c == Channel::Unknown ? UI(Tr(L"Active channel")) : UI(ChannelLabel(c));
@@ -666,8 +680,10 @@ void RenderWindow() {
                     changed = true;
                 }
             }
-            static const Channel kWrite[] = {Channel::Unknown, Channel::Say, Channel::Map,  Channel::Party,
-                                             Channel::Squad,   Channel::Team, Channel::Guild};
+            static const Channel kWrite[] = {
+                Channel::Unknown, Channel::Say,    Channel::Map,    Channel::Party,  Channel::Squad,
+                Channel::Guild,   Channel::Guild1, Channel::Guild2, Channel::Guild3, Channel::Guild4,
+                Channel::Guild5,  Channel::Guild6, Channel::Team};
             ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
             if (ImGui::BeginCombo(UI(Tr(L"Write in") + L"##tabwrite").c_str(),
                                   t.write == Channel::Unknown ? UI(Tr(L"Active channel")).c_str() : UI(ChannelLabel(t.write)).c_str())) {
@@ -932,7 +948,9 @@ void RenderWindow() {
         const float rowGap = ImGui::GetStyle().ItemSpacing.y;
         for (ChatLine& l : g_lines) {
             if (!tabName.empty() && (l.channel != Channel::Whisper || l.speakerFolded != tabName)) continue;
-            if (!(tabChannels & ChannelBit(l.channel))) continue;  // a tab of your own: only its channels
+            const bool channelAllowed = (tabChannels & ChannelBit(l.channel)) != 0 ||
+                                        (IsGuildChannel(l.channel) && (tabChannels & ChannelBit(Channel::Guild)) != 0);
+            if (!channelAllowed) continue;  // a tab of your own: only its channels
             const size_t rowLen = l.translated.empty() ? l.text.size() : l.translated.size() + 1;
             const float y0 = ImGui::GetCursorPosY();
             if (l.rowH > 0 && l.rowW == rowWrap && l.rowFont == rowFont && l.rowLen == rowLen &&

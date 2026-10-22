@@ -83,6 +83,9 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
         l.receivedTime = GetTickCount64();
         l.mapId = g_mapId.load();
         l.id = id = g_nextId++;
+        if (ch != Channel::Unknown && ch != Channel::System) {
+            g_lastObservedChannel = ch;
+        }
         if (!own) {  // completions offer the names and words of the chat (never learned – invariant 10)
             if (!l.speaker.empty()) g_context.insert(g_context.begin(), l.speaker);
             for (const Span& s : WordSpans(l.text))
@@ -94,9 +97,11 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
         for (size_t i = 0; i < g_tabs.size(); ++i) {  // a tab not in front that shows this line: marked
             if (static_cast<int>(i) == g_activeTab) continue;
             const WhisperTab& t = g_tabs[i];
-            if (t.custom ? (t.channels & ChannelBit(ch)) != 0
-                         : ch == Channel::Whisper && t.nameFolded == g_lines.back().speakerFolded)
-                g_tabs[i].unread = true;
+            const bool tabShows = t.custom
+                                      ? ((t.channels & ChannelBit(ch)) != 0 ||
+                                         (IsGuildChannel(ch) && (t.channels & ChannelBit(Channel::Guild)) != 0))
+                                      : (ch == Channel::Whisper && t.nameFolded == g_lines.back().speakerFolded);
+            if (tabShows) g_tabs[i].unread = true;
         }
         g_scrollDown = true;
     }

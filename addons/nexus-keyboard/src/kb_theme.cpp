@@ -177,6 +177,7 @@ ImVec4 Bright(ImVec4 c) {  // the message's brightness of your choice (never a n
     return ImVec4(c.x + (1 - c.x) * t, c.y + (1 - c.y) * t, c.z + (1 - c.z) * t, c.w);  // tints were cut off at 1)
 }
 const ChannelLook* LookOf(Channel ch) {
+    if (IsGuildChannel(ch)) ch = Channel::Guild;
     for (const ChannelLook& l : kChannelLook)
         if (l.channel == ch) return &l;
     return nullptr;

@@ -90,6 +90,12 @@ inline ChannelGroup GroupOfChannel(Channel ch) {
     case Channel::Whisper:
         return ChannelGroup::Whisper;
     case Channel::Guild:
+    case Channel::Guild1:
+    case Channel::Guild2:
+    case Channel::Guild3:
+    case Channel::Guild4:
+    case Channel::Guild5:
+    case Channel::Guild6:
     case Channel::Party:
     case Channel::Squad:
         return ChannelGroup::Group;
@@ -343,6 +349,7 @@ extern std::deque<std::wstring> g_history;
 extern int g_historyPos;
 // The channel to write in and the send language.
 extern Channel g_channel;
+extern Channel g_lastObservedChannel;
 extern std::wstring g_whisperTo;
 extern int g_sendIdx;
 extern bool g_sending;

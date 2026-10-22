@@ -31,6 +31,8 @@ extern const I18nEntry kTurkishStrings[] = {
      L"Etkin"},
     {L"Active channel",
      L"Etkin kanal"},
+    {L"Active ({1})",
+     L"Aktif ({1})"},
     {L"Active features",
      L"Etkin özellikler"},
     {L"After sending, keep typing in GW2Chatlator",
