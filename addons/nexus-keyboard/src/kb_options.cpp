@@ -166,7 +166,6 @@ bool RenderVoiceModule(bool guide) {
 void RenderModules(bool guide) {
     RenderChatModule(guide);
     const bool enabled = RenderVoiceModule(guide);
-    RenderLocalMtModule(guide);
     ImGui::PushID("modules");
     if (guide) {
         ImGui::Spacing();

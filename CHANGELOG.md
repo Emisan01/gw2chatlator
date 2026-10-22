@@ -3,6 +3,10 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.5.6 — 2026-10-22 (GW2Chatlator for Nexus)
+
+- **Crash fix:** back to the stable code of 2.5.2. The changes of 2.5.3 to 2.5.5 (guild channels G1-G6, language bundles) are withdrawn until the crash is found.
+
 ## 2.5.5 — 2026-10-22 (GW2Chatlator for Nexus)
 
 - **Stable again:** no stray "Debug" window, no crash in the send-language menu (the 2.5.4 test builds had both); every module and language package is in the release again.

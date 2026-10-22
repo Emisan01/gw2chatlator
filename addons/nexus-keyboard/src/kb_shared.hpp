@@ -90,12 +90,6 @@ inline ChannelGroup GroupOfChannel(Channel ch) {
     case Channel::Whisper:
         return ChannelGroup::Whisper;
     case Channel::Guild:
-    case Channel::Guild1:
-    case Channel::Guild2:
-    case Channel::Guild3:
-    case Channel::Guild4:
-    case Channel::Guild5:
-    case Channel::Guild6:
     case Channel::Party:
     case Channel::Squad:
         return ChannelGroup::Group;
@@ -349,7 +343,6 @@ extern std::deque<std::wstring> g_history;
 extern int g_historyPos;
 // The channel to write in and the send language.
 extern Channel g_channel;
-extern Channel g_lastObservedChannel;
 extern std::wstring g_whisperTo;
 extern int g_sendIdx;
 extern bool g_sending;
@@ -527,9 +520,6 @@ extern std::thread g_voiceModuleThread;
 extern std::atomic<bool> g_localMtBusy;
 extern std::atomic<int> g_localMtPct;
 extern std::thread g_localMtThread;
-extern std::wstring g_localMtBusyText;
-extern std::wstring g_localMtStatus;
-extern ULONGLONG g_localMtStatusUntil;
 extern int g_optionsTab;
 std::wstring KeyboardDir();
 
@@ -556,7 +546,6 @@ extern std::atomic<int> g_wipeDone;
 void StatusRow(const std::string& what, int state, const std::string& text);
 void RenderModules(bool guide);
 bool RemoveButton(const char* id);
-void RenderLocalMtModule(bool guide);
 void RenderLocalMtOptions(const Config& edit);
 // A number for the eye (Options > Technical): smoothed over about the last 20 frames, shown at most 4 times a second.
 struct Steady {
