@@ -99,6 +99,7 @@ std::wstring g_lastDictated;     // the last recognized text as it came (learnin
 std::wstring g_dictLang;         // its language
 VoiceFixBook g_voiceFixes;       // learned misheard words (<data>\voice-fixes.txt), per language
 bool g_autoSendPending = false;
+bool g_userRecording = false;
 std::string g_voicePending;        // a command that waits for the helper to be ready ("begin-auto", "listen")
 bool g_listening = false;          // voice activation listens
 std::wstring g_listenPausedFor;    // ... paused while this voice chat uses the microphone
