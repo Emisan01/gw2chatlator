@@ -43,6 +43,7 @@
 #include "core/slang.hpp"
 #include "core/text.hpp"
 #include "core/translate_policy.hpp"
+#include "core/translation_cache.hpp"
 #include "core/translator.hpp"
 #include "core/voice_learn.hpp"
 #include "core/json.hpp"
@@ -256,6 +257,7 @@ namespace kb {
 extern SpellService* g_spell;
 extern SendGuard g_guard;
 extern MumbleLink* g_mumbleWorker;
+extern TranslationCache g_transCache;  // the chat's translations of this session (memory only)
 
 // ---------------------------------------------------------------------------------------------------------------
 // State shared between the game thread (events, drawing) and the worker. All behind g_mu.
@@ -265,6 +267,7 @@ struct ChatLine {
     bool outgoing = false;
     bool own = false;
     std::wstring speaker, text, translated;
+    std::wstring transTarget, transBy;  // what `translated` was made into and by (TranslateRecentLines keeps a fit)
     std::wstring speakerFolded;
 
     // Pre-parsed/pre-encoded cache for 0-allocation rendering on the main thread

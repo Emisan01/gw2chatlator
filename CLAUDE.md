@@ -97,7 +97,12 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   in (2.3.6: "Do not translate the language I write in" is gone – into the same language is never worth a request;
   `[Translate] SkipTypingLang` is removed from the ini at load). `TranslateRecentLines` goes through the lines in view
   (`g_visibleLines`, never an old chat in full) when the translation is switched on, the language you write in or the
-  translator changes, or once from the menu.
+  translator changes, or once from the menu; a translation that still fits (into the language you write in now, by
+  the translator you use now: `ChatLine::transTarget` / `transBy`) stays. Every chat line goes through the session's
+  cache (`core/translation_cache`, `g_transCache`, worker only, equation E13): key = the line as it came + source +
+  target + translator name, ≤ 500, least recently used out, memory only – never on disk (invariant 6). A hit is no
+  request: "once" twice, a language changed and back, a repeated LFG line cost nothing more; `CountMyMemory` counts
+  only real requests. Your own input (`TranslateInput`) does not go through it.
   The detection runs for every line (local, no translator): `g_playerLang` (session only) remembers each player's
   language; their whisper tab then sends in it (`WhisperTab::sendLang` → `g_sendOverride`, "=" = as written; the
   footer's choice in a tab changes only that tab). Nothing of other players is stored (privacy, Raidcore).

@@ -15,6 +15,7 @@
 #include "core/snippets.hpp"
 #include "core/send_route.hpp"
 #include "core/translate_policy.hpp"
+#include "core/translation_cache.hpp"
 #include "core/steady.hpp"
 #include "core/deepl_protocol.hpp"
 #include "core/gw2_text.hpp"
@@ -2153,7 +2154,7 @@ static void TestEquations2() {
         rng ^= rng << 17;
         return rng;
     };
-    int bad[7] = {};
+    int bad[8] = {};
     // E6 text blocks: what is saved comes back the same; never more than kMax, never longer than kMaxChars, never half a
     // surrogate pair, never empty, never twice.
     static const wchar_t* kBits[] = {L"a", L"\\", L"\\n", L"n", L"\n", L"\r", L" ", L"ä", L"\xD83D\xDE00", L"[&AgGvWwEA]", L"x y"};
@@ -2357,9 +2358,54 @@ static void TestEquations2() {
         ok = ok && once == wanted;
         if (!ok) ++bad[6];
     }
+    // E13 the session's translation cache: a hit asks nobody, a miss asks exactly once; the same key gives the same
+    // translation as long as it is kept; never more than its size; it keeps exactly the most recently used keys (a
+    // plain list as the model); a failed answer is not kept.
+    static const wchar_t* kTexts[] = {L"lf tank", L"LF tank", L"lf tank?", L"hola amigos", L"привет", L"", L"x"};
+    static const wchar_t* kSources[] = {L"", L"EN", L"ES"};
+    static const wchar_t* kTo[] = {L"DE", L"FR"};
+    static const wchar_t* kBy[] = {L"MyMemory", L"DeepL"};
+    for (int round = 0; round < 300; ++round) {
+        const size_t cap = 1 + next() % 12;
+        TranslationCache cache(cap);
+        std::vector<TranslationKey> model;  // newest first
+        std::map<TranslationKey, std::wstring> first;
+        int requests = 0;
+        bool ok = true;
+        for (int i = 0; i < 200; ++i) {
+            const TranslationKey k{kTexts[next() % 7], kSources[next() % 3], kTo[next() % 2], kBy[next() % 2]};
+            const bool fails = next() % 10 == 0;
+            const auto at = std::find_if(model.begin(), model.end(), [&k](const TranslationKey& m) {
+                return !(m < k) && !(k < m);
+            });
+            const bool kept = at != model.end();
+            bool asked = false;
+            const TranslateResult res = cache.Through(k, [&] {
+                ++requests;
+                TranslateResult t;
+                t.ok = !fails;
+                t.text = fails ? L"" : L"#" + std::to_wstring(requests);  // every request answers differently
+                return t;
+            }, &asked);
+            ok = ok && asked == !kept;
+            if (kept) {
+                ok = ok && res.ok && res.text == first[k];
+                model.erase(at);
+                model.insert(model.begin(), k);
+            } else if (res.ok) {
+                first[k] = res.text;
+                model.insert(model.begin(), k);
+                if (model.size() > cap) model.pop_back();
+            }
+            ok = ok && cache.Size() == model.size() && cache.Size() <= cap;
+        }
+        for (const TranslationKey& k : model) ok = ok && cache.Find(k) && *cache.Find(k) == first[k];
+        if (!ok) ++bad[7];
+    }
     static const char* kNames[] = {"E6 text blocks", "E7 protocol counts", "E8 invisible marks", "E9 steady number",
-                                   "E10 where a message goes", "E11 plain punctuation", "E12 what goes to the translator"};
-    for (int k = 0; k < 7; ++k) {
+                                   "E10 where a message goes", "E11 plain punctuation", "E12 what goes to the translator",
+                                   "E13 translation cache"};
+    for (int k = 0; k < 8; ++k) {
         if (bad[k]) std::printf("equation failed: %s (%d times)\n", kNames[k], bad[k]);
         CHECK(bad[k] == 0);
     }
