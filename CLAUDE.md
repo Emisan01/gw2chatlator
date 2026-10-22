@@ -88,12 +88,16 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   game on a link click once Decoder Ring named the links – a thread outside `SafeRender`'s net. If it ever comes back:
   every thread of ours behind its own SEH, and in the branch history (`experiment/waypoint-macro`, tag v2.3.0).
 - **Chat in:** Events: Chat (`EV_CHAT:Message`) → `OnChatEvents` (the guard above) → `AddLine` (`UnescapeChatText`, sanitised) →
-  translated on the worker only when `[Nexus] TranslateChat=1` (default 0) or a click on the line asks for it – into
-  the language you write in (the chat is read in it). `TranslateRecentLines` redoes the newest 20 when the translation
-  is switched on, the language you write in or the translator changes, or once from the menu – only the lines in view
-  (`g_visibleLines`), never an old chat in full. "Translate the chat once" (`TranslateLine(.., once)`) follows none of
-  the chat settings: everything in view that is not already in the language you write in
-  (`SureLanguage`, understood languages skipped – Translator tab "Languages I understand", `[Translate] Understood`).
+  translated on the worker – into the language you write in (the chat is read in it). Whether a line goes to the
+  translator is one pure function, `core/translate_policy` (`ShouldTranslate`, equation E12): automatically (only
+  while `[Nexus] TranslateChat=1`, default 0) and "Translate visible chat once" (`TranslateLine(.., once)`, the
+  thrifty mode – user, 2026-10-22) by the same rule: only a sure language (`SureLanguage`; "xD", "lf tank" stay as
+  they are), never the language you write in, never one you understand (Translator tab "Languages I understand",
+  `[Translate] Understood`). A click on the line always translates it. There is no switch for the language you write
+  in (2.3.6: "Do not translate the language I write in" is gone – into the same language is never worth a request;
+  `[Translate] SkipTypingLang` is removed from the ini at load). `TranslateRecentLines` goes through the lines in view
+  (`g_visibleLines`, never an old chat in full) when the translation is switched on, the language you write in or the
+  translator changes, or once from the menu.
   The detection runs for every line (local, no translator): `g_playerLang` (session only) remembers each player's
   language; their whisper tab then sends in it (`WhisperTab::sendLang` → `g_sendOverride`, "=" = as written; the
   footer's choice in a tab changes only that tab). Nothing of other players is stored (privacy, Raidcore).

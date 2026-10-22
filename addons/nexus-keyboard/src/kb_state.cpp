@@ -144,11 +144,15 @@ void LoadLayout() {  // g_mu held
     g_nx.snap = nx(L"Snap", 1);
     g_nx.setupDone = nx(L"SetupDone", 0);
     g_nx.voiceFallback = nx(L"VoiceFallback", 1);
-    {  // what the waypoint click (2.2.0 – 2.3.0) left in the ini goes (only written when it is there)
+    {  // what the waypoint click (2.2.0 – 2.3.0) and "Do not translate the language I write in" (gone: the language
+       // you write in is never translated by itself) left in the ini goes (only written when it is there)
         wchar_t old[8] = {};
-        for (const wchar_t* key : {L"WaypointPoiClick", L"NativeWaypointClick", L"WpBefore", L"WpHeld", L"WpAfter"})
-            if (GetPrivateProfileStringW(L"Nexus", key, L"\x01", old, 8, g_cfg.iniPath.c_str()) != 1 || old[0] != 1)
-                WritePrivateProfileStringW(L"Nexus", key, nullptr, g_cfg.iniPath.c_str());
+        static const std::pair<const wchar_t*, const wchar_t*> kGone[] = {
+            {L"Nexus", L"WaypointPoiClick"}, {L"Nexus", L"NativeWaypointClick"}, {L"Nexus", L"WpBefore"},
+            {L"Nexus", L"WpHeld"}, {L"Nexus", L"WpAfter"}, {L"Translate", L"SkipTypingLang"}};
+        for (const auto& [section, key] : kGone)
+            if (GetPrivateProfileStringW(section, key, L"\x01", old, 8, g_cfg.iniPath.c_str()) != 1 || old[0] != 1)
+                WritePrivateProfileStringW(section, key, nullptr, g_cfg.iniPath.c_str());
     }
     {
         wchar_t lang[8] = {};

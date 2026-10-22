@@ -762,7 +762,7 @@ void RenderWindow() {
         if (ImGui::MenuItem(UI(Tr(L"Translate visible chat once")).c_str()) && TranslateRecentLines(true) == 0)
             SetStatus(Tr(L"No chat lines of other players in view"), 4000);
         if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("%s", UI(Tr(L"What you see of the chat, into the language you write in – once, whatever the chat settings say. Again after you changed the language: in the new one.")).c_str());
+            ImGui::SetTooltip("%s", UI(Tr(L"What you see of the chat, into the language you write in – once, by the automatic translation's rule: lines in your language, in languages you understand or too short to tell stay as they are (a click on a line translates it anyway).")).c_str());
         if (ImGui::MenuItem(UI(Tr(L"New whisper tab …")).c_str())) newTabNext = true;
         if (ImGui::MenuItem(UI(Tr(L"Text blocks …")).c_str())) g_openSnippets = true;
         if (ImGui::IsItemHovered())

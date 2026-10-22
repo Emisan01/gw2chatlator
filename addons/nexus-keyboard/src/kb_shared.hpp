@@ -42,6 +42,7 @@
 #include "core/steady.hpp"
 #include "core/slang.hpp"
 #include "core/text.hpp"
+#include "core/translate_policy.hpp"
 #include "core/translator.hpp"
 #include "core/voice_learn.hpp"
 #include "core/json.hpp"

@@ -14,6 +14,7 @@
 #include "core/my_words.hpp"
 #include "core/snippets.hpp"
 #include "core/send_route.hpp"
+#include "core/translate_policy.hpp"
 #include "core/steady.hpp"
 #include "core/deepl_protocol.hpp"
 #include "core/gw2_text.hpp"
@@ -2152,7 +2153,7 @@ static void TestEquations2() {
         rng ^= rng << 17;
         return rng;
     };
-    int bad[6] = {};
+    int bad[7] = {};
     // E6 text blocks: what is saved comes back the same; never more than kMax, never longer than kMaxChars, never half a
     // surrogate pair, never empty, never twice.
     static const wchar_t* kBits[] = {L"a", L"\\", L"\\n", L"n", L"\n", L"\r", L" ", L"ä", L"\xD83D\xDE00", L"[&AgGvWwEA]", L"x y"};
@@ -2325,9 +2326,40 @@ static void TestEquations2() {
         }
         if (!ok) ++bad[5];
     }
+    // E12 whether a chat line goes to the translator (core/translate_policy): "once" decides exactly as the automatic
+    // translation while it is on; while it is off nothing goes by itself; a click always translates; a line goes by
+    // itself exactly when its language is sure, not the one it would go into and none you understand.
+    static const wchar_t* kDetected[] = {L"", L"DE", L"de", L"EN", L"EN-GB", L"FR", L"RU", L"AR"};
+    static const wchar_t* kTargets[] = {L"DE", L"EN-US", L"FR"};
+    static const wchar_t* kKnown[] = {L"EN", L"ru", L"AR", L"ES", L"de"};
+    for (int round = 0; round < 20000; ++round) {
+        std::vector<std::wstring> understood;
+        for (const wchar_t* k : kKnown)
+            if (next() % 3 == 0) understood.push_back(k);
+        LineToTranslate l;
+        l.detected = kDetected[next() % 8];
+        l.target = kTargets[next() % 3];
+        l.understood = next() % 5 ? &understood : nullptr;
+        l.chatOn = next() % 2;
+        auto with = [&l](TranslateTrigger t, bool on) {
+            LineToTranslate x = l;
+            x.trigger = t;
+            x.chatOn = on;
+            return ShouldTranslate(x);
+        };
+        bool known = false;
+        if (l.understood)
+            for (const std::wstring& u : understood) known = known || PrimaryLang(u) == PrimaryLang(l.detected);
+        const bool wanted = !l.detected.empty() && PrimaryLang(l.detected) != PrimaryLang(l.target) && !known;
+        const bool once = with(TranslateTrigger::Once, l.chatOn);
+        bool ok = once == with(TranslateTrigger::Auto, true) && once == with(TranslateTrigger::Once, !l.chatOn);
+        ok = ok && !with(TranslateTrigger::Auto, false) && with(TranslateTrigger::LineClick, l.chatOn);
+        ok = ok && once == wanted;
+        if (!ok) ++bad[6];
+    }
     static const char* kNames[] = {"E6 text blocks", "E7 protocol counts", "E8 invisible marks", "E9 steady number",
-                                   "E10 where a message goes", "E11 plain punctuation"};
-    for (int k = 0; k < 6; ++k) {
+                                   "E10 where a message goes", "E11 plain punctuation", "E12 what goes to the translator"};
+    for (int k = 0; k < 7; ++k) {
         if (bad[k]) std::printf("equation failed: %s (%d times)\n", kNames[k], bad[k]);
         CHECK(bad[k] == 0);
     }
