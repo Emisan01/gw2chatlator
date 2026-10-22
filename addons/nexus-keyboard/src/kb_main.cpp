@@ -217,6 +217,7 @@ void AddonUnload() {
     if (g_voiceModuleThread.joinable()) g_voiceModuleThread.join();
     g_links.Stop();
     ReleaseTextFont();  // no call into a gone DLL
+    ReleaseUiFont();
     g_voice.Stop();  // the helper ends (it would also end by itself when its input closes)
     g_worker.Stop(FreeWorkerState);  // saved and freed on the worker (it owns them), before the DLL goes
     Config::DeferWrites(false);      // what is still waiting goes into the ini now

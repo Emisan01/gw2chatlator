@@ -318,7 +318,8 @@ void Config::Load(const std::wstring& dir) {
     opacity = ini.Int(L"Window", L"Opacity", 255, 0, 255);
     fontPercent = ini.Int(L"Window", L"FontPercent", 100, 70, 300);
     fontPt = ini.Int(L"Window", L"FontPt", 0, 0, 40);
-    if (fontPt == 0) fontPt = std::clamp((11 * fontPercent + 50) / 100, 8, 28);  // from the older percent
+    // 0 = like the game's interface size (the first use, user 2026-10-22); an older ini's percent still gives its size
+    if (fontPt == 0 && !ini.Str(L"Window", L"FontPercent", L"").empty()) fontPt = std::clamp((11 * fontPercent + 50) / 100, 8, 28);
     fontFace = ToLowerAscii(ini.Str(L"Window", L"FontFace", L"segoeui"));
     if (fontFace != L"seguisb" && fontFace != L"tahoma") fontFace = L"segoeui";  // only what we offer
     focusOnGameChat = ini.Bool(L"Window", L"FocusOnGameChat", false);
@@ -436,7 +437,6 @@ void Config::SaveAll() const {
     SaveValue(L"Chat", L"SendMode", copyOnly ? L"copy" : L"send");
     SaveBool(L"Chat", L"ReturnFocus", returnFocus);
     SaveValue(L"Window", L"Opacity", std::to_wstring(opacity));
-    SaveValue(L"Window", L"FontPercent", std::to_wstring(fontPercent));
     SaveValue(L"Window", L"FontPt", std::to_wstring(fontPt));
     SaveValue(L"Window", L"FontFace", fontFace);
     SaveBool(L"Window", L"FocusOnGameChat", focusOnGameChat);

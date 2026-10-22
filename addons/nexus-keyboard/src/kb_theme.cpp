@@ -100,9 +100,16 @@ void ReleaseTextFont() {
     g_textFont = nullptr;  // until the next one arrives the window scales Nexus' font – never one Nexus may have freed
     g_textFontPx = 0;
 }
-void RequestTextFont(int pt, const std::wstring& face) {
+// "Like the game" (fontPt 0, the first use; user 2026-10-22): GW2's own interface size (MumbleLink uisz: small,
+// normal, large, larger - the factors of Gw2BottomBarOffset) on 11 pt; not known yet (no map, the self-test): 11 pt.
+int FollowPt() {
+    static const float kScale[] = {0.89f, 1.0f, 1.11f, 1.25f};
+    const int s = g_uiSize.load();
+    return s >= 0 && s <= 3 ? static_cast<int>(std::lround(11 * kScale[s])) : 11;
+}
+void RequestTextFont(int pt, const std::wstring& face) {  // pt 0: like the game
     if (!g_api || !g_api->Fonts_AddFromFile) return;
-    const float px = PtToPx(pt);
+    const float px = PtToPx(pt > 0 ? pt : FollowPt());
     wchar_t win[MAX_PATH] = {};
     GetWindowsDirectoryW(win, MAX_PATH);
     std::wstring stem = face;
@@ -131,6 +138,36 @@ void RequestTextFont(int pt, const std::wstring& face) {
     }
     g_textFontKey = key;
     g_textFontPx = px;
+}
+
+// The options window's font: Segoe UI at the size of Nexus' own UI (user, 2026-10-22: the chat's size is the chat
+// window's only) – our font so every letter of the UI languages shows (Nexus' font lacks ł, ş, ğ and Cyrillic).
+std::atomic<ImFont*> g_uiFont{nullptr};
+float g_uiFontPx = 0;
+void OnUiFont(const char*, void* font) { g_uiFont = static_cast<ImFont*>(font); }
+void RequestUiFont(float px) {
+    px = std::round(px);
+    if (!g_api || !g_api->Fonts_AddFromFile || px < 6 || px == g_uiFontPx) return;
+    if (g_uiFontPx > 0 && g_api->Fonts_Resize) {  // Nexus' UI size changed: only the size
+        g_api->Fonts_Resize(kUiFontId, px);
+        g_uiFontPx = px;
+        return;
+    }
+    wchar_t win[MAX_PATH] = {};
+    GetWindowsDirectoryW(win, MAX_PATH);
+    const std::wstring file = std::wstring(win) + L"\\Fonts\\segoeui.ttf";
+    if (GetFileAttributesW(file.c_str()) == INVALID_FILE_ATTRIBUTES) return;
+    static const ImWchar kRanges[] = {0x0020, 0x024F, 0x0370, 0x03FF, 0x0400, 0x04FF, 0x1E00, 0x1EFF, 0x2000, 0x206F,
+                                      0x20A0, 0x20CF, 0x2190, 0x21FF, 0x2200, 0x22FF, 0x25A0, 0x25FF, 0};
+    static ImFontConfig cfg;
+    cfg.GlyphRanges = kRanges;
+    g_api->Fonts_AddFromFile(kUiFontId, px, ToUtf8(file).c_str(), OnUiFont, &cfg);
+    g_uiFontPx = px;
+}
+void ReleaseUiFont() {
+    if (g_uiFontPx > 0 && g_api && g_api->Fonts_Release) g_api->Fonts_Release(kUiFontId, OnUiFont);
+    g_uiFont = nullptr;
+    g_uiFontPx = 0;
 }
 ImVec4 Rgb32(uint32_t rgb) { return ImVec4(((rgb >> 16) & 0xFF) / 255.f, ((rgb >> 8) & 0xFF) / 255.f, (rgb & 0xFF) / 255.f, 1.f); }
 ImVec4 Bright(ImVec4 c) {  // the message's brightness of your choice (never a name's): below 100 % darker, above it lighter towards white

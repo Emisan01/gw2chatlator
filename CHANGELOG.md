@@ -3,6 +3,13 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.4.1 — 2026-10-22 (GW2Chatlator for Nexus)
+
+- **The options window keeps Nexus' size:** in 2.4.0 it took the chat's text size. Now it always has the size of
+  Nexus' own windows (in a font with every letter of the window languages); the text size applies to the chat window only.
+- **The chat follows the game's size:** until you set a text size of your own, the chat window takes GW2's interface
+  size (small, normal, large, larger) and follows it; the slider starts at that size.
+
 ## 2.4.0 — 2026-10-22 (GW2Chatlator for Nexus)
 
 - **No more wrong translations from MyMemory's public memory:** MyMemory now answers with its machine translation
