@@ -199,15 +199,54 @@ std::string PairLabel(const gct::LocalMtModelInfo& model) {
 }
 }  // namespace
 
+void RenderLocalMtModule(bool guide) {
+    std::wstring dataDir;
+    bool inUse = false;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        dataDir = g_cfg.dataDir;
+        inUse = g_cfg.engine == Engine::Local;
+    }
+    RefreshLocalMtState(dataDir);
+
+    const int pct = g_localMtPct.load();
+    const bool busy = g_localMtBusy.load();
+
+    StatusRow(UI(Tr(L"Local translation module")),
+              busy ? 1 : s_state.module ? 2 : 0,
+              UI(busy && pct >= 0 ? TrF(L"loading … {1} %", {std::to_wstring(pct)})
+                   : busy ? Tr(L"working …")
+                   : s_state.module ? Tr(L"installed") : Tr(L"missing")));
+
+    if (!busy) {
+        if (!s_state.module) {
+            ImGui::SameLine();
+            if (ImGui::SmallButton(UI(Tr(L"Install local translation module")).c_str()))
+                StartLocalMtJob(LocalMtJob::InstallModule, dataDir);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", UI(Tr(L"Downloads the isolated CPU helper from this version's GitHub release. SHA-256 is checked." )).c_str());
+        } else if (!guide) {
+            if (inUse) {
+                ImGui::TextDisabled("%s", UI(Tr(L"Choose another translator and save before removing local translation files.")).c_str());
+            } else if (RemoveButton("localmtmodule")) {
+                StartLocalMtJob(LocalMtJob::RemoveModule, dataDir);
+            }
+        }
+    }
+}
+
 void RenderLocalMtOptions(const Config& edit) {
     RefreshLocalMtState(edit.dataDir);
+
+    ImGui::TextUnformatted(UI(Tr(L"Local translation module")).c_str());
+    RenderLocalMtModule(false);
+
     bool inUse = false;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         inUse = g_cfg.engine == Engine::Local;
     }
 
-    ImGui::TextUnformatted(UI(Tr(L"Local translation module")).c_str());
     const int pct = g_localMtPct.load();
     const bool busy = g_localMtBusy.load();
 
@@ -221,28 +260,6 @@ void RenderLocalMtOptions(const Config& edit) {
         } else {
             g_localMtStatus.clear();
             g_localMtStatusUntil = 0;
-        }
-    }
-
-    StatusRow(UI(Tr(L"Local translation module")),
-              busy ? 1 : s_state.module ? 2 : 0,
-              UI(busy && pct >= 0 ? TrF(L"loading … {1} %", {std::to_wstring(pct)})
-                   : busy ? Tr(L"working …")
-                   : s_state.module ? Tr(L"installed") : Tr(L"missing")));
-
-    if (!busy) {
-        if (!s_state.module) {
-            ImGui::SameLine();
-            if (ImGui::SmallButton(UI(Tr(L"Install local translation module")).c_str()))
-                StartLocalMtJob(LocalMtJob::InstallModule, edit.dataDir);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("%s", UI(Tr(L"Downloads the isolated CPU helper from this version's GitHub release. SHA-256 is checked." )).c_str());
-        } else {
-            if (inUse) {
-                ImGui::TextDisabled("%s", UI(Tr(L"Choose another translator and save before removing local translation files.")).c_str());
-            } else if (RemoveButton("localmtmodule")) {
-                StartLocalMtJob(LocalMtJob::RemoveModule, edit.dataDir);
-            }
         }
     }
 
