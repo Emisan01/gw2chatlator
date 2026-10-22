@@ -1,6 +1,8 @@
 // kb_local_mt.cpp — OPUS-MT helper and language packages, installed or removed only on the user's click.
 #include "kb_shared.hpp"
 
+#include <filesystem>
+
 namespace kb {
 
 std::atomic<bool> g_localMtBusy{false};
@@ -13,8 +15,19 @@ enum class LocalMtJob { InstallModule, RemoveModule, InstallModel, RemoveModel }
 struct LocalMtState {
     bool module = false;
     std::vector<bool> models;
+    std::vector<uint64_t> bytes;  // each installed pair's folder on disk
     ULONGLONG nextCheck = 0;
 } s_state;
+
+uint64_t FolderBytes(const std::wstring& dir) {  // everything below it; 0 when missing
+    std::error_code ec;
+    uint64_t sum = 0;
+    for (auto it = std::filesystem::recursive_directory_iterator(dir, ec);
+         !ec && it != std::filesystem::recursive_directory_iterator(); it.increment(ec))
+        if (it->is_regular_file(ec)) sum += it->file_size(ec);
+    return sum;
+}
+std::wstring Mb(uint64_t bytes) { return std::to_wstring((bytes + 512 * 1024) / (1024 * 1024)); }
 
 void RefreshLocalMtState(const std::wstring& dataDir) {
     static bool wasBusy = false;
@@ -28,8 +41,11 @@ void RefreshLocalMtState(const std::wstring& dataDir) {
     s_state.module = gct::LocalMtModulePresent(KeyboardDir());
     const auto& catalog = gct::LocalMtModelCatalog();
     s_state.models.assign(catalog.size(), false);
-    for (size_t i = 0; i < catalog.size(); ++i)
+    s_state.bytes.assign(catalog.size(), 0);
+    for (size_t i = 0; i < catalog.size(); ++i) {
         s_state.models[i] = gct::LocalMtModelPresent(dataDir, catalog[i].pair);
+        if (s_state.models[i]) s_state.bytes[i] = FolderBytes(dataDir + L"\\translate\\" + FromUtf8(catalog[i].pair));
+    }
 }
 
 std::wstring LocalMtJobName(LocalMtJob job) {
@@ -162,10 +178,27 @@ void RenderLocalMtOptions(const Config& edit) {
     }
     const auto& model = catalog[selected];
     ImGui::TextDisabled("%s  -  %s", model.model, model.license);  // ASCII: Nexus' font lacks the bullet
+    // its size and where it lives; the installed pairs with their sizes (user, 2026-10-22)
+    ImGui::TextDisabled("%s", UI(s_state.models[selected]
+                                     ? TrF(L"Size on disk: {1} MB", {Mb(s_state.bytes[selected])})
+                                     : TrF(L"Download: about {1} MB", {L"75"})).c_str());
+    ImGui::TextDisabled("%s", UI(TrF(L"Installed in: {1}", {edit.dataDir + L"\\translate\\" + FromUtf8(model.pair)})).c_str());
     size_t installed = 0;
-    for (bool present : s_state.models) installed += present ? 1 : 0;
+    uint64_t total = 0;
+    std::wstring list;
+    for (size_t i = 0; i < catalog.size(); ++i) {
+        if (!s_state.models[i]) continue;
+        ++installed;
+        total += s_state.bytes[i];
+        list += (list.empty() ? L"" : L", ") + FromUtf8(catalog[i].pair) + L" (" + Mb(s_state.bytes[i]) + L" MB)";
+    }
     ImGui::TextDisabled("%s", UI(TrF(L"Installed pairs: {1} of {2}",
                                       {std::to_wstring(installed), std::to_wstring(catalog.size())})).c_str());
+    if (!list.empty()) {
+        ImGui::PushTextWrapPos(0.0f);
+        ImGui::TextDisabled("%s", UI(list + L"  -  " + TrF(L"together {1} MB", {Mb(total)})).c_str());
+        ImGui::PopTextWrapPos();
+    }
 
     if (g_localMtBusy) return;
     if (s_state.models[selected]) {

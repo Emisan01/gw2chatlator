@@ -967,6 +967,14 @@ extern const I18nEntry kPolishStrings[] = {
      L"Nie wysłano: tłumaczenie się nie powiodło – {1}"},
     {L"Not sent yet: what you said is still being recognized",
      L"Jeszcze nie wysłano: to, co powiedziałeś, jest wciąż rozpoznawane"},
+    {L"Size on disk: {1} MB",
+     L"Rozmiar na dysku: {1} MB"},
+    {L"Download: about {1} MB",
+     L"Pobieranie: około {1} MB"},
+    {L"Installed in: {1}",
+     L"Zainstalowano w: {1}"},
+    {L"together {1} MB",
+     L"razem {1} MB"},
 };
 extern const size_t kPolishCount = sizeof(kPolishStrings) / sizeof(kPolishStrings[0]);
 

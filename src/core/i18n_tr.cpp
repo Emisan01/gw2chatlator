@@ -967,6 +967,14 @@ extern const I18nEntry kTurkishStrings[] = {
      L"Gönderilmedi: çeviri başarısız oldu – {1}"},
     {L"Not sent yet: what you said is still being recognized",
      L"Henüz gönderilmedi: söylediğin hâlâ tanınıyor"},
+    {L"Size on disk: {1} MB",
+     L"Diskte boyut: {1} MB"},
+    {L"Download: about {1} MB",
+     L"İndirme: yaklaşık {1} MB"},
+    {L"Installed in: {1}",
+     L"Kurulum yeri: {1}"},
+    {L"together {1} MB",
+     L"toplam {1} MB"},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

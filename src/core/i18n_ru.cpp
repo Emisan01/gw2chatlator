@@ -967,6 +967,14 @@ extern const I18nEntry kRussianStrings[] = {
      L"Не отправлено: перевод не удался – {1}"},
     {L"Not sent yet: what you said is still being recognized",
      L"Ещё не отправлено: сказанное всё ещё распознаётся"},
+    {L"Size on disk: {1} MB",
+     L"Размер на диске: {1} МБ"},
+    {L"Download: about {1} MB",
+     L"Загрузка: около {1} МБ"},
+    {L"Installed in: {1}",
+     L"Установлено в: {1}"},
+    {L"together {1} MB",
+     L"всего {1} МБ"},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 
