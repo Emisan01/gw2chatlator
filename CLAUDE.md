@@ -81,15 +81,16 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   Options window UI font size matches Nexus' own font size (`FontDefault->FontSize`). In the chat window, when font
   size is set above 18 pt, the header, tabs, footer, and popups remain capped at 18 pt so only the chat messages and input
   scale larger without clipping controls.
-- Local helper and each individual model pair are offered in Options → Translator and download only on the user's
+- Local helper, NLLB-200 universal model and each individual model pair are offered in Options → Translator and download only on the user's
   click. `DownloadReleaseAsset` checks GitHub's SHA-256 digest. The helper release asset is
-  `GW2Keyboard-LocalMT.zip`; model assets are `GW2Keyboard-OPUS-MT-<pair>.zip` and unpack below
-  `<addons>\GW2Keyboard\translate\<pair>`. Model packaging uses `tools/package_local_mt_models.py` against
+  `GW2Keyboard-LocalMT.zip`; OPUS-MT model assets are `GW2Keyboard-OPUS-MT-<pair>.zip` and unpack below
+  `<addons>\GW2Keyboard\translate\<pair>`; the universal model is `GW2Keyboard-NLLB-200.zip` and unpacks below
+  `<addons>\GW2Keyboard\translate\nllb-200`. Model validation runs strictly after unpacking. Model packaging uses `tools/package_local_mt_models.py` (`--pairs` or `--nllb`) against
   converted folders under ignored `local/translation-spike/models`; `--convert` fetches the exact Helsinki-NLP model
   named in the core catalog and converts it to int8. The package builder emits only converted pairs that exist.
-  CTranslate2, oneDNN and SentencePiece notices travel with the helper; each OPUS-MT model carries its own model-card
+  CTranslate2, oneDNN and SentencePiece notices travel with the helper; each model carries its own model-card
   license, attribution, upstream URL and conversion notice. Do not assume one license covers the model family:
-  `en-de` and `ru-en` currently declare CC-BY-4.0; this catalog stores each model's exact declared license.
+  `en-de` and `ru-en` currently declare CC-BY-4.0, NLLB-200 declares CC-BY-NC-4.0; this catalog stores each model's exact declared license.
 
 ## How the add-on works
 

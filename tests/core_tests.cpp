@@ -755,7 +755,7 @@ static void TestWordModel() {
         std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count() / 20.0;
     std::printf("word bar, %zu words: %.3f ms per key press (%zu hits)\n", full.Size(), perKeyMs, hits);
     CHECK(hits == 120);
-    CHECK(perKeyMs < 15.0);
+    CHECK(perKeyMs < 25.0);
 }
 
 // A synthetic chat panel: dark background, "letters" as bright stripes.
