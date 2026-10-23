@@ -906,9 +906,9 @@ int wmain(int argc, wchar_t** argv) {
         frames(10);
         std::printf("self-correction: %d noticed, newest %s (input: %s)\n", th->selfFixes, th->lastFix, th->input);
         ok = ok && th->selfFixes >= 1;
-        // "Translate what I say": spoken and the switch on has priority – with "Send" at "as written" it goes into the
-        // first of your languages; spoken with the switch off, and typed, exactly as before. A voice result in an empty
-        // input marks it spoken; sent, the mark is gone.
+        // "Translate what I say": the output language in the chat window defines the translation (user, 2026-10-23);
+        // spoken with the switch off, and typed, exactly as before. A voice result in an empty input marks it spoken;
+        // sent, the mark is gone.
         {
             auto route = reinterpret_cast<int (*)(int, int, char*)>(GetProcAddress(dll, "Gw2KbTestVoiceRoute"));
             auto voiceFinal = reinterpret_cast<int (*)(const char*)>(GetProcAddress(dll, "Gw2KbTestVoiceFinal"));

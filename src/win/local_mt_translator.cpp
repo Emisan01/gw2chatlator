@@ -44,6 +44,8 @@ public:
         Stop();
     }
 
+    void SetBeamSize(int b) { beamSize_.store(b); }
+
     TranslateResult Translate(const std::vector<Segment>& segments, const std::wstring& sourceLang,
                               const std::wstring& targetLang) override {
         TranslateResult result;
@@ -72,9 +74,17 @@ public:
             return result;
         }
 
+        const std::vector<Segment> parts = SplitForLocalMt(segments);
+        if (std::none_of(parts.begin(), parts.end(), [](const Segment& p) { return !p.keep; })) {
+            result.ok = true;  // nothing but symbols, names, codes: nothing for the model
+            result.text = original;
+            result.detectedSource = source;
+            return result;
+        }
+
         std::lock_guard<std::mutex> lock(mu_);
         std::wstring translated;
-        for (const Segment& segment : segments) {
+        for (const Segment& segment : parts) {
             if (segment.keep) {
                 translated += segment.text;
                 continue;
@@ -221,7 +231,7 @@ private:
     std::string Request(const std::wstring& text, const std::string& source, const std::string& target,
                         std::wstring& error) {
         const int id = ++nextId_;
-        const std::string line = BuildLocalMtRequest(id, source, target, ToUtf8(text)) + "\n";
+        const std::string line = BuildLocalMtRequest(id, source, target, ToUtf8(text), beamSize_.load()) + "\n";
         if (line.size() > kMaxLocalMtJsonLine) {
             error = L"The local translation request is too large";
             return {};
@@ -286,6 +296,7 @@ private:
     ULONGLONG pairsCheckedAt_ = 0;
     std::string pending_;
     std::atomic<int> nextId_{0};
+    std::atomic<int> beamSize_{0};
 };
 
 }  // namespace
@@ -296,6 +307,10 @@ std::shared_ptr<Translator> MakeLocalMtTranslator(const std::wstring& helperExe,
 
 void StopLocalMtTranslator(const std::shared_ptr<Translator>& translator) {
     if (auto local = std::dynamic_pointer_cast<LocalMtTranslator>(translator)) local->StopForRemoval();
+}
+
+void SetLocalMtBeamSize(const std::shared_ptr<Translator>& translator, int beamSize) {
+    if (auto local = std::dynamic_pointer_cast<LocalMtTranslator>(translator)) local->SetBeamSize(beamSize);
 }
 
 }  // namespace gct

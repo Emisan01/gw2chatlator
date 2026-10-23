@@ -52,7 +52,22 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
     LineToTranslate what;
     what.trigger = asked ? TranslateTrigger::LineClick : once ? TranslateTrigger::Once : TranslateTrigger::Auto;
     ProtectedText p = ProtectForTranslation(text, nullptr, g_spell ? &g_spell->KeepWords() : &BuiltinKeepWords());
-    if (!HasTranslatableText(p.segments)) return;
+    auto clearPending = [&](bool attempted = true) {
+        std::lock_guard<std::mutex> lock(g_mu);
+        for (ChatLine& l : g_lines) {
+            if (l.id == id) {
+                l.transPending = false;
+                if (attempted) {
+                    l.transAttempted = true;
+                    l.transTarget = what.target;
+                }
+            }
+        }
+    };
+    if (!HasTranslatableText(p.segments)) {
+        clearPending(true);
+        return;
+    }
     const std::wstring els = DetectLanguage(text);  // on this PC (Windows), no translator asked
     what.detected = SureLanguage(text, els);
     {
@@ -60,17 +75,28 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
         if (!what.detected.empty())  // what this player writes in (answering them in it)
             for (const ChatLine& l : g_lines)
                 if (l.id == id && !l.speaker.empty()) g_playerLang[CaseFold(Trim(l.speaker))] = what.detected;
-        what.chatOn = g_nx.translateChat;
+        const bool windowVisible = (g_show && (g_inMap || g_test.forceMap) && !g_mapOpen && !g_collapsed);
+        what.chatOn = g_nx.translateChat && (asked || once || (windowVisible && !g_orchestrator.IsPaused()));
         tr = g_translator;
         what.target = TypingLang();
         understood = g_cfg.understoodLangs;
         what.skipTarget = g_cfg.skipTypingLang;
     }
     what.understood = &understood;
-    if (!tr || !ShouldTranslate(what)) return;
+    const bool culled = !what.chatOn;
+    if (!tr || !ShouldTranslate(what)) {
+        clearPending(!culled);
+        return;
+    }
     const std::wstring& target = what.target;
     const std::wstring detected = what.detected.empty() ? els : what.detected;  // a click: the best guess, sure or not
     const std::wstring by = tr->Name();
+
+    // Dynamic throttle: adapt beam size to queue pressure (greedy under load, configured quality otherwise)
+    const int effectiveBeam = g_orchestrator.ComputeBeamSize(
+        static_cast<QualityMode>(g_cfg.localQuality), g_worker.QueueSize());
+    SetLocalMtBeamSize(tr, effectiveBeam);
+
     const TranslateResult r = g_transCache.Through({text, SourceCode(detected), target, by}, [&] {
         {
             std::lock_guard<std::mutex> lock(g_mu);
@@ -79,6 +105,7 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
         return tr->Translate(p.segments, SourceCode(detected), target);
     });
     if (!r.ok || r.text.empty()) {  // never silent: the status says why (a missing language pack, the quota …)
+        clearPending(true);
         if (!r.error.empty()) {
             std::lock_guard<std::mutex> lock(g_mu);
             SetStatus(r.error, 8000);
@@ -86,14 +113,19 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
         return;
     }
     const std::wstring t = SanitizeChatText(r.text);
+    g_orchestrator.RecordTranslation(text, target, t, by);
     std::lock_guard<std::mutex> lock(g_mu);
     for (ChatLine& l : g_lines) {
-        if (l.id == id && NormalizeForCompare(t) != NormalizeForCompare(l.text)) {
-            l.translated = t;
-            l.transTarget = target;
-            l.transBy = by;
-            l.u8translated = U8(l.translated);
-            l.transSegs = PieUI::ChatLinks::SegmentLine(l.u8translated);
+        if (l.id == id) {
+            l.transPending = false;
+            l.transAttempted = true;
+            if (NormalizeForCompare(t) != NormalizeForCompare(l.text)) {
+                l.translated = t;
+                l.transTarget = target;
+                l.transBy = by;
+                l.u8translated = U8(l.translated);
+                l.transSegs = PieUI::ChatLinks::SegmentLine(l.u8translated);
+            }
         }
     }
 }
@@ -114,9 +146,26 @@ int TranslateRecentLines(bool once) {  // g_mu held; how many lines of other pla
             continue;
         ++n;
         if (!l.translated.empty() && l.transTarget == target && l.transBy == by) continue;
+        if (IsGamerInterjection(l.text)) continue;
+        if (!once && l.transAttempted && l.transTarget == target) continue;
+
+        std::wstring cachedTrans, cachedBy;
+        if (g_orchestrator.SieveMessage(l.text, target, true, true, true, false, cachedTrans, cachedBy) == ChatPriority::Immediate) {
+            l.translated = cachedTrans;
+            l.transTarget = target;
+            l.transBy = cachedBy;
+            l.u8translated = U8(l.translated);
+            l.transSegs = PieUI::ChatLinks::SegmentLine(l.u8translated);
+            l.transPending = false;
+            l.transAttempted = true;
+            continue;
+        }
+
         l.translated.clear();
         l.u8translated.clear();
         l.transSegs.clear();
+        l.transPending = true;
+        l.transAttempted = false;
         g_worker.Post([id = l.id, t = l.text, once] { TranslateLine(id, t, false, once); });
     }
     return n;

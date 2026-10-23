@@ -104,6 +104,10 @@ const LocalMtModelInfo* FindModel(const std::string& pair) {
 bool LocalMtModulePresent(const std::wstring& kbDir) { return ExistsFile(kbDir + L"\\gw2kb_translate.exe"); }
 
 bool LocalMtModelPresent(const std::wstring& dataDir, const std::string& pair) {
+    if (pair == "nllb-200") {
+        const std::wstring dir = dataDir + L"\\translate\\nllb-200";
+        return ExistsFile(dir + L"\\model.bin") && ExistsFile(dir + L"\\sentencepiece.bpe.model");
+    }
     if (!FindModel(pair)) return false;
     const std::wstring dir = dataDir + L"\\translate\\" + FromUtf8(pair);
     return ExistsFile(dir + L"\\model.bin") && ExistsFile(dir + L"\\source.spm") &&
@@ -123,7 +127,7 @@ bool RemoveLocalMtModule(const std::wstring& kbDir) {
 }
 
 bool RemoveLocalMtModel(const std::wstring& dataDir, const std::string& pair) {
-    if (!FindModel(pair)) return false;
+    if (pair != "nllb-200" && !FindModel(pair)) return false;
     const std::wstring dir = dataDir + L"\\translate\\" + FromUtf8(pair);
     RemoveTree(dir);
     return !Exists(dir);
@@ -176,14 +180,15 @@ ExtrasInstallResult InstallLocalMtModel(const std::wstring& dataDir, const std::
                                         const std::wstring& version,
                                         const std::function<bool(uint64_t, uint64_t)>& progress) {
     ExtrasInstallResult result;
-    if (!FindModel(pair)) {
+    const bool isNllb = (pair == "nllb-200");
+    if (!isNllb && !FindModel(pair)) {
         result.code = ExtrasInstallCode::NotChecked;
         result.detail = L"unknown language pair";
         return result;
     }
     if (LocalMtModelPresent(dataDir, pair)) {
         result.code = ExtrasInstallCode::DownloadFailed;
-        result.detail = L"this language pair is already installed";
+        result.detail = L"this language model is already installed";
         return result;
     }
     const std::wstring work = WorkDir();
@@ -192,15 +197,18 @@ ExtrasInstallResult InstallLocalMtModel(const std::wstring& dataDir, const std::
         result.detail = L"could not create a temporary install folder";
         return result;
     }
-    const std::wstring asset = L"GW2Keyboard-OPUS-MT-" + FromUtf8(pair) + L".zip";
+    const std::wstring asset = isNllb ? L"GW2Keyboard-NLLB-200.zip"
+                                      : (L"GW2Keyboard-OPUS-MT-" + FromUtf8(pair) + L".zip");
     result = DownloadAsset(asset, version, work + L"\\package.zip", progress);
     const std::wstring unpacked = work + L"\\x";
     CreateDirectoryW(unpacked.c_str(), nullptr);
     const std::wstring source = unpacked + L"\\translate\\" + FromUtf8(pair);
+    const bool validFiles = isNllb
+        ? (ExistsFile(source + L"\\model.bin") && ExistsFile(source + L"\\sentencepiece.bpe.model"))
+        : (ExistsFile(source + L"\\model.bin") && ExistsFile(source + L"\\source.spm") &&
+           ExistsFile(source + L"\\target.spm") && ExistsFile(source + L"\\pair.json"));
     if (result.code == ExtrasInstallCode::Ok &&
-        (!Unpack(work + L"\\package.zip", unpacked) || !ExistsFile(source + L"\\model.bin") ||
-         !ExistsFile(source + L"\\source.spm") || !ExistsFile(source + L"\\target.spm") ||
-         !ExistsFile(source + L"\\pair.json"))) {
+        (!Unpack(work + L"\\package.zip", unpacked) || !validFiles)) {
         result.code = ExtrasInstallCode::DownloadFailed;
         result.detail = L"the language model package is incomplete";
     }

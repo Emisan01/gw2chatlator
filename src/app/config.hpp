@@ -34,6 +34,7 @@ struct Config {
     bool translateWriting = false;  // translate what you write (off, the first use: sent as written, only corrected)
     std::vector<std::wstring> understoodLangs;            // never translated automatically ("EN")
     bool skipTypingLang = true;                           // nor the language you write in (the list's first entry)
+    int localQuality = 2;                                 // 1 = Fast (Beam 1), 2 = Balanced (Beam 2), 4 = Quality (Beam 4)
 
     // [Basic] MyMemory
     std::wstring basicEmail;
@@ -69,6 +70,7 @@ struct Config {
     int opacity = 255;
     int fontPercent = 100;            // chat text: 100 % = 11 pt (older ini; FontPt wins)
     int fontPt = 0;                   // 0 = game's UI size, at least 14 pt on first use; else the selected chat size in pt
+    int uiFontPt = 0;                 // 0 = Nexus default / 15 pt; else selected UI/options font size in pt (11..24)
     std::wstring fontFace = L"segoeui";  // its font: a file in Windows\Fonts (segoeui, seguisb, tahoma – kFontFaces)
     bool focusOnGameChat = false;  // focus input when in-game chat box gains focus
     // Key presses vs. letters sent (the word help's benefit): today and in total.
@@ -78,7 +80,7 @@ struct Config {
     // [Voice] — voice input of GW2 Keyboard (hold the microphone button or the key, speak, release, check, Enter).
     bool voiceEnabled = true;
     std::wstring voiceModel;          // catalog id ("small-q5_1"); "" = the catalog's recommended one
-    std::wstring voiceLang;           // "" = the language you write in, "auto" = detect, else a language code
+    std::wstring voiceLang = L"auto"; // "auto" = detect (default), "write" = the language you write in, else a language code
     bool voiceTranslate = false;      // "Translate what I say": what you said goes into the language at "Send"
     bool voiceIntoEnglish = false;    // whisper's own translation into English – the add-on keeps it (the switch on and
                                       // English at "Send"); the voice helper reads it

@@ -75,9 +75,12 @@ const std::vector<LocalMtModelInfo>& LocalMtModelCatalog() {
 }
 
 std::string BuildLocalMtRequest(int id, const std::string& source, const std::string& target,
-                                const std::string& utf8Text) {
-    return "{\"cmd\":\"translate\",\"id\":" + std::to_string(id) + ",\"src\":\"" + JsonEscape(Lower(source)) +
-           "\",\"tgt\":\"" + JsonEscape(Lower(target)) + "\",\"text\":\"" + JsonEscape(utf8Text) + "\"}";
+                                const std::string& utf8Text, int beam) {
+    std::string req = "{\"cmd\":\"translate\",\"id\":" + std::to_string(id) + ",\"src\":\"" + JsonEscape(Lower(source)) +
+           "\",\"tgt\":\"" + JsonEscape(Lower(target)) + "\",\"text\":\"" + JsonEscape(utf8Text) + "\"";
+    if (beam > 0) req += ",\"beam\":" + std::to_string(beam);
+    req += "}";
+    return req;
 }
 
 bool ParseLocalMtRequest(const std::string& line, LocalMtRequest& out) {
@@ -96,6 +99,10 @@ bool ParseLocalMtRequest(const std::string& line, LocalMtRequest& out) {
     out.source = source->s;
     out.target = target->s;
     out.text = text->s;
+    const JsonValue* beam = json.Get("beam");
+    if (beam && beam->type == JsonValue::Type::Number && beam->n >= 1 && beam->n <= 8) {
+        out.beam = static_cast<int>(beam->n);
+    }
     return true;
 }
 
@@ -136,6 +143,49 @@ bool ParseLocalMtMessage(const std::string& line, LocalMtMessage& out) {
     return true;
 }
 
+std::string NllbLanguageTag(const std::string& langCode) {
+    const std::string code = Lower(langCode);
+    if (code == "de" || code == "de-de") return "deu_Latn";
+    if (code == "en" || code == "en-us" || code == "en-gb") return "eng_Latn";
+    if (code == "fr" || code == "fr-fr") return "fra_Latn";
+    if (code == "es" || code == "es-es") return "spa_Latn";
+    if (code == "it" || code == "it-it") return "ita_Latn";
+    if (code == "pl") return "pol_Latn";
+    if (code == "pt" || code == "pt-pt" || code == "pt-br") return "por_Latn";
+    if (code == "ru") return "rus_Cyrl";
+    if (code == "tr") return "tur_Latn";
+    if (code == "uk" || code == "ukr") return "ukr_Cyrl";
+    if (code == "nl") return "nld_Latn";
+    if (code == "hu") return "hun_Latn";
+    if (code == "nb" || code == "no") return "nob_Latn";
+    if (code == "da") return "dan_Latn";
+    if (code == "sv") return "swe_Latn";
+    if (code == "cs") return "ces_Latn";
+    if (code == "ro") return "ron_Latn";
+    if (code == "el") return "ell_Grek";
+    if (code == "ar") return "ara_Arab";
+    if (code == "he") return "heb_Hebr";
+    if (code == "ko") return "kor_Hang";
+    if (code == "ja") return "jpn_Jpan";
+    if (code == "zh" || code == "zh-hans" || code == "zh-cn") return "zho_Hans";
+    if (code == "zh-hant" || code == "zh-tw") return "zho_Hant";
+    if (code == "fi") return "fin_Latn";
+    if (code == "bg") return "bul_Cyrl";
+    if (code == "hr") return "hrv_Latn";
+    if (code == "sk") return "slk_Latn";
+    if (code == "sl") return "slv_Latn";
+    if (code == "et") return "est_Latn";
+    if (code == "lv") return "lvs_Latn";
+    if (code == "lt") return "lit_Latn";
+    if (code == "id") return "ind_Latn";
+    if (code == "ms") return "zsm_Latn";
+    if (code == "vi") return "vie_Latn";
+    if (code == "th") return "tha_Thai";
+    if (code == "hi") return "hin_Deva";
+    if (code.size() >= 8 && code[3] == '_') return code;
+    return {};
+}
+
 std::vector<std::string> LocalMtRoute(const std::wstring& source, const std::wstring& target,
                                       const std::vector<std::string>& installedPairs) {
     const std::string src = Code(source), tgt = Code(target);
@@ -145,6 +195,9 @@ std::vector<std::string> LocalMtRoute(const std::wstring& source, const std::wst
     };
     const std::string direct = src + "-" + tgt;
     if (has(direct)) return {direct};
+    if (has("nllb-200") && !NllbLanguageTag(src).empty() && !NllbLanguageTag(tgt).empty()) {
+        return {direct};
+    }
     if (src == "en" || tgt == "en") return {};
     const std::string first = src + "-en", second = "en-" + tgt;
     return has(first) && has(second) ? std::vector<std::string>{first, second} : std::vector<std::string>{};
@@ -201,6 +254,75 @@ bool IsPlausibleLocalMtOutput(const std::wstring& source, const std::wstring& ou
         if (source.find(symbol) == std::wstring::npos) return false;
     }
     return hasWord;
+}
+
+namespace {
+bool IsDecorativeCodepoint(uint32_t cp) {
+    return (cp >= 0x2190 && cp <= 0x2BFF) ||    // arrows, math operators (⊱⊰), technical, boxes, shapes, symbols, dingbats
+           (cp >= 0x1F000 && cp <= 0x1FAFF) ||  // emoji, cards, enclosed supplements
+           (cp >= 0x1D100 && cp <= 0x1D1FF) ||  // musical notation
+           (cp >= 0xE000 && cp <= 0xF8FF) ||    // private use
+           (cp >= 0xE0000 && cp <= 0xE007F);    // tags (flags)
+}
+bool IsJoiner(uint32_t cp) { return cp == 0x200D || (cp >= 0xFE00 && cp <= 0xFE0F); }
+bool IsSpace(wchar_t c) { return std::iswspace(static_cast<wint_t>(c)) != 0 || c == L'\u00A0'; }
+}  // namespace
+
+std::vector<Segment> SplitForLocalMt(const std::vector<Segment>& segments) {
+    std::vector<Segment> out;
+    auto add = [&out](std::wstring text, bool keep) {
+        if (text.empty()) return;
+        if (!out.empty() && out.back().keep == keep && keep) out.back().text += text;
+        else out.push_back({std::move(text), keep});
+    };
+    auto addText = [&](const std::wstring& run) {  // spaces around it and a run without a word stay as they are
+        size_t b = 0, e = run.size();
+        while (b < e && IsSpace(run[b])) ++b;
+        while (e > b && IsSpace(run[e - 1])) --e;
+        std::wstring core = run.substr(b, e - b);
+        bool word = false;
+        for (size_t i = 0; i < core.size() && !word; ++i) {
+            uint32_t cp = static_cast<uint32_t>(core[i]);
+            if (cp >= 0xD800 && cp <= 0xDBFF) continue;
+            word = IsWordCodepoint(cp);
+        }
+        add(run.substr(0, b), true);
+        add(core, !word);
+        add(run.substr(e), true);
+    };
+    for (const Segment& segment : segments) {
+        if (segment.keep) {
+            add(segment.text, true);
+            continue;
+        }
+        const std::wstring& s = segment.text;
+        std::wstring text;
+        bool prevDecorative = false;
+        for (size_t i = 0; i < s.size();) {
+            const size_t start = i;
+            uint32_t cp = static_cast<uint32_t>(s[i++]);
+            if (cp >= 0xD800 && cp <= 0xDBFF && i < s.size()) {
+                const uint32_t low = static_cast<uint32_t>(s[i]);
+                if (low >= 0xDC00 && low <= 0xDFFF) {
+                    cp = 0x10000 + ((cp - 0xD800) << 10) + (low - 0xDC00);
+                    ++i;
+                }
+            }
+            const bool decorative = IsDecorativeCodepoint(cp) || (prevDecorative && IsJoiner(cp));
+            if (decorative) {
+                if (!text.empty()) {
+                    addText(text);
+                    text.clear();
+                }
+                add(s.substr(start, i - start), true);
+            } else {
+                text.append(s, start, i - start);
+            }
+            prevDecorative = decorative;
+        }
+        if (!text.empty()) addText(text);
+    }
+    return out;
 }
 
 }  // namespace gct

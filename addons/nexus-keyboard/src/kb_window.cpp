@@ -92,6 +92,50 @@ void DragWindow(const ImVec2& d) {
 }
 }  // namespace
 
+// Fonts & scaling: UI (header, footer, popups, options window) follows FollowUiPx(); chat follows fontPt.
+// ScopedFont applies the target size smoothly without reverting during drag, and restores previous scale at scope exit.
+struct ScopedFont {
+    bool pushed = false;
+    float prevScale = 1.0f;
+    void Apply(ImFont* f, float targetPx) {
+        prevScale = ImGui::GetCurrentWindow()->FontWindowScale;
+        if (f && f->FontSize > 0.0f) {
+            ImGui::SetWindowFontScale(targetPx / f->FontSize);
+            ImGui::PushFont(f);
+            pushed = true;
+        } else {
+            ImGui::SetWindowFontScale(targetPx / std::max(1.0f, ImGui::GetFontSize()));
+            pushed = false;
+        }
+    }
+    void Pop() {
+        if (pushed) {
+            ImGui::PopFont();
+            pushed = false;
+        }
+        ImGui::SetWindowFontScale(prevScale);
+    }
+    ~ScopedFont() { Pop(); }
+};
+
+struct ScopedPopupFont {
+    bool pushed = false;
+    ScopedPopupFont() {
+        const float uiPx = FollowUiPx();
+        ImFont* uf = g_uiFont.load();
+        if (uf && uf->FontSize > 0.0f) {
+            ImGui::SetWindowFontScale(uiPx / uf->FontSize);
+            ImGui::PushFont(uf);
+            pushed = true;
+        } else {
+            ImGui::SetWindowFontScale(uiPx / std::max(1.0f, ImGui::GetFontSize()));
+        }
+    }
+    ~ScopedPopupFont() {
+        if (pushed) ImGui::PopFont();
+    }
+};
+
 // Text blocks (menu ≡): your own text, saved from the input, a click puts one back into it (after what is there).
 // In the main window, g_mu held (the window body holds it).
 void RenderSnippets() {
@@ -101,6 +145,7 @@ void RenderSnippets() {
         ImGui::SetNextWindowPos(ImVec2(ImGui::GetWindowPos().x + 8, ImGui::GetWindowPos().y + 8), ImGuiCond_Always);
     }
     if (!ImGui::BeginPopup("kbsnippets")) return;
+    ScopedPopupFont popupFont;
     ImGui::TextUnformatted(UI(Tr(L"Text blocks")).c_str());
     ImGui::Separator();
     if (!Trim(g_wFlatInput).empty() && ImGui::Selectable(UI(Tr(L"Save the input as a text block")).c_str())) {
@@ -173,6 +218,7 @@ void RenderFooter() {  // g_mu held
 
     // Footer chips cached: precalculated strings and sizes avoid allocations on idle frames.
     struct FooterCache {
+        float fontSize = 0.0f;
         Channel channel = Channel::Unknown;
         std::wstring whisperTo;
         std::wstring writeIn;
@@ -192,8 +238,10 @@ void RenderFooter() {  // g_mu held
     static FooterCache s_fc;
     const bool sendOrig = SendOriginal();
     const std::wstring sendLang = SendLang();
-    if (s_fc.channel != g_channel || s_fc.whisperTo != g_whisperTo || s_fc.writeIn != g_cfg.writeIn ||
-        s_fc.sendLang != sendLang || s_fc.sendOrig != sendOrig) {
+    const float curFontPx = ImGui::GetFontSize();
+    if (s_fc.fontSize != curFontPx || s_fc.channel != g_channel || s_fc.whisperTo != g_whisperTo ||
+        s_fc.writeIn != g_cfg.writeIn || s_fc.sendLang != sendLang || s_fc.sendOrig != sendOrig) {
+        s_fc.fontSize = curFontPx;
         s_fc.channel = g_channel;
         s_fc.whisperTo = g_whisperTo;
         s_fc.writeIn = g_cfg.writeIn;
@@ -247,6 +295,7 @@ void RenderFooter() {  // g_mu held
     ImGui::SetNextWindowPos(ImVec2(chBtnPos.x, chBtnPos.y - 4.0f), ImGuiCond_Always, ImVec2(0.0f, 1.0f));
     ImGui::SetNextWindowSizeConstraints(ImVec2(chBtnW, 0.0f), ImVec2(FLT_MAX, ImGui::GetFontSize() * 16.0f));
     if (ImGui::BeginPopup("##channel_popup")) {
+        ScopedPopupFont popupFont;
         for (Channel c : kChannels) {
             const std::string name = c == Channel::Unknown ? UI(Tr(L"Active channel")) : UI(ChannelLabel(c));
             ImGui::PushStyleColor(ImGuiCol_Text, NameColorOf(c == Channel::Unknown ? Channel::Say : c));
@@ -274,6 +323,7 @@ void RenderFooter() {  // g_mu held
     ImGui::SetNextWindowPos(ImVec2(writeBtnPos.x, writeBtnPos.y - 4.0f), ImGuiCond_Always, ImVec2(0.0f, 1.0f));
     ImGui::SetNextWindowSizeConstraints(ImVec2(writeBtnW, 0.0f), ImVec2(FLT_MAX, ImGui::GetFontSize() * 20.0f));
     if (ImGui::BeginPopup("##write_popup")) {
+        ScopedPopupFont popupFont;
         std::wstring chosen = g_cfg.writeIn;
         if (ImGui::Selectable(UI(Tr(L"like Windows")).c_str(), chosen.empty())) {
             chosen.clear();
@@ -315,6 +365,7 @@ void RenderFooter() {  // g_mu held
     ImGui::SetNextWindowPos(ImVec2(sendBtnPos.x, sendBtnPos.y - 4.0f), ImGuiCond_Always, ImVec2(0.0f, 1.0f));
     ImGui::SetNextWindowSizeConstraints(ImVec2(sendBtnW, 0.0f), ImVec2(FLT_MAX, ImGui::GetFontSize() * 20.0f));
     if (ImGui::BeginPopup("##send_popup")) {
+        ScopedPopupFont popupFont;
         // "as written" leads the menu, when GW2 can display the typing language.
         auto chooseSend = [&](size_t i) {
             if (g_activeTab >= 0 && g_activeTab < static_cast<int>(g_tabs.size())) {  // this player's tab only
@@ -404,8 +455,9 @@ std::wstring StatusText() {  // g_mu held
     const bool voiceOn = g_cfg.voiceEnabled && g_cfg.voiceTranslate;
     if (!g_nx.translateChat && !Translating()) {  // nothing goes to a translator: no counter of one
         if (!g_cfg.voiceEnabled) return Tr(L"Prediction only");  // the typing help is all that is on
-        return voiceOn ? TrF(L"Translation off · what you say: into {1}", {ToUpperAscii(PrimaryLang(VoiceLang()))})
-                       : Tr(L"Translation off");
+        const std::wstring vl = VoiceLang();
+        return voiceOn && !vl.empty() ? TrF(L"Translation off · what you say: into {1}", {ToUpperAscii(PrimaryLang(vl))})
+                                      : Tr(L"Translation off");
     }
     if (const std::wstring q = MyMemoryQuotaText(); !q.empty()) return q;
     std::wstring route = SendOriginal() ? Tr(L"as written") : ToUpperAscii(PrimaryLang(SendLang()));
@@ -424,9 +476,13 @@ void RenderWindow() {
     VoiceIdleUnload();
     ImGuiIO& io = ImGui::GetIO();
     if (io.DisplaySize.x <= 0 || io.DisplaySize.y <= 0) return;
+    SuppressImplicitDebugWindow();
     struct PopColoursAtEnd {
         int n = 0;
-        ~PopColoursAtEnd() { if (n) ImGui::PopStyleColor(n); }
+        ~PopColoursAtEnd() {
+            if (n) ImGui::PopStyleColor(n);
+            SuppressImplicitDebugWindow();
+        }
     } popColours;
     popColours.n = PushTheme();  // for everything drawn below: the options, our window, its popups
     g_keyboardFree = !io.WantCaptureKeyboard;
@@ -463,6 +519,7 @@ void RenderWindow() {
     ChatEventsPresent();
     CostMark(kCostOptions);
     RenderOptionsWindow();
+    RenderDebugWindow();
     CostMark(kCostWindow);
     bool inMap;
     {
@@ -499,6 +556,7 @@ void RenderWindow() {
                 g_expandRequest = false;
                 g_collapsed = false;
                 if (clickedOpen) g_focusInput = true;
+                if (g_nx.translateChat) TranslateRecentLines();
             }
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Open the window")).c_str());
             if (g_autoSendPending && !g_edit.active && g_input[0]) {
@@ -538,29 +596,11 @@ void RenderWindow() {
         return;
     }
     if (g_expandRequest) g_expandRequest = false;  // already open
-    struct PopFontAtEnd {
-        bool on = false;
-        // PopFont works on the current window: always BEFORE ImGui::End() (after it, it popped the wrong window's
-        // texture stack - a silent corruption in a release build). The destructor only covers an exception.
-        void Pop() {
-            if (on) ImGui::PopFont();
-            on = false;
-        }
-        ~PopFontAtEnd() { Pop(); }
-    } popFont;
-    {
-        // The chat's size: yours, or the game's interface size until you set one (fontPt 0, the first use).
-        const float px = PtToPx(g_cfg.fontPt > 0 ? g_cfg.fontPt : FollowPt());
-        if (g_cfg.fontPt <= 0 && px != g_textFontPx) RequestTextFont(0, g_cfg.fontFace);  // the game's size changed
-        ImFont* tf = g_textFont.load();
-        if (tf && std::abs(tf->FontSize - px) < 0.5f) {  // sharp: the font built at this size
-            ImGui::SetWindowFontScale(1.0f);
-            ImGui::PushFont(tf);
-            popFont.on = true;
-        } else {  // not (yet) there: Nexus' font scaled
-            ImGui::SetWindowFontScale(px / std::max(1.0f, ImGui::GetFont()->FontSize));
-        }
-    }
+    const float chatPx = PtToPx(g_cfg.fontPt > 0 ? g_cfg.fontPt : FollowPt());
+    if (g_cfg.fontPt <= 0 && chatPx != g_textFontPx) RequestTextFont(0, g_cfg.fontFace);  // the game's size changed
+    const float uiPx = FollowUiPx();
+    ImFont* uf = g_uiFont.load();
+    ImFont* tf = g_textFont.load();
     std::unique_lock<std::mutex> lock(g_mu);
     if (g_statusUntil && GetTickCount64() > g_statusUntil) {
         g_status.clear();
@@ -571,6 +611,8 @@ void RenderWindow() {
 
     CostMark(kCostHeader);
     // ---- header: the tabs (the chat, whisper tabs; right-click: a new one) · microphone · V / A · menu · close
+    ScopedFont headerFont;
+    headerFont.Apply(uf, uiPx);
     const float icon = ImGui::GetFrameHeight();
     const float gap = std::round(icon * 0.6f);
     const float rightW = (g_cfg.voiceEnabled ? icon + gap : 0) + icon + gap + icon + st.ItemSpacing.x + icon;
@@ -629,6 +671,7 @@ void RenderWindow() {
     if (newTab) ImGui::OpenPopup("##hdrmenu");
     static bool newTabNext = false;  // asked for in a menu (opened next frame, at this level)
     if (ImGui::BeginPopup("##hdrmenu")) {
+        ScopedPopupFont popupFont;
         if (ImGui::MenuItem(UI(Tr(L"New tab")).c_str())) {
             const int at = NewCustomTab();
             if (at >= 0) g_tabSettings = at;
@@ -646,6 +689,7 @@ void RenderWindow() {
         ImGui::OpenPopup("##tabcfg");
     }
     if (ImGui::BeginPopup("##tabcfg")) {
+        ScopedPopupFont popupFont;
         const int i = g_tabSettingsOpen;
         if (i < 0 || i >= static_cast<int>(g_tabs.size()) || !g_tabs[i].custom) {
             ImGui::CloseCurrentPopup();
@@ -698,6 +742,7 @@ void RenderWindow() {
         ImGui::EndPopup();
     }
     if (ImGui::BeginPopup("##newtab")) {  // a whisper tab of your own: whom you want to write to
+        ScopedPopupFont popupFont;
         static char name[96] = {};
         if (ImGui::IsWindowAppearing()) {
             name[0] = 0;
@@ -762,6 +807,7 @@ void RenderWindow() {
         if (IconButton("##menu", Icon::Menu, false, nullptr)) ImGui::OpenPopup("kbmenu");
     }
     if (ImGui::BeginPopup("kbmenu")) {
+        ScopedPopupFont popupFont;
         // The mini mode (nothing but the input): only the way out – Options, Compact view, Mini mode (user, 2026-10-22).
         if (!Lay().chat) {
             if (ImGui::MenuItem(UI(Tr(L"Options …")).c_str())) g_showOptions = true;
@@ -790,12 +836,21 @@ void RenderWindow() {
                 SetStatus(Tr(L"No chat lines of other players in view"), 4000);
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", UI(Tr(L"What you see of the chat, into the language you write in – once, by the automatic translation's rule: lines in your language, in languages you understand or too short to tell stay as they are (a click on a line translates it anyway).")).c_str());
+            const bool transPaused = g_orchestrator.IsPaused();
+            if (ImGui::MenuItem(UI(Tr(L"Chat translation paused (Ctrl+Alt+T)")).c_str(), nullptr, transPaused)) {
+                g_orchestrator.TogglePaused();
+                if (!g_orchestrator.IsPaused()) TranslateRecentLines();
+                SetStatus(g_orchestrator.IsPaused() ? Tr(L"Chat translation paused (Ctrl+Alt+T)")
+                                                    : Tr(L"Chat translation resumed (Ctrl+Alt+T)"), 4000);
+            }
             if (ImGui::MenuItem(UI(Tr(L"New whisper tab …")).c_str())) newTabNext = true;
             if (ImGui::MenuItem(UI(Tr(L"Text blocks …")).c_str())) g_openSnippets = true;
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", UI(Tr(L"Your own text, saved from the input – a click puts it back.")).c_str());
             if (!g_chatEventsPresent && !g_chatEventsFile && ImGui::MenuItem(UI(Tr(L"Install Events: Chat (every channel) …")).c_str()))
                 g_showOptions = true;
+            if (ImGui::MenuItem(UI(g_showDebugWindow ? Tr(L"Close Debug Window") : Tr(L"Debug & Diagnostics …")).c_str()))
+                g_showDebugWindow = !g_showDebugWindow;
             ImGui::Separator();
             if (ImGui::MenuItem(UI(Tr(L"Hide (Ctrl+Alt+K shows it again)")).c_str())) g_show = false;
         }
@@ -806,6 +861,7 @@ void RenderWindow() {
         ImGui::SameLine();
         if (IconButton("##close", Icon::Close, false, nullptr)) g_show = false;
     }
+    headerFont.Pop();
     if (!g_recording && g_micLocked) g_micLocked = false;  // the recording ended (pause, maximum length)
     // Voice activation listens from the map on (unless you switched it off with the microphone).
     if (g_cfg.voiceEnabled && g_cfg.voiceActivation && !g_listenWanted && !g_listenUserOff) {
@@ -819,12 +875,13 @@ void RenderWindow() {
             StartSend();
         }
         lock.unlock();
-        popFont.Pop();
         ImGui::End();
         return;
     }
 
     CostMark(kCostChat);
+    ScopedFont chatFont;
+    chatFont.Apply(tf, chatPx);
     // ---- the chat (the newest at the bottom): name white – a click opens a whisper tab –, text in the channel colour,
     // the scroll bar at the left like GW2's own chat
     const float line = ImGui::GetTextLineHeightWithSpacing();
@@ -969,11 +1026,24 @@ void RenderWindow() {
                 clicked = RichLine(segs, ColorOf(l.channel));
             }
             if (!l.translated.empty() && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", l.u8text.c_str());
+            if (!l.own && l.transPending && l.translated.empty()) {
+                ImGui::SameLine(0, ImGui::CalcTextSize(" ").x);
+                LookText("...", ImVec4(0.6f, 0.6f, 0.6f, 0.65f), false);
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Translating...")).c_str());
+            }
             // A click on the text of a line someone else wrote: just this line into your language.
-            if (!l.own && ImGui::IsItemVisible()) g_visibleLines.push_back(l.id);  // in view: "translate once" takes it
+            if (!l.own && ImGui::IsItemVisible()) {
+                g_visibleLines.push_back(l.id);  // in view: "translate once" takes it
+                if (g_nx.translateChat && !g_orchestrator.IsPaused() && l.translated.empty() && !l.transAttempted && !l.transPending && !IsGamerInterjection(l.text)) {
+                    l.transPending = true;
+                    g_worker.Post([id = l.id, t = l.text] { TranslateLine(id, t); });
+                }
+            }
             if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) s_lineRightClick = true;
-            if (!clicked && !l.own && l.translated.empty() && (ImGui::IsItemClicked() || ImGui::IsItemClicked(ImGuiMouseButton_Right)))
+            if (!clicked && !l.own && l.translated.empty() && (ImGui::IsItemClicked() || ImGui::IsItemClicked(ImGuiMouseButton_Right))) {
+                l.transPending = true;
                 g_worker.Post([id = l.id, t = l.text] { TranslateLine(id, t, true); });
+            }
             ImGui::PopID();
             l.rowH = ImGui::GetCursorPosY() - y0;  // what it took, for the frames it is out of view
             l.rowW = rowWrap;
@@ -1004,6 +1074,7 @@ void RenderWindow() {
         ImGui::OpenPopup("###openlink");
     }
     if (ImGui::BeginPopupModal((UI(Tr(L"Leaving GW2Chatlator")) + "###openlink").c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ScopedPopupFont popupFont;
         // Like Discord: where it goes, big; the whole link small; you decide.
         ImGui::TextUnformatted(UI(Tr(L"This link goes to")).c_str());
         ImGui::TextColored(ImVec4(0.45f, 0.7f, 1.f, 1.f), "%s", U8(LinkHost(g_openLink)).c_str());
@@ -1190,6 +1261,7 @@ void RenderWindow() {
                                 right ? ImVec2(0, 0) : ImVec2(1, 0));
     }
     if (ImGui::BeginPopup("##teach")) {
+        ScopedPopupFont popupFont;
         static char typed[64] = {}, fixed[64] = {}, word[64] = {}, meaning[160] = {};
         if (ImGui::IsWindowAppearing()) {  // the last word you typed, and what is known of it
             const std::wstring& text = g_wFlatInput;
@@ -1317,10 +1389,15 @@ void RenderWindow() {
         BoxText(ImVec2(textAt.x, inputMax.y - smallLine - 1), clip, ImGui::GetColorU32(kPreview),
                 Fit(t, (inputMax.x - inputMin.x) * (g_status.empty() ? 0.95f : 0.38f)), 0.85f);
     }
+    chatFont.Pop();
 
     CostMark(kCostFooter);
     // ---- the footer: channel | write | send · translator | auto | counter
-    if (Lay().footer) RenderFooter();
+    if (Lay().footer) {
+        ScopedFont footerFont;
+        footerFont.Apply(uf, uiPx);
+        RenderFooter();
+    }
     // Changes of the text: a pause translates it; the typing help follows every key.
     if (g_flatInput != g_lastInput) {
         g_lastInput = g_flatInput;
@@ -1344,7 +1421,6 @@ void RenderWindow() {
         StartSend();
     }
     lock.unlock();
-    popFont.Pop();
     ImGui::End();
 }
 

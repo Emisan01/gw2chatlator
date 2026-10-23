@@ -75,6 +75,7 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
     const std::wstring rawText = l.text;
     uint64_t id;
     bool own, brake;
+    bool shouldQueue = false;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         own = outgoing || (!g_ownName.empty() && l.speakerFolded == CaseFold(g_ownName));
@@ -89,6 +90,27 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
                 if (s.length >= 4) g_context.insert(g_context.begin(), l.text.substr(s.start, s.length));
             if (g_context.size() > 80) g_context.resize(80);
         }
+
+        // Smart-Sieve-Manager: spam filter, repetition cache, and occlusion culling
+        if (!own) {
+            if (IsGamerInterjection(rawText)) {
+                // Gamer interjection / shorthand: skip translation
+            } else {
+                std::wstring cachedTrans, cachedBy;
+                if (g_orchestrator.SieveMessage(rawText, TypingLang(), true, true, true, false, cachedTrans, cachedBy) == ChatPriority::Immediate) {
+                    l.translated = cachedTrans;
+                    l.transTarget = TypingLang();
+                    l.transBy = cachedBy;
+                    l.u8translated = U8(l.translated);
+                    l.transSegs = PieUI::ChatLinks::SegmentLine(l.u8translated);
+                } else {
+                    const bool windowVisible = g_show && (g_inMap || g_test.forceMap) && !g_mapOpen && !g_collapsed;
+                    if (g_nx.translateChat && windowVisible) l.transPending = true;
+                    if (!brake || AllowAutoTranslate()) shouldQueue = true;
+                }
+            }
+        }
+
         g_lines.push_back(std::move(l));
         TrimChatLines();
         for (size_t i = 0; i < g_tabs.size(); ++i) {  // a tab not in front that shows this line: marked
@@ -100,7 +122,7 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
         }
         g_scrollDown = true;
     }
-    if (!own && (!brake || AllowAutoTranslate())) g_worker.Post([id, t = rawText] { TranslateLine(id, t); });
+    if (shouldQueue) g_worker.Post([id, t = rawText] { TranslateLine(id, t); });
 }
 
 // OnChatEvents: kb_chatsource.cpp (the guard between Events: Chat and us).

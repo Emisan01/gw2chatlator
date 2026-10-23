@@ -37,6 +37,7 @@
 #include "core/protect.hpp"
 #include "core/slang.hpp"
 #include "core/text.hpp"
+#include "core/translation_orchestrator.hpp"
 #include "core/translator.hpp"
 #include "core/voice.hpp"
 #include "core/voice_learn.hpp"
@@ -190,6 +191,21 @@ static void TestLocalMtProtocol() {
     CHECK(LocalMtRoute(L"en-GB", L"DE", {"en-de"}) == std::vector<std::string>{"en-de"});
     CHECK(LocalMtRoute(L"DE", L"EN", {"de-en", "en-de"}) == std::vector<std::string>{"de-en"});
     CHECK(LocalMtRoute(L"DE", L"DE", {"de-en", "en-de"}).empty());
+    CHECK(NllbLanguageTag("de") == "deu_Latn");
+    CHECK(NllbLanguageTag("en") == "eng_Latn");
+    CHECK(NllbLanguageTag("fr") == "fra_Latn");
+    CHECK(NllbLanguageTag("es") == "spa_Latn");
+    CHECK(NllbLanguageTag("it") == "ita_Latn");
+    CHECK(NllbLanguageTag("pl") == "pol_Latn");
+    CHECK(NllbLanguageTag("pt") == "por_Latn");
+    CHECK(NllbLanguageTag("ru") == "rus_Cyrl");
+    CHECK(NllbLanguageTag("tr") == "tur_Latn");
+    CHECK(NllbLanguageTag("uk") == "ukr_Cyrl");
+    CHECK(NllbLanguageTag("unknown").empty());
+    CHECK(LocalMtRoute(L"DE", L"FR", {"nllb-200"}) == std::vector<std::string>{"de-fr"});
+    CHECK(LocalMtRoute(L"ES", L"PL", {"nllb-200"}) == std::vector<std::string>{"es-pl"});
+    CHECK(LocalMtRoute(L"RU", L"DE", {"nllb-200"}) == std::vector<std::string>{"ru-de"});
+    CHECK(LocalMtRoute(L"DE", L"EN", {"de-en", "nllb-200"}) == std::vector<std::string>{"de-en"});
     const auto& modelCatalog = LocalMtModelCatalog();
     CHECK(modelCatalog.size() == 16);
     const auto modelFor = [&](const char* pair) -> const LocalMtModelInfo* {
@@ -2354,16 +2370,12 @@ static void TestEquations2() {
         flipped.dictLang = L"ZH";
         const SendRoute f = RouteMessage(flipped);
         const bool voiceFirst = s.spoken && s.voiceOn && s.voiceTranslate;
-        // typed in a script GW2 cannot show: never "as written" – the first of yours (EN-GB without any)
         const std::wstring firstOrEn = langs.empty() ? std::wstring(L"EN-GB") : langs.front();
         const std::wstring expected = !before230(typed).empty() || SendableInGw2(typed.typingLang) ? before230(typed) : firstOrEn;
         bool ok = t.lang == expected && f.lang == t.lang && f.translating == t.translating;
-        if (!voiceFirst) ok = ok && r.lang == t.lang && r.translating == t.translating;
-        if (voiceFirst && !langs.empty()) ok = ok && !r.lang.empty();
-        if (voiceFirst && !r.lang.empty())
-            ok = ok && (r.lang == s.tabLang || r.lang == firstOrEn || std::find(langs.begin(), langs.end(), r.lang) != langs.end());
-        if (r.lang.empty()) ok = ok && SendableInGw2(voiceFirst && !s.dictLang.empty() ? s.dictLang : s.typingLang);
         const std::wstring& source = voiceFirst && !s.dictLang.empty() ? s.dictLang : s.typingLang;
+        const std::wstring rExpected = !before230(s).empty() || SendableInGw2(source) ? before230(s) : firstOrEn;
+        ok = ok && r.lang == rExpected;
         ok = ok && r.translating == (!r.lang.empty() && PrimaryLang(r.lang) != PrimaryLang(source));
         if (!ok) ++bad[4];
     }
@@ -2482,7 +2494,72 @@ static void TestEquations2() {
     }
 }
 
+static void TestTranslationOrchestrator() {
+    // 1. Gamer interjections & slang
+    CHECK(IsGamerInterjection(L"gg"));
+    CHECK(IsGamerInterjection(L"gg wp"));
+    CHECK(IsGamerInterjection(L"mdr"));
+    CHECK(IsGamerInterjection(L"lol ty"));
+    CHECK(IsGamerInterjection(L"o7"));
+    CHECK(IsGamerInterjection(L"1"));
+    CHECK(IsGamerInterjection(L"++"));
+    CHECK(IsGamerInterjection(L"?!"));
+    CHECK(IsGamerInterjection(L":)"));
+    CHECK(IsGamerInterjection(L"xD"));
+    CHECK(IsGamerInterjection(L"thx guys"));
+    CHECK(!IsGamerInterjection(L"kniet!"));
+    CHECK(!IsGamerInterjection(L"mdr t'es trop fort"));
+    CHECK(!IsGamerInterjection(L"follow commander to the hill"));
+    CHECK(!IsGamerInterjection(L"wer kommt mit ins fraktal?"));
+
+    // 2. Repetition Cache
+    RepetitionCache cache(64);
+    CHECK(cache.Size() == 0);
+    std::wstring outTrans, outBy;
+    CHECK(!cache.Lookup(L"kniet", L"en", outTrans, outBy));
+
+    cache.Store(L"kniet", L"en", L"kneel", L"nllb-200");
+    CHECK(cache.Size() == 1);
+    CHECK(cache.Lookup(L"Kniet!", L"EN", outTrans, outBy));
+    CHECK(outTrans == L"kneel");
+    CHECK(outBy == L"nllb-200");
+
+    // 3. Dynamic Throttle & Beam Size
+    TranslationOrchestrator orch;
+    CHECK(orch.ComputeBeamSize(QualityMode::Fast, 0) == 1);
+    CHECK(orch.ComputeBeamSize(QualityMode::Balanced, 0) == 2);
+    CHECK(orch.ComputeBeamSize(QualityMode::Quality, 0) == 4);
+    // Queue congestion drops beam to 1
+    CHECK(orch.ComputeBeamSize(QualityMode::Balanced, 3) == 1);
+    CHECK(orch.ComputeBeamSize(QualityMode::Quality, 5) == 1);
+
+    // 4. Sieve logic
+    // Slang -> Skip
+    CHECK(orch.SieveMessage(L"gg", L"en", true, true, true, true, outTrans, outBy) == ChatPriority::Skip);
+    // Cached repetition -> Immediate
+    orch.RecordTranslation(L"kniet", L"en", L"kneel", L"nllb-200");
+    CHECK(orch.SieveMessage(L"kniet", L"en", true, true, true, true, outTrans, outBy) == ChatPriority::Immediate);
+    CHECK(outTrans == L"kneel");
+    // Viewport visible -> High
+    CHECK(orch.SieveMessage(L"wer kommt mit?", L"en", true, true, true, false, outTrans, outBy) == ChatPriority::High);
+    // Recent tail -> Medium
+    CHECK(orch.SieveMessage(L"wer kommt mit?", L"en", true, true, false, true, outTrans, outBy) == ChatPriority::Medium);
+    // Window minimized / collapsed -> Low
+    CHECK(orch.SieveMessage(L"wer kommt mit?", L"en", false, true, false, false, outTrans, outBy) == ChatPriority::Low);
+    // Inactive tab channel -> Low
+    CHECK(orch.SieveMessage(L"wer kommt mit?", L"en", true, false, false, false, outTrans, outBy) == ChatPriority::Low);
+    // Paused -> Skip
+    orch.SetPaused(true);
+    CHECK(orch.SieveMessage(L"wer kommt mit?", L"en", true, true, true, true, outTrans, outBy) == ChatPriority::Skip);
+
+    // 5. Telemetry counters
+    CHECK(orch.SlangFilteredCount() == 1);
+    CHECK(orch.CacheHitCount() == 1);
+    CHECK(orch.CulledCount() == 2);
+}
+
 int main() {
+    TestTranslationOrchestrator();
     TestEquations2();
     TestEquations();
     TestWindowLayout();

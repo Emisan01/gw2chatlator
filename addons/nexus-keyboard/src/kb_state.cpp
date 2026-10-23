@@ -26,6 +26,7 @@ std::atomic<int> g_fps{0};
 bool g_show = true;
 TestHooks g_test;
 bool g_showOptions = false;  // our own options window (menu ≡ / the button on the Nexus page)
+bool g_showDebugWindow = false;  // dedicated debug & diagnostic inspection window
 
 void Log(ELogLevel level, const char* text) {
     if (g_api && g_api->Log) g_api->Log(level, kName, text);
@@ -51,6 +52,7 @@ MumbleLink* g_mumbleWorker = nullptr;
 std::mutex g_mu;
 Config g_cfg;
 std::shared_ptr<Translator> g_translator;
+TranslationOrchestrator g_orchestrator;
 std::deque<ChatLine> g_lines;
 uint64_t g_nextId = 1;
 bool g_scrollDown = false;
@@ -410,6 +412,7 @@ void RemoveEverythingNow(bool chatEventsToo, bool decoderToo) {  // game thread
         g_wiped = true;
         g_show = false;
         g_showOptions = false;
+        g_showDebugWindow = false;
         localTranslator = g_translator;
         g_translator.reset();
     }

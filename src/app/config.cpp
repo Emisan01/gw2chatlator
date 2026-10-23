@@ -265,6 +265,8 @@ void Config::Load(const std::wstring& dir) {
     translateWriting = ini.Bool(L"Translate", L"Writing", false);  // first use: sent as written
     understoodLangs = ParseLangList(ini.Str(L"Translate", L"Understood", L""));
     skipTypingLang = ini.Bool(L"Translate", L"SkipTypingLang", true);
+    localQuality = ini.Int(L"Translate", L"LocalQuality", 2, 1, 4);
+    if (localQuality != 1 && localQuality != 4) localQuality = 2;
 
     basicEmail = AsciiUnescape(ini.Str(L"Basic", L"Email", L""));
     deeplKey = UnprotectSecret(ini.Str(L"DeepL", L"ApiKey", L""));
@@ -279,8 +281,8 @@ void Config::Load(const std::wstring& dir) {
 
     writeIn = ToUpperAscii(ini.Str(L"Spelling", L"WriteIn", L""));
     voiceEnabled = ini.Bool(L"Voice", L"Enabled", true);
-    voiceModel = AsciiUnescape(ini.Str(L"Voice", L"Model", L""));
-    voiceLang = AsciiUnescape(ini.Str(L"Voice", L"Language", L""));
+    voiceLang = AsciiUnescape(ini.Str(L"Voice", L"Language", L"auto"));
+    if (voiceLang.empty()) voiceLang = L"auto";
     voiceIntoEnglish = ini.Bool(L"Voice", L"IntoEnglish", false);
     voiceTranslate = ini.Bool(L"Voice", L"Translate", voiceIntoEnglish);  // up to 2.1 the switch was "into English"
     voiceToggle = ini.Str(L"Voice", L"Mode", L"hold") == L"toggle";
@@ -320,6 +322,7 @@ void Config::Load(const std::wstring& dir) {
     opacity = ini.Int(L"Window", L"Opacity", 255, 0, 255);
     fontPercent = ini.Int(L"Window", L"FontPercent", 100, 70, 300);
     fontPt = ini.Int(L"Window", L"FontPt", 0, 0, 40);
+    uiFontPt = ini.Int(L"Window", L"UiFontPt", 0, 0, 40);
     // 0 = like the game's interface size (the first use, user 2026-10-22); an older ini's percent still gives its size
     if (fontPt == 0 && !ini.Str(L"Window", L"FontPercent", L"").empty()) fontPt = std::clamp((11 * fontPercent + 50) / 100, 8, 28);
     fontFace = ToLowerAscii(ini.Str(L"Window", L"FontFace", L"segoeui"));
@@ -440,6 +443,7 @@ void Config::SaveAll() const {
     SaveBool(L"Chat", L"ReturnFocus", returnFocus);
     SaveValue(L"Window", L"Opacity", std::to_wstring(opacity));
     SaveValue(L"Window", L"FontPt", std::to_wstring(fontPt));
+    SaveValue(L"Window", L"UiFontPt", std::to_wstring(uiFontPt));
     SaveValue(L"Window", L"FontFace", fontFace);
     SaveBool(L"Window", L"FocusOnGameChat", focusOnGameChat);
 }
