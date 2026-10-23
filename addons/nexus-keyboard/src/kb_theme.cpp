@@ -107,6 +107,20 @@ int FollowPt() {
     const int s = g_uiSize.load();
     return std::max(14, s >= 0 && s <= 3 ? static_cast<int>(std::lround(11 * kScale[s])) : 11);
 }
+float FollowUiPx() {
+    if (g_cfg.uiFontPt > 0) return PtToPx(g_cfg.uiFontPt);
+    ImGuiIO& io = ImGui::GetIO();
+    const float globalScale = std::max(0.1f, io.FontGlobalScale);
+    const float sampledPx = s_nexusOptionsFontPx.load();
+    if (sampledPx > 0.0f) return std::clamp(std::round(sampledPx / globalScale), 12.0f, 32.0f);
+    ImFont* nexusFont = io.FontDefault ? io.FontDefault : io.Fonts->Fonts[0];
+    if (nexusFont && nexusFont->FontSize > 14.0f) return std::clamp(std::round(nexusFont->FontSize * nexusFont->Scale), 12.0f, 32.0f);
+    return PtToPx(15);
+}
+int FollowUiPt() {
+    if (g_cfg.uiFontPt > 0) return g_cfg.uiFontPt;
+    return static_cast<int>(std::round(FollowUiPx() * 72.0f / 96.0f));
+}
 void RequestTextFont(int pt, const std::wstring& face) {  // pt 0: like the game
     if (!g_api || !g_api->Fonts_AddFromFile) return;
     const float px = PtToPx(pt > 0 ? pt : FollowPt());
@@ -144,6 +158,7 @@ void RequestTextFont(int pt, const std::wstring& face) {  // pt 0: like the game
 // window's only) – our font so every letter of the UI languages shows (Nexus' font lacks ł, ş, ğ and Cyrillic).
 std::atomic<ImFont*> g_uiFont{nullptr};
 float g_uiFontPx = 0;
+std::atomic<float> s_nexusOptionsFontPx{0};
 void OnUiFont(const char*, void* font) { g_uiFont = static_cast<ImFont*>(font); }
 void RequestUiFont(float px) {
     px = std::round(px);

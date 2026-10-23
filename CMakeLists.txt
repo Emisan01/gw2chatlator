@@ -52,6 +52,7 @@ add_library(gct_core STATIC
     src/core/chat_source.cpp
     src/core/window_layout.cpp
     src/core/soft_wrap.cpp
+    src/core/translation_orchestrator.cpp
 )
 target_include_directories(gct_core PUBLIC src)
 

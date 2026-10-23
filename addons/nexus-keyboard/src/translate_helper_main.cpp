@@ -33,8 +33,15 @@ struct PairModel {
     ULONGLONG used = 0;
 };
 
+struct NllbModel {
+    sentencepiece::SentencePieceProcessor sp;
+    std::unique_ptr<ctranslate2::Translator> translator;
+    ULONGLONG used = 0;
+};
+
 std::wstring g_data;
 std::list<std::unique_ptr<PairModel>> g_models;  // most recently used at the front
+std::unique_ptr<NllbModel> g_nllb;
 int g_unloadMinutes = 10;
 ULONGLONG g_lastRequest = 0;
 
@@ -48,6 +55,51 @@ void Emit(const std::string& json) {
 
 std::wstring PairPath(const std::string& id) {
     return g_data + L"\\translate\\" + FromUtf8(id);
+}
+
+NllbModel* LoadNllb(std::string& error) {
+    if (g_nllb) {
+        g_nllb->used = GetTickCount64();
+        return g_nllb.get();
+    }
+    const ULONGLONG start = GetTickCount64();
+    const std::wstring dir = g_data + L"\\translate\\nllb-200";
+    if (!ExistsFile(dir + L"\\model.bin") || !ExistsFile(dir + L"\\sentencepiece.bpe.model")) {
+        error = "nllb-200 model files are missing or incomplete";
+        return nullptr;
+    }
+    auto model = std::make_unique<NllbModel>();
+    if (!model->sp.Load(ToUtf8(dir + L"\\sentencepiece.bpe.model")).ok()) {
+        error = "nllb-200 tokenizer failed to load";
+        return nullptr;
+    }
+    ctranslate2::models::ModelLoader loader(ToUtf8(dir));
+    loader.device = ctranslate2::Device::CPU;
+    loader.compute_type = ctranslate2::ComputeType::INT8;
+    loader.num_replicas_per_device = 1;
+    ctranslate2::ReplicaPoolConfig pool;
+    pool.num_threads_per_replica = kThreadsPerPair;
+    pool.max_queued_batches = 1;
+    try {
+        model->translator = std::make_unique<ctranslate2::Translator>(loader, pool);
+    } catch (const std::exception& e) {
+        error = e.what();
+        return nullptr;
+    }
+    // Warm-up call (prevents cold-start latency on user's first chat translation)
+    try {
+        std::vector<std::vector<std::string>> warmSrc = {{"deu_Latn", "Hallo", "</s>"}};
+        std::vector<std::vector<std::string>> warmTgt = {{"eng_Latn"}};
+        ctranslate2::TranslationOptions warmOpt;
+        warmOpt.beam_size = 1;
+        model->translator->translate_batch(warmSrc, warmTgt, warmOpt);
+    } catch (...) {}
+
+    model->used = GetTickCount64();
+    g_nllb = std::move(model);
+    Emit("{\"evt\":\"loaded\"" + JsonString("pair", "nllb-200") + ",\"ms\":" +
+         std::to_string(GetTickCount64() - start) + "}");
+    return g_nllb.get();
 }
 
 PairModel* LoadPair(const std::string& id, std::string& error) {
@@ -85,6 +137,14 @@ PairModel* LoadPair(const std::string& id, std::string& error) {
         error = e.what();
         return nullptr;
     }
+    // Warm-up call (prevents cold-start latency on user's first chat translation with this pair)
+    try {
+        std::vector<std::string> warmTokens = {"Hello", "</s>"};
+        if (!model->sourcePrefix.empty()) warmTokens.insert(warmTokens.begin(), model->sourcePrefix);
+        ctranslate2::TranslationOptions warmOpt;
+        warmOpt.beam_size = 1;
+        model->translator->translate_batch({warmTokens}, warmOpt);
+    } catch (...) {}
     model->used = GetTickCount64();
     if (g_models.size() == kMaxLoadedPairs) g_models.pop_back();
     g_models.push_front(std::move(model));
@@ -99,6 +159,56 @@ void Translate(const std::string& line) {
     g_lastRequest = GetTickCount64();
     const std::string pair = request.source + "-" + request.target;
     std::string error;
+
+    const bool hasOpusPair = ExistsFile(PairPath(pair) + L"\\model.bin");
+    const bool hasNllb = ExistsFile(g_data + L"\\translate\\nllb-200\\model.bin");
+    const std::string srcTag = NllbLanguageTag(request.source);
+    const std::string tgtTag = NllbLanguageTag(request.target);
+    const bool canUseNllb = hasNllb && !srcTag.empty() && !tgtTag.empty();
+
+    if (!hasOpusPair && canUseNllb) {
+        NllbModel* nllb = LoadNllb(error);
+        if (!nllb) {
+            Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) + JsonString("msg", error) + "}");
+            return;
+        }
+        std::vector<std::string> tokens;
+        if (!nllb->sp.Encode(request.text, &tokens).ok()) {
+            Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) +
+                 JsonString("msg", "nllb source tokenization failed") + "}");
+            return;
+        }
+        tokens.insert(tokens.begin(), srcTag);
+        tokens.emplace_back("</s>");
+        ctranslate2::TranslationOptions options;
+        options.beam_size = request.beam > 0 ? request.beam : 2;
+        options.return_end_token = false;
+        options.max_decoding_length = std::clamp<size_t>(tokens.size() * 2, 32, 256);
+        try {
+            const std::vector<std::vector<std::string>> srcBatch = {tokens};
+            const std::vector<std::vector<std::string>> tgtPrefixBatch = {{tgtTag}};
+            const auto results = nllb->translator->translate_batch(srcBatch, tgtPrefixBatch, options);
+            if (results.empty() || results.front().hypotheses.empty()) {
+                Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) +
+                     JsonString("msg", "the model returned no translation") + "}");
+                return;
+            }
+            auto hypo = results.front().hypotheses.front();
+            if (!hypo.empty() && hypo.front() == tgtTag) hypo.erase(hypo.begin());
+            std::string text;
+            if (!nllb->sp.Decode(hypo, &text).ok()) {
+                Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) +
+                     JsonString("msg", "nllb target detokenization failed") + "}");
+                return;
+            }
+            Emit("{\"evt\":\"result\",\"id\":" + std::to_string(request.id) + JsonString("text", text) + "}");
+            return;
+        } catch (const std::exception& e) {
+            Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) + JsonString("msg", e.what()) + "}");
+            return;
+        }
+    }
+
     PairModel* model = LoadPair(pair, error);
     if (!model) {
         Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) + JsonString("msg", error) + "}");
@@ -114,7 +224,7 @@ void Translate(const std::string& line) {
     if (!model->sourcePrefix.empty()) sourceTokens.insert(sourceTokens.begin(), model->sourcePrefix);
     sourceTokens.emplace_back("</s>");
     ctranslate2::TranslationOptions options;
-    options.beam_size = 1;
+    options.beam_size = request.beam > 0 ? request.beam : 2;
     options.return_end_token = false;
     options.max_decoding_length = std::clamp<size_t>(sourceTokens.size() * 2, 32, 256);
     try {
@@ -177,6 +287,7 @@ int wmain(int argc, wchar_t** argv) {
         while (!quit && (nl = pending.find('\n')) != std::string::npos) {
             std::string line = pending.substr(0, nl);
             pending.erase(0, nl + 1);
+            if (!line.empty() && line.back() == '\r') line.pop_back();
             if (line == "{\"cmd\":\"quit\"}") quit = true;
             else Translate(line);
         }

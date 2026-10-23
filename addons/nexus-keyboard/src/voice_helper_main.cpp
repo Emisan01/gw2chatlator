@@ -100,8 +100,9 @@ bool BuildSettings(VoiceSettings* s, std::wstring* why) {
         typing = locale;
     }
     if (m->englishOnly) s->language = "en";
-    else if (g_cfg.voiceLang == L"auto") s->language.clear();
-    else s->language = WhisperLang(g_cfg.voiceLang.empty() ? typing : g_cfg.voiceLang);
+    else if (g_cfg.voiceLang == L"auto" || g_cfg.voiceLang.empty()) s->language.clear();
+    else if (g_cfg.voiceLang == L"write") s->language = WhisperLang(typing);
+    else s->language = WhisperLang(g_cfg.voiceLang);
     s->translate = g_cfg.voiceIntoEnglish;
     const VoiceCorePick pick = PickVoiceCores(g_cores.Busy(), PhysicalCores(), g_cfg.voiceThreads);
     if (pick.threads > 0) {

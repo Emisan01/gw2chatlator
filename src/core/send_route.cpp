@@ -13,11 +13,7 @@ SendRoute RouteMessage(const SendState& s) {
     const bool footerLang = s.sendIdx >= 0 && s.sendIdx < static_cast<int>(langs.size());
     const bool voiceFirst = s.spoken && s.voiceOn && s.voiceTranslate;
     SendRoute r;
-    if (voiceFirst) {  // what you said goes into a language – the first of yours when the footer says "as written"
-        if (!s.tabLang.empty() && s.tabLang != L"=") r.lang = s.tabLang;
-        else if (footerLang) r.lang = langs[static_cast<size_t>(s.sendIdx)];
-        else if (!langs.empty()) r.lang = langs.front();
-    } else if (!s.tabLang.empty()) {
+    if (!s.tabLang.empty()) {
         if (s.tabLang != L"=") r.lang = s.tabLang;
     } else if (footerLang) {
         r.lang = langs[static_cast<size_t>(s.sendIdx)];

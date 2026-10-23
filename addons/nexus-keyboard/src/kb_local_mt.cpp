@@ -14,6 +14,8 @@ enum class LocalMtJob { InstallModule, RemoveModule, InstallModel, RemoveModel }
 
 struct LocalMtState {
     bool module = false;
+    bool nllbInstalled = false;
+    uint64_t nllbBytes = 0;
     std::vector<bool> models;
     std::vector<uint64_t> bytes;  // each installed pair's folder on disk
     ULONGLONG nextCheck = 0;
@@ -39,6 +41,8 @@ void RefreshLocalMtState(const std::wstring& dataDir) {
     if (GetTickCount64() < s_state.nextCheck) return;
     s_state.nextCheck = GetTickCount64() + 2000;
     s_state.module = gct::LocalMtModulePresent(KeyboardDir());
+    s_state.nllbInstalled = gct::LocalMtModelPresent(dataDir, "nllb-200");
+    s_state.nllbBytes = s_state.nllbInstalled ? FolderBytes(dataDir + L"\\translate\\nllb-200") : 0;
     const auto& catalog = gct::LocalMtModelCatalog();
     s_state.models.assign(catalog.size(), false);
     s_state.bytes.assign(catalog.size(), 0);
@@ -128,7 +132,7 @@ std::string PairLabel(const gct::LocalMtModelInfo& model) {
 }
 }  // namespace
 
-void RenderLocalMtOptions(const Config& edit) {
+void RenderLocalMtOptions(Config& edit) {
     RefreshLocalMtState(edit.dataDir);
     bool inUse = false;
     {
@@ -156,6 +160,55 @@ void RenderLocalMtOptions(const Config& edit) {
             StartLocalMtJob(LocalMtJob::RemoveModule, edit.dataDir);
         }
     }
+
+    ImGui::Separator();
+    ImGui::TextUnformatted(UI(Tr(L"Universal model (NLLB-200)")).c_str());
+    ImGui::TextDisabled("%s", UI(Tr(L"Meta NLLB-200-distilled-600M - direct translation between 200+ languages without English pivot.")).c_str());
+    StatusRow(UI(Tr(L"Universal model")),
+              g_localMtBusy ? 1 : s_state.nllbInstalled ? 2 : 0,
+              UI(s_state.nllbInstalled ? TrF(L"installed ({1} MB)", {Mb(s_state.nllbBytes)})
+                                       : Tr(L"missing (about 600 MB)")));
+    if (!g_localMtBusy) {
+        if (s_state.nllbInstalled) {
+            if (inUse) {
+                ImGui::TextDisabled("%s", UI(Tr(L"Choose another translator and save before removing local translation files.")).c_str());
+            } else {
+                static std::string s_armedNllb;
+                static ULONGLONG s_untilNllb = 0;
+                const bool armed = s_armedNllb == "nllb-200" && GetTickCount64() < s_untilNllb;
+                if (ImGui::SmallButton((UI(armed ? Tr(L"Click again to remove") : Tr(L"Remove")) + "##localmtnllb").c_str())) {
+                    if (armed) {
+                        s_armedNllb.clear();
+                        StartLocalMtJob(LocalMtJob::RemoveModel, edit.dataDir, "nllb-200");
+                    } else {
+                        s_armedNllb = "nllb-200";
+                        s_untilNllb = GetTickCount64() + 4000;
+                    }
+                }
+            }
+        } else if (s_state.module) {
+            if (ImGui::SmallButton(UI(Tr(L"Download NLLB-200 universal model")).c_str()))
+                StartLocalMtJob(LocalMtJob::InstallModel, edit.dataDir, "nllb-200");
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", UI(Tr(L"Downloads the INT8 NLLB-200 package for direct many-to-many translation.")).c_str());
+        } else {
+            ImGui::TextDisabled("%s", UI(Tr(L"Install the local translation module first.")).c_str());
+        }
+    }
+
+    ImGui::Separator();
+    ImGui::TextUnformatted(UI(Tr(L"Inference Quality & Speed")).c_str());
+    const char* qualityItems[] = {
+        "Fast / Beam 1 (~350ms, lowest CPU)",
+        "Balanced / Beam 2 (~500ms, recommended)",
+        "Quality / Beam 4 (~900ms, maximum nuance)"
+    };
+    int currentQ = edit.localQuality == 1 ? 0 : edit.localQuality == 4 ? 2 : 1;
+    ImGui::SetNextItemWidth(300);
+    if (ImGui::Combo(UI(Tr(L"Quality Mode") + L"##localmtquality").c_str(), &currentQ, qualityItems, 3)) {
+        edit.localQuality = currentQ == 0 ? 1 : currentQ == 2 ? 4 : 2;
+    }
+    ImGui::TextDisabled("%s", UI(Tr(L"Under heavy chat load, the orchestrator automatically steps down to Beam 1.")).c_str());
 
     ImGui::Separator();
     ImGui::TextUnformatted(UI(Tr(L"OPUS-MT language models")).c_str());
@@ -204,8 +257,19 @@ void RenderLocalMtOptions(const Config& edit) {
     if (s_state.models[selected]) {
         if (inUse) {
             ImGui::TextDisabled("%s", UI(Tr(L"Choose another translator and save before removing local translation files.")).c_str());
-        } else if (RemoveButton("localmtmodel")) {
-            StartLocalMtJob(LocalMtJob::RemoveModel, edit.dataDir, model.pair);
+        } else {
+            static std::string s_armed;
+            static ULONGLONG s_until = 0;
+            const bool armed = s_armed == model.pair && GetTickCount64() < s_until;
+            if (ImGui::SmallButton((UI(armed ? Tr(L"Click again to remove") : Tr(L"Remove")) + "##localmtmodel").c_str())) {
+                if (armed) {
+                    s_armed.clear();
+                    StartLocalMtJob(LocalMtJob::RemoveModel, edit.dataDir, model.pair);
+                } else {
+                    s_armed = model.pair;
+                    s_until = GetTickCount64() + 4000;
+                }
+            }
         }
     } else if (s_state.module) {
         if (ImGui::SmallButton(UI(Tr(L"Download selected model")).c_str()))

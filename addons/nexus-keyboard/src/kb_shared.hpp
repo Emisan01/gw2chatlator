@@ -38,6 +38,8 @@
 #include "core/send_guard.hpp"
 #include "core/soft_wrap.hpp"
 #include "core/send_route.hpp"
+#include "core/translation_orchestrator.hpp"
+#include "win/local_mt_translator.hpp"
 #include "core/snippets.hpp"
 #include "core/steady.hpp"
 #include "core/slang.hpp"
@@ -224,6 +226,9 @@ void ReleaseTextFont();  // before the DLL goes, and before another face is aske
 // The options window: Segoe UI at least 14 pt, raised further when Nexus' UI is larger; independent of chat size.
 constexpr const char* kUiFontId = "GW2Chatlator_UI";
 extern std::atomic<ImFont*> g_uiFont;
+extern std::atomic<float> s_nexusOptionsFontPx;
+float FollowUiPx();
+int FollowUiPt();
 void RequestUiFont(float px);
 void ReleaseUiFont();
 extern HMODULE g_self;
@@ -254,6 +259,8 @@ struct TestHooks {
 };
 extern TestHooks g_test;
 extern bool g_showOptions;
+extern bool g_showDebugWindow;
+void SuppressImplicitDebugWindow();
 void Log(ELogLevel level, const char* text);
 std::string U8(const std::wstring& w);
 std::wstring W(const std::string& s);
@@ -294,6 +301,8 @@ struct ChatLine {
     std::vector<PieUI::ChatLinks::LinkSegment> transSegs;
     ULONGLONG receivedTime = 0;
     uint32_t mapId = 0;
+    bool transPending = false;    // true while waiting for background translation (loading state)
+    bool transAttempted = false;  // true after translation was evaluated (prevents frame re-query)
     // Its height in the chat as last drawn, and what for (width, font, text length): out of view it costs only a
     // placeholder this high – no measuring, no chat code lookups (render thread only).
     float rowH = -1, rowW = -1, rowFont = -1;
@@ -310,6 +319,7 @@ struct TypingHelp {  // the worker's answer for one text + caret
 extern std::mutex g_mu;
 extern Config g_cfg;
 extern std::shared_ptr<Translator> g_translator;
+extern TranslationOrchestrator g_orchestrator;
 extern std::deque<ChatLine> g_lines;
 extern uint64_t g_nextId;
 extern bool g_scrollDown;
@@ -426,7 +436,7 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked = false, bool once
 // The chat lines of other players that stand in our window right now (the visible part of the chat; filled while the
 // chat is drawn, g_mu). Only these are translated in one go – an old chat is never translated in full.
 extern std::vector<uint64_t> g_visibleLines;
-int TranslateRecentLines(bool once);
+int TranslateRecentLines(bool once = false);
 void TranslateInput(uint64_t gen, std::wstring text);
 void ComputeTyping();
 void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring learnText);
@@ -546,7 +556,7 @@ extern std::atomic<int> g_wipeDone;
 void StatusRow(const std::string& what, int state, const std::string& text);
 void RenderModules(bool guide);
 bool RemoveButton(const char* id);
-void RenderLocalMtOptions(const Config& edit);
+void RenderLocalMtOptions(Config& edit);
 // A number for the eye (Options > Technical): smoothed over about the last 20 frames, shown at most 4 times a second.
 struct Steady {
     gct::SteadyNumber n;  // core/steady: its equations in core_tests
@@ -588,6 +598,8 @@ void SetProfile(int profile, bool on);
 Layout Lay();
 void Hint(const std::string& text);
 void RenderOptionsWindow();
+void RenderDebugWindow();
+std::string BuildDiagnosticReport();
 void SafeOpenUrl(const std::wstring& rawLink);
 void BoxText(const ImVec2& at, const ImVec4& clip, ImU32 color, const std::string& text, float scale = 1.0f);
 std::wstring WordAtMouse(const ImVec2& textAt);

@@ -39,6 +39,15 @@ UINT OnWndProc(HWND, UINT msg, WPARAM wp, LPARAM lp) {
             }
             return 0;
         }
+        // Panic Switch: Ctrl + Alt + T pauses/resumes chat translation immediately
+        if (down && (mods & (kModCtrl | kModAlt)) == (kModCtrl | kModAlt) && (vk == 'T' || vk == 't')) {
+            g_orchestrator.TogglePaused();
+            std::lock_guard<std::mutex> lock(g_mu);
+            SetStatus(g_orchestrator.IsPaused() ? Tr(L"Chat translation paused (Ctrl+Alt+T)")
+                                                : Tr(L"Chat translation resumed (Ctrl+Alt+T)"), 4000);
+            if (!g_orchestrator.IsPaused()) TranslateRecentLines();
+            return 0;
+        }
         if (!g_pttVk || vk != g_pttVk) return msg;
         if (down) {
             if (lp & (1 << 30)) return 0;           // held: the key repeats
@@ -154,6 +163,7 @@ void AddonLoad(AddonAPI_t* api) {
         if (ReadFileBytes(g_cfg.dataDir + L"\\snippets.txt", blocks)) g_snippets.Parse(FromUtf8(blocks));
     }
     RequestTextFont(g_cfg.fontPt, g_cfg.fontFace);
+    RequestUiFont(FollowUiPx());
     Config::DeferWrites(true);  // the ini is written on the worker (KickSave), never on the game thread
     g_worker.Start();
     g_worker.Post(InitSpelling);
@@ -288,8 +298,8 @@ extern "C" __declspec(dllexport) void Gw2KbTestShape(int step) {
     else g_expandRequest = true;
 }
 
-// nexus_kb_selftest, "Translate what I say": what a message does with "Send" at "as written" – spoken or typed, the
-// switch on or off, said in English – 1 translated (into `lang`), 0 as written. The state is put back afterwards.
+// nexus_kb_selftest, "Translate what I say": what a message does when spoken with voice translation on/off,
+// or typed – the output language in the chat window defines the translation (user, 2026-10-23).
 extern "C" __declspec(dllexport) int Gw2KbTestVoiceRoute(int spoken, int voiceTranslate, char* lang) {
     if (!TestHost()) return -1;
     std::lock_guard<std::mutex> lock(g_mu);
@@ -300,8 +310,8 @@ extern "C" __declspec(dllexport) int Gw2KbTestVoiceRoute(int spoken, int voiceTr
     g_cfg.voiceEnabled = true;
     g_cfg.voiceTranslate = voiceTranslate != 0;
     g_sendOverride.clear();
-    g_sendIdx = static_cast<int>(g_cfg.writeLangs.size());  // "Send": as written
-    g_dictLang = L"EN";
+    g_sendIdx = 0;  // output language in the chat window (e.g. EN-GB or DE)
+    g_dictLang = PrimaryLang(SendLang()) == L"EN" ? L"DE" : L"EN";  // spoken in a different language -> translates
     const int translated = Translating() ? 1 : 0;
     if (lang) strncpy_s(lang, 16, U8(SendLang()).c_str(), _TRUNCATE);
     g_inputSpoken = wasSpoken;

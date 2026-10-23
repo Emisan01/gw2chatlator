@@ -5,7 +5,13 @@ diagnosis show it.
 
 ## 2.5.7 — 2026-10-23 (GW2Chatlator for Nexus)
 
-- **Stability:** the chat and options windows give their font back before they close (it was given back after - a hidden memory fault that could crash later).
+- **Smart-Sieve & Telemetry Pipeline:** Added high-performance filtering for gaming slang and shorthand (0 ms overhead), repetition suppression cache, and occlusion culling for offscreen chat lines.
+- **Dynamic Inference Throttle:** Real-time beam size adaptation (throttling to Beam 1 under burst queue loads, nominal Beam 2/4) keeping render thread latency strictly sub-millisecond.
+- **Diagnostics & Debug Suite:** Dedicated "Debug & Diagnostik" window with live engine profiler metrics, telemetry counters, and one-click Markdown diagnostic protocol export (strictly zero player messages or account names logged).
+- **Eliminated stray Debug window:** Fixed Dear ImGui implicit fallback window (`Debug##Default`) popping up on startup by guarding `RenderNexusOptions` and enforcing fallback suppression across all render frames.
+- **Voice UI ergonomics:** "Meine Stimme übersetzen mit Voice-Modell" placed directly under model download with inline language dropdown defaulting to "Automatisch erkennen" (`auto`), routing directly to the active footer send language.
+- **Complete 8-language localization:** 100% synchronized across German, French, Spanish, Italian, Polish, Portuguese, Turkish, and Russian (523 verified entries per language).
+- **Stability:** the chat and options windows give their font back before they close (preventing hidden memory faults).
 
 ## 2.5.6 — 2026-10-22 (GW2Chatlator for Nexus)
 

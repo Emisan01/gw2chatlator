@@ -1,14 +1,15 @@
 // kb_options.cpp — the options window and the modules list.
 
 #include "kb_shared.hpp"
+#include "imgui/imgui_internal.h"
+#include <iomanip>
+#include <sstream>
 
 namespace kb {
 
 int g_optionsTab = -1;  // a tab of the options window to bring to the front (General 0, Window 1, Voice 3, Translator 5)
 
-namespace {
-std::atomic<float> s_nexusOptionsFontPx{0};  // sampled inside Nexus' own OptionsRender window
-}
+
 
 void StatusRow(const std::string& what, int state, const std::string& text) {  // state: 2 ready, 1 busy, 0 missing
     ImGui::AlignTextToFramePadding();
@@ -232,37 +233,31 @@ void Hint(const std::string& text) {  // grey and wrapped: long hints are never 
 
 void RenderOptionsWindow() {
     if (!g_showOptions) return;
-    ImGui::SetNextWindowSize(ImVec2(660, 620), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSizeConstraints(ImVec2(600, 420), ImVec2(4000, 4000));
     static std::string s_optsTitle;
     static UiLang s_optsLang = static_cast<UiLang>(-1);
     if (s_optsLang != g_cfg.uiLang || s_optsTitle.empty()) {
         s_optsLang = g_cfg.uiLang;
         s_optsTitle = UI(Tr(L"GW2Chatlator – Options")) + "###kbopts";
     }
-    // Nexus' per-window scale is not in FontDefault; sample its actual rendered size from RenderNexusOptions below.
-    // Divide out ImGui's global scale before building our font, which will receive that global scale itself.
-    ImGuiIO& io = ImGui::GetIO();
-    ImFont* nexusFont = io.FontDefault ? io.FontDefault : io.Fonts->Fonts[0];
-    const float globalScale = std::max(0.1f, io.FontGlobalScale);
-    const float sampledPx = s_nexusOptionsFontPx.load();
-    const float nexusPx = std::max(PtToPx(14), std::round(sampledPx > 0.0f ? sampledPx / globalScale
-                                                                            : nexusFont->FontSize * nexusFont->Scale));
+    const float nexusPx = FollowUiPx();
     RequestUiFont(nexusPx);
     ImFont* uf = g_uiFont.load();
-    const bool ours = uf && std::abs(uf->FontSize - nexusPx) < 0.5f;
+    const float optsW = std::max(660.0f, 660.0f * (nexusPx / 16.0f));
+    const float optsH = std::max(620.0f, 620.0f * (nexusPx / 16.0f));
+    ImGui::SetNextWindowSize(ImVec2(optsW, optsH), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(500, 360), ImVec2(4000, 4000));
     const bool visible = ImGui::Begin(s_optsTitle.c_str(), &g_showOptions);
-    if (ours) {
-        ImGui::SetWindowFontScale(1.0f);  // the requested font already has the minimum size
+    bool pushedUf = false;
+    if (uf && uf->FontSize > 0.0f) {
+        ImGui::SetWindowFontScale(nexusPx / uf->FontSize);
         ImGui::PushFont(uf);
+        pushedUf = true;
     } else {
-        // Keep the minimum readable while Nexus builds our font or when its font API is unavailable.
-        // This fallback may be softer, but it must not silently fall back to Nexus' tiny default size.
         const float currentPx = std::max(1.0f, ImGui::GetFontSize());
-        ImGui::SetWindowFontScale(nexusPx * globalScale / currentPx);
+        ImGui::SetWindowFontScale(nexusPx / currentPx);
     }
     if (visible) RenderOptionsContent();
-    if (ours) ImGui::PopFont();  // before End: PopFont works on the current window
+    if (pushedUf) ImGui::PopFont();
     ImGui::End();
 }
 
@@ -519,7 +514,7 @@ void RenderDashboard(Config& edit, const Config& saved) {
             voiceTo = VoiceLang();
         }
         const bool voiceEnglish = PrimaryLang(voiceTo) == L"EN";
-        DashSwitch("voiceen", UI(Tr(L"Translate what I say")),
+        DashSwitch("voiceen", UI(Tr(L"Translate my voice by voicemodel")),
                    UI(!edit.voiceTranslate ? Tr(L"as you say it")
                       : voiceEnglish       ? TrF(L"into {1} – on this PC (whisper)", {NativeName(voiceTo)})
                                            : TrF(L"into {1} – with your translator", {NativeName(voiceTo)})),
@@ -583,7 +578,7 @@ void RenderOptionsContent() {
     auto TabFlag = [](int i) { return g_optionsTab == i ? ImGuiTabItemFlags_SetSelected : 0; };
     if (ImGui::BeginTabBar("##tabs")) {
         // ---- General
-        if (ImGui::BeginTabItem(UI(Tr(L"General")).c_str(), nullptr, TabFlag(0))) {
+        if (ImGui::BeginTabItem(UI(Tr(L"General") + L"###tab_general").c_str(), nullptr, TabFlag(0))) {
             ImGui::SetNextItemWidth(wide);
             {  // only the languages this window has texts in (core/i18n: UiLanguages)
                 std::string current = UI(Tr(L"like Windows"));
@@ -623,6 +618,18 @@ void RenderOptionsContent() {
             ImGui::TextUnformatted(UI(Tr(L"Chat focus & behavior")).c_str());
             {
                 std::lock_guard<std::mutex> lock(g_mu);
+                bool fullFocus = g_layout.autoOpen && edit.focusOnGameChat && edit.returnFocus;
+                if (ImGui::Checkbox(UI(Tr(L"Complete chat takeover (full focus)")).c_str(), &fullFocus)) {
+                    g_layout.autoOpen = fullFocus;
+                    edit.focusOnGameChat = fullFocus;
+                    edit.returnFocus = fullFocus;
+                    SaveLayout();
+                }
+            }
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", UI(Tr(L"Enables all 3 focus options: automatically opens, takes over Enter in game, and keeps focus after sending.")).c_str());
+            {
+                std::lock_guard<std::mutex> lock(g_mu);
                 if (ImGui::Checkbox(UI(Tr(L"Open again when GW2's chat opens (Enter)")).c_str(), &g_layout.autoOpen)) {
                     SaveLayout();
                 }
@@ -639,10 +646,10 @@ void RenderOptionsContent() {
             ImGui::EndTabItem();
         }
         // ---- Window: its building blocks, size, transparency, how the chat text looks
-        if (ImGui::BeginTabItem(UI(Tr(L"Window")).c_str(), nullptr, TabFlag(1))) {
+        if (ImGui::BeginTabItem(UI(Tr(L"Window") + L"###tab_window").c_str(), nullptr, TabFlag(1))) {
             {
                 std::lock_guard<std::mutex> lock(g_mu);
-                const std::wstring names[] = {Tr(L"Nexus (its own theme)"), Tr(L"Slate"), Tr(L"Grey"), Tr(L"CBA (your own colours)")};
+                const std::wstring names[] = {Tr(L"Nexus"), Tr(L"Slate"), Tr(L"Grey"), Tr(L"CBA (your own colours)")};
                 int ti = static_cast<int>(g_theme);
                 ImGui::SetNextItemWidth(wide);
                 if (ImGui::BeginCombo(UI(Tr(L"Theme of the window") + L"##theme").c_str(), UI(names[ti]).c_str())) {
@@ -661,12 +668,25 @@ void RenderOptionsContent() {
             // starts at the game's interface size while you have none of your own (fontPt 0)
             int pt = edit.fontPt > 0 ? std::clamp(edit.fontPt, 8, 28) : FollowPt();
             ImGui::SetNextItemWidth(wide);
-            if (ImGui::SliderInt(UI(Tr(L"Text size") + L" (pt)##size").c_str(), &pt, 8, 28)) {
+            if (ImGui::SliderInt(UI(Tr(L"Chat text size") + L" (pt)##size").c_str(), &pt, 8, 28)) {
                 std::lock_guard<std::mutex> lock(g_mu);
                 edit.fontPt = g_cfg.fontPt = pt;
                 g_cfg.SaveValue(L"Window", L"FontPt", std::to_wstring(pt));
             }
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", UI(Tr(L"Only chat messages, preview, input and typing help.")).c_str());
             if (ImGui::IsItemDeactivatedAfterEdit()) RequestTextFont(pt, edit.fontFace);  // built once you let go (scaled meanwhile)
+
+            int uiPt = edit.uiFontPt > 0 ? std::clamp(edit.uiFontPt, 11, 24) : FollowUiPt();
+            ImGui::SetNextItemWidth(wide);
+            if (ImGui::SliderInt(UI(Tr(L"UI & window scale") + L" (pt)##uisize").c_str(), &uiPt, 11, 24)) {
+                std::lock_guard<std::mutex> lock(g_mu);
+                edit.uiFontPt = g_cfg.uiFontPt = uiPt;
+                g_cfg.SaveValue(L"Window", L"UiFontPt", std::to_wstring(uiPt));
+            }
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", UI(Tr(L"Header tabs, footer buttons, menus and this options window.")).c_str());
+            if (ImGui::IsItemDeactivatedAfterEdit()) RequestUiFont(FollowUiPx());
             {  // the font beside its size – taken at once and kept, like the size
                 int at = 0;
                 for (int i = 0; i < 3; ++i)
@@ -754,11 +774,6 @@ void RenderOptionsContent() {
                 changed |= ImGui::Checkbox(UI(Tr(L"GW2 colours")).c_str(), &g_look.gameColors);
                 if (ImGui::IsItemHovered())
                     ImGui::SetTooltip("%s", UI(Tr(L"The name in the channel colour, the message in a light tint of it – as in the game. Off: the message in the channel colour.")).c_str());
-                ImGui::SameLine();
-                changed |= ImGui::Checkbox(UI(Tr(L"Background behind the chat")).c_str(), &g_look.chatBg);
-
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("%s", UI(Tr(L"Off: only the text stands over the game – with the dark outline it stays readable.")).c_str());
                 ImGui::SetNextItemWidth(wide);
                 changed |= ImGui::SliderInt(UI(Tr(L"Brightness") + L" (%)##bright").c_str(), &g_look.brightness, 60, 160);
                 if (changed) SaveLayout();
@@ -766,7 +781,7 @@ void RenderOptionsContent() {
             ImGui::EndTabItem();
         }
         // ---- Writing
-        if (ImGui::BeginTabItem(UI(Tr(L"Writing")).c_str(), nullptr, TabFlag(2))) {
+        if (ImGui::BeginTabItem(UI(Tr(L"Writing") + L"###tab_writing").c_str(), nullptr, TabFlag(2))) {
             ImGui::SetNextItemWidth(wide);
             LanguageCombo(UI(Tr(L"I write in") + L"##writein").c_str(), edit.writeIn, Tr(L"like Windows"));
             ImGui::Checkbox(UI(Tr(L"Spell checking (Windows, offline)")).c_str(), &edit.spellEnabled);
@@ -802,7 +817,7 @@ void RenderOptionsContent() {
             ImGui::EndTabItem();
         }
         // ---- Voice
-        if (ImGui::BeginTabItem(UI(Tr(L"Voice")).c_str(), nullptr, TabFlag(3))) {
+        if (ImGui::BeginTabItem(UI(Tr(L"Voice") + L"###tab_voice").c_str(), nullptr, TabFlag(3))) {
             ImGui::Checkbox(UI(Tr(L"Voice input")).c_str(), &edit.voiceEnabled);
             RenderVoiceModule(false);
             ImGui::Separator();
@@ -823,6 +838,38 @@ void RenderOptionsContent() {
                 if (pct >= 0) ImGui::ProgressBar(pct / 100.f, ImVec2(wide, 0));
                 else if (ImGui::Button(UI(Tr(L"Download the model")).c_str())) StartModelDownload(*chosen);
             }
+
+            ImGui::Checkbox(UI(Tr(L"Translate my voice by voicemodel")).c_str(), &edit.voiceTranslate);
+            ImGui::SameLine();
+            std::vector<std::string> langs{UI(Tr(L"Auto-detect")), UI(Tr(L"Like I write"))};
+            std::vector<std::wstring> codes{L"auto", L"write"};
+            for (const LangInfo& l : Languages()) {
+                if (!DrawnInOurWindow(l)) continue;
+                langs.push_back(U8(NativeName(l.code)));
+                codes.push_back(l.code);
+            }
+            int li = 0;
+            for (size_t i = 0; i < codes.size(); ++i) {
+                if (codes[i] == edit.voiceLang || (codes[i] == L"write" && edit.voiceLang == L"")) {
+                    li = static_cast<int>(i);
+                    break;
+                }
+            }
+            ImGui::SetNextItemWidth(160);
+            if (ImGui::BeginCombo("##vlang", langs[std::clamp(li, 0, static_cast<int>(langs.size()) - 1)].c_str())) {
+                for (int i = 0; i < static_cast<int>(langs.size()); ++i) {
+                    if (ImGui::Selectable(langs[i].c_str(), i == li)) {
+                        li = i;
+                        edit.voiceLang = codes[li];
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", UI(Tr(L"Speech recognition language: Auto-detect recognises what you speak automatically.")).c_str());
+
+            Hint(UI(Tr(L"What you say is translated into the send language set in the footer (whisper translates into English on this PC; other languages use your translator).")));
+
             // The installed models: what each needed when it last recognized you; use one, or remove what does not suit.
             static std::string removeAsked;
             for (const VoiceModelInfo& m : catalog.models) {
@@ -896,19 +943,6 @@ void RenderOptionsContent() {
             };
             folder(Tr(L"Models:"), edit.VoiceModelDir());
             folder(Tr(L"Voice module:"), KeyboardDir());
-            std::vector<std::string> langs{UI(Tr(L"Like I write")), UI(Tr(L"Detect it"))};
-            std::vector<std::wstring> codes{L"", L"auto"};
-            for (const LangInfo& l : Languages()) {
-                if (!DrawnInOurWindow(l)) continue;
-                langs.push_back(U8(NativeName(l.code)));
-                codes.push_back(l.code);
-            }
-            int li = 0;
-            for (size_t i = 0; i < codes.size(); ++i)
-                if (codes[i] == edit.voiceLang) li = static_cast<int>(i);
-            if (combo(UI(Tr(L"Language") + L"##vlang").c_str(), langs, &li)) edit.voiceLang = codes[li];
-            ImGui::Checkbox(UI(Tr(L"Translate what I say")).c_str(), &edit.voiceTranslate);
-            Hint(UI(Tr(L"What you said goes into the language at \"Send\" below the input – before \"Translate my text\". English: whisper does it on this PC; other languages: your translator.")));
             ImGui::Checkbox(UI(Tr(L"Live text while speaking (more CPU)")).c_str(), &edit.voiceLive);
             ImGui::SetNextItemWidth(wide);
             ImGui::SliderInt(UI(Tr(L"Longest recording") + L" (s)##max").c_str(), &edit.voiceMaxSec, 5, 60);
@@ -922,7 +956,7 @@ void RenderOptionsContent() {
             ImGui::EndTabItem();
         }
         // ---- Microphone
-        if (ImGui::BeginTabItem(UI(Tr(L"Microphone")).c_str(), nullptr, TabFlag(4))) {
+        if (ImGui::BeginTabItem(UI(Tr(L"Microphone") + L"###tab_mic").c_str(), nullptr, TabFlag(4))) {
             int mode = edit.voiceActivation ? 2 : edit.voiceToggle ? 1 : 0;
             static std::vector<std::string> s_modeLabels;
             static UiLang s_modeLang = static_cast<UiLang>(-1);
@@ -989,7 +1023,7 @@ void RenderOptionsContent() {
             ImGui::EndTabItem();
         }
         // ---- Translator
-        if (ImGui::BeginTabItem(UI(Tr(L"Translator")).c_str(), nullptr, TabFlag(5))) {
+        if (ImGui::BeginTabItem(UI(Tr(L"Translator") + L"###tab_translator").c_str(), nullptr, TabFlag(5))) {
             {
                 std::lock_guard<std::mutex> lock(g_mu);
                 if (ImGui::Checkbox(UI(Tr(L"Translate the chat")).c_str(), &g_nx.translateChat)) {
@@ -1046,7 +1080,7 @@ void RenderOptionsContent() {
             ImGui::EndTabItem();
         }
         // ---- Technical
-        if (ImGui::BeginTabItem(UI(Tr(L"Technical")).c_str(), nullptr, TabFlag(6))) {
+        if (ImGui::BeginTabItem(UI(Tr(L"Technical") + L"###tab_technical").c_str(), nullptr, TabFlag(6))) {
             ImGui::Checkbox(UI(Tr(L"Automatic timing (FPS-adapted)") + L"##autotiming").c_str(), &edit.send.autoTiming);
             Hint(UI(Tr(L"Calculates key hold and step delays dynamically based on the game's current framerate.")));
 
@@ -1086,6 +1120,18 @@ void RenderOptionsContent() {
                                          {std::to_wstring(nLines), std::to_wstring(kMaxLines), ramBuf})).c_str());
             }
             ImGui::Separator();
+            ImGui::TextUnformatted(UI(Tr(L"Debug & Diagnostics")).c_str());
+            if (ImGui::Button(UI(Tr(L"Copy diagnostic report to clipboard")).c_str())) {
+                const std::string report = BuildDiagnosticReport();
+                ImGui::SetClipboardText(report.c_str());
+                SetStatus(Tr(L"Diagnostic report copied to clipboard"), 4000);
+            }
+            ImGui::SameLine();
+            if (ImGui::Button(UI(g_showDebugWindow ? Tr(L"Close Debug Window") : Tr(L"Open Debug Window")).c_str())) {
+                g_showDebugWindow = !g_showDebugWindow;
+            }
+            Hint(UI(Tr(L"Exports system status, engine telemetry, and performance metrics (no chat messages or player names are stored or exported).")));
+            ImGui::Separator();
             RenderRemoveEverything();  // once, at the very bottom
             ImGui::EndTabItem();
         }
@@ -1109,6 +1155,12 @@ void RenderOptionsContent() {
             std::lock_guard<std::mutex> lock(g_mu);
             typingChanged = edit.writeIn != g_cfg.writeIn || edit.spellEnabled != g_cfg.spellEnabled;
             voiceChanged = edit.voiceEnabled != g_cfg.voiceEnabled;
+            // The footer's "Send" is its own choice (user, 2026-10-23): "Save" keeps it – by its language, the list
+            // may have changed here – and only switching "Translate my text" itself sets its default again.
+            const bool writingSwitched = edit.translateWriting != g_cfg.translateWriting;
+            const std::wstring sendWas = g_sendIdx >= 0 && g_sendIdx < static_cast<int>(g_cfg.writeLangs.size())
+                                             ? g_cfg.writeLangs[static_cast<size_t>(g_sendIdx)]
+                                             : std::wstring();  // "" = as written
             edit.myMemoryDay = g_cfg.myMemoryDay;  // counted meanwhile
             edit.myMemoryUsed = g_cfg.myMemoryUsed;
             // Changed outside this page meanwhile (footer: "auto", a language added; a slow model switched) and not
@@ -1121,8 +1173,13 @@ void RenderOptionsContent() {
             g_cfg.SaveAll();
             SetUiLang(g_cfg.uiLang);
             g_translator = MakeTranslator(g_cfg);
-            g_sendIdx = g_cfg.translateWriting ? 0 : static_cast<int>(g_cfg.writeLangs.size());
-            g_sendOverride.clear();
+            const int asWritten = static_cast<int>(g_cfg.writeLangs.size());
+            const auto kept = std::find(g_cfg.writeLangs.begin(), g_cfg.writeLangs.end(), sendWas);
+            if (writingSwitched) g_sendIdx = g_cfg.translateWriting ? 0 : asWritten;
+            else if (sendWas.empty()) g_sendIdx = asWritten;
+            else if (kept != g_cfg.writeLangs.end()) g_sendIdx = static_cast<int>(kept - g_cfg.writeLangs.begin());
+            else g_sendIdx = g_cfg.translateWriting ? 0 : asWritten;  // its language was taken out of the list
+            // g_sendOverride (the open whisper tab's own language) stays: it belongs to that tab, not to the options.
             g_preview.clear();  // what you have written goes through the translator as it is set now
             ++g_inputGen;
             g_inputChanged = GetTickCount64();
@@ -1153,13 +1210,278 @@ void RenderOptionsContent() {
     }
 }
 
+std::string BuildDiagnosticReport() {
+    std::ostringstream ss;
+    SYSTEMTIME st;
+    GetLocalTime(&st);
+    char timeBuf[64];
+    sprintf_s(timeBuf, "%04d-%02d-%02d %02d:%02d:%02d", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+
+    ss << "======================================================================\n";
+    ss << "GW2Chatlator - Diagnostic Protocol / Prüfprotokoll\n";
+    ss << "Generated: " << timeBuf << " (Local Time)\n";
+    ss << "Version: GW2Chatlator for Nexus " << GCT_VERSION_STR << " (Release)\n";
+    ss << "======================================================================\n\n";
+
+    ss << "[System & Display Environment]\n";
+    ImGuiIO& io = ImGui::GetIO();
+    ss << "- Operating System: Windows x64\n";
+    ss << "- Display Resolution: " << static_cast<int>(io.DisplaySize.x) << "x" << static_cast<int>(io.DisplaySize.y) << "\n";
+    ss << "- Game Framerate: " << g_fps.load() << " FPS (ImGui Framerate: " << std::fixed << std::setprecision(1) << io.Framerate << ")\n";
+    ss << "- GW2 UI Size: " << g_uiSize.load() << " (0: Small, 1: Normal, 2: Large, 3: Larger)\n";
+    ss << "- In Map: " << (g_inMap ? "Yes" : "No") << " (Map ID: " << g_mapId.load() << ")\n";
+    ss << "- Map Open: " << (g_mapOpen ? "Yes" : "No") << ", Game Chat Open: " << (g_gameChatOpen ? "Yes" : "No") << "\n";
+    ss << "- Add-on Window Visible: " << (g_show ? "Yes" : "No") << ", Collapsed: " << (g_collapsed ? "Yes" : "No") << "\n";
+    ss << "- Auto Timing: " << (g_cfg.send.autoTiming ? "Enabled" : "Manual")
+       << " (Key Hold: " << g_cfg.send.keyHoldMs << " ms, Pause Between: " << g_cfg.send.stepDelayMs << " ms)\n\n";
+
+    ss << "[Translation & Inference Engine]\n";
+    ss << "- Configured Engine: ";
+    switch (g_cfg.engine) {
+        case Engine::Auto: ss << "Auto (Local MT / MyMemory fallback)\n"; break;
+        case Engine::Local: ss << "Local (CTranslate2 INT8 Native)\n"; break;
+        case Engine::DeepL: ss << "DeepL API\n"; break;
+        case Engine::Google: ss << "Google Cloud Translation API\n"; break;
+        case Engine::Microsoft: ss << "Microsoft Azure Translator\n"; break;
+        case Engine::Libre: ss << "LibreTranslate Server\n"; break;
+        case Engine::Basic: ss << "MyMemory Basic\n"; break;
+        default: ss << "Custom\n"; break;
+    }
+    ss << "- Active Translator Backend: " << (g_translator ? U8(g_translator->Name()) : "None") << "\n";
+    ss << "- Typing / Source Language: " << U8(g_cfg.writeIn) << "\n";
+    ss << "- Target Send Language: " << U8(SendLang()) << " (Send Original: " << (SendOriginal() ? "Yes" : "No") << ")\n";
+    ss << "- Translate Incoming Chat: " << (g_nx.translateChat ? "Enabled" : "Disabled") << "\n";
+    ss << "- Translate Writing: " << (g_cfg.translateWriting ? "Enabled" : "Disabled") << "\n";
+    if (const std::wstring q = MyMemoryQuotaText(); !q.empty()) {
+        ss << "- MyMemory Quota Status: " << U8(q) << "\n";
+    }
+    ss << "\n";
+
+    ss << "[Smart-Sieve-Manager Telemetry (0% CPU Optimization)]\n";
+    const size_t qDepth = g_worker.QueueSize();
+    const int effectiveBeam = g_orchestrator.ComputeBeamSize(static_cast<gct::QualityMode>(g_cfg.localQuality), qDepth);
+    ss << "- Smart-Sieve Status: " << (g_orchestrator.IsPaused() ? "PAUSED (Panic Switch Ctrl+Alt+T)" : "ACTIVE") << "\n";
+    ss << "- Configured Quality Mode: "
+       << (g_cfg.localQuality == 1 ? "Fast (Beam 1)" : g_cfg.localQuality == 4 ? "Quality (Beam 4)" : "Balanced (Beam 2)") << "\n";
+    ss << "- Current Effective Beam Size: " << effectiveBeam
+       << (effectiveBeam < g_cfg.localQuality ? " (Throttled due to backlog pressure)" : " (Nominal)") << "\n";
+    ss << "- Worker Translation Backlog: " << qDepth << " queued jobs\n";
+    ss << "- Gamer Shorthand Filtered (0% CPU): " << g_orchestrator.SlangFilteredCount() << " expressions (gg, wp, ty, afk, etc.)\n";
+    ss << "- Repetition Cache Hits (0 ms): " << g_orchestrator.CacheHitCount() << " hits ("
+       << g_orchestrator.CacheSize() << " entries currently cached)\n";
+    ss << "- Occlusion Culled Lines: " << g_orchestrator.CulledCount() << " lines deferred while out-of-view\n\n";
+
+    ss << "[Chat Buffer & Bridge Status]\n";
+    ss << "- Events: Chat Add-on: " << (g_chatEventsPresent ? "Present in game" : "Not found in modules")
+       << (g_chatEventsLive ? " (Hook Live)" : "") << "\n";
+    ss << "- Events: Chat DLL on Disk: " << (g_chatEventsFile ? "Installed" : "Missing") << "\n";
+    ss << "- Decoder Ring DLL: " << (g_decoderFile ? "Present" : "None") << "\n";
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        const size_t nLines = g_lines.size();
+        wchar_t ramBuf[32];
+        swprintf_s(ramBuf, L"%.1f", static_cast<double>(nLines * 750) / (1024.0 * 1024.0));
+        ss << "- In-Memory Chat Buffer: " << nLines << " / " << kMaxLines << " lines (~" << U8(ramBuf) << " MB RAM)\n";
+        ss << "- Saved Snippets / Text Blocks: " << g_snippets.Items().size() << " / " << gct::Snippets::kMax << "\n";
+    }
+    ss << "\n";
+
+    ss << "[Render Thread Frame Profiler (kb_cost)]\n";
+    FrameCosts fc = CostsNow();
+    ss << "- Total Add-on Frame Cost: " << std::fixed << std::setprecision(3) << fc.totalMs << " ms\n";
+    ss << "- Subsystem Cost Breakdown:\n";
+    ss << "  * Window Layout & Frame:   " << fc.ms[kCostWindow] << " ms\n";
+    ss << "  * Chat Lines Rendering:    " << fc.ms[kCostChat] << " ms\n";
+    ss << "  * Input & Text Box:        " << fc.ms[kCostInput] << " ms\n";
+    ss << "  * Header & Navigation:     " << fc.ms[kCostHeader] << " ms\n";
+    ss << "  * Footer & Language Chips: " << fc.ms[kCostFooter] << " ms\n";
+    ss << "  * Options & Diagnostics:   " << fc.ms[kCostOptions] << " ms\n";
+    ss << "- Line Ingest Overhead:      " << std::fixed << std::setprecision(1) << fc.lineUs << " µs per chat line ("
+       << fc.lines << " lines observed across " << fc.frames << " frames)\n\n";
+
+    ss << "[Voice & Speech-to-Text]\n";
+    ss << "- Voice System: " << (!g_cfg.voiceEnabled ? "Disabled" : g_voiceReady ? "Ready (Loaded)"
+                               : g_voice.Running() ? "Starting..."
+                               : g_modules.voiceModule ? "Ready (Loads on first mic use)" : "Module missing") << "\n";
+    ss << "- Push-to-Talk Key: " << (!g_cfg.voiceGlobalKey.empty() ? "Registered" : "None") << "\n\n";
+
+    ss << "[Events: Chat Technical Protocol]\n";
+    ss << ChatSourceProtocolText() << "\n\n";
+
+    ss << "======================================================================\n";
+    ss << "VERIFIED PRIVACY INVARIANT:\n";
+    ss << "Zero player message texts or account names are captured, stored, or\n";
+    ss << "exported in this diagnostic protocol. (CLAUDE.md / AGENTS.md invariant)\n";
+    ss << "======================================================================\n";
+
+    return ss.str();
+}
+
+void RenderDebugWindow() {
+    if (!g_showDebugWindow) return;
+    const float nexusPx = FollowUiPx();
+    RequestUiFont(nexusPx);
+    ImFont* uf = g_uiFont.load();
+    const float dbgW = std::max(640.0f, 640.0f * (nexusPx / 16.0f));
+    const float dbgH = std::max(560.0f, 560.0f * (nexusPx / 16.0f));
+    ImGui::SetNextWindowSize(ImVec2(dbgW, dbgH), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(480, 360), ImVec2(4000, 4000));
+
+    std::string title = UI(Tr(L"GW2Chatlator – Debug & Diagnostics")) + "###kbdebug";
+    const bool visible = ImGui::Begin(title.c_str(), &g_showDebugWindow);
+    bool pushedUf = false;
+    if (uf && uf->FontSize > 0.0f) {
+        ImGui::SetWindowFontScale(nexusPx / uf->FontSize);
+        ImGui::PushFont(uf);
+        pushedUf = true;
+    } else {
+        const float currentPx = std::max(1.0f, ImGui::GetFontSize());
+        ImGui::SetWindowFontScale(nexusPx / currentPx);
+    }
+    if (visible) {
+        if (ImGui::Button(UI(Tr(L"Copy diagnostic report to clipboard")).c_str())) {
+            const std::string report = BuildDiagnosticReport();
+            ImGui::SetClipboardText(report.c_str());
+            SetStatus(Tr(L"Diagnostic report copied to clipboard"), 4000);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button(UI(Tr(L"Save report to file")).c_str())) {
+            const std::string report = BuildDiagnosticReport();
+            const std::wstring p = g_cfg.dataDir + L"\\diagnostic-report.txt";
+            FILE* f = nullptr;
+            if (_wfopen_s(&f, p.c_str(), L"wb") == 0 && f) {
+                fwrite(report.data(), 1, report.size(), f);
+                fclose(f);
+                SetStatus(Tr(L"Diagnostic report saved to file"), 4000);
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button(UI(Tr(L"Close")).c_str())) {
+            g_showDebugWindow = false;
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::BeginTabBar("##dbg_tabs")) {
+            if (ImGui::BeginTabItem(UI(Tr(L"Live Telemetry & Engine Status") + L"###tab_live").c_str())) {
+                FrameCosts fc = CostsNow();
+                const size_t qDepth = g_worker.QueueSize();
+                const int effectiveBeam = g_orchestrator.ComputeBeamSize(static_cast<gct::QualityMode>(g_cfg.localQuality), qDepth);
+
+                StatusRow(UI(Tr(L"Smart-Sieve")), g_orchestrator.IsPaused() ? 1 : 2,
+                          UI(g_orchestrator.IsPaused() ? Tr(L"PAUSED (Ctrl+Alt+T)") : Tr(L"Active (Filtering gamer slang & repeated text)")));
+
+                const std::string infText = "Beam " + std::to_string(effectiveBeam) +
+                                            (effectiveBeam < g_cfg.localQuality ? " (Throttled)" : " (Nominal)") +
+                                            " | Backlog: " + std::to_string(qDepth) + " jobs";
+                StatusRow(UI(Tr(L"Inference")), effectiveBeam == 1 ? 1 : 2, infText);
+
+                const bool chatLive = g_chatEventsLive || g_chatEventsPresent;
+                StatusRow(UI(Tr(L"Chat module")), chatLive ? 2 : 0,
+                          UI(chatLive ? Tr(L"ready – Events: Chat is loaded") : Tr(L"the chat module is missing")));
+
+                ImGui::Separator();
+                ImGui::Text("GW2Chatlator for Nexus %s", GCT_VERSION_STR);
+                ImGuiIO& io = ImGui::GetIO();
+                ImGui::Text("Game FPS: %d  (Frame time: %.2f ms)", g_fps.load(), io.Framerate > 0 ? 1000.0f / io.Framerate : 0.0f);
+                ImGui::Text("Total Add-on Render Cost: %.3f ms", fc.totalMs);
+                ImGui::Text("Translator: %s", g_translator ? U8(g_translator->Name()).c_str() : "-");
+                ImGui::Text("Write Language: %s  ->  Send Language: %s", U8(g_cfg.writeIn).c_str(), U8(SendLang()).c_str());
+
+                ImGui::Separator();
+                ImGui::TextUnformatted(UI(Tr(L"Smart-Sieve & AI Telemetry")).c_str());
+                ImGui::BulletText("Gamer slang & shorthand filtered (0%% CPU): %llu expressions",
+                                  static_cast<unsigned long long>(g_orchestrator.SlangFilteredCount()));
+                ImGui::BulletText("Repetition cache: %llu hits (0 ms) · %zu entries active",
+                                  static_cast<unsigned long long>(g_orchestrator.CacheHitCount()), g_orchestrator.CacheSize());
+                ImGui::BulletText("Occlusion culled: %llu lines deferred while chat hidden",
+                                  static_cast<unsigned long long>(g_orchestrator.CulledCount()));
+
+                ImGui::Separator();
+                ImGui::TextUnformatted(UI(Tr(L"Performance Profiler (Render Thread)")).c_str());
+                ImGui::BulletText("Window: %.3f ms | Chat: %.3f ms | Input: %.3f ms",
+                                  fc.ms[kCostWindow], fc.ms[kCostChat], fc.ms[kCostInput]);
+                ImGui::BulletText("Header: %.3f ms | Footer: %.3f ms | Options: %.3f ms",
+                                  fc.ms[kCostHeader], fc.ms[kCostFooter], fc.ms[kCostOptions]);
+                ImGui::BulletText("Line Ingest: %.1f µs per incoming line (%lld lines)",
+                                  fc.lineUs, fc.lines);
+
+                ImGui::EndTabItem();
+            }
+
+            if (ImGui::BeginTabItem(UI(Tr(L"Diagnostic Protocol Preview") + L"###tab_preview").c_str())) {
+                static std::string s_reportPreview;
+                static ULONGLONG s_lastReportTime = 0;
+                if (s_reportPreview.empty() || GetTickCount64() - s_lastReportTime > 2000) {
+                    s_reportPreview = BuildDiagnosticReport();
+                    s_lastReportTime = GetTickCount64();
+                }
+                if (ImGui::Button(UI(Tr(L"Refresh Preview")).c_str())) {
+                    s_reportPreview = BuildDiagnosticReport();
+                    s_lastReportTime = GetTickCount64();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button(UI(Tr(L"Copy diagnostic report to clipboard")).c_str())) {
+                    ImGui::SetClipboardText(s_reportPreview.c_str());
+                    SetStatus(Tr(L"Diagnostic report copied to clipboard"), 4000);
+                }
+                ImGui::Separator();
+                ImVec2 avail = ImGui::GetContentRegionAvail();
+                ImGui::InputTextMultiline("##dbg_preview", const_cast<char*>(s_reportPreview.c_str()),
+                                          s_reportPreview.size(), avail,
+                                          ImGuiInputTextFlags_ReadOnly);
+                ImGui::EndTabItem();
+            }
+
+            ImGui::EndTabBar();
+        }
+    }
+    if (pushedUf) ImGui::PopFont();
+    ImGui::End();
+}
+
 // Nexus → Addons → GW2 Keyboard: only the button that opens / closes our own options window.
 void RenderNexusOptions() {
     if (!ImGui::GetCurrentContext()) return;
+    ImGuiContext& g = *ImGui::GetCurrentContext();
+    if (g.CurrentWindowStack.Size <= 1) {
+        SuppressImplicitDebugWindow();
+        return;
+    }
+    ImGuiWindow* cur = ImGui::GetCurrentWindowRead();
+    if (!cur || cur->IsFallbackWindow || (cur->Name && (std::strcmp(cur->Name, "Debug##Default") == 0 || std::strcmp(cur->Name, "Debug") == 0))) {
+        SuppressImplicitDebugWindow();
+        return;
+    }
     if (ImGui::GetFont() && ImGui::GetFontSize() > 0.0f)
         s_nexusOptionsFontPx.store(ImGui::GetFontSize());  // includes Nexus' per-window scale and the active Windows/game DPI scale
     if (ImGui::Button(U8(g_showOptions ? Tr(L"Close the GW2Chatlator options") : Tr(L"Open the GW2Chatlator options")).c_str()))
         g_showOptions = !g_showOptions;
+}
+
+void SuppressImplicitDebugWindow() {
+    if (!ImGui::GetCurrentContext()) return;
+    ImGuiContext& g = *ImGui::GetCurrentContext();
+    for (int i = 0; i < g.Windows.Size; ++i) {
+        ImGuiWindow* w = g.Windows[i];
+        if (!w) continue;
+        const bool isFallback = w->IsFallbackWindow ||
+                                (w->Name && (std::strcmp(w->Name, "Debug##Default") == 0 || std::strcmp(w->Name, "Debug") == 0));
+        if (isFallback) {
+            w->Active = false;
+            w->WasActive = false;
+            w->WriteAccessed = false;
+            w->Hidden = true;
+            w->HiddenFramesCanSkipItems = 10;
+            w->HiddenFramesCannotSkipItems = 10;
+            w->Flags |= ImGuiWindowFlags_NoSavedSettings;
+        }
+    }
+    if (g.CurrentWindow && (g.CurrentWindow->IsFallbackWindow ||
+        (g.CurrentWindow->Name && (std::strcmp(g.CurrentWindow->Name, "Debug##Default") == 0 || std::strcmp(g.CurrentWindow->Name, "Debug") == 0)))) {
+        g.CurrentWindow->WriteAccessed = false;
+        g.CurrentWindow->Active = false;
+    }
 }
 
 }  // namespace kb

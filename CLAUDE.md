@@ -72,9 +72,15 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
   Object when the host permits it; otherwise timeout, removal and normal shutdown still stop it explicitly. Installed
   model-pair discovery is cached for at most 1 s. `local_mt_protocol` selects an installed direct pair first, then at
   most two pairs through English. Marian source input ends with `</s>`; multilingual models receive their required
-  source prefix from the installed `pair.json`. Hallucinated music-note artifacts absent from the input are stripped;
-  output must still contain a word, while other unexpected decorative symbols remain a validation error. Models load
-  only on first use.
+  source prefix from the installed `pair.json`. Decorative symbol runs (arrows, mathematical operators, emojis, dingbats)
+  are isolated before inference as protected segments via `SplitForLocalMt`, and lines without any word are returned as-is
+  without calling the model. The helper decodes with beam size 2 to suppress slang hallucinations. Hallucinated music-note
+  artifacts absent from the input are stripped; output must still contain a word, while other unexpected decorative
+  symbols remain a validation error. Models load only on first use. Saving options preserves the selected Send language
+  and whisper tab overrides. Options tabs use stable IDs (`###tab_*`) so changing UI language does not jump tabs.
+  Options window UI font size matches Nexus' own font size (`FontDefault->FontSize`). In the chat window, when font
+  size is set above 18 pt, the header, tabs, footer, and popups remain capped at 18 pt so only the chat messages and input
+  scale larger without clipping controls.
 - Local helper and each individual model pair are offered in Options → Translator and download only on the user's
   click. `DownloadReleaseAsset` checks GitHub's SHA-256 digest. The helper release asset is
   `GW2Keyboard-LocalMT.zip`; model assets are `GW2Keyboard-OPUS-MT-<pair>.zip` and unpack below

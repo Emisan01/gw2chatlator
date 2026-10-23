@@ -31,6 +31,10 @@ public:
         }
         cv_.notify_one();
     }
+    size_t QueueSize() {
+        std::lock_guard<std::mutex> lock(mu_);
+        return jobs_.size();
+    }
 
 private:
     void Run() {

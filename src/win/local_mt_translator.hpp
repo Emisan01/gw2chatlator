@@ -10,5 +10,6 @@ namespace gct {
 
 std::shared_ptr<Translator> MakeLocalMtTranslator(const std::wstring& helperExe, const std::wstring& dataDir);
 void StopLocalMtTranslator(const std::shared_ptr<Translator>& translator);
+void SetLocalMtBeamSize(const std::shared_ptr<Translator>& translator, int beamSize);
 
 }  // namespace gct
