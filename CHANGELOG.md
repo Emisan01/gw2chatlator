@@ -3,7 +3,7 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## 2.5.7 — 2026-10-23 (GW2Chatlator for Nexus)
+## 2.5.8 — 2026-10-23 (GW2Chatlator for Nexus)
 
 - **Smart-Sieve & Telemetry Pipeline:** Added high-performance filtering for gaming slang and shorthand (0 ms overhead), repetition suppression cache, and occlusion culling for offscreen chat lines.
 - **Dynamic Inference Throttle:** Real-time beam size adaptation (throttling to Beam 1 under burst queue loads, nominal Beam 2/4) keeping render thread latency strictly sub-millisecond.
