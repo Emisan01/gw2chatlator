@@ -103,13 +103,56 @@ def package(model, model_dir, output_dir):
     print(f"[PASS] {archive} ({archive.stat().st_size:,} bytes)")
 
 
+def package_nllb(models_dir, output_dir):
+    nllb_dir = models_dir / "nllb-200-int8"
+    if not nllb_dir.is_dir():
+        nllb_dir = models_dir / "nllb-200"
+    if not nllb_dir.is_dir():
+        raise RuntimeError(f"NLLB-200 directory not found in {models_dir} (expected nllb-200-int8 or nllb-200)")
+
+    required = ("model.bin", "sentencepiece.bpe.model")
+    missing = [name for name in required if not (nllb_dir / name).is_file()]
+    if missing:
+        raise RuntimeError(f"nllb-200 is missing: {', '.join(missing)}")
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    archive = output_dir / "GW2Keyboard-NLLB-200.zip"
+    files = ["model.bin", "sentencepiece.bpe.model", "config.json", "shared_vocabulary.json"]
+    notice_text = (
+        "NLLB-200 Universal Translation Model package (nllb-200)\n"
+        "Attribution: Meta AI (FAIR) - No Language Left Behind\n"
+        "Reference: NLLB Team et al. (2022), No Language Left Behind: Scaling Human-Centered Machine Translation.\n"
+        "Upstream model: https://huggingface.co/facebook/nllb-200-distilled-600M\n"
+        "License declared by this model card: CC-BY-NC-4.0\n"
+        "License text: https://creativecommons.org/licenses/by-nc/4.0/\n"
+        "Changes: converted from upstream Transformers checkpoint to CTranslate2 INT8 format;\n"
+        "SentencePiece model included for local direct many-to-many inference.\n"
+    )
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as z:
+        for name in files:
+            source = nllb_dir / name
+            if source.is_file():
+                z.write(source, f"translate/nllb-200/{name}")
+        z.writestr("translate/nllb-200/MODEL_NOTICE.txt", notice_text)
+    print(f"[PASS] {archive} ({archive.stat().st_size:,} bytes)")
+    return archive
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--models-dir", type=Path, default=DEFAULT_MODELS)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--pairs", nargs="+", help="pair IDs to process; default: converted models present in models-dir")
+    parser.add_argument("--nllb", action="store_true", help="package NLLB-200 universal model (GW2Keyboard-NLLB-200.zip)")
     parser.add_argument("--convert", action="store_true", help="download and convert missing models from Hugging Face")
     args = parser.parse_args()
+
+    if args.nllb or (args.pairs and any(p in ("nllb", "nllb-200") for p in args.pairs)):
+        package_nllb(args.models_dir, args.output_dir)
+        if args.pairs:
+            args.pairs = [p for p in args.pairs if p not in ("nllb", "nllb-200")]
+        if not args.pairs:
+            return
 
     models = catalog()
     pairs = args.pairs or sorted(pair for pair in models if (args.models_dir / pair / "model.bin").is_file())

@@ -203,12 +203,14 @@ ExtrasInstallResult InstallLocalMtModel(const std::wstring& dataDir, const std::
     const std::wstring unpacked = work + L"\\x";
     CreateDirectoryW(unpacked.c_str(), nullptr);
     const std::wstring source = unpacked + L"\\translate\\" + FromUtf8(pair);
-    const bool validFiles = isNllb
-        ? (ExistsFile(source + L"\\model.bin") && ExistsFile(source + L"\\sentencepiece.bpe.model"))
-        : (ExistsFile(source + L"\\model.bin") && ExistsFile(source + L"\\source.spm") &&
-           ExistsFile(source + L"\\target.spm") && ExistsFile(source + L"\\pair.json"));
+    const auto validFiles = [&]() {
+        return isNllb
+            ? (ExistsFile(source + L"\\model.bin") && ExistsFile(source + L"\\sentencepiece.bpe.model"))
+            : (ExistsFile(source + L"\\model.bin") && ExistsFile(source + L"\\source.spm") &&
+               ExistsFile(source + L"\\target.spm") && ExistsFile(source + L"\\pair.json"));
+    };
     if (result.code == ExtrasInstallCode::Ok &&
-        (!Unpack(work + L"\\package.zip", unpacked) || !validFiles)) {
+        (!Unpack(work + L"\\package.zip", unpacked) || !validFiles())) {
         result.code = ExtrasInstallCode::DownloadFailed;
         result.detail = L"the language model package is incomplete";
     }
