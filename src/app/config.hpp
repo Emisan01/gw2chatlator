@@ -69,8 +69,8 @@ struct Config {
 
     int opacity = 255;
     int fontPercent = 100;            // chat text: 100 % = 11 pt (older ini; FontPt wins)
-    int fontPt = 0;                   // 0 = game's UI size, at least 14 pt on first use; else the selected chat size in pt
-    int uiFontPt = 0;                 // 0 = Nexus default / 15 pt; else selected UI/options font size in pt (11..24)
+    int fontPt = 15;                  // chat text size in pt (default 15 pt, 8..28)
+    int uiFontPt = 15;                // UI/options font size in pt (default 15 pt, 11..24)
     std::wstring fontFace = L"segoeui";  // its font: a file in Windows\Fonts (segoeui, seguisb, tahoma – kFontFaces)
     bool focusOnGameChat = false;  // focus input when in-game chat box gains focus
     // Key presses vs. letters sent (the word help's benefit): today and in total.

@@ -321,10 +321,10 @@ void Config::Load(const std::wstring& dir) {
 
     opacity = ini.Int(L"Window", L"Opacity", 255, 0, 255);
     fontPercent = ini.Int(L"Window", L"FontPercent", 100, 70, 300);
-    fontPt = ini.Int(L"Window", L"FontPt", 0, 0, 40);
-    uiFontPt = ini.Int(L"Window", L"UiFontPt", 0, 0, 40);
-    // 0 = like the game's interface size (the first use, user 2026-10-22); an older ini's percent still gives its size
-    if (fontPt == 0 && !ini.Str(L"Window", L"FontPercent", L"").empty()) fontPt = std::clamp((11 * fontPercent + 50) / 100, 8, 28);
+    fontPt = ini.Int(L"Window", L"FontPt", 15, 0, 40);
+    uiFontPt = ini.Int(L"Window", L"UiFontPt", 15, 0, 40);
+    if (fontPt == 0) fontPt = 15;
+    if (uiFontPt == 0) uiFontPt = 15;
     fontFace = ToLowerAscii(ini.Str(L"Window", L"FontFace", L"segoeui"));
     if (fontFace != L"seguisb" && fontFace != L"tahoma") fontFace = L"segoeui";  // only what we offer
     focusOnGameChat = ini.Bool(L"Window", L"FocusOnGameChat", false);
