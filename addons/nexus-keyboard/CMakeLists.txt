@@ -39,6 +39,7 @@ set_target_properties(gw2keyboard_nexus PROPERTIES
     OUTPUT_NAME "GW2Chatlator"
     MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
     PREFIX "")
+add_custom_target(GW2Chatlator DEPENDS gw2keyboard_nexus)
 
 if(GCT_BUILD_TESTS)
     # The add-on outside the game: a real ImGui context, a stand-in Nexus API, frames drawn, a chat line, unloaded.

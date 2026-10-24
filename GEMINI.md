@@ -15,5 +15,6 @@ Hard rules, short:
 - Never commit real screenshots, recordings or other players' names/messages (public repo; use `local\`).
 - **No push and no release without the user's explicit OK.**
 - **Release-Norm:** Never jump directly to a public 'Latest' release without prior Pre-Release staging, full 8-gate verification (`tools/verify_release.py`), and the user's personal in-game eye-test.
+- **Naming Rule (Verbindliche Benennung):** The official add-on binary is always named **`GW2Chatlator.dll`** (matching Raidcore Nexus Addon Manager ID `3098852796` / Signature `0xB8B4BDBC`). Never revert the output name to `gw2keyboard_nexus.dll`. Standalone release assets provide `GW2Chatlator.dll` (with `gw2keyboard_nexus.dll` kept as a secondary compatibility copy). The data folder remains `addons\GW2Keyboard\` to protect existing player settings and configurations.
 - **Pacing & Caution:** No reckless speed or overconfidence; respect the maintainer's review loops and physical capacity.
 - The old desktop programs and the OCR reader are in the branch `desktop-archive` – do not bring them back into main.
