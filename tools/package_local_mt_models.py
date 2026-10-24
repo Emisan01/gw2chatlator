@@ -6,7 +6,8 @@ Examples:
   python tools/package_local_mt_models.py --convert --pairs de-en en-de
 
 Converted models are kept under local/translation-spike/models (ignored by Git). The resulting
-GW2Keyboard-OPUS-MT-<pair>.zip files go to build/dist for upload as assets of the matching release.
+GW2Keyboard-OPUS-MT-<pair>.zip files go to build/dist for upload as assets to the dedicated 'extras'
+release (tag: extras), keeping version releases lightweight for Raidcore Nexus Addon Manager.
 """
 
 import argparse
