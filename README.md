@@ -92,11 +92,11 @@ Updating: replace the DLL (or unpack the newer ZIP over the old one) (settings a
 | **MyMemory** | free, no account | decent | 5,000 characters/day, 50,000 with any e-mail address (a made-up one works) |
 | **DeepL, Google, Microsoft** | own key (free contingents) | very good | Options → Translator |
 | **LibreTranslate** | own server, free | decent | your own address |
-| **OPUS-MT (local)** | free | offline after download | Options → Translator: install the isolated CPU helper and the language pairs you need |
+| **Local MT (OPUS-MT & NLLB-200)** | free | offline after download | Options → Translator: fast Helsinki-NLP pair models or Meta's universal NLLB-200 model on CPU |
 
 The optional local translator runs CTranslate2 on the CPU outside GW2. It downloads nothing until you request the
-helper or a specific language pair. Each pair is an independent model package; check Options → Translator for the
-installed pairs and remove them there. Helsinki-NLP model licenses vary by model, and each package includes its own
+helper or a specific language model. Each model is an independent package; check Options → Translator for the
+installed models and remove them there. Helsinki-NLP and Meta model licenses vary by model, and each package includes its own
 license and attribution.
 
 Incoming chat is only ever displayed. Whatever comes back from a translator can never send anything.
@@ -145,13 +145,13 @@ In `Guild Wars 2\addons\GW2Keyboard\`:
 | `snippets.txt` | your text blocks (menu ≡ → Text blocks) |
 | `models\` | voice models (Options → Voice: use, remove, open the folder) |
 | `gw2kb_voice.exe`, `voice\` | the voice module |
-| `gw2kb_translate.exe` | optional local OPUS-MT helper; installed from Options → Translator |
+| `gw2kb_translate.exe` | optional local MT helper (CTranslate2 for OPUS-MT & NLLB-200); installed from Options → Translator |
 | `translate\<pair>\` | individual local translation models downloaded on request |
 
 ## Building
 
-**Visual Studio 2022+:** `cmake -S . -B build && cmake --build build --config Release --target gw2keyboard_nexus gw2kb_voice`
-– the add-on lands in `build\addons\nexus-keyboard\Release\`, the voice module in its `GW2Keyboard\` folder
+**Visual Studio 2022+:** `cmake -S . -B build && cmake --build build --config Release --target GW2Chatlator gw2kb_voice`
+– the add-on lands in `build\addons\nexus-keyboard\Release\GW2Chatlator.dll`, the voice module in its `GW2Keyboard\` folder
 (whisper.cpp is fetched and checked by CMake).
 
 To build the optional native local translator, configure a separate directory with
