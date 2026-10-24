@@ -163,7 +163,7 @@ for the same version. Conversion downloads the selected Helsinki-NLP checkpoints
 
 **Tests:** `nexus_kb_selftest.exe <GW2Chatlator.dll>` loads the add-on outside the game (a real ImGui context, a
 stand-in Nexus API) and types, sends and unloads; `core_tests` runs the core on any system
-(`g++ -std=c++17 -I src tests/core_tests.cpp src/core/*.cpp`). More in [CLAUDE.md](CLAUDE.md).
+(`g++ -std=c++17 -I src tests/core_tests.cpp src/core/*.cpp`). More in [AGENTS.md](AGENTS.md).
 During development, run checks for the changed areas with `python tools/verify_release.py --changed`; unrelated test
 suites are skipped. A release requires the full `python tools/verify_release.py` run.
 
