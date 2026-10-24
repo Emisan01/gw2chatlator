@@ -405,14 +405,14 @@ extern "C" __declspec(dllexport) int Gw2KbTestRemoveAll(int start) {  // nexus_k
 }
 
 extern "C" __declspec(dllexport) AddonDefinition_t* GetAddonDef() {
-    g_def.Signature = static_cast<uint32_t>(-0x474B4244);  // 0xB8B4BDBC – GW2Chatlator on Raidcore (ID 150)
+    g_def.Signature = 0xB8B4BDBC;  // Raidcore Nexus Addon Manager ID 3098852796
     g_def.APIVersion = NEXUS_API_VERSION;
     g_def.Name = kName;
     g_def.Version.Major = GCT_VER_MAJOR;
     g_def.Version.Minor = GCT_VER_MINOR;
     g_def.Version.Build = GCT_VER_PATCH;
     g_def.Version.Revision = 0;
-    g_def.Author = "Emisan01";
+    g_def.Author = "Emi";
     g_def.Description = "Smart typing assistance, real-time chat translation, voice-to-text input, and whisper tabs "
                         "built natively into Guild Wars 2. The chat comes from \"Events: Chat\" (Nexus library).";
     g_def.Load = AddonLoad;

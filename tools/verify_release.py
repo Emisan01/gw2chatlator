@@ -161,13 +161,22 @@ def check_addon_def() -> bool:
         print("    [FAIL] kb_main.cpp not found!")
         return False
     content = kb_main.read_text(encoding="utf-8")
+    if "0xB8B4BDBC" not in content:
+        print("    [FAIL] g_def.Signature is not set to 0xB8B4BDBC!")
+        return False
+    if "g_def.Name = kName;" not in content:
+        print("    [FAIL] g_def.Name is not set to kName (\"GW2Chatlator\")!")
+        return False
+    if 'g_def.Author = "Emi";' not in content:
+        print('    [FAIL] g_def.Author is not set to "Emi"!')
+        return False
     if "g_def.Provider = UP_GitHub;" not in content:
         print("    [FAIL] g_def.Provider is not set to UP_GitHub!")
         return False
     if "https://github.com/Emisan01/gw2chatlator" not in content:
         print("    [FAIL] g_def.UpdateLink is not set to official repository URL!")
         return False
-    print("    [PASS] Provider = UP_GitHub and UpdateLink verified.")
+    print("    [PASS] Signature (0xB8B4BDBC), Name (GW2Chatlator), Author (Emi), Provider (UP_GitHub), and UpdateLink verified.")
     return True
 
 def main():
