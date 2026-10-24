@@ -405,7 +405,7 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 ## Releases & Release-Norm (Verbindlicher Standard)
 
 `project(... VERSION)` in CMakeLists.txt → version.h → the add-on's definition. The package `GW2Keyboard-Nexus.zip`:
-`gw2keyboard_nexus.dll` at the root, `GW2Keyboard\` with `gw2kb_voice.exe`, `voice\*.dll`, README.txt,
+`GW2Chatlator.dll` (formerly `gw2keyboard_nexus.dll`) at the root, `GW2Keyboard\` with `gw2kb_voice.exe`, `voice\*.dll`, README.txt,
 THIRD_PARTY_NOTICES.txt. The voice module installer downloads `GW2Keyboard-Nexus.zip` of the release tagged like the
 DLL's version (else the latest) – every release must carry it.
 

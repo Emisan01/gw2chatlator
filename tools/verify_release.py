@@ -113,7 +113,7 @@ def gates_for(files: set, cmake_changes: str = "") -> set:
     cmake = cmake_changes.lower()
     if re.search(r"gct_core|core_tests|src/core/", cmake):
         need.add("core")
-    if re.search(r"gw2keyboard_nexus|nexus_kb_selftest|src/kb_(main|state|window|options|worker|input|theme|chat|local_mt)", cmake):
+    if re.search(r"gw2keyboard_nexus|gw2chatlator|nexus_kb_selftest|src/kb_(main|state|window|options|worker|input|theme|chat|local_mt)", cmake):
         need.update(("nexus_selftest", "binary"))
     if re.search(r"local_mt_|gw2kb_translate|translate_helper_main|kb_local_mt", cmake):
         need.add("local_mt_selftest")
@@ -121,7 +121,7 @@ def gates_for(files: set, cmake_changes: str = "") -> set:
         need.add("typing")
     if re.search(r"nexus_kb_smoketest|kb_chatsource|chat_events|chat_source|kb_window|kb_worker", cmake):
         need.add("smoke")
-    if re.search(r"gct_core|src/core/|src/win/|gw2keyboard_nexus", cmake):
+    if re.search(r"gct_core|src/core/|src/win/|gw2keyboard_nexus|gw2chatlator", cmake):
         need.add("binary")
     return need
 
@@ -147,8 +147,8 @@ def check_version_consistency() -> tuple[bool, str]:
         return False, version
 
     readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
-    if f"v{version}/gw2keyboard_nexus.dll" not in readme_text:
-        print(f"    [FAIL] README.md does not link to v{version}/gw2keyboard_nexus.dll")
+    if f"v{version}/GW2Chatlator.dll" not in readme_text and f"v{version}/gw2keyboard_nexus.dll" not in readme_text:
+        print(f"    [FAIL] README.md does not link to v{version}/GW2Chatlator.dll or gw2keyboard_nexus.dll")
         return False, version
 
     print("    [PASS] CMakeLists.txt, CHANGELOG.md, and README.md are consistent.")
@@ -222,7 +222,9 @@ def main():
     selftest = ROOT / "build" / "addons" / "nexus-keyboard" / "Release" / "nexus_kb_selftest.exe"
     local_mt_selftest = ROOT / "build" / "Release" / "local_mt_translator_selftest.exe"
     local_mt_fake = ROOT / "build" / "Release" / "local_mt_fake_helper.exe"
-    dll = ROOT / "build" / "addons" / "nexus-keyboard" / "Release" / "gw2keyboard_nexus.dll"
+    dll = ROOT / "build" / "addons" / "nexus-keyboard" / "Release" / "GW2Chatlator.dll"
+    if not dll.exists():
+        dll = ROOT / "build" / "addons" / "nexus-keyboard" / "Release" / "gw2keyboard_nexus.dll"
     need_nexus_selftest = wanted("nexus_selftest")
     need_local_mt_selftest = wanted("local_mt_selftest")
     need_binary = wanted("binary")

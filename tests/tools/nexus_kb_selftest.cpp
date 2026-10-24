@@ -1,6 +1,6 @@
-// nexus_kb_selftest.cpp — loads GW2 Keyboard for Nexus (gw2keyboard_nexus.dll) outside the game: a real ImGui
+// nexus_kb_selftest.cpp — loads GW2 Keyboard for Nexus (GW2Chatlator.dll) outside the game: a real ImGui
 // context, a stand-in Nexus API, a few frames drawn, a chat line raised the way "Events: Chat" does, then unloaded.
-// Catches crashes before they could happen inside GW2. Usage: nexus_kb_selftest.exe <path to gw2keyboard_nexus.dll>
+// Catches crashes before they could happen inside GW2. Usage: nexus_kb_selftest.exe <path to GW2Chatlator.dll>
 
 #include <windows.h>
 
@@ -221,7 +221,7 @@ const char* TestGetClipboard(void*) { return g_testClipboard.c_str(); }
 
 int wmain(int argc, wchar_t** argv) {
     if (argc < 2) {
-        std::printf("usage: nexus_kb_selftest <gw2keyboard_nexus.dll>\n");
+        std::printf("usage: nexus_kb_selftest <GW2Chatlator.dll>\n");
         return 2;
     }
     // Nothing of a running game reaches the test, nothing of the test the game: the add-on reads its own, empty

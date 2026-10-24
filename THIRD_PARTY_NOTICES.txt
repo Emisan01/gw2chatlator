@@ -10,7 +10,7 @@ GW2 Keyboard for Nexus – third-party components shipped with the add-on
    Licence: MIT, Copyright (c) 2022 OpenAI – https://github.com/openai/whisper/blob/main/LICENSE
    The files are checked against their SHA-256 before they are used.
 
-3. Compiled into gw2keyboard_nexus.dll:
+3. Compiled into GW2Chatlator.dll (formerly gw2keyboard_nexus.dll):
    Nexus API header (Nexus.h), Copyright (c) 2023 Raidcore.GG – https://github.com/RaidcoreGG/RCGG-lib-nexus-api
    Dear ImGui 1.80, Copyright (c) 2014-2021 Omar Cornut – https://github.com/ocornut/imgui
    Licence: MIT (full texts in addons/nexus-keyboard/third_party of the source code)
