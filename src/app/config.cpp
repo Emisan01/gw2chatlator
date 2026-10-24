@@ -397,6 +397,8 @@ void Config::FlushWrites() {
         const bool existed = (GetFileAttributesW(targetPath.c_str()) != INVALID_FILE_ATTRIBUTES);
         if (existed) {
             CopyFileW(targetPath.c_str(), tmpPath.c_str(), FALSE);
+        } else {
+            DeleteFileW(tmpPath.c_str());
         }
         for (const auto& e : entries) {
             WritePrivateProfileStringW(e.first.c_str(), e.second.first.c_str(), e.second.second.c_str(), tmpPath.c_str());
@@ -404,14 +406,24 @@ void Config::FlushWrites() {
         // Flush Windows profile cache for the tmp file
         WritePrivateProfileStringW(nullptr, nullptr, nullptr, tmpPath.c_str());
 
-        // Atomic swap (ArcDPS standard): atomically replace target file, preventing torn writes
+        // Atomic swap (ArcDPS standard): atomically replace target file, preventing torn writes.
+        // Retries briefly in case an external process (e.g. anti-virus) holds a transient read lock.
         bool swapped = false;
-        if (existed) {
-            swapped = ReplaceFileW(targetPath.c_str(), tmpPath.c_str(), nullptr, REPLACEFILE_IGNORE_MERGE_ERRORS, nullptr, nullptr) != 0;
+        for (int attempt = 0; attempt < 3 && !swapped; ++attempt) {
+            if (attempt > 0) Sleep(10);
+            if (existed) {
+                swapped = ReplaceFileW(targetPath.c_str(), tmpPath.c_str(), nullptr,
+                                       REPLACEFILE_IGNORE_MERGE_ERRORS, nullptr, nullptr) != 0;
+            }
+            if (!swapped) {
+                swapped = MoveFileExW(tmpPath.c_str(), targetPath.c_str(),
+                                     MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
+            }
         }
         if (!swapped) {
-            MoveFileExW(tmpPath.c_str(), targetPath.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
+            DeleteFileW(tmpPath.c_str());
         }
+        // Invalidate/flush profile cache for target path so subsequent reads get new content
         WritePrivateProfileStringW(nullptr, nullptr, nullptr, targetPath.c_str());
     }
 }
