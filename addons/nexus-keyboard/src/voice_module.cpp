@@ -88,9 +88,14 @@ ExtrasInstallResult InstallVoiceModule(const std::wstring& kbDir, const std::wst
                               std::to_wstring(GetTickCount64());
     CreateDirectoryW(work.c_str(), nullptr);
     const std::wstring zip = work + L"\\package.zip";
-    // This version's release (helper and add-on built together), else the newest one.
-    ExtrasInstallResult r = DownloadReleaseAsset(L"/repos/Emisan01/gw2chatlator/releases/tags/v" + version,
+    // 1. Dedicated extras release container (keeps main version releases lightweight)
+    ExtrasInstallResult r = DownloadReleaseAsset(L"/repos/Emisan01/gw2chatlator/releases/tags/extras",
                                                  kDownloadPrefix, kPackage, zip, progress);
+    // 2. Fallback to release tag matching the add-on version
+    if (r.code == ExtrasInstallCode::NoAnswer && r.detail == L"HTTP 404")
+        r = DownloadReleaseAsset(L"/repos/Emisan01/gw2chatlator/releases/tags/v" + version,
+                                 kDownloadPrefix, kPackage, zip, progress);
+    // 3. Fallback to latest release
     if (r.code == ExtrasInstallCode::NoAnswer && r.detail == L"HTTP 404")
         r = DownloadReleaseAsset(L"/repos/Emisan01/gw2chatlator/releases/latest", kDownloadPrefix, kPackage, zip, progress);
     if (r.code != ExtrasInstallCode::Ok) {
