@@ -3,6 +3,12 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.6.0 — 2026-10-24 (GW2Chatlator for Nexus)
+
+- **Author and Addon Naming Consistency:** Addon author set to `Emi` matching Raidcore Nexus Addon Manager library entry. Binary output strictly unified to `GW2Chatlator.dll`.
+- **Raidcore Nexus Direct Installation:** Verified automated single-click install through in-game Nexus Addon Library (ID `3098852796`, Signature `0xB8B4BDBC`).
+- **Pristine CDN Release Endpoints:** Fresh release distribution assets with zero legacy fallbacks.
+
 ## 2.5.9 — 2026-10-24 (GW2Chatlator for Nexus)
 
 - **Unified add-on naming to `GW2Chatlator.dll`:** The compiled binary is now directly and exclusively named `GW2Chatlator.dll`, aligning with Raidcore Nexus Addon Manager (ID `3098852796`) and fixing silent install failures when adding via the Nexus manager. Legacy `gw2keyboard_nexus.dll` downloads are completely retired.

@@ -25,14 +25,12 @@ def main():
     build_rel = args.build_dir / "addons" / "nexus-keyboard" / "Release"
     dist_dir = args.build_dir / "dist"
     dll = build_rel / "GW2Chatlator.dll"
-    if not dll.exists():
-        dll = build_rel / "gw2keyboard_nexus.dll"
     voice_exe = build_rel / "GW2Keyboard" / "gw2kb_voice.exe"
     voice_dir = build_rel / "GW2Keyboard" / "voice"
     local_mt_exe = build_rel / "GW2Keyboard" / "gw2kb_translate.exe"
 
     if not dll.exists():
-        print(f"[FAIL] Release DLL not found: neither GW2Chatlator.dll nor gw2keyboard_nexus.dll in {build_rel}")
+        print(f"[FAIL] Release DLL not found: {dll}")
         sys.exit(1)
 
     dist_dir.mkdir(parents=True, exist_ok=True)
