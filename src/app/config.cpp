@@ -355,6 +355,7 @@ void Config::SaveValue(const wchar_t* section, const wchar_t* key, const std::ws
         }
     }
     WritePrivateProfileStringW(section, key, value.c_str(), iniPath.c_str());
+    WritePrivateProfileStringW(nullptr, nullptr, nullptr, iniPath.c_str());
 }
 
 void Config::DeferWrites(bool on) {
@@ -382,9 +383,37 @@ void Config::FlushWrites() {
         std::lock_guard<std::mutex> lock(g_writeMu);
         writes.swap(g_pendingWrites);
     }
-    for (const auto& w : writes)
-        WritePrivateProfileStringW(std::get<1>(w.first).c_str(), std::get<2>(w.first).c_str(), w.second.c_str(),
-                                   std::get<0>(w.first).c_str());
+    if (writes.empty()) return;
+
+    // Group writes by target INI file path to batch modifications atomically per file
+    std::map<std::wstring, std::vector<std::pair<std::wstring, std::pair<std::wstring, std::wstring>>>> byFile;
+    for (const auto& w : writes) {
+        byFile[std::get<0>(w.first)].push_back({std::get<1>(w.first), {std::get<2>(w.first), w.second}});
+    }
+
+    for (const auto& [targetPath, entries] : byFile) {
+        if (targetPath.empty()) continue;
+        const std::wstring tmpPath = targetPath + L".tmp";
+        const bool existed = (GetFileAttributesW(targetPath.c_str()) != INVALID_FILE_ATTRIBUTES);
+        if (existed) {
+            CopyFileW(targetPath.c_str(), tmpPath.c_str(), FALSE);
+        }
+        for (const auto& e : entries) {
+            WritePrivateProfileStringW(e.first.c_str(), e.second.first.c_str(), e.second.second.c_str(), tmpPath.c_str());
+        }
+        // Flush Windows profile cache for the tmp file
+        WritePrivateProfileStringW(nullptr, nullptr, nullptr, tmpPath.c_str());
+
+        // Atomic swap (ArcDPS standard): atomically replace target file, preventing torn writes
+        bool swapped = false;
+        if (existed) {
+            swapped = ReplaceFileW(targetPath.c_str(), tmpPath.c_str(), nullptr, REPLACEFILE_IGNORE_MERGE_ERRORS, nullptr, nullptr) != 0;
+        }
+        if (!swapped) {
+            MoveFileExW(tmpPath.c_str(), targetPath.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
+        }
+        WritePrivateProfileStringW(nullptr, nullptr, nullptr, targetPath.c_str());
+    }
 }
 
 void Config::SaveAll() const {
