@@ -147,8 +147,8 @@ def check_version_consistency() -> tuple[bool, str]:
         return False, version
 
     readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
-    if f"v{version}/GW2Chatlator.dll" not in readme_text and f"v{version}/gw2keyboard_nexus.dll" not in readme_text:
-        print(f"    [FAIL] README.md does not link to v{version}/GW2Chatlator.dll or gw2keyboard_nexus.dll")
+    if f"v{version}/GW2Chatlator.dll" not in readme_text:
+        print(f"    [FAIL] README.md does not link to v{version}/GW2Chatlator.dll")
         return False, version
 
     print("    [PASS] CMakeLists.txt, CHANGELOG.md, and README.md are consistent.")
@@ -223,8 +223,6 @@ def main():
     local_mt_selftest = ROOT / "build" / "Release" / "local_mt_translator_selftest.exe"
     local_mt_fake = ROOT / "build" / "Release" / "local_mt_fake_helper.exe"
     dll = ROOT / "build" / "addons" / "nexus-keyboard" / "Release" / "GW2Chatlator.dll"
-    if not dll.exists():
-        dll = ROOT / "build" / "addons" / "nexus-keyboard" / "Release" / "gw2keyboard_nexus.dll"
     need_nexus_selftest = wanted("nexus_selftest")
     need_local_mt_selftest = wanted("local_mt_selftest")
     need_binary = wanted("binary")

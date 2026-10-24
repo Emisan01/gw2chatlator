@@ -5,7 +5,7 @@ diagnosis show it.
 
 ## 2.5.9 — 2026-10-24 (GW2Chatlator for Nexus)
 
-- **Unified add-on naming to `GW2Chatlator.dll`:** The compiled binary is now directly named `GW2Chatlator.dll`, aligning with Raidcore Nexus Addon Manager (ID `3098852796`) and fixing silent install failures when adding via the Nexus manager. Legacy `gw2keyboard_nexus.dll` remains available for backward compatibility.
+- **Unified add-on naming to `GW2Chatlator.dll`:** The compiled binary is now directly and exclusively named `GW2Chatlator.dll`, aligning with Raidcore Nexus Addon Manager (ID `3098852796`) and fixing silent install failures when adding via the Nexus manager. Legacy `gw2keyboard_nexus.dll` downloads are completely retired.
 - **NLLB-200 local translation engine:** Added explicit selection of Meta's NLLB-200 translation model (`NLLB-200 (local)`) in the Options → Translator engine dropdown and translation helper protocol.
 - **Instant UI language switching:** Selecting "Language of this window" in Options → General now applies immediately in real time, updating window title, tabs, options, and status.
 - **Footer chip language consistency:** Fixed cache invalidation in the chat window footer so language chips (`[Active]`, `[as written]`, `[Write: ...]`) update immediately upon UI language change.

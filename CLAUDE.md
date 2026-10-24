@@ -405,7 +405,7 @@ src/core                portable logic, NO windows.h: text, json, i18n (+ de / a
 ## Namensregel & Binäridentität (Verbindlicher Standard)
 
 1. **Add-on Binary:** Der kompilierte DLL-Name ist ausnahmslos **`GW2Chatlator.dll`** (gesetzt über `OUTPUT_NAME "GW2Chatlator"` in `addons/nexus-keyboard/CMakeLists.txt`). Die Raidcore Nexus Bibliothek führt das Add-on unter dem Namen `GW2Chatlator` (ID `3098852796` / Signature `0xB8B4BDBC`). Bei Abweichung scheitert die Installation über den Nexus Manager stillschweigend.
-2. **Release-Assets:** Jedes Release stellt `GW2Chatlator.dll` als primäre Standalone-DLL bereit (eine Kopie `gw2keyboard_nexus.dll` wird für Abwärtskompatibilität beigelegt). Das ZIP-Archiv `GW2Keyboard-Nexus.zip` enthält `GW2Chatlator.dll` auf Root-Ebene.
+2. **Release-Assets:** Jedes Release stellt ausnahmslos `GW2Chatlator.dll` als einzige Standalone-DLL bereit. Es wird keine `gw2keyboard_nexus.dll` mehr veröffentlicht oder angeboten. Das ZIP-Archiv `GW2Keyboard-Nexus.zip` enthält `GW2Chatlator.dll` auf Root-Ebene.
 3. **Datenordner:** Der Ordner auf der Festplatte bleibt unverändert `Guild Wars 2\addons\GW2Keyboard\`, damit bestehende Einstellungen, angelernte Wörter, Wortmodelle und INI-Dateien von Spielern geschützt bleiben und nicht verloren gehen.
 4. **Nexus Addon-Definition:** `g_def.Name` in `kb_main.cpp` ist stets `"GW2Chatlator"`, `Signature` ist `0xB8B4BDBC`.
 
