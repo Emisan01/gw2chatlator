@@ -406,8 +406,14 @@ bool RichLine(const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 col
             case PieUI::ChatLinks::SegmentKind::Link: {
                 const std::string lbl = g_links.Label(seg);
                 place(lbl);
-                if (g_links.Render(seg, lbl, [](const std::string& l, ImVec4 c) { LookText(l.c_str(), Bright(c), false); }))
-                    clicked = true;  // nothing happens
+                if (g_links.Render(seg, lbl, [](const std::string& l, ImVec4 c) { LookText(l.c_str(), Bright(c), false); })) {
+                    ImGui::SetClipboardText(seg.raw.c_str());
+                    SetStatus(seg.linkType == PieUI::ChatLinks::LINK_MAP
+                                  ? Tr(L"Waypoint code copied to clipboard")
+                                  : Tr(L"Chat link copied to clipboard"),
+                              2500);
+                    clicked = true;
+                }
                 break;
             }
             case PieUI::ChatLinks::SegmentKind::Ae2: {
@@ -422,7 +428,12 @@ bool RichLine(const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 col
                     }
                     ImGui::EndTooltip();
                 }
-                if (ImGui::IsItemClicked()) clicked = true;  // nothing happens
+                if (ImGui::IsItemClicked()) {
+                    const std::string& code = !seg.ae2ChatLink.empty() ? seg.ae2ChatLink : seg.raw;
+                    ImGui::SetClipboardText(code.c_str());
+                    SetStatus(Tr(L"Build code copied to clipboard"), 2500);
+                    clicked = true;
+                }
                 break;
             }
         }

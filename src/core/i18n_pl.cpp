@@ -1049,6 +1049,12 @@ extern const I18nEntry kPolishStrings[] = {
      L"Tylko wiadomości czatu, podgląd, wprowadzanie i pomoc w pisaniu."},
     {L"Header tabs, footer buttons, menus and this options window.",
      L"Karty nagłówka, przyciski stopki, menu i to okno opcji."},
+    {L"Build code copied to clipboard",
+     L"Kod buildu skopiowany do schowka"},
+    {L"Chat link copied to clipboard",
+     L"Link czatu skopiowany do schowka"},
+    {L"Waypoint code copied to clipboard",
+     L"Kod punktu nawigacyjnego skopiowany do schowka"},
 };
 extern const size_t kPolishCount = sizeof(kPolishStrings) / sizeof(kPolishStrings[0]);
 

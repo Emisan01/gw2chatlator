@@ -262,6 +262,7 @@ extern bool g_showOptions;
 extern bool g_showDebugWindow;
 void SuppressImplicitDebugWindow();
 void Log(ELogLevel level, const char* text);
+bool IsCodePointer(const void* ptr);
 std::string U8(const std::wstring& w);
 std::wstring W(const std::string& s);
 size_t U8Offset(const std::wstring& w, size_t idx);

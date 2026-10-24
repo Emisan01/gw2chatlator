@@ -1049,6 +1049,12 @@ extern const I18nEntry kFrenchStrings[] = {
      L"Uniquement messages du chat, aperçu, saisie et aide à la frappe."},
     {L"Header tabs, footer buttons, menus and this options window.",
      L"Onglets d'en-tête, boutons de pied de page, menus et cette fenêtre d'options."},
+    {L"Build code copied to clipboard",
+     L"Code de build copié dans le presse-papiers"},
+    {L"Chat link copied to clipboard",
+     L"Lien de chat copié dans le presse-papiers"},
+    {L"Waypoint code copied to clipboard",
+     L"Code de point de passage copié dans le presse-papiers"},
 };
 extern const size_t kFrenchCount = sizeof(kFrenchStrings) / sizeof(kFrenchStrings[0]);
 

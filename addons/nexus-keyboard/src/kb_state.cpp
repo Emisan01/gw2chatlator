@@ -28,8 +28,22 @@ TestHooks g_test;
 bool g_showOptions = false;  // our own options window (menu ≡ / the button on the Nexus page)
 bool g_showDebugWindow = false;  // dedicated debug & diagnostic inspection window
 
+bool IsCodePointer(const void* ptr) {
+    if (!ptr) return false;
+    const uintptr_t v = reinterpret_cast<uintptr_t>(ptr);
+    if (v < 0x10000 || v >= 0x00007FFFFFFF0000ull) return false;
+    MEMORY_BASIC_INFORMATION mbi = {};
+    if (!VirtualQuery(ptr, &mbi, sizeof(mbi)) || mbi.State != MEM_COMMIT) return false;
+    if (mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS)) return false;
+    const DWORD p = mbi.Protect & 0xFF;
+    return (p == PAGE_EXECUTE || p == PAGE_EXECUTE_READ ||
+            p == PAGE_EXECUTE_READWRITE || p == PAGE_EXECUTE_WRITECOPY);
+}
+
 void Log(ELogLevel level, const char* text) {
-    if (g_api && g_api->Log) g_api->Log(level, kName, text);
+    if (g_api && g_api->Log && IsCodePointer(reinterpret_cast<const void*>(g_api->Log))) {
+        g_api->Log(level, kName, text);
+    }
 }
 
 std::string U8(const std::wstring& w) { return ToUtf8(w); }

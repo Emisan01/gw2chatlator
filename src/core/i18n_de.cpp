@@ -1049,6 +1049,12 @@ extern const I18nEntry kGermanStrings[] = {
      L"Nur Chat, Vorschau, Eingabe und Tipphilfe."},
     {L"Header tabs, footer buttons, menus and this options window.",
      L"Kopfzeile, Fußzeile, Menüs und dieses Optionen-Fenster."},
+    {L"Build code copied to clipboard",
+     L"Build-Code in die Zwischenablage kopiert"},
+    {L"Chat link copied to clipboard",
+     L"Chat-Link in die Zwischenablage kopiert"},
+    {L"Waypoint code copied to clipboard",
+     L"Wegpunkt-Code in die Zwischenablage kopiert"},
 };
 extern const size_t kGermanCount = sizeof(kGermanStrings) / sizeof(kGermanStrings[0]);
 
