@@ -3,7 +3,7 @@
 tools/pack_release.py — Packages GW2Chatlator release assets.
 
 Outputs to build/dist:
-  - GW2Chatlator.dll (and gw2keyboard_nexus.dll compatibility copy)
+  - GW2Chatlator.dll
   - GW2Keyboard-Nexus.zip
   - GW2Keyboard-LocalMT.zip (when GCT_LOCAL_MT was built)
 """
@@ -37,10 +37,12 @@ def main():
 
     dist_dir.mkdir(parents=True, exist_ok=True)
     out_chatlator = dist_dir / "GW2Chatlator.dll"
-    out_legacy = dist_dir / "gw2keyboard_nexus.dll"
     shutil.copy2(dll, out_chatlator)
-    shutil.copy2(dll, out_legacy)
-    print(f"[*] Copied standalone DLL to {out_chatlator} and {out_legacy} ({out_chatlator.stat().st_size:,} bytes)")
+    # Remove any old legacy-named DLL from dist to avoid confusing users
+    legacy_dll = dist_dir / "gw2keyboard_nexus.dll"
+    if legacy_dll.exists():
+        legacy_dll.unlink()
+    print(f"[*] Copied standalone DLL to {out_chatlator} ({out_chatlator.stat().st_size:,} bytes)")
 
     out_zip = dist_dir / "GW2Keyboard-Nexus.zip"
     with zipfile.ZipFile(out_zip, "w", zipfile.ZIP_DEFLATED) as z:
