@@ -3,7 +3,7 @@
 tools/pack_release.py — Packages GW2Chatlator release assets.
 
 Outputs to build/dist:
-  - gw2keyboard_nexus.dll
+  - GW2Chatlator.dll (and gw2keyboard_nexus.dll compatibility copy)
   - GW2Keyboard-Nexus.zip
   - GW2Keyboard-LocalMT.zip (when GCT_LOCAL_MT was built)
 """
@@ -24,24 +24,28 @@ def main():
     args = parser.parse_args()
     build_rel = args.build_dir / "addons" / "nexus-keyboard" / "Release"
     dist_dir = args.build_dir / "dist"
-    dll = build_rel / "gw2keyboard_nexus.dll"
+    dll = build_rel / "GW2Chatlator.dll"
+    if not dll.exists():
+        dll = build_rel / "gw2keyboard_nexus.dll"
     voice_exe = build_rel / "GW2Keyboard" / "gw2kb_voice.exe"
     voice_dir = build_rel / "GW2Keyboard" / "voice"
     local_mt_exe = build_rel / "GW2Keyboard" / "gw2kb_translate.exe"
 
     if not dll.exists():
-        print(f"[FAIL] Release DLL not found: {dll}")
+        print(f"[FAIL] Release DLL not found: neither GW2Chatlator.dll nor gw2keyboard_nexus.dll in {build_rel}")
         sys.exit(1)
 
     dist_dir.mkdir(parents=True, exist_ok=True)
-    out_dll = dist_dir / "gw2keyboard_nexus.dll"
-    shutil.copy2(dll, out_dll)
-    print(f"[*] Copied standalone DLL to {out_dll} ({out_dll.stat().st_size:,} bytes)")
+    out_chatlator = dist_dir / "GW2Chatlator.dll"
+    out_legacy = dist_dir / "gw2keyboard_nexus.dll"
+    shutil.copy2(dll, out_chatlator)
+    shutil.copy2(dll, out_legacy)
+    print(f"[*] Copied standalone DLL to {out_chatlator} and {out_legacy} ({out_chatlator.stat().st_size:,} bytes)")
 
     out_zip = dist_dir / "GW2Keyboard-Nexus.zip"
     with zipfile.ZipFile(out_zip, "w", zipfile.ZIP_DEFLATED) as z:
-        # 1. Root DLL
-        z.write(dll, "gw2keyboard_nexus.dll")
+        # 1. Root DLL (unified naming for Nexus manager)
+        z.write(dll, "GW2Chatlator.dll")
 
         # 2. Voice executable if built
         if voice_exe.exists():
@@ -59,7 +63,7 @@ def main():
 
         readme_text = (
             "GW2Chatlator for Nexus\n"
-            "Put gw2keyboard_nexus.dll in your Guild Wars 2\\addons folder.\n"
+            "Put GW2Chatlator.dll in your Guild Wars 2\\addons folder.\n"
             "The GW2Keyboard folder contains the optional voice helper and whisper libraries.\n"
             "Nothing is downloaded by itself: Events: Chat and a voice model are offered in the add-on, on your click.\n"
         )

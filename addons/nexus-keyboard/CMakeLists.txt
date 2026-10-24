@@ -34,7 +34,11 @@ target_compile_options(gw2keyboard_nexus PRIVATE /utf-8 /W4 /permissive- /EHa)
 set_source_files_properties(${GCT_NEXUS_TP}/imgui/imgui.cpp ${GCT_NEXUS_TP}/imgui/imgui_draw.cpp
     ${GCT_NEXUS_TP}/imgui/imgui_tables.cpp ${GCT_NEXUS_TP}/imgui/imgui_widgets.cpp PROPERTIES COMPILE_OPTIONS "/W0")
 # Static CRT, like the bridge: independent of the runtime the game has loaded.
-set_target_properties(gw2keyboard_nexus PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" PREFIX "")
+# OUTPUT_NAME "GW2Chatlator" unifies the binary name with Raidcore Nexus add-on manager expectations.
+set_target_properties(gw2keyboard_nexus PROPERTIES
+    OUTPUT_NAME "GW2Chatlator"
+    MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+    PREFIX "")
 
 if(GCT_BUILD_TESTS)
     # The add-on outside the game: a real ImGui context, a stand-in Nexus API, frames drawn, a chat line, unloaded.

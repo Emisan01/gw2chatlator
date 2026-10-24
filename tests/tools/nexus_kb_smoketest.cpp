@@ -89,7 +89,7 @@ int wmain(int argc, wchar_t** argv) {
     // MumbleLink, the clipboard stays in this process (see TestClipboard), clicks find no GW2 window of this process.
     SetEnvironmentVariableW(L"GW2KB_MUMBLE", L"GW2KB_TEST_NO_MUMBLE");
     if (argc < 2) {
-        std::printf("usage: nexus_kb_smoketest.exe <path-to-gw2keyboard_nexus.dll>\n");
+        std::printf("usage: nexus_kb_smoketest.exe <path-to-GW2Chatlator.dll>\n");
         return 2;
     }
     setvbuf(stdout, nullptr, _IONBF, 0);

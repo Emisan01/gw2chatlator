@@ -3,7 +3,7 @@
 The chat of Guild Wars 2 in your language – **read it, write and speak in yours**, the chat gets it translated. A
 Nexus add-on, right inside the game. A line goes into the chat only when you press Enter yourself.
 
-## ⬇ [Download gw2keyboard_nexus.dll – version 2.5.9](https://github.com/Emisan01/gw2chatlator/releases/download/v2.5.9/gw2keyboard_nexus.dll)
+## ⬇ [Download GW2Chatlator.dll – version 2.5.9](https://github.com/Emisan01/gw2chatlator/releases/download/v2.5.9/GW2Chatlator.dll)
 
 Put the DLL into your `Guild Wars 2\addons` folder (where [Nexus](https://raidcore.gg/Nexus) keeps its add-ons) and
 load **GW2Chatlator** in Nexus. Nothing is downloaded by itself: the window shows what is there and what you can add
@@ -58,7 +58,7 @@ Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustot
 ## Install (one minute)
 
 1. Install [Nexus](https://raidcore.gg/Nexus) if you do not have it.
-2. Put `gw2keyboard_nexus.dll` into `Guild Wars 2\addons`, next to the other add-ons (or unpack the ZIP there: the DLL
+2. Put `GW2Chatlator.dll` into `Guild Wars 2\addons`, next to the other add-ons (or unpack the ZIP there: the DLL
    and the folder `GW2Keyboard` beside it).
 3. In the game: Nexus → Addons → **GW2Chatlator** → Load. Nothing is downloaded by itself: the empty chat shows the
    modules – **Events: Chat** (reads the chat; typing help works without it) with an "Install" button, and the voice
@@ -161,7 +161,7 @@ creates the helper ZIP when it exists. Convert and package model assets with
 for the same version. Conversion downloads the selected Helsinki-NLP checkpoints and writes them under the ignored
 `local/translation-spike/models` folder.
 
-**Tests:** `nexus_kb_selftest.exe <gw2keyboard_nexus.dll>` loads the add-on outside the game (a real ImGui context, a
+**Tests:** `nexus_kb_selftest.exe <GW2Chatlator.dll>` loads the add-on outside the game (a real ImGui context, a
 stand-in Nexus API) and types, sends and unloads; `core_tests` runs the core on any system
 (`g++ -std=c++17 -I src tests/core_tests.cpp src/core/*.cpp`). More in [CLAUDE.md](CLAUDE.md).
 During development, run checks for the changed areas with `python tools/verify_release.py --changed`; unrelated test
