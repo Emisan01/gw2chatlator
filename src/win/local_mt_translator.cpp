@@ -34,10 +34,11 @@ std::vector<std::string> InstalledPairs(const std::wstring& dataDir) {
 
 class LocalMtTranslator final : public Translator {
 public:
-    LocalMtTranslator(std::wstring helper, std::wstring data) : helper_(std::move(helper)), data_(std::move(data)) {}
+    LocalMtTranslator(std::wstring helper, std::wstring data, bool forceNllb = false)
+        : helper_(std::move(helper)), data_(std::move(data)), forceNllb_(forceNllb) {}
     ~LocalMtTranslator() override { Stop(); }
 
-    std::wstring Name() const override { return L"OPUS-MT (local)"; }
+    std::wstring Name() const override { return forceNllb_ ? L"NLLB-200 (local)" : L"OPUS-MT (local)"; }
 
     void StopForRemoval() {
         std::lock_guard<std::mutex> lock(mu_);
@@ -67,7 +68,12 @@ public:
             result.detectedSource = source;
             return result;
         }
-        const auto route = LocalMtRoute(source, target, CachedInstalledPairs());
+        std::vector<std::string> pairs = CachedInstalledPairs();
+        if (forceNllb_) {
+            const bool hasNllb = std::find(pairs.begin(), pairs.end(), "nllb-200") != pairs.end();
+            pairs = hasNllb ? std::vector<std::string>{"nllb-200"} : std::vector<std::string>{};
+        }
+        const auto route = LocalMtRoute(source, target, pairs);
         if (route.empty()) {
             result.error = TrF(L"No local language pack for {1} > {2} - install it: Options > Translator",
                                {source, target});
@@ -231,7 +237,8 @@ private:
     std::string Request(const std::wstring& text, const std::string& source, const std::string& target,
                         std::wstring& error) {
         const int id = ++nextId_;
-        const std::string line = BuildLocalMtRequest(id, source, target, ToUtf8(text), beamSize_.load()) + "\n";
+        const std::string model = forceNllb_ ? "nllb" : "";
+        const std::string line = BuildLocalMtRequest(id, source, target, ToUtf8(text), beamSize_.load(), model) + "\n";
         if (line.size() > kMaxLocalMtJsonLine) {
             error = L"The local translation request is too large";
             return {};
@@ -289,6 +296,7 @@ private:
     }
 
     const std::wstring helper_, data_;
+    const bool forceNllb_ = false;
     HANDLE process_ = nullptr, write_ = nullptr, read_ = nullptr, job_ = nullptr;
     std::mutex mu_;
     std::mutex pairsMu_;
@@ -301,8 +309,9 @@ private:
 
 }  // namespace
 
-std::shared_ptr<Translator> MakeLocalMtTranslator(const std::wstring& helperExe, const std::wstring& dataDir) {
-    return std::make_shared<LocalMtTranslator>(helperExe, dataDir);
+std::shared_ptr<Translator> MakeLocalMtTranslator(const std::wstring& helperExe, const std::wstring& dataDir,
+                                                  bool forceNllb) {
+    return std::make_shared<LocalMtTranslator>(helperExe, dataDir, forceNllb);
 }
 
 void StopLocalMtTranslator(const std::shared_ptr<Translator>& translator) {

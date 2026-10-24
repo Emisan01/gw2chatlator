@@ -137,7 +137,7 @@ void RenderLocalMtOptions(Config& edit) {
     bool inUse = false;
     {
         std::lock_guard<std::mutex> lock(g_mu);
-        inUse = g_cfg.engine == Engine::Local;
+        inUse = g_cfg.engine == Engine::Local || g_cfg.engine == Engine::Nllb;
     }
 
     ImGui::TextUnformatted(UI(Tr(L"Local translation module")).c_str());

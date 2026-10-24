@@ -218,6 +218,7 @@ void RenderFooter() {  // g_mu held
 
     // Footer chips cached: precalculated strings and sizes avoid allocations on idle frames.
     struct FooterCache {
+        UiLang uiLang = static_cast<UiLang>(-1);
         float fontSize = 0.0f;
         Channel channel = Channel::Unknown;
         std::wstring whisperTo;
@@ -239,8 +240,9 @@ void RenderFooter() {  // g_mu held
     const bool sendOrig = SendOriginal();
     const std::wstring sendLang = SendLang();
     const float curFontPx = ImGui::GetFontSize();
-    if (s_fc.fontSize != curFontPx || s_fc.channel != g_channel || s_fc.whisperTo != g_whisperTo ||
+    if (s_fc.uiLang != g_cfg.uiLang || s_fc.fontSize != curFontPx || s_fc.channel != g_channel || s_fc.whisperTo != g_whisperTo ||
         s_fc.writeIn != g_cfg.writeIn || s_fc.sendLang != sendLang || s_fc.sendOrig != sendOrig) {
+        s_fc.uiLang = g_cfg.uiLang;
         s_fc.fontSize = curFontPx;
         s_fc.channel = g_channel;
         s_fc.whisperTo = g_whisperTo;

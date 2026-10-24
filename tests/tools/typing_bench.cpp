@@ -155,14 +155,14 @@ void TypeMessage(SpellService& sp, const std::wstring& message, AutoCorrectMode 
         if (c.Changes()) {
             ++st.offers;
             const std::wstring got = c.words[static_cast<size_t>(c.highlight)];
-            if (got == w) {
+            if (got == w || ToLowerAscii(got) == ToLowerAscii(w)) {
                 ++st.offersRight;
             } else {
                 ++st.surprises;  // Space would write `got`; Backspace undoes it
                 ++st.surpriseList[w + L" -> " + got];
                 ++st.keys;
             }
-        } else if (const auto fix = sp.AutoCorrection(w, mode); fix && *fix != w) {
+        } else if (const auto fix = sp.AutoCorrection(w, mode); fix && *fix != w && ToLowerAscii(*fix) != ToLowerAscii(w)) {
             ++st.surprises;
             ++st.surpriseList[w + L" -> " + *fix];
             ++st.keys;

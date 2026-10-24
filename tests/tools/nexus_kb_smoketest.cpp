@@ -237,6 +237,8 @@ int wmain(int argc, wchar_t** argv) {
 
     LARGE_INTEGER freq;
     QueryPerformanceFrequency(&freq);
+    SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
 
     for (int i = 0; i < 1000; ++i) {
         ImGuiIO& io = ImGui::GetIO();

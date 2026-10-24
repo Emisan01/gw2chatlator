@@ -189,6 +189,7 @@ Engine ParseEngine(const std::wstring& s) {
     if (v == L"microsoft") return Engine::Microsoft;
     if (v == L"libre" || v == L"libretranslate") return Engine::Libre;
     if (v == L"local" || v == L"opus" || v == L"opus-mt") return Engine::Local;
+    if (v == L"nllb" || v == L"nllb-200") return Engine::Nllb;
     return Engine::Auto;
 }
 
@@ -218,6 +219,7 @@ const wchar_t* EngineKey(Engine e) {
         case Engine::Microsoft: return L"microsoft";
         case Engine::Libre: return L"libre";
         case Engine::Local: return L"local";
+        case Engine::Nllb: return L"nllb";
         default: return L"auto";
     }
 }
