@@ -1049,6 +1049,12 @@ extern const I18nEntry kSpanishStrings[] = {
      L"Solo mensajes del chat, vista previa, entrada y ayuda para escribir."},
     {L"Header tabs, footer buttons, menus and this options window.",
      L"Pestañas del encabezado, botones del pie de página, menús y esta ventana de opciones."},
+    {L"Build code copied to clipboard",
+     L"Código de build copiado al portapapeles"},
+    {L"Chat link copied to clipboard",
+     L"Enlace de chat copiado al portapapeles"},
+    {L"Waypoint code copied to clipboard",
+     L"Código de punto de ruta copiado al portapapeles"},
 };
 extern const size_t kSpanishCount = sizeof(kSpanishStrings) / sizeof(kSpanishStrings[0]);
 

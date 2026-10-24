@@ -1049,6 +1049,12 @@ extern const I18nEntry kRussianStrings[] = {
      L"Только сообщения чата, предпросмотр, ввод и подсказки при вводе."},
     {L"Header tabs, footer buttons, menus and this options window.",
      L"Вкладки заголовка, кнопки нижнего колонтитула, меню и это окно настроек."},
+    {L"Build code copied to clipboard",
+     L"Код билда скопирован в буфер обмена"},
+    {L"Chat link copied to clipboard",
+     L"Ссылка чата скопирована в буфер обмена"},
+    {L"Waypoint code copied to clipboard",
+     L"Код точки маршрута скопирован в буфер обмена"},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

@@ -118,6 +118,16 @@ void SafeOptions() {
     }
 }
 
+uint32_t GetNexusBuildTimestamp() {
+    HMODULE h = GetModuleHandleA("d3d11.dll");
+    if (!h) return 0;
+    auto* dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(h);
+    if (dos->e_magic != IMAGE_DOS_SIGNATURE) return 0;
+    auto* nt = reinterpret_cast<const IMAGE_NT_HEADERS*>(reinterpret_cast<const char*>(h) + dos->e_lfanew);
+    if (nt->Signature != IMAGE_NT_SIGNATURE) return 0;
+    return nt->FileHeader.TimeDateStamp;
+}
+
 std::wstring OwnDataDir() {  // <addons>\GW2Keyboard\ – never the game's folder
     wchar_t path[MAX_PATH] = {};
     GetModuleFileNameW(g_self, path, MAX_PATH);
@@ -128,15 +138,34 @@ std::wstring OwnDataDir() {  // <addons>\GW2Keyboard\ – never the game's folde
 }
 
 void AddonLoad(AddonAPI_t* api) {
+    if (!api || !api->ImguiContext || !api->GUI_Register || !IsCodePointer(reinterpret_cast<const void*>(api->GUI_Register))) {
+        g_disabled = true;
+        return;
+    }
     g_api = api;
     g_disabled = false;
     g_chatEventsLive = false;
     ImGui::SetCurrentContext(static_cast<ImGuiContext*>(api->ImguiContext));
-    ImGui::SetAllocatorFunctions(reinterpret_cast<void* (*)(size_t, void*)>(api->ImguiMalloc),
-                                 reinterpret_cast<void (*)(void*, void*)>(api->ImguiFree));
+    if (api->ImguiMalloc && api->ImguiFree &&
+        IsCodePointer(reinterpret_cast<const void*>(api->ImguiMalloc)) &&
+        IsCodePointer(reinterpret_cast<const void*>(api->ImguiFree))) {
+        ImGui::SetAllocatorFunctions(reinterpret_cast<void* (*)(size_t, void*)>(api->ImguiMalloc),
+                                     reinterpret_cast<void (*)(void*, void*)>(api->ImguiFree));
+    }
     {
         std::lock_guard<std::mutex> lock(g_mu);
         g_cfg.Load(OwnDataDir());
+        // Nexus airlock & patch sensor: detect upstream loader updates
+        const uint32_t curNexusStamp = GetNexusBuildTimestamp();
+        if (curNexusStamp != 0) {
+            wchar_t lastSeenStr[16] = {};
+            GetPrivateProfileStringW(L"Nexus", L"LastSeenTimestamp", L"", lastSeenStr, 16, g_cfg.iniPath.c_str());
+            const uint32_t lastStamp = static_cast<uint32_t>(_wtoi(lastSeenStr));
+            if (lastStamp != 0 && lastStamp != curNexusStamp) {
+                Log(LOGL_INFO, "Nexus update detected (new d3d11.dll build)");
+            }
+            g_cfg.SaveValue(L"Nexus", L"LastSeenTimestamp", std::to_wstring(curNexusStamp));
+        }
         if (g_cfg.writeLangs.empty()) g_cfg.writeLangs = {L"EN-GB"};
         SetUiLang(g_cfg.uiLang);
         g_translator = MakeTranslator(g_cfg);
@@ -187,18 +216,20 @@ void AddonLoad(AddonAPI_t* api) {
         first = !g_nx.setupDone && !g_test.noSend;
     }
     if (first) FirstStart();  // Events: Chat, the voice module, a voice model – loaded by themselves once
-    if (api->GUI_Register) {
+    if (api->GUI_Register && IsCodePointer(reinterpret_cast<const void*>(api->GUI_Register))) {
         api->GUI_Register(RT_Render, SafeRender);
         api->GUI_Register(RT_OptionsRender, SafeOptions);
     }
-    if (api->InputBinds_RegisterWithString) {
+    if (api->InputBinds_RegisterWithString && IsCodePointer(reinterpret_cast<const void*>(api->InputBinds_RegisterWithString))) {
         api->InputBinds_RegisterWithString(kToggleBind, OnToggle, "CTRL+ALT+K");
         api->InputBinds_RegisterWithString(kFocusBind, OnFocusKey, "(null)");
         api->InputBinds_RegisterWithString(kTalkBind, OnTalkKey, "(null)");
     }
     ApplyPushToTalkKey(g_cfg.voiceGlobalKey);
-    if (api->WndProc_Register) api->WndProc_Register(OnWndProc);
-    if (api->Events_Subscribe) {
+    if (api->WndProc_Register && IsCodePointer(reinterpret_cast<const void*>(api->WndProc_Register))) {
+        api->WndProc_Register(OnWndProc);
+    }
+    if (api->Events_Subscribe && IsCodePointer(reinterpret_cast<const void*>(api->Events_Subscribe))) {
         api->Events_Subscribe(bridge::kChatEventsEvent, OnChatEvents);
     }
     Log(LOGL_INFO, "loaded");
@@ -206,16 +237,18 @@ void AddonLoad(AddonAPI_t* api) {
 
 void AddonUnload() {
     if (g_api) {
-        if (g_api->Events_Unsubscribe) {
+        if (g_api->Events_Unsubscribe && IsCodePointer(reinterpret_cast<const void*>(g_api->Events_Unsubscribe))) {
             g_api->Events_Unsubscribe(bridge::kChatEventsEvent, OnChatEvents);
         }
-        if (g_api->WndProc_Deregister) g_api->WndProc_Deregister(OnWndProc);
-        if (g_api->InputBinds_Deregister) {
+        if (g_api->WndProc_Deregister && IsCodePointer(reinterpret_cast<const void*>(g_api->WndProc_Deregister))) {
+            g_api->WndProc_Deregister(OnWndProc);
+        }
+        if (g_api->InputBinds_Deregister && IsCodePointer(reinterpret_cast<const void*>(g_api->InputBinds_Deregister))) {
             g_api->InputBinds_Deregister(kToggleBind);
             g_api->InputBinds_Deregister(kFocusBind);
             g_api->InputBinds_Deregister(kTalkBind);
         }
-        if (g_api->GUI_Deregister) {
+        if (g_api->GUI_Deregister && IsCodePointer(reinterpret_cast<const void*>(g_api->GUI_Deregister))) {
             g_api->GUI_Deregister(SafeRender);
             g_api->GUI_Deregister(SafeOptions);
         }

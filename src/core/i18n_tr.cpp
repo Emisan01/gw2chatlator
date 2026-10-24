@@ -1049,6 +1049,12 @@ extern const I18nEntry kTurkishStrings[] = {
      L"Yalnızca sohbet mesajları, önizleme, giriş ve yazma yardımı."},
     {L"Header tabs, footer buttons, menus and this options window.",
      L"Başlık sekmeleri, alt bilgi düğmeleri, menüler ve bu seçenekler penceresi."},
+    {L"Build code copied to clipboard",
+     L"Yapı kodu panoya kopyalandı"},
+    {L"Chat link copied to clipboard",
+     L"Sohbet bağlantısı panoya kopyalandı"},
+    {L"Waypoint code copied to clipboard",
+     L"Geçit noktası kodu panoya kopyalandı"},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 
