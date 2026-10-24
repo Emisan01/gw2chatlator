@@ -85,11 +85,19 @@ std::wstring WorkDir() {
 
 ExtrasInstallResult DownloadAsset(const std::wstring& asset, const std::wstring& version, const std::wstring& zip,
                                   const std::function<bool(uint64_t, uint64_t)>& progress) {
-    const std::wstring release = L"/repos/Emisan01/gw2chatlator/releases/tags/v" + version;
-    ExtrasInstallResult result = DownloadReleaseAsset(release, kDownloadPrefix, asset, zip, progress);
-    if (result.code == ExtrasInstallCode::NoAnswer && result.detail == L"HTTP 404")
+    // 1. Dedicated extras release container (keeps main version releases lightweight)
+    ExtrasInstallResult result = DownloadReleaseAsset(L"/repos/Emisan01/gw2chatlator/releases/tags/extras",
+                                                      kDownloadPrefix, asset, zip, progress);
+    // 2. Fallback to release tag matching the add-on version
+    if (result.code == ExtrasInstallCode::NoAnswer && result.detail == L"HTTP 404") {
+        const std::wstring release = L"/repos/Emisan01/gw2chatlator/releases/tags/v" + version;
+        result = DownloadReleaseAsset(release, kDownloadPrefix, asset, zip, progress);
+    }
+    // 3. Fallback to latest release
+    if (result.code == ExtrasInstallCode::NoAnswer && result.detail == L"HTTP 404") {
         result = DownloadReleaseAsset(L"/repos/Emisan01/gw2chatlator/releases/latest", kDownloadPrefix, asset, zip,
                                       progress);
+    }
     return result;
 }
 
