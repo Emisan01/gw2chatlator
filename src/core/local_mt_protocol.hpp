@@ -22,6 +22,7 @@ struct LocalMtRequest {
     int id = 0;
     std::string source, target, text;
     int beam = 0;
+    std::string model;
 };
 
 struct LocalMtModelInfo {
@@ -35,7 +36,8 @@ struct LocalMtModelInfo {
 const std::vector<LocalMtModelInfo>& LocalMtModelCatalog();
 
 std::string BuildLocalMtRequest(int id, const std::string& source, const std::string& target,
-                                const std::string& utf8Text, int beam = 0);
+                                const std::string& utf8Text, int beam = 0,
+                                const std::string& model = {});
 bool ParseLocalMtRequest(const std::string& line, LocalMtRequest& out);
 bool ParseLocalMtMessage(const std::string& line, LocalMtMessage& out);
 

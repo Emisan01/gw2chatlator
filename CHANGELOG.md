@@ -3,6 +3,13 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.5.9 — 2026-10-24 (GW2Chatlator for Nexus)
+
+- **NLLB-200 local translation engine:** Added explicit selection of Meta's NLLB-200 translation model (`NLLB-200 (local)`) in the Options → Translator engine dropdown and translation helper protocol.
+- **Instant UI language switching:** Selecting "Language of this window" in Options → General now applies immediately in real time, updating window title, tabs, options, and status.
+- **Footer chip language consistency:** Fixed cache invalidation in the chat window footer so language chips (`[Active]`, `[as written]`, `[Write: ...]`) update immediately upon UI language change.
+- **Smoke benchmark stability:** Set process and thread priority during micro-benchmarking to prevent Windows OS thread preemption jitter.
+
 ## 2.5.8 — 2026-10-23 (GW2Chatlator for Nexus)
 
 - **Smart-Sieve & Telemetry Pipeline:** Added high-performance filtering for gaming slang and shorthand (0 ms overhead), repetition suppression cache, and occlusion culling for offscreen chat lines.

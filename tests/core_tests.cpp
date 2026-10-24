@@ -173,6 +173,14 @@ static void TestLocalMtProtocol() {
         CHECK(request.id == i && request.source == "de" && request.target == "en" && request.text == utf8);
     }
 
+    {
+        const std::string lineNllb = BuildLocalMtRequest(42, "de", "en", "Hallo", 2, "nllb");
+        LocalMtRequest reqNllb;
+        CHECK(ParseLocalMtRequest(lineNllb, reqNllb));
+        CHECK(reqNllb.id == 42 && reqNllb.source == "de" && reqNllb.target == "en" && reqNllb.text == "Hallo" &&
+              reqNllb.beam == 2 && reqNllb.model == "nllb");
+    }
+
     LocalMtMessage message;
     CHECK(ParseLocalMtMessage(R"({"evt":"ready"})", message) && message.kind == LocalMtMessage::Kind::Ready);
     CHECK(ParseLocalMtMessage(R"({"evt":"loaded","pair":"de-en","ms":123})", message) &&

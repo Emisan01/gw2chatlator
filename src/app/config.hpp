@@ -14,7 +14,7 @@
 
 namespace gct {
 
-enum class Engine { Auto, Basic, DeepL, Llm, Google, Microsoft, Libre, Local };
+enum class Engine { Auto, Basic, DeepL, Llm, Google, Microsoft, Libre, Local, Nllb };
 enum class AutoCorrectMode { Off, Safe, Phone };
 
 struct Config {

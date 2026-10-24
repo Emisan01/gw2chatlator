@@ -164,9 +164,10 @@ void Translate(const std::string& line) {
     const bool hasNllb = ExistsFile(g_data + L"\\translate\\nllb-200\\model.bin");
     const std::string srcTag = NllbLanguageTag(request.source);
     const std::string tgtTag = NllbLanguageTag(request.target);
-    const bool canUseNllb = hasNllb && !srcTag.empty() && !tgtTag.empty();
+    const bool preferNllb = (request.model == "nllb");
+    const bool preferOpus = (request.model == "opus");
 
-    if (!hasOpusPair && canUseNllb) {
+    if (canUseNllb && (preferNllb || (!hasOpusPair && !preferOpus))) {
         NllbModel* nllb = LoadNllb(error);
         if (!nllb) {
             Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) + JsonString("msg", error) + "}");

@@ -280,6 +280,7 @@ std::shared_ptr<Translator> MakeTranslator(const Config& c) {  // the engine you
     if (c.engine == Engine::Microsoft && !c.msKey.empty()) return MakeMicrosoftTranslator(c.msKey, c.msRegion);
     if (c.engine == Engine::Libre && !c.libreUrl.empty()) return MakeLibreTranslator(c.libreUrl, c.libreKey);
     if (c.engine == Engine::Local) return MakeLocalMtTranslator(AddonsDir() + L"GW2Keyboard\\gw2kb_translate.exe", c.dataDir);
+    if (c.engine == Engine::Nllb) return MakeLocalMtTranslator(AddonsDir() + L"GW2Keyboard\\gw2kb_translate.exe", c.dataDir, true /*forceNllb*/);
     if (!c.deeplKey.empty()) return MakeDeepLTranslator(c.deeplKey);
     if (!c.googleKey.empty()) return MakeGoogleTranslator(c.googleKey);
     if (!c.msKey.empty()) return MakeMicrosoftTranslator(c.msKey, c.msRegion);

@@ -585,10 +585,25 @@ void RenderOptionsContent() {
                 for (const UiLangInfo& l : UiLanguages())
                     if (ToLowerAscii(PrimaryLang(edit.uiLangCode)) == l.code) current = U8(l.native);  // "DE" of old too
                 if (ImGui::BeginCombo(UI(Tr(L"Language of this window") + L"##ui").c_str(), current.c_str())) {
-                    if (ImGui::Selectable(UI(Tr(L"like Windows")).c_str(), edit.uiLangCode.empty())) edit.uiLangCode.clear();
-                    for (const UiLangInfo& l : UiLanguages())
-                        if (ImGui::Selectable(U8(l.native).c_str(), ToLowerAscii(PrimaryLang(edit.uiLangCode)) == l.code))
-                            edit.uiLangCode = l.code;
+                    auto applyLang = [&](const std::wstring& code) {
+                        edit.uiLangCode = code;
+                        edit.uiLang = EffectiveUiLang(edit.uiLangCode);
+                        {
+                            std::lock_guard<std::mutex> lock(g_mu);
+                            g_cfg.uiLangCode = edit.uiLangCode;
+                            g_cfg.uiLang = edit.uiLang;
+                        }
+                        SetUiLang(edit.uiLang);
+                        g_cfg.SaveValue(L"General", L"UiLanguage", edit.uiLangCode);
+                    };
+                    if (ImGui::Selectable(UI(Tr(L"like Windows")).c_str(), edit.uiLangCode.empty())) {
+                        applyLang(L"");
+                    }
+                    for (const UiLangInfo& l : UiLanguages()) {
+                        if (ImGui::Selectable(U8(l.native).c_str(), ToLowerAscii(PrimaryLang(edit.uiLangCode)) == l.code)) {
+                            applyLang(l.code);
+                        }
+                    }
                     ImGui::EndCombo();
                 }
             }
@@ -1038,11 +1053,11 @@ void RenderOptionsContent() {
                        L"that player's language.")));
             ImGui::Checkbox(UI(Tr(L"Translate my text")).c_str(), &edit.translateWriting);
             Hint(UI(Tr(L"What you write goes into the chat in the language chosen at \"Send\" below the input.")));
-            static const Engine kEngines[] = {Engine::Auto, Engine::Basic, Engine::DeepL, Engine::Google, Engine::Microsoft, Engine::Libre, Engine::Local};
-            static const wchar_t* kNames[] = {L"Automatic", L"MyMemory (free)", L"DeepL", L"Google", L"Microsoft", L"LibreTranslate", L"OPUS-MT (local)"};
+            static const Engine kEngines[] = {Engine::Auto, Engine::Basic, Engine::DeepL, Engine::Google, Engine::Microsoft, Engine::Libre, Engine::Local, Engine::Nllb};
+            static const wchar_t* kNames[] = {L"Automatic", L"MyMemory (free)", L"DeepL", L"Google", L"Microsoft", L"LibreTranslate", L"OPUS-MT (local)", L"NLLB-200 (local)"};
             int ei = 0;
-            for (int i = 0; i < 7; ++i)
-                if (kEngines[i] == edit.engine) ei = i;
+            for (size_t i = 0; i < std::size(kEngines); ++i)
+                if (kEngines[i] == edit.engine) ei = static_cast<int>(i);
             static std::vector<std::string> s_engines;
             static UiLang s_engineLang = static_cast<UiLang>(-1);
             if (s_engineLang != g_cfg.uiLang || s_engines.empty()) {
@@ -1207,6 +1222,13 @@ void RenderOptionsContent() {
     ImGui::SameLine();
     if (ImGui::Button(UI(Tr(L"Undo changes")).c_str())) {
         loaded = false;
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            g_cfg.uiLang = opened.uiLang;
+            g_cfg.uiLangCode = opened.uiLangCode;
+        }
+        SetUiLang(opened.uiLang);
+        g_cfg.SaveValue(L"General", L"UiLanguage", opened.uiLangCode);
     }
 }
 
@@ -1239,7 +1261,8 @@ std::string BuildDiagnosticReport() {
     ss << "- Configured Engine: ";
     switch (g_cfg.engine) {
         case Engine::Auto: ss << "Auto (Local MT / MyMemory fallback)\n"; break;
-        case Engine::Local: ss << "Local (CTranslate2 INT8 Native)\n"; break;
+        case Engine::Local: ss << "Local OPUS-MT (CTranslate2 INT8 Native)\n"; break;
+        case Engine::Nllb: ss << "Local NLLB-200 (CTranslate2 INT8 Native)\n"; break;
         case Engine::DeepL: ss << "DeepL API\n"; break;
         case Engine::Google: ss << "Google Cloud Translation API\n"; break;
         case Engine::Microsoft: ss << "Microsoft Azure Translator\n"; break;

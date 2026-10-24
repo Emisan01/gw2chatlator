@@ -75,10 +75,12 @@ const std::vector<LocalMtModelInfo>& LocalMtModelCatalog() {
 }
 
 std::string BuildLocalMtRequest(int id, const std::string& source, const std::string& target,
-                                const std::string& utf8Text, int beam) {
+                                const std::string& utf8Text, int beam,
+                                const std::string& model) {
     std::string req = "{\"cmd\":\"translate\",\"id\":" + std::to_string(id) + ",\"src\":\"" + JsonEscape(Lower(source)) +
            "\",\"tgt\":\"" + JsonEscape(Lower(target)) + "\",\"text\":\"" + JsonEscape(utf8Text) + "\"";
     if (beam > 0) req += ",\"beam\":" + std::to_string(beam);
+    if (!model.empty()) req += ",\"model\":\"" + JsonEscape(model) + "\"";
     req += "}";
     return req;
 }
@@ -102,6 +104,10 @@ bool ParseLocalMtRequest(const std::string& line, LocalMtRequest& out) {
     const JsonValue* beam = json.Get("beam");
     if (beam && beam->type == JsonValue::Type::Number && beam->n >= 1 && beam->n <= 8) {
         out.beam = static_cast<int>(beam->n);
+    }
+    const JsonValue* model = json.Get("model");
+    if (model && model->type == JsonValue::Type::String) {
+        out.model = model->s;
     }
     return true;
 }
