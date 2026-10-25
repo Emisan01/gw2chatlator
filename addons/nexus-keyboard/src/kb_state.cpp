@@ -59,6 +59,7 @@ std::string UI(std::wstring w) {
     // zero-width space would only be a "?" too.
     return ToUtf8(WithoutInvisible(PlainPunctuation(w)));
 }
+thread_local Lane g_workerLane = Lane::Unknown;
 Worker g_worker;
 SpellService* g_spell = nullptr;
 SendGuard g_guard;
@@ -110,6 +111,7 @@ std::wstring g_finishedLast;  // learning mode: the last word when a space last 
 size_t g_finishedAt = 0;
 bool g_voiceReady = false;       // the helper said "ready"
 bool g_recording = false;        // a recording runs
+std::atomic<bool> g_voiceMuted{false}; // Discord-safe mute for voice recognition
 std::wstring g_voiceLive;        // the live text while speaking (only drawn, never written into the input)
 std::wstring g_lastDictated;     // the last recognized text as it came (learning misheard words on send)
 std::wstring g_dictLang;         // its language
@@ -132,7 +134,7 @@ void LoadLayout() {  // g_mu held
     g_layout.words = get(L"WordBar", 1) != 0;
     g_layout.footer = get(L"Footer", 1) != 0;
     g_layout.header = get(L"Header", 1) != 0;
-    g_layout.infoText = get(L"InfoText", 1) != 0;
+    g_layout.infoText = get(L"InfoText", 0) != 0;
     g_layout.minButton = get(L"MinButton", 1) != 0;
     g_layout.autoMinimize = get(L"AutoMinimize", 0) != 0;
     g_layout.minimizeAfter = std::clamp(get(L"MinimizeAfter", 10), 2, 120);
@@ -374,6 +376,7 @@ const std::wstring& AddonsDir() {  // the folder our DLL lies in: <GW2>\addons\ 
 
 std::wstring KeyboardDir() { return AddonsDir() + L"GW2Keyboard"; }
 bool g_micLocked = false;  // right-click on the microphone: on until the next right-click
+ULONGLONG g_micLockedStart = 0;
 // The two window profiles (menu and Options → Window → Window layout): presets of the window's parts. A profile is on
 // exactly while the parts are what it says – change one part and it is your own layout again (its check goes off).
 // Switching a profile off brings back the layout you had before it (this session; else every part shown).

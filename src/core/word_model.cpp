@@ -238,7 +238,60 @@ std::wstring MatchCase(const std::wstring& typed, const std::wstring& candidate)
 }
 
 // ---------------------------------------------------------------------------
+WordModel::WordModel() {
+    PublishSnapshotLocked();
+}
+
+WordModel::WordModel(const WordModel& o) {
+    std::shared_lock<std::shared_mutex> lk(o.mu_);
+    words_ = o.words_;
+    pairs_ = o.pairs_;
+    pairTotal_ = o.pairTotal_;
+    learnedSinceDecay_ = o.learnedSinceDecay_;
+    dirty_ = o.dirty_;
+    PublishSnapshotLocked();
+}
+
+WordModel& WordModel::operator=(const WordModel& o) {
+    if (this == &o) return *this;
+    std::unique_lock<std::shared_mutex> lk1(mu_, std::defer_lock);
+    std::shared_lock<std::shared_mutex> lk2(o.mu_, std::defer_lock);
+    std::lock(lk1, lk2);
+    words_ = o.words_;
+    pairs_ = o.pairs_;
+    pairTotal_ = o.pairTotal_;
+    learnedSinceDecay_ = o.learnedSinceDecay_;
+    dirty_ = o.dirty_;
+    dirtySnapshot_ = true;
+    PublishSnapshotLocked();
+    return *this;
+}
+
+std::shared_ptr<const WordModelSnapshot> WordModel::GetSnapshot() const {
+    if (dirtySnapshot_) {
+        std::unique_lock<std::shared_mutex> lk(mu_);
+        if (dirtySnapshot_) const_cast<WordModel*>(this)->PublishSnapshotLocked();
+    }
+    return std::atomic_load(&snapshot_);
+}
+
+void WordModel::PublishSnapshotLocked() {
+    auto snap = std::make_shared<WordModelSnapshot>();
+    snap->generation = generation_.fetch_add(1, std::memory_order_relaxed);
+    snap->words = words_;
+    snap->pairs = pairs_;
+    snap->pairTotal = pairTotal_;
+    std::atomic_store(&snapshot_, std::shared_ptr<const WordModelSnapshot>(std::move(snap)));
+    dirtySnapshot_ = false;
+}
+
 void WordModel::AddWord(const std::wstring& word, double weight, bool countCase) {
+    std::unique_lock<std::shared_mutex> lk(mu_);
+    AddWordInternal(word, weight, countCase);
+    PublishSnapshotLocked();
+}
+
+void WordModel::AddWordInternal(const std::wstring& word, double weight, bool countCase) {
     if (!Learnable(word)) return;
     const std::wstring key = WordKey(word);
     Word& w = words_[key];
@@ -260,6 +313,7 @@ void WordModel::AddWord(const std::wstring& word, double weight, bool countCase)
         w.form = word;
     }
     dirty_ = true;
+    dirtySnapshot_ = true;
     if (words_.size() > kMaxWords) Prune();
 }
 
@@ -269,10 +323,12 @@ void WordModel::AddPair(const std::wstring& prevKey, const std::wstring& nextKey
     it->second += weight;
     if (inserted) ++pairTotal_;
     dirty_ = true;
+    dirtySnapshot_ = true;
     if (pairTotal_ > kMaxPairs) Prune();
 }
 
 void WordModel::Learn(const std::wstring& text, double weight) {
+    std::unique_lock<std::shared_mutex> lk(mu_);
     const std::vector<std::wstring> tokens = Tokens(text);
     std::wstring prevKey, prev2Key;
     for (size_t i = 0; i < tokens.size(); ++i) {
@@ -289,7 +345,7 @@ void WordModel::Learn(const std::wstring& text, double weight) {
             auto it = words_.find(key);
             form = it != words_.end() ? it->second.form : std::wstring(1, CaseFoldChar(w[0])) + w.substr(1);
         }
-        AddWord(form, weight, i > 0);  // a message's first word: its capital says nothing
+        AddWordInternal(form, weight, i > 0);  // a message's first word: its capital says nothing
         const std::wstring key = WordKey(w);
         if (!prevKey.empty()) AddPair(prevKey, key, weight);
         if (!prev2Key.empty() && !prevKey.empty()) AddPair(prev2Key + L'\x1f' + prevKey, key, weight);  // a triple
@@ -297,6 +353,7 @@ void WordModel::Learn(const std::wstring& text, double weight) {
         prevKey = key;
     }
     if (++learnedSinceDecay_ >= kDecayEvery) Decay();
+    PublishSnapshotLocked();
 }
 
 void WordModel::Decay() {
@@ -318,47 +375,52 @@ void WordModel::Decay() {
         else ++pit;
     }
     dirty_ = true;
+    dirtySnapshot_ = true;
+    PublishSnapshotLocked();
 }
 
 void WordModel::Chose(const std::wstring& prev2, const std::wstring& prev, const std::wstring& word, double weight) {
     if (!Learnable(word) || weight <= 0) return;
     for (wchar_t c : word)  // one word only: no link, code or phrase
         if (!IsWordChar(c) && c != L'\'' && c != L'-' && c != 0x2019) return;
-    AddWord(word, weight);
+    std::unique_lock<std::shared_mutex> lk(mu_);
+    AddWordInternal(word, weight, true);
     const std::wstring key = WordKey(word);
-    if (prev.empty() || !Learnable(prev)) return;
-    AddPair(WordKey(prev), key, weight * 2);  // the place in the sentence is what the choice says most about
-    if (!prev2.empty() && Learnable(prev2)) AddPair(WordKey(prev2) + L'\x1f' + WordKey(prev), key, weight * 2);
+    if (!prev.empty() && Learnable(prev)) {
+        AddPair(WordKey(prev), key, weight * 2);  // the place in the sentence is what the choice says most about
+        if (!prev2.empty() && Learnable(prev2)) AddPair(WordKey(prev2) + L'\x1f' + WordKey(prev), key, weight * 2);
+    }
+    PublishSnapshotLocked();
 }
 
-double WordModel::Count(const std::wstring& word) const {
-    auto it = words_.find(WordKey(word));
-    return it == words_.end() ? 0.0 : it->second.count;
+double WordModelSnapshot::Count(const std::wstring& word) const {
+    auto it = words.find(WordKey(word));
+    return it == words.end() ? 0.0 : it->second.count;
 }
 
-double WordModel::PairCount(const std::wstring& prev, const std::wstring& next) const {
+double WordModelSnapshot::PairCount(const std::wstring& prev, const std::wstring& next) const {
     if (prev.empty() || next.empty()) return 0.0;
-    auto pit = pairs_.find(WordKey(prev));
-    if (pit == pairs_.end()) return 0.0;
+    auto pit = pairs.find(WordKey(prev));
+    if (pit == pairs.end()) return 0.0;
     auto nit = pit->second.find(WordKey(next));
     return nit == pit->second.end() ? 0.0 : nit->second;
 }
 
-double WordModel::TripleCount(const std::wstring& prev2, const std::wstring& prev, const std::wstring& next) const {
+double WordModelSnapshot::TripleCount(const std::wstring& prev2, const std::wstring& prev, const std::wstring& next) const {
     if (prev2.empty() || prev.empty() || next.empty()) return 0.0;
-    auto tit = pairs_.find(WordKey(prev2) + L'\x1f' + WordKey(prev));
-    if (tit == pairs_.end()) return 0.0;
+    auto tit = pairs.find(WordKey(prev2) + L'\x1f' + WordKey(prev));
+    if (tit == pairs.end()) return 0.0;
     auto nit = tit->second.find(WordKey(next));
     return nit == tit->second.end() ? 0.0 : nit->second;
 }
 
-std::vector<std::wstring> WordModel::Complete(const std::wstring& prefix, const std::wstring& prev, size_t n,
-                                             const std::wstring& prev2) const {
+std::vector<std::wstring> WordModelSnapshot::Complete(const std::wstring& prefix, const std::wstring& prev, size_t n,
+                                                      const std::wstring& prev2) const {
     std::vector<std::wstring> out;
     if (prefix.empty() || n == 0) return out;
     const std::wstring p = WordKey(prefix);
-    const auto pit = prev.empty() ? pairs_.end() : pairs_.find(WordKey(prev));
-    const auto tit = prev.empty() || prev2.empty() ? pairs_.end() : pairs_.find(WordKey(prev2) + L'\x1f' + WordKey(prev));
+    const auto pit = prev.empty() ? pairs.end() : pairs.find(WordKey(prev));
+    const auto tit = prev.empty() || prev2.empty() ? pairs.end() : pairs.find(WordKey(prev2) + L'\x1f' + WordKey(prev));
     // Every word with this beginning, with how often it came alone, after `prev` and after `prev2 prev`. The score
     // mixes the three as shares among these candidates (interpolation, as keyboards' n-gram models do): the sentence
     // so far outweighs plain frequency – "kommst du m" -> "mit" even when "mal" is written more often overall.
@@ -368,12 +430,12 @@ std::vector<std::wstring> WordModel::Complete(const std::wstring& prefix, const 
     };
     std::vector<Cand> cands;
     double s1 = 0, s2 = 0, s3 = 0;
-    for (const auto& [key, w] : words_) {
+    for (const auto& [key, w] : words) {
         if (key.size() <= p.size() || key.compare(0, p.size(), p) != 0) continue;
         double c2 = 0, c3 = 0;
-        if (pit != pairs_.end())
+        if (pit != pairs.end())
             if (auto nit = pit->second.find(key); nit != pit->second.end()) c2 = nit->second;
-        if (tit != pairs_.end())
+        if (tit != pairs.end())
             if (auto nit = tit->second.find(key); nit != tit->second.end()) c3 = nit->second;
         cands.push_back({&w, w.count, c2, c3});
         s1 += w.count;
@@ -402,14 +464,14 @@ std::vector<std::wstring> WordModel::Complete(const std::wstring& prefix, const 
     return out;
 }
 
-std::vector<std::wstring> WordModel::CompleteFuzzy(const std::wstring& prefix, const std::wstring& prev, size_t n,
-                                                   const KeyNeighbors& neighbors,
-                                                   const std::wstring& prev2) const {
+std::vector<std::wstring> WordModelSnapshot::CompleteFuzzy(const std::wstring& prefix, const std::wstring& prev, size_t n,
+                                                           const KeyNeighbors& neighbors,
+                                                           const std::wstring& prev2) const {
     std::vector<std::wstring> out;
     const std::wstring p = WordKey(prefix);
     if (p.size() < 3 || n == 0 || std::any_of(p.begin(), p.end(), IsDigitChar)) return out;
-    const auto pit = prev.empty() ? pairs_.end() : pairs_.find(WordKey(prev));
-    const auto tit = prev.empty() || prev2.empty() ? pairs_.end() : pairs_.find(WordKey(prev2) + L'\x1f' + WordKey(prev));
+    const auto pit = prev.empty() ? pairs.end() : pairs.find(WordKey(prev));
+    const auto tit = prev.empty() || prev2.empty() ? pairs.end() : pairs.find(WordKey(prev2) + L'\x1f' + WordKey(prev));
     const size_t m = p.size();
     // The same shares as Complete (word, pair and triple, weighted by how often they were seen), times 2 for a slip to
     // the key next door – the most likely typo.
@@ -419,13 +481,13 @@ std::vector<std::wstring> WordModel::CompleteFuzzy(const std::wstring& prefix, c
     };
     std::vector<Cand> cands;
     double s1 = 0, s2 = 0, s3 = 0;
-    for (const auto& [key, w] : words_) {
+    for (const auto& [key, w] : words) {
         if (w.count < 2.0 || key.size() < m || key == p) continue;
         if (!OneTypoPrefix(key, p)) continue;
         double c2 = 0, c3 = 0;
-        if (pit != pairs_.end())
+        if (pit != pairs.end())
             if (auto nit = pit->second.find(key); nit != pit->second.end()) c2 = nit->second;
-        if (tit != pairs_.end())
+        if (tit != pairs.end())
             if (auto nit = tit->second.find(key); nit != tit->second.end()) c3 = nit->second;
         double slip = 1.0;
         if (neighbors) {
@@ -461,6 +523,7 @@ std::vector<std::wstring> WordModel::CompleteFuzzy(const std::wstring& prefix, c
 }
 
 bool WordModel::Forget(const std::wstring& word) {
+    std::unique_lock<std::shared_mutex> lk(mu_);
     const std::wstring key = WordKey(word);
     bool found = words_.erase(key) > 0;
     if (auto pit = pairs_.find(key); pit != pairs_.end()) {
@@ -485,19 +548,28 @@ bool WordModel::Forget(const std::wstring& word) {
         if (pit->second.empty()) pit = pairs_.erase(pit);
         else ++pit;
     }
-    if (found) dirty_ = true;
+    if (found) {
+        dirty_ = true;
+        dirtySnapshot_ = true;
+        PublishSnapshotLocked();
+    }
     return found;
 }
 
 void WordModel::Clear() {
+    std::unique_lock<std::shared_mutex> lk(mu_);
     const bool had = !words_.empty() || !pairs_.empty();
     words_.clear();
     pairs_.clear();
     pairTotal_ = 0;
-    if (had) dirty_ = true;
+    if (had) {
+        dirty_ = true;
+        dirtySnapshot_ = true;
+        PublishSnapshotLocked();
+    }
 }
 
-std::vector<std::wstring> WordModel::Next(const std::wstring& prev, size_t n, const std::wstring& prev2) const {
+std::vector<std::wstring> WordModelSnapshot::Next(const std::wstring& prev, size_t n, const std::wstring& prev2) const {
     std::vector<std::wstring> out;
     if (n == 0) return out;
     std::unordered_map<std::wstring, double> score;
@@ -510,18 +582,18 @@ std::vector<std::wstring> WordModel::Next(const std::wstring& prev, size_t n, co
         for (const auto& [key, count] : next)
             if (count >= 0.5) score[key] += weight * count / total;
     };
-    const auto tit = prev2.empty() ? pairs_.end() : pairs_.find(WordKey(prev2) + L'\x1f' + WordKey(prev));
-    const auto pit = pairs_.find(WordKey(prev));
+    const auto tit = prev2.empty() ? pairs.end() : pairs.find(WordKey(prev2) + L'\x1f' + WordKey(prev));
+    const auto pit = pairs.find(WordKey(prev));
     double t3 = 0;  // how often the two words were seen at all: their weight grows with it (see Complete)
-    if (tit != pairs_.end())
+    if (tit != pairs.end())
         for (const auto& kv : tit->second) t3 += kv.second;
     const double w3 = 0.6 * t3 / (t3 + 1.0);
-    if (tit != pairs_.end()) add(tit->second, w3);
-    if (pit != pairs_.end()) add(pit->second, 1.0 - w3);
+    if (tit != pairs.end()) add(tit->second, w3);
+    if (pit != pairs.end()) add(pit->second, 1.0 - w3);
     std::vector<std::pair<double, std::wstring>> scored;
     for (const auto& [key, s] : score) {
-        auto wit = words_.find(key);
-        scored.push_back({s, wit != words_.end() ? wit->second.form : key});
+        auto wit = words.find(key);
+        scored.push_back({s, wit != words.end() ? wit->second.form : key});
     }
     std::sort(scored.begin(), scored.end(), [](const auto& a, const auto& b) {
         if (a.first != b.first) return a.first > b.first;
@@ -531,11 +603,11 @@ std::vector<std::wstring> WordModel::Next(const std::wstring& prev, size_t n, co
     return out;
 }
 
-std::wstring WordModel::NextSure(const std::wstring& prev, const std::wstring& prev2) const {
+std::wstring WordModelSnapshot::NextSure(const std::wstring& prev, const std::wstring& prev2) const {
     // The most specific context that has been seen often enough decides: two words, else one.
     auto decide = [&](const std::wstring& ctx) -> std::wstring {
-        auto it = pairs_.find(ctx);
-        if (it == pairs_.end()) return {};
+        auto it = pairs.find(ctx);
+        if (it == pairs.end()) return {};
         double total = 0, best = 0;
         const std::wstring* bestKey = nullptr;
         for (const auto& [key, count] : it->second) {
@@ -546,12 +618,12 @@ std::wstring WordModel::NextSure(const std::wstring& prev, const std::wstring& p
             }
         }
         if (!bestKey || best < 2.5 || best < total * 0.6) return {};
-        auto wit = words_.find(*bestKey);
-        return wit != words_.end() ? wit->second.form : *bestKey;
+        auto wit = words.find(*bestKey);
+        return wit != words.end() ? wit->second.form : *bestKey;
     };
     if (prev.empty()) return {};
     if (!prev2.empty())
-        if (auto it = pairs_.find(WordKey(prev2) + L'\x1f' + WordKey(prev)); it != pairs_.end()) {
+        if (auto it = pairs.find(WordKey(prev2) + L'\x1f' + WordKey(prev)); it != pairs.end()) {
             double total = 0;
             for (const auto& kv : it->second) total += kv.second;
             if (total >= 2.5) return decide(it->first);  // enough seen with two words: they decide alone
@@ -559,8 +631,8 @@ std::wstring WordModel::NextSure(const std::wstring& prev, const std::wstring& p
     return decide(WordKey(prev));
 }
 
-std::vector<std::wstring> WordModel::ContinueSure(const std::wstring& prev, const std::wstring& prev2,
-                                                 size_t maxWords) const {
+std::vector<std::wstring> WordModelSnapshot::ContinueSure(const std::wstring& prev, const std::wstring& prev2,
+                                                          size_t maxWords) const {
     std::vector<std::wstring> out;
     std::wstring p1 = prev, p2 = prev2;
     std::vector<std::wstring> seen{WordKey(prev), WordKey(prev2)};
@@ -577,7 +649,7 @@ std::vector<std::wstring> WordModel::ContinueSure(const std::wstring& prev, cons
     return out;
 }
 
-std::vector<std::wstring> WordModel::Near(const std::wstring& word, size_t n) const {
+std::vector<std::wstring> WordModelSnapshot::Near(const std::wstring& word, size_t n) const {
     std::vector<std::wstring> out;
     const std::wstring key = WordKey(word);
     if (key.size() < 2 || n == 0) return out;
@@ -588,7 +660,7 @@ std::vector<std::wstring> WordModel::Near(const std::wstring& word, size_t n) co
         const std::wstring* form;
     };
     std::vector<Hit> hits;
-    for (const auto& [k, w] : words_) {
+    for (const auto& [k, w] : words) {
         if (k == key || w.count < 2.0) continue;
         if (k[0] != key[0] && !FirstTwoSwapped(k, key)) continue;
         const int d = EditDistance(k, key, allowed);
@@ -604,7 +676,7 @@ std::vector<std::wstring> WordModel::Near(const std::wstring& word, size_t n) co
     return out;
 }
 
-std::vector<std::wstring> WordModel::NearSlip(const std::wstring& word, const KeyLayout& layout, size_t n) const {
+std::vector<std::wstring> WordModelSnapshot::NearSlip(const std::wstring& word, const KeyLayout& layout, size_t n) const {
     std::vector<std::wstring> out;
     const std::wstring key = WordKey(word);
     if (key.size() < 3 || n == 0) return out;
@@ -615,7 +687,7 @@ std::vector<std::wstring> WordModel::NearSlip(const std::wstring& word, const Ke
         const std::wstring* form;
     };
     std::vector<Hit> hits;
-    for (const auto& [k, w] : words_) {
+    for (const auto& [k, w] : words) {
         if (k == key || w.count < 2.0) continue;
         // The first letter right, on the key next door, or swapped with the second.
         if (k[0] != key[0] && !layout.Neighbors(k[0], key[0]) && !FirstTwoSwapped(k, key)) continue;
@@ -673,27 +745,29 @@ void WordModel::Prune() {
 }
 
 std::string WordModel::Serialize() const {
+    auto snap = GetSnapshot();
     std::string out = "# GW2 Chat Translator - learned words (w=word, n=word pair). Safe to delete.\n";
     auto num = [](double v) {
         const long long whole = static_cast<long long>(v * 100 + 0.5);
         return std::to_string(whole / 100) + "." + (whole % 100 < 10 ? "0" : "") + std::to_string(whole % 100);
     };
     std::vector<const std::pair<const std::wstring, Word>*> sorted;
-    for (const auto& kv : words_) sorted.push_back(&kv);
+    for (const auto& kv : snap->words) sorted.push_back(&kv);
     std::sort(sorted.begin(), sorted.end(), [](const auto* a, const auto* b) { return a->first < b->first; });
     for (const auto* kv : sorted)
         out += "w\t" + ToUtf8(kv->second.form) + "\t" + num(kv->second.count) + "\t" + num(kv->second.cap) + "\t" +
                num(kv->second.caseUses) + "\n";
     std::vector<std::pair<std::wstring, std::wstring>> keys;
-    for (const auto& [p, next] : pairs_)
+    for (const auto& [p, next] : snap->pairs)
         for (const auto& [k, c] : next) keys.push_back({p, k});
     std::sort(keys.begin(), keys.end());
     for (const auto& [p, k] : keys)
-        out += "n\t" + ToUtf8(p) + "\t" + ToUtf8(k) + "\t" + num(pairs_.at(p).at(k)) + "\n";
+        out += "n\t" + ToUtf8(p) + "\t" + ToUtf8(k) + "\t" + num(snap->pairs.at(p).at(k)) + "\n";
     return out;
 }
 
 void WordModel::Parse(const std::string& utf8) {
+    std::unique_lock<std::shared_mutex> lk(mu_);
     words_.clear();
     pairs_.clear();
     pairTotal_ = 0;
@@ -743,10 +817,12 @@ void WordModel::Parse(const std::string& utf8) {
     }
     if (words_.size() > kMaxWords || pairTotal_ > kMaxPairs) Prune();
     dirty_ = false;
+    dirtySnapshot_ = true;
+    PublishSnapshotLocked();
 }
 
 // ---------------------------------------------------------------------------
-std::wstring ChooseCorrection(const std::wstring& word, const std::vector<std::wstring>& spell, const WordModel& model,
+std::wstring ChooseCorrection(const std::wstring& word, const std::vector<std::wstring>& spell, const WordModelSnapshot& model,
                               const std::wstring& prev, const std::wstring& prev2) {
     const size_t letters = Letters(word);
     if (letters < 4 || word.size() > 40) return {};

@@ -6,6 +6,8 @@
 // Lives on the UI thread.
 #pragma once
 
+#include <atomic>
+#include <memory>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -53,7 +55,10 @@ public:
     bool SwitchLanguage(const std::vector<std::wstring>& tags);
     const std::wstring& Tag() const { return checker_.Tag(); }
 
-    void SetGameWords(WordSet words) { game_ = std::move(words); }
+    void SetGameWords(WordSet words) {
+        game_ = std::move(words);
+        std::atomic_store(&gameSnap_, std::make_shared<const WordSet>(game_));
+    }
 
     // The learned words of this language ("de"), from `dir`\learned_de.txt.
     void UseLearnedLanguage(const std::wstring& primaryLang, const std::wstring& dir);
@@ -73,7 +78,9 @@ public:
     // Backspace right after an autocorrection: the word was meant as typed.
     void RejectCorrection(const std::wstring& original);
     const WordModel& Model() const { return model_; }
+    std::shared_ptr<const WordModelSnapshot> ModelSnapshot() const { return model_.GetSnapshot(); }
     const TypoMemory& Typos() const { return typos_; }
+    std::shared_ptr<const TypoMemory> TyposSnapshot() const { return std::atomic_load(&typosSnap_); }
     // A correction was kept (Space/Tab wrote `fix` for `typed`): a typo you make, corrected without guessing next
     // time. Completions are no typos. Backspace right after it (RejectCorrection) forgets it again.
     void NoteFix(const std::wstring& typed, const std::wstring& fix);
@@ -124,6 +131,7 @@ public:
     std::wstring NameFor(const std::wstring& word) const;
     // Never translated: the built-in GW2 abbreviations plus the names you taught.
     const WordSet& KeepWords() const { return keep_; }
+    std::shared_ptr<const WordSet> KeepWordsSnapshot() const { return std::atomic_load(&keepSnap_); }
     void IgnoreForSession(const std::wstring& word);
 
     // Ranges no spell logic may touch: chat codes and a "/w Name, " prefix.
@@ -164,6 +172,13 @@ private:
     std::wstring namesPath_;
     WordSet keep_ = BuiltinKeepWords();
     void SaveNames();
+    std::shared_ptr<const TypoMemory> typosSnap_ = std::make_shared<const TypoMemory>();
+    std::shared_ptr<const std::unordered_map<std::wstring, std::wstring>> namesSnap_ =
+        std::make_shared<const std::unordered_map<std::wstring, std::wstring>>();
+    std::shared_ptr<const WordSet> keepSnap_ = std::make_shared<const WordSet>(BuiltinKeepWords());
+    std::shared_ptr<const WordSet> userSnap_ = std::make_shared<const WordSet>();
+    std::shared_ptr<const WordSet> gameSnap_ = std::make_shared<const WordSet>();
+    std::shared_ptr<const WordSet> sessionSnap_ = std::make_shared<const WordSet>();
     bool learnChoices_ = true;
     void AddContextCompletions(const std::wstring& typed, std::vector<std::wstring>& out, size_t max) const;
     // Windows' own word prediction (the touch keyboard's): the basic vocabulary of the language before anything is

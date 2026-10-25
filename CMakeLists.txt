@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(GW2KeyboardNexus VERSION 2.6.0 LANGUAGES CXX)
+project(GW2KeyboardNexus VERSION 2.6.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -200,6 +200,7 @@ endif()
 # Release builders enable GCT_LOCAL_MT and package the resulting gw2kb_translate.exe separately for click-to-install.
 option(GCT_LOCAL_MT "Build the optional native CTranslate2 + OPUS-MT helper" OFF)
 if(GCT_LOCAL_MT)
+    set(CMAKE_POLICY_VERSION_MINIMUM "3.5")
     include(FetchContent)
     # Keep the self-contained helper and every static inference dependency on the same CRT.
     if(MSVC)

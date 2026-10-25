@@ -249,13 +249,24 @@ bool IconButton(const char* id, Icon kind, bool active, bool* rightClick, ImU32 
     const ImVec2 c(p.x + s * 0.5f, p.y + s * 0.5f);
     const float u = s / 18.0f;
     switch (kind) {
-        case Icon::Mic:  // a capsule on a stand
+        case Icon::Mic:
+        case Icon::MicMuted:  // a capsule on a stand
             dl->AddRectFilled(ImVec2(c.x - 2.5f * u, c.y - 6 * u), ImVec2(c.x + 2.5f * u, c.y + 1.5f * u), col, 2.5f * u);
             dl->PathArcTo(ImVec2(c.x, c.y - 1 * u), 4.5f * u, 0.0f, 3.14159f, 10);
             dl->PathStroke(col, false, 1.4f * u);
             dl->AddLine(ImVec2(c.x, c.y + 3.5f * u), ImVec2(c.x, c.y + 6 * u), col, 1.4f * u);
             dl->AddLine(ImVec2(c.x - 3 * u, c.y + 6 * u), ImVec2(c.x + 3 * u, c.y + 6 * u), col, 1.4f * u);
+            if (kind == Icon::MicMuted) {
+                // Strike-through slash across the mic from bottom-left to top-right (Discord style)
+                dl->AddLine(ImVec2(c.x - 6.5f * u, c.y + 6.5f * u), ImVec2(c.x + 6.5f * u, c.y - 6.5f * u), IM_COL32(20, 22, 28, 255), 3.0f * u);
+                dl->AddLine(ImVec2(c.x - 6.0f * u, c.y + 6.0f * u), ImVec2(c.x + 6.0f * u, c.y - 6.0f * u), col, 1.6f * u);
+            }
             break;
+        case Icon::ChevronDown: {  // v: small dropdown arrow
+            dl->AddLine(ImVec2(c.x - 3.5f * u, c.y - 1.5f * u), ImVec2(c.x, c.y + 2.0f * u), col, 1.5f * u);
+            dl->AddLine(ImVec2(c.x, c.y + 2.0f * u), ImVec2(c.x + 3.5f * u, c.y - 1.5f * u), col, 1.5f * u);
+            break;
+        }
         case Icon::Menu:  // ≡
             for (int i = -1; i <= 1; ++i)
                 dl->AddLine(ImVec2(c.x - 5.5f * u, c.y + i * 4 * u), ImVec2(c.x + 5.5f * u, c.y + i * 4 * u), col, 1.6f * u);
@@ -297,6 +308,239 @@ void BoxText(const ImVec2& at, const ImVec4& clip, ImU32 color, const std::strin
     std::string plain;
     ImGui::GetForegroundDrawList()->AddText(ImGui::GetFont(), ImGui::GetFontSize() * scale, at, color,
                                             FontSafe(text.c_str(), plain), nullptr, 0, &clip);
+}
+
+DiscordMicResult RenderDiscordMicControl(const char* id, float height, bool muted, bool recording) {
+    DiscordMicResult res;
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    const ImVec2 p = ImGui::GetCursorScreenPos();
+    const float h = height;
+    const float micW = std::floor(h * 1.15f);
+    const float arrowW = std::floor(h * 0.75f);
+    const float totalW = micW + 1.0f + arrowW;
+    const float r = 5.0f;
+
+    // Background pill
+    const ImVec2 pillMax(p.x + totalW, p.y + h);
+    dl->AddRectFilled(p, pillMax, IM_COL32(32, 35, 45, 220), r);
+    dl->AddRect(p, pillMax, IM_COL32(62, 68, 86, 180), r, ImDrawCornerFlags_All, 1.0f);
+    dl->AddLine(ImVec2(p.x + 4.0f, p.y + 1.0f), ImVec2(p.x + totalW - 4.0f, p.y + 1.0f), IM_COL32(255, 255, 255, 25), 1.0f);
+
+    // Left Button: Mic
+    const std::string micId = std::string(id) + "_mic";
+    ImGui::SetCursorScreenPos(p);
+    const bool micClicked = ImGui::InvisibleButton(micId.c_str(), ImVec2(micW, h));
+    const bool micHovered = ImGui::IsItemHovered();
+    const bool micActive = ImGui::IsItemActive();
+    const bool micRight = micHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right);
+
+    if (micHovered) {
+        ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+        dl->AddRectFilled(p, ImVec2(p.x + micW, p.y + h), IM_COL32(255, 255, 255, micActive ? 35 : 20), r, ImDrawCornerFlags_Left);
+    }
+    if (micClicked) res.muteToggled = true;
+    if (micRight) res.talkLocked = true;
+
+    if (micHovered) {
+        if (muted) {
+            ImGui::SetTooltip("%s", UI(Tr(L"Muted (Discord safe) – click to unmute")).c_str());
+        } else {
+            ImGui::SetTooltip("%s", UI(g_cfg.voiceActivation ? Tr(L"Voice activation: click switches it on / off · right-click: speak until a pause")
+                                                             : Tr(L"Hold to speak (or the push-to-talk key) · right-click: speak until a pause")).c_str());
+        }
+    }
+
+    // Draw the Mic Icon
+    const ImVec2 micC(p.x + micW * 0.5f, p.y + h * 0.5f);
+    const float u = h / 20.0f;
+    const ImU32 micCol = recording ? IM_COL32(235, 80, 80, 255)
+                                   : micHovered ? IM_COL32(255, 255, 255, 255)
+                                                : IM_COL32(200, 205, 220, 255);
+    dl->AddRectFilled(ImVec2(micC.x - 2.5f * u, micC.y - 6.0f * u), ImVec2(micC.x + 2.5f * u, micC.y + 1.5f * u), micCol, 2.5f * u);
+    dl->PathArcTo(ImVec2(micC.x, micC.y - 1.0f * u), 4.5f * u, 0.0f, 3.14159f, 10);
+    dl->PathStroke(micCol, false, 1.4f * u);
+    dl->AddLine(ImVec2(micC.x, micC.y + 3.5f * u), ImVec2(micC.x, micC.y + 6.0f * u), micCol, 1.4f * u);
+    dl->AddLine(ImVec2(micC.x - 3.0f * u, micC.y + 6.0f * u), ImVec2(micC.x + 3.0f * u, micC.y + 6.0f * u), micCol, 1.4f * u);
+    if (muted) {
+        // Strike-through slash from bottom-left to top-right (Discord style)
+        dl->AddLine(ImVec2(micC.x - 6.5f * u, micC.y + 6.5f * u), ImVec2(micC.x + 6.5f * u, micC.y - 6.5f * u), IM_COL32(20, 22, 28, 255), 3.0f * u);
+        dl->AddLine(ImVec2(micC.x - 6.0f * u, micC.y + 6.0f * u), ImVec2(micC.x + 6.0f * u, micC.y - 6.0f * u), micCol, 1.6f * u);
+    }
+
+    // Divider line
+    const float divX = p.x + micW;
+    dl->AddLine(ImVec2(divX, p.y + 4.0f), ImVec2(divX, p.y + h - 4.0f), IM_COL32(255, 255, 255, 30), 1.0f);
+
+    // Right Button: Arrow
+    const std::string arrowId = std::string(id) + "_arr";
+    ImGui::SetCursorScreenPos(ImVec2(divX + 1.0f, p.y));
+    const bool arrowClicked = ImGui::InvisibleButton(arrowId.c_str(), ImVec2(arrowW, h));
+    const bool arrowHovered = ImGui::IsItemHovered();
+    const bool arrowActive = ImGui::IsItemActive();
+
+    if (arrowHovered) {
+        ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+        dl->AddRectFilled(ImVec2(divX + 1.0f, p.y), pillMax, IM_COL32(255, 255, 255, arrowActive ? 35 : 20), r, ImDrawCornerFlags_Right);
+        ImGui::SetTooltip("%s", UI(Tr(L"Voice Settings")).c_str());
+    }
+    if (arrowClicked) {
+        res.openMenu = true;
+        ToggleVoiceMenu(ImVec2(divX, p.y), pillMax);
+    }
+
+    // Draw down-chevron
+    const ImVec2 arrC(divX + 1.0f + arrowW * 0.5f, p.y + h * 0.5f);
+    const ImU32 arrCol = arrowHovered ? IM_COL32(255, 255, 255, 255) : IM_COL32(170, 175, 195, 255);
+    dl->AddLine(ImVec2(arrC.x - 3.5f * u, arrC.y - 1.5f * u), ImVec2(arrC.x, arrC.y + 2.0f * u), arrCol, 1.5f * u);
+    dl->AddLine(ImVec2(arrC.x, arrC.y + 2.0f * u), ImVec2(arrC.x + 3.5f * u, arrC.y - 1.5f * u), arrCol, 1.5f * u);
+
+    ImGui::SetCursorScreenPos(ImVec2(pillMax.x, p.y));
+    return res;
+}
+
+struct DiscordVoiceMenuState {
+    bool open = false;
+    ImVec2 anchorMin = ImVec2(0.0f, 0.0f);
+    ImVec2 anchorMax = ImVec2(0.0f, 0.0f);
+    int openFrame = 0;
+    ImVec2 winMin = ImVec2(0.0f, 0.0f);
+    ImVec2 winMax = ImVec2(0.0f, 0.0f);
+};
+static DiscordVoiceMenuState s_voiceMenu;
+
+void ToggleVoiceMenu(const ImVec2& anchorMin, const ImVec2& anchorMax) {
+    if (s_voiceMenu.open) {
+        s_voiceMenu.open = false;
+    } else {
+        s_voiceMenu.open = true;
+        s_voiceMenu.anchorMin = anchorMin;
+        s_voiceMenu.anchorMax = anchorMax;
+        s_voiceMenu.openFrame = ImGui::GetFrameCount();
+    }
+}
+
+void CloseVoiceMenu() {
+    s_voiceMenu.open = false;
+}
+
+void ConsumeVoiceMenuOutsideClick() {
+    if (!s_voiceMenu.open) return;
+    if (!ImGui::GetCurrentContext()) return;
+    ImGuiIO& io = ImGui::GetIO();
+    if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape))) {
+        s_voiceMenu.open = false;
+        return;
+    }
+    // Only check clicks on frames after the menu was opened
+    if (ImGui::GetFrameCount() > s_voiceMenu.openFrame) {
+        if (ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1) || ImGui::IsMouseClicked(2)) {
+            const ImVec2 m = io.MousePos;
+            const bool inside = (m.x >= s_voiceMenu.winMin.x && m.x <= s_voiceMenu.winMax.x &&
+                                 m.y >= s_voiceMenu.winMin.y && m.y <= s_voiceMenu.winMax.y);
+            if (!inside) {
+                s_voiceMenu.open = false;
+                io.MouseClicked[0] = false;
+                io.MouseClicked[1] = false;
+                io.MouseClicked[2] = false;
+                io.MouseDown[0] = false;
+                io.MouseDown[1] = false;
+                io.MouseDown[2] = false;
+            }
+        }
+    }
+}
+
+void RenderDiscordVoiceMenu() {
+    if (!s_voiceMenu.open) return;
+    if (!ImGui::GetCurrentContext()) return;
+
+    ImGuiIO& io = ImGui::GetIO();
+
+    // Position window: bottom-left corner right above the chevron button anchor.
+    // s_voiceMenu.anchorMin is (divX, p.y).
+    const bool openUpwards = (s_voiceMenu.anchorMin.y >= 180.0f);
+    const float pivotY = openUpwards ? 1.0f : 0.0f;
+    const float posY = openUpwards ? (s_voiceMenu.anchorMin.y - 4.0f) : (s_voiceMenu.anchorMax.y + 4.0f);
+
+    const float approxW = 220.0f;
+    float posX = s_voiceMenu.anchorMin.x;
+    if (posX + approxW > io.DisplaySize.x - 10.0f) {
+        posX = std::max(10.0f, io.DisplaySize.x - approxW - 10.0f);
+    }
+    ImGui::SetNextWindowPos(ImVec2(posX, posY), ImGuiCond_Always, ImVec2(0.0f, pivotY));
+
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar |
+                             ImGuiWindowFlags_NoResize |
+                             ImGuiWindowFlags_NoMove |
+                             ImGuiWindowFlags_AlwaysAutoResize |
+                             ImGuiWindowFlags_NoSavedSettings;
+
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.12f, 0.13f, 0.17f, 0.98f));
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.26f, 0.28f, 0.36f, 0.85f));
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.20f, 0.23f, 0.32f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.28f, 0.32f, 0.45f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.24f, 0.28f, 0.40f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_Separator, ImVec4(0.24f, 0.26f, 0.32f, 0.80f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 8.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6.0f, 6.0f));
+
+    ScopedPopupFont popupFont;
+    ImGui::SetNextWindowFocus();
+    if (ImGui::Begin("##discord_voice_menu", nullptr, flags)) {
+        const ImVec2 wPos = ImGui::GetWindowPos();
+        const ImVec2 wSize = ImGui::GetWindowSize();
+        s_voiceMenu.winMin = wPos;
+        s_voiceMenu.winMax = ImVec2(wPos.x + wSize.x, wPos.y + wSize.y);
+
+        if (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows)) {
+            io.WantCaptureMouse = true;
+        }
+
+        bool va = false;
+        bool trans = false;
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            va = g_cfg.voiceActivation;
+            trans = g_cfg.voiceTranslate;
+        }
+
+        if (ImGui::MenuItem(UI(Tr(L"Voice activation")).c_str(), nullptr, va)) {
+            {
+                std::lock_guard<std::mutex> lock(g_mu);
+                g_cfg.voiceActivation = true;
+                g_cfg.SaveBool(L"Voice", L"Activation", true);
+            }
+            if (!g_voiceMuted.load() && !g_listenUserOff) StartListening();
+            s_voiceMenu.open = false;
+        }
+        if (ImGui::MenuItem(UI(Tr(L"Push-to-Talk")).c_str(), nullptr, !va)) {
+            {
+                std::lock_guard<std::mutex> lock(g_mu);
+                g_cfg.voiceActivation = false;
+                g_cfg.SaveBool(L"Voice", L"Activation", false);
+            }
+            StopListening();
+            s_voiceMenu.open = false;
+        }
+        if (ImGui::MenuItem(UI(Tr(L"Translate")).c_str(), nullptr, trans)) {
+            {
+                std::lock_guard<std::mutex> lock(g_mu);
+                g_cfg.voiceTranslate = !trans;
+                g_cfg.SaveBool(L"Voice", L"Translate", !trans);
+            }
+            s_voiceMenu.open = false;
+        }
+        ImGui::Separator();
+        if (ImGui::MenuItem(UI(Tr(L"Speech input settings...")).c_str())) {
+            SwitchOptionsTab(3);
+            s_voiceMenu.open = false;
+        }
+    }
+    ImGui::End();
+    ImGui::PopStyleVar(4);
+    ImGui::PopStyleColor(6);
 }
 
 }  // namespace kb

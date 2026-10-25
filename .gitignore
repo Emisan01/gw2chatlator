@@ -34,3 +34,4 @@ local/
 # local tool state (agent worktrees)
 .claude/worktrees/
 imgui.ini
+scratch/

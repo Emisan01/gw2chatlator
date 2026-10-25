@@ -22,6 +22,11 @@
 using namespace gct;
 namespace {
 
+bool ExistsFile(const std::wstring& path) {
+    const DWORD attr = GetFileAttributesW(path.c_str());
+    return attr != INVALID_FILE_ATTRIBUTES && !(attr & FILE_ATTRIBUTE_DIRECTORY);
+}
+
 constexpr size_t kMaxLoadedPairs = 2;
 constexpr size_t kThreadsPerPair = 2;
 
@@ -166,6 +171,7 @@ void Translate(const std::string& line) {
     const std::string tgtTag = NllbLanguageTag(request.target);
     const bool preferNllb = (request.model == "nllb");
     const bool preferOpus = (request.model == "opus");
+    const bool canUseNllb = hasNllb && !srcTag.empty() && !tgtTag.empty();
 
     if (canUseNllb && (preferNllb || (!hasOpusPair && !preferOpus))) {
         NllbModel* nllb = LoadNllb(error);

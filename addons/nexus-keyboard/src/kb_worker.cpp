@@ -9,6 +9,7 @@ namespace kb {
 // Worker jobs.
 
 void InitSpelling() {
+    AssertNotInteractiveLane("InitSpelling");
     Config c;
     {
         std::lock_guard<std::mutex> lock(g_mu);
@@ -35,6 +36,7 @@ void InitSpelling() {
 }
 
 void FreeWorkerState() {
+    AssertNotInteractiveLane("FreeWorkerState");
     if (g_spell) {
         g_spell->SaveLearned();
         delete g_spell;
@@ -47,11 +49,13 @@ void FreeWorkerState() {
 // A chat line into your language – whether is core/translate_policy's (`ShouldTranslate`): automatically (only while
 // "Translate the chat" is on) and `once` from the menu by the same rule; `asked` (a click on the line) always.
 void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
+    AssertNotInteractiveLane("TranslateLine");
     std::shared_ptr<Translator> tr;
     std::vector<std::wstring> understood;
     LineToTranslate what;
     what.trigger = asked ? TranslateTrigger::LineClick : once ? TranslateTrigger::Once : TranslateTrigger::Auto;
-    ProtectedText p = ProtectForTranslation(text, nullptr, g_spell ? &g_spell->KeepWords() : &BuiltinKeepWords());
+    auto keep = g_spell ? g_spell->KeepWordsSnapshot() : nullptr;
+    ProtectedText p = ProtectForTranslation(text, nullptr, keep ? keep.get() : &BuiltinKeepWords());
     auto clearPending = [&](bool attempted = true) {
         std::lock_guard<std::mutex> lock(g_mu);
         for (ChatLine& l : g_lines) {
@@ -173,6 +177,7 @@ int TranslateRecentLines(bool once) {  // g_mu held; how many lines of other pla
 
 // The input into the chat's language.
 void TranslateInput(uint64_t gen, std::wstring text) {
+    AssertNotInteractiveLane("TranslateInput");
     std::shared_ptr<Translator> tr;
     std::wstring target, typing;
     bool translating;
@@ -193,7 +198,8 @@ void TranslateInput(uint64_t gen, std::wstring text) {
             std::lock_guard<std::mutex> lock(g_mu);
             expanded = g_myWords.Expand(body);
         }
-        ProtectedText p = ProtectForTranslation(expanded, nullptr, g_spell ? &g_spell->KeepWords() : &BuiltinKeepWords());
+        auto keep = g_spell ? g_spell->KeepWordsSnapshot() : nullptr;
+        ProtectedText p = ProtectForTranslation(expanded, nullptr, keep ? keep.get() : &BuiltinKeepWords());
         if (HasTranslatableText(p.segments)) {
             std::wstring source = DetectLanguage(body);
             if (source.empty()) source = typing;
@@ -214,7 +220,8 @@ void TranslateInput(uint64_t gen, std::wstring text) {
         wantBack = g_cfg.backTranslate && gen == g_inputGen && !g_sendPending;
     }
     if (translating && tr && wantBack && error.empty() && result != body) {
-        ProtectedText p = ProtectForTranslation(result, nullptr, g_spell ? &g_spell->KeepWords() : &BuiltinKeepWords());
+        auto keep = g_spell ? g_spell->KeepWordsSnapshot() : nullptr;
+        ProtectedText p = ProtectForTranslation(result, nullptr, keep ? keep.get() : &BuiltinKeepWords());
         if (HasTranslatableText(p.segments)) {
             {
                 std::lock_guard<std::mutex> lock(g_mu);
@@ -253,6 +260,9 @@ void TranslateInput(uint64_t gen, std::wstring text) {
 
 // The word bar, the grey completion and what Space writes, for the newest text + caret.
 void ComputeTyping() {
+    if (g_workerLane != Lane::Interactive) {
+        Log(LOGL_WARNING, "ComputeTyping scheduled outside Interactive Lane");
+    }
     std::wstring text;
     size_t caret;
     AutoCorrectMode mode;
@@ -278,6 +288,7 @@ void ComputeTyping() {
 
 // Enter: the parts go into the GW2 chat – only now, on your Enter (invariants 1–3).
 void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring learnText) {
+    AssertNotInteractiveLane("SendNow");
     if (parts.empty()) return;
     if (parts.size() > kMaxPartsPerEnter) {  // the translation came out longer (sent when it arrived): not sent either
         std::lock_guard<std::mutex> lock(g_mu);
@@ -413,17 +424,17 @@ void StartSend() {  // Enter (g_mu held)
     g_undo.active = false;
     ImGui::SetWindowFocus(nullptr);  // let go of the keyboard: the keys must reach the game
     if (!Translating()) {
-        g_worker.Post([parts = SplitForChat(body, prefix, static_cast<size_t>(g_cfg.maxLength)), text, body] {
+        g_worker.PostFront([parts = SplitForChat(body, prefix, static_cast<size_t>(g_cfg.maxLength)), text, body] {
             SendNow(parts, text, body);
         });
     } else if (g_previewGen == g_inputGen && !g_preview.empty()) {
-        g_worker.Post([parts = SplitForChat(g_preview, prefix, static_cast<size_t>(g_cfg.maxLength)), text, body] {
+        g_worker.PostFront([parts = SplitForChat(g_preview, prefix, static_cast<size_t>(g_cfg.maxLength)), text, body] {
             SendNow(parts, text, body);
         });
     } else {  // the translation is not there yet: sent when it arrives
         g_sendPending = true;
         SetStatus(Tr(L"translating and sending …"), 0);
-        g_worker.Post([gen = g_inputGen, text] { TranslateInput(gen, text); });
+        g_worker.PostFront([gen = g_inputGen, text] { TranslateInput(gen, text); });
     }
 }
 

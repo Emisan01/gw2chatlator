@@ -2,12 +2,15 @@
 
 #include "kb_shared.hpp"
 #include "imgui/imgui_internal.h"
+#include "win/local_mt_packages.hpp"
+#include "voice_module.hpp"
 #include <iomanip>
 #include <sstream>
 
 namespace kb {
 
 int g_optionsTab = -1;  // a tab of the options window to bring to the front (General 0, Window 1, Voice 3, Translator 5)
+static int s_delayedTab = -1;  // cross-frame safe tab switch (set during frame, applied on next BeginTabBar)
 
 
 
@@ -242,11 +245,14 @@ void RenderOptionsWindow() {
     const float nexusPx = FollowUiPx();
     RequestUiFont(nexusPx);
     ImFont* uf = g_uiFont.load();
-    const float optsW = std::max(660.0f, 660.0f * (nexusPx / 16.0f));
+    const float optsW = std::max(820.0f, 820.0f * (nexusPx / 16.0f));
     const float optsH = std::max(620.0f, 620.0f * (nexusPx / 16.0f));
     ImGui::SetNextWindowSize(ImVec2(optsW, optsH), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSizeConstraints(ImVec2(500, 360), ImVec2(4000, 4000));
+    ImGui::SetNextWindowSizeConstraints(ImVec2(660, 480), ImVec2(4000, 4000));
     const bool visible = ImGui::Begin(s_optsTitle.c_str(), &g_showOptions);
+    if (visible && ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows)) {
+        ImGui::GetIO().WantCaptureMouse = true;
+    }
     bool pushedUf = false;
     if (uf && uf->FontSize > 0.0f) {
         ImGui::SetWindowFontScale(nexusPx / uf->FontSize);
@@ -393,6 +399,37 @@ bool DashSwitch(const char* id, const std::string& name, const std::string& deta
     return clicked;
 }
 
+// Small pill toggle button for focus/settings ([on] in green / [off] in subtle grey)
+bool FocusSwitch(const char* id, const std::string& label, bool* val, const char* tooltip = nullptr) {
+    const bool on = *val;
+    const ImVec4 col = on ? ImVec4(0.45f, 0.85f, 0.45f, 1.f) : ImVec4(0.62f, 0.62f, 0.62f, 1.f);
+    const std::string onText = UI(Tr(L"on")), offText = UI(Tr(L"off"));
+    const float chipW = std::ceil(std::max(ImGui::CalcTextSize(onText.c_str()).x, ImGui::CalcTextSize(offText.c_str()).x) +
+                                  ImGui::GetStyle().FramePadding.x * 2 + 6);
+    ImGui::PushID(id);
+    ImGui::PushStyleColor(ImGuiCol_Text, col);
+    ImGui::PushStyleColor(ImGuiCol_Border, col);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+    bool clicked = ImGui::Button((on ? onText : offText).c_str(), ImVec2(chipW, 0));
+    const bool btnHovered = ImGui::IsItemHovered();
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor(2);
+    if (clicked) *val = !*val;
+    ImGui::SameLine();
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(label.c_str());
+    const bool textHovered = ImGui::IsItemHovered();
+    if (ImGui::IsItemClicked()) {
+        *val = !*val;
+        clicked = true;
+    }
+    if (tooltip && (btnHovered || textHovered)) {
+        ImGui::SetTooltip("%s", tooltip);
+    }
+    ImGui::PopID();
+    return clicked;
+}
+
 // A state of the dashboard that is switched elsewhere: the chip ([OK] / [--]) opens that tab.
 void DashState(const char* id, const std::string& name, const std::string& detail, bool fine, int tab) {
     const ImVec4 col = fine ? ImVec4(0.45f, 0.85f, 0.45f, 1.f) : ImVec4(0.95f, 0.55f, 0.35f, 1.f);
@@ -403,7 +440,7 @@ void DashState(const char* id, const std::string& name, const std::string& detai
     ImGui::PushStyleColor(ImGuiCol_Text, col);
     ImGui::PushStyleColor(ImGuiCol_Border, col);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-    if (ImGui::Button(fine ? "OK" : "--", ImVec2(chipW, 0))) g_optionsTab = tab;
+    if (ImGui::Button(fine ? "OK" : "--", ImVec2(chipW, 0))) s_delayedTab = tab;
     ImGui::PopStyleVar();
     ImGui::PopStyleColor(2);
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Open")).c_str());
@@ -468,77 +505,708 @@ void RenderExceptList(Config& edit) {
     ImGui::PopID();
 }
 
-void RenderDashboard(Config& edit, const Config& saved) {
-    bool chatOn, voiceReady;
-    std::wstring writeIn, engine;
+bool IsOptionsDirty(const Config& edit, const Config& opened,
+                    const char* keyBuf, const char* regionBuf, const char* urlBuf, const char* mailBuf) {
+    if (edit.engine != opened.engine) return true;
+    if (edit.writeIn != opened.writeIn) return true;
+    if (edit.translateWriting != opened.translateWriting) return true;
+    if (edit.voiceEnabled != opened.voiceEnabled) return true;
+    if (edit.voiceTranslate != opened.voiceTranslate) return true;
+    if (edit.spellEnabled != opened.spellEnabled) return true;
+    if (edit.learnWords != opened.learnWords) return true;
+    if (edit.focusOnGameChat != opened.focusOnGameChat) return true;
+    if (edit.returnFocus != opened.returnFocus) return true;
+    if (edit.fontPt != opened.fontPt) return true;
+    if (edit.uiFontPt != opened.uiFontPt) return true;
+    if (edit.fontFace != opened.fontFace) return true;
+    if (edit.opacity != opened.opacity) return true;
+    if (edit.uiLangCode != opened.uiLangCode) return true;
+    if (edit.localQuality != opened.localQuality) return true;
+    if (edit.understoodLangs != opened.understoodLangs) return true;
+    if (edit.skipTypingLang != opened.skipTypingLang) return true;
+    const std::string origKey = U8(opened.engine == Engine::DeepL ? opened.deeplKey : opened.engine == Engine::Google ? opened.googleKey
+                                   : opened.engine == Engine::Microsoft ? opened.msKey : opened.libreKey);
+    if (origKey != keyBuf) return true;
+    if (U8(opened.msRegion) != regionBuf) return true;
+    if (U8(opened.libreUrl) != urlBuf) return true;
+    if (U8(opened.basicEmail) != mailBuf) return true;
+    return false;
+}
+
+void DoSaveOptions(Config& edit, Config& opened,
+                   const char* keyBuf, const char* regionBuf, const char* urlBuf, const char* mailBuf) {
+    const std::wstring key = W(keyBuf);
+    if (edit.engine == Engine::DeepL) edit.deeplKey = key;
+    else if (edit.engine == Engine::Google) edit.googleKey = key;
+    else if (edit.engine == Engine::Microsoft) edit.msKey = key;
+    else if (edit.engine == Engine::Libre) edit.libreKey = key;
+    edit.msRegion = W(regionBuf);
+    edit.libreUrl = W(urlBuf);
+    edit.basicEmail = W(mailBuf);
+    edit.uiLang = EffectiveUiLang(edit.uiLangCode);
+    bool typingChanged, voiceChanged;
     {
         std::lock_guard<std::mutex> lock(g_mu);
-        chatOn = g_nx.translateChat;
-        voiceReady = g_voiceReady;
-        writeIn = g_cfg.writeIn.empty() ? TypingLang() : g_cfg.writeIn;  // "like Windows": the language that is
-        engine = g_translator ? g_translator->Name() : std::wstring(L"-");
+        typingChanged = edit.writeIn != g_cfg.writeIn || edit.spellEnabled != g_cfg.spellEnabled;
+        voiceChanged = edit.voiceEnabled != g_cfg.voiceEnabled;
+        const bool writingSwitched = edit.translateWriting != g_cfg.translateWriting;
+        const std::wstring sendWas = g_sendIdx >= 0 && g_sendIdx < static_cast<int>(g_cfg.writeLangs.size())
+                                         ? g_cfg.writeLangs[static_cast<size_t>(g_sendIdx)]
+                                         : std::wstring();
+        edit.myMemoryDay = g_cfg.myMemoryDay;
+        edit.myMemoryUsed = g_cfg.myMemoryUsed;
+        if (edit.voiceAutoSend == opened.voiceAutoSend) edit.voiceAutoSend = g_cfg.voiceAutoSend;
+        if (edit.writeLangs == opened.writeLangs) edit.writeLangs = g_cfg.writeLangs;
+        if (edit.voiceModel == opened.voiceModel) edit.voiceModel = g_cfg.voiceModel;
+        const bool engineChanged = edit.engine != g_cfg.engine;
+        g_cfg = opened = edit;
+        g_cfg.SaveAll();
+        SetUiLang(g_cfg.uiLang);
+        g_translator = MakeTranslator(g_cfg);
+        const int asWritten = static_cast<int>(g_cfg.writeLangs.size());
+        const auto kept = std::find(g_cfg.writeLangs.begin(), g_cfg.writeLangs.end(), sendWas);
+        if (writingSwitched) g_sendIdx = g_cfg.translateWriting ? 0 : asWritten;
+        else if (sendWas.empty()) g_sendIdx = asWritten;
+        else if (kept != g_cfg.writeLangs.end()) g_sendIdx = static_cast<int>(kept - g_cfg.writeLangs.begin());
+        else g_sendIdx = g_cfg.translateWriting ? 0 : asWritten;
+        g_preview.clear();
+        ++g_inputGen;
+        g_inputChanged = GetTickCount64();
+        if (g_nx.translateChat && (typingChanged || engineChanged)) TranslateRecentLines(false);
+        SetStatus(Tr(L"Saved"), 3000);
     }
-    const ModuleState& m = Modules();
-    std::wstring readingText;
-    const bool chatThere = g_chatEventsLive || g_chatEventsPresent;
-    const bool reading = chatThere && ChatSourceStatus(&readingText) == 2;
-    ImGui::TextUnformatted(UI(Tr(L"At a glance")).c_str());
-    ImGui::TextDisabled("%s", UI(Tr(L"Active features")).c_str());
-    if (ImGui::BeginTable("##dash_features", 2, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_BordersInnerV)) {
-        ImGui::TableNextRow();
-        ImGui::TableNextColumn();
-        if (DashSwitch("chat", UI(Tr(L"Translate the chat")),
-                       UI(chatOn ? TrF(L"into {1}", {NativeName(writeIn)}) : Tr(L"a click on a line translates just that one")),
-                       &chatOn, false, true)) {
+    if (typingChanged) g_worker.Post([] {
+        FreeWorkerState();
+        InitSpelling();
+    });
+    else g_worker.Post([learn = edit.learnWords] { if (g_spell) g_spell->SetLearnChoices(learn); });
+    ApplyPushToTalkKey(edit.voiceGlobalKey);
+    if (!edit.voiceActivation || !edit.voiceEnabled) StopListening();
+    else g_listenUserOff = false;
+    if (voiceChanged && edit.voiceEnabled && !g_voice.Running() &&
+        GetFileAttributesW(HelperExe().c_str()) != INVALID_FILE_ATTRIBUTES)
+        g_worker.Post([dir = edit.dataDir] {
+            Config::FlushWrites();
             std::lock_guard<std::mutex> lock(g_mu);
-            g_nx.translateChat = chatOn;
-            SaveNexusOptions();
-            if (chatOn) TranslateRecentLines(false);  // what is already there too
-        }
-        ImGui::TableNextColumn();
-        DashSwitch("mine", UI(Tr(L"Translate my text")),
-                   UI(edit.translateWriting ? Tr(L"into the language chosen at \"Send\" below the input") : Tr(L"sent as you write it")),
-                   &edit.translateWriting, edit.translateWriting != saved.translateWriting, true);
-        ImGui::TableNextRow();
-        ImGui::TableNextColumn();
-        DashSwitch("voice", UI(Tr(L"Voice input")),
-                   UI(!edit.voiceEnabled ? Tr(L"off – speech to text, optional")
-                      : !m.voiceModule   ? Tr(L"the voice module is missing")
-                      : voiceReady       ? Tr(L"ready – loaded")
-                                         : Tr(L"ready – loads on the first use of the microphone")),
-                   &edit.voiceEnabled, edit.voiceEnabled != saved.voiceEnabled, true);
-        ImGui::TableNextColumn();
-        std::wstring voiceTo;
-        {
-            std::lock_guard<std::mutex> lock(g_mu);
-            voiceTo = VoiceLang();
-        }
-        const bool voiceEnglish = PrimaryLang(voiceTo) == L"EN";
-        DashSwitch("voiceen", UI(Tr(L"Translate my voice by voicemodel")),
-                   UI(!edit.voiceTranslate ? Tr(L"as you say it")
-                      : voiceEnglish       ? TrF(L"into {1} – on this PC (whisper)", {NativeName(voiceTo)})
-                                           : TrF(L"into {1} – with your translator", {NativeName(voiceTo)})),
-                   &edit.voiceTranslate, edit.voiceTranslate != saved.voiceTranslate, edit.voiceEnabled);
-        ImGui::EndTable();
-    }
-    if (edit.translateWriting != saved.translateWriting || edit.voiceEnabled != saved.voiceEnabled ||
-        edit.voiceTranslate != saved.voiceTranslate)
-        Hint(UI(Tr(L"Amber: changed – \"Save\" applies it.")));
+            if (!g_voice.Running()) g_voice.Start(HelperExe(), dir);
+        });
+    else if (g_voice.Running())
+        VoiceReload();
+}
 
-    ImGui::Spacing();
-    ImGui::TextDisabled("%s", UI(Tr(L"Modules & status")).c_str());
-    if (ImGui::BeginTable("##dash_modules", 2, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_BordersInnerV)) {
-        ImGui::TableNextRow();
-        ImGui::TableNextColumn();
-        DashState("translator", UI(Tr(L"Translator")), UI(engine), true, 5);
-        ImGui::TableNextColumn();
-        DashState("reading", UI(Tr(L"Reading the chat")), UI(!chatThere ? Tr(L"Events: Chat is missing") : readingText), reading, 6);
-        ImGui::TableNextRow();
-        ImGui::TableNextColumn();
-        DashState("except", UI(Tr(L"Translated is everything except:")), ExceptText(edit), true, 5);
+enum class PillKind { Missing, Installed, Ready, Loading, Off };
+
+void DrawPill(const char* label, PillKind kind) {
+    ImVec4 borderCol, fillCol, textCol;
+    switch (kind) {
+        case PillKind::Installed:
+        case PillKind::Ready:
+            borderCol = ImVec4(0.24f, 0.86f, 0.55f, 0.8f);
+            fillCol = ImVec4(0.24f, 0.86f, 0.55f, 0.14f);
+            textCol = ImVec4(0.62f, 0.97f, 0.76f, 1.0f);
+            break;
+        case PillKind::Missing:
+            borderCol = ImVec4(1.0f, 0.47f, 0.47f, 0.7f);
+            fillCol = ImVec4(1.0f, 0.47f, 0.47f, 0.12f);
+            textCol = ImVec4(1.0f, 0.70f, 0.70f, 1.0f);
+            break;
+        case PillKind::Loading:
+            borderCol = ImVec4(0.35f, 0.75f, 1.0f, 0.8f);
+            fillCol = ImVec4(0.35f, 0.75f, 1.0f, 0.14f);
+            textCol = ImVec4(0.65f, 0.90f, 1.0f, 1.0f);
+            break;
+        case PillKind::Off:
+        default:
+            borderCol = ImVec4(0.32f, 0.35f, 0.42f, 0.8f);
+            fillCol = ImVec4(0.20f, 0.22f, 0.27f, 0.4f);
+            textCol = ImVec4(0.65f, 0.67f, 0.73f, 1.0f);
+            break;
+    }
+    ImFont* font = ImGui::GetFont();
+    const float fs = ImGui::GetFontSize() * 0.80f;
+    const ImVec2 txtSize = font->CalcTextSizeA(fs, FLT_MAX, 0.0f, label);
+    const float padX = 8.0f;
+    const float padY = 3.0f;
+    const ImVec2 pillSize(txtSize.x + padX * 2.0f, txtSize.y + padY * 2.0f);
+    const ImVec2 p = ImGui::GetCursorScreenPos();
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    const float r = pillSize.y * 0.5f;
+    dl->AddRectFilled(p, ImVec2(p.x + pillSize.x, p.y + pillSize.y), ImGui::GetColorU32(fillCol), r);
+    dl->AddRect(p, ImVec2(p.x + pillSize.x, p.y + pillSize.y), ImGui::GetColorU32(borderCol), r, ImDrawCornerFlags_All, 1.0f);
+    dl->AddText(font, fs, ImVec2(p.x + padX, p.y + padY), ImGui::GetColorU32(textCol), label);
+    ImGui::Dummy(pillSize);
+}
+
+
+void SwitchOptionsTab(int tab) {
+    s_delayedTab = tab;
+    g_showOptions = true;
+}
+
+void DrawCardPill(ImDrawList* dl, ImVec2 topRight, const std::string& label, ImU32 fillCol, ImU32 borderCol, ImU32 textCol) {
+    ImFont* font = ImGui::GetFont();
+    const float fs = ImGui::GetFontSize() * 0.78f;
+    const ImVec2 txtSize = font->CalcTextSizeA(fs, FLT_MAX, 0.0f, label.c_str());
+    const float padX = 7.0f;
+    const float padY = 2.5f;
+    const ImVec2 pillSize(txtSize.x + padX * 2.0f, txtSize.y + padY * 2.0f);
+    const ImVec2 p(topRight.x - pillSize.x, topRight.y);
+    const float r = pillSize.y * 0.5f;
+    dl->AddRectFilled(p, ImVec2(p.x + pillSize.x, p.y + pillSize.y), fillCol, r);
+    dl->AddRect(p, ImVec2(p.x + pillSize.x, p.y + pillSize.y), borderCol, r, ImDrawCornerFlags_All, 1.0f);
+    dl->AddText(font, fs, ImVec2(p.x + padX, p.y + padY), textCol, label.c_str());
+}
+
+void DrawVectorChatIcon(ImDrawList* dl, ImVec2 c, float u, ImU32 col, ImU32 dotCol) {
+    dl->AddRectFilled(ImVec2(c.x - 7 * u, c.y - 6 * u), ImVec2(c.x + 7 * u, c.y + 3 * u), col, 3 * u);
+    dl->AddTriangleFilled(ImVec2(c.x - 4 * u, c.y + 3 * u), ImVec2(c.x - 0.5f * u, c.y + 3 * u), ImVec2(c.x - 5.5f * u, c.y + 6.5f * u), col);
+    dl->AddCircleFilled(ImVec2(c.x - 3.5f * u, c.y - 1.5f * u), 1.0f * u, dotCol);
+    dl->AddCircleFilled(ImVec2(c.x, c.y - 1.5f * u), 1.0f * u, dotCol);
+    dl->AddCircleFilled(ImVec2(c.x + 3.5f * u, c.y - 1.5f * u), 1.0f * u, dotCol);
+}
+
+void DrawVectorMicIcon(ImDrawList* dl, ImVec2 c, float u, ImU32 col, bool slash = false) {
+    dl->AddRectFilled(ImVec2(c.x - 2.5f * u, c.y - 6 * u), ImVec2(c.x + 2.5f * u, c.y + 1.5f * u), col, 2.5f * u);
+    dl->PathArcTo(ImVec2(c.x, c.y - 1 * u), 4.5f * u, 0.0f, 3.14159f, 10);
+    dl->PathStroke(col, false, 1.4f * u);
+    dl->AddLine(ImVec2(c.x, c.y + 3.5f * u), ImVec2(c.x, c.y + 6 * u), col, 1.4f * u);
+    dl->AddLine(ImVec2(c.x - 3 * u, c.y + 6 * u), ImVec2(c.x + 3 * u, c.y + 6 * u), col, 1.4f * u);
+    if (slash) {
+        // Strike-through slash from bottom-left to top-right (Discord style)
+        dl->AddLine(ImVec2(c.x - 6.5f * u, c.y + 6.5f * u), ImVec2(c.x + 6.5f * u, c.y - 6.5f * u), IM_COL32(20, 22, 28, 255), 3.0f * u);
+        dl->AddLine(ImVec2(c.x - 6.0f * u, c.y + 6.0f * u), ImVec2(c.x + 6.0f * u, c.y - 6.0f * u), col, 1.8f * u);
+    }
+}
+
+void DrawVectorGlobeIcon(ImDrawList* dl, ImVec2 c, float u, ImU32 col) {
+    dl->AddCircle(c, 6.5f * u, col, 16, 1.4f * u);
+    dl->AddLine(ImVec2(c.x - 6.5f * u, c.y), ImVec2(c.x + 6.5f * u, c.y), col, 1.2f * u);
+    dl->AddLine(ImVec2(c.x, c.y - 6.5f * u), ImVec2(c.x, c.y + 6.5f * u), col, 1.2f * u);
+    dl->PathArcTo(ImVec2(c.x - 2.5f * u, c.y), 4.0f * u, -1.57f, 1.57f, 8);
+    dl->PathStroke(col, false, 1.0f * u);
+    dl->PathArcTo(ImVec2(c.x + 2.5f * u, c.y), 4.0f * u, 1.57f, 4.71f, 8);
+    dl->PathStroke(col, false, 1.0f * u);
+}
+
+void RenderDashboard(Config& edit, const Config& /*saved*/) {
+    const ModuleState& m = Modules();
+    const bool voiceInstalled = gct::VoiceModulePresent(KeyboardDir()) || m.voiceModule;
+    const bool voiceActive = voiceInstalled && (edit.voiceEnabled || g_cfg.voiceEnabled);
+
+    const bool mtModuleOk = gct::LocalMtModulePresent(KeyboardDir());
+    const bool mtModelOk = gct::LocalMtModelPresent(edit.dataDir, "nllb-200") || gct::LocalMtModelPresent(edit.dataDir, "opus-mt");
+    const bool mtInstalled = mtModuleOk && mtModelOk;
+    const bool mtActive = mtInstalled && (edit.engine == Engine::Nllb || edit.engine == Engine::Local);
+
+    // 2 Feature Tiles: Translation Module & Voice Module
+    static float s_cardGlow[2] = {0.0f, 0.0f};
+    static bool s_cardConfirm[2] = {false, false};
+
+    struct CardDef {
+        int id;
+        std::string title;
+        std::string desc;
+        std::string badgeText;
+        ImU32 badgeBg;
+        ImU32 badgeBorder;
+        ImU32 badgeTextCol;
+        bool isOk;
+        bool isBusy;
+        int activePct;
+        int actionTab;
+        int iconType;  // 0 = globe, 1 = mic
+    };
+
+    CardDef cards[2];
+
+    // Card 0: Local Translation
+    cards[0].id = 0;
+    cards[0].title = UI(Tr(L"Local Translation"));
+    cards[0].desc = UI(Tr(L"Offline translation with OPUS-MT or NLLB-200. No API key required."));
+    cards[0].isOk = mtInstalled;
+    cards[0].isBusy = g_localMtBusy;
+    cards[0].activePct = g_localMtPct.load();
+    cards[0].actionTab = 5;
+    cards[0].iconType = 0;
+    if (mtActive) {
+        cards[0].badgeText = UI(Tr(L"Active"));
+        cards[0].badgeBg = IM_COL32(35, 75, 50, 255);
+        cards[0].badgeBorder = IM_COL32(61, 220, 140, 200);
+        cards[0].badgeTextCol = IM_COL32(61, 220, 140, 255);
+    } else if (mtInstalled) {
+        cards[0].badgeText = UI(Tr(L"Ready"));
+        cards[0].badgeBg = IM_COL32(24, 60, 52, 255);
+        cards[0].badgeBorder = IM_COL32(52, 211, 153, 220);
+        cards[0].badgeTextCol = IM_COL32(52, 211, 153, 255);
+    } else {
+        cards[0].badgeText = UI(Tr(L"Offline"));
+        cards[0].badgeBg = IM_COL32(30, 50, 65, 255);
+        cards[0].badgeBorder = IM_COL32(50, 130, 160, 200);
+        cards[0].badgeTextCol = IM_COL32(70, 190, 220, 255);
+    }
+
+    // Card 1: Voice Module
+    cards[1].id = 1;
+    cards[1].title = UI(Tr(L"Voice Module"));
+    cards[1].desc = UI(Tr(L"Local speech recognition with whisper.cpp. Runs on unused CPU cores."));
+    cards[1].isOk = voiceInstalled;
+    cards[1].isBusy = g_voiceModuleInstalling || (g_downloadPct >= 0);
+    const int vPct = g_downloadPct >= 0 ? g_downloadPct.load() : g_voiceModulePct.load();
+    cards[1].activePct = vPct;
+    cards[1].actionTab = 3;
+    cards[1].iconType = 1;
+    if (voiceActive) {
+        cards[1].badgeText = UI(Tr(L"Active"));
+        cards[1].badgeBg = IM_COL32(35, 75, 50, 255);
+        cards[1].badgeBorder = IM_COL32(61, 220, 140, 200);
+        cards[1].badgeTextCol = IM_COL32(61, 220, 140, 255);
+        const std::string modeStr = edit.voiceActivation ? UI(Tr(L"Mode: Voice activation")) : UI(Tr(L"Mode: Push-to-Talk"));
+        cards[1].desc = UI(Tr(L"Local speech recognition with whisper.cpp.")) + "\n" + modeStr;
+    } else if (voiceInstalled) {
+        cards[1].badgeText = UI(Tr(L"Disabled"));
+        cards[1].badgeBg = IM_COL32(55, 45, 20, 255);
+        cards[1].badgeBorder = IM_COL32(200, 155, 60, 200);
+        cards[1].badgeTextCol = IM_COL32(240, 195, 80, 255);
+        cards[1].desc = UI(Tr(L"Voice module is installed and ready, but currently disabled."));
+    } else {
+        cards[1].badgeText = UI(Tr(L"Optional"));
+        cards[1].badgeBg = IM_COL32(45, 48, 55, 255);
+        cards[1].badgeBorder = IM_COL32(75, 80, 95, 200);
+        cards[1].badgeTextCol = IM_COL32(170, 175, 185, 255);
+        cards[1].desc = UI(Tr(L"Local speech recognition with whisper.cpp. Runs on unused CPU cores."));
+    }
+
+    if (ImGui::BeginTable("##dashboard_tiles", 2, ImGuiTableFlags_SizingStretchSame)) {
+        for (int i = 0; i < 2; ++i) {
+            ImGui::TableNextColumn();
+            ImGui::PushID(i);
+
+            // Disarm confirmation if module is already installed or actively installing
+            if (cards[i].isOk || cards[i].isBusy) {
+                s_cardConfirm[i] = false;
+            }
+
+            const ImVec2 pos = ImGui::GetCursorScreenPos();
+            const float colW = ImGui::GetContentRegionAvail().x;
+            const float cardH = 180.0f;
+            const ImVec2 size(colW, cardH);
+            const float pad = 12.0f;
+
+            ImDrawList* dl = ImGui::GetWindowDrawList();
+            ImFont* font = ImGui::GetFont();
+            const float fs = ImGui::GetFontSize();
+
+            if (cards[i].isBusy) {
+                // ---- STATE 1: Professional Integration & Progress View
+                const ImVec2 cPos = pos;
+
+                // Ambient Drop Shadow
+                dl->AddRectFilled(
+                    ImVec2(pos.x + 3.0f, pos.y + 4.0f),
+                    ImVec2(pos.x + size.x - 3.0f, pos.y + size.y + 5.0f),
+                    IM_COL32(0, 0, 0, 75), 12.0f
+                );
+
+                // Elevated Card Rect
+                dl->AddRectFilled(cPos, ImVec2(cPos.x + size.x, cPos.y + size.y), IM_COL32(26, 29, 38, 250), 10.0f);
+                dl->AddRect(cPos, ImVec2(cPos.x + size.x, cPos.y + size.y), IM_COL32(88, 101, 242, 220), 10.0f, ImDrawCornerFlags_All, 1.5f);
+                dl->AddLine(ImVec2(cPos.x + 10.0f, cPos.y + 1.0f), ImVec2(cPos.x + size.x - 10.0f, cPos.y + 1.0f),
+                            IM_COL32(255, 255, 255, 35), 1.0f);
+
+                // Animated Pulsing Icon
+                const float pulse = 0.5f + 0.5f * sinf(static_cast<float>(GetTickCount64()) * 0.005f);
+                const ImVec2 iconCenter(cPos.x + pad + 14.0f, cPos.y + pad + 14.0f);
+                dl->AddCircle(iconCenter, 14.0f + pulse * 4.0f, IM_COL32(88, 101, 242, static_cast<int>(pulse * 140)), 20, 1.5f);
+                if (cards[i].iconType == 0) DrawVectorGlobeIcon(dl, iconCenter, 1.25f, IM_COL32(99, 130, 255, 255));
+                else DrawVectorMicIcon(dl, iconCenter, 1.25f, IM_COL32(99, 130, 255, 255));
+
+                // Pulsing pill badge top-right
+                const ImU32 pillFill = IM_COL32(32, 48, 80 + static_cast<int>(pulse * 30), 255);
+                DrawCardPill(dl, ImVec2(cPos.x + size.x - pad, cPos.y + pad + 4.0f),
+                             UI(Tr(L"Installing…")), pillFill, IM_COL32(88, 101, 242, 230), IM_COL32(145, 190, 255, 255));
+
+                // Title
+                const std::string progTitle = (i == 0) ? UI(Tr(L"Integrating Translation Module…")) : UI(Tr(L"Integrating Voice Module…"));
+                dl->AddText(font, fs * 1.05f, ImVec2(cPos.x + pad, cPos.y + pad + 36.0f), IM_COL32(245, 246, 250, 255), progTitle.c_str());
+
+                // Subtitle (current stage)
+                std::string stageText;
+                if (i == 0) {
+                    stageText = UI(Tr(L"Downloading neural translation model…"));
+                } else {
+                    if (g_voiceModuleInstalling) {
+                        stageText = UI(Tr(L"Downloading whisper speech engine…"));
+                    } else if (g_downloadPct >= 0) {
+                        stageText = UI(Tr(L"Downloading speech recognition model…"));
+                    } else {
+                        stageText = UI(Tr(L"Integrating Voice Module…"));
+                    }
+                }
+                dl->AddText(font, fs * 0.84f, ImVec2(cPos.x + pad, cPos.y + pad + 60.0f), IM_COL32(165, 178, 208, 255), stageText.c_str());
+
+                // Professional Progress Bar
+                const ImVec2 barPos(cPos.x + pad, cPos.y + 100.0f);
+                const ImVec2 barSize(size.x - pad * 2.0f, 24.0f);
+                dl->AddRectFilled(barPos, ImVec2(barPos.x + barSize.x, barPos.y + barSize.y), IM_COL32(16, 18, 25, 255), 12.0f);
+                dl->AddRect(barPos, ImVec2(barPos.x + barSize.x, barPos.y + barSize.y), IM_COL32(48, 54, 72, 220), 12.0f, ImDrawCornerFlags_All, 1.0f);
+
+                const int pctVal = cards[i].activePct;
+                const float fillFrac = std::clamp(pctVal >= 0 ? pctVal / 100.0f : 0.0f, 0.0f, 1.0f);
+                const float fillW = (pctVal >= 0) ? std::max(barSize.y, barSize.x * fillFrac) : 0.0f;
+
+                if (pctVal >= 0 && fillW > 0.0f) {
+                    dl->AddRectFilled(barPos, ImVec2(barPos.x + fillW, barPos.y + barSize.y), IM_COL32(78, 120, 240, 255), 12.0f);
+
+                    // Specular shimmer sweep
+                    const float cycle = fmodf(static_cast<float>(GetTickCount64()) * 0.0006f, 1.0f);
+                    const float shimmerX = barPos.x + (fillW + 40.0f) * cycle - 20.0f;
+                    if (shimmerX >= barPos.x && shimmerX + 18.0f <= barPos.x + fillW) {
+                        dl->AddRectFilled(ImVec2(shimmerX, barPos.y + 2.0f), ImVec2(shimmerX + 18.0f, barPos.y + barSize.y - 2.0f),
+                                          IM_COL32(255, 255, 255, 60), 6.0f);
+                    }
+                    // Glass reflex line
+                    dl->AddLine(ImVec2(barPos.x + 8.0f, barPos.y + 2.0f), ImVec2(barPos.x + fillW - 8.0f, barPos.y + 2.0f),
+                                IM_COL32(255, 255, 255, 65), 1.0f);
+                } else if (pctVal < 0) {
+                    const float cycle = 0.5f + 0.5f * sinf(static_cast<float>(GetTickCount64()) * 0.004f);
+                    const float bW = barSize.x * 0.35f;
+                    const float bX = barPos.x + (barSize.x - bW) * cycle;
+                    dl->AddRectFilled(ImVec2(bX, barPos.y + 2.0f), ImVec2(bX + bW, barPos.y + barSize.y - 2.0f),
+                                      IM_COL32(78, 120, 240, 220), 10.0f);
+                }
+
+                // Centered percentage text with shadow
+                const std::string pctText = (pctVal >= 0) ? (std::to_string(pctVal) + " %") : UI(Tr(L"Installing…"));
+                const ImVec2 ts = font->CalcTextSizeA(fs * 0.88f, 1000.0f, 0.0f, pctText.c_str());
+                const ImVec2 textPos(barPos.x + (barSize.x - ts.x) * 0.5f, barPos.y + (barSize.y - ts.y) * 0.5f);
+                dl->AddText(font, fs * 0.88f, ImVec2(textPos.x + 1.0f, textPos.y + 1.0f), IM_COL32(0, 0, 0, 220), pctText.c_str());
+                dl->AddText(font, fs * 0.88f, textPos, IM_COL32(255, 255, 255, 255), pctText.c_str());
+
+                // Telemetry / hint text below bar
+                dl->AddText(font, fs * 0.80f, ImVec2(cPos.x + pad, cPos.y + 138.0f), IM_COL32(130, 138, 155, 255),
+                            UI(Tr(L"Downloading in background – game remains playable")).c_str());
+
+                ImGui::SetCursorScreenPos(pos);
+                ImGui::Dummy(size);
+            } else if (s_cardConfirm[i] && !cards[i].isOk) {
+                // ---- STATE 2: In-Tile Confirmation View
+                const ImVec2 cPos = pos;
+
+                // Ambient Drop Shadow
+                dl->AddRectFilled(
+                    ImVec2(pos.x + 3.0f, pos.y + 4.0f),
+                    ImVec2(pos.x + size.x - 3.0f, pos.y + size.y + 5.0f),
+                    IM_COL32(0, 0, 0, 75), 12.0f
+                );
+
+                // Elevated Card Rect with Accent Border
+                dl->AddRectFilled(cPos, ImVec2(cPos.x + size.x, cPos.y + size.y), IM_COL32(26, 28, 36, 250), 10.0f);
+                dl->AddRect(cPos, ImVec2(cPos.x + size.x, cPos.y + size.y), IM_COL32(88, 101, 242, 230), 10.0f, ImDrawCornerFlags_All, 1.5f);
+                dl->AddLine(ImVec2(cPos.x + 10.0f, cPos.y + 1.0f), ImVec2(cPos.x + size.x - 10.0f, cPos.y + 1.0f),
+                            IM_COL32(255, 255, 255, 30), 1.0f);
+
+                // Vector Icon
+                const ImVec2 iconCenter(cPos.x + pad + 14.0f, cPos.y + pad + 14.0f);
+                if (cards[i].iconType == 0) DrawVectorGlobeIcon(dl, iconCenter, 1.25f, IM_COL32(99, 130, 255, 255));
+                else DrawVectorMicIcon(dl, iconCenter, 1.25f, IM_COL32(99, 130, 255, 255));
+
+                // Cancel badge top-right
+                DrawCardPill(dl, ImVec2(cPos.x + size.x - pad, cPos.y + pad + 4.0f),
+                             UI(Tr(L"Cancel")), IM_COL32(40, 44, 55, 255), IM_COL32(75, 80, 95, 200), IM_COL32(170, 175, 185, 255));
+
+                // Confirmation Title
+                const std::string confTitle = (i == 0) ? UI(Tr(L"Download Translation Module")) : UI(Tr(L"Download Voice Module"));
+                dl->AddText(font, fs * 1.05f, ImVec2(cPos.x + pad, cPos.y + pad + 34.0f), IM_COL32(245, 246, 250, 255), confTitle.c_str());
+
+                // Description
+                const std::string confDesc = (i == 0)
+                    ? UI(Tr(L"Local Translation installs the local neural machine translation engine and NLLB-200 multilingual model."))
+                    : UI(Tr(L"The Voice Module installs the local whisper speech-to-text engine and the base recognition model."));
+                const float descW = size.x - pad * 2.0f;
+                dl->AddText(font, fs * 0.82f, ImVec2(cPos.x + pad, cPos.y + pad + 56.0f), IM_COL32(160, 166, 180, 255),
+                            confDesc.c_str(), nullptr, descW);
+
+                // Specs / Size info
+                const std::string confSize = (i == 0)
+                    ? UI(Tr(L"Download size: ~450 MB · 100% private offline translation"))
+                    : UI(Tr(L"Download size: ~75 MB · CPU-accelerated offline"));
+                dl->AddText(font, fs * 0.80f, ImVec2(cPos.x + pad, cPos.y + pad + 96.0f), IM_COL32(130, 195, 160, 255), confSize.c_str());
+
+                // Bottom Action Buttons: Big "OK" button & "Cancel" button
+                const float btnH = 32.0f;
+                const float btnY = cPos.y + size.y - pad - btnH;
+                const float spacing = 8.0f;
+                const float totalW = size.x - pad * 2.0f;
+                const float okW = std::floor(totalW * 0.68f);
+                const float cancelW = totalW - okW - spacing;
+
+                ImGui::SetCursorScreenPos(ImVec2(cPos.x + pad, btnY));
+                ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(61, 220, 140, 240));        // emerald green
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(80, 235, 155, 255)); // brighter green
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(45, 185, 115, 255));  // deep green
+                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(15, 30, 20, 255));            // high contrast dark text
+                ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+
+                if (ImGui::Button((UI(Tr(L"OK")) + "##confirm_ok").c_str(), ImVec2(okW, btnH))) {
+                    s_cardConfirm[i] = false;
+                    if (i == 0) {
+                        InstallLocalMtQuickSetup(edit.dataDir);
+                        edit.engine = Engine::Nllb;
+                    } else if (i == 1) {
+                        InstallVoiceQuickSetup();
+                        edit.voiceEnabled = true;
+                    }
+                }
+                if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                ImGui::PopStyleVar();
+                ImGui::PopStyleColor(4);
+
+                ImGui::SameLine(0.0f, spacing);
+                ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(40, 44, 55, 200));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(56, 62, 78, 240));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(30, 33, 42, 255));
+                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(200, 205, 220, 255));
+                ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+
+                if (ImGui::Button((UI(Tr(L"Cancel")) + "##confirm_cancel").c_str(), ImVec2(cancelW, btnH))) {
+                    s_cardConfirm[i] = false;
+                }
+                if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                ImGui::PopStyleVar();
+                ImGui::PopStyleColor(4);
+
+                ImGui::SetCursorScreenPos(pos);
+                ImGui::Dummy(size);
+            } else {
+                // ---- STATE 3: Normal Card View (Active, Disabled, or Uninstalled)
+                const float btnH = 28.0f;
+                const float topH = size.y - pad * 1.5f - btnH;
+
+                // Stateless interaction bounds for the top/body area
+                ImGui::SetCursorScreenPos(pos);
+                ImGui::InvisibleButton("##tile_top_btn", ImVec2(size.x, topH));
+                const bool topHovered = ImGui::IsItemHovered();
+                const bool topActive = ImGui::IsItemActive();
+                const bool topClicked = ImGui::IsItemClicked();
+
+                if (topHovered) {
+                    ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                }
+
+                // Smooth stateless glow transition (frame-rate independent lerp)
+                const float dt = ImGui::GetIO().DeltaTime;
+                const float targetGlow = topHovered ? 1.0f : 0.0f;
+                s_cardGlow[i] += (targetGlow - s_cardGlow[i]) * std::clamp(dt * 12.0f, 0.0f, 1.0f);
+
+                // Elevation: hover lift (-2px) or click depression (+1px)
+                const float liftY = topActive ? 1.0f : (topHovered ? -2.0f : 0.0f);
+                const ImVec2 cPos(pos.x, pos.y + liftY);
+
+                // Ambient Drop Shadow
+                dl->AddRectFilled(
+                    ImVec2(pos.x + 3.0f, pos.y + (topHovered ? 6.0f : 3.0f)),
+                    ImVec2(pos.x + size.x - 3.0f, pos.y + size.y + (topHovered ? 7.0f : 4.0f)),
+                    IM_COL32(0, 0, 0, topHovered ? 95 : 55),
+                    12.0f
+                );
+
+                const float g = std::clamp(s_cardGlow[i], 0.0f, 1.0f);
+                const ImU32 baseBg = IM_COL32(
+                    static_cast<int>(24 + g * 12),
+                    static_cast<int>(26 + g * 14),
+                    static_cast<int>(34 + g * 18),
+                    250
+                );
+                const ImU32 borderCol = IM_COL32(
+                    static_cast<int>(45 + g * 80),
+                    static_cast<int>(48 + g * 85),
+                    static_cast<int>(60 + g * 140),
+                    static_cast<int>(200 + g * 55)
+                );
+
+                // Subtle border glow if hovered
+                if (g > 0.01f) {
+                    const ImU32 glowCol = IM_COL32(88, 101, 242, static_cast<int>(g * 180));
+                    dl->AddRect(ImVec2(cPos.x - 1.5f, cPos.y - 1.5f), ImVec2(cPos.x + size.x + 1.5f, cPos.y + size.y + 1.5f),
+                                glowCol, 10.0f, ImDrawCornerFlags_All, 2.0f);
+                }
+
+                // Tile card rect (elevated)
+                dl->AddRectFilled(cPos, ImVec2(cPos.x + size.x, cPos.y + size.y), baseBg, 10.0f);
+                dl->AddRect(cPos, ImVec2(cPos.x + size.x, cPos.y + size.y), borderCol, 10.0f, ImDrawCornerFlags_All, 1.0f);
+
+                // Top highlight reflex
+                dl->AddLine(
+                    ImVec2(cPos.x + 10.0f, cPos.y + 1.0f),
+                    ImVec2(cPos.x + size.x - 10.0f, cPos.y + 1.0f),
+                    IM_COL32(255, 255, 255, topHovered ? 45 : 20),
+                    1.0f
+                );
+
+                // Inner layout
+                const ImVec2 iconCenter(cPos.x + pad + 14.0f, cPos.y + pad + 14.0f);
+                ImU32 iconCol = IM_COL32(160, 170, 200, 255);
+                bool micSlash = false;
+                if (i == 0) {
+                    iconCol = mtActive ? IM_COL32(61, 220, 140, 255) : mtInstalled ? IM_COL32(52, 211, 153, 255) : IM_COL32(70, 190, 220, 255);
+                    DrawVectorGlobeIcon(dl, iconCenter, 1.25f, iconCol);
+                } else if (i == 1) {
+                    if (voiceActive) {
+                        const bool muted = g_voiceMuted.load();
+                        ImGui::SetCursorScreenPos(ImVec2(cPos.x + pad, cPos.y + pad + 2.0f));
+                        const DiscordMicResult mr = RenderDiscordMicControl("##dash_top_mic", 24.0f, muted, g_recording);
+                        if (mr.muteToggled) {
+                            SetVoiceMuted(!muted);
+                        }
+                        if (mr.talkLocked && !muted) {
+                            const bool stop = g_recording;
+                            if (stop) TalkUp();
+                            else TalkLocked();
+                        }
+                    } else {
+                        if (voiceInstalled) {
+                            iconCol = IM_COL32(240, 195, 80, 255);
+                            micSlash = true;
+                        } else {
+                            iconCol = IM_COL32(160, 170, 200, 255);
+                        }
+                        DrawVectorMicIcon(dl, iconCenter, 1.25f, iconCol, micSlash);
+                    }
+                }
+
+                // Pill badge top-right
+                DrawCardPill(dl, ImVec2(cPos.x + size.x - pad, cPos.y + pad + 4.0f),
+                             cards[i].badgeText, cards[i].badgeBg, cards[i].badgeBorder, cards[i].badgeTextCol);
+
+                // Card Title
+                dl->AddText(font, fs * 1.05f, ImVec2(cPos.x + pad, cPos.y + pad + 36.0f), IM_COL32(245, 246, 250, 255), cards[i].title.c_str());
+
+                // Card Description
+                const float descW = size.x - pad * 2.0f;
+                dl->AddText(font, fs * 0.84f, ImVec2(cPos.x + pad, cPos.y + pad + 62.0f), IM_COL32(150, 155, 170, 255),
+                            cards[i].desc.c_str(), nullptr, descW);
+
+                // Bottom Buttons
+                const float availW = size.x - pad * 2.0f;
+                const float actualBtnY = cPos.y + size.y - pad - btnH;
+
+                if (i == 0) {
+                    // Card 0: Translation
+                    ImGui::SetCursorScreenPos(ImVec2(cPos.x + pad, actualBtnY));
+                    if (cards[0].isOk) {
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.13f, 0.15f, 0.20f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.24f, 0.35f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.25f, 0.30f, 0.42f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.30f, 0.35f, 0.48f, 0.8f));
+                        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+                        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+                        ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.5f, 0.5f));
+                        if (ImGui::Button((UI(Tr(L"Translator")) + " ->##dash_c0_btn").c_str(), ImVec2(availW, btnH))) {
+                            SwitchOptionsTab(5);
+                        }
+                        ImGui::PopStyleVar(3);
+                        ImGui::PopStyleColor(4);
+                    } else {
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.35f, 0.40f, 0.95f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.42f, 0.48f, 1.0f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.30f, 0.35f, 0.85f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.48f, 0.55f, 1.0f, 0.8f));
+                        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+                        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+                        ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.5f, 0.5f));
+                        if (ImGui::Button((UI(Tr(L"Download Translation Module")) + "##dash_c0_inst").c_str(), ImVec2(availW, btnH))) {
+                            s_cardConfirm[0] = true;
+                        }
+                        ImGui::PopStyleVar(3);
+                        ImGui::PopStyleColor(4);
+                    }
+                } else if (i == 1) {
+                    // Card 1: Voice
+                    if (voiceActive) {
+                        // Navigation Button: Voice -> (Full Width)
+                        ImGui::SetCursorScreenPos(ImVec2(cPos.x + pad, actualBtnY));
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.16f, 0.22f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.22f, 0.26f, 0.38f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.22f, 0.32f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.32f, 0.38f, 0.52f, 0.7f));
+                        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+                        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+                        ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.5f, 0.5f));
+                        if (ImGui::Button((UI(Tr(L"Voice")) + " ->##dash_voice_tab").c_str(), ImVec2(availW, btnH))) {
+                            SwitchOptionsTab(3);
+                        }
+                        ImGui::PopStyleVar(3);
+                        ImGui::PopStyleColor(4);
+                    } else if (voiceInstalled) {
+                        const float gap = 8.0f;
+                        const float halfW = (availW - gap) * 0.5f;
+
+                        // Button 1: Enable
+                        ImGui::SetCursorScreenPos(ImVec2(cPos.x + pad, actualBtnY));
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.45f, 0.25f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.58f, 0.32f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.12f, 0.38f, 0.20f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.25f, 0.85f, 0.45f, 0.9f));
+                        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+                        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+                        ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.5f, 0.5f));
+                        if (ImGui::Button((UI(Tr(L"Enable")) + "##dash_voice_en").c_str(), ImVec2(halfW, btnH))) {
+                            edit.voiceEnabled = true;
+                            std::lock_guard<std::mutex> lock(g_mu);
+                            g_cfg.voiceEnabled = true;
+                            g_cfg.SaveBool(L"Voice", L"Enabled", true);
+                        }
+                        ImGui::PopStyleVar(3);
+                        ImGui::PopStyleColor(4);
+
+                        // Button 2: Voice ->
+                        ImGui::SetCursorScreenPos(ImVec2(cPos.x + pad + halfW + gap, actualBtnY));
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.16f, 0.22f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.22f, 0.26f, 0.38f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.22f, 0.32f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.32f, 0.38f, 0.52f, 0.7f));
+                        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+                        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+                        ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.5f, 0.5f));
+                        if (ImGui::Button((UI(Tr(L"Voice")) + " ->##dash_voice_tab2").c_str(), ImVec2(halfW, btnH))) {
+                            SwitchOptionsTab(3);
+                        }
+                        ImGui::PopStyleVar(3);
+                        ImGui::PopStyleColor(4);
+                    } else {
+                        // Uninstalled: Download Voice Module
+                        ImGui::SetCursorScreenPos(ImVec2(cPos.x + pad, actualBtnY));
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.35f, 0.40f, 0.95f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.42f, 0.48f, 1.0f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.30f, 0.35f, 0.85f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.48f, 0.55f, 1.0f, 0.8f));
+                        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+                        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+                        ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.5f, 0.5f));
+                        if (ImGui::Button((UI(Tr(L"Download Voice Module")) + "##dash_c1_inst").c_str(), ImVec2(availW, btnH))) {
+                            s_cardConfirm[1] = true;
+                        }
+                        ImGui::PopStyleVar(3);
+                        ImGui::PopStyleColor(4);
+                    }
+                }
+
+                // Click interaction on card top / body
+                if (topClicked) {
+                    if (cards[i].isOk) {
+                        s_delayedTab = cards[i].actionTab;
+                    } else {
+                        s_cardConfirm[i] = true;
+                    }
+                }
+
+                ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + cardH));
+            }
+
+            ImGui::PopID();
+        }
         ImGui::EndTable();
     }
-    Hint(UI(Tr(L"A click on a line always translates it.")));
 }
 
 // Our options window, in tabs. "Save" applies.
@@ -575,13 +1243,28 @@ void RenderOptionsContent() {
         }
         return changed;
     };
+    // Style the tabs: rounded, sleek, modern colors
+    ImGui::PushStyleVar(ImGuiStyleVar_TabRounding, 5.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4.0f, 4.0f));
+    ImGui::PushStyleColor(ImGuiCol_Tab, IM_COL32(28, 32, 42, 200));
+    ImGui::PushStyleColor(ImGuiCol_TabHovered, IM_COL32(50, 60, 85, 240));
+    ImGui::PushStyleColor(ImGuiCol_TabActive, IM_COL32(42, 50, 72, 255));
+    ImGui::PushStyleColor(ImGuiCol_TabUnfocused, IM_COL32(22, 25, 34, 180));
+    ImGui::PushStyleColor(ImGuiCol_TabUnfocusedActive, IM_COL32(34, 40, 56, 220));
+
+    if (s_delayedTab >= 0) {
+        g_optionsTab = s_delayedTab;
+        s_delayedTab = -1;
+    }
+
     auto TabFlag = [](int i) { return g_optionsTab == i ? ImGuiTabItemFlags_SetSelected : 0; };
     if (ImGui::BeginTabBar("##tabs")) {
-        // ---- General
-        if (ImGui::BeginTabItem(UI(Tr(L"General") + L"###tab_general").c_str(), nullptr, TabFlag(0))) {
+        // ---- Dashboard (formerly General)
+        if (ImGui::BeginTabItem(UI(Tr(L"Dashboard") + L"###tab_general").c_str(), nullptr, TabFlag(0))) {
+            if (ImGui::BeginChild("##tab_scroll_dash", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
             ImGui::SetNextItemWidth(wide);
             {  // only the languages this window has texts in (core/i18n: UiLanguages)
-                std::string current = UI(Tr(L"like Windows"));
+                std::string current = UI(Tr(L"System"));
                 for (const UiLangInfo& l : UiLanguages())
                     if (ToLowerAscii(PrimaryLang(edit.uiLangCode)) == l.code) current = U8(l.native);  // "DE" of old too
                 if (ImGui::BeginCombo(UI(Tr(L"Language of this window") + L"##ui").c_str(), current.c_str())) {
@@ -596,7 +1279,7 @@ void RenderOptionsContent() {
                         SetUiLang(edit.uiLang);
                         g_cfg.SaveValue(L"General", L"UiLanguage", edit.uiLangCode);
                     };
-                    if (ImGui::Selectable(UI(Tr(L"like Windows")).c_str(), edit.uiLangCode.empty())) {
+                    if (ImGui::Selectable(UI(Tr(L"System")).c_str(), edit.uiLangCode.empty())) {
                         applyLang(L"");
                     }
                     for (const UiLangInfo& l : UiLanguages()) {
@@ -607,7 +1290,6 @@ void RenderOptionsContent() {
                     ImGui::EndCombo();
                 }
             }
-            ImGui::Checkbox(UI(Tr(L"Show the window")).c_str(), &g_show);
             {
                 auto drawBadge = [](const char* key, const char* label) {
                     ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
@@ -626,42 +1308,74 @@ void RenderOptionsContent() {
                     drawBadge("PTT", UI(Tr(L"Voice")).c_str());
                 }
             }
+            ImGui::Dummy(ImVec2(0.0f, 4.0f));
             Hint(UI(Tr(L"Keybinds: Nexus → Keybinds → GW2Chatlator.")));
+            ImGui::Dummy(ImVec2(0.0f, 6.0f));
             ImGui::Separator();
+            ImGui::Dummy(ImVec2(0.0f, 6.0f));
             RenderDashboard(edit, opened);  // what is on, switched right here
+            ImGui::Dummy(ImVec2(0.0f, 8.0f));
             ImGui::Separator();
+            ImGui::Dummy(ImVec2(0.0f, 6.0f));
+            ImGui::TextUnformatted(UI(Tr(L"Translation & Languages")).c_str());
+            ImGui::TextDisabled("%s", UI(Tr(L"Translated is everything except:")).c_str());
+            RenderExceptList(edit);
+            Hint(UI(Tr(L"Your writing language follows automatically when you switch languages in the chat footer.")));
+            ImGui::Dummy(ImVec2(0.0f, 4.0f));
+            FocusSwitch("dash_voice_trans", UI(Tr(L"Translate what I speak into target language")), &edit.voiceTranslate);
+            Hint(UI(Tr(L"What you say is translated into the send language set in the footer (whisper translates into English on this PC; other languages use your translator).")));
+            ImGui::Dummy(ImVec2(0.0f, 8.0f));
+            ImGui::Separator();
+            ImGui::Dummy(ImVec2(0.0f, 6.0f));
             ImGui::TextUnformatted(UI(Tr(L"Chat focus & behavior")).c_str());
             {
                 std::lock_guard<std::mutex> lock(g_mu);
                 bool fullFocus = g_layout.autoOpen && edit.focusOnGameChat && edit.returnFocus;
-                if (ImGui::Checkbox(UI(Tr(L"Complete chat takeover (full focus)")).c_str(), &fullFocus)) {
+                std::string fullFocusTip = UI(Tr(L"Enables all 3 focus options: automatically opens, takes over Enter in game, and keeps focus after sending."));
+                if (FocusSwitch("foc_full", UI(Tr(L"Complete chat takeover (full focus)")), &fullFocus, fullFocusTip.c_str())) {
                     g_layout.autoOpen = fullFocus;
                     edit.focusOnGameChat = fullFocus;
                     edit.returnFocus = fullFocus;
                     SaveLayout();
                 }
             }
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("%s", UI(Tr(L"Enables all 3 focus options: automatically opens, takes over Enter in game, and keeps focus after sending.")).c_str());
             {
                 std::lock_guard<std::mutex> lock(g_mu);
-                if (ImGui::Checkbox(UI(Tr(L"Open again when GW2's chat opens (Enter)")).c_str(), &g_layout.autoOpen)) {
+                bool autoOpen = g_layout.autoOpen;
+                std::string autoOpenTip = UI(Tr(L"Only opens it. The focus key (Nexus > Keybinds) always opens it; taking over the focus is its own setting (General)."));
+                if (FocusSwitch("foc_open", UI(Tr(L"Open again when GW2's chat opens (Enter)")), &autoOpen, autoOpenTip.c_str())) {
+                    g_layout.autoOpen = autoOpen;
                     SaveLayout();
                 }
             }
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("%s", UI(Tr(L"Only opens it. The focus key (Nexus > Keybinds) always opens it; taking over the focus is its own setting (General).")).c_str());
-            ImGui::Checkbox(UI(Tr(L"Enter in the game opens GW2Chatlator's input")).c_str(), &edit.focusOnGameChat);
+            FocusSwitch("foc_enter", UI(Tr(L"Enter in the game opens GW2Chatlator's input")), &edit.focusOnGameChat);
             Hint(UI(Tr(L"Instead of GW2's own chat line: you type here, with the typing help and the translation.")));
-            ImGui::Checkbox(UI(Tr(L"After sending, keep typing in GW2Chatlator")).c_str(), &edit.returnFocus);
+            FocusSwitch("foc_return", UI(Tr(L"After sending, keep typing in GW2Chatlator")), &edit.returnFocus);
             Hint(UI(Tr(L"The input keeps the keyboard after Enter – the next message goes right after.")));
             ImGui::Separator();
-            ImGui::TextUnformatted(UI(Tr(L"What is ready")).c_str());
-            RenderModules(true);  // the same box as in the empty chat
+            ImGui::TextDisabled("%s", UI(Tr(L"Status")).c_str());
+            {
+                const ModuleState& ms = Modules();
+                const bool chatOk = g_chatEventsLive || g_chatEventsPresent;
+                const bool mtModuleOk = gct::LocalMtModulePresent(KeyboardDir());
+                const bool mtModelOk = gct::LocalMtModelPresent(edit.dataDir, "nllb-200") || gct::LocalMtModelPresent(edit.dataDir, "opus-mt");
+                const bool mtOk = (edit.engine == Engine::Nllb || edit.engine == Engine::Local) && mtModuleOk && mtModelOk;
+
+                std::string nexusPart = "Nexus: Handshake OK";
+                std::string chatPart = std::string("Chat: ") + (chatOk ? "Events: Chat OK" : "Events: Chat missing");
+                std::string transPart = std::string("Translation: ") + UI(g_translator ? g_translator->Name() : mtOk ? L"Local MT" : L"-");
+                std::string voicePart = std::string("Voice: ") + (ms.voiceModule && edit.voiceEnabled ? "whisper.cpp (ready)" : "off (optional)");
+
+                std::string statusLine = nexusPart + "   |   " + chatPart + "   |   " + transPart + "   |   " + voicePart;
+                ImGui::TextDisabled("%s", statusLine.c_str());
+            }
+            ImGui::EndChild();
+            }
             ImGui::EndTabItem();
         }
         // ---- Window: its building blocks, size, transparency, how the chat text looks
         if (ImGui::BeginTabItem(UI(Tr(L"Window") + L"###tab_window").c_str(), nullptr, TabFlag(1))) {
+            if (ImGui::BeginChild("##tab_scroll_win", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
             {
                 std::lock_guard<std::mutex> lock(g_mu);
                 const std::wstring names[] = {Tr(L"Nexus"), Tr(L"Slate"), Tr(L"Grey"), Tr(L"CBA (your own colours)")};
@@ -793,12 +1507,15 @@ void RenderOptionsContent() {
                 changed |= ImGui::SliderInt(UI(Tr(L"Brightness") + L" (%)##bright").c_str(), &g_look.brightness, 60, 160);
                 if (changed) SaveLayout();
             }
+            ImGui::EndChild();
+            }
             ImGui::EndTabItem();
         }
         // ---- Writing
         if (ImGui::BeginTabItem(UI(Tr(L"Writing") + L"###tab_writing").c_str(), nullptr, TabFlag(2))) {
+            if (ImGui::BeginChild("##tab_scroll_write", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
             ImGui::SetNextItemWidth(wide);
-            LanguageCombo(UI(Tr(L"I write in") + L"##writein").c_str(), edit.writeIn, Tr(L"like Windows"));
+            LanguageCombo(UI(Tr(L"I write in") + L"##writein").c_str(), edit.writeIn, Tr(L"System"));
             ImGui::Checkbox(UI(Tr(L"Spell checking (Windows, offline)")).c_str(), &edit.spellEnabled);
             int ac = static_cast<int>(edit.autoCorrect);
             if (combo(UI(Tr(L"Autocorrection") + L"##ac").c_str(),
@@ -829,10 +1546,13 @@ void RenderOptionsContent() {
             if (combo(UI(Tr(L"Enter does") + L"##enter").c_str(),
                       {UI(Tr(L"Send into the GW2 chat")), UI(Tr(L"Only copy (not a single key reaches the game)"))}, &enterDoes))
                 edit.copyOnly = enterDoes == 1;
+            ImGui::EndChild();
+            }
             ImGui::EndTabItem();
         }
         // ---- Voice
         if (ImGui::BeginTabItem(UI(Tr(L"Voice") + L"###tab_voice").c_str(), nullptr, TabFlag(3))) {
+            if (ImGui::BeginChild("##tab_scroll_voice", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
             ImGui::Checkbox(UI(Tr(L"Voice input")).c_str(), &edit.voiceEnabled);
             RenderVoiceModule(false);
             ImGui::Separator();
@@ -968,10 +1688,13 @@ void RenderOptionsContent() {
             Hint(UI(Tr(L"Automatic: the least busy cores – the ones GW2 does not use.")));
             ImGui::Checkbox(UI(Tr(L"Hands-free: with voice activation, the pause after speaking sends it (push-to-talk waits for your Enter)")).c_str(), &edit.voiceAutoSend);
             Hint(UI(Tr(L"Runs on this PC – no sound leaves it, nothing is recorded to disk.")));
+            ImGui::EndChild();
+            }
             ImGui::EndTabItem();
         }
         // ---- Microphone
         if (ImGui::BeginTabItem(UI(Tr(L"Microphone") + L"###tab_mic").c_str(), nullptr, TabFlag(4))) {
+            if (ImGui::BeginChild("##tab_scroll_mic", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
             int mode = edit.voiceActivation ? 2 : edit.voiceToggle ? 1 : 0;
             static std::vector<std::string> s_modeLabels;
             static UiLang s_modeLang = static_cast<UiLang>(-1);
@@ -995,12 +1718,14 @@ void RenderOptionsContent() {
             }
             ImGui::AlignTextToFramePadding();
             ImGui::TextUnformatted(UI(Tr(L"Push-to-talk key")).c_str());
-            ImGui::SameLine(150);
-            ImGui::TextUnformatted(g_captureKey ? UI(Tr(L"press a key … (Esc: cancel)")).c_str()
-                                                : UI(edit.voiceGlobalKey.empty() ? Tr(L"none") : edit.voiceGlobalKey).c_str());
-            ImGui::SameLine(330);
+            ImGui::SameLine(0.0f, 12.0f);
+            const std::string keyDisplay = g_captureKey
+                ? UI(Tr(L"press a key … (Esc: cancel)"))
+                : UI(edit.voiceGlobalKey.empty() ? Tr(L"none") : edit.voiceGlobalKey);
+            ImGui::TextColored(ImVec4(0.95f, 0.78f, 0.35f, 1.0f), "[ %s ]", keyDisplay.c_str());
+            ImGui::SameLine(0.0f, 12.0f);
             if (ImGui::Button(UI(Tr(L"Set key…")).c_str())) g_captureKey = true;
-            ImGui::SameLine();
+            ImGui::SameLine(0.0f, 6.0f);
             if (ImGui::Button(UI(Tr(L"None")).c_str())) edit.voiceGlobalKey.clear();
             Hint(UI(Tr(L"Works while GW2 is in front; GW2 does not get this key. The Nexus keybind (Keybinds > GW2 Keyboard) works too.")));
             std::vector<std::string> names{UI(Tr(L"Windows default"))};
@@ -1035,10 +1760,13 @@ void RenderOptionsContent() {
             ImGui::SliderInt(UI(Tr(L"Speech to start") + L" (ms)##min").c_str(), &edit.voiceMinMs, 100, 1000);
             ImGui::Checkbox(UI(Tr(L"Pause while a voice chat uses the microphone (Discord, TeamSpeak …)")).c_str(), &edit.voiceChatPause);
             if (!edit.voiceActivation) ImGui::PopStyleVar();
+            ImGui::EndChild();
+            }
             ImGui::EndTabItem();
         }
         // ---- Translator
         if (ImGui::BeginTabItem(UI(Tr(L"Translator") + L"###tab_translator").c_str(), nullptr, TabFlag(5))) {
+            if (ImGui::BeginChild("##tab_scroll_trans", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
             {
                 std::lock_guard<std::mutex> lock(g_mu);
                 if (ImGui::Checkbox(UI(Tr(L"Translate the chat")).c_str(), &g_nx.translateChat)) {
@@ -1092,10 +1820,13 @@ void RenderOptionsContent() {
             }
             ImGui::Separator();
             RenderLocalMtOptions(edit);
+            ImGui::EndChild();
+            }
             ImGui::EndTabItem();
         }
         // ---- Technical
         if (ImGui::BeginTabItem(UI(Tr(L"Technical") + L"###tab_technical").c_str(), nullptr, TabFlag(6))) {
+            if (ImGui::BeginChild("##tab_scroll_tech", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
             ImGui::Checkbox(UI(Tr(L"Automatic timing (FPS-adapted)") + L"##autotiming").c_str(), &edit.send.autoTiming);
             Hint(UI(Tr(L"Calculates key hold and step delays dynamically based on the game's current framerate.")));
 
@@ -1148,88 +1879,40 @@ void RenderOptionsContent() {
             Hint(UI(Tr(L"Exports system status, engine telemetry, and performance metrics (no chat messages or player names are stored or exported).")));
             ImGui::Separator();
             RenderRemoveEverything();  // once, at the very bottom
+            ImGui::EndChild();
+            }
             ImGui::EndTabItem();
         }
+
+        // ---- Save Tab Button: placed directly in the tab row after Technical tab
+        {
+            const bool dirty = IsOptionsDirty(edit, opened, keyBuf, regionBuf, urlBuf, mailBuf);
+            if (dirty) {
+                ImGui::PushStyleColor(ImGuiCol_Tab, IM_COL32(200, 38, 38, 240));        // vibrant red
+                ImGui::PushStyleColor(ImGuiCol_TabHovered, IM_COL32(230, 50, 50, 255)); // brighter red
+                ImGui::PushStyleColor(ImGuiCol_TabActive, IM_COL32(170, 25, 25, 255));  // deep red
+                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
+            } else {
+                ImGui::PushStyleColor(ImGuiCol_Tab, IM_COL32(34, 38, 48, 160));         // subtle dark
+                ImGui::PushStyleColor(ImGuiCol_TabHovered, IM_COL32(48, 55, 72, 220));
+                ImGui::PushStyleColor(ImGuiCol_TabActive, IM_COL32(28, 32, 42, 255));
+                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(160, 168, 182, 190));     // subtle grey
+            }
+            std::string saveTabLabel = (dirty ? UI(Tr(L"Save")) + " *" : UI(Tr(L"Save"))) + "###tab_save_btn";
+            if (ImGui::TabItemButton(saveTabLabel.c_str(), 0)) {
+                DoSaveOptions(edit, opened, keyBuf, regionBuf, urlBuf, mailBuf);
+            }
+            if (dirty && ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("%s", UI(Tr(L"Unsaved changes – click to apply")).c_str());
+            }
+            ImGui::PopStyleColor(4);
+        }
+
         ImGui::EndTabBar();
         g_optionsTab = -1;
     }
-
-    ImGui::Separator();
-    if (ImGui::Button(UI(Tr(L"Save")).c_str())) {
-        const std::wstring key = W(keyBuf);
-        if (edit.engine == Engine::DeepL) edit.deeplKey = key;
-        else if (edit.engine == Engine::Google) edit.googleKey = key;
-        else if (edit.engine == Engine::Microsoft) edit.msKey = key;
-        else if (edit.engine == Engine::Libre) edit.libreKey = key;
-        edit.msRegion = W(regionBuf);
-        edit.libreUrl = W(urlBuf);
-        edit.basicEmail = W(mailBuf);
-        edit.uiLang = EffectiveUiLang(edit.uiLangCode);
-        bool typingChanged, voiceChanged;
-        {
-            std::lock_guard<std::mutex> lock(g_mu);
-            typingChanged = edit.writeIn != g_cfg.writeIn || edit.spellEnabled != g_cfg.spellEnabled;
-            voiceChanged = edit.voiceEnabled != g_cfg.voiceEnabled;
-            // The footer's "Send" is its own choice (user, 2026-10-23): "Save" keeps it – by its language, the list
-            // may have changed here – and only switching "Translate my text" itself sets its default again.
-            const bool writingSwitched = edit.translateWriting != g_cfg.translateWriting;
-            const std::wstring sendWas = g_sendIdx >= 0 && g_sendIdx < static_cast<int>(g_cfg.writeLangs.size())
-                                             ? g_cfg.writeLangs[static_cast<size_t>(g_sendIdx)]
-                                             : std::wstring();  // "" = as written
-            edit.myMemoryDay = g_cfg.myMemoryDay;  // counted meanwhile
-            edit.myMemoryUsed = g_cfg.myMemoryUsed;
-            // Changed outside this page meanwhile (footer: "auto", a language added; a slow model switched) and not
-            // here: the newer value stays – "Save" used to turn them back.
-            if (edit.voiceAutoSend == opened.voiceAutoSend) edit.voiceAutoSend = g_cfg.voiceAutoSend;
-            if (edit.writeLangs == opened.writeLangs) edit.writeLangs = g_cfg.writeLangs;
-            if (edit.voiceModel == opened.voiceModel) edit.voiceModel = g_cfg.voiceModel;
-            const bool engineChanged = edit.engine != g_cfg.engine;
-            g_cfg = opened = edit;
-            g_cfg.SaveAll();
-            SetUiLang(g_cfg.uiLang);
-            g_translator = MakeTranslator(g_cfg);
-            const int asWritten = static_cast<int>(g_cfg.writeLangs.size());
-            const auto kept = std::find(g_cfg.writeLangs.begin(), g_cfg.writeLangs.end(), sendWas);
-            if (writingSwitched) g_sendIdx = g_cfg.translateWriting ? 0 : asWritten;
-            else if (sendWas.empty()) g_sendIdx = asWritten;
-            else if (kept != g_cfg.writeLangs.end()) g_sendIdx = static_cast<int>(kept - g_cfg.writeLangs.begin());
-            else g_sendIdx = g_cfg.translateWriting ? 0 : asWritten;  // its language was taken out of the list
-            // g_sendOverride (the open whisper tab's own language) stays: it belongs to that tab, not to the options.
-            g_preview.clear();  // what you have written goes through the translator as it is set now
-            ++g_inputGen;
-            g_inputChanged = GetTickCount64();
-            if (g_nx.translateChat && (typingChanged || engineChanged)) TranslateRecentLines(false);
-            SetStatus(Tr(L"Saved"), 3000);
-        }
-        if (typingChanged) g_worker.Post([] {  // spelling and learned words follow the language you write in
-            FreeWorkerState();
-            InitSpelling();
-        });
-        else g_worker.Post([learn = edit.learnWords] { if (g_spell) g_spell->SetLearnChoices(learn); });
-        ApplyPushToTalkKey(edit.voiceGlobalKey);
-        if (!edit.voiceActivation || !edit.voiceEnabled) StopListening();
-        else g_listenUserOff = false;  // asked for in the options: it listens (started by the window)
-        if (voiceChanged && edit.voiceEnabled && !g_voice.Running() &&
-            GetFileAttributesW(HelperExe().c_str()) != INVALID_FILE_ATTRIBUTES)
-            g_worker.Post([dir = edit.dataDir] {  // after the ini is written: the helper reads it when it starts
-                Config::FlushWrites();
-                std::lock_guard<std::mutex> lock(g_mu);
-                if (!g_voice.Running()) g_voice.Start(HelperExe(), dir);
-            });
-        else if (g_voice.Running())
-            VoiceReload();
-    }
-    ImGui::SameLine();
-    if (ImGui::Button(UI(Tr(L"Undo changes")).c_str())) {
-        loaded = false;
-        {
-            std::lock_guard<std::mutex> lock(g_mu);
-            g_cfg.uiLang = opened.uiLang;
-            g_cfg.uiLangCode = opened.uiLangCode;
-        }
-        SetUiLang(opened.uiLang);
-        g_cfg.SaveValue(L"General", L"UiLanguage", opened.uiLangCode);
-    }
+    ImGui::PopStyleColor(5);
+    ImGui::PopStyleVar(2);
 }
 
 std::string BuildDiagnosticReport() {

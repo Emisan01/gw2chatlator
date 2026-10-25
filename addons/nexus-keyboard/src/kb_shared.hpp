@@ -114,7 +114,7 @@ struct Layout {
     bool autoMinimize = false;  // not in use for `minimizeAfter` s: down to the small button
     int minimizeAfter = 10;
     bool autoOpen = false;      // GW2's chat line opening (Enter) opens it from the small button (the focus key always does)  // the small ">" that minimises (in the footer, without it left of the input)
-    bool infoText = true;  // the grey status lines (what is going on, modules, counter); never the prediction's grey word
+    bool infoText = false;  // the grey status lines (what is going on, modules, counter); never the prediction's grey word
     int inputLines = 1;    // the input box at least: one line, it grows with its wrapped lines (user, 2026-10-22)
     int previewLines = 1;  // the translation and its back-translation at least – grows the same way
 };
@@ -231,6 +231,24 @@ float FollowUiPx();
 int FollowUiPt();
 void RequestUiFont(float px);
 void ReleaseUiFont();
+
+struct ScopedPopupFont {
+    bool pushed = false;
+    ScopedPopupFont() {
+        const float uiPx = FollowUiPx();
+        ImFont* uf = g_uiFont.load();
+        if (uf && uf->FontSize > 0.0f) {
+            ImGui::SetWindowFontScale(uiPx / uf->FontSize);
+            ImGui::PushFont(uf);
+            pushed = true;
+        } else {
+            ImGui::SetWindowFontScale(uiPx / std::max(1.0f, ImGui::GetFontSize()));
+        }
+    }
+    ~ScopedPopupFont() {
+        if (pushed) ImGui::PopFont();
+    }
+};
 extern HMODULE g_self;
 extern std::atomic<bool> g_disabled;
 // Work of a thread of ours behind the same net as the render callbacks: a fault (an access violation & co. – not a C++
@@ -454,6 +472,8 @@ void TalkUp();
 void TalkLocked();
 void StartListening();
 void StopListening();
+extern std::atomic<bool> g_voiceMuted;
+void SetVoiceMuted(bool mute);
 void OnTalkKey(const char*, bool release);
 UINT OnWndProc(HWND, UINT msg, WPARAM wp, LPARAM lp);
 void ApplyPushToTalkKey(const std::wstring& key);
@@ -513,10 +533,22 @@ void InstallDecoderRingNow();
 void RemoveDecoderRingNow();
 
 // ---- the header's icons: microphone, menu (three lines), close
-enum class Icon { Mic, Menu, Close, Collapse, Expand };
+enum class Icon { Mic, MicMuted, ChevronDown, Menu, Close, Collapse, Expand };
 bool IconButton(const char* id, Icon kind, bool active, bool* rightClick, ImU32 tint = 0);
 std::string Fit(const std::string& s, float width);
 std::wstring StatusText();
+
+struct DiscordMicResult {
+    bool muteToggled = false;
+    bool talkLocked = false;
+    bool openMenu = false;
+};
+DiscordMicResult RenderDiscordMicControl(const char* id, float height, bool muted, bool recording);
+void ToggleVoiceMenu(const ImVec2& anchorMin, const ImVec2& anchorMax);
+void CloseVoiceMenu();
+void ConsumeVoiceMenuOutsideClick();
+void RenderDiscordVoiceMenu();
+void SwitchOptionsTab(int tab);
 
 // ---- voice model download (its own thread: minutes, never on the worker or the game's threads)
 extern std::thread g_download;
@@ -558,6 +590,8 @@ void StatusRow(const std::string& what, int state, const std::string& text);
 void RenderModules(bool guide);
 bool RemoveButton(const char* id);
 void RenderLocalMtOptions(Config& edit);
+void InstallLocalMtQuickSetup(const std::wstring& dataDir);
+void InstallVoiceQuickSetup();
 // A number for the eye (Options > Technical): smoothed over about the last 20 frames, shown at most 4 times a second.
 struct Steady {
     gct::SteadyNumber n;  // core/steady: its equations in core_tests
@@ -594,6 +628,8 @@ extern bool g_minimizeRequest, g_expandRequest;  // on the main window, never in
 bool RichLine(const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 color);
 
 extern bool g_micLocked;
+extern ULONGLONG g_micLockedStart;
+void CheckMicLockTimeout();
 bool ProfileOn(int profile);
 void SetProfile(int profile, bool on);
 Layout Lay();

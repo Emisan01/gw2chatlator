@@ -79,9 +79,10 @@ void VoiceHelper::OnLine(const std::string& line) {
     } else if (t == "started") {
         g_recording = true;
         g_voiceLive.clear();
-        SetStatus(Tr(L"Hearing you … release the key when you are done"), 0);
+        SetStatus(g_micLocked ? Tr(L"Hearing you …") : Tr(L"Hearing you … release the key when you are done"), 0);
     } else if (t == "partial") {
         g_voiceLive = W(v.GetString("stable")) + W(v.GetString("unsure"));
+        g_micLockedStart = 0;
     } else if (t == "final") {
         g_recording = false;
         g_voiceLive.clear();
@@ -191,6 +192,7 @@ void VoiceCommand(const char* cmd) {
 // Push to talk: pressed starts, released ends (the recognized text then waits for your Enter). Started while the
 // helper still loads, the recording begins when it is ready and a pause ends it.
 void TalkDown() {
+    if (g_voiceMuted.load()) return;
     bool rec, toggle, ready;
     {
         std::lock_guard<std::mutex> lock(g_mu);
@@ -202,19 +204,33 @@ void TalkDown() {
     {
         std::lock_guard<std::mutex> lock(g_mu);
         g_userRecording = true;
+        g_micLocked = false;
+        g_micLockedStart = 0;
     }
     VoiceCommand(toggle || !ready ? "begin-auto" : "begin");
 }
-void TalkUp() { g_voice.Send("end"); }
+void TalkUp() {
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_micLocked = false;
+        g_micLockedStart = 0;
+    }
+    g_voice.Send("end");
+}
 void TalkLocked() {  // right-click on the microphone: on until a pause is heard
+    if (g_voiceMuted.load()) return;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         if (g_recording) return;
         g_userRecording = true;
+        g_micLocked = true;
+        g_micLockedStart = GetTickCount64();
+        SetStatus(Tr(L"Hearing you …"), 0);
     }
     VoiceCommand("begin-auto");
 }
 void StartListening() {  // voice activation: a recording starts when you speak, a pause ends it
+    if (g_voiceMuted.load()) return;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         g_listenWanted = true;
@@ -229,6 +245,24 @@ void StopListening() {
         g_listenPausedFor.clear();
     }
     g_voice.Send("stop-listen");
+}
+
+void SetVoiceMuted(bool mute) {
+    g_voiceMuted.store(mute);
+    if (mute) {
+        TalkUp();
+        StopListening();
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_recording = false;
+        g_userRecording = false;
+    } else {
+        bool va = false;
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            va = g_cfg.voiceEnabled && g_cfg.voiceActivation && !g_listenUserOff;
+        }
+        if (va) StartListening();
+    }
 }
 
 void OnTalkKey(const char*, bool release) {
@@ -421,6 +455,24 @@ void UnloadVoiceModule() {
     g_voicePending.clear();
     g_recording = g_listening = g_userRecording = false;
     g_listenUserOff = true;  // voice activation does not start it again by itself
+}
+
+void InstallVoiceQuickSetup() {
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_cfg.voiceEnabled = true;
+        g_cfg.SaveBool(L"Voice", L"Enabled", true);
+    }
+    InstallVoiceModuleNow();
+    Config c;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        c = g_cfg;
+    }
+    const VoiceCatalog catalog = LoadVoiceCatalog(c.dataDir);
+    const VoiceModelInfo* chosen = catalog.Find(U8(c.voiceModel));
+    if (!chosen) chosen = catalog.Recommended();
+    if (chosen && !VoiceModelInstalled(c.VoiceModelDir(), *chosen)) StartModelDownload(*chosen);
 }
 
 }  // namespace kb

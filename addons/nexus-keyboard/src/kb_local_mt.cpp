@@ -134,11 +134,7 @@ std::string PairLabel(const gct::LocalMtModelInfo& model) {
 
 void RenderLocalMtOptions(Config& edit) {
     RefreshLocalMtState(edit.dataDir);
-    bool inUse = false;
-    {
-        std::lock_guard<std::mutex> lock(g_mu);
-        inUse = g_cfg.engine == Engine::Local || g_cfg.engine == Engine::Nllb;
-    }
+
 
     ImGui::TextUnformatted(UI(Tr(L"Local translation module")).c_str());
     const int pct = g_localMtPct.load();
@@ -154,9 +150,16 @@ void RenderLocalMtOptions(Config& edit) {
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", UI(Tr(L"Downloads the isolated CPU helper from this version's GitHub release. SHA-256 is checked." )).c_str());
     } else if (s_state.module && !g_localMtBusy) {
-        if (inUse) {
-            ImGui::TextDisabled("%s", UI(Tr(L"Choose another translator and save before removing local translation files.")).c_str());
-        } else if (RemoveButton("localmtmodule")) {
+        if (RemoveButton("localmtmodule")) {
+            if (edit.engine == Engine::Local || edit.engine == Engine::Nllb) edit.engine = Engine::Basic;
+            {
+                std::lock_guard<std::mutex> lock(g_mu);
+                if (g_cfg.engine == Engine::Local || g_cfg.engine == Engine::Nllb) {
+                    g_cfg.engine = Engine::Basic;
+                    g_cfg.SaveValue(L"Translate", L"Engine", L"basic");
+                    g_translator = MakeTranslator(g_cfg);
+                }
+            }
             StartLocalMtJob(LocalMtJob::RemoveModule, edit.dataDir);
         }
     }
@@ -170,21 +173,17 @@ void RenderLocalMtOptions(Config& edit) {
                                        : Tr(L"missing (about 600 MB)")));
     if (!g_localMtBusy) {
         if (s_state.nllbInstalled) {
-            if (inUse) {
-                ImGui::TextDisabled("%s", UI(Tr(L"Choose another translator and save before removing local translation files.")).c_str());
-            } else {
-                static std::string s_armedNllb;
-                static ULONGLONG s_untilNllb = 0;
-                const bool armed = s_armedNllb == "nllb-200" && GetTickCount64() < s_untilNllb;
-                if (ImGui::SmallButton((UI(armed ? Tr(L"Click again to remove") : Tr(L"Remove")) + "##localmtnllb").c_str())) {
-                    if (armed) {
-                        s_armedNllb.clear();
-                        StartLocalMtJob(LocalMtJob::RemoveModel, edit.dataDir, "nllb-200");
-                    } else {
-                        s_armedNllb = "nllb-200";
-                        s_untilNllb = GetTickCount64() + 4000;
+            if (RemoveButton("localmtnllb")) {
+                if (edit.engine == Engine::Nllb) edit.engine = Engine::Basic;
+                {
+                    std::lock_guard<std::mutex> lock(g_mu);
+                    if (g_cfg.engine == Engine::Nllb) {
+                        g_cfg.engine = Engine::Basic;
+                        g_cfg.SaveValue(L"Translate", L"Engine", L"basic");
+                        g_translator = MakeTranslator(g_cfg);
                     }
                 }
+                StartLocalMtJob(LocalMtJob::RemoveModel, edit.dataDir, "nllb-200");
             }
         } else if (s_state.module) {
             if (ImGui::SmallButton(UI(Tr(L"Download NLLB-200 universal model")).c_str()))
@@ -193,6 +192,9 @@ void RenderLocalMtOptions(Config& edit) {
                 ImGui::SetTooltip("%s", UI(Tr(L"Downloads the INT8 NLLB-200 package for direct many-to-many translation.")).c_str());
         } else {
             ImGui::TextDisabled("%s", UI(Tr(L"Install the local translation module first.")).c_str());
+            ImGui::SameLine();
+            if (ImGui::SmallButton(UI(Tr(L"Install local translation module") + L"##nllbhelper").c_str()))
+                StartLocalMtJob(LocalMtJob::InstallModule, edit.dataDir);
         }
     }
 
@@ -255,21 +257,17 @@ void RenderLocalMtOptions(Config& edit) {
 
     if (g_localMtBusy) return;
     if (s_state.models[selected]) {
-        if (inUse) {
-            ImGui::TextDisabled("%s", UI(Tr(L"Choose another translator and save before removing local translation files.")).c_str());
-        } else {
-            static std::string s_armed;
-            static ULONGLONG s_until = 0;
-            const bool armed = s_armed == model.pair && GetTickCount64() < s_until;
-            if (ImGui::SmallButton((UI(armed ? Tr(L"Click again to remove") : Tr(L"Remove")) + "##localmtmodel").c_str())) {
-                if (armed) {
-                    s_armed.clear();
-                    StartLocalMtJob(LocalMtJob::RemoveModel, edit.dataDir, model.pair);
-                } else {
-                    s_armed = model.pair;
-                    s_until = GetTickCount64() + 4000;
+        if (RemoveButton("localmtmodel")) {
+            if (edit.engine == Engine::Local) edit.engine = Engine::Basic;
+            {
+                std::lock_guard<std::mutex> lock(g_mu);
+                if (g_cfg.engine == Engine::Local) {
+                    g_cfg.engine = Engine::Basic;
+                    g_cfg.SaveValue(L"Translate", L"Engine", L"basic");
+                    g_translator = MakeTranslator(g_cfg);
                 }
             }
+            StartLocalMtJob(LocalMtJob::RemoveModel, edit.dataDir, model.pair);
         }
     } else if (s_state.module) {
         if (ImGui::SmallButton(UI(Tr(L"Download selected model")).c_str()))
@@ -279,6 +277,60 @@ void RenderLocalMtOptions(Config& edit) {
     } else {
         ImGui::TextDisabled("%s", UI(Tr(L"Install the local translation module first.")).c_str());
     }
+}
+
+void InstallLocalMtQuickSetup(const std::wstring& dataDir) {
+    if (g_localMtBusy.exchange(true)) return;
+    if (g_localMtThread.joinable()) g_localMtThread.join();
+    g_localMtPct = 0;
+    g_localMtThread = std::thread([dataDir] {
+        ExtrasInstallResult result;
+        const bool guarded = Shielded([&] {
+            try {
+                const auto progress = [](uint64_t done, uint64_t total) {
+                    if (total) g_localMtPct = static_cast<int>(done * 100 / total);
+                    return !g_disabled.load();
+                };
+                if (!gct::LocalMtModulePresent(KeyboardDir())) {
+                    result = gct::InstallLocalMtModule(KeyboardDir(), W(GCT_VERSION_STR), progress);
+                    if (result.code != ExtrasInstallCode::Ok) return;
+                }
+                if (!gct::LocalMtModelPresent(dataDir, "nllb-200")) {
+                    result = gct::InstallLocalMtModel(dataDir, "nllb-200", W(GCT_VERSION_STR), progress);
+                    if (result.code != ExtrasInstallCode::Ok) return;
+                }
+                {
+                    std::lock_guard<std::mutex> lock(g_mu);
+                    g_cfg.engine = Engine::Nllb;
+                    g_cfg.SaveAll();
+                    g_translator = MakeTranslator(g_cfg);
+                }
+                result.code = ExtrasInstallCode::Ok;
+            } catch (const std::exception& e) {
+                result.code = ExtrasInstallCode::DownloadFailed;
+                result.detail = W(e.what());
+            } catch (...) {
+                result.code = ExtrasInstallCode::DownloadFailed;
+                result.detail = L"unexpected local package error";
+            }
+        });
+        if (!guarded) {
+            result.code = ExtrasInstallCode::DownloadFailed;
+            result.detail = L"the operation stopped unexpectedly";
+        }
+        g_localMtPct = -1;
+        g_localMtBusy = false;
+        std::wstring status;
+        if (result.code == ExtrasInstallCode::Ok) {
+            status = Tr(L"Local translation module ready");
+        } else if (result.code == ExtrasInstallCode::NoAnswer) {
+            status = TrF(L"GitHub did not answer ({1}) – please try again later", {result.detail});
+        } else {
+            status = TrF(L"Loading {1} failed: {2}", {Tr(L"local translation files"), result.detail});
+        }
+        std::lock_guard<std::mutex> lock(g_mu);
+        SetStatus(status, 10000);
+    });
 }
 
 }  // namespace kb

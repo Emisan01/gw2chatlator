@@ -209,10 +209,12 @@ static void TestLocalMtProtocol() {
     CHECK(NllbLanguageTag("ru") == "rus_Cyrl");
     CHECK(NllbLanguageTag("tr") == "tur_Latn");
     CHECK(NllbLanguageTag("uk") == "ukr_Cyrl");
+    CHECK(NllbLanguageTag("ca") == "cat_Latn");
     CHECK(NllbLanguageTag("unknown").empty());
     CHECK(LocalMtRoute(L"DE", L"FR", {"nllb-200"}) == std::vector<std::string>{"de-fr"});
     CHECK(LocalMtRoute(L"ES", L"PL", {"nllb-200"}) == std::vector<std::string>{"es-pl"});
     CHECK(LocalMtRoute(L"RU", L"DE", {"nllb-200"}) == std::vector<std::string>{"ru-de"});
+    CHECK(LocalMtRoute(L"CA", L"EN", {"nllb-200"}) == std::vector<std::string>{"ca-en"});
     CHECK(LocalMtRoute(L"DE", L"EN", {"de-en", "nllb-200"}) == std::vector<std::string>{"de-en"});
     const auto& modelCatalog = LocalMtModelCatalog();
     CHECK(modelCatalog.size() == 16);

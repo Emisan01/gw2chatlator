@@ -406,14 +406,7 @@ bool RichLine(const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 col
             case PieUI::ChatLinks::SegmentKind::Link: {
                 const std::string lbl = g_links.Label(seg);
                 place(lbl);
-                if (g_links.Render(seg, lbl, [](const std::string& l, ImVec4 c) { LookText(l.c_str(), Bright(c), false); })) {
-                    ImGui::SetClipboardText(seg.raw.c_str());
-                    SetStatus(seg.linkType == PieUI::ChatLinks::LINK_MAP
-                                  ? Tr(L"Waypoint code copied to clipboard")
-                                  : Tr(L"Chat link copied to clipboard"),
-                              2500);
-                    clicked = true;
-                }
+                g_links.Render(seg, lbl, [](const std::string& l, ImVec4 c) { LookText(l.c_str(), Bright(c), false); });
                 break;
             }
             case PieUI::ChatLinks::SegmentKind::Ae2: {

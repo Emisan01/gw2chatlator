@@ -188,6 +188,14 @@ std::string NllbLanguageTag(const std::string& langCode) {
     if (code == "vi") return "vie_Latn";
     if (code == "th") return "tha_Thai";
     if (code == "hi") return "hin_Deva";
+    if (code == "ca" || code == "ca-es") return "cat_Latn";
+    if (code == "sr") return "srp_Cyrl";
+    if (code == "bs") return "bos_Latn";
+    if (code == "mk") return "mkd_Cyrl";
+    if (code == "sq") return "als_Latn";
+    if (code == "eu") return "eus_Latn";
+    if (code == "gl") return "glg_Latn";
+    if (code == "is") return "isl_Latn";
     if (code.size() >= 8 && code[3] == '_') return code;
     return {};
 }

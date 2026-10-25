@@ -72,6 +72,7 @@ struct Config {
     int fontPt = 15;                  // chat text size in pt (default 15 pt, 8..28)
     int uiFontPt = 15;                // UI/options font size in pt (default 15 pt, 11..24)
     std::wstring fontFace = L"segoeui";  // its font: a file in Windows\Fonts (segoeui, seguisb, tahoma – kFontFaces)
+    std::wstring chatTabName;          // custom name of the main chat tab (empty = default "Chat")
     bool focusOnGameChat = false;  // focus input when in-game chat box gains focus
     // Key presses vs. letters sent (the word help's benefit): today and in total.
     int typingDay = 0;  // yyyymmdd

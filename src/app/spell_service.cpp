@@ -54,6 +54,7 @@ bool SpellService::Init(const std::vector<std::wstring>& tags, const std::wstrin
             if (!w.empty() && w[0] != L'#') user_.insert(CaseFold(w));
         }
     }
+    std::atomic_store(&userSnap_, std::make_shared<const WordSet>(user_));
     // Names you taught: my-names.txt next to your words, one per line, written as they should be.
     const size_t slash = userPath_.find_last_of(L'\\');
     namesPath_ = (slash == std::wstring::npos ? std::wstring() : userPath_.substr(0, slash + 1)) + L"my-names.txt";
@@ -72,6 +73,8 @@ bool SpellService::Init(const std::vector<std::wstring>& tags, const std::wstrin
     }
     keep_ = BuiltinKeepWords();
     for (const auto& kv : names_) keep_.insert(L"=" + kv.second);  // exactly as taught: "Fallen", not "fallen"
+    std::atomic_store(&namesSnap_, std::make_shared<const std::unordered_map<std::wstring, std::wstring>>(names_));
+    std::atomic_store(&keepSnap_, std::make_shared<const WordSet>(keep_));
     ClearCache();
     InitPrediction(tags);
     return checker_.Init(tags);
@@ -161,6 +164,8 @@ bool SpellService::PredictedExactly(const std::wstring& typed) const {
 void SpellService::SaveNames() {
     keep_ = BuiltinKeepWords();
     for (const auto& kv : names_) keep_.insert(L"=" + kv.second);  // exactly as taught: "Fallen", not "fallen"
+    std::atomic_store(&namesSnap_, std::make_shared<const std::unordered_map<std::wstring, std::wstring>>(names_));
+    std::atomic_store(&keepSnap_, std::make_shared<const WordSet>(keep_));
     std::vector<std::wstring> all;
     for (const auto& kv : names_) all.push_back(kv.second);
     std::sort(all.begin(), all.end());
@@ -183,8 +188,10 @@ bool SpellService::RemoveName(const std::wstring& word) {
 }
 
 std::wstring SpellService::NameFor(const std::wstring& word) const {
-    const auto it = names_.find(CaseFold(word));
-    return it == names_.end() ? std::wstring() : it->second;
+    auto snap = std::atomic_load(&namesSnap_);
+    if (!snap) return std::wstring();
+    const auto it = snap->find(CaseFold(word));
+    return it == snap->end() ? std::wstring() : it->second;
 }
 
 void SpellService::UseLearnedLanguage(const std::wstring& primaryLang, const std::wstring& dir) {
@@ -203,6 +210,7 @@ void SpellService::UseLearnedLanguage(const std::wstring& primaryLang, const std
     typos_ = TypoMemory();
     data.clear();
     if (ReadFileBytes(typosPath_, data)) typos_.Parse(data);
+    std::atomic_store(&typosSnap_, std::make_shared<const TypoMemory>(typos_));
 }
 
 void SpellService::Learn(const std::wstring& sentText) {
@@ -309,6 +317,7 @@ SpellService::ProfileResult SpellService::LearnFromText(const std::wstring& text
 }
 
 void SpellService::SaveLearned() {
+    std::atomic_store(&typosSnap_, std::make_shared<const TypoMemory>(typos_));
     if (!typosPath_.empty() && typos_.Dirty() && WriteFileAtomic(typosPath_, typos_.Serialize())) typos_.ClearDirty();
     if (learnedPath_.empty() || !model_.Dirty()) return;
     const size_t slash = learnedPath_.find_last_of(L'\\');
@@ -321,6 +330,7 @@ bool SpellService::Forget(const std::wstring& word) {
     found = typos_.Forget(word) || found;
     typos_.ForgetFix(word);
     session_.erase(CaseFold(word));
+    std::atomic_store(&sessionSnap_, std::make_shared<const WordSet>(session_));
     SaveLearned();
     return found;
 }
@@ -328,6 +338,8 @@ bool SpellService::Forget(const std::wstring& word) {
 void SpellService::ForgetAll() {
     model_.Clear();
     typos_.Clear();
+    session_.clear();
+    std::atomic_store(&sessionSnap_, std::make_shared<const WordSet>(session_));
     SaveLearned();
     // Every language, not just the active one.
     const size_t slash = learnedPath_.find_last_of(L'\\');
@@ -373,7 +385,8 @@ bool SpellService::TeachFix(const std::wstring& typed, const std::wstring& fix) 
 
 std::wstring SpellService::KnownFix(const std::wstring& typed) const {
     if (typed.size() < 3 || IsValidWord(typed)) return {};
-    const std::wstring fix = typos_.FixFor(typed);
+    auto snap = std::atomic_load(&typosSnap_);
+    const std::wstring fix = snap ? snap->FixFor(typed) : std::wstring();
     if (fix.empty()) return {};
     return CaseFoldChar(typed[0]) != typed[0] ? MatchCase(typed, fix) : fix;
 }
@@ -440,12 +453,18 @@ void SpellService::RejectCorrection(const std::wstring& original) {
     typos_.Forget(original);  // meant as typed: no typo of yours
     model_.Confirm(original);
     session_.insert(CaseFold(original));
+    std::atomic_store(&sessionSnap_, std::make_shared<const WordSet>(session_));
     SaveLearned();
 }
 
 bool SpellService::IsKnown(const std::wstring& word) const {
     const std::wstring f = CaseFold(word);
-    return names_.count(f) || IsKeepWord(BuiltinSpellIgnore(), word) || game_.count(f) || user_.count(f) || session_.count(f) ||
+    auto nSnap = std::atomic_load(&namesSnap_);
+    auto gSnap = std::atomic_load(&gameSnap_);
+    auto uSnap = std::atomic_load(&userSnap_);
+    auto sSnap = std::atomic_load(&sessionSnap_);
+    return (nSnap && nSnap->count(f)) || IsKeepWord(BuiltinSpellIgnore(), word) ||
+           (gSnap && gSnap->count(f)) || (uSnap && uSnap->count(f)) || (sSnap && sSnap->count(f)) ||
            CommonChatEnglish().count(f) || (learnedLang_ == L"de" && IsGermanContraction(word)) || model_.Knows(word);
 }
 
@@ -642,9 +661,12 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
         words.push_back(exact);  // keep the recognized full word selectable before longer completions
         if (exact != partial) s.kind = WordSuggestions::Kind::Correction;
     }
-    for (const auto& [k, n] : names_)  // names you taught come first
-        if (words.size() < 3 && k.size() > WordKey(partial).size() && k.compare(0, WordKey(partial).size(), WordKey(partial)) == 0)
-            words.push_back(n);
+    auto nSnap = std::atomic_load(&namesSnap_);
+    if (nSnap) {
+        for (const auto& [k, n] : *nSnap)  // names you taught come first
+            if (words.size() < 3 && k.size() > WordKey(partial).size() && k.compare(0, WordKey(partial).size(), WordKey(partial)) == 0)
+                words.push_back(n);
+    }
     for (const std::wstring& w : model_.Complete(partial, prev, 3, p2))
         if (words.size() < 3 && std::none_of(words.begin(), words.end(), [&](const std::wstring& x) { return WordKey(x) == WordKey(w); }))
             words.push_back(w);
@@ -734,9 +756,12 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
     // tests/tools/typing_bench: they turned correctly typed words into others ("tequatl" -> "gequält").
     std::vector<std::wstring> strong;
     std::vector<std::wstring> completions;
-    for (const auto& [k, n] : names_)  // names you taught come first ("Fal" -> "Fallen")
-        if (k.size() > WordKey(typed).size() && k.compare(0, WordKey(typed).size(), WordKey(typed)) == 0)
-            completions.push_back(n);
+    auto nSnap = std::atomic_load(&namesSnap_);
+    if (nSnap) {
+        for (const auto& [k, n] : *nSnap)  // names you taught come first ("Fal" -> "Fallen")
+            if (k.size() > WordKey(typed).size() && k.compare(0, WordKey(typed).size(), WordKey(typed)) == 0)
+                completions.push_back(n);
+    }
     for (const std::wstring& w : model_.Complete(typed, prev, 3, p2)) completions.push_back(w);
     // Without a dictionary a short word may already be finished ("an", "do"): Space completes only from 3 letters
     // on and only when it adds 2 or more.
@@ -836,6 +861,7 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
 void SpellService::AddUserWord(const std::wstring& word) {
     const std::wstring w = Trim(word);
     if (w.empty() || !user_.insert(CaseFold(w)).second) return;
+    std::atomic_store(&userSnap_, std::make_shared<const WordSet>(user_));
     std::string line;
     if (GetFileAttributesW(userPath_.c_str()) == INVALID_FILE_ATTRIBUTES)
         line = "# My GW2 words: never marked as spelling errors. One word per line.\r\n";
@@ -843,6 +869,10 @@ void SpellService::AddUserWord(const std::wstring& word) {
     AppendFileBytes(userPath_, line);
 }
 
-void SpellService::IgnoreForSession(const std::wstring& word) { session_.insert(CaseFold(word)); }
+void SpellService::IgnoreForSession(const std::wstring& word) {
+    if (session_.insert(CaseFold(word)).second) {
+        std::atomic_store(&sessionSnap_, std::make_shared<const WordSet>(session_));
+    }
+}
 
 }  // namespace gct

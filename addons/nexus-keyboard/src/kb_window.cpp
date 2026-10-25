@@ -118,23 +118,6 @@ struct ScopedFont {
     ~ScopedFont() { Pop(); }
 };
 
-struct ScopedPopupFont {
-    bool pushed = false;
-    ScopedPopupFont() {
-        const float uiPx = FollowUiPx();
-        ImFont* uf = g_uiFont.load();
-        if (uf && uf->FontSize > 0.0f) {
-            ImGui::SetWindowFontScale(uiPx / uf->FontSize);
-            ImGui::PushFont(uf);
-            pushed = true;
-        } else {
-            ImGui::SetWindowFontScale(uiPx / std::max(1.0f, ImGui::GetFontSize()));
-        }
-    }
-    ~ScopedPopupFont() {
-        if (pushed) ImGui::PopFont();
-    }
-};
 
 // Text blocks (menu ≡): your own text, saved from the input, a click puts one back into it (after what is there).
 // In the main window, g_mu held (the window body holds it).
@@ -256,7 +239,7 @@ void RenderFooter() {  // g_mu held
         s_fc.labelBtnFull = s_fc.labelFull + "##chbtn";
         s_fc.labelBtnNarrow = s_fc.labelNarrow + "##chbtn";
 
-        s_fc.writeFull = UI(TrF(L"Write: {1}", {g_cfg.writeIn.empty() ? Tr(L"like Windows") : NativeName(g_cfg.writeIn)}));
+        s_fc.writeFull = UI(TrF(L"Write: {1}", {g_cfg.writeIn.empty() ? Tr(L"System") : NativeName(g_cfg.writeIn)}));
         s_fc.writeNarrow = g_cfg.writeIn.empty() ? std::string("Win") : U8(ToUpperAscii(PrimaryLang(g_cfg.writeIn)));
         s_fc.writeBtnFull = s_fc.writeFull + "##writebtn";
         s_fc.writeBtnNarrow = s_fc.writeNarrow + "##writebtn";
@@ -327,7 +310,7 @@ void RenderFooter() {  // g_mu held
     if (ImGui::BeginPopup("##write_popup")) {
         ScopedPopupFont popupFont;
         std::wstring chosen = g_cfg.writeIn;
-        if (ImGui::Selectable(UI(Tr(L"like Windows")).c_str(), chosen.empty())) {
+        if (ImGui::Selectable(UI(Tr(L"System")).c_str(), chosen.empty())) {
             chosen.clear();
             ImGui::CloseCurrentPopup();
         }
@@ -451,7 +434,7 @@ void RenderFooter() {  // g_mu held
 // The status text (drawn in the input box): a message, else what is going on.
 std::wstring StatusText() {  // g_mu held
     if (!g_status.empty()) return g_status;
-    if (g_recording) return Tr(L"Hearing you … release the key when you are done");
+    if (g_recording) return g_micLocked ? Tr(L"Hearing you …") : Tr(L"Hearing you … release the key when you are done");
     if (!g_listenPausedFor.empty()) return TrF(L"Voice activation paused – {1} uses the microphone", {g_listenPausedFor});
     if (g_listening) return Tr(L"Voice activation listens – just speak");
     const bool voiceOn = g_cfg.voiceEnabled && g_cfg.voiceTranslate;
@@ -467,6 +450,21 @@ std::wstring StatusText() {  // g_mu held
     return TrF(L"Send: {1}", {route});
 }
 
+void CheckMicLockTimeout() {
+    if (g_micLocked && !g_voiceMuted.load()) {
+        std::unique_lock<std::mutex> lock(g_mu);
+        if (!g_voiceLive.empty()) {
+            g_micLockedStart = 0;
+        } else if (g_micLockedStart > 0 && GetTickCount64() - g_micLockedStart >= 3000) {
+            g_micLockedStart = 0;
+            g_micLocked = false;
+            lock.unlock();
+            TalkUp();
+            SetStatus(Tr(L"Could not hear anything"), 3000);
+        }
+    }
+}
+
 void RenderWindow() {
     if (!ImGui::GetCurrentContext()) return;  // failsafe: no context, no drawing
     CostFrame costFrame;  // what this frame costs on GW2's render thread, by part (Options > Technical)
@@ -479,6 +477,8 @@ void RenderWindow() {
     ImGuiIO& io = ImGui::GetIO();
     if (io.DisplaySize.x <= 0 || io.DisplaySize.y <= 0) return;
     SuppressImplicitDebugWindow();
+    ConsumeVoiceMenuOutsideClick();
+    CheckMicLockTimeout();
     struct PopColoursAtEnd {
         int n = 0;
         ~PopColoursAtEnd() {
@@ -516,6 +516,7 @@ void RenderWindow() {
     }
     if (g_wipeDone != 0) {  // everything removed: only the notice with the last step
         RenderRemovedNotice();
+        RenderDiscordVoiceMenu();
         return;
     }
     ChatEventsPresent();
@@ -529,7 +530,10 @@ void RenderWindow() {
         inMap = (g_inMap || g_test.forceMap) && !g_mapOpen;
         if (g_focusInput && g_collapsed) g_collapsed = false;  // something wants the input: the window opens (at its corner)
     }
-    if (!g_show || !inMap) return;
+    if (!g_show || !inMap) {
+        RenderDiscordVoiceMenu();
+        return;
+    }
 
     const float iconH = ImGui::GetFrameHeight();
     const float minBtn = iconH + 8.0f;
@@ -617,24 +621,34 @@ void RenderWindow() {
     headerFont.Apply(uf, uiPx);
     const float icon = ImGui::GetFrameHeight();
     const float gap = std::round(icon * 0.6f);
-    const float rightW = (g_cfg.voiceEnabled ? icon + gap : 0) + icon + gap + icon + st.ItemSpacing.x + icon;
+    const float micPillW = std::floor(icon * 1.15f) + 1.0f + std::floor(icon * 0.75f);
+    const float rightW = (g_cfg.voiceEnabled ? micPillW + gap : 0) + icon + gap + icon + st.ItemSpacing.x + icon;
     const float tabsW = std::max(60.0f, ImGui::GetContentRegionAvail().x - rightW - gap);
     bool newTab = false, tabMenu = false;
     static bool s_lineRightClick = false;  // a right-click on a chat line (it translates the line, no menu)
+    static std::string s_chatTabLabel;
+    static UiLang s_chatTabLang = static_cast<UiLang>(-1);
+    static std::wstring s_cachedChatName;
+    static bool s_renameChatOpen = false;
     if (Lay().header) {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         ImGui::BeginChild("##hdr", ImVec2(tabsW, icon), false,
                           ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBackground);
         ImGui::PopStyleVar();
         if (ImGui::BeginTabBar("##wtabs", ImGuiTabBarFlags_FittingPolicyResizeDown | ImGuiTabBarFlags_NoTooltip)) {
-            static std::string s_chatTabLabel;
-            static UiLang s_chatTabLang = static_cast<UiLang>(-1);
-            if (s_chatTabLang != g_cfg.uiLang || s_chatTabLabel.empty()) {
+            if (s_chatTabLang != g_cfg.uiLang || s_cachedChatName != g_cfg.chatTabName || s_chatTabLabel.empty()) {
                 s_chatTabLang = g_cfg.uiLang;
-                s_chatTabLabel = UI(Tr(L"Chat")) + "###wt_all";
+                s_cachedChatName = g_cfg.chatTabName;
+                const std::wstring base = !g_cfg.chatTabName.empty() ? g_cfg.chatTabName : Tr(L"Chat");
+                s_chatTabLabel = UI(base) + "###wt_all";
             }
-            if (ImGui::BeginTabItem(s_chatTabLabel.c_str(), nullptr,
-                                    g_selectTab == -1 ? ImGuiTabItemFlags_SetSelected : 0)) {
+            const bool mainShown = ImGui::BeginTabItem(s_chatTabLabel.c_str(), nullptr,
+                                                       g_selectTab == -1 ? ImGuiTabItemFlags_SetSelected : 0);
+            if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+                tabMenu = true;
+                s_renameChatOpen = true;
+            }
+            if (mainShown) {
                 if (g_selectTab == -1) g_selectTab = -2;
                 else if (g_selectTab == -2 && g_activeTab != -1) LeaveWhisperTab();
                 ImGui::EndTabItem();
@@ -684,6 +698,35 @@ void RenderWindow() {
     }
     if (newTabNext) ImGui::OpenPopup("##newtab");
     newTabNext = false;
+    if (s_renameChatOpen) {
+        ImGui::OpenPopup("##rename_chat_tab");
+        s_renameChatOpen = false;
+    }
+    if (ImGui::BeginPopup("##rename_chat_tab")) {
+        ScopedPopupFont popupFont;
+        static char nameBuf[64] = {};
+        if (ImGui::IsWindowAppearing()) {
+            const std::wstring cur = !g_cfg.chatTabName.empty() ? g_cfg.chatTabName : Tr(L"Chat");
+            strncpy_s(nameBuf, U8(cur).c_str(), _TRUNCATE);
+        }
+        ImGui::TextUnformatted(UI(Tr(L"Rename tab")).c_str());
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+        const bool enter = ImGui::InputText("##chattabinput", nameBuf, sizeof(nameBuf), ImGuiInputTextFlags_EnterReturnsTrue);
+        if (enter || ImGui::Button(UI(Tr(L"Save")).c_str())) {
+            g_cfg.chatTabName = Trim(W(nameBuf));
+            g_cfg.SaveValue(L"Window", L"ChatTabName", g_cfg.chatTabName);
+            s_chatTabLabel.clear();
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button(UI(Tr(L"Reset to default")).c_str())) {
+            g_cfg.chatTabName.clear();
+            g_cfg.SaveValue(L"Window", L"ChatTabName", L"");
+            s_chatTabLabel.clear();
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
     // The settings of a tab of your own (right-click on it): name, the channels it shows, where you write from it.
     if (g_tabSettings >= 0) {
         g_tabSettingsOpen = g_tabSettings;
@@ -765,40 +808,23 @@ void RenderWindow() {
     if (Lay().header) {
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - rightW);
         if (g_cfg.voiceEnabled) {
-            // Hold with the left button to speak; a right-click: on until a pause (or the next right-click).
-            bool right = false;
-            const ImU32 tint = g_listening ? IM_COL32(110, 205, 130, 255) : !g_listenPausedFor.empty() ? IM_COL32(240, 190, 90, 255) : 0;
-            const bool clicked = IconButton("##mic", Icon::Mic, g_recording, &right, tint);
-            static bool held = false;
-            if (g_cfg.voiceActivation) {  // voice activation: a click switches listening on / off
-                if (clicked) {
-                    const bool on = g_listening || g_listenWanted;
-                    g_listenUserOff = on;
-                    lock.unlock();
-                    if (on) StopListening();
-                    else StartListening();
-                    lock.lock();
-                }
-            } else if (ImGui::IsItemActivated()) {
-                held = true;
+            const bool muted = g_voiceMuted.load();
+            const DiscordMicResult mr = RenderDiscordMicControl("##hdr_mic", icon, muted, g_recording);
+            if (mr.muteToggled) {
                 lock.unlock();
-                TalkDown();
+                SetVoiceMuted(!muted);
                 lock.lock();
-            } else if (held && !ImGui::IsItemActive()) {
-                held = false;
-                if (!g_micLocked && !g_cfg.voiceToggle) TalkUp();
             }
-            if (right) {
+            if (!muted && mr.talkLocked) {
                 const bool stop = g_recording;
-                g_micLocked = !stop;
                 lock.unlock();
-                if (stop) TalkUp();
-                else TalkLocked();
+                if (stop) {
+                    TalkUp();
+                } else {
+                    TalkLocked();
+                }
                 lock.lock();
             }
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("%s", UI(g_cfg.voiceActivation ? Tr(L"Voice activation: click switches it on / off · right-click: speak until a pause")
-                                                             : Tr(L"Hold to speak (or the push-to-talk key) · right-click: speak until a pause")).c_str());
             ImGui::SameLine(0, gap);
         }
         if (IconButton("##fold", Icon::Collapse, false, nullptr)) {
@@ -878,6 +904,7 @@ void RenderWindow() {
         }
         lock.unlock();
         ImGui::End();
+        RenderDiscordVoiceMenu();
         return;
     }
 
@@ -1410,7 +1437,7 @@ void RenderWindow() {
         g_pick = -1;
         if (!g_helpRequested) {
             g_helpRequested = true;
-            g_worker.Post(ComputeTyping);
+            g_worker.PostInteractive(ComputeTyping);
         }
     }
     if (g_inputChanged && GetTickCount64() - g_inputChanged > 400 && !g_flatInput.empty() && Translating()) {
@@ -1424,6 +1451,7 @@ void RenderWindow() {
     }
     lock.unlock();
     ImGui::End();
+    RenderDiscordVoiceMenu();
 }
 
 }  // namespace kb

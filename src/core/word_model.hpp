@@ -4,8 +4,11 @@
 // the messages you send (per language, saved as learned_<lang>.txt).
 // Portable, no windows.h.
 
+#include <atomic>
 #include <cstdint>
 #include <functional>
+#include <memory>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -63,8 +66,60 @@ int EditDistance(const std::wstring& a, const std::wstring& b, int limit);
 // "HALLO" + "hello" -> "HELLO" (only for words longer than one letter).
 std::wstring MatchCase(const std::wstring& typed, const std::wstring& candidate);
 
+// Read-only snapshot of word model data: flat, immutable, safe to read from the interactive typing thread
+// without taking any locks.
+struct WordModelSnapshot {
+    uint64_t generation = 0;
+    struct Word {
+        std::wstring form;  // how you write it most of the time ("fallen", "Tisch", "Lion's Arch")
+        double count = 0;
+        double cap = 0, caseUses = 0;  // uses with a capital first letter / uses that tell the case
+    };
+    std::unordered_map<std::wstring, Word> words;                                       // key: case-folded
+    std::unordered_map<std::wstring, std::unordered_map<std::wstring, double>> pairs;  // prev -> next -> count
+    size_t pairTotal = 0;
+
+    double Count(const std::wstring& word) const;
+    bool Knows(const std::wstring& word) const { return Count(word) >= 2.0; }
+    double PairCount(const std::wstring& prev, const std::wstring& next) const;
+    double TripleCount(const std::wstring& prev2, const std::wstring& prev, const std::wstring& next) const;
+
+    std::vector<std::wstring> Complete(const std::wstring& prefix, const std::wstring& prev, size_t n,
+                                       const std::wstring& prev2 = std::wstring()) const;
+    std::vector<std::wstring> CompleteFuzzy(const std::wstring& prefix, const std::wstring& prev, size_t n,
+                                           const KeyNeighbors& neighbors = nullptr,
+                                           const std::wstring& prev2 = std::wstring()) const;
+    std::vector<std::wstring> Next(const std::wstring& prev, size_t n, const std::wstring& prev2 = std::wstring()) const;
+    std::wstring NextSure(const std::wstring& prev, const std::wstring& prev2 = std::wstring()) const;
+    std::vector<std::wstring> ContinueSure(const std::wstring& prev, const std::wstring& prev2,
+                                           size_t maxWords = 6) const;
+    std::vector<std::wstring> Near(const std::wstring& word, size_t n) const;
+    std::vector<std::wstring> NearSlip(const std::wstring& word, const KeyLayout& layout, size_t n) const;
+
+    size_t Size() const { return words.size(); }
+    size_t PairTotal() const { return pairTotal; }
+};
+
 class WordModel {
 public:
+    using Word = WordModelSnapshot::Word;
+
+    WordModel();
+    WordModel(const WordModel& o);
+    WordModel& operator=(const WordModel& o);
+
+    // Read-only snapshot access (lock-free for interactive typing thread).
+    std::shared_ptr<const WordModelSnapshot> GetSnapshot() const;
+    uint64_t Generation() const { return generation_.load(std::memory_order_relaxed); }
+
+    // Writer mutation harness.
+    template <typename Fn>
+    void Mutate(Fn&& fn) {
+        std::unique_lock<std::shared_mutex> lk(mu_);
+        fn();
+        PublishSnapshotLocked();
+    }
+
     // Words and word pairs of a sent message (digits, chat codes, links and
     // one-letter words are skipped).
     void Learn(const std::wstring& text, double weight = 1.0);
@@ -79,17 +134,21 @@ public:
     bool Forget(const std::wstring& word);
     void Clear();
 
-    double Count(const std::wstring& word) const;
-    bool Knows(const std::wstring& word) const { return Count(word) >= 2.0; }
+    double Count(const std::wstring& word) const { return GetSnapshot()->Count(word); }
+    bool Knows(const std::wstring& word) const { return GetSnapshot()->Knows(word); }
     // How often `next` followed `prev` (pair count) or `prev2 prev` (triple count), or 0.
-    double PairCount(const std::wstring& prev, const std::wstring& next) const;
-    double TripleCount(const std::wstring& prev2, const std::wstring& prev, const std::wstring& next) const;
+    double PairCount(const std::wstring& prev, const std::wstring& next) const { return GetSnapshot()->PairCount(prev, next); }
+    double TripleCount(const std::wstring& prev2, const std::wstring& prev, const std::wstring& next) const {
+        return GetSnapshot()->TripleCount(prev2, prev, next);
+    }
 
     // Words starting with `prefix` (longer than it), best first; a word that
     // often follows `prev` ranks higher, one that follows `prev2 prev` higher still.
     // Case follows the typed prefix.
     std::vector<std::wstring> Complete(const std::wstring& prefix, const std::wstring& prev, size_t n,
-                                       const std::wstring& prev2 = std::wstring()) const;
+                                       const std::wstring& prev2 = std::wstring()) const {
+        return GetSnapshot()->Complete(prefix, prev, n, prev2);
+    }
     // Like Complete, but the typed prefix may hold one typo ("helo" -> "hello",
     // "komt" -> "kommt"): 3+ letters, same first letter (or the first two
     // swapped), only words used at least twice. A typo on a neighbouring key
@@ -97,27 +156,39 @@ public:
     // Exact completions are not repeated here.
     std::vector<std::wstring> CompleteFuzzy(const std::wstring& prefix, const std::wstring& prev, size_t n,
                                             const KeyNeighbors& neighbors = nullptr,
-                                            const std::wstring& prev2 = std::wstring()) const;
+                                            const std::wstring& prev2 = std::wstring()) const {
+        return GetSnapshot()->CompleteFuzzy(prefix, prev, n, neighbors, prev2);
+    }
     // Words that often follow `prev2 prev` ("kommst du" -> "mit"), then those that follow `prev`.
-    std::vector<std::wstring> Next(const std::wstring& prev, size_t n, const std::wstring& prev2 = std::wstring()) const;
+    std::vector<std::wstring> Next(const std::wstring& prev, size_t n, const std::wstring& prev2 = std::wstring()) const {
+        return GetSnapshot()->Next(prev, n, prev2);
+    }
     // The next word when it is (almost) always the same: seen 3+ times there (2.5 after slow fading) and at least
     // 60 % of what followed –
     // worth offering before you type a letter. Else "".
-    std::wstring NextSure(const std::wstring& prev, const std::wstring& prev2 = std::wstring()) const;
+    std::wstring NextSure(const std::wstring& prev, const std::wstring& prev2 = std::wstring()) const {
+        return GetSnapshot()->NextSure(prev, prev2);
+    }
     // The rest of a phrase you write again and again ("gute nacht" -> "bis morgen mit micro"): NextSure word by word,
     // each step sure on its own, at most `maxWords`, never a word twice (no loops). Empty when not even the first is
     // sure.
     std::vector<std::wstring> ContinueSure(const std::wstring& prev, const std::wstring& prev2,
-                                           size_t maxWords = 6) const;
+                                           size_t maxWords = 6) const {
+        return GetSnapshot()->ContinueSure(prev, prev2, maxWords);
+    }
     // Known words one or two typos away from `word` (same first letter or the
     // first two swapped), closest and most used first.
-    std::vector<std::wstring> Near(const std::wstring& word, size_t n) const;
+    std::vector<std::wstring> Near(const std::wstring& word, size_t n) const {
+        return GetSnapshot()->Near(word, n);
+    }
     // Known words a typing slip away (SlipDistance: up to 1 for short words,
     // 1.5 up to 7 letters, 2.5 above), closest and most used first.
-    std::vector<std::wstring> NearSlip(const std::wstring& word, const KeyLayout& layout, size_t n) const;
+    std::vector<std::wstring> NearSlip(const std::wstring& word, const KeyLayout& layout, size_t n) const {
+        return GetSnapshot()->NearSlip(word, layout, n);
+    }
 
-    size_t Size() const { return words_.size(); }
-    size_t PairCount() const { return pairs_.size(); }
+    size_t Size() const { return GetSnapshot()->Size(); }
+    size_t PairCount() const { return GetSnapshot()->PairTotal(); }
     bool Dirty() const { return dirty_; }
     void ClearDirty() { dirty_ = false; }
 
@@ -138,13 +209,15 @@ public:
     void Decay();
 
 private:
-    struct Word {
-        std::wstring form;  // how you write it most of the time ("fallen", "Tisch", "Lion's Arch")
-        double count = 0;
-        double cap = 0, caseUses = 0;  // uses with a capital first letter / uses that tell the case
-    };
+    void AddWordInternal(const std::wstring& word, double weight, bool countCase);
     void AddPair(const std::wstring& prevKey, const std::wstring& nextKey, double weight);
     void Prune();
+    void PublishSnapshotLocked();
+
+    mutable std::shared_mutex mu_;
+    std::shared_ptr<const WordModelSnapshot> snapshot_;
+    std::atomic<uint64_t> generation_{1};
+    bool dirtySnapshot_ = false;
 
     std::unordered_map<std::wstring, Word> words_;                  // key: case-folded
     std::unordered_map<std::wstring, std::unordered_map<std::wstring, double>> pairs_;  // prev -> next -> count
@@ -161,7 +234,14 @@ private:
 // If `prev` (and optionally `prev2`) are supplied, candidates fitting the sentence
 // context (pairs and triples) rank higher.
 std::wstring ChooseCorrection(const std::wstring& word, const std::vector<std::wstring>& spell,
-                              const WordModel& model, const std::wstring& prev = std::wstring(),
+                              const WordModelSnapshot& snapshot, const std::wstring& prev = std::wstring(),
                               const std::wstring& prev2 = std::wstring());
 
+inline std::wstring ChooseCorrection(const std::wstring& word, const std::vector<std::wstring>& spell,
+                                     const WordModel& model, const std::wstring& prev = std::wstring(),
+                                     const std::wstring& prev2 = std::wstring()) {
+    return ChooseCorrection(word, spell, *model.GetSnapshot(), prev, prev2);
+}
+
 }  // namespace gct
+
