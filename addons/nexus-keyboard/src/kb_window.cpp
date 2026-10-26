@@ -34,15 +34,18 @@ void ProcessBufferedKeys() {
         g_bufferingKeys = false;
         return;
     }
-    if (g_sending) return;
+    if (g_sendInFlight.load() || g_sending) return;
     std::vector<BufferedKey> keys;
+    bool replayToInput = false;
     {
         std::lock_guard<std::mutex> lock(g_keyBufferMu);
         keys = std::move(g_keyBuffer);
         g_keyBuffer.clear();
         g_bufferingKeys = false;
+        replayToInput = g_bufferHadInputFocus.load();
+        g_bufferHadInputFocus = false;
     }
-    if (keys.empty()) return;
+    if (keys.empty() || !replayToInput) return;
     bool triggerSend = false;
     for (const auto& k : keys) {
         if (k.msg == WM_CHAR) {
@@ -1398,6 +1401,7 @@ void RenderWindow() {
         g_wFlatInput = W(nowFlat);
     }
     const bool inputActive = ImGui::IsItemActive();
+    g_inputActive = inputActive;
     if (showClearBtn) {
         ImGui::SameLine(0, clearGap);
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.16f, 0.18f, 0.24f, 0.6f));

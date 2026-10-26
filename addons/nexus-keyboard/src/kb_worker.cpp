@@ -259,6 +259,7 @@ void TranslateInput(uint64_t gen, std::wstring text) {
         if (g_sendPending && gen == g_inputGen) {
             g_sendPending = false;
             if (!error.empty()) {  // the translation failed: nothing goes out in the wrong language – the text comes back
+                g_sendInFlight = false;
                 if (g_input[0] == 0) {
                     const std::string again = U8(text);
                     strncpy_s(g_input, again.c_str(), _TRUNCATE);
@@ -305,9 +306,13 @@ void ComputeTyping() {
 // Enter: the parts go into the GW2 chat – only now, on your Enter (invariants 1–3).
 void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring learnText) {
     AssertNotInteractiveLane("SendNow");
-    if (parts.empty()) return;
+    if (parts.empty()) {
+        g_sendInFlight = false;
+        return;
+    }
     if (parts.size() > kMaxPartsPerEnter) {  // the translation came out longer (sent when it arrived): not sent either
         std::lock_guard<std::mutex> lock(g_mu);
+        g_sendInFlight = false;
         g_history.push_front(typed);
         SetStatus(TrF(L"Not sent: {1} chat lines – at most 3 per Enter. Shorten it (Up brings it back).",
                       {std::to_wstring(parts.size())}), 10000);
@@ -318,6 +323,7 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
         g_test.sentParts += static_cast<int>(parts.size());
         strncpy_s(g_test.lastSent, ToUtf8(parts.front()).c_str(), _TRUNCATE);
         g_sending = false;  // as after a real send
+        g_sendInFlight = false;
         g_history.push_front(typed);
         return;
     }
@@ -388,6 +394,7 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
     }
     std::lock_guard<std::mutex> lock(g_mu);
     g_sending = false;
+    g_sendInFlight = false;
     if (ok) {
         SetStatus(copyOnly ? Tr(L"Copied – paste it into the GW2 chat with Ctrl+V") : L"");
         g_history.push_front(typed);
@@ -404,7 +411,7 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
 
 void StartSend() {  // Enter (g_mu held)
     const std::wstring text = SanitizeChatText(g_wFlatInput);
-    if (text.empty() || g_sending) return;
+    if (text.empty() || g_sending || g_sendInFlight) return;
     if (g_userRecording && g_recording) {  // what you said is still being recognized: it comes into the input first
         SetStatus(Tr(L"Not sent yet: what you said is still being recognized"), 4000);
         return;
@@ -431,6 +438,9 @@ void StartSend() {  // Enter (g_mu held)
             return;
         }
     }
+    const bool inputHadFocus = g_inputActive || g_focusInput;
+    g_bufferHadInputFocus = inputHadFocus;
+    g_sendInFlight = true;
     g_bufferingStartTime = GetTickCount64();
     g_bufferingKeys = true;
     g_input[0] = 0;

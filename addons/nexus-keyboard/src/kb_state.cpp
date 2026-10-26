@@ -126,6 +126,7 @@ TranslateErrorKind g_lastErrorKind = TranslateErrorKind::None;
 std::wstring g_lastErrorTime = L"-";
 bool g_myMemorySessionFallback = false;
 bool g_forcePreviewForHardError = false;
+bool g_inputActive = false;
 
 bool g_escRequested = false;
 bool g_escCapturable = false;
@@ -134,6 +135,8 @@ std::vector<BufferedKey> g_keyBuffer;
 std::mutex g_keyBufferMu;
 std::atomic<bool> g_bufferingKeys{false};
 std::atomic<ULONGLONG> g_bufferingStartTime{0};
+std::atomic<bool> g_sendInFlight{false};
+std::atomic<bool> g_bufferHadInputFocus{false};
 
 void RequestAutoEnter(AutoEnterTrigger trigger) {
     if (!g_cfg.voiceAutoSend) return;
@@ -144,6 +147,7 @@ void RequestAutoEnter(AutoEnterTrigger trigger) {
 void CancelAutoEnter() {
     g_autoSendPending = false;
     g_autoEnterTrigger = AutoEnterTrigger::None;
+    g_sendInFlight = false;
 }
 
 bool IsAutoEnterPending() {

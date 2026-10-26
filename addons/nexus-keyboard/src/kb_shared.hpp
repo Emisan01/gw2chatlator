@@ -380,6 +380,7 @@ extern bool g_sending;
 extern ULONGLONG g_lastUse;
 extern bool g_gameChatOpen;
 extern bool g_focusInput;
+extern bool g_inputActive;
 // An edit the worker or a click wants in the input (applied by the input callback on the game thread).
 struct PendingEdit {
     bool active = false;
@@ -433,6 +434,8 @@ extern std::vector<BufferedKey> g_keyBuffer;
 extern std::mutex g_keyBufferMu;
 extern std::atomic<bool> g_bufferingKeys;
 extern std::atomic<ULONGLONG> g_bufferingStartTime;
+extern std::atomic<bool> g_sendInFlight;
+extern std::atomic<bool> g_bufferHadInputFocus;
 
 extern std::string g_voicePending;
 extern bool g_listening;
