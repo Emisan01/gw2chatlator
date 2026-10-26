@@ -396,32 +396,12 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
         SetStatus(copyOnly ? Tr(L"Copied – paste it into the GW2 chat with Ctrl+V") : L"");
         g_history.push_front(typed);
         while (g_history.size() > kHistoryMax) g_history.pop_back();
-        // Hands free (Punkt 4): nach dem Senden Fokus dorthin zurück, wo er vorher war
-        if (g_autoSendTriggered) {
-            g_autoSendTriggered = false;
-            if (g_autoSendHadFocus) {
-                g_focusInput = true;
-            } else {
-                g_focusInput = false;
-                if (g_gameHwnd) SetFocus(g_gameHwnd);
-            }
-        } else {
-            if (g_cfg.returnFocus) g_focusInput = true;
-        }
+        if (g_cfg.returnFocus) g_focusInput = true;
     } else {
         SetStatus(error, 10000);
         if (g_input[0] == 0) {  // nothing lost: the text comes back
             const std::string back = U8(typed);
             strncpy_s(g_input, back.c_str(), _TRUNCATE);
-        }
-        if (g_autoSendTriggered) {
-            g_autoSendTriggered = false;
-            if (g_autoSendHadFocus) {
-                g_focusInput = true;
-            } else {
-                g_focusInput = false;
-                if (g_gameHwnd) SetFocus(g_gameHwnd);
-            }
         }
     }
 }

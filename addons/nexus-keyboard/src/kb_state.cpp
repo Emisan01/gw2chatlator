@@ -127,8 +127,6 @@ std::wstring g_lastErrorTime = L"-";
 bool g_myMemorySessionFallback = false;
 bool g_forcePreviewForHardError = false;
 
-bool g_autoSendTriggered = false;
-bool g_autoSendHadFocus = false;
 bool g_escRequested = false;
 bool g_escCapturable = false;
 AutoEnterTrigger g_autoEnterTrigger = AutoEnterTrigger::None;
@@ -141,14 +139,11 @@ void RequestAutoEnter(AutoEnterTrigger trigger) {
     if (!g_cfg.voiceAutoSend) return;
     g_autoEnterTrigger = trigger;
     g_autoSendPending = true;
-    g_autoSendTriggered = true;
-    g_autoSendHadFocus = (ImGui::GetCurrentContext() && ImGui::GetActiveID() == ImGui::GetID("##input")) || g_focusInput || g_edit.active;
 }
 
 void CancelAutoEnter() {
     g_autoSendPending = false;
     g_autoEnterTrigger = AutoEnterTrigger::None;
-    g_autoSendTriggered = false;
 }
 
 bool IsAutoEnterPending() {

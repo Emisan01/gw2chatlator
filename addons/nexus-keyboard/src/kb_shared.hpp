@@ -422,8 +422,6 @@ enum class AutoEnterTrigger { None, Voice, LineFull };
 void RequestAutoEnter(AutoEnterTrigger trigger);
 void CancelAutoEnter();
 bool IsAutoEnterPending();
-extern bool g_autoSendTriggered;
-extern bool g_autoSendHadFocus;
 
 // Tastenpuffer während des Sendens (Punkt 4b)
 struct BufferedKey {
