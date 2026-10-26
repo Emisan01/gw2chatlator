@@ -224,10 +224,6 @@ void TranslateInput(uint64_t gen, std::wstring text) {
                     swprintf(timeBuf, 64, L"%04u-%02u-%02u %02u:%02u:%02u", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
                     g_lastErrorTime = timeBuf;
                     g_forcePreviewForHardError = true;
-                    if (!g_layout.preview) {
-                        g_layout.preview = true;
-                        SaveLayout();
-                    }
                 }
             }
         }

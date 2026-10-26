@@ -1047,7 +1047,11 @@ void RenderWindow() {
     // ---- the chat (the newest at the bottom): name white – a click opens a whisper tab –, text in the channel colour,
     // the scroll bar at the left like GW2's own chat
     const float line = ImGui::GetTextLineHeightWithSpacing();
-    const bool showPreview = Lay().preview || g_forcePreviewForHardError, showWords = Lay().words;
+    if (g_forcePreviewForHardError && !Lay().preview) {
+        Lay().preview = true;
+        SaveLayout();
+    }
+    const bool showPreview = Lay().preview, showWords = Lay().words;
     const float smallLine = ImGui::GetFontSize() * 0.85f + 2;
     // The input grows with what you write (its soft-wrapped lines) up to 8 lines and falls back once it is sent. A small
     // extra line at its bottom: the translation in compact view (only while something is translated).
