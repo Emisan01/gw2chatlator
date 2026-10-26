@@ -131,7 +131,7 @@ namespace {
 
 void CheckAutoSend() {
     if (!IsAutoEnterPending() || g_edit.active || !g_input[0]) return;
-    if (g_gameChatOpen) {
+    if (g_gameChatOpen && !g_sending) {
         CancelAutoEnter();
         SetStatus(Tr(L"Auto-send cancelled: GW2 chat is open"), 4000);
         return;
