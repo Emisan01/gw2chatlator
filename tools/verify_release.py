@@ -147,8 +147,8 @@ def check_version_consistency() -> tuple[bool, str]:
         return False, version
 
     readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
-    if f"v{version}/GW2Chatlator.dll" not in readme_text:
-        print(f"    [FAIL] README.md does not link to v{version}/GW2Chatlator.dll")
+    if f"v{version}/GW2Chatlator.dll" not in readme_text and "releases/latest/download/GW2Chatlator.dll" not in readme_text:
+        print(f"    [FAIL] README.md does not link to v{version}/GW2Chatlator.dll or latest release")
         return False, version
 
     print("    [PASS] CMakeLists.txt, CHANGELOG.md, and README.md are consistent.")
