@@ -38,7 +38,7 @@ UINT OnWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         }
         const bool isDown = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
         if (isDown) {
-            if (wp == VK_BACK || wp == VK_DELETE || wp == VK_RETURN || wp == VK_LEFT || wp == VK_RIGHT || wp == VK_HOME || wp == VK_END) {
+            if (wp == VK_BACK || wp == VK_RETURN) {
                 std::lock_guard<std::mutex> lock(g_keyBufferMu);
                 g_keyBuffer.push_back({msg, wp, lp});
             }

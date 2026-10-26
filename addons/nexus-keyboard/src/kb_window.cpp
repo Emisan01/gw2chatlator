@@ -41,9 +41,20 @@ void ProcessBufferedKeys() {
     }
     if (keys.empty() || !replayToInput) return;
     bool triggerSend = false;
-    for (const auto& k : keys) {
+    for (size_t i = 0; i < keys.size(); ++i) {
+        const auto& k = keys[i];
         if (k.msg == WM_CHAR) {
             wchar_t ch = static_cast<wchar_t>(k.wp);
+            if (ch >= 0xD800 && ch <= 0xDBFF && i + 1 < keys.size() && keys[i + 1].msg == WM_CHAR) {
+                wchar_t low = static_cast<wchar_t>(keys[i + 1].wp);
+                if (low >= 0xDC00 && low <= 0xDFFF) {
+                    wchar_t pair[2] = {ch, low};
+                    std::string u8 = ToUtf8(std::wstring(pair, 2));
+                    strncat_s(g_input, sizeof(g_input), u8.c_str(), _TRUNCATE);
+                    ++i;
+                    continue;
+                }
+            }
             if (ch >= 32) {
                 std::string u8 = ToUtf8(std::wstring(1, ch));
                 strncat_s(g_input, sizeof(g_input), u8.c_str(), _TRUNCATE);
