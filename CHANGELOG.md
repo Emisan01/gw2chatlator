@@ -3,18 +3,21 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.6.2 — 2026-10-26 (GW2Chatlator for Nexus)
+
+- **Hands-Free Auto-Enter:** Automatically sends spoken messages after end of speech (1500 ms pause, PTT release, or mouse stop) once translation is ready.
+- **Key Buffering During Send:** Buffers user keystrokes during the send cycle and replays them into the chat input field without losing characters or triggering unwanted game movement.
+- **Configurable Focus Return:** After auto-sending, focus follows standard chat focus settings ("Keep typing after send" / returnFocus).
+- **Unified Hands-Free Controls:** Direct FocusSwitch toggles on Dashboard, Microphone tab, and Microphone menu; visual accent indicator on the microphone when Hands-Free is active.
+- **Precise Microphone Visual States:** Red indicator reserved exclusively for active speech recording; clicking red stops recording without changing mute status.
+- **Clear Text Button (<):** Dedicated `<` button beside the chat input field clears text and cancels waiting auto-send while leaving active recording uninterrupted.
+- **Safe Esc Handling:** Esc closes dialogs, cancels recordings, and cancels waiting auto-send layer-by-layer without clearing user input, passing through to the game menu when idle.
+- **One-Click Translation Error Recovery:** Hard translation errors display the preview banner with plain-text explanation and a direct `→ MyMemory` button to continue the session immediately.
+- **Targeted Voice Model Recommendations:** Dynamically recommends suitable Whisper models in the Microphone settings tab based on selected language and memory capacity.
+- **Synchronous INI Flushes:** Settings are flushed to disk before starting the voice helper process and synchronously during addon unload.
+
 ## 2.6.1 — 2026-10-25 (GW2Chatlator for Nexus)
 
-- **Hands-Free Auto-Send:** Gesprochener Text wird nach Sprechpause (1,5 s), Loslassen der Sprechtaste oder Mausklick automatisch gesendet, sobald die Übersetzung fertig ist.
-- **Tastenpufferung beim Senden:** Während des Sendens eingegebene Tasten werden verlustfrei gepuffert und sofort danach in das Chat-Eingabefeld nachgespielt.
-- **Intelligente Fokus-Rückkehr:** Nach dem automatischen Senden kehrt der Tastaturfokus zuverlässig dorthin zurück, wo er vor dem Sprechen war (Spiel oder Eingabefeld).
-- **Einheitliche Hands-Free-Schalter:** Direkter Hands-Free-Schalter im Stil der Fokus-Buttons im Dashboard, im Tab Mikrofon und im Mikro-Menü; Markierungspunkt am Mikrofon bei aktivem Hands-Free.
-- **Präzise Mikrofon-Zustände:** Rote Anzeige ausschließlich bei aktiver Sprachaufnahme; Klick auf rot stoppt die Aufnahme ohne den Stummschalt-Zustand zu verändern.
-- **Textfeld sofort leeren (<):** Schnelltaste `<` am rechten Rand des Eingabefelds leert den Text und bricht wartendes Auto-Senden ab, während die laufende Aufnahme ungestört weiterläuft.
-- **Schutz vor Textverlust bei Esc:** Die Esc-Taste setzt niemals getippten Text zurück; sie schließt stufenweise Menüs, bricht Aufnahmen oder wartendes Senden ab und gibt im Leerzustand den Fokus ans Spiel ab.
-- **Übersetzungsfehler mit Ein-Klick-Lösung:** Bei Dienstausfällen zeigt die Übersetzungsvorschau die genaue Ursache und einen Button „→ MyMemory“ für sofortige Weiternutzung ohne Konfigurationsaufwand.
-- **Passende Sprachmodell-Empfehlungen:** Zeigt im Mikrofon-Tab direkt an, welches Whisper-Modell für die gewählte Sprache optimal ist und wie viel RAM es benötigt.
-- **Transaktionssichere INI-Dateien:** Einstellungen werden beim Start des Sprachhelfers und beim Entladen des Add-ons garantiert vollständig und synchron auf die Festplatte geschrieben.
 - **Discord Voice Quick Menu:** Converted voice options submenu to a dedicated upwards-floating overlay window anchored right above the mic chevron button. Prevents background click-through and completely resolves recursive mutex deadlock.
 - **Microphone Infotext & Silence Timeout:** Cleaned right-click listening status text to "Ich höre zu …" without key-release instructions. Reduced silence timeout to exactly 3.0 seconds.
 - **Dashboard Voice Tile Polish:** Moved Discord mic control into the top-left slot of the Voice module card, eliminating duplicate icons. Expanded the bottom navigation button to full width and vertically centered all card button text.

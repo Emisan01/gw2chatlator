@@ -3,7 +3,7 @@
 The chat of Guild Wars 2 in your language – **read it, write and speak in yours**, the chat gets it translated. A
 Nexus add-on, right inside the game. A line goes into the chat only when you press Enter yourself.
 
-## ⬇ [Download GW2Chatlator.dll – version 2.6.1](https://github.com/Emisan01/gw2chatlator/releases/download/v2.6.1/GW2Chatlator.dll)
+## ⬇ [Download GW2Chatlator.dll – version 2.6.2](https://github.com/Emisan01/gw2chatlator/releases/download/v2.6.2/GW2Chatlator.dll)
 
 Put the DLL into your `Guild Wars 2\addons` folder (where [Nexus](https://raidcore.gg/Nexus) keeps its add-ons) and
 load **GW2Chatlator** in Nexus. Nothing is downloaded by itself: the window shows what is there and what you can add
