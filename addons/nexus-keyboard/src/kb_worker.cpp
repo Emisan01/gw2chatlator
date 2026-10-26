@@ -455,6 +455,7 @@ void StartSend() {  // Enter (g_mu held)
             return;
         }
     }
+    g_bufferingStartTime = GetTickCount64();
     g_bufferingKeys = true;
     g_input[0] = 0;
     g_flatInput.clear();

@@ -133,6 +133,7 @@ AutoEnterTrigger g_autoEnterTrigger = AutoEnterTrigger::None;
 std::vector<BufferedKey> g_keyBuffer;
 std::mutex g_keyBufferMu;
 std::atomic<bool> g_bufferingKeys{false};
+std::atomic<ULONGLONG> g_bufferingStartTime{0};
 
 void RequestAutoEnter(AutoEnterTrigger trigger) {
     if (!g_cfg.voiceAutoSend) return;

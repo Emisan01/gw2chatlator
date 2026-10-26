@@ -27,6 +27,12 @@ UINT OnWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
     // Tastenpuffer (Punkt 4b): vom Start des Sendens bis Fokus zurück im Eingabefeld alle Nutzertasten puffern
     if (g_bufferingKeys.load()) {
+        if (GetTickCount64() - g_bufferingStartTime.load() >= 3000) {
+            std::lock_guard<std::mutex> lock(g_keyBufferMu);
+            g_keyBuffer.clear();
+            g_bufferingKeys = false;
+            return msg;
+        }
         if (msg == WM_CHAR) {
             std::lock_guard<std::mutex> lock(g_keyBufferMu);
             g_keyBuffer.push_back({msg, wp, lp});

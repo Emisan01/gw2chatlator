@@ -27,7 +27,14 @@ bool g_ownMoving = false;      // shape only; a new mode ends it (a stale press 
 static const ImVec4 kAccent(0.94f, 0.75f, 0.35f, 1.f);
 
 void ProcessBufferedKeys() {
-    if (g_sending || !g_bufferingKeys.load()) return;
+    if (!g_bufferingKeys.load()) return;
+    if (GetTickCount64() - g_bufferingStartTime.load() >= 3000) {
+        std::lock_guard<std::mutex> lock(g_keyBufferMu);
+        g_keyBuffer.clear();
+        g_bufferingKeys = false;
+        return;
+    }
+    if (g_sending) return;
     std::vector<BufferedKey> keys;
     {
         std::lock_guard<std::mutex> lock(g_keyBufferMu);
@@ -599,6 +606,7 @@ void CheckMicLockTimeout() {
 void RenderWindow() {
     if (!ImGui::GetCurrentContext()) return;  // failsafe: no context, no drawing
     CostFrame costFrame;  // what this frame costs on GW2's render thread, by part (Options > Technical)
+    ProcessBufferedKeys();
     {
         std::lock_guard<std::mutex> lock(g_mu);
         if (!g_input[0] && !g_edit.active) g_inputSpoken = false;  // empty again (sent, deleted): the next one decides

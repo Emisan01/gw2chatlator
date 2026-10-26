@@ -434,6 +434,7 @@ struct BufferedKey {
 extern std::vector<BufferedKey> g_keyBuffer;
 extern std::mutex g_keyBufferMu;
 extern std::atomic<bool> g_bufferingKeys;
+extern std::atomic<ULONGLONG> g_bufferingStartTime;
 
 extern std::string g_voicePending;
 extern bool g_listening;
