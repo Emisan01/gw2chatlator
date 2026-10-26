@@ -541,7 +541,9 @@ void RenderFooter() {  // g_mu held
             g_myMemorySessionFallback = false;
             g_forcePreviewForHardError = false;
             g_worker.Post([] {
-                g_translator = MakeTranslator(g_cfg);
+                auto tr = MakeTranslator(g_cfg);
+                std::lock_guard<std::mutex> lock(g_mu);
+                g_translator = std::move(tr);
             });
             ++g_inputGen;
             g_inputChanged = GetTickCount64();
@@ -1289,7 +1291,9 @@ void RenderWindow() {
                 g_forcePreviewForHardError = false;
                 CancelAutoEnter();
                 g_worker.Post([] {
-                    g_translator = MakeTranslator(g_cfg);
+                    auto tr = MakeTranslator(g_cfg);
+                    std::lock_guard<std::mutex> lock(g_mu);
+                    g_translator = std::move(tr);
                 });
                 ++g_inputGen;
                 g_inputChanged = GetTickCount64();
