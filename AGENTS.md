@@ -72,10 +72,10 @@ src/core/                Pure C++17 portable logic (NO windows.h): text, json, i
 - CMake edits select checks by changed targets.
 
 ### Release Norm (8-Gate Verification)
-1. **Gate Audit:** Full release requires all eight gates passing (`python tools/verify_release.py`).
+1. **Gate Audit once:** All eight gates run once on the build that goes into the maintainer's in-game test (`python tools/verify_release.py`). No repeat at push time.
 2. **Pre-Release Staging:** New versions are published initially as `Pre-Release` — never directly as `Latest`.
-3. **In-Game Eye-Test:** No release without the maintainer's personal in-game eye-test in Guild Wars 2.
-4. **No Push / Release without Explicit OK:** No push to remote and no public release without the user's explicit approval.
+3. **In-Game Eye-Test:** The maintainer tests the locally built DLL. His OK covers exactly that commit and that DLL; anything changed or rebuilt afterwards needs a new OK.
+4. **Push on OK:** The maintainer's OK after the local in-game test is the trigger. That state is pushed as is, without re-applying the protocols. No push or release without this explicit OK.
 5. **Asset Separation:**
    - Version tag (`vX.Y.Z`): Contains exclusively `GW2Chatlator.dll`.
    - Dedicated tag (`extras`): Houses all on-demand neural models (NLLB-200, OPUS-MT) and helper ZIP packages.
