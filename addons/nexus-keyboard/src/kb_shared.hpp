@@ -274,6 +274,9 @@ struct TestHooks {
     int selfFixes = 0;           // corrections of your own noticed (learning mode)
     char lastFix[128] = {};      // the newest: "typed>fixed"
     char sendLang[16] = {};      // what the whisper tab opened last sends in
+    std::atomic<bool>* bufferingKeys = nullptr;
+    std::atomic<bool>* sendInFlight = nullptr;
+    std::atomic<ULONGLONG>* bufferingStartTime = nullptr;
 };
 extern TestHooks g_test;
 extern bool g_showOptions;

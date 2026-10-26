@@ -28,6 +28,13 @@ static const ImVec4 kAccent(0.94f, 0.75f, 0.35f, 1.f);
 
 void ProcessBufferedKeys() {
     if (!g_bufferingKeys.load()) return;
+    if (GetTickCount64() - g_bufferingStartTime.load() >= 3000) {
+        std::lock_guard<std::mutex> lock(g_keyBufferMu);
+        g_keyBuffer.clear();
+        g_bufferingKeys = false;
+        g_bufferHadInputFocus = false;
+        return;
+    }
     if (g_sendInFlight.load() || g_sending) return;
     std::vector<BufferedKey> keys;
     bool replayToInput = false;

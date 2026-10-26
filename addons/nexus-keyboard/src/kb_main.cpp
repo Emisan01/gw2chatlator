@@ -27,7 +27,11 @@ UINT OnWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
     // Tastenpuffer (Punkt 4b): vom Start des Sendens bis Fokus zurück im Eingabefeld alle Nutzertasten puffern
     if (g_bufferingKeys.load()) {
-        if (!g_sendInFlight.load() && !g_sending && GetTickCount64() - g_bufferingStartTime.load() >= 3000) {
+        if (GetTickCount64() - g_bufferingStartTime.load() >= 3000) {
+            {
+                std::lock_guard<std::mutex> lock(g_keyBufferMu);
+                g_keyBuffer.clear();
+            }
             g_bufferingKeys = false;
             return msg;
         }
@@ -338,7 +342,15 @@ extern "C" __declspec(dllexport) void* Gw2KbTestHooks() {  // nexus_kb_selftest 
     if (!TestHost()) return nullptr;
     g_test.input = g_input;
     g_test.focus = &g_focusInput;
+    g_test.bufferingKeys = &g_bufferingKeys;
+    g_test.sendInFlight = &g_sendInFlight;
+    g_test.bufferingStartTime = &g_bufferingStartTime;
     return &g_test;
+}
+
+extern "C" __declspec(dllexport) UINT Gw2KbTestWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {  // nexus_kb_selftest only
+    if (!TestHost()) return msg;
+    return OnWndProc(hwnd, msg, wp, lp);
 }
 
 extern "C" __declspec(dllexport) void Gw2KbTestNewTab(uint32_t channels, bool settings) {  // nexus_kb_selftest only

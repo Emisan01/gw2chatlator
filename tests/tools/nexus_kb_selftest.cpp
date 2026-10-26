@@ -95,6 +95,9 @@ struct TestHooks {  // as in kb_main.cpp
     int selfFixes = 0;
     char lastFix[128] = {};
     char sendLang[16] = {};
+    std::atomic<bool>* bufferingKeys = nullptr;
+    std::atomic<bool>* sendInFlight = nullptr;
+    std::atomic<ULONGLONG>* bufferingStartTime = nullptr;
 };
 void Free(void* p, void*) { std::free(p); }
 
@@ -1202,6 +1205,33 @@ int wmain(int argc, wchar_t** argv) {
                     srcState().unreadable);
         ok = ok && good;
     }
+    // Keyboard buffer safety timeout test:
+    // When sending is in flight (e.g. waiting for slow or unreachable translator), OnWndProc blocks movement keys.
+    // If 3000ms elapse, OnWndProc MUST stop swallowing keys, clear the buffer, and restore W/A/S/D without resetting g_sendInFlight.
+    auto testWndProc = reinterpret_cast<UINT (*)(HWND, UINT, WPARAM, LPARAM)>(GetProcAddress(dll, "Gw2KbTestWndProc"));
+    if (ok && th && testWndProc && th->bufferingKeys && th->sendInFlight && th->bufferingStartTime) {
+        *th->bufferingKeys = true;
+        *th->sendInFlight = true;
+        *th->bufferingStartTime = GetTickCount64();
+        // 1. While buffering is active (< 3000ms), movement key 'W' (WM_KEYDOWN) is blocked (returns 0)
+        UINT resBlocked = testWndProc(nullptr, WM_KEYDOWN, 'W', 0);
+        // 2. Keyup is passed through (returns WM_KEYUP)
+        UINT resUp = testWndProc(nullptr, WM_KEYUP, 'W', 0);
+        // 3. Advance clock past the 3000ms limit (> 3000ms elapsed)
+        *th->bufferingStartTime = GetTickCount64() - 3500;
+        // 4. Movement key 'W' (WM_KEYDOWN) MUST now pass through to GW2 (returns WM_KEYDOWN)
+        UINT resAfterTimeout = testWndProc(nullptr, WM_KEYDOWN, 'W', 0);
+        bool bufCleared = !th->bufferingKeys->load();
+        bool sendInFlightHeld = th->sendInFlight->load();
+        std::printf("buffer safety test: blocked=%u (exp 0), up=%u (exp %u), timeout_key=%u (exp %u), bufCleared=%d, sendInFlightPreserved=%d\n",
+                    resBlocked, resUp, WM_KEYUP, resAfterTimeout, WM_KEYDOWN, (int)bufCleared, (int)sendInFlightHeld);
+        const bool testOk = (resBlocked == 0) && (resUp == WM_KEYUP) && (resAfterTimeout == WM_KEYDOWN) && bufCleared && sendInFlightHeld;
+        if (!testOk) std::printf("FAIL: buffer safety timeout did not unblock keys or preserve sendInFlight\n");
+        ok = ok && testOk;
+        *th->sendInFlight = false;
+        *th->bufferingKeys = false;
+    }
+
     // A fault in one of our threads (a worker job, holding g_mu): the process goes on, the add-on switches itself off
     // for the session, g_mu is free again (/EHa unwinds) – and the unload below still works. The 2.3.0 crash came from a
     // thread outside the render callback's net.
