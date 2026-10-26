@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "core/i18n.hpp"
 #include "core/json.hpp"
 #include "core/text.hpp"
 
@@ -236,6 +237,32 @@ const VoiceModelInfo* VoiceCatalog::Recommended() const {
     for (const auto& m : models)
         if (m.recommended) return &m;
     return models.empty() ? nullptr : &models.front();
+}
+
+std::wstring VoiceQualityWord(int q) {
+    return q >= 3 ? Tr(L"very well") : q == 2 ? Tr(L"well") : q == 1 ? Tr(L"weakly") : Tr(L"hardly");
+}
+
+VoiceRecommendation RecommendVoiceModel(const VoiceCatalog& catalog, const VoiceModelInfo* current, const std::string& whisperLang) {
+    VoiceRecommendation rec;
+    if (whisperLang.empty()) {
+        rec.supportedByWhisper = false;
+        return rec;
+    }
+    rec.supportedByWhisper = true;
+    if (!current) current = catalog.Recommended();
+    if (current) rec.quality = current->QualityFor(whisperLang);
+    if (rec.quality < 2) {
+        const VoiceModelInfo* better = nullptr;
+        for (const VoiceModelInfo& o : catalog.models) {
+            if (current && o.bytes <= current->bytes) continue;
+            if (o.QualityFor(whisperLang) >= 2 && (!better || o.bytes < better->bytes)) {
+                better = &o;
+            }
+        }
+        rec.recommended = better;
+    }
+    return rec;
 }
 
 // whisper.cpp v1.9.5 multilingual models (sizes and SHA-256 checked 2026-10-12). ramMb: measured-order estimates.

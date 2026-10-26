@@ -13,12 +13,38 @@
 // the session. Nothing of other players is stored.
 
 #include "kb_shared.hpp"
+#include "win/gw2_sender.hpp"
 
 namespace kb {
 
 
-UINT OnWndProc(HWND, UINT msg, WPARAM wp, LPARAM lp) {
+UINT OnWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (g_disabled) return msg;
+    g_gameHwnd = hwnd;
+
+    // Eigene Tasten erkennen: SendToGw2Chat markiert seine SendInput-Tasten mit kGw2SenderExtraInfo
+    if (GetMessageExtraInfo() == gct::kGw2SenderExtraInfo) return msg;
+
+    // Tastenpuffer (Punkt 4b): vom Start des Sendens bis Fokus zurück im Eingabefeld alle Nutzertasten puffern
+    if (g_bufferingKeys.load()) {
+        if (msg == WM_CHAR) {
+            std::lock_guard<std::mutex> lock(g_keyBufferMu);
+            g_keyBuffer.push_back({msg, wp, lp});
+            return 0;
+        }
+        const bool isDown = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
+        const bool isUp = (msg == WM_KEYUP || msg == WM_SYSKEYUP);
+        if (isDown) {
+            if (wp == VK_BACK || wp == VK_DELETE || wp == VK_RETURN || wp == VK_LEFT || wp == VK_RIGHT || wp == VK_HOME || wp == VK_END) {
+                std::lock_guard<std::mutex> lock(g_keyBufferMu);
+                g_keyBuffer.push_back({msg, wp, lp});
+            }
+            return 0;  // Block game movement/skills while sending
+        }
+        if (isUp) return 0;
+        return msg;
+    }
+
     const bool down = msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN, up = msg == WM_KEYUP || msg == WM_SYSKEYUP;
     if (!down && !up) return msg;
     const unsigned vk = static_cast<unsigned>(wp);
@@ -38,6 +64,14 @@ UINT OnWndProc(HWND, UINT msg, WPARAM wp, LPARAM lp) {
                 g_capturedKey = vk == VK_ESCAPE ? L"-" : FormatHotkey(hk);
             }
             return 0;
+        }
+        if (down && vk == VK_ESCAPE && mods == 0) {
+            if (EscLayer() <= 4) {
+                HandleEsc();
+                return 0;
+            }
+            // Ebene 5: ohne offene Ebene geht Esc an GW2 durch
+            return msg;
         }
         // Panic Switch: Ctrl + Alt + T pauses/resumes chat translation immediately
         if (down && (mods & (kModCtrl | kModAlt)) == (kModCtrl | kModAlt) && (vk == 'T' || vk == 't')) {
@@ -265,6 +299,7 @@ void AddonUnload() {
     g_voice.Stop();  // the helper ends (it would also end by itself when its input closes)
     g_worker.Stop(FreeWorkerState);  // saved and freed on the worker (it owns them), before the DLL goes
     Config::DeferWrites(false);      // what is still waiting goes into the ini now
+    Config::FlushWrites();           // synchronously flush waiting writes to target INI on unload
     std::lock_guard<std::mutex> lock(g_mu);
     g_lines.clear();
     g_translator.reset();

@@ -5,17 +5,28 @@ diagnosis show it.
 
 ## 2.6.1 — 2026-10-25 (GW2Chatlator for Nexus)
 
+- **Hands-Free Auto-Send:** Gesprochener Text wird nach Sprechpause (1,5 s), Loslassen der Sprechtaste oder Mausklick automatisch gesendet, sobald die Übersetzung fertig ist.
+- **Tastenpufferung beim Senden:** Während des Sendens eingegebene Tasten werden verlustfrei gepuffert und sofort danach in das Chat-Eingabefeld nachgespielt.
+- **Intelligente Fokus-Rückkehr:** Nach dem automatischen Senden kehrt der Tastaturfokus zuverlässig dorthin zurück, wo er vor dem Sprechen war (Spiel oder Eingabefeld).
+- **Einheitliche Hands-Free-Schalter:** Direkter Hands-Free-Schalter im Stil der Fokus-Buttons im Dashboard, im Tab Mikrofon und im Mikro-Menü; Markierungspunkt am Mikrofon bei aktivem Hands-Free.
+- **Präzise Mikrofon-Zustände:** Rote Anzeige ausschließlich bei aktiver Sprachaufnahme; Klick auf rot stoppt die Aufnahme ohne den Stummschalt-Zustand zu verändern.
+- **Textfeld sofort leeren (<):** Schnelltaste `<` am rechten Rand des Eingabefelds leert den Text und bricht wartendes Auto-Senden ab, während die laufende Aufnahme ungestört weiterläuft.
+- **Schutz vor Textverlust bei Esc:** Die Esc-Taste setzt niemals getippten Text zurück; sie schließt stufenweise Menüs, bricht Aufnahmen oder wartendes Senden ab und gibt im Leerzustand den Fokus ans Spiel ab.
+- **Übersetzungsfehler mit Ein-Klick-Lösung:** Bei Dienstausfällen zeigt die Übersetzungsvorschau die genaue Ursache und einen Button „→ MyMemory“ für sofortige Weiternutzung ohne Konfigurationsaufwand.
+- **Passende Sprachmodell-Empfehlungen:** Zeigt im Mikrofon-Tab direkt an, welches Whisper-Modell für die gewählte Sprache optimal ist und wie viel RAM es benötigt.
+- **Transaktionssichere INI-Dateien:** Einstellungen werden beim Start des Sprachhelfers und beim Entladen des Add-ons garantiert vollständig und synchron auf die Festplatte geschrieben.
 - **Discord Voice Quick Menu:** Converted voice options submenu to a dedicated upwards-floating overlay window anchored right above the mic chevron button. Prevents background click-through and completely resolves recursive mutex deadlock.
 - **Microphone Infotext & Silence Timeout:** Cleaned right-click listening status text to "Ich höre zu …" without key-release instructions. Reduced silence timeout to exactly 3.0 seconds.
 - **Dashboard Voice Tile Polish:** Moved Discord mic control into the top-left slot of the Voice module card, eliminating duplicate icons. Expanded the bottom navigation button to full width and vertically centered all card button text.
 - **Local MT Model Management:** Restored active engine fallback safeguard allowing uninstallation of local translation models without blocking the UI.
-- **Complete 8-Language Localization:** Synchronized 546 translation strings across German, French, Spanish, Italian, Polish, Portuguese, Turkish, and Russian.
+- **Complete 8-Language Localization:** Synchronized 573 translation strings across German, French, Spanish, Italian, Polish, Portuguese, Turkish, and Russian.
 
 ## 2.6.0 — 2026-10-24 (GW2Chatlator for Nexus)
 
 - **Author and Addon Naming Consistency:** Addon author set to `Emi` matching Raidcore Nexus Addon Manager library entry. Binary output strictly unified to `GW2Chatlator.dll`.
 - **Raidcore Nexus Direct Installation:** Verified automated single-click install through in-game Nexus Addon Library (ID `3098852796`, Signature `0xB8B4BDBC`).
 - **Pristine CDN Release Endpoints:** Fresh release distribution assets with zero legacy fallbacks.
+- **Airlock Loader Guard:** Added sterile loader verification with timestamp and attribute logging of `d3d11.dll` to ensure clean and transparent Nexus injection.
 
 ## 2.5.9 — 2026-10-24 (GW2Chatlator for Nexus)
 
@@ -27,7 +38,7 @@ diagnosis show it.
 
 ## 2.5.8 — 2026-10-23 (GW2Chatlator for Nexus)
 
-- **Smart-Sieve & Telemetry Pipeline:** Added high-performance filtering for gaming slang and shorthand (0 ms overhead), repetition suppression cache, and occlusion culling for offscreen chat lines.
+- **Smart-Sieve & Telemetry Pipeline:** Added high-performance filtering for gaming slang and shorthand (0 ms overhead), repetition suppression cache (64 entries), and dynamic beam size adaptation (throttling to Beam 1 when queue > 2, nominal Beam 2/4).
 - **Dynamic Inference Throttle:** Real-time beam size adaptation (throttling to Beam 1 under burst queue loads, nominal Beam 2/4) keeping render thread latency strictly sub-millisecond.
 - **Diagnostics & Debug Suite:** Dedicated "Debug & Diagnostik" window with live engine profiler metrics, telemetry counters, and one-click Markdown diagnostic protocol export (strictly zero player messages or account names logged).
 - **Eliminated stray Debug window:** Fixed Dear ImGui implicit fallback window (`Debug##Default`) popping up on startup by guarding `RenderNexusOptions` and enforcing fallback suppression across all render frames.

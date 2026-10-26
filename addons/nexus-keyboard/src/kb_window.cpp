@@ -24,6 +24,136 @@ WinAnchor g_winPressed;        // where it was when the mouse went down (a move 
 int g_previewRows = 1;         // the preview's wrapped lines as last drawn (it grows with them, like the input)
 ULONGLONG g_ownDownAt = 0;     // our own hold-and-drag (the input, the mini window): when the press began – in this
 bool g_ownMoving = false;      // shape only; a new mode ends it (a stale press once dragged the opened window along)
+static const ImVec4 kAccent(0.94f, 0.75f, 0.35f, 1.f);
+
+void ProcessBufferedKeys() {
+    if (g_sending || !g_bufferingKeys.load()) return;
+    std::vector<BufferedKey> keys;
+    {
+        std::lock_guard<std::mutex> lock(g_keyBufferMu);
+        keys = std::move(g_keyBuffer);
+        g_keyBuffer.clear();
+        g_bufferingKeys = false;
+    }
+    if (keys.empty()) return;
+    bool triggerSend = false;
+    for (const auto& k : keys) {
+        if (k.msg == WM_CHAR) {
+            wchar_t ch = static_cast<wchar_t>(k.wp);
+            if (ch >= 32) {
+                std::string u8 = ToUtf8(std::wstring(1, ch));
+                strncat_s(g_input, sizeof(g_input), u8.c_str(), _TRUNCATE);
+            }
+        } else if (k.msg == WM_KEYDOWN) {
+            if (k.wp == VK_BACK) {
+                size_t len = std::strlen(g_input);
+                if (len > 0) {
+                    while (len > 0 && (static_cast<unsigned char>(g_input[len - 1]) & 0xC0) == 0x80) --len;
+                    if (len > 0) --len;
+                    g_input[len] = '\0';
+                }
+            } else if (k.wp == VK_RETURN) {
+                triggerSend = true;
+            }
+        }
+    }
+    const std::string flat = Flat(g_input);
+    g_flatInput = flat;
+    g_wFlatInput = W(flat);
+    if (triggerSend && g_input[0]) {
+        StartSend();
+    }
+}
+
+}  // namespace
+
+int EscLayer() {
+    // 1: Popup / Untermenü / Dialog offen
+    if (IsVoiceMenuOpen()) return 1;
+    if (!g_openLink.empty()) return 1;
+    if (ImGui::GetCurrentContext() && ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId)) return 1;
+
+    // 2: Aufnahme oder Zuhören läuft
+    if (g_recording || g_micLocked) return 2;
+
+    // 3: Hands free wartet aufs Senden
+    if (g_autoSendPending) return 3;
+
+    // 4: Eingabefeld hat Fokus
+    if (g_edit.active || g_focusInput) return 4;
+    if (ImGui::GetCurrentContext() && ImGui::GetActiveID() != 0) return 4;
+
+    // 5: sonst
+    return 5;
+}
+
+bool HandleEsc() {
+    const int layer = EscLayer();
+    if (layer == 1) {
+        CloseVoiceMenu();
+        g_openLink.clear();
+        if (ImGui::GetCurrentContext()) {
+            ImGui::CloseCurrentPopup();
+        }
+        return true;
+    }
+    if (layer == 2) {
+        g_voiceStoppedManually = true;
+        TalkUp();
+        return true;
+    }
+    if (layer == 3) {
+        CancelAutoEnter();
+        return true;
+    }
+    if (layer == 4) {
+        g_focusInput = false;
+        g_edit.active = false;
+        if (ImGui::GetCurrentContext()) {
+            ImGui::ClearActiveID();
+        }
+        if (g_gameHwnd) {
+            SetFocus(g_gameHwnd);
+        }
+        return true;
+    }
+    return false;
+}
+
+namespace {
+
+void CheckAutoSend() {
+    if (!IsAutoEnterPending() || g_edit.active || !g_input[0]) return;
+    if (g_gameChatOpen) {
+        CancelAutoEnter();
+        SetStatus(Tr(L"Auto-send cancelled: GW2 chat is open"), 4000);
+        return;
+    }
+    static ULONGLONG s_lastAutoSend = 0;
+    const ULONGLONG now = GetTickCount64();
+    if (Translating() && !SendOriginal()) {
+        if (g_lastErrorKind != TranslateErrorKind::None) {
+            CancelAutoEnter();
+            SetStatus(Tr(L"Auto-send cancelled: translation failed"), 6000);
+            return;
+        }
+        if (g_previewGen != g_inputGen || g_preview.empty()) {
+            if (g_inputChanged) {
+                g_inputChanged = 0;
+                g_worker.Post([gen = g_inputGen, t = SanitizeChatText(g_wFlatInput)] { TranslateInput(gen, t); });
+            }
+            SetStatus(Tr(L"Waiting for translation …"), 1000);
+            return;  // translation still in flight
+        }
+    }
+    if (now - s_lastAutoSend < 2000) {
+        SetStatus(Tr(L"Auto-send rate limited (max 1 per 2 s)"), 1000);
+        return;
+    }
+    s_lastAutoSend = now;
+    CancelAutoEnter();
+    StartSend();
+}
 
 WinSpace WindowSpace(float button) {
     const ImGuiIO& io = ImGui::GetIO();
@@ -396,21 +526,22 @@ void RenderFooter() {  // g_mu held
         }
         ImGui::EndPopup();
     }
-    // "auto" = hands-free only (user, 2026-10-22): voice activation, the pause ends the sentence and sends it (off by
-    // default). Push-to-talk and the right-click never send by themselves: the text waits in the input to be changed.
-    if (g_cfg.voiceEnabled && g_cfg.voiceActivation) {
+    if (g_myMemorySessionFallback) {
         ImGui::SameLine();
-        if (ImGui::Checkbox(UI(Tr(L"auto") + L"##autosend").c_str(), &g_cfg.voiceAutoSend))
-            g_cfg.SaveBool(L"Voice", L"AutoSend", g_cfg.voiceAutoSend);
+        ImGui::PushStyleColor(ImGuiCol_Text, kAccent);
+        const std::string fbLabel = UI(Tr(L"MyMemory (fallback)"));
+        if (ImGui::Button((fbLabel + "##fbchip").c_str())) {
+            g_myMemorySessionFallback = false;
+            g_forcePreviewForHardError = false;
+            g_worker.Post([] {
+                g_translator = MakeTranslator(g_cfg);
+            });
+            ++g_inputGen;
+            g_inputChanged = GetTickCount64();
+        }
+        ImGui::PopStyleColor();
         if (ImGui::IsItemHovered()) {
-            ImGui::BeginTooltip();
-            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 26);
-            ImGui::TextUnformatted(UI(Tr(L"auto: hands-free sending")).c_str());
-            ImGui::TextDisabled("%s", UI(Tr(L"With voice activation the pause after you speak ends the sentence: the recognized "
-                                            L"text goes into the GW2 chat at once – translated if a send language is "
-                                            L"chosen. Push-to-talk and the right-click put it into the input, where you can still change it.")).c_str());
-            ImGui::PopTextWrapPos();
-            ImGui::EndTooltip();
+            ImGui::SetTooltip("%s", UI(Tr(L"Click to restore original translator")).c_str());
         }
     }
     const size_t n = CodePointCount(g_wFlatInput);
@@ -501,6 +632,7 @@ void RenderWindow() {
             std::lock_guard<std::mutex> lock(g_mu);
             g_inMap = ms.live && ms.inMap;
             g_mapOpen = ms.live && ms.MapOpen();
+            g_gameHasFocus = ms.live ? ms.GameHasFocus() : true;
             if (ms.live) {
                 g_ownName = ms.identity.name;
                 g_uiSize.store(ms.identity.uiSize);
@@ -565,10 +697,7 @@ void RenderWindow() {
                 if (g_nx.translateChat) TranslateRecentLines();
             }
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Open the window")).c_str());
-            if (g_autoSendPending && !g_edit.active && g_input[0]) {
-                g_autoSendPending = false;
-                StartSend();
-            }
+            CheckAutoSend();
             ImGui::End();
             return;
         }
@@ -612,7 +741,7 @@ void RenderWindow() {
         g_status.clear();
         g_statusUntil = 0;
     }
-    const ImVec4 kAccent(0.94f, 0.75f, 0.35f, 1.f), kPreview(0.59f, 0.80f, 1.f, 1.f);
+    const ImVec4 kPreview(0.59f, 0.80f, 1.f, 1.f);
     const ImGuiStyle& st = ImGui::GetStyle();
 
     CostMark(kCostHeader);
@@ -808,23 +937,7 @@ void RenderWindow() {
     if (Lay().header) {
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - rightW);
         if (g_cfg.voiceEnabled) {
-            const bool muted = g_voiceMuted.load();
-            const DiscordMicResult mr = RenderDiscordMicControl("##hdr_mic", icon, muted, g_recording);
-            if (mr.muteToggled) {
-                lock.unlock();
-                SetVoiceMuted(!muted);
-                lock.lock();
-            }
-            if (!muted && mr.talkLocked) {
-                const bool stop = g_recording;
-                lock.unlock();
-                if (stop) {
-                    TalkUp();
-                } else {
-                    TalkLocked();
-                }
-                lock.lock();
-            }
+            MicControl("##hdr_mic", icon, &lock);
             ImGui::SameLine(0, gap);
         }
         if (IconButton("##fold", Icon::Collapse, false, nullptr)) {
@@ -898,10 +1011,7 @@ void RenderWindow() {
         lock.lock();
     }
     if (g_collapsed) {  // folded up: only the header; what was going on goes on (sending, dictation)
-        if (g_autoSendPending && !g_edit.active && g_input[0]) {
-            g_autoSendPending = false;
-            StartSend();
-        }
+        CheckAutoSend();
         lock.unlock();
         ImGui::End();
         RenderDiscordVoiceMenu();
@@ -914,7 +1024,7 @@ void RenderWindow() {
     // ---- the chat (the newest at the bottom): name white – a click opens a whisper tab –, text in the channel colour,
     // the scroll bar at the left like GW2's own chat
     const float line = ImGui::GetTextLineHeightWithSpacing();
-    const bool showPreview = Lay().preview, showWords = Lay().words;
+    const bool showPreview = Lay().preview || g_forcePreviewForHardError, showWords = Lay().words;
     const float smallLine = ImGui::GetFontSize() * 0.85f + 2;
     // The input grows with what you write (its soft-wrapped lines) up to 8 lines and falls back once it is sent. A small
     // extra line at its bottom: the translation in compact view (only while something is translated).
@@ -1131,7 +1241,34 @@ void RenderWindow() {
         // The same light field as the input below: the two belong together.
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
         ImGui::BeginChild("preview", ImVec2(0, line * (previewRows + 0.2f)), false);
-        if (g_recording) {
+        if (g_lastErrorKind != TranslateErrorKind::None) {
+            std::wstring cause;
+            switch (g_lastErrorKind) {
+                case TranslateErrorKind::UnsupportedPair: cause = Tr(L"Language pair not supported by engine"); break;
+                case TranslateErrorKind::HelperMissing: cause = Tr(L"Local translation helper missing"); break;
+                case TranslateErrorKind::HelperCrashed: cause = Tr(L"Local translation helper crashed"); break;
+                case TranslateErrorKind::BadOutput: cause = Tr(L"Invalid translation response"); break;
+                case TranslateErrorKind::Network: cause = Tr(L"Network connection failed"); break;
+                case TranslateErrorKind::Timeout: cause = Tr(L"Translation request timed out"); break;
+                case TranslateErrorKind::Auth: cause = Tr(L"API key invalid or unauthorized"); break;
+                case TranslateErrorKind::Quota: cause = Tr(L"Translation quota exceeded"); break;
+                default: cause = Tr(L"Translation failed"); break;
+            }
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s", UI(cause).c_str());
+            ImGui::SameLine();
+            if (ImGui::Button((UI(Tr(L"→ MyMemory")) + "##btn_mymem").c_str())) {
+                g_myMemorySessionFallback = true;
+                g_lastErrorKind = TranslateErrorKind::None;
+                g_forcePreviewForHardError = false;
+                CancelAutoEnter();
+                g_worker.Post([] {
+                    g_translator = MakeTranslator(g_cfg);
+                });
+                ++g_inputGen;
+                g_inputChanged = GetTickCount64();
+                g_focusInput = true;
+            }
+        } else if (g_recording) {
             ImGui::TextColored(kPreview, "%s", g_voiceLive.empty() ? "..." : U8(g_voiceLive).c_str());
         } else if (!g_input[0]) {
             // empty: no hint text here – the chat above is what you read
@@ -1188,11 +1325,28 @@ void RenderWindow() {
         ImGui::SameLine();
         ImGui::SetCursorPosY(rowY);
     }
+    const bool showClearBtn = (g_input[0] != 0 || g_recording);
+    const float clearBtnW = ImGui::GetFontSize() * 0.9f;
+    ProcessBufferedKeys();
     const ImVec2 boxSize(-1, boxH);
     g_wrapWidth = ImGui::GetContentRegionAvail().x - st.FramePadding.x * 2 - st.ScrollbarSize - 4;
+    if (showClearBtn) g_wrapWidth -= (clearBtnW + 6.0f);
     const ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CtrlEnterForNewLine |
                                       ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_CallbackCharFilter |
                                       ImGuiInputTextFlags_CallbackAlways;
+    // Intercept Esc before InputTextMultiline so ImGui (imgui_widgets.cpp) does not revert the text to pre-edit state
+    const int escKey = ImGui::GetKeyIndex(ImGuiKey_Escape);
+    if (escKey >= 0 && io.KeysDown[escKey]) {
+        ImGuiID inputId = ImGui::GetID("##input");
+        if (ImGui::GetActiveID() == inputId) {
+            ImGui::ClearActiveID();
+            g_focusInput = false;
+            g_edit.active = false;
+            if (g_gameHwnd) SetFocus(g_gameHwnd);
+        }
+        io.KeysDown[escKey] = false;
+        io.KeysDownDuration[escKey] = -1.0f;
+    }
     ImGui::PushStyleColor(ImGuiCol_Text, Bright(ImGui::GetStyleColorVec4(ImGuiCol_Text)));  // your brightness here too
     const bool enter = ImGui::InputTextMultiline("##input", g_input, sizeof(g_input), boxSize, flags, InputCallback);
     ImGui::PopStyleColor();
@@ -1203,6 +1357,32 @@ void RenderWindow() {
     }
     const ImVec2 inputMin = ImGui::GetItemRectMin(), inputMax = ImGui::GetItemRectMax();
     const bool inputActive = ImGui::IsItemActive();
+    if (showClearBtn) {
+        const float btnW = clearBtnW;
+        const float btnH = ImGui::GetFrameHeight() * 0.82f;
+        const ImVec2 oldCur = ImGui::GetCursorScreenPos();
+        ImGui::SetCursorScreenPos(ImVec2(inputMax.x - btnW - 3.0f, inputMin.y + 2.0f));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.35f, 0.45f, 0.4f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.2f, 0.25f, 0.35f, 0.6f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(1.0f, 1.0f));
+        if (ImGui::Button("<##clear", ImVec2(btnW, btnH))) {
+            g_input[0] = '\0';
+            g_flatInput.clear();
+            g_wFlatInput.clear();
+            g_preview.clear();
+            g_previewGen = ++g_inputGen;
+            g_back.clear();
+            CancelAutoEnter();
+            g_focusInput = true;
+        }
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor(3);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("%s", UI(Tr(L"Clear text")).c_str());
+        }
+        ImGui::SetCursorScreenPos(oldCur);
+    }
     // Minimise when not in use: nobody wrote, pointed at it or talked for a while – down to the small button.
     {
         const ULONGLONG now = GetTickCount64();
@@ -1445,10 +1625,7 @@ void RenderWindow() {
         g_worker.Post([gen = g_inputGen, t = SanitizeChatText(g_wFlatInput)] { TranslateInput(gen, t); });
     }
     if (enter) StartSend();
-    if (g_autoSendPending && !g_edit.active && g_input[0]) {  // the dictation is in the line now
-        g_autoSendPending = false;
-        StartSend();
-    }
+    CheckAutoSend();
     lock.unlock();
     ImGui::End();
     RenderDiscordVoiceMenu();

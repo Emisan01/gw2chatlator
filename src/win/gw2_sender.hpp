@@ -14,6 +14,9 @@
 
 namespace gct {
 
+// dwExtraInfo tag on SendInput keyboard events so our WndProc recognises its own injected keys.
+constexpr ULONG_PTR kGw2SenderExtraInfo = 0x47573243;  // 'GW2C'
+
 struct SendOptions {
     bool autoTiming = true;    // automatically adapts keyHoldMs and stepDelayMs to measured FPS
     int stepDelayMs = 80;      // pause between the key steps (raise for low FPS)

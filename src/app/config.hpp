@@ -94,7 +94,7 @@ struct Config {
     bool voiceAutoSend = false;       // GW2 Keyboard for Nexus: send right after speaking (the key release is the press)
     int voiceBoost = 0;               // microphone boost: 0 off, 1 = +6 dB, 2 = +12 dB, 3 = automatic (levels speech)
     bool voiceActivation = false;     // voice activation: listens and starts by itself when you speak
-    int voicePauseMs = 1200;          // silence after speech that ends a message (press-to-start, lock, activation)
+    int voicePauseMs = 1500;          // silence after speech that ends a message (press-to-start, lock, activation)
     int voicePreRollMs = 300;         // voice activation keeps this much from before the speech
     int voiceSensitivity = 50;        // voice activation 0..100 (100 = reacts to quiet speech)
     int voiceMinMs = 250;             // voice activation: speech needed to start

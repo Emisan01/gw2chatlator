@@ -25,8 +25,11 @@ public:
                                                 const std::wstring& targetLang) override {
         std::vector<TranslateResult> out(items.size());
         if (items.empty()) return out;
-        auto failAll = [&](const std::wstring& error) {
-            for (auto& r : out) r.error = error;
+        auto failAll = [&](const std::wstring& error, TranslateErrorKind k) {
+            for (auto& r : out) {
+                r.error = error;
+                r.errorKind = k;
+            }
             return out;
         };
 
@@ -36,7 +39,8 @@ public:
             L"Authorization: DeepL-Auth-Key " + key_ + L"\r\nContent-Type: application/json\r\n";
 
         const HttpResponse http = HttpsRequest(L"POST", host, L"/v2/translate", headers, payload.json);
-        if (!http.transportOk) return failAll(L"DeepL: " + http.error);
+        if (!http.transportOk)
+            return failAll(L"DeepL: " + http.error, (http.status == 408 || http.status == 504) ? TranslateErrorKind::Timeout : TranslateErrorKind::Network);
 
         const auto parsed = ParseDeepLResponseBatch(http.body, payload.xmlMode, items.size());
         if (http.status == 200) {
@@ -45,6 +49,7 @@ public:
                 out[i].text = parsed[i].text;
                 out[i].detectedSource = parsed[i].detectedSource;
                 out[i].error = parsed[i].error;
+                out[i].errorKind = parsed[i].errorKind;
             }
             return out;
         }
@@ -53,14 +58,20 @@ public:
         const std::wstring code = L" (HTTP " + std::to_wstring(http.status) + L")";
         switch (http.status) {
             case 401:
-            case 403: return failAll(Tr(L"DeepL key is invalid"));
+            case 403: return failAll(Tr(L"DeepL key is invalid"), TranslateErrorKind::Auth);
             case 456:
                 for (auto& r : out) r.quotaExceeded = true;
-                return failAll(Tr(L"DeepL quota for this month is used up"));
-            case 429: return failAll(Tr(L"DeepL: too many requests – wait a moment"));
-            case 400: return failAll(TrF(L"DeepL refused: {1}", {msg}));
+                return failAll(Tr(L"DeepL quota for this month is used up"), TranslateErrorKind::Quota);
+            case 429: return failAll(Tr(L"DeepL: too many requests – wait a moment"), TranslateErrorKind::Quota);
+            case 400: {
+                const TranslateErrorKind k = (msg.find(L"target_lang") != std::wstring::npos || msg.find(L"source_lang") != std::wstring::npos)
+                                                 ? TranslateErrorKind::UnsupportedPair
+                                                 : TranslateErrorKind::Other;
+                return failAll(TrF(L"DeepL refused: {1}", {msg}), k);
+            }
             default:
-                return failAll(http.status >= 500 ? Tr(L"DeepL is having problems") + code : L"DeepL: " + msg + code);
+                return failAll(http.status >= 500 ? Tr(L"DeepL is having problems") + code : L"DeepL: " + msg + code,
+                               TranslateErrorKind::Other);
         }
     }
 

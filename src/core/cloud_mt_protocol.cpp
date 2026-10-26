@@ -1,6 +1,8 @@
 // cloud_mt_protocol.cpp
 #include "cloud_mt_protocol.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include <cwchar>
 
 #include "i18n.hpp"
@@ -98,23 +100,37 @@ CloudMtPayload BuildGooglePayload(const std::vector<std::vector<Segment>>& items
 
 std::vector<CloudMtParsed> ParseGoogleResponse(const std::string& body, bool html, size_t expected) {
     std::vector<CloudMtParsed> out(expected);
-    auto failAll = [&](const std::wstring& e) {
-        for (auto& r : out) r.error = e;
+    auto failAll = [&](const std::wstring& e, TranslateErrorKind k) {
+        for (auto& r : out) {
+            r.error = e;
+            r.errorKind = k;
+        }
         return out;
     };
     JsonValue root;
-    if (!ParseJson(body, root)) return failAll(Tr(L"Answer from Google not readable"));
+    if (!ParseJson(body, root)) return failAll(Tr(L"Answer from Google not readable"), TranslateErrorKind::BadOutput);
     const JsonValue* data = root.Get("data");
     const JsonValue* tr = data ? data->Get("translations") : nullptr;
     if (!tr || !tr->IsArray() || tr->arr.size() != expected) {
         const JsonValue* err = root.Get("error");
         const std::string msg = err ? err->GetString("message") : std::string();
-        return failAll(msg.empty() ? Tr(L"Unexpected answer from Google") : L"Google: " + FromUtf8(msg));
+        int code = 0;
+        if (err) {
+            if (const JsonValue* c = err->Get("code")) code = static_cast<int>(c->n);
+        }
+        TranslateErrorKind k = TranslateErrorKind::Other;
+        std::string lowerMsg = msg;
+        std::transform(lowerMsg.begin(), lowerMsg.end(), lowerMsg.begin(), [](unsigned char c) { return std::tolower(c); });
+        if (code == 401 || code == 403 || lowerMsg.find("key") != std::string::npos) k = TranslateErrorKind::Auth;
+        else if (code == 429 || lowerMsg.find("quota") != std::string::npos || lowerMsg.find("rate") != std::string::npos) k = TranslateErrorKind::Quota;
+        else if (lowerMsg.find("unsupported") != std::string::npos || lowerMsg.find("language") != std::string::npos) k = TranslateErrorKind::UnsupportedPair;
+        return failAll(msg.empty() ? Tr(L"Unexpected answer from Google") : L"Google: " + FromUtf8(msg), k);
     }
     for (size_t i = 0; i < expected; ++i) {
         const JsonValue* t = tr->arr[i].Get("translatedText");
         if (!t || t->type != JsonValue::Type::String) {
             out[i].error = Tr(L"Unexpected answer from Google");
+            out[i].errorKind = TranslateErrorKind::BadOutput;
             continue;
         }
         out[i].ok = true;
@@ -122,6 +138,7 @@ std::vector<CloudMtParsed> ParseGoogleResponse(const std::string& body, bool htm
         out[i].text = RestoreFromHtml(FromUtf8(t->s));
         (void)html;
         out[i].detectedSource = ToUpperAscii(FromUtf8(tr->arr[i].GetString("detectedSourceLanguage")));
+        out[i].errorKind = TranslateErrorKind::None;
     }
     return out;
 }
@@ -149,28 +166,46 @@ std::wstring MicrosoftQuery(const std::wstring& sourceLang, const std::wstring& 
 
 std::vector<CloudMtParsed> ParseMicrosoftResponse(const std::string& body, bool html, size_t expected) {
     std::vector<CloudMtParsed> out(expected);
-    auto failAll = [&](const std::wstring& e) {
-        for (auto& r : out) r.error = e;
+    auto failAll = [&](const std::wstring& e, TranslateErrorKind k) {
+        for (auto& r : out) {
+            r.error = e;
+            r.errorKind = k;
+        }
         return out;
     };
     JsonValue root;
-    if (!ParseJson(body, root)) return failAll(Tr(L"Answer from Microsoft not readable"));
+    if (!ParseJson(body, root)) return failAll(Tr(L"Answer from Microsoft not readable"), TranslateErrorKind::BadOutput);
     if (!root.IsArray() || root.arr.size() != expected) {
         const JsonValue* err = root.Get("error");
         const std::string msg = err ? err->GetString("message") : std::string();
-        return failAll(msg.empty() ? Tr(L"Unexpected answer from Microsoft") : L"Microsoft: " + FromUtf8(msg));
+        int code = 0;
+        if (err) {
+            if (const JsonValue* c = err->Get("code")) code = static_cast<int>(c->n);
+        }
+        TranslateErrorKind k = TranslateErrorKind::Other;
+        std::string lowerMsg = msg;
+        std::transform(lowerMsg.begin(), lowerMsg.end(), lowerMsg.begin(), [](unsigned char c) { return std::tolower(c); });
+        if (code == 401000 || code == 403000 || lowerMsg.find("key") != std::string::npos || lowerMsg.find("credential") != std::string::npos)
+            k = TranslateErrorKind::Auth;
+        else if (code == 429000 || lowerMsg.find("quota") != std::string::npos)
+            k = TranslateErrorKind::Quota;
+        else if (lowerMsg.find("target") != std::string::npos || lowerMsg.find("source") != std::string::npos || lowerMsg.find("language") != std::string::npos)
+            k = TranslateErrorKind::UnsupportedPair;
+        return failAll(msg.empty() ? Tr(L"Unexpected answer from Microsoft") : L"Microsoft: " + FromUtf8(msg), k);
     }
     for (size_t i = 0; i < expected; ++i) {
         const JsonValue* tr = root.arr[i].Get("translations");
         const JsonValue* t = tr && tr->IsArray() && !tr->arr.empty() ? tr->arr[0].Get("text") : nullptr;
         if (!t || t->type != JsonValue::Type::String) {
             out[i].error = Tr(L"Unexpected answer from Microsoft");
+            out[i].errorKind = TranslateErrorKind::BadOutput;
             continue;
         }
         out[i].ok = true;
         out[i].text = html ? RestoreFromHtml(FromUtf8(t->s)) : FromUtf8(t->s);
         if (const JsonValue* d = root.arr[i].Get("detectedLanguage"))
             out[i].detectedSource = ToUpperAscii(FromUtf8(d->GetString("language")));
+        out[i].errorKind = TranslateErrorKind::None;
     }
     return out;
 }
@@ -205,27 +240,41 @@ CloudMtPayload BuildLibrePayload(const std::vector<std::vector<Segment>>& items,
 
 std::vector<CloudMtParsed> ParseLibreResponse(const std::string& body, bool html, size_t expected) {
     std::vector<CloudMtParsed> out(expected);
-    auto failAll = [&](const std::wstring& e) {
-        for (auto& r : out) r.error = e;
+    auto failAll = [&](const std::wstring& e, TranslateErrorKind k) {
+        for (auto& r : out) {
+            r.error = e;
+            r.errorKind = k;
+        }
         return out;
     };
     JsonValue root;
-    if (!ParseJson(body, root)) return failAll(Tr(L"Answer from the translation server not readable"));
+    if (!ParseJson(body, root)) return failAll(Tr(L"Answer from the translation server not readable"), TranslateErrorKind::BadOutput);
     const JsonValue* t = root.Get("translatedText");
     if (!t || !t->IsArray() || t->arr.size() != expected) {
         const std::string msg = root.GetString("error");
-        return failAll(msg.empty() ? Tr(L"Unexpected answer from the translation server") : FromUtf8(msg));
+        TranslateErrorKind k = TranslateErrorKind::Other;
+        std::string lowerMsg = msg;
+        std::transform(lowerMsg.begin(), lowerMsg.end(), lowerMsg.begin(), [](unsigned char c) { return std::tolower(c); });
+        if (lowerMsg.find("key") != std::string::npos || lowerMsg.find("auth") != std::string::npos)
+            k = TranslateErrorKind::Auth;
+        else if (lowerMsg.find("limit") != std::string::npos || lowerMsg.find("slow") != std::string::npos)
+            k = TranslateErrorKind::Quota;
+        else if (lowerMsg.find("support") != std::string::npos || lowerMsg.find("language") != std::string::npos)
+            k = TranslateErrorKind::UnsupportedPair;
+        return failAll(msg.empty() ? Tr(L"Unexpected answer from the translation server") : FromUtf8(msg), k);
     }
     const JsonValue* det = root.Get("detectedLanguage");
     for (size_t i = 0; i < expected; ++i) {
         if (t->arr[i].type != JsonValue::Type::String) {
             out[i].error = Tr(L"Unexpected answer from the translation server");
+            out[i].errorKind = TranslateErrorKind::BadOutput;
             continue;
         }
         out[i].ok = true;
         out[i].text = html ? RestoreFromHtml(FromUtf8(t->arr[i].s)) : FromUtf8(t->arr[i].s);
         if (det && det->IsArray() && i < det->arr.size())
             out[i].detectedSource = ToUpperAscii(FromUtf8(det->arr[i].GetString("language")));
+        out[i].errorKind = TranslateErrorKind::None;
     }
     return out;
 }

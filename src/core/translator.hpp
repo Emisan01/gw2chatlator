@@ -10,12 +10,41 @@
 
 namespace gct {
 
+enum class TranslateErrorKind {
+    None,
+    UnsupportedPair,
+    HelperMissing,
+    HelperCrashed,
+    BadOutput,
+    Network,
+    Timeout,
+    Auth,
+    Quota,
+    Other
+};
+
+inline const wchar_t* TranslateErrorKindName(TranslateErrorKind k) {
+    switch (k) {
+        case TranslateErrorKind::UnsupportedPair: return L"UnsupportedPair";
+        case TranslateErrorKind::HelperMissing:   return L"HelperMissing";
+        case TranslateErrorKind::HelperCrashed:   return L"HelperCrashed";
+        case TranslateErrorKind::BadOutput:       return L"BadOutput";
+        case TranslateErrorKind::Network:         return L"Network";
+        case TranslateErrorKind::Timeout:         return L"Timeout";
+        case TranslateErrorKind::Auth:            return L"Auth";
+        case TranslateErrorKind::Quota:           return L"Quota";
+        case TranslateErrorKind::Other:           return L"Other";
+        default:                                  return L"None";
+    }
+}
+
 struct TranslateResult {
     bool ok = false;
     std::wstring text;            // translated text, protected segments restored
     std::wstring detectedSource;  // e.g. "DE", if the backend reports it
-    std::wstring error;           // human readable (German), empty when ok
+    std::wstring error;           // human readable, empty when ok
     bool quotaExceeded = false;   // free contingent used up: retrying soon is pointless
+    TranslateErrorKind errorKind = TranslateErrorKind::None;
 };
 
 class Translator {

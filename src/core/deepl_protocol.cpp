@@ -2,6 +2,8 @@
 #include "i18n.hpp"
 #include "deepl_protocol.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include "json.hpp"
 #include "text.hpp"
 
@@ -94,27 +96,41 @@ std::wstring RestoreFromXml(const std::wstring& s) {
 
 std::vector<DeepLParsed> ParseDeepLResponseBatch(const std::string& body, bool xmlMode, size_t expected) {
     std::vector<DeepLParsed> out(expected);
-    auto failAll = [&](const std::wstring& error) {
-        for (auto& r : out) r.error = error;
+    auto failAll = [&](const std::wstring& error, TranslateErrorKind k) {
+        for (auto& r : out) {
+            r.error = error;
+            r.errorKind = k;
+        }
         return out;
     };
     JsonValue root;
-    if (!ParseJson(body, root)) return failAll(Tr(L"Answer from DeepL not readable"));
+    if (!ParseJson(body, root)) return failAll(Tr(L"Answer from DeepL not readable"), TranslateErrorKind::BadOutput);
     const JsonValue* tr = root.Get("translations");
     if (!tr || !tr->IsArray() || tr->arr.size() != expected) {
         const std::string msg = root.GetString("message");
-        return failAll(msg.empty() ? Tr(L"Unexpected answer from DeepL") : FromUtf8(msg));
+        TranslateErrorKind k = TranslateErrorKind::Other;
+        std::string lowerMsg = msg;
+        std::transform(lowerMsg.begin(), lowerMsg.end(), lowerMsg.begin(), [](unsigned char c) { return std::tolower(c); });
+        if (lowerMsg.find("authorization") != std::string::npos || lowerMsg.find("key") != std::string::npos || lowerMsg.find("auth") != std::string::npos)
+            k = TranslateErrorKind::Auth;
+        else if (lowerMsg.find("quota") != std::string::npos || lowerMsg.find("limit") != std::string::npos)
+            k = TranslateErrorKind::Quota;
+        else if (lowerMsg.find("target_lang") != std::string::npos || lowerMsg.find("source_lang") != std::string::npos || lowerMsg.find("unsupported") != std::string::npos)
+            k = TranslateErrorKind::UnsupportedPair;
+        return failAll(msg.empty() ? Tr(L"Unexpected answer from DeepL") : FromUtf8(msg), k);
     }
     for (size_t i = 0; i < expected; ++i) {
         const JsonValue* text = tr->arr[i].Get("text");
         if (!text || text->type != JsonValue::Type::String) {
             out[i].error = Tr(L"Unexpected answer from DeepL");
+            out[i].errorKind = TranslateErrorKind::BadOutput;
             continue;
         }
         out[i].ok = true;
         out[i].text = FromUtf8(text->s);
         if (xmlMode) out[i].text = RestoreFromXml(out[i].text);
         out[i].detectedSource = FromUtf8(tr->arr[i].GetString("detected_source_language"));
+        out[i].errorKind = TranslateErrorKind::None;
     }
     return out;
 }

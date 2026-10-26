@@ -282,6 +282,12 @@ bool IconButton(const char* id, Icon kind, bool active, bool* rightClick, ImU32 
             dl->AddLine(ImVec2(c.x - 4.5f * u, c.y - 4.5f * u), ImVec2(c.x + 4.5f * u, c.y + 4.5f * u), col, 1.6f * u);
             dl->AddLine(ImVec2(c.x - 4.5f * u, c.y + 4.5f * u), ImVec2(c.x + 4.5f * u, c.y - 4.5f * u), col, 1.6f * u);
             break;
+        case Icon::Clear:  // I<I
+            dl->AddLine(ImVec2(c.x - 4.5f * u, c.y - 4.5f * u), ImVec2(c.x - 4.5f * u, c.y + 4.5f * u), col, 1.4f * u);
+            dl->AddLine(ImVec2(c.x + 2.0f * u, c.y - 3.5f * u), ImVec2(c.x - 1.5f * u, c.y), col, 1.4f * u);
+            dl->AddLine(ImVec2(c.x - 1.5f * u, c.y), ImVec2(c.x + 2.0f * u, c.y + 3.5f * u), col, 1.4f * u);
+            dl->AddLine(ImVec2(c.x + 4.5f * u, c.y - 4.5f * u), ImVec2(c.x + 4.5f * u, c.y + 4.5f * u), col, 1.4f * u);
+            break;
     }
     return pressed;
 }
@@ -310,8 +316,13 @@ void BoxText(const ImVec2& at, const ImVec4& clip, ImU32 color, const std::strin
                                             FontSafe(text.c_str(), plain), nullptr, 0, &clip);
 }
 
-DiscordMicResult RenderDiscordMicControl(const char* id, float height, bool muted, bool recording) {
-    DiscordMicResult res;
+int MicLayer() {
+    if (g_recording) return 2;
+    if (g_voiceMuted.load()) return 0;
+    return 1;
+}
+
+void MicControl(const char* id, float height, std::unique_lock<std::mutex>* callerLock) {
     ImDrawList* dl = ImGui::GetWindowDrawList();
     const ImVec2 p = ImGui::GetCursorScreenPos();
     const float h = height;
@@ -319,6 +330,7 @@ DiscordMicResult RenderDiscordMicControl(const char* id, float height, bool mute
     const float arrowW = std::floor(h * 0.75f);
     const float totalW = micW + 1.0f + arrowW;
     const float r = 5.0f;
+    const int layer = MicLayer();
 
     // Background pill
     const ImVec2 pillMax(p.x + totalW, p.y + h);
@@ -338,33 +350,70 @@ DiscordMicResult RenderDiscordMicControl(const char* id, float height, bool mute
         ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
         dl->AddRectFilled(p, ImVec2(p.x + micW, p.y + h), IM_COL32(255, 255, 255, micActive ? 35 : 20), r, ImDrawCornerFlags_Left);
     }
-    if (micClicked) res.muteToggled = true;
-    if (micRight) res.talkLocked = true;
+
+    if (micClicked) {
+        if (layer == 2) {
+            // Layer 2 (Rot): Klick stoppt (Text bleibt im Feld, ändert Stumm-Zustand nicht)
+            if (callerLock) callerLock->unlock();
+            TalkUp();
+            if (callerLock) callerLock->lock();
+        } else if (layer == 1) {
+            // Layer 1: -> stumm
+            if (callerLock) callerLock->unlock();
+            SetVoiceMuted(true);
+            if (callerLock) callerLock->lock();
+        } else if (layer == 0) {
+            // Layer 0: -> bereit
+            if (callerLock) callerLock->unlock();
+            SetVoiceMuted(false);
+            if (callerLock) callerLock->lock();
+        }
+    } else if (micRight) {
+        if (layer == 2) {
+            // Layer 2 (Rot): Rechtsklick in Rot stoppt ebenso
+            if (callerLock) callerLock->unlock();
+            TalkUp();
+            if (callerLock) callerLock->lock();
+        } else if (layer == 1) {
+            // Layer 1: -> aktiv: 3 s Zuhören
+            if (callerLock) callerLock->unlock();
+            TalkLocked();
+            if (callerLock) callerLock->lock();
+        } else if (layer == 0) {
+            // Layer 0: bleibt stumm
+        }
+    }
 
     if (micHovered) {
-        if (muted) {
-            ImGui::SetTooltip("%s", UI(Tr(L"Muted (Discord safe) – click to unmute")).c_str());
+        if (layer == 2) {
+            ImGui::SetTooltip("%s", UI(Tr(L"Listening / recording – click to stop")).c_str());
+        } else if (layer == 1) {
+            ImGui::SetTooltip("%s", UI(Tr(L"Ready – click to mute · right-click: 3 s listening")).c_str());
         } else {
-            ImGui::SetTooltip("%s", UI(g_cfg.voiceActivation ? Tr(L"Voice activation: click switches it on / off · right-click: speak until a pause")
-                                                             : Tr(L"Hold to speak (or the push-to-talk key) · right-click: speak until a pause")).c_str());
+            ImGui::SetTooltip("%s", UI(Tr(L"Muted – click to unmute")).c_str());
         }
     }
 
     // Draw the Mic Icon
     const ImVec2 micC(p.x + micW * 0.5f, p.y + h * 0.5f);
     const float u = h / 20.0f;
-    const ImU32 micCol = recording ? IM_COL32(235, 80, 80, 255)
-                                   : micHovered ? IM_COL32(255, 255, 255, 255)
-                                                : IM_COL32(200, 205, 220, 255);
+    const ImU32 micCol = (layer == 2) ? IM_COL32(235, 80, 80, 255)
+                                      : micHovered ? IM_COL32(255, 255, 255, 255)
+                                                   : IM_COL32(200, 205, 220, 255);
     dl->AddRectFilled(ImVec2(micC.x - 2.5f * u, micC.y - 6.0f * u), ImVec2(micC.x + 2.5f * u, micC.y + 1.5f * u), micCol, 2.5f * u);
     dl->PathArcTo(ImVec2(micC.x, micC.y - 1.0f * u), 4.5f * u, 0.0f, 3.14159f, 10);
     dl->PathStroke(micCol, false, 1.4f * u);
     dl->AddLine(ImVec2(micC.x, micC.y + 3.5f * u), ImVec2(micC.x, micC.y + 6.0f * u), micCol, 1.4f * u);
     dl->AddLine(ImVec2(micC.x - 3.0f * u, micC.y + 6.0f * u), ImVec2(micC.x + 3.0f * u, micC.y + 6.0f * u), micCol, 1.4f * u);
-    if (muted) {
+    if (layer == 0) {
         // Strike-through slash from bottom-left to top-right (Discord style)
         dl->AddLine(ImVec2(micC.x - 6.5f * u, micC.y + 6.5f * u), ImVec2(micC.x + 6.5f * u, micC.y - 6.5f * u), IM_COL32(20, 22, 28, 255), 3.0f * u);
         dl->AddLine(ImVec2(micC.x - 6.0f * u, micC.y + 6.0f * u), ImVec2(micC.x + 6.0f * u, micC.y - 6.0f * u), micCol, 1.6f * u);
+    }
+
+    // Hands free accent indicator (theme accent color dot top-right of mic button)
+    if (g_cfg.voiceAutoSend) {
+        dl->AddCircleFilled(ImVec2(p.x + micW - 3.5f * u, p.y + 3.5f * u), 2.2f * u, ImGui::GetColorU32(ImGuiCol_CheckMark));
     }
 
     // Divider line
@@ -384,7 +433,6 @@ DiscordMicResult RenderDiscordMicControl(const char* id, float height, bool mute
         ImGui::SetTooltip("%s", UI(Tr(L"Voice Settings")).c_str());
     }
     if (arrowClicked) {
-        res.openMenu = true;
         ToggleVoiceMenu(ImVec2(divX, p.y), pillMax);
     }
 
@@ -395,7 +443,6 @@ DiscordMicResult RenderDiscordMicControl(const char* id, float height, bool mute
     dl->AddLine(ImVec2(arrC.x, arrC.y + 2.0f * u), ImVec2(arrC.x + 3.5f * u, arrC.y - 1.5f * u), arrCol, 1.5f * u);
 
     ImGui::SetCursorScreenPos(ImVec2(pillMax.x, p.y));
-    return res;
 }
 
 struct DiscordVoiceMenuState {
@@ -423,11 +470,15 @@ void CloseVoiceMenu() {
     s_voiceMenu.open = false;
 }
 
+bool IsVoiceMenuOpen() {
+    return s_voiceMenu.open;
+}
+
 void ConsumeVoiceMenuOutsideClick() {
     if (!s_voiceMenu.open) return;
     if (!ImGui::GetCurrentContext()) return;
     ImGuiIO& io = ImGui::GetIO();
-    if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape))) {
+    if (EscLayer() == 1 && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape))) {
         s_voiceMenu.open = false;
         return;
     }
@@ -453,6 +504,9 @@ void ConsumeVoiceMenuOutsideClick() {
 void RenderDiscordVoiceMenu() {
     if (!s_voiceMenu.open) return;
     if (!ImGui::GetCurrentContext()) return;
+    static int s_renderedFrame = -1;
+    if (ImGui::GetFrameCount() == s_renderedFrame) return;
+    s_renderedFrame = ImGui::GetFrameCount();
 
     ImGuiIO& io = ImGui::GetIO();
 
@@ -529,6 +583,19 @@ void RenderDiscordVoiceMenu() {
                 std::lock_guard<std::mutex> lock(g_mu);
                 g_cfg.voiceTranslate = !trans;
                 g_cfg.SaveBool(L"Voice", L"Translate", !trans);
+            }
+            s_voiceMenu.open = false;
+        }
+        bool handsFree = false;
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            handsFree = g_cfg.voiceAutoSend;
+        }
+        if (ImGui::MenuItem(UI(Tr(L"Hands free")).c_str(), nullptr, handsFree)) {
+            {
+                std::lock_guard<std::mutex> lock(g_mu);
+                g_cfg.voiceAutoSend = !handsFree;
+                g_cfg.SaveBool(L"Voice", L"AutoSend", !handsFree);
             }
             s_voiceMenu.open = false;
         }

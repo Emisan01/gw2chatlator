@@ -37,12 +37,21 @@ struct VoiceModelInfo {
     int QualityFor(const std::string& lang) const;
 };
 
+struct VoiceRecommendation {
+    int quality = 0;                             // 0..3 (0 hardly, 1 weakly, 2 well, 3 very well)
+    const VoiceModelInfo* recommended = nullptr; // smallest model with quality >= 2 if current < 2
+    bool supportedByWhisper = true;
+};
+
 struct VoiceCatalog {
     std::string date;  // "2026-10-12": when sizes and notes were checked
     std::vector<VoiceModelInfo> models;
     const VoiceModelInfo* Find(const std::string& id) const;
     const VoiceModelInfo* Recommended() const;  // the one marked recommended, else the first
 };
+
+std::wstring VoiceQualityWord(int q);
+VoiceRecommendation RecommendVoiceModel(const VoiceCatalog& catalog, const VoiceModelInfo* current, const std::string& whisperLang);
 
 // The catalog shipped with the program (JSON text, verified sizes and SHA-256 of whisper.cpp v1.9.5's models).
 const char* DefaultVoiceCatalogJson();

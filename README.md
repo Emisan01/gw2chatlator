@@ -53,7 +53,7 @@ Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustot
 - **At a glance:** Options → General shows what is on – translating the chat, your text, what you say, voice input,
   the translator, reading the chat – and switches it right there.
 - **Failsafe:** an error switches the add-on off for the session, never the game.
-- English, Deutsch and العربية.
+- English, Deutsch, Français, Español, Italiano, Polski, Português, Türkçe, Русский.
 
 ## Install (one minute)
 

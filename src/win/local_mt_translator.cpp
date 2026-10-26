@@ -55,17 +55,20 @@ public:
         if (source.empty()) source = GuessLanguageByLetters(original);
         if (source.empty()) {
             result.error = L"The local translator could not identify the source language";
+            result.errorKind = TranslateErrorKind::UnsupportedPair;
             return result;
         }
         const std::wstring target = PrimaryLang(targetLang);
         if (target.empty()) {
             result.error = L"The local translator needs a target language";
+            result.errorKind = TranslateErrorKind::UnsupportedPair;
             return result;
         }
         if (source == target) {
             result.ok = true;
             result.text = original;
             result.detectedSource = source;
+            result.errorKind = TranslateErrorKind::None;
             return result;
         }
         std::vector<std::string> pairs = CachedInstalledPairs();
@@ -77,6 +80,7 @@ public:
         if (route.empty()) {
             result.error = TrF(L"No local language pack for {1} > {2} - install it: Options > Translator",
                                {source, target});
+            result.errorKind = TranslateErrorKind::UnsupportedPair;
             return result;
         }
 
@@ -85,6 +89,7 @@ public:
             result.ok = true;  // nothing but symbols, names, codes: nothing for the model
             result.text = original;
             result.detectedSource = source;
+            result.errorKind = TranslateErrorKind::None;
             return result;
         }
 
@@ -99,11 +104,12 @@ public:
             for (const std::string& pair : route) {
                 const size_t dash = pair.find('-');
                 std::string sourceCode = pair.substr(0, dash), targetCode = pair.substr(dash + 1);
-                const std::string utf8 = Request(text, sourceCode, targetCode, result.error);
+                const std::string utf8 = Request(text, sourceCode, targetCode, result.error, result.errorKind);
                 if (!result.error.empty()) return result;
                 const std::wstring translatedHop = CleanLocalMtOutput(text, FromUtf8(utf8));
                 if (!IsPlausibleLocalMtOutput(text, translatedHop)) {
                     result.error = L"The local model returned an implausible translation";
+                    result.errorKind = TranslateErrorKind::BadOutput;
                     return result;
                 }
                 text = translatedHop;
@@ -112,11 +118,13 @@ public:
         }
         if (!IsPlausibleLocalMtOutput(original, translated)) {
             result.error = L"The local model returned an implausible translation";
+            result.errorKind = TranslateErrorKind::BadOutput;
             return result;
         }
         result.ok = true;
         result.text = std::move(translated);
         result.detectedSource = source;
+        result.errorKind = TranslateErrorKind::None;
         return result;
     }
 
@@ -235,20 +243,25 @@ private:
     }
 
     std::string Request(const std::wstring& text, const std::string& source, const std::string& target,
-                        std::wstring& error) {
+                        std::wstring& error, TranslateErrorKind& errorKind) {
         const int id = ++nextId_;
         const std::string model = forceNllb_ ? "nllb" : "";
         const std::string line = BuildLocalMtRequest(id, source, target, ToUtf8(text), beamSize_.load(), model) + "\n";
         if (line.size() > kMaxLocalMtJsonLine) {
             error = L"The local translation request is too large";
+            errorKind = TranslateErrorKind::BadOutput;
             return {};
         }
-        if (!Start(error)) return {};
+        if (!Start(error)) {
+            errorKind = (error.find(L"not installed") != std::wstring::npos) ? TranslateErrorKind::HelperMissing : TranslateErrorKind::HelperCrashed;
+            return {};
+        }
         DWORD written = 0;
         if (!WriteFile(write_, line.data(), static_cast<DWORD>(line.size()), &written, nullptr) ||
             written != line.size()) {
             Stop();
             error = L"The local translator helper stopped unexpectedly";
+            errorKind = TranslateErrorKind::HelperCrashed;
             return {};
         }
         const ULONGLONG started = GetTickCount64();
@@ -261,14 +274,17 @@ private:
             if (message.id != id) {
                 Stop();
                 error = L"The local translator returned a mismatched response";
+                errorKind = TranslateErrorKind::BadOutput;
                 return {};
             }
             if (message.kind == LocalMtMessage::Kind::Result) return message.text;
             error = FromUtf8(message.error.empty() ? "local translation failed" : message.error);
+            errorKind = TranslateErrorKind::Other;
             return {};
         }
         Stop();
         error = L"The local translation timed out or its helper stopped";
+        errorKind = TranslateErrorKind::Timeout;
         return {};
     }
 

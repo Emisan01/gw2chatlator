@@ -59,6 +59,8 @@ def table(lang):
     return out
 
 def main():
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     keys = used_keys()
     if "--missing" in sys.argv:
         tables = [table(l) for l in LANGS]

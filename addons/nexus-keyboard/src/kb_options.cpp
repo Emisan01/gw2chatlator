@@ -1052,17 +1052,8 @@ void RenderDashboard(Config& edit, const Config& /*saved*/) {
                     DrawVectorGlobeIcon(dl, iconCenter, 1.25f, iconCol);
                 } else if (i == 1) {
                     if (voiceActive) {
-                        const bool muted = g_voiceMuted.load();
                         ImGui::SetCursorScreenPos(ImVec2(cPos.x + pad, cPos.y + pad + 2.0f));
-                        const DiscordMicResult mr = RenderDiscordMicControl("##dash_top_mic", 24.0f, muted, g_recording);
-                        if (mr.muteToggled) {
-                            SetVoiceMuted(!muted);
-                        }
-                        if (mr.talkLocked && !muted) {
-                            const bool stop = g_recording;
-                            if (stop) TalkUp();
-                            else TalkLocked();
-                        }
+                        MicControl("##dash_top_mic", 24.0f, nullptr);
                     } else {
                         if (voiceInstalled) {
                             iconCol = IM_COL32(240, 195, 80, 255);
@@ -1123,7 +1114,7 @@ void RenderDashboard(Config& edit, const Config& /*saved*/) {
                 } else if (i == 1) {
                     // Card 1: Voice
                     if (voiceActive) {
-                        // Navigation Button: Voice -> (Full Width)
+                        // Navigation Button: Microphone … (Switches to Tab 4)
                         ImGui::SetCursorScreenPos(ImVec2(cPos.x + pad, actualBtnY));
                         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.16f, 0.22f, 1.0f));
                         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.22f, 0.26f, 0.38f, 1.0f));
@@ -1132,8 +1123,8 @@ void RenderDashboard(Config& edit, const Config& /*saved*/) {
                         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
                         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
                         ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.5f, 0.5f));
-                        if (ImGui::Button((UI(Tr(L"Voice")) + " ->##dash_voice_tab").c_str(), ImVec2(availW, btnH))) {
-                            SwitchOptionsTab(3);
+                        if (ImGui::Button((UI(Tr(L"Microphone …")) + "##dash_voice_tab").c_str(), ImVec2(availW, btnH))) {
+                            SwitchOptionsTab(4);
                         }
                         ImGui::PopStyleVar(3);
                         ImGui::PopStyleColor(4);
@@ -1352,6 +1343,8 @@ void RenderOptionsContent() {
             Hint(UI(Tr(L"Instead of GW2's own chat line: you type here, with the typing help and the translation.")));
             FocusSwitch("foc_return", UI(Tr(L"After sending, keep typing in GW2Chatlator")), &edit.returnFocus);
             Hint(UI(Tr(L"The input keeps the keyboard after Enter – the next message goes right after.")));
+            FocusSwitch("foc_handsfree", UI(Tr(L"Hands free")), &edit.voiceAutoSend);
+            Hint(UI(Tr(L"Sends your spoken text to the chat automatically.")));
             ImGui::Separator();
             ImGui::TextDisabled("%s", UI(Tr(L"Status")).c_str());
             {
@@ -1605,6 +1598,36 @@ void RenderOptionsContent() {
 
             Hint(UI(Tr(L"What you say is translated into the send language set in the footer (whisper translates into English on this PC; other languages use your translator).")));
 
+            std::wstring recLang = edit.voiceLang;
+            if (recLang.empty() || recLang == L"write" || recLang == L"auto") {
+                recLang = edit.writeIn.empty() ? L"en" : edit.writeIn;
+            }
+            const std::string whisperLang = WhisperLang(recLang);
+            const gct::VoiceRecommendation rec = gct::RecommendVoiceModel(catalog, chosen, whisperLang);
+            if (!rec.supportedByWhisper) {
+                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s",
+                                   UI(Tr(L"Language not supported by speech recognition")).c_str());
+            } else {
+                std::wstring qWord = gct::VoiceQualityWord(rec.quality);
+                ImGui::Text("%s", UI(TrF(L"Recognition of {1}: {2}", {NativeName(recLang), qWord})).c_str());
+                if (rec.quality < 2 && rec.recommended) {
+                    ImGui::SameLine();
+                    ImGui::TextColored(ImVec4(0.95f, 0.78f, 0.35f, 1.0f), "(%s)",
+                                       UI(TrF(L"Recommended: {1} ({2} MB RAM)", {W(rec.recommended->name), std::to_wstring(rec.recommended->ramMb)})).c_str());
+                }
+            }
+            const std::wstring sendLang = SendLang();
+            if (PrimaryLang(sendLang) == L"EN") {
+                ImGui::TextDisabled("%s", UI(Tr(L"Send route: Whisper translates directly to English on this PC.")).c_str());
+            } else {
+                const bool hasLocalMt = gct::LocalMtModelPresent(edit.dataDir, "opus-mt") || gct::LocalMtModelPresent(edit.dataDir, "nllb-200");
+                if (hasLocalMt && (edit.engine == Engine::Local || edit.engine == Engine::Nllb)) {
+                    ImGui::TextDisabled("%s", UI(Tr(L"Send route: Speech recognized locally, translated with local MT package.")).c_str());
+                } else {
+                    ImGui::TextDisabled("%s", UI(Tr(L"Send route: Speech recognized locally, translated with online translator.")).c_str());
+                }
+            }
+
             // The installed models: what each needed when it last recognized you; use one, or remove what does not suit.
             static std::string removeAsked;
             for (const VoiceModelInfo& m : catalog.models) {
@@ -1686,7 +1709,6 @@ void RenderOptionsContent() {
             int ti = std::clamp(edit.voiceThreads, 0, 8);
             if (combo(UI(Tr(L"CPU threads") + L"##thr").c_str(), threads, &ti)) edit.voiceThreads = ti;
             Hint(UI(Tr(L"Automatic: the least busy cores – the ones GW2 does not use.")));
-            ImGui::Checkbox(UI(Tr(L"Hands-free: with voice activation, the pause after speaking sends it (push-to-talk waits for your Enter)")).c_str(), &edit.voiceAutoSend);
             Hint(UI(Tr(L"Runs on this PC – no sound leaves it, nothing is recorded to disk.")));
             ImGui::EndChild();
             }
@@ -1700,7 +1722,7 @@ void RenderOptionsContent() {
             static UiLang s_modeLang = static_cast<UiLang>(-1);
             if (s_modeLang != g_cfg.uiLang || s_modeLabels.empty()) {
                 s_modeLang = g_cfg.uiLang;
-                s_modeLabels = {UI(Tr(L"Hold the button or key while you speak")),
+                s_modeLabels = {UI(Tr(L"Hold the key while you speak")),
                                 UI(Tr(L"Press once – a pause ends it")),
                                 UI(Tr(L"Voice activation – starts when you speak"))};
             }
@@ -1708,6 +1730,8 @@ void RenderOptionsContent() {
                 edit.voiceToggle = mode == 1;
                 edit.voiceActivation = mode == 2;
             }
+            FocusSwitch("mic_handsfree", UI(Tr(L"Hands free")), &edit.voiceAutoSend);
+            Hint(UI(Tr(L"Sends your spoken text to the chat automatically.")));
             // The push-to-talk key: ours (GW2 does not get it). "Set key ..." takes the next key you press.
             {
                 std::lock_guard<std::mutex> lock(g_mu);
@@ -1943,7 +1967,7 @@ std::string BuildDiagnosticReport() {
     ss << "[Translation & Inference Engine]\n";
     ss << "- Configured Engine: ";
     switch (g_cfg.engine) {
-        case Engine::Auto: ss << "Auto (Local MT / MyMemory fallback)\n"; break;
+        case Engine::Auto: ss << "Auto: bester vorhandener Schlüssel, sonst MyMemory\n"; break;
         case Engine::Local: ss << "Local OPUS-MT (CTranslate2 INT8 Native)\n"; break;
         case Engine::Nllb: ss << "Local NLLB-200 (CTranslate2 INT8 Native)\n"; break;
         case Engine::DeepL: ss << "DeepL API\n"; break;
@@ -1960,6 +1984,24 @@ std::string BuildDiagnosticReport() {
     ss << "- Translate Writing: " << (g_cfg.translateWriting ? "Enabled" : "Disabled") << "\n";
     if (const std::wstring q = MyMemoryQuotaText(); !q.empty()) {
         ss << "- MyMemory Quota Status: " << U8(q) << "\n";
+    }
+    ss << "- Last Translation Error: ";
+    if (g_lastErrorKind == TranslateErrorKind::None) {
+        ss << "None\n";
+    } else {
+        switch (g_lastErrorKind) {
+            case TranslateErrorKind::UnsupportedPair: ss << "Unsupported language pair"; break;
+            case TranslateErrorKind::HelperMissing: ss << "Translation helper missing"; break;
+            case TranslateErrorKind::HelperCrashed: ss << "Translation helper crashed"; break;
+            case TranslateErrorKind::BadOutput: ss << "Invalid translation response"; break;
+            case TranslateErrorKind::Network: ss << "Network connection failed"; break;
+            case TranslateErrorKind::Timeout: ss << "Network timeout"; break;
+            case TranslateErrorKind::Auth: ss << "Authentication / API key invalid"; break;
+            case TranslateErrorKind::Quota: ss << "Quota exceeded"; break;
+            default: ss << "Other error"; break;
+        }
+        if (!g_lastErrorTime.empty()) ss << " (" << U8(g_lastErrorTime) << ")";
+        ss << "\n";
     }
     ss << "\n";
 
@@ -2188,6 +2230,7 @@ void SuppressImplicitDebugWindow() {
         g.CurrentWindow->WriteAccessed = false;
         g.CurrentWindow->Active = false;
     }
+    RenderDiscordVoiceMenu();
 }
 
 }  // namespace kb

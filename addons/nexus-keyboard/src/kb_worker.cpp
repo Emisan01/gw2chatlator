@@ -208,8 +208,28 @@ void TranslateInput(uint64_t gen, std::wstring text) {
                 CountMyMemory(CodePointCount(body));
             }
             const TranslateResult r = tr->Translate(p.segments, source, target);
-            if (r.ok) result = r.text;
-            else error = r.error;
+            if (r.ok) {
+                result = r.text;
+                std::lock_guard<std::mutex> lock(g_mu);
+                g_forcePreviewForHardError = false;
+                g_lastErrorKind = TranslateErrorKind::None;
+            } else {
+                error = r.error;
+                if (r.errorKind != TranslateErrorKind::None) {
+                    std::lock_guard<std::mutex> lock(g_mu);
+                    g_lastErrorKind = r.errorKind;
+                    SYSTEMTIME st;
+                    GetLocalTime(&st);
+                    wchar_t timeBuf[64];
+                    swprintf(timeBuf, 64, L"%04u-%02u-%02u %02u:%02u:%02u", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+                    g_lastErrorTime = timeBuf;
+                    g_forcePreviewForHardError = true;
+                    if (!g_layout.preview) {
+                        g_layout.preview = true;
+                        SaveLayout();
+                    }
+                }
+            }
         }
     }
     // The back-translation: what your message means in your language again (small under it).
@@ -376,12 +396,32 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
         SetStatus(copyOnly ? Tr(L"Copied – paste it into the GW2 chat with Ctrl+V") : L"");
         g_history.push_front(typed);
         while (g_history.size() > kHistoryMax) g_history.pop_back();
-        if (g_cfg.returnFocus) g_focusInput = true;
+        // Hands free (Punkt 4): nach dem Senden Fokus dorthin zurück, wo er vorher war
+        if (g_autoSendTriggered) {
+            g_autoSendTriggered = false;
+            if (g_autoSendHadFocus) {
+                g_focusInput = true;
+            } else {
+                g_focusInput = false;
+                if (g_gameHwnd) SetFocus(g_gameHwnd);
+            }
+        } else {
+            if (g_cfg.returnFocus) g_focusInput = true;
+        }
     } else {
         SetStatus(error, 10000);
         if (g_input[0] == 0) {  // nothing lost: the text comes back
             const std::string back = U8(typed);
             strncpy_s(g_input, back.c_str(), _TRUNCATE);
+        }
+        if (g_autoSendTriggered) {
+            g_autoSendTriggered = false;
+            if (g_autoSendHadFocus) {
+                g_focusInput = true;
+            } else {
+                g_focusInput = false;
+                if (g_gameHwnd) SetFocus(g_gameHwnd);
+            }
         }
     }
 }
@@ -395,6 +435,7 @@ void StartSend() {  // Enter (g_mu held)
     }
     const SendGuard::Verdict v = g_guard.Check(text, false, false, GetTickCount64());
     if (!v.allow) {
+        CancelAutoEnter();
         SetStatus(v.reason == SendGuard::Reason::Repeat ? Tr(L"Not sent: the same line too often in a short time.")
                   : v.reason == SendGuard::Reason::Rate  ? Tr(L"Not sent: more lines than a person writes in a minute.")
                                                          : Tr(L"Sending is switched off for this session (misuse detected). "
@@ -409,10 +450,12 @@ void StartSend() {  // Enter (g_mu held)
         const bool ready = Translating() && g_previewGen == g_inputGen && !g_preview.empty();
         const size_t parts = SplitForChat(ready ? g_preview : body, prefix, static_cast<size_t>(g_cfg.maxLength)).size();
         if ((!Translating() || ready) && parts > kMaxPartsPerEnter) {
+            CancelAutoEnter();
             SetStatus(TrF(L"Not sent: {1} chat lines – at most 3 per Enter. Shorten it.", {std::to_wstring(parts)}), 8000);
             return;
         }
     }
+    g_bufferingKeys = true;
     g_input[0] = 0;
     g_flatInput.clear();
     g_wFlatInput.clear();

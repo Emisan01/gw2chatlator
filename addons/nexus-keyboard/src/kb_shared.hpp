@@ -409,6 +409,32 @@ extern std::wstring g_dictLang;
 extern VoiceFixBook g_voiceFixes;
 extern bool g_autoSendPending;
 extern bool g_userRecording;  // g_mu: your key or click started the recording (push-to-talk, right-click) - never sent by itself
+extern bool g_voiceStoppedManually;
+extern HWND g_gameHwnd;
+extern bool g_gameHasFocus;
+extern TranslateErrorKind g_lastErrorKind;
+extern std::wstring g_lastErrorTime;
+extern bool g_myMemorySessionFallback;
+extern bool g_forcePreviewForHardError;
+
+// Hands Free & Auto-Enter (Punkte 1-8)
+enum class AutoEnterTrigger { None, Voice, LineFull };
+void RequestAutoEnter(AutoEnterTrigger trigger);
+void CancelAutoEnter();
+bool IsAutoEnterPending();
+extern bool g_autoSendTriggered;
+extern bool g_autoSendHadFocus;
+
+// Tastenpuffer während des Sendens (Punkt 4b)
+struct BufferedKey {
+    UINT msg;
+    WPARAM wp;
+    LPARAM lp;
+};
+extern std::vector<BufferedKey> g_keyBuffer;
+extern std::mutex g_keyBufferMu;
+extern std::atomic<bool> g_bufferingKeys;
+
 extern std::string g_voicePending;
 extern bool g_listening;
 extern std::wstring g_listenPausedFor;
@@ -532,23 +558,24 @@ extern std::thread g_decoderThread;
 void InstallDecoderRingNow();
 void RemoveDecoderRingNow();
 
-// ---- the header's icons: microphone, menu (three lines), close
-enum class Icon { Mic, MicMuted, ChevronDown, Menu, Close, Collapse, Expand };
+// ---- the header's icons: microphone, menu (three lines), close, clear
+enum class Icon { Mic, MicMuted, ChevronDown, Menu, Close, Collapse, Expand, Clear };
 bool IconButton(const char* id, Icon kind, bool active, bool* rightClick, ImU32 tint = 0);
 std::string Fit(const std::string& s, float width);
 std::wstring StatusText();
 
-struct DiscordMicResult {
-    bool muteToggled = false;
-    bool talkLocked = false;
-    bool openMenu = false;
-};
-DiscordMicResult RenderDiscordMicControl(const char* id, float height, bool muted, bool recording);
+int MicLayer();
+void MicControl(const char* id, float height, std::unique_lock<std::mutex>* callerLock = nullptr);
 void ToggleVoiceMenu(const ImVec2& anchorMin, const ImVec2& anchorMax);
 void CloseVoiceMenu();
+bool IsVoiceMenuOpen();
 void ConsumeVoiceMenuOutsideClick();
 void RenderDiscordVoiceMenu();
 void SwitchOptionsTab(int tab);
+
+int EscLayer();
+bool HandleEsc();
+void TalkCancel();
 
 // ---- voice model download (its own thread: minutes, never on the worker or the game's threads)
 extern std::thread g_download;

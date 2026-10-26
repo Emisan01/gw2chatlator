@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "protect.hpp"
+#include "translator.hpp"
 
 namespace gct {
 
@@ -23,6 +24,7 @@ struct CloudMtParsed {
     std::wstring text;
     std::wstring detectedSource;  // upper case: "DE"
     std::wstring error;
+    TranslateErrorKind errorKind = TranslateErrorKind::None;
 };
 
 // Language codes of the services: "EN-GB" -> "en", "ZH-HANS" -> "zh-CN" (Google) / "zh-Hans" (Microsoft).

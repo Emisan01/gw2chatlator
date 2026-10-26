@@ -296,7 +296,7 @@ void Config::Load(const std::wstring& dir) {
     voiceBoost = ini.Int(L"Voice", L"Boost", 0, 0, 3);
     voiceAutoSend = ini.Bool(L"Voice", L"AutoSend", false);
     voiceActivation = ini.Bool(L"Voice", L"Activation", false);
-    voicePauseMs = ini.Int(L"Voice", L"PauseMs", 1200, 400, 3000);
+    voicePauseMs = ini.Int(L"Voice", L"PauseMs", 1500, 400, 3000);
     voicePreRollMs = ini.Int(L"Voice", L"PreRollMs", 300, 0, 1000);
     voiceSensitivity = ini.Int(L"Voice", L"Sensitivity", 50, 0, 100);
     voiceMinMs = ini.Int(L"Voice", L"MinSpeechMs", 250, 100, 1500);
@@ -341,6 +341,7 @@ void Config::Load(const std::wstring& dir) {
 
 namespace {
 std::mutex g_writeMu;
+std::mutex g_flushMu;
 bool g_deferWrites = false;
 bool g_blockWrites = false;
 std::map<std::tuple<std::wstring, std::wstring, std::wstring>, std::wstring> g_pendingWrites;  // file, section, key
@@ -379,6 +380,7 @@ void Config::BlockWrites() {
 }
 
 void Config::FlushWrites() {
+    std::lock_guard<std::mutex> flushLock(g_flushMu);
     std::map<std::tuple<std::wstring, std::wstring, std::wstring>, std::wstring> writes;
     {
         std::lock_guard<std::mutex> lock(g_writeMu);
@@ -395,12 +397,25 @@ void Config::FlushWrites() {
     for (const auto& [targetPath, entries] : byFile) {
         if (targetPath.empty()) continue;
         const std::wstring tmpPath = targetPath + L".tmp";
+        DeleteFileW(tmpPath.c_str());
+
         const bool existed = (GetFileAttributesW(targetPath.c_str()) != INVALID_FILE_ATTRIBUTES);
+        bool writeViaTmp = true;
+
         if (existed) {
-            CopyFileW(targetPath.c_str(), tmpPath.c_str(), FALSE);
-        } else {
-            DeleteFileW(tmpPath.c_str());
+            if (!CopyFileW(targetPath.c_str(), tmpPath.c_str(), FALSE)) {
+                writeViaTmp = false;
+            }
         }
+
+        if (!writeViaTmp) {
+            for (const auto& e : entries) {
+                WritePrivateProfileStringW(e.first.c_str(), e.second.first.c_str(), e.second.second.c_str(), targetPath.c_str());
+            }
+            WritePrivateProfileStringW(nullptr, nullptr, nullptr, targetPath.c_str());
+            continue;
+        }
+
         for (const auto& e : entries) {
             WritePrivateProfileStringW(e.first.c_str(), e.second.first.c_str(), e.second.second.c_str(), tmpPath.c_str());
         }
@@ -422,6 +437,9 @@ void Config::FlushWrites() {
             }
         }
         if (!swapped) {
+            for (const auto& e : entries) {
+                WritePrivateProfileStringW(e.first.c_str(), e.second.first.c_str(), e.second.second.c_str(), targetPath.c_str());
+            }
             DeleteFileW(tmpPath.c_str());
         }
         // Invalidate/flush profile cache for target path so subsequent reads get new content

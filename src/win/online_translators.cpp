@@ -65,12 +65,14 @@ public:
                                                    BuildMyMemoryPath(Trim(chunk), source, targetLang, email_), L"", "");
             if (!http.transportOk) {
                 r.error = L"MyMemory: " + http.error;
+                r.errorKind = (http.status == 408 || http.status == 504) ? TranslateErrorKind::Timeout : TranslateErrorKind::Network;
                 return r;
             }
             const MyMemoryParsed p = ParseMyMemoryResponse(http.body);
             if (!p.ok) {
                 r.error = p.quotaExceeded ? p.error + L" – " + Tr(L"choose another translator in the settings (Google, Microsoft, DeepL, AI model)") : p.error;
                 r.quotaExceeded = p.quotaExceeded;
+                r.errorKind = p.errorKind;
                 return r;
             }
             if (!r.text.empty()) r.text += L" ";
@@ -78,6 +80,7 @@ public:
         }
         r.ok = true;
         r.detectedSource = source;
+        r.errorKind = TranslateErrorKind::None;
         return r;
     }
 
@@ -115,6 +118,7 @@ TranslateResult FromParsed(const CloudMtParsed& p) {
     r.text = p.text;
     r.detectedSource = p.detectedSource;
     r.error = p.error;
+    r.errorKind = p.errorKind;
     return r;
 }
 
@@ -123,13 +127,30 @@ std::vector<TranslateResult> CloudFailure(const wchar_t* service, int status, co
                                           size_t n) {
     std::vector<TranslateResult> out(n);
     std::wstring e;
-    if (status == 400 && parsedError.find(L"key") != std::wstring::npos) e = TrF(L"{1}: API key is invalid", {service});
-    else if (status == 401 || status == 403) e = TrF(L"{1}: API key is invalid", {service});
-    else if (status == 429) e = TrF(L"{1}: free contingent used up or too many requests", {service});
-    else e = parsedError.empty() ? std::wstring(service) + L": HTTP " + std::to_wstring(status) : parsedError;
+    TranslateErrorKind k = TranslateErrorKind::Other;
+    if (status == 400 && parsedError.find(L"key") != std::wstring::npos) {
+        e = TrF(L"{1}: API key is invalid", {service});
+        k = TranslateErrorKind::Auth;
+    } else if (status == 401 || status == 403) {
+        e = TrF(L"{1}: API key is invalid", {service});
+        k = TranslateErrorKind::Auth;
+    } else if (status == 429) {
+        e = TrF(L"{1}: free contingent used up or too many requests", {service});
+        k = TranslateErrorKind::Quota;
+    } else if (status == 408 || status == 504) {
+        e = std::wstring(service) + L": timeout";
+        k = TranslateErrorKind::Timeout;
+    } else if (status == 0) {
+        e = std::wstring(service) + L": network error";
+        k = TranslateErrorKind::Network;
+    } else {
+        e = parsedError.empty() ? std::wstring(service) + L": HTTP " + std::to_wstring(status) : parsedError;
+        k = TranslateErrorKind::Other;
+    }
     for (auto& r : out) {
         r.error = e;
-        r.quotaExceeded = status == 429;
+        r.quotaExceeded = (status == 429);
+        r.errorKind = k;
     }
     return out;
 }

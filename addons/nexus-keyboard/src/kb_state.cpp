@@ -1,6 +1,7 @@
 // kb_state.cpp — shared state: settings of the window, languages, the translator, status.
 
 #include "kb_shared.hpp"
+#include "imgui/imgui_internal.h"
 
 namespace kb {
 
@@ -118,6 +119,38 @@ std::wstring g_dictLang;         // its language
 VoiceFixBook g_voiceFixes;       // learned misheard words (<data>\voice-fixes.txt), per language
 bool g_autoSendPending = false;
 bool g_userRecording = false;
+bool g_voiceStoppedManually = false;
+HWND g_gameHwnd = nullptr;
+bool g_gameHasFocus = true;
+TranslateErrorKind g_lastErrorKind = TranslateErrorKind::None;
+std::wstring g_lastErrorTime = L"-";
+bool g_myMemorySessionFallback = false;
+bool g_forcePreviewForHardError = false;
+
+bool g_autoSendTriggered = false;
+bool g_autoSendHadFocus = false;
+AutoEnterTrigger g_autoEnterTrigger = AutoEnterTrigger::None;
+std::vector<BufferedKey> g_keyBuffer;
+std::mutex g_keyBufferMu;
+std::atomic<bool> g_bufferingKeys{false};
+
+void RequestAutoEnter(AutoEnterTrigger trigger) {
+    if (!g_cfg.voiceAutoSend) return;
+    g_autoEnterTrigger = trigger;
+    g_autoSendPending = true;
+    g_autoSendTriggered = true;
+    g_autoSendHadFocus = (ImGui::GetCurrentContext() && ImGui::GetActiveID() == ImGui::GetID("##input")) || g_focusInput || g_edit.active;
+}
+
+void CancelAutoEnter() {
+    g_autoSendPending = false;
+    g_autoEnterTrigger = AutoEnterTrigger::None;
+    g_autoSendTriggered = false;
+}
+
+bool IsAutoEnterPending() {
+    return g_autoSendPending;
+}
 std::string g_voicePending;        // a command that waits for the helper to be ready ("begin-auto", "listen")
 bool g_listening = false;          // voice activation listens
 std::wstring g_listenPausedFor;    // ... paused while this voice chat uses the microphone
@@ -290,6 +323,7 @@ const std::wstring& ComposePrefix() {
 }
 
 std::shared_ptr<Translator> MakeTranslator(const Config& c) {  // the engine you set, else the best key you have
+    if (g_myMemorySessionFallback) return MakeMyMemoryTranslator(c.basicEmail);
     if (c.engine == Engine::Basic) return MakeMyMemoryTranslator(c.basicEmail);
     if (c.engine == Engine::DeepL && !c.deeplKey.empty()) return MakeDeepLTranslator(c.deeplKey);
     if (c.engine == Engine::Google && !c.googleKey.empty()) return MakeGoogleTranslator(c.googleKey);

@@ -86,9 +86,10 @@ void VoiceHelper::OnLine(const std::string& line) {
     } else if (t == "final") {
         g_recording = false;
         g_voiceLive.clear();
-        const std::wstring text = Trim(W(v.GetString("text")));
+        const std::wstring text = W(v.GetString("text"));
         if (v.GetBool("empty") || text.empty()) {
-            SetStatus(Tr(L"Nothing recognized – hold the key while you speak"), 5000);
+            if (g_micLocked) SetStatus(Tr(L"Nothing recognized – right-click to listen for 3 s"), 5000);
+            else SetStatus(Tr(L"Nothing recognized – hold the key while you speak"), 5000);
             return;
         }
         NoteVoiceRun(v);
@@ -102,9 +103,13 @@ void VoiceHelper::OnLine(const std::string& line) {
         g_edit.lenBytes = 0;
         g_edit.insert = (len && g_input[len - 1] != ' ' && g_input[len - 1] != '\n' ? " " : "") + U8(fixed);
         g_focusInput = true;
-        // Hands-free only (user, 2026-10-22): a recording of voice activation, ended by the pause after speaking, goes
-        // out by itself while "auto" is on; push-to-talk and the right-click wait for your Enter.
-        g_autoSendPending = g_cfg.voiceAutoSend && g_cfg.voiceActivation && !g_userRecording;
+        // Hands free (Punkt 1 & 8): Ende einer Spracheingabe – Sprechpause, PTT-Loslassen oder Mausklick-Stopp.
+        // Nur wenn Esc gedrückt wurde (Ebene 2), bricht Auto-Enter ab.
+        const bool cancelledByEsc = g_voiceStoppedManually;
+        g_voiceStoppedManually = false;
+        if (!cancelledByEsc) {
+            RequestAutoEnter(AutoEnterTrigger::Voice);
+        }
         g_userRecording = false;
         SetStatus(L"");
     } else if (t == "listening") {
@@ -158,8 +163,12 @@ void VoiceCommand(const char* cmd) {
     }
     if (ready) {
         if (english) {  // rare: "Send" went between English and another language
-            Config::FlushWrites();
-            g_voice.Send("reload");
+            g_worker.Post([cmd = std::string(cmd)] {
+                Config::FlushWrites();
+                g_voice.Send("reload");
+                g_voice.Send(cmd.c_str());
+            });
+            return;
         }
         g_voice.Send(cmd);
         return;
@@ -179,14 +188,16 @@ void VoiceCommand(const char* cmd) {
         std::lock_guard<std::mutex> lock(g_mu);
         dataDir = g_cfg.dataDir;
     }
-    Config::FlushWrites();  // the helper reads the ini when it starts (normally nothing waits)
-    if (!g_voice.Start(HelperExe(), dataDir)) {
-        std::lock_guard<std::mutex> lock(g_mu);
-        g_voicePending.clear();
-        SetStatus(VoiceModulePresent(KeyboardDir()) ? Tr(L"The voice module could not be started")
-                                                    : Tr(L"The voice module is not loaded yet – Options → Voice."),
-                  10000);
-    }
+    g_worker.Post([dataDir] {
+        Config::FlushWrites();  // the helper reads the ini when it starts (normally nothing waits)
+        if (!g_voice.Start(HelperExe(), dataDir)) {
+            std::lock_guard<std::mutex> lock(g_mu);
+            g_voicePending.clear();
+            SetStatus(VoiceModulePresent(KeyboardDir()) ? Tr(L"The voice module could not be started")
+                                                        : Tr(L"The voice module is not loaded yet – Options → Voice."),
+                      10000);
+        }
+    });
 }
 
 // Push to talk: pressed starts, released ends (the recognized text then waits for your Enter). Started while the
@@ -216,6 +227,18 @@ void TalkUp() {
         g_micLockedStart = 0;
     }
     g_voice.Send("end");
+}
+void TalkCancel() {
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_recording = false;
+        g_userRecording = false;
+        g_micLocked = false;
+        g_micLockedStart = 0;
+        g_voiceLive.clear();
+        g_autoSendPending = false;
+    }
+    g_voice.Send("cancel");
 }
 void TalkLocked() {  // right-click on the microphone: on until a pause is heard
     if (g_voiceMuted.load()) return;
@@ -381,8 +404,10 @@ void LoadVoiceModule() {
         std::lock_guard<std::mutex> lock(g_mu);
         dataDir = g_cfg.dataDir;
     }
-    Config::FlushWrites();
-    if (!g_voice.Running() && VoiceModulePresent(KeyboardDir())) g_voice.Start(HelperExe(), dataDir);
+    g_worker.Post([dataDir] {
+        Config::FlushWrites();
+        if (!g_voice.Running() && VoiceModulePresent(KeyboardDir())) g_voice.Start(HelperExe(), dataDir);
+    });
 }
 // Lean when not in use: the voice helper holds its model in memory (hundreds of MB for the larger ones). Nothing
 // recorded, nothing listening for [Voice] UnloadMinutes (default 10): it ends and gives that memory back; the next

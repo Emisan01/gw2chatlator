@@ -102,6 +102,7 @@ INPUT Key(WORD vk, bool up) {
     in.ki.wVk = vk;
     in.ki.wScan = static_cast<WORD>(MapVirtualKeyW(vk, MAPVK_VK_TO_VSC));
     in.ki.dwFlags = KEYEVENTF_SCANCODE | (up ? KEYEVENTF_KEYUP : 0);
+    in.ki.dwExtraInfo = kGw2SenderExtraInfo;
     return in;
 }
 
@@ -136,9 +137,11 @@ void TypeText(const std::wstring& s, int holdMs) {
         in.type = INPUT_KEYBOARD;
         in.ki.wScan = c;
         in.ki.dwFlags = KEYEVENTF_UNICODE;
+        in.ki.dwExtraInfo = kGw2SenderExtraInfo;
         SendInput(1, &in, sizeof(INPUT));
         Sleep(holdMs);
         in.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
+        in.ki.dwExtraInfo = kGw2SenderExtraInfo;
         SendInput(1, &in, sizeof(INPUT));
         Sleep(holdMs);
     }

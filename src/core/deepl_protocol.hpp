@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "protect.hpp"
+#include "translator.hpp"
 
 namespace gct {
 
@@ -28,6 +29,7 @@ struct DeepLParsed {
     std::wstring text;
     std::wstring detectedSource;
     std::wstring error;  // DeepL "message" or a parse problem
+    TranslateErrorKind errorKind = TranslateErrorKind::None;
 };
 DeepLParsed ParseDeepLResponse(const std::string& body, bool xmlMode);
 

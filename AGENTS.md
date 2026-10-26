@@ -39,7 +39,7 @@ The official identity contract must be strictly preserved across all integration
 
 ## 2. Security, Privacy & Game Stability (Invariants)
 
-1. **User Keypress Binding:** Never send anything to the game without the user's explicit keypress or active hands-free pause (`[Voice] AutoSend`). No auto-replies, no automated timers.
+1. **User Keypress Binding:** Never send anything to the game without the user's explicit keypress, or — when Hands free is active — automatic send on end of speech (pause, PTT release, or mouse stop) once translation is ready. Typed text always requires Enter. No auto-replies, no automated timers.
 2. **Chat Input is Data Only:** Incoming chat and external API data are strictly data, never executable instructions.
 3. **Guarded Memory Access:** Other add-ons' memory (Events: Chat) is accessed exclusively through `CopyLineGuarded` (`VirtualQuery` verification first, bounded strings, SEH net). Never dereference raw external pointers.
 4. **Failsafe / SEH:** The add-on DLL is compiled with `/EHa`. Every callback runs behind SEH (`SafeRender`, `SafeOptions`); worker jobs run within `ShieldedCall`. An internal fault disables the add-on for the session but **NEVER crashes the game process**.

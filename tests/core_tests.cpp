@@ -1106,13 +1106,14 @@ static void TestCloudMt() {
         true, 1);
     CHECK(g.size() == 1 && g[0].ok && g[0].text == L"hallo Kiro Vale & tschüss" && g[0].detectedSource == L"EN");
     const auto ge = ParseGoogleResponse(R"({"error":{"code":400,"message":"API key not valid."}})", false, 2);
-    CHECK(ge.size() == 2 && !ge[1].ok && ge[1].error.find(L"API key not valid") != std::wstring::npos);
+    CHECK(ge.size() == 2 && !ge[1].ok && ge[1].error.find(L"API key not valid") != std::wstring::npos && ge[1].errorKind == TranslateErrorKind::Auth);
     CHECK(MicrosoftQuery(L"", L"ZH-HANS", true) == L"/translate?api-version=3.0&to=zh-Hans&textType=html");
     CHECK(BuildMicrosoftPayload({{{L"a", false}}, {{L"b", false}}}).json == "[{\"Text\":\"a\"},{\"Text\":\"b\"}]");
     const auto m = ParseMicrosoftResponse(
         R"([{"detectedLanguage":{"language":"fr","score":1.0},"translations":[{"text":"Hallo","to":"de"}]}])", false, 1);
-    CHECK(m.size() == 1 && m[0].ok && m[0].text == L"Hallo" && m[0].detectedSource == L"FR");
-    CHECK(!ParseMicrosoftResponse(R"({"error":{"code":401000,"message":"bad key"}})", false, 1)[0].ok);
+    CHECK(m.size() == 1 && m[0].ok && m[0].text == L"Hallo" && m[0].detectedSource == L"FR" && m[0].errorKind == TranslateErrorKind::None);
+    const auto me = ParseMicrosoftResponse(R"({"error":{"code":401000,"message":"bad key"}})", false, 1);
+    CHECK(!me[0].ok && me[0].errorKind == TranslateErrorKind::Auth);
     // LibreTranslate: any address, arrays in and out.
     CHECK(LibreTranslateUrl(L"http://localhost:5000/") == L"http://localhost:5000/translate");
     CHECK(LibreTranslateUrl(L"https://x.example/translate") == L"https://x.example/translate");
@@ -1120,8 +1121,24 @@ static void TestCloudMt() {
     const CloudMtPayload lp = BuildLibrePayload({{{L"hola", false}}}, L"", L"DE", L"k1");
     CHECK(lp.json.find("\"source\":\"auto\"") != std::string::npos && lp.json.find("\"api_key\":\"k1\"") != std::string::npos);
     const auto lr = ParseLibreResponse(R"({"translatedText":["hallo"],"detectedLanguage":[{"confidence":90,"language":"es"}]})", false, 1);
-    CHECK(lr.size() == 1 && lr[0].ok && lr[0].text == L"hallo" && lr[0].detectedSource == L"ES");
-    CHECK(!ParseLibreResponse(R"({"error":"Invalid API key"})", false, 1)[0].ok);
+    CHECK(lr.size() == 1 && lr[0].ok && lr[0].text == L"hallo" && lr[0].detectedSource == L"ES" && lr[0].errorKind == TranslateErrorKind::None);
+    const auto lre = ParseLibreResponse(R"({"error":"Invalid API key"})", false, 1);
+    CHECK(!lre[0].ok && lre[0].errorKind == TranslateErrorKind::Auth);
+
+    // DeepL & MyMemory error protocol tests
+    const auto dlAuth = ParseDeepLResponse(R"({"message":"Authorization failure"})", false);
+    CHECK(!dlAuth.ok && dlAuth.errorKind == TranslateErrorKind::Auth);
+    const auto dlQuota = ParseDeepLResponse(R"({"message":"Quota exceeded"})", false);
+    CHECK(!dlQuota.ok && dlQuota.errorKind == TranslateErrorKind::Quota);
+    const auto dlPair = ParseDeepLResponse(R"({"message":"Value for 'target_lang' not supported."})", false);
+    CHECK(!dlPair.ok && dlPair.errorKind == TranslateErrorKind::UnsupportedPair);
+
+    const auto mmQuota = ParseMyMemoryResponse(R"({"responseStatus":429,"responseData":null,"quotaFinished":true})");
+    CHECK(!mmQuota.ok && mmQuota.errorKind == TranslateErrorKind::Quota && mmQuota.quotaExceeded);
+    const auto mmAuth = ParseMyMemoryResponse(R"({"responseStatus":403,"responseData":null})");
+    CHECK(!mmAuth.ok && mmAuth.errorKind == TranslateErrorKind::Auth);
+    const auto mmPair = ParseMyMemoryResponse(R"({"responseStatus":400,"responseData":null,"responseDetails":"INVALID TARGET LANGUAGE PAIR"})");
+    CHECK(!mmPair.ok && mmPair.errorKind == TranslateErrorKind::UnsupportedPair);
 }
 
 
@@ -1532,6 +1549,21 @@ static void TestVoiceCatalog() {
     CHECK(bare.QualityFor("de") == 2);
     bare.englishOnly = true;
     CHECK(bare.QualityFor("de") == 0 && bare.QualityFor("en") == 2);
+
+    // Language x model recommendations, including Arabic: base 0 · small 1 · large-v3 turbo 2.
+    const VoiceModelInfo* baseModel = cat.Find("base-q5_1");
+    auto recArBase = RecommendVoiceModel(cat, baseModel, "ar");
+    CHECK(recArBase.supportedByWhisper && recArBase.quality == 0 && recArBase.recommended && recArBase.recommended->id == "large-v3-turbo-q5_0");
+    auto recArSmall = RecommendVoiceModel(cat, rec, "ar");
+    CHECK(recArSmall.supportedByWhisper && recArSmall.quality == 1 && recArSmall.recommended && recArSmall.recommended->id == "large-v3-turbo-q5_0");
+    auto recArTurbo = RecommendVoiceModel(cat, turbo, "ar");
+    CHECK(recArTurbo.supportedByWhisper && recArTurbo.quality == 2 && recArTurbo.recommended == nullptr);
+    auto recDeBase = RecommendVoiceModel(cat, baseModel, "de");
+    CHECK(recDeBase.supportedByWhisper && recDeBase.quality == 2 && recDeBase.recommended == nullptr);
+    auto recUnsupported = RecommendVoiceModel(cat, baseModel, "");
+    CHECK(!recUnsupported.supportedByWhisper);
+    CHECK(VoiceQualityWord(3) == Tr(L"very well") && VoiceQualityWord(2) == Tr(L"well") &&
+          VoiceQualityWord(1) == Tr(L"weakly") && VoiceQualityWord(0) == Tr(L"hardly"));
 
     // Validation: a bad entry is skipped, never offered.
     auto entry = [](const std::string& file, const std::string& url, const std::string& sha, const std::string& bytes) {

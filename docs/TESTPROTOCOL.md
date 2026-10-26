@@ -10,13 +10,13 @@ Target: Guild Wars 2 / Raidcore Nexus Add-on (`GW2Chatlator.dll`)
 
 | # | Finding from Code Review | Risk / Context | Resolution Status |
 |---|---|---|---|
-| **1** | `ImAnimate/` untracked in git | Build failure on other checkouts / CI | **Resolved:** Removed `ImAnimate` entirely. Replaced card hover glow with a lightweight 2-line frame-rate independent lerp in `kb_options.cpp`. Zero untracked dependencies. |
-| **2** | Local MT / NLLB removal side-effects | Worker concurrency or config bypass | **Resolved:** Restored `if (inUse)` safety guard in `kb_local_mt.cpp`. Model/module removal is disabled while actively chosen; user is prompted to select another engine and save first. |
-| **3** | `SpellService` snapshots & C++ standard | Uninitialized reads or unnecessary copies | **Resolved:** `gameSnap_` initialized to non-null empty set; `IgnoreForSession` only reallocates snapshot if new word was actually inserted (`.second == true`); C++17 `std::atomic_store`/`load` on `shared_ptr` standard compliant. |
-| **4** | Worker lanes non-blocking audit | Micro-stuttering during live typing | **Resolved:** `PostInteractive` strictly isolated to `ComputeTyping`. All blocking operations (translation, network, disk, Windows send) assert `AssertNotInteractiveLane` and run on background lane. |
-| **5** | Color-blind accessibility & Mic mute | Color-only state distinction | **Resolved:** Implemented `Icon::MicMuted` with a diagonal strike-through slash across capsule and stand; removed red tint on mute (red reserved exclusively for recording activity); text badges for all tile states. |
-| **6** | i18n diff bloat & line endings | Messy git history and newline churn | **Resolved:** Preserved native `\r\n` (CRLF) line endings; removed 20 dead keys and appended 39 new keys in place without reordering; `i18n_check.py` reports 0 missing, 0 unused. |
-| **7** | UI Simplicity & Clean Layout | Visual clutter and redundant controls | **Resolved:** Removed redundant "Show the window" checkbox from dashboard; added generous vertical spacing; consolidated Translation & Languages section below tiles. |
+| **1** | `ImAnimate/` untracked in git | Build failure on other checkouts / CI | **Resolved (`6956ac9`):** Removed `ImAnimate` entirely. Replaced card hover glow with a lightweight 2-line frame-rate independent lerp in `kb_options.cpp`. Zero untracked dependencies. |
+| **2** | Local MT / NLLB removal side-effects | Worker concurrency or config bypass | **Resolved (`6956ac9`):** Restored `if (inUse)` safety guard in `kb_local_mt.cpp`. Model/module removal is disabled while actively chosen; user is prompted to select another engine and save first. |
+| **3** | `SpellService` snapshots & C++ standard | Uninitialized reads or unnecessary copies | **Resolved (`6956ac9`):** `gameSnap_` initialized to non-null empty set; `IgnoreForSession` only reallocates snapshot if new word was actually inserted (`.second == true`); C++17 `std::atomic_store`/`load` on `shared_ptr` standard compliant. |
+| **4** | Worker lanes non-blocking audit | Micro-stuttering during live typing | **Resolved (`6956ac9`):** `PostInteractive` strictly isolated to `ComputeTyping`. All blocking operations (translation, network, disk, Windows send) assert `AssertNotInteractiveLane` and run on background lane. |
+| **5** | Color-blind accessibility & Mic mute | Color-only state distinction | **Resolved (`6956ac9`):** Implemented `Icon::MicMuted` with a diagonal strike-through slash across capsule and stand; removed red tint on mute (red reserved exclusively for recording activity); text badges for all tile states. |
+| **6** | i18n diff bloat & line endings | Messy git history and newline churn | **Resolved (`6956ac9`):** Preserved native `\r\n` (CRLF) line endings; removed 20 dead keys and appended 39 new keys in place without reordering; `i18n_check.py` reports 0 missing, 0 unused. |
+| **7** | UI Simplicity & Clean Layout | Visual clutter and redundant controls | **Resolved (`6956ac9`):** Removed redundant "Show the window" checkbox from dashboard; added generous vertical spacing; consolidated Translation & Languages section below tiles. |
 
 ---
 
@@ -34,7 +34,7 @@ Quality verification is strictly stratified into three distinct levels:
 
 ## 3. Rules Enforced by This Protocol
 
-1. **Version on Every Push:** Every push to main represents a distinct version and release. Model and package assets are carried along.
+1. **Pre-Release First, Push After Approval:** Releases are published initially as Pre-Release (never directly as Latest). No push to remote and no public release without explicit maintainer approval (`AGENTS.md` §4).
 2. **Privacy Invariant:** Never store, log, or export other players' messages, account names, or chat content. Counts only. The word model learns exclusively from the user's own typing.
 3. **Translation Quality:** Translation accuracy is evaluated against fixed reference datasets; changes must never degrade hit rates. No cascades of approximate fixes; exact methods only.
 4. **Window Logic & Automatics:** Automatic window behaviors remain strictly optional and switchable in settings. ImGui internals must be balanced (`PushFont`/`PopFont`, `Begin`/`End`).
@@ -47,13 +47,13 @@ Quality verification is strictly stratified into three distinct levels:
 
 | ID | Area | Step | Expected | Level | Touches (files) | Last run (version, date, result) |
 |---|---|---|---|:---:|---|---|
-| **START-01** | START | Add-on loads in headless harness and game | `nexus.log` free of errors, warnings, and SEH faults | A/B | `src/`, `addons/nexus-keyboard/` | 2.6.1, 2026-10-25, pass |
+| **START-01** | START | Add-on loads in headless harness and game | `nexus.log` free of errors, warnings, and SEH faults | A/B | `src/`, `addons/nexus-keyboard/` | 2.6.1, 2026-10-25, pass (`nexus_kb_selftest.exe`) |
 | **START-02** | START | Add-on discovery in Nexus Addon Manager | Appears with Name `GW2Chatlator`, opens on keybind or menu | C | `addons/nexus-keyboard/` | 2.6.1, 2026-10-25, skipped |
-| **START-03** | START | Unload and reload add-on during active session | Memory freed, helper terminated cleanly, reload without crash | B | `addons/nexus-keyboard/src/kb_main.cpp` | 2.6.1, 2026-10-25, pass |
-| **START-04** | START | Binary contract verification | Asset `GW2Chatlator.dll`, signature `0xB8B4BDBC`, ID `3098852796` | A | `tools/verify_release.py`, `CMakeLists.txt` | 2.6.1, 2026-10-25, pass |
-| **CFG-01** | CFG | Save options and reload from disk | Exact parameter preservation across restarts | B | `src/app/config.*` | 2.6.1, 2026-10-25, pass |
-| **CFG-02** | CFG | Load empty or corrupted INI file | Graceful fallback to factory defaults, zero crashes | B | `src/app/config.*` | 2.6.1, 2026-10-25, pass |
-| **CFG-03** | CFG | Atomic swap with retry loop and temp file cleanup | Locked target file retries cleanly; stale temp files purged | B | `src/app/config.cpp` | 2.6.1, 2026-10-25, pass |
+| **START-03** | START | Unload and reload add-on during active session | Memory freed, helper terminated cleanly, reload without crash | B | `addons/nexus-keyboard/src/kb_main.cpp` | 2.6.1, 2026-10-25, pass (`nexus_kb_selftest::unload`) |
+| **START-04** | START | Binary contract verification | Asset `GW2Chatlator.dll`, signature `0xB8B4BDBC`, ID `3098852796` | A | `tools/verify_release.py`, `CMakeLists.txt` | 2.6.1, 2026-10-25, pass (`Gate 2 check_addon_def`) |
+| **CFG-01** | CFG | Save options and reload from disk | Exact parameter preservation across restarts | B | `src/app/config.*` | 2.6.1, 2026-10-25, pass (`nexus_kb_selftest`) |
+| **CFG-02** | CFG | Load empty or corrupted INI file | Graceful fallback to factory defaults, zero crashes | B | `src/app/config.*` | 2.6.1, 2026-10-25, pass (`nexus_kb_selftest`) |
+| **CFG-03** | CFG | Atomic swap with retry loop and temp file cleanup | Locked target file retries cleanly; stale temp files purged | B | `src/app/config.cpp` | 2.6.1, 2026-10-26, offen (Harness pending) |
 | **CFG-04** | CFG | Amber "changed" marker on option edits | Visual indicator appears on edit and clears upon Save | C | `addons/nexus-keyboard/src/kb_options.cpp` | 2.6.1, 2026-10-25, skipped |
 | **CFG-05** | CFG | Custom chat tab name and theme persistence | New values survive complete game restart | C | `addons/nexus-keyboard/src/kb_window.cpp` | 2.6.1, 2026-10-25, skipped |
 | **TYPE-01** | TYPE | Run `typing_bench` | Correction hit rate not below last release baseline (0 surprises) | A | `src/core/word_model.*`, `tests/` | 2.6.1, 2026-10-25, pass |

@@ -54,6 +54,7 @@ MyMemoryParsed ParseMyMemoryResponse(const std::string& body) {
     JsonValue root;
     if (!ParseJson(body, root) || !root.IsObject()) {
         r.error = Tr(L"Answer from MyMemory not readable");
+        r.errorKind = TranslateErrorKind::BadOutput;
         return r;
     }
     int status = 0;
@@ -69,14 +70,21 @@ MyMemoryParsed ParseMyMemoryResponse(const std::string& body) {
     if (root.GetBool("quotaFinished") || status == 429 || warning) {
         r.quotaExceeded = true;
         r.error = Tr(L"MyMemory daily quota is used up");
+        r.errorKind = TranslateErrorKind::Quota;
         return r;
     }
     if (status != 200 || text.empty()) {
         r.error = L"MyMemory: " + (details.empty() ? TrF(L"error {1}", {std::to_wstring(status)}) : details);
+        if (status == 401 || status == 403) r.errorKind = TranslateErrorKind::Auth;
+        else if (details.find(L"INVALID") != std::wstring::npos || details.find(L"PAIR") != std::wstring::npos ||
+                 details.find(L"NOT SUPPORTED") != std::wstring::npos || details.find(L"not supported") != std::wstring::npos)
+            r.errorKind = TranslateErrorKind::UnsupportedPair;
+        else r.errorKind = TranslateErrorKind::Other;
         return r;
     }
     r.ok = true;
     r.text = text;
+    r.errorKind = TranslateErrorKind::None;
     return r;
 }
 

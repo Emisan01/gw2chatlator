@@ -4,6 +4,7 @@
 #pragma once
 
 #include <string>
+#include "translator.hpp"
 
 namespace gct {
 
@@ -21,6 +22,7 @@ struct MyMemoryParsed {
     bool quotaExceeded = false;
     std::wstring text;
     std::wstring error;
+    TranslateErrorKind errorKind = TranslateErrorKind::None;
 };
 MyMemoryParsed ParseMyMemoryResponse(const std::string& body);
 
