@@ -105,25 +105,37 @@ int EscLayer() {
 bool HandleEsc() {
     const int layer = EscLayer();
     if (layer == 1) {
-        CloseVoiceMenu();
-        g_openLink.clear();
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            CloseVoiceMenu();
+            g_openLink.clear();
+        }
         if (ImGui::GetCurrentContext()) {
-            ImGui::CloseCurrentPopup();
+            ImGui::ClosePopupToLevel(0, true);
         }
         return true;
     }
     if (layer == 2) {
-        g_voiceStoppedManually = true;
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            g_voiceStoppedManually = true;
+        }
         TalkUp();
         return true;
     }
     if (layer == 3) {
-        CancelAutoEnter();
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            CancelAutoEnter();
+        }
         return true;
     }
     if (layer == 4) {
-        g_focusInput = false;
-        g_edit.active = false;
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            g_focusInput = false;
+            g_edit.active = false;
+        }
         if (ImGui::GetCurrentContext()) {
             ImGui::ClearActiveID();
         }
@@ -548,8 +560,9 @@ void RenderFooter() {  // g_mu held
         if (ImGui::Button((fbLabel + "##fbchip").c_str())) {
             g_myMemorySessionFallback = false;
             g_forcePreviewForHardError = false;
-            g_worker.Post([] {
-                auto tr = MakeTranslator(g_cfg);
+            const Config cfg = g_cfg;
+            g_worker.Post([cfg] {
+                auto tr = MakeTranslator(cfg);
                 std::lock_guard<std::mutex> lock(g_mu);
                 g_translator = std::move(tr);
             });
@@ -616,6 +629,7 @@ void CheckMicLockTimeout() {
 void RenderWindow() {
     if (!ImGui::GetCurrentContext()) return;  // failsafe: no context, no drawing
     CostFrame costFrame;  // what this frame costs on GW2's render thread, by part (Options > Technical)
+    g_lastRenderFrameTime = GetTickCount64();
     {
         std::lock_guard<std::mutex> lock(g_mu);
         ProcessBufferedKeys();
@@ -1307,8 +1321,9 @@ void RenderWindow() {
                 g_lastErrorKind = TranslateErrorKind::None;
                 g_forcePreviewForHardError = false;
                 CancelAutoEnter();
-                g_worker.Post([] {
-                    auto tr = MakeTranslator(g_cfg);
+                const Config cfg = g_cfg;
+                g_worker.Post([cfg] {
+                    auto tr = MakeTranslator(cfg);
                     std::lock_guard<std::mutex> lock(g_mu);
                     g_translator = std::move(tr);
                 });
