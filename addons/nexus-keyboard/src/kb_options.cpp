@@ -985,6 +985,7 @@ void RenderDashboard(Config& edit, const Config& /*saved*/) {
                 // Stateless interaction bounds for the top/body area
                 ImGui::SetCursorScreenPos(pos);
                 ImGui::InvisibleButton("##tile_top_btn", ImVec2(size.x, topH));
+                ImGui::SetItemAllowOverlap();
                 const bool topHovered = ImGui::IsItemHovered();
                 const bool topActive = ImGui::IsItemActive();
                 const bool topClicked = ImGui::IsItemClicked();
@@ -1047,13 +1048,21 @@ void RenderDashboard(Config& edit, const Config& /*saved*/) {
                 const ImVec2 iconCenter(cPos.x + pad + 14.0f, cPos.y + pad + 14.0f);
                 ImU32 iconCol = IM_COL32(160, 170, 200, 255);
                 bool micSlash = false;
+                bool micControlHit = false;
                 if (i == 0) {
                     iconCol = mtActive ? IM_COL32(61, 220, 140, 255) : mtInstalled ? IM_COL32(52, 211, 153, 255) : IM_COL32(70, 190, 220, 255);
                     DrawVectorGlobeIcon(dl, iconCenter, 1.25f, iconCol);
                 } else if (i == 1) {
                     if (voiceActive) {
-                        ImGui::SetCursorScreenPos(ImVec2(cPos.x + pad, cPos.y + pad + 2.0f));
-                        MicControl("##dash_top_mic", 24.0f, nullptr);
+                        const float micH = 24.0f;
+                        const float micW = std::floor(micH * 1.15f);
+                        const float arrowW = std::floor(micH * 0.75f);
+                        const float totalW = micW + 1.0f + arrowW;
+                        const ImVec2 micMin(cPos.x + pad, cPos.y + pad + 2.0f);
+                        const ImVec2 micMax(micMin.x + totalW, micMin.y + micH);
+                        micControlHit = ImGui::IsMouseHoveringRect(micMin, micMax);
+                        ImGui::SetCursorScreenPos(micMin);
+                        MicControl("##dash_top_mic", micH, nullptr);
                     } else {
                         if (voiceInstalled) {
                             iconCol = IM_COL32(240, 195, 80, 255);
@@ -1182,8 +1191,8 @@ void RenderDashboard(Config& edit, const Config& /*saved*/) {
                     }
                 }
 
-                // Click interaction on card top / body
-                if (topClicked) {
+                // Click interaction on card top / body (only if inner control was not clicked)
+                if (topClicked && !micControlHit) {
                     if (cards[i].isOk) {
                         s_delayedTab = cards[i].actionTab;
                     } else {
