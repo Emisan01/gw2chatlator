@@ -1349,11 +1349,12 @@ void RenderWindow() {
         ImGui::SetCursorPosY(rowY);
     }
     const bool showClearBtn = (g_input[0] != 0 || g_recording);
-    const float clearBtnW = ImGui::GetFontSize() * 0.9f;
-    ProcessBufferedKeys();
-    const ImVec2 boxSize(-1, boxH);
-    g_wrapWidth = ImGui::GetContentRegionAvail().x - st.FramePadding.x * 2 - st.ScrollbarSize - 4;
-    if (showClearBtn) g_wrapWidth -= (clearBtnW + 6.0f);
+    const float clearBtnW = std::floor(ImGui::GetFontSize() * 0.9f);
+    const float clearGap = 3.0f;
+    const float availW = ImGui::GetContentRegionAvail().x;
+    const float inputW = showClearBtn ? std::max(50.0f, availW - clearBtnW - clearGap) : availW;
+    const ImVec2 boxSize(inputW, boxH);
+    g_wrapWidth = inputW - st.FramePadding.x * 2 - st.ScrollbarSize - 4;
     const ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CtrlEnterForNewLine |
                                       ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_CallbackCharFilter |
                                       ImGuiInputTextFlags_CallbackAlways;
@@ -1378,18 +1379,14 @@ void RenderWindow() {
         g_flatInput = nowFlat;
         g_wFlatInput = W(nowFlat);
     }
-    const ImVec2 inputMin = ImGui::GetItemRectMin(), inputMax = ImGui::GetItemRectMax();
     const bool inputActive = ImGui::IsItemActive();
     if (showClearBtn) {
-        const float btnW = clearBtnW;
-        const float btnH = ImGui::GetFrameHeight() * 0.82f;
-        const ImVec2 oldCur = ImGui::GetCursorScreenPos();
-        ImGui::SetCursorScreenPos(ImVec2(inputMax.x - btnW - 3.0f, inputMin.y + 2.0f));
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.35f, 0.45f, 0.4f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.2f, 0.25f, 0.35f, 0.6f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(1.0f, 1.0f));
-        if (ImGui::Button("<##clear", ImVec2(btnW, btnH))) {
+        ImGui::SameLine(0, clearGap);
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.16f, 0.18f, 0.24f, 0.6f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.30f, 0.35f, 0.45f, 0.8f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.22f, 0.25f, 0.35f, 1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
+        if (ImGui::Button("<##clear", ImVec2(clearBtnW, boxH))) {
             g_input[0] = '\0';
             g_flatInput.clear();
             g_wFlatInput.clear();
@@ -1404,7 +1401,6 @@ void RenderWindow() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("%s", UI(Tr(L"Clear text")).c_str());
         }
-        ImGui::SetCursorScreenPos(oldCur);
     }
     // Minimise when not in use: nobody wrote, pointed at it or talked for a while – down to the small button.
     {
