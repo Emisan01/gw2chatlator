@@ -608,7 +608,10 @@ void CheckMicLockTimeout() {
 void RenderWindow() {
     if (!ImGui::GetCurrentContext()) return;  // failsafe: no context, no drawing
     CostFrame costFrame;  // what this frame costs on GW2's render thread, by part (Options > Technical)
-    ProcessBufferedKeys();
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        ProcessBufferedKeys();
+    }
     bool escReq = false;
     {
         std::lock_guard<std::mutex> lock(g_mu);
@@ -722,7 +725,10 @@ void RenderWindow() {
                 if (g_nx.translateChat) TranslateRecentLines();
             }
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Open the window")).c_str());
-            CheckAutoSend();
+            {
+                std::lock_guard<std::mutex> lock(g_mu);
+                CheckAutoSend();
+            }
             ImGui::End();
             return;
         }
