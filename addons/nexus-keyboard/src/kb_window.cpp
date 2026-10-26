@@ -1277,7 +1277,7 @@ void RenderWindow() {
                 case TranslateErrorKind::Quota: cause = Tr(L"Translation quota exceeded"); break;
                 default: cause = Tr(L"Translation failed"); break;
             }
-            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s", UI(cause).c_str());
+            ImGui::TextColored(kAccent, "%s", UI(cause).c_str());
             ImGui::SameLine();
             if (ImGui::Button((UI(Tr(L"→ MyMemory")) + "##btn_mymem").c_str())) {
                 g_myMemorySessionFallback = true;

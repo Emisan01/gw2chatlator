@@ -1614,7 +1614,7 @@ void RenderOptionsContent() {
             const std::string whisperLang = WhisperLang(recLang);
             const gct::VoiceRecommendation rec = gct::RecommendVoiceModel(catalog, chosen, whisperLang);
             if (!rec.supportedByWhisper) {
-                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s",
+                ImGui::TextColored(ImVec4(0.95f, 0.78f, 0.35f, 1.0f), "%s",
                                    UI(Tr(L"Language not supported by speech recognition")).c_str());
             } else {
                 std::wstring qWord = gct::VoiceQualityWord(rec.quality);
