@@ -72,13 +72,14 @@ UINT OnWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             bool capturable = false;
             {
                 std::lock_guard<std::mutex> lock(g_mu);
-                capturable = g_escCapturable;
+                const bool frameAlive = (GetTickCount64() - g_lastRenderFrameTime.load() < 250);
+                capturable = g_escCapturable && frameAlive;
                 if (capturable) {
                     g_escRequested = true;
                 }
             }
             if (capturable) return 0;
-            // Ebene 5: ohne offene Ebene geht Esc an GW2 durch
+            // Ebene 5: ohne offene Ebene oder bei ausgeblendeter Nexus-UI geht Esc an GW2 durch
             return msg;
         }
         // Panic Switch: Ctrl + Alt + T pauses/resumes chat translation immediately

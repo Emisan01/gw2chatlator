@@ -436,6 +436,7 @@ extern std::atomic<bool> g_bufferingKeys;
 extern std::atomic<ULONGLONG> g_bufferingStartTime;
 extern std::atomic<bool> g_sendInFlight;
 extern std::atomic<bool> g_bufferHadInputFocus;
+extern std::atomic<ULONGLONG> g_lastRenderFrameTime;
 
 extern std::string g_voicePending;
 extern bool g_listening;

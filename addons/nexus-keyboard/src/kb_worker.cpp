@@ -251,12 +251,18 @@ void TranslateInput(uint64_t gen, std::wstring text) {
     bool sendNow = false;
     {
         std::lock_guard<std::mutex> lock(g_mu);
-        if (gen != g_inputGen && !g_sendPending) return;  // the text changed meanwhile
+        if (gen != g_inputGen) {
+            if (g_sendPending) {
+                g_sendPending = false;
+                g_sendInFlight = false;
+            }
+            return;  // the text changed meanwhile
+        }
         g_preview = SanitizeChatText(result);
         g_back = back;
         g_previewGen = gen;
         if (!error.empty()) SetStatus(error);
-        if (g_sendPending && gen == g_inputGen) {
+        if (g_sendPending) {
             g_sendPending = false;
             if (!error.empty()) {  // the translation failed: nothing goes out in the wrong language – the text comes back
                 g_sendInFlight = false;
@@ -306,6 +312,7 @@ void ComputeTyping() {
 // Enter: the parts go into the GW2 chat – only now, on your Enter (invariants 1–3).
 void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring learnText) {
     AssertNotInteractiveLane("SendNow");
+    g_bufferingStartTime = GetTickCount64();  // Safety clock begins afresh at actual send
     if (parts.empty()) {
         g_sendInFlight = false;
         return;
@@ -410,6 +417,10 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
 }
 
 void StartSend() {  // Enter (g_mu held)
+    if (g_sendInFlight.load() && GetTickCount64() - g_bufferingStartTime.load() > 10000) {
+        g_sendInFlight = false;
+        g_bufferingKeys = false;
+    }
     const std::wstring text = SanitizeChatText(g_wFlatInput);
     if (text.empty() || g_sending || g_sendInFlight) return;
     if (g_userRecording && g_recording) {  // what you said is still being recognized: it comes into the input first

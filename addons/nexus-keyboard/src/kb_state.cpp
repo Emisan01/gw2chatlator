@@ -137,6 +137,7 @@ std::atomic<bool> g_bufferingKeys{false};
 std::atomic<ULONGLONG> g_bufferingStartTime{0};
 std::atomic<bool> g_sendInFlight{false};
 std::atomic<bool> g_bufferHadInputFocus{false};
+std::atomic<ULONGLONG> g_lastRenderFrameTime{0};
 
 void RequestAutoEnter(AutoEnterTrigger trigger) {
     if (!g_cfg.voiceAutoSend) return;
