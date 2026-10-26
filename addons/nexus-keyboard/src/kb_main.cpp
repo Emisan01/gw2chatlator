@@ -47,7 +47,7 @@ UINT OnWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             }
             return 0;  // Block game movement/skills while sending
         }
-        if (isUp) return 0;
+        // Key-ups (WM_KEYUP/WM_SYSKEYUP) are NOT swallowed: letting go of held movement keys (e.g. W) reaches GW2
         return msg;
     }
 
