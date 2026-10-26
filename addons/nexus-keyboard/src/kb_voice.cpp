@@ -86,8 +86,9 @@ void VoiceHelper::OnLine(const std::string& line) {
     } else if (t == "final") {
         g_recording = false;
         g_voiceLive.clear();
-        const std::wstring text = W(v.GetString("text"));
+        const std::wstring text = Trim(W(v.GetString("text")));
         if (v.GetBool("empty") || text.empty()) {
+            g_voiceStoppedManually = false;
             if (g_micLocked) SetStatus(Tr(L"Nothing recognized – right-click to listen for 3 s"), 5000);
             else SetStatus(Tr(L"Nothing recognized – hold the key while you speak"), 5000);
             return;
