@@ -1,7 +1,7 @@
 # GW2Chatlator for Nexus
 
 The chat of Guild Wars 2 in your language – **read it, write and speak in yours**, the chat gets it translated. A
-Nexus add-on, right inside the game. A line goes into the chat only when you press Enter yourself.
+Nexus add-on, right inside the game. A line goes into the chat only when you press Enter yourself – or, if you switch on Hands free, when you finish speaking.
 
 ## ⬇ [Download GW2Chatlator.dll](https://github.com/Emisan01/gw2chatlator/releases/latest/download/GW2Chatlator.dll)
 
@@ -48,8 +48,8 @@ Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustot
   use – the game keeps its frames. Each voice model shows its CPU peak and time; one that is too slow hands over to the
   next smaller one. **Translate what I say:** speak your language, send another – into English on your PC, into other
   languages through your translator.
-- **Safe sending:** waits for each frame of the game, refuses to be used as a bot or spam macro. Optional: send right
-  after speaking (off by default – releasing the push-to-talk key counts as your Enter).
+- **Safe sending:** waits for each frame of the game, refuses to be used as a bot or spam macro. Optional, off by default:
+  send right after you finish speaking – speech pause, push-to-talk release or mouse click.
 - **At a glance:** Options → General shows what is on – translating the chat, your text, what you say, voice input,
   the translator, reading the chat – and switches it right there.
 - **Failsafe:** an error switches the add-on off for the session, never the game.
@@ -110,8 +110,9 @@ why GW2Chatlator works like this:
 
 - It is a Nexus add-on like the others in the Nexus library. It reads no game memory itself: the chat comes from the
   Nexus event of Events: Chat. The voice recognizer runs in its own small process outside the game.
-- **It never sends on its own.** One line per Enter you press. A tool that reads chat and answers by itself would be a
-  bot, and there is none of that here, AI or not.
+- **It never sends on its own.** One line per Enter you press – or, only if you switch Hands free on (off by default),
+  one line when you finish speaking (pause, release of the push-to-talk key or a mouse click). A tool that reads chat
+  and answers by itself would be a bot, and there is none of that here, AI or not.
 - **"Only copy" mode:** Enter just copies the line. You paste it in GW2 yourself, so not a single synthetic key reaches
   the game.
 - It never stores other players' chat. (Raidcore: what you do counts – translating is fine, collecting chat data is
