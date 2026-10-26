@@ -409,7 +409,7 @@ extern std::wstring g_lastDictated;
 extern std::wstring g_dictLang;
 extern VoiceFixBook g_voiceFixes;
 extern bool g_autoSendPending;
-extern bool g_userRecording;  // g_mu: your key or click started the recording (push-to-talk, right-click) - never sent by itself
+extern bool g_userRecording;  // g_mu: user started recording via PTT or click (auto-sends on speech end when Hands-free is active)
 extern bool g_voiceStoppedManually;
 extern HWND g_gameHwnd;
 extern bool g_gameHasFocus;
@@ -418,7 +418,7 @@ extern std::wstring g_lastErrorTime;
 extern bool g_myMemorySessionFallback;
 extern bool g_forcePreviewForHardError;
 
-// Hands Free & Auto-Enter (Punkte 1-8)
+// Hands Free & Auto-Enter: sends automatically on end of speech once translation is ready
 enum class AutoEnterTrigger { None, Voice, LineFull };
 void RequestAutoEnter(AutoEnterTrigger trigger);
 void CancelAutoEnter();

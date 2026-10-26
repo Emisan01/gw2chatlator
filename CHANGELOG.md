@@ -15,6 +15,7 @@ diagnosis show it.
 - **One-Click Translation Error Recovery:** Hard translation errors display the preview banner with plain-text explanation and a direct `→ MyMemory` button to continue the session immediately.
 - **Targeted Voice Model Recommendations:** Dynamically recommends suitable Whisper models in the Microphone settings tab based on selected language and memory capacity.
 - **Synchronous INI Flushes:** Settings are flushed to disk before starting the voice helper process and synchronously during addon unload.
+- **Complete 8-Language Localization:** Synchronized 573 translation strings across German, French, Spanish, Italian, Polish, Portuguese, Turkish, and Russian.
 
 ## 2.6.1 — 2026-10-25 (GW2Chatlator for Nexus)
 
@@ -22,7 +23,7 @@ diagnosis show it.
 - **Microphone Infotext & Silence Timeout:** Cleaned right-click listening status text to "Ich höre zu …" without key-release instructions. Reduced silence timeout to exactly 3.0 seconds.
 - **Dashboard Voice Tile Polish:** Moved Discord mic control into the top-left slot of the Voice module card, eliminating duplicate icons. Expanded the bottom navigation button to full width and vertically centered all card button text.
 - **Local MT Model Management:** Restored active engine fallback safeguard allowing uninstallation of local translation models without blocking the UI.
-- **Complete 8-Language Localization:** Synchronized 573 translation strings across German, French, Spanish, Italian, Polish, Portuguese, Turkish, and Russian.
+- **Complete 8-Language Localization:** Synchronized 546 translation strings across German, French, Spanish, Italian, Polish, Portuguese, Turkish, and Russian.
 
 ## 2.6.0 — 2026-10-24 (GW2Chatlator for Nexus)
 
