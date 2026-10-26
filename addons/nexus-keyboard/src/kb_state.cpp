@@ -129,6 +129,8 @@ bool g_forcePreviewForHardError = false;
 
 bool g_autoSendTriggered = false;
 bool g_autoSendHadFocus = false;
+bool g_escRequested = false;
+bool g_escCapturable = false;
 AutoEnterTrigger g_autoEnterTrigger = AutoEnterTrigger::None;
 std::vector<BufferedKey> g_keyBuffer;
 std::mutex g_keyBufferMu;

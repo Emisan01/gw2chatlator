@@ -39,7 +39,6 @@ UINT OnWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             return 0;
         }
         const bool isDown = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
-        const bool isUp = (msg == WM_KEYUP || msg == WM_SYSKEYUP);
         if (isDown) {
             if (wp == VK_BACK || wp == VK_DELETE || wp == VK_RETURN || wp == VK_LEFT || wp == VK_RIGHT || wp == VK_HOME || wp == VK_END) {
                 std::lock_guard<std::mutex> lock(g_keyBufferMu);
@@ -72,10 +71,15 @@ UINT OnWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             return 0;
         }
         if (down && vk == VK_ESCAPE && mods == 0) {
-            if (EscLayer() <= 4) {
-                HandleEsc();
-                return 0;
+            bool capturable = false;
+            {
+                std::lock_guard<std::mutex> lock(g_mu);
+                capturable = g_escCapturable;
+                if (capturable) {
+                    g_escRequested = true;
+                }
             }
+            if (capturable) return 0;
             // Ebene 5: ohne offene Ebene geht Esc an GW2 durch
             return msg;
         }

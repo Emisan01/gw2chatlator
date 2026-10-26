@@ -607,6 +607,21 @@ void RenderWindow() {
     if (!ImGui::GetCurrentContext()) return;  // failsafe: no context, no drawing
     CostFrame costFrame;  // what this frame costs on GW2's render thread, by part (Options > Technical)
     ProcessBufferedKeys();
+    bool escReq = false;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        escReq = g_escRequested;
+        g_escRequested = false;
+    }
+    if (escReq) {
+        HandleEsc();
+    }
+    struct EscCapturableScope {
+        ~EscCapturableScope() {
+            std::lock_guard<std::mutex> lock(g_mu);
+            g_escCapturable = (EscLayer() <= 4);
+        }
+    } escCapturableScope;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         if (!g_input[0] && !g_edit.active) g_inputSpoken = false;  // empty again (sent, deleted): the next one decides

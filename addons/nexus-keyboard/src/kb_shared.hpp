@@ -576,6 +576,8 @@ void SwitchOptionsTab(int tab);
 
 int EscLayer();
 bool HandleEsc();
+extern bool g_escRequested;
+extern bool g_escCapturable;
 void TalkCancel();
 
 // ---- voice model download (its own thread: minutes, never on the worker or the game's threads)
