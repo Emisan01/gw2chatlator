@@ -1049,9 +1049,12 @@ void RenderWindow() {
     // ---- the chat (the newest at the bottom): name white – a click opens a whisper tab –, text in the channel colour,
     // the scroll bar at the left like GW2's own chat
     const float line = ImGui::GetTextLineHeightWithSpacing();
-    if (g_forcePreviewForHardError && !Lay().preview) {
-        Lay().preview = true;
-        SaveLayout();
+    if (g_forcePreviewForHardError) {
+        g_forcePreviewForHardError = false;
+        if (!Lay().preview) {
+            Lay().preview = true;
+            SaveLayout();
+        }
     }
     const bool showPreview = Lay().preview, showWords = Lay().words;
     const float smallLine = ImGui::GetFontSize() * 0.85f + 2;
@@ -1359,8 +1362,8 @@ void RenderWindow() {
     const bool showClearBtn = (g_input[0] != 0 || g_recording);
     const float clearBtnW = std::floor(ImGui::GetFontSize() * 0.9f);
     const float clearGap = 3.0f;
-    const float availW = ImGui::GetContentRegionAvail().x;
-    const float inputW = showClearBtn ? std::max(50.0f, availW - clearBtnW - clearGap) : availW;
+    const float inputAvailW = ImGui::GetContentRegionAvail().x;
+    const float inputW = showClearBtn ? std::max(50.0f, inputAvailW - clearBtnW - clearGap) : inputAvailW;
     const ImVec2 boxSize(inputW, boxH);
     g_wrapWidth = inputW - st.FramePadding.x * 2 - st.ScrollbarSize - 4;
     const ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CtrlEnterForNewLine |
@@ -1382,6 +1385,7 @@ void RenderWindow() {
     ImGui::PushStyleColor(ImGuiCol_Text, Bright(ImGui::GetStyleColorVec4(ImGuiCol_Text)));  // your brightness here too
     const bool enter = ImGui::InputTextMultiline("##input", g_input, sizeof(g_input), boxSize, flags, InputCallback);
     ImGui::PopStyleColor();
+    const ImVec2 inputMin = ImGui::GetItemRectMin(), inputMax = ImGui::GetItemRectMax();
     const std::string nowFlat = Flat(g_input);
     if (nowFlat != g_flatInput) {
         g_flatInput = nowFlat;

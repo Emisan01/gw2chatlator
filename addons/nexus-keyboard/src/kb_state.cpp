@@ -446,7 +446,7 @@ void SetProfile(int profile, bool on) {  // g_mu held
     }
     SaveLayout();
 }
-Layout Lay() { return g_layout; }
+Layout& Lay() { return g_layout; }
 
 // Remove everything of GW2Chatlator (Options → Technical, at the bottom, after a yes): the voice helper ends, nothing is
 // written any more (settings, learned words, my words, voice fixes), the worker drops the spelling without saving it,

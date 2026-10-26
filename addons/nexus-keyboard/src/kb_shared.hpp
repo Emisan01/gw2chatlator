@@ -660,7 +660,7 @@ extern ULONGLONG g_micLockedStart;
 void CheckMicLockTimeout();
 bool ProfileOn(int profile);
 void SetProfile(int profile, bool on);
-Layout Lay();
+Layout& Lay();
 void Hint(const std::string& text);
 void RenderOptionsWindow();
 void RenderDebugWindow();
