@@ -3,6 +3,10 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.6.9 — 2026-10-27 (GW2Chatlator for Nexus)
+
+- **Helper Update Finds the Running Helper Everywhere:** updating the translator helper ends the old helper first – but on some systems the path a running process reports did not match ours as text, the old helper went on running and its exe stayed behind (found by the new GitHub CI: "old helper ended 0, no .old 0"). The running helper is now recognised by its file identity (volume and file ID), however the path is written; the self-test covers the same update through a folder's short (8.3) path and says which part failed if one does.
+
 ## 2.6.8 — 2026-10-27 (GW2Chatlator for Nexus)
 
 - **Nexus Tells Us When Events: Chat Comes and Goes:** the add-on listens to Nexus' own events for an add-on loaded or unloaded, instead of scanning every module every 3 seconds – the chat module's state is right at once. One scan stays at the start (it may have loaded before us) and after it loaded (its version); a Nexus without these events still gets the scan every 3 seconds.
