@@ -19,6 +19,7 @@ add_library(gw2keyboard_nexus SHARED
     src/voice_module.cpp
     src/chat_links.cpp
     src/chat/ChatLinks.cpp
+    res/GW2Chatlator.rc
     ${PROJECT_SOURCE_DIR}/src/app/config.cpp
     ${PROJECT_SOURCE_DIR}/src/app/spell_service.cpp
     ${PROJECT_SOURCE_DIR}/src/win/spellcheck.cpp

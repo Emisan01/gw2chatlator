@@ -233,6 +233,14 @@ float FollowUiPx();
 int FollowUiPt();
 void RequestUiFont(float px);
 void ReleaseUiFont();
+// The dashboard tiles' technical lines: Exo 2 (res/GW2Chatlator.rc, SIL OFL 1.1), written once into the data folder
+// (PrepareTechFont, at load) and loaded by Nexus like the UI font; null until it arrived – then the UI font is used.
+constexpr const char* kTechFontId = "GW2Chatlator_Tech";
+constexpr unsigned kTechFontResource = 101;
+extern std::atomic<ImFont*> g_techFont;
+void PrepareTechFont();
+void RequestTechFont(float px);
+void ReleaseTechFont();
 
 struct ScopedPopupFont {
     bool pushed = false;

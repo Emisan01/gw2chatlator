@@ -157,6 +157,7 @@ In `Guild Wars 2\addons\GW2Keyboard\`:
 | `learned\` | words, pairs and triples learned from what you sent, your typical typos (safe to delete) |
 | `my-words.txt`, `voice-fixes.txt` | your words and abbreviations, words the recognizer misheard |
 | `gw2-terms.txt` | GW2 terms never translated: yours on top (right-click in the input → "A GW2 term", or edit the file; several words are one term, a note may follow after a tab), the built-in list below with what each means (rewritten by every version) |
+| `fonts/Exo2-Regular.ttf` | the dashboard tiles' font, written by the add-on from its DLL (SIL Open Font License) |
 | `my-gw2-words.txt`, `my-names.txt` | words never marked as spelling errors, names you taught |
 | `snippets.txt` | your text blocks (menu ≡ → Text blocks) |
 | `models\` | voice models (Options → Voice: use, remove, open the folder) |

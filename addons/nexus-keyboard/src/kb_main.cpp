@@ -265,6 +265,7 @@ void AddonLoad(AddonAPI_t* api) {
     }
     RequestTextFont(g_cfg.fontPt, g_cfg.fontFace);
     RequestUiFont(FollowUiPx());
+    PrepareTechFont();
     Config::DeferWrites(true);  // the ini is written on the worker (KickSave), never on the game thread
     g_worker.Start();
     g_worker.Post(InitSpelling);
@@ -334,6 +335,7 @@ void AddonUnload() {
     g_links.Stop();
     ReleaseTextFont();  // no call into a gone DLL
     ReleaseUiFont();
+    ReleaseTechFont();
     g_voice.Stop();  // the helper ends (it would also end by itself when its input closes)
     g_worker.Stop(FreeWorkerState);  // saved and freed on the worker (it owns them), before the DLL goes
     Config::DeferWrites(false);      // what is still waiting goes into the ini now

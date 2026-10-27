@@ -1,0 +1,4 @@
+// GW2Chatlator.rc - resources of the add-on DLL: the technical font of the dashboard tiles' lines.
+// Exo 2 Regular, Copyright 2013 The Exo 2 Project Authors (https://github.com/NDISCOVER/Exo-2.0), SIL Open Font
+// License 1.1 (third_party/licenses/Exo2-OFL.txt). The ID is kTechFontResource in kb_shared.hpp.
+101 RCDATA "Exo2-Regular.ttf"

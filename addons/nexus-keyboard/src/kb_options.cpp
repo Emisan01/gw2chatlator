@@ -1215,6 +1215,8 @@ bool RenderDashboard(Config& edit, Config& opened) {
                 // (how) grey; each line placed below the one before, wrapped ones included
                 const float descW = size.x - pad * 2.0f;
                 float lineY = cPos.y + std::max(pad + 40.0f, pad + 14.0f + fs * 0.5f + 10.0f);  // below the title row
+                RequestTechFont(fs * 0.82f);  // the grey lines in Exo 2, at their size (resized with Nexus' UI)
+                ImFont* tech = g_techFont.load();
                 const std::string& desc = cards[i].desc;
                 for (size_t start = 0, ln = 0; start < desc.size(); ++ln) {
                     size_t end = desc.find('\n', start);
@@ -1224,8 +1226,9 @@ bool RenderDashboard(Config& edit, Config& opened) {
                     const ImU32 col = ln == 0                              ? IM_COL32(215, 220, 232, 255)
                                       : (i == 1 && voiceActive && ln == 1) ? ImGui::GetColorU32(ImGuiCol_CheckMark)
                                                                            : IM_COL32(150, 155, 170, 255);
-                    dl->AddText(font, sz, ImVec2(cPos.x + pad, lineY), col, line.c_str(), nullptr, descW);
-                    lineY += font->CalcTextSizeA(sz, FLT_MAX, descW, line.c_str()).y + (ln == 0 ? 3.0f : 1.0f);
+                    ImFont* lineFont = ln > 0 && tech ? tech : font;
+                    dl->AddText(lineFont, sz, ImVec2(cPos.x + pad, lineY), col, line.c_str(), nullptr, descW);
+                    lineY += lineFont->CalcTextSizeA(sz, FLT_MAX, descW, line.c_str()).y + (ln == 0 ? 3.0f : 1.0f);
                     start = end + 1;
                 }
 

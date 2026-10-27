@@ -7,6 +7,7 @@ diagnosis show it.
 
 - **Chat Module State Follows Nexus:** after Events: Chat was removed (or unloaded in Nexus), the dashboard kept saying "ready – Events: Chat is loaded" until the game ended – the first chat line of the session had marked it live for good. Removing it or Nexus unloading it now resets that; a line still coming says it is loaded after all.
 - **Chat Module Where It Belongs:** while Events: Chat is missing it stands big below the tiles, with its install button and the hint – easy to find at the first start. Once it is loaded only its chip is left, right of "Translation & Languages" (it opens the Technical tab).
+- **A Technical Font for the Tiles:** the grey lines of the dashboard tiles are set in Exo 2 (SIL Open Font License, embedded in the DLL), scaled with Nexus' UI size; Latin with its extended letters and Cyrillic, so every UI language shows. Until it is loaded, the UI font is used.
 - **Tiles Grow With Their Text:** the dashboard tiles were 180 pixels high whatever the font: with Nexus' large font the lines ran under the choosers and out of the tile. They are now as high as their text needs, the choosers as high as the font – also for languages with longer words.
 
 ## 2.6.6 — 2026-10-27 (GW2Chatlator for Nexus)

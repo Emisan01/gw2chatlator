@@ -15,6 +15,11 @@ GW2 Keyboard for Nexus – third-party components shipped with the add-on
    Dear ImGui 1.80, Copyright (c) 2014-2021 Omar Cornut – https://github.com/ocornut/imgui
    Licence: MIT (full texts in addons/nexus-keyboard/third_party of the source code)
 
+4. Exo 2 Regular (embedded in GW2Chatlator.dll, written as GW2Keyboard\fonts\Exo2-Regular.ttf – the dashboard
+   tiles' lines), Copyright 2013 The Exo 2 Project Authors – https://github.com/NDISCOVER/Exo-2.0
+   Licence: SIL Open Font License 1.1 (full text in third_party/licenses/Exo2-OFL.txt of the source code,
+   https://openfontlicense.org)
+
 ---------------------------------------------------------------------
 whisper.cpp / ggml licence
 ---------------------------------------------------------------------

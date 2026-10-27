@@ -176,6 +176,49 @@ void ReleaseUiFont() {
     g_uiFont = nullptr;
     g_uiFontPx = 0;
 }
+// The dashboard tiles' technical lines: Exo 2, embedded in the DLL and written once into the data folder, so Nexus
+// loads it the way it loads the UI's Segoe UI (Nexus keeps the file's memory – nothing points into a DLL that goes).
+std::atomic<ImFont*> g_techFont{nullptr};
+float g_techFontPx = 0;
+std::wstring g_techFontFile;  // empty: the resource could not be written – the tiles keep the UI font
+void OnTechFont(const char*, void* font) { g_techFont = static_cast<ImFont*>(font); }
+void PrepareTechFont() {  // at load
+    HRSRC res = FindResourceW(g_self, MAKEINTRESOURCEW(kTechFontResource), RT_RCDATA);
+    HGLOBAL h = res ? LoadResource(g_self, res) : nullptr;
+    const void* data = h ? LockResource(h) : nullptr;
+    const DWORD size = res ? SizeofResource(g_self, res) : 0;
+    if (!data || size == 0) return;
+    const std::wstring dir = g_cfg.dataDir + L"\\fonts";
+    const std::wstring file = dir + L"\\Exo2-Regular.ttf";
+    WIN32_FILE_ATTRIBUTE_DATA fa{};
+    const bool there = GetFileAttributesExW(file.c_str(), GetFileExInfoStandard, &fa) && fa.nFileSizeHigh == 0 &&
+                       fa.nFileSizeLow == size;
+    if (!there) {
+        CreateDirectoryW(dir.c_str(), nullptr);
+        if (!WriteFileAtomic(file, std::string(static_cast<const char*>(data), size))) return;
+    }
+    g_techFontFile = file;
+}
+void RequestTechFont(float px) {
+    px = std::round(px);
+    if (g_techFontFile.empty() || !g_api || !g_api->Fonts_AddFromFile || px < 6 || px == g_techFontPx) return;
+    if (g_techFontPx > 0 && g_api->Fonts_Resize) {  // Nexus' UI size changed: only the size
+        g_api->Fonts_Resize(kTechFontId, px);
+        g_techFontPx = px;
+        return;
+    }
+    // Latin with its extended letters and Vietnamese, Cyrillic, punctuation, currency – what the tiles show
+    static const ImWchar kRanges[] = {0x0020, 0x024F, 0x0400, 0x04FF, 0x1E00, 0x1EFF, 0x2000, 0x206F, 0x20A0, 0x20CF, 0};
+    static ImFontConfig cfg;
+    cfg.GlyphRanges = kRanges;
+    g_api->Fonts_AddFromFile(kTechFontId, px, ToUtf8(g_techFontFile).c_str(), OnTechFont, &cfg);
+    g_techFontPx = px;
+}
+void ReleaseTechFont() {
+    if (g_techFontPx > 0 && g_api && g_api->Fonts_Release) g_api->Fonts_Release(kTechFontId, OnTechFont);
+    g_techFont = nullptr;
+    g_techFontPx = 0;
+}
 ImVec4 Rgb32(uint32_t rgb) { return ImVec4(((rgb >> 16) & 0xFF) / 255.f, ((rgb >> 8) & 0xFF) / 255.f, (rgb & 0xFF) / 255.f, 1.f); }
 ImVec4 Bright(ImVec4 c) {  // the message's brightness of your choice (never a name's): below 100 % darker, above it lighter towards white
     const float b = g_look.brightness / 100.0f;
