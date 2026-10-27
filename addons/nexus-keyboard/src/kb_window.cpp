@@ -165,7 +165,7 @@ void CheckAutoSend() {
     }
     static ULONGLONG s_lastAutoSend = 0;
     const ULONGLONG now = GetTickCount64();
-    if (Translating() && !SendOriginal()) {
+    if (Translating() && !SendOriginal() && !IsPlainCommand(g_wFlatInput)) {  // a command goes as it is, no waiting
         if (g_lastErrorKind != TranslateErrorKind::None) {
             CancelAutoEnter();
             SetStatus(Tr(L"Auto-send cancelled: translation failed"), 6000);
@@ -1364,7 +1364,7 @@ void RenderWindow() {
             ImGui::TextColored(kPreview, "%s", g_voiceLive.empty() ? "..." : U8(g_voiceLive).c_str());
         } else if (!g_input[0]) {
             // empty: no hint text here – the chat above is what you read
-        } else if (!Translating()) {
+        } else if (!Translating() || IsPlainCommand(g_wFlatInput)) {  // a command is shown (and sent) as it is
             // a line with its own command ("/p hi", "/wiki Tequatl") goes as it is: no channel prefix before it
             const std::wstring typed = SanitizeChatText(g_wFlatInput);
             LookText(U8((SplitChatCommand(typed).prefix.empty() ? ComposePrefix() : std::wstring()) + typed).c_str(),

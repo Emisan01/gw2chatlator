@@ -416,7 +416,7 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
             std::lock_guard<std::mutex> lock(g_mu);
             c = g_cfg;
         }
-        if (c.learnWords) g_spell->Learn(learnText);  // the word model learns only from what you send
+        if (c.learnWords && !learnText.empty()) g_spell->Learn(learnText);  // only from what you send (not commands)
     }
     {  // misheard words: what was dictated vs. what you finally sent ("heard = meant", per language)
         std::lock_guard<std::mutex> lock(g_mu);
@@ -467,6 +467,24 @@ void StartSend() {  // Enter (g_mu held)
     const ChatSplit split = SplitChatCommand(text);
     const std::wstring body = split.prefix.empty() ? text : split.body;
     const std::wstring prefix = split.prefix.empty() ? ComposePrefix() : split.prefix;
+    // A command line goes as it is, at once: "/wiki", "/dance", "/wiki Tequatl", "/sqjoin Name", or a channel command
+    // without a message – nothing to translate, nothing to wait for, nothing learned ("/wiki" alone hung on
+    // "translating and sending …" and was never sent, 2026-10-27).
+    if (IsPlainCommand(text) || (!split.prefix.empty() && Trim(body).empty())) {
+        g_sendInFlight = true;
+        g_bufferHadInputFocus = g_inputActive || g_focusInput;
+        g_bufferingStartTime = GetTickCount64();
+        g_bufferingKeys = true;
+        g_input[0] = 0;
+        g_flatInput.clear();
+        g_wFlatInput.clear();
+        g_lastInput.clear();
+        g_historyPos = -1;
+        g_undo.active = false;
+        ImGui::SetWindowFocus(nullptr);
+        g_worker.PostFront([text] { SendNow({text}, text, std::wstring()); });
+        return;
+    }
     {  // one Enter never pours a block of lines into the game: at most kMaxPartsPerEnter chat lines (the text stays)
         const bool ready = Translating() && g_previewGen == g_inputGen && !g_preview.empty();
         const size_t parts = SplitForChat(ready ? g_preview : body, prefix, static_cast<size_t>(g_cfg.maxLength)).size();

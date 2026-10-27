@@ -481,6 +481,23 @@ int wmain(int argc, wchar_t** argv) {
         frames(3);
         std::printf("history: Up -> %zu bytes, Down -> %zu bytes\n", recalled, std::strlen(th->input));
         ok = ok && recalled > 100 && std::strlen(th->input) == 0;
+        // A command alone ("/wiki", "/dance") goes as it is – it was never sent (no text to split) and, with a send
+        // language set, hung on "translating and sending …" (2026-10-27).
+        {
+            const int partsBefore = th->sentParts;
+            *th->focus = true;
+            frames(3);
+            type("/wiki");
+            frames(5);
+            press(VK_RETURN);
+            frames(30);
+            std::printf("command alone: %d part(s), sent \"%s\"\n", th->sentParts - partsBefore, th->lastSent);
+            const bool sent = th->sentParts == partsBefore + 1 && std::strcmp(th->lastSent, "/wiki") == 0 && !th->input[0];
+            if (!sent) std::printf("FAIL: \"/wiki\" alone was not sent as it is\n");
+            ok = ok && sent;
+            press(VK_DOWN);  // the history stays as the next steps expect it
+            frames(3);
+        }
         // The window stays where it was put – idle, while chat arrives, while typing (it once kept sliding up).
         {
             auto pos = [] {
