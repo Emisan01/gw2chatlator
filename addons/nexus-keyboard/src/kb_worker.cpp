@@ -129,7 +129,9 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
     const std::wstring t = SanitizeChatText(r.text);
     // The same check for every translator: nothing lost, nothing cut short. A doubtful translation is still shown –
     // marked, the reason on hover – and not kept as a repetition for the next time.
-    const std::wstring note = CheckNote(CheckTranslation(p.segments, t, target));
+    std::wstring note = CheckNote(CheckTranslation(p.segments, t, target));
+    if (note.empty() && r.scored && r.score < kUnsureScore)  // a local model that guessed says so itself
+        note = Tr(L"Maybe inaccurate: the local model was unsure");
     if (note.empty()) g_orchestrator.RecordTranslation(text, target, t, by);
     std::lock_guard<std::mutex> lock(g_mu);
     for (ChatLine& l : g_lines) {

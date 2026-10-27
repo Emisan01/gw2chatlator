@@ -164,6 +164,11 @@ bool ParseLocalMtMessage(const std::string& line, LocalMtMessage& out) {
         if (!text || text->type != JsonValue::Type::String) return false;
         out.kind = LocalMtMessage::Kind::Result;
         out.text = text->s;
+        const JsonValue* score = json.Get("score");  // helpers with the "score" capability (2.6.5)
+        if (score && score->type == JsonValue::Type::Number) {
+            out.score = score->n;
+            out.scored = true;
+        }
         return true;
     }
     const JsonValue* message = json.Get("msg");

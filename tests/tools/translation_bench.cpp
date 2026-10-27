@@ -36,15 +36,15 @@ int wmain(int argc, wchar_t** argv) {
     SetConsoleOutputCP(CP_UTF8);
     const bool nllb = argc < 5 || std::wstring(argv[4]) != L"opus";
     auto translator = gct::MakeLocalMtTranslator(argv[1], argv[2], nllb);
-    std::ifstream in(argv[3], std::ios::binary);
-    if (!in) {
+    std::ifstream file(argv[3], std::ios::binary);
+    if (!file) {
         std::fprintf(stderr, "corpus not readable\n");
         return 2;
     }
     std::stringstream all;
-    all << in.rdbuf();
+    all << file.rdbuf();
     const gct::WordSet keep = gct::BuiltinKeepWords();
-    int lines = 0, ok = 0, lostProtected = 0, lostSentence = 0, tooShort = 0, failed = 0;
+    int lines = 0, ok = 0, lostProtected = 0, lostSentence = 0, tooShort = 0, failed = 0, unsure = 0;
     size_t sentencesIn = 0, sentencesOut = 0;
     double totalMs = 0;
     std::string row;
@@ -76,14 +76,17 @@ int wmain(int argc, wchar_t** argv) {
             case gct::TranslationIssue::LostSentence: ++lostSentence; break;
             case gct::TranslationIssue::TooShort: ++tooShort; break;
         }
-        std::printf("[%s%s%s] %s>%s %zu/%zu sentences, %.0f ms\n  in:  %s\n  out: %s\n", IssueName(c.issue),
+        if (r.scored && r.score < gct::kUnsureScore) ++unsure;
+        char score[16] = "-";
+        if (r.scored) std::snprintf(score, sizeof(score), "%.2f", r.score);
+        std::printf("[%s%s%s] %s>%s %zu/%zu sentences, score %s, %.0f ms\n  in:  %s\n  out: %s\n", IssueName(c.issue),
                     c.detail.empty() ? "" : " ", gct::ToUtf8(c.detail).c_str(), gct::ToUtf8(source).c_str(),
-                    gct::ToUtf8(target).c_str(), out, in, ms, gct::ToUtf8(text).c_str(), gct::ToUtf8(r.text).c_str());
+                    gct::ToUtf8(target).c_str(), out, in, score, ms, gct::ToUtf8(text).c_str(), gct::ToUtf8(r.text).c_str());
     }
     gct::StopLocalMtTranslator(translator);
     std::printf("\ntranslation_bench (%s): %d lines, %d ok, %d lost protected, %d lost a sentence, %d cut short, %d failed; "
-                "sentences kept %zu/%zu; %.0f ms per line\n",
+                "sentences kept %zu/%zu; %d unsure (score < %.1f); %.0f ms per line\n",
                 nllb ? "nllb" : "opus", lines, ok, lostProtected, lostSentence, tooShort, failed, sentencesOut, sentencesIn,
-                lines ? totalMs / lines : 0.0);
+                unsure, gct::kUnsureScore, lines ? totalMs / lines : 0.0);
     return 0;
 }

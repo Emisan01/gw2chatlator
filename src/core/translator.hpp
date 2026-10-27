@@ -45,7 +45,13 @@ struct TranslateResult {
     std::wstring error;           // human readable, empty when ok
     bool quotaExceeded = false;   // free contingent used up: retrying soon is pointless
     TranslateErrorKind errorKind = TranslateErrorKind::None;
+    // A local model's certainty: its lowest mean log probability per token over all requests (0 best, below
+    // kUnsureScore it guessed); `scored` only when the helper reports it.
+    double score = 0;
+    bool scored = false;
 };
+
+constexpr double kUnsureScore = -1.2;  // translation_bench 2026-10-27: a made-up greeting it got wrong scored -1.39, every good line -1.04 or better
 
 class Translator {
 public:

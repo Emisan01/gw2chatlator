@@ -20,6 +20,8 @@ struct LocalMtMessage {
     int proto = 0;
     std::vector<std::string> caps;
     std::string build;
+    double score = 0;       // "result": the model's mean log probability per token (0 best); with `scored`
+    bool scored = false;
 };
 
 bool HasCap(const LocalMtMessage& msg, const std::string& cap);

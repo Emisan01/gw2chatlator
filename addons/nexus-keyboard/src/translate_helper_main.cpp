@@ -59,6 +59,15 @@ void Emit(const std::string& json) {
     std::cout << json << '\n' << std::flush;
 }
 
+// How sure the model was: the mean log probability per token of the best hypothesis (CTranslate2 normalises by
+// length), as `,"score":-0.42`; nothing when the model gave none.
+std::string ScoreField(const ctranslate2::TranslationResult& result) {
+    if (!result.has_scores() || result.scores.empty()) return {};
+    char buf[32];
+    std::snprintf(buf, sizeof(buf), ",\"score\":%.3f", static_cast<double>(result.scores.front()));
+    return buf;
+}
+
 std::wstring PairPath(const std::string& id) {
     return g_data + L"\\translate\\" + FromUtf8(id);
 }
@@ -191,6 +200,7 @@ void Translate(const std::string& line) {
         ctranslate2::TranslationOptions options;
         options.beam_size = request.beam > 0 ? request.beam : 2;
         options.return_end_token = false;
+        options.return_scores = true;
         options.max_decoding_length = std::clamp<size_t>(tokens.size() * 2, 32, 256);
         try {
             const std::vector<std::vector<std::string>> srcBatch = {tokens};
@@ -209,7 +219,8 @@ void Translate(const std::string& line) {
                      JsonString("msg", "nllb target detokenization failed") + "}");
                 return;
             }
-            Emit("{\"evt\":\"result\",\"id\":" + std::to_string(request.id) + JsonString("text", text) + "}");
+            Emit("{\"evt\":\"result\",\"id\":" + std::to_string(request.id) + JsonString("text", text) +
+                 ScoreField(results.front()) + "}");
             return;
         } catch (const std::exception& e) {
             Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) + JsonString("msg", e.what()) + "}");
@@ -234,6 +245,7 @@ void Translate(const std::string& line) {
     ctranslate2::TranslationOptions options;
     options.beam_size = request.beam > 0 ? request.beam : 2;
     options.return_end_token = false;
+    options.return_scores = true;
     options.max_decoding_length = std::clamp<size_t>(sourceTokens.size() * 2, 32, 256);
     try {
         const auto results = model->translator->translate_batch({sourceTokens}, options);
@@ -248,7 +260,8 @@ void Translate(const std::string& line) {
                  JsonString("msg", "target detokenization failed") + "}");
             return;
         }
-        Emit("{\"evt\":\"result\",\"id\":" + std::to_string(request.id) + JsonString("text", text) + "}");
+        Emit("{\"evt\":\"result\",\"id\":" + std::to_string(request.id) + JsonString("text", text) +
+             ScoreField(results.front()) + "}");
     } catch (const std::exception& e) {
         Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) + JsonString("msg", e.what()) + "}");
     }
@@ -278,7 +291,7 @@ int wmain(int argc, wchar_t** argv) {
     g_unloadMinutes = std::clamp<int>(static_cast<int>(GetPrivateProfileIntW(L"Translate", L"UnloadMinutes", 10,
                                                                               ini.c_str())), 1, 120);
     g_lastRequest = GetTickCount64();
-    std::string readyMsg = "{\"evt\":\"ready\",\"helper\":\"translate\",\"proto\":1,\"caps\":[\"opus\",\"nllb\"],\"build\":\"";
+    std::string readyMsg = "{\"evt\":\"ready\",\"helper\":\"translate\",\"proto\":1,\"caps\":[\"opus\",\"nllb\",\"score\"],\"build\":\"";
     readyMsg += GCT_GIT_BUILD_ID;
     readyMsg += "\"}";
     Emit(readyMsg);

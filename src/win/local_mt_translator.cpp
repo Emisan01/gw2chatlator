@@ -97,6 +97,7 @@ public:
         }
 
         std::lock_guard<std::mutex> lock(mu_);
+        lastScored_ = false;  // the model's certainty, gathered over this message's requests
         // One text through the route (a pivot language between, when there is no direct pair).
         const auto translateText = [&](std::wstring text) -> std::optional<std::wstring> {
             for (const std::string& pair : route) {
@@ -159,6 +160,8 @@ public:
         }
         result.ok = true;
         result.text = std::move(translated);
+        result.score = lastScore_;
+        result.scored = lastScored_;
         result.detectedSource = source;
         result.errorKind = TranslateErrorKind::None;
         return result;
@@ -337,7 +340,13 @@ private:
                 errorKind = TranslateErrorKind::BadOutput;
                 return {};
             }
-            if (message.kind == LocalMtMessage::Kind::Result) return message.text;
+            if (message.kind == LocalMtMessage::Kind::Result) {
+                if (message.scored) {  // the least sure request of a message speaks for it
+                    lastScore_ = lastScored_ ? std::min(lastScore_, message.score) : message.score;
+                    lastScored_ = true;
+                }
+                return message.text;
+            }
             error = FromUtf8(message.error.empty() ? "local translation failed" : message.error);
             errorKind = TranslateErrorKind::Other;
             return {};
@@ -374,6 +383,8 @@ private:
     const std::wstring helper_, data_;
     const bool forceNllb_ = false;
     HelperInfo info_;
+    double lastScore_ = 0;  // lowest score of the message being translated (mu_)
+    bool lastScored_ = false;
     HANDLE process_ = nullptr, write_ = nullptr, read_ = nullptr, job_ = nullptr;
     std::mutex mu_;
     std::mutex pairsMu_;
