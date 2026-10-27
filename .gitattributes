@@ -1,0 +1,2 @@
+# Git hooks run under sh: Unix line ends, or the shebang breaks
+tools/hooks/* text eol=lf
