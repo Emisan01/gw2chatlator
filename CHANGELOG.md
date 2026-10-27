@@ -3,6 +3,19 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.6.5 — 2026-10-27 (GW2Chatlator for Nexus)
+
+- **No More Lost Sentences (local translation):** NLLB-200 dropped sentences when a line held several – measured on 20 made-up chat lines, only 26 of 47 sentences arrived. The local models now translate sentence by sentence, the whole sentence with its protected parts first: 47 of 47 arrive (`translation_bench`).
+- **Tags in Brackets Stay Whole:** "[DS]", "[LFG]" and other tags are protected as one part – a keep-word inside a tag no longer tears the sentence apart.
+- **One Quality Check for Every Translator:** protected parts present, no sentence lost, not cut short. A doubtful chat translation is shown marked (?) with the reason on hover; a doubtful outgoing translation is said in the status before you send.
+- **The Local Model Says How Sure It Is:** the translation helper reports the model's score; a translation it was unsure of is marked (helper capability "score"; older helpers keep working).
+- **MyMemory Keeps Protected Parts:** chat codes, names and keep-words (LFG, DPS …) no longer go out raw – when MyMemory changes one, only the parts around them are translated; long texts are split at sentence ends.
+- **Names Stay Names:** the names of the people in the chat are left alone inside a translated line (this session, memory only).
+- **Chat Reactions in Sentences:** "wtf", "lmao", "rofl" and similar stay as they are inside a sentence too; a comma after a keep-word no longer glues the words together ("WvWWir").
+- **Repetitions Follow the Translator:** after switching the translator, a repeated line is no longer shown in the old translator's wording.
+- **No Silent Switch-Off:** after an internal error the add-on still switches itself off for the session (the game goes on), and now one Nexus alert says so.
+- **Languages:** all 8 languages complete (603 strings each).
+
 ## 2.6.4 — 2026-10-27 (GW2Chatlator for Nexus)
 
 - **Translation Tile:** The dashboard tile shows which translator runs, how (offline with its beam, free online with today's MyMemory quota, or with your API key) and whether the chat and your text are translated. A chooser (opens upwards) lists the translators – ready right away, on this PC, with your own key – and applies the choice at once; NLLB-200 asks for its download size first and becomes the translator once installed. A local translator gets its quality (Fast · Balanced · Best) right on the tile.

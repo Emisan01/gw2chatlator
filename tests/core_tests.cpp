@@ -198,6 +198,11 @@ static void TestLocalMtProtocol() {
           badMsg.proto == 1 && HasCap(badMsg, "opus") && !HasCap(badMsg, "nllb"));
     CHECK(!ParseLocalMtMessage(R"({"evt":"ready", broken json)", badMsg));
 
+    // the model's score (helpers with the "score" capability); older helpers send none
+    CHECK(ParseLocalMtMessage(R"({"evt":"result","id":3,"text":"Hallo","score":-0.42})", message) &&
+          message.kind == LocalMtMessage::Kind::Result && message.scored && std::fabs(message.score + 0.42) < 1e-9);
+    CHECK(ParseLocalMtMessage(R"({"evt":"result","id":4,"text":"Hallo"})", message) && !message.scored);
+    CHECK(ParseLocalMtMessage(R"({"evt":"result","id":5,"text":"Hallo","score":"bad"})", message) && !message.scored);
     CHECK(ParseLocalMtMessage(R"({"evt":"loaded","pair":"de-en","ms":123})", message) &&
           message.kind == LocalMtMessage::Kind::Loaded && message.pair == "de-en" && message.milliseconds == 123);
     CHECK(ParseLocalMtMessage(R"({"evt":"result","id":7,"text":"h\u00e9llo"})", message) &&

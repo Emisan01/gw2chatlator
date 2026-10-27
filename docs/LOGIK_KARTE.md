@@ -127,6 +127,24 @@ Nexus-Funktion wird vor Gebrauch geprüft, fehlende werden umgangen (Schrift, Ev
   größeren Übernahme die Lizenz der Seite prüfen (das Wiki steht unter CC BY-NC-SA); einzelne, von Hand geprüfte
   Abkürzungen wie bisher sind unkritisch.
 
+## 8. Stand 2.6.5 (umgesetzt am 27.10.)
+
+| Befund | Stand | Beleg |
+|---|---|---|
+| A1 Text geht verloren | **behoben**: lokal satzweise, ganzer Satz mit Schutzstellen zuerst, Stücke nur als Rückfall; Klammer-Tags ganz | `translation_bench` NLLB: Sätze angekommen **26/47 → 47/47**, Zeilen mit Satzverlust 9 → 0 |
+| A2 MyMemory ohne Schutz | **behoben**: ganzer Text zuerst, Teile um Schutzstellen nur wenn MyMemory eine verändert hat; Aufteilung an Satzenden | `online_translators.cpp` |
+| A3 Ausgabekontrolle | **behoben**: eine Prüfung nach jedem Übersetzer (`translation_check`); zweifelhaft → „(?)“ mit Grund, ausgehend Hinweis im Status | Kern-Tests |
+| A4 Glossar / Namen | **Namen angeschlossen** (Sprecher der Sitzung, nur im Speicher); Glossar offen – es braucht eine Datenquelle (GW2-API-Namen je Sprache), die nicht von selbst lädt | – |
+| B1 Begriffslisten | **teilweise**: Chat-Reaktionen (wtf, lmao …) jetzt auch im Satz geschützt; eine gemeinsame Tabelle steht noch aus | Kern-Test „wtf“ |
+| B2 zwei Caches | **behoben**: Wiederholungs-Cache trifft nur für den aktuellen Übersetzer | – |
+| B3 Modell-Score | **genutzt**: Helfer meldet `score` (Fähigkeit `score`), unter -1,2 „unsicher“ | Bench: die einzige Fehlübersetzung (eine erfundene Begrüßung) -1,39, jede gute Zeile -1,04 oder besser |
+| C1 stilles Abschalten | **behoben**: eine Nexus-Meldung, beim Laden vorbereitet, abgesichert gesendet | – |
+| C2 Wiki-Begriffe | offen (Lizenz CC BY-NC-SA prüfen) | – |
+
+Noch gesehen im Bench, nicht angefasst: sehr kurze Sätze („Selam!“) halluziniert NLLB – jetzt als unsicher markiert;
+„rez“ wird übersetzt („Boden“), weil es auch ein französisches Wort ist. Die Schwelle -1,2 stammt aus 20 Zeilen und
+sollte mit mehr (erfundenen) Zeilen nachgemessen werden.
+
 ## 7. Vorschlag für die Reihenfolge
 
 1. **Messbar machen:** eine feste Testsammlung echter Chatzeilen (der [DS]-Satz als erster Fall, Spielbegriffe, Namen,
