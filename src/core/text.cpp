@@ -386,6 +386,32 @@ ChatSplit SplitChatCommand(const std::wstring& text) {
     return r;
 }
 
+bool IsChannelCommand(const std::wstring& command) {
+    static const wchar_t* const kChannels[] = {
+        // the game's channel shortcuts (say, guild, party, squad, team, map, whisper, reply)
+        L"/s", L"/l", L"/say", L"/local", L"/g", L"/guild", L"/g1", L"/g2", L"/g3", L"/g4", L"/g5", L"/guild1",
+        L"/guild2", L"/guild3", L"/guild4", L"/guild5", L"/p", L"/gr", L"/party", L"/groupe", L"/d", L"/squad", L"/t",
+        L"/team", L"/m", L"/k", L"/sh", L"/y", L"/map", L"/karte", L"/shout", L"/yell", L"/w", L"/f", L"/b",
+        L"/whisper", L"/tell", L"/r", L"/reply",
+        // a commander's broadcast to a subgroup, and an emote with its own text
+        L"/subgroup", L"/1", L"/2", L"/3", L"/4", L"/5", L"/6", L"/7", L"/8", L"/9", L"/10", L"/11", L"/12", L"/13",
+        L"/14", L"/15", L"/e", L"/me", L"/emote",
+        // German client (its chat menu: /sagen, /karte, /gruppe, /einsatztrupp, /team, /flüstern)
+        L"/sagen", L"/gruppe", L"/einsatztrupp", L"/flüstern",
+    };
+    const std::wstring c = CaseFold(Trim(command));
+    for (const wchar_t* k : kChannels)
+        if (c == k) return true;
+    return false;
+}
+
+bool IsPlainCommand(const std::wstring& text) {  // "/wiki …", "/dance *", "/sqjoin Name", "/age", every emote
+    const std::wstring t = Trim(text);
+    if (t.size() < 2 || t[0] != L'/' || !IsWordChar(t[1])) return false;
+    const size_t sp = t.find(L' ');
+    return !IsChannelCommand(t.substr(0, sp));
+}
+
 static bool IsChatCodeChar(wchar_t c) {
     return (c >= L'A' && c <= L'Z') || (c >= L'a' && c <= L'z') || (c >= L'0' && c <= L'9') || c == L'+' ||
            c == L'/' || c == L'=';

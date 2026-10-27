@@ -14,6 +14,8 @@ diagnosis show it.
 - **Chat Reactions in Sentences:** "wtf", "lmao", "rofl" and similar stay as they are inside a sentence too; a comma after a keep-word no longer glues the words together ("WvWWir").
 - **Repetitions Follow the Translator:** after switching the translator, a repeated line is no longer shown in the old translator's wording.
 - **No Silent Switch-Off:** after an internal error the add-on still switches itself off for the session (the game goes on), and now one Nexus alert says so.
+- **Chat Commands Go as They Are:** "/wiki Tequatl", "/dance *", "/sqjoin Name", "/age" and every emote – also ones bought in the gem store or added later – are typed whole into the game and never translated; before, "/wiki …" lost its command. Only the channel commands (/s, /m, /p, /g1 … /g5, /d, /t, /w, /r, /yell, subgroups, the German /karte, /sagen …) switch the channel and translate the message after them. The preview shows the line exactly as it will go.
+- **More GW2 Short Forms:** about 90 abbreviations from a community glossary (W1–W8, EBG/SMC/NWT, qharb, alacren, LFT, EotN …) are never translated; the ones that are ordinary words elsewhere ("AB", "SI", "POI", "SEC") only in capitals.
 - **Languages:** all 8 languages complete (603 strings each).
 
 ## 2.6.4 — 2026-10-27 (GW2Chatlator for Nexus)

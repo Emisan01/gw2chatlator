@@ -34,6 +34,17 @@ const wchar_t* const kKeep[] = {
     // chat reactions the line filter knows too – inside a sentence they are kept as well ("wtf war das" became
     // "Whoa, whoa, whoa", 2026-10-27); none is a word in a common language
     L"wtf", L"lmao", L"rofl", L"ggwp", L"glhf", L"tyvm", L"sry", L"mdr", L"ptdr", L"o7",
+    // GW2 abbreviations from a community glossary Emi brought (2026-10-27) – only the short forms, checked by hand:
+    // none is an ordinary word in DE/EN/FR/ES/IT/PT. Places and events, dungeons, fractals and kill proofs …
+    L"anet", L"gph", L"rp", L"eotn", L"dbs", L"riba", L"dsd", L"hotw", L"arah", L"ufe", L"dwd", L"lnhb",
+    // … raid wings and bosses, strikes, LFG …
+    L"w1", L"w2", L"w3", L"w4", L"w5", L"w6", L"w7", L"w8", L"q1", L"q2", L"ez3", L"woj", L"lft",
+    // … skills, specializations and builds …
+    L"aotj", L"fgs", L"gotl", L"slb", L"harb", L"hsc", L"hmech", L"hcata", L"qharb", L"qcata", L"alacmech",
+    L"miralac", L"alacren", L"alacrage", L"alacrigade", L"psb", L"charb",
+    // … PvP and WvW objectives, maps and scores, gaming
+    L"hotm", L"decap", L"nwt", L"swt", L"nwc", L"swc", L"smc", L"dbl", L"abl", L"gbl", L"bbl", L"rbl", L"ewp",
+    L"treb", L"garri", L"ppt", L"ppk", L"gvg", L"fps", L"dlc", L"hud", L"npc",
 };
 
 // Kept only when written like an abbreviation (two capitals or more: "LA", "HoT", "CoF"): the same letters are an
@@ -42,6 +53,10 @@ const wchar_t* const kKeepCaps[] = {
     L"hot", L"la", L"de", L"se", L"cm", L"ac", L"ap", L"ar", L"bl", L"ca", L"co", L"cs", L"cw", L"dd", L"dr", L"ds",
     L"dt", L"li", L"mo", L"ms", L"mf", L"ow", L"sw", L"ta", L"tc", L"td", L"sb", L"sh", L"eb", L"ha", L"ls",
     L"oos", L"am",
+    // from the community glossary (2026-10-27): "AB" Auric Basin but German "ab", "SI" Serpent's Ire but "si", "POI"
+    // but Italian "poi", "SEC" Southeast Camp but French "sec" …
+    L"ip", L"mp", L"poi", L"vb", L"ab", L"bc", L"gh", L"si", L"tt", L"uf", L"dod", L"ke", L"ul", L"fc", L"ko",
+    L"ht", L"aa", L"ea", L"fa", L"ps", L"ri", L"rr", L"os", L"ct", L"ts", L"ui", L"sec", L"nec",
 };
 
 const wchar_t* const kSpellOnly[] = {

@@ -585,7 +585,10 @@ void RenderFooter() {  // g_mu held
     std::string counter = std::to_string(n) + "/" + std::to_string(g_cfg.maxLength);
     if (n > static_cast<size_t>(g_cfg.maxLength)) {  // sent as several chat lines
         const bool current = g_previewGen == g_inputGen && !g_preview.empty();
-        const size_t parts = SplitForChat(Translating() && current ? g_preview : g_wFlatInput, ComposePrefix(),
+        const ChatSplit own = SplitChatCommand(SanitizeChatText(g_wFlatInput));  // as StartSend counts it
+        const std::wstring& body = own.prefix.empty() ? g_wFlatInput : own.body;
+        const size_t parts = SplitForChat(Translating() && current ? g_preview : body,
+                                          own.prefix.empty() ? ComposePrefix() : own.prefix,
                                           static_cast<size_t>(g_cfg.maxLength)).size();
         counter += "  (" + std::to_string(parts) + "x)";
     }
@@ -1362,9 +1365,13 @@ void RenderWindow() {
         } else if (!g_input[0]) {
             // empty: no hint text here – the chat above is what you read
         } else if (!Translating()) {
-            LookText(U8(ComposePrefix() + SanitizeChatText(g_wFlatInput)).c_str(), Bright(kPreview), true);
+            // a line with its own command ("/p hi", "/wiki Tequatl") goes as it is: no channel prefix before it
+            const std::wstring typed = SanitizeChatText(g_wFlatInput);
+            LookText(U8((SplitChatCommand(typed).prefix.empty() ? ComposePrefix() : std::wstring()) + typed).c_str(),
+                     Bright(kPreview), true);
         } else if (previewCurrent) {
-            LookText(U8(ComposePrefix() + g_preview).c_str(), Bright(kPreview), true);
+            const std::wstring own = SplitChatCommand(SanitizeChatText(g_wFlatInput)).prefix;  // as StartSend does it
+            LookText(U8((own.empty() ? ComposePrefix() : own) + g_preview).c_str(), Bright(kPreview), true);
             if (!g_back.empty()) LookText(U8(g_back).c_str(), Bright(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled)), true);
         } else if (g_layout.infoText) {
             ImGui::TextDisabled("%s", UI(Tr(L"translating …")).c_str());

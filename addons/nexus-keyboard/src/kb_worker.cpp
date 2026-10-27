@@ -215,7 +215,7 @@ void TranslateInput(uint64_t gen, std::wstring text) {
     const std::wstring body = split.prefix.empty() ? text : split.body;
     std::wstring result = body;
     std::wstring error, doubt;  // doubt: the translation check found something (said, sending stays yours)
-    if (translating && tr) {
+    if (translating && tr && !IsPlainCommand(text)) {  // "/wiki Tequatl", "/dance": goes as it is
         std::wstring expanded;  // your own words replaced by what they mean (only for the translator)
         NameList names;         // names of the chat you write to stay names
         {

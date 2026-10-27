@@ -76,6 +76,12 @@ struct ChatSplit {
     std::wstring body;
 };
 ChatSplit SplitChatCommand(const std::wstring& text);
+// A command that picks a channel or addresses someone ("/p", "/g1", "/w", the German client's "/karte" …, and the
+// emote "/e" with its own text): GW2 switches only on a typed one, the message after it is pasted – and translated.
+bool IsChannelCommand(const std::wstring& command);
+// Any other chat command ("/wiki Tequatl", "/dance", "/sqjoin Name", "/age"): the line goes into the game as it is –
+// typed whole, never translated (a pasted "/wiki …" lost its command, 2026-10-27).
+bool IsPlainCommand(const std::wstring& text);
 
 // Chat links such as [&AgH1WQAA] (waypoints, items, skills ...).
 std::vector<Span> FindChatCodes(const std::wstring& s);

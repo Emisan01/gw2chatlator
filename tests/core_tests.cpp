@@ -347,6 +347,9 @@ static void TestProtect() {
     const auto tag = ProtectForTranslation(L"Hermandad Sol Dorado [DS] busca jugadores", nullptr, &keep);
     CHECK(tag.segments.size() == 3 && tag.segments[1].keep && tag.segments[1].text == L"[DS]" &&
           tag.segments[0].text == L"Hermandad Sol Dorado " && tag.segments[2].text == L" busca jugadores");
+    // GW2 short forms from the community glossary: kept; the ordinary-word ones only in capitals
+    CHECK(IsKeepWord(keep, L"LFT") && IsKeepWord(keep, L"ebg") && IsKeepWord(keep, L"qharb") && IsKeepWord(keep, L"W4"));
+    CHECK(IsKeepWord(keep, L"AB") && !IsKeepWord(keep, L"ab") && IsKeepWord(keep, L"SI") && !IsKeepWord(keep, L"si"));
     // chat reactions the line filter knows stay inside a sentence too
     const auto wtf = ProtectForTranslation(L"wtf war das für ein Boss?", nullptr, &keep);
     CHECK(!wtf.segments.empty() && wtf.segments[0].keep && wtf.segments[0].text == L"wtf");
@@ -358,6 +361,23 @@ static void TestProtect() {
     int tags = 0;
     for (const auto& s : code.segments) tags += s.keep && (s.text == L"[&AgGvWwEA]" || s.text == L"[LFG]") ? 1 : 0;
     CHECK(tags == 2);
+}
+
+static void TestChatCommands() {
+    // channel commands: typed, the message after them translated
+    CHECK(IsChannelCommand(L"/p") && IsChannelCommand(L"/G1") && IsChannelCommand(L"/w") && IsChannelCommand(L"/karte") &&
+          IsChannelCommand(L"/flüstern") && IsChannelCommand(L"/e"));
+    CHECK(!IsChannelCommand(L"/wiki") && !IsChannelCommand(L"/dance") && !IsChannelCommand(L"p"));
+    CHECK(IsChannelCommand(L"/yell") && IsChannelCommand(L"/gr") && IsChannelCommand(L"/guild3") && IsChannelCommand(L"/2"));
+    CHECK(IsPlainCommand(L"/wiki DE: Tequatl") && IsPlainCommand(L"/dance *") && IsPlainCommand(L"/emotelist") &&
+          IsPlainCommand(L"/age") && IsPlainCommand(L"/squadjoin Emi") && !IsPlainCommand(L"/yell inc north"));
+    // every other command goes as it is, never translated
+    CHECK(IsPlainCommand(L"/wiki abkürzungen") && IsPlainCommand(L"/dance") && IsPlainCommand(L" /sqjoin Emi.1234"));
+    CHECK(!IsPlainCommand(L"/p hallo") && !IsPlainCommand(L"/w Emi.1234 hi") && !IsPlainCommand(L"/karte wer kommt mit?"));
+    CHECK(!IsPlainCommand(L"hallo /wiki") && !IsPlainCommand(L"/") && !IsPlainCommand(L"/ hallo") && !IsPlainCommand(L""));
+    // the command stays in front, its argument is the body (StartSend sends prefix + body as it is)
+    const ChatSplit wiki = SplitChatCommand(L"/wiki abkürzungen");
+    CHECK(wiki.prefix == L"/wiki " && wiki.body == L"abkürzungen");
 }
 
 static void TestTranslationCheck() {
@@ -2730,6 +2750,7 @@ int main() {
     TestGlossary();
     TestProtect();
     TestTranslationCheck();
+    TestChatCommands();
     TestDeepL();
     TestLanguages();
     TestColors();

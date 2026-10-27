@@ -309,6 +309,21 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
     // when it sees the command typed – pasted, the whole line was sent as text. For a whisper the name is then the
     // address (confirmed with Tab), and only the message is pasted.
     std::wstring message = text;
+    // Any other command ("/wiki Tequatl", "/dance", "/sqjoin Name") is typed whole: GW2 runs a typed command, a pasted
+    // one lost its command word.
+    if (IsPlainCommand(text)) {
+        if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – cancelled"));
+        TypeText(text, opt.keyHoldMs);
+        WaitForTargetToDrain(gw2, 1000);
+        Sleep(opt.stepDelayMs);
+        if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – the text may still be in the chat line"));
+        const ULONGLONG tCommand = GetTickCount64();
+        Tap(VK_RETURN, opt.keyHoldMs);
+        r.confirmedByGame = textbox(false, std::max(1000, 8 * opt.keyHoldMs));
+        if (r.confirmedByGame) r.confirmMs = static_cast<int>(GetTickCount64() - tCommand);
+        if (!r.confirmedByGame) Sleep(opt.stepDelayMs);
+        return finish(std::wstring());
+    }
     if (!text.empty() && text[0] == L'/') {
         const ChatSplit split = SplitChatCommand(text);
         const size_t sp = text.find(L' ');
