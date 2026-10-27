@@ -124,9 +124,10 @@ Nexus-Funktion wird vor Gebrauch geprüft, fehlende werden umgangen (Schrift, Ev
 
 - **C1 – stilles Abschalten.** Nach einem Fehler eine einzige, abgesicherte Zeile: „GW2Chatlator hat sich nach einem
   Fehler abgeschaltet – Details in nexus.log, GW2 neu starten“.
-- **C2 – GW2-Wiki-Begriffe neu abgleichen.** Die Schutzwörter stammen aus der Abkürzungsliste des Wikis. Vor einer
-  größeren Übernahme die Lizenz der Seite prüfen (das Wiki steht unter CC BY-NC-SA); einzelne, von Hand geprüfte
-  Abkürzungen wie bisher sind unkritisch.
+- **C2 – GW2-Begriffe neu abgleichen.** Die Schutzwörter stammen aus Abkürzungslisten (GW2-Wiki, ein Community-Glossar)
+  und sind von Hand gewählt. Kein Lizenzthema: einzelne Wörter und Abkürzungen (LFG, qheal, EBG) sind allgemeines
+  Spielvokabular und nicht geschützt; wir übernehmen nur die Wörter, keine Erklärtexte. Eine Lizenz (das GW2-Wiki nennt
+  die GNU FDL) beträfe nur, wer ganze Erklärtexte oder Seiten übernimmt.
 
 ## 7. Vorschlag für die Reihenfolge
 
@@ -155,7 +156,7 @@ Nexus-Funktion wird vor Gebrauch geprüft, fehlende werden umgangen (Schrift, Ev
 | B2 zwei Caches | **behoben**: Wiederholungs-Cache trifft nur für den aktuellen Übersetzer | – |
 | B3 Modell-Score | **genutzt**: Helfer meldet `score` (Fähigkeit `score`), unter -1,2 „unsicher“ | Bench: die einzige Fehlübersetzung (eine erfundene Begrüßung) -1,39, jede gute Zeile -1,04 oder besser |
 | C1 stilles Abschalten | **behoben**: eine Nexus-Meldung, beim Laden vorbereitet, abgesichert gesendet | – |
-| C2 Wiki-Begriffe | offen (Lizenz CC BY-NC-SA prüfen) | – |
+| C2 Begriffe | **geklärt**: einzelne Wörter frei nutzbar, keine Erklärtexte übernommen; ~105 Kürzel aus einem Community-Glossar ergänzt | Kern-Test Kurzformen |
 
 Nachgemessen mit 40 erfundenen Zeilen (NLLB; OPUS-MT war auf dem Messrechner nicht installiert): die Schwelle -1,2
 hält – markiert sind genau die zwei Halluzinationen kurzer Sätze („Selam!“, „Hola“, -1,39 und -1,30); die nächste Zeile
