@@ -48,6 +48,16 @@ void FreeWorkerState() {
 
 // A chat line into your language – whether is core/translate_policy's (`ShouldTranslate`): automatically (only while
 // "Translate the chat" is on) and `once` from the menu by the same rule; `asked` (a click on the line) always.
+// What the translation check found, said in a few words (empty: nothing).
+std::wstring CheckNote(const TranslationCheck& c) {
+    switch (c.issue) {
+        case TranslationIssue::LostProtected: return TrF(L"Maybe incomplete: \"{1}\" is missing", {c.detail});
+        case TranslationIssue::LostSentence: return TrF(L"Maybe incomplete: {1} sentences arrived", {c.detail});
+        case TranslationIssue::TooShort: return Tr(L"Maybe incomplete: much shorter than the original");
+        default: return {};
+    }
+}
+
 void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
     AssertNotInteractiveLane("TranslateLine");
     std::shared_ptr<Translator> tr;
@@ -117,7 +127,10 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
         return;
     }
     const std::wstring t = SanitizeChatText(r.text);
-    g_orchestrator.RecordTranslation(text, target, t, by);
+    // The same check for every translator: nothing lost, nothing cut short. A doubtful translation is still shown –
+    // marked, the reason on hover – and not kept as a repetition for the next time.
+    const std::wstring note = CheckNote(CheckTranslation(p.segments, t, target));
+    if (note.empty()) g_orchestrator.RecordTranslation(text, target, t, by);
     std::lock_guard<std::mutex> lock(g_mu);
     for (ChatLine& l : g_lines) {
         if (l.id == id) {
@@ -128,6 +141,7 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
                 l.transTarget = target;
                 l.transBy = by;
                 l.u8translated = U8(l.translated);
+                l.u8transNote = U8(note);
                 l.transSegs = PieUI::ChatLinks::SegmentLine(l.u8translated);
             }
         }
@@ -154,11 +168,12 @@ int TranslateRecentLines(bool once) {  // g_mu held; how many lines of other pla
         if (!once && l.transAttempted && l.transTarget == target) continue;
 
         std::wstring cachedTrans, cachedBy;
-        if (g_orchestrator.SieveMessage(l.text, target, true, true, true, false, cachedTrans, cachedBy) == ChatPriority::Immediate) {
+        if (g_orchestrator.SieveMessage(l.text, target, true, true, true, false, cachedTrans, cachedBy, by) == ChatPriority::Immediate) {
             l.translated = cachedTrans;
             l.transTarget = target;
             l.transBy = cachedBy;
             l.u8translated = U8(l.translated);
+            l.u8transNote.clear();  // only translations that passed the check are kept for repetitions
             l.transSegs = PieUI::ChatLinks::SegmentLine(l.u8translated);
             l.transPending = false;
             l.transAttempted = true;
@@ -167,6 +182,7 @@ int TranslateRecentLines(bool once) {  // g_mu held; how many lines of other pla
 
         l.translated.clear();
         l.u8translated.clear();
+        l.u8transNote.clear();
         l.transSegs.clear();
         l.transPending = true;
         l.transAttempted = false;
@@ -191,7 +207,7 @@ void TranslateInput(uint64_t gen, std::wstring text) {
     const ChatSplit split = SplitChatCommand(text);
     const std::wstring body = split.prefix.empty() ? text : split.body;
     std::wstring result = body;
-    std::wstring error;
+    std::wstring error, doubt;  // doubt: the translation check found something (said, sending stays yours)
     if (translating && tr) {
         std::wstring expanded;  // your own words replaced by what they mean (only for the translator)
         {
@@ -210,6 +226,7 @@ void TranslateInput(uint64_t gen, std::wstring text) {
             const TranslateResult r = tr->Translate(p.segments, source, target);
             if (r.ok) {
                 result = r.text;
+                doubt = CheckNote(CheckTranslation(p.segments, r.text, target));
                 std::lock_guard<std::mutex> lock(g_mu);
                 g_forcePreviewForHardError = false;
                 g_lastErrorKind = TranslateErrorKind::None;
@@ -262,6 +279,7 @@ void TranslateInput(uint64_t gen, std::wstring text) {
         g_back = back;
         g_previewGen = gen;
         if (!error.empty()) SetStatus(error);
+        else if (!doubt.empty()) SetStatus(TrF(L"{1} – check the back-translation before you send", {doubt}), 8000);
         if (g_sendPending) {
             g_sendPending = false;
             if (!error.empty()) {  // the translation failed: nothing goes out in the wrong language – the text comes back

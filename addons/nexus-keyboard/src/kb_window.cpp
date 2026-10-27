@@ -1236,7 +1236,16 @@ void RenderWindow() {
             } else {
                 clicked = RichLine(segs, ColorOf(l.channel));
             }
-            if (!l.translated.empty() && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", l.u8text.c_str());
+            if (!l.translated.empty() && ImGui::IsItemHovered()) {
+                if (l.u8transNote.empty()) {
+                    ImGui::SetTooltip("%s", l.u8text.c_str());
+                } else {  // the original and what the translation check found
+                    ImGui::BeginTooltip();
+                    ImGui::TextUnformatted(l.u8text.c_str());
+                    ImGui::TextColored(ImVec4(0.95f, 0.78f, 0.35f, 1.0f), "%s", l.u8transNote.c_str());
+                    ImGui::EndTooltip();
+                }
+            }
             if (!l.own && l.transPending && l.translated.empty()) {
                 ImGui::SameLine(0, ImGui::CalcTextSize(" ").x);
                 LookText("...", ImVec4(0.6f, 0.6f, 0.6f, 0.65f), false);
@@ -1254,6 +1263,11 @@ void RenderWindow() {
             if (!clicked && !l.own && l.translated.empty() && (ImGui::IsItemClicked() || ImGui::IsItemClicked(ImGuiMouseButton_Right))) {
                 l.transPending = true;
                 g_worker.Post([id = l.id, t = l.text] { TranslateLine(id, t, true); });
+            }
+            if (!l.translated.empty() && !l.u8transNote.empty()) {  // a doubtful translation: marked, the reason on hover
+                ImGui::SameLine(0, ImGui::CalcTextSize(" ").x);
+                LookText("(?)", ImVec4(0.95f, 0.78f, 0.35f, 0.9f), false);
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", l.u8transNote.c_str());
             }
             ImGui::PopID();
             l.rowH = ImGui::GetCursorPosY() - y0;  // what it took, for the frames it is out of view

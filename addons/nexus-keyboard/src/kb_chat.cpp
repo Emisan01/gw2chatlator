@@ -97,11 +97,13 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
                 // Gamer interjection / shorthand: skip translation
             } else {
                 std::wstring cachedTrans, cachedBy;
-                if (g_orchestrator.SieveMessage(rawText, TypingLang(), true, true, true, false, cachedTrans, cachedBy) == ChatPriority::Immediate) {
+                if (g_orchestrator.SieveMessage(rawText, TypingLang(), true, true, true, false, cachedTrans, cachedBy,
+                                                 g_translator ? g_translator->Name() : std::wstring()) == ChatPriority::Immediate) {
                     l.translated = cachedTrans;
                     l.transTarget = TypingLang();
                     l.transBy = cachedBy;
                     l.u8translated = U8(l.translated);
+                    l.u8transNote.clear();
                     l.transSegs = PieUI::ChatLinks::SegmentLine(l.u8translated);
                 } else {
                     const bool windowVisible = g_show && (g_inMap || g_test.forceMap) && !g_mapOpen && !g_collapsed;

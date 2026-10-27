@@ -81,7 +81,8 @@ public:
                               bool isInViewport,
                               bool isRecentTail,
                               std::wstring& outTranslation,
-                              std::wstring& outBy);
+                              std::wstring& outBy,
+                              const std::wstring& currentBy = {});  // set: a repetition by another translator is no hit
 
     // Records an inferred translation into the repetition cache
     void RecordTranslation(const std::wstring& text,

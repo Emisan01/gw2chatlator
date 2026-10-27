@@ -38,6 +38,7 @@
 #include "core/send_guard.hpp"
 #include "core/soft_wrap.hpp"
 #include "core/send_route.hpp"
+#include "core/translation_check.hpp"
 #include "core/translation_orchestrator.hpp"
 #include "win/local_mt_translator.hpp"
 #include "core/snippets.hpp"
@@ -313,6 +314,7 @@ struct ChatLine {
     bool own = false;
     std::wstring speaker, text, translated;
     std::wstring transTarget, transBy;  // what `translated` was made into and by (TranslateRecentLines keeps a fit)
+    std::string u8transNote;            // the translation check found something (shown marked, said on hover)
     std::wstring speakerFolded;
 
     // Pre-parsed/pre-encoded cache for 0-allocation rendering on the main thread

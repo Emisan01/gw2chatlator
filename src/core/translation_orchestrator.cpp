@@ -116,7 +116,8 @@ ChatPriority TranslationOrchestrator::SieveMessage(const std::wstring& text,
                                                   bool isInViewport,
                                                   bool isRecentTail,
                                                   std::wstring& outTranslation,
-                                                  std::wstring& outBy) {
+                                                  std::wstring& outBy,
+                                                  const std::wstring& currentBy) {
     if (paused_) return ChatPriority::Skip;
 
     // Filter 1: Spam-Sieve (Gamer interjections & shorthand)
@@ -126,7 +127,8 @@ ChatPriority TranslationOrchestrator::SieveMessage(const std::wstring& text,
     }
 
     // Filter 1: Repetition-Hash check
-    if (repCache_.Lookup(text, targetLang, outTranslation, outBy)) {
+    // (a translation by the translator used before a switch is not taken: it would show the old one's wording)
+    if (repCache_.Lookup(text, targetLang, outTranslation, outBy) && (currentBy.empty() || outBy == currentBy)) {
         ++cacheHits_;
         return ChatPriority::Immediate;
     }
