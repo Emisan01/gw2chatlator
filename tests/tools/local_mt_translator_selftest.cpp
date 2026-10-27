@@ -209,11 +209,31 @@ int wmain(int argc, wchar_t** argv) {
     HANDLE running = StartRunning(liveExe, stdinWrite);
     ok &= Check(running && WaitForSingleObject(running, 300) == WAIT_TIMEOUT, "swap: the old helper runs before the swap");
     swap = gct::SwapLocalMtHelper(kbDir.wstring(), package.wstring());
-    ok &= Check(swap.code == gct::ExtrasInstallCode::Ok && running && WaitForSingleObject(running, 0) == WAIT_OBJECT_0 &&
-                    FileBytes(liveExe) == newBytes && !std::filesystem::exists(oldExe),
-                "swap: a running old helper is ended first and then replaced");
+    const bool swapOk = swap.code == gct::ExtrasInstallCode::Ok, ended = running && WaitForSingleObject(running, 0) == WAIT_OBJECT_0,
+               replaced = FileBytes(liveExe) == newBytes, noOld = !std::filesystem::exists(oldExe);
+    if (!(swapOk && ended && replaced && noOld))  // which part, and the swap's own words (CI showed only the FAIL line)
+        std::wcout << L"  swap ok " << swapOk << L", old helper ended " << ended << L", replaced " << replaced
+                   << L", no .old " << noOld << L" – " << swap.detail << L"\n";
+    ok &= Check(swapOk && ended && replaced && noOld, "swap: a running old helper is ended first and then replaced");
     if (running) CloseHandle(running);
     if (stdinWrite) CloseHandle(stdinWrite);
+
+    // the same through the folder's short (8.3) path – GitHub's temp folder is "C:\Users\RUNNER~1\...": the running
+    // helper is still found (the same file, however the path is written) and replaced
+    wchar_t shortKb[MAX_PATH * 2] = {};
+    if (GetShortPathNameW(kbDir.c_str(), shortKb, MAX_PATH * 2) && _wcsicmp(shortKb, kbDir.c_str()) != 0) {
+        InstallOldHelper(kbDir, argv[1]);
+        HANDLE stdinShort = nullptr;
+        HANDLE runningShort = StartRunning(liveExe, stdinShort);
+        swap = gct::SwapLocalMtHelper(shortKb, package.wstring());
+        ok &= Check(swap.code == gct::ExtrasInstallCode::Ok && runningShort &&
+                        WaitForSingleObject(runningShort, 0) == WAIT_OBJECT_0 && FileBytes(liveExe) == newBytes,
+                    "swap: a running helper is found through the folder's short (8.3) path too");
+        if (runningShort) CloseHandle(runningShort);
+        if (stdinShort) CloseHandle(stdinShort);
+    } else {
+        std::cout << "(no short 8.3 names on this volume: the short path step is skipped)\n";
+    }
     SetEnvironmentVariableW(L"GW2KB_FAKE_HELPER_MODE", nullptr);
 
     std::filesystem::remove_all(data, ec);
