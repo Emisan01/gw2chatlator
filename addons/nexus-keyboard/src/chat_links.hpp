@@ -1,12 +1,11 @@
-// chat_links.hpp — GW2 chat codes ("[Item name]") in the chat window, as the game links them:
-// integrated via PieOrCake's Decoder Ring (metadata & tooltips) and ChatLinks::SegmentLine.
+// chat_links.hpp — GW2 chat codes ("[Item name]") in the chat window, as the game links them (ChatLinks::SegmentLine):
+// the name the game sent, else the code's kind; on hover its kind and the code itself.
 #pragma once
 
 #include <functional>
 #include <string>
 
 #include "chat/ChatLinks.h"
-#include "chat/DecoderRingApi.h"
 #include "imgui/imgui.h"
 #include "nexus/Nexus.h"
 
@@ -25,16 +24,10 @@ public:
     // Label for line wrapping and display (e.g. "[Item name]" or "[Item]")
     std::string Label(const PieUI::ChatLinks::LinkSegment& seg);
 
-    // True if Decoder Ring is currently available
-    bool HasDecoder() const;
-
 private:
-    DecoderRingApi* GetDecoder() const;
-    void Tooltip(const PieUI::ChatLinks::LinkSegment& seg, const DecoderRecord& rec, bool resolved);
+    void Tooltip(const PieUI::ChatLinks::LinkSegment& seg);
 
     AddonAPI_t* api_ = nullptr;
 };
-
-bool DecoderRingFaulted();  // Decoder Ring faulted once: not asked again this session
 
 }  // namespace gct

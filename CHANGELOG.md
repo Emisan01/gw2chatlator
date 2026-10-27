@@ -3,6 +3,18 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.6.4 — 2026-10-27 (GW2Chatlator for Nexus)
+
+- **Translation Tile:** The dashboard tile shows which translator runs, how (offline with its beam, free online with today's MyMemory quota, or with your API key) and whether the chat and your text are translated. A chooser (opens upwards) lists the translators – ready right away, on this PC, with your own key – and applies the choice at once; NLLB-200 asks for its download size first and becomes the translator once installed. A local translator gets its quality (Fast · Balanced · Best) right on the tile.
+- **Voice Tile:** Shows the voice model, push-to-talk or voice activation, Hands free and speech translation; its chooser opens the microphone menu.
+- **Events: Chat Hint on the Dashboard:** While Events: Chat is missing, the dashboard says so with its install button – easy to miss in the compact view otherwise.
+- **Hands free (voice only):** Named for what it does, usable only once the voice module is installed (dashboard, Microphone tab, microphone menu); works with push-to-talk and voice activation alike. Speech translation on the dashboard waits for the voice module too.
+- **Technical Tab:** Modules first, then the diagnostics and the technical details; the send timing is folded up under "Send timing (advanced)".
+- **Decoder Ring Removed:** The optional, outdated add-on is no longer offered, installed or asked; chat codes show their kind and code on hover, as they did without it.
+- **Local Quality Is Kept:** The quality mode (Fast · Balanced · Best) was never written to the settings and fell back to Balanced on every start; it is saved now.
+- **Languages:** All 8 languages complete (592 strings each); hints that name Nexus' own menus use Nexus' words in that language (e.g. "Laden", "Tastenkürzel"); "NLLB-200 (local)", "OPUS-MT (local)", "MyMemory (free)" and the quality steps are translated; the dashboard's status line (English only, cut off) is gone – the tiles show it.
+- **Microphone Menu vs. Save:** Voice activation and speech translation switched in the microphone menu are no longer reset by a later "Save" in the options.
+
 ## 2.6.3 — 2026-10-27 (GW2Chatlator for Nexus)
 
 - **Helper Handshake & Capability Negotiation:** Local MT and voice helper processes announce helper identity, protocol version (`proto`), capabilities (`caps`), and build commit (12 characters) upon startup. Old helpers lacking a protocol version are identified as outdated; the NLLB engine requires the `nllb` capability. DLLs 2.6.0–2.6.2 read only `evt` and keep working with the new helper.

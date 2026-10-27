@@ -6,7 +6,7 @@ namespace kb {
 
 // kb_chatsource.cpp: the guard between Events: Chat (another add-on, updated unasked) and us.
 struct ChatSourceTest {  // nexus_kb_selftest reads this
-    int reading = 0, pause = 0, shown = 0, dropped = 0, unreadable = 0, disabled = 0, decoderFault = 0;
+    int reading = 0, pause = 0, shown = 0, dropped = 0, unreadable = 0, disabled = 0;
     int received = 0, ignored = 0;
     char version[32] = {}, before[32] = {};
 };

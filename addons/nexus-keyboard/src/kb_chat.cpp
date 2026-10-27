@@ -296,7 +296,6 @@ bool ChatEventsPresent(bool now) {
     ChatSourceSetVersion(version);
     g_chatEventsPresent = found;
     g_chatEventsFile = GetFileAttributesW((AddonsDir() + kChatEventsDllName).c_str()) != INVALID_FILE_ATTRIBUTES;
-    g_decoderFile = GetFileAttributesW((AddonsDir() + kDecoderRingDllName).c_str()) != INVALID_FILE_ATTRIBUTES;
     return found;
 }
 
@@ -313,36 +312,6 @@ void InstallChatEventsNow() {  // on your click: newest release, checksum checke
                                                           : TrF(L"Loading {1} failed: {2}", {L"Events: Chat", r.detail}),
                   12000);
     });
-}
-// Decoder Ring (optional): names, maps and details of chat codes – installed and removed only on your click.
-std::atomic<bool> g_decoderFile{false};  // DecoderRing.dll lies in the add-ons folder (maybe not loaded in Nexus)
-std::atomic<bool> g_decoderInstalling{false};
-std::thread g_decoderThread;
-
-void InstallDecoderRingNow() {  // on your click: newest release, checksum checked, into the add-ons folder
-    if (g_decoderInstalling.exchange(true)) return;
-    if (g_decoderThread.joinable()) g_decoderThread.join();
-    g_decoderThread = std::thread([dir = AddonsDir()] {
-        ExtrasInstallResult r;
-        if (!Shielded([&] { r = InstallDecoderRing(dir, [] { return g_disabled.load(); }); })) r.code = ExtrasInstallCode::DownloadFailed;
-        g_decoderInstalling = false;
-        if (r.code == ExtrasInstallCode::Ok) g_decoderFile = true;
-        std::lock_guard<std::mutex> lock(g_mu);
-        SetStatus(r.code == ExtrasInstallCode::Ok ? Tr(L"Decoder Ring installed – Nexus loads it (restart GW2 if the names stay missing)")
-                  : r.code == ExtrasInstallCode::NoAnswer ? TrF(L"GitHub did not answer ({1}) – please try again later", {r.detail})
-                                                          : TrF(L"Loading {1} failed: {2}", {L"Decoder Ring", r.detail}),
-                  12000);
-    });
-}
-
-void RemoveDecoderRingNow() {  // game thread: only while Nexus does not hold it
-    const std::wstring dll = AddonsDir() + kDecoderRingDllName;
-    const bool gone = DeleteFileW(dll.c_str()) || GetFileAttributesW(dll.c_str()) == INVALID_FILE_ATTRIBUTES;
-    if (gone) g_decoderFile = false;
-    std::lock_guard<std::mutex> lock(g_mu);
-    SetStatus(gone ? Tr(L"Decoder Ring removed")
-                   : Tr(L"Decoder Ring is loaded – remove it in Nexus → Addons → Decoder Ring (other add-ons may use it)"),
-              10000);
 }
 
 ChatLinks g_links;

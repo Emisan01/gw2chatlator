@@ -29,7 +29,7 @@ class MyMemoryTranslator final : public Translator {
 public:
     explicit MyMemoryTranslator(std::wstring email) : email_(Trim(email)) {}
 
-    std::wstring Name() const override { return L"MyMemory (" + Tr(L"basic") + L")"; }
+    std::wstring Name() const override { return Tr(L"MyMemory (free)"); }  // as the translator lists call it
 
     TranslateResult Translate(const std::vector<Segment>& segments, const std::wstring& sourceLang,
                               const std::wstring& targetLang) override {

@@ -18,7 +18,6 @@
 #include "imgui/imgui_internal.h"
 #include "nexus/Nexus.h"
 
-#include "../../addons/nexus-keyboard/src/chat/DecoderRingApi.h"
 
 // Events: Chat as the add-on finds it: this program exports GetAddonDef with Events: Chat's signature and a version the
 // test changes – a new version of the other add-on, as Nexus pulls it over night.
@@ -33,29 +32,8 @@ extern "C" __declspec(dllexport) AddonDefinition_t* GetAddonDef() {
 
 namespace {
 
-// Decoder Ring stood in, the way a broken update could behave: 1 = a longer record than ours, without string ends;
-// 2 = it crashes inside Resolve.
-int g_decoderMode = 0;
-DecoderStatus FakeResolve(uint8_t type, uint32_t id, const char*, DecoderRecord* out) {
-    if (g_decoderMode == 2) {
-        volatile int* p = nullptr;
-        *p = 1;
-    }
-    std::memset(out, 0xC3, sizeof(DecoderRecord) + sizeof(DecoderRecord) / 2);
-    out->schemaVersion = 9;
-    out->linkType = type;
-    out->status = DR_Resolved;
-    out->id = id;
-    out->factCount = 255;
-    return DR_Resolved;
-}
-DecoderRingApi g_fakeDecoder{DECODER_RING_API_VERSION, FakeResolve, nullptr, nullptr};
-void* FakeDataLink(const char* id) {
-    return g_decoderMode && std::strcmp(id, DECODER_RING_DATALINK) == 0 ? &g_fakeDecoder : nullptr;
-}
-
 struct ChatSourceTest {  // as in kb_shared.hpp
-    int reading = 0, pause = 0, shown = 0, dropped = 0, unreadable = 0, disabled = 0, decoderFault = 0;
+    int reading = 0, pause = 0, shown = 0, dropped = 0, unreadable = 0, disabled = 0;
     int received = 0, ignored = 0;
     char version[32] = {}, before[32] = {};
 };
@@ -289,7 +267,6 @@ int wmain(int argc, wchar_t** argv) {
     api.Fonts_AddFromFile = FakeFontAdd;
     api.Fonts_Resize = FakeFontResize;
     api.Fonts_Release = FakeFontRelease;
-    api.DataLink_Get = FakeDataLink;
     api.GameBinds_InvokeAsync = FakeGameBind;
     std::printf("load\n");
     def->Load(&api);
@@ -365,7 +342,7 @@ int wmain(int argc, wchar_t** argv) {
             WideCharToMultiByte(CP_UTF8, 0, optTab, -1, tab, sizeof tab, nullptr, nullptr);
             src(8, nullptr, tab);
         }
-        wchar_t frames[16] = {};  // GW2KB_SHOT_FRAMES: wait longer (e.g. Decoder Ring on its first load)
+        wchar_t frames[16] = {};  // GW2KB_SHOT_FRAMES: wait longer
         const int n = GetEnvironmentVariableW(L"GW2KB_SHOT_FRAMES", frames, 16) ? _wtoi(frames) : 40;
         wchar_t tabMask[16] = {};  // GW2KB_SHOT_TAB=<channel bits>: a tab of your own in front, its settings open
         if (GetEnvironmentVariableW(L"GW2KB_SHOT_TAB", tabMask, 16))
@@ -951,7 +928,7 @@ int wmain(int argc, wchar_t** argv) {
         ok = ok && std::strcmp(th->sendLang, "FR") == 0;
     }
     // The chat source guard (2): what an update of Events: Chat could hand over – a changed layout, unreadable memory,
-    // a guard page, endless strings, thousands of random lines – and a broken Decoder Ring. Nothing may take the process
+    // a guard page, endless strings, thousands of random lines – and chat codes in view. Nothing may take the process
     // down; garbage is never shown; reading pauses by itself and comes back on "Resume".
     if (ok && src && !shotMode) {
         auto frames4 = [](int n) {
@@ -1130,23 +1107,16 @@ int wmain(int argc, wchar_t** argv) {
                    p.find("plain") == std::string::npos && p.find("garbage") == std::string::npos &&
                    p.find("Kai") == std::string::npos,
                "the protocol holds names or text");
-        // G. A broken Decoder Ring: a longer record without string ends, then a crash inside it – the chat codes stay
-        // plain, our add-on stays on. The chat tab in front, so the codes are drawn (and resolved).
+        // G. Chat codes in view: drawn as their kind, the code on hover – our add-on stays on. The chat tab in front,
+        // so the codes are drawn.
         if (hooks0) hooks0()->forceMap = true;
         src(7, nullptr, nullptr);
         frames4(5);
-        g_decoderMode = 1;
         raise(kMap, "Ana Sample", "look at [&AgGvWwEA] and [&BAwEAAA=]");
-        frames4(10);
-        st = srcState();
-        expect(!st.disabled && !st.decoderFault, "a longer Decoder Ring record broke something");
-        g_decoderMode = 2;
         raise(kMap, "Ana Sample", "again [&AgEEYQAA]");
         frames4(10);
         st = srcState();
-        std::printf("Decoder Ring broken: fault caught %d, add-on %s\n", st.decoderFault, st.disabled ? "OFF" : "alive");
-        expect(st.decoderFault && !st.disabled, "a crash inside Decoder Ring was not caught");
-        g_decoderMode = 0;
+        expect(!st.disabled, "drawing chat codes broke something");
         // G2. The chat draws only what is in view (the height cache): the content height – so every line's place – is
         // the same whether a line was measured this frame or comes from the cache: at the bottom, scrolled to the
         // middle, frames later; after a width change it settles at once and stays.

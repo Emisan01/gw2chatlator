@@ -190,6 +190,19 @@ void StartLocalMtJob(LocalMtJob job, std::wstring dataDir, std::string pair = {}
     });
 }
 
+}  // namespace
+
+LocalMtSummary LocalMtNow(const std::wstring& dataDir) {
+    RefreshLocalMtState(dataDir);
+    LocalMtSummary out;
+    out.module = s_state.module;
+    out.nllb = s_state.nllbInstalled;
+    out.opus = std::find(s_state.models.begin(), s_state.models.end(), true) != s_state.models.end();
+    out.helper = s_state.helperInfo;
+    return out;
+}
+
+namespace {
 std::string PairLabel(const gct::LocalMtModelInfo& model) {
     const std::string pair(model.pair);
     const size_t dash = pair.find('-');
@@ -275,11 +288,11 @@ void RenderLocalMtOptions(Config& edit) {
 
     ImGui::Separator();
     ImGui::TextUnformatted(UI(Tr(L"Inference Quality & Speed")).c_str());
-    const char* qualityItems[] = {
-        "Fast / Beam 1 (~350ms, lowest CPU)",
-        "Balanced / Beam 2 (~500ms, recommended)",
-        "Quality / Beam 4 (~900ms, maximum nuance)"
-    };
+    // the same three steps as on the dashboard's translation tile
+    const std::string qualityText[] = {UI(Tr(L"Fast") + L" – " + Tr(L"Beam 1 – about 350 ms per line, the lowest CPU load")),
+                                       UI(Tr(L"Balanced") + L" – " + Tr(L"Beam 2 – about 500 ms per line, recommended")),
+                                       UI(Tr(L"Best") + L" – " + Tr(L"Beam 4 – about 900 ms per line, the finest nuance"))};
+    const char* qualityItems[] = {qualityText[0].c_str(), qualityText[1].c_str(), qualityText[2].c_str()};
     int currentQ = edit.localQuality == 1 ? 0 : edit.localQuality == 4 ? 2 : 1;
     ImGui::SetNextItemWidth(300);
     if (ImGui::Combo(UI(Tr(L"Quality Mode") + L"##localmtquality").c_str(), &currentQ, qualityItems, 3)) {

@@ -73,11 +73,11 @@ Quality verification is strictly stratified into three distinct levels:
 | **MT-09** | MT | Helper handshake: old `ready` / proto 1 without `nllb` / complete | Outdated (proto 0); Outdated(caps) only when NLLB is chosen; Ok | B | `src/win/local_mt_translator.cpp`, `src/core/local_mt_protocol.*` | 2.6.3, 2026-10-27, pass (`local_mt_translator_selftest`), receipt `fa48d65` |
 | **MT-10** | MT | Helper swap: success, handshake failure, incomplete package, running helper (path with space and umlaut) | New exe in place and no `.old`; old exe restored; nothing touched; running helper ended first | B | `src/win/local_mt_packages.cpp` | 2.6.3, 2026-10-27, pass (`local_mt_translator_selftest`), receipt `fa48d65` |
 | **MT-11** | MT | Model marker `.package.json` with a tampered file size | Detected as corrupted; untouched model stays valid | B | `src/win/local_mt_packages.cpp` | 2.6.3, 2026-10-27, pass (`local_mt_translator_selftest`), receipt `fa48d65` |
-| **MT-12** | MT | Fresh data folder: install helper, install NLLB, translate de->en | Progress shown, helper ready, correct translation | C | `addons/nexus-keyboard/src/kb_local_mt.cpp` | 2.6.3, 2026-10-27, skipped, receipt `fa48d65` |
+| **MT-12** | MT | Fresh data folder: install helper, install NLLB, translate de->en | Progress shown, helper ready, correct translation | C | `addons/nexus-keyboard/src/kb_local_mt.cpp` | 2.6.3, 2026-10-27, ok (Emi: fresh install, NLLB-200, de->en translated), receipt `fa48d65` |
 | **MT-13** | MT | Old helper present (2.6.2 extras) -> banner -> Update | Banner with one button; after the click the module is ready, no `.old` left; no frame stutter while the Translator tab is open | C | `addons/nexus-keyboard/src/kb_local_mt.cpp` | 2.6.3, 2026-10-27, skipped, receipt `fa48d65` |
 | **MT-14** | MT | Download interrupted during install or update | Clear error, old helper still works, no half state | C | `src/win/local_mt_packages.cpp` | 2.6.3, 2026-10-27, skipped, receipt `fa48d65` |
 | **MT-15** | MT | Data folder path with space and umlaut | sentencepiece loads, translation works | C | `addons/nexus-keyboard/src/translate_helper_main.cpp` | 2.6.3, 2026-10-27, skipped, receipt `fa48d65` |
-| **CHAT-01** | CHAT | Read incoming chat lines from Events: Chat | Incoming lines parsed; status clear if companion missing | C | `addons/nexus-keyboard/src/kb_chatsource.cpp` | 2.6.1, 2026-10-25, skipped |
+| **CHAT-01** | CHAT | Read incoming chat lines from Events: Chat | Incoming lines parsed; status clear if companion missing | C | `addons/nexus-keyboard/src/kb_chatsource.cpp` | 2.6.3, 2026-10-27, ok (Emi: Events: Chat installed with one click, Nexus loaded it, chat read), receipt `fa48d65` |
 | **CHAT-02** | CHAT | External chat pointer memory validation | `VirtualQuery` guard, SEH protective net, bounded strings | A | `addons/nexus-keyboard/src/kb_chatsource.cpp` | 2.6.1, 2026-10-25, pass |
 | **CHAT-03** | CHAT | Privacy invariant check | No external player chat stored or transmitted (counts only) | A | `addons/nexus-keyboard/src/kb_chat.cpp` | 2.6.1, 2026-10-25, pass |
 | **CHAT-04** | CHAT | Click on waypoint or item link in chat | Tooltip displays info; no unwanted automatic clipboard copy | C | `addons/nexus-keyboard/src/kb_chat.cpp` | 2.6.1, 2026-10-25, skipped |
@@ -95,10 +95,10 @@ Quality verification is strictly stratified into three distinct levels:
 | **UI-08** | UI | ImGui internals clean | PushFont/PopFont and Begin/End balanced; zero stray windows | C | `addons/nexus-keyboard/src/kb_window.cpp` | 2.6.1, 2026-10-25, skipped |
 | **REL-01** | REL | 8-Gate verification (`python tools/verify_release.py`) | All 8 quality gates pass without errors | A | Entire codebase | 2.6.3, 2026-10-27, pass (`--full`, Gates 0-8), receipt `fa48d65` |
 | **REL-02** | REL | Version number and documentation synchronization | Version tags, CHANGELOG, and README align | A | `CMakeLists.txt`, `README.md` | 2.6.3, 2026-10-27, pass (Gate 1 + `check_claims.py`), receipt `fa48d65` |
-| **REL-03** | REL | Nexus Library install path contract | Download, install, and load via Nexus library | C | Release package | 2.6.1, 2026-10-25, skipped |
+| **REL-03** | REL | Nexus Library install path contract | Download, install, and load via Nexus library | C | Release package | 2.6.3, 2026-10-27, ok (Emi: everything removed, installed again from the Nexus library), receipt `fa48d65` |
 | **REL-04** | REL | Extras packages and module assets | Assets carried along from dedicated extras release | A | `tools/pack_release.py` | 2.6.1, 2026-10-25, pass |
-| **REL-05** | REL | Maintainer personal in-game eye-test | Physical maintainer validation before public release | C | Entire add-on | 2.6.1, 2026-10-25, skipped |
-| **REL-06** | REL | Version line in the dashboard matches the receipt | Shows `2.6.3 · fa48d65` without `-dirty` | A/C | `cmake/version.h.in`, `tools/verify_release.py` | 2.6.3, 2026-10-27, pass (Gate 7 binary check) / C skipped, receipt `fa48d65` |
+| **REL-05** | REL | Maintainer personal in-game eye-test | Physical maintainer validation before public release | C | Entire add-on | 2.6.3, 2026-10-27, ok (Emi: quick tests passed, promoted to Latest), receipt `fa48d65` |
+| **REL-06** | REL | Version line in the dashboard matches the receipt | Shows `2.6.3 · fa48d65` without `-dirty` | A/C | `cmake/version.h.in`, `tools/verify_release.py` | 2.6.3, 2026-10-27, pass (Gate 7) / ok (Emi: dashboard showed `2.6.3 · fa48d65`), receipt `fa48d65` |
 
 ---
 

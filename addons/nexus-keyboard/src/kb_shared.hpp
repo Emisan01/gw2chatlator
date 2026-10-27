@@ -559,10 +559,6 @@ extern std::thread g_chatEventsThread;
 const std::wstring& AddonsDir();
 bool ChatEventsPresent(bool now = false);  // `now`: scan the modules at once (else every 3 s)
 void InstallChatEventsNow();
-extern std::atomic<bool> g_decoderFile, g_decoderInstalling;  // Decoder Ring: the file there, being loaded
-extern std::thread g_decoderThread;
-void InstallDecoderRingNow();
-void RemoveDecoderRingNow();
 
 // ---- the header's icons: microphone, menu (three lines), close, clear
 enum class Icon { Mic, MicMuted, ChevronDown, Menu, Close, Collapse, Expand, Clear };
@@ -618,7 +614,7 @@ void VoiceIdleUnload();
 void RemoveVoiceModuleNow();
 void RemoveVoiceModelsNow();
 void RemoveChatEventsNow();
-void RemoveEverythingNow(bool chatEventsToo, bool decoderToo);
+void RemoveEverythingNow(bool chatEventsToo);
 void RenderRemovedNotice();
 extern bool g_wiped;
 extern std::atomic<int> g_wipeDone;
@@ -626,6 +622,13 @@ void StatusRow(const std::string& what, int state, const std::string& text);
 void RenderModules(bool guide);
 bool RemoveButton(const char* id);
 void RenderLocalMtOptions(Config& edit);
+// The local translation as the dashboard shows it: refreshed at most every 2 s, the helper's handshake probed in the
+// background only (game thread).
+struct LocalMtSummary {
+    bool module = false, nllb = false, opus = false;
+    gct::HelperInfo helper;
+};
+LocalMtSummary LocalMtNow(const std::wstring& dataDir);
 void InstallLocalMtQuickSetup(const std::wstring& dataDir);
 void InstallVoiceQuickSetup();
 // A number for the eye (Options > Technical): smoothed over about the last 20 frames, shown at most 4 times a second.
@@ -658,7 +661,7 @@ void NoteSelfFix(const std::wstring& text);
 void SaveMyWords();
 
 // A chat line that wraps word by word with its links (blue, underlined: a click asks before anything opens) and chat
-// codes (item/skill/waypoint name in rarity colour via Decoder Ring, hover tooltip with details; a click does nothing).
+// codes (the name the game sent, else the code's kind; hover shows kind and code; a click does nothing).
 extern bool g_openLinkAsk;
 extern bool g_minimizeRequest, g_expandRequest;  // on the main window, never inside the chat area
 bool RichLine(const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 color);

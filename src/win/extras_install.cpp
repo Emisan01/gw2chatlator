@@ -18,8 +18,6 @@ struct ReleaseSource {
 };
 constexpr ReleaseSource kChatEvents{L"/repos/jsantorek/GW2-Chat/releases/latest",
                                     "https://github.com/jsantorek/GW2-Chat/releases/download/", kChatEventsDllName};
-constexpr ReleaseSource kDecoderRing{L"/repos/PieOrCake/decoder_ring/releases/latest",
-                                     "https://github.com/PieOrCake/decoder_ring/releases/download/", kDecoderRingDllName};
 
 bool IsHex64(const std::string& s) {
     return s.size() == 64 && std::all_of(s.begin(), s.end(), [](char c) {
@@ -77,10 +75,6 @@ static ExtrasInstallResult InstallFromRelease(const ReleaseSource& src, const st
 
 ExtrasInstallResult InstallChatEvents(const std::wstring& addonsDir, const std::function<bool()>& cancelled) {
     return InstallFromRelease(kChatEvents, addonsDir, cancelled);
-}
-
-ExtrasInstallResult InstallDecoderRing(const std::wstring& addonsDir, const std::function<bool()>& cancelled) {
-    return InstallFromRelease(kDecoderRing, addonsDir, cancelled);
 }
 
 }  // namespace gct

@@ -591,7 +591,7 @@ void RenderDiscordVoiceMenu() {
             std::lock_guard<std::mutex> lock(g_mu);
             handsFree = g_cfg.voiceAutoSend;
         }
-        if (ImGui::MenuItem(UI(Tr(L"Hands free")).c_str(), nullptr, handsFree)) {
+        if (ImGui::MenuItem(UI(Tr(L"Hands free (voice only)")).c_str(), nullptr, handsFree, Modules().voiceModule)) {
             {
                 std::lock_guard<std::mutex> lock(g_mu);
                 g_cfg.voiceAutoSend = !handsFree;

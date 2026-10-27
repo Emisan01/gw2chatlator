@@ -32,8 +32,7 @@ Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustot
 - **A chat window built like GW2's own:** tabs at the top – the chat and up to five whisper tabs (click a name, or
   right-click the header to open one); fold it up to its header (V) and open it again (A); it snaps to the screen edges
   and appears only on a map, never on the character screen. Chat codes (waypoints, items …) are found by
-  GW2Chatlator itself; names and details on mouse-over still need the optional, outdated Decoder Ring add-on
-  (Options → Technical) until our own lookup replaces it. Web links open only after a question.
+  GW2Chatlator itself and show their kind and code on mouse-over. Web links open only after a question.
 - **Write in your language,** the chat gets the translation: you see it (and what it means in your language again)
   before Enter sends it. Longer than one chat line: split into several. Translators: MyMemory (free), Google,
   Microsoft, DeepL, your own LibreTranslate server.
@@ -138,7 +137,7 @@ why GW2Chatlator works like this:
 
 **Text goes only to the translator you chose,** and only while translation is switched on – that includes the chat
 lines of other players you translate. MyMemory is a public translation memory that may store what it receives. API
-keys are stored encrypted for your Windows account. Item and waypoint names are resolved locally or cached via Decoder Ring.
+keys are stored encrypted for your Windows account.
 
 **What it learns stays local.** It learns only from the messages *you* send, never from other players' chat.
 Options → Writing → *Delete everything learned* starts from scratch.

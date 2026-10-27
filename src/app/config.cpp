@@ -461,6 +461,7 @@ void Config::SaveAll() const {
         SaveValue(L"Translate", L"Understood", list);
     }
     SaveBool(L"Translate", L"SkipTypingLang", skipTypingLang);
+    SaveValue(L"Translate", L"LocalQuality", std::to_wstring(localQuality));  // was read, never written (until 2.6.4)
     SaveValue(L"Basic", L"Email", AsciiEscape(basicEmail));
     SaveValue(L"DeepL", L"ApiKey", ProtectSecret(deeplKey));
     SaveValue(L"Google", L"ApiKey", ProtectSecret(googleKey));

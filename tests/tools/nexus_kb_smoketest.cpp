@@ -206,7 +206,7 @@ int wmain(int argc, wchar_t** argv) {
     // The chat source guard must take every realistic line (Unicode, chat codes, links, tricks): none rejected, no pause.
     if (auto src = reinterpret_cast<int (*)(int, void*, char*)>(GetProcAddress(dll, "Gw2KbTestChatSource"))) {
         struct {  // as ChatSourceTest in kb_shared.hpp
-            int reading, pause, shown, dropped, unreadable, disabled, decoderFault;
+            int reading, pause, shown, dropped, unreadable, disabled;
             int received, ignored;
             char version[32], before[32];
         } st{};

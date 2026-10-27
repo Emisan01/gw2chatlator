@@ -38,7 +38,7 @@ public:
         : helper_(std::move(helper)), data_(std::move(data)), forceNllb_(forceNllb) {}
     ~LocalMtTranslator() override { Stop(); }
 
-    std::wstring Name() const override { return forceNllb_ ? L"NLLB-200 (local)" : L"OPUS-MT (local)"; }
+    std::wstring Name() const override { return forceNllb_ ? Tr(L"NLLB-200 (local)") : Tr(L"OPUS-MT (local)"); }
 
     void StopForRemoval() {
         std::lock_guard<std::mutex> lock(mu_);

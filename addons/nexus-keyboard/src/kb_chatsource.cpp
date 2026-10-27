@@ -424,7 +424,6 @@ void ChatSourceTestState(ChatSourceTest* t) {
     t->received = g_src.received;
     t->ignored = g_src.ignored;
     t->disabled = g_disabled ? 1 : 0;
-    t->decoderFault = gct::DecoderRingFaulted() ? 1 : 0;
     strncpy_s(t->version, U8(g_src.version).c_str(), _TRUNCATE);
     strncpy_s(t->before, U8(g_src.before).c_str(), _TRUNCATE);
 }
