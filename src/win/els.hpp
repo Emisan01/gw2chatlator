@@ -11,9 +11,6 @@ namespace gct {
 // or empty when unsure (very short text) or ELS is unavailable.
 std::wstring DetectLanguage(const std::wstring& text);
 
-// Cyrillic / Devanagari -> Latin letters. Returns the input unchanged if
-// nothing applies or ELS is unavailable.
-std::wstring TransliterateToLatin(const std::wstring& text);
 
 
 }  // namespace gct

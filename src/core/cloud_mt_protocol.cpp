@@ -120,7 +120,7 @@ std::vector<CloudMtParsed> ParseGoogleResponse(const std::string& body, bool htm
         }
         TranslateErrorKind k = TranslateErrorKind::Other;
         std::string lowerMsg = msg;
-        std::transform(lowerMsg.begin(), lowerMsg.end(), lowerMsg.begin(), [](unsigned char c) { return std::tolower(c); });
+        std::transform(lowerMsg.begin(), lowerMsg.end(), lowerMsg.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         if (code == 401 || code == 403 || lowerMsg.find("key") != std::string::npos) k = TranslateErrorKind::Auth;
         else if (code == 429 || lowerMsg.find("quota") != std::string::npos || lowerMsg.find("rate") != std::string::npos) k = TranslateErrorKind::Quota;
         else if (lowerMsg.find("unsupported") != std::string::npos || lowerMsg.find("language") != std::string::npos) k = TranslateErrorKind::UnsupportedPair;
@@ -184,7 +184,7 @@ std::vector<CloudMtParsed> ParseMicrosoftResponse(const std::string& body, bool 
         }
         TranslateErrorKind k = TranslateErrorKind::Other;
         std::string lowerMsg = msg;
-        std::transform(lowerMsg.begin(), lowerMsg.end(), lowerMsg.begin(), [](unsigned char c) { return std::tolower(c); });
+        std::transform(lowerMsg.begin(), lowerMsg.end(), lowerMsg.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         if (code == 401000 || code == 403000 || lowerMsg.find("key") != std::string::npos || lowerMsg.find("credential") != std::string::npos)
             k = TranslateErrorKind::Auth;
         else if (code == 429000 || lowerMsg.find("quota") != std::string::npos)
@@ -254,7 +254,7 @@ std::vector<CloudMtParsed> ParseLibreResponse(const std::string& body, bool html
         const std::string msg = root.GetString("error");
         TranslateErrorKind k = TranslateErrorKind::Other;
         std::string lowerMsg = msg;
-        std::transform(lowerMsg.begin(), lowerMsg.end(), lowerMsg.begin(), [](unsigned char c) { return std::tolower(c); });
+        std::transform(lowerMsg.begin(), lowerMsg.end(), lowerMsg.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         if (lowerMsg.find("key") != std::string::npos || lowerMsg.find("auth") != std::string::npos)
             k = TranslateErrorKind::Auth;
         else if (lowerMsg.find("limit") != std::string::npos || lowerMsg.find("slow") != std::string::npos)

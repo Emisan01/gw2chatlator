@@ -93,17 +93,4 @@ std::wstring DetectLanguage(const std::wstring& text) {
     return PrimaryLang(first);
 }
 
-std::wstring TransliterateToLatin(const std::wstring& text) {
-    Els& e = Instance();
-    std::wstring out = text, tmp;
-    bool cyr = false, dev = false;
-    for (wchar_t c : text) {
-        cyr = cyr || (c >= 0x0400 && c <= 0x052F);
-        dev = dev || (c >= 0x0900 && c <= 0x097F);
-    }
-    if (cyr && e.Run(e.cyrillic, out, tmp) && !tmp.empty()) out = tmp;
-    if (dev && e.Run(e.devanagari, out, tmp) && !tmp.empty()) out = tmp;
-    return out;
-}
-
 }  // namespace gct

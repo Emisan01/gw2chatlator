@@ -344,12 +344,6 @@ void Buttons(const View& v, bool muHeld) {
 
 }  // namespace
 
-int ChatSourceStatus(std::wstring* text) {  // any thread: 2 reading, 0 off or paused – and in words
-    const View v = StateView();
-    if (text) *text = v.text;
-    return v.level;
-}
-
 void RenderChatSourceNotice() {  // the chat area (g_mu held): only while reading is off or paused
     if (!g_chatEventsLive && !g_chatEventsPresent) return;  // no Events: Chat: the modules list says so
     const View v = StateView();

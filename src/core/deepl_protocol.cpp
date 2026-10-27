@@ -110,7 +110,7 @@ std::vector<DeepLParsed> ParseDeepLResponseBatch(const std::string& body, bool x
         const std::string msg = root.GetString("message");
         TranslateErrorKind k = TranslateErrorKind::Other;
         std::string lowerMsg = msg;
-        std::transform(lowerMsg.begin(), lowerMsg.end(), lowerMsg.begin(), [](unsigned char c) { return std::tolower(c); });
+        std::transform(lowerMsg.begin(), lowerMsg.end(), lowerMsg.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         if (lowerMsg.find("authorization") != std::string::npos || lowerMsg.find("key") != std::string::npos || lowerMsg.find("auth") != std::string::npos)
             k = TranslateErrorKind::Auth;
         else if (lowerMsg.find("quota") != std::string::npos || lowerMsg.find("limit") != std::string::npos)

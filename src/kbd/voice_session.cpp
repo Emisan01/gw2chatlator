@@ -324,39 +324,6 @@ float VoiceSession::Level() const {  // the meter shows the boosted level (60 dB
     return recording_ ? std::clamp(capture_.Level() + 20.0f * std::log10(gain_) / 60.0f, 0.0f, 1.0f) : 0.0f;
 }
 
-int VoiceSession::RecordedMs() const {
-    std::lock_guard<std::mutex> lk(mu_);
-    return SamplesToMs(audio_.size());
-}
-
-void VoiceSession::UnloadIfIdle(int minutes) {
-    if (minutes <= 0 || !worker_.joinable()) return;
-    const ULONGLONG limit = static_cast<ULONGLONG>(minutes) * 60000ull;
-    std::lock_guard<std::mutex> lk(mu_);
-    if (!stats_.loaded || recording_ || recognizing_ || !jobs_.empty()) return;
-    if (GetTickCount64() - lastUseTick_ < limit) return;
-    jobs_.push_back([this, limit] {
-        {
-            std::lock_guard<std::mutex> g(mu_);  // used again since it was queued: keep it
-            if (recording_ || recognizing_ || GetTickCount64() - lastUseTick_ < limit) return;
-        }
-        engine_->Unload();
-        std::lock_guard<std::mutex> g(mu_);
-        stats_.loaded = false;
-    });
-    cv_.notify_one();
-}
-
-VoiceSession::Stats VoiceSession::GetStats() const {
-    Stats s;
-    {
-        std::lock_guard<std::mutex> lk(mu_);
-        s = stats_;
-    }
-    if (WhisperEngine::RuntimeAvailable()) s.systemInfo = WhisperEngine::SystemInfo();
-    return s;
-}
-
 void VoiceSession::RunTest(const VoiceSettings& s, int seconds, HWND notify, UINT message) {
     if (recording_) {
         PostString(notify, message, L"[!] " + Tr(L"Finish the recording in the window first, then test again."));

@@ -373,8 +373,4 @@ std::vector<AudioDevice> AudioCapture::Devices() {
     return list;
 }
 
-void OpenMicrophonePrivacySettings() {
-    ShellExecuteW(nullptr, L"open", L"ms-settings:privacy-microphone", nullptr, nullptr, SW_SHOWNORMAL);
-}
-
 }  // namespace gct

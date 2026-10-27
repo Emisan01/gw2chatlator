@@ -31,7 +31,6 @@ UiLang GetUiLang();
 
 // "de", "DE", "de-AT", "pt-BR" ... -> language; anything else -> fallback.
 UiLang UiLangFromCode(const std::wstring& code, UiLang fallback = UiLang::En);
-const wchar_t* UiLangCode(UiLang lang);
 
 std::wstring Tr(const wchar_t* english);
 // Tr() plus placeholders {1}, {2}, ... replaced by `args` in order.

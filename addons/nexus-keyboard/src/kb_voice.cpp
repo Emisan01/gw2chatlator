@@ -229,18 +229,6 @@ void TalkUp() {
     }
     g_voice.Send("end");
 }
-void TalkCancel() {
-    {
-        std::lock_guard<std::mutex> lock(g_mu);
-        g_recording = false;
-        g_userRecording = false;
-        g_micLocked = false;
-        g_micLockedStart = 0;
-        g_voiceLive.clear();
-        g_autoSendPending = false;
-    }
-    g_voice.Send("cancel");
-}
 void TalkLocked() {  // right-click on the microphone: on until a pause is heard
     if (g_voiceMuted.load()) return;
     {

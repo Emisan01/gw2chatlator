@@ -49,10 +49,6 @@ public:
     // `tags` from SpellTagCandidates; `userWordsPath` is created on first add.
     bool Init(const std::vector<std::wstring>& tags, const std::wstring& userWordsPath);
     bool Ready() const { return checker_.Ready(); }
-    // Another language (the keyboard layout changed). False if Windows has
-    // no checker for it — spelling is then off until the next switch, rather
-    // than marking every word of a foreign language as wrong.
-    bool SwitchLanguage(const std::vector<std::wstring>& tags);
     const std::wstring& Tag() const { return checker_.Tag(); }
 
     void SetGameWords(WordSet words) {
@@ -123,11 +119,8 @@ public:
     void Chose(const std::wstring& text, size_t start, const std::wstring& word, bool deliberate);
     void SetLearnChoices(bool on) { learnChoices_ = on; }
     void AddUserWord(const std::wstring& word);    // persists
-    // Names you taught ("Fallen" for "A Fallen Warrior"): always written as taught. Typing the plain word offers the
-    // name first (Space) and the ordinary word right after (Tab) – "fallen" stays a verb when you want it.
-    // Stored next to your words in my-names.txt.
-    void AddName(const std::wstring& name);
-    bool RemoveName(const std::wstring& word);
+    // Names from my-names.txt ("Fallen" for "A Fallen Warrior"): always written as taught. Typing the plain word offers
+    // the name first (Space) and the ordinary word right after (Tab) – "fallen" stays a verb when you want it.
     std::wstring NameFor(const std::wstring& word) const;
     // Your GW2 terms in gw2-terms.txt (next to your words): never translated, never a spelling error. False when
     // `term` has more than kMaxTermWords words or 60 characters (several words are one term: a guild's name).
@@ -135,7 +128,6 @@ public:
     // Never translated: the built-in GW2 abbreviations, your terms and the names you taught.
     const WordSet& KeepWords() const { return keep_; }
     std::shared_ptr<const WordSet> KeepWordsSnapshot() const { return std::atomic_load(&keepSnap_); }
-    void IgnoreForSession(const std::wstring& word);
 
     // Ranges no spell logic may touch: chat codes and a "/w Name, " prefix.
     static std::vector<Span> ProtectedSpans(const std::wstring& text);

@@ -81,11 +81,6 @@ const LangInfo* FindLanguage(const std::wstring& code) {
     return nullptr;
 }
 
-std::wstring LanguageLabel(const std::wstring& code) {
-    const LangInfo* l = FindLanguage(code);
-    return l ? l->native : ToUpperAscii(code);
-}
-
 std::wstring LanguageEnglishName(const std::wstring& code) {
     const LangInfo* l = FindLanguage(code);
     return l ? l->english : ToUpperAscii(code);

@@ -529,8 +529,7 @@ extern "C" __declspec(dllexport) AddonDefinition_t* GetAddonDef() {
     g_def.Version.Build = GCT_VER_PATCH;
     g_def.Version.Revision = 0;
     g_def.Author = "Emi";
-    g_def.Description = "Smart typing assistance, real-time chat translation, voice-to-text input, and whisper tabs "
-                        "built natively into Guild Wars 2. The chat comes from \"Events: Chat\" (Nexus library).";
+    g_def.Description = "Input prediction, real-time translation, voice to text - the keyboard GW2 was always missing.";
     g_def.Load = AddonLoad;
     g_def.Unload = AddonUnload;
     g_def.Flags = AF_None;

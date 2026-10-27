@@ -90,11 +90,8 @@ public:
     bool Recording() const { return recording_; }
     bool Busy() const { return recording_ || recognizing_; }  // recording or final pass still running
     float Level() const;        // microphone level 0..1 while recording
-    int RecordedMs() const;     // so far
     unsigned Session() const { return session_; }
 
-    // Frees the model after `minutes` without use (call from a UI timer; cheap).
-    void UnloadIfIdle(int minutes);
 
     struct Stats {
         bool loaded = false;
@@ -104,7 +101,6 @@ public:
         int loadMs = 0;
         std::string systemInfo;  // whisper_print_system_info
     };
-    Stats GetStats() const;
 
     // Settings → Voice → "Test": records `seconds` from the microphone, recognizes it with `s`, and posts one
     // std::wstring* (owned by the receiver) with the text, latency and real-time factor to (notify, message).

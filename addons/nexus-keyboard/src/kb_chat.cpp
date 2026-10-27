@@ -325,11 +325,6 @@ void InstallChatEventsNow() {  // on your click: newest release, checksum checke
 
 ChatLinks g_links;
 
-std::wstring ApiLang() {  // the GW2 API speaks en, de, fr, es, zh (g_mu held)
-    if (!g_nx.namesLang.empty()) return g_nx.namesLang;  // like the game
-    const std::wstring p = ToLowerAscii(PrimaryLang(TypingLang()));
-    return p == L"de" || p == L"fr" || p == L"es" || p == L"zh" ? p : L"en";
-}
 bool g_openLinkAsk = false;
 bool g_minimizeRequest = false, g_expandRequest = false;  // on the main window, never inside the chat area
 // A chat line with its web links (a click asks first) and chat codes (shown by name, details on hover). A click on a

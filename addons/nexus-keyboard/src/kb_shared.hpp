@@ -597,7 +597,6 @@ int EscLayer();
 bool HandleEsc();
 extern bool g_escRequested;
 extern bool g_escCapturable;
-void TalkCancel();
 
 // ---- voice model download (its own thread: minutes, never on the worker or the game's threads)
 extern std::thread g_download;
@@ -665,7 +664,6 @@ namespace kb {
 
 // ---- chat codes: their own module (chat_links) – "[Item name]" as the game links them, the details on mouse-over.
 extern ChatLinks g_links;
-std::wstring ApiLang();
 
 // Words you corrected yourself while typing ("shcon" → "schon", this session): a right-click in the input offers to
 // learn them, so autocorrection writes them right next time.

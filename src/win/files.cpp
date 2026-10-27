@@ -15,29 +15,6 @@ std::wstring ExeDir() {
     return slash == std::wstring::npos ? L"." : p.substr(0, slash);
 }
 
-static bool IsWritableDir(const std::wstring& dir) {
-    const std::wstring probe = dir + L"\\.gct-write-test";
-    HANDLE h = CreateFileW(probe.c_str(), GENERIC_WRITE | DELETE, 0, nullptr, CREATE_ALWAYS,
-                           FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
-    if (h == INVALID_HANDLE_VALUE) return false;
-    CloseHandle(h);
-    return true;
-}
-
-std::wstring DataDir() {
-    static const std::wstring dir = [] {
-        const std::wstring exe = ExeDir();
-        if (IsWritableDir(exe)) return exe;
-        wchar_t buf[MAX_PATH * 2];
-        const DWORD n = GetEnvironmentVariableW(L"LOCALAPPDATA", buf, static_cast<DWORD>(std::size(buf)));
-        std::wstring base = (n > 0 && n < std::size(buf)) ? std::wstring(buf, n) : exe;
-        std::wstring d = base + L"\\GW2ChatTranslator";
-        EnsureDir(d);
-        return d;
-    }();
-    return dir;
-}
-
 bool EnsureDir(const std::wstring& path) {
     if (CreateDirectoryW(path.c_str(), nullptr)) return true;
     return GetLastError() == ERROR_ALREADY_EXISTS;
@@ -83,20 +60,6 @@ bool AppendFileBytes(const std::wstring& path, const std::string& data) {
                     written == data.size();
     CloseHandle(h);
     return ok;
-}
-
-double FileAgeDays(const std::wstring& path) {
-    WIN32_FILE_ATTRIBUTE_DATA a{};
-    if (!GetFileAttributesExW(path.c_str(), GetFileExInfoStandard, &a)) return -1.0;
-    FILETIME now{};
-    GetSystemTimeAsFileTime(&now);
-    ULARGE_INTEGER t1{}, t2{};
-    t1.LowPart = a.ftLastWriteTime.dwLowDateTime;
-    t1.HighPart = a.ftLastWriteTime.dwHighDateTime;
-    t2.LowPart = now.dwLowDateTime;
-    t2.HighPart = now.dwHighDateTime;
-    if (t2.QuadPart <= t1.QuadPart) return 0.0;
-    return static_cast<double>(t2.QuadPart - t1.QuadPart) / (10'000'000.0 * 60 * 60 * 24);
 }
 
 }  // namespace gct

@@ -60,7 +60,5 @@ private:
     std::wstring startMessage_;
 };
 
-// Opens Windows' microphone privacy page (ms-settings:privacy-microphone).
-void OpenMicrophonePrivacySettings();
 
 }  // namespace gct

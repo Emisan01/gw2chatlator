@@ -89,12 +89,6 @@ UiLang UiLangFromCode(const std::wstring& code, UiLang fallback) {
     return fallback;
 }
 
-const wchar_t* UiLangCode(UiLang lang) {
-    for (const UiLangInfo& l : UiLanguages())
-        if (l.lang == lang) return l.code;
-    return L"en";
-}
-
 const wchar_t* TranslationFor(UiLang lang, const wchar_t* english) {
     if (!english) return nullptr;
     const Table& t = TableFor(lang);

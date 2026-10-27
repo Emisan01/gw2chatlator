@@ -6,8 +6,6 @@
 
 namespace gct {
 
-// Lower-case hex; empty on failure.
-std::string Sha256Hex(const std::string& data);
 
 // Incremental: Update() with every chunk, Finish() once.
 class Sha256 {
@@ -25,7 +23,5 @@ private:
     void* hash_ = nullptr;  // BCRYPT_HASH_HANDLE
 };
 
-// SHA-256 of a whole file, read in chunks (any size). Empty when it cannot be read.
-std::string Sha256FileHex(const std::wstring& path);
 
 }  // namespace gct

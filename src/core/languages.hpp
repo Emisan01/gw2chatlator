@@ -27,8 +27,6 @@ bool DrawnInOurWindow(const LangInfo& l);
 // translated (core/send_route). An unknown code: as before, sendable.
 bool SendableInGw2(const std::wstring& code);
 
-// Human name for menus/labels, falls back to the code itself.
-std::wstring LanguageLabel(const std::wstring& code);
 
 // Name for an LLM prompt ("German"); falls back to the code.
 std::wstring LanguageEnglishName(const std::wstring& code);

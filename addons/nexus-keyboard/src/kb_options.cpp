@@ -351,33 +351,6 @@ void RenderCbaTheme() {
     if (changed) SaveLayout();
 }
 
-// The dashboard (Options > General): one switch – a chip, green on, grey off, amber changed and not saved yet ("Save"
-// applies it, as everywhere in this window) – its name, and below it in grey what it does right now.
-bool DashSwitch(const char* id, const std::string& name, const std::string& detail, bool* on, bool pending, bool usable) {
-    const ImVec4 col = !usable  ? ImVec4(0.5f, 0.5f, 0.5f, 1.f)
-                       : pending ? ImVec4(0.94f, 0.75f, 0.35f, 1.f)
-                       : *on     ? ImVec4(0.45f, 0.85f, 0.45f, 1.f)
-                                 : ImVec4(0.62f, 0.62f, 0.62f, 1.f);
-    const std::string onText = UI(Tr(L"on")), offText = UI(Tr(L"off"));
-    const float chipW = std::ceil(std::max(ImGui::CalcTextSize(onText.c_str()).x, ImGui::CalcTextSize(offText.c_str()).x) +
-                                  ImGui::GetStyle().FramePadding.x * 2 + 6);
-    ImGui::PushID(id);
-    ImGui::PushStyleColor(ImGuiCol_Text, col);
-    ImGui::PushStyleColor(ImGuiCol_Border, col);
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-    const bool clicked = ImGui::Button((*on ? onText : offText).c_str(), ImVec2(chipW, 0)) && usable;
-    ImGui::PopStyleVar();
-    ImGui::PopStyleColor(2);
-    if (clicked) *on = !*on;
-    ImGui::SameLine();
-    ImGui::AlignTextToFramePadding();
-    if (usable) ImGui::TextUnformatted(name.c_str());
-    else ImGui::TextDisabled("%s", name.c_str());
-    Hint(detail);
-    ImGui::PopID();
-    return clicked;
-}
-
 // Small pill toggle button for focus/settings ([on] in green / [off] in subtle grey); not usable: dimmed, clicks do
 // nothing, the tooltip says why.
 bool FocusSwitch(const char* id, const std::string& label, bool* val, const char* tooltip = nullptr, bool usable = true) {
@@ -413,27 +386,6 @@ bool FocusSwitch(const char* id, const std::string& label, bool* val, const char
     return clicked;
 }
 
-// A state of the dashboard that is switched elsewhere: the chip ([OK] / [--]) opens that tab.
-void DashState(const char* id, const std::string& name, const std::string& detail, bool fine, int tab) {
-    const ImVec4 col = fine ? ImVec4(0.45f, 0.85f, 0.45f, 1.f) : ImVec4(0.95f, 0.55f, 0.35f, 1.f);
-    const std::string onText = UI(Tr(L"on")), offText = UI(Tr(L"off"));
-    const float chipW = std::ceil(std::max(ImGui::CalcTextSize(onText.c_str()).x, ImGui::CalcTextSize(offText.c_str()).x) +
-                                  ImGui::GetStyle().FramePadding.x * 2 + 6);
-    ImGui::PushID(id);
-    ImGui::PushStyleColor(ImGuiCol_Text, col);
-    ImGui::PushStyleColor(ImGuiCol_Border, col);
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-    if (ImGui::Button(fine ? "OK" : "--", ImVec2(chipW, 0))) s_delayedTab = tab;
-    ImGui::PopStyleVar();
-    ImGui::PopStyleColor(2);
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Open")).c_str());
-    ImGui::SameLine();
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted(name.c_str());
-    Hint(detail);
-    ImGui::PopID();
-}
-
 // What is on, at a glance (g_mu NOT held): the chat's translation applies at once (as in the Translator tab), the rest
 // with "Save".
 // "Translated is everything except: ..." – the one list of what is never translated by itself (core/translate_policy):
@@ -442,11 +394,6 @@ void DashState(const char* id, const std::string& name, const std::string& detai
 std::wstring WritingLangNow() {
     std::lock_guard<std::mutex> lock(g_mu);
     return PrimaryLang(TypingLang());
-}
-std::string ExceptText(const Config& c) {
-    std::wstring out = c.skipTypingLang ? TrF(L"My writing language ({1})", {WritingLangNow()}) : std::wstring();
-    for (const std::wstring& u : c.understoodLangs) out += (out.empty() ? L"" : L", ") + NativeName(u);
-    return UI(out.empty() ? Tr(L"nothing") : out);
 }
 void RenderExceptList(Config& edit) {
     static const wchar_t* kCommon[] = {L"EN", L"DE", L"FR", L"ES", L"IT", L"PT", L"NL", L"PL",
@@ -581,49 +528,6 @@ void DoSaveOptions(Config& edit, Config& opened,
         VoiceReload();
 }
 
-enum class PillKind { Missing, Installed, Ready, Loading, Off };
-
-void DrawPill(const char* label, PillKind kind) {
-    ImVec4 borderCol, fillCol, textCol;
-    switch (kind) {
-        case PillKind::Installed:
-        case PillKind::Ready:
-            borderCol = ImVec4(0.24f, 0.86f, 0.55f, 0.8f);
-            fillCol = ImVec4(0.24f, 0.86f, 0.55f, 0.14f);
-            textCol = ImVec4(0.62f, 0.97f, 0.76f, 1.0f);
-            break;
-        case PillKind::Missing:
-            borderCol = ImVec4(1.0f, 0.47f, 0.47f, 0.7f);
-            fillCol = ImVec4(1.0f, 0.47f, 0.47f, 0.12f);
-            textCol = ImVec4(1.0f, 0.70f, 0.70f, 1.0f);
-            break;
-        case PillKind::Loading:
-            borderCol = ImVec4(0.35f, 0.75f, 1.0f, 0.8f);
-            fillCol = ImVec4(0.35f, 0.75f, 1.0f, 0.14f);
-            textCol = ImVec4(0.65f, 0.90f, 1.0f, 1.0f);
-            break;
-        case PillKind::Off:
-        default:
-            borderCol = ImVec4(0.32f, 0.35f, 0.42f, 0.8f);
-            fillCol = ImVec4(0.20f, 0.22f, 0.27f, 0.4f);
-            textCol = ImVec4(0.65f, 0.67f, 0.73f, 1.0f);
-            break;
-    }
-    ImFont* font = ImGui::GetFont();
-    const float fs = ImGui::GetFontSize() * 0.80f;
-    const ImVec2 txtSize = font->CalcTextSizeA(fs, FLT_MAX, 0.0f, label);
-    const float padX = 8.0f;
-    const float padY = 3.0f;
-    const ImVec2 pillSize(txtSize.x + padX * 2.0f, txtSize.y + padY * 2.0f);
-    const ImVec2 p = ImGui::GetCursorScreenPos();
-    ImDrawList* dl = ImGui::GetWindowDrawList();
-    const float r = pillSize.y * 0.5f;
-    dl->AddRectFilled(p, ImVec2(p.x + pillSize.x, p.y + pillSize.y), ImGui::GetColorU32(fillCol), r);
-    dl->AddRect(p, ImVec2(p.x + pillSize.x, p.y + pillSize.y), ImGui::GetColorU32(borderCol), r, ImDrawCornerFlags_All, 1.0f);
-    dl->AddText(font, fs, ImVec2(p.x + padX, p.y + padY), ImGui::GetColorU32(textCol), label);
-    ImGui::Dummy(pillSize);
-}
-
 
 void SwitchOptionsTab(int tab) {
     s_delayedTab = tab;
@@ -642,14 +546,6 @@ void DrawCardPill(ImDrawList* dl, ImVec2 topRight, const std::string& label, ImU
     dl->AddRectFilled(p, ImVec2(p.x + pillSize.x, p.y + pillSize.y), fillCol, r);
     dl->AddRect(p, ImVec2(p.x + pillSize.x, p.y + pillSize.y), borderCol, r, ImDrawCornerFlags_All, 1.0f);
     dl->AddText(font, fs, ImVec2(p.x + padX, p.y + padY), textCol, label.c_str());
-}
-
-void DrawVectorChatIcon(ImDrawList* dl, ImVec2 c, float u, ImU32 col, ImU32 dotCol) {
-    dl->AddRectFilled(ImVec2(c.x - 7 * u, c.y - 6 * u), ImVec2(c.x + 7 * u, c.y + 3 * u), col, 3 * u);
-    dl->AddTriangleFilled(ImVec2(c.x - 4 * u, c.y + 3 * u), ImVec2(c.x - 0.5f * u, c.y + 3 * u), ImVec2(c.x - 5.5f * u, c.y + 6.5f * u), col);
-    dl->AddCircleFilled(ImVec2(c.x - 3.5f * u, c.y - 1.5f * u), 1.0f * u, dotCol);
-    dl->AddCircleFilled(ImVec2(c.x, c.y - 1.5f * u), 1.0f * u, dotCol);
-    dl->AddCircleFilled(ImVec2(c.x + 3.5f * u, c.y - 1.5f * u), 1.0f * u, dotCol);
 }
 
 void DrawVectorMicIcon(ImDrawList* dl, ImVec2 c, float u, ImU32 col, bool slash = false) {

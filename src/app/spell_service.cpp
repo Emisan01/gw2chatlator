@@ -88,12 +88,6 @@ bool SpellService::Init(const std::vector<std::wstring>& tags, const std::wstrin
     return checker_.Init(tags);
 }
 
-bool SpellService::SwitchLanguage(const std::vector<std::wstring>& tags) {
-    ClearCache();
-    InitPrediction(tags);
-    return checker_.Init(tags);
-}
-
 void SpellService::InitPrediction(const std::vector<std::wstring>& tags) {
     for (const std::wstring& t : tags)
         if (predict_.Init(t)) return;
@@ -201,19 +195,6 @@ void SpellService::SaveNames() {
     std::string out = "# Names you taught – written exactly like this. One per line.\n";
     for (const std::wstring& n : all) out += ToUtf8(n) + "\n";
     WriteFileAtomic(namesPath_, out);
-}
-
-void SpellService::AddName(const std::wstring& name) {
-    const std::wstring n = Trim(name);
-    if (n.empty() || n.size() > 40) return;
-    names_[CaseFold(n)] = n;
-    SaveNames();
-}
-
-bool SpellService::RemoveName(const std::wstring& word) {
-    if (names_.erase(CaseFold(Trim(word))) == 0) return false;
-    SaveNames();
-    return true;
 }
 
 std::wstring SpellService::NameFor(const std::wstring& word) const {
@@ -896,12 +877,6 @@ void SpellService::AddUserWord(const std::wstring& word) {
         line = "# My GW2 words: never marked as spelling errors. One word per line.\r\n";
     line += ToUtf8(w) + "\r\n";
     AppendFileBytes(userPath_, line);
-}
-
-void SpellService::IgnoreForSession(const std::wstring& word) {
-    if (session_.insert(CaseFold(word)).second) {
-        std::atomic_store(&sessionSnap_, std::make_shared<const WordSet>(session_));
-    }
 }
 
 }  // namespace gct
