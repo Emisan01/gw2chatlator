@@ -16,7 +16,13 @@ struct LocalMtMessage {
     std::string text;
     std::string error;
     int64_t milliseconds = 0;
+    std::string helper;
+    int proto = 0;
+    std::vector<std::string> caps;
+    std::string build;
 };
+
+bool HasCap(const LocalMtMessage& msg, const std::string& cap);
 
 struct LocalMtRequest {
     int id = 0;

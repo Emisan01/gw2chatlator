@@ -1,10 +1,28 @@
 cmake_minimum_required(VERSION 3.20)
-project(GW2KeyboardNexus VERSION 2.6.2 LANGUAGES CXX)
+project(GW2KeyboardNexus VERSION 2.6.3 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # The version lives here only: version.h for the code (the add-on's definition in Nexus, the options window).
+# The commit and the dirty flag are read when CMake configures, not on every build: a release build configures
+# again first (tools/verify_release.py --full does), and Gate 7 checks the DLL carries HEAD without "-dirty".
+set(GCT_GIT_COMMIT "unknown")
+set(GCT_GIT_BUILD_ID "unknown")
+set(GCT_GIT_DIRTY_STR "")
+find_package(Git QUIET)
+if(GIT_FOUND)
+    execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short=7 HEAD WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                    OUTPUT_VARIABLE GCT_GIT_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+    execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short=12 HEAD WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                    OUTPUT_VARIABLE GCT_GIT_BUILD_ID OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+    execute_process(COMMAND ${GIT_EXECUTABLE} status --porcelain WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                    OUTPUT_VARIABLE GCT_GIT_STATUS OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+    if(GCT_GIT_STATUS)
+        set(GCT_GIT_DIRTY_STR "-dirty")
+    endif()
+endif()
+
 configure_file(cmake/version.h.in ${CMAKE_BINARY_DIR}/generated/version.h)
 include_directories(${CMAKE_BINARY_DIR}/generated)
 

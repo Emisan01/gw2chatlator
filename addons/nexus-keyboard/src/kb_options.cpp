@@ -1882,7 +1882,7 @@ void RenderOptionsContent() {
                 static Steady s_fps;
                 const int fps = static_cast<int>(std::lround(s_fps(g_fps)));
                 const int hold = (fps > 0 && edit.send.autoTiming) ? std::clamp(1000 / std::max(fps, 10) + 10, 15, 1010) : edit.send.keyHoldMs;
-                ImGui::Text("GW2Chatlator for Nexus %s", GCT_VERSION_STR);
+                ImGui::Text("GW2Chatlator for Nexus %s", GCT_BUILD_DISPLAY_STR);
                 ImGui::Text("%s", UI(TrF(L"Game: {1} fps → keys held {2} ms", {std::to_wstring(fps), std::to_wstring(hold)})).c_str());
                 ImGui::Text("%s", UI(TrF(L"Translator: {1}", {g_translator ? g_translator->Name() : std::wstring(L"-")})).c_str());
                 if (const std::wstring q = MyMemoryQuotaText(); !q.empty() && (g_nx.translateChat || g_cfg.translateWriting))
@@ -1958,7 +1958,7 @@ std::string BuildDiagnosticReport() {
     ss << "======================================================================\n";
     ss << "GW2Chatlator - Diagnostic Protocol / Prüfprotokoll\n";
     ss << "Generated: " << timeBuf << " (Local Time)\n";
-    ss << "Version: GW2Chatlator for Nexus " << GCT_VERSION_STR << " (Release)\n";
+    ss << "Version: GW2Chatlator for Nexus " << GCT_BUILD_DISPLAY_STR << " (Release)\n";
     ss << "======================================================================\n\n";
 
     ss << "[System & Display Environment]\n";
@@ -1971,7 +1971,12 @@ std::string BuildDiagnosticReport() {
     ss << "- Map Open: " << (g_mapOpen ? "Yes" : "No") << ", Game Chat Open: " << (g_gameChatOpen ? "Yes" : "No") << "\n";
     ss << "- Add-on Window Visible: " << (g_show ? "Yes" : "No") << ", Collapsed: " << (g_collapsed ? "Yes" : "No") << "\n";
     ss << "- Auto Timing: " << (g_cfg.send.autoTiming ? "Enabled" : "Manual")
-       << " (Key Hold: " << g_cfg.send.keyHoldMs << " ms, Pause Between: " << g_cfg.send.stepDelayMs << " ms)\n\n";
+       << " (Key Hold: " << g_cfg.send.keyHoldMs << " ms, Pause Between: " << g_cfg.send.stepDelayMs << " ms)\n";
+    gct::HelperInfo helper = gct::GetLocalMtHelperInfo(g_translator);
+    if (!helper.build.empty()) {
+        ss << "- Local MT Helper Build: " << helper.build << " (proto: " << helper.proto << ")\n";
+    }
+    ss << "\n";
 
     ss << "[Translation & Inference Engine]\n";
     ss << "- Configured Engine: ";
@@ -2138,7 +2143,7 @@ void RenderDebugWindow() {
                           UI(chatLive ? Tr(L"ready – Events: Chat is loaded") : Tr(L"the chat module is missing")));
 
                 ImGui::Separator();
-                ImGui::Text("GW2Chatlator for Nexus %s", GCT_VERSION_STR);
+                ImGui::Text("GW2Chatlator for Nexus %s", GCT_BUILD_DISPLAY_STR);
                 ImGuiIO& io = ImGui::GetIO();
                 ImGui::Text("Game FPS: %d  (Frame time: %.2f ms)", g_fps.load(), io.Framerate > 0 ? 1000.0f / io.Framerate : 0.0f);
                 ImGui::Text("Total Add-on Render Cost: %.3f ms", fc.totalMs);

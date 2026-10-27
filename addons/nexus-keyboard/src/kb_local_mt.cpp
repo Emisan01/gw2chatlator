@@ -8,15 +8,68 @@ namespace kb {
 std::atomic<bool> g_localMtBusy{false};
 std::atomic<int> g_localMtPct{-1};
 std::thread g_localMtThread;
+std::thread g_localMtProbeThread;
 
 namespace {
-enum class LocalMtJob { InstallModule, RemoveModule, InstallModel, RemoveModel };
+// The helper's handshake (proto, caps) is only known by starting it: 150-300 ms, so never on the frame thread,
+// and again only when the exe on disk changed (an install, an update, a rollback).
+struct HelperProbe {
+    std::mutex mu;
+    gct::HelperInfo info;
+    uint64_t size = 0, time = 0;  // the exe the info belongs to
+    std::atomic<bool> running{false};
+} s_probe;
+
+bool ExeStamp(const std::wstring& path, uint64_t& size, uint64_t& time) {
+    WIN32_FILE_ATTRIBUTE_DATA data{};
+    if (!GetFileAttributesExW(path.c_str(), GetFileExInfoStandard, &data)) return false;
+    size = (static_cast<uint64_t>(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
+    time = (static_cast<uint64_t>(data.ftLastWriteTime.dwHighDateTime) << 32) | data.ftLastWriteTime.dwLowDateTime;
+    return true;
+}
+
+gct::HelperInfo CachedHelperInfo(const std::wstring& dataDir, bool busy) {
+    const std::wstring exe = KeyboardDir() + L"\\gw2kb_translate.exe";
+    uint64_t size = 0, time = 0;
+    if (!ExeStamp(exe, size, time)) return {};
+    {
+        std::lock_guard<std::mutex> lock(s_probe.mu);
+        if (s_probe.size == size && s_probe.time == time) return s_probe.info;
+    }
+    if (busy || s_probe.running.exchange(true)) return {};  // an install is replacing it, or a probe is on its way
+    if (g_localMtProbeThread.joinable()) g_localMtProbeThread.join();
+    g_localMtProbeThread = std::thread([exe, dataDir, size, time] {
+        gct::HelperInfo info;
+        const bool guarded = Shielded([&] {
+            try {
+                info = gct::ProbeLocalMtHelper(exe, dataDir);
+            } catch (...) {
+                info = {};
+                info.status = gct::HelperStatus::Failed;
+            }
+        });
+        if (!guarded) info.status = gct::HelperStatus::Failed;
+        {
+            std::lock_guard<std::mutex> lock(s_probe.mu);
+            s_probe.info = info;
+            s_probe.size = size;
+            s_probe.time = time;
+        }
+        s_probe.running = false;
+    });
+    return {};
+}
+
+enum class LocalMtJob { InstallModule, UpdateModule, RemoveModule, InstallModel, RemoveModel };
 
 struct LocalMtState {
     bool module = false;
+    gct::HelperInfo helperInfo;
     bool nllbInstalled = false;
+    bool nllbCorrupted = false;
     uint64_t nllbBytes = 0;
     std::vector<bool> models;
+    std::vector<bool> modelsCorrupted;
     std::vector<uint64_t> bytes;  // each installed pair's folder on disk
     ULONGLONG nextCheck = 0;
 } s_state;
@@ -41,13 +94,22 @@ void RefreshLocalMtState(const std::wstring& dataDir) {
     if (GetTickCount64() < s_state.nextCheck) return;
     s_state.nextCheck = GetTickCount64() + 2000;
     s_state.module = gct::LocalMtModulePresent(KeyboardDir());
+    if (s_state.module) {
+        s_state.helperInfo = CachedHelperInfo(dataDir, busy);
+    } else {
+        s_state.helperInfo = {};
+        s_state.helperInfo.status = gct::HelperStatus::Missing;
+    }
     s_state.nllbInstalled = gct::LocalMtModelPresent(dataDir, "nllb-200");
+    s_state.nllbCorrupted = gct::IsLocalMtModelCorrupted(dataDir, "nllb-200");
     s_state.nllbBytes = s_state.nllbInstalled ? FolderBytes(dataDir + L"\\translate\\nllb-200") : 0;
     const auto& catalog = gct::LocalMtModelCatalog();
     s_state.models.assign(catalog.size(), false);
+    s_state.modelsCorrupted.assign(catalog.size(), false);
     s_state.bytes.assign(catalog.size(), 0);
     for (size_t i = 0; i < catalog.size(); ++i) {
         s_state.models[i] = gct::LocalMtModelPresent(dataDir, catalog[i].pair);
+        s_state.modelsCorrupted[i] = gct::IsLocalMtModelCorrupted(dataDir, catalog[i].pair);
         if (s_state.models[i]) s_state.bytes[i] = FolderBytes(dataDir + L"\\translate\\" + FromUtf8(catalog[i].pair));
     }
 }
@@ -55,6 +117,7 @@ void RefreshLocalMtState(const std::wstring& dataDir) {
 std::wstring LocalMtJobName(LocalMtJob job) {
     switch (job) {
         case LocalMtJob::InstallModule: return Tr(L"the local translation module");
+        case LocalMtJob::UpdateModule: return Tr(L"the local translation module");
         case LocalMtJob::RemoveModule: return Tr(L"the local translation module");
         case LocalMtJob::InstallModel: return Tr(L"the selected language model");
         case LocalMtJob::RemoveModel: return Tr(L"the selected language model");
@@ -65,7 +128,7 @@ std::wstring LocalMtJobName(LocalMtJob job) {
 void StartLocalMtJob(LocalMtJob job, std::wstring dataDir, std::string pair = {}) {
     if (g_localMtBusy.exchange(true)) return;
     if (g_localMtThread.joinable()) g_localMtThread.join();
-    g_localMtPct = (job == LocalMtJob::InstallModule || job == LocalMtJob::InstallModel) ? 0 : -1;
+    g_localMtPct = (job == LocalMtJob::InstallModule || job == LocalMtJob::UpdateModule || job == LocalMtJob::InstallModel) ? 0 : -1;
     g_localMtThread = std::thread([job, dataDir = std::move(dataDir), pair = std::move(pair)] {
         ExtrasInstallResult result;
         bool removed = false;
@@ -78,6 +141,9 @@ void StartLocalMtJob(LocalMtJob job, std::wstring dataDir, std::string pair = {}
                 switch (job) {
                     case LocalMtJob::InstallModule:
                         result = gct::InstallLocalMtModule(KeyboardDir(), W(GCT_VERSION_STR), progress);
+                        break;
+                    case LocalMtJob::UpdateModule:
+                        result = gct::UpdateLocalMtModule(KeyboardDir(), W(GCT_VERSION_STR), progress);
                         break;
                     case LocalMtJob::RemoveModule:
                         for (int i = 0; i < 10 && !removed; ++i) {
@@ -113,7 +179,7 @@ void StartLocalMtJob(LocalMtJob job, std::wstring dataDir, std::string pair = {}
         if (job == LocalMtJob::RemoveModule || job == LocalMtJob::RemoveModel) {
             status = removed ? Tr(L"Local translation files removed") : TrF(L"Removing {1} failed", {LocalMtJobName(job)});
         } else if (result.code == ExtrasInstallCode::Ok) {
-            status = job == LocalMtJob::InstallModule ? Tr(L"Local translation module ready") : Tr(L"Language model installed");
+            status = (job == LocalMtJob::InstallModule || job == LocalMtJob::UpdateModule) ? Tr(L"Local translation module ready") : Tr(L"Language model installed");
         } else if (result.code == ExtrasInstallCode::NoAnswer) {
             status = TrF(L"GitHub did not answer ({1}) – please try again later", {result.detail});
         } else {
@@ -150,6 +216,14 @@ void RenderLocalMtOptions(Config& edit) {
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", UI(Tr(L"Downloads the isolated CPU helper from this version's GitHub release. SHA-256 is checked." )).c_str());
     } else if (s_state.module && !g_localMtBusy) {
+        if (s_state.helperInfo.status == gct::HelperStatus::Outdated) {
+            ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "%s",
+                               UI(TrF(L"Helper is outdated ({1})", {s_state.helperInfo.outdatedReason})).c_str());
+            ImGui::SameLine();
+            if (ImGui::SmallButton(UI(Tr(L"Update local translation module")).c_str()))
+                StartLocalMtJob(LocalMtJob::UpdateModule, edit.dataDir);
+            ImGui::SameLine();
+        }
         if (RemoveButton("localmtmodule")) {
             if (edit.engine == Engine::Local || edit.engine == Engine::Nllb) edit.engine = Engine::Basic;
             {
@@ -168,9 +242,10 @@ void RenderLocalMtOptions(Config& edit) {
     ImGui::TextUnformatted(UI(Tr(L"Universal model (NLLB-200)")).c_str());
     ImGui::TextDisabled("%s", UI(Tr(L"Meta NLLB-200-distilled-600M - direct translation between 200+ languages without English pivot.")).c_str());
     StatusRow(UI(Tr(L"Universal model")),
-              g_localMtBusy ? 1 : s_state.nllbInstalled ? 2 : 0,
-              UI(s_state.nllbInstalled ? TrF(L"installed ({1} MB)", {Mb(s_state.nllbBytes)})
-                                       : Tr(L"missing (about 600 MB)")));
+              g_localMtBusy ? 1 : s_state.nllbCorrupted ? 0 : s_state.nllbInstalled ? 2 : 0,
+              UI(s_state.nllbCorrupted ? Tr(L"Model corrupted – please reinstall")
+                    : s_state.nllbInstalled ? TrF(L"installed ({1} MB)", {Mb(s_state.nllbBytes)})
+                    : Tr(L"missing (about 600 MB)")));
     if (!g_localMtBusy) {
         if (s_state.nllbInstalled) {
             if (RemoveButton("localmtnllb")) {
@@ -233,10 +308,13 @@ void RenderLocalMtOptions(Config& edit) {
     }
     const auto& model = catalog[selected];
     ImGui::TextDisabled("%s  -  %s", model.model, model.license);  // ASCII: Nexus' font lacks the bullet
-    // its size and where it lives; the installed pairs with their sizes (user, 2026-10-22)
-    ImGui::TextDisabled("%s", UI(s_state.models[selected]
-                                     ? TrF(L"Size on disk: {1} MB", {Mb(s_state.bytes[selected])})
-                                     : TrF(L"Download: about {1} MB", {L"75"})).c_str());
+    if (s_state.modelsCorrupted[selected]) {
+        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s", UI(Tr(L"Model corrupted – please reinstall")).c_str());
+    } else {
+        ImGui::TextDisabled("%s", UI(s_state.models[selected]
+                                         ? TrF(L"Size on disk: {1} MB", {Mb(s_state.bytes[selected])})
+                                         : TrF(L"Download: about {1} MB", {L"75"})).c_str());
+    }
     ImGui::TextDisabled("%s", UI(TrF(L"Installed in: {1}", {edit.dataDir + L"\\translate\\" + FromUtf8(model.pair)})).c_str());
     size_t installed = 0;
     uint64_t total = 0;

@@ -46,6 +46,7 @@ public:
     }
 
     void SetBeamSize(int b) { beamSize_.store(b); }
+    HelperInfo GetInfo() const { return info_; }
 
     TranslateResult Translate(const std::vector<Segment>& segments, const std::wstring& sourceLang,
                               const std::wstring& targetLang) override {
@@ -181,6 +182,7 @@ private:
         if (!created) {
             if (job) CloseHandle(job);
             Stop();
+            info_.status = HelperStatus::Missing;
             error = L"The local translator helper is not installed";
             return false;
         }
@@ -209,9 +211,32 @@ private:
         LocalMtMessage ready;
         if (!ReadMessage(15000, ready) || ready.kind != LocalMtMessage::Kind::Ready) {
             Stop();
+            info_.status = HelperStatus::Failed;
             error = L"The local translator helper did not start correctly";
             return false;
         }
+        constexpr int kMinHelperProto = 1;
+        info_.helper = ready.helper;
+        info_.proto = ready.proto;
+        info_.caps = ready.caps;
+        info_.build = ready.build;
+
+        if (ready.proto < kMinHelperProto) {
+            Stop();
+            info_.status = HelperStatus::Outdated;
+            info_.outdatedReason = L"protocol version " + std::to_wstring(ready.proto) + L" < " + std::to_wstring(kMinHelperProto);
+            error = L"The local translator helper is outdated: " + info_.outdatedReason;
+            return false;
+        }
+        if (forceNllb_ && !HasCap(ready, "nllb")) {
+            Stop();
+            info_.status = HelperStatus::Outdated;
+            info_.outdatedReason = L"missing capability 'nllb'";
+            error = L"The local translator helper lacks NLLB support: " + info_.outdatedReason;
+            return false;
+        }
+        info_.status = HelperStatus::Ok;
+        info_.outdatedReason.clear();
         return true;
     }
 
@@ -313,6 +338,7 @@ private:
 
     const std::wstring helper_, data_;
     const bool forceNllb_ = false;
+    HelperInfo info_;
     HANDLE process_ = nullptr, write_ = nullptr, read_ = nullptr, job_ = nullptr;
     std::mutex mu_;
     std::mutex pairsMu_;
@@ -336,6 +362,114 @@ void StopLocalMtTranslator(const std::shared_ptr<Translator>& translator) {
 
 void SetLocalMtBeamSize(const std::shared_ptr<Translator>& translator, int beamSize) {
     if (auto local = std::dynamic_pointer_cast<LocalMtTranslator>(translator)) local->SetBeamSize(beamSize);
+}
+
+HelperInfo GetLocalMtHelperInfo(const std::shared_ptr<Translator>& translator) {
+    if (auto local = std::dynamic_pointer_cast<LocalMtTranslator>(translator)) {
+        return local->GetInfo();
+    }
+    return {};
+}
+
+HelperInfo ProbeLocalMtHelper(const std::wstring& helperExe, const std::wstring& dataDir, bool forceNllb) {
+    HelperInfo info;
+    if (GetFileAttributesW(helperExe.c_str()) == INVALID_FILE_ATTRIBUTES) {
+        info.status = HelperStatus::Missing;
+        return info;
+    }
+    SECURITY_ATTRIBUTES sa{sizeof(sa), nullptr, TRUE};
+    HANDLE childIn = nullptr, write = nullptr;
+    HANDLE read = nullptr, childOut = nullptr;
+    if (!CreatePipe(&childIn, &write, &sa, 0)) {
+        info.status = HelperStatus::Failed;
+        return info;
+    }
+    if (!CreatePipe(&read, &childOut, &sa, 0)) {
+        CloseHandle(childIn);
+        CloseHandle(write);
+        info.status = HelperStatus::Failed;
+        return info;
+    }
+    SetHandleInformation(write, HANDLE_FLAG_INHERIT, 0);
+    SetHandleInformation(read, HANDLE_FLAG_INHERIT, 0);
+
+    STARTUPINFOW si{};
+    si.cb = sizeof(si);
+    si.dwFlags = STARTF_USESTDHANDLES;
+    si.hStdInput = childIn;
+    si.hStdOutput = childOut;
+    si.hStdError = childOut;
+
+    std::wstring command = L"\"" + helperExe + L"\" --data \"" + dataDir + L"\"";
+    PROCESS_INFORMATION pi{};
+    const BOOL created = CreateProcessW(helperExe.c_str(), command.data(), nullptr, nullptr, TRUE,
+                                         CREATE_NO_WINDOW | BELOW_NORMAL_PRIORITY_CLASS, nullptr, nullptr, &si, &pi);
+    CloseHandle(childIn);
+    CloseHandle(childOut);
+    if (!created) {
+        CloseHandle(write);
+        CloseHandle(read);
+        info.status = HelperStatus::Missing;
+        return info;
+    }
+    CloseHandle(pi.hThread);
+
+    std::string pending;
+    char buffer[2048];
+    const ULONGLONG deadline = GetTickCount64() + 5000;
+    LocalMtMessage ready;
+    bool gotReady = false;
+    while (GetTickCount64() < deadline && !gotReady) {
+        DWORD available = 0;
+        if (!PeekNamedPipe(read, nullptr, 0, nullptr, &available, nullptr)) break;
+        if (!available) { Sleep(5); continue; }
+        DWORD n = 0;
+        if (!ReadFile(read, buffer, std::min<DWORD>(available, sizeof(buffer)), &n, nullptr) || !n) break;
+        pending.append(buffer, n);
+        size_t nl = pending.find('\n');
+        if (nl != std::string::npos) {
+            std::string line = pending.substr(0, nl);
+            if (!line.empty() && line.back() == '\r') line.pop_back();
+            if (ParseLocalMtMessage(line, ready) && ready.kind == LocalMtMessage::Kind::Ready) {
+                gotReady = true;
+                break;
+            }
+        }
+    }
+
+    const char quit[] = "{\"cmd\":\"quit\"}\n";
+    DWORD n = 0;
+    WriteFile(write, quit, sizeof(quit) - 1, &n, nullptr);
+    CloseHandle(write);
+    if (WaitForSingleObject(pi.hProcess, 1000) != WAIT_OBJECT_0) {
+        TerminateProcess(pi.hProcess, 0);
+    }
+    CloseHandle(pi.hProcess);
+    CloseHandle(read);
+
+    if (!gotReady) {
+        info.status = HelperStatus::Failed;
+        return info;
+    }
+
+    constexpr int kMinHelperProto = 1;
+    info.helper = ready.helper;
+    info.proto = ready.proto;
+    info.caps = ready.caps;
+    info.build = ready.build;
+
+    if (ready.proto < kMinHelperProto) {
+        info.status = HelperStatus::Outdated;
+        info.outdatedReason = L"protocol version " + std::to_wstring(ready.proto) + L" < " + std::to_wstring(kMinHelperProto);
+        return info;
+    }
+    if (forceNllb && !HasCap(ready, "nllb")) {
+        info.status = HelperStatus::Outdated;
+        info.outdatedReason = L"missing capability 'nllb'";
+        return info;
+    }
+    info.status = HelperStatus::Ok;
+    return info;
 }
 
 }  // namespace gct

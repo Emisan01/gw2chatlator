@@ -1,0 +1,78 @@
+{
+  "claims": [
+    {
+      "id": "addon_name",
+      "description": "Addon name is GW2Chatlator",
+      "expected": "GW2Chatlator",
+      "occurrences": [
+        {"file": "addons/nexus-keyboard/src/kb_shared.hpp", "pattern": "constexpr const char\\* kName = \"(GW2Chatlator)\";"},
+        {"file": "addons/nexus-keyboard/src/kb_main.cpp", "pattern": "g_def\\.Name = kName;"},
+        {"file": "AGENTS.md", "pattern": "\\| \\*\\*Add-on Name\\*\\* \\| `(GW2Chatlator)` \\|"}
+      ]
+    },
+    {
+      "id": "nexus_signature",
+      "description": "Nexus Signature is 0xB8B4BDBC (3098852796)",
+      "expected": "0xB8B4BDBC",
+      "occurrences": [
+        {"file": "addons/nexus-keyboard/src/kb_main.cpp", "pattern": "(0xB8B4BDBC)"},
+        {"file": "AGENTS.md", "pattern": "`0xB8B4BDBC`"}
+      ]
+    },
+    {
+      "id": "nexus_provider",
+      "description": "Provider is UP_GitHub",
+      "expected": "UP_GitHub",
+      "occurrences": [
+        {"file": "addons/nexus-keyboard/src/kb_main.cpp", "pattern": "g_def\\.Provider = (UP_GitHub);"},
+        {"file": "AGENTS.md", "pattern": "\\| \\*\\*Provider\\*\\* \\| `(UP_GitHub)` \\|"}
+      ]
+    },
+    {
+      "id": "official_binary",
+      "description": "Official binary is GW2Chatlator.dll",
+      "expected": "GW2Chatlator.dll",
+      "occurrences": [
+        {"file": "addons/nexus-keyboard/CMakeLists.txt", "pattern": "OUTPUT_NAME \"(GW2Chatlator)\""},
+        {"file": "tools/pack_release.py", "pattern": "\"(GW2Chatlator\\.dll)\""},
+        {"file": "AGENTS.md", "pattern": "\\| \\*\\*Official Binary\\*\\* \\| `(GW2Chatlator\\.dll)` \\|"}
+      ]
+    },
+    {
+      "id": "data_directory",
+      "description": "Data directory is addons\\GW2Keyboard\\",
+      "expected": "addons\\GW2Keyboard\\",
+      "occurrences": [
+        {"file": "addons/nexus-keyboard/src/kb_main.cpp", "pattern": "OwnDataDir\\(\\) \\{.*?GW2Keyboard"},
+        {"file": "AGENTS.md", "pattern": "addons\\\\GW2Keyboard\\\\"}
+      ]
+    },
+    {
+      "id": "author",
+      "description": "Author is Emi",
+      "expected": "Emi",
+      "occurrences": [
+        {"file": "addons/nexus-keyboard/src/kb_main.cpp", "pattern": "g_def\\.Author = \"(Emi)\";"},
+        {"file": "AGENTS.md", "pattern": "The author is (Emi)\\."}
+      ]
+    },
+    {
+      "id": "update_link",
+      "description": "Update link repository URL",
+      "expected": "https://github.com/Emisan01/gw2chatlator",
+      "occurrences": [
+        {"file": "addons/nexus-keyboard/src/kb_main.cpp", "pattern": "g_def\\.UpdateLink = \"(https://github\\.com/Emisan01/gw2chatlator)\";"},
+        {"file": "AGENTS.md", "pattern": "https://github\\.com/Emisan01/gw2chatlator"}
+      ]
+    },
+    {
+      "id": "user_keypress_binding",
+      "description": "Chat sending invariant: user keypress or hands-free speech end, never automated replies or timers",
+      "expected": "invariant",
+      "occurrences": [
+        {"file": "AGENTS.md", "pattern": "Never send anything to the game without the user's explicit keypress, or — when Hands free is active — automatic send on end of speech"},
+        {"file": "README.md", "pattern": "\\*\\*It never sends on its own\\.\\*\\* One line per Enter you press – or, only if you switch Hands free on"}
+      ]
+    }
+  ]
+}

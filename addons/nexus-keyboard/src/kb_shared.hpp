@@ -598,6 +598,7 @@ extern std::thread g_voiceModuleThread;
 extern std::atomic<bool> g_localMtBusy;
 extern std::atomic<int> g_localMtPct;
 extern std::thread g_localMtThread;
+extern std::thread g_localMtProbeThread;
 extern int g_optionsTab;
 std::wstring KeyboardDir();
 

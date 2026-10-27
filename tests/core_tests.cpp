@@ -182,7 +182,21 @@ static void TestLocalMtProtocol() {
     }
 
     LocalMtMessage message;
-    CHECK(ParseLocalMtMessage(R"({"evt":"ready"})", message) && message.kind == LocalMtMessage::Kind::Ready);
+    CHECK(ParseLocalMtMessage(R"({"evt":"ready"})", message) && message.kind == LocalMtMessage::Kind::Ready &&
+          message.proto == 0 && message.caps.empty() && message.build.empty() && !HasCap(message, "nllb"));
+
+    // Protocol 1 handshake with capabilities and build hash
+    CHECK(ParseLocalMtMessage(R"({"evt":"ready","helper":"translate","proto":1,"caps":["opus","nllb"],"build":"6c6ceae12345"})", message) &&
+          message.kind == LocalMtMessage::Kind::Ready && message.helper == "translate" && message.proto == 1 &&
+          message.caps.size() == 2 && message.build == "6c6ceae12345");
+    CHECK(HasCap(message, "opus") && HasCap(message, "nllb") && !HasCap(message, "whisper"));
+
+    // Resilient to extra fields and malformed types
+    LocalMtMessage badMsg;
+    CHECK(ParseLocalMtMessage(R"({"evt":"ready","helper":"translate","proto":1,"caps":["opus"],"build":"abc","unknown_future_field":123})", badMsg) &&
+          badMsg.proto == 1 && HasCap(badMsg, "opus") && !HasCap(badMsg, "nllb"));
+    CHECK(!ParseLocalMtMessage(R"({"evt":"ready", broken json)", badMsg));
+
     CHECK(ParseLocalMtMessage(R"({"evt":"loaded","pair":"de-en","ms":123})", message) &&
           message.kind == LocalMtMessage::Kind::Loaded && message.pair == "de-en" && message.milliseconds == 123);
     CHECK(ParseLocalMtMessage(R"({"evt":"result","id":7,"text":"h\u00e9llo"})", message) &&

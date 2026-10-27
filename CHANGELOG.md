@@ -3,6 +3,14 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.6.3 — 2026-10-27 (GW2Chatlator for Nexus)
+
+- **Helper Handshake & Capability Negotiation:** Local MT and voice helper processes announce helper identity, protocol version (`proto`), capabilities (`caps`), and build commit (12 characters) upon startup. Old helpers lacking a protocol version are identified as outdated; the NLLB engine requires the `nllb` capability. DLLs 2.6.0–2.6.2 read only `evt` and keep working with the new helper.
+- **Click-to-Update Helper Workflow:** When an outdated helper is detected, a banner with one button offers the update. The old helper keeps running during the download; the swap then ends it, keeps the old exe as `.old` until the new one answered its handshake, and puts it back on any failure. The handshake is probed once on a background thread and again only when the exe on disk changed — never on the frame thread.
+- **Build Commit & State Telemetry:** The dashboard's version line shows the built-in commit and a dirty mark (e.g. `2.6.3 · 6c6ceae`), matching the release receipt. The helper's build ID is part of the diagnostic protocol.
+- **Model Package Integrity Marker:** Model installations write `.package.json` with the file sizes; a size mismatch shows "Model corrupted – please reinstall" without hashing hundreds of megabytes.
+- **Package Contract & Asset Verification:** `verify_release.py --full` builds every artifact from a clean commit, runs all gates and writes the receipt `verification.json`; `--check-receipt` confirms it in seconds. `pack_release.py` writes `manifest.json` and `extras-manifest.json` (helper proto/caps read from the helper itself); `verify_assets.py` checks the uploaded assets by size and GitHub's SHA-256 digest.
+
 ## 2.6.2 — 2026-10-26 (GW2Chatlator for Nexus)
 
 - **Hands-Free Auto-Enter:** Automatically sends spoken messages after end of speech (1500 ms pause, PTT release, or mouse stop) once translation is ready.

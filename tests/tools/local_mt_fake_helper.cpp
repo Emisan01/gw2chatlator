@@ -7,8 +7,32 @@
 #include "core/json.hpp"
 #include "core/local_mt_protocol.hpp"
 
-int wmain() {
-    std::cout << "{\"evt\":\"ready\"}\n" << std::flush;
+int wmain(int argc, wchar_t** argv) {
+    std::string mode = "full";
+    for (int i = 1; i < argc; ++i) {
+        if (std::wstring(argv[i]) == L"--mode=old" || std::wstring(argv[i]) == L"--old") {
+            mode = "old";
+        } else if (std::wstring(argv[i]) == L"--mode=no-nllb" || std::wstring(argv[i]) == L"--no-nllb") {
+            mode = "no-nllb";
+        } else if (std::wstring(argv[i]) == L"--mode=full" || std::wstring(argv[i]) == L"--full") {
+            mode = "full";
+        }
+    }
+    wchar_t envMode[64] = {};
+    if (GetEnvironmentVariableW(L"GW2KB_FAKE_HELPER_MODE", envMode, 64) > 0) {
+        if (wcscmp(envMode, L"old") == 0) mode = "old";
+        else if (wcscmp(envMode, L"no-nllb") == 0) mode = "no-nllb";
+        else if (wcscmp(envMode, L"full") == 0) mode = "full";
+    }
+
+    if (mode == "old") {
+        std::cout << "{\"evt\":\"ready\"}\n" << std::flush;
+    } else if (mode == "no-nllb") {
+        std::cout << "{\"evt\":\"ready\",\"helper\":\"translate\",\"proto\":1,\"caps\":[\"opus\"],\"build\":\"test-build\"}\n" << std::flush;
+    } else {
+        std::cout << "{\"evt\":\"ready\",\"helper\":\"translate\",\"proto\":1,\"caps\":[\"opus\",\"nllb\"],\"build\":\"test-build\"}\n" << std::flush;
+    }
+
     std::string line;
     while (std::getline(std::cin, line)) {
         if (line == "{\"cmd\":\"quit\"}") return 0;

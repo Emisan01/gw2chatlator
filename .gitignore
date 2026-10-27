@@ -31,8 +31,8 @@ local/
 !res/*.png
 !tests/data/synthetic/*.png
 
-# local tool state (agent worktrees)
-.claude/worktrees/
+# local tool state (agent settings and worktrees); also keeps release builds from counting as "dirty"
+.claude/
 Claude outputs/
 scan.md
 tools/residue_scan.py

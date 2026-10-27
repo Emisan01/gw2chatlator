@@ -30,6 +30,7 @@
 #include "win/cpu_cores.hpp"
 #include "win/mic_sessions.hpp"
 #include "win/voice_models.hpp"
+#include "version.h"
 
 using namespace gct;
 
@@ -311,7 +312,10 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmdLine, int) {
         PostMessageW(hwnd, WM_APP_COMMAND, 0, reinterpret_cast<LPARAM>(new std::string("quit")));
     }).detach();
 
-    Write("{\"t\":\"ready\"}");
+    std::string readyMsg = "{\"t\":\"ready\",\"evt\":\"ready\",\"helper\":\"voice\",\"proto\":1,\"caps\":[\"whisper\"],\"build\":\"";
+    readyMsg += GCT_GIT_BUILD_ID;
+    readyMsg += "\"}";
+    Write(readyMsg);
     MSG m;
     while (GetMessageW(&m, nullptr, 0, 0) > 0) {
         TranslateMessage(&m);

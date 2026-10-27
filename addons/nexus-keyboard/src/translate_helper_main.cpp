@@ -18,6 +18,7 @@
 #include "core/voice.hpp"
 #include "win/cpu_cores.hpp"
 #include "win/files.hpp"
+#include "version.h"
 
 using namespace gct;
 namespace {
@@ -277,7 +278,10 @@ int wmain(int argc, wchar_t** argv) {
     g_unloadMinutes = std::clamp<int>(static_cast<int>(GetPrivateProfileIntW(L"Translate", L"UnloadMinutes", 10,
                                                                               ini.c_str())), 1, 120);
     g_lastRequest = GetTickCount64();
-    Emit("{\"evt\":\"ready\"}");
+    std::string readyMsg = "{\"evt\":\"ready\",\"helper\":\"translate\",\"proto\":1,\"caps\":[\"opus\",\"nllb\"],\"build\":\"";
+    readyMsg += GCT_GIT_BUILD_ID;
+    readyMsg += "\"}";
+    Emit(readyMsg);
 
     HANDLE in = GetStdHandle(STD_INPUT_HANDLE);
     std::string pending;

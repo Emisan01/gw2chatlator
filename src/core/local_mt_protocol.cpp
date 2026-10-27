@@ -112,13 +112,37 @@ bool ParseLocalMtRequest(const std::string& line, LocalMtRequest& out) {
     return true;
 }
 
+bool HasCap(const LocalMtMessage& msg, const std::string& cap) {
+    for (const auto& c : msg.caps) {
+        if (c == cap) return true;
+    }
+    return false;
+}
+
 bool ParseLocalMtMessage(const std::string& line, LocalMtMessage& out) {
     out = {};
     JsonValue json;
     if (!ParseJson(line, json) || !json.IsObject()) return false;
-    const std::string event = json.GetString("evt");
+    std::string event = json.GetString("evt");
+    if (event.empty()) event = json.GetString("t");
     if (event == "ready") {
         out.kind = LocalMtMessage::Kind::Ready;
+        out.helper = json.GetString("helper");
+        const JsonValue* proto = json.Get("proto");
+        if (proto && proto->type == JsonValue::Type::Number) {
+            out.proto = static_cast<int>(proto->n);
+        } else {
+            out.proto = 0;
+        }
+        const JsonValue* caps = json.Get("caps");
+        if (caps && caps->type == JsonValue::Type::Array) {
+            for (const auto& c : caps->arr) {
+                if (c.type == JsonValue::Type::String && !c.s.empty()) {
+                    out.caps.push_back(c.s);
+                }
+            }
+        }
+        out.build = json.GetString("build");
         return true;
     }
     if (event == "loaded") {

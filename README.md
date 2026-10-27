@@ -72,6 +72,20 @@ Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustot
 
 Updating: replace the DLL (or unpack the newer ZIP over the old one) (settings and learned words stay in `addons\GW2Keyboard`).
 
+### What is downloaded when
+
+| What | When | From |
+|---|---|---|
+| `GW2Chatlator.dll` | you download it, or Nexus updates it | the release of its version |
+| Events: Chat | your click on "Install" | its own GitHub release |
+| voice module | your click in Options → Voice | the `extras` release |
+| voice models | your click in Options → Voice | whisper.cpp on Hugging Face |
+| local translation module, language models | your click in Options → Translator | the `extras` release |
+| a newer local translation module | your click on "Update local translation module" (shown only when yours is outdated) | the `extras` release |
+
+Every download is checked by SHA-256 – the one GitHub publishes, for voice models the one built into the add-on.
+Nothing is downloaded in the background.
+
 ## Keys
 
 | Key | Does |
@@ -166,7 +180,8 @@ for the same version. Conversion downloads the selected Helsinki-NLP checkpoints
 stand-in Nexus API) and types, sends and unloads; `core_tests` runs the core on any system
 (`g++ -std=c++17 -I src tests/core_tests.cpp src/core/*.cpp`). More in [AGENTS.md](AGENTS.md).
 During development, run checks for the changed areas with `python tools/verify_release.py --changed`; unrelated test
-suites are skipped. A release requires the full `python tools/verify_release.py` run.
+suites are skipped. A release requires `python tools/verify_release.py --full`: from a clean commit it builds every
+artifact, runs all eight gates and writes the receipt `build/dist/verification.json`.
 
 **Translations:** all UI text is English in the code, wrapped in `Tr()`. The tables (German, French, Spanish,
 Italian, Polish, Portuguese, Turkish, Russian) are `src/core/i18n_<code>.cpp`. `python3 tools/i18n_check.py` lists missing entries.
