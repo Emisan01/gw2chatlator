@@ -2081,6 +2081,18 @@ void RenderOptionsContent() {
                 g_showDebugWindow = !g_showDebugWindow;
             }
             Hint(UI(Tr(L"Exports system status, engine telemetry, and performance metrics (no chat messages or player names are stored or exported).")));
+            // Raw translation, for comparing what our logic adds: the visible chat is translated again in the other way.
+            bool raw = g_rawTranslate.load();
+            if (FocusSwitch("tech_raw", UI(Tr(L"Raw translation (until restart)")), &raw)) {
+                g_rawTranslate = raw;
+                std::lock_guard<std::mutex> lock(g_mu);
+                g_orchestrator.SetInterjectionSieve(!raw);
+                TranslateRecentLines(true);
+                SetStatus(raw ? Tr(L"Raw translation on: GW2 terms, names, sentence by sentence, the extra tries, the clean-up and the quality check are off")
+                              : Tr(L"Raw translation off: our translation logic is on again"),
+                          6000);
+            }
+            Hint(UI(Tr(L"For comparing: the translator gets each line exactly as written, its result is shown as it comes. Chat codes and links stay protected. Not saved.")));
             ImGui::Separator();
             {
                 std::lock_guard<std::mutex> lock(g_mu);

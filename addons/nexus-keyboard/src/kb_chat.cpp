@@ -94,7 +94,7 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
 
         // Smart-Sieve-Manager: spam filter, repetition cache, and occlusion culling
         if (!own) {
-            if (IsGamerInterjection(rawText)) {
+            if (!g_rawTranslate.load() && IsGamerInterjection(rawText)) {
                 // Gamer interjection / shorthand: skip translation
             } else {
                 std::wstring cachedTrans, cachedBy;

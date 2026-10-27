@@ -283,6 +283,9 @@ struct TestHooks {
 extern TestHooks g_test;
 extern bool g_showOptions;
 extern bool g_showDebugWindow;
+// Raw translation (Technical tab, until restart): the translator gets each line as written – no GW2 terms, names,
+// tags, sentence split, extra tries, clean-up or quality check; chat codes and links stay protected. For comparing.
+extern std::atomic<bool> g_rawTranslate;
 void SuppressImplicitDebugWindow();
 void Log(ELogLevel level, const char* text);
 bool IsCodePointer(const void* ptr);
@@ -491,8 +494,9 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked = false, bool once
 // chat is drawn, g_mu). Only these are translated in one go – an old chat is never translated in full.
 extern std::vector<uint64_t> g_visibleLines;
 int TranslateRecentLines(bool once = false);
-// What made a chat translation: the translator, a local one with its beam ("NLLB-200 (local) · Beam 4") – a
-// translation with another quality is no repetition, and "Translate visible chat once" does it again.
+// What made a chat translation: the translator, a local one with its beam ("NLLB-200 (local) · Beam 4"), " · raw"
+// in raw translation – a translation made another way is no repetition, and "Translate visible chat once" does it
+// again.
 std::wstring TranslatorTag(const std::shared_ptr<Translator>& tr, int beam);
 void TranslateInput(uint64_t gen, std::wstring text);
 void ComputeTyping();

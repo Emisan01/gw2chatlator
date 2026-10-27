@@ -96,6 +96,8 @@ public:
 
     // Panic-Switch / Pause Toggle
     void SetPaused(bool paused) { paused_ = paused; }
+    // Raw translation (Technical tab): lines of nothing but interjections ("gg", "lol") are translated too.
+    void SetInterjectionSieve(bool on) { sieve_ = on; }
     bool IsPaused() const { return paused_; }
     void TogglePaused() { paused_ = !paused_; }
 
@@ -110,6 +112,7 @@ public:
 private:
     RepetitionCache repCache_;
     bool paused_ = false;
+    bool sieve_ = true;
     std::atomic<uint64_t> slangFiltered_{0};
     std::atomic<uint64_t> cacheHits_{0};
     std::atomic<uint64_t> culledLines_{0};

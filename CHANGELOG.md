@@ -11,6 +11,8 @@ diagnosis show it.
 - **Names in Brackets Stay Whole:** a name written the way the game shows a link – "[Shipwreck Peak Waypoint]", typed as text – is kept as one part (it became "zum Schiffbruch"); before, only short tags like "[DS]" were.
 - **No Invented Dash:** the local model opened some lines as dialogue ("hot area it is" → "- Das ist heiß"); a dash the original did not start with goes.
 - **The Quality Step Works and Shows:** "Translate visible chat once" kept the lines it had already translated, so switching to Best changed nothing; and with several lines at once the speed throttle used the fastest step anyway. A local translation now carries its beam ("NLLB-200 (local) · Beam 4" in the status), a line you ask for gets the quality you chose, and another quality translates again.
+- **Raw Translation for Comparing:** Technical tab → "Raw translation (until restart)": the translator gets each line exactly as written and its result is shown as it comes – no GW2 terms, names, tags, sentence split, extra tries, clean-up or quality check; chat codes and links stay protected. The visible chat is translated again in the other way, so our logic can be compared with the bare model. Not saved.
+- **Your Own Text Says When the Model Guessed:** a local translation of your text the model was unsure of is said in the status, as in the chat ("kkkbl" became "¿Qué es esto?").
 - **Your Terms of Several Words:** a guild's name or any term of up to 5 words can be taught (right-click in the input → "A GW2 term"); in `gw2-terms.txt` a note may follow after a tab, and the built-in list there shows what each term means.
 
 ## 2.6.5 — 2026-10-27 (GW2Chatlator for Nexus)

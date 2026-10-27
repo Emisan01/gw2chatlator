@@ -151,6 +151,22 @@ ProtectedText ProtectForTranslation(const std::wstring& body, const Glossary* gl
     return r;
 }
 
+ProtectedText ProtectCodesOnly(const std::wstring& body) {
+    std::vector<Span> spans = FindChatCodes(body);
+    for (const Span& s : FindLinks(body))
+        if (std::none_of(spans.begin(), spans.end(), [&](const Span& t) { return t.Overlaps(s); })) spans.push_back(s);
+    std::sort(spans.begin(), spans.end(), [](const Span& a, const Span& b) { return a.start < b.start; });
+    ProtectedText r;
+    size_t pos = 0;
+    for (const Span& s : spans) {
+        if (s.start > pos) r.segments.push_back({body.substr(pos, s.start - pos), false});
+        r.segments.push_back({body.substr(s.start, s.length), true});
+        pos = s.end();
+    }
+    if (pos < body.size()) r.segments.push_back({body.substr(pos), false});
+    return r;
+}
+
 bool HasTranslatableText(const std::vector<Segment>& segments) {
     for (const Segment& s : segments)
         if (!s.keep && std::any_of(s.text.begin(), s.text.end(), IsWordChar)) return true;

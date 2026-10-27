@@ -121,7 +121,7 @@ ChatPriority TranslationOrchestrator::SieveMessage(const std::wstring& text,
     if (paused_) return ChatPriority::Skip;
 
     // Filter 1: Spam-Sieve (Gamer interjections & shorthand)
-    if (IsGamerInterjection(text)) {
+    if (sieve_ && IsGamerInterjection(text)) {
         ++slangFiltered_;
         return ChatPriority::Skip;
     }

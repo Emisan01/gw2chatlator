@@ -31,6 +31,10 @@ ProtectedText ProtectForTranslation(const std::wstring& body, const Glossary* gl
 
 std::wstring JoinSegments(const std::vector<Segment>& segments);
 // Something left to translate (not only names, chat codes, keep-words, numbers).
+// Raw translation (Technical tab, for comparing): only chat codes and links protected – no tags, smileys, names or
+// keep-words.
+ProtectedText ProtectCodesOnly(const std::wstring& body);
+
 bool HasTranslatableText(const std::vector<Segment>& segments);
 bool HasProtected(const std::vector<Segment>& segments);
 

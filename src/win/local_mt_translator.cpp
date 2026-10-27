@@ -48,6 +48,7 @@ public:
     }
 
     void SetBeamSize(int b) { beamSize_.store(b); }
+    void SetRaw(bool r) { raw_.store(r); }
     HelperInfo GetInfo() const { return info_; }
 
     TranslateResult Translate(const std::vector<Segment>& segments, const std::wstring& sourceLang,
@@ -115,6 +116,32 @@ public:
             }
             return text;
         };
+        if (raw_.load()) {  // raw (Technical tab): the parts as written, the model's results as they come
+            std::wstring out;
+            for (const Segment& s : segments) {
+                if (s.keep || std::none_of(s.text.begin(), s.text.end(), IsWordChar)) {
+                    out += s.text;
+                    continue;
+                }
+                std::wstring text = Trim(s.text);
+                for (const std::string& pair : route) {
+                    const size_t dash = pair.find('-');
+                    const std::string utf8 =
+                        Request(text, pair.substr(0, dash), pair.substr(dash + 1), result.error, result.errorKind);
+                    if (!result.error.empty()) return result;
+                    text = Trim(FromUtf8(utf8));
+                }
+                const size_t b = s.text.find_first_not_of(L' '), e = s.text.find_last_not_of(L' ');
+                out += s.text.substr(0, b) + text + s.text.substr(e + 1);  // the spaces around it as they were
+            }
+            result.ok = true;
+            result.text = std::move(out);
+            result.score = lastScore_;
+            result.scored = lastScored_;
+            result.detectedSource = source;
+            result.errorKind = TranslateErrorKind::None;
+            return result;
+        }
         // Sentence by sentence: the models are trained on single sentences – several at once, NLLB drops some. In a
         // sentence its protected words stay in place, so the model sees the whole sentence; when it changed one of
         // them, once more with the keep-words written like names ("Rez", copied where "rez" became "Gebet"), then with
@@ -413,6 +440,7 @@ private:
     std::string pending_;
     std::atomic<int> nextId_{0};
     std::atomic<int> beamSize_{0};
+    std::atomic<bool> raw_{false};
 };
 
 }  // namespace
@@ -428,6 +456,10 @@ void StopLocalMtTranslator(const std::shared_ptr<Translator>& translator) {
 
 void SetLocalMtBeamSize(const std::shared_ptr<Translator>& translator, int beamSize) {
     if (auto local = std::dynamic_pointer_cast<LocalMtTranslator>(translator)) local->SetBeamSize(beamSize);
+}
+
+void SetLocalMtRaw(const std::shared_ptr<Translator>& translator, bool raw) {
+    if (auto local = std::dynamic_pointer_cast<LocalMtTranslator>(translator)) local->SetRaw(raw);
 }
 
 bool IsLocalMtTranslator(const std::shared_ptr<Translator>& translator) {

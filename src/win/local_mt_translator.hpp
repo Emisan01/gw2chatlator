@@ -30,6 +30,9 @@ std::shared_ptr<Translator> MakeLocalMtTranslator(const std::wstring& helperExe,
 void StopLocalMtTranslator(const std::shared_ptr<Translator>& translator);
 void SetLocalMtBeamSize(const std::shared_ptr<Translator>& translator, int beamSize);
 bool IsLocalMtTranslator(const std::shared_ptr<Translator>& translator);
+// Raw translation (Technical tab, for comparing): the parts between protected ones go to the model as written, no
+// sentence split, no extra tries, no clean-up of its output.
+void SetLocalMtRaw(const std::shared_ptr<Translator>& translator, bool raw);
 HelperInfo GetLocalMtHelperInfo(const std::shared_ptr<Translator>& translator);
 HelperInfo ProbeLocalMtHelper(const std::wstring& helperExe, const std::wstring& dataDir,
                              bool forceNllb = false);

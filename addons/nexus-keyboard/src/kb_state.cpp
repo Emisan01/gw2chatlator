@@ -23,6 +23,7 @@ AddonAPI_t* g_api = nullptr;
 HMODULE g_self = nullptr;
 std::atomic<bool> g_disabled{false};  // set after an error: the add-on stays quiet for the rest of the session
 std::atomic<bool> g_chatEventsLive{false};
+std::atomic<bool> g_rawTranslate{false};  // Technical tab, this session only: our translation logic off, for comparing
 std::atomic<bool> g_keyboardFree{true};  // ImGui does not hold the keyboard (keys reach the game)
 std::atomic<int> g_fps{0};
 bool g_show = true;

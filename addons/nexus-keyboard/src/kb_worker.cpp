@@ -70,7 +70,9 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
         std::lock_guard<std::mutex> lock(g_mu);
         names = g_chatNames;
     }
-    ProtectedText p = ProtectForTranslation(text, nullptr, keep ? keep.get() : &BuiltinKeepWords(), &names);
+    const bool raw = g_rawTranslate.load();
+    ProtectedText p =
+        raw ? ProtectCodesOnly(text) : ProtectForTranslation(text, nullptr, keep ? keep.get() : &BuiltinKeepWords(), &names);
     auto clearPending = [&](bool attempted = true) {
         std::lock_guard<std::mutex> lock(g_mu);
         for (ChatLine& l : g_lines) {
@@ -116,6 +118,7 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
                                               : g_orchestrator.ComputeBeamSize(static_cast<QualityMode>(quality),
                                                                                g_worker.QueueSize());
     SetLocalMtBeamSize(tr, effectiveBeam);
+    SetLocalMtRaw(tr, raw);
     const std::wstring by = TranslatorTag(tr, effectiveBeam);
 
     const TranslateResult r = g_transCache.Through({text, SourceCode(detected), target, by}, [&] {
@@ -136,8 +139,8 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
     const std::wstring t = SanitizeChatText(r.text);
     // The same check for every translator: nothing lost, nothing cut short. A doubtful translation is still shown –
     // marked, the reason on hover – and not kept as a repetition for the next time.
-    std::wstring note = CheckNote(CheckTranslation(p.segments, t, target));
-    if (note.empty() && r.scored && r.score < kUnsureScore)  // a local model that guessed says so itself
+    std::wstring note = raw ? std::wstring() : CheckNote(CheckTranslation(p.segments, t, target));
+    if (!raw && note.empty() && r.scored && r.score < kUnsureScore)  // a local model that guessed says so itself
         note = Tr(L"Maybe inaccurate: the local model was unsure");
     if (note.empty()) g_orchestrator.RecordTranslation(text, target, t, by);
     std::lock_guard<std::mutex> lock(g_mu);
@@ -161,7 +164,8 @@ TranslationCache g_transCache;
 
 std::wstring TranslatorTag(const std::shared_ptr<Translator>& tr, int beam) {
     if (!tr) return {};
-    return IsLocalMtTranslator(tr) ? tr->Name() + L" · Beam " + std::to_wstring(beam) : tr->Name();
+    const std::wstring name = IsLocalMtTranslator(tr) ? tr->Name() + L" · Beam " + std::to_wstring(beam) : tr->Name();
+    return g_rawTranslate.load() ? name + L" · raw" : name;
 }
 
 // What can be seen of the chat, into the language you write in (the chat is read in it) – when "Translate the chat" is
@@ -178,7 +182,7 @@ int TranslateRecentLines(bool once) {  // g_mu held; how many lines of other pla
             continue;
         ++n;
         if (!l.translated.empty() && l.transTarget == target && l.transBy == by) continue;
-        if (IsGamerInterjection(l.text)) continue;
+        if (!g_rawTranslate.load() && IsGamerInterjection(l.text)) continue;
         if (!once && l.transAttempted && l.transTarget == target) continue;
 
         std::wstring cachedTrans, cachedBy;
@@ -227,11 +231,14 @@ void TranslateInput(uint64_t gen, std::wstring text) {
         NameList names;         // names of the chat you write to stay names
         {
             std::lock_guard<std::mutex> lock(g_mu);
-            expanded = g_myWords.Expand(body);
+            expanded = g_rawTranslate.load() ? body : g_myWords.Expand(body);  // raw: as written
             names = g_chatNames;
         }
         auto keep = g_spell ? g_spell->KeepWordsSnapshot() : nullptr;
-        ProtectedText p = ProtectForTranslation(expanded, nullptr, keep ? keep.get() : &BuiltinKeepWords(), &names);
+        const bool raw = g_rawTranslate.load();
+        ProtectedText p = raw ? ProtectCodesOnly(expanded)
+                              : ProtectForTranslation(expanded, nullptr, keep ? keep.get() : &BuiltinKeepWords(), &names);
+        SetLocalMtRaw(tr, raw);
         if (HasTranslatableText(p.segments)) {
             std::wstring source = DetectLanguage(body);
             if (source.empty()) source = typing;
@@ -242,7 +249,9 @@ void TranslateInput(uint64_t gen, std::wstring text) {
             const TranslateResult r = tr->Translate(p.segments, source, target);
             if (r.ok) {
                 result = r.text;
-                doubt = CheckNote(CheckTranslation(p.segments, r.text, target));
+                if (!raw) doubt = CheckNote(CheckTranslation(p.segments, r.text, target));
+                if (!raw && doubt.empty() && r.scored && r.score < kUnsureScore)  // as in the chat ("kkkbl" -> "¿Qué es esto?")
+                    doubt = Tr(L"Maybe inaccurate: the local model was unsure");
                 std::lock_guard<std::mutex> lock(g_mu);
                 g_forcePreviewForHardError = false;
                 g_lastErrorKind = TranslateErrorKind::None;
@@ -270,7 +279,8 @@ void TranslateInput(uint64_t gen, std::wstring text) {
     }
     if (translating && tr && wantBack && error.empty() && result != body) {
         auto keep = g_spell ? g_spell->KeepWordsSnapshot() : nullptr;
-        ProtectedText p = ProtectForTranslation(result, nullptr, keep ? keep.get() : &BuiltinKeepWords());
+        ProtectedText p = g_rawTranslate.load() ? ProtectCodesOnly(result)
+                                                : ProtectForTranslation(result, nullptr, keep ? keep.get() : &BuiltinKeepWords());
         if (HasTranslatableText(p.segments)) {
             {
                 std::lock_guard<std::mutex> lock(g_mu);
