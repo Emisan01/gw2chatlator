@@ -6,13 +6,16 @@ diagnosis show it.
 ## 2.6.4 — 2026-10-27 (GW2Chatlator for Nexus)
 
 - **Translation Tile:** The dashboard tile shows which translator runs, how (offline with its beam, free online with today's MyMemory quota, or with your API key) and whether the chat and your text are translated. A chooser (opens upwards) lists the translators – ready right away, on this PC, with your own key – and applies the choice at once; NLLB-200 asks for its download size first and becomes the translator once installed. A local translator gets its quality (Fast · Balanced · Best) right on the tile.
-- **Voice Tile:** Shows the voice model, push-to-talk or voice activation, Hands free and speech translation; its chooser opens the microphone menu.
-- **Events: Chat Hint on the Dashboard:** While Events: Chat is missing, the dashboard says so with its install button – easy to miss in the compact view otherwise.
+- **Voice Tile:** Shows the Whisper model and its size, the microphone mode in the accent colour (push-to-talk or voice activation, Hands free), how well the model recognizes your language and how fast it was the last time (CPU peak, seconds for seconds of speech). Its model chooser (opens upwards, with size, quality for your language, installed and recommended) is there from the start and applies at once; beside it a button only when something is to do: install, switch on, load the model. The mode stays in the microphone control at the top.
+- **Tiles:** The title sits in the top row next to the symbol, the values right below it.
+- **Events: Chat on the Dashboard:** Its state is always shown below the tiles; while it is missing, with its install button and a hint – easy to miss in the compact view otherwise.
+- **First Start:** The window's info texts are on by default.
+- **"Translate visible chat once" Says What It Does:** The status names how many lines are in view and which translator works on them – a local one first loads its model, which can take a moment.
 - **Hands free (voice only):** Named for what it does, usable only once the voice module is installed (dashboard, Microphone tab, microphone menu); works with push-to-talk and voice activation alike. Speech translation on the dashboard waits for the voice module too.
 - **Technical Tab:** Modules first, then the diagnostics and the technical details; the send timing is folded up under "Send timing (advanced)".
 - **Decoder Ring Removed:** The optional, outdated add-on is no longer offered, installed or asked; chat codes show their kind and code on hover, as they did without it.
 - **Local Quality Is Kept:** The quality mode (Fast · Balanced · Best) was never written to the settings and fell back to Balanced on every start; it is saved now.
-- **Languages:** All 8 languages complete (592 strings each); hints that name Nexus' own menus use Nexus' words in that language (e.g. "Laden", "Tastenkürzel"); "NLLB-200 (local)", "OPUS-MT (local)", "MyMemory (free)" and the quality steps are translated; the dashboard's status line (English only, cut off) is gone – the tiles show it.
+- **Languages:** All 8 languages complete (597 strings each); hints that name Nexus' own menus use Nexus' words in that language (e.g. "Laden", "Tastenkürzel"); "NLLB-200 (local)", "OPUS-MT (local)", "MyMemory (free)" and the quality steps are translated; the dashboard's status line (English only, cut off) is gone – the tiles show it.
 - **Microphone Menu vs. Save:** Voice activation and speech translation switched in the microphone menu are no longer reset by a later "Save" in the options.
 
 ## 2.6.3 — 2026-10-27 (GW2Chatlator for Nexus)

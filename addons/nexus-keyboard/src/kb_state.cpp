@@ -170,7 +170,7 @@ void LoadLayout() {  // g_mu held
     g_layout.words = get(L"WordBar", 1) != 0;
     g_layout.footer = get(L"Footer", 1) != 0;
     g_layout.header = get(L"Header", 1) != 0;
-    g_layout.infoText = get(L"InfoText", 0) != 0;
+    g_layout.infoText = get(L"InfoText", 1) != 0;  // on at the first start: the hints explain the window
     g_layout.minButton = get(L"MinButton", 1) != 0;
     g_layout.autoMinimize = get(L"AutoMinimize", 0) != 0;
     g_layout.minimizeAfter = std::clamp(get(L"MinimizeAfter", 10), 2, 120);

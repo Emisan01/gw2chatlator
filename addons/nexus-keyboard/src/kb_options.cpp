@@ -710,6 +710,18 @@ void ApplyQualityNow(Config& edit, Config& opened, int quality) {
     g_cfg.SaveValue(L"Translate", L"LocalQuality", std::to_wstring(quality));
 }
 
+// The voice model chosen on the dashboard: the setting, the INI, the helper reloads it (as the automatic fallback does).
+void ApplyVoiceModelNow(Config& edit, Config& opened, const std::string& id) {
+    edit.voiceModel = opened.voiceModel = W(id);
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_cfg.voiceModel = W(id);
+        g_cfg.SaveValue(L"Voice", L"Model", g_cfg.voiceModel);
+        g_modulesNext = 0;
+    }
+    VoiceReload();
+}
+
 // A button with a down chevron at its right end (the dashboard's choosers).
 bool ChooserButton(const char* id, const std::string& label, float width, float height) {
     ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.0f, 0.5f));
@@ -757,6 +769,35 @@ bool RenderDashboard(Config& edit, Config& opened) {
         if (nllbReady) ApplyEngineNow(edit, opened, Engine::Nllb);
     }
     const std::wstring onOff[2] = {Tr(L"off"), Tr(L"on")};
+
+    // The voice models as the voice tile shows them: the catalog and what is installed, read again every 2 s.
+    struct VoiceModels {
+        VoiceCatalog catalog;
+        std::vector<bool> installed;
+        ULONGLONG next = 0;
+    };
+    static VoiceModels s_vm;
+    if (GetTickCount64() >= s_vm.next) {
+        s_vm.next = GetTickCount64() + 2000;
+        s_vm.catalog = LoadVoiceCatalog(edit.dataDir);
+        s_vm.installed.clear();
+        for (const VoiceModelInfo& vm : s_vm.catalog.models) s_vm.installed.push_back(VoiceModelInstalled(edit.VoiceModelDir(), vm));
+    }
+    const VoiceModelInfo* voiceModel = s_vm.catalog.Find(U8(edit.voiceModel));
+    if (!voiceModel) voiceModel = s_vm.catalog.Recommended();
+    bool voiceModelThere = false;
+    for (size_t k = 0; k < s_vm.catalog.models.size(); ++k)
+        if (voiceModel && s_vm.catalog.models[k].id == voiceModel->id) voiceModelThere = s_vm.installed[k];
+    const int voiceModelMb = voiceModel ? static_cast<int>(voiceModel->bytes / (1024 * 1024)) : 0;
+    std::wstring recLang = edit.voiceLang;  // the language it recognizes, as the Voice tab says it
+    if (recLang.empty() || recLang == L"write" || recLang == L"auto") recLang = edit.writeIn.empty() ? L"en" : edit.writeIn;
+    const std::string whisperLang = WhisperLang(recLang);
+    const gct::VoiceRecommendation voiceRec = gct::RecommendVoiceModel(s_vm.catalog, voiceModel, whisperLang);
+    VoiceRun voiceRun;
+    if (voiceModel) {
+        std::lock_guard<std::mutex> lock(g_mu);
+        if (auto it = g_voiceRuns.find(W(voiceModel->id)); it != g_voiceRuns.end()) voiceRun = it->second;
+    }
 
     // 2 Feature Tiles: Translation & Voice Module
     static float s_cardGlow[2] = {0.0f, 0.0f};
@@ -811,39 +852,50 @@ bool RenderDashboard(Config& edit, Config& opened) {
         cards[0].badgeTextCol = IM_COL32(170, 175, 185, 255);
     }
 
-    // Card 1: Voice Module
+    // Card 1: Voice Module – the model, how well it knows your language, how fast it was the last time
     cards[1].id = 1;
     cards[1].title = UI(Tr(L"Voice Module"));
-    cards[1].desc = UI(Tr(L"Local speech recognition with whisper.cpp. Runs on unused CPU cores."));
     cards[1].isOk = voiceInstalled;
     cards[1].isBusy = g_voiceModuleInstalling || (g_downloadPct >= 0);
     const int vPct = g_downloadPct >= 0 ? g_downloadPct.load() : g_voiceModulePct.load();
     cards[1].activePct = vPct;
     cards[1].actionTab = 3;
     cards[1].iconType = 1;
+    {
+        const std::wstring quality = voiceRec.supportedByWhisper
+                                         ? TrF(L"Recognition of {1}: {2}", {NativeName(recLang), gct::VoiceQualityWord(voiceRec.quality)})
+                                         : Tr(L"Language not supported by speech recognition");
+        std::wstring third;
+        if (!voiceInstalled) third = Tr(L"Recognizes on this PC – no sound leaves it.");
+        else if (!voiceActive) third = Tr(L"Installed – switched off.");
+        else if (!voiceModelThere) third = TrF(L"The model is not downloaded yet ({1} MB).", {std::to_wstring(voiceModelMb)});
+        else if (voiceRun.rec > 0)
+            third = TrF(L"peak {1} % CPU (highest {2} %) · {3} s for {4} s speech",
+                        {std::to_wstring(voiceRun.peak), std::to_wstring(voiceRun.maxPeak), FormatSeconds(voiceRun.rms),
+                         FormatSeconds(voiceRun.rec)});
+        else third = TrF(L"Speed: {1}", {Tr(L"not measured yet")});
+        // switched on: the microphone mode right under the model (drawn in the accent colour)
+        const std::wstring mode = !voiceActive ? std::wstring()
+                                  : (voiceAct ? Tr(L"Voice activation") : Tr(L"Push-to-Talk")) +
+                                        (handsFree ? L" · " + TrF(L"Hands free: {1}", {onOff[1]}) : std::wstring());
+        cards[1].desc = (voiceModel ? voiceModel->name + "  ·  " + std::to_string(voiceModelMb) + " MB" : std::string("-")) + "\n" +
+                        (mode.empty() ? std::string() : UI(mode) + "\n") + UI(quality) + "\n" + UI(third);
+    }
     if (voiceActive) {
         cards[1].badgeText = UI(Tr(L"Active"));
         cards[1].badgeBg = IM_COL32(35, 75, 50, 255);
         cards[1].badgeBorder = IM_COL32(61, 220, 140, 200);
         cards[1].badgeTextCol = IM_COL32(61, 220, 140, 255);
-        // what listens, how, and what happens to what you say
-        const std::string model = m.model ? m.modelName : UI(Tr(L"The voice model is missing – Options → Voice."));
-        const std::wstring mode = voiceAct ? Tr(L"Voice activation") : Tr(L"Push-to-Talk");
-        const std::wstring state = g_voiceReady ? Tr(L"ready – loaded") : Tr(L"ready – loads on the first use of the microphone");
-        cards[1].desc = model + "\n" + UI(mode + L" · " + TrF(L"Hands free: {1}", {onOff[handsFree]})) + "\n" +
-                        UI(TrF(L"Translate speech: {1}", {onOff[voiceTrans]}) + L" · " + state);
     } else if (voiceInstalled) {
         cards[1].badgeText = UI(Tr(L"Disabled"));
         cards[1].badgeBg = IM_COL32(55, 45, 20, 255);
         cards[1].badgeBorder = IM_COL32(200, 155, 60, 200);
         cards[1].badgeTextCol = IM_COL32(240, 195, 80, 255);
-        cards[1].desc = UI(Tr(L"Voice module is installed and ready, but currently disabled."));
     } else {
         cards[1].badgeText = UI(Tr(L"Optional"));
         cards[1].badgeBg = IM_COL32(45, 48, 55, 255);
         cards[1].badgeBorder = IM_COL32(75, 80, 95, 200);
         cards[1].badgeTextCol = IM_COL32(170, 175, 185, 255);
-        cards[1].desc = UI(Tr(L"Local speech recognition with whisper.cpp. Runs on unused CPU cores."));
     }
 
     if (ImGui::BeginTable("##dashboard_tiles", 2, ImGuiTableFlags_SizingStretchSame)) {
@@ -992,7 +1044,8 @@ bool RenderDashboard(Config& edit, Config& opened) {
                 // Description
                 const std::string confDesc = (i == 0)
                     ? UI(Tr(L"Local Translation installs the local neural machine translation engine and NLLB-200 multilingual model."))
-                    : UI(Tr(L"The Voice Module installs the local whisper speech-to-text engine and the base recognition model."));
+                    : UI(TrF(L"The voice module installs the local whisper speech recognition and the model {1}.",
+                             {voiceModel ? W(voiceModel->name) : std::wstring(L"-")}));
                 const float descW = size.x - pad * 2.0f;
                 dl->AddText(font, fs * 0.82f, ImVec2(cPos.x + pad, cPos.y + pad + 56.0f), IM_COL32(160, 166, 180, 255),
                             confDesc.c_str(), nullptr, descW);
@@ -1000,7 +1053,7 @@ bool RenderDashboard(Config& edit, Config& opened) {
                 // Specs / Size info
                 const std::string confSize = (i == 0)
                     ? UI(Tr(L"Download size: about 600 MB · translates offline on this PC"))
-                    : UI(Tr(L"Download size: ~75 MB · CPU-accelerated offline"));
+                    : UI(TrF(L"Download size: about {1} MB · recognizes on this PC", {std::to_wstring(voiceModelMb + 7)}));
                 dl->AddText(font, fs * 0.80f, ImVec2(cPos.x + pad, cPos.y + pad + 96.0f), IM_COL32(130, 195, 160, 255), confSize.c_str());
 
                 // Bottom Action Buttons: Big "OK" button & "Cancel" button
@@ -1149,18 +1202,28 @@ bool RenderDashboard(Config& edit, Config& opened) {
                 DrawCardPill(dl, ImVec2(cPos.x + size.x - pad, cPos.y + pad + 4.0f),
                              cards[i].badgeText, cards[i].badgeBg, cards[i].badgeBorder, cards[i].badgeTextCol);
 
-                // Card Title
-                dl->AddText(font, fs * 1.05f, ImVec2(cPos.x + pad, cPos.y + pad + 36.0f), IM_COL32(245, 246, 250, 255), cards[i].title.c_str());
+                // Card Title: in the top row, right of the symbol (the microphone control when voice is on)
+                const float iconW = (i == 1 && voiceActive) ? std::floor(24.0f * 1.15f) + 1.0f + std::floor(24.0f * 0.75f) : 28.0f;
+                dl->AddText(font, fs * 1.05f, ImVec2(cPos.x + pad + iconW + 10.0f, cPos.y + pad + 14.0f - fs * 0.55f),
+                            IM_COL32(245, 246, 250, 255), cards[i].title.c_str());
 
-                // Card Description: the first line (what runs) bright, the lines below (how) grey
+                // Card Description: the first line (what runs) bright, the voice mode in the accent colour, the rest
+                // (how) grey; each line placed below the one before, wrapped ones included
                 const float descW = size.x - pad * 2.0f;
-                const size_t nl = cards[i].desc.find('\n');
-                const std::string head = cards[i].desc.substr(0, nl);
-                dl->AddText(font, fs * 0.92f, ImVec2(cPos.x + pad, cPos.y + pad + 60.0f), IM_COL32(215, 220, 232, 255),
-                            head.c_str(), nullptr, descW);
-                if (nl != std::string::npos)
-                    dl->AddText(font, fs * 0.82f, ImVec2(cPos.x + pad, cPos.y + pad + 62.0f + fs * 1.05f),
-                                IM_COL32(150, 155, 170, 255), cards[i].desc.c_str() + nl + 1, nullptr, descW);
+                float lineY = cPos.y + pad + 40.0f;
+                const std::string& desc = cards[i].desc;
+                for (size_t start = 0, ln = 0; start < desc.size(); ++ln) {
+                    size_t end = desc.find('\n', start);
+                    if (end == std::string::npos) end = desc.size();
+                    const std::string line = desc.substr(start, end - start);
+                    const float sz = ln == 0 ? fs * 0.92f : fs * 0.82f;
+                    const ImU32 col = ln == 0                              ? IM_COL32(215, 220, 232, 255)
+                                      : (i == 1 && voiceActive && ln == 1) ? ImGui::GetColorU32(ImGuiCol_CheckMark)
+                                                                           : IM_COL32(150, 155, 170, 255);
+                    dl->AddText(font, sz, ImVec2(cPos.x + pad, lineY), col, line.c_str(), nullptr, descW);
+                    lineY += font->CalcTextSizeA(sz, FLT_MAX, descW, line.c_str()).y + (ln == 0 ? 3.0f : 1.0f);
+                    start = end + 1;
+                }
 
                 // Bottom Buttons
                 const float availW = size.x - pad * 2.0f;
@@ -1263,80 +1326,71 @@ bool RenderDashboard(Config& edit, Config& opened) {
                         }
                     }
                 } else if (i == 1) {
-                    // Card 1: Voice
-                    if (voiceActive) {
-                        // Left the voice mode (the microphone menu: activation, push-to-talk, translate, hands free),
-                        // right the way to the Microphone tab
-                        const float gap = 8.0f;
-                        const float leftW = std::floor((availW - gap) * 0.6f);
-                        ImGui::SetCursorScreenPos(ImVec2(cPos.x + pad, actualBtnY));
-                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.16f, 0.22f, 1.0f));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.22f, 0.26f, 0.38f, 1.0f));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.22f, 0.32f, 1.0f));
-                        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.32f, 0.38f, 0.52f, 0.7f));
-                        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-                        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
-                        if (ChooserButton("##dash_voice_mode", UI(voiceAct ? Tr(L"Voice activation") : Tr(L"Push-to-Talk")),
-                                          leftW, btnH))
-                            ToggleVoiceMenu(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
+                    // Card 1: Voice – the model chooser (opens upwards; the mode is in the microphone control above),
+                    // beside it a button only when there is something to do: install, switch on, download the model
+                    const float gap = 8.0f;
+                    enum class VoiceAction { None, Install, Enable, Download } action = VoiceAction::None;
+                    if (!voiceInstalled) action = VoiceAction::Install;
+                    else if (!voiceActive) action = VoiceAction::Enable;
+                    else if (!voiceModelThere) action = VoiceAction::Download;
+                    const float leftW = action == VoiceAction::None ? availW : std::floor((availW - gap) * 0.55f);
+                    ImGui::SetCursorScreenPos(ImVec2(cPos.x + pad, actualBtnY));
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.16f, 0.22f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.22f, 0.26f, 0.38f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.22f, 0.32f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.32f, 0.38f, 0.52f, 0.7f));
+                    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+                    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+                    static ImVec2 s_modelAnchor;
+                    if (ChooserButton("##dash_voice_model", voiceModel ? voiceModel->name : std::string("-"), leftW, btnH)) {
+                        s_modelAnchor = ImGui::GetItemRectMin();
+                        ImGui::OpenPopup("##dash_model_pop");
+                    }
+                    ImGui::PopStyleVar(2);
+                    ImGui::PopStyleColor(4);
+                    if (action != VoiceAction::None) {
+                        const bool blue = action != VoiceAction::Enable;
                         ImGui::SetCursorScreenPos(ImVec2(cPos.x + pad + leftW + gap, actualBtnY));
+                        ImGui::PushStyleColor(ImGuiCol_Button, blue ? ImVec4(0.35f, 0.40f, 0.95f, 1.0f) : ImVec4(0.15f, 0.45f, 0.25f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, blue ? ImVec4(0.42f, 0.48f, 1.0f, 1.0f) : ImVec4(0.20f, 0.58f, 0.32f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, blue ? ImVec4(0.30f, 0.35f, 0.85f, 1.0f) : ImVec4(0.12f, 0.38f, 0.20f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_Border, blue ? ImVec4(0.48f, 0.55f, 1.0f, 0.8f) : ImVec4(0.25f, 0.85f, 0.45f, 0.9f));
+                        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+                        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
                         ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.5f, 0.5f));
-                        if (ImGui::Button((UI(Tr(L"Microphone")) + " ->##dash_voice_tab").c_str(), ImVec2(availW - gap - leftW, btnH))) {
-                            SwitchOptionsTab(4);
+                        const std::string label = action == VoiceAction::Install ? UI(Tr(L"Install"))
+                                                  : action == VoiceAction::Enable ? UI(Tr(L"Enable"))
+                                                  : UI(TrF(L"Load model ({1} MB)", {std::to_wstring(voiceModelMb)}));
+                        if (ImGui::Button((label + "##dash_voice_act").c_str(), ImVec2(availW - gap - leftW, btnH))) {
+                            if (action == VoiceAction::Install) {
+                                s_cardConfirm[1] = true;  // the size first, then OK installs the module with this model
+                            } else if (action == VoiceAction::Enable) {
+                                edit.voiceEnabled = opened.voiceEnabled = true;
+                                std::lock_guard<std::mutex> lock(g_mu);
+                                g_cfg.voiceEnabled = true;
+                                g_cfg.SaveBool(L"Voice", L"Enabled", true);
+                            } else if (voiceModel) {
+                                StartModelDownload(*voiceModel);
+                            }
                         }
                         ImGui::PopStyleVar(3);
                         ImGui::PopStyleColor(4);
-                    } else if (voiceInstalled) {
-                        const float gap = 8.0f;
-                        const float halfW = (availW - gap) * 0.5f;
+                    }
 
-                        // Button 1: Enable
-                        ImGui::SetCursorScreenPos(ImVec2(cPos.x + pad, actualBtnY));
-                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.45f, 0.25f, 1.0f));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.58f, 0.32f, 1.0f));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.12f, 0.38f, 0.20f, 1.0f));
-                        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.25f, 0.85f, 0.45f, 0.9f));
-                        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-                        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
-                        ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.5f, 0.5f));
-                        if (ImGui::Button((UI(Tr(L"Enable")) + "##dash_voice_en").c_str(), ImVec2(halfW, btnH))) {
-                            edit.voiceEnabled = true;
-                            std::lock_guard<std::mutex> lock(g_mu);
-                            g_cfg.voiceEnabled = true;
-                            g_cfg.SaveBool(L"Voice", L"Enabled", true);
+                    ImGui::SetNextWindowPos(ImVec2(s_modelAnchor.x, s_modelAnchor.y - 4.0f), ImGuiCond_Always, ImVec2(0.0f, 1.0f));
+                    if (ImGui::BeginPopup("##dash_model_pop")) {
+                        ImGui::TextDisabled("%s", UI(TrF(L"Voice model · recognition of {1}", {NativeName(recLang)})).c_str());
+                        for (size_t k = 0; k < s_vm.catalog.models.size(); ++k) {
+                            const VoiceModelInfo& vm = s_vm.catalog.models[k];
+                            std::string text = vm.name + "   " + std::to_string(vm.bytes / (1024 * 1024)) + " MB   " +
+                                               UI(gct::VoiceQualityWord(vm.QualityFor(whisperLang)));
+                            if (s_vm.installed[k]) text += "   " + UI(Tr(L"installed"));
+                            if (voiceRec.recommended && voiceRec.recommended->id == vm.id) text += "   " + UI(Tr(L"recommended"));
+                            if (ImGui::Selectable(text.c_str(), voiceModel && voiceModel->id == vm.id) &&
+                                !(voiceModel && voiceModel->id == vm.id))
+                                ApplyVoiceModelNow(edit, opened, vm.id);
                         }
-                        ImGui::PopStyleVar(3);
-                        ImGui::PopStyleColor(4);
-
-                        // Button 2: Voice ->
-                        ImGui::SetCursorScreenPos(ImVec2(cPos.x + pad + halfW + gap, actualBtnY));
-                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.16f, 0.22f, 1.0f));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.22f, 0.26f, 0.38f, 1.0f));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.22f, 0.32f, 1.0f));
-                        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.32f, 0.38f, 0.52f, 0.7f));
-                        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-                        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
-                        ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.5f, 0.5f));
-                        if (ImGui::Button((UI(Tr(L"Voice")) + " ->##dash_voice_tab2").c_str(), ImVec2(halfW, btnH))) {
-                            SwitchOptionsTab(3);
-                        }
-                        ImGui::PopStyleVar(3);
-                        ImGui::PopStyleColor(4);
-                    } else {
-                        // Uninstalled: Download Voice Module
-                        ImGui::SetCursorScreenPos(ImVec2(cPos.x + pad, actualBtnY));
-                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.35f, 0.40f, 0.95f, 1.0f));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.42f, 0.48f, 1.0f, 1.0f));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.30f, 0.35f, 0.85f, 1.0f));
-                        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.48f, 0.55f, 1.0f, 0.8f));
-                        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-                        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
-                        ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.5f, 0.5f));
-                        if (ImGui::Button((UI(Tr(L"Download Voice Module")) + "##dash_c1_inst").c_str(), ImVec2(availW, btnH))) {
-                            s_cardConfirm[1] = true;
-                        }
-                        ImGui::PopStyleVar(3);
-                        ImGui::PopStyleColor(4);
+                        ImGui::EndPopup();
                     }
                 }
 
@@ -1468,13 +1522,12 @@ void RenderOptionsContent() {
                                        : edit.engine == Engine::Microsoft ? edit.msKey : edit.libreKey;
                 strncpy_s(keyBuf, U8(k).c_str(), _TRUNCATE);
             }
-            // Without Events: Chat nothing of the chat is read – easy to miss in the compact view, so it is said here
-            // too, with its install button, until it is loaded.
-            if (!g_chatEventsLive && !g_chatEventsPresent) {
-                ImGui::Dummy(ImVec2(0.0f, 8.0f));
-                RenderChatModule(true);
+            // Events: Chat, the chat reader: its state always here; without it nothing of the chat is read – easy to
+            // miss in the compact view, so the hint and the install button stay until it is loaded.
+            ImGui::Dummy(ImVec2(0.0f, 8.0f));
+            RenderChatModule(true);
+            if (!g_chatEventsLive && !g_chatEventsPresent)
                 Hint(UI(Tr(L"Without Events: Chat, GW2Chatlator cannot read the chat – writing and the typing help work anyway.")));
-            }
             ImGui::Dummy(ImVec2(0.0f, 8.0f));
             ImGui::Separator();
             ImGui::Dummy(ImVec2(0.0f, 6.0f));
