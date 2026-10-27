@@ -353,6 +353,7 @@ static void TestProtect() {
     // chat reactions the line filter knows stay inside a sentence too
     const auto wtf = ProtectForTranslation(L"wtf war das für ein Boss?", nullptr, &keep);
     CHECK(!wtf.segments.empty() && wtf.segments[0].keep && wtf.segments[0].text == L"wtf");
+    CHECK(IsKeepWord(keep, L"rez") && IsKeepWord(keep, L"Rez"));  // resurrect – NLLB made it "Boden"
     // a comma after a keep-word stays outside the piece the model gets (it dropped it: "WvWWir")
     const auto comma = SplitForLocalMt(ProtectForTranslation(L"tower in WvW, we need people", nullptr, &keep).segments);
     CHECK(comma.size() >= 3 && comma.back().text == L"we need people" && !comma.back().keep);
@@ -361,6 +362,26 @@ static void TestProtect() {
     int tags = 0;
     for (const auto& s : code.segments) tags += s.keep && (s.text == L"[&AgGvWwEA]" || s.text == L"[LFG]") ? 1 : 0;
     CHECK(tags == 2);
+}
+
+static void TestTermsFile() {
+    // a new file: header, an empty "your terms", the built-in block with keep-words and the capitals-only ones
+    const std::string fresh = WriteTermsFile({});
+    CHECK(fresh.find("# --- your terms ---") != std::string::npos && fresh.find("# --- built in ---") != std::string::npos);
+    CHECK(fresh.find("\r\nlfg\r\n") != std::string::npos && fresh.find("\r\nAB\r\n") != std::string::npos);
+    CHECK(ParseMyTerms(fresh).empty());  // the built-in block is never read as yours
+    // your terms survive a rewrite (a new version writes its block again), duplicates in any case once
+    const std::string edited = "# --- your terms ---\r\nDSX\r\nmytag\r\n\r\n# a note\r\ndsx\r\n# --- built in ---\r\nold\r\n";
+    const auto mine = ParseMyTerms(edited);
+    CHECK(mine.size() == 2 && mine[0] == L"DSX" && mine[1] == L"mytag");
+    CHECK(ParseMyTerms(WriteTermsFile(mine)) == mine);
+    CHECK(ParseMyTerms("\xEF\xBB\xBFtag1\nTag2\n") == std::vector<std::wstring>({L"tag1", L"Tag2"}));  // Notepad, no marks
+    // yours are kept in any spelling, inside a sentence too
+    WordSet keep = BuiltinKeepWords();
+    AddMyTerms(keep, mine);
+    CHECK(IsKeepWord(keep, L"mytag") && IsKeepWord(keep, L"MYTAG") && IsKeepWord(keep, L"dsx"));
+    const auto p = ProtectForTranslation(L"join mytag tonight", nullptr, &keep);
+    CHECK(p.segments.size() == 3 && p.segments[1].keep && p.segments[1].text == L"mytag");
 }
 
 static void TestChatCommands() {
@@ -2751,6 +2772,7 @@ int main() {
     TestProtect();
     TestTranslationCheck();
     TestChatCommands();
+    TestTermsFile();
     TestDeepL();
     TestLanguages();
     TestColors();

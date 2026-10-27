@@ -9,6 +9,13 @@ namespace gct {
 // same way in any language (LFG, WvW, DPS, Ele, Chrono ...).
 const WordSet& BuiltinKeepWords();
 
+// gw2-terms.txt in the data folder: your terms on top (they stay from version to version: a guild tag, your own short
+// forms) and the built-in list at the end, written again by every version – so a new version brings its new terms and
+// you can read them. Your terms are never translated and never marked as spelling errors (any spelling).
+std::vector<std::wstring> ParseMyTerms(const std::string& utf8);    // yours: the lines before the built-in block
+std::string WriteTermsFile(const std::vector<std::wstring>& mine);  // the whole file: header, yours, built-in block
+void AddMyTerms(WordSet& keep, const std::vector<std::wstring>& mine);
+
 // Never flagged by the spell checker: the keep-words plus chat slang that is
 // fine to translate but not in any dictionary (Kommi, stacken, Fraktale ...).
 const WordSet& BuiltinSpellIgnore();

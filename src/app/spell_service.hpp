@@ -129,7 +129,10 @@ public:
     void AddName(const std::wstring& name);
     bool RemoveName(const std::wstring& word);
     std::wstring NameFor(const std::wstring& word) const;
-    // Never translated: the built-in GW2 abbreviations plus the names you taught.
+    // Your GW2 terms in gw2-terms.txt (next to your words): never translated, never a spelling error. False when
+    // `term` is not one word (a term is matched word by word) or longer than 40 characters.
+    bool AddTerm(const std::wstring& term);
+    // Never translated: the built-in GW2 abbreviations, your terms and the names you taught.
     const WordSet& KeepWords() const { return keep_; }
     std::shared_ptr<const WordSet> KeepWordsSnapshot() const { return std::atomic_load(&keepSnap_); }
     void IgnoreForSession(const std::wstring& word);
@@ -170,6 +173,9 @@ private:
     std::vector<std::wstring> context_;  // words of the recent chat, newest first (SetContext)
     std::unordered_map<std::wstring, std::wstring> names_;  // folded -> as taught
     std::wstring namesPath_;
+    std::wstring termsPath_;
+    std::vector<std::wstring> terms_;  // yours, as written
+    void RebuildKeep();                // built-in + your terms + taught names -> keep_ and its snapshot
     WordSet keep_ = BuiltinKeepWords();
     void SaveNames();
     std::shared_ptr<const TypoMemory> typosSnap_ = std::make_shared<const TypoMemory>();

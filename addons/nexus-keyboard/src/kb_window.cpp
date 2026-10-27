@@ -1636,6 +1636,27 @@ void RenderWindow() {
             SetStatus(m.empty() ? TrF(L"\"{1}\" forgotten", {w}) : TrF(L"Learned: {1} = {2}", {w, m}), 6000);
         }
         Hint(UI(Tr(L"The translator gets the meaning; your text stays as you wrote it.")));
+        // A GW2 term of your own (a guild tag, a short form): into gw2-terms.txt, never translated from now on
+        ImGui::Separator();
+        static char term[64] = {};
+        ImGui::TextUnformatted(UI(Tr(L"A GW2 term – never translated")).c_str());
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 8);
+        const bool goTerm = ImGui::InputTextWithHint("##term", UI(Tr(L"e.g. a guild tag")).c_str(), term, sizeof(term),
+                                                     ImGuiInputTextFlags_EnterReturnsTrue);
+        ImGui::SameLine();
+        if ((ImGui::Button(UI(Tr(L"Learn") + L"##term").c_str()) || goTerm) && !Trim(W(term)).empty()) {
+            const std::wstring t = Trim(W(term));
+            if (t.find(L' ') != std::wstring::npos) {
+                SetStatus(Tr(L"One word per term – a name with spaces: teach it as a name"), 6000);
+            } else {
+                g_worker.Post([t] { if (g_spell) g_spell->AddTerm(t); });
+                ++g_inputGen;  // translated again with it
+                g_inputChanged = GetTickCount64();
+                SetStatus(TrF(L"Never translated from now on: {1}", {t}), 6000);
+                term[0] = 0;
+            }
+        }
+        Hint(UI(Tr(L"Your terms are in gw2-terms.txt in the GW2Keyboard folder, next to the built-in GW2 list.")));
         if (!Lay().header) {  // without the header (maybe nothing but the input left): the way to the menu
             ImGui::Separator();
             if (ImGui::Selectable(UI(Tr(L"Menu …")).c_str())) {

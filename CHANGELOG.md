@@ -15,8 +15,9 @@ diagnosis show it.
 - **Repetitions Follow the Translator:** after switching the translator, a repeated line is no longer shown in the old translator's wording.
 - **No Silent Switch-Off:** after an internal error the add-on still switches itself off for the session (the game goes on), and now one Nexus alert says so.
 - **Chat Commands Go as They Are:** "/wiki Tequatl", "/dance *", "/sqjoin Name", "/age" and every emote – also ones bought in the gem store or added later – are typed whole into the game and never translated; before, "/wiki …" lost its command. Only the channel commands (/s, /m, /p, /g1 … /g5, /d, /t, /w, /r, /yell, subgroups, the German /karte, /sagen …) switch the channel and translate the message after them. The preview shows the line exactly as it will go. A command alone ("/wiki", "/dance") is sent at once – it was never sent before, and with a send language set it hung on "translating and sending …"; commands are not learned as words.
-- **More GW2 Short Forms:** about 90 abbreviations from a community glossary (W1–W8, EBG/SMC/NWT, qharb, alacren, LFT, EotN …) are never translated; the ones that are ordinary words elsewhere ("AB", "SI", "POI", "SEC") only in capitals.
-- **Languages:** all 8 languages complete (603 strings each).
+- **More GW2 Short Forms:** about 90 abbreviations from a community glossary (W1–W8, EBG/SMC/NWT, qharb, alacren, LFT, EotN …) are never translated; the ones that are ordinary words elsewhere ("AB", "SI", "POI", "SEC") only in capitals. "rez" stays "rez" (NLLB made it "Boden").
+- **Your Own GW2 Terms:** right-click in the input → "A GW2 term – never translated" teaches a word (a guild tag, a nickname for a boss) that is never translated from then on. Your terms live in `gw2-terms.txt` in the GW2Keyboard folder – yours on top (kept across versions, editable), the built-in GW2 list below (rewritten by every version, to look up what is already known).
+- **Languages:** all 8 languages complete (608 strings each).
 
 ## 2.6.4 — 2026-10-27 (GW2Chatlator for Nexus)
 

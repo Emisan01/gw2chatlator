@@ -71,10 +71,17 @@ bool SpellService::Init(const std::vector<std::wstring>& tags, const std::wstrin
             if (!w.empty() && w[0] != L'#') names_[CaseFold(w)] = w;
         }
     }
-    keep_ = BuiltinKeepWords();
-    for (const auto& kv : names_) keep_.insert(L"=" + kv.second);  // exactly as taught: "Fallen", not "fallen"
+    // Your GW2 terms and the built-in list in one file: yours read, the built-in block written again when this version's
+    // differs (a new version brings its new terms; the file is created on the first start).
+    termsPath_ = (slash == std::wstring::npos ? std::wstring() : userPath_.substr(0, slash + 1)) + L"gw2-terms.txt";
+    data.clear();
+    ReadFileBytes(termsPath_, data);
+    terms_ = ParseMyTerms(data);
+    if (const std::string fresh = WriteTermsFile(terms_); fresh != data) WriteFileAtomic(termsPath_, fresh);
+    for (const std::wstring& t : terms_) user_.insert(CaseFold(t));  // never a spelling error either
+    std::atomic_store(&userSnap_, std::make_shared<const WordSet>(user_));
+    RebuildKeep();
     std::atomic_store(&namesSnap_, std::make_shared<const std::unordered_map<std::wstring, std::wstring>>(names_));
-    std::atomic_store(&keepSnap_, std::make_shared<const WordSet>(keep_));
     ClearCache();
     InitPrediction(tags);
     return checker_.Init(tags);
@@ -161,11 +168,31 @@ bool SpellService::PredictedExactly(const std::wstring& typed) const {
     return false;
 }
 
-void SpellService::SaveNames() {
+void SpellService::RebuildKeep() {
     keep_ = BuiltinKeepWords();
+    AddMyTerms(keep_, terms_);
     for (const auto& kv : names_) keep_.insert(L"=" + kv.second);  // exactly as taught: "Fallen", not "fallen"
-    std::atomic_store(&namesSnap_, std::make_shared<const std::unordered_map<std::wstring, std::wstring>>(names_));
     std::atomic_store(&keepSnap_, std::make_shared<const WordSet>(keep_));
+}
+
+bool SpellService::AddTerm(const std::wstring& term) {
+    const std::wstring t = Trim(term);
+    if (t.empty() || t.size() > 40 || std::any_of(t.begin(), t.end(), [](wchar_t c) { return c == L' ' || c == L'\t'; }))
+        return false;
+    if (std::none_of(terms_.begin(), terms_.end(), [&](const std::wstring& m) { return CaseFold(m) == CaseFold(t); })) {
+        terms_.push_back(t);
+        WriteFileAtomic(termsPath_, WriteTermsFile(terms_));
+    }
+    user_.insert(CaseFold(t));
+    std::atomic_store(&userSnap_, std::make_shared<const WordSet>(user_));
+    RebuildKeep();
+    ClearCache();
+    return true;
+}
+
+void SpellService::SaveNames() {
+    RebuildKeep();
+    std::atomic_store(&namesSnap_, std::make_shared<const std::unordered_map<std::wstring, std::wstring>>(names_));
     std::vector<std::wstring> all;
     for (const auto& kv : names_) all.push_back(kv.second);
     std::sort(all.begin(), all.end());

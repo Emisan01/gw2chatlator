@@ -4,8 +4,11 @@
 // the right-click menu (stored in gw2-woerter.txt).
 #include "slang.hpp"
 
+#include <algorithm>
 #include <initializer_list>
 #include <iterator>
+#include <string>
+#include <vector>
 
 namespace gct {
 
@@ -45,6 +48,8 @@ const wchar_t* const kKeep[] = {
     // … PvP and WvW objectives, maps and scores, gaming
     L"hotm", L"decap", L"nwt", L"swt", L"nwc", L"swc", L"smc", L"dbl", L"abl", L"gbl", L"bbl", L"rbl", L"ewp",
     L"treb", L"garri", L"ppt", L"ppk", L"gvg", L"fps", L"dlc", L"hud", L"npc",
+    // "rez" (resurrect) in a chat is the GW2 word – NLLB made "Merci pour le rez" into "Danke für den Boden"
+    L"rez",
 };
 
 // Kept only when written like an abbreviation (two capitals or more: "LA", "HoT", "CoF"): the same letters are an
@@ -120,6 +125,56 @@ const WordSet& BuiltinKeepWords() {
         return x;
     }();
     return s;
+}
+
+// ---- gw2-terms.txt ----------------------------------------------------------------------------------------------
+namespace {
+constexpr char kMineMark[] = "# --- your terms ---";
+constexpr char kBuiltinMark[] = "# --- built in ---";
+}  // namespace
+
+std::vector<std::wstring> ParseMyTerms(const std::string& utf8) {
+    std::vector<std::wstring> mine;
+    size_t pos = 0;
+    while (pos < utf8.size()) {
+        size_t eol = utf8.find('\n', pos);
+        if (eol == std::string::npos) eol = utf8.size();
+        std::string raw = utf8.substr(pos, eol - pos);
+        pos = eol + 1;
+        if (!raw.empty() && raw.back() == '\r') raw.pop_back();
+        if (raw.rfind(kBuiltinMark, 0) == 0) break;  // the built-in block is the version's, not yours
+        std::wstring w = Trim(FromUtf8(raw));
+        if (!w.empty() && w[0] == 0xFEFF) w.erase(0, 1);  // BOM from Notepad
+        if (w.empty() || w[0] == L'#') continue;
+        const bool seen = std::any_of(mine.begin(), mine.end(), [&](const std::wstring& m) { return CaseFold(m) == CaseFold(w); });
+        if (!seen) mine.push_back(w);
+    }
+    return mine;
+}
+
+std::string WriteTermsFile(const std::vector<std::wstring>& mine) {
+    std::string out =
+        "# GW2Chatlator - GW2 terms: never translated, never marked as a spelling error. One word per line.\r\n"
+        "# Add your own below \"your terms\" (a guild tag, your own short forms) - they stay from version to version.\r\n"
+        "# The block \"built in\" at the end is written again by every version: changes there are replaced.\r\n"
+        "# Written in capitals there: kept only when written like that (\"AB\" Auric Basin, but German \"ab\").\r\n\r\n";
+    out += std::string(kMineMark) + "\r\n";
+    for (const std::wstring& w : mine) out += ToUtf8(w) + "\r\n";
+    out += "\r\n" + std::string(kBuiltinMark) + "\r\n";
+    std::vector<std::wstring> builtin(std::begin(kKeep), std::end(kKeep));
+    std::sort(builtin.begin(), builtin.end());
+    builtin.erase(std::unique(builtin.begin(), builtin.end()), builtin.end());
+    std::vector<std::wstring> caps;
+    for (const wchar_t* w : kKeepCaps) caps.push_back(ToUpperAscii(w));
+    std::sort(caps.begin(), caps.end());
+    caps.erase(std::unique(caps.begin(), caps.end()), caps.end());
+    for (const auto* list : {&builtin, &caps})
+        for (const std::wstring& w : *list) out += ToUtf8(w) + "\r\n";
+    return out;
+}
+
+void AddMyTerms(WordSet& keep, const std::vector<std::wstring>& mine) {
+    for (const std::wstring& w : mine) keep.insert(CaseFold(w));
 }
 
 // The most common English words of a chat (written for this list, everyday vocabulary).

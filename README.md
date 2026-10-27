@@ -156,6 +156,8 @@ In `Guild Wars 2\addons\GW2Keyboard\`:
 | `gw2-chat-translator.ini` | settings (keys encrypted) |
 | `learned\` | words, pairs and triples learned from what you sent, your typical typos (safe to delete) |
 | `my-words.txt`, `voice-fixes.txt` | your words and abbreviations, words the recognizer misheard |
+| `gw2-terms.txt` | GW2 terms never translated: yours on top (right-click in the input → "A GW2 term", or edit the file), the built-in list below (rewritten by every version) |
+| `my-gw2-words.txt`, `my-names.txt` | words never marked as spelling errors, names you taught |
 | `snippets.txt` | your text blocks (menu ≡ → Text blocks) |
 | `models\` | voice models (Options → Voice: use, remove, open the folder) |
 | `gw2kb_voice.exe`, `voice\` | the voice module |
