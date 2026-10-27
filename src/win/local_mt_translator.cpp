@@ -163,7 +163,15 @@ public:
                     std::vector<Segment> named = inner;
                     const bool asNames = KeepWordsAsNames(named);
                     const Placeholders held = WithPlaceholders(inner);
-                    for (int t = 0; !done && t < 3; ++t) {
+                    // An official name of several words ("Lion's Arch", "[Shipwreck Peak Waypoint]") is translated by
+                    // the model in the whole sentence and as a name too – the placeholders keep it: they go first.
+                    const bool severalWords = std::any_of(sentence.segments.begin(), sentence.segments.end(), [](const Segment& s) {
+                        const std::wstring k = Trim(s.text);
+                        return s.keep && k.find(L' ') != std::wstring::npos && std::any_of(k.begin(), k.end(), IsWordChar);
+                    });
+                    const int order[3] = {severalWords ? 2 : 0, severalWords ? 0 : 1, severalWords ? 1 : 2};
+                    for (int step = 0; !done && step < 3; ++step) {
+                        const int t = order[step];
                         if ((t == 1 && !asNames) || (t == 2 && held.parts.empty())) continue;
                         const double score = lastScore_;
                         const bool scored = lastScored_;

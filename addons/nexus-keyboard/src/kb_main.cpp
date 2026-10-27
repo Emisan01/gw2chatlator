@@ -304,6 +304,9 @@ void AddonLoad(AddonAPI_t* api) {
     }
     if (api->Events_Subscribe && IsCodePointer(reinterpret_cast<const void*>(api->Events_Subscribe))) {
         api->Events_Subscribe(bridge::kChatEventsEvent, OnChatEvents);
+        api->Events_Subscribe(EV_ADDON_LOADED, OnAddonLoaded);
+        api->Events_Subscribe(EV_ADDON_UNLOADED, OnAddonUnloaded);
+        g_addonEventsOn = true;
     }
     Log(LOGL_INFO, "loaded");
 }
@@ -312,6 +315,9 @@ void AddonUnload() {
     if (g_api) {
         if (g_api->Events_Unsubscribe && IsCodePointer(reinterpret_cast<const void*>(g_api->Events_Unsubscribe))) {
             g_api->Events_Unsubscribe(bridge::kChatEventsEvent, OnChatEvents);
+            g_api->Events_Unsubscribe(EV_ADDON_LOADED, OnAddonLoaded);
+            g_api->Events_Unsubscribe(EV_ADDON_UNLOADED, OnAddonUnloaded);
+            g_addonEventsOn = false;
         }
         if (g_api->WndProc_Deregister && IsCodePointer(reinterpret_cast<const void*>(g_api->WndProc_Deregister))) {
             g_api->WndProc_Deregister(OnWndProc);

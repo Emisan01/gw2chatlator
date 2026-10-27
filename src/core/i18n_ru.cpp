@@ -1107,6 +1107,8 @@ extern const I18nEntry kRussianStrings[] = {
      L"ошибка {1}"},
     {L"hardly",
      L"едва"},
+    {L"in the add-ons folder, but Nexus has not taken it in – restart GW2 once",
+     L"в папке аддонов, но Nexus его не подхватил – перезапустите GW2 один раз"},
     {L"install, about 600 MB",
      L"установить, около 600 МБ"},
     {L"installed",

@@ -575,7 +575,11 @@ extern std::atomic<bool> g_chatEventsFile;
 extern std::atomic<bool> g_chatEventsInstalling;
 extern std::thread g_chatEventsThread;
 const std::wstring& AddonsDir();
-bool ChatEventsPresent(bool now = false);  // `now`: scan the modules at once (else every 3 s)
+bool ChatEventsPresent(bool now = false);  // `now`: scan the modules at once (else Nexus' add-on events, or every 3 s)
+extern std::atomic<bool> g_addonEventsOn;   // Nexus' EV_ADDON_LOADED / EV_ADDON_UNLOADED are subscribed
+extern std::atomic<bool> g_chatNotTakenIn;  // our install of Events: Chat was not taken in by Nexus (restart GW2)
+void OnAddonLoaded(void* payload);
+void OnAddonUnloaded(void* payload);
 void InstallChatEventsNow();
 
 // ---- the header's icons: microphone, menu (three lines), close, clear

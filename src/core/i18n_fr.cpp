@@ -1107,6 +1107,8 @@ extern const I18nEntry kFrenchStrings[] = {
      L"erreur {1}"},
     {L"hardly",
      L"à peine"},
+    {L"in the add-ons folder, but Nexus has not taken it in – restart GW2 once",
+     L"dans le dossier des add-ons, mais Nexus ne l'a pas pris en compte – redémarrez GW2 une fois"},
     {L"install, about 600 MB",
      L"installer, environ 600 Mo"},
     {L"installed",

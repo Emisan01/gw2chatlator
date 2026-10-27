@@ -3,6 +3,12 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.6.8 — 2026-10-27 (GW2Chatlator for Nexus)
+
+- **Nexus Tells Us When Events: Chat Comes and Goes:** the add-on listens to Nexus' own events for an add-on loaded or unloaded, instead of scanning every module every 3 seconds – the chat module's state is right at once. One scan stays at the start (it may have loaded before us) and after it loaded (its version); a Nexus without these events still gets the scan every 3 seconds.
+- **When Nexus Does Not Take It In:** after our install, if Nexus has not loaded Events: Chat within 10 seconds, the dashboard says so: "in the add-ons folder, but Nexus has not taken it in – restart GW2 once" (Delta: Nexus' loader is unchanged; a fresh DLL can be held by a virus scan or an add-on removed earlier in the session).
+- **Official Names Translate Up to Five Times Faster:** a sentence with an official name of several words ("Lion's Arch", "[Shipwreck Peak Waypoint]") goes to the local model with placeholders first – the try that keeps such names; before, two tries failed first. Measured on 45 made-up lines: the same translations word for word, those lines 4.4 → 1.6 s, 8.6 → 1.6 s, 4.5 → 1.7 s.
+
 ## 2.6.7 — 2026-10-27 (GW2Chatlator for Nexus)
 
 - **Chat Module State Follows Nexus:** after Events: Chat was removed (or unloaded in Nexus), the dashboard kept saying "ready – Events: Chat is loaded" until the game ended – the first chat line of the session had marked it live for good. Removing it or Nexus unloading it now resets that; a line still coming says it is loaded after all.

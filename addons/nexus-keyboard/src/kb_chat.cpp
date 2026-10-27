@@ -277,10 +277,52 @@ void RemoveChatEventsNow() {  // game thread
               10000);
 }
 
+// Nexus says when an add-on loads or goes (EV_ADDON_LOADED / EV_ADDON_UNLOADED, its signature as payload): Events:
+// Chat's state at once instead of scanning every module every 3 s. The scan stays for the start (it may have loaded
+// before us), once after it loaded (its version) and for a Nexus without these events.
+std::atomic<bool> g_addonEventsOn{false};
+std::atomic<bool> g_chatModuleLoaded{false};  // Nexus loaded Events: Chat: read its version once on the game thread
+std::atomic<ULONGLONG> g_chatInstalledAt{0};  // our install finished: Nexus takes a new add-on in within seconds
+std::atomic<bool> g_chatNotTakenIn{false};    // ... and this time it did not (a restart of GW2 loads it)
+static bool ReadSignatureGuarded(const void* payload, uint32_t* sig) {
+    if (!payload) return false;
+    __try {
+        *sig = *static_cast<const volatile uint32_t*>(payload);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+void OnAddonLoaded(void* payload) {
+    uint32_t sig = 0;
+    if (!ReadSignatureGuarded(payload, &sig) || sig != bridge::kChatEventsSignature) return;
+    g_chatEventsPresent = true;
+    g_chatNotTakenIn = false;
+    g_chatModuleLoaded = true;
+}
+void OnAddonUnloaded(void* payload) {  // no scan after it: the module may still be mapped for a moment
+    uint32_t sig = 0;
+    if (!ReadSignatureGuarded(payload, &sig) || sig != bridge::kChatEventsSignature) return;
+    g_chatEventsPresent = false;
+    g_chatEventsLive = false;
+}
+
 bool ChatEventsPresent(bool now) {
     static ULONGLONG next = 0;
-    if (!now && GetTickCount64() < next) return g_chatEventsPresent;
-    next = GetTickCount64() + 3000;
+    static bool first = true;  // loaded before us: no event says so – the first call always scans
+    if (first || g_chatModuleLoaded.exchange(false)) now = true;
+    first = false;
+    const ULONGLONG tick = GetTickCount64();
+    if (const ULONGLONG at = g_chatInstalledAt; at && (g_chatEventsPresent || tick - at > 10000)) {
+        g_chatInstalledAt = 0;
+        g_chatNotTakenIn = !g_chatEventsPresent;
+    }
+    if (!now && tick < next) return g_chatEventsPresent;
+    next = tick + 3000;
+    if (!now && g_addonEventsOn) {  // Nexus tells the state: only whether the file lies there (installed, not loaded)
+        g_chatEventsFile = GetFileAttributesW((AddonsDir() + kChatEventsDllName).c_str()) != INVALID_FILE_ATTRIBUTES;
+        return g_chatEventsPresent;
+    }
     bool found = false;
     std::wstring version;  // Events: Chat's version (the technical details, the protocol)
     HMODULE mods[1024];
@@ -315,6 +357,7 @@ void InstallChatEventsNow() {  // on your click: newest release, checksum checke
         ExtrasInstallResult r;
         if (!Shielded([&] { r = InstallChatEvents(dir, [] { return g_disabled.load(); }); })) r.code = ExtrasInstallCode::DownloadFailed;
         g_chatEventsInstalling = false;
+        if (r.code == ExtrasInstallCode::Ok) g_chatInstalledAt = GetTickCount64();
         std::lock_guard<std::mutex> lock(g_mu);
         SetStatus(r.code == ExtrasInstallCode::Ok ? Tr(L"Events: Chat installed – Nexus loads it (restart GW2 if no chat arrives)")
                   : r.code == ExtrasInstallCode::NoAnswer ? TrF(L"GitHub did not answer ({1}) – please try again later", {r.detail})

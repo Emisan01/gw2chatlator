@@ -1107,6 +1107,8 @@ extern const I18nEntry kTurkishStrings[] = {
      L"hata {1}"},
     {L"hardly",
      L"zorla"},
+    {L"in the add-ons folder, but Nexus has not taken it in – restart GW2 once",
+     L"eklentiler klasöründe, ama Nexus onu almadı – GW2'yi bir kez yeniden başlat"},
     {L"install, about 600 MB",
      L"kur, yaklaşık 600 MB"},
     {L"installed",
