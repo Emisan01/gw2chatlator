@@ -1,0 +1,52 @@
+# CI – every push to main and every pull request: the term table, the translations and the claims checked, the portable
+# core with its tests and the add-on DLL built, the local translator's self-test (a stand-in helper, no model), and the
+# workflows themselves scanned (zizmor). The release audit stays on the maintainer's PC (tools/verify_release.py --full):
+# it needs the local translator build, the voice helper and the models.
+# Hardening as GitHub and OpenSSF recommend: actions pinned to a full commit SHA (the tag as a comment), the token only
+# reads, checkout keeps no credentials, one run per ref.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: "3.13"
+
+      - name: Workflows scanned (zizmor)
+        run: |
+          python -m pip install --disable-pip-version-check "zizmor==1.31.1"
+          zizmor .github/workflows
+
+      - name: Term table, translations, claims
+        run: |
+          python tools/gen_terms.py --check
+          python tools/i18n_check.py
+          python tools/check_claims.py
+
+      - name: Configure
+        run: cmake -S . -B build -A x64
+
+      - name: Build core tests, add-on DLL, local translator self-test
+        run: cmake --build build --config Release --parallel --target core_tests gw2keyboard_nexus local_mt_fake_helper local_mt_translator_selftest
+
+      - name: Core tests and local translator self-test
+        run: ctest --test-dir build -C Release --output-on-failure

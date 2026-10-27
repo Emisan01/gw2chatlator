@@ -98,6 +98,19 @@ src/core/                Pure C++17 portable logic (NO windows.h): text, json, i
    - Manually copying a DLL into `addons/` does not prove that Library installation works.
    - Always verify the actual in-game flow (Nexus -> Library -> Install) and inspect `nexus.log` for asset URL, status, and destination.
 
+### Continuous Checks
+- **CI on GitHub** (`.github/workflows/ci.yml`, every push to main and every pull request): term table, translations and
+  claims checked, core tests and the add-on DLL built, the local translator's self-test, the workflows scanned with
+  zizmor. Actions pinned to full commit SHAs with the tag as a comment, the token only reads, checkout keeps no
+  credentials; Dependabot proposes new pins monthly – merged by the maintainer only. CI is a safety net, not the release
+  audit: that stays `verify_release.py --full` on the maintainer's PC.
+- **Evidence trailer:** a commit of type `feat`, `fix`, `perf` or `refactor` carries `Evidence:` in its message (Working
+  Modes, top of this file). Gate 1 checks every commit since the rule came (`tools/check_evidence.py`); the same check
+  runs before each commit once `git config core.hooksPath tools/hooks` is set in a clone.
+- **Translation quality gate:** with `GCT_BENCH_DATA` set to a GW2Keyboard folder holding NLLB-200, `--full` runs
+  `translation_bench` on the made-up corpus and fails on anything protected lost, a sentence lost, a line cut short or
+  failed; without a model it says "skipped" in the receipt.
+
 ### Package Contract
 Everything a user gets through Nexus fits together and is checkable: DLL, translator helper, voice module, models.
 

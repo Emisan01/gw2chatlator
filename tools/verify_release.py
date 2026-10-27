@@ -178,8 +178,15 @@ def check_version_consistency() -> tuple[bool, str, float]:
             print(f"    [FAIL] Architectural claims check failed:\n{cp.stdout}")
             return False, version, time.time() - t0
 
+    # The working modes' evidence (AGENTS.md): every behaviour change since they came carries an "Evidence:" trailer
+    cp = subprocess.run([sys.executable, str(ROOT / "tools" / "check_evidence.py")], cwd=ROOT, capture_output=True,
+                        text=True, errors="replace")
+    if cp.returncode != 0:
+        print(f"    [FAIL] Working-mode evidence missing:\n{cp.stdout}")
+        return False, version, time.time() - t0
+
     dur = round(time.time() - t0, 2)
-    print(f"    [PASS] CMakeLists.txt, CHANGELOG.md, README.md, and claims.json verified. ({dur}s)")
+    print(f"    [PASS] CMakeLists.txt, CHANGELOG.md, README.md, claims.json and commit evidence verified. ({dur}s)")
     return True, version, dur
 
 def check_addon_def() -> tuple[bool, float]:
@@ -486,6 +493,27 @@ def main():
         gate_results.append({"gate": 8, "name": "Real-Life Stress & Smoke Benchmark", "status": "PASS" if ok else "FAIL", "duration_sec": dur, "exit_code": 0 if ok else 1})
         test_metrics["smoketest"] = "PASS" if ok else "FAIL"
         if not ok: sys.exit(1)
+
+    # Translation quality (with a model only): GCT_BENCH_DATA names a data folder with translate\nllb-200 (the game's
+    # GW2Keyboard folder). The made-up corpus through the real helper: nothing protected lost, no sentence lost, nothing
+    # cut short, nothing failed. Without a model it is skipped and says so – a measurement, never a guess.
+    bench_data = os.environ.get("GCT_BENCH_DATA", "")
+    bench = ROOT / "build" / "Release" / "translation_bench.exe"
+    bench_helper = RELEASE_DIR / "GW2Keyboard" / "gw2kb_translate.exe"
+    if only is None:
+        if bench_data and (Path(bench_data) / "translate" / "nllb-200").is_dir() and bench.exists() and bench_helper.exists():
+            ok, out, dur = run_step("Translation Quality Bench (NLLB-200, made-up corpus)",
+                                    [str(bench), str(bench_helper), bench_data,
+                                     str(ROOT / "tests" / "data" / "translation_corpus.tsv"), "nllb"],
+                                    expect_substr="0 lost protected, 0 lost a sentence, 0 cut short, 0 failed", timeout=1800)
+            summary = next((l for l in out.splitlines() if l.startswith("translation_bench")), "")
+            gate_results.append({"gate": 9, "name": "Translation Quality Bench", "status": "PASS" if ok else "FAIL",
+                                 "duration_sec": dur, "exit_code": 0 if ok else 1})
+            test_metrics["translation_bench"] = summary if ok else "FAIL"
+            if not ok: sys.exit(1)
+        else:
+            print("[*] Translation Quality Bench: skipped – set GCT_BENCH_DATA to a GW2Keyboard folder with NLLB-200")
+            test_metrics["translation_bench"] = "skipped (no model)"
 
     if only is not None:
         print("\n==================================================================")

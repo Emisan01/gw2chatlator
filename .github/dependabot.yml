@@ -1,0 +1,8 @@
+# The pinned actions of the CI workflow stay current: once a month a pull request with the new commit SHAs (merged only
+# by the maintainer after a look).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
