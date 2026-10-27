@@ -1,7 +1,8 @@
-# GW2Chatlator – Logik-Karte (Stand 2.6.4, 27.10.2026)
+# GW2Chatlator – Logik-Karte (Befund 2.6.4, umgesetzt in 2.6.5 – 27.10.2026)
 
 Wozu: ein Blick auf den ganzen Weg einer Übersetzung, die Begriffslisten, die Qualitätsprüfung und die Failsafes –
 damit Überschneidungen und Lücken sichtbar werden, bevor wir an die „inneren Werte“ gehen. Jede Aussage mit Datei:Zeile.
+Abschnitte 1–7 sind der Befund vor 2.6.5 (Zeilennummern von damals); was davon umgesetzt ist, steht in Abschnitt 8.
 
 ---
 
@@ -127,6 +128,19 @@ Nexus-Funktion wird vor Gebrauch geprüft, fehlende werden umgangen (Schrift, Ev
   größeren Übernahme die Lizenz der Seite prüfen (das Wiki steht unter CC BY-NC-SA); einzelne, von Hand geprüfte
   Abkürzungen wie bisher sind unkritisch.
 
+## 7. Vorschlag für die Reihenfolge
+
+1. **Messbar machen:** eine feste Testsammlung erfundener Chatzeilen (nie die Nachricht eines echten Spielers; der
+   [DS]-Fall als erster, Spielbegriffe, Namen, Codes, mehrere Sätze) und ein `translation_bench` wie `typing_bench`:
+   Schutzstellen erhalten %, Abdeckung %, Sätze verloren. Erst messen, dann ändern – keine Kaskade von Annäherungen.
+2. **A1 + A3:** satzweise lokal, Klammer-Tags, gemeinsame Ausgabekontrolle mit Abdeckungsprüfung.
+3. **A2:** MyMemory bekommt denselben Schutz.
+4. **B3:** Score aus dem Helfer (optionales Feld `score` in `result`, Fähigkeit `score` im Handshake; ältere DLLs lesen es
+   nicht und laufen weiter).
+5. **A4:** Glossar und Spielernamen anschließen.
+6. **B1, B2:** eine Begriffstabelle, ein Cache.
+7. **C1, C2.** RapidOCR bleibt für das Ende geplant.
+
 ## 8. Stand 2.6.5 (umgesetzt am 27.10.)
 
 | Befund | Stand | Beleg |
@@ -135,25 +149,16 @@ Nexus-Funktion wird vor Gebrauch geprüft, fehlende werden umgangen (Schrift, Ev
 | A2 MyMemory ohne Schutz | **behoben**: ganzer Text zuerst, Teile um Schutzstellen nur wenn MyMemory eine verändert hat; Aufteilung an Satzenden | `online_translators.cpp` |
 | A3 Ausgabekontrolle | **behoben**: eine Prüfung nach jedem Übersetzer (`translation_check`); zweifelhaft → „(?)“ mit Grund, ausgehend Hinweis im Status | Kern-Tests |
 | A4 Glossar / Namen | **Namen angeschlossen** (Sprecher der Sitzung, nur im Speicher); Glossar offen – es braucht eine Datenquelle (GW2-API-Namen je Sprache), die nicht von selbst lädt | – |
-| B1 Begriffslisten | **teilweise**: Chat-Reaktionen (wtf, lmao …) jetzt auch im Satz geschützt; eine gemeinsame Tabelle steht noch aus | Kern-Test „wtf“ |
+| A1 Nachtrag: Schutzwort am Satzrand | **behoben**: ein Schutzwort am Anfang oder Ende gehört zum Satz („Gracias por el rez!“ ging als „Gracias por el“ → „Danke für ihn. rez!“); zweiter Versuch mit Schutzwörtern wie Namen („Rez“); Schreibweise wie geschrieben zurück; kein erfundener Punkt; Leerzeichen vor Satzzeichen nach Zielsprache | Bench 40 Zeilen: 0 Fehler, Sätze 90/90; „Danke für den rez!“, „Ich kann T4 machen.“ |
+| B1 Begriffslisten | **teilweise**: Chat-Reaktionen (wtf, lmao …) auch im Satz geschützt; **eine Begriffsdatei** `gw2-terms.txt` (deine oben, die eingebaute Liste unten, Rechtsklick im Eingabefeld lernt einen Begriff); Zwischenruf-Sieb bleibt eine eigene Liste | Kern-Tests „wtf“, Begriffsdatei |
+| Befehle | **neu**: alles mit „/“ ist Kanal (Nachricht übersetzt, Befehl nie) oder Befehl (ganz getippt, nie übersetzt) – keine Emote-Liste, neue Emotes gehen von selbst; ein Befehl allein geht sofort | Kern-Test Befehle, Selbsttest „/wiki“ |
 | B2 zwei Caches | **behoben**: Wiederholungs-Cache trifft nur für den aktuellen Übersetzer | – |
 | B3 Modell-Score | **genutzt**: Helfer meldet `score` (Fähigkeit `score`), unter -1,2 „unsicher“ | Bench: die einzige Fehlübersetzung (eine erfundene Begrüßung) -1,39, jede gute Zeile -1,04 oder besser |
 | C1 stilles Abschalten | **behoben**: eine Nexus-Meldung, beim Laden vorbereitet, abgesichert gesendet | – |
 | C2 Wiki-Begriffe | offen (Lizenz CC BY-NC-SA prüfen) | – |
 
-Noch gesehen im Bench, nicht angefasst: sehr kurze Sätze („Selam!“) halluziniert NLLB – jetzt als unsicher markiert;
-„rez“ wird übersetzt („Boden“), weil es auch ein französisches Wort ist. Die Schwelle -1,2 stammt aus 20 Zeilen und
-sollte mit mehr (erfundenen) Zeilen nachgemessen werden.
-
-## 7. Vorschlag für die Reihenfolge
-
-1. **Messbar machen:** eine feste Testsammlung echter Chatzeilen (der [DS]-Satz als erster Fall, Spielbegriffe, Namen,
-   Codes, mehrere Sätze) und ein `translation_bench` wie `typing_bench`: Schutzstellen erhalten %, Abdeckung %, Sätze
-   verloren. Erst messen, dann ändern – keine Kaskade von Annäherungen.
-2. **A1 + A3:** satzweise lokal, Klammer-Tags, gemeinsame Ausgabekontrolle mit Abdeckungsprüfung.
-3. **A2:** MyMemory bekommt denselben Schutz.
-4. **B3:** Score aus dem Helfer (optionales Feld `score` in `result`, Fähigkeit `score` im Handshake; ältere DLLs lesen es
-   nicht und laufen weiter).
-5. **A4:** Glossar und Spielernamen anschließen.
-6. **B1, B2:** eine Begriffstabelle, ein Cache.
-7. **C1, C2.** RapidOCR bleibt für das Ende geplant.
+Nachgemessen mit 40 erfundenen Zeilen (NLLB; OPUS-MT war auf dem Messrechner nicht installiert): die Schwelle -1,2
+hält – markiert sind genau die zwei Halluzinationen kurzer Sätze („Selam!“, „Hola“, -1,39 und -1,30); die nächste Zeile
+(-1,17) ist bis auf ein Stück richtig („MP moi.“ → „MP Ich bin es.“), alle anderen -1,06 oder besser und gut. Eine
+Verschiebung der Schwelle wäre mit einer einzigen Zeile geraten. „rez“ und die Rollenkürzel (qheal, ahealer …) sind
+Schutzwörter.

@@ -105,7 +105,7 @@ public:
                 std::string sourceCode = pair.substr(0, dash), targetCode = pair.substr(dash + 1);
                 const std::string utf8 = Request(text, sourceCode, targetCode, result.error, result.errorKind);
                 if (!result.error.empty()) return std::nullopt;
-                const std::wstring translatedHop = CleanLocalMtOutput(text, FromUtf8(utf8));
+                const std::wstring translatedHop = CleanLocalMtOutput(text, FromUtf8(utf8), targetCode);
                 if (!IsPlausibleLocalMtOutput(text, translatedHop)) {
                     result.error = L"The local model returned an implausible translation";
                     result.errorKind = TranslateErrorKind::BadOutput;
@@ -116,30 +116,40 @@ public:
             return text;
         };
         // Sentence by sentence: the models are trained on single sentences – several at once, NLLB drops some. In a
-        // sentence the protected parts in its middle stay in place, so the model sees the whole sentence; only when it
-        // changed one of them, that sentence goes in pieces around them (the way all text went before 2.6.5).
+        // sentence its protected words stay in place, so the model sees the whole sentence; when it changed one of
+        // them, once more with the keep-words written like names ("Rez", copied where "rez" became "Gebet"); only then
+        // the sentence goes in pieces around them (the way all text went before 2.6.5). A try that is not taken does
+        // not count for the score.
         std::wstring translated;
         for (const SentenceSegments& sentence : SegmentsBySentence(segments)) {
             std::vector<Segment> pieces = SplitForLocalMt(sentence.segments);
-            size_t first = 0, last = pieces.size();
-            while (first < last && pieces[first].keep) ++first;
-            while (last > first && pieces[last - 1].keep) --last;
+            const PieceRange range = WholeSentenceRange(pieces);
             std::wstring lead, tail, middle;
-            for (size_t k = 0; k < first; ++k) lead += pieces[k].text;
-            for (size_t k = last; k < pieces.size(); ++k) tail += pieces[k].text;
-            const std::vector<Segment> inner(pieces.begin() + static_cast<std::ptrdiff_t>(first),
-                                             pieces.begin() + static_cast<std::ptrdiff_t>(last));
+            for (size_t k = 0; k < range.from; ++k) lead += pieces[k].text;
+            for (size_t k = range.to; k < pieces.size(); ++k) tail += pieces[k].text;
+            const std::vector<Segment> inner(pieces.begin() + static_cast<std::ptrdiff_t>(range.from),
+                                             pieces.begin() + static_cast<std::ptrdiff_t>(range.to));
             if (!inner.empty()) {
                 bool done = false;
-                if (inner.size() > 1) {  // protected parts inside: the whole sentence first
-                    const auto whole = translateText(JoinSegments(inner));
-                    if (!whole && !result.error.empty() && result.errorKind != TranslateErrorKind::BadOutput) return result;
-                    if (whole && MissingProtected(inner, *whole).empty()) {
-                        middle = *whole;
-                        done = true;
+                if (inner.size() > 1) {  // protected parts in it: the whole sentence first
+                    std::vector<Segment> named = inner;
+                    const int tries = KeepWordsAsNames(named) ? 2 : 1;
+                    for (int t = 0; !done && t < tries; ++t) {
+                        const double score = lastScore_;
+                        const bool scored = lastScored_;
+                        const auto whole = translateText(JoinSegments(t == 0 ? inner : named));
+                        if (!whole && !result.error.empty() && result.errorKind != TranslateErrorKind::BadOutput)
+                            return result;
+                        if (whole && MissingProtected(inner, *whole).empty()) {
+                            middle = RestoreKeepSpelling(*whole, inner);
+                            done = true;
+                        } else {
+                            lastScore_ = score;
+                            lastScored_ = scored;
+                        }
+                        result.error.clear();
+                        result.errorKind = TranslateErrorKind::None;
                     }
-                    result.error.clear();
-                    result.errorKind = TranslateErrorKind::None;
                 }
                 for (size_t k = 0; !done && k < inner.size(); ++k) {
                     if (inner[k].keep) {
@@ -153,6 +163,7 @@ public:
             }
             translated += lead + middle + tail + sentence.gap;
         }
+        translated = TidyPunctuation(translated, route.back().substr(route.back().find('-') + 1));
         if (!IsPlausibleLocalMtOutput(original, translated)) {
             result.error = L"The local model returned an implausible translation";
             result.errorKind = TranslateErrorKind::BadOutput;

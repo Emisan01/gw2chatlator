@@ -258,6 +258,14 @@ static void TestLocalMtProtocol() {
     CHECK(IsPlausibleLocalMtOutput(L"ah alles klar", CleanLocalMtOutput(L"ah alles klar", L"♪ All right ♪")));
     CHECK(CleanLocalMtOutput(L"♪ ah ♪", L"♪ Okay ♪") == L"♪ Okay ♪");
     CHECK(CleanLocalMtOutput(L"hello", L"Hello 😀") == L"Hello 😀");
+    // a full stop the source did not end with goes; the target language's spacing (2026-10-27, translation_bench)
+    CHECK(CleanLocalMtOutput(L"Gracias por el", L"Danke für ihn.", "de") == L"Danke für ihn");
+    CHECK(CleanLocalMtOutput(L"Gracias.", L"Danke.", "de") == L"Danke.");
+    CHECK(CleanLocalMtOutput(L"hmm", L"Na ja...", "de") == L"Na ja...");
+    CHECK(CleanLocalMtOutput(L"Hola", L"Hey , was ist los ?", "de") == L"Hey, was ist los?");
+    CHECK(TidyPunctuation(L"Merci , à demain !", "fr") == L"Merci, à demain !");
+    CHECK(TidyPunctuation(L"Danke :) bis gleich ;-) ok ?!", "de") == L"Danke :) bis gleich ;-) ok?!");
+    CHECK(TidyPunctuation(L"Zeit : 10 Uhr", "de") == L"Zeit: 10 Uhr");
     CHECK(IsPlausibleLocalMtOutput(L"♪ ah ♪", L"♪ Okay ♪"));
     CHECK(!IsPlausibleLocalMtOutput(L"hello", L"!? …"));
     CHECK(!IsPlausibleLocalMtOutput(L"hello", L"！？…"));
@@ -354,9 +362,27 @@ static void TestProtect() {
     const auto wtf = ProtectForTranslation(L"wtf war das für ein Boss?", nullptr, &keep);
     CHECK(!wtf.segments.empty() && wtf.segments[0].keep && wtf.segments[0].text == L"wtf");
     CHECK(IsKeepWord(keep, L"rez") && IsKeepWord(keep, L"Rez"));  // resurrect – NLLB made it "Boden"
+    CHECK(IsKeepWord(keep, L"qheal") && IsKeepWord(keep, L"ahealer"));  // NLLB made "qheal" into "Queal"
     // a comma after a keep-word stays outside the piece the model gets (it dropped it: "WvWWir")
     const auto comma = SplitForLocalMt(ProtectForTranslation(L"tower in WvW, we need people", nullptr, &keep).segments);
     CHECK(comma.size() >= 3 && comma.back().text == L"we need people" && !comma.back().keep);
+    // a protected word at the end belongs to the sentence the model gets; an emoticon stays outside (2026-10-27:
+    // "Gracias por el" alone came back as "Danke für ihn.")
+    const auto rez = SplitForLocalMt(ProtectForTranslation(L"Gracias por el rez!", nullptr, &keep).segments);
+    const PieceRange rezRange = WholeSentenceRange(rez);
+    CHECK(rez.size() == 2 && rezRange.from == 0 && rezRange.to == 2);
+    const auto smile = SplitForLocalMt(ProtectForTranslation(L"see you :)", nullptr, &keep).segments);
+    CHECK(smile.size() == 2 && WholeSentenceRange(smile).to == 1);
+    const auto onlyKeep = SplitForLocalMt(ProtectForTranslation(L"LFG :)", nullptr, &keep).segments);
+    CHECK(WholeSentenceRange(onlyKeep).from == onlyKeep.size());
+    // second try: keep-words like names ("rez" became "Gebet", "Rez" is copied), then written back as they were
+    std::vector<Segment> named = rez;
+    CHECK(KeepWordsAsNames(named) && JoinSegments(named) == L"Gracias por el Rez!");
+    CHECK(RestoreKeepSpelling(L"Danke für den Rez! Rezept", rez) == L"Danke für den rez! Rezept");
+    const auto wtfWhole = SplitForLocalMt(ProtectForTranslation(L"wtf was that", nullptr, &keep).segments);
+    CHECK(RestoreKeepSpelling(L"WTF war das? WTFs", wtfWhole) == L"wtf war das? WTFs");
+    auto chatCode = SplitForLocalMt(ProtectForTranslation(L"sell [&AgGvWwEA] now", nullptr, &keep).segments);
+    CHECK(!KeepWordsAsNames(chatCode));
     const auto code = ProtectForTranslation(L"look [&AgGvWwEA] and [LFG] or [a b]", nullptr, &keep);
     CHECK(JoinSegments(code.segments) == L"look [&AgGvWwEA] and [LFG] or [a b]");
     int tags = 0;

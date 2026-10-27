@@ -246,7 +246,32 @@ std::vector<std::string> LocalMtRoute(const std::wstring& source, const std::wst
     return has(first) && has(second) ? std::vector<std::string>{first, second} : std::vector<std::string>{};
 }
 
-std::wstring CleanLocalMtOutput(const std::wstring& source, const std::wstring& output) {
+std::wstring TidyPunctuation(const std::wstring& text, const std::string& targetLang) {
+    const bool french = Lower(targetLang).rfind("fr", 0) == 0;
+    const auto mark = [](wchar_t c) {
+        return c == L',' || c == L'.' || c == L'!' || c == L'?' || c == L';' || c == L':';
+    };
+    std::wstring out;
+    out.reserve(text.size());
+    for (size_t i = 0; i < text.size(); ++i) {
+        if (text[i] == L' ' && !out.empty() && IsWordChar(out.back())) {
+            size_t j = i;
+            while (j < text.size() && text[j] == L' ') ++j;
+            if (j < text.size() && mark(text[j]) && !(french && text[j] != L',' && text[j] != L'.')) {
+                size_t k = j;
+                while (k < text.size() && mark(text[k])) ++k;
+                if (k == text.size() || text[k] == L' ') {
+                    i = j - 1;  // the spaces go, the mark follows
+                    continue;
+                }
+            }
+        }
+        out += text[i];
+    }
+    return out;
+}
+
+std::wstring CleanLocalMtOutput(const std::wstring& source, const std::wstring& output, const std::string& targetLang) {
     std::wstring cleaned;
     cleaned.reserve(output.size());
     for (size_t i = 0; i < output.size();) {
@@ -268,7 +293,14 @@ std::wstring CleanLocalMtOutput(const std::wstring& source, const std::wstring& 
     };
     while (!cleaned.empty() && whitespace(cleaned.front())) cleaned.erase(cleaned.begin());
     while (!cleaned.empty() && whitespace(cleaned.back())) cleaned.pop_back();
-    return cleaned;
+    const auto sentenceEnd = [](wchar_t c) {
+        return c == L'.' || c == L'!' || c == L'?' || c == L'…' || c == L'。' || c == L'！' || c == L'？';
+    };
+    const std::wstring src = Trim(source);
+    if (!src.empty() && !sentenceEnd(src.back()) && cleaned.size() >= 2 &&
+        (cleaned.back() == L'.' || cleaned.back() == L'。') && cleaned[cleaned.size() - 2] != L'.')
+        cleaned.pop_back();
+    return TidyPunctuation(cleaned, targetLang);
 }
 
 bool IsPlausibleLocalMtOutput(const std::wstring& source, const std::wstring& output) {
@@ -372,6 +404,72 @@ std::vector<Segment> SplitForLocalMt(const std::vector<Segment>& segments) {
         if (!text.empty()) addText(text);
     }
     return out;
+}
+
+PieceRange WholeSentenceRange(const std::vector<Segment>& pieces) {
+    size_t first = 0, last = pieces.size();
+    while (first < last && pieces[first].keep) ++first;
+    while (last > first && pieces[last - 1].keep) --last;
+    if (first == last) return {pieces.size(), pieces.size()};
+    // A protected word belongs to the sentence; a run of symbols (decorative or none with a letter) does not.
+    const auto word = [](const std::wstring& text) {
+        bool letter = false;
+        for (wchar_t c : text) {
+            if (c >= 0xD800 && c <= 0xDFFF) return false;  // emoji and other symbols outside the BMP
+            if (IsDecorativeCodepoint(c)) return false;
+            letter = letter || IsWordChar(c);
+        }
+        return letter;
+    };
+    if (first > 0 && word(pieces[first - 1].text)) --first;
+    if (last < pieces.size() && word(pieces[last].text)) ++last;
+    return {first, last};
+}
+
+namespace {
+// " rez!", "heal alac.": words of plain lowercase letters (an ASCII one first), spaces and sentence marks only.
+bool PlainLowercaseWords(const std::wstring& text) {
+    bool any = false;
+    for (const Span& w : WordSpans(text)) {
+        if (text[w.start] < L'a' || text[w.start] > L'z') return false;
+        for (size_t i = w.start; i < w.end(); ++i)
+            if (CaseFoldChar(text[i]) != text[i]) return false;
+        any = true;
+    }
+    for (size_t i = 0; i < text.size(); ++i) {
+        const wchar_t c = text[i];
+        if (!IsWordChar(c) && c != L' ' && c != L'.' && c != L',' && c != L'!' && c != L'?' && c != L';' && c != L':')
+            return false;
+    }
+    return any;
+}
+}  // namespace
+
+bool KeepWordsAsNames(std::vector<Segment>& segments) {
+    bool changed = false;
+    for (Segment& s : segments) {
+        if (!s.keep || !PlainLowercaseWords(s.text)) continue;
+        for (const Span& w : WordSpans(s.text)) s.text[w.start] = static_cast<wchar_t>(s.text[w.start] - L'a' + L'A');
+        changed = true;
+    }
+    return changed;
+}
+
+std::wstring RestoreKeepSpelling(std::wstring output, const std::vector<Segment>& original) {
+    for (const Segment& s : original) {
+        if (!s.keep) continue;
+        for (const Span& w : WordSpans(s.text)) {
+            const std::wstring was = s.text.substr(w.start, w.length);
+            const std::wstring want = CaseFold(was);  // CaseFold keeps every position
+            const std::wstring folded = CaseFold(output);
+            for (size_t at = folded.find(want); at != std::wstring::npos; at = folded.find(want, at + want.size())) {
+                const bool whole = (at == 0 || !IsWordChar(output[at - 1])) &&
+                                   (at + want.size() == output.size() || !IsWordChar(output[at + want.size()]));
+                if (whole) output.replace(at, was.size(), was);
+            }
+        }
+    }
+    return output;
 }
 
 }  // namespace gct

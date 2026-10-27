@@ -45,6 +45,9 @@ const wchar_t* const kKeep[] = {
     // … skills, specializations and builds …
     L"aotj", L"fgs", L"gotl", L"slb", L"harb", L"hsc", L"hmech", L"hcata", L"qharb", L"qcata", L"alacmech",
     L"miralac", L"alacren", L"alacrage", L"alacrigade", L"psb", L"charb",
+    // role + boon short forms (h = heal, q = quickness, a = alacrity): NLLB made "qheal" into "Queal"
+    L"qheal", L"aheal", L"qhealer", L"ahealer", L"hscourge", L"qscourge", L"hdruid", L"amech", L"qherald",
+    L"hherald", L"hrev", L"arev", L"qrev", L"hvind",
     // … PvP and WvW objectives, maps and scores, gaming
     L"hotm", L"decap", L"nwt", L"swt", L"nwc", L"swc", L"smc", L"dbl", L"abl", L"gbl", L"bbl", L"rbl", L"ewp",
     L"treb", L"garri", L"ppt", L"ppk", L"gvg", L"fps", L"dlc", L"hud", L"npc",
