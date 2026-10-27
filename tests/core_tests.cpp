@@ -17,6 +17,7 @@
 #include "core/send_route.hpp"
 #include "core/translate_policy.hpp"
 #include "core/translation_cache.hpp"
+#include "core/translation_check.hpp"
 #include "core/steady.hpp"
 #include "core/deepl_protocol.hpp"
 #include "core/gw2_text.hpp"
@@ -336,6 +337,76 @@ static void TestProtect() {
 
     CHECK(BuiltinSpellIgnore().count(L"kommi") && BuiltinSpellIgnore().count(L"lfg"));
     CHECK(!BuiltinKeepWords().count(L"kommi"));
+
+    // A tag in brackets stays whole: "[DS]" is one protected part, not "[" + keep-word "DS" + "]" (2026-10-27)
+    const auto tag = ProtectForTranslation(L"Hermandad Sol Dorado [DS] busca jugadores", nullptr, &keep);
+    CHECK(tag.segments.size() == 3 && tag.segments[1].keep && tag.segments[1].text == L"[DS]" &&
+          tag.segments[0].text == L"Hermandad Sol Dorado " && tag.segments[2].text == L" busca jugadores");
+    const auto code = ProtectForTranslation(L"look [&AgGvWwEA] and [LFG] or [a b]", nullptr, &keep);
+    CHECK(JoinSegments(code.segments) == L"look [&AgGvWwEA] and [LFG] or [a b]");
+    int tags = 0;
+    for (const auto& s : code.segments) tags += s.keep && (s.text == L"[&AgGvWwEA]" || s.text == L"[LFG]") ? 1 : 0;
+    CHECK(tags == 2);
+}
+
+static void TestTranslationCheck() {
+    // sentences: each with the spaces behind it, joined they give the text back
+    // made up, built like the guild ad that lost two sentences in the game: a tag that is also a keep-word, three
+    // sentences, a smiley (never a real player's message in the tests)
+    const std::wstring ad = L"Hermandad Sol Dorado [DS] busca jugadores nuevos para crecer juntos y divertirse. "
+                            L"Hacemos mazmorras y fractales cada noche! Escríbeme para más info :)";
+    const auto parts = SplitSentences(ad);
+    CHECK(parts.size() == 3 && parts[0].text.back() == L'.' && parts[0].gap == L" " && parts[1].text.back() == L'!');
+    std::wstring joined;
+    for (const auto& s : parts) joined += s.text + s.gap;
+    CHECK(joined == ad);
+    CHECK(SplitSentences(L"Wir brauchen z.B. einen Heiler. Kommst du?").size() == 2);
+    CHECK(SplitSentences(L"Patch 3.5 ist da... lol").size() == 2 && SplitSentences(L"hmm...ok").size() == 1);
+    CHECK(SplitSentences(L"J. R. R. Tolkien liest mit.").size() == 1);
+    CHECK(SplitSentences(L"\"Wirklich?\" fragte er.").size() == 2);
+    CHECK(CountSentences(L"gg. :) ") == 1 && CountSentences(L"") == 0);
+
+    // the way NLLB answered in the game: two of three sentences and the bracket lost
+    const WordSet keep = BuiltinKeepWords();
+    const auto seg = ProtectForTranslation(ad, nullptr, &keep);
+
+    // the protected text in its sentences: [DS] stays in the first, the smiley in the last, nothing lost on the way
+    const auto bySentence = SegmentsBySentence(seg.segments);
+    CHECK(bySentence.size() == 3 && bySentence[0].gap == L" " && bySentence[2].gap.empty());
+    std::wstring rebuilt;
+    for (const auto& s : bySentence) rebuilt += JoinSegments(s.segments) + s.gap;
+    CHECK(rebuilt == ad);
+    CHECK(bySentence[0].segments.size() == 3 && bySentence[0].segments[1].keep && bySentence[0].segments[1].text == L"[DS]");
+    CHECK(!bySentence[2].segments.empty() && bySentence[2].segments.back().keep && bySentence[2].segments.back().text == L":)");
+    // no sentence end inside a protected part: one sentence for a link with ". " in its query? links have no spaces –
+    // a keep-word followed by a dot ends a sentence after it, never inside it
+    const auto lfgEnd = SegmentsBySentence(ProtectForTranslation(L"Need DPS. Who comes?", nullptr, &keep).segments);
+    CHECK(lfgEnd.size() == 2 && JoinSegments(lfgEnd[0].segments) == L"Need DPS." && JoinSegments(lfgEnd[1].segments) == L"Who comes?");
+    CHECK(SegmentsBySentence({}).empty());
+    const TranslationCheck lost = CheckTranslation(
+        seg.segments, L"Bruderschaft Goldene Sonne [DSWir machen jeden Abend Dungeons und Fraktale! :)", L"DE");
+    CHECK(!lost.ok() && lost.issue == TranslationIssue::LostProtected && lost.detail == L"[DS]");
+    const TranslationCheck dropped = CheckTranslation(
+        seg.segments, L"Bruderschaft Goldene Sonne [DS] macht jeden Abend Dungeons! :)", L"DE");
+    CHECK(dropped.issue == TranslationIssue::LostSentence && dropped.detail == L"1/3");
+    const TranslationCheck good = CheckTranslation(
+        seg.segments,
+        L"Bruderschaft Goldene Sonne [DS] sucht neue Spieler, um gemeinsam zu wachsen und Spaß zu haben. "
+        L"Wir machen jeden Abend Dungeons und Fraktale! Schreib mir für mehr Infos :)",
+        L"DE");
+    CHECK(good.ok());
+    // two short sentences merged into one keep their length: no loss
+    const auto merged = ProtectForTranslation(L"Ok. Let's go to the meta now.", nullptr, &keep);
+    CHECK(CheckTranslation(merged.segments, L"Okay, lass uns jetzt zum Meta-Event gehen.", L"DE").ok());
+    // keep-words in another case are there; a lost one is named
+    const auto lfg = ProtectForTranslation(L"LFG fractals, need a chrono pls", nullptr, &keep);
+    CHECK(CheckTranslation(lfg.segments, L"lfg Fraktale, brauche einen chrono pls", L"DE").ok());
+    const TranslationCheck noChrono = CheckTranslation(lfg.segments, L"LFG Fraktale, brauche einen Zeitmagier pls", L"DE");
+    CHECK(noChrono.issue == TranslationIssue::LostProtected && noChrono.detail == L"chrono");
+    // much shorter: cut off – but not for Chinese, which writes short
+    const auto longLine = ProtectForTranslation(L"Does anyone want to come to the world boss train with us tonight?", nullptr, &keep);
+    CHECK(CheckTranslation(longLine.segments, L"Jemand?", L"DE").issue == TranslationIssue::TooShort);
+    CHECK(CheckTranslation(longLine.segments, L"今晚有人想和我们一起去吗？", L"zh-Hans").ok());
 }
 
 static void TestDeepL() {
@@ -2647,6 +2718,7 @@ int main() {
     TestNameTable();
     TestGlossary();
     TestProtect();
+    TestTranslationCheck();
     TestDeepL();
     TestLanguages();
     TestColors();

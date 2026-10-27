@@ -33,6 +33,22 @@ bool IsEmoticon(const std::wstring& t) {
     return true;
 }
 
+// "[DS]", "[LFG]", "[Ab1]": a guild tag or a tag in brackets – kept whole, so neither the brackets nor the letters
+// inside are translated or torn apart (a keep-word "DS" alone split "[DS]" and its sentence, 2026-10-27).
+std::vector<Span> FindTags(const std::wstring& body) {
+    std::vector<Span> out;
+    for (size_t i = 0; i < body.size(); ++i) {
+        if (body[i] != L'[') continue;
+        size_t j = i + 1;
+        while (j < body.size() && j - i <= 6 && IsWordChar(body[j]) && body[j] != L'\'') ++j;
+        if (j < body.size() && body[j] == L']' && j > i + 1) {
+            out.push_back({i, j + 1 - i});
+            i = j;
+        }
+    }
+    return out;
+}
+
 std::vector<Span> FindEmoticons(const std::wstring& body) {
     std::vector<Span> out;
     size_t i = 0;
@@ -58,6 +74,11 @@ ProtectedText ProtectForTranslation(const std::wstring& body, const Glossary* gl
         taken.push_back(s);
     }
     for (const Span& s : FindLinks(body)) {  // a translated link leads nowhere
+        if (std::any_of(taken.begin(), taken.end(), [&](const Span& t) { return t.Overlaps(s); })) continue;
+        prot.push_back({s, body.substr(s.start, s.length)});
+        taken.push_back(s);
+    }
+    for (const Span& s : FindTags(body)) {
         if (std::any_of(taken.begin(), taken.end(), [&](const Span& t) { return t.Overlaps(s); })) continue;
         prot.push_back({s, body.substr(s.start, s.length)});
         taken.push_back(s);

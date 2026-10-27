@@ -22,9 +22,9 @@ struct ProtectedText {
 };
 
 // Protected, in this order of priority:
-//   1. chat codes [&...]             -> unchanged
+//   1. chat codes [&...], links, tags in brackets ([DS], [LFG]) -> unchanged
 //   2. official game names            -> official name in the target language
-//   3. names of people in the chat    -> unchanged
+//   3. smileys, names of people in the chat -> unchanged
 //   4. keep-words (LFG, WvW, DPS ...) -> unchanged
 ProtectedText ProtectForTranslation(const std::wstring& body, const Glossary* glossary, const WordSet* keepWords,
                                     const NameList* names = nullptr);

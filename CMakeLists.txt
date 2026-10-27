@@ -44,6 +44,7 @@ add_library(gct_core STATIC
     src/core/send_route.cpp
     src/core/translate_policy.cpp
     src/core/translation_cache.cpp
+    src/core/translation_check.cpp
     src/core/deepl_protocol.cpp
     src/core/mymemory_protocol.cpp
     src/core/llm_protocol.cpp
@@ -212,6 +213,15 @@ if(GCT_BUILD_TESTS)
     add_dependencies(local_mt_translator_selftest local_mt_fake_helper)
     add_test(NAME local_mt_translator_selftest
              COMMAND local_mt_translator_selftest $<TARGET_FILE:local_mt_fake_helper>)
+
+    # The real helper and model against made-up chat lines (a measurement, needs an installed model; no gate).
+    add_executable(translation_bench tests/tools/translation_bench.cpp)
+    target_include_directories(translation_bench PRIVATE src)
+    target_link_libraries(translation_bench PRIVATE gct_win)
+    target_compile_definitions(translation_bench PRIVATE UNICODE _UNICODE _WIN32_WINNT=0x0A00 WINVER=0x0A00
+                               NOMINMAX WIN32_LEAN_AND_MEAN)
+    target_compile_options(translation_bench PRIVATE /utf-8 /W4 /permissive- /EHsc)
+    set_property(TARGET translation_bench PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
 # The native local translation helper is optional: normal add-on builds don't fetch its much larger ML toolchain.
