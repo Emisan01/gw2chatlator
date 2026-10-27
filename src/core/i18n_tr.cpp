@@ -1141,8 +1141,6 @@ extern const I18nEntry kTurkishStrings[] = {
      L"henüz ölçülmedi"},
     {L"not reachable",
      L"ulaşılamıyor"},
-    {L"nothing",
-     L"hiçbir şey"},
     {L"off",
      L"kapalı"},
     {L"off – GW2Chatlator does not touch what Events: Chat sends",

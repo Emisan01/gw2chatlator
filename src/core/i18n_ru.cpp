@@ -1141,8 +1141,6 @@ extern const I18nEntry kRussianStrings[] = {
      L"ещё не измерено"},
     {L"not reachable",
      L"недоступен"},
-    {L"nothing",
-     L"ничего"},
     {L"off",
      L"выкл."},
     {L"off – GW2Chatlator does not touch what Events: Chat sends",

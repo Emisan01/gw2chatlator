@@ -1141,8 +1141,6 @@ extern const I18nEntry kPolishStrings[] = {
      L"jeszcze nie zmierzono"},
     {L"not reachable",
      L"nieosiągalny"},
-    {L"nothing",
-     L"nic"},
     {L"off",
      L"wył."},
     {L"off – GW2Chatlator does not touch what Events: Chat sends",
