@@ -12,6 +12,7 @@
 #include "core/llm_protocol.hpp"
 #include "core/mymemory_protocol.hpp"
 #include "core/text.hpp"
+#include "core/translation_check.hpp"
 #include "els.hpp"
 #include "http.hpp"
 
@@ -47,37 +48,26 @@ public:
             return r;
         }
 
-        // MyMemory takes at most 500 bytes per query: split long texts at spaces.
-        std::vector<std::wstring> chunks;
-        std::wstring current;
-        for (const Span& w : SplitKeepingSpaces(text)) {
-            const std::wstring piece = text.substr(w.start, w.length);
-            if (!current.empty() && ToUtf8(current + piece).size() > 440) {
-                chunks.push_back(current);
-                current.clear();
+        // MyMemory has no way to leave parts alone: the whole text first (the sentence as context); when it changed a
+        // protected part ("LFG", a name, a chat code), only the parts around them go – costs more of the contingent,
+        // so only then.
+        std::wstring whole;
+        if (!TranslateText(text, source, targetLang, whole, r)) return r;
+        if (HasProtected(segments) && !MissingProtected(segments, whole).empty()) {
+            std::wstring rebuilt;
+            for (const Segment& s : segments) {
+                if (s.keep || std::none_of(s.text.begin(), s.text.end(), IsWordChar)) {
+                    rebuilt += s.text;
+                    continue;
+                }
+                const size_t b = s.text.find_first_not_of(L' '), e = s.text.find_last_not_of(L' ');
+                std::wstring part;
+                if (!TranslateText(s.text.substr(b, e - b + 1), source, targetLang, part, r)) return r;
+                rebuilt += s.text.substr(0, b) + part + s.text.substr(e + 1);
             }
-            current += piece;
+            whole = std::move(rebuilt);
         }
-        if (!current.empty()) chunks.push_back(current);
-
-        for (const std::wstring& chunk : chunks) {
-            const HttpResponse http = HttpsRequest(L"GET", L"api.mymemory.translated.net",
-                                                   BuildMyMemoryPath(Trim(chunk), source, targetLang, email_), L"", "");
-            if (!http.transportOk) {
-                r.error = L"MyMemory: " + http.error;
-                r.errorKind = (http.status == 408 || http.status == 504) ? TranslateErrorKind::Timeout : TranslateErrorKind::Network;
-                return r;
-            }
-            const MyMemoryParsed p = ParseMyMemoryResponse(http.body);
-            if (!p.ok) {
-                r.error = p.quotaExceeded ? p.error + L" – " + Tr(L"choose another translator in the settings (Google, Microsoft, DeepL, AI model)") : p.error;
-                r.quotaExceeded = p.quotaExceeded;
-                r.errorKind = p.errorKind;
-                return r;
-            }
-            if (!r.text.empty()) r.text += L" ";
-            r.text += p.text;
-        }
+        r.text = std::move(whole);
         r.ok = true;
         r.detectedSource = source;
         r.errorKind = TranslateErrorKind::None;
@@ -85,6 +75,51 @@ public:
     }
 
 private:
+    // One text through MyMemory: at most 500 bytes per query, so longer texts go in whole sentences that fit (a word
+    // boundary only for a single sentence longer than that).
+    bool TranslateText(const std::wstring& text, const std::wstring& source, const std::wstring& target, std::wstring& out,
+                       TranslateResult& r) {
+        std::vector<std::wstring> chunks;
+        std::wstring current;
+        const auto add = [&](const std::wstring& piece) {
+            if (!current.empty() && ToUtf8(current + piece).size() > 440) {
+                chunks.push_back(current);
+                current.clear();
+            }
+            current += piece;
+        };
+        for (const Sentence& s : SplitSentences(text)) {
+            const std::wstring sentence = s.text + s.gap;
+            if (ToUtf8(sentence).size() <= 440) {
+                add(sentence);
+                continue;
+            }
+            for (const Span& w : SplitKeepingSpaces(sentence)) add(sentence.substr(w.start, w.length));
+        }
+        if (!current.empty()) chunks.push_back(current);
+
+        out.clear();
+        for (const std::wstring& chunk : chunks) {
+            const HttpResponse http = HttpsRequest(L"GET", L"api.mymemory.translated.net",
+                                                   BuildMyMemoryPath(Trim(chunk), source, target, email_), L"", "");
+            if (!http.transportOk) {
+                r.error = L"MyMemory: " + http.error;
+                r.errorKind = (http.status == 408 || http.status == 504) ? TranslateErrorKind::Timeout : TranslateErrorKind::Network;
+                return false;
+            }
+            const MyMemoryParsed p = ParseMyMemoryResponse(http.body);
+            if (!p.ok) {
+                r.error = p.quotaExceeded ? p.error + L" – " + Tr(L"choose another translator in the settings (Google, Microsoft, DeepL, AI model)") : p.error;
+                r.quotaExceeded = p.quotaExceeded;
+                r.errorKind = p.errorKind;
+                return false;
+            }
+            if (!out.empty()) out += L" ";
+            out += p.text;
+        }
+        return true;
+    }
+
     // Tokens of the text, each word together with the spaces after it.
     static std::vector<Span> SplitKeepingSpaces(const std::wstring& s) {
         std::vector<Span> out;
