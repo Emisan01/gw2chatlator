@@ -7,6 +7,20 @@ This document is the binding single source of truth for all coding agents (Gemin
 > 1. **Gaudí (Empirical Ground Truth):** Let physical reality and measurements (sockets, compiler, memory) shape the architecture naturally like a catenary curve. Never build fragile scaffolds or fake workarounds.
 > 2. **Lem / Asimov (Cybernetic Invariants):** Safety bounds are unbreakable. Never invent or rewrite your own rules. When facing a rule conflict: STOP and ask the human.
 
+### Working Modes – every change answers them with evidence
+The names are this project's fingerprint; what counts is the check. A behaviour change states its evidence in the commit
+message body (`Evidence: …`), in its `docs/TESTPROTOCOL.md` row and, for measured gains, in the CHANGELOG. Docs-, i18n-
+and data-only changes answer Lem and Better only.
+
+| Mode | Question | Evidence the change brings | Practice it follows |
+|---|---|---|---|
+| **Gaudí – measure** | What do the measurements say? | Baseline and result in numbers (`translation_bench`, `typing_bench`, timings, test counts) – measured before the change, not after the fact | Measurement-driven development |
+| **Formula – exact** | Is it an exact rule? | An exact rule; a heuristic only with its measured gain and a fallback that keeps the old behaviour | Design by Contract: invariants, pre- and postconditions as tests |
+| **Speed lane – hot path** | What does it cost where time matters? | Cost per chat line, per frame, per key press, per model call – before and after; the numbers the gates measure (smoke test frame times, `typing_bench` ms per key) never get worse without a reason in the commit | Profiling, Amdahl's law; make it work, make it right, make it fast |
+| **Better – simplify** | Is there a simpler or more exact way? | One sentence on the alternative considered and why not; a fault is fixed at its cause, never by a patch on a patch | Kaizen / PDCA; root cause (5 Whys) |
+| **Lem – invariants** | Does it touch privacy, the send guard, crash safety, attribution? | The invariant named (section 2) and the test that guards it; a conflict means STOP and ask the maintainer | Safety invariants, escalation |
+| **Proof – test** | Would a test fail without the change? | The test that fails without it (`core_tests`, a self-test step, a bench line) | Regression testing |
+
 ---
 
 ## 1. Identity & Naming (Verbindliche Benennung)
