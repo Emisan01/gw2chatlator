@@ -266,7 +266,11 @@ std::thread g_chatEventsThread;
 void RemoveChatEventsNow() {  // game thread
     const std::wstring dll = AddonsDir() + kChatEventsDllName;
     const bool gone = DeleteFileW(dll.c_str()) || GetFileAttributesW(dll.c_str()) == INVALID_FILE_ATTRIBUTES;
-    if (gone) g_chatEventsFile = false;
+    if (gone) {
+        g_chatEventsFile = false;
+        g_chatEventsLive = false;  // a line still coming says it is loaded after all
+        ChatEventsPresent(true);
+    }
     std::lock_guard<std::mutex> lock(g_mu);
     SetStatus(gone ? Tr(L"Events: Chat removed")
                    : Tr(L"Events: Chat is loaded – remove it in Nexus → Addons → Events: Chat (other add-ons may use it)"),
@@ -297,7 +301,9 @@ bool ChatEventsPresent(bool now) {
         }
     }
     ChatSourceSetVersion(version);
-    g_chatEventsPresent = found;
+    // Removed or unloaded in Nexus: its lines stopped – the state says so (the first line of the session set "live" and
+    // kept the dashboard on "ready" until the game ended, 2026-10-27).
+    if (g_chatEventsPresent.exchange(found) && !found) g_chatEventsLive = false;
     g_chatEventsFile = GetFileAttributesW((AddonsDir() + kChatEventsDllName).c_str()) != INVALID_FILE_ATTRIBUTES;
     return found;
 }

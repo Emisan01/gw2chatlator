@@ -912,7 +912,10 @@ bool RenderDashboard(Config& edit, Config& opened) {
 
             const ImVec2 pos = ImGui::GetCursorScreenPos();
             const float colW = ImGui::GetContentRegionAvail().x;
-            const float cardH = 180.0f;
+            // The tiles grow with their text – Nexus' large font, longer languages: both as high as the one that needs
+            // most (measured while drawing, used from the next frame on).
+            static float s_cardNeed[2] = {0.0f, 0.0f};
+            const float cardH = std::max({180.0f, s_cardNeed[0], s_cardNeed[1]});
             const ImVec2 size(colW, cardH);
             const float pad = 12.0f;
 
@@ -1104,7 +1107,7 @@ bool RenderDashboard(Config& edit, Config& opened) {
                 ImGui::Dummy(size);
             } else {
                 // ---- STATE 3: Normal Card View (Active, Disabled, or Uninstalled)
-                const float btnH = 28.0f;
+                const float btnH = std::max(28.0f, std::ceil(fs + ImGui::GetStyle().FramePadding.y * 2.0f + 4.0f));
                 const float topH = size.y - pad * 1.5f - btnH;
 
                 // Stateless interaction bounds for the top/body area
@@ -1211,7 +1214,7 @@ bool RenderDashboard(Config& edit, Config& opened) {
                 // Card Description: the first line (what runs) bright, the voice mode in the accent colour, the rest
                 // (how) grey; each line placed below the one before, wrapped ones included
                 const float descW = size.x - pad * 2.0f;
-                float lineY = cPos.y + pad + 40.0f;
+                float lineY = cPos.y + std::max(pad + 40.0f, pad + 14.0f + fs * 0.5f + 10.0f);  // below the title row
                 const std::string& desc = cards[i].desc;
                 for (size_t start = 0, ln = 0; start < desc.size(); ++ln) {
                     size_t end = desc.find('\n', start);
@@ -1225,6 +1228,8 @@ bool RenderDashboard(Config& edit, Config& opened) {
                     lineY += font->CalcTextSizeA(sz, FLT_MAX, descW, line.c_str()).y + (ln == 0 ? 3.0f : 1.0f);
                     start = end + 1;
                 }
+
+                s_cardNeed[i] = std::ceil(lineY - cPos.y + 8.0f + btnH + pad);
 
                 // Bottom Buttons
                 const float availW = size.x - pad * 2.0f;
@@ -1523,16 +1528,39 @@ void RenderOptionsContent() {
                                        : edit.engine == Engine::Microsoft ? edit.msKey : edit.libreKey;
                 strncpy_s(keyBuf, U8(k).c_str(), _TRUNCATE);
             }
-            // Events: Chat, the chat reader: its state always here; without it nothing of the chat is read – easy to
-            // miss in the compact view, so the hint and the install button stay until it is loaded.
-            ImGui::Dummy(ImVec2(0.0f, 8.0f));
-            RenderChatModule(true);
-            if (!g_chatEventsLive && !g_chatEventsPresent)
-                Hint(UI(Tr(L"Without Events: Chat, GW2Chatlator cannot read the chat – writing and the typing help work anyway.")));
-            ImGui::Dummy(ImVec2(0.0f, 8.0f));
+            // Events: Chat, the chat reader: without it nothing of the chat is read – easy to miss at the first start,
+            // so while it is missing it stands here big, with its install button and the hint; once it is loaded only
+            // its chip is left, right of "Translation & Languages" (it opens the Technical tab).
+            const bool chatThere = g_chatEventsLive || g_chatEventsPresent;
+            if (!chatThere) {
+                ImGui::Dummy(ImVec2(0.0f, 8.0f));
+                RenderChatModule(true);
+                if (!g_chatEventsFile && !g_chatEventsInstalling)
+                    Hint(UI(Tr(L"Without Events: Chat, GW2Chatlator cannot read the chat – writing and the typing help work anyway.")));
+                ImGui::Dummy(ImVec2(0.0f, 8.0f));
+            }
+            ImGui::Dummy(ImVec2(0.0f, 4.0f));
             ImGui::Separator();
             ImGui::Dummy(ImVec2(0.0f, 6.0f));
+            const float rightCol = ImGui::GetContentRegionAvail().x * 0.5f + ImGui::GetStyle().ItemSpacing.x;
+            ImGui::AlignTextToFramePadding();
             ImGui::TextUnformatted(UI(Tr(L"Translation & Languages")).c_str());
+            if (chatThere) {  // the chip as the switches have it, the state on the same line
+                ImGui::SameLine(rightCol);
+                const ImVec4 ok(0.45f, 0.85f, 0.45f, 1.f);
+                const float chipW = std::ceil(ImGui::CalcTextSize("OK").x + ImGui::GetStyle().FramePadding.x * 2 + 6);
+                ImGui::PushStyleColor(ImGuiCol_Text, ok);
+                ImGui::PushStyleColor(ImGuiCol_Border, ok);
+                ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+                if (ImGui::Button("OK##dash_chatmodule", ImVec2(chipW, 0))) s_delayedTab = 6;
+                ImGui::PopStyleVar();
+                ImGui::PopStyleColor(2);
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Open")).c_str());
+                ImGui::SameLine();
+                ImGui::TextUnformatted(UI(Tr(L"Chat module")).c_str());
+                ImGui::SameLine();
+                ImGui::TextDisabled("%s", UI(Tr(L"ready – Events: Chat is loaded")).c_str());
+            }
             ImGui::TextDisabled("%s", UI(Tr(L"Translated is everything except:")).c_str());
             RenderExceptList(edit);
             Hint(UI(Tr(L"Your writing language follows automatically when you switch languages in the chat footer.")));

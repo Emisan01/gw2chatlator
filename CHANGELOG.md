@@ -3,6 +3,12 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.6.7 — 2026-10-27 (GW2Chatlator for Nexus)
+
+- **Chat Module State Follows Nexus:** after Events: Chat was removed (or unloaded in Nexus), the dashboard kept saying "ready – Events: Chat is loaded" until the game ended – the first chat line of the session had marked it live for good. Removing it or Nexus unloading it now resets that; a line still coming says it is loaded after all.
+- **Chat Module Where It Belongs:** while Events: Chat is missing it stands big below the tiles, with its install button and the hint – easy to find at the first start. Once it is loaded only its chip is left, right of "Translation & Languages" (it opens the Technical tab).
+- **Tiles Grow With Their Text:** the dashboard tiles were 180 pixels high whatever the font: with Nexus' large font the lines ran under the choosers and out of the tile. They are now as high as their text needs, the choosers as high as the font – also for languages with longer words.
+
 ## 2.6.6 — 2026-10-27 (GW2Chatlator for Nexus)
 
 - **One Base List of GW2 Terms:** all built-in terms now live in one file, `data/gw2-terms.tsv` – term, kind and what it means – compiled into the add-on (`tools/gen_terms.py`). It holds the whole community glossary: about 560 terms, each of one kind – never translated ("LFG"), never translated in capitals ("AB", but German "ab"), or translated like any word but never marked as a spelling error ("stack", "Kommi"). New terms come with the next version.
