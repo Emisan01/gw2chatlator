@@ -548,6 +548,7 @@ void DoSaveOptions(Config& edit, Config& opened,
         g_cfg = opened = edit;
         g_cfg.SaveAll();
         SetUiLang(g_cfg.uiLang);
+        PrepareFaultAlert();  // the alert after a fault in the language chosen now
         g_translator = MakeTranslator(g_cfg);
         const int asWritten = static_cast<int>(g_cfg.writeLangs.size());
         const auto kept = std::find(g_cfg.writeLangs.begin(), g_cfg.writeLangs.end(), sendWas);

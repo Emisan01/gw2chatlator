@@ -694,5 +694,6 @@ void SafeOptions();
 std::wstring OwnDataDir();
 void AddonLoad(AddonAPI_t* api);
 void AddonUnload();
+void PrepareFaultAlert();  // the text of the one alert after a fault, in the current UI language (game thread)
 
 }  // namespace kb

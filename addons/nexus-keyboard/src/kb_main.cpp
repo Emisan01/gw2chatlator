@@ -17,6 +17,7 @@
 
 namespace kb {
 
+void SwitchOffAfterFault();  // below: off for the session, one Nexus alert says so
 
 UINT OnWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (g_disabled) return msg;
@@ -105,7 +106,7 @@ UINT OnWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         }
         return 0;  // the push-to-talk key is ours
     } catch (...) {
-        g_disabled = true;
+        SwitchOffAfterFault();
         return msg;
     }
 }
@@ -128,17 +129,40 @@ void FirstStart() {  // nothing is downloaded by itself: the empty chat shows th
     SaveNexusOptions();
 }
 
+// Switched off after an error: once a Nexus alert says so – otherwise the add-on would just vanish (only nexus.log
+// knew why). The text is made at load (PrepareFaultAlert), so the call after a fault allocates nothing, and it runs
+// behind its own guard: a broken state may not take the game down with the message.
+char g_faultAlert[512] = {};
+std::atomic<bool> g_faultAlerted{false};
+void PrepareFaultAlert() {
+    const std::string text = UI(Tr(L"GW2Chatlator switched itself off after an error – the game goes on. Details are in "
+                                   L"nexus.log; restart GW2 to use it again."));
+    strncpy_s(g_faultAlert, text.c_str(), _TRUNCATE);
+}
+void AlertFaultOnce() {  // SEH only, no C++ objects
+    __try {
+        if (g_faultAlerted.exchange(true) || !g_api || !g_faultAlert[0]) return;
+        if (g_api->GUI_SendAlert && IsCodePointer(reinterpret_cast<const void*>(g_api->GUI_SendAlert)))
+            g_api->GUI_SendAlert(g_faultAlert);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+    }
+}
+void SwitchOffAfterFault() {
+    g_disabled = true;
+    AlertFaultOnce();
+}
+
 // Every callback runs behind these two: a C++ exception or an access violation ends our add-on, never the game.
 void GuardedRender(void (*fn)()) {
     if (g_disabled) return;
     try {
         fn();
     } catch (const std::exception& e) {
-        g_disabled = true;
         Log(LOGL_CRITICAL, ("an error – switched off: " + std::string(e.what())).c_str());
+        SwitchOffAfterFault();
     } catch (...) {
-        g_disabled = true;
         Log(LOGL_CRITICAL, "an error – switched off for this session");
+        SwitchOffAfterFault();
     }
 }
 bool ShieldedCall(void (*fn)(void*), void* arg) {
@@ -146,7 +170,7 @@ bool ShieldedCall(void (*fn)(void*), void* arg) {
         fn(arg);
         return true;
     } __except (GetExceptionCode() == 0xE06D7363 ? EXCEPTION_CONTINUE_SEARCH : EXCEPTION_EXECUTE_HANDLER) {  // C++: on
-        g_disabled = true;
+        SwitchOffAfterFault();
         return false;
     }
 }
@@ -154,14 +178,14 @@ void SafeRender() {
     __try {
         GuardedRender(RenderWindow);
     } __except (EXCEPTION_EXECUTE_HANDLER) {
-        g_disabled = true;
+        SwitchOffAfterFault();
     }
 }
 void SafeOptions() {
     __try {
         GuardedRender(RenderNexusOptions);
     } __except (EXCEPTION_EXECUTE_HANDLER) {
-        g_disabled = true;
+        SwitchOffAfterFault();
     }
 }
 
@@ -215,6 +239,7 @@ void AddonLoad(AddonAPI_t* api) {
         }
         if (g_cfg.writeLangs.empty()) g_cfg.writeLangs = {L"EN-GB"};
         SetUiLang(g_cfg.uiLang);
+        PrepareFaultAlert();
         g_translator = MakeTranslator(g_cfg);
         g_sendIdx = g_cfg.translateWriting ? 0 : static_cast<int>(g_cfg.writeLangs.size());
         LoadLayout();
