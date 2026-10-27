@@ -211,9 +211,15 @@ int wmain(int argc, wchar_t** argv) {
     swap = gct::SwapLocalMtHelper(kbDir.wstring(), package.wstring());
     const bool swapOk = swap.code == gct::ExtrasInstallCode::Ok, ended = running && WaitForSingleObject(running, 0) == WAIT_OBJECT_0,
                replaced = FileBytes(liveExe) == newBytes, noOld = !std::filesystem::exists(oldExe);
-    if (!(swapOk && ended && replaced && noOld))  // which part, and the swap's own words (CI showed only the FAIL line)
+    if (!(swapOk && ended && replaced && noOld)) {  // which part, the swap's words, the paths it compared (CI)
+        wchar_t image[MAX_PATH * 2] = {}, longExe[MAX_PATH * 2] = {};
+        DWORD size = MAX_PATH * 2;
+        if (running) QueryFullProcessImageNameW(running, 0, image, &size);
+        GetLongPathNameW(liveExe.c_str(), longExe, MAX_PATH * 2);
         std::wcout << L"  swap ok " << swapOk << L", old helper ended " << ended << L", replaced " << replaced
-                   << L", no .old " << noOld << L" – " << swap.detail << L"\n";
+                   << L", no .old " << noOld << L" – " << swap.detail << L"\n  process image: " << image
+                   << L"\n  helper exe:    " << longExe << L"\n";
+    }
     ok &= Check(swapOk && ended && replaced && noOld, "swap: a running old helper is ended first and then replaced");
     if (running) CloseHandle(running);
     if (stdinWrite) CloseHandle(stdinWrite);

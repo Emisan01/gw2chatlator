@@ -79,6 +79,23 @@ std::wstring FullPath(const std::wstring& path) {  // absolute and in long form,
     return m && m < MAX_PATH * 2 ? std::wstring(longPath, m) : std::wstring(full, n);
 }
 
+// The same file, however its path is written: volume and file ID. On GitHub's runner the image path a running helper
+// reports did not match ours as text – the helper went on running and its exe could not be removed.
+bool SameFile(const std::wstring& a, const std::wstring& b) {
+    const auto id = [](const std::wstring& path, BY_HANDLE_FILE_INFORMATION& info) {
+        HANDLE h = CreateFileW(path.c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                               nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (h == INVALID_HANDLE_VALUE) return false;
+        const bool ok = GetFileInformationByHandle(h, &info) != 0;
+        CloseHandle(h);
+        return ok;
+    };
+    BY_HANDLE_FILE_INFORMATION x{}, y{};
+    if (!id(a, x) || !id(b, y)) return _wcsicmp(a.c_str(), b.c_str()) == 0;
+    return x.dwVolumeSerialNumber == y.dwVolumeSerialNumber && x.nFileIndexHigh == y.nFileIndexHigh &&
+           x.nFileIndexLow == y.nFileIndexLow;
+}
+
 // Ends only the helpers started from exactly this exe (a second game client with its own add-on folder keeps
 // its helper) and waits until they are gone, so the file can be moved.
 void TerminateHelperProcesses(const std::wstring& exePath) {
@@ -97,7 +114,7 @@ void TerminateHelperProcesses(const std::wstring& exePath) {
             if (!process) continue;
             wchar_t image[MAX_PATH * 2] = {};
             DWORD size = MAX_PATH * 2;
-            if (QueryFullProcessImageNameW(process, 0, image, &size) && _wcsicmp(image, wanted.c_str()) == 0) {
+            if (QueryFullProcessImageNameW(process, 0, image, &size) && SameFile(image, wanted)) {
                 TerminateProcess(process, 0);
                 WaitForSingleObject(process, 5000);
             }
