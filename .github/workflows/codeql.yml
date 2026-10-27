@@ -1,0 +1,43 @@
+# CodeQL – GitHub's security analysis of the C++ code (the portable core, the Windows services and the add-on DLL), on
+# every push to main, every pull request and once a week. Findings appear under Security → Code scanning.
+name: codeql
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370  # v4.39.1
+        with:
+          languages: c-cpp
+          build-mode: manual
+
+      - name: Build what ships (core, Windows services, add-on DLL)
+        run: |
+          cmake -S . -B build -A x64 -DGCT_BUILD_TESTS=OFF
+          cmake --build build --config Release --parallel --target gw2keyboard_nexus
+
+      - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370  # v4.39.1
+        with:
+          category: "/language:c-cpp"

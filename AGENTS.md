@@ -104,6 +104,10 @@ src/core/                Pure C++17 portable logic (NO windows.h): text, json, i
   zizmor. Actions pinned to full commit SHAs with the tag as a comment, the token only reads, checkout keeps no
   credentials; Dependabot proposes new pins monthly – merged by the maintainer only. CI is a safety net, not the release
   audit: that stays `verify_release.py --full` on the maintainer's PC.
+- **Security checks on GitHub:** CodeQL analyses the C++ code that ships (`.github/workflows/codeql.yml`, every push,
+  pull request and weekly); the OpenSSF Scorecard rates the repository's security practices (`scorecard.yml`, every
+  push to main and weekly); both report under Security → Code scanning. Vulnerabilities are reported privately as
+  `SECURITY.md` says – never in a public issue.
 - **Evidence trailer:** a commit of type `feat`, `fix`, `perf` or `refactor` carries `Evidence:` in its message (Working
   Modes, top of this file). Gate 1 checks every commit since the rule came (`tools/check_evidence.py`); the same check
   runs before each commit once `git config core.hooksPath tools/hooks` is set in a clone.
