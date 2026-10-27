@@ -261,6 +261,7 @@ static void TestLocalMtProtocol() {
     // a full stop the source did not end with goes; the target language's spacing (2026-10-27, translation_bench)
     CHECK(CleanLocalMtOutput(L"Gracias por el", L"Danke für ihn.", "de") == L"Danke für ihn");
     CHECK(CleanLocalMtOutput(L"Gracias.", L"Danke.", "de") == L"Danke.");
+    CHECK(CleanLocalMtOutput(L"Meet at the waypoint in", L"Treffen am Weg .", "de") == L"Treffen am Weg");
     CHECK(CleanLocalMtOutput(L"hmm", L"Na ja...", "de") == L"Na ja...");
     CHECK(CleanLocalMtOutput(L"Hola", L"Hey , was ist los ?", "de") == L"Hey, was ist los?");
     CHECK(TidyPunctuation(L"Merci , à demain !", "fr") == L"Merci, à demain !");
@@ -375,14 +376,30 @@ static void TestProtect() {
     CHECK(smile.size() == 2 && WholeSentenceRange(smile).to == 1);
     const auto onlyKeep = SplitForLocalMt(ProtectForTranslation(L"LFG :)", nullptr, &keep).segments);
     CHECK(WholeSentenceRange(onlyKeep).from == onlyKeep.size());
-    // second try: keep-words like names ("rez" became "Gebet", "Rez" is copied), then written back as they were
+    // second try: keep-words like names ("rez" became "Gebet", "Rez" is copied); codes stay as they are
     std::vector<Segment> named = rez;
     CHECK(KeepWordsAsNames(named) && JoinSegments(named) == L"Gracias por el Rez!");
+    auto chatCode = SplitForLocalMt(ProtectForTranslation(L"sell [&AgGvWwEA] now", nullptr, &keep).segments);
+    CHECK(!KeepWordsAsNames(chatCode));
+    // third try: placeholders the model copies ("Lion's Arch" became "Löwenbogen"), filled back exactly once each
+    const Placeholders held = WithPlaceholders(rez);
+    CHECK(held.text == L"Gracias por el X1!" && held.parts == std::vector<std::wstring>({L"rez"}));
+    std::wstring filled;
+    CHECK(FillPlaceholders(L"Danke für den x1!", held.parts, filled) && filled == L"Danke für den rez!");
+    CHECK(!FillPlaceholders(L"Danke!", held.parts, filled) && !FillPlaceholders(L"X1 und X1", held.parts, filled));
+    const auto arch = SplitForLocalMt(
+        ProtectForTranslation(L"Meet at the waypoint in Lion's Arch, then [&AgGvWwEA] :)", nullptr, &keep).segments);
+    const Placeholders held2 = WithPlaceholders(arch);
+    CHECK(held2.text == L"Meet at the waypoint in X1, then X2" &&  // the smiley goes with the code before it
+          held2.parts == std::vector<std::wstring>({L"Lion's Arch", L"[&AgGvWwEA] :)"}));
+    CHECK(FillPlaceholders(L"Wir treffen uns am Wegpunkt in X1, dann X2", held2.parts, filled) &&
+          filled == L"Wir treffen uns am Wegpunkt in Lion's Arch, dann [&AgGvWwEA] :)");
+    // a writer's own "X1" would be taken for one: no placeholders then
+    CHECK(WithPlaceholders(SplitForLocalMt(ProtectForTranslation(L"x1 rez please", nullptr, &keep).segments)).parts.empty());
+    // after a whole sentence the protected words the way they were written
     CHECK(RestoreKeepSpelling(L"Danke für den Rez! Rezept", rez) == L"Danke für den rez! Rezept");
     const auto wtfWhole = SplitForLocalMt(ProtectForTranslation(L"wtf was that", nullptr, &keep).segments);
     CHECK(RestoreKeepSpelling(L"WTF war das? WTFs", wtfWhole) == L"wtf war das? WTFs");
-    auto chatCode = SplitForLocalMt(ProtectForTranslation(L"sell [&AgGvWwEA] now", nullptr, &keep).segments);
-    CHECK(!KeepWordsAsNames(chatCode));
     const auto code = ProtectForTranslation(L"look [&AgGvWwEA] and [LFG] or [a b]", nullptr, &keep);
     CHECK(JoinSegments(code.segments) == L"look [&AgGvWwEA] and [LFG] or [a b]");
     int tags = 0;
@@ -394,7 +411,8 @@ static void TestTermsFile() {
     // a new file: header, an empty "your terms", the built-in block with keep-words and the capitals-only ones
     const std::string fresh = WriteTermsFile({});
     CHECK(fresh.find("# --- your terms ---") != std::string::npos && fresh.find("# --- built in ---") != std::string::npos);
-    CHECK(fresh.find("\r\nlfg\r\n") != std::string::npos && fresh.find("\r\nAB\r\n") != std::string::npos);
+    CHECK(fresh.find("\r\nlfg\tLooking for group\r\n") != std::string::npos &&
+          fresh.find("\r\nAB\tAuric Basin\r\n") != std::string::npos && fresh.find("\r\nWizard's Vault\t") != std::string::npos);
     CHECK(ParseMyTerms(fresh).empty());  // the built-in block is never read as yours
     // your terms survive a rewrite (a new version writes its block again), duplicates in any case once
     const std::string edited = "# --- your terms ---\r\nDSX\r\nmytag\r\n\r\n# a note\r\ndsx\r\n# --- built in ---\r\nold\r\n";
@@ -408,6 +426,50 @@ static void TestTermsFile() {
     CHECK(IsKeepWord(keep, L"mytag") && IsKeepWord(keep, L"MYTAG") && IsKeepWord(keep, L"dsx"));
     const auto p = ProtectForTranslation(L"join mytag tonight", nullptr, &keep);
     CHECK(p.segments.size() == 3 && p.segments[1].keep && p.segments[1].text == L"mytag");
+    // a term of several words (a guild's name), a note after a tab
+    const auto guild = ParseMyTerms("# --- your terms ---\r\nHermandad  Sol Dorado\tour guild\r\n");
+    CHECK(guild.size() == 1 && guild[0] == L"Hermandad  Sol Dorado");
+    AddMyTerms(keep, guild);
+    const auto g = ProtectForTranslation(L"la hermandad sol dorado busca gente", nullptr, &keep);
+    CHECK(g.segments.size() == 3 && g.segments[1].keep && g.segments[1].text == L"hermandad sol dorado");
+}
+
+// The built-in terms come from data/gw2-terms.tsv: the compiled table (gw2_terms.inc) must be the file's, line by line
+// – a changed TSV without `python tools/gen_terms.py` fails here. Official names of several words stay whole
+// ("Wizard's Vault" became "Assistent", 2026-10-27).
+static void TestBuiltinTerms() {
+#ifdef GCT_SOURCE_DIR
+    std::ifstream file(std::string(GCT_SOURCE_DIR) + "/data/gw2-terms.tsv", std::ios::binary);
+#else
+    std::ifstream file("data/gw2-terms.tsv", std::ios::binary);
+#endif
+    CHECK(file.good());
+    std::ostringstream text;
+    text << file.rdbuf();
+    const std::vector<TermLine> lines = ParseTermTable(text.str());
+    const std::vector<BuiltinTerm>& terms = BuiltinTerms();
+    bool same = lines.size() == terms.size() && terms.size() > 500;
+    for (size_t i = 0; same && i < terms.size(); ++i)
+        same = lines[i].term == terms[i].term && lines[i].kind == terms[i].kind && lines[i].meaning == terms[i].meaning;
+    if (!same) std::printf("data/gw2-terms.tsv and src/core/gw2_terms.inc differ - run: python tools/gen_terms.py\n");
+    CHECK(same);
+
+    const WordSet& keep = BuiltinKeepWords();
+    const auto vault = ProtectForTranslation(L"did you buy it from the Wizard's Vault this week?", nullptr, &keep);
+    CHECK(vault.segments.size() == 3 && vault.segments[1].keep && vault.segments[1].text == L"Wizard's Vault");
+    const auto lower = ProtectForTranslation(L"wizards vault reset today", nullptr, &keep);
+    CHECK(!lower.segments.empty() && lower.segments[0].keep && lower.segments[0].text == L"wizards vault");
+    const auto curly = ProtectForTranslation(L"meet in Lion’s Arch", nullptr, &keep);
+    CHECK(curly.segments.size() == 2 && curly.segments[1].text == L"Lion’s Arch");
+    const auto hyphen = ProtectForTranslation(L"Death-Branded Shatterer in 5", nullptr, &keep);
+    CHECK(!hyphen.segments.empty() && hyphen.segments[0].text == L"Death-Branded Shatterer");
+    const auto longest = ProtectForTranslation(L"LFG Stronghold of the Faithful now", nullptr, &keep);
+    CHECK(longest.segments.size() == 4 && longest.segments[2].text == L"Stronghold of the Faithful");
+    // only the whole name: "the vault", "the north" are words
+    CHECK(!HasProtected(ProtectForTranslation(L"the vault is open, eye of the storm", nullptr, &keep).segments));
+    // the kinds: keep in any spelling, caps only in capitals, word translated (but never a spelling error)
+    CHECK(IsKeepWord(keep, L"Aetherpath") && IsKeepWord(keep, L"NA") && !IsKeepWord(keep, L"na"));
+    CHECK(!IsKeepWord(keep, L"tag") && BuiltinSpellIgnore().count(L"tag") && BuiltinSpellIgnore().count(L"lfg"));
 }
 
 static void TestChatCommands() {
@@ -2799,6 +2861,7 @@ int main() {
     TestTranslationCheck();
     TestChatCommands();
     TestTermsFile();
+    TestBuiltinTerms();
     TestDeepL();
     TestLanguages();
     TestColors();

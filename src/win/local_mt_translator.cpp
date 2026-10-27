@@ -117,9 +117,10 @@ public:
         };
         // Sentence by sentence: the models are trained on single sentences – several at once, NLLB drops some. In a
         // sentence its protected words stay in place, so the model sees the whole sentence; when it changed one of
-        // them, once more with the keep-words written like names ("Rez", copied where "rez" became "Gebet"); only then
-        // the sentence goes in pieces around them (the way all text went before 2.6.5). A try that is not taken does
-        // not count for the score.
+        // them, once more with the keep-words written like names ("Rez", copied where "rez" became "Gebet"), then with
+        // placeholders X1, X2 … ("Lion's Arch" became "Löwenbogen", "Wir treffen uns am Wegpunkt in X1" is copied);
+        // only then the sentence goes in pieces around them (the way all text went before 2.6.5). Every try is
+        // checked the same way; one that is not taken does not count for the score.
         std::wstring translated;
         for (const SentenceSegments& sentence : SegmentsBySentence(segments)) {
             std::vector<Segment> pieces = SplitForLocalMt(sentence.segments);
@@ -133,15 +134,23 @@ public:
                 bool done = false;
                 if (inner.size() > 1) {  // protected parts in it: the whole sentence first
                     std::vector<Segment> named = inner;
-                    const int tries = KeepWordsAsNames(named) ? 2 : 1;
-                    for (int t = 0; !done && t < tries; ++t) {
+                    const bool asNames = KeepWordsAsNames(named);
+                    const Placeholders held = WithPlaceholders(inner);
+                    for (int t = 0; !done && t < 3; ++t) {
+                        if ((t == 1 && !asNames) || (t == 2 && held.parts.empty())) continue;
                         const double score = lastScore_;
                         const bool scored = lastScored_;
-                        const auto whole = translateText(JoinSegments(t == 0 ? inner : named));
+                        const auto whole =
+                            translateText(t == 0 ? JoinSegments(inner) : t == 1 ? JoinSegments(named) : held.text);
                         if (!whole && !result.error.empty() && result.errorKind != TranslateErrorKind::BadOutput)
                             return result;
-                        if (whole && MissingProtected(inner, *whole).empty()) {
-                            middle = RestoreKeepSpelling(*whole, inner);
+                        std::wstring filled;
+                        const bool complete = whole && (t < 2 ? (filled = *whole, true)
+                                                              : FillPlaceholders(*whole, held.parts, filled));
+                        // the protected parts themselves ("Tequatl"), not the pieces with the marks around them
+                        // ("Tequatl ?" – the model wrote "Tequatl-Meta … ?")
+                        if (complete && MissingProtected(sentence.segments, lead + filled + tail).empty()) {
+                            middle = RestoreKeepSpelling(filled, sentence.segments);
                             done = true;
                         } else {
                             lastScore_ = score;

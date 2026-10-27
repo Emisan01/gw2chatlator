@@ -1,86 +1,73 @@
-// slang.cpp — keep these lists short and boring: every keep-word is a word
-// the translator will never touch, so only add terms that read the same in
-// every language. Players can extend the spell-check list themselves via
-// the right-click menu (stored in gw2-woerter.txt).
+// slang.cpp — the built-in GW2 terms come from data/gw2-terms.tsv (every keep-word is a word the translator will
+// never touch, so only terms that read the same in every language). Players add their own terms in gw2-terms.txt
+// and words for the spell check via the right-click menu.
 #include "slang.hpp"
 
 #include <algorithm>
 #include <initializer_list>
 #include <iterator>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace gct {
 
+const std::vector<BuiltinTerm>& BuiltinTerms() {
+    static const std::vector<BuiltinTerm> terms = {
+#include "gw2_terms.inc"
+    };
+    return terms;
+}
+
+std::vector<TermLine> ParseTermTable(const std::string& utf8) {
+    std::vector<TermLine> out;
+    size_t pos = utf8.rfind("\xEF\xBB\xBF", 0) == 0 ? 3 : 0;  // BOM
+    while (pos < utf8.size()) {
+        size_t eol = utf8.find('\n', pos);
+        if (eol == std::string::npos) eol = utf8.size();
+        std::string raw = utf8.substr(pos, eol - pos);
+        pos = eol + 1;
+        if (!raw.empty() && raw.back() == '\r') raw.pop_back();
+        std::vector<std::wstring> cols;
+        size_t start = 0;
+        for (size_t tab; (tab = raw.find('\t', start)) != std::string::npos; start = tab + 1)
+            cols.push_back(Trim(FromUtf8(raw.substr(start, tab - start))));
+        cols.push_back(Trim(FromUtf8(raw.substr(start))));
+        if (cols[0].empty() || cols[0][0] == L'#') continue;
+        TermLine line;
+        bool gap = false;
+        for (wchar_t c : cols[0]) {  // spaces as one, like gen_terms.py
+            if (c == L' ') {
+                gap = !line.term.empty();
+                continue;
+            }
+            if (gap) line.term += L' ';
+            gap = false;
+            line.term += c;
+        }
+        const std::wstring kind = cols.size() > 1 ? cols[1] : L"";
+        line.kind = kind == L"keep" ? TermKind::Keep : kind == L"caps" ? TermKind::Caps : TermKind::Word;
+        if (cols.size() > 2) line.meaning = cols[2];
+        out.push_back(std::move(line));
+    }
+    return out;
+}
+
+std::wstring PhraseWordKey(const std::wstring& word) {
+    std::wstring k = CaseFold(word);
+    k.erase(std::remove_if(k.begin(), k.end(), [](wchar_t c) { return c == L'\'' || c == L'’'; }), k.end());
+    return k;
+}
+
+std::wstring TermKey(const std::wstring& term) {
+    const std::vector<Span> words = WordSpans(term);
+    if (words.size() <= 1) return CaseFold(Trim(term));
+    std::wstring key;
+    for (const Span& w : words) key += (key.empty() ? L"" : L" ") + PhraseWordKey(term.substr(w.start, w.length));
+    return key;
+}
+
 namespace {
-
-// Kept in any spelling: abbreviations that are no word in any common language (terms from the GW2 wiki's list of
-// abbreviations, chosen and checked by hand: no ordinary DE/EN/FR/ES/IT/PT word).
-const wchar_t* const kKeep[] = {
-    // content & modes
-    L"lfg", L"lfm", L"lfr", L"lf", L"wvw", L"pvp", L"spvp", L"pve", L"pvx", L"gw2", L"pof", L"eod", L"soto", L"jw",
-    L"voe", L"lw", L"lws", L"cms", L"t4", L"meta", L"zerg", L"pug", L"pugs", L"fotm", L"fracs", L"ebg", L"eotm",
-    L"sab", L"jp", L"kp", L"teq", L"cof", L"coe", L"ibs", L"drm", L"wtb", L"wts",
-    // raids, strikes, bosses
-    L"vg", L"gors", L"kc", L"qtp", L"cmdr", L"comm", L"commi",
-    // combat
-    L"dps", L"cdps", L"pdps", L"bdps", L"adps", L"qdps", L"hps", L"cc", L"aoe", L"pbaoe", L"boon", L"boons",
-    L"alac", L"alacrity", L"quickness", L"stab", L"icd", L"ooc",
-    // professions / specs, short forms
-    L"necro", L"engi", L"rev", L"warri", L"chrono", L"scourge", L"fb", L"dh", L"hfb", L"qfb", L"bsw", L"vindi",
-    L"virt", L"holo", L"dudu", L"ren", L"mech",
-    // items & map
-    L"wp", L"wps", L"tp", L"ecto", L"ektos", L"ld", L"obby", L"mc", L"wv",
-    // chat
-    L"afk", L"brb", L"gg", L"gz", L"gratz", L"ty", L"thx", L"np", L"wb", L"inc", L"rdy", L"lol", L"omg", L"xd",
-    L"gtg", L"g2g", L"rc", L"dc",
-    // chat reactions the line filter knows too – inside a sentence they are kept as well ("wtf war das" became
-    // "Whoa, whoa, whoa", 2026-10-27); none is a word in a common language
-    L"wtf", L"lmao", L"rofl", L"ggwp", L"glhf", L"tyvm", L"sry", L"mdr", L"ptdr", L"o7",
-    // GW2 abbreviations from a community glossary Emi brought (2026-10-27) – only the short forms, checked by hand:
-    // none is an ordinary word in DE/EN/FR/ES/IT/PT. Places and events, dungeons, fractals and kill proofs …
-    L"anet", L"gph", L"rp", L"eotn", L"dbs", L"riba", L"dsd", L"hotw", L"arah", L"ufe", L"dwd", L"lnhb",
-    // … raid wings and bosses, strikes, LFG …
-    L"w1", L"w2", L"w3", L"w4", L"w5", L"w6", L"w7", L"w8", L"q1", L"q2", L"ez3", L"woj", L"lft",
-    // … skills, specializations and builds …
-    L"aotj", L"fgs", L"gotl", L"slb", L"harb", L"hsc", L"hmech", L"hcata", L"qharb", L"qcata", L"alacmech",
-    L"miralac", L"alacren", L"alacrage", L"alacrigade", L"psb", L"charb",
-    // role + boon short forms (h = heal, q = quickness, a = alacrity): NLLB made "qheal" into "Queal"
-    L"qheal", L"aheal", L"qhealer", L"ahealer", L"hscourge", L"qscourge", L"hdruid", L"amech", L"qherald",
-    L"hherald", L"hrev", L"arev", L"qrev", L"hvind",
-    // … PvP and WvW objectives, maps and scores, gaming
-    L"hotm", L"decap", L"nwt", L"swt", L"nwc", L"swc", L"smc", L"dbl", L"abl", L"gbl", L"bbl", L"rbl", L"ewp",
-    L"treb", L"garri", L"ppt", L"ppk", L"gvg", L"fps", L"dlc", L"hud", L"npc",
-    // "rez" (resurrect) in a chat is the GW2 word – NLLB made "Merci pour le rez" into "Danke für den Boden"
-    L"rez",
-};
-
-// Kept only when written like an abbreviation (two capitals or more: "LA", "HoT", "CoF"): the same letters are an
-// ordinary word somewhere – "la casa", "it's hot", "de", "se", "cm" (centimetre).
-const wchar_t* const kKeepCaps[] = {
-    L"hot", L"la", L"de", L"se", L"cm", L"ac", L"ap", L"ar", L"bl", L"ca", L"co", L"cs", L"cw", L"dd", L"dr", L"ds",
-    L"dt", L"li", L"mo", L"ms", L"mf", L"ow", L"sw", L"ta", L"tc", L"td", L"sb", L"sh", L"eb", L"ha", L"ls",
-    L"oos", L"am",
-    // from the community glossary (2026-10-27): "AB" Auric Basin but German "ab", "SI" Serpent's Ire but "si", "POI"
-    // but Italian "poi", "SEC" Southeast Camp but French "sec" …
-    L"ip", L"mp", L"poi", L"vb", L"ab", L"bc", L"gh", L"si", L"tt", L"uf", L"dod", L"ke", L"ul", L"fc", L"ko",
-    L"ht", L"aa", L"ea", L"fa", L"ps", L"ri", L"rr", L"os", L"ct", L"ts", L"ui", L"sec", L"nec",
-};
-
-const wchar_t* const kSpellOnly[] = {
-    L"kommi", L"kommis", L"kommander", L"commander", L"squad", L"squads", L"taggen", L"stack", L"stacke",
-    L"stacken", L"stackt", L"raid", L"raids", L"raiden", L"fraktal", L"fraktale", L"fractal", L"fractals",
-    L"strike", L"strikes", L"metas", L"blob", L"loot", L"looten", L"farmen", L"farme", L"farmst", L"farmt", L"gefarmt", L"gildi", L"gildis", L"carry",
-    L"carryen", L"buff", L"buffs", L"buffen", L"heal", L"healer", L"heali", L"healen", L"condi", L"condis",
-    L"kiten", L"rezz", L"rezzen", L"ressen", L"revive", L"reviven", L"mount", L"mounts", L"gems", L"ekto",
-    L"golem", L"golems", L"legy", L"legi", L"legis", L"legendary", L"exo", L"exos", L"gear", L"dmg", L"deff",
-    L"deffen", L"pushen", L"worldboss", L"worldbosse", L"dailies", L"daily", L"weekly", L"pls", L"plz", L"ok",
-    L"wipe", L"wipen", L"gewiped", L"cd", L"cds", L"cooldown", L"skill", L"skills", L"mats", L"t5", L"t6",
-    L"sigil", L"sigils", L"infusion", L"infusionen", L"karma", L"hp", L"stats", L"build", L"builds",
-    // GW2 short forms that are also words elsewhere ("mes amis", "ele" = he): not kept, only never marked wrong
-    L"mes", L"ele", L"rez", L"res", L"rota", L"champ", L"vet", L"condi", L"zerk", L"mesmer",
-    L"ohje", L"oje",
-};
 
 // Words for the word bar before much is learned, by the language you write in: GW2 terms everyone uses, plus the
 // German or English names. Never English suggestions for German or the other way round.
@@ -116,15 +103,13 @@ WordSet Make(std::initializer_list<const wchar_t* const*> lists, std::initialize
 
 }  // namespace
 
-// The abbreviation-only entries go into the same set as "^" + word (see IsKeepWord).
-void AddCaps(WordSet& s) {
-    for (const wchar_t* w : kKeepCaps) s.insert(L"^" + CaseFold(w));
-}
-
 const WordSet& BuiltinKeepWords() {
     static const WordSet s = [] {
-        WordSet x = Make({kKeep}, {std::size(kKeep)});
-        AddCaps(x);
+        WordSet x;
+        for (const BuiltinTerm& t : BuiltinTerms()) {
+            if (t.kind == TermKind::Keep) x.insert(TermKey(t.term));
+            if (t.kind == TermKind::Caps) x.insert(L"^" + CaseFold(t.term));  // see IsKeepWord
+        }
         return x;
     }();
     return s;
@@ -146,10 +131,12 @@ std::vector<std::wstring> ParseMyTerms(const std::string& utf8) {
         pos = eol + 1;
         if (!raw.empty() && raw.back() == '\r') raw.pop_back();
         if (raw.rfind(kBuiltinMark, 0) == 0) break;  // the built-in block is the version's, not yours
+        raw = raw.substr(0, raw.find('\t'));          // a note may follow after a tab
         std::wstring w = Trim(FromUtf8(raw));
-        if (!w.empty() && w[0] == 0xFEFF) w.erase(0, 1);  // BOM from Notepad
+        if (!w.empty() && w[0] == 0xFEFF) w = Trim(w.substr(1));  // BOM from Notepad
         if (w.empty() || w[0] == L'#') continue;
-        const bool seen = std::any_of(mine.begin(), mine.end(), [&](const std::wstring& m) { return CaseFold(m) == CaseFold(w); });
+        const bool seen =
+            std::any_of(mine.begin(), mine.end(), [&](const std::wstring& m) { return TermKey(m) == TermKey(w); });
         if (!seen) mine.push_back(w);
     }
     return mine;
@@ -157,27 +144,28 @@ std::vector<std::wstring> ParseMyTerms(const std::string& utf8) {
 
 std::string WriteTermsFile(const std::vector<std::wstring>& mine) {
     std::string out =
-        "# GW2Chatlator - GW2 terms: never translated, never marked as a spelling error. One word per line.\r\n"
+        "# GW2Chatlator - GW2 terms: never translated, never marked as a spelling error. One term per line; several\r\n"
+        "# words are one term (a guild's name), a note may follow after a tab.\r\n"
         "# Add your own below \"your terms\" (a guild tag, your own short forms) - they stay from version to version.\r\n"
         "# The block \"built in\" at the end is written again by every version: changes there are replaced.\r\n"
         "# Written in capitals there: kept only when written like that (\"AB\" Auric Basin, but German \"ab\").\r\n\r\n";
     out += std::string(kMineMark) + "\r\n";
     for (const std::wstring& w : mine) out += ToUtf8(w) + "\r\n";
     out += "\r\n" + std::string(kBuiltinMark) + "\r\n";
-    std::vector<std::wstring> builtin(std::begin(kKeep), std::end(kKeep));
-    std::sort(builtin.begin(), builtin.end());
-    builtin.erase(std::unique(builtin.begin(), builtin.end()), builtin.end());
-    std::vector<std::wstring> caps;
-    for (const wchar_t* w : kKeepCaps) caps.push_back(ToUpperAscii(w));
-    std::sort(caps.begin(), caps.end());
-    caps.erase(std::unique(caps.begin(), caps.end()), caps.end());
-    for (const auto* list : {&builtin, &caps})
-        for (const std::wstring& w : *list) out += ToUtf8(w) + "\r\n";
+    std::vector<std::pair<std::wstring, const wchar_t*>> builtin;
+    for (const BuiltinTerm& t : BuiltinTerms()) {
+        if (t.kind == TermKind::Keep) builtin.emplace_back(t.term, t.meaning);
+        if (t.kind == TermKind::Caps) builtin.emplace_back(ToUpperAscii(t.term), t.meaning);
+    }
+    std::sort(builtin.begin(), builtin.end(),
+              [](const auto& a, const auto& b) { return CaseFold(a.first) < CaseFold(b.first); });
+    for (const auto& [term, meaning] : builtin)
+        out += ToUtf8(term) + (*meaning ? "\t" + ToUtf8(meaning) : std::string()) + "\r\n";
     return out;
 }
 
 void AddMyTerms(WordSet& keep, const std::vector<std::wstring>& mine) {
-    for (const std::wstring& w : mine) keep.insert(CaseFold(w));
+    for (const std::wstring& w : mine) keep.insert(TermKey(w));
 }
 
 // The most common English words of a chat (written for this list, everyday vocabulary).
@@ -260,8 +248,9 @@ const WordSet& CommonChatEnglish() {
 
 const WordSet& BuiltinSpellIgnore() {
     static const WordSet s = [] {
-        WordSet x = Make({kKeep, kSpellOnly}, {std::size(kKeep), std::size(kSpellOnly)});
-        AddCaps(x);
+        WordSet x = BuiltinKeepWords();
+        for (const BuiltinTerm& t : BuiltinTerms())
+            if (t.kind == TermKind::Word) x.insert(CaseFold(t.term));
         return x;
     }();
     return s;

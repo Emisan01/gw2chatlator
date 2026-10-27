@@ -78,7 +78,8 @@ bool SpellService::Init(const std::vector<std::wstring>& tags, const std::wstrin
     ReadFileBytes(termsPath_, data);
     terms_ = ParseMyTerms(data);
     if (const std::string fresh = WriteTermsFile(terms_); fresh != data) WriteFileAtomic(termsPath_, fresh);
-    for (const std::wstring& t : terms_) user_.insert(CaseFold(t));  // never a spelling error either
+    for (const std::wstring& t : terms_)  // never a spelling error either
+        for (const Span& w : WordSpans(t)) user_.insert(CaseFold(t.substr(w.start, w.length)));
     std::atomic_store(&userSnap_, std::make_shared<const WordSet>(user_));
     RebuildKeep();
     std::atomic_store(&namesSnap_, std::make_shared<const std::unordered_map<std::wstring, std::wstring>>(names_));
@@ -177,13 +178,14 @@ void SpellService::RebuildKeep() {
 
 bool SpellService::AddTerm(const std::wstring& term) {
     const std::wstring t = Trim(term);
-    if (t.empty() || t.size() > 40 || std::any_of(t.begin(), t.end(), [](wchar_t c) { return c == L' ' || c == L'\t'; }))
+    const std::vector<Span> words = WordSpans(t);
+    if (words.empty() || words.size() > kMaxTermWords || t.size() > 60 || t.find(L'\t') != std::wstring::npos)
         return false;
-    if (std::none_of(terms_.begin(), terms_.end(), [&](const std::wstring& m) { return CaseFold(m) == CaseFold(t); })) {
+    if (std::none_of(terms_.begin(), terms_.end(), [&](const std::wstring& m) { return TermKey(m) == TermKey(t); })) {
         terms_.push_back(t);
         WriteFileAtomic(termsPath_, WriteTermsFile(terms_));
     }
-    user_.insert(CaseFold(t));
+    for (const Span& w : words) user_.insert(CaseFold(t.substr(w.start, w.length)));
     std::atomic_store(&userSnap_, std::make_shared<const WordSet>(user_));
     RebuildKeep();
     ClearCache();

@@ -130,7 +130,7 @@ public:
     bool RemoveName(const std::wstring& word);
     std::wstring NameFor(const std::wstring& word) const;
     // Your GW2 terms in gw2-terms.txt (next to your words): never translated, never a spelling error. False when
-    // `term` is not one word (a term is matched word by word) or longer than 40 characters.
+    // `term` has more than kMaxTermWords words or 60 characters (several words are one term: a guild's name).
     bool AddTerm(const std::wstring& term);
     // Never translated: the built-in GW2 abbreviations, your terms and the names you taught.
     const WordSet& KeepWords() const { return keep_; }

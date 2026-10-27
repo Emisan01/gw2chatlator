@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(GW2KeyboardNexus VERSION 2.6.5 LANGUAGES CXX)
+project(GW2KeyboardNexus VERSION 2.6.6 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -80,6 +80,7 @@ if(GCT_BUILD_TESTS)
     enable_testing()
     add_executable(core_tests tests/core_tests.cpp)
     target_link_libraries(core_tests PRIVATE gct_core)
+    target_compile_definitions(core_tests PRIVATE GCT_SOURCE_DIR="${CMAKE_SOURCE_DIR}")  # data/gw2-terms.tsv
     add_test(NAME core_tests COMMAND core_tests)
 endif()
 

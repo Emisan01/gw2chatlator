@@ -1,0 +1,597 @@
+# GW2Chatlator - built-in GW2 terms. One line per term: term <TAB> kind <TAB> meaning (the file uses tabs).
+# kind keep - never translated, in any spelling ("LFG", "lfg"); several words are one term ("Wizard's Vault")
+# kind caps - never translated when written like an abbreviation (two capitals or more): "AB" Auric Basin, German "ab" stays a word
+# kind word - a GW2 word that is translated like any word, only never marked as a spelling error
+# The meaning is a short note for whoever keeps this list. After a change: python tools/gen_terms.py (core_tests checks it).
+
+# --- General game (community glossary, 2026-10-27) ---
+gw2	keep	Guild Wars 2
+gw	keep	Guild Wars (the first game); in chat also "good work"
+hot	caps	Heart of Thorns expansion
+pof	keep	Path of Fire expansion
+eod	keep	End of Dragons expansion
+soto	keep	Secrets of the Obscure expansion
+jw	keep	Janthir Wilds expansion
+voe	keep	Visions of Eternity expansion
+lw	keep	Living World
+lws	keep	Living World Season
+ibs	keep	Icebrood Saga
+anet	keep	ArenaNet, the developers
+ap	caps	Achievement points; Assassin's Presence; Aetherpath
+dr	caps	Diminishing returns; Divinity's Reach
+gph	keep	Gold per hour
+ip	caps	an instance of a map
+mo	caps	Mursaat Overseer (raid boss)
+pve	keep	Player vs Environment
+pvx	keep	Player versus anything
+pug	keep	Pick-up group
+pugs	keep	Pick-up groups
+r	word	ready
+rep	word	representing a guild
+rp	keep	Roleplay
+tp	keep	Trading post
+train	word	players doing objectives one after another as a group
+taxi	word	joining another instance of a map
+mp	caps	Mastery point
+
+# --- Open world ---
+poi	caps	Point of interest
+hp	word	Hero points; hit points
+heart	word	Renown heart
+wp	keep	Waypoint
+wps	keep	Waypoints
+meta	keep	a chain of connected events
+vb	caps	Verdant Brink
+ab	caps	Auric Basin
+td	caps	Tangled Depths
+eotn	keep	Eye of the North
+la	caps	Lion's Arch
+bc	caps	Black Citadel
+gh	caps	Guild hall
+lab	word	the Mad King's Labyrinth
+akili	keep	an event in the Domain of Istan
+pala	word	Palawadan, the meta in the Domain of Istan
+dbs	keep	Death-Branded Shatterer
+gerent	keep	the Chak Gerent meta in Tangled Depths
+octo	keep	the Octovine meta in Auric Basin
+mat	word	Wyvern Matriarch; materials
+pat	word	Wyvern Patriarch
+frogs	word	a boss event in Verdant Brink
+tetrad	keep	a boss event in Verdant Brink
+si	caps	Serpent's Ire meta
+tt	caps	Triple Trouble world boss
+teq	keep	Tequatl the Sunless
+taco	word	Tequatl
+riba	keep	Red, Indigo, Blue, Amber - a Silverwastes train
+sab	keep	Super Adventure Box; Sabetha (raid boss)
+ass	caps	Antique Summoning Stones
+ecto	keep	Glob of Ectoplasm
+ektos	keep	Globs of Ectoplasm (German plural)
+mc	keep	Mystic Coins
+obby	keep	Obsidian Shards
+wv	keep	Wizard's Vault
+pre	word	the event before a popular event
+champ	word	Champion (mob)
+vet	word	Veteran (mob)
+drm	keep	Dragon Response Missions
+dsd	keep	Deep Sea Dragon
+jp	keep	Jumping puzzle
+mf	caps	Magic find; Mystic Forge
+node	word	a resource node; a capture point
+
+# --- Dungeons ---
+ac	caps	Ascalonian Catacombs; Arrow cart
+cm	caps	Challenge mode; Caudecus's Manor
+cms	keep	Challenge modes
+ta	caps	Twilight Arbor
+arbor	word	Twilight Arbor
+se	caps	Sorrow's Embrace
+cof	keep	Citadel of Flame
+hotw	keep	Honor of the Waves
+coe	keep	Crucible of Eternity
+arah	keep	the Ruined City of Arah
+p1	keep	dungeon path 1
+p2	keep	dungeon path 2
+p3	keep	dungeon path 3
+p4	keep	dungeon path 4
+story	word	story mode of a dungeon
+aetherpath	keep	the third path of Twilight Arbor
+aether	word	Aetherpath; Aetherblade
+quick	word	going through quickly; Quickness
+
+# --- Fractals of the Mists ---
+fotm	keep	Fractals of the Mists
+frac	word	Fractals
+fracs	keep	Fractals
+fractal	word	a fractal level
+scale	word	difficulty level in fractals
+t1	keep	fractal tier 1
+t2	keep	fractal tier 2
+t3	keep	fractal tier 3
+t4	keep	fractal tier 4
+rec	word	the daily recommended fractals
+ar	caps	Agony resistance
+uf	caps	Unstable Fractal Essence
+ufe	keep	Unstable Fractal Essence
+ess	word	Unstable Cosmic Essence
+dod	caps	Defier of Doubt (title)
+dwd	keep	Dance with Demons (title)
+lnhb	keep	Leaves No Heroes Behind (title)
+na	caps	Nightmare Aspect (title)
+ke	caps	Kryptis Exorcist (title)
+ul	caps	Undying Light (title)
+
+# --- Raids ---
+w1	keep	Wing 1, Spirit Vale
+w2	keep	Wing 2, Salvation Pass
+w3	keep	Wing 3, Stronghold of the Faithful
+w4	keep	Wing 4, Bastion of the Penitent
+w5	keep	Wing 5, Hall of Chains
+w6	keep	Wing 6, Mythwright Gambit
+w7	keep	Wing 7, The Key of Ahdashim
+w8	keep	Wing 8, Mount Balrior
+wing	word	a raid wing
+vg	keep	Vale Guardian
+gors	keep	Gorseval
+sloth	word	Slothasor
+trio	word	Bandit Trio
+matt	word	Matthias Gabriel
+escort	word	the first encounter of Wing 3
+kc	keep	Keep Construct
+tc	caps	Twisted Castle
+xera	keep	the third boss of Wing 3
+cairn	word	Cairn the Indomitable
+sam	word	Samarog
+deimos	keep	the fourth boss of Wing 4
+saul	word	Deimos
+sh	caps	Soulless Horror
+desmina	keep	Soulless Horror
+ros	caps	River of Souls
+statues	word	Statues of Grenth
+dhuum	keep	the Voice in the Void
+voiv	keep	the Voice in the Void (Dhuum)
+ca	caps	Conjured Amalgamate; Celestial Avatar
+largos	word	Twin Largos
+nikare	keep	one of the Twin Largos
+kenut	keep	one of the Twin Largos
+q1	keep	Qadim
+adina	keep	Cardinal Adina
+sabir	word	Cardinal Sabir
+q2	keep	Qadim the Peerless
+qtp	keep	Qadim the Peerless
+qtpie	keep	Qadim the Peerless
+li	caps	Legendary Insight; Low Intensity
+ld	keep	Legendary Divination
+fc	caps	Full clear
+
+# --- Strike missions ---
+strike	word	strike mission
+strikes	word	strike missions
+ez3	keep	the three easy Icebrood Saga strikes
+pass	word	Shiverpeaks Pass
+bears	word	Voice and Claw of the Fallen
+koda	keep	Voice and Claw of the Fallen
+fraenir	keep	Fraenir of Jormag
+woj	keep	Whisper of Jormag
+aetherblade	keep	Aetherblade Hideout
+junkyard	word	Xunlai Jade Junkyard
+annka	keep	Xunlai Jade Junkyard
+ko	caps	Kaineng Overlook
+ht	caps	Harvest Temple
+
+# --- Across content ---
+kp	keep	Kill proof
+daily	word	daily achievements
+dailies	word	daily achievements
+exp	word	experienced
+lfg	keep	Looking for group
+lfm	keep	Looking for more
+lft	keep	Looking for team
+lfr	keep	Looking for raid
+lf	keep	Looking for
+adds	word	weaker enemies fighting with a boss
+trash	word	enemies between bosses
+
+# --- Skills and traits ---
+dps	keep	Damage per second
+cdps	keep	Condition damage per second
+pdps	keep	Power damage per second
+bdps	keep	Boon damage dealer
+adps	keep	Alacrity damage dealer
+qdps	keep	Quickness damage dealer
+hps	keep	Healing per second
+boon	keep	a beneficial effect
+boons	keep	beneficial effects
+condi	word	conditions
+condis	word	conditions
+alac	keep	Alacrity
+alacrity	keep	Alacrity
+quickness	keep	Quickness
+stab	keep	Stability
+cc	keep	Crowd control
+res	word	resurrect
+rez	keep	resurrect - NLLB made "rez" into "Boden" or "Gebet"
+precast	word	casting before a fight
+cd	word	Cooldown
+cds	word	Cooldowns
+aa	caps	Autoattack
+icd	keep	Internal cooldown
+boonstrip	keep	removing boons from enemies
+veil	word	Mesmer's Veil
+aoe	keep	Area of effect
+pbaoe	keep	Point-blank area of effect
+aotj	keep	Ashes of the Just
+ea	caps	Empower Allies
+epi	word	Epidemic
+fa	caps	Fresh Air
+fgs	keep	Fiery Greatsword
+gotl	keep	Grace of the Land
+port	word	Mesmer portal
+ps	caps	Phalanx Strength
+ri	caps	Righteous Instincts; Righteous Indignation
+rr	caps	Righteous Rebel
+ooc	keep	Out of combat
+
+# --- Professions and specializations ---
+spec	word	specialization
+necro	keep	Necromancer
+engi	keep	Engineer
+rev	keep	Revenant
+warri	keep	Warrior
+ele	word	Elementalist (also a word: Portuguese "ele" = he)
+mes	word	Mesmer (also a word: French "mes")
+mesmer	word	Mesmer
+chrono	keep	Chronomancer
+scourge	keep	Scourge
+dh	keep	Dragonhunter
+fb	keep	Firebrand
+hfb	keep	Heal Firebrand
+qfb	keep	Quickness Firebrand
+wb	keep	Willbender; "welcome back"
+slb	keep	Soulbeast
+vindi	keep	Vindicator
+holo	keep	Holosmith
+dd	caps	Daredevil
+de	caps	Deadeye
+virt	keep	Virtuoso
+harb	keep	Harbinger
+bsw	keep	Bladesworn
+dudu	keep	Druid
+ren	keep	Renegade
+mech	keep	Mechanist
+
+# --- Builds and roles ---
+alacrage	keep	Alacrity Mirage
+alacrigade	keep	Alacrity Renegade
+alacren	keep	Alacrity Renegade
+miralac	keep	Alacrity Mirage
+alacmech	keep	Alacrity Mechanist
+bs	caps	Banner slave
+cfb	keep	Condition Firebrand
+cqb	keep	Condition Quickbrand
+hb	caps	Healbrand
+chronotank	keep	Chronomancer tank
+hk	caps	Hand kiter
+hs	caps	Heal Scourge
+hsc	keep	Heal Scourge
+hmech	keep	Heal Mechanist
+hm	caps	Heal Mechanist
+ham	caps	Heal Alacrity Mechanist
+hcata	keep	Heal Catalyst
+hat	caps	Heal Alacrity Tempest
+qharb	keep	Quickness Harbinger
+qcata	keep	Quickness Catalyst
+psb	keep	Power Soulbeast
+charb	keep	Condition Harbinger
+qheal	keep	Quickness healer - NLLB made it "Queal"
+aheal	keep	Alacrity healer
+qhealer	keep	Quickness healer
+ahealer	keep	Alacrity healer
+hscourge	keep	Heal Scourge
+qscourge	keep	Quickness Scourge
+hdruid	keep	Heal Druid
+amech	keep	Alacrity Mechanist
+qherald	keep	Quickness Herald
+hherald	keep	Heal Herald
+hrev	keep	Heal Revenant
+arev	keep	Alacrity Revenant
+qrev	keep	Quickness Revenant
+hvind	keep	Heal Vindicator
+
+# --- Player vs player ---
+pvp	keep	Player vs Player
+spvp	keep	Structured PvP
+hotm	keep	Heart of the Mists, the PvP lobby
+spawn	word	where your team starts
+conquest	word	5v5 with 3 capture points
+home	word	the node closest to your spawn
+far	word	the farthest node
+mid	word	the middle node
+beast	word	Svanir or Chieftain Utahein
+lord	word	the lord in Legacy of the Foefire
+orb	word	the orb in Spirit Watch
+meditation	word	the channeling objectives in Temple of the Silent Storm
+treb	keep	Trebuchet
+laser	word	the special point in Skyhammer
+bell	word	the special point in Revenge of the Capricorn
+sword	word	Sword of Reaping
+shield	word	Shield of Life
+ninja	word	capturing a point unnoticed
+group	word	the whole team together
+rotate	word	moving between points
+defend	word	holding a point
+cap	word	capture a point
+decap	keep	taking a point from the enemy without capturing it
+
+# --- World vs world ---
+wvw	keep	World vs World
+bomb	word	the squad using every skill at once
+bait	word	tricking the enemy into bombing
+juke	word	a quick move and back
+water	word	water fields
+smoke	word	smoke fields for stealth
+stealth	word	stealth on the squad
+pull	word	pulling enemy players
+lines	word	Guardian staff 5
+stack	word	the group standing on one spot
+flip	word	capturing an objective
+pvd	keep	Player versus door
+outer	word	the outer walls of a keep
+inner	word	the inner walls of a keep
+bay	word	the western keep
+hills	word	the eastern keep
+garri	keep	Garrison
+wg	caps	Water gate
+camp	word	supply camp
+yak	word	supply Dolyak
+nwt	keep	Northwest tower
+net	caps	Northeast tower
+swt	keep	Southwest tower
+set	caps	Southeast tower
+nwc	keep	Northwest camp
+nec	caps	Northeast camp
+swc	keep	Southwest camp
+sec	caps	Southeast camp
+smc	keep	Stonemist Castle
+ebg	keep	Eternal Battlegrounds
+bl	caps	Borderlands
+dbl	keep	Desert Borderlands
+abl	keep	Alpine Borderlands
+eotm	keep	Edge of the Mists
+gbl	keep	Green Borderlands
+bbl	keep	Blue Borderlands
+rbl	keep	Red Borderlands
+os	caps	Obsidian Sanctum
+fog	word	the fog tactivator
+airship	word	the airship tactivator in SMC
+ewp	keep	Emergency waypoint
+ram	word	Flame ram
+cata	word	Catapult
+bal	word	Ballista
+golem	word	Siege golem
+golems	word	Siege golems
+sup	word	Supply
+zerg	keep	a big unorganised group
+blob	word	a big organised group
+havoc	word	a small group on small objectives
+roamer	word	a player roaming alone
+duel	word	two players fighting
+ct	caps	Contested
+oj	caps	orange swords
+tag	word	the commander (German "Tag" = day: translated)
+rally	word	regroup
+push	word	attack a place
+wipe	word	killing a whole group
+wipen	word	to wipe (German)
+gewiped	word	wiped (German)
+rush	word	running somewhere without stopping
+snipe	word	bursting down a target from range
+inc	keep	incoming
+gvg	keep	Guild vs Guild
+bag	word	loot bag
+ppt	keep	Points per tick
+ppk	keep	Points per kill
+cmdr	keep	Commander
+comm	keep	Commander
+commi	keep	Commander
+
+# --- Gaming culture ---
+afk	keep	Away from keyboard
+brb	keep	Be right back
+gtg	keep	Got to go
+g2g	keep	Got to go
+bio	word	bathroom break
+disc	word	Discord
+ts	caps	TeamSpeak
+fps	keep	Frames per second
+dlc	keep	Downloadable content
+hud	keep	Heads-up display
+ui	caps	User interface
+npc	keep	Non-player character
+gg	keep	good game
+gz	keep	congratulations
+gratz	keep	congratulations
+ty	keep	thank you
+thx	keep	thanks
+np	keep	no problem
+rdy	keep	ready
+lol	keep	laughing
+omg	keep	oh my god
+xd	keep	laughing smiley
+rc	keep	ready check
+dc	keep	disconnected
+wtf	keep	chat reaction - "wtf war das" became "Whoa, whoa, whoa"
+lmao	keep	laughing
+rofl	keep	laughing
+ggwp	keep	good game, well played
+glhf	keep	good luck, have fun
+tyvm	keep	thank you very much
+sry	keep	sorry
+mdr	keep	laughing (French)
+ptdr	keep	laughing (French)
+o7	keep	salute
+wtb	keep	Want to buy
+wts	keep	Want to sell
+
+# --- Official names, kept in English: several words are one term ("Wizard's Vault" became "Assistent") ---
+Wizard's Vault	keep	weekly and seasonal rewards
+Lion's Arch	keep	city
+Divinity's Reach	keep	city
+Black Citadel	keep	city
+Eye of the North	keep	hub
+Mystic Forge	keep	crafting
+Silverwastes	keep	map
+Verdant Brink	keep	map
+Auric Basin	keep	map
+Tangled Depths	keep	map
+Dragon's Stand	keep	map
+Eternal Battlegrounds	keep	WvW map
+Edge of the Mists	keep	WvW map
+Heart of the Mists	keep	PvP lobby
+Super Adventure Box	keep	festival
+Triple Trouble	keep	world boss
+Serpent's Ire	keep	meta event
+Chak Gerent	keep	meta event
+Octovine	keep	meta event
+Palawadan	keep	meta event
+Death-Branded Shatterer	keep	world boss
+Tequatl	keep	world boss
+Shattered Observatory	keep	fractal
+Sunqua Peak	keep	fractal
+Silent Surf	keep	fractal
+Lonely Tower	keep	fractal
+Kinfall	keep	fractal
+Spirit Vale	keep	raid wing 1
+Salvation Pass	keep	raid wing 2
+Stronghold of the Faithful	keep	raid wing 3
+Bastion of the Penitent	keep	raid wing 4
+Hall of Chains	keep	raid wing 5
+Mythwright Gambit	keep	raid wing 6
+Key of Ahdashim	keep	raid wing 7
+Mount Balrior	keep	raid wing 8
+Vale Guardian	keep	raid boss
+Soulless Horror	keep	raid boss
+River of Souls	keep	raid encounter
+Conjured Amalgamate	keep	raid boss
+Twin Largos	keep	raid boss
+Keep Construct	keep	raid boss
+Mursaat Overseer	keep	raid boss
+Harvest Temple	keep	strike
+Kaineng Overlook	keep	strike
+Aetherblade Hideout	keep	strike
+Xunlai Jade Junkyard	keep	strike
+Shiverpeaks Pass	keep	strike
+Whisper of Jormag	keep	strike
+Ascalonian Catacombs	keep	dungeon
+Twilight Arbor	keep	dungeon
+Sorrow's Embrace	keep	dungeon
+Citadel of Flame	keep	dungeon
+Honor of the Waves	keep	dungeon
+Crucible of Eternity	keep	dungeon
+Caudecus's Manor	keep	dungeon
+Heart of Thorns	keep	expansion
+Path of Fire	keep	expansion
+End of Dragons	keep	expansion
+Secrets of the Obscure	keep	expansion
+Janthir Wilds	keep	expansion
+Visions of Eternity	keep	expansion
+Icebrood Saga	keep	story
+Deep Sea Dragon	keep	elder dragon
+
+# --- Ordinary words elsewhere: kept only in capitals ---
+co	caps
+cs	caps
+cw	caps	Cursed Shore
+ds	caps	Dragon's Stand; a guild tag
+dt	caps
+ms	caps
+ow	caps	Open world
+sw	caps	Silverwastes
+sb	caps	Soulbeast
+eb	caps	Eternal Battlegrounds
+ha	caps
+ls	caps	Living Story
+oos	caps	Out of supply
+am	caps
+
+# --- Chat words and German GW2 words: translated, never marked as a spelling error ---
+kommi	word	Commander (German)
+kommis	word	Commanders (German)
+kommander	word	Commander (German)
+commander	word	Commander
+squad	word	squad
+squads	word	squads
+taggen	word	to tag up (German)
+stacke	word	to stack (German)
+stacken	word	to stack (German)
+stackt	word	stacks (German)
+raid	word	raid
+raids	word	raids
+raiden	word	to raid (German)
+fraktal	word	Fractal (German)
+fraktale	word	Fractals (German)
+fractals	word	Fractals
+metas	word	meta events
+loot	word	loot
+looten	word	to loot (German)
+farmen	word	to farm (German)
+farme	word	farm (German)
+farmst	word	farm (German)
+farmt	word	farms (German)
+gefarmt	word	farmed (German)
+gildi	word	guild mate (German)
+gildis	word	guild mates (German)
+carry	word	carry
+carryen	word	to carry (German)
+buff	word	buff
+buffs	word	buffs
+buffen	word	to buff (German)
+heal	word	heal
+healer	word	healer
+heali	word	healer (German)
+healen	word	to heal (German)
+kiten	word	to kite (German)
+rezz	word	resurrect
+rezzen	word	to resurrect (German)
+ressen	word	to resurrect (German)
+revive	word	revive
+reviven	word	to revive (German)
+mount	word	mount
+mounts	word	mounts
+gems	word	gems
+ekto	word	Ectoplasm (German)
+legy	word	legendary
+legi	word	legendary
+legis	word	legendaries
+legendary	word	legendary
+exo	word	exotic
+exos	word	exotics
+gear	word	gear
+dmg	word	damage
+deff	word	defend (German)
+deffen	word	to defend (German)
+pushen	word	to push (German)
+worldboss	word	world boss
+worldbosse	word	world bosses (German)
+weekly	word	weekly
+pls	word	please
+plz	word	please
+ok	word	okay
+cooldown	word	cooldown
+skill	word	skill
+skills	word	skills
+mats	word	materials
+t5	word	material tier 5
+t6	word	material tier 6
+sigil	word	sigil
+sigils	word	sigils
+infusion	word	infusion
+infusionen	word	infusions (German)
+karma	word	karma
+stats	word	stats
+build	word	build
+builds	word	builds
+rota	word	rotation
+zerk	word	Berserker gear
+ohje	word	oh dear (German)
+oje	word	oh dear (German)

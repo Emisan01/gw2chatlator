@@ -80,9 +80,21 @@ struct PieceRange {
 };
 PieceRange WholeSentenceRange(const std::vector<Segment>& pieces);
 // A second try for a whole sentence whose protected word the model translated: plain lowercase keep-words written
-// like names ("rez" -> "Rez"; NLLB made "rez" into "Gebet" but copies the name). Only keep parts made of plain words
-// and sentence marks – codes, links and tags stay as they are. False when nothing changed.
-// After that try RestoreKeepSpelling (translation_check) writes them back.
+// like names ("rez" -> "Rez"; NLLB made "rez" into "Gebet" but copies the name, "wtf" stays with its sentence). Only
+// keep parts made of plain words and sentence marks – codes, links and tags stay as they are. False when nothing
+// changed. RestoreKeepSpelling (translation_check) writes them back.
 bool KeepWordsAsNames(std::vector<Segment>& segments);
+// The third try ("Lion's Arch" -> "Löwenbogen" in any spelling): every protected part becomes a placeholder X1, X2 …
+// that the model copies and builds the sentence around ("Wir treffen uns am Wegpunkt in X1"). The spaces and marks
+// around a part stay text. `parts` is empty when there is nothing to replace, more than 9 parts, or the sentence has
+// an "X1"-like word itself. Measured (translation_bench): names first keep "wtf was that", "einen qheal"; placeholders
+// save the official names.
+struct Placeholders {
+    std::wstring text;
+    std::vector<std::wstring> parts;  // parts[0] stands for X1
+};
+Placeholders WithPlaceholders(const std::vector<Segment>& pieces);
+// The parts back in place of their placeholders (in any case: "x1"); false when one is missing or there twice.
+bool FillPlaceholders(const std::wstring& output, const std::vector<std::wstring>& parts, std::wstring& filled);
 
 }  // namespace gct

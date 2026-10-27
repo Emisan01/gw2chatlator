@@ -3,6 +3,13 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.6.6 — 2026-10-27 (GW2Chatlator for Nexus)
+
+- **One Base List of GW2 Terms:** all built-in terms now live in one file, `data/gw2-terms.tsv` – term, kind and what it means – compiled into the add-on (`tools/gen_terms.py`). It holds the whole community glossary: about 560 terms, each of one kind – never translated ("LFG"), never translated in capitals ("AB", but German "ab"), or translated like any word but never marked as a spelling error ("stack", "Kommi"). New terms come with the next version.
+- **Official Names of Several Words Stay Whole:** "Wizard's Vault" became "Assistent" or "Zauberschrank", "Lion's Arch" became "Löwenbogen". About 70 official names – cities, maps, raid wings and bosses, strikes, fractals, dungeons, expansions – are kept as one term, also written in lower case or without the apostrophe ("wizards vault").
+- **A Third Try Before Pieces:** when the local model translates a protected part anyway, the sentence goes once more with placeholders the model keeps ("Wir treffen uns am Wegpunkt in X1") – after the try with the words written like names. Each try is checked the same way; only when all fail the sentence goes in pieces. A protected part is checked by itself, not with the marks around it ("Tequatl ?" made a whole sentence fall back to pieces). Measured on 42 made-up chat lines: no protected part lost, all 93 sentences arrive; "Meet at the waypoint in Lion's Arch, then we go to Verdant Brink for the meta." → "Wir treffen uns am Wegpunkt in Lion's Arch, dann gehen wir zu Verdant Brink für die meta.".
+- **Your Terms of Several Words:** a guild's name or any term of up to 5 words can be taught (right-click in the input → "A GW2 term"); in `gw2-terms.txt` a note may follow after a tab, and the built-in list there shows what each term means.
+
 ## 2.6.5 — 2026-10-27 (GW2Chatlator for Nexus)
 
 - **No More Lost Sentences (local translation):** NLLB-200 dropped sentences when a line held several – measured on 20 made-up chat lines, only 26 of 47 sentences arrived. The local models now translate sentence by sentence, the whole sentence with its protected parts first: 47 of 47 arrive (`translation_bench`).

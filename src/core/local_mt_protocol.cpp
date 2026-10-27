@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cwchar>
 #include <cwctype>
 
 #ifdef _WIN32
@@ -298,8 +299,10 @@ std::wstring CleanLocalMtOutput(const std::wstring& source, const std::wstring& 
     };
     const std::wstring src = Trim(source);
     if (!src.empty() && !sentenceEnd(src.back()) && cleaned.size() >= 2 &&
-        (cleaned.back() == L'.' || cleaned.back() == L'。') && cleaned[cleaned.size() - 2] != L'.')
+        (cleaned.back() == L'.' || cleaned.back() == L'。') && cleaned[cleaned.size() - 2] != L'.') {
         cleaned.pop_back();
+        while (!cleaned.empty() && whitespace(cleaned.back())) cleaned.pop_back();  // "am Weg ." -> "am Weg"
+    }
     return TidyPunctuation(cleaned, targetLang);
 }
 
@@ -436,11 +439,9 @@ bool PlainLowercaseWords(const std::wstring& text) {
             if (CaseFoldChar(text[i]) != text[i]) return false;
         any = true;
     }
-    for (size_t i = 0; i < text.size(); ++i) {
-        const wchar_t c = text[i];
+    for (wchar_t c : text)
         if (!IsWordChar(c) && c != L' ' && c != L'.' && c != L',' && c != L'!' && c != L'?' && c != L';' && c != L':')
             return false;
-    }
     return any;
 }
 }  // namespace
@@ -453,6 +454,54 @@ bool KeepWordsAsNames(std::vector<Segment>& segments) {
         changed = true;
     }
     return changed;
+}
+
+namespace {
+// "X1" … "X9" (any case) as a word of its own.
+bool PlaceholderAt(const std::wstring& s, size_t at) {
+    return at + 1 < s.size() && (s[at] == L'X' || s[at] == L'x') && s[at + 1] >= L'1' && s[at + 1] <= L'9' &&
+           (at == 0 || !IsWordChar(s[at - 1])) && (at + 2 == s.size() || !IsWordChar(s[at + 2]));
+}
+}  // namespace
+
+Placeholders WithPlaceholders(const std::vector<Segment>& pieces) {
+    Placeholders r;
+    // " Lion's Arch, " -> "Lion's Arch"; a code or tag stays whole ("[&AgGvWwEA]"), a smiley without a letter is text
+    const auto around = [](wchar_t c) { return IsSpace(c) || std::wcschr(L",.!?;:", c) != nullptr; };
+    for (const Segment& s : pieces) {
+        size_t b = 0, e = s.text.size();
+        while (b < e && around(s.text[b])) ++b;
+        while (e > b && around(s.text[e - 1])) --e;
+        const bool word = std::any_of(s.text.begin() + static_cast<std::ptrdiff_t>(b),
+                                      s.text.begin() + static_cast<std::ptrdiff_t>(e), IsWordChar);
+        if (!s.keep || !word) {
+            r.text += s.text;
+            continue;
+        }
+        r.parts.push_back(s.text.substr(b, e - b));
+        r.text += s.text.substr(0, b) + L"X" + std::to_wstring(r.parts.size()) + s.text.substr(e);
+    }
+    bool own = false;  // an "X1" of the writer's would be taken for a placeholder
+    for (const Segment& s : pieces)
+        for (size_t i = 0; i < s.text.size() && !own; ++i) own = PlaceholderAt(s.text, i);
+    if (own || r.parts.size() > 9) r.parts.clear();
+    return r;
+}
+
+bool FillPlaceholders(const std::wstring& output, const std::vector<std::wstring>& parts, std::wstring& filled) {
+    std::vector<int> seen(parts.size(), 0);
+    filled.clear();
+    for (size_t i = 0; i < output.size(); ++i) {
+        if (PlaceholderAt(output, i)) {
+            const size_t n = static_cast<size_t>(output[i + 1] - L'1');
+            if (n >= parts.size() || ++seen[n] > 1) return false;
+            filled += parts[n];
+            ++i;
+            continue;
+        }
+        filled += output[i];
+    }
+    return std::all_of(seen.begin(), seen.end(), [](int c) { return c == 1; });
 }
 
 }  // namespace gct

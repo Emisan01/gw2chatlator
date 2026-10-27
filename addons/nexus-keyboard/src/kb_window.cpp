@@ -1646,8 +1646,8 @@ void RenderWindow() {
         ImGui::SameLine();
         if ((ImGui::Button(UI(Tr(L"Learn") + L"##term").c_str()) || goTerm) && !Trim(W(term)).empty()) {
             const std::wstring t = Trim(W(term));
-            if (t.find(L' ') != std::wstring::npos) {
-                SetStatus(Tr(L"One word per term – a name with spaces: teach it as a name"), 6000);
+            if (WordSpans(t).size() > kMaxTermWords) {
+                SetStatus(Tr(L"A term has at most 5 words"), 6000);
             } else {
                 g_worker.Post([t] { if (g_spell) g_spell->AddTerm(t); });
                 ++g_inputGen;  // translated again with it

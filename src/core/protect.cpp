@@ -107,10 +107,30 @@ ProtectedText ProtectForTranslation(const std::wstring& body, const Glossary* gl
     }
 
     if (keepWords && !keepWords->empty()) {
-        for (const Span& w : WordSpans(body)) {
-            if (std::any_of(taken.begin(), taken.end(), [&](const Span& t) { return t.Overlaps(w); })) continue;
-            if (IsKeepWord(*keepWords, body.substr(w.start, w.length)))
-                prot.push_back({w, body.substr(w.start, w.length)});
+        const std::vector<Span> words = WordSpans(body);
+        const auto free = [&](const Span& s) {
+            return std::none_of(taken.begin(), taken.end(), [&](const Span& t) { return t.Overlaps(s); });
+        };
+        for (size_t i = 0; i < words.size(); ++i) {
+            // A term of several words first, the longest ("Wizard's Vault" – "Vault" alone made it "Assistent"):
+            // the words in a row, only spaces or a hyphen between them.
+            size_t last = i;
+            std::wstring key = PhraseWordKey(body.substr(words[i].start, words[i].length));
+            for (size_t j = i + 1; j < words.size() && j < i + kMaxTermWords; ++j) {
+                const std::wstring gap = body.substr(words[j - 1].end(), words[j].start - words[j - 1].end());
+                if (gap.empty() || gap.find_first_not_of(L" -") != std::wstring::npos) break;
+                key += L' ' + PhraseWordKey(body.substr(words[j].start, words[j].length));
+                if (keepWords->count(key)) last = j;
+            }
+            const Span phrase{words[i].start, words[last].end() - words[i].start};
+            if (last > i && free(phrase)) {
+                prot.push_back({phrase, body.substr(phrase.start, phrase.length)});
+                taken.push_back(phrase);
+                i = last;
+                continue;
+            }
+            if (free(words[i]) && IsKeepWord(*keepWords, body.substr(words[i].start, words[i].length)))
+                prot.push_back({words[i], body.substr(words[i].start, words[i].length)});
         }
     }
 
