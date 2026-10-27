@@ -195,6 +195,7 @@ extern uint32_t g_nextTabUid;
 // The language each player writes in, as far as it is sure (CaseFold(name) -> code). Only for this session, never
 // stored: answering someone in their language (their whisper tab sends in it).
 extern std::map<std::wstring, std::wstring> g_playerLang;
+extern gct::NameList g_chatNames;  // the speakers of this session, never translated in a line (memory only, g_mu)
 // The send language of the whisper tab in front ("" = none: the footer's choice; "=" = as written; else a code).
 extern std::wstring g_sendOverride;
 extern std::vector<WhisperTab> g_tabs;

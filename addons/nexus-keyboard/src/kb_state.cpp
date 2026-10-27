@@ -11,6 +11,7 @@ TextLook g_look;
 MyWords g_myWords;  // your own words and what they mean (<data>\my-words.txt), g_mu
 uint32_t g_nextTabUid = 1;
 std::map<std::wstring, std::wstring> g_playerLang;
+gct::NameList g_chatNames;
 std::wstring g_sendOverride;
 std::vector<WhisperTab> g_tabs;
 int g_activeTab = -1;  // -1: the whole chat

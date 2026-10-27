@@ -65,7 +65,12 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
     LineToTranslate what;
     what.trigger = asked ? TranslateTrigger::LineClick : once ? TranslateTrigger::Once : TranslateTrigger::Auto;
     auto keep = g_spell ? g_spell->KeepWordsSnapshot() : nullptr;
-    ProtectedText p = ProtectForTranslation(text, nullptr, keep ? keep.get() : &BuiltinKeepWords());
+    NameList names;  // the speakers seen this session: "Mad Kiro" stays a name, not "mad"
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        names = g_chatNames;
+    }
+    ProtectedText p = ProtectForTranslation(text, nullptr, keep ? keep.get() : &BuiltinKeepWords(), &names);
     auto clearPending = [&](bool attempted = true) {
         std::lock_guard<std::mutex> lock(g_mu);
         for (ChatLine& l : g_lines) {
@@ -212,12 +217,14 @@ void TranslateInput(uint64_t gen, std::wstring text) {
     std::wstring error, doubt;  // doubt: the translation check found something (said, sending stays yours)
     if (translating && tr) {
         std::wstring expanded;  // your own words replaced by what they mean (only for the translator)
+        NameList names;         // names of the chat you write to stay names
         {
             std::lock_guard<std::mutex> lock(g_mu);
             expanded = g_myWords.Expand(body);
+            names = g_chatNames;
         }
         auto keep = g_spell ? g_spell->KeepWordsSnapshot() : nullptr;
-        ProtectedText p = ProtectForTranslation(expanded, nullptr, keep ? keep.get() : &BuiltinKeepWords());
+        ProtectedText p = ProtectForTranslation(expanded, nullptr, keep ? keep.get() : &BuiltinKeepWords(), &names);
         if (HasTranslatableText(p.segments)) {
             std::wstring source = DetectLanguage(body);
             if (source.empty()) source = typing;

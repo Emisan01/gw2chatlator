@@ -86,6 +86,7 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
         l.id = id = g_nextId++;
         if (!own) {  // completions offer the names and words of the chat (never learned – invariant 10)
             if (!l.speaker.empty()) g_context.insert(g_context.begin(), l.speaker);
+            if (!l.speaker.empty()) g_chatNames.Add(l.speaker);  // a name in a line stays a name (memory only)
             for (const Span& s : WordSpans(l.text))
                 if (s.length >= 4) g_context.insert(g_context.begin(), l.text.substr(s.start, s.length));
             if (g_context.size() > 80) g_context.resize(80);
