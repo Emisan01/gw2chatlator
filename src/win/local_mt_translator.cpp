@@ -7,6 +7,7 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -14,6 +15,7 @@
 #include "core/langs.hpp"
 #include "core/local_mt_protocol.hpp"
 #include "core/text.hpp"
+#include "core/translation_check.hpp"
 
 namespace gct {
 namespace {
@@ -95,27 +97,60 @@ public:
         }
 
         std::lock_guard<std::mutex> lock(mu_);
-        std::wstring translated;
-        for (const Segment& segment : parts) {
-            if (segment.keep) {
-                translated += segment.text;
-                continue;
-            }
-            std::wstring text = segment.text;
+        // One text through the route (a pivot language between, when there is no direct pair).
+        const auto translateText = [&](std::wstring text) -> std::optional<std::wstring> {
             for (const std::string& pair : route) {
                 const size_t dash = pair.find('-');
                 std::string sourceCode = pair.substr(0, dash), targetCode = pair.substr(dash + 1);
                 const std::string utf8 = Request(text, sourceCode, targetCode, result.error, result.errorKind);
-                if (!result.error.empty()) return result;
+                if (!result.error.empty()) return std::nullopt;
                 const std::wstring translatedHop = CleanLocalMtOutput(text, FromUtf8(utf8));
                 if (!IsPlausibleLocalMtOutput(text, translatedHop)) {
                     result.error = L"The local model returned an implausible translation";
                     result.errorKind = TranslateErrorKind::BadOutput;
-                    return result;
+                    return std::nullopt;
                 }
                 text = translatedHop;
             }
-            translated += text;
+            return text;
+        };
+        // Sentence by sentence: the models are trained on single sentences – several at once, NLLB drops some. In a
+        // sentence the protected parts in its middle stay in place, so the model sees the whole sentence; only when it
+        // changed one of them, that sentence goes in pieces around them (the way all text went before 2.6.5).
+        std::wstring translated;
+        for (const SentenceSegments& sentence : SegmentsBySentence(segments)) {
+            std::vector<Segment> pieces = SplitForLocalMt(sentence.segments);
+            size_t first = 0, last = pieces.size();
+            while (first < last && pieces[first].keep) ++first;
+            while (last > first && pieces[last - 1].keep) --last;
+            std::wstring lead, tail, middle;
+            for (size_t k = 0; k < first; ++k) lead += pieces[k].text;
+            for (size_t k = last; k < pieces.size(); ++k) tail += pieces[k].text;
+            const std::vector<Segment> inner(pieces.begin() + static_cast<std::ptrdiff_t>(first),
+                                             pieces.begin() + static_cast<std::ptrdiff_t>(last));
+            if (!inner.empty()) {
+                bool done = false;
+                if (inner.size() > 1) {  // protected parts inside: the whole sentence first
+                    const auto whole = translateText(JoinSegments(inner));
+                    if (!whole && !result.error.empty() && result.errorKind != TranslateErrorKind::BadOutput) return result;
+                    if (whole && MissingProtected(inner, *whole).empty()) {
+                        middle = *whole;
+                        done = true;
+                    }
+                    result.error.clear();
+                    result.errorKind = TranslateErrorKind::None;
+                }
+                for (size_t k = 0; !done && k < inner.size(); ++k) {
+                    if (inner[k].keep) {
+                        middle += inner[k].text;
+                        continue;
+                    }
+                    const auto piece = translateText(inner[k].text);
+                    if (!piece) return result;
+                    middle += *piece;
+                }
+            }
+            translated += lead + middle + tail + sentence.gap;
         }
         if (!IsPlausibleLocalMtOutput(original, translated)) {
             result.error = L"The local model returned an implausible translation";

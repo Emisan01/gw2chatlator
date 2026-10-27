@@ -342,6 +342,12 @@ static void TestProtect() {
     const auto tag = ProtectForTranslation(L"Hermandad Sol Dorado [DS] busca jugadores", nullptr, &keep);
     CHECK(tag.segments.size() == 3 && tag.segments[1].keep && tag.segments[1].text == L"[DS]" &&
           tag.segments[0].text == L"Hermandad Sol Dorado " && tag.segments[2].text == L" busca jugadores");
+    // chat reactions the line filter knows stay inside a sentence too
+    const auto wtf = ProtectForTranslation(L"wtf war das für ein Boss?", nullptr, &keep);
+    CHECK(!wtf.segments.empty() && wtf.segments[0].keep && wtf.segments[0].text == L"wtf");
+    // a comma after a keep-word stays outside the piece the model gets (it dropped it: "WvWWir")
+    const auto comma = SplitForLocalMt(ProtectForTranslation(L"tower in WvW, we need people", nullptr, &keep).segments);
+    CHECK(comma.size() >= 3 && comma.back().text == L"we need people" && !comma.back().keep);
     const auto code = ProtectForTranslation(L"look [&AgGvWwEA] and [LFG] or [a b]", nullptr, &keep);
     CHECK(JoinSegments(code.segments) == L"look [&AgGvWwEA] and [LFG] or [a b]");
     int tags = 0;

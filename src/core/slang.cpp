@@ -31,6 +31,9 @@ const wchar_t* const kKeep[] = {
     // chat
     L"afk", L"brb", L"gg", L"gz", L"gratz", L"ty", L"thx", L"np", L"wb", L"inc", L"rdy", L"lol", L"omg", L"xd",
     L"gtg", L"g2g", L"rc", L"dc",
+    // chat reactions the line filter knows too – inside a sentence they are kept as well ("wtf war das" became
+    // "Whoa, whoa, whoa", 2026-10-27); none is a word in a common language
+    L"wtf", L"lmao", L"rofl", L"ggwp", L"glhf", L"tyvm", L"sry", L"mdr", L"ptdr", L"o7",
 };
 
 // Kept only when written like an abbreviation (two capitals or more: "LA", "HoT", "CoF"): the same letters are an

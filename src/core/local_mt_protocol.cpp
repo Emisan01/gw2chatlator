@@ -313,9 +313,15 @@ std::vector<Segment> SplitForLocalMt(const std::vector<Segment>& segments) {
         if (!out.empty() && out.back().keep == keep && keep) out.back().text += text;
         else out.push_back({std::move(text), keep});
     };
-    auto addText = [&](const std::wstring& run) {  // spaces around it and a run without a word stay as they are
+    // Spaces around a run, a comma or dash it starts with (", we need" after a keep-word – the model drops it and the
+    // words stick together: "WvWWir") and a run without a word stay as they are.
+    const auto leading = [](wchar_t c) {
+        return IsSpace(c) || c == L',' || c == L';' || c == L':' || c == L'-' || c == L'–' || c == L'—' ||
+               c == L')' || c == L']';
+    };
+    auto addText = [&](const std::wstring& run) {
         size_t b = 0, e = run.size();
-        while (b < e && IsSpace(run[b])) ++b;
+        while (b < e && leading(run[b])) ++b;
         while (e > b && IsSpace(run[e - 1])) --e;
         std::wstring core = run.substr(b, e - b);
         bool word = false;
