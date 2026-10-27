@@ -31,6 +31,9 @@ std::vector<SentenceSegments> SegmentsBySentence(const std::vector<Segment>& seg
 // The protected parts that must reach the output (keep segments with a letter, digit or symbol in them) and are not
 // in `output`; a keep-word in another case counts as there ("LFG" → "lfg").
 std::vector<std::wstring> MissingProtected(const std::vector<Segment>& segments, const std::wstring& output);
+// The words of the protected parts back the way they were written, where the translator wrote them in another case
+// ("wtf" -> "WTF", "brb" -> "Brb"; the local second try writes them as names: "Rez" -> "rez"). Whole words only.
+std::wstring RestoreKeepSpelling(std::wstring output, const std::vector<Segment>& segments);
 
 enum class TranslationIssue { None, LostProtected, LostSentence, TooShort };
 struct TranslationCheck {

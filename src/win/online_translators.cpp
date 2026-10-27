@@ -66,6 +66,8 @@ public:
                 rebuilt += s.text.substr(0, b) + part + s.text.substr(e + 1);
             }
             whole = std::move(rebuilt);
+        } else if (HasProtected(segments)) {
+            whole = RestoreKeepSpelling(std::move(whole), segments);
         }
         r.text = std::move(whole);
         r.ok = true;

@@ -82,9 +82,7 @@ PieceRange WholeSentenceRange(const std::vector<Segment>& pieces);
 // A second try for a whole sentence whose protected word the model translated: plain lowercase keep-words written
 // like names ("rez" -> "Rez"; NLLB made "rez" into "Gebet" but copies the name). Only keep parts made of plain words
 // and sentence marks – codes, links and tags stay as they are. False when nothing changed.
+// After that try RestoreKeepSpelling (translation_check) writes them back.
 bool KeepWordsAsNames(std::vector<Segment>& segments);
-// After a whole sentence: the protected words the way they were written – the model capitalised some ("wtf" ->
-// "WTF", "brb" -> "Brb") and the second try wrote them as names ("Danke für den Rez!" -> "… rez!").
-std::wstring RestoreKeepSpelling(std::wstring output, const std::vector<Segment>& original);
 
 }  // namespace gct

@@ -120,6 +120,23 @@ std::vector<std::wstring> MissingProtected(const std::vector<Segment>& segments,
     return missing;
 }
 
+std::wstring RestoreKeepSpelling(std::wstring output, const std::vector<Segment>& segments) {
+    for (const Segment& s : segments) {
+        if (!s.keep) continue;
+        for (const Span& w : WordSpans(s.text)) {
+            const std::wstring was = s.text.substr(w.start, w.length);
+            const std::wstring want = CaseFold(was);  // CaseFold keeps every position
+            const std::wstring folded = CaseFold(output);
+            for (size_t at = folded.find(want); at != std::wstring::npos; at = folded.find(want, at + want.size())) {
+                const bool whole = (at == 0 || !IsWordChar(output[at - 1])) &&
+                                   (at + want.size() == output.size() || !IsWordChar(output[at + want.size()]));
+                if (whole) output.replace(at, was.size(), was);
+            }
+        }
+    }
+    return output;
+}
+
 TranslationCheck CheckTranslation(const std::vector<Segment>& segments, const std::wstring& output,
                                   const std::wstring& targetLang) {
     TranslationCheck c;
