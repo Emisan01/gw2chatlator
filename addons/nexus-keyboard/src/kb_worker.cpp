@@ -109,12 +109,14 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
     }
     const std::wstring& target = what.target;
     const std::wstring detected = what.detected.empty() ? els : what.detected;  // a click: the best guess, sure or not
-    const std::wstring by = tr->Name();
-
-    // Dynamic throttle: adapt beam size to queue pressure (greedy under load, configured quality otherwise)
-    const int effectiveBeam = g_orchestrator.ComputeBeamSize(
-        static_cast<QualityMode>(g_cfg.localQuality), g_worker.QueueSize());
+    // Dynamic throttle: greedy under queue pressure for the lines that come by themselves; a line you asked for
+    // ("Translate visible chat once", a click) gets the quality you chose – the throttle made "Best" do nothing there.
+    const int quality = g_cfg.localQuality;
+    const int effectiveBeam = (asked || once) ? quality
+                                              : g_orchestrator.ComputeBeamSize(static_cast<QualityMode>(quality),
+                                                                               g_worker.QueueSize());
     SetLocalMtBeamSize(tr, effectiveBeam);
+    const std::wstring by = TranslatorTag(tr, effectiveBeam);
 
     const TranslateResult r = g_transCache.Through({text, SourceCode(detected), target, by}, [&] {
         {
@@ -157,6 +159,11 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
 std::vector<uint64_t> g_visibleLines;
 TranslationCache g_transCache;
 
+std::wstring TranslatorTag(const std::shared_ptr<Translator>& tr, int beam) {
+    if (!tr) return {};
+    return IsLocalMtTranslator(tr) ? tr->Name() + L" · Beam " + std::to_wstring(beam) : tr->Name();
+}
+
 // What can be seen of the chat, into the language you write in (the chat is read in it) – when "Translate the chat" is
 // switched on, when the language you write in changes, or once from the menu. A translation into the language you
 // write in now, by the translator you use now, stays (nothing paid twice); another one is cleared and done again – what
@@ -164,7 +171,7 @@ TranslationCache g_transCache;
 // translation's rule without it being switched on (core/translate_policy).
 int TranslateRecentLines(bool once) {  // g_mu held; how many lines of other players are in view
     const std::wstring& target = TypingLang();
-    const std::wstring by = g_translator ? g_translator->Name() : std::wstring();
+    const std::wstring by = TranslatorTag(g_translator, g_cfg.localQuality);
     int n = 0;
     for (ChatLine& l : g_lines) {
         if (l.own || l.speaker.empty() || std::find(g_visibleLines.begin(), g_visibleLines.end(), l.id) == g_visibleLines.end())

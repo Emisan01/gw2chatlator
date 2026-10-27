@@ -99,7 +99,7 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
             } else {
                 std::wstring cachedTrans, cachedBy;
                 if (g_orchestrator.SieveMessage(rawText, TypingLang(), true, true, true, false, cachedTrans, cachedBy,
-                                                 g_translator ? g_translator->Name() : std::wstring()) == ChatPriority::Immediate) {
+                                                 TranslatorTag(g_translator, g_cfg.localQuality)) == ChatPriority::Immediate) {
                     l.translated = cachedTrans;
                     l.transTarget = TypingLang();
                     l.transBy = cachedBy;

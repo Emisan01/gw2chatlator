@@ -430,6 +430,10 @@ void SetLocalMtBeamSize(const std::shared_ptr<Translator>& translator, int beamS
     if (auto local = std::dynamic_pointer_cast<LocalMtTranslator>(translator)) local->SetBeamSize(beamSize);
 }
 
+bool IsLocalMtTranslator(const std::shared_ptr<Translator>& translator) {
+    return std::dynamic_pointer_cast<LocalMtTranslator>(translator) != nullptr;
+}
+
 HelperInfo GetLocalMtHelperInfo(const std::shared_ptr<Translator>& translator) {
     if (auto local = std::dynamic_pointer_cast<LocalMtTranslator>(translator)) {
         return local->GetInfo();

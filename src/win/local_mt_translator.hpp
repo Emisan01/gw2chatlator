@@ -29,6 +29,7 @@ std::shared_ptr<Translator> MakeLocalMtTranslator(const std::wstring& helperExe,
                                                   bool forceNllb = false);
 void StopLocalMtTranslator(const std::shared_ptr<Translator>& translator);
 void SetLocalMtBeamSize(const std::shared_ptr<Translator>& translator, int beamSize);
+bool IsLocalMtTranslator(const std::shared_ptr<Translator>& translator);
 HelperInfo GetLocalMtHelperInfo(const std::shared_ptr<Translator>& translator);
 HelperInfo ProbeLocalMtHelper(const std::wstring& helperExe, const std::wstring& dataDir,
                              bool forceNllb = false);

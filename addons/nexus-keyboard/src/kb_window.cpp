@@ -1041,7 +1041,8 @@ void RenderWindow() {
                     SetStatus(Tr(L"No chat lines of other players in view"), 4000);
                 else
                     SetStatus(TrF(L"{1} chat lines in view – foreign ones are being translated with {2} …",
-                                  {std::to_wstring(n), g_translator ? g_translator->Name() : std::wstring(L"-")}), 8000);
+                                  {std::to_wstring(n), g_translator ? TranslatorTag(g_translator, g_cfg.localQuality) : std::wstring(L"-")}),
+                            8000);
             }
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", UI(Tr(L"What you see of the chat, into the language you write in – once, by the automatic translation's rule: lines in your language, in languages you understand or too short to tell stay as they are (a click on a line translates it anyway).")).c_str());

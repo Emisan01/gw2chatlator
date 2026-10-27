@@ -491,6 +491,9 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked = false, bool once
 // chat is drawn, g_mu). Only these are translated in one go – an old chat is never translated in full.
 extern std::vector<uint64_t> g_visibleLines;
 int TranslateRecentLines(bool once = false);
+// What made a chat translation: the translator, a local one with its beam ("NLLB-200 (local) · Beam 4") – a
+// translation with another quality is no repetition, and "Translate visible chat once" does it again.
+std::wstring TranslatorTag(const std::shared_ptr<Translator>& tr, int beam);
 void TranslateInput(uint64_t gen, std::wstring text);
 void ComputeTyping();
 void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring learnText);

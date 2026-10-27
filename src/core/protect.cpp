@@ -34,14 +34,19 @@ bool IsEmoticon(const std::wstring& t) {
 }
 
 // "[DS]", "[LFG]", "[Ab1]": a guild tag or a tag in brackets – kept whole, so neither the brackets nor the letters
-// inside are translated or torn apart (a keep-word "DS" alone split "[DS]" and its sentence, 2026-10-27).
+// inside are translated or torn apart (a keep-word "DS" alone split "[DS]" and its sentence, 2026-10-27). A name in
+// brackets the way the game shows a link ("[Shipwreck Peak Waypoint]", typed as text, became "zum Schiffbruch") is
+// kept whole too: words, spaces, ' - : , . inside, up to 60 characters.
 std::vector<Span> FindTags(const std::wstring& body) {
     std::vector<Span> out;
+    const auto inside = [](wchar_t c) { return IsWordChar(c) || std::wcschr(L" '’-:,.", c) != nullptr; };
     for (size_t i = 0; i < body.size(); ++i) {
         if (body[i] != L'[') continue;
         size_t j = i + 1;
-        while (j < body.size() && j - i <= 6 && IsWordChar(body[j]) && body[j] != L'\'') ++j;
-        if (j < body.size() && body[j] == L']' && j > i + 1) {
+        while (j < body.size() && j - i <= 61 && inside(body[j])) ++j;
+        const bool letter = std::any_of(body.begin() + static_cast<std::ptrdiff_t>(i + 1),
+                                        body.begin() + static_cast<std::ptrdiff_t>(j), IsWordChar);
+        if (j < body.size() && body[j] == L']' && letter && body[i + 1] != L' ' && body[j - 1] != L' ') {
             out.push_back({i, j + 1 - i});
             i = j;
         }

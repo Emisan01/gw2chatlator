@@ -298,6 +298,13 @@ std::wstring CleanLocalMtOutput(const std::wstring& source, const std::wstring& 
         return c == L'.' || c == L'!' || c == L'?' || c == L'…' || c == L'。' || c == L'！' || c == L'？';
     };
     const std::wstring src = Trim(source);
+    // A dash the source did not start with: NLLB opens some lines as dialogue ("hot area it is" -> "- Das ist heiß",
+    // "Selam!" -> "- Ich weiß nicht.").
+    const auto dash = [](wchar_t c) { return c == L'-' || c == L'–' || c == L'—'; };
+    if (cleaned.size() >= 2 && dash(cleaned[0]) && whitespace(cleaned[1]) && !(!src.empty() && dash(src[0]))) {
+        cleaned.erase(0, 1);
+        while (!cleaned.empty() && whitespace(cleaned.front())) cleaned.erase(cleaned.begin());
+    }
     if (!src.empty() && !sentenceEnd(src.back()) && cleaned.size() >= 2 &&
         (cleaned.back() == L'.' || cleaned.back() == L'。') && cleaned[cleaned.size() - 2] != L'.') {
         cleaned.pop_back();

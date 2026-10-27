@@ -262,6 +262,10 @@ static void TestLocalMtProtocol() {
     CHECK(CleanLocalMtOutput(L"Gracias por el", L"Danke für ihn.", "de") == L"Danke für ihn");
     CHECK(CleanLocalMtOutput(L"Gracias.", L"Danke.", "de") == L"Danke.");
     CHECK(CleanLocalMtOutput(L"Meet at the waypoint in", L"Treffen am Weg .", "de") == L"Treffen am Weg");
+    // a dash the source did not start with goes (2026-10-27: "hot area it is" -> "- Das ist heiß")
+    CHECK(CleanLocalMtOutput(L"hot area it is", L"- Das ist heiß", "de") == L"Das ist heiß");
+    CHECK(CleanLocalMtOutput(L"- yes, me", L"- Ja, ich", "de") == L"- Ja, ich");
+    CHECK(CleanLocalMtOutput(L"10-20 min", L"10-20 Minuten", "de") == L"10-20 Minuten");
     CHECK(CleanLocalMtOutput(L"hmm", L"Na ja...", "de") == L"Na ja...");
     CHECK(CleanLocalMtOutput(L"Hola", L"Hey , was ist los ?", "de") == L"Hey, was ist los?");
     CHECK(TidyPunctuation(L"Merci , à demain !", "fr") == L"Merci, à demain !");
@@ -400,6 +404,10 @@ static void TestProtect() {
     CHECK(RestoreKeepSpelling(L"Danke für den Rez! Rezept", rez) == L"Danke für den rez! Rezept");
     const auto wtfWhole = SplitForLocalMt(ProtectForTranslation(L"wtf was that", nullptr, &keep).segments);
     CHECK(RestoreKeepSpelling(L"WTF war das? WTFs", wtfWhole) == L"wtf war das? WTFs");
+    // a name in brackets the way the game shows a link stays whole (typed as text: "zum Schiffbruch", 2026-10-27)
+    const auto wp = ProtectForTranslation(L"a port to [Shipwreck Peak Waypoint]? need it", nullptr, &keep);
+    CHECK(wp.segments.size() == 3 && wp.segments[1].keep && wp.segments[1].text == L"[Shipwreck Peak Waypoint]");
+    CHECK(!HasProtected(ProtectForTranslation(L"see [ this ] and [] ok", nullptr, &keep).segments));
     const auto code = ProtectForTranslation(L"look [&AgGvWwEA] and [LFG] or [a b]", nullptr, &keep);
     CHECK(JoinSegments(code.segments) == L"look [&AgGvWwEA] and [LFG] or [a b]");
     int tags = 0;
