@@ -9,11 +9,19 @@ keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zulet
    Nachstellen (erfundene Zeilen), Ursache finden, Test dazu (`TranslateRecentLines` → `TranslateLine`, kb_worker.cpp).
 2. **Rohschalter:** bleibt bis zum Neustart an, auch beim Übersetzerwechsel, und man sieht, ob er an ist.
 3. **NLLB-Qualitätsstufe wechseln:** neu initialisieren und melden „Qualitätsstufe geladen“.
+3b. **Eigene Nachricht ging unübersetzt raus** (Live-Test: kurze deutsche Zeile, gemischte Zeile „ich habe J'ai …“).
+   Verdacht: kb_worker.cpp:242 nimmt die erkannte Sprache vor der Eingabesprache – erkennt die Erkennung eine kurze
+   Zeile falsch (z. B. als Zielsprache), wird nichts übersetzt. Fix: für eigenen Text die Eingabesprache, die Erkennung
+   nur wenn sicher (`SureLanguage`). Prüfen, dass Enter vor fertiger Übersetzung wartet („translating and sending …“).
 
 ## Übersetzung
 4. **Kein-Mist-Filter (so einfach wie möglich):** ist ein Ergebnis schlecht (Score unter `kUnsureScore` oder die
    Prüfung schlägt an), die Zeile einmal mit höherer Qualität neu übersetzen; ist sie dann noch schlecht, das Original
    zeigen statt des schlechten Ergebnisses. Als Option mit Schalter. Mit translation_bench belegen.
+4b. **Eigene Nachricht wartet nie hinter dem Chat:** heute ein Helfer, eine Übersetzung nach der anderen – läuft gerade
+   eine lange Chatzeile, wartet die eigene. Vorschlag statt zweier Instanzen: ein Helfer mit zwei Replikaten
+   (`num_replicas_per_device = 2` in translate_helper_main.cpp; CTranslate2 teilt die Modellgewichte laut Doku – RAM/CPU
+   messen) und Anfrage-IDs im Protokoll; einfachere Alternative: automatische Chatzeilen pausieren, solange du tippst.
 5. **Drossel:** automatische Zeilen unter Last nie unter Beam 2. Vorher je Beam (1/2/4) messen: Bedeutung und ms.
 6. **Grüße** (Hola, Selam, Merhaba, Salut, Cześć, Привет, Olá, Ciao …) vor dem Modell nachschlagen.
 7. **Listen füllen** mit Emi: `data/gw2-words.tsv` nur mit gemessenen Fehlern, nichts erfinden (z. B. „boss“). Danach
