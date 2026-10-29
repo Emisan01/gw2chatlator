@@ -4,6 +4,12 @@ Regeln: [AGENTS.md](../AGENTS.md) (Evidence bei feat/fix/perf/refactor, messen s
 keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zuletzt.
 
 ## Fehler
+0. **Flüstern senden kaputt (zuerst!):** Live-Test 2.7.0 – Flüster-Tab „Isa Bo“, DE → FR, Nachricht ~110 Zeichen mit
+   „:D“: im GW2-Chat kam nur ein Rest an („…s commentaire“ im Flüster-Eingabefeld, nicht gesendet). Vermutung: GW2
+   schaltet nach „/w Name,“ in den Flüstermodus und verschluckt dabei getippte Zeichen bzw. das Enter. Vorgehen: mit
+   2.6.9 dieselbe Nachricht gegenprüfen (ging es dort?), sonst die Sende-Folge für Flüstern (Präfix → warten bis der
+   Modus steht → Text → Enter) prüfen; `git diff v2.6.9 v2.7.0` am Sendeweg (be42fb5 hat StartSend berührt, nur für
+   gleiche Sprache). Nur im Spiel prüfbar – Testprotokoll-Zeile dazu.
 1. **Block bleibt unübersetzt:** nach einer Zeile mit Tippfehler, einer Korrekturzeile, einer Zeile nur `\o/` und einer
    kurzen englischen Zeile übersetzt kein Übersetzer mehr die folgenden Zeilen, auch nicht per „einmal übersetzen“.
    Nachstellen (erfundene Zeilen), Ursache finden, Test dazu (`TranslateRecentLines` → `TranslateLine`, kb_worker.cpp).
