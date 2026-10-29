@@ -84,10 +84,11 @@ nur auf Klick, nie in eine Datei (Datenschutz: kein Chat-Export).
   einzeln geschützte Tag neben dem unbekannten Namen bringt NLLB dazu, ein Kompositum zu bauen und den Namen als Wort zu
   übersetzen. Also unsere Schutzform, nicht nur das Modell.
   **Emi, 2026-10-29: erst einen Schritt zurück, keine Namens-Raterei** (Gildennamen können klein geschrieben sein, Tags
-  fehlen oft). Reihenfolge: (1) mit A9 ansehen, welcher Versuch „[RUCH]-Halle“ erzeugt hat; (2) exakte Prüfung: ein
-  geschützter Teil, an den in der Ausgabe ein neues Wort angehängt wurde („[RUCH]-Halle“, in der Eingabe kein
-  „[RUCH]-“), lässt diesen Versuch durchfallen → nächster Versuch; (3) eigene Gildennamen gehören in die eigenen
-  Begriffe (gibt es schon); (4) eine Regel „Wörter neben dem Tag sind der Name“ nur, wenn Messungen sie tragen.
+  fehlen oft). **Einfach halten (Emi):** Geklammertes bleibt wie heute geschützt. Hängt das Modell an ein geklammertes
+  Stück ein Wort mit Bindestrich an, das so nicht im Original steht („[RUCH]-Halle“, im Original kein „[RUCH]-“), wird
+  der Anhang entfernt („Die [RUCH] sucht Spieler …“) – ein Aufräum-Schritt wie die anderen in `CleanLocalMtOutput`.
+  Bekannter Preis: der vom Modell ersetzte Name („La Ruche“) kommt so nicht zurück; vorher mit A9 ansehen, welcher
+  Versuch es erzeugt hat. Eigene Gildennamen gehören in die eigenen Begriffe (gibt es schon). Keine Namens-Raterei.
 - **B2.** Grüße vor dem Modell nachschlagen (Hola, Selam, Merhaba, Salut, Cześć, Привет, Olá, Ciao …): genau diese
   Zeilen erfindet das Modell („das ist alles“, „Ich weiß nicht“), und ihr Score liegt unter `kUnsureScore`.
 - **B3.** Erst wenn die Listen stehen: zweiter, **unbekannter** Prüfsatz
