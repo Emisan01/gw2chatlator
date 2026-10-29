@@ -5,6 +5,7 @@ Names that are the same in every language are left out (nothing to translate), a
 same names (story copies of a map). Run once per release; --check only compares with the file in the repo.
 """
 import json
+import re
 import sys
 import urllib.request
 from pathlib import Path
@@ -16,6 +17,19 @@ INC = OUT.parent.parent / "src" / "core" / "gw2_names.inc"  # compiled in (gloss
 # Map types a player names in chat: the open world and the WvW maps. Instances are mostly story steps named with
 # ordinary words ("Doubt", "Forward", "Silence") – dungeons, raids and fractals go by their abbreviations (terms list).
 MAP_TYPES = {"Public", "Center", "RedHome", "BlueHome", "GreenHome", "EdgeOfTheMists"}
+
+
+# A leading article is the sentence's, not the name's: "in the Silverwastes" is "in der / in die Silberwüste" by
+# context, so the translator writes it ("Die Silberwüste" would stand fixed). "(Public)" marks a map copy.
+ARTICLES = {"en": ("The",), "de": ("Der", "Die", "Das"), "fr": ("Le", "La", "Les"), "es": ("El", "La", "Los", "Las")}
+
+
+def bare(name, lang):
+    name = re.sub(r"\s*\([^)]*\)$", "", name.strip())
+    for a in ARTICLES[lang]:
+        if name.startswith(a + " ") and len(name) > len(a) + 1:
+            return name[len(a) + 1:]
+    return name
 
 
 def get(path):
@@ -50,7 +64,7 @@ def collect():
                     continue
                 if cat == "spec" and not item.get("elite"):  # core lines are ordinary words ("Fire", "Arms", "Honor")
                     continue
-                name = (item.get("name") or "").strip()
+                name = bare(item.get("name") or "", lang)
                 if name:
                     per_lang.setdefault(f"{cat}:{item['id']}", {})[lang] = name
         for key, names in per_lang.items():

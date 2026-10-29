@@ -1,9 +1,9 @@
 # Official GW2 names (GW2 API, public endpoints) - written by tools/gen_names.py, do not edit by hand
-map:15	Queensdale	Königintal	La Vallée de la reine	Valle de la Reina
+map:15	Queensdale	Königintal	Vallée de la reine	Valle de la Reina
 map:17	Harathi Hinterlands	Harathi-Hinterland	Hinterlands harathis	Interior Harathi
-map:18	Divinity's Reach	Götterfels	Le Promontoire divin	Linde de la Divinidad
+map:18	Divinity's Reach	Götterfels	Promontoire divin	Linde de la Divinidad
 map:19	Plains of Ashford	Ebenen von Aschfurt	Plaines d'Ashford	Llanuras de Ashford
-map:20	Blazeridge Steppes	Flammenkamm-Steppe	Les Steppes de la strie flamboyante	Estepas Crestafulgurante
+map:20	Blazeridge Steppes	Flammenkamm-Steppe	Steppes de la strie flamboyante	Estepas Crestafulgurante
 map:21	Fields of Ruin	Felder der Verwüstung	Champs de ruine	Campos de la Ruina
 map:22	Fireheart Rise	Feuerherzhügel	Montée de Flambecœur	Colina del Corazón de Fuego
 map:23	Kessex Hills	Kessex-Hügel	Collines de Kessex	Colinas Kessex
@@ -27,26 +27,25 @@ map:54	Brisban Wildlands	Brisban-Wildnis	Terres sauvages de Brisban	Selvas Brisb
 map:62	Cursed Shore	Fluchküste	Rivage maudit	Ribera Maldita
 map:65	Malchor's Leap	Malchors Sprung	Saut de Malchor	Salto de Malchor
 map:73	Bloodtide Coast	Blutstrom-Küste	Côte de la marée sanglante	Costa Mareasangrienta
-map:91	The Grove	Der Hain	Le Bosquet	La Arboleda
-map:218	Black Citadel	Schwarze Zitadelle	La Citadelle noire	Ciudadela Negra
+map:91	Grove	Hain	Bosquet	Arboleda
+map:218	Black Citadel	Schwarze Zitadelle	Citadelle noire	Ciudadela Negra
 map:335	Claw Island	Klaueninsel	Île de la griffe	Isla Garra
 map:350	Heart of the Mists	Herz der Nebel	Cœur des Brumes	Corazón de la Niebla
 map:866	Mad King's Labyrinth	Labyrinth des Verrückten Königs	Labyrinthe du Roi Dément	Laberinto del Rey Loco
 map:873	Southsun Cove	Südlicht-Bucht	Crique de Sud-Soleil	Cala del Sol Austral
 map:922	Labyrinthine Cliffs	Labyrinthklippen	Falaises labyrinthiques	Acantilados Laberínticos
-map:929	The Crown Pavilion	Der Kronpavillon	Le Pavillon de la Couronne	El Pabellón de la Corona
-map:943	The Tower of Nightmares (Public)	Der Turm der Albträume (Öffentlich)	La tour des Cauchemars (public)	La Torre de las Pesadillas (pública)
-map:968	Edge of the Mists	Rand der Nebel	La lisière des Brumes	El Borde de la Niebla
+map:929	Crown Pavilion	Kronpavillon	Pavillon de la Couronne	Pabellón de la Corona
+map:943	Tower of Nightmares	Turm der Albträume	tour des Cauchemars	Torre de las Pesadillas
+map:968	Edge of the Mists	Rand der Nebel	lisière des Brumes	Borde de la Niebla
 map:988	Dry Top	Trockenkuppe	Cimesèche	Cima Seca
-map:1015	The Silverwastes	Die Silberwüste	Les Contrées sauvages d'argent	Los Páramos Argentos
+map:1015	Silverwastes	Silberwüste	Contrées sauvages d'argent	Páramos Argentos
 map:1041	Dragon's Stand	Widerstand des Drachen	Repli du dragon	Defensa del Dragón
 map:1042	Verdant Brink	Grasgrüne Schwelle	Orée d'émeraude	Umbral Verdeante
 map:1043	Auric Basin	Güldener Talkessel	Bassin aurique	Valle Áurico
 map:1045	Tangled Depths	Verschlungene Tiefen	Profondeurs verdoyantes	Profundidades Enredadas
-map:1095	Dragon's Stand (Heart of Thorns)	Widerstand des Drachen (Heart of Thorns)	Repli du dragon (Heart of Thorns)	Defensa del Dragón (Heart of Thorns)
 map:1147	Spirit Vale	Geistertal	Vallée des esprits	Valle Espiritual
 map:1155	Lion's Arch Aerodrome	Flugplatz von Löwenstein	Aérodrome de l'Arche du Lion	Aeródromo de Arco del León
-map:1158	Noble's Folly	Torheit des Edelmanns	La Folie de noble	Capricho de noble
+map:1158	Noble's Folly	Torheit des Edelmanns	Folie de noble	Capricho de noble
 map:1165	Bloodstone Fen	Blutsteinsumpf	Marais de la pierre de sang	Pantano de la Hematites
 map:1175	Ember Bay	Glutbucht	Baie des braises	Bahía de las Ascuas
 map:1178	Bitterfrost Frontier	Bitterfrost-Grenzland	Confins de Givramer	Frontera de Escarchamarga
@@ -57,8 +56,8 @@ map:1206	Mistlock Sanctuary	Nebelsperren-Zuflucht	Sanctuaire de Gardebrume	Santu
 map:1210	Crystal Oasis	Kristalloase	Oasis de cristal	Oasis de Cristal
 map:1211	Desert Highlands	Wüsten-Hochland	Hautes-terres du désert	Tierras Altas del Desierto
 map:1215	Windswept Haven	Windgepeitschte Freistatt	Refuge de Chassevent	Refugio Venteado
-map:1226	The Desolation	Das Ödland	La Désolation	La Desolación
-map:1228	Elon Riverlands	Elon-Flusslande	Rives de l'Elon	La Ribera del Elon
+map:1226	Desolation	Ödland	Désolation	Desolación
+map:1228	Elon Riverlands	Elon-Flusslande	Rives de l'Elon	Ribera del Elon
 map:1248	Domain of Vabbi	Domäne Vaabi	Domaine de Vabbi	Dominio de Vabbi
 map:1263	Domain of Istan	Domäne Istan	Domaine d'Istan	Dominio de Istan
 map:1271	Sandswept Isles	Sandgepeitschte Inseln	Îles de Ventesable	Islas Arenosas
@@ -68,49 +67,39 @@ map:1304	Mad King's Raceway	Rennbahn des Verrückten Königs	Circuit du Roi Dém
 map:1310	Thunderhead Peaks	Donnerkopf-Gipfel	Pics de Chef-Tonnerre	Picos del Trueno
 map:1316	Mists Rift	Nebel-Riss	Brèches des Brumes	Fisura de la Niebla
 map:1317	Dragonfall	Drachensturz	Chute draconique	Dragoncaído
-map:1326	Dragon Arena (Public)	Drachenarena (öffentlich)	Arène du Dragon (public)	Arena del Dragón (pública)
+map:1326	Dragon Arena	Drachenarena	Arène du Dragon	Arena del Dragón
 map:1330	Grothmar Valley	Grothmar-Tal	Vallée de Grothmar	Valle de Grothmar
-map:1331	Shiverpeaks Pass (Public)	Zittergipfel-Pass (öffentlich)	Col des Cimefroides (public)	Paso de las Picosescalofriantes (público)
-map:1340	Voice of the Fallen and Claw of the Fallen (Public)	Stimme der Gefallenen und Klaue der Gefallenen (öffentlich)	Voix et Griffe des déchus (public)	Voz de los Caídos y Garra de los Caídos (público)
+map:1331	Shiverpeaks Pass	Zittergipfel-Pass	Col des Cimefroides	Paso de las Picosescalofriantes
+map:1340	Voice of the Fallen and Claw of the Fallen	Stimme der Gefallenen und Klaue der Gefallenen	Voix et Griffe des déchus	Voz de los Caídos y Garra de los Caídos
 map:1343	Bjora Marches	Bjora-Sümpfe	Frontière de Bjora	Marca de Bjora
-map:1344	Fraenir of Jormag (Public)	Fraenir Jormags (öffentlich)	Fraenir de Jormag (public)	Fraenir de Jormag (público)
-map:1351	Boneskinner (Public)	Knochenhäuter (öffentlich)	Désosseur (public)	Pelahuesos (público)
-map:1352	Secret Lair of the Snowmen (Public)	Geheimer Unterschlupf der Schneemänner (öffentlich)	Repaire secret des Bonshommes de neige (public)	Guarida Secreta de los Muñecos de Nieve (pública)
+map:1344	Fraenir of Jormag	Fraenir Jormags	Fraenir de Jormag	Fraenir de Jormag
+map:1351	Boneskinner	Knochenhäuter	Désosseur	Pelahuesos
+map:1352	Secret Lair of the Snowmen	Geheimer Unterschlupf der Schneemänner	Repaire secret des Bonshommes de neige	Guarida Secreta de los Muñecos de Nieve
 map:1353	Celestial Challenge	Himmlische Herausforderung	Défi céleste	Desafío celestial
-map:1357	Whisper of Jormag (Public)	Geflüster des Jormag (öffentlich)	Murmure de Jormag (public)	Susurro de Jormag (público)
-map:1362	Forging Steel (Public)	Stahlschmiede (öffentlich)	Forge de l'acier (publique)	Forja de Acero (pública)
+map:1357	Whisper of Jormag	Geflüster des Jormag	Murmure de Jormag	Susurro de Jormag
+map:1362	Forging Steel	Stahlschmiede	Forge de l'acier	Forja de Acero
 map:1370	Eye of the North	Auge des Nordens	Œil du Nord	Ojo del Norte
 map:1371	Drizzlewood Coast	Nieselwald-Küste	Côte de Bruinebois	Costa de Bosquellovizna
-map:1376	Cold War (Public)	Kalter Krieg (öffentlich)	Guerre froide (public)	Guerra fría (público)
-map:1387	Bloodtide Coast (Public)	Blutstrom-Küste (öffentlich)	Côte de la marée sanglante (public)	Costa Mareasangrienta (pública)
-map:1389	Snowden Drifts (Public)	Schneekuhlenhöhen (öffentlich)	Congères d'Antreneige (public)	Cúmulos de Guaridanieve (pública)
-map:1390	Fireheart Rise (Public)	Feuerherzhügel (öffentlich)	Montée de Flambecœur (public)	Colina del Corazón de Fuego (pública)
-map:1393	Lake Doric (Public)	Doric-See (öffentlich)	Lac Doric (public)	Lago Doric (pública)
-map:1395	Thunderhead Peaks (Public)	Donnerkopf-Gipfel (öffentlich)	Pics de Chef-Tonnerre (public)	Picos del Trueno (pública)
-map:1396	Gendarran Fields (Public)	Gendarran-Felder (öffentlich)	Champs de Gendarran (public)	Campos de Gendarran (pública)
-map:1397	Metrica Province (Public)	Provinz Metrica (öffentlich)	Province de Metrica (public)	Provincia de Métrica (pública)
-map:1398	Fields of Ruin (Public)	Felder der Verwüstung (öffentlich)	Champs de ruine (public)	Campos de la Ruina (pública)
-map:1399	Brisban Wildlands (Public)	Brisban-Wildnis (öffentlich)	Terres sauvages de Brisban (public)	Selvas Brisbanas (pública)
-map:1403	Caledon Forest (Public)	Caledon-Wald (öffentlich)	Forêt de Caledon (public)	Bosque de Caledon (pública)
-map:1411	Dragonstorm (Public)	Drachensturm (Öffentlich)	Tempête de dragons (public)	Tormenta Dracónica (pública)
-map:1413	The Twisted Marionette (Public)	Die Verdrehte Marionette (öffentlich)	La marionnette détraquée (public)	La marioneta retorcida (pública)
+map:1376	Cold War	Kalter Krieg	Guerre froide	Guerra fría
+map:1411	Dragonstorm	Drachensturm	Tempête de dragons	Tormenta Dracónica
+map:1413	Twisted Marionette	Verdrehte Marionette	marionnette détraquée	marioneta retorcida
 map:1422	Dragon's End	Drachen-Ende	Trépas du dragon	Muerte del Dragón
 map:1428	Arborstone	Arborstein	Pierre Arborea	Piedra Arbórea
 map:1438	New Kaineng City	Stadt Neu-Kaineng	Néo-Kaineng	Ciudad de Nueva Kaineng
 map:1442	Seitung Province	Provinz Seitung	Province de Seitung	Provincia de Seitung
-map:1452	The Echovald Wilds	Die Echowald-Wildnis	Terres sauvages d'Echovald	Las Selvas de Echovald
+map:1452	Echovald Wilds	Echowald-Wildnis	Terres sauvages d'Echovald	Selvas de Echovald
 map:1465	Thousand Seas Pavilion	Pavillon der Tausend Meere	Pavillon des mille mers	Pabellón de los Mil Mares
-map:1482	The Battle For Lion's Arch (Public)	Die Schlacht um Löwenstein (öffentlich)	La bataille pour l'Arche du Lion (public)	La batalla de Arco del León (pública)
+map:1482	Battle For Lion's Arch	Schlacht um Löwenstein	bataille pour l'Arche du Lion	batalla de Arco del León
 map:1483	Memory of Old Lion's Arch	Erinnerungen an das alte Löwenstein	Souvenir de l'ancienne Arche du Lion	Recuerdo de la antigua Arco del León
 map:1490	Gyala Delve	Gyala-Senke	Fosse de Gyala	Hondonada de Gyala
-map:1509	The Wizard's Tower	Der Turm des Zauberers	La Tour du sorcier	La torre del brujo
+map:1509	Wizard's Tower	Turm des Zauberers	Tour du sorcier	torre del brujo
 map:1510	Skywatch Archipelago	Himmelswacht-Archipel	Archipel de l'observatoire céleste	Archipiélago Vistacielo
 map:1522	Stopped Clock Tower	Angehaltener Uhrturm	Clocher arrêté	Torre del reloj parado
-map:1523	Convergence: Outer Nayos (Public)	Konvergenz: Äußeres Nayos (öffentlich)	Convergence : Nayos extérieur (public)	Convergencia: Zona exterior de Nayos (pública)
+map:1523	Convergence: Outer Nayos	Konvergenz: Äußeres Nayos	Convergence : Nayos extérieur	Convergencia: Zona exterior de Nayos
 map:1526	Inner Nayos	Inneres Nayos	Nayos intérieur	Zona interior de Nayos
 map:1550	Lowland Shore	Tiefland-Küste	Côte des basses terres	Costas Bajas
 map:1554	Janthir Syntri	Janthir Syntri	Syntri de Janthir	Janthir Syntri
-map:1571	Convergence: Mount Balrior (Public)	Konvergenz: Berg Balrior (Öffentlich)	Convergence : mont Balrior (public)	Convergencia: Monte Balrior (pública)
+map:1571	Convergence: Mount Balrior	Konvergenz: Berg Balrior	Convergence : mont Balrior	Convergencia: Monte Balrior
 map:1575	Mistburned Barrens	Nebelbrand-Ödland	Landes de Feu-de-Brume	Yermos de Pavesas de Niebla
 map:1593	Starlit Weald	Sternenlicht-Gehölz	Bois étoilé	Bosquezuelo Estelar
 map:1595	Shipwreck Strand	Strand der Wracks	Rive aux épaves	Litoral del Naufragio
@@ -233,7 +222,7 @@ wvw:94-34	Victor's Lodge	Sieger-Halle	Pavillon du Vainqueur	Albergue del Vencedo
 wvw:94-35	Greenbriar	Grünstrauch	Vert-bruyère	Zarzaverde
 wvw:94-36	Bluelake	Blausee	Lac bleu	Lagoazul
 wvw:94-38	Longview	Weitsicht	Longuevue	Vistaluenga
-wvw:94-39	The Godsword	Das Gottesschwert	L'Épée divine	La Hoja Divina
+wvw:94-39	Godsword	Gottesschwert	L'Épée divine	Hoja Divina
 wvw:94-40	Cliffside	Felswand	Flanc de falaise	Despeñadero
 wvw:94-50	Bluewater Lowlands	Blauwasser-Tiefland	Basses terres d'Eau-Azur	Tierras Bajas de Aguazul
 wvw:94-51	Astralholme	Astralholm	Heaume astral	Isleta Astral
@@ -245,7 +234,7 @@ wvw:95-34	Hero's Lodge	Heldenhalle	Pavillon du Héros	Albergue del Héroe
 wvw:95-35	Bluebriar	Blaustrauch	Bruyazur	Zarzazul
 wvw:95-36	Redlake	Rotsee	Lac rouge	Lagorrojo
 wvw:95-38	Sunnyhill	Sonnenhügel	Colline ensoleillée	Colina Soleada
-wvw:95-39	The Titanpaw	Die Titanenpranke	Bras du Titan	La Garra del Titán
+wvw:95-39	Titanpaw	Titanenpranke	Bras du Titan	Garra del Titán
 wvw:95-40	Cragtop	Schroffgipfel	Sommet de Hautcrag	Cumbrepeñasco
 wvw:95-50	Redwater Lowlands	Rotwasser-Tiefland	Basses terres de Rubicon	Tierras Bajas de Aguarroja
 wvw:95-51	Foghaven	Nebel-Freistatt	Havre gris	Refugio Neblinoso
@@ -257,7 +246,7 @@ wvw:96-34	Champion's Demesne	Champions Landsitz	Fief du Champion	Patrimonio del 
 wvw:96-35	Redbriar	Rotstrauch	Bruyerouge	Zarzarroja
 wvw:96-36	Greenlake	Grünsee	Lac vert	Lagoverde
 wvw:96-38	Woodhaven	Wald-Freistatt	Boisrefuge	Refugio Forestal
-wvw:96-39	The Spiritholme	Der Geistholm	Le Heaume spirituel	La Isleta Espiritual
+wvw:96-39	Spiritholme	Geistholm	Heaume spirituel	Isleta Espiritual
 wvw:96-40	Dawn's Eyrie	Horst der Morgendämmerung	Repaire de l'aube	Aguilera del Alba
 wvw:96-50	Greenwater Lowlands	Grünwasser-Tiefland	Basses terres d'Eau-Verdoyante	Tierras bajas de Aguaverde
 wvw:96-51	Stargrove	Sternhain	Bosquet étoilé	Arboleda de las Estrellas

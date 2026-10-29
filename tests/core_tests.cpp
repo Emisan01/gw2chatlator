@@ -329,6 +329,18 @@ static void TestBuiltinGlossary() {
     CHECK(first(BuiltinGlossary(L"de", L"PL"), L"Himmelsschuppe") == L"Skyscale");      // no Polish names
     CHECK(BuiltinGlossary(L"en", L"PL") == nullptr && BuiltinGlossary(L"pl", L"DE") == nullptr);
     CHECK(BuiltinGlossary(L"de", L"EN") == BuiltinGlossary(L"DE", L"en-us"));            // built once per pair
+    // A word asked about or quoted is mentioned, not used: it stays as written. The sentence's article is not the name's.
+    auto keptAs = [](const std::wstring& line, const std::wstring& src, const std::wstring& tgt) {
+        std::wstring out;
+        for (const Segment& s : ProtectForTranslation(line, BuiltinGlossary(src, tgt), &BuiltinKeepWords()).segments)
+            if (s.keep) out += s.text + L"|";
+        return out;
+    };
+    CHECK(keptAs(L"Was heißt Himmelsschuppe auf Englisch?", L"de", L"EN") == L"Himmelsschuppe|");
+    CHECK(keptAs(L"what is a skyscale called in german?", L"en", L"DE") == L"skyscale|");
+    CHECK(keptAs(L"nimm „Himmelsschuppe“ mit", L"de", L"EN") == L"Himmelsschuppe|");
+    CHECK(keptAs(L"nimm die Himmelsschuppe mit", L"de", L"EN") == L"Skyscale|");
+    CHECK(keptAs(L"we go into the Silverwastes", L"en", L"DE") == L"Silberwüste|");
 }
 
 static void TestGlossary() {

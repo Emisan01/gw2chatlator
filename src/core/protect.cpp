@@ -66,6 +66,40 @@ std::vector<Span> FindEmoticons(const std::wstring& body) {
     }
     return out;
 }
+
+// "Was heißt Himmelsschuppe auf Englisch?", "what is a skyscale called in German?": a word asked about is mentioned,
+// not used – it stays as written, or the answer would stand in the question. A question about meaning or a language
+// named ("auf Polnisch", "po polsku") marks the line; a needless hit only keeps a name as written, as before.
+bool AsksAboutWords(const std::wstring& body) {
+    static const wchar_t* const kAsks[] = {
+        L"was heißt", L"was heisst", L"was bedeutet", L"wie heißt", L"wie heisst", L"wie sagt man", L"what does",
+        L"how do you say", L"called in", L"que veut dire", L"veut dire quoi", L"comment dit-on", L"comment on dit",
+        L"qué significa", L"que significa", L"cómo se dice", L"como se dice", L"co znaczy", L"jak się mówi",
+        L"o que significa", L"como se diz", L"что значит", L"как будет",
+        L"auf englisch", L"auf deutsch", L"auf französisch", L"auf spanisch", L"auf polnisch", L"auf portugiesisch",
+        L"auf russisch", L"auf italienisch", L"auf türkisch", L"in english", L"in german", L"in french", L"in spanish",
+        L"in polish", L"in portuguese", L"in russian", L"in italian", L"in turkish", L"en anglais", L"en allemand",
+        L"en français", L"en francais", L"en espagnol", L"en inglés", L"en ingles", L"en alemán", L"en aleman",
+        L"en español", L"en francés", L"po polsku", L"po angielsku", L"po niemiecku", L"em inglês", L"em alemão",
+        L"em português", L"по-русски", L"по-английски", L"по-немецки"};
+    const std::wstring f = CaseFold(body);
+    for (const wchar_t* a : kAsks) {
+        const std::wstring p = CaseFold(a);
+        for (size_t at = f.find(p); at != std::wstring::npos; at = f.find(p, at + 1)) {
+            const size_t end = at + p.size();
+            if ((at == 0 || !IsWordChar(f[at - 1])) && (end == f.size() || !IsWordChar(f[end]))) return true;
+        }
+    }
+    return false;
+}
+
+// A word between quotes ("skyscale", „Himmelsschuppe“) is mentioned too.
+bool Quoted(const std::wstring& body, const Span& s) {
+    static const std::wstring kQuotes = L"\"'„“”‚‘’«»";
+    const size_t end = s.start + s.length;
+    return s.start > 0 && end < body.size() && kQuotes.find(body[s.start - 1]) != std::wstring::npos &&
+           kQuotes.find(body[end]) != std::wstring::npos;
+}
 }  // namespace
 
 ProtectedText ProtectForTranslation(const std::wstring& body, const Glossary* glossary, const WordSet* keepWords,
@@ -91,8 +125,10 @@ ProtectedText ProtectForTranslation(const std::wstring& body, const Glossary* gl
 
     if (glossary) {
         r.glossaryHits = glossary->FindAll(body, taken);
+        const bool asks = AsksAboutWords(body);
         for (const GlossaryMatch& m : r.glossaryHits) {
-            prot.push_back({m.span, m.target});
+            const bool mentioned = asks || Quoted(body, m.span);
+            prot.push_back({m.span, mentioned ? body.substr(m.span.start, m.span.length) : m.target});
             taken.push_back(m.span);
         }
     }
