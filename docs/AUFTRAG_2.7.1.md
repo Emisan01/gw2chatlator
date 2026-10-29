@@ -26,6 +26,20 @@ zum Neustart, egal welcher Übersetzer; sichtbar, ob er an ist (die Routenzeile/
 `translation_bench` je Beam (1/2/4) auf dem Korpus – Bedeutung und ms pro Zeile. Ergebnis als Tabelle an Emi; er
 entscheidet (Standard anheben, Drossel nicht unter 2, Stufe „schnell“ entfernen).
 
+**A4. „Zweitblick“ zurückholen – schlechte Ausgabe erkennen, bevor sie gezeigt wird.** (Emis Idee aus der OCR-Zeit:
+ein Ergebnis mit einem zweiten Weg gegenprüfen.) Vorschlag, lokal zuerst:
+- Signale: Score unter `kUnsureScore` (gibt es) **und/oder** ein erfundenes Wort – ein Wort der Ausgabe, das weder in
+  der Eingabe noch im Wörterbuch der Zielsprache noch in unseren Listen steht („TANCE“). Das Wörterbuch-Signal nur, wo
+  Windows ein Wörterbuch für die Zielsprache hat (nicht überall – auf Emis PC nur Deutsch).
+- Reaktion: **diese eine Zeile** noch einmal mit höherer Qualität (Beam der gewählten Stufe bzw. 4) – die Einstellung
+  des Nutzers bleibt, kein globales Umschalten. Erst wenn auch das unsicher ist: Hinweis „(?)“ wie heute; ein Online-
+  Übersetzer (MyMemory) nur, wenn der Nutzer ihn eingeschaltet hat.
+- Abnahme: translation_bench mit Beam 1 + Zweitblick gegen Beam 1 und Beam 4 – Bedeutung und ms; als Option mit
+  Schalter (Emi: jede Automatik als Option).
+
+**A5. Direktstart in der Kachel.** Alles, was für den Start der Übersetzung nötig ist, in der Kachel bedienbar – ohne in
+den Tab zu müssen. Entwurf vorher mit Emi abstimmen (er gibt die Richtung vor).
+
 ## B. Listen füllen (mit Emi, jeder Eintrag gemessen)
 
 - **B1.** [data/gw2-words.tsv](../data/gw2-words.tsv): nur was ein Übersetzer nachweislich falsch macht; nie
