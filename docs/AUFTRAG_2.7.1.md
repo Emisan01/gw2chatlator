@@ -8,7 +8,11 @@ keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zulet
    kurzen englischen Zeile übersetzt kein Übersetzer mehr die folgenden Zeilen, auch nicht per „einmal übersetzen“.
    Nachstellen (erfundene Zeilen), Ursache finden, Test dazu (`TranslateRecentLines` → `TranslateLine`, kb_worker.cpp).
 2. **Rohschalter:** bleibt bis zum Neustart an, auch beim Übersetzerwechsel, und man sieht, ob er an ist.
-3. **NLLB-Qualitätsstufe wechseln:** neu initialisieren und melden „Qualitätsstufe geladen“.
+3. **Initialisieren sauber und sichtbar:** nach Wechsel von Übersetzer, Qualitätsstufe oder Eingabesprache das Modell
+   vorladen mit Meldung „Modell lädt …“ → „bereit“; Anfragen während des Ladens warten statt abzulaufen. Live-Test: nach
+   Wechsel der Eingabesprache „Übersetzungsanfrage abgelaufen (Timeout)“ mit Angebot „> MyMemory“, obwohl NLLB gewählt
+   war; nach Hin- und Zurückwechseln lief NLLB „Beste“ gut. Klären, warum ein Wechsel der Eingabesprache den Übersetzer
+   neu baut, und dass Dashboard und Übersetzer-Tab denselben Übersetzer zeigen (Dashboard NLLB, Tab MyMemory gesehen).
 3b. **Eigene Nachricht: übersetzt wird, was du wirklich geschrieben hast.** Eine Regel für beide Live-Befunde:
    Quelle = die erkannte Sprache, **wenn die Erkennung sicher ist** (`SureLanguage`), sonst die Eingabesprache. Übersetzt
    wird, sobald diese Quelle nicht die Sendesprache ist – auch wenn „Schreiben“ und „Senden“ gleich stehen (Live-Test:
