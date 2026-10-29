@@ -77,6 +77,19 @@ keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zulet
     (`ShouldTranslate`: `detected` leer → nein). Prüfen, ob eine Zeile mit Wörtern aus einer Wörterliste / einem
     Windows-Wörterbuch als sicher gelten darf; heute hilft nur der Klick auf die Zeile.
 
+## Vereinfachung aus Nutzersicht (Emi, 2026-10-29)
+Drei Einstellungen: **Ich lese in …**, **Ich sende in …** (oder „wie geschrieben“), **Übersetzer + Qualität**. Alles andere
+zusammenlegen oder automatisch:
+17. **Eine „verstehe“-Liste:** „Übersetzt wird alles außer“ + versteckte „eigene Sprache“ (`skipTypingLang`) + Lesesprache →
+    „Ich verstehe: [Lesesprache] [+ weitere]“; die Lesesprache vorne, entfernbar und wiederherstellbar (ersetzt Punkt 15).
+18. **Eine Sende-Wahl:** Haken „Meinen Text übersetzen“, Footer-Sendesprache mit „wie geschrieben“ und „Gesprochenes direkt
+    übersetzen“ → nur „Senden: <Sprache> / wie geschrieben“; die Spracheingabe folgt ihr.
+19. **„Schreiben“ heißt „Tipphilfe“** und steuert nur noch Vorschläge/Wörterbuch (die Sprache des Textes wird erkannt, 3b).
+20. **Ein Ein-/Aus-Schalter** statt „Den Chat übersetzen“, „Aktiv“-Chip und Pause.
+21. **Ein Ort:** Lesen, Senden, Übersetzer in der Dashboard-Kachel (Direktstart, Punkt 10); Chat-Tab-Menü und Optionen zeigen
+    dieselben Werte, keine eigenen. Die Wege, eine Zeile zu übersetzen (automatisch, Klick, Rechtsklick, einmal), bleiben.
+INI-Übernahme: alte Einstellungen auf die neuen abbilden, nichts verstellt sich beim Update.
+
 ## Später (nur auf Emis Wort)
 Sendesprache automatisch an den Empfänger anpassen (die erkannte Sprache je Spieler
 gibt es schon: `g_playerLang`) · Verben wie
