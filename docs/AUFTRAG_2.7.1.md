@@ -18,6 +18,8 @@ keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zulet
    Dazu (Live-Test FR→FR): kurze französische Zeilen mit Tippfehlern wurden nicht als Französisch erkannt und
    „ins Französische“ übersetzt („Je suis un mai (?)“, „où est les nouveaux joueurs“). Regel: hat die Übersetzung fast
    nichts geändert oder ist sie unsicher, während das Ziel eine Sprache ist, die du liest – Original zeigen.
+3d. **Kein unnötiges Neu-Übersetzen:** nur wenn Lesesprache, Übersetzer oder Qualitätsstufe sich ändern – und dann
+   kurz sagen, warum.
 
 ## Übersetzung
 4. **Kein-Mist-Filter (so einfach wie möglich):** ist ein Ergebnis schlecht (Score unter `kUnsureScore` oder die
@@ -44,9 +46,13 @@ keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zulet
     Nachrichten; Schriften mit Emi ansehen. Vorher/Nachher-Screenshot an Emi.
 12. **Zeiten und Ablauf sehen:** ms pro Zeile (Tooltip); im Debug-Fenster für eine Zeile: Sprache, Ziel, geschützte
     Teile, jeder Versuch mit Ausgabe und Score, Ergebnis. Nur im Speicher, nie in eine Datei.
+13. **Original klein und grau unter der Übersetzung** – als Option (aus per Standard), wie in den ersten Versionen.
+14. **Eigene Nachrichten in der Lesesprache:** statt die gesendete Übersetzung zurückzuübersetzen, das zeigen, was du
+    getippt hast (liegt beim Senden vor, nur im Speicher) – exakt und ohne Rechenzeit.
 
 ## Später (nur auf Emis Wort)
-Ganzer fremdsprachiger Satz bei gleicher Ein-/Ausgabesprache (Spracherkennung, vorher Fehlrate messen) · Verben wie
+Sendesprache automatisch an den Empfänger anpassen (die erkannte Sprache je Spieler
+gibt es schon: `g_playerLang`) · Ganzer fremdsprachiger Satz bei gleicher Ein-/Ausgabesprache (Spracherkennung, vorher Fehlrate messen) · Verben wie
 farm/level · Spracheingabe (Emi testet zuerst, Whisper bleibt auf Standard) · Wächter · Aufräumen Schichten 2–3 ·
 Fuzzing der Chat-Eingabe.
 
