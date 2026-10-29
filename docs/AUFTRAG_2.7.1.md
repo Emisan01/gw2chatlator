@@ -13,6 +13,8 @@ keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zulet
    Verdacht: kb_worker.cpp:242 nimmt die erkannte Sprache vor der Eingabesprache – erkennt die Erkennung eine kurze
    Zeile falsch (z. B. als Zielsprache), wird nichts übersetzt. Fix: für eigenen Text die Eingabesprache, die Erkennung
    nur wenn sicher (`SureLanguage`). Prüfen, dass Enter vor fertiger Übersetzung wartet („translating and sending …“).
+3c. **Alte Übersetzung bleibt stehen:** wechselt das Ziel und ist eine Zeile schon in der neuen Zielsprache (wird
+   übersprungen), zeigt sie weiter die alte Übersetzung – sie soll dann das Original zeigen.
 
 ## Übersetzung
 4. **Kein-Mist-Filter (so einfach wie möglich):** ist ein Ergebnis schlecht (Score unter `kUnsureScore` oder die
