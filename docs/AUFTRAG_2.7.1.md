@@ -11,6 +11,8 @@ keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zulet
    Namen und nach Tab je einen Moment zum Umschalten; ohne Pause landen Name und Text vertauscht oder abgeschnitten
    (Live-Test: „…s commentaire“ im Flüsterfeld). Fix: in diesem Block wieder `opt.stepDelayMs` statt `step`
    (src/win/gw2_sender.cpp, die drei `Sleep(step)` nach „/w “, Name, Tab). Nur im Spiel prüfbar, Testprotokoll-Zeile.
+   Geprüft: die Befehle von 2026-10-27 (/wiki, Emotes, 553d388/abe6588) sind es nicht – „/w“ zählt als Kanalbefehl
+   (`IsChannelCommand`), geht also weiter in die Flüster-Folge.
 1. **Block bleibt unübersetzt:** nach einer Zeile mit Tippfehler, einer Korrekturzeile, einer Zeile nur `\o/` und einer
    kurzen englischen Zeile übersetzt kein Übersetzer mehr die folgenden Zeilen, auch nicht per „einmal übersetzen“.
    Nachstellen (erfundene Zeilen), Ursache finden, Test dazu (`TranslateRecentLines` → `TranslateLine`, kb_worker.cpp).
