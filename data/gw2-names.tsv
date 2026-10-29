@@ -1,0 +1,1079 @@
+# Official GW2 names (GW2 API, public endpoints) - written by tools/gen_names.py, do not edit by hand
+map:15	Queensdale	Königintal	La Vallée de la reine	Valle de la Reina
+map:17	Harathi Hinterlands	Harathi-Hinterland	Hinterlands harathis	Interior Harathi
+map:18	Divinity's Reach	Götterfels	Le Promontoire divin	Linde de la Divinidad
+map:19	Plains of Ashford	Ebenen von Aschfurt	Plaines d'Ashford	Llanuras de Ashford
+map:20	Blazeridge Steppes	Flammenkamm-Steppe	Les Steppes de la strie flamboyante	Estepas Crestafulgurante
+map:21	Fields of Ruin	Felder der Verwüstung	Champs de ruine	Campos de la Ruina
+map:22	Fireheart Rise	Feuerherzhügel	Montée de Flambecœur	Colina del Corazón de Fuego
+map:23	Kessex Hills	Kessex-Hügel	Collines de Kessex	Colinas Kessex
+map:24	Gendarran Fields	Gendarran-Felder	Champs de Gendarran	Campos de Gendarran
+map:25	Iron Marches	Eisenmark	Marais de fer	Fronteras de Hierro
+map:26	Dredgehaunt Cliffs	Schauflerschreck-Klippen	Falaises de Hantedraguerre	Acantilados de Guaridadraga
+map:27	Lornar's Pass	Lornars Pass	Passage de Lornar	Paso de Lornar
+map:28	Wayfarer Foothills	Wanderer-Hügel	Contreforts du voyageur	Colinas del Caminante
+map:29	Timberline Falls	Baumgrenzen-Fälle	Chutes de la canopée	Cataratas de Linarbórea
+map:30	Frostgorge Sound	Eisklamm-Sund	Détroit des gorges glacées	Estrecho de Gorjaescarcha
+map:31	Snowden Drifts	Schneekuhlenhöhen	Congères d'Antreneige	Cúmulos de Guaridanieve
+map:32	Diessa Plateau	Diessa-Plateau	Plateau de Diessa	Meseta de Diessa
+map:33	Ascalonian Catacombs	Katakomben von Ascalon	Catacombes d'Ascalon	Catacumbas Ascalonianas
+map:34	Caledon Forest	Caledon-Wald	Forêt de Caledon	Bosque de Caledon
+map:35	Metrica Province	Provinz Metrica	Province de Metrica	Provincia de Métrica
+map:37	Arson at the Orphanage	Brandanschlag aufs Waisenhaus	Incendie criminel à l'orphelinat	Incendio provocado en el orfanato
+map:38	Eternal Battlegrounds	Ewige Schlachtfelder	Champs de bataille éternels	Campos de batalla eternos
+map:39	Mount Maelstrom	Mahlstromgipfel	Mont Maelström	Monte Vorágine
+map:50	Lion's Arch	Löwenstein	L'Arche du Lion	Arco del León
+map:51	Straits of Devastation	Meerenge der Verwüstung	Détroit de la dévastation	Estrechos de la Devastación
+map:53	Sparkfly Fen	Funkenschwärmersumpf	Marais de Lumillule	Pantano de las Centellas
+map:54	Brisban Wildlands	Brisban-Wildnis	Terres sauvages de Brisban	Selvas Brisbanas
+map:55	The Hospital in Jeopardy	Gefahr für das Hospital	Hôpital en péril	El hospital en peligro
+map:61	Infiltration	In die Höhle des Löwen	Infiltration	Infiltración
+map:62	Cursed Shore	Fluchküste	Rivage maudit	Ribera Maldita
+map:63	Sorrow's Embrace	Umarmung der Betrübnis	Étreinte des lamentations	Abrazo del Pesar
+map:65	Malchor's Leap	Malchors Sprung	Saut de Malchor	Salto de Malchor
+map:66	Citadel of Flame	Flammenzitadelle	Citadelle de la Flamme	Ciudadela de la Llama
+map:67	Twilight Arbor	Zwielichtgarten	Tonnelle du crépuscule	La Pérgola del Crepúsculo
+map:70	Honor of the Waves	Zierde der Wogen	Honneur des vagues	El Honor de las Olas
+map:73	Bloodtide Coast	Blutstrom-Küste	Côte de la marée sanglante	Costa Mareasangrienta
+map:75	Caudecus's Manor	Caudecus' Anwesen	Manoir de Caudecus	Mansión de Caudecus
+map:77	Search the Premises	Der Einbruch	Cambriolage	Registro de las instalaciones
+map:79	The Informant	Der Informant	L'informateur	El informante
+map:80	A Society Function	Eine vornehme Gruppe	La fête du ministre	Una reunión social
+map:81	Crucible of Eternity	Schmelztiegel der Ewigkeit	Creuset de l'éternité	Crisol de la Eternidad
+map:89	Chasing the Culprits	Banditen-Entführer	Bandits geôliers	En busca de los culpables
+map:91	The Grove	Der Hain	Le Bosquet	La Arboleda
+map:92	The Trial of Julius Zamon	Der Prozess von Julius Zamon	Le procès de Julius Zamon	El juicio de Julius Zamon
+map:95	Alpine Borderlands	Alpine Grenzlande	- Territoires alpins	- Tierras Fronterizas alpinas
+map:96	Alpine Borderlands	Alpine Grenzlande	- Territoires alpins	-Tierras Fronterizas alpinas
+map:110	The Perils of Friendship	Freundschaft mit Risiko	Les risques d'une amitié	Los peligros de la amistad
+map:111	Victory or Death	Triumph oder Tod	La victoire ou la mort	Victoria o muerte
+map:112	The Ruined City of Arah	Die Ruinenstadt Arah	La Cité en ruine d'Arah	La ciudad en ruinas de Arah
+map:113	Desperate Medicine	Gestohlene Vorräte	Fournitures volées	Medicina desesperada
+map:120	The Commander	Kommandeur	La commandante	El Comandante
+map:140	The Apothecary	Die Arzneikundlerin	L'apothicaire	La botica
+map:142	Going Undercover	Verdeckt arbeiten	Infiltration	De incógnito
+map:144	The Greater Good	Das Wohl der Allgemeinheit	Le bien public	El bien común
+map:145	The Rescue	Die Rettung	Le sauvetage	El rescate
+map:147	Breaking the Blade	Gift hat seinen Preis	Le prix du poison	Partiendo filos
+map:148	The Fall of Falcon Company	Der Untergang der Falken-Kompanie	La chute de la Compagnie des Faucons	La caída de la Compañía del Halcón
+map:152	Confronting Captain Tervelan	Stellt Euch Hauptmann Tervelan	Confrontation avec le capitaine Tervelan	Enfrentarse al capitán Tervelan
+map:153	Seek Logan's Aid	Ersucht Logans Hilfe	Aide de Logan	En busca de la ayuda de Logan
+map:157	Accusation	Anschuldigung	Accusation	Acusación
+map:161	Liberation	Befreiung	Libération	Liberación
+map:162	Voices From the Past	Stimmen der Vergangenheit	Voix du passé	Voces del pasado
+map:171	Rending the Mantle	Die Teilung des Mantels	Le Manteau rapiécé	Desgarrar el Manto
+map:178	The Floating Grizwhirl	Der schwebende Ratzkreisel	Le tourbigriz flottant	El hipnomolino flotante
+map:182	Clown College	Kasperle-Kolleg	Collège de pitres	Escuela de payasos
+map:184	The Artist's Workshop	Das Künstleratelier	L'atelier de l'artiste	El taller del artista
+map:185	Into the Woods	Auf in den Wald	Dans les bois	En el bosque
+map:186	The Ringmaster	Der Zirkusdirektor	Monsieur Loyal	El maestro de ceremonias
+map:190	The Orders of Tyria	Die Orden von Tyria	Les Ordres de la Tyrie	Las órdenes de Tyria
+map:192	Brute Force	Rohe Gewalt	Force brute	Fuerza bruta
+map:195	Triskell Quay	Triskell-Kai	Quai de Triskel	Muelle de Triskel
+map:196	Track the Seraph	Die Spur des Seraphen	Pister le Séraphin	El rastro del serafín
+map:198	Speaker of the Dead	Sprecher der Toten	L'orateur des morts	Portavoz de los muertos
+map:199	The Sad Tale of the "Ravenous"	Die traurige Geschichte der "Raffgier"	Le triste sort du "Vorace"	La triste historia del "Voraz"
+map:201	Kellach's Attack	Kellachs Angriff	L'attaque de Kellach	El ataque de Kellach
+map:202	The Queen's Justice	Die Gerechtigkeit der Königin	La justice de la Reine	La justicia de la reina
+map:203	The Trap	Die Falle	Le piège	La trampa
+map:211	Best Laid Plans	Geniale Pläne	Des plans sans accroc	Los mejores planes
+map:212	Welcome Home	Willkommen zu Hause	Bienvenue à la maison	De vuelta en casa
+map:215	The Tribune's Call	Der Ruf des Tribuns	L'Appel du tribun	La Llamada del Tribuno
+map:218	Black Citadel	Schwarze Zitadelle	La Citadelle noire	Ciudadela Negra
+map:222	A Spy for a Spy	Einen Spion für einen Spion	Espion contre espion	Espía por espía
+map:224	Scrapyard Dogs	Schrottplatzstreuner	Chiens d'épaves	Perros de desguace
+map:226	On the Mend	Auf dem Wege der Besserung	En voie de guérison	Convaleciente
+map:232	Spilled Blood	Vergossenes Blut	Du sang versé	Sangre derramada
+map:234	Ghostbore Musket	Geisterlaufmuskete	Mousquet percefantôme	Mosquete perforafantasmas
+map:237	Iron Grip of the Legion	Im eisernen Griff der Legion	La poigne de fer de la Légion	El puño de hierro de la legión
+map:238	The Flame Advances	Der Anmarsch der Flamme	Les flammes progressent	La Llama avanza
+map:242	Test Your Metal	Prüft Euer Metall	Test du métal	Prueba tu metal
+map:244	Quick and Quiet	Geschwind und leise	Rapidité et discrétion	Rápido y en silencio
+map:248	Salma District (Home)	Salma-Viertel (Heimatort)	Quartier de Salma (Lieu de résidence)	Distrito de Salma (Hogar)
+map:249	An Unusual Inheritance	Eine ungewöhnliche Erbschaft	Un héritage insolite	Una herencia inusual
+map:250	Windrock Maze	Windfels-Labyrinth	Labyrinthe de Rochevent	Laberinto Rocaviento
+map:251	Mired Deep	Tief im Schlamm	En plein bourbier	Enfangados
+map:254	Deadly Force	Tödliche Gewalt	Force létale	Fuerza mortal
+map:255	Ghostbore Artillery	Geisterlauf-Artillerie	Artillerie percefantôme	Artillería perforafantasmas
+map:256	No Negotiations	Keine Verhandlungen	Pas de négociations	Sin negociación
+map:257	Salvaging Scrap	Wiederverwertung von Schrott	Récupération	Rescatando chatarra
+map:259	In the Ruins	In den Ruinen	Dans les ruines	En las ruinas
+map:262	Chain of Command	Befehlskette	Chaîne de commandement	Cadena de mando
+map:264	Time for a Promotion	Zeit für eine Beförderung	Promotion dans l'air	Hora de un ascenso
+map:267	The End of the Line	Die Endstation	Fin de la ligne	El final del trayecto
+map:269	Magic Users	Magische Benutzer	Utilisateurs de magie	Usuarios de la magia
+map:271	Rage Suppression	Die Faust in der Tasche	Rage supprimée	Contención de la rabia
+map:274	Operation: Bulwark	Operation Bollwerk	Opération : Rempart	Operación: Baluarte
+map:275	AWOL	Fahnenflüchtig	Désertion	Deserción
+map:276	Human's Lament	Menschliches Wehklagen	Gouffre des lamentations	Lamento de Humano
+map:282	Misplaced Faith	Die Rückkehr des Banners	Une confiance mal placée	Fe equivocada
+map:283	Thicker Than Water	Dicker als Wasser	Plus épais que l'eau	Más espeso que el agua
+map:284	Dishonorable Discharge	Unehrenhafte Entlassung	Renvoi honorable	Baja por conducta deshonrosa
+map:287	Searching for the Truth	Auf der Suche nach der Wahrheit	En quête de la vérité	En busca de la verdad
+map:288	Lighting the Beacons	Anzünden des Leuchtfeuers	Allumage des fanaux	El encendido de las balizas
+map:290	Stoking the Flame	Das Feuer schüren	Alimenter la flamme	Avivando la Llama
+map:294	A Fork in the Road	Der Weg gabelt sich	La croisée du chemin	Una encrucijada en el camino
+map:295	Sins of the Father	Die Sünden des Vaters	Les péchés du père	Los pecados del padre
+map:297	Graveyard Ornaments	Friedhofornamente	Décorations funéraires	Adornos de cementerio
+map:330	Seraph Headquarters	Seraphen-Hauptquartier	Quartier général des Séraphins	Cuartel general de los Serafines
+map:335	Claw Island	Klaueninsel	Île de la griffe	Isla Garra
+map:336	Chantry of Secrets	Heilige Halle der Geheimnisse	Chapelle des Secrets	Capellanía de los Secretos
+map:350	Heart of the Mists	Herz der Nebel	Cœur des Brumes	Corazón de la Niebla
+map:363	The Sting	Der Stachel	L'aiguillon	La infiltración
+map:364	Drawing Out the Cult	Den Kult hervorlocken	Débusquer la secte	El Manto destapado
+map:365	Ashes of the Past	Die Asche meiner Vergangenheit	Les cendres du passé	Cenizas del pasado
+map:371	Hero's Canton (Home)	Heldenbezirk (Heimatort)	Canton du Héros (Lieu de résidence)	Cantón del Héroe (Hogar)
+map:372	Blood Tribune Quarters	Bluttribun-Quartier	Quartiers du Tribun de la Légion Sanglante	Alojamientos de los Tribunos de Sangre
+map:373	The Command Core	Der Kommandokern	Le Centre de commandement	El núcleo de mando
+map:374	Knut Whitebear's Loft	Knut Weißbärs Speicher	Planque de Knut Ours Blanc	Desván de Knut Osoblanco
+map:375	Hunter's Hearth (Home)	Jägers Feuerstelle (Heimatort)	Logis du chasseur (Lieu de résidence)	Hogar del Cazador (Hogar)
+map:376	Stonewright's Steading	Steinmacher-Gehöft	Maison de Sculpteroche	Finca del Cantero
+map:378	Queen's Throne Room	Thronsaal der Königin	Salle du trône de la reine	Sala del Trono de la Reina
+map:380	A Weapon of Legend	Eine Waffe der Legenden	Une arme de légende	Un arma de leyenda
+map:381	The Last of the Giant-Kings	Der Letzte der Riesen-Könige	Le dernier des Rois-Géants	El último de los reyes gigantes
+map:382	Disciples of the Dragon	Jünger des Drachens	Les épigones du dragon	Los discípulos del Dragón
+map:386	Echoes of Ages Past	Echos vergangener Zeiten	Echos du passé	Ecos del pasado
+map:387	Wild Spirits	Wilde Geister	Esprits farouches	Espíritus salvajes
+map:388	Out of the Skies	Aus den Himmeln	Hors des cieux	Desde los cielos
+map:390	Twilight of the Wolf	Zwielicht des Wolfes	Crépuscule du Loup	El crepúsculo del lobo
+map:391	Rage of the Minotaurs	Rage der Minotauren	Le Courroux des minotaures	La rabia de los minotauros
+map:392	A Pup's Illness	Die Krankheit des Lehrlings	La maladie d'un chiot	Un cachorro enfermo
+map:393	Through the Veil	Den Schleier lüften	Par-delà le voile	A través del Velo
+map:394	A Trap Foiled	Eine Falle vereitelt	Un piège déjoué	Una trampa frustrada
+map:396	Raven's Revered	Verehrter Rabe	Vénération du Corbeau	La reverencia del Cuervo
+map:397	One Good Drink Deserves Another	Ein guter Schluck verlangt nach einem weiteren	Une bonne tournée en appelle une autre	Un buen trago se merece otro
+map:399	Shape of the Spirit	Die Form des Geistes	Forme de l'esprit	La forma del espíritu
+map:400	Into the Mists	Hinein in die Nebel	Dans les Brumes	En la Niebla
+map:405	Blessed of Bear	Der Segen der Bärin	L'élu de l'Ourse	Bendición de la Osa
+map:407	The Wolf Havroun	Das Tor schließen	Le havroun du Loup	El havroun del lobo
+map:410	Minotaur Rampant	Ungezügelte Minotauren	Minotaure déchaîné	Minotauro desenfrenado
+map:412	Unexpected Visitors	Unerwartete Besucher	Des visiteurs inattendus	Visitantes inesperados
+map:413	Rumors of Trouble	Man munkelt von Trubel	Rumeurs de troubles	Problemas a la vista
+map:414	A New Challenger	Ein neuer Herausforderer	Un nouveau concurrent	Un nuevo rival
+map:416	Roadblock	Straßensperre	Barrage routier	Barricada
+map:417	Assault on Moledavia	Angriff auf Mauldau	À l'assaut de la Taupidavie	Ataque a Topovia
+map:418	Don't Leave Your Toys Out	Räum das Spielzeug weg	Ne pas laisser traîner les jouets	No dejes tirados tus juguetes
+map:420	First Attack	Erster Angriff	Première attaque	Primer ataque
+map:421	The Finishing Blow	Der Todesstoß	Le coup de grâce	El golpe de gracia
+map:422	The Semifinals	Das Halbfinale	Les demi-finales	Las semifinales
+map:423	The Championship Fight	Der Meisterkampf	Le combat du championnat	La lucha del campeonato
+map:425	The Machine in Action	Maschine in Aktion	La machine en action	La máquina en acción
+map:427	Among the Kodan	Unter den Kodan	Parmi les Kodans	Entre los kodan
+map:430	Darkness at Drakentelt	Dunkelheit in Drakentelt	Les ténèbres de Drakentelt	Oscuridad en Drakentelt
+map:434	Preserving the Balance	Der Erhalt des Gleichgewichts	Préservation d'équilibre	Mantener el equilibrio
+map:435	Means to an End	Mittel zum Zweck	La fin et les moyens	El fin justifica los medios
+map:436	Dredge Technology	Schaufler-Technologie	Technologie draguerre	Tecnología draga
+map:439	Underground Scholar	Gelehrter des Untergrunds	Erudit souterrain	Erudito subterráneo
+map:440	Dredge Assault	Angriff der Schaufler	Assaut draguerre	Asalto draga
+map:441	The Dredge Hideout	Das Versteck der Schaufler	La cachette draguerre	El escondite draga
+map:444	Sabotage	Sabotieren	Sabotage	Sabotaje
+map:447	Codebreaker	Code-Brecher	Décodage	Descifrador
+map:449	Armaments	Ausrüstungen	Armements	Armamento
+map:453	Assault the Hill	Angriff auf den Hügel	Assaut sur la colline	Asalto en la colina
+map:454	Silent Warfare	Lautlose Kriegsführung	Guerre silencieuse	Guerra silenciosa
+map:455	Sever the Head	Der Kopf muss ab	Décapitation	Cortar la cabeza
+map:460	Citadel Stockade	Militärgefängnis der Zitadelle	Prison de la Citadelle	Calabozo de la Ciudadela
+map:464	Tribunes in Effigy	Abbilder der Tribune	Des tribuns en effigie	Efigies de tribunos
+map:471	Undead Infestation	Untotenbefall	Infestation cadavérique	Plaga de muertos vivientes
+map:474	Whispers in the Dark	Geflüster im Dunkeln	Des murmures dans la nuit	Susurros en la oscuridad
+map:476	Dangerous Research	Gefährliche Forschung	Dangereuses recherches	Investigación peligrosa
+map:477	Digging Up Answers	Graben nach Antworten	Extraction d'informations	En busca de respuestas
+map:480	Defending the Keep	Verteidigung der Feste	Défendre le fort	Defendiendo la fortaleza
+map:481	Undead Detection	Aufspüren der Untoten	Détection de morts-vivants	Detección de muertos vivientes
+map:483	Ever Vigilant	Immer wachsam	Vigilance éternelle	Siempre alerta
+map:485	Research and Destroy	Untersuchen und zerstören	Recherche et destruction	Investigar y destruir
+map:487	Whispers of Vengeance	Rachegeflüster	Murmures de vengeance	Susurros de venganza
+map:488	Killer Instinct	Killerinstinkt	Instinct de tueur	Instinto asesino
+map:489	Meeting my Mentor	Meinen Mentor treffen	Rencontre avec mon mentor	Reunión con mi mentor
+map:490	A Fragile Peace	Ein instabiler Frieden	Une paix fragile	Una frágil paz
+map:492	Don't Shoot the Messenger	Überbringer schlechter Nachrichten	Le messager n'y est pour rien	No matéis al mensajero
+map:497	Dredging Up the Past	Die Vergangenheit ausgraben	Remuer le passé	Dragar el pasado
+map:502	Quaestor's Siege	Quästors Belagerung	Siège du questeur	Asedio del Cuestor
+map:503	Minister's Defense	Des Ministers Verteidigung	Défense du ministre	Defensa del Ministro
+map:504	Called to Service	Der Ruf der Pflicht	Appel aux armes	Llamada al servicio
+map:507	Mockery of Death	Dem Tod zum Trotz	Parodie de mort	La burla de la muerte
+map:509	Discovering Darkness	Entmantelung der Dunkelheit	Découverte des ténèbres	El descubrimiento de la oscuridad
+map:511	Hounds and the Hunted	Hunde und Gejagte	Traqueurs et traqués	Sabuesos y presas
+map:513	Loved and Lost	Verliebt und verloren	Amours égarées	Amor perdido
+map:514	Saving the Stag	Rettet den Hirsch	À la rescousse du cerf	Salvar al Ciervo
+map:515	Hidden in Darkness	Verborgen in der Dunkelheit	Tapi dans les ténèbres	Oculto en la oscuridad
+map:516	Good Work Spoiled	Alle Mühen umsonst	Un bon travail gâché	Un buen trabajo echado a perder
+map:517	Black Night, White Stag	Schwarze Nacht, Weißer Hirsch	Nuit noire, Cerf blanc	Noche negra, Ciervo blanco
+map:518	The Omphalos Chamber	Die Omphalos-Kammer	La Chambre d'Omphalos	La Cámara de Omphalos
+map:519	Weakness of the Heart	Die Schwäche des Herzens	Le cœur a ses raisons	Debilidad de corazón
+map:520	Awakening	Erwachen	Eveil	Despertar
+map:521	Holding Back the Darkness	Der Kampf gegen die Finsternis	Lutte contre l'obscurité	Contra la oscuridad
+map:522	A Sly Trick	Ein schlauer Trick	Ruse machiavélique	Un truco ingenioso
+map:523	Deep Tangled Roots	Verworrene Wurzeln	Des racines profondes	Raíces profundas enredadas
+map:524	The Heart of Nightmare	Das Albtraumherz	Le cœur des Cauchemars	El corazón de la Pesadilla
+map:525	Beneath a Cold Moon	Der Mond scheint kalt	Sous une froide Lune	Bajo la fría luna
+map:527	The Knight's Duel	Das Ritterduell	Le duel du chevalier	El duelo del Caballero
+map:528	Hammer and Steel	Hammer und Stahl	Le marteau et l'acier	Martillo y acero
+map:529	Where Life Goes	Wie das Leben so spielt	Où mène la vie	Adonde vaya la vida
+map:532	After the Storm	Nach dem Sturm	Après la tempête	Después de la tormenta
+map:534	Beneath the Waves	Unter den Wellen	Sous les vagues	Bajo las olas
+map:535	Mirror, Mirror	Spieglein, Spieglein	Miroir, miroir	Dime, espejito mágico
+map:536	A Vision of Darkness	Vision der Finsternis	Une vision des ténèbres	Una visión de la oscuridad
+map:537	Shattered Light	Gebrochenes Licht	Lumière éclatée	Luz quebrada
+map:538	An Unknown Soul	Eine unbekannte Seele	Une âme inconnue	Un alma desconocida
+map:542	Source of the Issue	Quelle der Angelegenheit	La source du problème	La raíz del problema
+map:543	Wild Growth	Wildwuchs	Pousse sauvage	Crecimiento salvaje
+map:545	Seeking the Zalisco	Auf der Suche nach dem Zalisco	À la recherche de l'extrait de zalisco	En busca del zalisco
+map:546	The Direct Approach	Frontalangriff	L'approche directe	El enfoque directo
+map:547	Trading Trickery	Wer überlistet wen?	Duperie et diplomatie	Argucia comercial
+map:548	Eye of the Sun	Auge der Sonne	L'Œil du Soleil	El Ojo del sol
+map:556	A Different Dream	Ein anderer Traum	Un rêve différent	Un sueño diferente
+map:557	A Splinter in the Flesh	Ein Splitter im Fleisch	Une écharde douloureuse	Una astilla clavada
+map:558	Shadow of the Tree	Erstickende Glut	L'ombre de l'arbre	Sombra del Árbol
+map:560	Sharpened Thorns	Geschärfte Dornen	Epines aiguisées	Espinas afiladas
+map:561	Bramble Walls	Dornen-Mauern	Murs de ronces	Muros de zarzas
+map:563	Secrets in the Earth	Geheimnisse in der Erde	Secrets souterrains	Secretos en la tierra
+map:564	The Blossom of Youth	Die Blüte der Jugend	La fleur de l'âge	La flor de la juventud
+map:566	The Bad Apple	Der faule Apfel	La pomme pourrie	La manzana podrida
+map:567	Trouble at the Roots	Schwierigkeiten an der Wurzel	Problèmes à la racine	Problema de raíz
+map:569	Flower of Death	Blume des Todes	Fleur de mort	La flor de la muerte
+map:570	Dead of Winter	In der Tiefe des Winters	Au cœur de l'hiver	En medio del invierno
+map:571	A Tangle of Weeds	Im Gestrüpp	Broussailles impénétrables	Maleza enredada
+map:574	In Snaff's Footsteps	In Snaffs Fußstapfen	Sur les traces de Snaff	Tras los pasos de Snaff
+map:575	Golem Positioning System	Golem-Positionierungssystem	Golem de Positionnement Spatial	Sistema de posicionamiento gólem
+map:576	Monkey Wrench	Universalschraubschlüssel	Clé à molette	Llave inglesa
+map:577	Defusing the Problem	Das Problem entschärfen	Désamorçage du problème	Desactivando el problema
+map:578	The Things We Do For Love	Liebesbeweise	Ce qu'on fait par amour	Lo que hacemos por amor
+map:579	The Snaff Prize	Der Snaff-Preis	Le Prix Snaff	El Premio Snaff
+map:581	A Sparkling Rescue	Eine funkelnde Rettung	Un brillant sauvetage	Un rescate chispeante
+map:582	High Maintenance	Hoher Wartungsaufwand	Maintenance supérieure	Alto mantenimiento
+map:583	Snaff Would Be Proud	Snaff wäre stolz	Snaff serait fier	Snaff estaría orgulloso
+map:584	Taking Credit Back	Die Lorbeeren zurückholen	Les bons comptes font les bons amis	Recuperación de crédito
+map:586	Political Homicide	Politischer Mord	Homicide politique	Homicidio político
+map:587	Here, There, Everywhere	Da und dort und überall	Ici, là-bas, partout	Aquí, allá, en todas partes
+map:588	Piece Negotiations	Teil-Verhandlungen	Relique à relier	Negociaciones de fragmentos
+map:589	Readings On the Rise	Ansteigende Messwerte	Relevés en hausse	Lecturas en aumento
+map:592	Unscheduled Delay	Außerplanmäßige Verzögerung	Retard pour impondérable	Retraso no previsto
+map:594	Stand By Your Krewe	Haltet zu Eurer Kru	Soutenir votre coterie	Quédate con tu sociedad
+map:595	Unwelcome Visitors	Unwillkommene Besucher	Visiteurs indésirables	Visitantes no deseados
+map:596	Where Credit Is Due	Wem Anerkennung gebührt	A tout seigneur tout honneur	Donde corresponde
+map:598	Short Fuse	Kurze Lunte	Mèche courte	Mecha corta
+map:606	Salt in the Wound	Salz in der Wunde	Le couteau dans la plaie	Sal en la herida
+map:607	Free Rein	Freier Lauf	En roue libre	Rienda suelta
+map:608	Serving Up Trouble	Unruhe stiften	Ennuis en perspective	Creando problemas
+map:610	Flash Flood	Sturzflut	Inondation éclair	Riada
+map:611	I Smell a Rat	Es riecht nach Verrat	Anguille sous roche	Huelo una rata
+map:613	Magnum Opus	Magnum Opus	Œuvre maîtresse	Obra maestra
+map:617	Bad Business	Schlechtes Geschäft	Mauvaises affaires	Mal asunto
+map:618	Beta Test	Beta-Test	Bêta	Prueba beta
+map:620	Any Sufficiently Advanced Science	Jede hinreichend fortschrittliche Wissenschaft	Une science suffisamment avancée	Cualquier ciencia lo suficientemente avanzada
+map:622	Bad Forecast	Schlechte Aussichten	Mauvais temps	Mala previsión
+map:623	Industrial Espionage	Industriespionage	Espionnage industriel	Espionaje industrial
+map:624	Split Second	Sekundenbruchteil	En moins de deux	Una fracción de segundo
+map:625	Carry a Big Stick	Tragt einen großen Stock	Coup de crosse	Lleva un buen garrote.
+map:628	Stealing Secrets	Geheimnis stehlen	Vol de secrets	Robo de secretos
+map:629	A Bold New Theory	Eine gewagte neue Theorie	Une nouvelle théorie audacieuse	Una teoría nueva y atrevida
+map:630	Forging Permission	Legale Fälschung	Falsification autorisée	Falsificación de permisos
+map:633	Setting the Stage	Den Weg bereiten	Mise en scène	Preparativos
+map:634	Containment	Eindämmung	Confinement	Contención
+map:636	Hazardous Environment	Gefährliche Umgebung	Environnement périlleux	Entorno peligroso
+map:638	Down the Hatch	Durch die Luke	À la vôtre	Arriba, abajo, al centro y... ¡pa dentro!
+map:642	The Stone Sheath	Die Steinhülle	La Gaine de pierre	La vaina de piedra
+map:643	Bad Blood	Böses Blut	Rancune	Mala sangre
+map:644	Test Subject	Versuchsobjekt	Sujet d'expérience	Sujeto de prueba
+map:645	Field Test	Feldversuch	Expérience sur le terrain	Prueba de campo
+map:646	The House of Caithe	Das Haus Caithe	La Maison de Caithe	La Casa de Caithe
+map:647	Dreamer's Terrace (Home)	Terrasse des Träumers (Heimatort)	Terrasse du Rêveur (Lieu de résidence)	La Terraza del Soñador (Hogar)
+map:648	The Omphalos Chamber	Die Omphalos-Kammer	La chambre d'Omphalos	La Cámara de Omphalos
+map:649	Snaff Memorial Lab	Snaff-Gedenk-Labor	Labo mémoriel de Snaff	Laboratorio Conmemorativo de Snaff
+map:650	Applied Development Lab (Home)	Labor für Angewandte Entwicklung (Heimatort)	Labo de développement appliqué (Lieu de résidence)	Laboratorio de Desarrollos Aplicados (Hogar)
+map:651	Council Level	Ratsebene	Niveau du conseil	Nivel del Consejo
+map:652	A Meeting of the Minds	Ein Treffen der Gleichgesinnten	Quand les grands esprits se rencontrent	Una reunión de mentes
+map:653	Mightier than the Sword	Mächtiger als das Schwert	Plus fort que l'épée	Más poderoso que la espada
+map:654	They Went Thataway	Sie sind da lang!	Ils sont partis par là !	Se fueron por ahí
+map:655	Lines of Communication	Kommunikationswege	Lignes de communication	Vías de comunicación
+map:656	Untamed Wilds	Ungezähmte Wildnis	Contrées sauvages	Selvas Indomables
+map:657	An Apple a Day	Jeden Tag einen Apfel	Une pomme par jour	Una manzana al día
+map:658	Base of Operations	Operationsbasis	Base d'opérations	Base de operaciones
+map:659	The Lost Chieftain's Return	Die Rückkehr des verlorenen Häuptlings	Le retour du chef disparu	El regreso del cabecilla perdido
+map:660	Thrown Off Guard	Kalt erwischt	Pris au dépourvu	Guardia desperdiciada
+map:662	Pets and Walls Make Stronger Kraals	Zähmlinge und Mauern stärken den Kral.	Les familiers et les murs rendent le kraal plus fort	Con mascotas y murallas, los corrales dan más caña
+map:663	Doubt	Zweifel	Doute	Duda
+map:664	The False God's Lair	Die Höhle der falschen Gottheit	La tanière du faux dieu	La guarida del falso dios
+map:666	Bad Ice	Böses Eis	Briser la glace	Hielo malvado
+map:669	Attempted Deicide	Versuchter Gottesmord	Tentative de déicide	Intento de deicidio
+map:672	Rat-Tastrophe	Rat-Tastrophe	Rat-Tastrophe	Ratástrofe
+map:673	Salvation Through Heresy	Erlösung durch Ketzerei	Hérésie salvatrice	La salvación mediante la herejía
+map:674	Enraged and Unashamed	Aufgebracht und unbeschämt	Enragé et fier de l'être	Enfurecido y desvergonzado
+map:675	Pastkeeper	Hüter der Vergangenheit	Gardien du passé	Celador del pasado
+map:676	Protest Too Much	Zu viel protestieren	À la rescousse du professeur	Protesta demasiado
+map:677	Prying the Eye Open	Das Auge öffnen	L'ouverture de l'Œil	Abriendo el ojo con palanca
+map:678	The Hatchery	Die Brutstätte	L'élevage	El vivero
+map:680	Convincing the Faithful	Die Gläubigen überzeugen	Convaincre des convaincus	Convenciendo a los fieles
+map:681	Evacuation	Evakuierung	Évacuation	Evacuación
+map:683	Champion's Sacrifice	Das Opfer des Champion	Le sacrifice du champion	Sacrificio de campeón
+map:684	Thieving from Thieves	Von Räubern rauben	Voler les voleurs	Quien roba a un ladrón
+map:685	Crusader's Return	Rückkehr der Recken	Le retour du croisé	Retorno del Cruzado
+map:686	Unholy Grounds	Unheilige Erde	Terres impies	Territorios impíos
+map:687	Chosen of the Sun	Von der Sonne auserwählt	L'élu du soleil	Los elegidos del sol
+map:691	Set to Blow	Bereit zum Sprengen	Explosion imminente	Lista para explotar
+map:692	Gadd's Last Gizmo	Gadds letztes Gerät	Le dernier gadget de Gadd	El último artilugio de Gadd
+map:693	Library Science	Bibliothekswissenschaft	Science livresque	Ciencia de biblioteca
+map:694	Rakt and Ruin	Rakt und Ruin	Rakt et la ruine	Rakt y ruina
+map:695	Suspicious Activity	Verdächtige Aktivitäten	Activité suspecte	Actividad sospechosa
+map:696	Reconnaissance	Erkundung	Reconnaissance	Reconocimiento
+map:697	Critical Blowback	Kritischer Rückschlag	Contre-attaque décisive	Contratiempo crítico
+map:698	The Battle of Claw Island	Schlacht auf der Klaueninsel	La bataille de l'Île de la griffe	La batalla de Isla Garra
+map:700	Priory Library	Bibliothek der Abtei	La Bibliothèque du Prieuré	Biblioteca del Priorato
+map:701	On Red Alert	Alarmstufe Rot	Alerte rouge	En alerta roja
+map:702	Forearmed Is Forewarned	Gefahr erkannt, Gefahr gebannt	Une arme peut en cacher une autre	Más vale prevenir que curar
+map:703	The Oratory	Redekunst	L'oratoire	La oratoria
+map:704	Killing Fields	Der Kriegsschauplatz	Champ de bataille	Campos de muerte
+map:705	The Ghost Rite	Der Geisterritus	Le rite fantôme	El rito fantasma
+map:706	The Good Fight	Kampf fürs Gute	La bonne cause	La buena pelea
+map:707	Defense Contract	Verteidigungsabkommen	Contrat de défense	Contrato de defensa
+map:708	Shards of Orr	Scherben von Orr	Eclats d'Orr	Esquirlas de Orr
+map:709	The Sound of Psi-Lance	Der Klang der Psi-Lanze	Le bruit d'une psi-lance	El sonido de la lanza Psi
+map:710	Early Parole	Vorzeitig entlassen	Libération anticipée	Pronta libertad
+map:711	Magic Sucks	Magie nervt	La magie, c'est pourri	La magia apesta
+map:712	A Light in the Darkness	Ein Licht im Dunkeln	Une lueur dans les ténèbres	Una luz en la oscuridad
+map:713	The Priory Assailed	Sturm auf die Abtei	Le Prieuré assailli	Asedio al Priorato
+map:714	Under Siege	Belagert	Assiégé	Bajo asedio
+map:715	Retribution	Vergeltung	Punition	Retribución
+map:726	Wet Work	Feuchte Arbeit	Un travail bien humide	Baño de sangre
+map:727	Shell Shock	Kriegsneurose	Traumatisme	Trauma de combate
+map:728	Volcanic Extraction	Vulkanische Extraktion	L'extraction du volcan	Extracción volcánica
+map:729	Munition Acquisition	Munitionserwerb	Acquisition de munitions	Adquisición de munición
+map:730	To the Core	Durch und durch	Au cœur du problème	Hasta el núcleo
+map:731	The Battle of Fort Trinity	Die Schlacht um das Fort der Dreifaltigkeit	La bataille de Fort Trinité	La batalla de Fuerte Trinidad
+map:732	Tower Down	Turm gefallen	La chute de la tour	Torre abajo
+map:733	Forging the Pact	Der Pakt wird geschmiedet	Réunion du Pacte	La forja del Pacto
+map:735	Willing Captives	Willige Gefangene	Captifs volontaires	Cautivos dispuestos
+map:736	Marshaling the Truth	Überbringer der Wahrheit	Faire éclater la vérité	Reuniendo la verdad
+map:737	Breaking the Bone Ship	Zerstörung des Knochenschiffs	Destruction du navire osseux	Rompiendo el barco de hueso
+map:738	Liberating Apatia	Apatias Befreiung	Libérer Apatia	Liberando a Apatia
+map:743	Fixing the Blame	Schuldzuweisung	Déjouer les accusations	Tras el culpable
+map:744	A Sad Duty	Eine traurige Pflicht	Triste devoir	Una misión triste
+map:745	Striking off the Chains	Abwerfen der Ketten	Briser les chaînes	Rompiendo las cadenas
+map:746	Delivering Justice	Überbringer der Gerechtigkeit	Appliquer la justice	Haciendo justicia
+map:747	Intercepting the Orb	Abfangen der Kugel	Intercepter l'orbe	Interceptando el orbe
+map:750	Close the Eye	Das Auge schließen	Fermer l'Œil	Cierra el ojo
+map:751	Through the Looking Glass	Durch den Spiegel	Au delà du miroir	A través del espejo
+map:758	The Cathedral of Silence	Die Kathedrale der Stille	La Cathédrale du silence	Catedral del Silencio
+map:760	Starving the Beast	Die Bestie aushungern	Affamer la bête	Matar de hambre a la bestia
+map:761	Stealing Light	Gestohlenes Licht	Vol de lumière	Robo de luz
+map:762	Hunters and Prey	Jäger und Gejagte	Chasseurs et proie	Cazadores y presa
+map:763	Romke's Final Voyage	Romkes letzte Reise	L'ultime voyage de Romke	La última travesía de Romke
+map:764	Marching Orders	Marschbefehle	Ordre de marche	Órdenes de marcha
+map:766	Air Drop	Luftlandung	Largage aérien	Suministro aéreo
+map:767	Estate of Decay	Haus der Verwesung	Le domaine de la putrescence	Estado de descomposición
+map:768	What the Eye Beholds	Im Auge des Betrachters	Ce que voit l'Œil	Lo que el ojo sí ve
+map:769	Conscript the Dead Ships	Die Kaperung der Totenschiffe	Réquisition des navires morts-vivants	Recluta los Barcos Muertos
+map:772	Ossuary of Unquiet Dead	Ossarium der unruhigen Toten	L'ossuaire du défunt tourmenté	Osario de muertos inquietos
+map:775	Temple of the Forgotten God	Der Tempel des vergessenen Gottes	Temple du Dieu oublié	El templo del dios olvidado
+map:780	Against the Corruption	Gegen die Verderbnis	Contre la corruption	Contra la corrupción
+map:781	The Source of Orr	Die Quelle von Orr	La source d'Orr	La fuente de Orr
+map:782	Armor Guard	Panzerwache	Garde de l'armurerie	Guardia de la armería
+map:783	Blast from the Past	Echo der Vergangenheit	Retour dans le passé	Relámpagos del pasado
+map:784	The Steel Tide	Die Flut aus Stahl	La vague d'acier	La marea de acero
+map:785	Further Into Orr	Vorstoß ins Herz Orrs	Au tréfonds d'Orr	Adentrándose en Orr
+map:786	Ships of the Line	Kriegsschiffe	La ligne de vaisseaux	Navíos de línea
+map:787	Source of Orr	Die Quelle von Orr	La source d'Orr	La fuente de Orr
+map:789	A Grisly Shipment	Eine schaurige Lieferung	Une sinistre cargaison	Un envío truculento
+map:797	A Traitor's Testimony	Zeugenaussage eines Verräters	Le témoignage d'un traître	Testimonio de un traidor
+map:799	Follow the Trail	Eine heiße Spur	Suivre la piste	Sigue el rastro
+map:807	Eye of the North	Auge des Nordens	Œil du Nord	Ojo del Norte
+map:827	Caer Aval	Kastell Aval	Caer Aval	Aval de Caer
+map:828	The Durmand Priory	Die Abtei Durmand	Le Prieuré de Durmand	El Priorato de Durmand
+map:830	Vigil Headquarters	Hauptquartier der Wachsamen	Quartier général des Veilleurs	Cuartel general de la Vigilia
+map:833	Ash Tribune Quarters	Aschetribun-Quartier	Quartiers du tribun de la Légion des Cendres	Alojamientos de los Tribunos de Ceniza
+map:863	Ascent to Madness	Aufstieg in den Wahnsinn	Ascension vers la folie	Ascenso a la Locura
+map:866	Mad King's Labyrinth	Labyrinth des Verrückten Königs	Labyrinthe du Roi Dément	Laberinto del Rey Loco
+map:872	Fractals of the Mists	Fraktale der Nebel	Fractales des Brumes	Fractales de la Niebla
+map:873	Southsun Cove	Südlicht-Bucht	Crique de Sud-Soleil	Cala del Sol Austral
+map:878	Tixx's Infinirarium	Tixx' Infinirarium	Infinirarium de Tixx	Infinirarium de Tixx
+map:896	North Nolan Hatchery	Nördliche Nolan-Brutstätte	Elevage du nord de Nolan	Vivero de Nolan norte
+map:897	Cragstead	Klippheim	Cragstead	Paraje de Roca
+map:899	Obsidian Sanctum	Obsidianrefugium	Sanctuaire d'obsidienne	Sagrario de Obsidiana
+map:901	Molten Furnace	Feuriger Hochofen	Fournaise de la Fusion	Fragua Fundida
+map:912	Ceremony and Acrimony—Memorials on the Pyre	Von der Feier in die Traufe – Andenken auf dem Scheiterhaufen	Cérémonie et amertume – Souvenirs sur le bûcher	Ceremonia y acrimonia: Memorias en la pira
+map:913	Hard Boiled—The Scene of the Crime	Abgebrüht – Der Ort des Verbrechens	Roman noir – Scène du crime	Duro de roer: El lugar de los hechos
+map:914	The Dead End	Die Sackgasse	Le Cul-de-sac	Callejón sin Salida
+map:915	Aetherblade Retreat	Ätherklingen-Zuflucht	Refuge étherlame	Refugio de los Filoetéreos
+map:917	No More Secrets—The Scene of the Crime	Keine Geheimnisse mehr – Der Ort des Verbrechens	Plus de secrets – Scène du crime	Se acabaron los secretos: El lugar de los hechos
+map:922	Labyrinthine Cliffs	Labyrinthklippen	Falaises labyrinthiques	Acantilados Laberínticos
+map:924	Grandmaster of Om	Großmeister von Om	Grand maître d'Om	Gran maestro de Om
+map:929	The Crown Pavilion	Der Kronpavillon	Le Pavillon de la Couronne	El Pabellón de la Corona
+map:930	Opening Ceremony	Eröffnungszeremonie	Cérémonie d'ouverture	Ceremonia inaugural
+map:931	Scarlet's Playhouse	Scarlets Spielhütte	Planque de Scarlet	Mansión de Scarlet
+map:932	Closing Ceremony	Abschlusszeremonie	Cérémonie de clôture	Ceremonia de clausura
+map:937	Scarlet's End	Scarlets Ende	La fin de Scarlet	El fin de Scarlet
+map:943	The Tower of Nightmares (Public)	Der Turm der Albträume (Öffentlich)	La tour des Cauchemars (public)	La Torre de las Pesadillas (pública)
+map:945	The Nightmare Ends	Das Ende des Albtraums	La fin du Cauchemar	El fin de la Pesadilla
+map:964	Scarlet's Secret Lair	Scarlets Geheimversteck	Repaire secret de Scarlet	Guarida Secreta de Scarlet
+map:965	The Origins of Madness: A Moment's Peace	Die Ursprünge des Wahnsinns: Ein Augenblick der Ruhe	Les origines de la folie : une accalmie	El origen de la locura: un momento de paz
+map:968	Edge of the Mists	Rand der Nebel	La lisière des Brumes	El Borde de la Niebla
+map:971	The Dead End: A Study in Scarlet	Die Sackgasse: Eine Lehrstunde über Scarlet	Le Cul-de-sac : les archives de Scarlet	Callejón sin Salida: un estudio sobre Scarlet
+map:973	The Evacuation of Lion's Arch	Die Evakuierung von Löwenstein	L'évacuation de l'Arche du Lion	La evacuación de Arco del León
+map:980	The Dead End: Celebration	Die Sackgasse: Feier	Le Cul-de-sac : Célébrations	Callejón sin Salida: celebración
+map:987	Lion's Arch: Honored Guests	Löwenstein: Ehrengäste	Arche du Lion : Invités d'honneur	Arco del León: invitados de honor
+map:988	Dry Top	Trockenkuppe	Cimesèche	Cima Seca
+map:989	Prosperity's Mystery	Das Geheimnis von Wohlstand	Mystère à Prospérité	Misterio de Prosperidad
+map:990	Cornered	Bedrängt	Acculé	Acorralado
+map:991	Disturbance in Brisban Wildlands	Störung in der Brisban-Wildnis	Perturbation dans les Terres sauvages de Brisban	Disturbio en las Selvas Brisbanas
+map:992	Fallen Hopes	Abgestürzte Hoffnung	Espoirs déchus	Desesperanza
+map:993	Scarlet's Secret Room	Scarlets Geheimraum	Pièce secrète de Scarlet	Habitación secreta de Scarlet
+map:994	The Concordia Incident	Der Concordia-Zwischenfall	L'incident de Concordia	El incidente de Concordia
+map:997	Discovering Scarlet's Breakthrough	Entdeckung von Scarlets Durchbruch	Découverte de la percée de Scarlet	Descubriendo el avance de Scarlet
+map:998	The Machine	Die Maschine	La machine	La máquina
+map:999	Trouble at Fort Salma	Aufruhr in Fort Salma	Problèmes à Fort Salma	Problemas en el Fuerte Salma
+map:1000	The Waypoint Conundrum	Das Wegmarkenrätsel	L'énigme des points de passage	El enigma de los puntos de ruta
+map:1001	Summit Invitations	Gipfeleinladungen	Invitations au sommet	Invitaciones a la cumbre
+map:1002	Mission Accomplished	Mission ausgeführt	Mission accomplie	Misión cumplida
+map:1003	Rallying Call	Ruf zu den Waffen	Le grand ralliement	El llamamiento
+map:1004	Plan of Attack	Angriffsplan	Plan d'attaque	Plan de ataque
+map:1005	Party Politics	Partypolitik	Histoire de politique	Fiesta política
+map:1006	Foefire Cleansing	Säuberung des Feindfeuers	Purifier le Fléau de feu	Purifica el Fuego Enemigo
+map:1007	Recalibrating the Waypoints	Die Wegmarken rekalibrieren	Recalibrage des points de passage	Recalibrando los puntos de ruta
+map:1008	The Ghosts of Fort Salma	Die Geister von Fort Salma	Les fantômes de Fort Salma	Los fantasmas del Fuerte Salma
+map:1009	Taimi's Device	Taimis Gerät	L'appareil de Taimi	Dispositivo de Taimi
+map:1010	The World Summit	Die Zusammenkunft	Le sommet mondial	La cumbre mundial
+map:1015	The Silverwastes	Die Silberwüste	Les Contrées sauvages d'argent	Los Páramos Argentos
+map:1016	Hidden Arcana	Versteckte Arkana	Arcane cachée	Arcanos ocultos
+map:1017	Reunion with the Pact	Zusammenschluss mit dem Pakt	Réunion avec le Pacte	Reunión con el Pacto
+map:1018	Caithe's Reconnaissance Squad	Caithes Aufklärungstrupp	Escouade de reconnaissance de Caithe	Escuadrón de reconocimiento de Caithe
+map:1019	Fort Trinity	Fort der Dreifaltigkeit	Fort Trinité	Fuerte Trinidad
+map:1021	Into the Labyrinth	Ins Labyrinth	Vers le labyrinthe	Hacia el laberinto
+map:1022	Return to Camp Resolve	Zurück ins Lager der Standhaftigkeit	Retour au Camp de la détermination	Regreso al Campamento Determinación
+map:1023	Tracking the Aspect Masters	Verfolgung der Aspektmeister	À la recherche des Maîtres des aspects	Rastreando a los maestros de los Aspectos
+map:1024	No Refuge	Keine Zuflucht	Nulle échappatoire	Sin refugio
+map:1025	The Newly Awakened	Die Neuerwachten	Les nouveaux éveillés	Los recién despertados
+map:1026	Meeting the Asura	Begegnung mit den Asura	À la rencontre des Asuras	Conoce a los asura
+map:1027	Pact Assaulted	Angriff auf den Pakt	Pacte assailli	Asalto al Pacto
+map:1028	The Mystery Cave	Die Mysteriöse Höhle	La grotte mystérieuse	La cueva misteriosa
+map:1029	Arcana Obscura	Arkana Obskura	Arcanes obscures	Arcana Obscura
+map:1032	Prized Possessions	Wertvolle Habe	Précieux effets	Valiosas pertenencias
+map:1033	Buried Insight	Begrabene Einsichten	Connaissances cachées	Conocimiento enterrado
+map:1037	The Jungle Provides	Mutter Dschungel sorgt für uns	Dans la jungle	La selva abastece
+map:1040	Hearts and Minds	Körper und Geist	Corps et âmes	Corazones y mentes
+map:1041	Dragon's Stand	Widerstand des Drachen	Repli du dragon	Defensa del Dragón
+map:1042	Verdant Brink	Grasgrüne Schwelle	Orée d'émeraude	Umbral Verdeante
+map:1043	Auric Basin	Güldener Talkessel	Bassin aurique	Valle Áurico
+map:1045	Tangled Depths	Verschlungene Tiefen	Profondeurs verdoyantes	Profundidades Enredadas
+map:1046	Roots of Terror	Wurzeln des Schreckens	Racines de la terreur	Raíces de terror
+map:1048	City of Hope	Stadt der Hoffnung	Cité de l'espoir	Ciudad de la esperanza
+map:1050	Torn from the Sky	Dem Himmel entrissen	Arrachés au ciel	Arrancados del cielo
+map:1051	Prisoners of the Dragon	Gefangene des Drachen	Prisonniers du dragon	Prisioneros del dragón
+map:1054	Bitter Harvest	Bittere Ernte	Récolte amère	Cosecha amarga
+map:1057	Strange Observations	Seltsame Entdeckungen	Curieuses observations	Observaciones extrañas
+map:1062	Spirit Vale	Geistertal	Vallée des esprits	Valle Espiritual
+map:1063	Southsun Crab Toss	Krebs-Wurfspiel in der Südlicht-Bucht	Lancer de crabe à Sud-Soleil	Lanzamiento de cangrejos del Sol Austral
+map:1064	Claiming the Lost Precipice	Beanspruchung des Verlorenen Abgrunds	Revendication du Précipice perdu	Reclamación del Precipicio Perdido
+map:1065	Angvar's Trove	Angvars Schatzkammer	Cache d'Angvar	Tesoro de Angvar
+map:1066	Claiming the Gilded Hollow	Beanspruchung der Vergoldeten Senke	Revendication de la Caverne dorée	Reclamación de la Cueva Dorada
+map:1068	Gilded Hollow	Vergoldete Senke	Caverne dorée	Cueva Dorada
+map:1069	Lost Precipice	Verlorener Abgrund	Précipice perdu	Precipicio Perdido
+map:1073	Guild Initiative Office	Dienststube der Gilden-Initiative	Bureaux de l'Initiative de la guilde	Oficina de la Iniciativa
+map:1074	Blightwater Shatterstrike	Faulwasserbecken Kristalldemolierer	Brise-attaque des eaux du Tourment	Quebranta Plagagua
+map:1075	Proxemics Lab	Proxemik-Labor	Laboratoire de proxémie	Laboratorio de Proxémica
+map:1079	Deep Trouble	Unruhige See	De gros problèmes	Con el agua hasta el cuello
+map:1080	Branded for Termination	Gebrandmarkt und gejagt	Stigmatisation et mise à mort	Marcado para eliminación
+map:1081	Langmar Estate	Langmar-Anwesen	Domaine de Langmar	Hacienda de Langmar
+map:1086	Save Our Supplies	Vorräte beschützen	Sauvetage du ravitaillement	Guarda nuestros suministros
+map:1092	Scratch Sentry Defense	Verteidigung der Skritt-Wachposten	Défendez les sentinelles de la Griffure	Defensa vigía de la fisura
+map:1095	Dragon's Stand (Heart of Thorns)	Widerstand des Drachen (Heart of Thorns)	Repli du dragon (Heart of Thorns)	Defensa del Dragón (Heart of Thorns)
+map:1099	Desert Borderlands	Wüsten-Grenzlande	- Territoires du désert	- Tierras Fronterizas desérticas
+map:1110	Scrap Rifle Field Test	Schrottgewehr-Feldversuch	Expérience sur le terrain avec fusil improvisé	Prueba de campo de rifle de chatarra
+map:1115	Haywire Punch-o-Matic Battle	Kampf als durchdrehender Haudrauf-o-Mat	Combat du Castagn-o-matic détraqué	Batalla contra el puñomático enloquecido
+map:1149	Salvation Pass	Erlösungspass	Passage de la rédemption	Paso de la Salvación
+map:1153	Tiger Den	Tigerbau	Repaire du tigre	Guarida de tigre
+map:1154	Special Forces Training Area	Übungsgelände der Spezialkräfte	Zone d'entraînement des forces spéciales	Arena de entrenamiento de las Fuerzas Especiales
+map:1155	Lion's Arch Aerodrome	Flugplatz von Löwenstein	Aérodrome de l'Arche du Lion	Aeródromo de Arco del León
+map:1156	Stronghold of the Faithful	Festung der Treuen	Forteresse des Fidèles	Fortaleza de los Fieles
+map:1158	Noble's Folly	Torheit des Edelmanns	La Folie de noble	Capricho de noble
+map:1159	Research in Rata Novus	Forschung in Rata Novus	Recherches à Rata Novus	Investigación en Rata Novus
+map:1161	Eir's Homestead	Eirs Heimstatt	Demeure d'Eir	Heredad de Eir
+map:1165	Bloodstone Fen	Blutsteinsumpf	Marais de la pierre de sang	Pantano de la Hematites
+map:1166	Confessor's Stronghold	Festung des Beichtvaters	Forteresse du confesseur	La Fortaleza del Confesor
+map:1167	A Shadow's Deeds	Die Taten eines Schattens	Actes d'une ombre	Los actos de una sombra
+map:1170	Taimi's Game	Taimis Spiel	Jeu de Taimi	El Juego de Taimi
+map:1172	Dragon Vigil	Drachenwache	Veilleur du Dragon	Vigilia de la Dragona
+map:1175	Ember Bay	Glutbucht	Baie des braises	Bahía de las Ascuas
+map:1178	Bitterfrost Frontier	Bitterfrost-Grenzland	Confins de Givramer	Frontera de Escarchamarga
+map:1180	The Bitter Cold	Bittere Kälte	Froid mordant	El frío extremo
+map:1181	Frozen Out	Kaltgestellt	Comme un froid	Rompiendo el hielo
+map:1182	Precocious Aurene	Frühreife Aurene	Aurene précoce	La precoz Aurene
+map:1185	Lake Doric	Doric-See	Lac Doric	Lago Doric
+map:1188	Bastion of the Penitent	Bastion der Bußfertigen	Bastion du pénitent	Bastión del Penitente
+map:1189	Regrouping with the Queen	Neue Befehle von der Königin	Rejoindre la reine	Reunión con la reina
+map:1190	A Meeting of Ministers	Ministerversammlung	Une rencontre ministérielle	Consejo de ministros
+map:1191	Confessor's End	Das Ende des Beichtvaters	La fin du confesseur	El fin del confesor
+map:1192	The Second Vision	Die zweite Vision	La seconde vision	La segunda visión
+map:1193	The First Vision	Die erste Vision	La première vision	La primera visión
+map:1194	The Sword Regrown	Das nachgewachsene Schwert	L'épée restaurée	La espada regenerada
+map:1195	Draconis Mons	Draconis Mons	Mont Draconis	Draconis Mons
+map:1196	Heart of the Volcano	Herz des Vulkans	Cœur du Volcan	El Corazón del Volcán
+map:1198	Taimi's Pet Project	Taimis Lieblingsprojekt	Projet de familiers de Taimi	El proyecto personal de Taimi
+map:1202	White Mantle Hideout	Versteck des Weißen Mantels	Repaire du Blanc-Manteau	Escondite del Manto Blanco
+map:1203	Siren's Landing	Zaubersängerlände	Plage des sirènes	Desembarco de la Sirena
+map:1204	Palace Temple	Tempel des Palasts	Temple du palais	Templo del palacio
+map:1206	Mistlock Sanctuary	Nebelsperren-Zuflucht	Sanctuaire de Gardebrume	Santuario del Bloqueo de la Niebla
+map:1207	The Last Chance	Letzte Chance	La dernière chance	La última oportunidad
+map:1208	Shining Blade Headquarters	Hauptquartier der Glänzenden Klinge	Quartier général de la Lame brillante	Cuartel General de la Hoja Brillante
+map:1209	The Sacrifice	Das Opfer	Le sacrifice	El Sacrificio
+map:1210	Crystal Oasis	Kristalloase	Oasis de cristal	Oasis de Cristal
+map:1211	Desert Highlands	Wüsten-Hochland	Hautes-terres du désert	Tierras Altas del Desierto
+map:1212	Office of the Chief Councilor	Schreibstube des Ratsoberhaupts	Bureau de la conseillère en chef	Oficina de la Concejala Jefa
+map:1214	Windswept Haven	Windgepeitschte Freistatt	Refuge de Chassevent	Refugio Venteado
+map:1217	Sparking the Flame	Entzünden der Flamme	Allumer la flamme	Encender la Llama
+map:1219	Enemy of My Enemy: The Beastmarshal	Feind meines Feindes: Der Fellmarschall	L'ennemi de mon ennemi : la maréchale des bêtes	Enemigo de mi Enemigo: La Mariscal de las Bestias
+map:1220	Sparking the Flame (Prologue)	Entzünden der Flamme (Prolog)	Allumer la flamme (Prologue)	Encender la Llama (Prólogo)
+map:1221	The Way Forward	Der Weg nach vorn	La marche à suivre	El Camino Hacia Adelante
+map:1222	Claiming Windswept Haven	Beanspruchung der Windgepeitschten Freistatt	Revendication du refuge de Chassevent	Reclamación del Refugio Venteado
+map:1223	Small Victory (Epilogue)	Kleiner Sieg (Epilog)	Petite victoire (Épilogue)	Pequeña victoria (Epílogo)
+map:1226	The Desolation	Das Ödland	La Désolation	La Desolación
+map:1227	Hallowed Ground: Tomb of Primeval Kings	Geheiligter Boden: Grab der Altehrwürdigen Könige	Sol consacré : Tombeau des rois primitifs	Suelo Consagrado: Tumba de Reyes Primigenios
+map:1228	Elon Riverlands	Elon-Flusslande	Rives de l'Elon	La Ribera del Elon
+map:1230	Facing the Truth: The Sanctum	Der Wahrheit stellen: Das Refugium	Affronter la vérité : le sanctuaire	Afrontando la verdad: El Sagrario
+map:1234	To Kill a God	Gottesmord	La mort d'un dieu	Para Matar a un Dios
+map:1240	Blazing a Trail	Flammender Vorreiter	Ouvrir la voie	Un Rastro en Llamas
+map:1241	Night of Fires	Nacht der Feuer	Nuit des incendies	Noche de Fuegos
+map:1242	Zalambur's Office	Zalamburs Schreibstube	Bureau de Zalambur	Oficina de Zalambur
+map:1245	The Departing	Der Abschied	En partance	La Marcha
+map:1246	Captain Kiel's Office	Kapitän Kiels Schreibstube	Bureau du capitaine Kiel	Oficina de la Capitana Kiel
+map:1247	Enemy of My Enemy	Feind meines Feindes	L'ennemi de mon ennemi	Enemigo de mi Enemigo
+map:1248	Domain of Vabbi	Domäne Vaabi	Domaine de Vabbi	Dominio de Vabbi
+map:1252	Crystalline Memories	Erinnerungen im Kristall	Souvenirs cristallins	Recuerdos Cristalinos
+map:1253	Beast of War	Bestie des Krieges	Bête de guerre	Bestia de Guerra
+map:1255	Enemy of My Enemy: The Troopmarshal	Feind meines Feindes: Der Truppmarschall	L'ennemi de mon ennemi : le maréchal des troupes	Enemigo de mi Enemigo: El Mariscal de las Tropas
+map:1256	The Dark Library	Die dunkle Bibliothek	La bibliothèque sombre	La Biblioteca Oscura
+map:1257	Spearmarshal's Lament	Speermarschalls Klage	Lamentation de la maréchale de la lance	Lamento del Mariscal Lancero
+map:1260	Eye of the Brandstorm	Auge des Brandsturms	Œil de la Stigmatempête	El Ojo de la Tormenta de la Marca
+map:1263	Domain of Istan	Domäne Istan	Domaine d'Istan	Dominio de Istan
+map:1264	Hall of Chains	Halle der Ketten	Salle des chaînes	Sala de las Cadenas
+map:1265	The Hero of Istan	Der Held von Istan	Le héros d'Istan	El Héroe de Istan
+map:1266	Cave of the Sunspear Champion	Höhle des Sonnenspeer-Champions	Grotte du champion Lancier du soleil	Cueva del Campeón de los Lanceros del Sol
+map:1268	Fahranur, the First City	Fahranur, die Erste Stadt	Fahranur, la première ville	Fahranur, la Primera Ciudad
+map:1270	Toypocalypse	Spielzeukalypse	Joueffervescence	Juguetecalipsis
+map:1271	Sandswept Isles	Sandgepeitschte Inseln	Îles de Ventesable	Islas Arenosas
+map:1274	The Charge	Der Sturmangriff	La charge	La Carga
+map:1276	The Test Subject	Das Versuchsobjekt	Le sujet d'expérience	El Sujeto de Prueba
+map:1278	???	???	???	¿?
+map:1279	ERROR: SIGNAL LOST	FEHLER: SIGNAL VERLOREN	ERREUR : PERTE DE SIGNAL	ERROR: SEÑAL PERDIDA
+map:1281	A Kindness Repaid	Vergoltene Güte	Un prêté pour un rendu	El bien con bien se paga
+map:1282	Tracking the Scientist	Dem Wissenschaftler auf der Spur	Pistage du scientifique	Tras la pista del científico
+map:1288	Domain of Kourna	Domäne Kourna	Domaine de Kourna	Dominio de Kourna
+map:1289	Seized	Festgesetzt	Saisie	Atrapados
+map:1292	Be My Guest	Hereinspaziert!	À votre guise	Estás en tu casa
+map:1294	Sun's Refuge	Sonnen-Zuflucht	Refuge du soleil	Refugio del Sol
+map:1295	Legacy	Vermächtnis	Patrimoine	Legado
+map:1296	Storm Tracking	Sturm-Ortung	Suivi de la tempête	Tras la tormenta
+map:1297	A Shattered Nation	Eine zerschmetterte Nation	Une nation brisée	Una nación asolada
+map:1300	From the Ashes—The Deadeye	Aus der Asche: Scharfschütze	Renaissance - Le Sniper	Desde las cenizas: La certera
+map:1301	Jahai Bluffs	Jahai-Klippen	Promontoire de Jahai	Acantilados de Jahai
+map:1303	Mythwright Gambit	Mythenschreiber-Wagnis	Gambit de forgeconte	Táctica del Forjador de Mitos
+map:1304	Mad King's Raceway	Rennbahn des Verrückten Königs	Circuit du Roi Dément	Circuito del Rey Loco
+map:1306	Secret Lair of the Snowmen (Squad)	Geheimer Unterschlupf der Schneemänner (Einsatztrupp)	Repaire secret des Bonshommes de neige (escouade)	Guarida Secreta de los Muñecos de Nieve (escuadrón)
+map:1308	Scion & Champion	Nachkommin & Champion	Descendante et champion	Vástago y Campeón
+map:1310	Thunderhead Peaks	Donnerkopf-Gipfel	Pics de Chef-Tonnerre	Picos del Trueno
+map:1313	The Crystal Dragon	Kristalldrache	Le Dragon de cristal	El Dragón de Cristal
+map:1314	The Crystal Blooms	Kristallblüte	Les Fleurs de cristal	Las Floraciones de Cristal
+map:1316	Mists Rift	Nebel-Riss	Brèches des Brumes	Fisura de la Niebla
+map:1317	Dragonfall	Drachensturz	Chute draconique	Dragoncaído
+map:1319	Descent	Abstieg	Descente	Descenso
+map:1320	The End	Das Ende	La fin	Fin
+map:1321	Dragonflight	Drachenflug	Vol du dragon	Vuelo Dracónico
+map:1322	Epilogue	Epilog	Épilogue	Epílogo
+map:1323	The Key of Ahdashim	Schlüssel von Ahdashim	La clé d'Ahdashim	La Llave de Ahdashim
+map:1326	Dragon Arena (Public)	Drachenarena (öffentlich)	Arène du Dragon (public)	Arena del Dragón (pública)
+map:1327	Dragon Arena (Private)	Drachenarena (privat)	Arène du Dragon (privé)	Arena del Dragón (privada)
+map:1329	Coming Home	Heimkehr	Retour au bercail	Regreso a Casa
+map:1330	Grothmar Valley	Grothmar-Tal	Vallée de Grothmar	Valle de Grothmar
+map:1331	Shiverpeaks Pass (Public)	Zittergipfel-Pass (öffentlich)	Col des Cimefroides (public)	Paso de las Picosescalofriantes (público)
+map:1332	Shiverpeaks Pass	Zittergipfel-Pass	Col des Cimefroides	Paso de las Picosescalofriantes
+map:1334	Deeper and Deeper	Tiefer und tiefer	Toujours plus loin	Cada vez más adentro
+map:1336	A Race to Arms	Rüstungswettlauf	Course à l'armement	Carrera armamentística
+map:1339	Boneskinner	Knochenhäuter	Désosseur	Pelahuesos
+map:1340	Voice of the Fallen and Claw of the Fallen (Public)	Stimme der Gefallenen und Klaue der Gefallenen (öffentlich)	Voix et Griffe des déchus (public)	Voz de los Caídos y Garra de los Caídos (público)
+map:1341	Fraenir of Jormag	Fraenir Jormags	Fraenir de Jormag	Fraenir de Jormag
+map:1342	The Invitation	Einladung	L'invitation	La Invitación
+map:1343	Bjora Marches	Bjora-Sümpfe	Frontière de Bjora	Marca de Bjora
+map:1344	Fraenir of Jormag (Public)	Fraenir Jormags (öffentlich)	Fraenir de Jormag (public)	Fraenir de Jormag (público)
+map:1345	What's Left Behind	Was übrig bleibt	Ce qui reste	Lo que queda atrás
+map:1346	Voice of the Fallen and Claw of the Fallen	Stimme der Gefallenen und Klaue der Gefallenen	Voix et Griffe des déchus	Voz de los Caídos y Garra de los Caídos
+map:1349	Silence	Stille	Silence	Silencio
+map:1351	Boneskinner (Public)	Knochenhäuter (öffentlich)	Désosseur (public)	Pelahuesos (público)
+map:1352	Secret Lair of the Snowmen (Public)	Geheimer Unterschlupf der Schneemänner (öffentlich)	Repaire secret des Bonshommes de neige (public)	Guarida Secreta de los Muñecos de Nieve (pública)
+map:1353	Celestial Challenge	Himmlische Herausforderung	Défi céleste	Desafío celestial
+map:1355	Voice in the Deep	Stimme in der Tiefe	Voix des profondeurs	La voz de las profundidades
+map:1356	Chasing Ghosts	Geister-Jagd	Chasse aux fantômes	Persiguiendo fantasmas
+map:1357	Whisper of Jormag (Public)	Geflüster des Jormag (öffentlich)	Murmure de Jormag (public)	Susurro de Jormag (público)
+map:1359	Whisper of Jormag	Geflüster des Jormag	Murmure de Jormag	Susurro de Jormag
+map:1361	The Nightmare Incarnate	Die Inkarnation des Albtraums	Le Cauchemar incarné	La encarnación de la Pesadilla
+map:1362	Forging Steel (Public)	Stahlschmiede (öffentlich)	Forge de l'acier (publique)	Forja de Acero (pública)
+map:1363	New Friends, New Enemies—North Nolan Hatchery	Neue Freunde, neue Feinde – Nördliche Nolan-Brutstätte	Nouveaux amis, nouveaux ennemis – Élevage du nord de Nolan	Nuevos amigos, nuevos enemigos: Vivero de Nolan Norte
+map:1364	The Battle for Cragstead	Die Schlacht um Klippheim	La Bataille de Cragstead	La batalla de Paraje de Roca
+map:1366	Darkrime Delves	Düsterfels-Höhlen	Galeries de Sombregivre	Cuevas de Escarchaoscura
+map:1368	Forging Steel (Squad)	Stahlschmiede (Einsatztrupp)	Forge de l'acier (escouade)	Forja de Acero (escuadrón)
+map:1369	Canach's Lair	Canachs Unterschlupf	Repaire de Canach	La guarida de Canach
+map:1371	Drizzlewood Coast	Nieselwald-Küste	Côte de Bruinebois	Costa de Bosquellovizna
+map:1372	Turnabout	Umschwung	Volte-face	Giro radical
+map:1373	Pointed Parley	Gezielte Verhandlung	Pourparlers difficiles	Negociación peliaguda
+map:1374	Cold War	Kalter Krieg	Guerre froide	Guerra fría
+map:1375	Snapping Steel	Brechender Stahl	Acier fragile	Acero quebrado
+map:1376	Cold War (Public)	Kalter Krieg (öffentlich)	Guerre froide (public)	Guerra fría (público)
+map:1378	Behind Enemy Lines	Hinter feindlichen Linien	Derrière les lignes ennemies	Tras las líneas enemigas
+map:1379	One Charr, One Dragon, One Champion	Ein Volk der Charr, ein Drache, ein Champion	Un Charr, un dragon, un champion	Un charr, un dragón, un campeón
+map:1382	Arena of the Wolverine	Arena des Vielfraßes	Arène du Carcajou	La arena del Glotón
+map:1383	A Simple Negotiation	Eine simple Verhandlung	Une négociation simple	Una negociación sencilla
+map:1385	Caledon Forest (Private)	Caledon-Wald (privat)	Forêt de Caledon (privé)	Bosque de Caledon (privada)
+map:1386	Thunderhead Peaks (Private)	Donnerkopf-Gipfel (privat)	Pics de Chef-Tonnerre (privé)	Picos del Trueno (privada)
+map:1387	Bloodtide Coast (Public)	Blutstrom-Küste (öffentlich)	Côte de la marée sanglante (public)	Costa Mareasangrienta (pública)
+map:1388	Snowden Drifts (Private)	Schneekuhlenhöhen (privat)	Congères d'Antreneige (privé)	Cúmulos de Guaridanieve (privada)
+map:1389	Snowden Drifts (Public)	Schneekuhlenhöhen (öffentlich)	Congères d'Antreneige (public)	Cúmulos de Guaridanieve (pública)
+map:1390	Fireheart Rise (Public)	Feuerherzhügel (öffentlich)	Montée de Flambecœur (public)	Colina del Corazón de Fuego (pública)
+map:1391	Brisban Wildlands (Private)	Brisban-Wildnis (privat)	Terres sauvages de Brisban (privé)	Selvas Brisbanas (privada)
+map:1392	Primordus Rising	Primordus erhebt sich	Éveil de Primordius	Primordus desatado
+map:1393	Lake Doric (Public)	Doric-See (öffentlich)	Lac Doric (public)	Lago Doric (pública)
+map:1394	Bloodtide Coast (Private)	Blutstrom-Küste (privat)	Côte de la marée sanglante (privé)	Costa Mareasangrienta (privada)
+map:1395	Thunderhead Peaks (Public)	Donnerkopf-Gipfel (öffentlich)	Pics de Chef-Tonnerre (public)	Picos del Trueno (pública)
+map:1396	Gendarran Fields (Public)	Gendarran-Felder (öffentlich)	Champs de Gendarran (public)	Campos de Gendarran (pública)
+map:1397	Metrica Province (Public)	Provinz Metrica (öffentlich)	Province de Metrica (public)	Provincia de Métrica (pública)
+map:1398	Fields of Ruin (Public)	Felder der Verwüstung (öffentlich)	Champs de ruine (public)	Campos de la Ruina (pública)
+map:1399	Brisban Wildlands (Public)	Brisban-Wildnis (öffentlich)	Terres sauvages de Brisban (public)	Selvas Brisbanas (pública)
+map:1400	Fields of Ruin (Private)	Felder der Verwüstung (privat)	Champs de ruine (privé)	Campos de la Ruina (privada)
+map:1401	Metrica Province (Private)	Provinz Metrica (privat)	Province de Metrica (privé)	Provincia de Métrica (privada)
+map:1402	Lake Doric (Private)	Doric-See (privat)	Lac Doric (privé)	Lago Doric (privada)
+map:1403	Caledon Forest (Public)	Caledon-Wald (öffentlich)	Forêt de Caledon (public)	Bosque de Caledon (pública)
+map:1404	Fireheart Rise (Private)	Feuerherzhügel (privat)	Montée de Flambecœur (privé)	Colina del Corazón de Fuego (privada)
+map:1405	Gendarran Fields (Private)	Gendarran-Felder (privat)	Champs de Gendarran (privé)	Campos de Gendarran (privada)
+map:1408	Wildfire	Lauffeuer	Feu de forêt	Incendio incontrolado
+map:1409	Dragonstorm (Private Squad)	Drachensturm (Privater Einsatztrupp)	Tempête de dragons (escouade privée)	Tormenta Dracónica (Escuadrón privado)
+map:1410	Champion's End	Ende des Champions	Fin du champion	El Fin del Campeón
+map:1411	Dragonstorm (Public)	Drachensturm (Öffentlich)	Tempête de dragons (public)	Tormenta Dracónica (pública)
+map:1412	Dragonstorm	Drachensturm	Tempête de dragons	Tormenta Dracónica
+map:1413	The Twisted Marionette (Public)	Die Verdrehte Marionette (öffentlich)	La marionnette détraquée (public)	La marioneta retorcida (pública)
+map:1414	The Twisted Marionette (Private Squad)	Die Verdrehte Marionette (privater Einsatztrupp)	La marionnette détraquée (escouade privée)	La marioneta retorcida (escuadrón privado)
+map:1415	The Future in Jade: Power Plant	Die Zukunft in Jade: Kraftwerk	L'avenir dans le jade : la centrale	Un futuro de jade: Planta de Energía
+map:1416	Deepest Secrets: Yong Reactor	Tiefste Geheimnisse: Yong-Reaktor	Les plus grands secrets : le réacteur Yong	Los secretos mejor guardados: Reactor de Yong
+map:1419	Isle of Reflection	Insel der Reflexion	Île du Reflet	Isla del Reflejo
+map:1420	Fallout: Nika's Blade	Auswirkungen: Nikas Klinge	Retombées : la Lame de Nika	Contratiempo: La Hoja de Nika
+map:1422	Dragon's End	Drachen-Ende	Trépas du dragon	Muerte del Dragón
+map:1427	Weight of the World: Lady Joon's Estate	Alle Last der Welt: Madame Joons Anwesen	Le poids du monde : Résidence de Dame Joon	El peso del mundo: Mansión de Joon
+map:1428	Arborstone	Arborstein	Pierre Arborea	Piedra Arbórea
+map:1429	The Cycle, Reborn: Arborstone	Der wiedergeborene Zyklus: Arborstein	Le cycle recommence : Pierre Arborea	El ciclo, renacido: Piedra Arbórea
+map:1430	Claiming the Isle of Reflection	Beanspruchung der Insel der Reflexion	Revendication de l'Île du Reflet	Reclamación de la Isla del Reflejo
+map:1432	Aetherblade Hideout	Ätherklingen-Unterschlupf	Cachette des Étherlames	Escondite Filoetéreo
+map:1433	Old Friends	Alte Freunde	De vieux amis	Viejos amigos
+map:1434	Empty	Leer	L'appel du vide	Vacío
+map:1436	Extraction Point: Command Quarters	Extraktionspunkt: Kommandoquartier	Point d'extraction : quartiers de commandement	Punto de extracción: Sala de Mando
+map:1437	Harvest Temple	Erntetempel	Temple des moissons	Templo de la Cosecha
+map:1438	New Kaineng City	Stadt Neu-Kaineng	Néo-Kaineng	Ciudad de Nueva Kaineng
+map:1439	The Only One	Einzig und allein	L'unique	La única
+map:1440	Laying to Rest	Zur Ruhe gebettet	Mise en terre	Descanso eterno
+map:1442	Seitung Province	Provinz Seitung	Province de Seitung	Provincia de Seitung
+map:1445	The Future in Jade: Nahpui Lab	Die Zukunft in Jade: Nahpui-Labor	L'avenir dans le jade : le laboratoire de Nahpu	Un futuro de jade: Laboratorio de Nahpui
+map:1446	Aetherblade Armada	Ätherklingen-Armada	L'armada étherlame	Armada filoetérea
+map:1448	The Cycle, Reborn: The Dead End Bar	Der wiedergeborene Zyklus: Die Sackgassen-Bar	Le cycle recommence : bar "Le Cul-de-sac"	El ciclo, renacido: La taberna Callejón sin Salida
+map:1449	Aurene's Sanctuary	Aurenes Zuflucht	Sanctuaire d'Aurene	Santuario de Aurene
+map:1450	Xunlai Jade Junkyard	Xunlai-Jade-Schrottplatz	Décharge de Xunlai Jade	Chatarrería de Xunlai Jade
+map:1451	Kaineng Overlook	Kaineng-Aussichtspunkt	Belvédère de Kaineng	Mirador de Kaineng
+map:1452	The Echovald Wilds	Die Echowald-Wildnis	Terres sauvages d'Echovald	Las Selvas de Echovald
+map:1453	Ministry of Security: Main Office	Ministerium der Sicherheit: Hauptbüro	Ministère de la Sécurité : bureau principal	Ministerio de Seguridad: Sede Principal
+map:1454	The Scenic Route: Kaineng Docks	Kleine Umwege: Docks von Kaineng	La route panoramique : l'embarcadère de Kaineng	La ruta panorámica: Puerto de Kaineng
+map:1457	Detention Facility	Haftanstalt	Complexe de détention	Instalación de detención
+map:1460	Empress Ihn's Court	Kaiserin Ihns Hof	Cour de l'Impératrice Ihn	Corte de la emperatriz Ihn
+map:1461	Zen Daijun Hideaway	Versteck von Zen Daijun	Antre de Zen Daijun	Escondrijo de Zen Daijun
+map:1464	Fallout: Arborstone	Auswirkungen: Arborstein	Retombées : Pierre Arborea	Contratiempo: Piedra Arbórea
+map:1465	Thousand Seas Pavilion	Pavillon der Tausend Meere	Pavillon des mille mers	Pabellón de los Mil Mares
+map:1466	A Quiet Celebration—Knut Whitebear's Loft	Eine ruhige Feier – Knut Weißbärs Speicher	Fête paisible – Planque de Knut Ours Blanc	Una celebración tranquila: Desván de Knut Osoblanco
+map:1467	New Friends, New Enemies—The Command Core	Neue Freunde, neue Feinde – Der Kommandokern	Nouveaux amis, nouveaux ennemis – Centre de commandement	Nuevos amigos, nuevos enemigos: El núcleo de mando
+map:1468	The Battle for Cragstead—Knut Whitebear's Loft	Die Schlacht um Klippheim – Knut Weißbärs Speicher	La Bataille de Cragstead – Planque de Knut Ours Blanc	La batalla de Paraje de Roca: Desván de Knut Osoblanco
+map:1469	New Friends, New Enemies—Blood Tribune Quarters	Neue Freunde, neue Feinde – Bluttribun-Quartier	Nouveaux amis, nouveaux ennemis – Quartiers du Tribun de la Légion Sanglante	Nuevos amigos, nuevos enemigos: Alojamientos de los Tribunos de Sangre
+map:1470	A Quiet Celebration—Citadel Stockade	Eine ruhige Feier – Militärgefängnis der Zitadelle	Fête paisible – Prison de la Citadelle	Una celebración tranquila: Calabozo de la Ciudadela
+map:1471	Case Closed—The Dead End	Fall abgeschlossen – Die Sackgasse	Affaire classée – Le Cul-de-sac	Caso cerrado: Callejón sin Salida
+map:1472	Hard Boiled—The Dead End	Abgebrüht – Die Sackgasse	Roman noir – Le Cul-de-sac	Duro de roer: Callejón sin Salida
+map:1474	Picking Up the Pieces	Die Scherben aufsammeln	Rassembler les morceaux	Recogiendo los pedazos
+map:1477	The Tower of Nightmares (Private Squad)	Der Turm der Albträume (Privater Einsatztrupp)	La tour des Cauchemars (escouade privée)	La Torre de las Pesadillas (escuadrón privado)
+map:1478	The Battle for Lion's Arch (Private Squad)	Die Schlacht um Löwenstein (privater Einsatztrupp)	La bataille pour l'Arche du Lion (Escouade privée)	La batalla de Arco del León (escuadrón privado)
+map:1480	The Twisted Marionette	Die Verdrehte Marionette	La marionnette détraquée	La marioneta retorcida
+map:1481	Battle on the Breachmaker	Kampf auf der Bruchbringer	Affrontement sur le Percegarde	Batalla en el Agrietador
+map:1482	The Battle For Lion's Arch (Public)	Die Schlacht um Löwenstein (öffentlich)	La bataille pour l'Arche du Lion (public)	La batalla de Arco del León (pública)
+map:1483	Memory of Old Lion's Arch	Erinnerungen an das alte Löwenstein	Souvenir de l'ancienne Arche du Lion	Recuerdo de la antigua Arco del León
+map:1484	North Evacuation Camp	Nördliches Evakuierungslager	Camp d'évacuation nord	Campo de evacuación del norte
+map:1485	Old Lion's Court	Alter Löwenhof	Cour du vieux Lion	Vieja Corte del León
+map:1487	The Aether Escape	Die Äther-Flucht	L'Échappatoire éthérée	Escape etéreo
+map:1488	On the Case: Excavation Yard	Dicht an der Sache dran: Ausgrabungshof	Sur le coup : chantier de fouilles	En ello: Zona de excavación
+map:1489	A Raw Deal: Red Duck Teahouse	Das kürzere Ende gezogen: Teehaus "Rote Ente"	Une mauvaise affaire : salon de thé du Canard rouge	Injusticia: Casa de Té del Pato Rojo
+map:1490	Gyala Delve	Gyala-Senke	Fosse de Gyala	Hondonada de Gyala
+map:1491	Deep Trouble: Excavation Yard	Unruhige See: Ausgrabungshof	De gros problèmes : chantier de fouilles	Con el agua hasta el cuello: Zona de excavación
+map:1492	Deep Trouble: The Deep	Unruhige See: Die Tiefe	De gros problèmes : L'abîme	Con el agua hasta el cuello: La Profundidad
+map:1494	Entrapment: The Deep	In der Falle: Die Tiefe	Pris au piège : L'abîme	Trampa: la profundidad
+map:1495	A Plan Emerges: Power Plant	Ein Plan nimmt Gestalt an: Kraftwerk	Un plan émerge : Centrale	Emerge un plan: la planta de energía
+map:1496	Emotional Release: Jade Pools	Freigesetzte Emotionen: Jadebecken	Libération émotionnelle : Bassins de jade	Liberación emocional: depósitos de jade
+map:1497	Emotional Release: Command Quarters	Freigesetzte Emotionen: Kommandoquartier	Libération émotionnelle : Quartiers de commandement	Liberación emocional: Sala de Mando
+map:1498	Full Circle: Red Duck Teahouse	Der Kreis schließt sich: Teehaus "Rote Ente"	La boucle est bouclée : salon de thé du Canard rouge	Círculo completo: Casa de Té del Pato Rojo
+map:1499	Forward	Vorwärts	En avant	Adelante
+map:1501	Hell Breaks Loose: ???	Die Hölle bricht los: ???	L'enfer déchaîné : ???	El infierno desatado: ???
+map:1502	The Missing Facet: Southern Wizard's Tower	Der fehlende Aspekt: Südlicher Turm des Zauberers	La facette manquante : Tour du sorcier sud	La faceta extraviada: torre del brujo sur
+map:1503	Mother of Stars: Stargaze Ridge	Mutter der Sterne: Sternguckergrat	Mère des étoiles : Crête des étoiles	Madre de las estrellas: Cresta de Mirada Estelar
+map:1504	Into the Obscure: Bastion of the Obscure	Hinein ins Obskure: Bastion des Obskuren	Dans l'Obscur : Bastion de l'Obscur	En las entrañas de lo oscuro: Bastión de lo Oscuro
+map:1506	Tower of Secrets: Southern Wizard's Tower	Turm der Geheimnisse: Südlicher Turm des Zauberers	Tour des secrets : Tour du sorcier sud	Torre de los secretos: torre del brujo sur
+map:1507	Mabon's Fate: Bastion of Strength	Mabons Schicksal: Bastion der Stärke	Le sort de Mabon : Bastion de la Force	Destino de Mabon: Bastión de la Fuerza
+map:1508	Astral Ward Infirmary	Astralwachen-Krankenstation	Infirmerie de la Garde astrale	Enfermería del Resguardo Astral
+map:1509	The Wizard's Tower	Der Turm des Zauberers	La Tour du sorcier	La torre del brujo
+map:1510	Skywatch Archipelago	Himmelswacht-Archipel	Archipel de l'observatoire céleste	Archipiélago Vistacielo
+map:1511	Commander without a Cause: Gendarran Fields	Kommandeur ohne Agenda: Gendarran-Felder	Commandant sans cause : Champs de Gendarran	Comandante sin causa: Campos de Gendarran
+map:1512	The World Spire: Bastion of the Celestial	Der Weltenturm: Bastion des Himmlischen	L'Aiguillon du monde : Bastion de l'Avatar céleste	La aguja del mundo: Bastión de lo Celestial
+map:1513	Mother of Stars: Cosmic Observatory	Mutter der Sterne: Kosmisches Observatorium	Mère des étoiles : Observatoire cosmique	Madre de las estrellas: Observatorio Cósmico
+map:1514	Epilogue: The Wizard's Tower	Epilog: Der Turm des Zauberers	Épilogue : La Tour du sorcier	Epílogo: torre del brujo
+map:1515	Cosmic Observatory	Kosmisches Observatorium	Observatoire cosmique	Observatorio Cósmico
+map:1516	Into the Obscure: The Wizard's Tower	Hinein ins Obskure: Der Turm des Zauberers	Dans l'Obscur : Tour du sorcier	En las entrañas de lo oscuro: La torre del brujo
+map:1518	Treachery: Nayos	Verrat: Nayos	Trahison : Nayos	Traición: Nayos
+map:1520	Temple of Febe	Tempel von Febe	Temple de Febe	Templo de Febe
+map:1521	The Missing Facet: Droknar's Light	Der fehlende Aspekt: Droknars Licht	La facette manquante : Lumière de Droknar	La faceta extraviada: Luz de Droknar
+map:1522	Stopped Clock Tower	Angehaltener Uhrturm	Clocher arrêté	Torre del reloj parado
+map:1523	Convergence: Outer Nayos (Public)	Konvergenz: Äußeres Nayos (öffentlich)	Convergence : Nayos extérieur (public)	Convergencia: Zona exterior de Nayos (pública)
+map:1524	Duress: Heitor's Territory	Zwangsweise: Heitors Territorium	Contrainte : territoire de Heitor	Coacción: Territorio de Heitor
+map:1525	Heitor's Gate: Heitor's Territory	Heitors Tor: Heitors Territorium	Porte de Heitor : territoire de Heitor	Puerta de Heitor: Territorio de Heitor
+map:1526	Inner Nayos	Inneres Nayos	Nayos intérieur	Zona interior de Nayos
+map:1527	Convergence: Outer Nayos (Private Squad)	Konvergenz: Äußeres Nayos (privater Einsatztrupp)	Convergence : Nayos extérieur (escouade privée)	Convergencia: Zona exterior de Nayos (escuadrón privado)
+map:1528	The Survivors: Heitor's Gate	Die Überlebenden: Heitors Tor	Les survivants : porte de Heitor	Los supervivientes: Puerta de Heitor
+map:1529	The Survivors: Astral Ward Camp	Die Überlebenden: Astralwachen-Lager	Les survivants : camp de la Garde astrale	Los supervivientes: Campamento del Resguardo Astral
+map:1530	Duress: The Wizard's Tower	Zwangsweise: Der Turm des Zauberers	Contrainte : la Tour du sorcier	Coacción: La torre del brujo
+map:1531	Duress: Nayos	Zwangsweise: Nayos	Contrainte : Nayos	Coacción: Nayos
+map:1532	Forced Hand: Nyedra	Zugzwang: Nyedra	Main forcée : Nyedra	Mano forzada: Nyedra
+map:1533	Eventide's March: Coliseum of the Midnight King	Abendrotmarsch: Kolosseum des Mitternachtskönigs	Défilé du déclin : Colisée du Roi de minuit	Marcha de Marearrasa: Coliseo del Rey de Medianoche
+map:1534	The War Council: Astral Ward Camp	Der Kriegsrat: Astralwachen-Lager	Le Conseil de guerre : Camp de la Garde astrale	El Consejo de Guerra: campamento del Resguardo Astral
+map:1535	Eventide's March: Nyedra Surrounds	Abendrotmarsch: Umgebung von Nyedra	Défilé du déclin : Environs de Nyedra	Marcha de Marearrasa: inmediaciones de Nyedra
+map:1536	Desperate Measures: Forward Bivouac	Notmaßnahmen: Vorstoß-Biwak	Mesures désespérées : Bivouac avancé	Medidas desesperadas: vivac avanzado
+map:1537	Sovereign of Nayos: The Wizard's Tower	Herrschaft über Nayos: Der Turm des Zauberers	Souveraine de Nayos : la Tour du sorcier	Soberana de Nayos: torre del brujo
+map:1539	The Eleventh Hour: Citadel of Zakiros	Die Stunde der Wahrheit: Zitadelle von Zakiros	À la dernière minute : citadelle de Zakiros	Última hora: Ciudadela de Zakiros
+map:1541	Twice Stricken: Landfall	Zweimal kalt erwischt: Landung	Par deux fois frappé : Rivage continental	Azote doble: Caída
+map:1542	Finding Balance: Hearth's Glow	Gleichgewicht herstellen: Herdglut	En quête d'équilibre : Lueur de l'âtre	Buscando el equilibrio: Resplandor del Fuego
+map:1543	Titan Research	Titanenforschung	Recherche sur les Titans	Investigación de titanes
+map:1544	Twice Stricken: Hearth's Glow	Zweimal kalt erwischt: Herdglut	Par deux fois frappé : Lueur de l'âtre	Azote doble: Resplandor del Fuego
+map:1545	Finding Balance: Sanguine Crater	Gleichgewicht herstellen: Blutroter Krater	En quête d'équilibre : Cratère sanguin	Buscando el equilibrio: Cráter Sanguino
+map:1546	Home Sweet Home: Hearth's Glow	Trautes Heim: Herdglut	Un foyer accueillant : Lueur de l'âtre	Hogar, dulce hogar: Resplandor del Fuego
+map:1547	Sorrow in These Halls: Harvest Den	Kummer in diesen Hallen: Erntehöhle	Couloirs embrumés : Repaire des moissons	Tristeza entre estas paredes: Guarida de la Cosecha
+map:1549	Missing in Action: Haar Mire	Im Einsatz verschollen: Ha'ar-Sumpf	Porté disparu : Bourbier embrumé	Desaparición en plena acción: Lodazal de la Bruma
+map:1550	Lowland Shore	Tiefland-Küste	Côte des basses terres	Costas Bajas
+map:1551	The Tyrian Alliance: Guild Initiative Headquarters	Die Tyrianische Allianz: Hauptquartier der Gilden-Initiative	L'alliance tyrienne : Quartier général de l'Initiative de la guilde	La Alianza Tyriana: Cuartel general de la Iniciativa
+map:1552	Against the Wall: Sulfurous Springs	Gegen die Wand: Schwefelquellen	Dos au mur : Sources sulfureuses	Contra el muro: Manantiales Sulfurosos
+map:1553	Sorrow in These Halls: The Wizard's Tower	Kummer in diesen Hallen: Der Turm des Zauberers	Couloirs embrumés : La Tour du sorcier	Tristeza entre estas paredes: torre del brujo
+map:1554	Janthir Syntri	Janthir Syntri	Syntri de Janthir	Janthir Syntri
+map:1555	Strangers among Lands: Festering Basin	Fremde in allen Landen: Schwärendes Becken	Des étrangers dans ces terres : Bassin putride	Forasteros entre tierras: Cuenca Infecta
+map:1556	Unknown Territory: Moon Camp	Unbekanntes Territorium: Mondlager	Territoire inconnu : Camp de la lune	Territorio desconocido: Campamento Luna
+map:1557	Home Sweet Home: Abandoned Homestead	Trautes Heim: Verlassene Heimstatt	Un foyer accueillant : Pavillon abandonné	Hogar, dulce hogar: Heredad abandonada
+map:1558	Hearth's Glow	Herdglut	Lueur de l'âtre	Resplandor del Fuego
+map:1559	Against the Wall: Hearth's Glow	Gegen die Wand: Herdglut	Dos au mur : Lueur de l'âtre	Contra el muro: Resplandor del Fuego
+map:1560	Strangers among Lands: Guild Initiative Headquarters	Fremde in allen Landen: Hauptquartier der Gilden-Initiative	Des étrangers dans ces terres : Quartier général de l'Initiative de la guilde	Forasteros entre tierras: Cuartel general de la Iniciativa
+map:1562	Convergence: Mount Balrior (Private Squad)	Konvergenz: Berg Balrior (privater Einsatztrupp)	Convergence : mont Balrior (escouade privée)	Convergencia: Monte Balrior (escuadrón privado)
+map:1563	Trial and Error: The Wizard's Tower	Versuch und Irrtum: Der Turm des Zauberers	Tâtonnements : Tour du sorcier	Prueba y error: La torre del brujo
+map:1564	Mount Balrior	Berg Balrior	Mont Balrior	Monte Balrior
+map:1565	Battle's Eve: Harvest Den	Vorabend der Schlacht: Erntehöhle	La veille de la bataille : Repaire des moissons	La víspera del combate: Guarida de la Cosecha
+map:1567	Balrior Peak: Harvest Den	Gipfel des Balrior: Erntehöhle	Pic du Balrior : Repaire des moissons	La cima del Balrior: Guarida de la Cosecha
+map:1568	Trial and Error: Janthir Syntri	Versuch und Irrtum: Janthir Syntri	Tâtonnements : Syntri de Janthir	Prueba y error: Janthir Syntri
+map:1569	Trial and Error: Durmand Priory	Versuch und Irrtum: Abtei Durmand	Tâtonnements : Prieuré de Durmand	Prueba y error: Priorato de Durmand
+map:1570	Mists Vault	Nebelgewölbe	Caveau des Brumes	Cámara de la Niebla
+map:1571	Convergence: Mount Balrior (Public)	Konvergenz: Berg Balrior (Öffentlich)	Convergence : mont Balrior (public)	Convergencia: Monte Balrior (pública)
+map:1572	Balrior Peak: Mount Balrior	Gipfel des Balrior: Berg Balrior	Pic du Balrior : mont Balrior	La cima del Balrior: Monte Balrior
+map:1573	Mabon's Grief: Bava Nisos Outskirts	Mabon Trauer: Außenbezirke von Bava Nisos	La douleur de Mabon : périphérie de Bava Nisos	La tristeza de Mabon: afueras de Bava Nisos
+map:1575	Mistburned Barrens	Nebelbrand-Ödland	Landes de Feu-de-Brume	Yermos de Pavesas de Niebla
+map:1577	A Legacy Damned: The Golden Lake	Ein verfluchtes Vermächtnis: Der Goldene See	Un héritage maudit : le Lac doré	Un legado maldito: Lago Dorado
+map:1578	A Legacy Damned: Alliance Staging Ground	Ein verfluchtes Vermächtnis: Sammelpunkt der Allianz	Un héritage maudit : base opérationnelle de l'alliance	Un legado maldito: zona de preparación de la Alianza
+map:1579	Into the Valley of Shadow: Valley of Agony	Ins Tal der Schatten: Tal der Qual	Dans la vallée des ombres : vallée de l'agonie	Hacia el corazón del Valle de las Sombras: Valle de la Agonía
+map:1580	Into the Valley of Shadow: Alliance Staging Ground	Ins Tal der Schatten: Sammelpunkt der Allianz	Dans la vallée des ombres : base opérationnelle de l'alliance	Hacia el corazón del Valle de las Sombras: zona de preparación de la Alianza
+map:1582	A Titanic Undertaking: Saevus's Heart	Ein titanisches Unterfangen: Saevus' Herz	Une entreprise titanesque : au cœur de Saevus	Una tarea titánica: corazón de Saevus
+map:1583	Salvation's Cost: Foundry of Failed Creations	Preis der Erlösung: Gießerei der gescheiterten Schöpfungen	Prix de la rédemption : Fonderie des Échecs de la Création	El precio de la salvación: Fundición de las Creaciones Fallidas
+map:1585	Salvation's Cost: Saevus's Heart	Preis der Erlösung: Saevus' Herz	Prix de la rédemption : au cœur de Saevus	El precio de la salvación: corazón de Saevus
+map:1586	Forced Entry: Bava Nisos Outskirts	Gewaltsames Eindringen: Außenbezirke von Bava Nisos	Entrée en force : périphérie de Bava Nisos	Entrada forzada: afueras de Bava Nisos
+map:1587	Forced Entry: Bava Nisos	Gewaltsames Eindringen: Bava Nisos	Entrée en force : Bava Nisos	Entrada forzada: Bava Nisos
+map:1588	Salvation's Cost: Guild Initiative Headquarters	Preis der Erlösung: Hauptquartier der Gilden-Initiative	Prix de la rédemption : quartier général de l'Initiative de la guilde	El precio de la salvación: Cuartel General de la Iniciativa
+map:1589	A Titanic Undertaking: Bava Nisos	Ein titanisches Unterfangen: Bava Nisos	Une entreprise titanesque : Bava Nisos	Una tarea titánica: Bava Nisos
+map:1590	Fractal Incursion Conference	Fraktalüberfall-Konferenz	Conférence sur l'invasion des fractales	Conferencia de incursión a fractales
+map:1591	Beneath the Canopy: Foothold Bivouac	Unter dem Blätterdach: Stützpunkt-Biwak	Sous la canopée : Bivouac de base	Bajo el arbolado: vivac de apoyo
+map:1592	Path of Divinity: Soaring Sands	Pfad der Göttlichkeit: Höhensand	La voie de la divinité : Sables planants	Senda de la divinidad: Arenas Aéreas
+map:1593	Starlit Weald	Sternenlicht-Gehölz	Bois étoilé	Bosquezuelo Estelar
+map:1594	Path of Divinity: Cloister of Stars	Pfad der Göttlichkeit: Kloster der Sterne	La voie de la divinité : Cloître des étoiles	Senda de la divinidad: Claustro de las Estrellas
+map:1595	Shipwreck Strand	Strand der Wracks	Rive aux épaves	Litoral del Naufragio
+map:1596	Comosus Isle	Insel Comosus	Île Comosus	Isla Comosus
+map:1597	Cats-tora	Katz Torah	Chats Storah	Gats-tora
+map:1598	Unscheduled Departures: Rata Sum Port Authority	Außerplanmäßige Abreise: Hafenbehörde von Rata Sum	Embarquements imprévus : Capitainerie du Port de Rata Sum	Partidas no programadas: Autoridad Portuaria de Rata Sum
+map:1599	Unscheduled Departures: The Unending Ocean	Außerplanmäßige Abreise: Der unendliche Ozean	Embarquements imprévus : l'Océan infini	Partidas no programadas: El Océano Interminable
+map:1600	Fumbling in the Dark: Lost Basilica	Im Dunkeln tappen: Verschollene Basilika	À tâtons dans les ténèbres : Basilique perdue	Tanteando en la oscuridad: Basílica Perdida
+map:1602	On the Sly: Sanctum Harbor	Mit List und Tücke: Sanctum-Hafen	Sournoiserie : Port du sanctuaire	Modo ladino: Puerto del Sagrario
+map:1603	Eyes, Ears, and Arms: Riddled Cove	Augen, Ohren und Waffen: Durchbohrte Höhle	Des yeux, des oreilles et des bras : Gorge jonchée	Ojos, oídos y brazos: Cala del Enigma
+map:1604	Path of Divinity: Overgrown Thicket	Pfad der Göttlichkeit: Überwuchertes Dickicht	La voie de la divinité : Fourré démesuré	Senda de la divinidad: Espesura Frondosa
+map:1605	Truths Unearthed: Guarded Glades	Aufgedeckte Wahrheiten: Bewachte Lichtungen	Vérités exhumées : Clairières gardées	Verdades desveladas: Claros Custodiados
+map:1606	Beneath the Canopy: Command Complex	Unter dem Blätterdach: Kommando-Komplex	Sous la canopée : Complexe de commandement	Bajo el arbolado: Complejo de mando
+map:1607	Ruins of the Old World: Untamed Crags	Ruinen der Alten Welt: Ungezähmte Klippen	Ruines du Vieux monde : Escarpement indomptable	Ruinas del viejo mundo: Riscos Indómitos
+map:1608	Unscheduled Departures: Shipwreck Strand	Außerplanmäßige Abreise: Strand der Wracks	Embarquements imprévus : Rive aux épaves	Partidas no programadas: Litoral del Naufragio
+map:1609	Guardian's Glade	Lichtung des Wächters	Clairière du Gardien	Claro del Guardián
+map:1611	Laboratory CAS-U-5	Labor CAS-U-5	Laboratoire CAS-U-5	Laboratorio CAS-U-5
+map:1613	On the Threshold: Camp	Auf der Schwelle: Lager	Sur le seuil : Camp	En el umbral: campamento
+map:1616	A Bold Strategy: Alliance Camp	Eine kühne Strategie: Allianz-Lager	Une stratégie audacieuse : Camp de l'alliance	Una estrategia audaz: campamento de la Alianza
+map:1617	Within Your Grasp: Ritual Grounds	Zum Greifen nahe: Ritualgründe	À portée de main : Terres rituelles	Al alcance de tu mano: Territorios Rituales
+map:1618	A Bold Strategy: Supra Fortis	Eine kühne Strategie: Supra Fortis	Une stratégie audacieuse : Supra Fortis	Una estrategia audaz: Supra Fortis
+map:1619	Divitium Nava: Ritual Grounds	Divitium Nava: Ritualgründe	Divitium Nava : Terres rituelles	Divitium nava: Territorios Rituales
+map:1620	So It Is Written: Seneschal's Shrine	So steht es geschrieben: Schrein des Seneschalls	Ainsi est-il écrit : Sanctuaire du sénéchal	Así está escrito: Santuario de la Senescal
+map:1622	Eternity's Garden	Ewigkeitsgarten	Jardin de l'éternité	Jardín de la Eternidad
+map:1623	Divitium Nava: Empyreal Threshold	Divitium Nava: Himmlische Schwelle	Divitium Nava : Seuil empyréen	Divitium nava: Umbral Empíreo
+map:1624	Divitium Nava: Seer Forge	Divitium Nava: Seher-Schmiede	Divitium Nava : Forge aruspice	Divitium nava: forja de los videntes
+map:1625	Paw-Nthir	Pa-Nthir	Patt-ir	Miau-Nthir
+map:1626	Everything That We Are: Village of Shaemoor	Alles, was wir sind: Dorf Shaemoor	Tout ce que nous sommes : Village de Shaemoor	Todo lo que somos: Aldea de Shaemoor
+map:1627	Convergence: Nexus of Eternity	Konvergenz: Nexus der Ewigkeit	Convergence : Cœur de l'éternité	Convergencia: Nexo de Eternidad
+map:1628	So Be It: Nexus of Eternity	So sei es: Nexus der Ewigkeit	Ainsi soit-il : Cœur de l'éternité	Así sea: Nexo de Eternidad
+map:1629	Convergence: Nexus of Eternity (Private Squad)	Konvergenz: Nexus der Ewigkeit (privater Einsatztrupp)	Convergence : Cœur de l'éternité (escouade privée)	Convergencia: Nexo de Eternidad (escuadrón privado)
+map:1630	The Burden of Seeing: Doyen's Adytum	Die Last des Sehens: Adyton des Altmeisters	Le fardeau de la vision : Adyton du doyen	La carga de la visión: Adytum del Decano
+map:1631	Under Pressure: Ordnance Depot	Unter Druck: Geschützdepot	Sous pression : Dépôt d'artillerie	Bajo presión: Depósito de Artillería
+map:1632	Everything That We Are: Grand Library of Amnytas	Alles, was wir sind: Prachtvolle Bibliothek von Amnytas	Tout ce que nous sommes : Grande bibliothèque d'Amnytas	Todo lo que somos: Gran Biblioteca de Amnytas
+map:1633	Leyspring Hollows	Leyquellen-Senke	Crevasses aux sources des lignes de force	Hondonadas del Manantial de Ley
+map:1634	The Burden of Seeing: Solitary Throne	Die Last des Sehens: Einsamer Thron	Le fardeau de la vision : Trône solitaire	La carga de la visión: Trono solitario
+map:1637	Everything That We Are: Soren Draa	Alles, was wir sind: Soran Draa	Tout ce que nous sommes : Soren Draa	Todo lo que somos: Soren Draa
+map:1638	Nexus of Eternity	Nexus der Ewigkeit	Cœur de l'éternité	Nexo de Eternidad
+map:1639	Deeper Revelations: The Arcane Council	Tiefere Enthüllungen: Der Arkane Rat	Révélations approfondies : Conseil des arcanes	Revelaciones más profundas: El Consejo Arcano
+map:1640	Deeper Revelations: Leyspring Hollows	Tiefere Enthüllungen: Leyquellen-Senke	Révélations approfondies : Crevasses aux sources des lignes de force	Revelaciones más profundas: Hondonadas del Manantial de Ley
+map:1641	Everything That We Are: Village of Astorea	Alles, was wir sind: Dorf Astorea	Tout ce que nous sommes : Village d'Astorea	Todo lo que somos: Aldea de Astoria
+map:1642	Everything That We Are: Pub Canach	Alles, was wir sind: Canachs Kaschemme	Tout ce que nous sommes : Pub Canach	Todo lo que somos: Taberna Canach
+map:1643	Everything That We Are: Snowlord's Gate	Alles, was wir sind: Schneeherren-Tor	Tout ce que nous sommes : Porte du Seigneur des neiges	Todo lo que somos: Puerta del Señor de la Nieve
+map:1644	Ripples in the Pond: Rooted Sanctuary	Ringwellen im Teich: Verwurzelte Zuflucht	Des ondes dans l'étang : Sanctuaire enraciné	Ondas en el estanque: Santuario Enraizado
+map:1645	Everything That We Are: Rata Sum	Alles, was wir sind: Rata Sum	Tout ce que nous sommes : Rata Sum	Todo lo que somos: Rata Sum
+map:1646	Ripples in the Pond: Hall of Assemblage	Ringwellen im Teich: Halle des Zusammenbaus	Des ondes dans l'étang : Hall d'assemblée	Ondas en el estanque: Sala de Asamblea
+map:1647	Everything That We Are: Village of Smokestead	Alles, was wir sind: Dorf Rauchheim	Tout ce que nous sommes : Village de Fumerolles	Todo lo que somos: Aldea de Paraje del Humo
+map:1648	Deeper Revelations: Temple of the Blessed Mantle	Tiefere Enthüllungen: Tempel des Gesegneten Mantels	Révélations approfondies : Temple du manteau béni	Revelaciones más profundas: Templo del Manto Bendito
+mount:griffon	Griffon	Greif	Griffon	Grifo
+mount:jackal	Jackal	Schakal	Chacal	Chacal
+mount:roller_beetle	Roller Beetle	Rollkäfer	Scaraboule	Escarabajo
+mount:skimmer	Skimmer	Schweberochen	Voldécume	Mantarraya
+mount:skyscale	Skyscale	Himmelsschuppe	Dracaille	Escamaceleste
+mount:springer	Springer	Springer	Frappesol	Saltarín
+mount:turtle	Turtle	Schildkröte	Tortue	Tortuga
+mount:warclaw	Warclaw	Kriegsklaue	Razziafelis	Garrabélica
+prof:Elementalist	Elementalist	Elementarmagier	Élémentaliste	Elementalista
+prof:Engineer	Engineer	Ingenieur	Ingénieur	Ingeniero
+prof:Guardian	Guardian	Wächter	Gardien	Guardián
+prof:Mesmer	Mesmer	Mesmer	Envoûteur	Hipnotizador
+prof:Necromancer	Necromancer	Nekromant	Nécromant	Nigromante
+prof:Ranger	Ranger	Waldläufer	Rôdeur	Guardabosques
+prof:Revenant	Revenant	Wiedergänger	Revenant	Retornado
+prof:Thief	Thief	Dieb	Voleur	Ladrón
+prof:Warrior	Warrior	Krieger	Guerrier	Guerrero
+spec:1	Dueling	Zweikampf	Duel	Duelos
+spec:2	Death Magic	Todesmagie	Magie de la mort	Magia de muerte
+spec:3	Invocation	Beschwörung	Invocation	Invocación
+spec:4	Strength	Stärke	Force	Fuerza
+spec:5	Druid	Druide	Druide	Druida
+spec:6	Explosives	Sprengstoff	Explosifs	Explosivos
+spec:7	Daredevil	Draufgänger	Fracasseur	Temerario
+spec:8	Marksmanship	Schießkunst	Adresse au tir	Puntería
+spec:9	Retribution	Repressalie	Punition	Retribución
+spec:10	Domination	Dominanz	Domination	Dominación
+spec:11	Tactics	Taktik	Tactique	Tácticas
+spec:12	Salvation	Erlösung	Rédemption	Salvación
+spec:13	Valor	Tapferkeit	Bravoure	Valor
+spec:14	Corruption	Verderbnis	Corruption	Corrupción
+spec:15	Devastation	Verwüstung	Dévastation	Devastación
+spec:16	Radiance	Ausstrahlung	Rayonnement	Resplandor
+spec:17	Water	Wasser	Eau	Agua
+spec:19	Blood Magic	Blutmagie	Magie du sang	Magia de sangre
+spec:20	Shadow Arts	Schattenkünste	Arts des ombres	Artes de las sombras
+spec:21	Tools	Werkzeuge	Outils	Herramientas
+spec:22	Defense	Verteidigung	Défense	Defensa
+spec:23	Inspiration	Inspiration	Inspiration	Inspiración
+spec:24	Illusions	Illusionen	Illusions	Ilusiones
+spec:25	Nature Magic	Naturmagie	Magie de la nature	Magia de la naturaleza
+spec:26	Earth	Erde	Terre	Tierra
+spec:27	Dragonhunter	Drachenjäger	Draconnier	Cazadragones
+spec:28	Deadly Arts	Tödliche Künste	Arts létaux	Artes mortales
+spec:29	Alchemy	Alchemie	Alchimie	Alquimia
+spec:30	Skirmishing	Gefechtsbeherrschung	Escarmouche	Escaramuzas
+spec:31	Fire	Feuer	Feu	Fuego
+spec:32	Beastmastery	Tierbeherrschung	Domptage	Dominio de las bestias
+spec:33	Wilderness Survival	Überleben in der Wildnis	Survie en milieu sauvage	Supervivencia
+spec:34	Reaper	Schnitter	Faucheur	Segador
+spec:35	Critical Strikes	Kritische Schläge	Coups critiques	Impactos críticos
+spec:36	Arms	Waffen	Armes	Armas
+spec:37	Arcane	Arkan	Arcanes	Arcano
+spec:38	Firearms	Schusswaffen	Armes à feu	Armas de fuego
+spec:39	Curses	Flüche	Malédictions	Maldiciones
+spec:40	Chronomancer	Chronomant	Chronomancien	Cronomante
+spec:41	Air	Luft	Air	Aire
+spec:42	Zeal	Eifer	Zèle	Entusiasmo
+spec:43	Scrapper	Schrotter	Mécatronicien	Chatarrero
+spec:44	Trickery	Betrugskunst	Duplicité	Argucia
+spec:45	Chaos	Chaos	Chaos	Caos
+spec:46	Virtues	Tugenden	Vertus	Virtudes
+spec:47	Inventions	Erfindungen	Inventions	Invenciones
+spec:48	Tempest	Sturmbote	Cataclyste	Tempestad
+spec:49	Honor	Ehre	Honneur	Honor
+spec:50	Soul Reaping	Seelenernte	Moisson des âmes	Cosecha de almas
+spec:51	Discipline	Disziplin	Discipline	Disciplina
+spec:52	Herald	Herold	Héraut	Heraldo
+spec:53	Spite	Bosheit	Méchanceté	Rencor
+spec:54	Acrobatics	Akrobatik	Acrobatie	Acrobacia
+spec:55	Soulbeast	Seelenwandler	Animorphe	Bestialma
+spec:56	Weaver	Weber	Tissesort	Tejedor
+spec:57	Holosmith	Holoschmied	Holographiste	Holoartesano
+spec:58	Deadeye	Scharfschütze	Sniper	Certero
+spec:59	Mirage	Illusionist	Mirage	Quimérico
+spec:60	Scourge	Pestbringer	Fléau	Azotador
+spec:61	Spellbreaker	Bannbrecher	Brisesort	Rompehechizos
+spec:62	Firebrand	Aufwiegler	Incendiaire	Abrasador
+spec:63	Renegade	Abtrünniger	Renégat	Renegado
+spec:64	Harbinger	Vorbote	Augure	Augurador
+spec:65	Willbender	Willensverdreher	Subjugueur	Subyugador
+spec:66	Virtuoso	Virtuose	Virtuose	Virtuoso
+spec:67	Catalyst	Katalysierer	Catalyseur	Catalizador
+spec:68	Bladesworn	Klingengeschworener	Jurelame	Jurafilos
+spec:69	Vindicator	Rechtssuchender	Justicier	Justiciero
+spec:70	Mechanist	Mech-Lenker	Méchamancien	Mechanista
+spec:71	Specter	Phantom	Spectre	Espectro
+spec:72	Untamed	Ungezähmter	Indomptable	Indómito
+spec:73	Troubadour	Troubadour	Troubadour	Trovador
+spec:74	Paragon	Paragon	Parangon	Paragón
+spec:75	Amalgam	Amalgam	Amalgame	Amalgama
+spec:76	Ritualist	Ritualist	Ritualiste	Ritualista
+spec:77	Antiquary	Antiquar	Antiquaire	Anticuario
+spec:78	Galeshot	Orkanschütze	Ventireur	Vendaval
+spec:79	Conduit	Medium	Conduit	Conductor
+spec:80	Evoker	Beschwörer	Évocateur	Evocador
+spec:81	Luminary	Lichtgestalt	Luminescence	Luminaria
+wvw:1099-100	Bauer Farmstead	Bauer-Gehöft	Ferme Bauer	Hacienda de Bauer
+wvw:1099-101	McLain's Encampment	McLains Lager	Campement de McLain	Campamento de McLain
+wvw:1099-102	O'del Academy	O'del-Akademie	Académie de O'del	Academia O'del
+wvw:1099-104	Eternal Necropolis	Ewige Nekropole	Nécropole éternelle	Necrópolis Eterna
+wvw:1099-105	Crankshaft Depot	Kurbelwellen-Depot	Dépôt Vilebrequin	Depósito de Palancamanijas
+wvw:1099-106	Blistering Undercroft	Brennende Gruft	Crypte embrasée	Sótano Achicharrante
+wvw:1099-107	Border	Grenze von	- Frontière	Frontera
+wvw:1099-109	Roy's Refuge	Roys Zuflucht	Refuge de Roy	Refugio de Roy
+wvw:1099-110	Parched Outpost	Verdörrter Außenposten	Avant-poste dévasté	Puesto Avanzado Abrasado
+wvw:1099-113	Stoic Rampart	Stoischer Festungswall	Rempart stoïque	Muralla Estoica
+wvw:1099-114	Osprey's Palace	Fischadler-Palast	Palais du balbuzard	Palacio del Águila Pescadora
+wvw:1099-115	Boettiger's Hideaway	Boettigers Versteck	Antre de Boettiger	Escondrijo de Boettiger
+wvw:1099-116	Dustwhisper Well	Brunnen des Staubflüsterns	Puits du Souffle-poussière	Pozo del Murmullo de Polvo
+wvw:1099-117	Citadel	Zitadelle von	- Citadelle	Ciudadela
+wvw:1099-118	Higgins's Ascent	Higgins' Aufstieg	Ascension d'Higgins	Ascenso de Higgins
+wvw:1099-119	Bearce's Dwelling	Bearces Behausung	Habitation de Bearce	Morada de Bearce
+wvw:1099-120	Zak's Overlook	Zaks Aussichtspunkt	Belvédère de Zak	Mirador de Zak
+wvw:1099-121	Darra's Maze	Darras Labyrinth	Labyrinthe de Darra	Laberinto de Darra
+wvw:1099-122	Tilly's Encampment	Tillys Lager	Campement de Tilly	Campamento de Tilly
+wvw:1099-99	Hamm's Lab	Hamms Labor	Laboratoire de Hamm	Laboratorio de Hamm
+wvw:1102-100	Barrett Farmstead	Barrett-Gehöft	Ferme Barrett	Hacienda de Barrett
+wvw:1102-101	Patrick's Encampment	Patricks Lager	Campement de Patrick	Campamento de Patrick
+wvw:1102-102	Y'lan Academy	Y'lan-Akademie	Académie de Y'lan	Academia Y'lan
+wvw:1102-104	Deathless Necropolis	Todlose Nekropole	Nécropole immortelle	Necrópolis Inmortal
+wvw:1102-105	Sparkplug Depot	Zündfunken-Depot	Dépôt Bougie	Depósito de Bujías
+wvw:1102-106	Scorching Undercroft	Versengende Gruft	Crypte cuisante	Sótano Abrasador
+wvw:1102-109	Norfolk's Refuge	Norfolks Zuflucht	Refuge de Norfolk	Refugio de Norfolk
+wvw:1102-110	Withered Outpost	Welker Außenposten	Avant-poste ravagé	Puesto Avanzado Desolado
+wvw:1102-113	Impassive Rampart	Unbeeindruckter Festungswall	Rempart impassible	Muralla Imperturbable
+wvw:1102-114	Harrier's Palace	Verheerer-Palast	Palais du circaète	Palacio del Hostigador
+wvw:1102-115	Hughe's Hideaway	Hughes Versteck	Antre de Hughe	Escondrijo de Hughe
+wvw:1102-116	Smashedhope Well	Brunnen der Zerschlagenen Hoffnung	Puits du Rêve-brisé	Pozo Tragaesperanza
+wvw:1102-99	Lesh's Lab	Leshs Labor	Laboratoire de Lesh	Laboratorio de Lesh
+wvw:1143-100	Gee Farmstead	Gee-Gehöft	Ferme Gee	Hacienda de Gee
+wvw:1143-101	Habib's Encampment	Habibs Lager	Campement d'Habib	Campamento de Habib
+wvw:1143-102	Kay'li Academy	Kay'li-Akademie	Académie de Kay'li	Academia Kay'li
+wvw:1143-104	Undying Necropolis	Unsterbliche Nekropole	Nécropole impérissable	Necrópolis Imperecedera
+wvw:1143-105	Flywheel Depot	Schwungrad-Depot	Dépôt Engrenage	Depósito de Volantes
+wvw:1143-106	Torrid Undercroft	Glühende Gruft	Crypte torride	Sótano Sofocante
+wvw:1143-109	Olivier's Refuge	Oliviers Zuflucht	Refuge d'Olivier	Refugio de Olivier
+wvw:1143-110	Barren Outpost	Öder Außenposten	Avant-poste délabré	Puesto Avanzado Abandonado
+wvw:1143-113	Hardened Rampart	Stahlharter Festungswall	Rempart durci	Muralla Endurecida
+wvw:1143-114	Shrike's Palace	Würger-Palast	Palais de la pie-grièche	Palacio del Alcaudón
+wvw:1143-115	Berdrow's Hideaway	Berdrows Versteck	Antre de Berdrow	Escondrijo de Berdrow
+wvw:1143-116	Lastgasp Well	Brunnen des Letzten Schnaufers	Puits du Dernier-soupir	Pozo del Último Suspiro
+wvw:1143-99	Zakk's Lab	Zakks Labor	Laboratoire de Zakk	Laboratorio de Zakk
+wvw:38-1	Overlook	Aussichtspunkt von	- Belvédère	Mirador
+wvw:38-10	Rogue's Quarry	Schurkenbruch	Carrière du voleur	Cantera del Pícaro
+wvw:38-11	Aldon's Ledge	Aldons Vorsprung	Corniche d'Aldon	Cornisa de Aldon
+wvw:38-12	Wildcreek Run	Wildbach-Strecke	Piste du ruisseau sauvage	Pista Arroyosalvaje
+wvw:38-123	Molevekian Delve	Maulevek-Senke	Antre de Molevekian	Hondonada Topovekiana
+wvw:38-124	Hill	Hügel von	- Colline	Colina
+wvw:38-125	Orgath Uplands	Orgath-Hochland	Hauteurs d'Orgath	Altiplano Orgath
+wvw:38-126	Darkrait Inlet	Darkrait-Zufluss	Crique Sombrait	Ensenada Kraitoscuro
+wvw:38-13	Jerrifer's Slough	Jerrifers Sumpfloch	Bourbier de Jerrifer	Cenagal de Jerrifer
+wvw:38-14	Klovan Gully	Klovan-Senke	Petit ravin de Klovan	Barranco Klovan
+wvw:38-15	Langor Gulch	Langor-Schlucht	Ravin de Langor	Barranco Langor
+wvw:38-16	Quentin Lake	Quentin-See	Lac Quentin	Lago Quentin
+wvw:38-17	Mendon's Gap	Mendons Spalt	Faille de Mendon	Zanja de Mendon
+wvw:38-18	Anzalias Pass	Anzalias-Pass	Col d'Anzalias	Paso Anzalias
+wvw:38-19	Ogrewatch Cut	Ogerwacht-Kanal	Percée de Gardogre	Tajo de la Guardia del Ogro
+wvw:38-2	Valley	Tal von	- Vallée	Valle
+wvw:38-20	Veloka Slope	Veloka-Hang	Flanc de Veloka	Pendiente Veloka
+wvw:38-21	Durios Gulch	Durios-Schlucht	Ravin de Durios	Barranco Durios
+wvw:38-22	Bravost Escarpment	Bravost-Abhang	Falaise de Bravost	Escarpadura Bravost
+wvw:38-3	Lowlands	Tiefland von	- Basses terres	Tierras bajas
+wvw:38-4	Golanta Clearing	Golanta-Lichtung	Clairière de Golanta	Claro Golanta
+wvw:38-5	Pangloss Rise	Pangloss-Anhöhe	Montée de Pangloss	Colina Pangloss
+wvw:38-6	Speldan Clearcut	Speldan-Kahlschlag	Forêt rasée de Speldan	Claro Espeldia
+wvw:38-7	Danelon Passage	Danelon-Passage	Passage Danelon	Pasaje Danelon
+wvw:38-8	Umberglade Woods	Umberlichtung-Forst	Bois d'Ombreclair	Bosques Clarosombra
+wvw:38-9	Stonemist Castle	Schloss Steinnebel	Château Brumepierre	Castillo Piedraniebla
+wvw:94-32	Etheron Hills	Etheron-Hügel	Collines d'Etheron	Colinas Etheron
+wvw:94-33	Dreaming Bay	Traumbucht	Baie des rêves	Bahía Onírica
+wvw:94-34	Victor's Lodge	Sieger-Halle	Pavillon du Vainqueur	Albergue del Vencedor
+wvw:94-35	Greenbriar	Grünstrauch	Vert-bruyère	Zarzaverde
+wvw:94-36	Bluelake	Blausee	Lac bleu	Lagoazul
+wvw:94-37	Garrison	Festung von	- Garnison	Fuerte
+wvw:94-38	Longview	Weitsicht	Longuevue	Vistaluenga
+wvw:94-39	The Godsword	Das Gottesschwert	L'Épée divine	La Hoja Divina
+wvw:94-40	Cliffside	Felswand	Flanc de falaise	Despeñadero
+wvw:94-50	Bluewater Lowlands	Blauwasser-Tiefland	Basses terres d'Eau-Azur	Tierras Bajas de Aguazul
+wvw:94-51	Astralholme	Astralholm	Heaume astral	Isleta Astral
+wvw:94-52	Arah's Hope	Arahs Hoffnung	Espoir d'Arah	Esperanza de Arah
+wvw:94-53	Greenvale Refuge	Grüntal-Zuflucht	Refuge de Valvert	Refugio Valleverde
+wvw:94-62	Temple of Lost Prayers	Tempel der Verlorenen Gebete	Temple des prières perdues	Templo de las Plegarias Perdidas
+wvw:94-63	Battle's Hollow	Schlachten-Senke	Vallon de bataille	Hondonada de la Batalla
+wvw:94-64	Bauer's Estate	Bauers Anwesen	Domaine de Bauer	Hacienda de Bauer
+wvw:94-65	Orchard Overlook	Obstgarten-Aussichtspunkt	Belvédère du Verger	Mirador del Huerto
+wvw:94-66	Carver's Ascent	Aufstieg des Schnitzers	Côte du couteau	Ascenso del Trinchador
+wvw:95-32	Shadaran Hills	Shadaran-Hügel	Collines Shadaran	Colinas Shadaran
+wvw:95-33	Dreadfall Bay	Schreckensfall-Bucht	Baie du Noir déclin	Bahía Salto Aciago
+wvw:95-34	Hero's Lodge	Heldenhalle	Pavillon du Héros	Albergue del Héroe
+wvw:95-35	Bluebriar	Blaustrauch	Bruyazur	Zarzazul
+wvw:95-36	Redlake	Rotsee	Lac rouge	Lagorrojo
+wvw:95-38	Sunnyhill	Sonnenhügel	Colline ensoleillée	Colina Soleada
+wvw:95-39	The Titanpaw	Die Titanenpranke	Bras du Titan	La Garra del Titán
+wvw:95-40	Cragtop	Schroffgipfel	Sommet de Hautcrag	Cumbrepeñasco
+wvw:95-50	Redwater Lowlands	Rotwasser-Tiefland	Basses terres de Rubicon	Tierras Bajas de Aguarroja
+wvw:95-51	Foghaven	Nebel-Freistatt	Havre gris	Refugio Neblinoso
+wvw:95-52	Faithleap	Glaubenssprung	Saut de la Foi	Salto de Fe
+wvw:95-53	Bluevale Refuge	Blautal-Zuflucht	Refuge de Bleuval	Refugio Valleazul
+wvw:95-62	Temple of the Fallen	Tempel der Gefallenen	Temple des défunts	Templo de los Caídos
+wvw:95-63	Norfolk's Hollow	Norfolks Senke	Vallon de Norfolk	Hondonada de Norfolk
+wvw:95-64	Gertzz's Estate	Gertzz' Anwesen	Domaine de Gertzz	Hacienda de Gertzz
+wvw:95-65	Cohen's Overlook	Cohens Aussichtspunkt	Belvédère de Cohen	Mirador de Cohen
+wvw:95-66	Patrick's Ascent	Patricks Aufstieg	Ascension de Patrick	Ascenso de Patrick
+wvw:96-32	Askalion Hills	Askalion-Hügel	Collines d'Askalion	Colinas Askalion
+wvw:96-33	Ascension Bay	Aufstiegsbucht	Baie de l'Ascension	Bahía de la Ascensión
+wvw:96-34	Champion's Demesne	Champions Landsitz	Fief du Champion	Patrimonio del Campeón
+wvw:96-35	Redbriar	Rotstrauch	Bruyerouge	Zarzarroja
+wvw:96-36	Greenlake	Grünsee	Lac vert	Lagoverde
+wvw:96-38	Woodhaven	Wald-Freistatt	Boisrefuge	Refugio Forestal
+wvw:96-39	The Spiritholme	Der Geistholm	Le Heaume spirituel	La Isleta Espiritual
+wvw:96-40	Dawn's Eyrie	Horst der Morgendämmerung	Repaire de l'aube	Aguilera del Alba
+wvw:96-50	Greenwater Lowlands	Grünwasser-Tiefland	Basses terres d'Eau-Verdoyante	Tierras bajas de Aguaverde
+wvw:96-51	Stargrove	Sternhain	Bosquet étoilé	Arboleda de las Estrellas
+wvw:96-52	Godslore	Gottessage	Savoir divin	Sabiduría de los Dioses
+wvw:96-53	Redvale Refuge	Rottal-Zuflucht	Refuge de Valrouge	Refugio Vallerrojo
+wvw:968-127	Overgrown Docks	Überwucherte Docks	Quais d'Embroussaille	Muelles de Tierras Frondosas
+wvw:968-128	Frostreach Docks	Frostfels-Docks	Quais du Promontoire gelé	Muelles de Lindescarcha
+wvw:968-129	Badlands Docks	Ödland-Docks	Quais de Morneterre	Muelles de Tierras Inhóspitas
+wvw:968-77	Inferno's Needle	Infernonadel	Aiguille infernale	Aguja del Infierno
+wvw:968-78	Overgrown Fane	Überwuchertes Gotteshaus	Temple surdimensionné	Fano Gigante
+wvw:968-79	Thunder Hollow	Donnersenke	Tonnecrevasse	Hondonada del Trueno
+wvw:968-80	Overgrown Fane Reactor	Überwucherter Gotteshaus-Reaktor	Réacteur du Temple surdimensionné	Reactor de Fano Gigante
+wvw:968-81	Arid Fortress Reactor	Dürrefestungreaktor	Réacteur de la Forteresse aride	Reactor de Fortaleza Árida
+wvw:968-82	Thunder Hollow Reactor	Donnersenkenreaktor	Réacteur de Tonnecrevasse	Reactor de Hondonada del Trueno
+wvw:968-83	Stonegaze Spire Reactor	Steinblick-Zackenstabreaktor	Réacteur du Pic de Pierregard	Reactor de Aguja de Mirapiedras
+wvw:968-84	Inferno's Needle Reactor	Infernonadel-Reaktor	Réacteur de l'Aiguille infernale	Reactor de Aguja del Infierno
+wvw:968-85	Tytone Perch Reactor	Tytonenwarte-Reaktor	Réacteur du Perchoir de Tytone	Reactor de Percha de Tytone
+wvw:968-87	Stonegaze Spire	Steinblick-Zackenstab	Pic de Pierregard	Aguja de Mirapiedras
+wvw:968-88	Arid Fortress	Dürrefestung	Forteresse aride	Fortaleza Árida
+wvw:968-89	Tytone Perch	Tytonenwarte	Perchoir de Tytone	Percha de Tytone
+wvw:968-90	Altar	Altar	Autel	Altar
+wvw:968-91	Observatory	Observatorium	Observatoire	Observatorio
+wvw:968-92	Statuary	Statue	Statue	Estatuario
+wvw:968-93	Forge	Schmiede	Forge	Forja
+wvw:968-94	Shrine	Schrein	Sanctuaire	Santuario
+wvw:968-95	Bell Tower	Glockenturm	Clocher	Campanario
+wvw:968-96	Airport	Flughafen	Aéroport	Aeropuerto
+wvw:968-97	Workshop	Werkstatt	Atelier	Taller
+wvw:968-98	Wurm Tunnel	Wurmtunnel	Tunnel de guivre	Túnel de la Sierpe
