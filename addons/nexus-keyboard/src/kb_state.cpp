@@ -309,6 +309,16 @@ std::wstring SendCodeFor(const std::wstring& detected) {
     return p;
 }
 bool Translating() { return CurrentRoute().translating; }
+bool SwapsNames() {
+    const gct::SendRoute r = CurrentRoute();
+    return !r.translating && !r.lang.empty();
+}
+bool NamesSwapped() {
+    if (g_previewGen != g_inputGen || g_preview.empty() || !SwapsNames()) return false;
+    const std::wstring typed = SanitizeChatText(g_wFlatInput);
+    const ChatSplit own = SplitChatCommand(typed);
+    return g_preview != (own.prefix.empty() ? typed : own.body);
+}
 const std::wstring& ComposePrefix() {
     static std::wstring s_cachedPrefix;
     static Channel s_cachedChannel = Channel::Unknown;

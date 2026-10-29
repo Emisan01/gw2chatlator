@@ -344,6 +344,11 @@ static void TestBuiltinGlossary() {
     CHECK(keptAs(L"whats the name of Himmelsschuppe in english?", L"EN") == L"Skyscale|");
     CHECK(keptAs(L"Wie heißt Skyscale auf Deutsch?", L"DE") == L"Himmelsschuppe|");
     CHECK(keptAs(L"we go into the Silverwastes", L"DE") == L"Silberwüste|");
+    // The same language, no translator: only what is surely in the lists is swapped, the rest exactly as written.
+    CHECK(ApplyGlossary(L"whats the name of Himmelsschuppe in english?  [&AgH1WQAA]", BuiltinGlossary(L"EN-GB"),
+                        &BuiltinKeepWords()) == L"whats the name of Skyscale in english?  [&AgH1WQAA]");
+    CHECK(ApplyGlossary(L"lfg raid, ping me :)", BuiltinGlossary(L"EN"), &BuiltinKeepWords()) ==
+          L"lfg raid, ping me :)");
 }
 
 static void TestGlossary() {

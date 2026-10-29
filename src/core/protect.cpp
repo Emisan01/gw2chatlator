@@ -68,6 +68,13 @@ std::vector<Span> FindEmoticons(const std::wstring& body) {
 }
 }  // namespace
 
+std::wstring ApplyGlossary(const std::wstring& body, const Glossary* glossary, const WordSet* keepWords,
+                           const NameList* names) {
+    std::wstring out;
+    for (const Segment& s : ProtectForTranslation(body, glossary, keepWords, names).segments) out += s.text;
+    return out;
+}
+
 ProtectedText ProtectForTranslation(const std::wstring& body, const Glossary* glossary, const WordSet* keepWords,
                                     const NameList* names) {
     ProtectedText r;

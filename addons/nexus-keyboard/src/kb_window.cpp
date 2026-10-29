@@ -587,7 +587,7 @@ void RenderFooter() {  // g_mu held
         const bool current = g_previewGen == g_inputGen && !g_preview.empty();
         const ChatSplit own = SplitChatCommand(SanitizeChatText(g_wFlatInput));  // as StartSend counts it
         const std::wstring& body = own.prefix.empty() ? g_wFlatInput : own.body;
-        const size_t parts = SplitForChat(Translating() && current ? g_preview : body,
+        const size_t parts = SplitForChat((Translating() || NamesSwapped()) && current ? g_preview : body,
                                           own.prefix.empty() ? ComposePrefix() : own.prefix,
                                           static_cast<size_t>(g_cfg.maxLength)).size();
         counter += "  (" + std::to_string(parts) + "x)";
@@ -1107,7 +1107,7 @@ void RenderWindow() {
     const int textLines = 1 + static_cast<int>(std::count(g_input, g_input + std::strlen(g_input), '\n'));
     g_boxLines = std::clamp(textLines, Lay().inputLines, std::max(8, Lay().inputLines));
     const float boxH = ImGui::GetTextLineHeight() * g_boxLines + st.FramePadding.y * 2 +
-                       (!showPreview && Translating() ? smallLine : 0);  // no preview: the translation small in the box
+                       (!showPreview && (Translating() || NamesSwapped()) ? smallLine : 0);  // no preview: it small in the box
     // The preview grows with its wrapped lines like the input (what it needed last frame), up to 8.
     const int previewRows = std::clamp(g_previewRows, g_layout.previewLines, std::max(8, g_layout.previewLines));
     const float lowerH = (showPreview ? line * (previewRows + 0.2f) + st.ItemSpacing.y : 0) +
@@ -1368,8 +1368,11 @@ void RenderWindow() {
         } else if (!Translating() || IsPlainCommand(g_wFlatInput)) {  // a command is shown (and sent) as it is
             // a line with its own command ("/p hi", "/wiki Tequatl") goes as it is: no channel prefix before it
             const std::wstring typed = SanitizeChatText(g_wFlatInput);
-            LookText(U8((SplitChatCommand(typed).prefix.empty() ? ComposePrefix() : std::wstring()) + typed).c_str(),
-                     Bright(kPreview), true);
+            const std::wstring own = SplitChatCommand(typed).prefix;
+            if (NamesSwapped())  // the same language: names surely in the lists already the send language's
+                LookText(U8((own.empty() ? ComposePrefix() : own) + g_preview).c_str(), Bright(kPreview), true);
+            else
+                LookText(U8((own.empty() ? ComposePrefix() : std::wstring()) + typed).c_str(), Bright(kPreview), true);
         } else if (previewCurrent) {
             const std::wstring own = SplitChatCommand(SanitizeChatText(g_wFlatInput)).prefix;  // as StartSend does it
             LookText(U8((own.empty() ? ComposePrefix() : own) + g_preview).c_str(), Bright(kPreview), true);
@@ -1709,7 +1712,7 @@ void RenderWindow() {
                 ImGui::GetColorU32(kAccent), s, 0.85f);
     }
     // Compact view: what the chat will get, small in the box's last line (instead of the preview above).
-    if (!showPreview && g_input[0] && Translating() && (previewCurrent || g_layout.infoText)) {
+    if (!showPreview && g_input[0] && ((Translating() && (previewCurrent || g_layout.infoText)) || NamesSwapped())) {
         const std::string t = previewCurrent ? "> " + U8(g_preview) : UI(Tr(L"translating …"));
         BoxText(ImVec2(textAt.x, inputMax.y - smallLine - 1), clip, ImGui::GetColorU32(kPreview),
                 Fit(t, (inputMax.x - inputMin.x) * (g_status.empty() ? 0.95f : 0.38f)), 0.85f);
@@ -1736,7 +1739,8 @@ void RenderWindow() {
             g_worker.PostInteractive(ComputeTyping);
         }
     }
-    if (g_inputChanged && GetTickCount64() - g_inputChanged > 400 && !g_flatInput.empty() && Translating()) {
+    if (g_inputChanged && GetTickCount64() - g_inputChanged > 400 && !g_flatInput.empty() &&
+        (Translating() || SwapsNames())) {
         g_inputChanged = 0;
         g_worker.Post([gen = g_inputGen, t = SanitizeChatText(g_wFlatInput)] { TranslateInput(gen, t); });
     }

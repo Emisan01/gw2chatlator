@@ -486,6 +486,11 @@ bool SendOriginal();       // g_mu: core/send_route – "as written" exactly whe
 std::wstring SendLang();
 std::wstring SendCodeFor(const std::wstring& detected);
 bool Translating();
+// The same language at "Send" as you write in (a send language chosen): no translator – names and usual words surely
+// in the lists still become the send language's ("whats the name of Himmelsschuppe in english?" → Skyscale).
+bool SwapsNames();
+// That swap changed the current text: the preview shows it, and it is what goes out.
+bool NamesSwapped();
 const std::wstring& ComposePrefix();
 std::shared_ptr<Translator> MakeTranslator(const Config& c);
 bool UsingMyMemory();

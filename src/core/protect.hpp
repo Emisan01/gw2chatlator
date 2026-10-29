@@ -26,6 +26,11 @@ struct ProtectedText {
 //   2. official game names            -> official name in the target language
 //   3. smileys, names of people in the chat -> unchanged
 //   4. keep-words (LFG, WvW, DPS ...) -> unchanged
+// Only the glossary applied, nothing translated – for a message that needs no translator (same language): names and
+// usual words surely in the lists become the target's, everything else stays exactly as written.
+std::wstring ApplyGlossary(const std::wstring& body, const Glossary* glossary, const WordSet* keepWords,
+                           const NameList* names = nullptr);
+
 ProtectedText ProtectForTranslation(const std::wstring& body, const Glossary* glossary, const WordSet* keepWords,
                                     const NameList* names = nullptr);
 

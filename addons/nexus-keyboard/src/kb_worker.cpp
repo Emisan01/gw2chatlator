@@ -216,13 +216,14 @@ void TranslateInput(uint64_t gen, std::wstring text) {
     AssertNotInteractiveLane("TranslateInput");
     std::shared_ptr<Translator> tr;
     std::wstring target, typing;
-    bool translating;
+    bool translating, swapping;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         tr = g_translator;
         target = SendLang();
         typing = VoiceFirst() && !g_dictLang.empty() ? g_dictLang : TypingLang();  // what you said: its language
         translating = Translating();
+        swapping = SwapsNames();
     }
     const ChatSplit split = SplitChatCommand(text);
     const std::wstring body = split.prefix.empty() ? text : split.body;
@@ -272,6 +273,17 @@ void TranslateInput(uint64_t gen, std::wstring text) {
                 }
             }
         }
+    }
+    // The same language: no translator – only names and usual words surely in the lists become the send language's
+    // (a Turkish player writing English who reaches for "Himmelsschuppe" or a native word in the lists).
+    if (!translating && swapping && !IsPlainCommand(text) && !g_rawTranslate.load()) {
+        NameList names;
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            names = g_chatNames;
+        }
+        auto keep = g_spell ? g_spell->KeepWordsSnapshot() : nullptr;
+        result = ApplyGlossary(body, BuiltinGlossary(target), keep ? keep.get() : &BuiltinKeepWords(), &names);
     }
     // The back-translation: what your message means in your language again (small under it).
     std::wstring back;
@@ -505,8 +517,9 @@ void StartSend() {  // Enter (g_mu held)
         g_worker.PostFront([text] { SendNow({text}, text, std::wstring()); });
         return;
     }
+    const bool swapped = NamesSwapped();  // before the input is cleared below
     {  // one Enter never pours a block of lines into the game: at most kMaxPartsPerEnter chat lines (the text stays)
-        const bool ready = Translating() && g_previewGen == g_inputGen && !g_preview.empty();
+        const bool ready = (Translating() || swapped) && g_previewGen == g_inputGen && !g_preview.empty();
         const size_t parts = SplitForChat(ready ? g_preview : body, prefix, static_cast<size_t>(g_cfg.maxLength)).size();
         if ((!Translating() || ready) && parts > kMaxPartsPerEnter) {
             CancelAutoEnter();
@@ -529,7 +542,7 @@ void StartSend() {  // Enter (g_mu held)
     g_historyPos = -1;
     g_undo.active = false;
     ImGui::SetWindowFocus(nullptr);  // let go of the keyboard: the keys must reach the game
-    if (!Translating()) {
+    if (!Translating() && !swapped) {
         g_worker.PostFront([parts = SplitForChat(body, prefix, static_cast<size_t>(g_cfg.maxLength)), text, body] {
             SendNow(parts, text, body);
         });
