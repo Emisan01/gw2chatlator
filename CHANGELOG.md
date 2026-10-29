@@ -3,6 +3,15 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.7.0 — 2026-10-29 (GW2Chatlator for Nexus)
+
+- **Official GW2 Names in Every Direction:** the game's own names in English, German, French and Spanish – open-world and WvW maps, camps, towers, keeps and castles, professions, elite specializations, mounts – are compiled in (259 names, from the public GW2 API once per release by `tools/gen_names.py`; no key, nothing fetched while you play). The language you translate into decides: "Himmelsschuppe" into English is "Skyscale", "Skyscale" into German is "Himmelsschuppe", "Löwenstein" into English is "Lion's Arch", and "Lion's Arch" in a German sentence stays "Lion's Arch" into English. A language without official names gets the English one. Only exact hits; a name that could mean two things is left alone.
+- **The Article Belongs to the Sentence:** names are kept without their article, so the translator writes "in der Silberwüste" or "in die Silberwüste" as the sentence needs, instead of a fixed "in Die Silberwüste".
+- **The Usual GW2 Words per Language:** a new list, `data/gw2-words.tsv`, holds the words a translator gets wrong in a GW2 chat – raid ("Razzia"), skin ("Haut"), waypoint ("way"), dungeon, squad – with their word in each language and their forms ("rajdzie" is a raid). Nothing invented: in languages the game is not in, the English word is written. It starts with five words and grows with what the measurements show.
+- **The Same Language Still Gets the Names:** writing in the language you send in, nothing goes to a translator – but a name or word surely in the lists is still swapped: "whats the name of Himmelsschuppe in english?" shows "Skyscale" in the preview, and what the preview shows is sent. Nothing swapped: everything as before.
+- **Typing Help Without a Windows Dictionary:** in French, Spanish, Polish and Portuguese short finished words ("que", "jest", "mon", "com") looked unfinished and Space completed them ("queda", "jestem", "monde", "Commander"). Lists of everyday chat words now know them. Measured on made-up lines in seven languages: 14 such surprises → none, the keys saved stay about the same.
+- **Measured:** translation meaning check on made-up lines 31/54 → 49/59 (nothing protected lost, every sentence arrives); the typing benchmark now covers seven languages and the release check needs "no surprise in any language". The raw translation switch turns all of this off for comparison.
+
 ## 2.6.9 — 2026-10-27 (GW2Chatlator for Nexus)
 
 - **Helper Update Finds the Running Helper Everywhere:** updating the translator helper ends the old helper first – but on some systems the path a running process reports did not match ours as text, the old helper went on running and its exe stayed behind (found by the new GitHub CI: "old helper ended 0, no .old 0"). The running helper is now recognised by its file identity (volume and file ID), however the path is written; the self-test covers the same update through a folder's short (8.3) path and says which part failed if one does.
