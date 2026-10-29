@@ -64,7 +64,7 @@ def main():
     head = "# Official GW2 names (GW2 API, public endpoints) - written by tools/gen_names.py, do not edit by hand\n"
     text = head + "\n".join(collect()) + "\n"
     if "--check" in sys.argv:
-        same = OUT.exists() and OUT.read_text(encoding="utf-8") == text
+        same = OUT.exists() and OUT.read_text(encoding="utf-8").replace("\r\n", "\n") == text
         print("gen_names: data/gw2-names.tsv is current" if same else "gen_names: data/gw2-names.tsv differs from the API")
         return 0 if same else 1
     OUT.write_text(text, encoding="utf-8", newline="\n")
