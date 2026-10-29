@@ -71,6 +71,11 @@ keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zulet
 13. ~~erledigt 2.7.1~~ **Original klein und grau unter der Übersetzung** – als Option (aus per Standard), wie in den ersten Versionen.
 14. ~~erledigt 2.7.1~~ **Eigene Nachrichten in der Lesesprache:** statt die gesendete Übersetzung zurückzuübersetzen, das zeigen, was du
     getippt hast (liegt beim Senden vor, nur im Speicher) – exakt und ohne Rechenzeit.
+15. **Filter zeigt die eigene Sprache:** „Übersetzt wird alles außer:“ zeigt die Lesesprache als eigenen Eintrag
+    (`skipTypingLang`, z. B. „English (Lesesprache) ×“) neben dem +; löschbar und über + wiederherstellbar (Emi, Live-Test).
+16. **Kurze Zeilen:** ein Wort („herbeiwinken“) wird nie automatisch übersetzt – die Erkennung ist nicht sicher
+    (`ShouldTranslate`: `detected` leer → nein). Prüfen, ob eine Zeile mit Wörtern aus einer Wörterliste / einem
+    Windows-Wörterbuch als sicher gelten darf; heute hilft nur der Klick auf die Zeile.
 
 ## Später (nur auf Emis Wort)
 Sendesprache automatisch an den Empfänger anpassen (die erkannte Sprache je Spieler
