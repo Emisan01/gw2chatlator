@@ -100,7 +100,7 @@ int wmain(int argc, wchar_t** argv) {
         const std::vector<std::wstring> never = cols.size() > 3 ? Split(cols[3], L'|') : std::vector<std::wstring>();
         const std::wstring target = source == L"de" ? L"EN" : L"DE";
         const gct::ProtectedText p = raw ? gct::ProtectCodesOnly(text)
-                                         : gct::ProtectForTranslation(text, gct::BuiltinGlossary(source, target), &keep);
+                                         : gct::ProtectForTranslation(text, gct::BuiltinGlossary(target), &keep);
         const auto t0 = std::chrono::steady_clock::now();
         const gct::TranslateResult r = translator->Translate(p.segments, source, target);
         const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();

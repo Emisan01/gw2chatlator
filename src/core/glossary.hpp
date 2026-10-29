@@ -62,11 +62,11 @@ private:
 // language the GW2 API has no names in.
 const NameTable& BuiltinNames(const std::wstring& lang);
 
-// The glossary for a sentence written in `source`, translated into `target`: the official names and the usual words
-// (data/gw2-words.tsv: raid, skin, waypoint ... in each language). Both ways, by one rule: a name written in
-// the sentence's own language becomes the target's official name ("Löwenstein" → "Lion's Arch", "meet at Lion's Arch"
-// → "Löwenstein"; English where the target has no names); a name in another language is the writer's choice
-// ("Lion's Arch" in a German sentence) and is not touched here. Null when the source has no names or is the target.
-const Glossary* BuiltinGlossary(const std::wstring& source, const std::wstring& target);
+// The glossary for a translation into `target`: the official names and the usual words (data/gw2-words.tsv: raid,
+// skin, waypoint ...). The target decides, whatever language the sentence or the name is written in: a name or word
+// surely in the lists becomes the target's ("Himmelsschuppe" → "Skyscale" into English, "Skyscale" → "Himmelsschuppe"
+// into German, "Lion's Arch" stays "Lion's Arch" into English); English where the target has none. Exact matches only;
+// a name that would map to two targets is left out (Glossary::Build).
+const Glossary* BuiltinGlossary(const std::wstring& target);
 
 }  // namespace gct

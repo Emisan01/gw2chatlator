@@ -66,13 +66,13 @@ std::vector<std::wstring> Forms(const wchar_t* cell) {
     return out;
 }
 
-// Every form written in the source language → the target's word, under one key per form.
+// Every form written in language s → the target's word, under one key per form.
 void AddWords(int s, int t, NameTable& source, NameTable& target) {
     for (const BuiltinWord& w : kBuiltinWords) {
         const std::vector<std::wstring> to = Forms(w.forms[t][0] ? w.forms[t] : w.forms[0]);
         const std::vector<std::wstring> from = Forms(w.forms[s]);
         for (size_t i = 0; i < from.size() && !to.empty(); ++i) {
-            const std::string key = "word:" + ToUtf8(w.key) + ":" + std::to_string(i);
+            const std::string key = "word:" + ToUtf8(w.key) + ":" + std::to_string(s) + ":" + std::to_string(i);
             source[key] = from[i];
             target[key] = to[0];
         }
@@ -87,22 +87,24 @@ const NameTable& BuiltinNames(const std::wstring& lang) {
     return i < 0 ? empty : NamesAt(i);
 }
 
-const Glossary* BuiltinGlossary(const std::wstring& source, const std::wstring& target) {
+const Glossary* BuiltinGlossary(const std::wstring& target) {
     // No names or words in the target: the English ones.
-    const int ns = NameLang(source), nt = (std::max)(NameLang(target), 0);
-    const int ws = WordLang(source), wt = (std::max)(WordLang(target), 0);
-    const bool names = ns >= 0 && ns != nt, words = ws >= 0 && ws != wt;
-    if (!names && !words) return nullptr;
+    const int nt = (std::max)(NameLang(target), 0), wt = (std::max)(WordLang(target), 0);
     static std::mutex mu;
-    static std::map<int, Glossary> built;  // one per pair, built on first use
+    static std::map<int, Glossary> built;  // one per target, built on first use
     std::lock_guard<std::mutex> lock(mu);
-    const int key = ws * 16 + wt;
-    auto it = built.find(key);
+    auto it = built.find(wt);
     if (it == built.end()) {
         NameTable src, tgt;
-        if (names) src = NamesAt(ns), tgt = NamesAt(nt);
-        if (words) AddWords(ws, wt, src, tgt);
-        it = built.emplace(key, Glossary::Build(src, tgt)).first;
+        for (int s = 0; s < 4; ++s)
+            for (const auto& [key, name] : NamesAt(s)) {
+                const auto to = NamesAt(nt).find(key);
+                if (to == NamesAt(nt).end()) continue;
+                src[std::to_string(s) + ":" + key] = name;
+                tgt[std::to_string(s) + ":" + key] = to->second;
+            }
+        for (int s = 0; s < static_cast<int>(std::size(kWordLangs)); ++s) AddWords(s, wt, src, tgt);
+        it = built.emplace(wt, Glossary::Build(src, tgt)).first;
     }
     return &it->second;
 }

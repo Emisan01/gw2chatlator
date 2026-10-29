@@ -314,39 +314,36 @@ static void TestNameTable() {
     CHECK(back.size() == 2 && back.at("map:2") == L"L\u00f6wenstein");
 }
 
-// The compiled names, both ways by one rule: a name in the sentence's own language becomes the target's; a name in
-// another language (Denglish) is not touched; no names in the target → the English ones.
+// The compiled names and words: the target decides, whatever the sentence or the name is written in; no names in the
+// target → the English ones.
 static void TestBuiltinGlossary() {
     CHECK(BuiltinNames(L"de").size() > 200 && BuiltinNames(L"PL").empty());
     auto first = [](const Glossary* g, const std::wstring& text) {
         const auto m = g ? g->FindAll(text) : std::vector<GlossaryMatch>{};
         return m.empty() ? std::wstring() : m[0].target;
     };
-    CHECK(first(BuiltinGlossary(L"de", L"EN-GB"), L"treffen in Löwenstein") == L"Lion's Arch");
-    CHECK(first(BuiltinGlossary(L"en", L"DE"), L"meet at Lion's Arch") == L"Löwenstein");
-    CHECK(first(BuiltinGlossary(L"fr", L"ES"), L"à L'Arche du Lion") == L"Arco del León");
-    CHECK(first(BuiltinGlossary(L"de", L"EN"), L"treffen in Lion's Arch").empty());     // Denglish stays
-    CHECK(first(BuiltinGlossary(L"de", L"PL"), L"Himmelsschuppe") == L"Skyscale");      // no Polish names
-    CHECK(first(BuiltinGlossary(L"en", L"PL"), L"meet at Lion's Arch").empty());     // English names stay English
-    CHECK(BuiltinGlossary(L"ja", L"DE") == nullptr);
-    // The usual words (data/gw2-words.tsv), every form, both ways.
-    CHECK(first(BuiltinGlossary(L"pl", L"DE"), L"do zobaczenia na rajdzie") == L"Raid");
-    CHECK(first(BuiltinGlossary(L"de", L"EN"), L"wo ist der Wegpunkt") == L"waypoint");
-    CHECK(first(BuiltinGlossary(L"en", L"DE"), L"the new skin") == L"Skin");
-    CHECK(first(BuiltinGlossary(L"es", L"FR"), L"hacemos mazmorras") == L"donjon");
-    CHECK(BuiltinGlossary(L"de", L"EN") == BuiltinGlossary(L"DE", L"en-us"));            // built once per pair
-    // A word asked about or quoted is mentioned, not used: it stays as written. The sentence's article is not the name's.
-    auto keptAs = [](const std::wstring& line, const std::wstring& src, const std::wstring& tgt) {
+    CHECK(first(BuiltinGlossary(L"EN-GB"), L"treffen in Löwenstein") == L"Lion's Arch");
+    CHECK(first(BuiltinGlossary(L"DE"), L"meet at Lion's Arch") == L"Löwenstein");
+    CHECK(first(BuiltinGlossary(L"ES"), L"à L'Arche du Lion") == L"Arco del León");
+    CHECK(first(BuiltinGlossary(L"EN"), L"treffen in Lion's Arch") == L"Lion's Arch");   // Denglish into English stays
+    CHECK(first(BuiltinGlossary(L"PL"), L"Himmelsschuppe") == L"Skyscale");              // no Polish names
+    CHECK(first(BuiltinGlossary(L"PL"), L"meet at Lion's Arch") == L"Lion's Arch");
+    CHECK(BuiltinGlossary(L"ja") == BuiltinGlossary(L"EN") && BuiltinGlossary(L"DE") == BuiltinGlossary(L"de-DE"));
+    // The usual words (data/gw2-words.tsv), every form, every language.
+    CHECK(first(BuiltinGlossary(L"DE"), L"do zobaczenia na rajdzie") == L"Raid");
+    CHECK(first(BuiltinGlossary(L"EN"), L"wo ist der Wegpunkt") == L"waypoint");
+    CHECK(first(BuiltinGlossary(L"DE"), L"the new skin") == L"Skin");
+    CHECK(first(BuiltinGlossary(L"FR"), L"hacemos mazmorras") == L"donjon");
+    // A name asked about shows the answer; the sentence's article is not the name's.
+    auto keptAs = [](const std::wstring& line, const std::wstring& tgt) {
         std::wstring out;
-        for (const Segment& s : ProtectForTranslation(line, BuiltinGlossary(src, tgt), &BuiltinKeepWords()).segments)
+        for (const Segment& s : ProtectForTranslation(line, BuiltinGlossary(tgt), &BuiltinKeepWords()).segments)
             if (s.keep) out += s.text + L"|";
         return out;
     };
-    CHECK(keptAs(L"Was heißt Himmelsschuppe auf Englisch?", L"de", L"EN") == L"Himmelsschuppe|");
-    CHECK(keptAs(L"what is a skyscale called in german?", L"en", L"DE") == L"skyscale|");
-    CHECK(keptAs(L"nimm „Himmelsschuppe“ mit", L"de", L"EN") == L"Himmelsschuppe|");
-    CHECK(keptAs(L"nimm die Himmelsschuppe mit", L"de", L"EN") == L"Skyscale|");
-    CHECK(keptAs(L"we go into the Silverwastes", L"en", L"DE") == L"Silberwüste|");
+    CHECK(keptAs(L"whats the name of Himmelsschuppe in english?", L"EN") == L"Skyscale|");
+    CHECK(keptAs(L"Wie heißt Skyscale auf Deutsch?", L"DE") == L"Himmelsschuppe|");
+    CHECK(keptAs(L"we go into the Silverwastes", L"DE") == L"Silberwüste|");
 }
 
 static void TestGlossary() {
