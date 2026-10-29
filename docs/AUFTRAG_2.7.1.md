@@ -15,6 +15,9 @@ keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zulet
    nur wenn sicher (`SureLanguage`). Prüfen, dass Enter vor fertiger Übersetzung wartet („translating and sending …“).
 3c. **Alte Übersetzung bleibt stehen:** wechselt das Ziel und ist eine Zeile schon in der neuen Zielsprache (wird
    übersprungen), zeigt sie weiter die alte Übersetzung – sie soll dann das Original zeigen.
+   Dazu (Live-Test FR→FR): kurze französische Zeilen mit Tippfehlern wurden nicht als Französisch erkannt und
+   „ins Französische“ übersetzt („Je suis un mai (?)“, „où est les nouveaux joueurs“). Regel: hat die Übersetzung fast
+   nichts geändert oder ist sie unsicher, während das Ziel eine Sprache ist, die du liest – Original zeigen.
 
 ## Übersetzung
 4. **Kein-Mist-Filter (so einfach wie möglich):** ist ein Ergebnis schlecht (Score unter `kUnsureScore` oder die
