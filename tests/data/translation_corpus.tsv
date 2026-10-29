@@ -1,48 +1,49 @@
 # translation_bench: made-up GW2 chat lines (never a real player's message). source language <TAB> text.
 # German lines go into English, all others into German. What is measured: protected parts kept, sentences kept,
 # nothing cut short (core/translation_check).
-es	Hermandad Sol Dorado [DS] busca jugadores nuevos para crecer juntos y divertirse. Hacemos mazmorras y fractales cada noche! Escríbeme para más info :)
-fr	Je suis nouveau et niveau 80, je cherche une guilde sympa pour jouer ensemble :)
-en	LFG fractals T4, need a chrono and a healer, pls whisper me
-en	anyone want to come to the world boss train tonight? we start at the waypoint in 10 min
-de	wtf war das für ein Boss? Wir brauchen mehr DPS beim Breakbar. Wer macht CC?
-de	Hat jemand Lust auf Strikes? Wir sind zu dritt und suchen noch zwei Leute.
-fr	Quelqu'un pour faire le méta de Tequatl ? On est déjà vingt. Rejoignez le squad !
-es	¿Alguien sabe dónde está el vendedor de karma? Gracias de antemano.
-it	Ciao a tutti! Cerco una gilda italiana per fare raid e fractal. Grazie mille :)
-pl	Szukam gildii do WvW. Gram codziennie wieczorem. Ktoś chętny?
-pt	Alguém quer fazer as dailies comigo? Estou no waypoint de Lion's Arch.
-ru	Кто-нибудь идёт на мирового босса? Нужен ещё один хилер.
-tr	Selam! Fraktal için grup arıyorum. T4 yapabilirim.
-en	Selling [&AgGvWwEA] cheap, whisper me if interested. Also buying ectos.
-de	Danke für die Hilfe! Das Event hat super geklappt. Bis morgen :)
-en	omg that was close lol. gg everyone, see you next time o/
-es	[LFG] Busco grupo para el meta de Drakkar. Tengo comida y utilidades. ¿Alguien más?
-fr	Merci pour le rez ! J'étais à deux doigts de mourir lol. Vous êtes au top.
-en	Commander tag up at the north tower in WvW, we need more people on EBG. Bring siege and supply.
-de	Kann mir jemand sagen, wo ich die Ektoplasma-Kugeln herbekomme? Ich brauche zehn Stück für meine Legy.
-fr	Salut tout le monde ! Quelqu'un a besoin d'aide pour la quête de l'histoire ? Je peux vous accompagner.
-es	Necesito un qheal y un alac para el raid de esta noche. Empezamos a las nueve.
-it	Qualcuno vende minerale di mithril? Pago bene. Scrivetemi in privato.
-pl	Dzięki za grę! Do zobaczenia jutro na rajdzie.
-pt	Preciso de ajuda com o chefe final da missão. Ele me mata sempre. Alguém pode vir?
-ru	Спасибо за помощь! Без вас я бы не справился. Удачи всем.
-tr	Bu akşam WvW'ye kim geliyor? Komutan kuzey kulesinde bekliyor.
-en	brb 5 min, dinner. keep the spot for me pls
-de	Ich hab mich verlaufen lol. Wo ist der Wegpunkt zum Weltboss? Danke schonmal!
-fr	On fait les fractales T4 + CM ce soir, il manque un heal alac. MP moi.
-es	Gracias por el rez! Casi me muero jaja.
-it	Il mio personaggio è bloccato sotto la mappa. Qualcuno sa come uscire?
-pl	Czy ktoś wie, gdzie kupić skórkę do szybowca? Szukam od godziny.
-pt	Boa noite pessoal! Alguém quer fazer o evento do mapa comigo?
-ru	Ищу гильдию для рейдов. Играю на некроманте и стражнике.
-tr	Teşekkürler arkadaşlar, harika bir etkinlikti!
-en	can someone explain how the breakbar works? i keep failing the CC phase. thanks in advance
-de	Kurze Frage: lohnt sich die Legendäre Rüstung für WvW? Oder lieber erst die Waffe?
-es	Hola
-fr	Merci !
-en	Did anyone get the new skin from the Wizard's Vault? It's only there this week.
-en	Meet at the waypoint in Lion's Arch, then we go to Verdant Brink for the meta.
-en	could someone give me a port to [Shipwreck Peak Waypoint]? need the hero points there
-en	where is a good spot to level from 30 to 40?
-en	anyone want to farm gold in the Silverwastes tonight?
+# Meaning words (columns 3 and 4): must – groups split by ";", alternatives by "|", one of each group in the translation; never – words it must not hold. Set by hand for these made-up lines; strict on purpose.
+es	Hermandad Sol Dorado [DS] busca jugadores nuevos para crecer juntos y divertirse. Hacemos mazmorras y fractales cada noche! Escríbeme para más info :)	Spieler;Dungeon|Dungeons|Verlies|Verliese|Kerker	fangen
+fr	Je suis nouveau et niveau 80, je cherche une guilde sympa pour jouer ensemble :)	neu;80;Gilde	Ebene
+en	LFG fractals T4, need a chrono and a healer, pls whisper me	LFG;T4;Chrono;Heiler|Healer
+en	anyone want to come to the world boss train tonight? we start at the waypoint in 10 min	Weltboss|World Boss|Welt-Boss|Weltbosszug;Wegpunkt|Waypoint;10
+de	wtf war das für ein Boss? Wir brauchen mehr DPS beim Breakbar. Wer macht CC?	wtf;boss;DPS;CC
+de	Hat jemand Lust auf Strikes? Wir sind zu dritt und suchen noch zwei Leute.	strike|strikes;three|3;two|2
+fr	Quelqu'un pour faire le méta de Tequatl ? On est déjà vingt. Rejoignez le squad !	Tequatl;20|zwanzig;Squad|Trupp
+es	¿Alguien sabe dónde está el vendedor de karma? Gracias de antemano.	Karma;Händler|Verkäufer|Kaufmann;Danke|Vielen Dank
+it	Ciao a tutti! Cerco una gilda italiana per fare raid e fractal. Grazie mille :)	Gilde;Raid|Raids;Danke|Vielen Dank
+pl	Szukam gildii do WvW. Gram codziennie wieczorem. Ktoś chętny?	Gilde;WvW;Abend|abends
+pt	Alguém quer fazer as dailies comigo? Estou no waypoint de Lion's Arch.	Lion's Arch;Wegpunkt|Waypoint
+ru	Кто-нибудь идёт на мирового босса? Нужен ещё один хилер.	Weltboss|World Boss|Welt-Boss;Heiler|Healer
+tr	Selam! Fraktal için grup arıyorum. T4 yapabilirim.	Fraktal|Fraktale;Gruppe;T4	weiß nicht
+en	Selling [&AgGvWwEA] cheap, whisper me if interested. Also buying ectos.	[&AgGvWwEA];billig|günstig;Ecto|Ectos|Ektos|Ektoplasma
+de	Danke für die Hilfe! Das Event hat super geklappt. Bis morgen :)	thank|thanks;event;tomorrow
+en	omg that was close lol. gg everyone, see you next time o/	omg;lol;gg;o/
+es	[LFG] Busco grupo para el meta de Drakkar. Tengo comida y utilidades. ¿Alguien más?	[LFG];Drakkar;Gruppe;Essen
+fr	Merci pour le rez ! J'étais à deux doigts de mourir lol. Vous êtes au top.	Danke|Vielen Dank;rez	Boden|Gebet
+en	Commander tag up at the north tower in WvW, we need more people on EBG. Bring siege and supply.	WvW;EBG;Nordturm|Norden|nördlichen|Nord-Turm
+de	Kann mir jemand sagen, wo ich die Ektoplasma-Kugeln herbekomme? Ich brauche zehn Stück für meine Legy.	ectoplasm|ecto|ectos;ten|10
+fr	Salut tout le monde ! Quelqu'un a besoin d'aide pour la quête de l'histoire ? Je peux vous accompagner.	Hilfe;Geschichte|Story|Handlung|Quest
+es	Necesito un qheal y un alac para el raid de esta noche. Empezamos a las nueve.	qheal;alac;Raid;neun|9
+it	Qualcuno vende minerale di mithril? Pago bene. Scrivetemi in privato.	Mithril;privat
+pl	Dzięki za grę! Do zobaczenia jutro na rajdzie.	Danke|Vielen Dank;morgen;Raid	Ride
+pt	Preciso de ajuda com o chefe final da missão. Ele me mata sempre. Alguém pode vir?	Hilfe;Boss|Endboss|Chef	Endleiter|Leiter
+ru	Спасибо за помощь! Без вас я бы не справился. Удачи всем.	Danke|Vielen Dank;Glück
+tr	Bu akşam WvW'ye kim geliyor? Komutan kuzey kulesinde bekliyor.	WvW;Kommandant|Kommandeur|Commander;Nordturm|Norden|nördlichen|Nord-Turm
+en	brb 5 min, dinner. keep the spot for me pls	brb;5;Abendessen
+de	Ich hab mich verlaufen lol. Wo ist der Wegpunkt zum Weltboss? Danke schonmal!	lost;waypoint;world boss
+fr	On fait les fractales T4 + CM ce soir, il manque un heal alac. MP moi.	T4;CM;Fraktal|Fraktale;heal;alac	Ich bin es|Ich will sie
+es	Gracias por el rez! Casi me muero jaja.	Danke|Vielen Dank;rez	Boden|Gebet
+it	Il mio personaggio è bloccato sotto la mappa. Qualcuno sa come uscire?	Charakter|Figur;Karte
+pl	Czy ktoś wie, gdzie kupić skórkę do szybowca? Szukam od godziny.	Gleiter|Glider;Skin|Aussehen	Schlitten|Schlittenfleisch
+pt	Boa noite pessoal! Alguém quer fazer o evento do mapa comigo?	Abend;Event|Ereignis;Karte	Veranstaltung|Kartenveranstaltung
+ru	Ищу гильдию для рейдов. Играю на некроманте и стражнике.	Gilde;Raid|Raids;Nekromant|Necromancer;Wächter|Guardian	Razzia|Wachmann
+tr	Teşekkürler arkadaşlar, harika bir etkinlikti!	Danke|Vielen Dank
+en	can someone explain how the breakbar works? i keep failing the CC phase. thanks in advance	CC
+de	Kurze Frage: lohnt sich die Legendäre Rüstung für WvW? Oder lieber erst die Waffe?	legendary armor;WvW;weapon	gun
+es	Hola	Hallo|Hi|Hey	das ist alles|was ist los
+fr	Merci !	Danke|Vielen Dank
+en	Did anyone get the new skin from the Wizard's Vault? It's only there this week.	Wizard's Vault;Skin;Woche	Haut
+en	Meet at the waypoint in Lion's Arch, then we go to Verdant Brink for the meta.	Wegpunkt;Lion's Arch;Verdant Brink;meta
+en	could someone give me a port to [Shipwreck Peak Waypoint]? need the hero points there	[Shipwreck Peak Waypoint];Heldenpunkte|Hero Points|Hero-Punkte
+en	where is a good spot to level from 30 to 40?	leveln|aufsteigen|Level|Stufe	liegen
+en	anyone want to farm gold in the Silverwastes tonight?	Gold;Silverwastes;farmen|farm	anbauen
