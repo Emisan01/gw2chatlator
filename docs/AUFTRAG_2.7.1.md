@@ -9,10 +9,13 @@ keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zulet
    Nachstellen (erfundene Zeilen), Ursache finden, Test dazu (`TranslateRecentLines` → `TranslateLine`, kb_worker.cpp).
 2. **Rohschalter:** bleibt bis zum Neustart an, auch beim Übersetzerwechsel, und man sieht, ob er an ist.
 3. **NLLB-Qualitätsstufe wechseln:** neu initialisieren und melden „Qualitätsstufe geladen“.
-3b. **Eigene Nachricht ging unübersetzt raus** (Live-Test: kurze deutsche Zeile, gemischte Zeile „ich habe J'ai …“).
-   Verdacht: kb_worker.cpp:242 nimmt die erkannte Sprache vor der Eingabesprache – erkennt die Erkennung eine kurze
-   Zeile falsch (z. B. als Zielsprache), wird nichts übersetzt. Fix: für eigenen Text die Eingabesprache, die Erkennung
-   nur wenn sicher (`SureLanguage`). Prüfen, dass Enter vor fertiger Übersetzung wartet („translating and sending …“).
+3b. **Eigene Nachricht: übersetzt wird, was du wirklich geschrieben hast.** Eine Regel für beide Live-Befunde:
+   Quelle = die erkannte Sprache, **wenn die Erkennung sicher ist** (`SureLanguage`), sonst die Eingabesprache. Übersetzt
+   wird, sobald diese Quelle nicht die Sendesprache ist – auch wenn „Schreiben“ und „Senden“ gleich stehen (Live-Test:
+   „Schreiben: Français, Senden: Français“, englisch getippt → ging englisch raus; kurze deutsche Zeile → unübersetzt).
+   „Schreiben“ bleibt die Sprache der Tipphilfe. Die Vorschau zeigt es vor dem Senden. Prüfen, dass Enter vor fertiger
+   Übersetzung wartet. Heute: send_route.cpp entscheidet nur nach den Einstellungen, kb_worker.cpp:242 nimmt die
+   Erkennung auch unsicher.
 3c. **Alte Übersetzung bleibt stehen:** wechselt das Ziel und ist eine Zeile schon in der neuen Zielsprache (wird
    übersprungen), zeigt sie weiter die alte Übersetzung – sie soll dann das Original zeigen.
    Dazu (Live-Test FR→FR): kurze französische Zeilen mit Tippfehlern wurden nicht als Französisch erkannt und
@@ -64,7 +67,7 @@ keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zulet
 
 ## Später (nur auf Emis Wort)
 Sendesprache automatisch an den Empfänger anpassen (die erkannte Sprache je Spieler
-gibt es schon: `g_playerLang`) · Ganzer fremdsprachiger Satz bei gleicher Ein-/Ausgabesprache (Spracherkennung, vorher Fehlrate messen) · Verben wie
+gibt es schon: `g_playerLang`) · Verben wie
 farm/level · Spracheingabe (Emi testet zuerst, Whisper bleibt auf Standard) · Wächter · Aufräumen Schichten 2–3 ·
 Fuzzing der Chat-Eingabe.
 
