@@ -475,7 +475,8 @@ bool SpellService::IsKnown(const std::wstring& word) const {
     auto sSnap = std::atomic_load(&sessionSnap_);
     return (nSnap && nSnap->count(f)) || IsKeepWord(BuiltinSpellIgnore(), word) ||
            (gSnap && gSnap->count(f)) || (uSnap && uSnap->count(f)) || (sSnap && sSnap->count(f)) ||
-           CommonChatEnglish().count(f) || (learnedLang_ == L"de" && IsGermanContraction(word)) || model_.Knows(word);
+           CommonChatEnglish().count(f) || CommonChatWords(learnedLang_).count(f) ||
+           (learnedLang_ == L"de" && IsGermanContraction(word)) || model_.Knows(word);
 }
 
 bool SpellService::IsMisspelled(const std::wstring& word) const {

@@ -443,9 +443,10 @@ def main():
         if not typing_bench.exists():
             print(f"    [FAIL] Binary not found: {typing_bench}")
             sys.exit(1)
-        ok, out, dur = run_step("Typing Benchmark Determinism (0 surprises)", [str(typing_bench)], expect_substr="0 surprises")
+        ok, out, dur = run_step("Typing Benchmark Determinism (no surprise in any language)", [str(typing_bench)],
+                                expect_substr="no surprise in any language", timeout=900)
         gate_results.append({"gate": 5, "name": "Typing Benchmark Determinism", "status": "PASS" if ok else "FAIL", "duration_sec": dur, "exit_code": 0 if ok else 1})
-        test_metrics["typing_bench"] = "0 surprises" if ok else "FAIL"
+        test_metrics["typing_bench"] = "7 languages, no surprise" if ok else "FAIL"
         if not ok: sys.exit(1)
 
     # Gate 6: Localization check

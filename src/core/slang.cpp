@@ -195,6 +195,62 @@ const wchar_t* const kChatEnglish[] = {
     L"with", L"without", L"wont", L"work", L"would", L"yeah", L"yes", L"yet", L"you", L"your", L"yours", L"youre",
 };
 
+// The everyday words of a chat in the other UI languages (written for these lists): without a Windows dictionary a
+// short finished word ("que", "jest", "mon") looked unfinished and Space completed it ("queda", "jestem",
+// "monde") – typing_bench measured 14 such surprises in French, Spanish, Polish and Portuguese. Known in the
+// language you write in only.
+const wchar_t* const kChatFrench[] = {
+    L"a", L"ai", L"aide", L"aller", L"alors", L"as", L"attendez", L"attends", L"au", L"aussi", L"aux", L"avant",
+    L"avec", L"avez", L"avoir", L"besoin", L"bien", L"bon", L"bonne", L"bonsoir", L"bravo", L"car", L"ce", L"ces",
+    L"cet", L"cette", L"chez", L"chose", L"comme", L"comment", L"dans", L"de", L"demain", L"des", L"dis", L"dit",
+    L"dois", L"doit", L"donc", L"du", L"déjà", L"désolé", L"elle", L"en", L"encore", L"es", L"est", L"et", L"eu",
+    L"faire", L"fais", L"fait", L"faut", L"groupe", L"guilde", L"ici", L"il", L"ils", L"jamais", L"je", L"jour",
+    L"joué", L"juste", L"la", L"le", L"les", L"leur", L"lui", L"là", L"ma", L"maintenant", L"mais", L"matin", L"me",
+    L"merci", L"mes", L"moi", L"mon", L"monde", L"non", L"nos", L"notre", L"nous", L"nuit", L"on", L"ont", L"ou",
+    L"oui", L"où", L"par", L"pas", L"peu", L"peut", L"peux", L"plus", L"pour", L"pourquoi", L"prêt", L"prête",
+    L"quand", L"que", L"quel", L"quelle", L"qui", L"quoi", L"rejoindre", L"rien", L"sa", L"salut", L"sans", L"se",
+    L"ses", L"si", L"soir", L"son", L"sont", L"suis", L"sur", L"ta", L"te", L"temps", L"tes", L"toi", L"ton",
+    L"toujours", L"tous", L"tout", L"toute", L"toutes", L"trop", L"très", L"tu", L"un", L"une", L"va", L"vais",
+    L"vas", L"venir", L"vers", L"veut", L"veux", L"viens", L"vient", L"vite", L"voilà", L"vos", L"votre", L"vous",
+    L"vu", L"y", L"à", L"ça", L"été", L"être",
+};
+const wchar_t* const kChatSpanish[] = {
+    L"a", L"ahora", L"ahí", L"al", L"algo", L"allí", L"antes", L"aquí", L"así", L"ayuda", L"bien", L"buen",
+    L"buena", L"buenas", L"buenos", L"clan", L"como", L"con", L"cuando", L"cuál", L"cuándo", L"cómo", L"de", L"del",
+    L"después", L"donde", L"día", L"dónde", L"el", L"ella", L"ellos", L"en", L"es", L"esa", L"ese", L"eso",
+    L"espera", L"esperad", L"esta", L"estamos", L"este", L"esto", L"estoy", L"está", L"estáis", L"están", L"estás",
+    L"gente", L"gracias", L"grupo", L"ha", L"hace", L"hacer", L"haces", L"hago", L"has", L"hay", L"hola", L"hoy",
+    L"ir", L"la", L"las", L"le", L"listo", L"lo", L"los", L"luego", L"mal", L"mañana", L"me", L"mi", L"mis",
+    L"muchas", L"mucho", L"muchos", L"muy", L"más", L"nada", L"no", L"noche", L"nos", L"nosotros", L"nunca", L"o",
+    L"os", L"para", L"perdón", L"pero", L"poco", L"por", L"porque", L"puede", L"puedes", L"puedo", L"que", L"quien",
+    L"quieres", L"quiero", L"quién", L"qué", L"se", L"seguimos", L"ser", L"si", L"siempre", L"sin", L"son", L"soy",
+    L"su", L"sus", L"sé", L"sí", L"también", L"tan", L"te", L"tengo", L"tiene", L"tienes", L"todo", L"todos", L"tu",
+    L"tus", L"tú", L"un", L"una", L"uno", L"va", L"vale", L"vamos", L"vas", L"veo", L"ver", L"vez", L"viene",
+    L"vienes", L"vosotros", L"voy", L"y", L"ya", L"yo", L"él",
+};
+const wchar_t* const kChatPolish[] = {
+    L"a", L"ale", L"bardzo", L"być", L"był", L"była", L"było", L"chce", L"chcesz", L"chcę", L"co", L"czekam",
+    L"cześć", L"czy", L"dla", L"do", L"dobra", L"dobre", L"dobry", L"dobrze", L"dzięki", L"dziękuję", L"dziś",
+    L"gdzie", L"gildia", L"gildii", L"go", L"gotowy", L"grupa", L"grupie", L"grupy", L"hej", L"i", L"ich", L"idzie",
+    L"idziemy", L"idziesz", L"idę", L"ja", L"jak", L"jakie", L"jej", L"jest", L"jestem", L"jesteś", L"jesteście",
+    L"jesteśmy", L"jeszcze", L"jutro", L"już", L"kto", L"ktoś", L"ma", L"mam", L"mamy", L"masz", L"mi", L"mnie",
+    L"moja", L"może", L"możesz", L"mój", L"na", L"nam", L"nas", L"nic", L"nie", L"no", L"o", L"od", L"on", L"ona",
+    L"oni", L"po", L"poczekaj", L"pomocy", L"potem", L"proszę", L"przy", L"razem", L"się", L"sorry", L"są", L"tak",
+    L"tam", L"te", L"ten", L"teraz", L"to", L"trochę", L"tu", L"twój", L"ty", L"w", L"we", L"wieczorem", L"witam",
+    L"wszyscy", L"wszystko", L"z", L"za", L"zaraz", L"że",
+};
+const wchar_t* const kChatPortuguese[] = {
+    L"a", L"agora", L"ainda", L"ajuda", L"algo", L"amanhã", L"aqui", L"as", L"até", L"bem", L"boa", L"bom", L"com",
+    L"como", L"da", L"das", L"de", L"depois", L"desculpa", L"dia", L"do", L"dos", L"e", L"ela", L"ele", L"eles",
+    L"em", L"então", L"era", L"espera", L"esperem", L"essa", L"esse", L"esta", L"estou", L"está", L"estão", L"eu",
+    L"faz", L"fazer", L"foi", L"grupo", L"guilda", L"hoje", L"isso", L"já", L"lá", L"mais", L"mal", L"mas", L"me",
+    L"meu", L"minha", L"muito", L"na", L"nas", L"no", L"noite", L"nos", L"não", L"nós", L"o", L"obrigada",
+    L"obrigado", L"oi", L"olá", L"onde", L"os", L"ou", L"para", L"pessoal", L"pode", L"por", L"porque", L"posso",
+    L"pra", L"pro", L"pronto", L"quando", L"que", L"quem", L"quer", L"quero", L"quê", L"se", L"sem", L"ser", L"seu",
+    L"sim", L"sou", L"sua", L"são", L"só", L"também", L"te", L"tem", L"tenho", L"todo", L"todos", L"tudo", L"um",
+    L"uma", L"vai", L"valeu", L"vamos", L"vem", L"você", L"vocês", L"vou", L"à", L"é",
+};
+
 // Verb forms that take "s" for "es" in spoken German. "hat"/"war" are left out ("hats", "wars" are English words).
 const wchar_t* const kContractionStems[] = {
     L"hab", L"geht", L"gibt", L"gab", L"wird", L"ist", L"mach", L"macht", L"kann", L"ging", L"sieht", L"klappt",
@@ -239,6 +295,15 @@ std::wstring ExpandGermanContractions(const std::wstring& text) {
         i = e;
     }
     return out;
+}
+
+const WordSet& CommonChatWords(const std::wstring& lang) {
+    static const WordSet empty, fr = Make({kChatFrench}, {std::size(kChatFrench)}),
+                                es = Make({kChatSpanish}, {std::size(kChatSpanish)}),
+                                pl = Make({kChatPolish}, {std::size(kChatPolish)}),
+                                pt = Make({kChatPortuguese}, {std::size(kChatPortuguese)});
+    const std::wstring l = ToLowerAscii(lang.substr(0, 2));
+    return l == L"fr" ? fr : l == L"es" ? es : l == L"pl" ? pl : l == L"pt" ? pt : empty;
 }
 
 const WordSet& CommonChatEnglish() {

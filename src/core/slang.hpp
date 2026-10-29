@@ -50,6 +50,8 @@ const WordSet& BuiltinSpellIgnore();
 // The English everyone writes in a GW2 chat, whatever language they type in ("with", "sorry", "thanks", "good"):
 // never a typo to correct while writing another language.
 const WordSet& CommonChatEnglish();
+// The same for French, Spanish, Polish and Portuguese, by the language you write in ("fr", "es-ES"); empty for others.
+const WordSet& CommonChatWords(const std::wstring& lang);
 
 // German spoken contractions ("habs", "geht's", "gibts"): a way of writing, never a typo – and for a translator
 // written out ("hab es", "geht es", "gibt es"; translators leave "habs" as it is and break the sentence). Only the text
