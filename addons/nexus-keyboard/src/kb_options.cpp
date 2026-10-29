@@ -493,11 +493,17 @@ void DoSaveOptions(Config& edit, Config& opened,
         if (edit.writeLangs == opened.writeLangs) edit.writeLangs = g_cfg.writeLangs;
         if (edit.voiceModel == opened.voiceModel) edit.voiceModel = g_cfg.voiceModel;
         const bool engineChanged = edit.engine != g_cfg.engine;
+        // Only a changed translator or key builds a new one: a new local helper loads its model again, and the first
+        // request ran into the timeout after changing nothing but the typing language.
+        const bool translatorChanged = engineChanged || edit.deeplKey != g_cfg.deeplKey ||
+                                       edit.googleKey != g_cfg.googleKey || edit.msKey != g_cfg.msKey ||
+                                       edit.msRegion != g_cfg.msRegion || edit.basicEmail != g_cfg.basicEmail;
         g_cfg = opened = edit;
         g_cfg.SaveAll();
         SetUiLang(g_cfg.uiLang);
         PrepareFaultAlert();  // the alert after a fault in the language chosen now
-        g_translator = MakeTranslator(g_cfg);
+        if (engineChanged) g_myMemorySessionFallback = false;  // a translator you choose is the one that runs
+        if (translatorChanged || !g_translator) g_translator = MakeTranslator(g_cfg);
         const int asWritten = static_cast<int>(g_cfg.writeLangs.size());
         const auto kept = std::find(g_cfg.writeLangs.begin(), g_cfg.writeLangs.end(), sendWas);
         if (writingSwitched) g_sendIdx = g_cfg.translateWriting ? 0 : asWritten;
@@ -593,6 +599,7 @@ void ApplyEngineNow(Config& edit, Config& opened, Engine e) {
     std::lock_guard<std::mutex> lock(g_mu);
     g_cfg.engine = e;
     g_cfg.SaveValue(L"Translate", L"Engine", EngineKey(e));
+    g_myMemorySessionFallback = false;  // a translator you choose is the one that runs, not the session's fallback
     g_translator = MakeTranslator(g_cfg);
     g_preview.clear();
     ++g_inputGen;

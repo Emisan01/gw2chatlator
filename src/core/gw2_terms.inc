@@ -91,6 +91,8 @@
 {L"fotm", TermKind::Keep, L"Fractals of the Mists"},
 {L"frac", TermKind::Word, L"Fractals"},
 {L"fracs", TermKind::Keep, L"Fractals"},
+{L"frak", TermKind::Keep, L"Fractals (a translator reads the science-fiction swear word)"},
+{L"fraks", TermKind::Keep, L"Fractals"},
 {L"fractal", TermKind::Word, L"a fractal level"},
 {L"scale", TermKind::Word, L"difficulty level in fractals"},
 {L"t1", TermKind::Keep, L"fractal tier 1"},

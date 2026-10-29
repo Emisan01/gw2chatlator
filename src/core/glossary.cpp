@@ -102,6 +102,13 @@ const Glossary* BuiltinGlossary(const std::wstring& target) {
                 if (to == NamesAt(nt).end()) continue;
                 src[std::to_string(s) + ":" + key] = name;
                 tgt[std::to_string(s) + ":" + key] = to->second;
+                std::wstring plain;  // written without the apostrophe ("lions arch"), as the terms list takes it
+                for (wchar_t c : name)
+                    if (c != L'\'' && c != L'\u2019') plain += c;
+                if (plain != name) {
+                    src[std::to_string(s) + ":" + key + ":plain"] = plain;
+                    tgt[std::to_string(s) + ":" + key + ":plain"] = to->second;
+                }
             }
         for (int s = 0; s < static_cast<int>(std::size(kWordLangs)); ++s) AddWords(s, wt, src, tgt);
         it = built.emplace(wt, Glossary::Build(src, tgt)).first;

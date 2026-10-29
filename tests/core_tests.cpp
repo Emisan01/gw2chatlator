@@ -328,6 +328,7 @@ static void TestBuiltinGlossary() {
     CHECK(first(BuiltinGlossary(L"EN"), L"treffen in Lion's Arch") == L"Lion's Arch");   // Denglish into English stays
     CHECK(first(BuiltinGlossary(L"PL"), L"Himmelsschuppe") == L"Skyscale");              // no Polish names
     CHECK(first(BuiltinGlossary(L"PL"), L"meet at Lion's Arch") == L"Lion's Arch");
+    CHECK(first(BuiltinGlossary(L"FR"), L"where in lions arch?") == L"L'Arche du Lion");  // without the apostrophe
     CHECK(BuiltinGlossary(L"ja") == BuiltinGlossary(L"EN") && BuiltinGlossary(L"DE") == BuiltinGlossary(L"de-DE"));
     // The usual words (data/gw2-words.tsv), every form, every language.
     CHECK(first(BuiltinGlossary(L"DE"), L"do zobaczenia na rajdzie") == L"Raid");
@@ -2841,9 +2842,9 @@ static void TestTranslationOrchestrator() {
     CHECK(orch.ComputeBeamSize(QualityMode::Fast, 0) == 1);
     CHECK(orch.ComputeBeamSize(QualityMode::Balanced, 0) == 2);
     CHECK(orch.ComputeBeamSize(QualityMode::Quality, 0) == 4);
-    // Queue congestion drops beam to 1
-    CHECK(orch.ComputeBeamSize(QualityMode::Balanced, 3) == 1);
-    CHECK(orch.ComputeBeamSize(QualityMode::Quality, 5) == 1);
+    // Queue congestion drops the beam to 2, never to greedy
+    CHECK(orch.ComputeBeamSize(QualityMode::Balanced, 3) == 2);
+    CHECK(orch.ComputeBeamSize(QualityMode::Quality, 5) == 2);
 
     // 4. Sieve logic
     // Slang -> Skip

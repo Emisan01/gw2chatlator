@@ -155,7 +155,7 @@ void TranslationOrchestrator::RecordTranslation(const std::wstring& text,
 int TranslationOrchestrator::ComputeBeamSize(QualityMode userMode, size_t queueDepth) const {
     const int baseBeam = static_cast<int>(userMode);
     if (baseBeam <= 1) return 1;
-    if (queueDepth > 2) return 1;  // Dynamic throttle: drop to greedy under queue pressure
+    if (queueDepth > 2) return 2;  // under queue pressure a smaller beam, never greedy (beam 1: "dance" -> "TANCE")
     return baseBeam;
 }
 

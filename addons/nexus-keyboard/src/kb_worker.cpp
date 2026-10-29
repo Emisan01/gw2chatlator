@@ -58,6 +58,14 @@ std::wstring CheckNote(const TranslationCheck& c) {
     }
 }
 
+// The original is shown again (an old translation into another target goes).
+static void ClearTranslation(ChatLine& l) {
+    l.translated.clear();
+    l.u8translated.clear();
+    l.u8transNote.clear();
+    l.transSegs = {};
+}
+
 void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
     AssertNotInteractiveLane("TranslateLine");
     std::shared_ptr<Translator> tr;
@@ -81,6 +89,7 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
                 if (attempted) {
                     l.transAttempted = true;
                     l.transTarget = what.target;
+                    ClearTranslation(l);  // nothing to translate into this target: the original, not an old one
                 }
             }
         }
@@ -157,6 +166,8 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
                 l.u8translated = U8(l.translated);
                 l.u8transNote = U8(note);
                 l.transSegs = PieUI::ChatLinks::SegmentLine(l.u8translated);
+            } else {
+                ClearTranslation(l);  // the translation changed nothing: it was in the target already
             }
         }
     }
@@ -228,6 +239,12 @@ void TranslateInput(uint64_t gen, std::wstring text) {
     const ChatSplit split = SplitChatCommand(text);
     const std::wstring body = split.prefix.empty() ? text : split.body;
     std::wstring result = body;
+    // What you really wrote in: the detection when it is sure ("lege ihn hier ab" is too short to be sure), else your
+    // typing language. Written in another language than "Send", it is translated even when "Write" and "Send" are the
+    // same (English typed with French at both).
+    const std::wstring sure = SureLanguage(body, DetectLanguage(body));
+    const std::wstring source = sure.empty() ? typing : sure;
+    if (!translating && swapping && !sure.empty() && PrimaryLang(sure) != PrimaryLang(target)) translating = true;
     std::wstring error, doubt;  // doubt: the translation check found something (said, sending stays yours)
     if (translating && tr && !IsPlainCommand(text)) {  // "/wiki Tequatl", "/dance": goes as it is
         std::wstring expanded;  // your own words replaced by what they mean (only for the translator)
@@ -239,8 +256,6 @@ void TranslateInput(uint64_t gen, std::wstring text) {
         }
         auto keep = g_spell ? g_spell->KeepWordsSnapshot() : nullptr;
         const bool raw = g_rawTranslate.load();
-        std::wstring source = DetectLanguage(body);
-        if (source.empty()) source = typing;
         ProtectedText p = raw ? ProtectCodesOnly(expanded)
                               : ProtectForTranslation(expanded, BuiltinGlossary(target),
                                                       keep ? keep.get() : &BuiltinKeepWords(), &names);
