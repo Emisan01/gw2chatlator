@@ -315,7 +315,7 @@ static void TestNameTable() {
 }
 
 // The compiled names, both ways by one rule: a name in the sentence's own language becomes the target's; a name in
-// another language (Denglish) is not touched; no names in the target → the English ones; no glossary within English.
+// another language (Denglish) is not touched; no names in the target → the English ones.
 static void TestBuiltinGlossary() {
     CHECK(BuiltinNames(L"de").size() > 200 && BuiltinNames(L"PL").empty());
     auto first = [](const Glossary* g, const std::wstring& text) {
@@ -327,7 +327,13 @@ static void TestBuiltinGlossary() {
     CHECK(first(BuiltinGlossary(L"fr", L"ES"), L"à L'Arche du Lion") == L"Arco del León");
     CHECK(first(BuiltinGlossary(L"de", L"EN"), L"treffen in Lion's Arch").empty());     // Denglish stays
     CHECK(first(BuiltinGlossary(L"de", L"PL"), L"Himmelsschuppe") == L"Skyscale");      // no Polish names
-    CHECK(BuiltinGlossary(L"en", L"PL") == nullptr && BuiltinGlossary(L"pl", L"DE") == nullptr);
+    CHECK(first(BuiltinGlossary(L"en", L"PL"), L"meet at Lion's Arch").empty());     // English names stay English
+    CHECK(BuiltinGlossary(L"ja", L"DE") == nullptr);
+    // The usual words (data/gw2-words.tsv), every form, both ways.
+    CHECK(first(BuiltinGlossary(L"pl", L"DE"), L"do zobaczenia na rajdzie") == L"Raid");
+    CHECK(first(BuiltinGlossary(L"de", L"EN"), L"wo ist der Wegpunkt") == L"waypoint");
+    CHECK(first(BuiltinGlossary(L"en", L"DE"), L"the new skin") == L"Skin");
+    CHECK(first(BuiltinGlossary(L"es", L"FR"), L"hacemos mazmorras") == L"donjon");
     CHECK(BuiltinGlossary(L"de", L"EN") == BuiltinGlossary(L"DE", L"en-us"));            // built once per pair
     // A word asked about or quoted is mentioned, not used: it stays as written. The sentence's article is not the name's.
     auto keptAs = [](const std::wstring& line, const std::wstring& src, const std::wstring& tgt) {

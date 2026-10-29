@@ -34,6 +34,51 @@ const NameTable& NamesAt(int i) {
     return tables[i];
 }
 
+// The usual words (data/gw2-words.tsv): forms by "|", the first is written; empty = the English word.
+const wchar_t* const kWordLangs[] = {L"en", L"de", L"fr", L"es", L"it", L"pl", L"pt", L"ru", L"tr"};
+struct BuiltinWord {
+    const wchar_t* key;
+    const wchar_t* forms[std::size(kWordLangs)];
+};
+const BuiltinWord kBuiltinWords[] = {
+#include "gw2_words.inc"
+};
+
+int WordLang(const std::wstring& lang) {
+    const std::wstring l = ToLowerAscii(lang.substr(0, 2));
+    for (size_t i = 0; i < std::size(kWordLangs); ++i)
+        if (l == kWordLangs[i]) return static_cast<int>(i);
+    return -1;
+}
+
+std::vector<std::wstring> Forms(const wchar_t* cell) {
+    std::vector<std::wstring> out;
+    std::wstring f;
+    for (const wchar_t* c = cell;; ++c) {
+        if (*c == L'|' || *c == 0) {
+            if (!f.empty()) out.push_back(f);
+            f.clear();
+            if (*c == 0) break;
+        } else {
+            f += *c;
+        }
+    }
+    return out;
+}
+
+// Every form written in the source language → the target's word, under one key per form.
+void AddWords(int s, int t, NameTable& source, NameTable& target) {
+    for (const BuiltinWord& w : kBuiltinWords) {
+        const std::vector<std::wstring> to = Forms(w.forms[t][0] ? w.forms[t] : w.forms[0]);
+        const std::vector<std::wstring> from = Forms(w.forms[s]);
+        for (size_t i = 0; i < from.size() && !to.empty(); ++i) {
+            const std::string key = "word:" + ToUtf8(w.key) + ":" + std::to_string(i);
+            source[key] = from[i];
+            target[key] = to[0];
+        }
+    }
+}
+
 }  // namespace
 
 const NameTable& BuiltinNames(const std::wstring& lang) {
@@ -43,13 +88,22 @@ const NameTable& BuiltinNames(const std::wstring& lang) {
 }
 
 const Glossary* BuiltinGlossary(const std::wstring& source, const std::wstring& target) {
-    const int s = NameLang(source), t = (std::max)(NameLang(target), 0);  // no names in the target: the English ones
-    if (s < 0 || s == t) return nullptr;
+    // No names or words in the target: the English ones.
+    const int ns = NameLang(source), nt = (std::max)(NameLang(target), 0);
+    const int ws = WordLang(source), wt = (std::max)(WordLang(target), 0);
+    const bool names = ns >= 0 && ns != nt, words = ws >= 0 && ws != wt;
+    if (!names && !words) return nullptr;
     static std::mutex mu;
     static std::map<int, Glossary> built;  // one per pair, built on first use
     std::lock_guard<std::mutex> lock(mu);
-    auto it = built.find(s * 4 + t);
-    if (it == built.end()) it = built.emplace(s * 4 + t, Glossary::Build(NamesAt(s), NamesAt(t))).first;
+    const int key = ws * 16 + wt;
+    auto it = built.find(key);
+    if (it == built.end()) {
+        NameTable src, tgt;
+        if (names) src = NamesAt(ns), tgt = NamesAt(nt);
+        if (words) AddWords(ws, wt, src, tgt);
+        it = built.emplace(key, Glossary::Build(src, tgt)).first;
+    }
     return &it->second;
 }
 

@@ -1,0 +1,13 @@
+# The usual GW2 words and their word in each language – translated by this table, both ways, like the official names
+# (a word written in the sentence's language becomes the target's; a word asked about or quoted stays as written).
+# key	en	de	fr	es	it	pl	pt	ru	tr
+# Forms separated by "|": the first is the one written into a translation, the others are only recognized. An empty
+# column takes the English word. Never invent: de/fr/es carry the game's own or the community's word; in languages the
+# game is not in (it, pl, pt, ru, tr) the English word comes first – a local word only where players really write it
+# (ru "рейд"); local forms after it are recognized ("rajdzie" is a raid) but never written. Add only what
+# translation_bench shows a translator gets wrong; an empty column is better than a wrong word.
+raid	raid|raids	Raid|Raids	raid|raids	raid|raids		raid|rajd|rajdy|rajdu|rajdzie|rajdów|rajdach|rajdem|rajdami	raid|raids	рейд|рейды|рейда|рейде|рейдов|рейдах|рейдом|рейдами|рейду
+skin	skin|skins	Skin|Skins	skin|skins	skin|skins		skin|skiny|skina|skinów	skin|skins	скин|скины|скина|скинов
+waypoint	waypoint|waypoints	Wegpunkt|Wegpunkte|Wegpunkten	point de passage|points de passage	punto de ruta|puntos de ruta
+dungeon	dungeon|dungeons	Dungeon|Dungeons|Verlies|Verliese	donjon|donjons	mazmorra|mazmorras				dungeon|данж|данжи|данжа|подземелье|подземелья
+squad	squad|squads	Squad|Squads	squad|escouade	squad|escuadrón		squad|squadzie|squadu		squad|сквад|сквада|скваде
