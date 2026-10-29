@@ -66,7 +66,7 @@ static void ClearTranslation(ChatLine& l) {
     l.transSegs = {};
 }
 
-void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
+void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once, std::wstring forceTarget) {
     AssertNotInteractiveLane("TranslateLine");
     std::shared_ptr<Translator> tr;
     std::vector<std::wstring> understood;
@@ -108,7 +108,7 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once) {
         const bool windowVisible = (g_show && (g_inMap || g_test.forceMap) && !g_mapOpen && !g_collapsed);
         what.chatOn = g_nx.translateChat && (asked || once || (windowVisible && !g_orchestrator.IsPaused()));
         tr = g_translator;
-        what.target = TypingLang();
+        what.target = forceTarget.empty() ? ReadLang() : forceTarget;
         understood = g_cfg.understoodLangs;
         what.skipTarget = g_cfg.skipTypingLang;
     }
@@ -187,7 +187,7 @@ std::wstring TranslatorTag(const std::shared_ptr<Translator>& tr, int beam) {
 // was asked before comes from the session's cache (g_transCache). `once` (the menu) follows the automatic
 // translation's rule without it being switched on (core/translate_policy).
 int TranslateRecentLines(bool once) {  // g_mu held; how many lines of other players are in view
-    const std::wstring& target = TypingLang();
+    const std::wstring& target = ReadLang();
     const std::wstring by = TranslatorTag(g_translator, g_cfg.localQuality);
     int n = 0;
     for (ChatLine& l : g_lines) {
@@ -384,8 +384,31 @@ void ComputeTyping() {
 }
 
 // Enter: the parts go into the GW2 chat – only now, on your Enter (invariants 1–3).
+namespace {
+std::mutex g_ownMu;  // own: the UI reads it while drawing, the worker writes it while sending
+std::unordered_map<std::wstring, std::wstring> g_ownOriginals;
+}  // namespace
+
+std::wstring OwnOriginal(const std::wstring& sent) {
+    std::lock_guard<std::mutex> lock(g_ownMu);
+    const auto it = g_ownOriginals.find(NormalizeForCompare(sent));
+    return it == g_ownOriginals.end() ? std::wstring() : it->second;
+}
+
 void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring learnText) {
     AssertNotInteractiveLane("SendNow");
+    {  // what you typed, for your own line when it comes back translated (memory only, the last ones)
+        const ChatSplit own = SplitChatCommand(typed);
+        const std::wstring wrote = own.prefix.empty() ? typed : own.body;
+        std::lock_guard<std::mutex> lock(g_ownMu);
+        if (g_ownOriginals.size() > 64) g_ownOriginals.clear();
+        for (const std::wstring& part : parts) {
+            const ChatSplit p = SplitChatCommand(part);
+            const std::wstring sent = p.prefix.empty() ? part : p.body;
+            if (parts.size() == 1 && NormalizeForCompare(sent) != NormalizeForCompare(wrote))
+                g_ownOriginals[NormalizeForCompare(sent)] = wrote;
+        }
+    }
     g_bufferingStartTime = GetTickCount64();  // Safety clock begins afresh at actual send
     if (parts.empty()) {
         g_sendInFlight = false;

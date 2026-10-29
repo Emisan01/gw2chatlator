@@ -1229,6 +1229,14 @@ extern const I18nEntry kPolishStrings[] = {
      L"{1}: darmowy limit wyczerpany lub za dużo zapytań"},
     {L"→ MyMemory",
      L"→ MyMemory"},
+    {L"Read the chat in",
+     L"Czytaj czat w"},
+    {L"Original under the translation",
+     L"Oryginał pod tłumaczeniem"},
+    {L"Translate into {1}",
+     L"Przetłumacz na {1}"},
+    {L"Into another language",
+     L"Na inny język"},
 };
 extern const size_t kPolishCount = sizeof(kPolishStrings) / sizeof(kPolishStrings[0]);
 

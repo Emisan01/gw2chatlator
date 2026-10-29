@@ -478,6 +478,10 @@ void SaveNexusOptions();
 void SaveLayout();
 void SetStatus(const std::wstring& s, ULONGLONG ms = 6000);
 const std::wstring& TypingLang();
+// The language the chat is read in: your choice in the chat tab's menu, else the system's (apart from writing).
+const std::wstring& ReadLang();
+// What you typed for a message you sent (by the sent text, normalized): shown grey under your own line.
+std::wstring OwnOriginal(const std::wstring& sent);
 std::wstring TypingLocale();
 extern bool g_inputSpoken;  // g_mu: the input began with what you said (a voice result into an empty input)
 bool VoiceFirst();          // g_mu: spoken and "Translate what I say" on – that has priority
@@ -501,7 +505,9 @@ std::wstring MyMemoryLeftText();
 bool LimitedContingent();
 void InitSpelling();
 void FreeWorkerState();
-void TranslateLine(uint64_t id, std::wstring text, bool asked = false, bool once = false);
+// forceTarget: a language picked in a line's menu instead of the reading language (a click always translates).
+void TranslateLine(uint64_t id, std::wstring text, bool asked = false, bool once = false,
+                   std::wstring forceTarget = std::wstring());
 
 // The chat lines of other players that stand in our window right now (the visible part of the chat; filled while the
 // chat is drawn, g_mu). Only these are translated in one go – an old chat is never translated in full.

@@ -251,7 +251,22 @@ void SetStatus(const std::wstring& s, ULONGLONG ms) {  // g_mu held
     g_statusUntil = ms ? GetTickCount64() + ms : 0;
 }
 
-const std::wstring& TypingLang() {  // the language you write and read in
+const std::wstring& ReadLang() {
+    static std::wstring s_cached, s_last = L"\x01";
+    if (s_last != g_cfg.readLang || s_cached.empty()) {
+        s_last = g_cfg.readLang;
+        if (!g_cfg.readLang.empty()) {
+            s_cached = PrimaryLang(g_cfg.readLang);
+        } else {
+            wchar_t locale[LOCALE_NAME_MAX_LENGTH] = {};
+            GetUserDefaultLocaleName(locale, LOCALE_NAME_MAX_LENGTH);
+            s_cached = PrimaryLang(locale);
+        }
+    }
+    return s_cached;
+}
+
+const std::wstring& TypingLang() {  // the language you write in
     static std::wstring s_cachedTyping;
     static std::wstring s_lastWriteIn;
     if (s_lastWriteIn != g_cfg.writeIn || s_cachedTyping.empty()) {

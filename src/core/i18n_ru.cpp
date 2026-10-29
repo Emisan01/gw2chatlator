@@ -1229,6 +1229,14 @@ extern const I18nEntry kRussianStrings[] = {
      L"{1}: бесплатный лимит исчерпан или слишком много запросов"},
     {L"→ MyMemory",
      L"→ MyMemory"},
+    {L"Read the chat in",
+     L"Читать чат на"},
+    {L"Original under the translation",
+     L"Оригинал под переводом"},
+    {L"Translate into {1}",
+     L"Перевести на {1}"},
+    {L"Into another language",
+     L"На другой язык"},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

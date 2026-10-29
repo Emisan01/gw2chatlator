@@ -1229,6 +1229,14 @@ extern const I18nEntry kPortugueseStrings[] = {
      L"{1}: cota gratuita esgotada ou solicitações demais"},
     {L"→ MyMemory",
      L"→ MyMemory"},
+    {L"Read the chat in",
+     L"Ler o chat em"},
+    {L"Original under the translation",
+     L"Original sob a tradução"},
+    {L"Translate into {1}",
+     L"Traduzir para {1}"},
+    {L"Into another language",
+     L"Para outro idioma"},
 };
 extern const size_t kPortugueseCount = sizeof(kPortugueseStrings) / sizeof(kPortugueseStrings[0]);
 

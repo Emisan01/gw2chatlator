@@ -33,7 +33,9 @@ struct Config {
     bool backTranslate = true;
     bool translateWriting = false;  // translate what you write (off, the first use: sent as written, only corrected)
     std::vector<std::wstring> understoodLangs;            // never translated automatically ("EN")
-    bool skipTypingLang = true;                           // nor the language you write in (the list's first entry)
+    bool skipTypingLang = true;                           // nor the language you read in
+    std::wstring readLang;   // the language the chat is read in ("DE"; empty = the system's) – apart from writing and sending
+    bool showOriginal = false;  // the original small and grey under a translated line (your own: what you typed)
     int localQuality = 2;                                 // 1 = Fast (Beam 1), 2 = Balanced (Beam 2), 4 = Quality (Beam 4)
 
     // [Basic] MyMemory

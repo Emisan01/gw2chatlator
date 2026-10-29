@@ -494,7 +494,7 @@ void RenderFooter() {  // g_mu held
             });
             ++g_inputGen;
             g_inputChanged = GetTickCount64();
-            if (g_nx.translateChat) TranslateRecentLines(false);  // the chat is read in the language you write in
+            // the chat is read in its own language (the chat tab's menu): nothing to translate again here
         }
         ImGui::EndPopup();
     }
@@ -817,7 +817,10 @@ void RenderWindow() {
     const float rightW = (g_cfg.voiceEnabled ? micPillW + gap : 0) + icon + gap + icon + st.ItemSpacing.x + icon;
     const float tabsW = std::max(60.0f, ImGui::GetContentRegionAvail().x - rightW - gap);
     bool newTab = false, tabMenu = false;
-    static bool s_lineRightClick = false;  // a right-click on a chat line (it translates the line, no menu)
+    static bool s_lineRightClick = false;  // a right-click on a chat line (its menu, not the header's)
+    static uint64_t s_lineMenuId = 0;      // the line whose menu is open
+    static std::wstring s_lineMenuText;
+    static bool s_openLineMenu = false;
     static std::string s_chatTabLabel;
     static UiLang s_chatTabLang = static_cast<UiLang>(-1);
     static std::wstring s_cachedChatName;
@@ -836,7 +839,9 @@ void RenderWindow() {
             }
             const bool mainShown = ImGui::BeginTabItem(s_chatTabLabel.c_str(), nullptr,
                                                        g_selectTab == -1 ? ImGuiTabItemFlags_SetSelected : 0);
-            if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+            // its menu: a right-click, or a click on it while it is the open tab (reading language, original, name)
+            if (ImGui::IsItemHovered() && (ImGui::IsMouseClicked(ImGuiMouseButton_Right) ||
+                                           (g_activeTab < 0 && ImGui::IsMouseClicked(ImGuiMouseButton_Left)))) {
                 tabMenu = true;
                 s_renameChatOpen = true;
             }
@@ -901,6 +906,29 @@ void RenderWindow() {
             const std::wstring cur = !g_cfg.chatTabName.empty() ? g_cfg.chatTabName : Tr(L"Chat");
             strncpy_s(nameBuf, U8(cur).c_str(), _TRUNCATE);
         }
+        // Reading: apart from the language you write in and the one you send in.
+        ImGui::TextUnformatted(UI(Tr(L"Read the chat in")).c_str());
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+        const std::string readShown = g_cfg.readLang.empty() ? UI(Tr(L"System")) : U8(NativeName(g_cfg.readLang));
+        if (ImGui::BeginCombo("##readlang", readShown.c_str())) {
+            std::wstring chosen = g_cfg.readLang;
+            if (ImGui::Selectable(UI(Tr(L"System")).c_str(), chosen.empty())) chosen.clear();
+            for (const LangInfo& lg : Languages())
+                if (DrawnInOurWindow(lg) && ImGui::Selectable(U8(NativeName(lg.code)).c_str(), g_cfg.readLang == lg.code))
+                    chosen = lg.code;
+            ImGui::EndCombo();
+            if (chosen != g_cfg.readLang) {
+                g_cfg.readLang = chosen;
+                g_cfg.SaveValue(L"Translate", L"ReadLang", chosen);
+                if (g_nx.translateChat) TranslateRecentLines(false);  // only what has no translation into it yet
+            }
+        }
+        bool showOriginal = g_cfg.showOriginal;
+        if (ImGui::Checkbox(UI(Tr(L"Original under the translation")).c_str(), &showOriginal)) {
+            g_cfg.showOriginal = showOriginal;
+            g_cfg.SaveBool(L"Translate", L"ShowOriginal", showOriginal);
+        }
+        ImGui::Separator();
         ImGui::TextUnformatted(UI(Tr(L"Rename tab")).c_str());
         ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
         const bool enter = ImGui::InputText("##chattabinput", nameBuf, sizeof(nameBuf), ImGuiInputTextFlags_EnterReturnsTrue);
@@ -1212,7 +1240,11 @@ void RenderWindow() {
         for (ChatLine& l : g_lines) {
             if (!tabName.empty() && (l.channel != Channel::Whisper || l.speakerFolded != tabName)) continue;
             if (!(tabChannels & ChannelBit(l.channel))) continue;  // a tab of your own: only its channels
-            const size_t rowLen = l.translated.empty() ? l.text.size() : l.translated.size() + 1;
+            // the original under a translation (your own line: what you typed), when chosen – part of the row's size
+            const std::wstring ownTyped = g_cfg.showOriginal && l.own ? OwnOriginal(l.text) : std::wstring();
+            const bool originalUnder = g_cfg.showOriginal && ((!l.own && !l.translated.empty()) || !ownTyped.empty());
+            const size_t rowLen = (l.translated.empty() ? l.text.size() : l.translated.size() + 1) +
+                                  (originalUnder ? (ownTyped.empty() ? l.text.size() : ownTyped.size()) + 1 : 0);
             const float y0 = ImGui::GetCursorPosY();
             if (l.rowH > 0 && l.rowW == rowWrap && l.rowFont == rowFont && l.rowLen == rowLen &&
                 (y0 + l.rowH < viewTop || y0 > viewBottom)) {
@@ -1264,9 +1296,20 @@ void RenderWindow() {
                 }
             }
             if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) s_lineRightClick = true;
-            if (!clicked && !l.own && l.translated.empty() && (ImGui::IsItemClicked() || ImGui::IsItemClicked(ImGuiMouseButton_Right))) {
+            // A click on someone's text: into your reading language. A right-click: a small menu – the reading
+            // language first, right under the pointer, any other language below; a click always translates.
+            if (!clicked && !l.own && l.translated.empty() && ImGui::IsItemClicked()) {
                 l.transPending = true;
                 g_worker.Post([id = l.id, t = l.text] { TranslateLine(id, t, true); });
+            }
+            if (!clicked && !l.own && ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
+                s_lineMenuId = l.id;
+                s_lineMenuText = l.text;
+                s_openLineMenu = true;
+            }
+            if (originalUnder) {
+                const std::string u8orig = ownTyped.empty() ? l.u8text : U8(ownTyped);
+                LookText(u8orig.c_str(), ImVec4(0.62f, 0.62f, 0.62f, 0.8f), true);
             }
             if (!l.translated.empty() && !l.u8transNote.empty()) {  // a doubtful translation: marked, the reason on hover
                 ImGui::SameLine(0, ImGui::CalcTextSize(" ").x);
@@ -1278,6 +1321,29 @@ void RenderWindow() {
             l.rowW = rowWrap;
             l.rowFont = rowFont;
             l.rowLen = rowLen;
+        }
+        // A line's menu (right-click on someone's text): the reading language first, under the pointer; others below.
+        if (s_openLineMenu) {
+            ImGui::OpenPopup("##linemenu");
+            s_openLineMenu = false;
+        }
+        if (ImGui::BeginPopup("##linemenu")) {
+            ScopedPopupFont popupFont;
+            std::wstring pick;
+            std::wstring readName = ReadLang();
+            for (const LangInfo& lg : Languages())
+                if (PrimaryLang(lg.code) == ReadLang()) readName = NativeName(lg.code);
+            if (ImGui::MenuItem(UI(TrF(L"Translate into {1}", {readName})).c_str())) pick = ReadLang();
+            if (ImGui::BeginMenu(UI(Tr(L"Into another language")).c_str())) {
+                for (const LangInfo& lg : Languages())
+                    if (DrawnInOurWindow(lg) && ImGui::MenuItem(U8(NativeName(lg.code)).c_str())) pick = lg.code;
+                ImGui::EndMenu();
+            }
+            if (!pick.empty()) {
+                g_worker.Post([id = s_lineMenuId, t = s_lineMenuText, pick] { TranslateLine(id, t, true, false, pick); });
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
         }
         // Auto-scroll to bottom only when new lines arrive or content expands (e.g. item names resolved),
         // provided the user was at the bottom and is not actively scrolling up with the mouse wheel.

@@ -1229,6 +1229,14 @@ extern const I18nEntry kTurkishStrings[] = {
      L"{1}: ücretsiz kota doldu ya da çok fazla istek"},
     {L"→ MyMemory",
      L"→ MyMemory"},
+    {L"Read the chat in",
+     L"Sohbeti şu dilde oku"},
+    {L"Original under the translation",
+     L"Çevirinin altında orijinal"},
+    {L"Translate into {1}",
+     L"{1} diline çevir"},
+    {L"Into another language",
+     L"Başka bir dile"},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 
