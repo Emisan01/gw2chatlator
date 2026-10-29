@@ -4,12 +4,13 @@ Regeln: [AGENTS.md](../AGENTS.md) (Evidence bei feat/fix/perf/refactor, messen s
 keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zuletzt.
 
 ## Fehler
-0. **Flüstern senden kaputt (zuerst!):** Live-Test 2.7.0 – Flüster-Tab „Isa Bo“, DE → FR, Nachricht ~110 Zeichen mit
-   „:D“: im GW2-Chat kam nur ein Rest an („…s commentaire“ im Flüster-Eingabefeld, nicht gesendet). Vermutung: GW2
-   schaltet nach „/w Name,“ in den Flüstermodus und verschluckt dabei getippte Zeichen bzw. das Enter. Vorgehen: mit
-   2.6.9 dieselbe Nachricht gegenprüfen (ging es dort?), sonst die Sende-Folge für Flüstern (Präfix → warten bis der
-   Modus steht → Text → Enter) prüfen; `git diff v2.6.9 v2.7.0` am Sendeweg (be42fb5 hat StartSend berührt, nur für
-   gleiche Sprache). Nur im Spiel prüfbar – Testprotokoll-Zeile dazu.
+0. **Flüstern senden kaputt (zuerst!) – Ursache gefunden:** Ein eigener Flüster-Tab sendet immer an diese Person
+   (`/w Name,` → gw2_sender.cpp: „/w “ tippen, Namen einfügen, Tab, Nachricht einfügen, Enter – so seit b0d1ae0,
+   2026-10-08, und so funktionierte es). Seit fb00d81 (2026-10-11, „keine Pausen zwischen den Schritten“) schläft die
+   Flüster-Folge `Sleep(step)` mit `step = 0`, sobald die Chatzeile offen ist – GW2 braucht aber nach „/w “, nach dem
+   Namen und nach Tab je einen Moment zum Umschalten; ohne Pause landen Name und Text vertauscht oder abgeschnitten
+   (Live-Test: „…s commentaire“ im Flüsterfeld). Fix: in diesem Block wieder `opt.stepDelayMs` statt `step`
+   (src/win/gw2_sender.cpp, die drei `Sleep(step)` nach „/w “, Name, Tab). Nur im Spiel prüfbar, Testprotokoll-Zeile.
 1. **Block bleibt unübersetzt:** nach einer Zeile mit Tippfehler, einer Korrekturzeile, einer Zeile nur `\o/` und einer
    kurzen englischen Zeile übersetzt kein Übersetzer mehr die folgenden Zeilen, auch nicht per „einmal übersetzen“.
    Nachstellen (erfundene Zeilen), Ursache finden, Test dazu (`TranslateRecentLines` → `TranslateLine`, kb_worker.cpp).
@@ -19,6 +20,8 @@ keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zulet
    Wechsel der Eingabesprache „Übersetzungsanfrage abgelaufen (Timeout)“ mit Angebot „> MyMemory“, obwohl NLLB gewählt
    war; nach Hin- und Zurückwechseln lief NLLB „Beste“ gut. Klären, warum ein Wechsel der Eingabesprache den Übersetzer
    neu baut, und dass Dashboard und Übersetzer-Tab denselben Übersetzer zeigen (Dashboard NLLB, Tab MyMemory gesehen).
+   Spur: `MakeTranslator` (kb_state.cpp) liefert MyMemory, solange `g_myMemorySessionFallback` gesetzt ist – egal was
+   eingestellt ist; das Flag nach dem Wechsel zurück auf einen anderen Übersetzer löschen und anzeigen, wenn es greift.
 3b. **Eigene Nachricht: übersetzt wird, was du wirklich geschrieben hast.** Eine Regel für beide Live-Befunde:
    Quelle = die erkannte Sprache, **wenn die Erkennung sicher ist** (`SureLanguage`), sonst die Eingabesprache. Übersetzt
    wird, sobald diese Quelle nicht die Sendesprache ist – auch wenn „Schreiben“ und „Senden“ gleich stehen (Live-Test:
