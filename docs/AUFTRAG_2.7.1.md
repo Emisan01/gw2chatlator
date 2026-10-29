@@ -82,7 +82,12 @@ nur auf Klick, nie in eine Datei (Datenschutz: kein Chat-Export).
   Logik „La Ruche [RUCH] cherche des joueurs pour les raids.“ → „Die [RUCH]-Halle sucht Spieler für die Raid.“, roh →
   „Die Ruche sucht Spieler für die Razzia.“, ohne Tag mit unserer Logik → „Die Ruche sucht Spieler für die Raids.“ – der
   einzeln geschützte Tag neben dem unbekannten Namen bringt NLLB dazu, ein Kompositum zu bauen und den Namen als Wort zu
-  übersetzen. Also unsere Schutzform, nicht nur das Modell. Lösung: Name + Tag als **ein** geschützter Teil.
+  übersetzen. Also unsere Schutzform, nicht nur das Modell.
+  **Emi, 2026-10-29: erst einen Schritt zurück, keine Namens-Raterei** (Gildennamen können klein geschrieben sein, Tags
+  fehlen oft). Reihenfolge: (1) mit A9 ansehen, welcher Versuch „[RUCH]-Halle“ erzeugt hat; (2) exakte Prüfung: ein
+  geschützter Teil, an den in der Ausgabe ein neues Wort angehängt wurde („[RUCH]-Halle“, in der Eingabe kein
+  „[RUCH]-“), lässt diesen Versuch durchfallen → nächster Versuch; (3) eigene Gildennamen gehören in die eigenen
+  Begriffe (gibt es schon); (4) eine Regel „Wörter neben dem Tag sind der Name“ nur, wenn Messungen sie tragen.
 - **B2.** Grüße vor dem Modell nachschlagen (Hola, Selam, Merhaba, Salut, Cześć, Привет, Olá, Ciao …): genau diese
   Zeilen erfindet das Modell („das ist alles“, „Ich weiß nicht“), und ihr Score liegt unter `kUnsureScore`.
 - **B3.** Erst wenn die Listen stehen: zweiter, **unbekannter** Prüfsatz
