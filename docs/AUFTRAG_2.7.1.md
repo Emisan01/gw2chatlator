@@ -18,8 +18,10 @@ keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zulet
    Dazu (Live-Test FR→FR): kurze französische Zeilen mit Tippfehlern wurden nicht als Französisch erkannt und
    „ins Französische“ übersetzt („Je suis un mai (?)“, „où est les nouveaux joueurs“). Regel: hat die Übersetzung fast
    nichts geändert oder ist sie unsicher, während das Ziel eine Sprache ist, die du liest – Original zeigen.
-3d. **Kein unnötiges Neu-Übersetzen:** nur wenn Lesesprache, Übersetzer oder Qualitätsstufe sich ändern – und dann
-   kurz sagen, warum.
+3d. **Minimal übersetzen:** beim Einschalten/Initialisieren nur, was noch keine passende Übersetzung hat (sichtbare
+   Zeilen, neueste zuerst) – fertige Zeilen bleiben (Prüfung `translated`/`transTarget`/`transBy` in `TranslateRecentLines`
+   und `g_transCache` gibt es schon). Alles neu nur, wenn Lesesprache, Übersetzer oder Qualitätsstufe sich ändern – und
+   dann kurz sagen, warum.
 
 ## Übersetzung
 4. **Kein-Mist-Filter (so einfach wie möglich):** ist ein Ergebnis schlecht (Score unter `kUnsureScore` oder die
