@@ -6,6 +6,15 @@ diagnosis show it.
 ## 2.7.1 — 2026-10-29 (GW2Chatlator for Nexus)
 
 - **Whispers Arrive Again:** a message from a whisper tab went to the wrong place – name and text swapped, or only a piece of the text in GW2's whisper line, not sent. Since sending got faster (2.x), the whisper steps – "/w ", the name, Tab, the message – ran without a pause, and name and message both went through the clipboard, so a game reading it a frame late mixed them up. The name is now typed, the clipboard only ever holds the message, and each whisper step has its pause again.
+- **Read, Write, Send – Each Its Own Language:** the chat is read in a language of its own, chosen in the chat tab's menu (a click on the open chat tab, or a right-click; "System" by default – an older setup keeps reading in its writing language). Changing the language you write in no longer translates the whole chat again.
+- **A Menu on Every Line:** a right-click on someone's message offers "Translate into <your reading language>" right under the pointer and "Into another language" with every language – a click always translates.
+- **The Original Under the Translation:** optional in the chat tab's menu – the original small and grey under a translated line; under your own message what you typed.
+- **Your Message in the Language You Really Wrote:** the language is taken from your text when that is sure, else from "Write"; a text in another language than "Send" is translated even with "Write" and "Send" the same (English typed with French at both went out in English; a short German line went out untranslated).
+- **No More Timeout After Changing a Setting:** saving the options rebuilt the translator every time – a local model loaded again and the first request timed out. Only a changed translator rebuilds it now, and choosing one ends the session's MyMemory fallback (it had stayed on while NLLB was chosen).
+- **Unchanged Lines Show Their Original:** a line already in the reading language, or one a translation left as it was, shows the original instead of an old translation into another language (short lines with typos were rewritten into the same language).
+- **Never the Fastest, Worst Setting Under Load:** with many lines waiting, automatic translations drop to beam 2, never to beam 1 ("dance" became "TANCE").
+- **Official Names Without the Apostrophe:** "lions arch" becomes "L'Arche du Lion" in French like "Lion's Arch".
+- **"frak" Is Fractals:** a translator knew it only as a science-fiction swear word.
 
 ## 2.7.0 — 2026-10-29 (GW2Chatlator for Nexus)
 
