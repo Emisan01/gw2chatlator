@@ -84,11 +84,12 @@ nur auf Klick, nie in eine Datei (Datenschutz: kein Chat-Export).
   einzeln geschützte Tag neben dem unbekannten Namen bringt NLLB dazu, ein Kompositum zu bauen und den Namen als Wort zu
   übersetzen. Also unsere Schutzform, nicht nur das Modell.
   **Emi, 2026-10-29: erst einen Schritt zurück, keine Namens-Raterei** (Gildennamen können klein geschrieben sein, Tags
-  fehlen oft). **Einfach halten (Emi):** Geklammertes bleibt wie heute geschützt. Hängt das Modell an ein geklammertes
-  Stück ein Wort mit Bindestrich an, das so nicht im Original steht („[RUCH]-Halle“, im Original kein „[RUCH]-“), wird
-  der Anhang entfernt („Die [RUCH] sucht Spieler …“) – ein Aufräum-Schritt wie die anderen in `CleanLocalMtOutput`.
-  Bekannter Preis: der vom Modell ersetzte Name („La Ruche“) kommt so nicht zurück; vorher mit A9 ansehen, welcher
-  Versuch es erzeugt hat. Eigene Gildennamen gehören in die eigenen Begriffe (gibt es schon). Keine Namens-Raterei.
+  fehlen oft). **Entschieden (Emi):** kein Filter auf „-“, keine Namens-Raterei, Gildennamen sind nicht geschützt –
+  das ist in Ordnung; die spielinternen Namen sind das Wichtigste. Geklammertes bleibt geschützt wie heute. Nur mit A9
+  beobachten, welcher Versuch so etwas erzeugt.
+- **B1c. Lernen aus dem Chat verbessern (Emi):** ein Begriff aus einer fremden Chatzeile („Fallen Angel Quest“) soll
+  sich von Hand als „nie übersetzen“ übernehmen lassen – z. B. im Rechtsklick-Feld der Nachricht (A6): Wort/Wörter
+  markieren → „Nie übersetzen“ → landet in den eigenen Begriffen (`gw2-terms.txt`, bis 5 Wörter wie `AddTerm`).
 - **B2.** Grüße vor dem Modell nachschlagen (Hola, Selam, Merhaba, Salut, Cześć, Привет, Olá, Ciao …): genau diese
   Zeilen erfindet das Modell („das ist alles“, „Ich weiß nicht“), und ihr Score liegt unter `kUnsureScore`.
 - **B3.** Erst wenn die Listen stehen: zweiter, **unbekannter** Prüfsatz
