@@ -327,6 +327,7 @@ struct ChatLine {
     std::wstring speaker, text, translated;
     std::wstring transTarget, transBy;  // what `translated` was made into and by (TranslateRecentLines keeps a fit)
     std::string u8transNote;            // the translation check found something (shown marked, said on hover)
+    std::string u8trace;                // what happened when it was translated ("What happened?"), memory only
     std::wstring speakerFolded;
 
     // Pre-parsed/pre-encoded cache for 0-allocation rendering on the main thread
@@ -482,6 +483,8 @@ const std::wstring& TypingLang();
 const std::wstring& ReadLang();
 // What you typed for a message you sent (by the sent text, normalized): shown grey under your own line.
 std::wstring OwnOriginal(const std::wstring& sent);
+// A local model loads with its first request: loaded at once, with a status line, so no message waits on it.
+void WarmUpTranslator(std::shared_ptr<Translator> tr);
 std::wstring TypingLocale();
 extern bool g_inputSpoken;  // g_mu: the input began with what you said (a voice result into an empty input)
 bool VoiceFirst();          // g_mu: spoken and "Translate what I say" on – that has priority

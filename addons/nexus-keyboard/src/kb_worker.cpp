@@ -2,6 +2,8 @@
 
 #include "kb_shared.hpp"
 
+#include <chrono>
+
 namespace kb {
 
 
@@ -132,33 +134,85 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once, std::w
     SetLocalMtRaw(tr, raw);
     const std::wstring by = TranslatorTag(tr, effectiveBeam);
 
-    const TranslateResult r = g_transCache.Through({text, SourceCode(detected), target, by}, [&] {
-        {
-            std::lock_guard<std::mutex> lock(g_mu);
-            CountMyMemory(CodePointCount(text));  // only a real request counts, never a line from the cache
+    const auto t0 = std::chrono::steady_clock::now();
+    std::wstring t, note, how = by;
+    double score = 0;
+    bool scored = false;
+    const std::wstring hello = raw ? std::wstring() : GreetingFor(text, target);
+    if (!hello.empty()) {  // a greeting alone ("Hola", "Selam!") is looked up – a model invented a sentence for it
+        t = hello;
+        how = L"greeting table";
+    } else {
+        const TranslateResult r = g_transCache.Through({text, SourceCode(detected), target, by}, [&] {
+            {
+                std::lock_guard<std::mutex> lock(g_mu);
+                CountMyMemory(CodePointCount(text));  // only a real request counts, never a line from the cache
+            }
+            return tr->Translate(p.segments, SourceCode(detected), target);
+        });
+        if (!r.ok || r.text.empty()) {  // never silent: the status says why (a missing language pack, the quota …)
+            clearPending(true);
+            if (!r.error.empty()) {
+                std::lock_guard<std::mutex> lock(g_mu);
+                SetStatus(r.error, 8000);
+            }
+            return;
         }
-        return tr->Translate(p.segments, SourceCode(detected), target);
-    });
-    if (!r.ok || r.text.empty()) {  // never silent: the status says why (a missing language pack, the quota …)
-        clearPending(true);
-        if (!r.error.empty()) {
-            std::lock_guard<std::mutex> lock(g_mu);
-            SetStatus(r.error, 8000);
+        t = SanitizeChatText(r.text);
+        // The same check for every translator: nothing lost, nothing cut short. A doubtful translation is shown
+        // marked, the reason on hover – unless "no junk" is on: one more try at the best quality, then the original.
+        note = raw ? std::wstring() : CheckNote(CheckTranslation(p.segments, t, target));
+        if (!raw && note.empty() && r.scored && r.score < kUnsureScore)  // a local model that guessed says so itself
+            note = Tr(L"Maybe inaccurate: the local model was unsure");
+        scored = r.scored;
+        score = r.score;
+        if (!raw && !note.empty() && g_cfg.noJunk) {
+            if (IsLocalMtTranslator(tr) && effectiveBeam < 4) {
+                SetLocalMtBeamSize(tr, 4);
+                const TranslateResult r2 = tr->Translate(p.segments, SourceCode(detected), target);
+                SetLocalMtBeamSize(tr, effectiveBeam);
+                how += L" -> second try at beam 4";
+                if (r2.ok && !r2.text.empty()) {
+                    const std::wstring t2 = SanitizeChatText(r2.text);
+                    std::wstring note2 = CheckNote(CheckTranslation(p.segments, t2, target));
+                    if (note2.empty() && r2.scored && r2.score < kUnsureScore)
+                        note2 = Tr(L"Maybe inaccurate: the local model was unsure");
+                    scored = r2.scored;
+                    score = r2.score;
+                    if (note2.empty()) {
+                        t = t2;
+                        note.clear();
+                    }
+                }
+            }
+            if (!note.empty()) {
+                how += L" -> still doubtful: the original is shown";
+                t = text;
+            }
         }
-        return;
     }
-    const std::wstring t = SanitizeChatText(r.text);
-    // The same check for every translator: nothing lost, nothing cut short. A doubtful translation is still shown –
-    // marked, the reason on hover – and not kept as a repetition for the next time.
-    std::wstring note = raw ? std::wstring() : CheckNote(CheckTranslation(p.segments, t, target));
-    if (!raw && note.empty() && r.scored && r.score < kUnsureScore)  // a local model that guessed says so itself
-        note = Tr(L"Maybe inaccurate: the local model was unsure");
-    if (note.empty()) g_orchestrator.RecordTranslation(text, target, t, by);
+    if (note.empty() && t != text) g_orchestrator.RecordTranslation(text, target, t, by);
+    const long long ms =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0).count();
+    std::wstring trace = L"Language: " + (detected.empty() ? std::wstring(L"?") : detected) +
+                         (what.detected.empty() ? L" (a guess)" : L"") + L" -> " + target + L"\nTranslator: " + how;
+    std::wstring kept;
+    for (const Segment& s : p.segments)
+        if (s.keep) kept += (kept.empty() ? L"" : L" | ") + s.text;
+    if (!kept.empty()) trace += L"\nProtected: " + kept;
+    trace += L"\nTime: " + std::to_wstring(ms) + L" ms";
+    if (scored) {
+        wchar_t sc[32];
+        swprintf(sc, 32, L" · score %.2f", score);
+        trace += sc;
+    }
+    if (!note.empty()) trace += L"\nCheck: " + note;
     std::lock_guard<std::mutex> lock(g_mu);
     for (ChatLine& l : g_lines) {
         if (l.id == id) {
             l.transPending = false;
             l.transAttempted = true;
+            l.u8trace = U8(trace);
             if (NormalizeForCompare(t) != NormalizeForCompare(l.text)) {
                 l.translated = t;
                 l.transTarget = target;
@@ -167,10 +221,23 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once, std::w
                 l.u8transNote = U8(note);
                 l.transSegs = PieUI::ChatLinks::SegmentLine(l.u8translated);
             } else {
-                ClearTranslation(l);  // the translation changed nothing: it was in the target already
+                ClearTranslation(l);  // the translation changed nothing (or was not good enough): the original
             }
         }
     }
+}
+
+void WarmUpTranslator(std::shared_ptr<Translator> tr) {
+    if (!tr || !IsLocalMtTranslator(tr)) return;
+    g_worker.PostFront([tr] {
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            SetStatus(Tr(L"Loading the translation model …"), 0);
+        }
+        const TranslateResult r = tr->Translate({Segment{L"Hello", false}}, L"en", L"de");
+        std::lock_guard<std::mutex> lock(g_mu);
+        SetStatus(r.ok ? Tr(L"Translation model ready") : r.error, r.ok ? 3000 : 8000);
+    });
 }
 std::vector<uint64_t> g_visibleLines;
 TranslationCache g_transCache;

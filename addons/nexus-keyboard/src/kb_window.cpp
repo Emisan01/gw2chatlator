@@ -6,6 +6,20 @@
 
 namespace kb {
 
+namespace {
+// Hover and clicks over every piece of a line's text (a message beside its name is drawn in two pieces).
+struct LineHit {
+    bool hovered = false, clickL = false, clickR = false, visible = false;
+    void AddLast() {
+        hovered |= ImGui::IsItemHovered();
+        clickL |= ImGui::IsItemClicked(ImGuiMouseButton_Left);
+        clickR |= ImGui::IsItemClicked(ImGuiMouseButton_Right);
+        visible |= ImGui::IsItemVisible();
+    }
+};
+
+}  // namespace
+
 bool g_collapsed = false;  // minimised to the small button (its bottom-left corner is the window's)
 
 // The window's place is one small formula (core/window_layout): four numbers – the bottom-left corner, the width, the
@@ -618,6 +632,7 @@ std::wstring StatusText() {  // g_mu held
     if (const std::wstring q = MyMemoryQuotaText(); !q.empty()) return q;
     std::wstring route = SendOriginal() ? Tr(L"as written") : ToUpperAscii(PrimaryLang(SendLang()));
     if (Translating() && g_translator) route += L" · " + g_translator->Name();
+    if (g_rawTranslate.load()) route += L" · " + Tr(L"raw");  // the raw switch: always in sight while it is on
     return TrF(L"Send: {1}", {route});
 }
 
@@ -821,6 +836,7 @@ void RenderWindow() {
     static uint64_t s_lineMenuId = 0;      // the line whose menu is open
     static std::wstring s_lineMenuText;
     static bool s_openLineMenu = false;
+    static bool s_lineMenuOpen = false;    // last frame: the line menu was open (its message is marked)
     static std::string s_chatTabLabel;
     static UiLang s_chatTabLang = static_cast<UiLang>(-1);
     static std::wstring s_cachedChatName;
@@ -927,6 +943,11 @@ void RenderWindow() {
         if (ImGui::Checkbox(UI(Tr(L"Original under the translation")).c_str(), &showOriginal)) {
             g_cfg.showOriginal = showOriginal;
             g_cfg.SaveBool(L"Translate", L"ShowOriginal", showOriginal);
+        }
+        bool noJunk = g_cfg.noJunk;
+        if (ImGui::Checkbox(UI(Tr(L"Unsure: show the original")).c_str(), &noJunk)) {
+            g_cfg.noJunk = noJunk;
+            g_cfg.SaveBool(L"Translate", L"NoJunk", noJunk);
         }
         ImGui::Separator();
         ImGui::TextUnformatted(UI(Tr(L"Rename tab")).c_str());
@@ -1252,6 +1273,7 @@ void RenderWindow() {
                 continue;
             }
             ImGui::PushID(static_cast<int>(l.id));
+            const float rowTop = ImGui::GetCursorScreenPos().y;
             if (!l.speaker.empty()) {  // the name in the channel colour – a click: whisper with that player in their tab
                 LookText(l.speakerDisplay.c_str(), NameColorOf(l.channel), false);
                 const bool canWhisper = !l.own || (l.outgoing && l.channel == Channel::Whisper);
@@ -1267,12 +1289,15 @@ void RenderWindow() {
             const std::string& u8shown = l.translated.empty() ? l.u8text : l.u8translated;
             const auto& segs = l.translated.empty() ? l.textSegs : l.transSegs;
             bool clicked = false;
+            LineHit hit;  // over every piece of the text
             if (segs.size() <= 1 && (segs.empty() || segs[0].kind == PieUI::ChatLinks::SegmentKind::Plain)) {
                 LookText(u8shown.c_str(), ColorOf(l.channel), true);
+                hit.AddLast();
             } else {
                 clicked = RichLine(segs, ColorOf(l.channel));
+                hit.AddLast();
             }
-            if (!l.translated.empty() && ImGui::IsItemHovered()) {
+            if (!l.translated.empty() && hit.hovered) {
                 if (l.u8transNote.empty()) {
                     ImGui::SetTooltip("%s", l.u8text.c_str());
                 } else {  // the original and what the translation check found
@@ -1288,33 +1313,39 @@ void RenderWindow() {
                 if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Translating...")).c_str());
             }
             // A click on the text of a line someone else wrote: just this line into your language.
-            if (!l.own && ImGui::IsItemVisible()) {
+            if (!l.own && hit.visible) {
                 g_visibleLines.push_back(l.id);  // in view: "translate once" takes it
                 if (g_nx.translateChat && !g_orchestrator.IsPaused() && l.translated.empty() && !l.transAttempted && !l.transPending && !IsGamerInterjection(l.text)) {
                     l.transPending = true;
                     g_worker.Post([id = l.id, t = l.text] { TranslateLine(id, t); });
                 }
             }
-            if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) s_lineRightClick = true;
+            if (hit.clickR) s_lineRightClick = true;
             // A click on someone's text: into your reading language. A right-click: a small menu – the reading
             // language first, right under the pointer, any other language below; a click always translates.
-            if (!clicked && !l.own && l.translated.empty() && ImGui::IsItemClicked()) {
+            if (!clicked && !l.own && l.translated.empty() && hit.clickL) {
                 l.transPending = true;
                 g_worker.Post([id = l.id, t = l.text] { TranslateLine(id, t, true); });
             }
-            if (!clicked && !l.own && ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
+            if (!clicked && !l.own && hit.clickR) {
                 s_lineMenuId = l.id;
                 s_lineMenuText = l.text;
                 s_openLineMenu = true;
-            }
-            if (originalUnder) {
-                const std::string u8orig = ownTyped.empty() ? l.u8text : U8(ownTyped);
-                LookText(u8orig.c_str(), ImVec4(0.62f, 0.62f, 0.62f, 0.8f), true);
             }
             if (!l.translated.empty() && !l.u8transNote.empty()) {  // a doubtful translation: marked, the reason on hover
                 ImGui::SameLine(0, ImGui::CalcTextSize(" ").x);
                 LookText("(?)", ImVec4(0.95f, 0.78f, 0.35f, 0.9f), false);
                 if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", l.u8transNote.c_str());
+            }
+            if (originalUnder) {
+                const std::string u8orig = ownTyped.empty() ? l.u8text : U8(ownTyped);
+                LookText(u8orig.c_str(), ImVec4(0.62f, 0.62f, 0.62f, 0.8f), true);
+            }
+            if (s_lineMenuOpen && l.id == s_lineMenuId) {  // the message whose menu is open: marked across its lines
+                const float x0 = ImGui::GetWindowPos().x;
+                ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(x0, rowTop),
+                                                          ImVec2(x0 + ImGui::GetWindowWidth(), ImGui::GetCursorScreenPos().y),
+                                                          ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, 0.08f)));
             }
             ImGui::PopID();
             l.rowH = ImGui::GetCursorPosY() - y0;  // what it took, for the frames it is out of view
@@ -1339,12 +1370,21 @@ void RenderWindow() {
                     if (DrawnInOurWindow(lg) && ImGui::MenuItem(U8(NativeName(lg.code)).c_str())) pick = lg.code;
                 ImGui::EndMenu();
             }
+            // what happened when this line was translated: language, translator, protected parts, time, score
+            std::string trace;
+            for (const ChatLine& x : g_lines)
+                if (x.id == s_lineMenuId) trace = x.u8trace;
+            if (!trace.empty() && ImGui::BeginMenu(UI(Tr(L"What happened?")).c_str())) {
+                ImGui::TextUnformatted(trace.c_str());
+                ImGui::EndMenu();
+            }
             if (!pick.empty()) {
                 g_worker.Post([id = s_lineMenuId, t = s_lineMenuText, pick] { TranslateLine(id, t, true, false, pick); });
                 ImGui::CloseCurrentPopup();
             }
             ImGui::EndPopup();
         }
+        s_lineMenuOpen = ImGui::IsPopupOpen("##linemenu");
         // Auto-scroll to bottom only when new lines arrive or content expands (e.g. item names resolved),
         // provided the user was at the bottom and is not actively scrolling up with the mouse wheel.
         const bool contentGrew = (scrollMax > lastScrollMax + 1.0f);

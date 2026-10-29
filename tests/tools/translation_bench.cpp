@@ -102,7 +102,14 @@ int wmain(int argc, wchar_t** argv) {
         const gct::ProtectedText p = raw ? gct::ProtectCodesOnly(text)
                                          : gct::ProtectForTranslation(text, gct::BuiltinGlossary(target), &keep);
         const auto t0 = std::chrono::steady_clock::now();
-        const gct::TranslateResult r = translator->Translate(p.segments, source, target);
+        gct::TranslateResult r;
+        const std::wstring hello = raw ? std::wstring() : gct::GreetingFor(text, target);  // as the add-on: looked up
+        if (!hello.empty()) {
+            r.ok = true;
+            r.text = hello;
+        } else {
+            r = translator->Translate(p.segments, source, target);
+        }
         const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
         ++lines;
         totalMs += ms;

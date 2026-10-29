@@ -15,6 +15,11 @@ diagnosis show it.
 - **Never the Fastest, Worst Setting Under Load:** with many lines waiting, automatic translations drop to beam 2, never to beam 1 ("dance" became "TANCE").
 - **Official Names Without the Apostrophe:** "lions arch" becomes "L'Arche du Lion" in French like "Lion's Arch".
 - **"frak" Is Fractals:** a translator knew it only as a science-fiction swear word.
+- **No Junk:** a doubtful translation (the model unsure, or the check finds a lost part) gets one more try at the best quality; still doubtful, the original is shown instead of an invented sentence. A switch in the chat tab's menu ("Unsure: show the original", on).
+- **Greetings Are Looked Up:** a line that is only a greeting ("Hola", "Selam!", "hi :)") gets the greeting of your language – a model invented whole sentences for them.
+- **What Happened?:** in a line's right-click menu – the language detected, the target, the translator and quality, the protected parts, the time and the score of that line (memory only). The message whose menu is open is marked.
+- **The Model Says When It Loads:** after the add-on starts or a translator is chosen, a local model is loaded at once ("Loading the translation model …" → "ready"), so the first message no longer waits on it; a new quality says itself and translates the visible chat again.
+- **Raw Mode in Sight:** while the raw translation switch is on, the route line under the input says "raw".
 
 ## 2.7.0 — 2026-10-29 (GW2Chatlator for Nexus)
 

@@ -8,8 +8,8 @@ keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zulet
 1. **Block bleibt unübersetzt:** nach einer Zeile mit Tippfehler, einer Korrekturzeile, einer Zeile nur `\o/` und einer
    kurzen englischen Zeile übersetzt kein Übersetzer mehr die folgenden Zeilen, auch nicht per „einmal übersetzen“.
    Nachstellen (erfundene Zeilen), Ursache finden, Test dazu (`TranslateRecentLines` → `TranslateLine`, kb_worker.cpp).
-2. **Rohschalter:** bleibt bis zum Neustart an, auch beim Übersetzerwechsel, und man sieht, ob er an ist.
-3. **Initialisieren sauber und sichtbar** (Neubau nur bei Übersetzerwechsel und MyMemory-Ausweichschalter: erledigt 2.7.1; Vorladen mit Meldung offen): nach Wechsel von Übersetzer, Qualitätsstufe oder Eingabesprache das Modell
+2. ~~erledigt 2.7.1 (Routenzeile zeigt „roh“)~~ **Rohschalter:** bleibt bis zum Neustart an, auch beim Übersetzerwechsel, und man sieht, ob er an ist.
+3. **Initialisieren sauber und sichtbar** (Neubau nur bei Übersetzerwechsel und MyMemory-Ausweichschalter: erledigt 2.7.1; Vorladen mit Meldung: erledigt 2.7.1): nach Wechsel von Übersetzer, Qualitätsstufe oder Eingabesprache das Modell
    vorladen mit Meldung „Modell lädt …“ → „bereit“; Anfragen während des Ladens warten statt abzulaufen. Live-Test: nach
    Wechsel der Eingabesprache „Übersetzungsanfrage abgelaufen (Timeout)“ mit Angebot „> MyMemory“, obwohl NLLB gewählt
    war; nach Hin- und Zurückwechseln lief NLLB „Beste“ gut. Klären, warum ein Wechsel der Eingabesprache den Übersetzer
@@ -34,7 +34,7 @@ keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zulet
    dann kurz sagen, warum.
 
 ## Übersetzung
-4. **Kein-Mist-Filter (so einfach wie möglich):** ist ein Ergebnis schlecht (Score unter `kUnsureScore` oder die
+4. ~~erledigt 2.7.1~~ **Kein-Mist-Filter (so einfach wie möglich):** ist ein Ergebnis schlecht (Score unter `kUnsureScore` oder die
    Prüfung schlägt an), die Zeile einmal mit höherer Qualität neu übersetzen; ist sie dann noch schlecht, das Original
    zeigen statt des schlechten Ergebnisses. Als Option mit Schalter. Mit translation_bench belegen.
 4b. **Eigene Nachricht wartet nie hinter dem Chat:** heute ein Helfer, eine Übersetzung nach der anderen – läuft gerade
@@ -42,7 +42,7 @@ keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zulet
    (`num_replicas_per_device = 2` in translate_helper_main.cpp; CTranslate2 teilt die Modellgewichte laut Doku – RAM/CPU
    messen) und Anfrage-IDs im Protokoll; einfachere Alternative: automatische Chatzeilen pausieren, solange du tippst.
 5. ~~erledigt 2.7.1 (min. Beam 2)~~ **Drossel:** automatische Zeilen unter Last nie unter Beam 2. Vorher je Beam (1/2/4) messen: Bedeutung und ms.
-6. **Grüße** (Hola, Selam, Merhaba, Salut, Cześć, Привет, Olá, Ciao …) vor dem Modell nachschlagen.
+6. ~~erledigt 2.7.1~~ **Grüße** (Hola, Selam, Merhaba, Salut, Cześć, Привет, Olá, Ciao …) vor dem Modell nachschlagen.
 7. **Listen füllen** mit Emi: `data/gw2-words.tsv` nur mit gemessenen Fehlern, nichts erfinden. Kandidaten aus Live-Tests: „boss“ (→ „Chef“), „frak“ (Fractals;
    NLLB kennt „frak“ als Science-Fiction-Fluch → „Scheiße“), „riss“ (Rift; „lfg ein t3 riss farm gruppe“ verlor „riss farm“).
    Danach
@@ -64,9 +64,9 @@ keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zulet
    „Übersetzen (Lesesprache)“ direkt unter dem Mauszeiger und „Übersetzen in ›“ (alle Sprachen). Ein Klick übersetzt
    immer. Keine Klicklogik auf Chat-Codes. Wörter lernen bleibt im Eingabefeld.
 10. **Direktstart in der Kachel:** alles für den Start der Übersetzung in der Kachel; Entwurf vorher mit Emi.
-11. **Chat-Darstellung:** Umbruchzeilen 1 Zeichen (1 em) eingerückt; enger innerhalb, etwas mehr Abstand zwischen
+11. **Chat-Darstellung** (Einzug versucht, Selbsttest „Breite nicht sofort stabil“ – zurückgenommen, offen): Umbruchzeilen 1 Zeichen (1 em) eingerückt; enger innerhalb, etwas mehr Abstand zwischen
     Nachrichten; Schriften mit Emi ansehen. Vorher/Nachher-Screenshot an Emi.
-12. **Zeiten und Ablauf sehen:** ms pro Zeile (Tooltip); im Debug-Fenster für eine Zeile: Sprache, Ziel, geschützte
+12. ~~erledigt 2.7.1 (Zeilen-Menü „Was ist passiert?“)~~ **Zeiten und Ablauf sehen:** ms pro Zeile (Tooltip); im Debug-Fenster für eine Zeile: Sprache, Ziel, geschützte
     Teile, jeder Versuch mit Ausgabe und Score, Ergebnis. Nur im Speicher, nie in eine Datei.
 13. ~~erledigt 2.7.1~~ **Original klein und grau unter der Übersetzung** – als Option (aus per Standard), wie in den ersten Versionen.
 14. ~~erledigt 2.7.1~~ **Eigene Nachrichten in der Lesesprache:** statt die gesendete Übersetzung zurückzuübersetzen, das zeigen, was du

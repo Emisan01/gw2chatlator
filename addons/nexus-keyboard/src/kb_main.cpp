@@ -241,6 +241,7 @@ void AddonLoad(AddonAPI_t* api) {
         SetUiLang(g_cfg.uiLang);
         PrepareFaultAlert();
         g_translator = MakeTranslator(g_cfg);
+        WarmUpTranslator(g_translator);
         g_sendIdx = g_cfg.translateWriting ? 0 : static_cast<int>(g_cfg.writeLangs.size());
         LoadLayout();
         LoadCustomTabs();

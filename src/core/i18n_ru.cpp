@@ -1237,6 +1237,18 @@ extern const I18nEntry kRussianStrings[] = {
      L"Перевести на {1}"},
     {L"Into another language",
      L"На другой язык"},
+    {L"What happened?",
+     L"Что произошло?"},
+    {L"Unsure: show the original",
+     L"Неуверенно: показать оригинал"},
+    {L"Loading the translation model …",
+     L"Загрузка модели перевода …"},
+    {L"Translation model ready",
+     L"Модель перевода готова"},
+    {L"Quality set: beam {1} – the visible chat is translated again",
+     L"Качество: beam {1} – видимый чат переводится заново"},
+    {L"raw",
+     L"без обработки"},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

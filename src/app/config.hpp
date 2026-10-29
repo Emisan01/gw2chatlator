@@ -36,6 +36,7 @@ struct Config {
     bool skipTypingLang = true;                           // nor the language you read in
     std::wstring readLang;   // the language the chat is read in ("DE"; empty = the system's) – apart from writing and sending
     bool showOriginal = false;  // the original small and grey under a translated line (your own: what you typed)
+    bool noJunk = true;         // a doubtful translation: one more try at the best quality, still doubtful – the original
     int localQuality = 2;                                 // 1 = Fast (Beam 1), 2 = Balanced (Beam 2), 4 = Quality (Beam 4)
 
     // [Basic] MyMemory

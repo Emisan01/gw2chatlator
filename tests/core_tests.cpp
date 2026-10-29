@@ -316,6 +316,12 @@ static void TestNameTable() {
 
 // The compiled names and words: the target decides, whatever the sentence or the name is written in; no names in the
 // target → the English ones.
+static void TestGreetings() {
+    CHECK(GreetingFor(L"Hola", L"DE") == L"Hallo" && GreetingFor(L"Selam!", L"EN-GB") == L"Hello");
+    CHECK(GreetingFor(L"  hi :) ", L"FR") == L"Salut" && GreetingFor(L"Hola", L"ES") == L"Hola");
+    CHECK(GreetingFor(L"hola amigos", L"DE").empty() && GreetingFor(L"lfg raid", L"DE").empty());
+}
+
 static void TestBuiltinGlossary() {
     CHECK(BuiltinNames(L"de").size() > 200 && BuiltinNames(L"PL").empty());
     auto first = [](const Glossary* g, const std::wstring& text) {
@@ -2904,6 +2910,7 @@ int main() {
     TestNameTable();
     TestGlossary();
     TestBuiltinGlossary();
+    TestGreetings();
     TestProtect();
     TestTranslationCheck();
     TestChatCommands();

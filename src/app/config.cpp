@@ -285,6 +285,7 @@ void Config::Load(const std::wstring& dir) {
     // the chat used to be read in the writing language: an INI from before keeps reading that way
     readLang = ToUpperAscii(ini.Str(L"Translate", L"ReadLang", writeIn.c_str()));
     showOriginal = ini.Bool(L"Translate", L"ShowOriginal", false);
+    noJunk = ini.Bool(L"Translate", L"NoJunk", true);
     voiceEnabled = ini.Bool(L"Voice", L"Enabled", true);
     voiceLang = AsciiUnescape(ini.Str(L"Voice", L"Language", L"auto"));
     if (voiceLang.empty()) voiceLang = L"auto";
@@ -478,6 +479,7 @@ void Config::SaveAll() const {
     SaveValue(L"Spelling", L"WriteIn", writeIn);
     SaveValue(L"Translate", L"ReadLang", readLang);
     SaveBool(L"Translate", L"ShowOriginal", showOriginal);
+    SaveBool(L"Translate", L"NoJunk", noJunk);
     SaveBool(L"Chat", L"AutoTiming", send.autoTiming);
     SaveValue(L"Chat", L"KeyHoldMs", std::to_wstring(send.keyHoldMs));
     SaveValue(L"Chat", L"StepDelayMs", std::to_wstring(send.stepDelayMs));

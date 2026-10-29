@@ -1237,6 +1237,18 @@ extern const I18nEntry kTurkishStrings[] = {
      L"{1} diline çevir"},
     {L"Into another language",
      L"Başka bir dile"},
+    {L"What happened?",
+     L"Ne oldu?"},
+    {L"Unsure: show the original",
+     L"Emin değilse: orijinali göster"},
+    {L"Loading the translation model …",
+     L"Çeviri modeli yükleniyor …"},
+    {L"Translation model ready",
+     L"Çeviri modeli hazır"},
+    {L"Quality set: beam {1} – the visible chat is translated again",
+     L"Kalite ayarlandı: beam {1} – görünen sohbet yeniden çevriliyor"},
+    {L"raw",
+     L"ham"},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

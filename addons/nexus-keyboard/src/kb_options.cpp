@@ -503,7 +503,10 @@ void DoSaveOptions(Config& edit, Config& opened,
         SetUiLang(g_cfg.uiLang);
         PrepareFaultAlert();  // the alert after a fault in the language chosen now
         if (engineChanged) g_myMemorySessionFallback = false;  // a translator you choose is the one that runs
-        if (translatorChanged || !g_translator) g_translator = MakeTranslator(g_cfg);
+        if (translatorChanged || !g_translator) {
+            g_translator = MakeTranslator(g_cfg);
+            WarmUpTranslator(g_translator);
+        }
         const int asWritten = static_cast<int>(g_cfg.writeLangs.size());
         const auto kept = std::find(g_cfg.writeLangs.begin(), g_cfg.writeLangs.end(), sendWas);
         if (writingSwitched) g_sendIdx = g_cfg.translateWriting ? 0 : asWritten;
@@ -601,6 +604,7 @@ void ApplyEngineNow(Config& edit, Config& opened, Engine e) {
     g_cfg.SaveValue(L"Translate", L"Engine", EngineKey(e));
     g_myMemorySessionFallback = false;  // a translator you choose is the one that runs, not the session's fallback
     g_translator = MakeTranslator(g_cfg);
+    WarmUpTranslator(g_translator);
     g_preview.clear();
     ++g_inputGen;
     g_inputChanged = GetTickCount64();
@@ -613,6 +617,9 @@ void ApplyQualityNow(Config& edit, Config& opened, int quality) {
     std::lock_guard<std::mutex> lock(g_mu);
     g_cfg.localQuality = quality;
     g_cfg.SaveValue(L"Translate", L"LocalQuality", std::to_wstring(quality));
+    // said at once, and the chat in view comes again at the new quality (a line remembers the beam it was made with)
+    SetStatus(TrF(L"Quality set: beam {1} – the visible chat is translated again", {std::to_wstring(quality)}), 4000);
+    if (g_nx.translateChat) TranslateRecentLines(false);
 }
 
 // The voice model chosen on the dashboard: the setting, the INI, the helper reloads it (as the automatic fallback does).

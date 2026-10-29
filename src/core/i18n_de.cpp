@@ -1237,6 +1237,18 @@ extern const I18nEntry kGermanStrings[] = {
      L"Übersetzen in {1}"},
     {L"Into another language",
      L"In eine andere Sprache"},
+    {L"What happened?",
+     L"Was ist passiert?"},
+    {L"Unsure: show the original",
+     L"Unsicher: Original zeigen"},
+    {L"Loading the translation model …",
+     L"Übersetzungsmodell wird geladen …"},
+    {L"Translation model ready",
+     L"Übersetzungsmodell bereit"},
+    {L"Quality set: beam {1} – the visible chat is translated again",
+     L"Qualität gesetzt: Beam {1} – der sichtbare Chat wird neu übersetzt"},
+    {L"raw",
+     L"roh"},
 };
 extern const size_t kGermanCount = sizeof(kGermanStrings) / sizeof(kGermanStrings[0]);
 

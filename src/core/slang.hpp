@@ -59,6 +59,10 @@ const WordSet& CommonChatWords(const std::wstring& lang);
 bool IsGermanContraction(const std::wstring& word);
 std::wstring ExpandGermanContractions(const std::wstring& text);
 
+// A line that is nothing but a greeting ("Hola", "Selam!", "hi :)"): the greeting in the target language ("Hallo");
+// empty for anything else. A model invents a whole sentence for a lone greeting ("Hola" -> "Hey, das ist alles").
+std::wstring GreetingFor(const std::wstring& line, const std::wstring& target);
+
 // Two capitals or more ("LA", "HoT", "CoF", "WvW").
 bool LooksLikeAbbreviation(const std::wstring& word);
 

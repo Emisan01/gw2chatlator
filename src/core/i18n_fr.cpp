@@ -1237,6 +1237,18 @@ extern const I18nEntry kFrenchStrings[] = {
      L"Traduire en {1}"},
     {L"Into another language",
      L"Dans une autre langue"},
+    {L"What happened?",
+     L"Que s'est-il passé ?"},
+    {L"Unsure: show the original",
+     L"Incertain : afficher l'original"},
+    {L"Loading the translation model …",
+     L"Chargement du modèle de traduction …"},
+    {L"Translation model ready",
+     L"Modèle de traduction prêt"},
+    {L"Quality set: beam {1} – the visible chat is translated again",
+     L"Qualité réglée : beam {1} – le chat visible est retraduit"},
+    {L"raw",
+     L"brut"},
 };
 extern const size_t kFrenchCount = sizeof(kFrenchStrings) / sizeof(kFrenchStrings[0]);
 

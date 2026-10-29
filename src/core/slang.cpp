@@ -297,6 +297,27 @@ std::wstring ExpandGermanContractions(const std::wstring& text) {
     return out;
 }
 
+std::wstring GreetingFor(const std::wstring& line, const std::wstring& target) {
+    static const WordSet hello = [] {
+        WordSet s;
+        for (const wchar_t* w : {L"hi", L"hello", L"hey", L"hallo", L"servus", L"moin", L"salut", L"bonjour", L"coucou",
+                                 L"hola", L"buenas", L"ciao", L"salve", L"czesc", L"cze\u015b\u0107", L"siema", L"ola",
+                                 L"ol\u00e1", L"oi", L"\u043f\u0440\u0438\u0432\u0435\u0442", L"merhaba", L"selam", L"slm"})
+            s.insert(CaseFold(w));
+        return s;
+    }();
+    std::wstring w = CaseFold(Trim(line));
+    while (!w.empty() && std::wstring(L"!?.,:;()^~*' ").find(w.back()) != std::wstring::npos) w.pop_back();
+    if (!hello.count(w)) return {};
+    const std::wstring l = ToLowerAscii(target.substr(0, 2));
+    static const std::pair<const wchar_t*, const wchar_t*> kSay[] = {
+        {L"de", L"Hallo"}, {L"en", L"Hello"}, {L"fr", L"Salut"}, {L"es", L"Hola"}, {L"it", L"Ciao"},
+        {L"pl", L"Cze\u015b\u0107"}, {L"pt", L"Ol\u00e1"}, {L"ru", L"\u041f\u0440\u0438\u0432\u0435\u0442"}, {L"tr", L"Merhaba"}};
+    for (const auto& [k, v] : kSay)
+        if (l == k) return v;
+    return L"Hello";
+}
+
 const WordSet& CommonChatWords(const std::wstring& lang) {
     static const WordSet empty, fr = Make({kChatFrench}, {std::size(kChatFrench)}),
                                 es = Make({kChatSpanish}, {std::size(kChatSpanish)}),
