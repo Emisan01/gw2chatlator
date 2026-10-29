@@ -39,6 +39,12 @@ keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zulet
    ein zweiter, unbekannter Prüfsatz `tests/data/translation_corpus_holdout.tsv`, nie zum Nachbessern.
 7b. **Offizielle Namen auch ohne Apostroph:** „lions arch“ blieb ins Französische „lions arch“ statt „L'Arche du
    Lion“ – der Glossar-Vergleich achtet auf den Apostroph, die Begriffsliste (`TermKey`) nicht. Gleich machen.
+7c. **Jeder Live-Befund wird eine erfundene Prüfzeile** im Korpus (gleiches Muster, eigener Text) – vor dem Fix
+   messen, danach messen; so wächst der Prüfsatz mit dem echten Chat.
+7d. **Kandidaten-Sammler (Vorschlag, Emi entscheidet):** lokal zählen, welche kurzen Wörter in fremden Zeilen in keiner
+   unserer Listen stehen und in unsicheren Ergebnissen vorkommen („frak ×3, riss ×2“) – nur Wort und Anzahl, keine Zeilen,
+   keine Spieler (Datenschutz: nur Zählungen). Anzeige im Technik-Tab, ein Klick übernimmt ein Wort in die eigenen
+   Begriffe; gute Funde wandern von dort in die eingebauten Listen.
 
 ## Oberfläche
 8. **Lesesprache:** eigene Einstellung, Start = Systemsprache, dann frei wählbar, unabhängig von Eingabe und Footer;
