@@ -335,17 +335,20 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
             if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – cancelled"));
             TypeText(command, opt.keyHoldMs);
             WaitForTargetToDrain(gw2, 1000);
-            Sleep(step);
+            // GW2 switches the line into the whisper mode after "/w ", takes the name, moves on with Tab: each step needs
+            // its pause even with the line already open (without, name and text arrived swapped or cut, 2026-10-29)
+            Sleep(opt.stepDelayMs);
             if (!recipient.empty()) {
-                if (GetForegroundWindow() != gw2 || !SetClipboardText(owner, recipient))
-                    return finish(Tr(L"Focus lost – cancelled"));
-                CtrlTap('V', opt.keyHoldMs);  // the address
+                if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – cancelled"));
+                // The address is typed, not pasted: the clipboard only ever holds the message, so a game reading it a
+                // frame late can no longer put the message into the name field and the name into the message.
+                TypeText(recipient, opt.keyHoldMs);
                 WaitForTargetToDrain(gw2, 1000);
-                Sleep(step);
+                Sleep(opt.stepDelayMs);
                 if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – cancelled"));
                 Tap(VK_TAB, opt.keyHoldMs);  // confirm it: the cursor moves to the message
                 WaitForTargetToDrain(gw2, 1000);
-                Sleep(step);
+                Sleep(opt.stepDelayMs);
             }
             message = split.body;
             if (!SetClipboardText(owner, message)) return finish(Tr(L"The clipboard is blocked"));
