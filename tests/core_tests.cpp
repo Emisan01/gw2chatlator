@@ -314,6 +314,23 @@ static void TestNameTable() {
     CHECK(back.size() == 2 && back.at("map:2") == L"L\u00f6wenstein");
 }
 
+// The compiled names, both ways by one rule: a name in the sentence's own language becomes the target's; a name in
+// another language (Denglish) is not touched; no names in the target → the English ones; no glossary within English.
+static void TestBuiltinGlossary() {
+    CHECK(BuiltinNames(L"de").size() > 200 && BuiltinNames(L"PL").empty());
+    auto first = [](const Glossary* g, const std::wstring& text) {
+        const auto m = g ? g->FindAll(text) : std::vector<GlossaryMatch>{};
+        return m.empty() ? std::wstring() : m[0].target;
+    };
+    CHECK(first(BuiltinGlossary(L"de", L"EN-GB"), L"treffen in Löwenstein") == L"Lion's Arch");
+    CHECK(first(BuiltinGlossary(L"en", L"DE"), L"meet at Lion's Arch") == L"Löwenstein");
+    CHECK(first(BuiltinGlossary(L"fr", L"ES"), L"à L'Arche du Lion") == L"Arco del León");
+    CHECK(first(BuiltinGlossary(L"de", L"EN"), L"treffen in Lion's Arch").empty());     // Denglish stays
+    CHECK(first(BuiltinGlossary(L"de", L"PL"), L"Himmelsschuppe") == L"Skyscale");      // no Polish names
+    CHECK(BuiltinGlossary(L"en", L"PL") == nullptr && BuiltinGlossary(L"pl", L"DE") == nullptr);
+    CHECK(BuiltinGlossary(L"de", L"EN") == BuiltinGlossary(L"DE", L"en-us"));            // built once per pair
+}
+
 static void TestGlossary() {
     const Glossary g = Glossary::Build(De(), En());
     // Löwenstein (dup, same target) yes; Bruch (ambiguous) no; Ost (too short) no; placeholder no.
@@ -2865,6 +2882,7 @@ int main() {
     TestLangs();
     TestNameTable();
     TestGlossary();
+    TestBuiltinGlossary();
     TestProtect();
     TestTranslationCheck();
     TestChatCommands();

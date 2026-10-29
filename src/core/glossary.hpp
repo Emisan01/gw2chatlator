@@ -58,4 +58,14 @@ private:
     std::unordered_map<wchar_t, std::vector<size_t>> byFirst_;
 };
 
+// The official names compiled in (data/gw2-names.tsv, tools/gen_names.py) of one language ("de", "FR"); empty for a
+// language the GW2 API has no names in.
+const NameTable& BuiltinNames(const std::wstring& lang);
+
+// The glossary for a sentence written in `source`, translated into `target`. Both ways, by one rule: a name written in
+// the sentence's own language becomes the target's official name ("Löwenstein" → "Lion's Arch", "meet at Lion's Arch"
+// → "Löwenstein"; English where the target has no names); a name in another language is the writer's choice
+// ("Lion's Arch" in a German sentence) and is not touched here. Null when the source has no names or is the target.
+const Glossary* BuiltinGlossary(const std::wstring& source, const std::wstring& target);
+
 }  // namespace gct

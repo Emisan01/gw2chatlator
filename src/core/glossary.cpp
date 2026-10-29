@@ -2,9 +2,56 @@
 #include "glossary.hpp"
 
 #include <algorithm>
+#include <map>
+#include <mutex>
 #include <unordered_set>
 
 namespace gct {
+
+namespace {
+
+struct BuiltinName {
+    const char* key;
+    const char* names[4];  // en, de, fr, es
+};
+const BuiltinName kBuiltinNames[] = {
+#include "gw2_names.inc"
+};
+
+// 0 en, 1 de, 2 fr, 3 es; -1 for a language the GW2 API has no names in.
+int NameLang(const std::wstring& lang) {
+    const std::wstring l = ToLowerAscii(lang.substr(0, 2));
+    return l == L"en" ? 0 : l == L"de" ? 1 : l == L"fr" ? 2 : l == L"es" ? 3 : -1;
+}
+
+const NameTable& NamesAt(int i) {
+    static const std::vector<NameTable> tables = [] {
+        std::vector<NameTable> t(4);
+        for (const BuiltinName& n : kBuiltinNames)
+            for (int l = 0; l < 4; ++l) t[l][n.key] = FromUtf8(n.names[l]);
+        return t;
+    }();
+    return tables[i];
+}
+
+}  // namespace
+
+const NameTable& BuiltinNames(const std::wstring& lang) {
+    static const NameTable empty;
+    const int i = NameLang(lang);
+    return i < 0 ? empty : NamesAt(i);
+}
+
+const Glossary* BuiltinGlossary(const std::wstring& source, const std::wstring& target) {
+    const int s = NameLang(source), t = (std::max)(NameLang(target), 0);  // no names in the target: the English ones
+    if (s < 0 || s == t) return nullptr;
+    static std::mutex mu;
+    static std::map<int, Glossary> built;  // one per pair, built on first use
+    std::lock_guard<std::mutex> lock(mu);
+    auto it = built.find(s * 4 + t);
+    if (it == built.end()) it = built.emplace(s * 4 + t, Glossary::Build(NamesAt(s), NamesAt(t))).first;
+    return &it->second;
+}
 
 std::string SerializeNameTable(const NameTable& names) {
     std::vector<std::pair<std::string, std::wstring>> rows(names.begin(), names.end());
