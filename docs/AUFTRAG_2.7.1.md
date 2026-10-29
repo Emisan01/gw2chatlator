@@ -40,6 +40,14 @@ ein Ergebnis mit einem zweiten Weg gegenprüfen.) Vorschlag, lokal zuerst:
 **A5. Direktstart in der Kachel.** Alles, was für den Start der Übersetzung nötig ist, in der Kachel bedienbar – ohne in
 den Tab zu müssen. Entwurf vorher mit Emi abstimmen (er gibt die Richtung vor).
 
+**A6. Ziel beim Chat-Lesen ist an die Eingabesprache gebunden – Emi: soll es nicht sein.** Heute übersetzt
+`TranslateLine` jede Chatzeile in `TypingLang()` (kb_worker.cpp, `what.target`), und `skipTypingLang` überspringt
+Zeilen in dieser Sprache. Folge: Eingabe Deutsch, Footer Englisch, Deutsch aus „nicht übersetzen“ gelöscht – eine
+deutsche Zeile wird trotzdem nicht übersetzt (sie wäre „ins Deutsche“). Der Footer ist die Sendesprache. Vorschlag
+(Emi entscheidet): eine eigene Einstellung „Chat lesen in:“ (Standard = Eingabesprache), unabhängig von Eingabe und
+Footer; die Liste „nicht übersetzen“ filtert dagegen. Nicht den Footer zum Leseziel machen – sonst bekäme ein
+deutscher Spieler, der in den englischen Chat schreibt, englische Zeilen nicht mehr auf Deutsch.
+
 ## B. Listen füllen (mit Emi, jeder Eintrag gemessen)
 
 - **B1.** [data/gw2-words.tsv](../data/gw2-words.tsv): nur was ein Übersetzer nachweislich falsch macht; nie
