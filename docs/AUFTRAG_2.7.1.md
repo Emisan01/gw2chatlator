@@ -56,10 +56,23 @@ deutsche Zeile wird trotzdem nicht übersetzt (sie wäre „ins Deutsche“). De
   auch Sprachen aus „nicht übersetzen“. Chat-Codes bleiben ohne Klicklogik (siehe 2.3.1). Linksklick auf einen Namen
   (Flüster-Tab) bleibt wie er ist.
 
+**A7. Chat-Darstellung (Emi, Screenshot 2026-10-29).** Heute stehen umbrochene Zeilen bündig unter dem Textanfang
+hinter dem Namen – bei langen Namen ein großer leerer Block links. Entschieden: Umbruchzeilen **ein Zeichen** (1 em,
+schriftgrößenabhängig) eingerückt statt unter dem Text. Dazu, damit Nachrichten trotzdem klar getrennt bleiben: etwas
+engerer Abstand zwischen den Zeilen einer Nachricht, etwas mehr Abstand zwischen zwei Nachrichten. Schriftarten und
+Zeilenabstände insgesamt mit Emi ansehen (Vorbild: eine Mischung mit dem nativen GW2-Chat). Vorher/Nachher-Screenshot
+an Emi, keine echten Chatzeilen ins Repo.
+
+**A8. Übersetzungszeit sichtbar.** Emi möchte die Zeiten sehen: pro Zeile die ms (z. B. im Tooltip der Zeile oder im
+Debug-Fenster), ohne Chattext zu speichern.
+
 ## B. Listen füllen (mit Emi, jeder Eintrag gemessen)
 
 - **B1.** [data/gw2-words.tsv](../data/gw2-words.tsv): nur was ein Übersetzer nachweislich falsch macht; nie
   erfinden (Sprachen ohne GW2-Übersetzung: englisches Wort zuerst); Bench vorher/nachher.
+  Kandidaten aus Emis Spieltest: „boss“ (fr/en → de wurde „Chef“), „LF 2 more“ (more → „Mehr“).
+- **B1b.** Gildennamen vor einem Tag schützen: großgeschriebene Wörter direkt vor `[TAG]` sind der Name („Death
+  Systems [DS]“ blieb, „La Ruche [RUCH]“ wurde „[RUCH]-Hügel“). Messen mit erfundenen Zeilen.
 - **B2.** Grüße vor dem Modell nachschlagen (Hola, Selam, Merhaba, Salut, Cześć, Привет, Olá, Ciao …): genau diese
   Zeilen erfindet das Modell („das ist alles“, „Ich weiß nicht“), und ihr Score liegt unter `kUnsureScore`.
 - **B3.** Erst wenn die Listen stehen: zweiter, **unbekannter** Prüfsatz
