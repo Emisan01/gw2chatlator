@@ -33,8 +33,12 @@ keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zulet
    messen) und Anfrage-IDs im Protokoll; einfachere Alternative: automatische Chatzeilen pausieren, solange du tippst.
 5. **Drossel:** automatische Zeilen unter Last nie unter Beam 2. Vorher je Beam (1/2/4) messen: Bedeutung und ms.
 6. **Grüße** (Hola, Selam, Merhaba, Salut, Cześć, Привет, Olá, Ciao …) vor dem Modell nachschlagen.
-7. **Listen füllen** mit Emi: `data/gw2-words.tsv` nur mit gemessenen Fehlern, nichts erfinden (z. B. „boss“). Danach
+7. **Listen füllen** mit Emi: `data/gw2-words.tsv` nur mit gemessenen Fehlern, nichts erfinden. Kandidaten aus Live-Tests: „boss“ (→ „Chef“), „frak“ (Fractals;
+   NLLB kennt „frak“ als Science-Fiction-Fluch → „Scheiße“), „riss“ (Rift; „lfg ein t3 riss farm gruppe“ verlor „riss farm“).
+   Danach
    ein zweiter, unbekannter Prüfsatz `tests/data/translation_corpus_holdout.tsv`, nie zum Nachbessern.
+7b. **Offizielle Namen auch ohne Apostroph:** „lions arch“ blieb ins Französische „lions arch“ statt „L'Arche du
+   Lion“ – der Glossar-Vergleich achtet auf den Apostroph, die Begriffsliste (`TermKey`) nicht. Gleich machen.
 
 ## Oberfläche
 8. **Lesesprache:** eigene Einstellung, Start = Systemsprache, dann frei wählbar, unabhängig von Eingabe und Footer;
