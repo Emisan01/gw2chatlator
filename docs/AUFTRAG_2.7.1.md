@@ -66,13 +66,23 @@ an Emi, keine echten Chatzeilen ins Repo.
 **A8. Übersetzungszeit sichtbar.** Emi möchte die Zeiten sehen: pro Zeile die ms (z. B. im Tooltip der Zeile oder im
 Debug-Fenster), ohne Chattext zu speichern.
 
+**A9. „Was ist passiert?“ für eine Zeile (Emi möchte sehen, was der String in dem Moment war).** Ein Eintrag im
+Rechtsklick-Feld einer Nachricht (A6) oder im Debug-Fenster zeigt für genau diese Zeile: erkannte Sprache und Ziel, die
+geschützten Teile (Tag, Name, Begriff, offizieller Name → Ziel), jeden Versuch (ganz / Namen-Schreibweise / Platzhalter /
+Stücke) mit Modellausgabe, Score und Urteil der Prüfung, die Aufräum-Schritte, das Ergebnis und die ms. Nur im Speicher,
+nur auf Klick, nie in eine Datei (Datenschutz: kein Chat-Export).
+
 ## B. Listen füllen (mit Emi, jeder Eintrag gemessen)
 
 - **B1.** [data/gw2-words.tsv](../data/gw2-words.tsv): nur was ein Übersetzer nachweislich falsch macht; nie
   erfinden (Sprachen ohne GW2-Übersetzung: englisches Wort zuerst); Bench vorher/nachher.
   Kandidaten aus Emis Spieltest: „boss“ (fr/en → de wurde „Chef“), „LF 2 more“ (more → „Mehr“).
 - **B1b.** Gildennamen vor einem Tag schützen: großgeschriebene Wörter direkt vor `[TAG]` sind der Name („Death
-  Systems [DS]“ blieb, „La Ruche [RUCH]“ wurde „[RUCH]-Hügel“). Messen mit erfundenen Zeilen.
+  Systems [DS]“ blieb, „La Ruche [RUCH]“ wurde „[RUCH]-Hügel“). **Gemessen (erfundene Zeile, 2026-10-29):** mit unserer
+  Logik „La Ruche [RUCH] cherche des joueurs pour les raids.“ → „Die [RUCH]-Halle sucht Spieler für die Raid.“, roh →
+  „Die Ruche sucht Spieler für die Razzia.“, ohne Tag mit unserer Logik → „Die Ruche sucht Spieler für die Raids.“ – der
+  einzeln geschützte Tag neben dem unbekannten Namen bringt NLLB dazu, ein Kompositum zu bauen und den Namen als Wort zu
+  übersetzen. Also unsere Schutzform, nicht nur das Modell. Lösung: Name + Tag als **ein** geschützter Teil.
 - **B2.** Grüße vor dem Modell nachschlagen (Hola, Selam, Merhaba, Salut, Cześć, Привет, Olá, Ciao …): genau diese
   Zeilen erfindet das Modell („das ist alles“, „Ich weiß nicht“), und ihr Score liegt unter `kUnsureScore`.
 - **B3.** Erst wenn die Listen stehen: zweiter, **unbekannter** Prüfsatz
