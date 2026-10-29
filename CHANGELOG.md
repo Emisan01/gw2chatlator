@@ -3,6 +3,10 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.7.1 — 2026-10-29 (GW2Chatlator for Nexus)
+
+- **Whispers Arrive Again:** a message from a whisper tab went to the wrong place – name and text swapped, or only a piece of the text in GW2's whisper line, not sent. Since sending got faster (2.x), the whisper steps – "/w ", the name, Tab, the message – ran without a pause, and name and message both went through the clipboard, so a game reading it a frame late mixed them up. The name is now typed, the clipboard only ever holds the message, and each whisper step has its pause again.
+
 ## 2.7.0 — 2026-10-29 (GW2Chatlator for Nexus)
 
 - **Official GW2 Names in Every Direction:** the game's own names in English, German, French and Spanish – open-world and WvW maps, camps, towers, keeps and castles, professions, elite specializations, mounts – are compiled in (259 names, from the public GW2 API once per release by `tools/gen_names.py`; no key, nothing fetched while you play). The language you translate into decides: "Himmelsschuppe" into English is "Skyscale", "Skyscale" into German is "Himmelsschuppe", "Löwenstein" into English is "Lion's Arch", and "Lion's Arch" in a German sentence stays "Lion's Arch" into English. A language without official names gets the English one. Only exact hits; a name that could mean two things is left alone.

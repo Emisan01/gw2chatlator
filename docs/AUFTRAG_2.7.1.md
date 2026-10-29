@@ -4,15 +4,7 @@ Regeln: [AGENTS.md](../AGENTS.md) (Evidence bei feat/fix/perf/refactor, messen s
 keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zuletzt.
 
 ## Fehler
-0. **Flüstern senden kaputt (zuerst!) – Ursache gefunden:** Ein eigener Flüster-Tab sendet immer an diese Person
-   (`/w Name,` → gw2_sender.cpp: „/w “ tippen, Namen einfügen, Tab, Nachricht einfügen, Enter – so seit b0d1ae0,
-   2026-10-08, und so funktionierte es). Seit fb00d81 (2026-10-11, „keine Pausen zwischen den Schritten“) schläft die
-   Flüster-Folge `Sleep(step)` mit `step = 0`, sobald die Chatzeile offen ist – GW2 braucht aber nach „/w “, nach dem
-   Namen und nach Tab je einen Moment zum Umschalten; ohne Pause landen Name und Text vertauscht oder abgeschnitten
-   (Live-Test: „…s commentaire“ im Flüsterfeld). Fix: in diesem Block wieder `opt.stepDelayMs` statt `step`
-   (src/win/gw2_sender.cpp, die drei `Sleep(step)` nach „/w “, Name, Tab). Nur im Spiel prüfbar, Testprotokoll-Zeile.
-   Geprüft: die Befehle von 2026-10-27 (/wiki, Emotes, 553d388/abe6588) sind es nicht – „/w“ zählt als Kanalbefehl
-   (`IsChannelCommand`), geht also weiter in die Flüster-Folge.
+0. ~~Flüstern senden kaputt~~ – erledigt in 2.7.1 (f603419: Name getippt, Pausen zurück); im Spiel prüfen (CHAT-13).
 1. **Block bleibt unübersetzt:** nach einer Zeile mit Tippfehler, einer Korrekturzeile, einer Zeile nur `\o/` und einer
    kurzen englischen Zeile übersetzt kein Übersetzer mehr die folgenden Zeilen, auch nicht per „einmal übersetzen“.
    Nachstellen (erfundene Zeilen), Ursache finden, Test dazu (`TranslateRecentLines` → `TranslateLine`, kb_worker.cpp).
