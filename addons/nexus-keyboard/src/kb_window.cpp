@@ -417,7 +417,7 @@ void RenderFooter() {  // g_mu held
         s_fc.labelBtnFull = s_fc.labelFull + "##chbtn";
         s_fc.labelBtnNarrow = s_fc.labelNarrow + "##chbtn";
 
-        s_fc.writeFull = UI(TrF(L"Write: {1}", {g_cfg.writeIn.empty() ? Tr(L"System") : NativeName(g_cfg.writeIn)}));
+        s_fc.writeFull = UI(TrF(L"Typing help: {1}", {g_cfg.writeIn.empty() ? Tr(L"System") : NativeName(g_cfg.writeIn)}));
         s_fc.writeNarrow = g_cfg.writeIn.empty() ? std::string("Win") : U8(ToUpperAscii(PrimaryLang(g_cfg.writeIn)));
         s_fc.writeBtnFull = s_fc.writeFull + "##writebtn";
         s_fc.writeBtnNarrow = s_fc.writeNarrow + "##writebtn";

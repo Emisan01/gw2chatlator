@@ -390,13 +390,34 @@ bool FocusSwitch(const char* id, const std::string& label, bool* val, const char
 // What is on, at a glance (g_mu NOT held): the chat's translation applies at once (as in the Translator tab), the rest
 // with "Save".
 // "Translated is everything except: ..." – the one list of what is never translated by itself (core/translate_policy):
-// your writing language (it follows when you change it; on by default, removable – [Translate] SkipTypingLang) and the
-// languages you understand ([Translate] Understood). g_mu NOT held.
-std::wstring WritingLangNow() {
+// your reading language (it follows when you change it; on by default, removable and back with + – [Translate]
+// SkipTypingLang) and the languages you understand ([Translate] Understood). Above it the reading language itself, so
+// the dashboard holds what a start needs. g_mu NOT held.
+std::wstring ReadingLangNow() {
     std::lock_guard<std::mutex> lock(g_mu);
-    return PrimaryLang(TypingLang());
+    return PrimaryLang(ReadLang());
 }
 void RenderExceptList(Config& edit) {
+    // The chat is read in: the same setting as in the chat tab's menu, applied at once.
+    ImGui::TextUnformatted(UI(Tr(L"Read the chat in")).c_str());
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 10);
+    const std::string readShown = edit.readLang.empty() ? UI(Tr(L"System")) : U8(NativeName(edit.readLang));
+    if (ImGui::BeginCombo("##dash_readlang", readShown.c_str())) {
+        std::wstring chosen = edit.readLang;
+        if (ImGui::Selectable(UI(Tr(L"System")).c_str(), chosen.empty())) chosen.clear();
+        for (const LangInfo& lg : Languages())
+            if (DrawnInOurWindow(lg) && ImGui::Selectable(U8(NativeName(lg.code)).c_str(), edit.readLang == lg.code))
+                chosen = lg.code;
+        ImGui::EndCombo();
+        if (chosen != edit.readLang) {
+            edit.readLang = chosen;
+            std::lock_guard<std::mutex> lock(g_mu);
+            g_cfg.readLang = chosen;
+            g_cfg.SaveValue(L"Translate", L"ReadLang", chosen);
+            if (g_nx.translateChat) TranslateRecentLines(false);
+        }
+    }
     static const wchar_t* kCommon[] = {L"EN", L"DE", L"FR", L"ES", L"IT", L"PT", L"NL", L"PL",
                                        L"RU", L"TR"};  // what our window draws (no CJK, no Arabic)
     bool first = true;
@@ -412,7 +433,7 @@ void RenderExceptList(Config& edit) {
         return clicked;
     };
     ImGui::PushID("except");
-    if (edit.skipTypingLang && chip(UI(TrF(L"My writing language ({1})", {WritingLangNow()})) + " x##mine"))
+    if (edit.skipTypingLang && chip(UI(TrF(L"My reading language ({1})", {ReadingLangNow()})) + " x##mine"))
         edit.skipTypingLang = false;
     auto& list = edit.understoodLangs;
     for (size_t i = 0; i < list.size(); ++i)
@@ -423,7 +444,7 @@ void RenderExceptList(Config& edit) {
     if (!first) ImGui::SameLine();
     if (ImGui::SmallButton("+")) ImGui::OpenPopup("add");
     if (ImGui::BeginPopup("add")) {
-        if (!edit.skipTypingLang && ImGui::Selectable(UI(TrF(L"My writing language ({1})", {WritingLangNow()})).c_str()))
+        if (!edit.skipTypingLang && ImGui::Selectable(UI(TrF(L"My reading language ({1})", {ReadingLangNow()})).c_str()))
             edit.skipTypingLang = true;
         for (const wchar_t* code : kCommon) {
             const bool in = std::any_of(list.begin(), list.end(), [code](const std::wstring& u) {
@@ -492,6 +513,9 @@ void DoSaveOptions(Config& edit, Config& opened,
         if (edit.voiceTranslate == opened.voiceTranslate) edit.voiceTranslate = g_cfg.voiceTranslate;
         if (edit.writeLangs == opened.writeLangs) edit.writeLangs = g_cfg.writeLangs;
         if (edit.voiceModel == opened.voiceModel) edit.voiceModel = g_cfg.voiceModel;
+        if (edit.readLang == opened.readLang) edit.readLang = g_cfg.readLang;  // the chat tab's menu sets these at once
+        if (edit.showOriginal == opened.showOriginal) edit.showOriginal = g_cfg.showOriginal;
+        if (edit.noJunk == opened.noJunk) edit.noJunk = g_cfg.noJunk;
         const bool engineChanged = edit.engine != g_cfg.engine;
         // Only a changed translator or key builds a new one: a new local helper loads its model again, and the first
         // request ran into the timeout after changing nothing but the typing language.
