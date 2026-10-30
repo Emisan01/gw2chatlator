@@ -861,14 +861,22 @@ void RenderWindow() {
             // One element in two parts, like the microphone's: the tab, and its "v" – the full menu (reading
             // language, original, unsure, name), opening upwards. A right-click on the tab only renames it.
             {
+                // drawn as the microphone's pill draws its arrow: the same divider, size, colours and hover
                 const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
-                const float arrowW = ImGui::GetFontSize() * 1.2f;
-                const float x0 = b.x - arrowW - ImGui::GetStyle().FramePadding.x * 0.5f;
+                const float arrowW = std::floor((b.y - a.y) * 0.75f);
+                const float x0 = b.x - arrowW - 1.0f;
+                const bool overArrow = ImGui::IsItemHovered() && ImGui::GetIO().MousePos.x >= x0;
                 ImDrawList* dl = ImGui::GetWindowDrawList();
-                dl->AddLine(ImVec2(x0, a.y + 4.0f), ImVec2(x0, b.y - 4.0f), ImGui::GetColorU32(ImGuiCol_Separator));
-                const ImVec2 c((x0 + b.x) * 0.5f, (a.y + b.y) * 0.5f);
+                if (overArrow) {
+                    ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                    dl->AddRectFilled(ImVec2(x0 + 1.0f, a.y), b,
+                                      IM_COL32(255, 255, 255, ImGui::IsMouseDown(ImGuiMouseButton_Left) ? 35 : 20),
+                                      ImGui::GetStyle().TabRounding, ImDrawCornerFlags_TopRight);
+                }
+                dl->AddLine(ImVec2(x0, a.y + 4.0f), ImVec2(x0, b.y - 4.0f), IM_COL32(255, 255, 255, 30), 1.0f);
+                const ImVec2 c(x0 + 1.0f + arrowW * 0.5f, (a.y + b.y) * 0.5f);
                 const float u = ImGui::GetFontSize() / 16.0f;
-                const ImU32 col = ImGui::GetColorU32(ImGuiCol_Text);
+                const ImU32 col = overArrow ? IM_COL32(255, 255, 255, 255) : IM_COL32(170, 175, 195, 255);
                 dl->AddLine(ImVec2(c.x - 3.5f * u, c.y - 1.5f * u), ImVec2(c.x, c.y + 2.0f * u), col, 1.5f * u);
                 dl->AddLine(ImVec2(c.x, c.y + 2.0f * u), ImVec2(c.x + 3.5f * u, c.y - 1.5f * u), col, 1.5f * u);
                 const bool hovered = ImGui::IsItemHovered();
