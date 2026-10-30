@@ -77,6 +77,21 @@ keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zulet
     (`ShouldTranslate`: `detected` leer → nein). Prüfen, ob eine Zeile mit Wörtern aus einer Wörterliste / einem
     Windows-Wörterbuch als sicher gelten darf; heute hilft nur der Klick auf die Zeile.
 
+## Qualität lokal (Messung 2026-10-30, erfundene Zeile mit Gildenname + Tag)
+22. **Befund:** unsere Logik 3/3 Sätze, Score −0,95 (nicht „unsicher“, Grenze −1,2), aber „Die [RUCH]-Halle“, „Chef“,
+    „Rejoins l'essaim“ verloren; ohne Tag „Die Rücke“; roh (ohne Logik) nur 1/3 Sätze („der Rumpf“), erste Zeile roh
+    **Timeout / Helfer gestoppt**. MyMemory im Spiel deutlich besser und schneller. Schluss: nicht „verbockt“ – unsere
+    Logik hilft (3/3 statt 1/3), die Grenze ist das kleine Modell (NLLB-200-distilled-600M). Der Score erkennt erfundene
+    Sätze, nicht falsche Wörter (Bench: Fehlzeilen −0,44…−0,95).
+23. **NLLB-200-distilled-1.3B messen** (doppelte Größe, ~1,3 GB int8): translation_bench Bedeutung + ms gegen 600M; als
+    wählbare Qualitätsstufe/Modell, wenn es deutlich trägt.
+24. **Zweitblick online (Option, Emi entscheidet):** unsichere oder lange Zeilen zusätzlich über MyMemory, nur wenn der
+    Nutzer MyMemory eingeschaltet hat (Datenschutz: fremde Zeilen gehen dann ins Netz – sagen).
+25. **Score sichtbar nur wenn schlecht:** knappe Zahl/Ampel an der Zeile ab einer gemessenen Grenze (heute im Zeilen-Menü
+    „Was ist passiert?“); Grenzen erst per Bench festlegen, sonst irreführend.
+26. **Roh: Timeout bei langer Zeile mit mehreren Sätzen** (Helfer gestoppt) – nachstellen; möglicher Zusammenhang mit
+    dem `\o/`-Block (Punkt 1: nichts ging mehr).
+
 ## Vereinfachung aus Nutzersicht (Emi, 2026-10-29)
 Drei Einstellungen: **Ich lese in …**, **Ich sende in …** (oder „wie geschrieben“), **Übersetzer + Qualität**. Alles andere
 zusammenlegen oder automatisch:
