@@ -71,7 +71,7 @@ keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zulet
 13. ~~erledigt 2.7.1~~ **Original klein und grau unter der Übersetzung** – als Option (aus per Standard), wie in den ersten Versionen.
 14. ~~erledigt 2.7.1~~ **Eigene Nachrichten in der Lesesprache:** statt die gesendete Übersetzung zurückzuübersetzen, das zeigen, was du
     getippt hast (liegt beim Senden vor, nur im Speicher) – exakt und ohne Rechenzeit.
-15. **Filter zeigt die eigene Sprache:** „Übersetzt wird alles außer:“ zeigt die Lesesprache als eigenen Eintrag
+15. ~~erledigt 2.7.2~~ **Filter zeigt die eigene Sprache:** „Übersetzt wird alles außer:“ zeigt die Lesesprache als eigenen Eintrag
     (`skipTypingLang`, z. B. „English (Lesesprache) ×“) neben dem +; löschbar und über + wiederherstellbar (Emi, Live-Test).
 16. **Kurze Zeilen:** ein Wort („herbeiwinken“) wird nie automatisch übersetzt – die Erkennung ist nicht sicher
     (`ShouldTranslate`: `detected` leer → nein). Prüfen, ob eine Zeile mit Wörtern aus einer Wörterliste / einem
@@ -84,7 +84,7 @@ zusammenlegen oder automatisch:
     „Ich verstehe: [Lesesprache] [+ weitere]“; die Lesesprache vorne, entfernbar und wiederherstellbar (ersetzt Punkt 15).
 18. **Eine Sende-Wahl:** Haken „Meinen Text übersetzen“, Footer-Sendesprache mit „wie geschrieben“ und „Gesprochenes direkt
     übersetzen“ → nur „Senden: <Sprache> / wie geschrieben“; die Spracheingabe folgt ihr.
-19. **„Schreiben“ heißt „Tipphilfe“** und steuert nur noch Vorschläge/Wörterbuch (die Sprache des Textes wird erkannt, 3b).
+19. ~~erledigt 2.7.2~~ **„Schreiben“ heißt „Tipphilfe“** und steuert nur noch Vorschläge/Wörterbuch (die Sprache des Textes wird erkannt, 3b).
 20. **Ein Ein-/Aus-Schalter** statt „Den Chat übersetzen“, „Aktiv“-Chip und Pause.
 21. **Ein Ort:** Lesen, Senden, Übersetzer in der Dashboard-Kachel (Direktstart, Punkt 10); Chat-Tab-Menü und Optionen zeigen
     dieselben Werte, keine eigenen. Die Wege, eine Zeile zu übersetzen (automatisch, Klick, Rechtsklick, einmal), bleiben.

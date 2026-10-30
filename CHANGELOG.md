@@ -3,6 +3,13 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.7.2 — 2026-10-30 (GW2Chatlator for Nexus)
+
+- **Reading Language on the Dashboard:** "Read the chat in" now also sits under "Translation & Languages" on the dashboard – the same setting as in the chat tab's menu, applied at once.
+- **The Filter Says What It Compares With:** the first entry of "Translated is everything except" is "My reading language (xx)" – removable, and back with +.
+- **"Typing Help" Instead of "Write":** the footer button steers suggestions and the dictionary; the language of what you write is detected from the text.
+- **Settings Stay Put:** saving the options no longer undoes a reading language, "Original under the translation" or "Unsure: show the original" changed meanwhile in the chat tab's menu.
+
 ## 2.7.1 — 2026-10-29 (GW2Chatlator for Nexus)
 
 - **Whispers Arrive Again:** a message from a whisper tab went to the wrong place – name and text swapped, or only a piece of the text in GW2's whisper line, not sent. Since sending got faster (2.x), the whisper steps – "/w ", the name, Tab, the message – ran without a pause, and name and message both went through the clipboard, so a game reading it a frame late mixed them up. The name is now typed, the clipboard only ever holds the message, and each whisper step has its pause again.
