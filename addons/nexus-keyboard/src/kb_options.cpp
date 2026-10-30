@@ -397,8 +397,8 @@ std::wstring ReadingLangNow() {
     std::lock_guard<std::mutex> lock(g_mu);
     return PrimaryLang(ReadLang());
 }
-void RenderExceptList(Config& edit) {
-    // The chat is read in: the same setting as in the chat tab's menu, applied at once.
+// The chat is read in: the same setting as in the chat tab's menu, applied at once (above the list it filters).
+void RenderReadLang(Config& edit) {
     ImGui::TextUnformatted(UI(Tr(L"Read the chat in")).c_str());
     ImGui::SameLine();
     ImGui::SetNextItemWidth(ImGui::GetFontSize() * 10);
@@ -418,6 +418,9 @@ void RenderExceptList(Config& edit) {
             if (g_nx.translateChat) TranslateRecentLines(false);
         }
     }
+}
+
+void RenderExceptList(Config& edit) {
     static const wchar_t* kCommon[] = {L"EN", L"DE", L"FR", L"ES", L"IT", L"PT", L"NL", L"PL",
                                        L"RU", L"TR"};  // what our window draws (no CJK, no Arabic)
     bool first = true;
@@ -1499,6 +1502,7 @@ void RenderOptionsContent() {
                 ImGui::SameLine();
                 ImGui::TextDisabled("%s", UI(Tr(L"ready – Events: Chat is loaded")).c_str());
             }
+            RenderReadLang(edit);
             ImGui::TextDisabled("%s", UI(Tr(L"Translated is everything except:")).c_str());
             RenderExceptList(edit);
             Hint(UI(Tr(L"Your writing language follows automatically when you switch languages in the chat footer.")));
@@ -1981,6 +1985,7 @@ void RenderOptionsContent() {
                 }
             }
             Hint(UI(Tr(L"Foreign lines of other players into your language. Off: a click on a line translates just that one.")));
+            RenderReadLang(edit);
             ImGui::TextUnformatted(UI(Tr(L"Translated is everything except:")).c_str());
             RenderExceptList(edit);
             Hint(UI(Tr(L"A click on a line always translates it. A click on a name opens a whisper tab that answers in "

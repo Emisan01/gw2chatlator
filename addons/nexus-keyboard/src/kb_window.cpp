@@ -841,6 +841,8 @@ void RenderWindow() {
     static UiLang s_chatTabLang = static_cast<UiLang>(-1);
     static std::wstring s_cachedChatName;
     static bool s_renameChatOpen = false;
+    static ImVec2 s_chatMenuMin, s_chatMenuMax;  // the "v" beside the chat tab: its menu opens above it
+    static bool s_chatMenuAnchored = false;
     if (Lay().header) {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         ImGui::BeginChild("##hdr", ImVec2(tabsW, icon), false,
@@ -865,6 +867,25 @@ void RenderWindow() {
                 if (g_selectTab == -1) g_selectTab = -2;
                 else if (g_selectTab == -2 && g_activeTab != -1) LeaveWhisperTab();
                 ImGui::EndTabItem();
+            }
+            // Its menu also behind a small "v" right beside it, as at the microphone (only the chat tab: it cannot be
+            // closed; tabs of your own keep their right-click settings).
+            if (ImGui::TabItemButton("   ##chatmenu")) {
+                tabMenu = true;
+                s_renameChatOpen = true;
+                s_chatMenuMin = ImGui::GetItemRectMin();
+                s_chatMenuMax = ImGui::GetItemRectMax();
+                s_chatMenuAnchored = true;
+            }
+            {
+                const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
+                const ImVec2 c((a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f);
+                const float u = ImGui::GetFontSize() / 16.0f;
+                const ImU32 col = ImGui::GetColorU32(ImGuiCol_Text);
+                ImDrawList* dl = ImGui::GetWindowDrawList();
+                dl->AddLine(ImVec2(c.x - 3.5f * u, c.y - 1.5f * u), ImVec2(c.x, c.y + 2.0f * u), col, 1.5f * u);
+                dl->AddLine(ImVec2(c.x, c.y + 2.0f * u), ImVec2(c.x + 3.5f * u, c.y - 1.5f * u), col, 1.5f * u);
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Read the chat in")).c_str());
             }
             int close = -1;
             for (int i = 0; i < static_cast<int>(g_tabs.size()); ++i) {
@@ -915,6 +936,12 @@ void RenderWindow() {
         ImGui::OpenPopup("##rename_chat_tab");
         s_renameChatOpen = false;
     }
+    if (s_chatMenuAnchored) {  // opened from the "v": upwards like the microphone's menu, downwards near the top
+        const bool up = s_chatMenuMin.y >= 180.0f;
+        ImGui::SetNextWindowPos(ImVec2(s_chatMenuMin.x, up ? s_chatMenuMin.y - 4.0f : s_chatMenuMax.y + 4.0f),
+                                ImGuiCond_Always, ImVec2(0.0f, up ? 1.0f : 0.0f));
+    }
+    if (!ImGui::IsPopupOpen("##rename_chat_tab") && !s_renameChatOpen) s_chatMenuAnchored = false;
     if (ImGui::BeginPopup("##rename_chat_tab")) {
         ScopedPopupFont popupFont;
         static char nameBuf[64] = {};
