@@ -5,7 +5,7 @@ diagnosis show it.
 
 ## 2.7.2 — 2026-10-30 (GW2Chatlator for Nexus)
 
-- **A Small "v" Beside the Chat Tab:** like at the microphone, it opens the chat tab's menu upwards – reading language, original under the translation, "unsure: show the original", the tab's name. Tabs of your own keep their right-click settings.
+- **The Chat Tab Has Its "v":** the tab and a small arrow are one element in two parts, like the microphone's. The arrow opens the chat tab's menu upwards – reading language, original under the translation, "unsure: show the original", the name. A right-click on the tab now only renames it. Tabs of your own keep their right-click settings.
 - **Reading Language on the Dashboard:** "Read the chat in" now sits right above "Translated is everything except" under "Translation & Languages" (and in the Translator tab) – the same setting as in the chat tab's menu, applied at once.
 - **The Filter Says What It Compares With:** the first entry of "Translated is everything except" is "My reading language (xx)" – removable, and back with +.
 - **"Typing Help" Instead of "Write":** the footer button steers suggestions and the dictionary; the language of what you write is detected from the text.

@@ -843,6 +843,7 @@ void RenderWindow() {
     static bool s_renameChatOpen = false;
     static ImVec2 s_chatMenuMin, s_chatMenuMax;  // the "v" beside the chat tab: its menu opens above it
     static bool s_chatMenuAnchored = false;
+    static bool s_chatMenuFull = false;  // from the "v": the whole menu; a right-click on the tab: only its name
     if (Lay().header) {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         ImGui::BeginChild("##hdr", ImVec2(tabsW, icon), false,
@@ -853,39 +854,42 @@ void RenderWindow() {
                 s_chatTabLang = g_cfg.uiLang;
                 s_cachedChatName = g_cfg.chatTabName;
                 const std::wstring base = !g_cfg.chatTabName.empty() ? g_cfg.chatTabName : Tr(L"Chat");
-                s_chatTabLabel = UI(base) + "###wt_all";
+                s_chatTabLabel = UI(base) + "      ###wt_all";  // room for its "v"
             }
             const bool mainShown = ImGui::BeginTabItem(s_chatTabLabel.c_str(), nullptr,
                                                        g_selectTab == -1 ? ImGuiTabItemFlags_SetSelected : 0);
-            // its menu: a right-click, or a click on it while it is the open tab (reading language, original, name)
-            if (ImGui::IsItemHovered() && (ImGui::IsMouseClicked(ImGuiMouseButton_Right) ||
-                                           (g_activeTab < 0 && ImGui::IsMouseClicked(ImGuiMouseButton_Left)))) {
-                tabMenu = true;
-                s_renameChatOpen = true;
+            // One element in two parts, like the microphone's: the tab, and its "v" – the full menu (reading
+            // language, original, unsure, name), opening upwards. A right-click on the tab only renames it.
+            {
+                const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
+                const float arrowW = ImGui::GetFontSize() * 1.2f;
+                const float x0 = b.x - arrowW - ImGui::GetStyle().FramePadding.x * 0.5f;
+                ImDrawList* dl = ImGui::GetWindowDrawList();
+                dl->AddLine(ImVec2(x0, a.y + 4.0f), ImVec2(x0, b.y - 4.0f), ImGui::GetColorU32(ImGuiCol_Separator));
+                const ImVec2 c((x0 + b.x) * 0.5f, (a.y + b.y) * 0.5f);
+                const float u = ImGui::GetFontSize() / 16.0f;
+                const ImU32 col = ImGui::GetColorU32(ImGuiCol_Text);
+                dl->AddLine(ImVec2(c.x - 3.5f * u, c.y - 1.5f * u), ImVec2(c.x, c.y + 2.0f * u), col, 1.5f * u);
+                dl->AddLine(ImVec2(c.x, c.y + 2.0f * u), ImVec2(c.x + 3.5f * u, c.y - 1.5f * u), col, 1.5f * u);
+                const bool hovered = ImGui::IsItemHovered();
+                if (hovered && ImGui::GetIO().MousePos.x >= x0 && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                    tabMenu = true;
+                    s_renameChatOpen = true;
+                    s_chatMenuFull = true;
+                    s_chatMenuMin = ImVec2(x0, a.y);
+                    s_chatMenuMax = b;
+                    s_chatMenuAnchored = true;
+                } else if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+                    tabMenu = true;
+                    s_renameChatOpen = true;
+                    s_chatMenuFull = false;
+                    s_chatMenuAnchored = false;
+                }
             }
             if (mainShown) {
                 if (g_selectTab == -1) g_selectTab = -2;
                 else if (g_selectTab == -2 && g_activeTab != -1) LeaveWhisperTab();
                 ImGui::EndTabItem();
-            }
-            // Its menu also behind a small "v" right beside it, as at the microphone (only the chat tab: it cannot be
-            // closed; tabs of your own keep their right-click settings).
-            if (ImGui::TabItemButton("   ##chatmenu")) {
-                tabMenu = true;
-                s_renameChatOpen = true;
-                s_chatMenuMin = ImGui::GetItemRectMin();
-                s_chatMenuMax = ImGui::GetItemRectMax();
-                s_chatMenuAnchored = true;
-            }
-            {
-                const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
-                const ImVec2 c((a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f);
-                const float u = ImGui::GetFontSize() / 16.0f;
-                const ImU32 col = ImGui::GetColorU32(ImGuiCol_Text);
-                ImDrawList* dl = ImGui::GetWindowDrawList();
-                dl->AddLine(ImVec2(c.x - 3.5f * u, c.y - 1.5f * u), ImVec2(c.x, c.y + 2.0f * u), col, 1.5f * u);
-                dl->AddLine(ImVec2(c.x, c.y + 2.0f * u), ImVec2(c.x + 3.5f * u, c.y - 1.5f * u), col, 1.5f * u);
-                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Read the chat in")).c_str());
             }
             int close = -1;
             for (int i = 0; i < static_cast<int>(g_tabs.size()); ++i) {
@@ -949,7 +953,8 @@ void RenderWindow() {
             const std::wstring cur = !g_cfg.chatTabName.empty() ? g_cfg.chatTabName : Tr(L"Chat");
             strncpy_s(nameBuf, U8(cur).c_str(), _TRUNCATE);
         }
-        // Reading: apart from the language you write in and the one you send in.
+        // Reading: apart from the language you write in and the one you send in (the "v"'s menu only).
+        if (s_chatMenuFull) {
         ImGui::TextUnformatted(UI(Tr(L"Read the chat in")).c_str());
         ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
         const std::string readShown = g_cfg.readLang.empty() ? UI(Tr(L"System")) : U8(NativeName(g_cfg.readLang));
@@ -977,6 +982,7 @@ void RenderWindow() {
             g_cfg.SaveBool(L"Translate", L"NoJunk", noJunk);
         }
         ImGui::Separator();
+        }
         ImGui::TextUnformatted(UI(Tr(L"Rename tab")).c_str());
         ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
         const bool enter = ImGui::InputText("##chattabinput", nameBuf, sizeof(nameBuf), ImGuiInputTextFlags_EnterReturnsTrue);
