@@ -3,6 +3,23 @@
 Regeln: [AGENTS.md](../AGENTS.md) (Evidence bei feat/fix/perf/refactor, messen statt raten), nur erfundene Testzeilen,
 keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zuletzt.
 
+## ZUERST (Emi, 2026-11-01, hohe Priorität)
+A. **Senden immer in den richtigen Kanal – unabhängig vom Zustand des GW2-Chats.** Live: Flüster-Tab, im nativen Chat
+   Karte/Gruppe aktiv → landet im falschen Kanal; natives Eingabefeld offen → nichts geht; dort schon Flüstern an dieselbe
+   Person → kommt doppelt. Lösung: jede Sendung startet aus einem festen Zustand (src/win/gw2_sender.cpp):
+   1) ist GW2s Eingabezeile offen (MumbleLink uiState „Textbox hat Fokus“, `textbox(...)` gibt es schon) → Esc, warten bis
+      zu; 2) Enter öffnet frisch, warten bis offen; 3) Ctrl+A + Entf leert Reste; 4) **immer** den Kanalbefehl tippen,
+   auch für Karte/Gruppe/Trupp/Gilde („/m “, „/p “ …), Flüstern „/w “ + Name getippt + Tab; 5) Nachricht einfügen, Enter;
+   6) bestätigen über MumbleLink (Zeile zu). Esc nur, wenn MumbleLink sagt, dass die Zeile offen ist (sonst schließt Esc
+   andere Fenster). Im Spiel prüfen: natives Feld offen/zu × Karte/Gruppe/Flüstern aktiv × Ziel Flüstern/Karte/Gruppe;
+   Testprotokoll-Zeile.
+B. **NLLB-Kerne dynamisch und von Hand** wie beim Sprachmodul (Auto aus der Hardware, sonst 2/4/6/8); heute fest
+   `kThreadsPerPair` (translate_helper_main.cpp). Mit translation_bench je Kernzahl ms/Zeile messen, das Spiel behält genug.
+C. **Technik-Tab: Zustand der Listen** – je Liste Anzahl und Herkunft: eingebaute Begriffe (gw2-terms.tsv, keep/caps/word –
+   die Community-Slangliste steckt seit 2.6.6 darin), offizielle Namen (gw2-names.tsv), übliche Wörter (gw2-words.tsv),
+   eigene Begriffe (gw2-terms.txt), gelernte Wörter der Tipphilfe, gelernte Sprach-Korrekturen. Nur Zahlen.
+D. **Noch einfacher einrichten:** NLLB als Standard (Emi favorisiert es mit unseren Begriffen); danach Punkte 17–21.
+
 ## Fehler
 0. ~~Flüstern senden kaputt~~ – erledigt in 2.7.1 (f603419: Name getippt, Pausen zurück); im Spiel prüfen (CHAT-13).
 1. **Block bleibt unübersetzt:** nach einer Zeile mit Tippfehler, einer Korrekturzeile, einer Zeile nur `\o/` und einer
