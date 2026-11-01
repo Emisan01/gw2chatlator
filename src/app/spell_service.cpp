@@ -208,6 +208,29 @@ std::vector<std::wstring> SpellService::MyTerms() const {
     return terms_;
 }
 
+void SpellService::ReloadTerms() {
+    std::string data;
+    std::vector<std::wstring> mine;
+    if (ReadFileBytes(termsPath_, data)) mine = ParseMyTerms(data);
+    {
+        std::lock_guard<std::mutex> lock(termsMu_);
+        terms_ = mine;
+    }
+    for (const std::wstring& t : mine)
+        for (const Span& w : WordSpans(t)) user_.insert(CaseFold(t.substr(w.start, w.length)));
+    std::atomic_store(&userSnap_, std::make_shared<const WordSet>(user_));
+    RebuildKeep();
+    ClearCache();
+}
+
+void SpellService::ReloadLearned() {
+    WordModel fresh;
+    std::string data;
+    if (ReadFileBytes(learnedPath_, data)) fresh.Parse(data);
+    model_ = std::move(fresh);
+    ClearCache();
+}
+
 size_t SpellService::TypoPatterns() const {
     const auto s = std::atomic_load(&typosSnap_);
     return s ? s->Size() : 0;

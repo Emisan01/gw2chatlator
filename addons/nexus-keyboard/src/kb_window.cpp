@@ -536,6 +536,7 @@ void RenderFooter() {  // g_mu held
                 g_sendOverride = g_tabs[g_activeTab].sendLang;
             } else {
                 g_sendIdx = static_cast<int>(i);
+                RememberSend();
             }
             ++g_inputGen;
             g_preview.clear();
@@ -565,6 +566,7 @@ void RenderFooter() {  // g_mu held
                     g_sendOverride = l.code;
                 } else {
                     g_sendIdx = 0;
+                    RememberSend();
                 }
                 ++g_inputGen;
                 g_preview.clear();
@@ -633,6 +635,7 @@ std::wstring StatusText() {  // g_mu held
     std::wstring route = SendOriginal() ? Tr(L"as written") : ToUpperAscii(PrimaryLang(SendLang()));
     if (Translating() && g_translator) route += L" · " + g_translator->Name();
     if (g_rawTranslate.load()) route += L" · " + Tr(L"raw");  // the raw switch: always in sight while it is on
+    if (g_mtLoading.load()) route += L" · " + Tr(L"Loading the translation model …");  // seen while it loads
     return TrF(L"Send: {1}", {route});
 }
 

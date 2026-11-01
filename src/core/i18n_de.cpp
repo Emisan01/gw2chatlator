@@ -1267,6 +1267,8 @@ extern const I18nEntry kGermanStrings[] = {
      L"Wort suchen"},
     {L"Typo patterns learned: {1}",
      L"Gelernte Tippfehler-Muster: {1}"},
+    {L"Reload after editing",
+     L"Nach dem Bearbeiten neu laden"},
 };
 extern const size_t kGermanCount = sizeof(kGermanStrings) / sizeof(kGermanStrings[0]);
 

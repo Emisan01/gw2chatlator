@@ -1267,6 +1267,8 @@ extern const I18nEntry kFrenchStrings[] = {
      L"Chercher un mot"},
     {L"Typo patterns learned: {1}",
      L"Fautes de frappe apprises : {1}"},
+    {L"Reload after editing",
+     L"Recharger après modification"},
 };
 extern const size_t kFrenchCount = sizeof(kFrenchStrings) / sizeof(kFrenchStrings[0]);
 

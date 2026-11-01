@@ -324,6 +324,22 @@ std::wstring SendCodeFor(const std::wstring& detected) {
     return p;
 }
 bool Translating() { return CurrentRoute().translating; }
+std::atomic<bool> g_mtLoading{false};
+void RememberSend() {
+    const size_t n = g_cfg.writeLangs.size();
+    g_cfg.sendLang = g_sendIdx >= 0 && static_cast<size_t>(g_sendIdx) < n ? g_cfg.writeLangs[g_sendIdx] : L"=";
+    g_cfg.SaveValue(L"Translate", L"SendLang", g_cfg.sendLang);
+}
+void RestoreSend() {
+    const int asWritten = static_cast<int>(g_cfg.writeLangs.size());
+    g_sendIdx = g_cfg.translateWriting ? 0 : asWritten;  // nothing chosen yet: as before
+    if (g_cfg.sendLang == L"=") {
+        g_sendIdx = asWritten;
+    } else if (!g_cfg.sendLang.empty()) {
+        const auto it = std::find(g_cfg.writeLangs.begin(), g_cfg.writeLangs.end(), g_cfg.sendLang);
+        if (it != g_cfg.writeLangs.end()) g_sendIdx = static_cast<int>(it - g_cfg.writeLangs.begin());
+    }
+}
 bool SwapsNames() {
     const gct::SendRoute r = CurrentRoute();
     return !r.translating && !r.lang.empty();

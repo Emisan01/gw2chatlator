@@ -130,6 +130,10 @@ public:
     bool RemoveTerm(const std::wstring& term);    // your term out again (gw2-terms.txt written anew)
     std::vector<std::wstring> MyTerms() const;    // a copy, for the list in the Technical tab
     size_t TypoPatterns() const;                  // how many typo patterns were learned (shown, not edited)
+    const std::wstring& TermsFile() const { return termsPath_; }
+    const std::wstring& LearnedFile() const { return learnedPath_; }
+    void ReloadTerms();    // gw2-terms.txt edited by hand: read again
+    void ReloadLearned();  // learned_<lang>.txt edited by hand: read again, nothing saved over it first
     // Never translated: the built-in GW2 abbreviations, your terms and the names you taught.
     const WordSet& KeepWords() const { return keep_; }
     std::shared_ptr<const WordSet> KeepWordsSnapshot() const { return std::atomic_load(&keepSnap_); }

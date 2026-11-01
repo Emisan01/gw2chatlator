@@ -493,6 +493,11 @@ bool SendOriginal();       // g_mu: core/send_route – "as written" exactly whe
 std::wstring SendLang();
 std::wstring SendCodeFor(const std::wstring& detected);
 bool Translating();
+// The footer's send language written to the INI at once (it was only in memory: a game ended mid-session started
+// with the old one); RestoreSend picks it again at start.
+void RememberSend();
+void RestoreSend();
+extern std::atomic<bool> g_mtLoading;  // a local model is loading (said in the route line)
 // The same language at "Send" as you write in (a send language chosen): no translator – names and usual words surely
 // in the lists still become the send language's ("whats the name of Himmelsschuppe in english?" → Skyscale).
 bool SwapsNames();

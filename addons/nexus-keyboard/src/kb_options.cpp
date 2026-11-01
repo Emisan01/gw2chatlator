@@ -466,8 +466,7 @@ void RenderExceptList(Config& edit) {
 // The word lists (Technical tab): how many entries each holds – the built-in ones compiled in, yours and the learned
 // ones to look at and correct here. Typo patterns only counted: correcting them by hand would fight what typing learns.
 void RenderWordLists() {
-    ImGui::Separator();
-    ImGui::TextUnformatted(UI(Tr(L"Word lists")).c_str());
+    if (!ImGui::CollapsingHeader(UI(Tr(L"Word lists")).c_str())) return;  // folded until you open it
     size_t never = 0;
     for (const BuiltinTerm& bt : BuiltinTerms())
         if (bt.kind != TermKind::Word) ++never;
@@ -487,8 +486,17 @@ void RenderWordLists() {
             if (ImGui::SmallButton(label.c_str())) onRemove(items[i]);
         }
     };
+    // a list's file in your editor; after saving it there, "Reload after editing" takes it in
+    auto fileButtons = [](const char* id, const std::wstring& path, auto&& reload) {
+        ImGui::SameLine();
+        if (ImGui::SmallButton((UI(Tr(L"Open")) + "##open" + id).c_str()) && !path.empty())
+            ShellExecuteW(nullptr, L"open", path.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+        ImGui::SameLine();
+        if (ImGui::SmallButton((UI(Tr(L"Reload after editing")) + "##reload" + id).c_str())) g_worker.Post(reload);
+    };
     const std::vector<std::wstring> mine = g_spell->MyTerms();
     ImGui::TextUnformatted(UI(TrF(L"Your terms: {1}", {std::to_wstring(mine.size())})).c_str());
+    fileButtons("terms", g_spell->TermsFile(), [] { if (g_spell) g_spell->ReloadTerms(); });
     ImGui::PushID("myterms");
     chips(mine, [](const std::wstring& m) { g_worker.Post([m] { if (g_spell) g_spell->RemoveTerm(m); }); });
     static char addBuf[64] = {};
@@ -505,6 +513,7 @@ void RenderWordLists() {
     const auto snap = g_spell->Model().GetSnapshot();
     ImGui::TextUnformatted(UI(TrF(L"Learned words: {1} – the most used; x forgets one",
                                   {std::to_wstring(snap->words.size())})).c_str());
+    fileButtons("learned", g_spell->LearnedFile(), [] { if (g_spell) g_spell->ReloadLearned(); });
     static char findBuf[32] = {};
     ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
     ImGui::InputTextWithHint("##findlearned", UI(Tr(L"Find a word")).c_str(), findBuf, sizeof(findBuf));
@@ -604,6 +613,7 @@ void DoSaveOptions(Config& edit, Config& opened,
         else if (sendWas.empty()) g_sendIdx = asWritten;
         else if (kept != g_cfg.writeLangs.end()) g_sendIdx = static_cast<int>(kept - g_cfg.writeLangs.begin());
         else g_sendIdx = g_cfg.translateWriting ? 0 : asWritten;
+        RememberSend();
         g_preview.clear();
         ++g_inputGen;
         g_inputChanged = GetTickCount64();

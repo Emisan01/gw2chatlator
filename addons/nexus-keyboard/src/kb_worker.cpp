@@ -230,11 +230,13 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once, std::w
 void WarmUpTranslator(std::shared_ptr<Translator> tr) {
     if (!tr || !IsLocalMtTranslator(tr)) return;
     g_worker.PostFront([tr] {
+        g_mtLoading = true;
         {
             std::lock_guard<std::mutex> lock(g_mu);
             SetStatus(Tr(L"Loading the translation model …"), 0);
         }
         const TranslateResult r = tr->Translate({Segment{L"Hello", false}}, L"en", L"de");
+        g_mtLoading = false;
         std::lock_guard<std::mutex> lock(g_mu);
         SetStatus(r.ok ? Tr(L"Translation model ready") : r.error, r.ok ? 3000 : 8000);
     });

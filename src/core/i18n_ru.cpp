@@ -1267,6 +1267,8 @@ extern const I18nEntry kRussianStrings[] = {
      L"Найти слово"},
     {L"Typo patterns learned: {1}",
      L"Выученные опечатки: {1}"},
+    {L"Reload after editing",
+     L"Перечитать после правки"},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

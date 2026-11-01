@@ -1267,6 +1267,8 @@ extern const I18nEntry kItalianStrings[] = {
      L"Cerca una parola"},
     {L"Typo patterns learned: {1}",
      L"Schemi di refusi appresi: {1}"},
+    {L"Reload after editing",
+     L"Ricarica dopo la modifica"},
 };
 extern const size_t kItalianCount = sizeof(kItalianStrings) / sizeof(kItalianStrings[0]);
 

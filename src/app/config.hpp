@@ -39,6 +39,7 @@ struct Config {
     bool noJunk = true;         // a doubtful translation: one more try at the best quality, still doubtful – the original
     int localQuality = 2;                                 // 1 = Fast (Beam 1), 2 = Balanced (Beam 2), 4 = Quality (Beam 4)
     int mtThreads = 0;                                    // the local translator's CPU threads, 0 = automatic
+    std::wstring sendLang;  // the footer's send language ("FR", "=" as written; empty = not chosen yet)
 
     // [Basic] MyMemory
     std::wstring basicEmail;

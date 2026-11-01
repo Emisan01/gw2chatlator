@@ -242,7 +242,7 @@ void AddonLoad(AddonAPI_t* api) {
         PrepareFaultAlert();
         g_translator = MakeTranslator(g_cfg);
         WarmUpTranslator(g_translator);
-        g_sendIdx = g_cfg.translateWriting ? 0 : static_cast<int>(g_cfg.writeLangs.size());
+        RestoreSend();  // the send language chosen last time, not a recomputed one
         LoadLayout();
         LoadCustomTabs();
         ChatSourceLoad();  // reading on / off, the version of Events: Chat the last session had

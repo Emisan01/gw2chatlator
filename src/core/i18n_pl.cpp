@@ -1267,6 +1267,8 @@ extern const I18nEntry kPolishStrings[] = {
      L"Szukaj słowa"},
     {L"Typo patterns learned: {1}",
      L"Nauczone wzorce literówek: {1}"},
+    {L"Reload after editing",
+     L"Wczytaj ponownie po edycji"},
 };
 extern const size_t kPolishCount = sizeof(kPolishStrings) / sizeof(kPolishStrings[0]);
 
