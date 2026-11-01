@@ -285,7 +285,7 @@ void RenderLocalMtOptions(Config& edit) {
     }
 
     EndBox();
-    BeginBox(UI(Tr(L"Inference Quality & Speed")));
+    BeginBox(UI(Tr(L"Inference quality & speed")));
     // the same three steps as beside the translator on Start
     const std::string qualityText[] = {UI(Tr(L"Fast") + L" – " + Tr(L"Beam 1 – about 350 ms per line, the lowest CPU load")),
                                        UI(Tr(L"Balanced") + L" – " + Tr(L"Beam 2 – about 500 ms per line, recommended")),

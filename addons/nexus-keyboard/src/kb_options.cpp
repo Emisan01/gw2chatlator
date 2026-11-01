@@ -816,7 +816,9 @@ void RenderTranslatorRows(Config& edit, bool full) {
 void RenderReadRow(Config& edit) {
     RowLabel(UI(Tr(L"I read in")));
     ImGui::SetNextItemWidth(ControlW());
-    const std::string shown = edit.readLang.empty() ? UI(Tr(L"System")) : U8(NativeName(edit.readLang));
+    const std::string shown = edit.readLang.empty()  // "System (Deutsch)": which language that is
+                                  ? UI(Tr(L"System")) + " (" + U8(NativeName(ReadingLangNow())) + ")"
+                                  : U8(NativeName(edit.readLang));
     if (ImGui::BeginCombo("##readlang", shown.c_str())) {
         if (ImGui::Selectable(UI(Tr(L"System")).c_str(), edit.readLang.empty())) edit.readLang.clear();
         for (const LangInfo& lg : Languages())
@@ -894,6 +896,8 @@ void RenderSendRow() {
 void RenderUiLanguageRow(Config& edit) {
     RowLabel(UI(Tr(L"Language of this window")));
     std::string current = UI(Tr(L"System"));  // only the languages this window has texts in (core/i18n: UiLanguages)
+    for (const UiLangInfo& l : UiLanguages())  // "System (Deutsch)": the language "System" stands for now
+        if (l.lang == GetUiLang()) current += " (" + U8(l.native) + ")";
     for (const UiLangInfo& l : UiLanguages())
         if (ToLowerAscii(PrimaryLang(edit.uiLangCode)) == l.code) current = U8(l.native);  // "DE" of old too
     ImGui::SetNextItemWidth(ControlW());
@@ -925,7 +929,7 @@ void RenderVoiceStart(Config& edit) {
     const std::wstring recLang = RecognitionLang(edit);
     const std::string whisperLang = WhisperLang(recLang);
     const gct::VoiceRecommendation rec = gct::RecommendVoiceModel(vms.catalog, model, whisperLang);
-    BeginBox(UI(installed ? Tr(L"Voice Module") : Tr(L"Voice Module") + L" · " + Tr(L"Optional")));
+    BeginBox(UI(installed ? Tr(L"Voice module") : Tr(L"Voice module") + L" · " + Tr(L"optional")));
     if (busy) {
         const int pct = g_downloadPct >= 0 ? g_downloadPct.load() : g_voiceModulePct.load();
         ImGui::TextUnformatted(UI(g_voiceModuleInstalling ? Tr(L"Downloading whisper speech engine…")
@@ -1269,7 +1273,7 @@ void RenderTypingPage(Config& edit) {
     BeginBox(UI(Tr(L"Typing help")));
     RowLabel(UI(Tr(L"I write in")));
     ImGui::SetNextItemWidth(ControlW());
-    LanguageCombo("##writein", edit.writeIn, Tr(L"System"));
+    LanguageCombo("##writein", edit.writeIn, Tr(L"System") + L" (" + NativeName(TypingLang()) + L")");
     RowHint(UI(Tr(L"Only suggestions and the dictionary – the language of your text is recognized.")));
     Switch("sugg", UI(Tr(L"Word suggestions while typing")), &edit.suggestions);
     Switch("spell", UI(Tr(L"Spell checking (Windows, offline)")), &edit.spellEnabled);
@@ -1306,7 +1310,7 @@ void RenderVoicePage(Config& edit, bool entered) {
     if (entered || s_mics.empty()) s_mics = AudioCapture::Devices();
     const bool voiceModuleThere = Modules().voiceModule;  // voice-only switches wait for the voice module
     const std::string needsVoice = UI(Tr(L"Needs the voice module (Options → Voice)."));
-    BeginBox(UI(Tr(L"Voice Module")));
+    BeginBox(UI(Tr(L"Voice module")));
     Switch("voiceon", UI(Tr(L"Voice input")), &edit.voiceEnabled);
     RenderVoiceModule(false);
     const VoiceModels& vms = VoiceModelsNow(edit);
@@ -1658,7 +1662,7 @@ void RenderTechnicalPage(Config& edit) {
     BeginBox(UI(Tr(L"Modules")));
     RenderChatModule(false);  // Events: Chat: loaded, install / remove – reading it follows in the details
     EndBox();
-    BeginBox(UI(Tr(L"Debug & Diagnostics")));
+    BeginBox(UI(Tr(L"Debug & diagnostics")));
     if (ImGui::Button(UI(Tr(L"Copy diagnostic report to clipboard")).c_str())) {
         const std::string report = BuildDiagnosticReport();
         ImGui::SetClipboardText(report.c_str());
