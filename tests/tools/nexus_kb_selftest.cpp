@@ -1141,7 +1141,9 @@ int wmain(int argc, wchar_t** argv) {
         for (int i = 0; i < 300; ++i)
             raise(kMap, "Ana Sample", i % 3 ? "a short line"
                                             : "a long line that wraps over the width of the chat window at least once or "
-                                              "twice when the window is narrow enough to make it wrap");
+                                              "twice when the window is narrow enough to make it wrap, and a bit more so "
+                                              "that a wider window always needs fewer rows – also with the message one "
+                                              "character in under its name");
         auto chatWin = []() -> ImGuiWindow* {
             for (ImGuiWindow* w : static_cast<ImGuiContext*>(ImGui::GetCurrentContext())->Windows)
                 if (std::strncmp(w->Name, "GW2Chatlator###kbmain/chat", 26) == 0) return w;

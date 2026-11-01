@@ -1269,6 +1269,8 @@ extern const I18nEntry kGermanStrings[] = {
      L"Gelernte Tippfehler-Muster: {1}"},
     {L"Reload after editing",
      L"Nach dem Bearbeiten neu laden"},
+    {L"Line spacing",
+     L"Zeilenabstand"},
 };
 extern const size_t kGermanCount = sizeof(kGermanStrings) / sizeof(kGermanStrings[0]);
 

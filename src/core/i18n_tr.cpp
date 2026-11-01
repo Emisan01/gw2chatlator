@@ -1269,6 +1269,8 @@ extern const I18nEntry kTurkishStrings[] = {
      L"Öğrenilen yazım hatası kalıpları: {1}"},
     {L"Reload after editing",
      L"Düzenledikten sonra yeniden yükle"},
+    {L"Line spacing",
+     L"Satır aralığı"},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

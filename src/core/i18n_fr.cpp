@@ -1269,6 +1269,8 @@ extern const I18nEntry kFrenchStrings[] = {
      L"Fautes de frappe apprises : {1}"},
     {L"Reload after editing",
      L"Recharger après modification"},
+    {L"Line spacing",
+     L"Interligne"},
 };
 extern const size_t kFrenchCount = sizeof(kFrenchStrings) / sizeof(kFrenchStrings[0]);
 

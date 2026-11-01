@@ -1269,6 +1269,8 @@ extern const I18nEntry kRussianStrings[] = {
      L"Выученные опечатки: {1}"},
     {L"Reload after editing",
      L"Перечитать после правки"},
+    {L"Line spacing",
+     L"Межстрочный интервал"},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

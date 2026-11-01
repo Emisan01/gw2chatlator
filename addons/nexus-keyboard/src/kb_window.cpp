@@ -1301,6 +1301,9 @@ void RenderWindow() {
         const float rowWrap = ImGui::GetContentRegionAvail().x, rowFont = ImGui::GetFontSize();
         const float viewTop = ImGui::GetScrollY() - line * 4;
         const float viewBottom = ImGui::GetScrollY() + ImGui::GetWindowHeight() + line * 4;
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,  // the space between chat lines (Window tab: Line spacing)
+                            ImVec2(ImGui::GetStyle().ItemSpacing.x,
+                                   ImGui::GetStyle().ItemSpacing.y * std::clamp(g_cfg.chatSpacing, 0, 100) / 100.0f));
         const float rowGap = ImGui::GetStyle().ItemSpacing.y;
         for (ChatLine& l : g_lines) {
             if (!tabName.empty() && (l.channel != Channel::Whisper || l.speakerFolded != tabName)) continue;
@@ -1318,6 +1321,7 @@ void RenderWindow() {
             }
             ImGui::PushID(static_cast<int>(l.id));
             const float rowTop = ImGui::GetCursorScreenPos().y;
+            const float rowX = ImGui::GetCursorPosX();
             if (!l.speaker.empty()) {  // the name in the channel colour – a click: whisper with that player in their tab
                 LookText(l.speakerDisplay.c_str(), NameColorOf(l.channel), false);
                 const bool canWhisper = !l.own || (l.outgoing && l.channel == Channel::Whisper);
@@ -1335,8 +1339,23 @@ void RenderWindow() {
             bool clicked = false;
             LineHit hit;  // over every piece of the text
             if (segs.size() <= 1 && (segs.empty() || segs[0].kind == PieUI::ChatLinks::SegmentKind::Plain)) {
-                LookText(u8shown.c_str(), ColorOf(l.channel), true);
-                hit.AddLast();
+                if (!l.speaker.empty()) {
+                    // Under its name one character in: one item, its wrapped lines start 1 em from the left, its first
+                    // line padded past the name – so it measures and wraps like any line (a width change is exact).
+                    const float em = ImGui::CalcTextSize("M").x, sp = std::max(1.0f, ImGui::CalcTextSize(" ").x);
+                    const float hang = ImGui::GetCursorPosX() - rowX;  // the name and its space
+                    const int pads = std::max(0, static_cast<int>(std::ceil((hang - em) / sp)));
+                    ImGui::SetCursorPosX(rowX + em);
+                    const float textX0 = ImGui::GetCursorScreenPos().x + pads * sp;
+                    LookText((std::string(static_cast<size_t>(pads), ' ') + u8shown).c_str(), ColorOf(l.channel), true);
+                    hit.AddLast();
+                    const ImVec2 m = ImGui::GetIO().MousePos, a = ImGui::GetItemRectMin();
+                    if (m.y < a.y + ImGui::GetTextLineHeight() && m.x < textX0)  // over the name: the name's, not the text's
+                        hit.hovered = hit.clickL = hit.clickR = false;
+                } else {
+                    LookText(u8shown.c_str(), ColorOf(l.channel), true);
+                    hit.AddLast();
+                }
             } else {
                 clicked = RichLine(segs, ColorOf(l.channel));
                 hit.AddLast();
@@ -1397,6 +1416,7 @@ void RenderWindow() {
             l.rowFont = rowFont;
             l.rowLen = rowLen;
         }
+        ImGui::PopStyleVar();  // the chat's line spacing
         // A line's menu (right-click on someone's text): the reading language first, under the pointer; others below.
         if (s_openLineMenu) {
             ImGui::OpenPopup("##linemenu");
@@ -1431,7 +1451,7 @@ void RenderWindow() {
         s_lineMenuOpen = ImGui::IsPopupOpen("##linemenu");
         // Auto-scroll to bottom only when new lines arrive or content expands (e.g. item names resolved),
         // provided the user was at the bottom and is not actively scrolling up with the mouse wheel.
-        const bool contentGrew = (scrollMax > lastScrollMax + 1.0f);
+        const bool contentGrew = (ImGui::GetScrollMaxY() > lastScrollMax + 1.0f);  // this frame against the last
         const bool shouldScrollDown = (g_scrollDown || contentGrew);
         if (atBottom && shouldScrollDown && setScroll < 0 && (!chatHovered || wheel <= 0.0f)) {
             ImGui::SetScrollHereY(1.0f);

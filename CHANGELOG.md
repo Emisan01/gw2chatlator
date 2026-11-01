@@ -9,6 +9,12 @@ diagnosis show it.
 - **Translator CPU Threads:** the local translator uses a quarter of your cores (2 to 4) by default, or 1 to 8 set by hand in the Translator tab – more threads, faster lines. GW2 keeps the rest.
 - **Word Lists in the Technical Tab:** how many built-in terms, official names and usual words there are; your own terms to remove and add; your learned words (the most used, or any you search for) to forget one by one. Typo patterns are only counted.
 - The quality hint now says beam 2 – the lowest step under load since 2.7.1.
+- **The Chat Follows New Lines Again:** while you are at the bottom, new messages scroll into view; scrolled up, it stays where you are. (It only followed when you sent something.)
+- **Messages One Character In:** a wrapped message continues one character in from the left instead of under the text's start – no more wide empty block under long names.
+- **Line Spacing:** Window tab, from nearly touching to the usual space between chat lines.
+- **Your Send Language Stays:** the language chosen at "Send" in the footer is kept across restarts – also when the game is closed mid-session.
+- **The Model's Loading in Sight:** while the local model loads, the line under the input says so.
+- **Word Lists:** folded until opened; your terms and learned words also open as files in your editor, "Reload after editing" takes changes in.
 
 ## 2.7.2 — 2026-10-30 (GW2Chatlator for Nexus)
 

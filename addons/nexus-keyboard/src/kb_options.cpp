@@ -1653,6 +1653,14 @@ void RenderOptionsContent() {
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", UI(Tr(L"Only chat messages, preview, input and typing help.")).c_str());
             if (ImGui::IsItemDeactivatedAfterEdit()) RequestTextFont(pt, edit.fontFace);  // built once you let go (scaled meanwhile)
+            // The space between chat lines: from nearly touching (0) to the usual (100), at once and kept.
+            int spacing = std::clamp(edit.chatSpacing, 0, 100);
+            ImGui::SetNextItemWidth(wide);
+            if (ImGui::SliderInt(UI(Tr(L"Line spacing") + L" (%)##lspace").c_str(), &spacing, 0, 100)) {
+                std::lock_guard<std::mutex> lock(g_mu);
+                edit.chatSpacing = g_cfg.chatSpacing = spacing;
+                g_cfg.SaveValue(L"Window", L"LineSpacing", std::to_wstring(spacing));
+            }
 
             int uiPt = edit.uiFontPt > 0 ? std::clamp(edit.uiFontPt, 11, 24) : FollowUiPt();
             ImGui::SetNextItemWidth(wide);

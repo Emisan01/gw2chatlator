@@ -336,6 +336,7 @@ void Config::Load(const std::wstring& dir) {
     fontFace = ToLowerAscii(ini.Str(L"Window", L"FontFace", L"segoeui"));
     if (fontFace != L"seguisb" && fontFace != L"tahoma") fontFace = L"segoeui";  // only what we offer
     chatTabName = ini.Str(L"Window", L"ChatTabName", L"");
+    chatSpacing = ini.Int(L"Window", L"LineSpacing", 100, 0, 100);
     focusOnGameChat = ini.Bool(L"Window", L"FocusOnGameChat", false);
     typingDay = ini.Int(L"Typing", L"Day", 0, 0, 99991231);
     dayKeys = ini.Int(L"Typing", L"DayKeys", 0, 0, 2000000000);
@@ -520,6 +521,7 @@ void Config::SaveAll() const {
     SaveValue(L"Window", L"UiFontPt", std::to_wstring(uiFontPt));
     SaveValue(L"Window", L"FontFace", fontFace);
     SaveValue(L"Window", L"ChatTabName", chatTabName);
+    SaveValue(L"Window", L"LineSpacing", std::to_wstring(chatSpacing));
     SaveBool(L"Window", L"FocusOnGameChat", focusOnGameChat);
 }
 

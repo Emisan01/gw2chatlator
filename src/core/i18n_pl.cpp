@@ -1269,6 +1269,8 @@ extern const I18nEntry kPolishStrings[] = {
      L"Nauczone wzorce literówek: {1}"},
     {L"Reload after editing",
      L"Wczytaj ponownie po edycji"},
+    {L"Line spacing",
+     L"Odstęp wierszy"},
 };
 extern const size_t kPolishCount = sizeof(kPolishStrings) / sizeof(kPolishStrings[0]);
 

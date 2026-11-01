@@ -1269,6 +1269,8 @@ extern const I18nEntry kPortugueseStrings[] = {
      L"Padrões de erros aprendidos: {1}"},
     {L"Reload after editing",
      L"Recarregar após editar"},
+    {L"Line spacing",
+     L"Espaçamento entre linhas"},
 };
 extern const size_t kPortugueseCount = sizeof(kPortugueseStrings) / sizeof(kPortugueseStrings[0]);
 
