@@ -1340,12 +1340,12 @@ void RenderWindow() {
             LineHit hit;  // over every piece of the text
             if (segs.size() <= 1 && (segs.empty() || segs[0].kind == PieUI::ChatLinks::SegmentKind::Plain)) {
                 if (!l.speaker.empty()) {
-                    // Under its name one character in: one item, its wrapped lines start 1 em from the left, its first
+                    // Under its name one space in: one item, its wrapped lines start one space from the left, its first
                     // line padded past the name – so it measures and wraps like any line (a width change is exact).
-                    const float em = ImGui::CalcTextSize("M").x, sp = std::max(1.0f, ImGui::CalcTextSize(" ").x);
+                    const float sp = std::max(1.0f, ImGui::CalcTextSize(" ").x);
                     const float hang = ImGui::GetCursorPosX() - rowX;  // the name and its space
-                    const int pads = std::max(0, static_cast<int>(std::ceil((hang - em) / sp)));
-                    ImGui::SetCursorPosX(rowX + em);
+                    const int pads = std::max(0, static_cast<int>(std::ceil((hang - sp) / sp)));
+                    ImGui::SetCursorPosX(rowX + sp);
                     const float textX0 = ImGui::GetCursorScreenPos().x + pads * sp;
                     LookText((std::string(static_cast<size_t>(pads), ' ') + u8shown).c_str(), ColorOf(l.channel), true);
                     hit.AddLast();
