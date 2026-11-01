@@ -3,6 +3,12 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.8.1 — 2026-11-01 (GW2Chatlator for Nexus)
+
+- **"System" Says Which Language:** reading language, typing help and the window's language show what "System" stands for right now – "System (Deutsch)".
+- **The Window Stays at the Screen's Edge:** pulling the chat window's bottom-left corner past the left edge no longer makes it grow to the right.
+- **A Smaller Switch on Start** (three quarters of its size) and headings in one style.
+
 ## 2.8.0 — 2026-11-01 (GW2Chatlator for Nexus)
 
 - **New Options Window:** a side bar of pages like Nexus' own – Start, Chat, Typing help, Voice, Translator, Window,
