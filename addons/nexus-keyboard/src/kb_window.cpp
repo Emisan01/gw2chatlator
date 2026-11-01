@@ -363,6 +363,59 @@ void RenderSnippets() {
 
 void MinimizeWindow() { g_collapsed = true; }  // the button takes the window's corner (g_mu held or main thread)
 
+// The choices at "Send" in a menu that is open – the footer's and the options' "I send" (one setting, user
+// 2026-10-29): "as written" first when GW2 can show the typing language, your languages, then more (a chosen one
+// becomes the first of yours). `tabAware`: a whisper tab in front keeps its own choice (the footer); without it the
+// one for everything else. What you say follows it too (send_route). g_mu held.
+void SendLanguageItems(bool tabAware) {
+    const bool inTab = tabAware && g_activeTab >= 0 && g_activeTab < static_cast<int>(g_tabs.size());
+    const size_t n = g_cfg.writeLangs.size();
+    auto chosen = [&] {
+        ++g_inputGen;
+        g_preview.clear();
+        g_inputChanged = GetTickCount64();
+        if (tabAware) g_focusInput = true;
+        ImGui::CloseCurrentPopup();
+    };
+    auto choose = [&](size_t i) {
+        if (inTab) {  // this player's tab only
+            g_tabs[g_activeTab].sendLang = i == n ? std::wstring(L"=") : g_cfg.writeLangs[i];
+            g_sendOverride = g_tabs[g_activeTab].sendLang;
+        } else {
+            g_sendIdx = static_cast<int>(i);
+            RememberSend();
+        }
+        chosen();
+    };
+    const bool tabChoice = inTab && !g_sendOverride.empty();
+    if (SendableInGw2(TypingLang())) {
+        const bool current = tabChoice ? g_sendOverride == L"=" : g_sendIdx == static_cast<int>(n);
+        if (ImGui::Selectable(UI(Tr(L"as written")).c_str(), current)) choose(n);
+    }
+    for (size_t i = 0; i < n; ++i) {
+        const bool current = tabChoice ? g_sendOverride == g_cfg.writeLangs[i] : g_sendIdx == static_cast<int>(i);
+        if (ImGui::Selectable(U8(NativeName(g_cfg.writeLangs[i])).c_str(), current)) choose(i);
+    }
+    ImGui::Separator();
+    for (const LangInfo& l : Languages()) {  // more languages: the chosen one becomes the first
+        if (!l.latinScript || std::find(g_cfg.writeLangs.begin(), g_cfg.writeLangs.end(), l.code) != g_cfg.writeLangs.end())
+            continue;
+        if (ImGui::Selectable(U8(NativeName(l.code)).c_str(), false)) {
+            g_cfg.writeLangs.insert(g_cfg.writeLangs.begin(), l.code);
+            g_cfg.SaveAll();
+            if (inTab) {
+                ++g_sendIdx;  // everything else keeps its language: the list moved by one
+                g_tabs[g_activeTab].sendLang = l.code;
+                g_sendOverride = l.code;
+            } else {
+                g_sendIdx = 0;
+                RememberSend();
+            }
+            chosen();
+        }
+    }
+}
+
 // The footer chips: channel | "Write: German" | "Send: English (UK) · MyMemory" (orange) | auto | counter.
 void RenderFooter() {  // g_mu held
     static const Channel kChannels[] = {Channel::Unknown, Channel::Say,   Channel::Map,  Channel::Party,
@@ -529,51 +582,7 @@ void RenderFooter() {  // g_mu held
     ImGui::SetNextWindowSizeConstraints(ImVec2(sendBtnW, 0.0f), ImVec2(FLT_MAX, ImGui::GetFontSize() * 20.0f));
     if (ImGui::BeginPopup("##send_popup")) {
         ScopedPopupFont popupFont;
-        // "as written" leads the menu, when GW2 can display the typing language.
-        auto chooseSend = [&](size_t i) {
-            if (g_activeTab >= 0 && g_activeTab < static_cast<int>(g_tabs.size())) {  // this player's tab only
-                g_tabs[g_activeTab].sendLang = i == g_cfg.writeLangs.size() ? std::wstring(L"=") : g_cfg.writeLangs[i];
-                g_sendOverride = g_tabs[g_activeTab].sendLang;
-            } else {
-                g_sendIdx = static_cast<int>(i);
-                RememberSend();
-            }
-            ++g_inputGen;
-            g_preview.clear();
-            g_inputChanged = GetTickCount64();
-            g_focusInput = true;
-            ImGui::CloseCurrentPopup();
-        };
-        const bool canSendAsWritten = SendableInGw2(TypingLang());
-        if (canSendAsWritten) {
-            const bool current = g_sendOverride.empty() ? g_sendIdx == static_cast<int>(g_cfg.writeLangs.size())
-                                                        : g_sendOverride == L"=";
-            if (ImGui::Selectable(UI(Tr(L"as written")).c_str(), current)) chooseSend(g_cfg.writeLangs.size());
-        }
-        for (size_t i = 0; i < g_cfg.writeLangs.size(); ++i) {
-            const bool current = g_sendOverride.empty() ? g_sendIdx == static_cast<int>(i) : g_sendOverride == g_cfg.writeLangs[i];
-            if (ImGui::Selectable(U8(NativeName(g_cfg.writeLangs[i])).c_str(), current)) chooseSend(i);
-        }
-        ImGui::Separator();
-        for (const LangInfo& l : Languages()) {  // more languages: the chosen one becomes the first
-            if (!l.latinScript || std::find(g_cfg.writeLangs.begin(), g_cfg.writeLangs.end(), l.code) != g_cfg.writeLangs.end())
-                continue;
-            if (ImGui::Selectable(U8(NativeName(l.code)).c_str(), false)) {
-                g_cfg.writeLangs.insert(g_cfg.writeLangs.begin(), l.code);
-                g_cfg.SaveAll();
-                if (g_activeTab >= 0 && g_activeTab < static_cast<int>(g_tabs.size())) {  // this player's tab only
-                    g_tabs[g_activeTab].sendLang = l.code;
-                    g_sendOverride = l.code;
-                } else {
-                    g_sendIdx = 0;
-                    RememberSend();
-                }
-                ++g_inputGen;
-                g_preview.clear();
-                g_inputChanged = GetTickCount64();
-                ImGui::CloseCurrentPopup();
-            }
-        }
+        SendLanguageItems(true);
         ImGui::EndPopup();
     }
     if (g_myMemorySessionFallback) {
@@ -1139,12 +1148,9 @@ void RenderWindow() {
             }
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", UI(Tr(L"What you see of the chat, into the language you write in – once, by the automatic translation's rule: lines in your language, in languages you understand or too short to tell stay as they are (a click on a line translates it anyway).")).c_str());
-            const bool transPaused = g_orchestrator.IsPaused();
-            if (ImGui::MenuItem(UI(Tr(L"Chat translation paused (Ctrl+Alt+T)")).c_str(), nullptr, transPaused)) {
-                g_orchestrator.TogglePaused();
-                if (!g_orchestrator.IsPaused()) TranslateRecentLines();
-                SetStatus(g_orchestrator.IsPaused() ? Tr(L"Chat translation paused (Ctrl+Alt+T)")
-                                                    : Tr(L"Chat translation resumed (Ctrl+Alt+T)"), 4000);
+            if (ImGui::MenuItem(UI(Tr(L"Translate the chat")).c_str(), "Ctrl+Alt+T", g_nx.translateChat)) {
+                SetChatTranslation(!g_nx.translateChat);  // the one switch (Options → Start), kept
+                SetStatus(g_nx.translateChat ? Tr(L"Chat translation on (Ctrl+Alt+T)") : Tr(L"Chat translation off (Ctrl+Alt+T)"), 4000);
             }
             if (ImGui::MenuItem(UI(Tr(L"New whisper tab …")).c_str())) newTabNext = true;
             if (ImGui::MenuItem(UI(Tr(L"Text blocks …")).c_str())) g_openSnippets = true;

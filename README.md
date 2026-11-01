@@ -45,12 +45,14 @@ Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustot
   right-click it to speak until a pause, or let voice activation listen (it pauses while Discord & co. use the
   microphone). Recognition runs **on your PC** (whisper.cpp) in a small helper process on the CPU cores GW2 does not
   use – the game keeps its frames. Each voice model shows its CPU peak and time; one that is too slow hands over to the
-  next smaller one. **Translate what I say:** speak your language, send another – into English on your PC, into other
-  languages through your translator.
+  next smaller one. **Speak your language, send another:** what you say follows "Send" like what you type – into
+  English on your PC, into other languages through your translator.
 - **Safe sending:** waits for each frame of the game, refuses to be used as a bot or spam macro. Optional, off by default:
   send right after you finish speaking – speech pause, push-to-talk release or mouse click.
-- **At a glance:** Options → General shows what is on – translating the chat, your text, what you say, voice input,
-  the translator, reading the chat – and switches it right there.
+- **Start in three settings:** Options → Start – one switch for the chat's translation (also Ctrl+Alt+T), then
+  *I read in*, *I understand*, *I send* (the same choice as "Send" under the input) and the translator. The other
+  pages sit in a side bar like Nexus' own: Chat, Typing help, Voice, Translator, Window, Technical. Everything applies
+  at once.
 - **Failsafe:** an error switches the add-on off for the session, never the game.
 - English, Deutsch, Français, Español, Italiano, Polski, Português, Türkçe, Русский.
 
@@ -66,8 +68,8 @@ Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustot
 4. To remove it again: everything it brought has a remove button – Events: Chat in Options → Technical, the voice
    module and the voice models in Options → Voice – and at the bottom of Options → Technical "Remove everything of
    GW2Chatlator …"; then Nexus → Addons → Uninstall.
-5. Translation is yours to switch on: menu ≡ → Options → Translator (the chat, your text), Options → Voice (speech
-   into English).
+5. Translation is yours to switch on: menu ≡ → Options → Start (or Ctrl+Alt+T) – what you send in is chosen there
+   too, for typing and speaking alike.
 
 Updating: replace the DLL (or unpack the newer ZIP over the old one) (settings and learned words stay in `addons\GW2Keyboard`).
 

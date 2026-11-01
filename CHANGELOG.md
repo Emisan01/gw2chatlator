@@ -3,6 +3,22 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## Unreleased (GW2Chatlator for Nexus)
+
+- **New Options Window:** a side bar of pages like Nexus' own – Start, Chat, Typing help, Voice, Translator, Window,
+  Technical – each with framed groups and rows "label | setting". No more tabs that overlap, no dashboard tiles.
+- **Start in Three Settings:** one switch for the chat's translation, then *I read in*, *I understand*, *I send* and
+  the translator with its quality – what a choice still needs is asked right there (NLLB-200's download with its size
+  first, an API key in a field below).
+- **Everything Applies at Once:** no "Save" button any more – a slider when you let go, a key when you leave its field.
+  What the footer or a menu changed meanwhile stays.
+- **One Switch:** "Translate the chat", the "Active" chip and the pause are one switch – on Start, in the chat menu
+  and on Ctrl+Alt+T, kept across restarts.
+- **One Send Choice:** "I send" on Start is the footer's "Send" – for typing and speaking alike; "Translate my text"
+  and "Translate what I say" are gone (what you say follows "Send": as written, or into the language).
+- **"I Understand":** the list of what is never translated by itself starts with your reading language by its name.
+- **The Chat's Own Colours Stay a Choice:** Window → Chat text: GW2 colours, dark outline, brightness.
+
 ## 2.7.3 — 2026-11-01 (GW2Chatlator for Nexus)
 
 - **Always the Right Channel:** a message from a whisper tab went into the map or party channel, or nothing went out, or it came twice – depending on how GW2's own chat looked at that moment. If GW2's chat line is already open, it is now closed first (only while GW2 is in front and the game says its chat line has the keyboard), so every message starts the same way: a fresh line and its own channel command.

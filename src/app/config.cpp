@@ -292,7 +292,9 @@ void Config::Load(const std::wstring& dir) {
     voiceLang = AsciiUnescape(ini.Str(L"Voice", L"Language", L"auto"));
     if (voiceLang.empty()) voiceLang = L"auto";
     voiceIntoEnglish = ini.Bool(L"Voice", L"IntoEnglish", false);
-    voiceTranslate = ini.Bool(L"Voice", L"Translate", voiceIntoEnglish);  // up to 2.1 the switch was "into English"
+    // 2.8: what you say follows "Send" like what you type – one choice (user, 2026-10-29), the old switch is on for
+    // good: "as written" sends it as said, a language translates it (whisper itself into English).
+    voiceTranslate = true;
     voiceToggle = ini.Str(L"Voice", L"Mode", L"hold") == L"toggle";
     voiceMaxSec = ini.Int(L"Voice", L"MaxSeconds", 30, 5, 120);
     voiceLive = ini.Bool(L"Voice", L"Live", true);

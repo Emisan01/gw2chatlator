@@ -87,13 +87,11 @@ UINT OnWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             // Ebene 5: ohne offene Ebene oder bei ausgeblendeter Nexus-UI geht Esc an GW2 durch
             return msg;
         }
-        // Panic Switch: Ctrl + Alt + T pauses/resumes chat translation immediately
+        // Ctrl + Alt + T: the one switch for the chat's translation (Options → Start), at once
         if (down && (mods & (kModCtrl | kModAlt)) == (kModCtrl | kModAlt) && (vk == 'T' || vk == 't')) {
-            g_orchestrator.TogglePaused();
             std::lock_guard<std::mutex> lock(g_mu);
-            SetStatus(g_orchestrator.IsPaused() ? Tr(L"Chat translation paused (Ctrl+Alt+T)")
-                                                : Tr(L"Chat translation resumed (Ctrl+Alt+T)"), 4000);
-            if (!g_orchestrator.IsPaused()) TranslateRecentLines();
+            SetChatTranslation(!g_nx.translateChat);
+            SetStatus(g_nx.translateChat ? Tr(L"Chat translation on (Ctrl+Alt+T)") : Tr(L"Chat translation off (Ctrl+Alt+T)"), 4000);
             return 0;
         }
         if (!g_pttVk || vk != g_pttVk) return msg;

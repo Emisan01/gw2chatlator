@@ -595,12 +595,10 @@ void RenderDiscordVoiceMenu() {
             io.WantCaptureMouse = true;
         }
 
-        bool va = false;
-        bool trans = false;
+        bool va = false;  // where what you say goes is "Send" (Options → Start), as for what you type
         {
             std::lock_guard<std::mutex> lock(g_mu);
             va = g_cfg.voiceActivation;
-            trans = g_cfg.voiceTranslate;
         }
 
         if (ImGui::MenuItem(UI(Tr(L"Voice activation")).c_str(), nullptr, va)) {
@@ -621,14 +619,6 @@ void RenderDiscordVoiceMenu() {
             StopListening();
             s_voiceMenu.open = false;
         }
-        if (ImGui::MenuItem(UI(Tr(L"Translate")).c_str(), nullptr, trans)) {
-            {
-                std::lock_guard<std::mutex> lock(g_mu);
-                g_cfg.voiceTranslate = !trans;
-                g_cfg.SaveBool(L"Voice", L"Translate", !trans);
-            }
-            s_voiceMenu.open = false;
-        }
         bool handsFree = false;
         {
             std::lock_guard<std::mutex> lock(g_mu);
@@ -644,7 +634,7 @@ void RenderDiscordVoiceMenu() {
         }
         ImGui::Separator();
         if (ImGui::MenuItem(UI(Tr(L"Speech input settings...")).c_str())) {
-            SwitchOptionsTab(3);
+            SwitchOptionsTab(kPageVoice);
             s_voiceMenu.open = false;
         }
     }

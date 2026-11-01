@@ -476,6 +476,7 @@ extern std::map<std::wstring, VoiceRun> g_voiceRuns;
 void LoadVoiceRuns();
 void LoadLayout();
 void SaveNexusOptions();
+void SetChatTranslation(bool on);  // the one switch for the chat's translation (g_mu held)
 void SaveLayout();
 void SetStatus(const std::wstring& s, ULONGLONG ms = 6000);
 const std::wstring& TypingLang();
@@ -496,6 +497,7 @@ bool Translating();
 // The footer's send language written to the INI at once (it was only in memory: a game ended mid-session started
 // with the old one); RestoreSend picks it again at start.
 void RememberSend();
+void SendLanguageItems(bool tabAware);  // the choices at "Send", in an open menu (g_mu held)
 void RestoreSend();
 extern std::atomic<bool> g_mtLoading;  // a local model is loading (said in the route line)
 // The same language at "Send" as you write in (a send language chosen): no translator – names and usual words surely
@@ -635,6 +637,8 @@ extern std::atomic<bool> g_localMtBusy;
 extern std::atomic<int> g_localMtPct;
 extern std::thread g_localMtThread;
 extern std::thread g_localMtProbeThread;
+// The options window's pages, top to bottom in its side bar (g_optionsTab and SwitchOptionsTab take these).
+enum OptionsPage { kPageStart, kPageChat, kPageTyping, kPageVoice, kPageTranslator, kPageWindow, kPageTechnical, kPageCount };
 extern int g_optionsTab;
 std::wstring KeyboardDir();
 
@@ -662,6 +666,10 @@ void StatusRow(const std::string& what, int state, const std::string& text);
 void RenderModules(bool guide);
 bool RemoveButton(const char* id);
 void RenderLocalMtOptions(Config& edit);
+// A framed group of the options window, its title on the top line (Nexus' look).
+void BeginBox(const std::string& title);
+void EndBox();
+void RowLabel(const std::string& label);  // a row "label | control" of the options window
 // The local translation as the dashboard shows it: refreshed at most every 2 s, the helper's handshake probed in the
 // background only (game thread).
 struct LocalMtSummary {

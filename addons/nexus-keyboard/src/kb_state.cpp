@@ -217,6 +217,13 @@ void LoadLayout() {  // g_mu held
     }
     LoadVoiceRuns();
 }
+// The one switch for the chat's translation (Options → Start, the chat menu, Ctrl+Alt+T; user 2026-10-29: instead of
+// "Translate the chat", the "Active" chip and the pause): kept, and on, what is in view comes at once. g_mu held.
+void SetChatTranslation(bool on) {
+    g_nx.translateChat = on;
+    SaveNexusOptions();
+    if (on) TranslateRecentLines(false);
+}
 void SaveNexusOptions() {  // g_mu held
     g_cfg.SaveBool(L"Nexus", L"TranslateChat", g_nx.translateChat);
     g_cfg.SaveBool(L"Nexus", L"Snap", g_nx.snap);

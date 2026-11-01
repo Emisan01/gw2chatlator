@@ -213,9 +213,7 @@ std::string PairLabel(const gct::LocalMtModelInfo& model) {
 
 void RenderLocalMtOptions(Config& edit) {
     RefreshLocalMtState(edit.dataDir);
-
-
-    ImGui::TextUnformatted(UI(Tr(L"Local translation module")).c_str());
+    BeginBox(UI(Tr(L"Local translation module")));
     const int pct = g_localMtPct.load();
     StatusRow(UI(Tr(L"Local translation module")),
               g_localMtBusy ? 1 : s_state.module ? 2 : 0,
@@ -251,8 +249,8 @@ void RenderLocalMtOptions(Config& edit) {
         }
     }
 
-    ImGui::Separator();
-    ImGui::TextUnformatted(UI(Tr(L"Universal model (NLLB-200)")).c_str());
+    EndBox();
+    BeginBox(UI(Tr(L"Universal model (NLLB-200)")));
     ImGui::TextDisabled("%s", UI(Tr(L"Meta NLLB-200-distilled-600M - direct translation between 200+ languages without English pivot.")).c_str());
     StatusRow(UI(Tr(L"Universal model")),
               g_localMtBusy ? 1 : s_state.nllbCorrupted ? 0 : s_state.nllbInstalled ? 2 : 0,
@@ -286,16 +284,17 @@ void RenderLocalMtOptions(Config& edit) {
         }
     }
 
-    ImGui::Separator();
-    ImGui::TextUnformatted(UI(Tr(L"Inference Quality & Speed")).c_str());
-    // the same three steps as on the dashboard's translation tile
+    EndBox();
+    BeginBox(UI(Tr(L"Inference Quality & Speed")));
+    // the same three steps as beside the translator on Start
     const std::string qualityText[] = {UI(Tr(L"Fast") + L" – " + Tr(L"Beam 1 – about 350 ms per line, the lowest CPU load")),
                                        UI(Tr(L"Balanced") + L" – " + Tr(L"Beam 2 – about 500 ms per line, recommended")),
                                        UI(Tr(L"Best") + L" – " + Tr(L"Beam 4 – about 900 ms per line, the finest nuance"))};
     const char* qualityItems[] = {qualityText[0].c_str(), qualityText[1].c_str(), qualityText[2].c_str()};
     int currentQ = edit.localQuality == 1 ? 0 : edit.localQuality == 4 ? 2 : 1;
-    ImGui::SetNextItemWidth(300);
-    if (ImGui::Combo(UI(Tr(L"Quality Mode") + L"##localmtquality").c_str(), &currentQ, qualityItems, 3)) {
+    RowLabel(UI(Tr(L"Quality Mode")));
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 20);
+    if (ImGui::Combo("##localmtquality", &currentQ, qualityItems, 3)) {
         edit.localQuality = currentQ == 0 ? 1 : currentQ == 2 ? 4 : 2;
     }
     ImGui::TextDisabled("%s", UI(Tr(L"Under heavy chat load, the orchestrator automatically steps down to Beam 2.")).c_str());
@@ -306,13 +305,14 @@ void RenderLocalMtOptions(Config& edit) {
     std::vector<const char*> threadItems;
     for (const std::string& s : threadText) threadItems.push_back(s.c_str());
     int threads = std::clamp(edit.mtThreads, 0, 8);
-    ImGui::SetNextItemWidth(160);
-    if (ImGui::Combo(UI(Tr(L"CPU threads") + L"##mtthreads").c_str(), &threads, threadItems.data(),
+    RowLabel(UI(Tr(L"CPU threads")));
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 15);
+    if (ImGui::Combo("##mtthreads", &threads, threadItems.data(),
                      static_cast<int>(threadItems.size())))
         edit.mtThreads = threads;
 
-    ImGui::Separator();
-    ImGui::TextUnformatted(UI(Tr(L"OPUS-MT language models")).c_str());
+    EndBox();
+    BeginBox(UI(Tr(L"OPUS-MT language models")));
     const auto& catalog = gct::LocalMtModelCatalog();
     static int selected = 0;
     selected = std::clamp(selected, 0, static_cast<int>(catalog.size()) - 1);
@@ -321,8 +321,9 @@ void RenderLocalMtOptions(Config& edit) {
         labels.clear();
         for (const auto& model : catalog) labels.push_back(PairLabel(model));
     }
-    ImGui::SetNextItemWidth(260);
-    if (ImGui::BeginCombo(UI(Tr(L"Select model pair") + L"##localmtpair").c_str(), labels[selected].c_str())) {
+    RowLabel(UI(Tr(L"Select model pair")));
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 15);
+    if (ImGui::BeginCombo("##localmtpair", labels[selected].c_str())) {
         for (int i = 0; i < static_cast<int>(catalog.size()); ++i) {
             const bool active = selected == i;
             if (ImGui::Selectable((labels[i] + " (" + catalog[i].pair + ")").c_str(), active)) selected = i;
@@ -357,7 +358,10 @@ void RenderLocalMtOptions(Config& edit) {
         ImGui::PopTextWrapPos();
     }
 
-    if (g_localMtBusy) return;
+    if (g_localMtBusy) {
+        EndBox();
+        return;
+    }
     if (s_state.models[selected]) {
         if (RemoveButton("localmtmodel")) {
             if (edit.engine == Engine::Local) edit.engine = Engine::Basic;
@@ -379,6 +383,7 @@ void RenderLocalMtOptions(Config& edit) {
     } else {
         ImGui::TextDisabled("%s", UI(Tr(L"Install the local translation module first.")).c_str());
     }
+    EndBox();
 }
 
 void InstallLocalMtQuickSetup(const std::wstring& dataDir) {
