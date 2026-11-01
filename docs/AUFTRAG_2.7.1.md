@@ -20,6 +20,11 @@ C. **Technik-Tab: Zustand der Listen** – je Liste Anzahl und Herkunft: eingeba
    eigene Begriffe (gw2-terms.txt), gelernte Wörter der Tipphilfe, gelernte Sprach-Korrekturen. Nur Zahlen.
 D. **Noch einfacher einrichten:** NLLB als Standard (Emi favorisiert es mit unseren Begriffen); danach Punkte 17–21.
 
+## Gesammelt nach 2.8.0 (Emi, Erlebnisbericht – später im Detail)
+- Chatfenster an der Ecke links unten packen und nach links gegen den Bildschirmrand ziehen: das Fenster wird nach
+  rechts breiter statt am Rand stehen zu bleiben (Größenänderung + Kantenhaftung, kb_window.cpp).
+- Sprachlisten im neuen Optionsfenster durchsortieren (Reihenfolge, Gruppierung).
+
 ## Fehler
 0. ~~Flüstern senden kaputt~~ – erledigt in 2.7.1 (f603419: Name getippt, Pausen zurück); im Spiel prüfen (CHAT-13).
 1. **Block bleibt unübersetzt:** nach einer Zeile mit Tippfehler, einer Korrekturzeile, einer Zeile nur `\o/` und einer
