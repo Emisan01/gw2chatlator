@@ -3,6 +3,13 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.7.3 — 2026-11-01 (GW2Chatlator for Nexus)
+
+- **Always the Right Channel:** a message from a whisper tab went into the map or party channel, or nothing went out, or it came twice – depending on how GW2's own chat looked at that moment. If GW2's chat line is already open, it is now closed first (only while GW2 is in front and the game says its chat line has the keyboard), so every message starts the same way: a fresh line and its own channel command.
+- **Translator CPU Threads:** the local translator uses a quarter of your cores (2 to 4) by default, or 1 to 8 set by hand in the Translator tab – more threads, faster lines. GW2 keeps the rest.
+- **Word Lists in the Technical Tab:** how many built-in terms, official names and usual words there are; your own terms to remove and add; your learned words (the most used, or any you search for) to forget one by one. Typo patterns are only counted.
+- The quality hint now says beam 2 – the lowest step under load since 2.7.1.
+
 ## 2.7.2 — 2026-10-30 (GW2Chatlator for Nexus)
 
 - **The Chat Tab Has Its "v":** the tab and a small arrow are one element in two parts, like the microphone's. The arrow opens the chat tab's menu upwards – reading language, original under the translation, "unsure: show the original", the name. A right-click on the tab now only renames it. Tabs of your own keep their right-click settings.
