@@ -81,6 +81,8 @@ void AddWords(int s, int t, NameTable& source, NameTable& target) {
 
 }  // namespace
 
+size_t BuiltinWordCount() { return std::size(kBuiltinWords); }
+
 const NameTable& BuiltinNames(const std::wstring& lang) {
     static const NameTable empty;
     const int i = NameLang(lang);

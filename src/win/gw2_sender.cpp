@@ -287,7 +287,16 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
     // and let GW2 work through each step before the next one.
     if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – cancelled"));
     injected = true;
-    const bool alreadyOpen = ms.live && mumble->Read().TextboxHasFocus();
+    bool alreadyOpen = ms.live && mumble->Read().TextboxHasFocus();
+    // A chat line GW2 already has open (a draft, another channel, a whisper already addressed) is closed first, so
+    // every message starts the same way: a fresh line and its own channel command – the native chat's state can no
+    // longer send it into the wrong channel or twice. Esc only while GW2 is in front and MumbleLink says its chat line
+    // has the keyboard: then Esc closes that line and nothing else. Not closed: on as before.
+    if (alreadyOpen && GetForegroundWindow() == gw2) {
+        Tap(VK_ESCAPE, opt.keyHoldMs);
+        WaitForTargetToDrain(gw2, 1000);
+        if (textbox(false, std::max(600, 8 * opt.keyHoldMs))) alreadyOpen = false;
+    }
     // Once GW2 reported the chat line open, the rest goes at full speed: every key is held one frame (+10 ms), so the
     // next one already falls into a later frame – no extra pauses between the steps. Only the moment between the
     // paste and Enter stays (the pasted text must be in the line). Without MumbleLink: the old pauses.

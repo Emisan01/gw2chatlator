@@ -1,6 +1,9 @@
 // kb_options.cpp — the options window and the modules list.
 
 #include "kb_shared.hpp"
+#include "core/glossary.hpp"
+#include "core/slang.hpp"
+#include "core/word_model.hpp"
 #include "imgui/imgui_internal.h"
 #include "win/local_mt_packages.hpp"
 #include "voice_module.hpp"
@@ -460,6 +463,66 @@ void RenderExceptList(Config& edit) {
     ImGui::PopID();
 }
 
+// The word lists (Technical tab): how many entries each holds – the built-in ones compiled in, yours and the learned
+// ones to look at and correct here. Typo patterns only counted: correcting them by hand would fight what typing learns.
+void RenderWordLists() {
+    ImGui::Separator();
+    ImGui::TextUnformatted(UI(Tr(L"Word lists")).c_str());
+    size_t never = 0;
+    for (const BuiltinTerm& bt : BuiltinTerms())
+        if (bt.kind != TermKind::Word) ++never;
+    ImGui::TextDisabled("%s", UI(TrF(L"Built-in GW2 terms: {1} (never translated: {2})",
+                                     {std::to_wstring(BuiltinTerms().size()), std::to_wstring(never)})).c_str());
+    ImGui::TextDisabled("%s", UI(TrF(L"Official names: {1} in en/de/fr/es", {std::to_wstring(BuiltinNames(L"en").size())})).c_str());
+    ImGui::TextDisabled("%s", UI(TrF(L"Usual words: {1}", {std::to_wstring(BuiltinWordCount())})).c_str());
+    if (!g_spell) return;
+    auto chips = [](const std::vector<std::wstring>& items, auto&& onRemove) {  // one entry each, "x" removes it
+        for (size_t i = 0; i < items.size(); ++i) {
+            const std::string label = U8(items[i]) + "  x##" + std::to_string(i);
+            const float w = ImGui::CalcTextSize(label.c_str(), nullptr, true).x + ImGui::GetStyle().FramePadding.x * 2;
+            if (i > 0) {
+                ImGui::SameLine();
+                if (ImGui::GetContentRegionAvail().x < w) ImGui::NewLine();
+            }
+            if (ImGui::SmallButton(label.c_str())) onRemove(items[i]);
+        }
+    };
+    const std::vector<std::wstring> mine = g_spell->MyTerms();
+    ImGui::TextUnformatted(UI(TrF(L"Your terms: {1}", {std::to_wstring(mine.size())})).c_str());
+    ImGui::PushID("myterms");
+    chips(mine, [](const std::wstring& m) { g_worker.Post([m] { if (g_spell) g_spell->RemoveTerm(m); }); });
+    static char addBuf[64] = {};
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+    const bool enter = ImGui::InputText("##addterm", addBuf, sizeof(addBuf), ImGuiInputTextFlags_EnterReturnsTrue);
+    ImGui::SameLine();
+    if ((ImGui::SmallButton(UI(Tr(L"Add")).c_str()) || enter) && addBuf[0]) {
+        const std::wstring t = Trim(W(addBuf));
+        addBuf[0] = 0;
+        g_worker.Post([t] { if (g_spell) g_spell->AddTerm(t); });
+    }
+    ImGui::PopID();
+    // the learned words: the most used first (40), a search finds any; "x" forgets one
+    const auto snap = g_spell->Model().GetSnapshot();
+    ImGui::TextUnformatted(UI(TrF(L"Learned words: {1} – the most used; x forgets one",
+                                  {std::to_wstring(snap->words.size())})).c_str());
+    static char findBuf[32] = {};
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+    ImGui::InputTextWithHint("##findlearned", UI(Tr(L"Find a word")).c_str(), findBuf, sizeof(findBuf));
+    const std::wstring find = CaseFold(W(findBuf));
+    std::vector<const WordModelSnapshot::Word*> found;
+    for (const auto& [key, w] : snap->words)
+        if (find.empty() || key.find(find) != std::wstring::npos) found.push_back(&w);
+    const size_t n = std::min<size_t>(found.size(), 40);
+    std::partial_sort(found.begin(), found.begin() + static_cast<std::ptrdiff_t>(n), found.end(),
+                      [](const WordModelSnapshot::Word* a, const WordModelSnapshot::Word* b) { return a->count > b->count; });
+    std::vector<std::wstring> shown;
+    for (size_t i = 0; i < n; ++i) shown.push_back(found[i]->form);
+    ImGui::PushID("learned");
+    chips(shown, [](const std::wstring& w) { g_worker.Post([w] { if (g_spell) g_spell->Forget(w); }); });
+    ImGui::PopID();
+    ImGui::TextDisabled("%s", UI(TrF(L"Typo patterns learned: {1}", {std::to_wstring(g_spell->TypoPatterns())})).c_str());
+}
+
 bool IsOptionsDirty(const Config& edit, const Config& opened,
                     const char* keyBuf, const char* regionBuf, const char* urlBuf, const char* mailBuf) {
     if (edit.engine != opened.engine) return true;
@@ -524,7 +587,8 @@ void DoSaveOptions(Config& edit, Config& opened,
         // request ran into the timeout after changing nothing but the typing language.
         const bool translatorChanged = engineChanged || edit.deeplKey != g_cfg.deeplKey ||
                                        edit.googleKey != g_cfg.googleKey || edit.msKey != g_cfg.msKey ||
-                                       edit.msRegion != g_cfg.msRegion || edit.basicEmail != g_cfg.basicEmail;
+                                       edit.msRegion != g_cfg.msRegion || edit.basicEmail != g_cfg.basicEmail ||
+                                       edit.mtThreads != g_cfg.mtThreads;  // the helper reads its threads at start
         g_cfg = opened = edit;
         g_cfg.SaveAll();
         SetUiLang(g_cfg.uiLang);
@@ -2063,6 +2127,7 @@ void RenderOptionsContent() {
                               : Tr(L"Raw translation off: our translation logic is on again"),
                           6000);
             }
+            RenderWordLists();
             Hint(UI(Tr(L"For comparing: the translator gets each line exactly as written, its result is shown as it comes. Chat codes and links stay protected. Not saved.")));
             ImGui::Separator();
             {

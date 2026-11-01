@@ -38,6 +38,7 @@ struct Config {
     bool showOriginal = false;  // the original small and grey under a translated line (your own: what you typed)
     bool noJunk = true;         // a doubtful translation: one more try at the best quality, still doubtful – the original
     int localQuality = 2;                                 // 1 = Fast (Beam 1), 2 = Balanced (Beam 2), 4 = Quality (Beam 4)
+    int mtThreads = 0;                                    // the local translator's CPU threads, 0 = automatic
 
     // [Basic] MyMemory
     std::wstring basicEmail;

@@ -6,6 +6,8 @@
 // Lives on the UI thread.
 #pragma once
 
+#include <mutex>
+
 #include <atomic>
 #include <memory>
 #include <optional>
@@ -125,6 +127,9 @@ public:
     // Your GW2 terms in gw2-terms.txt (next to your words): never translated, never a spelling error. False when
     // `term` has more than kMaxTermWords words or 60 characters (several words are one term: a guild's name).
     bool AddTerm(const std::wstring& term);
+    bool RemoveTerm(const std::wstring& term);    // your term out again (gw2-terms.txt written anew)
+    std::vector<std::wstring> MyTerms() const;    // a copy, for the list in the Technical tab
+    size_t TypoPatterns() const;                  // how many typo patterns were learned (shown, not edited)
     // Never translated: the built-in GW2 abbreviations, your terms and the names you taught.
     const WordSet& KeepWords() const { return keep_; }
     std::shared_ptr<const WordSet> KeepWordsSnapshot() const { return std::atomic_load(&keepSnap_); }
@@ -166,6 +171,7 @@ private:
     std::unordered_map<std::wstring, std::wstring> names_;  // folded -> as taught
     std::wstring namesPath_;
     std::wstring termsPath_;
+    mutable std::mutex termsMu_;  // terms_: the worker adds and removes, the Technical tab reads
     std::vector<std::wstring> terms_;  // yours, as written
     void RebuildKeep();                // built-in + your terms + taught names -> keep_ and its snapshot
     WordSet keep_ = BuiltinKeepWords();

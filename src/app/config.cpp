@@ -286,6 +286,7 @@ void Config::Load(const std::wstring& dir) {
     readLang = ToUpperAscii(ini.Str(L"Translate", L"ReadLang", writeIn.c_str()));
     showOriginal = ini.Bool(L"Translate", L"ShowOriginal", false);
     noJunk = ini.Bool(L"Translate", L"NoJunk", true);
+    mtThreads = ini.Int(L"Translate", L"Threads", 0, 0, 16);
     voiceEnabled = ini.Bool(L"Voice", L"Enabled", true);
     voiceLang = AsciiUnescape(ini.Str(L"Voice", L"Language", L"auto"));
     if (voiceLang.empty()) voiceLang = L"auto";
@@ -480,6 +481,7 @@ void Config::SaveAll() const {
     SaveValue(L"Translate", L"ReadLang", readLang);
     SaveBool(L"Translate", L"ShowOriginal", showOriginal);
     SaveBool(L"Translate", L"NoJunk", noJunk);
+    SaveValue(L"Translate", L"Threads", std::to_wstring(mtThreads));
     SaveBool(L"Chat", L"AutoTiming", send.autoTiming);
     SaveValue(L"Chat", L"KeyHoldMs", std::to_wstring(send.keyHoldMs));
     SaveValue(L"Chat", L"StepDelayMs", std::to_wstring(send.stepDelayMs));

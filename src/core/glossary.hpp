@@ -69,4 +69,7 @@ const NameTable& BuiltinNames(const std::wstring& lang);
 // a name that would map to two targets is left out (Glossary::Build).
 const Glossary* BuiltinGlossary(const std::wstring& target);
 
+// How many usual words data/gw2-words.tsv holds (the Technical tab's list status).
+size_t BuiltinWordCount();
+
 }  // namespace gct

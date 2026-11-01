@@ -175,15 +175,42 @@ bool SpellService::AddTerm(const std::wstring& term) {
     const std::vector<Span> words = WordSpans(t);
     if (words.empty() || words.size() > kMaxTermWords || t.size() > 60 || t.find(L'\t') != std::wstring::npos)
         return false;
-    if (std::none_of(terms_.begin(), terms_.end(), [&](const std::wstring& m) { return TermKey(m) == TermKey(t); })) {
-        terms_.push_back(t);
-        WriteFileAtomic(termsPath_, WriteTermsFile(terms_));
+    {
+        std::lock_guard<std::mutex> lock(termsMu_);
+        if (std::none_of(terms_.begin(), terms_.end(), [&](const std::wstring& m) { return TermKey(m) == TermKey(t); })) {
+            terms_.push_back(t);
+            WriteFileAtomic(termsPath_, WriteTermsFile(terms_));
+        }
     }
     for (const Span& w : words) user_.insert(CaseFold(t.substr(w.start, w.length)));
     std::atomic_store(&userSnap_, std::make_shared<const WordSet>(user_));
     RebuildKeep();
     ClearCache();
     return true;
+}
+
+bool SpellService::RemoveTerm(const std::wstring& term) {
+    {
+        std::lock_guard<std::mutex> lock(termsMu_);
+        const auto it = std::find_if(terms_.begin(), terms_.end(),
+                                     [&](const std::wstring& m) { return TermKey(m) == TermKey(term); });
+        if (it == terms_.end()) return false;
+        terms_.erase(it);
+        WriteFileAtomic(termsPath_, WriteTermsFile(terms_));
+    }
+    RebuildKeep();  // no longer kept from translation (its words stay unmarked by the spell checker until restart)
+    ClearCache();
+    return true;
+}
+
+std::vector<std::wstring> SpellService::MyTerms() const {
+    std::lock_guard<std::mutex> lock(termsMu_);
+    return terms_;
+}
+
+size_t SpellService::TypoPatterns() const {
+    const auto s = std::atomic_load(&typosSnap_);
+    return s ? s->Size() : 0;
 }
 
 void SpellService::SaveNames() {

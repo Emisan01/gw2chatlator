@@ -298,7 +298,18 @@ void RenderLocalMtOptions(Config& edit) {
     if (ImGui::Combo(UI(Tr(L"Quality Mode") + L"##localmtquality").c_str(), &currentQ, qualityItems, 3)) {
         edit.localQuality = currentQ == 0 ? 1 : currentQ == 2 ? 4 : 2;
     }
-    ImGui::TextDisabled("%s", UI(Tr(L"Under heavy chat load, the orchestrator automatically steps down to Beam 1.")).c_str());
+    ImGui::TextDisabled("%s", UI(Tr(L"Under heavy chat load, the orchestrator automatically steps down to Beam 2.")).c_str());
+    // CPU threads of the local translator: automatic (a quarter of the cores, 2 to 4 – GW2 keeps the rest) or by hand;
+    // a new number starts the translator anew.
+    std::vector<std::string> threadText{UI(Tr(L"Automatic"))};
+    for (int i = 1; i <= 8; ++i) threadText.push_back(std::to_string(i));
+    std::vector<const char*> threadItems;
+    for (const std::string& s : threadText) threadItems.push_back(s.c_str());
+    int threads = std::clamp(edit.mtThreads, 0, 8);
+    ImGui::SetNextItemWidth(160);
+    if (ImGui::Combo(UI(Tr(L"CPU threads") + L"##mtthreads").c_str(), &threads, threadItems.data(),
+                     static_cast<int>(threadItems.size())))
+        edit.mtThreads = threads;
 
     ImGui::Separator();
     ImGui::TextUnformatted(UI(Tr(L"OPUS-MT language models")).c_str());

@@ -29,7 +29,7 @@ bool ExistsFile(const std::wstring& path) {
 }
 
 constexpr size_t kMaxLoadedPairs = 2;
-constexpr size_t kThreadsPerPair = 2;
+size_t g_threads = 2;  // CPU threads per model: [Translate] Threads, 0 = automatic (a quarter of the cores, 2 to 4)
 
 struct PairModel {
     std::string id;
@@ -93,7 +93,7 @@ NllbModel* LoadNllb(std::string& error) {
     loader.compute_type = ctranslate2::ComputeType::INT8;
     loader.num_replicas_per_device = 1;
     ctranslate2::ReplicaPoolConfig pool;
-    pool.num_threads_per_replica = kThreadsPerPair;
+    pool.num_threads_per_replica = g_threads;
     pool.max_queued_batches = 1;
     try {
         model->translator = std::make_unique<ctranslate2::Translator>(loader, pool);
@@ -144,7 +144,7 @@ PairModel* LoadPair(const std::string& id, std::string& error) {
     loader.compute_type = ctranslate2::ComputeType::INT8;
     loader.num_replicas_per_device = 1;
     ctranslate2::ReplicaPoolConfig pool;
-    pool.num_threads_per_replica = kThreadsPerPair;
+    pool.num_threads_per_replica = g_threads;
     pool.max_queued_batches = 1;
     try {
         model->translator = std::make_unique<ctranslate2::Translator>(loader, pool);
@@ -288,6 +288,13 @@ int wmain(int argc, wchar_t** argv) {
         if (std::wstring(argv[i]) == L"--data") g_data = argv[++i];
     if (g_data.empty()) return 2;
     const std::wstring ini = g_data + L"\\gw2-chat-translator.ini";
+    {
+        SYSTEM_INFO si{};
+        GetSystemInfo(&si);
+        const int set = static_cast<int>(GetPrivateProfileIntW(L"Translate", L"Threads", 0, ini.c_str()));
+        g_threads = set > 0 ? static_cast<size_t>(std::min(set, 16))
+                            : std::clamp<size_t>(si.dwNumberOfProcessors / 4, 2, 4);  // GW2 keeps the rest
+    }
     g_unloadMinutes = std::clamp<int>(static_cast<int>(GetPrivateProfileIntW(L"Translate", L"UnloadMinutes", 10,
                                                                               ini.c_str())), 1, 120);
     g_lastRequest = GetTickCount64();
