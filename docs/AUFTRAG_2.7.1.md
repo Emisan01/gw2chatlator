@@ -21,9 +21,9 @@ C. **Technik-Tab: Zustand der Listen** – je Liste Anzahl und Herkunft: eingeba
 D. **Noch einfacher einrichten:** NLLB als Standard (Emi favorisiert es mit unseren Begriffen); danach Punkte 17–21.
 
 ## Gesammelt nach 2.8.0 (Emi, Erlebnisbericht – später im Detail)
-- Chatfenster an der Ecke links unten packen und nach links gegen den Bildschirmrand ziehen: das Fenster wird nach
+- ~~erledigt~~ Chatfenster an der Ecke links unten packen und nach links gegen den Bildschirmrand ziehen: das Fenster wird nach
   rechts breiter statt am Rand stehen zu bleiben (Größenänderung + Kantenhaftung, kb_window.cpp).
-- Sprachlisten im neuen Optionsfenster durchsortieren (Reihenfolge, Gruppierung).
+- ~~verworfen (Emi: Anordnung bleibt)~~ Sprachlisten im neuen Optionsfenster durchsortieren.
 
 ## Fehler
 0. ~~Flüstern senden kaputt~~ – erledigt in 2.7.1 (f603419: Name getippt, Pausen zurück); im Spiel prüfen (CHAT-13).

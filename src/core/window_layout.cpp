@@ -38,6 +38,12 @@ WinAnchor AdoptRect(WinMode mode, const WinAnchor& a, const WinRect& now, const 
     if (differs(now.Bottom(), was.Bottom())) n.bottom = std::round(now.Bottom());
     if (mode != WinMode::Button && differs(now.w, was.w)) n.width = std::ceil(now.w);
     if (mode == WinMode::Big && differs(now.h, was.h)) n.height = std::ceil(now.h);
+    // Resized at its left edge past the screen's edge: the right edge stays and the width ends at the screen – kept as
+    // it was, the clamped left edge pushed the larger window out to the right.
+    if (mode != WinMode::Button && now.x < 0 && differs(now.x, was.x) && differs(now.w, was.w)) {
+        n.left = 0;
+        n.width = std::ceil(now.x + now.w);
+    }
     n.known = true;
     return n;
 }

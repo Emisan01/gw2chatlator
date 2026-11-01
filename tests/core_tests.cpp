@@ -322,6 +322,19 @@ static void TestGreetings() {
     CHECK(GreetingFor(L"hola amigos", L"DE").empty() && GreetingFor(L"lfg raid", L"DE").empty());
 }
 
+static void TestResizePastLeftEdge() {
+    WinAnchor a;
+    a.known = true;
+    a.left = 10;
+    a.bottom = 700;
+    a.width = 300;
+    a.height = 400;
+    const WinRect was{10, 300, 300, 400};
+    const WinRect dragged{-50, 300, 360, 400};  // the left edge pulled 60 px left, past the screen's edge
+    const WinAnchor n = AdoptRect(WinMode::Big, a, dragged, was);
+    CHECK(n.left == 0 && n.width == 310);  // the right edge (310) stays, the window does not grow to the right
+}
+
 static void TestBuiltinGlossary() {
     CHECK(BuiltinNames(L"de").size() > 200 && BuiltinNames(L"PL").empty());
     auto first = [](const Glossary* g, const std::wstring& text) {
@@ -2910,6 +2923,7 @@ int main() {
     TestNameTable();
     TestGlossary();
     TestBuiltinGlossary();
+    TestResizePastLeftEdge();
     TestGreetings();
     TestProtect();
     TestTranslationCheck();

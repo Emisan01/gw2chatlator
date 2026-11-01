@@ -540,7 +540,7 @@ bool Hero(bool on, const std::string& title, const std::string& sub, const std::
     ImDrawList* dl = ImGui::GetWindowDrawList();
     dl->AddRectFilled(p, ImVec2(p.x + w, p.y + h), IM_COL32(255, 255, 255, hovered ? 16 : 8), 4.0f);
     dl->AddRect(p, ImVec2(p.x + w, p.y + h), ImGui::GetColorU32(ImGuiCol_Separator), 4.0f);
-    const float swH = std::round(fs * 1.5f), swW = std::round(swH * 1.8f);
+    const float swH = std::round(fs * 1.125f), swW = std::round(swH * 1.8f);  // three quarters of what it was (Emi)
     const ImVec2 s(p.x + fs * 0.9f, p.y + std::floor((h - swH) * 0.5f));
     dl->AddRectFilled(s, ImVec2(s.x + swW, s.y + swH), on ? kOnGreen : kOffTrack, swH * 0.5f);
     dl->AddCircleFilled(ImVec2(on ? s.x + swW - swH * 0.5f : s.x + swH * 0.5f, s.y + swH * 0.5f), swH * 0.5f - 3.0f,
