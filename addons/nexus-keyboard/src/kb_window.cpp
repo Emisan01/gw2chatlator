@@ -1289,6 +1289,9 @@ void RenderWindow() {
         const WhisperTab* front = g_activeTab >= 0 && g_activeTab < static_cast<int>(g_tabs.size()) ? &g_tabs[g_activeTab] : nullptr;
         const std::wstring& tabName = front && !front->custom ? front->nameFolded : s_emptyW;
         const uint32_t tabChannels = front && front->custom ? front->channels : 0xFFFFFFFFu;
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,  // the space between chat lines (Window tab: Line spacing) – also the info lines, so it shows at once
+                            ImVec2(ImGui::GetStyle().ItemSpacing.x,
+                                   ImGui::GetStyle().ItemSpacing.y * std::clamp(g_cfg.chatSpacing, 0, 100) / 100.0f));
         RenderChatSourceNotice();  // reading Events: Chat is off or paused: why, and what you can do
         if (g_lines.empty() && g_layout.infoText) {  // nothing arrived yet: what is ready, what is missing, where translation is switched on
             lock.unlock();
@@ -1301,9 +1304,6 @@ void RenderWindow() {
         const float rowWrap = ImGui::GetContentRegionAvail().x, rowFont = ImGui::GetFontSize();
         const float viewTop = ImGui::GetScrollY() - line * 4;
         const float viewBottom = ImGui::GetScrollY() + ImGui::GetWindowHeight() + line * 4;
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,  // the space between chat lines (Window tab: Line spacing)
-                            ImVec2(ImGui::GetStyle().ItemSpacing.x,
-                                   ImGui::GetStyle().ItemSpacing.y * std::clamp(g_cfg.chatSpacing, 0, 100) / 100.0f));
         const float rowGap = ImGui::GetStyle().ItemSpacing.y;
         for (ChatLine& l : g_lines) {
             if (!tabName.empty() && (l.channel != Channel::Whisper || l.speakerFolded != tabName)) continue;
