@@ -3,7 +3,7 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
-## Unreleased (GW2Chatlator for Nexus)
+## 2.8.0 — 2026-11-01 (GW2Chatlator for Nexus)
 
 - **New Options Window:** a side bar of pages like Nexus' own – Start, Chat, Typing help, Voice, Translator, Window,
   Technical – each with framed groups and rows "label | setting". No more tabs that overlap, no dashboard tiles.
