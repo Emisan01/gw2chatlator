@@ -319,19 +319,16 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
         if (needLine && watched && !lineHasKeys()) return Tr(L"GW2's chat line closed – cancelled");
         return std::wstring();
     };
-    // after a key: GW2 has drawn two more frames (MumbleLink's frame counter), so it took the key before the next one
-    // comes; without MumbleLink the set pause
+    // after a key: the pause between keys (Send timing: automatic one frame + 10 ms, or yours) – and at least two more
+    // frames of GW2 (MumbleLink's frame counter). The counter alone was too short: GW2 bumps it more often than it
+    // switches its line into the whisper mode, the name came before the name field and the Tab switched GW2's chat tab
+    // (live 2026-11-02); the pause had held since 2.7.1 (2026-10-29: without it name and text swapped or cut).
     auto settle = [&] {
         WaitForTargetToDrain(gw2, 1000);
-        if (!watched) {
-            Sleep(opt.stepDelayMs);
-            return;
-        }
-        const uint32_t from = mumble->Read().uiTick;
-        for (int waited = 0; waited < std::max(1000, 4 * opt.stepDelayMs); waited += 5) {
-            if (mumble->Read().uiTick - from >= 2) return;
-            Sleep(5);
-        }
+        const uint32_t from = watched ? mumble->Read().uiTick : 0;
+        Sleep(opt.stepDelayMs);
+        if (!watched) return;
+        for (int waited = 0; waited < 1000 && mumble->Read().uiTick - from < 2; waited += 5) Sleep(5);
     };
     std::wstring why;
     if (!(why = lost(false)).empty()) return finish(why);
