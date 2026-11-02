@@ -395,7 +395,12 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
             if (!recipient.empty() && recipient.back() == L',') recipient.pop_back();
             recipient = Trim(recipient);
             if (!(why = lost(true)).empty()) return finish(why);
-            TypeText(command, opt.keyHoldMs);
+            // "/w" as characters, then the Space as a real key: GW2 switches its line into the whisper mode (name field)
+            // on the Space key a person presses – a typed space character left "/w" plain text in the line, so the
+            // name and the Tab after it went nowhere (the Tab switched GW2's chat tab, the message went to Say; live
+            // 2026-11-02 – by hand "/w" only switches with the Space key).
+            TypeText(Trim(command), opt.keyHoldMs);
+            Tap(VK_SPACE, opt.keyHoldMs);
             note(Trim(command).c_str());
             settle();  // GW2 switches the line into the whisper mode after "/w "
             if (!recipient.empty()) {
