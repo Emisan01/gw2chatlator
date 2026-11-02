@@ -1291,6 +1291,14 @@ extern const I18nEntry kFrenchStrings[] = {
      L"Durées par image"},
     {L"The last send, step by step (chat line open/shut, ms):",
      L"Le dernier envoi, étape par étape (ligne de chat open/shut, ms) :"},
+    {L"Our window took the keyboard – cancelled",
+     L"Notre fenêtre a pris le clavier – annulé"},
+    {L"GW2's chat line closed – cancelled",
+     L"La ligne de chat de GW2 s'est fermée – annulé"},
+    {L"GW2's chat line does not close – nothing sent",
+     L"La ligne de chat de GW2 ne se ferme pas – rien envoyé"},
+    {L"GW2's chat line did not open – nothing sent",
+     L"La ligne de chat de GW2 ne s'est pas ouverte – rien envoyé"},
 };
 extern const size_t kFrenchCount = sizeof(kFrenchStrings) / sizeof(kFrenchStrings[0]);
 

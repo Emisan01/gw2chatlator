@@ -1291,6 +1291,14 @@ extern const I18nEntry kPolishStrings[] = {
      L"Czasy klatki"},
     {L"The last send, step by step (chat line open/shut, ms):",
      L"Ostatnie wysłanie, krok po kroku (linia czatu open/shut, ms):"},
+    {L"Our window took the keyboard – cancelled",
+     L"Nasze okno przejęło klawiaturę – anulowano"},
+    {L"GW2's chat line closed – cancelled",
+     L"Linia czatu GW2 zamknęła się – anulowano"},
+    {L"GW2's chat line does not close – nothing sent",
+     L"Linia czatu GW2 się nie zamyka – nic nie wysłano"},
+    {L"GW2's chat line did not open – nothing sent",
+     L"Linia czatu GW2 się nie otworzyła – nic nie wysłano"},
 };
 extern const size_t kPolishCount = sizeof(kPolishStrings) / sizeof(kPolishStrings[0]);
 

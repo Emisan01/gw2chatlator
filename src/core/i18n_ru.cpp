@@ -1291,6 +1291,14 @@ extern const I18nEntry kRussianStrings[] = {
      L"Время кадра"},
     {L"The last send, step by step (chat line open/shut, ms):",
      L"Последняя отправка по шагам (строка чата open/shut, мс):"},
+    {L"Our window took the keyboard – cancelled",
+     L"Наше окно забрало клавиатуру – отменено"},
+    {L"GW2's chat line closed – cancelled",
+     L"Строка чата GW2 закрылась – отменено"},
+    {L"GW2's chat line does not close – nothing sent",
+     L"Строка чата GW2 не закрывается – ничего не отправлено"},
+    {L"GW2's chat line did not open – nothing sent",
+     L"Строка чата GW2 не открылась – ничего не отправлено"},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

@@ -1291,6 +1291,14 @@ extern const I18nEntry kTurkishStrings[] = {
      L"Kare süreleri"},
     {L"The last send, step by step (chat line open/shut, ms):",
      L"Son gönderim, adım adım (sohbet satırı open/shut, ms):"},
+    {L"Our window took the keyboard – cancelled",
+     L"Penceremiz klavyeyi aldı – iptal edildi"},
+    {L"GW2's chat line closed – cancelled",
+     L"GW2 sohbet satırı kapandı – iptal edildi"},
+    {L"GW2's chat line does not close – nothing sent",
+     L"GW2 sohbet satırı kapanmıyor – hiçbir şey gönderilmedi"},
+    {L"GW2's chat line did not open – nothing sent",
+     L"GW2 sohbet satırı açılmadı – hiçbir şey gönderilmedi"},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

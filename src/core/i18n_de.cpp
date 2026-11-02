@@ -1291,6 +1291,14 @@ extern const I18nEntry kGermanStrings[] = {
      L"Frame-Timings"},
     {L"The last send, step by step (chat line open/shut, ms):",
      L"Das letzte Senden, Schritt für Schritt (Chatzeile open/shut, ms):"},
+    {L"Our window took the keyboard – cancelled",
+     L"Unser Fenster hat die Tastatur genommen – abgebrochen"},
+    {L"GW2's chat line closed – cancelled",
+     L"GW2-Chatzeile hat sich geschlossen – abgebrochen"},
+    {L"GW2's chat line does not close – nothing sent",
+     L"GW2-Chatzeile schließt sich nicht – nichts gesendet"},
+    {L"GW2's chat line did not open – nothing sent",
+     L"GW2-Chatzeile hat sich nicht geöffnet – nichts gesendet"},
 };
 extern const size_t kGermanCount = sizeof(kGermanStrings) / sizeof(kGermanStrings[0]);
 

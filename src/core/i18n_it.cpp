@@ -1291,6 +1291,14 @@ extern const I18nEntry kItalianStrings[] = {
      L"Tempi per frame"},
     {L"The last send, step by step (chat line open/shut, ms):",
      L"L'ultimo invio, passo per passo (riga della chat open/shut, ms):"},
+    {L"Our window took the keyboard – cancelled",
+     L"La nostra finestra ha preso la tastiera – annullato"},
+    {L"GW2's chat line closed – cancelled",
+     L"La riga della chat di GW2 si è chiusa – annullato"},
+    {L"GW2's chat line does not close – nothing sent",
+     L"La riga della chat di GW2 non si chiude – niente inviato"},
+    {L"GW2's chat line did not open – nothing sent",
+     L"La riga della chat di GW2 non si è aperta – niente inviato"},
 };
 extern const size_t kItalianCount = sizeof(kItalianStrings) / sizeof(kItalianStrings[0]);
 

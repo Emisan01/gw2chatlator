@@ -44,7 +44,9 @@ HWND FindGw2Window(DWORD processId = 0);
 // confirmed it worked through the injected keys.
 // `mumble` (optional): waits on GW2's "chat input open" flag instead of
 // fixed delays and confirms the message went out.
-SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOptions& opt, MumbleLink* mumble = nullptr);
+// `keysReachGame` (optional): false while the caller's own window holds the keyboard - then not one key more.
+SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOptions& opt, MumbleLink* mumble = nullptr,
+                          bool (*keysReachGame)() = nullptr);
 
 // SetForegroundWindow with a fallback for the foreground lock (a synthetic
 // Alt tap, delivered to whichever window is in front — never needed while
