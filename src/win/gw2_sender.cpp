@@ -399,10 +399,15 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
             note(Trim(command).c_str());
             settle();  // GW2 switches the line into the whisper mode after "/w "
             if (!recipient.empty()) {
-                // The address is typed, not pasted: the clipboard only ever holds the message, so a game reading it a
-                // frame late can no longer put the message into the name field and the name into the message.
+                // The address is pasted whole, not typed: GW2's name field offers a partner you whispered before from the
+                // first letters on and marks the rest of the name – typed letter by letter, the space deleted that mark
+                // and the name came out wrong, and the Tab then switched GW2's chat tab instead of taking the name (live
+                // 2026-11-02, "Ted Manara"). Pasted it stands as one piece; Tab takes it and moves on to the text. The
+                // clipboard gets the message only after GW2 took the name (the pause and two frames below: without
+                // pauses name and text once came swapped, 2026-10-29).
+                if (!SetClipboardText(owner, recipient)) return finish(Tr(L"The clipboard is blocked"));
                 if (!(why = lost(true)).empty()) return finish(why);
-                TypeText(recipient, opt.keyHoldMs);
+                CtrlTap('V', opt.keyHoldMs);
                 note(L"name");
                 settle();
                 if (!(why = lost(true)).empty()) return finish(why);
