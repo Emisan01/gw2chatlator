@@ -399,6 +399,7 @@ void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
         }
     }
     std::vector<std::wstring> parts;
+    std::wstring channel;
     bool sendNow = false;
     {
         std::lock_guard<std::mutex> lock(g_mu);
@@ -427,10 +428,11 @@ void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
                 return;
             }
             parts = SplitForChat(SanitizeChatText(result), g_pendingSend.prefix, static_cast<size_t>(g_cfg.maxLength));
+            channel = g_pendingSend.channel;
             sendNow = true;
         }
     }
-    if (sendNow) SendNow(std::move(parts), text, body);
+    if (sendNow) SendNow(std::move(parts), text, body, channel);
 }
 
 // The word bar, the grey completion and what Space writes, for the newest text + caret.
@@ -473,7 +475,82 @@ std::wstring OwnOriginal(const std::wstring& sent) {
     return it == g_ownOriginals.end() ? std::wstring() : it->second;
 }
 
-void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring learnText) {
+namespace {
+SendOptions SendTiming() {  // the send timing: automatic (one frame + 10 ms per key) or yours
+    SendOptions so;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        so = g_cfg.send;
+    }
+    if (so.autoTiming) {
+        const int fps = g_fps;
+        if (fps > 0) {
+            const int action = std::clamp(1000 / std::max(fps, 10) + 10, 15, 1010);
+            so.keyHoldMs = action;
+            so.stepDelayMs = action;
+        }
+    } else if (const int fps = g_fps; fps > 0 && so.keyHoldMs == 30) {  // GW2 reads the keyboard once per frame
+        const int action = std::clamp(1000 / std::max(fps, 10) + 10, 15, 1010);
+        so.keyHoldMs = action;
+        if (so.stepDelayMs == 80) so.stepDelayMs = action;
+    }
+    return so;
+}
+
+bool KeysReachGame() {
+    g_bufferingStartTime = GetTickCount64();  // asked before every key: a run that moves on keeps your keys buffered
+    return g_keyboardFree.load();
+}
+
+// GW2's line set to `channel` ("/m ", "/w Name, ", "/r "): open, command, close. Worker; the keyboard is GW2's.
+// Empty error: done (or nothing to do); else why not.
+std::wstring SetChannelNow(const std::wstring& channel) {
+    if (channel.empty()) return std::wstring();
+    HWND gw2 = FindGw2Window(GetCurrentProcessId());
+    if (!gw2) return Tr(L"GW2 window not found");
+    const ChatSplit split = SplitChatCommand(channel + L"x");  // a body, so the name is told apart
+    const size_t sp = channel.find(L' ');
+    const std::wstring command = channel.substr(0, sp);
+    std::wstring name = sp == std::wstring::npos ? std::wstring() : Trim(split.prefix.substr(sp + 1));
+    if (!name.empty() && name.back() == L',') name.pop_back();
+    const MumbleState ms = g_mumbleWorker ? g_mumbleWorker->Read() : MumbleState{};
+    const SendOutcome out = SetGw2Channel(gw2, command, Trim(name), SendTiming(), ms.live ? g_mumbleWorker : nullptr,
+                                          &KeysReachGame);
+    std::lock_guard<std::mutex> lock(g_mu);
+    g_lastSendTrace = out.trace;
+    if (!out.ok) return out.error;
+    g_syncedChannel = channel;
+    return std::wstring();
+}
+
+void SyncChannelJob(std::wstring channel) {  // the channel was chosen in the window (worker)
+    if (!FindGw2Window(GetCurrentProcessId())) return;  // no game (a test host): nothing to set
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        if (g_test.noSend || channel != ComposePrefix()) return;  // the self-test; or chosen again meanwhile
+        g_sending = true;  // your input waits with the keyboard; what you type meanwhile is kept for it
+        g_bufferHadInputFocus = g_inputActive || g_focusInput;
+        g_bufferingStartTime = GetTickCount64();
+        g_bufferingKeys = true;
+    }
+    g_letGoKeyboard = true;
+    for (int i = 0; i < 50 && !g_keyboardFree; ++i) Sleep(10);
+    const std::wstring error = SetChannelNow(channel);
+    std::lock_guard<std::mutex> lock(g_mu);
+    g_sending = false;
+    g_bufferingStartTime = GetTickCount64();
+    if (g_bufferHadInputFocus) g_focusInput = true;  // the keyboard back to your input
+    if (!error.empty()) SetStatus(error, 8000);
+}
+}  // namespace
+
+void RequestChannelSync() {  // g_mu held
+    const std::wstring channel = ComposePrefix();
+    if (channel.empty()) return;  // "Active channel": GW2's own, nothing to set
+    g_worker.Post([channel] { SyncChannelJob(channel); });
+}
+
+void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring learnText, std::wstring channel) {
     AssertNotInteractiveLane("SendNow");
     {  // what you typed, for your own line when it comes back translated (memory only, the last ones)
         const ChatSplit own = SplitChatCommand(typed);
@@ -517,26 +594,22 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
     // ImGui must let go of the keyboard first, else our own input line would eat the keys.
     for (int i = 0; i < 50 && !g_keyboardFree; ++i) Sleep(10);
     HWND gw2 = FindGw2Window(GetCurrentProcessId());
-    SendOptions so;
-    {
-        std::lock_guard<std::mutex> lock(g_mu);
-        so = g_cfg.send;
-    }
-    if (so.autoTiming) {
-        const int fps = g_fps;
-        if (fps > 0) {
-            const int action = std::clamp(1000 / std::max(fps, 10) + 10, 15, 1010);
-            so.keyHoldMs = action;
-            so.stepDelayMs = action;
-        }
-    } else if (const int fps = g_fps; fps > 0 && so.keyHoldMs == 30) {  // GW2 reads the keyboard once per frame
-        const int action = std::clamp(1000 / std::max(fps, 10) + 10, 15, 1010);
-        so.keyHoldMs = action;
-        if (so.stepDelayMs == 80) so.stepDelayMs = action;
-    }
+    const SendOptions so = SendTiming();
     std::wstring error;
     bool ok = gw2 != nullptr;
     if (!gw2) error = Tr(L"GW2 window not found");
+    bool copyOnlyNow;
+    std::wstring synced;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        copyOnlyNow = g_cfg.copyOnly;
+        synced = g_syncedChannel;
+    }
+    // GW2's line not (or no longer) in the channel of your Enter: set first – then the message is only pasted
+    if (ok && !copyOnlyNow && !channel.empty() && channel != synced) {
+        error = SetChannelNow(channel);
+        ok = error.empty();
+    }
     bool copyOnly;
     {
         std::lock_guard<std::mutex> lock(g_mu);
@@ -552,13 +625,7 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
     for (const std::wstring& part : parts) {
         if (!ok) break;
         const MumbleState ms = g_mumbleWorker ? g_mumbleWorker->Read() : MumbleState{};
-        const SendOutcome out = SendToGw2Chat(gw2, part, so, ms.live ? g_mumbleWorker : nullptr,
-                                              [] {
-                                                  // asked before every key: a send that moves on keeps your keys in the
-                                                  // buffer however long it takes; one that hangs frees them after 3 s
-                                                  g_bufferingStartTime = GetTickCount64();
-                                                  return g_keyboardFree.load();
-                                              });
+        const SendOutcome out = SendToGw2Chat(gw2, part, so, ms.live ? g_mumbleWorker : nullptr, &KeysReachGame);
         {
             std::lock_guard<std::mutex> lock(g_mu);
             g_lastSendTrace = out.trace;
@@ -625,7 +692,11 @@ void StartSend() {  // Enter (g_mu held)
     }
     const ChatSplit split = SplitChatCommand(text);
     const std::wstring body = split.prefix.empty() ? text : split.body;
-    const std::wstring prefix = split.prefix.empty() ? ComposePrefix() : split.prefix;
+    // A channel command you typed yourself goes into the message (typed there); the channel chosen in the window is
+    // GW2's line's already (set when chosen, or right before this message) – the message is only pasted.
+    const std::wstring prefix = split.prefix;
+    const std::wstring channel = split.prefix.empty() ? ComposePrefix() : std::wstring();
+    if (!split.prefix.empty()) g_syncedChannel.clear();  // your own command switches GW2's line
     // A command line goes as it is, at once: "/wiki", "/dance", "/wiki Tequatl", "/sqjoin Name", or a channel command
     // without a message – nothing to translate, nothing to wait for, nothing learned ("/wiki" alone hung on
     // "translating and sending …" and was never sent, 2026-10-27).
@@ -670,16 +741,16 @@ void StartSend() {  // Enter (g_mu held)
     g_undo.active = false;
     ImGui::SetWindowFocus(nullptr);  // let go of the keyboard: the keys must reach the game
     if (!Translating() && !swapped) {
-        g_worker.PostFront([parts = SplitForChat(body, prefix, static_cast<size_t>(g_cfg.maxLength)), text, body] {
-            SendNow(parts, text, body);
+        g_worker.PostFront([parts = SplitForChat(body, prefix, static_cast<size_t>(g_cfg.maxLength)), text, body, channel] {
+            SendNow(parts, text, body, channel);
         });
     } else if (g_previewGen == g_inputGen && !g_preview.empty()) {
-        g_worker.PostFront([parts = SplitForChat(g_preview, prefix, static_cast<size_t>(g_cfg.maxLength)), text, body] {
-            SendNow(parts, text, body);
+        g_worker.PostFront([parts = SplitForChat(g_preview, prefix, static_cast<size_t>(g_cfg.maxLength)), text, body, channel] {
+            SendNow(parts, text, body, channel);
         });
     } else {  // the translation is not there yet: sent when it arrives
         g_sendPending = true;
-        g_pendingSend = {g_pendingSend.id + 1, prefix, SendLang(), Translating(), SwapsNames()};
+        g_pendingSend = {g_pendingSend.id + 1, prefix, SendLang(), channel, Translating(), SwapsNames()};
         SetStatus(Tr(L"translating and sending …"), 0);
         g_worker.PostFront([gen = g_inputGen, text, id = g_pendingSend.id] { TranslateInput(gen, text, id); });
     }

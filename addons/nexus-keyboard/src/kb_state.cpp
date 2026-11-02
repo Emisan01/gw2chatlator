@@ -94,6 +94,8 @@ bool g_mapOpen = false;  // MumbleLink: the world map is open – the window ste
 uint64_t g_previewGen = 0;
 bool g_sendPending = false;  // Enter before the translation was there
 PendingSend g_pendingSend;
+std::wstring g_syncedChannel;
+std::atomic<bool> g_letGoKeyboard{false};
 std::wstring g_status;
 ULONGLONG g_statusUntil = 0;
 TypingHelp g_help;

@@ -521,6 +521,7 @@ void RenderFooter() {  // g_mu held
                 g_channel = c;
                 if (c != Channel::Whisper) g_whisperTo.clear();
                 g_focusInput = true;
+                RequestChannelSync();  // GW2's line follows – every click, also on the channel already chosen
                 ImGui::CloseCurrentPopup();
             }
             ImGui::PopStyleColor();
@@ -672,6 +673,7 @@ void RenderWindow() {
         std::lock_guard<std::mutex> lock(g_mu);
         ProcessBufferedKeys();
     }
+    if (g_letGoKeyboard.exchange(false)) ImGui::SetWindowFocus(nullptr);  // the worker types into GW2 now
     bool escReq = false;
     {
         std::lock_guard<std::mutex> lock(g_mu);
@@ -1069,7 +1071,10 @@ void RenderWindow() {
                                           c == t.write)) {
                         t.write = c;
                         changed = true;
-                        if (g_activeTab == i) g_channel = c;
+                        if (g_activeTab == i) {
+                            g_channel = c;
+                            RequestChannelSync();
+                        }
                     }
                 ImGui::EndCombo();
             }

@@ -208,6 +208,7 @@ void OpenWhisperTab(const std::wstring& name) {
     g_channel = Channel::Whisper;
     g_whisperTo = g_tabs[at].name;
     g_focusInput = true;
+    RequestChannelSync();  // GW2's line: whisper to this player
     ++g_inputGen;  // translated again for this player
     g_inputChanged = GetTickCount64();
 }
@@ -220,6 +221,7 @@ void ActivateCustomTab(int i, bool focus) {  // focus: the input takes the keybo
     g_channel = t.write;
     g_whisperTo.clear();
     g_sendOverride = t.sendLang;
+    RequestChannelSync();  // GW2's line: this tab's channel (none for "Active channel")
     if (focus) g_focusInput = true;
     ++g_inputGen;
     g_inputChanged = GetTickCount64();

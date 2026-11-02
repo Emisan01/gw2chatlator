@@ -48,6 +48,11 @@ HWND FindGw2Window(DWORD processId = 0);
 SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOptions& opt, MumbleLink* mumble = nullptr,
                           bool (*keysReachGame)() = nullptr);
 
+// The channel alone, when you choose it: opens GW2's chat line, types the channel command ("/m", "/w" + `name`) and
+// closes the line again (Esc) – GW2 keeps that channel, so a message after it is only opened, pasted and sent.
+SendOutcome SetGw2Channel(HWND owner, const std::wstring& command, const std::wstring& name, const SendOptions& opt,
+                          MumbleLink* mumble = nullptr, bool (*keysReachGame)() = nullptr);
+
 // SetForegroundWindow with a fallback for the foreground lock (a synthetic
 // Alt tap, delivered to whichever window is in front — never needed while
 // this process is in front). `allowAltTap = false` never synthesizes input.

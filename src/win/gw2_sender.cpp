@@ -228,8 +228,21 @@ bool BringToFront(HWND hwnd, bool allowAltTap) {
     return false;
 }
 
-SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOptions& opt, MumbleLink* mumble,
-                          bool (*keysReachGame)()) {
+namespace {
+// One run of keys into GW2's chat line. Two disciplines, kept apart:
+//  - the channel (SetGw2Channel, when you choose it in our window): open the line, the channel command ("/m", "/w" +
+//    the name), close it again – GW2 keeps that channel for its next line;
+//  - the message (SendToGw2Chat): open the line, paste, Enter – no command in between.
+// A command you typed yourself ("/p hello", "/wiki Tequatl") goes as before: typed, then the text.
+struct Job {
+    std::wstring command;      // a channel command that switches GW2's line ("/m", "/w"), else empty
+    std::wstring name;         // the whisper name after "/w"
+    std::wstring message;      // pasted, then Enter
+    std::wstring typed;        // a whole command typed and run ("/wiki Tequatl")
+    bool channelOnly = false;  // switch the line and close it again (Esc): the channel stays for the next message
+};
+
+SendOutcome Run(HWND owner, const Job& job, const SendOptions& opt, MumbleLink* mumble, bool (*keysReachGame)()) {
     SendOutcome r;
     MumbleState ms = mumble ? mumble->Read() : MumbleState{};
     HWND gw2 = FindGw2Window(ms.live ? ms.processId : 0);
@@ -241,14 +254,8 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
         r.error = Tr(L"A key is still held down – nothing sent");
         return r;
     }
-
     std::vector<SavedFormat> saved;
     if (!SaveClipboard(owner, saved)) {
-        r.error = Tr(L"The clipboard is blocked");
-        return r;
-    }
-    if (!SetClipboardText(owner, text)) {
-        RestoreClipboard(owner, saved);
         r.error = Tr(L"The clipboard is blocked");
         return r;
     }
@@ -298,31 +305,22 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
         Sleep(opt.stepDelayMs);
     }
 
-    // Every message starts from the same state, whatever GW2's own chat was doing – shut or open, any channel, a draft,
-    // a whisper already addressed, any of its chat tabs: its line shut → Enter opens it → what it still holds goes → the
-    // channel command typed → the message pasted → Enter. Before every key the state is read again (MumbleLink is
-    // GW2's shared memory, written every frame: a change shows within one frame): GW2 in front, our window not holding
-    // the keyboard, and once the line is open, GW2's line still has the keyboard. Anything else and not one key more:
-    // a key outside the line is a game action, and a Tab outside the whisper name switches GW2's own chat tab, whose
-    // empty line then sends the message in its channel (live 2026-11-02: a whisper went out in Say).
-    // What MumbleLink cannot tell: the channel, and whether the whisper name field has the cursor. That is why the line
-    // is emptied before the command – a command typed behind other text is no command.
+    // Before every key the state is read again (MumbleLink is GW2's shared memory, written every frame): GW2 in front,
+    // our window not holding the keyboard, and once the line is open, GW2's line still has the keyboard. Anything else
+    // and not one key more: a key outside the line is a game action.
     const bool watched = ms.live;  // without MumbleLink: the window focus only, and the set pauses
     auto lineHasKeys = [&] {
         const MumbleState s = mumble->Read();
         return s.live && s.TextboxHasFocus();
     };
-    // the reason the next key would not land in GW2's chat line; empty: go on
-    auto lost = [&](bool needLine) -> std::wstring {
+    auto lost = [&](bool needLine) -> std::wstring {  // why the next key would not land in GW2's line; empty: go on
         if (GetForegroundWindow() != gw2) return Tr(L"Focus lost – cancelled");
         if (keysReachGame && !keysReachGame()) return Tr(L"Our window took the keyboard – cancelled");
         if (needLine && watched && !lineHasKeys()) return Tr(L"GW2's chat line closed – cancelled");
         return std::wstring();
     };
     // after a key: the pause between keys (Send timing: automatic one frame + 10 ms, or yours) – and at least two more
-    // frames of GW2 (MumbleLink's frame counter). The counter alone was too short: GW2 bumps it more often than it
-    // switches its line into the whisper mode, the name came before the name field and the Tab switched GW2's chat tab
-    // (live 2026-11-02); the pause had held since 2.7.1 (2026-10-29: without it name and text swapped or cut).
+    // frames of GW2 (MumbleLink's frame counter)
     auto settle = [&] {
         WaitForTargetToDrain(gw2, 1000);
         const uint32_t from = watched ? mumble->Read().uiTick : 0;
@@ -330,13 +328,22 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
         if (!watched) return;
         for (int waited = 0; waited < 1000 && mumble->Read().uiTick - from < 2; waited += 5) Sleep(5);
     };
+    auto paste = [&](const std::wstring& what, const wchar_t* step) -> std::wstring {
+        if (!SetClipboardText(owner, what)) return Tr(L"The clipboard is blocked");
+        std::wstring why = lost(true);
+        if (!why.empty()) return why;
+        CtrlTap('V', opt.keyHoldMs);
+        note(step);
+        settle();
+        return std::wstring();
+    };
     std::wstring why;
     if (!(why = lost(false)).empty()) return finish(why);
     injected = true;
     note(L"start");
 
-    // 1. GW2's line shut. Esc only while MumbleLink says a text box of GW2 has the keyboard: then Esc closes that and
-    //    nothing else (never the game menu).
+    // 1. Open: GW2's line shut first (Esc only while MumbleLink says a text box of GW2 has the keyboard – then Esc closes
+    //    that and never the game menu), then Enter, and on only once GW2 says the line has the keyboard.
     for (int i = 0; i < 2 && watched && lineHasKeys(); ++i) {
         if (!(why = lost(false)).empty()) return finish(why);
         Tap(VK_ESCAPE, opt.keyHoldMs);
@@ -345,8 +352,6 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
         note(L"Esc");
     }
     if (watched && lineHasKeys()) return finish(Tr(L"GW2's chat line does not close – nothing sent"));
-
-    // 2. Enter opens it fresh – typed on only once GW2 says the line has the keyboard.
     if (!(why = lost(false)).empty()) return finish(why);
     const ULONGLONG t0 = GetTickCount64();
     Tap(VK_RETURN, opt.keyHoldMs);
@@ -361,15 +366,11 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
     }
     settle();
 
-    // 3. No Ctrl+A to empty the line: GW2's chat line does not select with it – a control character stayed in front,
-    //    "/w " behind it was no command, and the Tab meant for the name switched GW2's chat tab (live 2026-11-02, a
-    //    whisper in Say from a shut line in Say). How GW2 empties a draft is open (Esc above closes the line).
-
-    // 4. Any other command ("/wiki Tequatl", "/dance", "/sqjoin Name") is typed whole: GW2 runs a typed command, a
-    //    pasted one lost its command word.
-    if (IsPlainCommand(text)) {
+    // A command typed whole ("/wiki Tequatl", "/dance", "/sqjoin Name"): GW2 runs a typed command, a pasted one lost
+    // its command word.
+    if (!job.typed.empty()) {
         if (!(why = lost(true)).empty()) return finish(why);
-        TypeText(text, opt.keyHoldMs);
+        TypeText(job.typed, opt.keyHoldMs);
         note(L"command");
         settle();
         if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – the text may still be in the chat line"));
@@ -382,58 +383,39 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
         if (!r.confirmedByGame) Sleep(opt.stepDelayMs);
         return finish(std::wstring());
     }
-    // A channel command ("/w Name, text", "/p text") is typed the way a person does it: GW2 only switches the channel
-    // when it sees the command typed – pasted, the whole line was sent as text. For a whisper the name is then the
-    // address (confirmed with Tab), and only the message is pasted.
-    std::wstring message = text;
-    if (!text.empty() && text[0] == L'/') {
-        const ChatSplit split = SplitChatCommand(text);
-        const size_t sp = text.find(L' ');
-        if (!split.prefix.empty() && sp != std::wstring::npos) {
-            const std::wstring command = text.substr(0, sp + 1);  // "/w "
-            std::wstring recipient = Trim(split.prefix.substr(command.size()));
-            if (!recipient.empty() && recipient.back() == L',') recipient.pop_back();
-            recipient = Trim(recipient);
+
+    // 2. The channel: the command as characters, then the Space as a real key – GW2 switches its line on the Space key
+    //    a person presses (a typed space character left "/w" plain text). For a whisper the name is pasted whole into
+    //    the name field (typed letter by letter, GW2's name suggestion ate it) and Tab takes it and moves to the text.
+    if (!job.command.empty()) {
+        if (!(why = lost(true)).empty()) return finish(why);
+        TypeText(job.command, opt.keyHoldMs);
+        note(job.command.c_str());
+        settle();
+        if (!(why = lost(true)).empty()) return finish(why);
+        Tap(VK_SPACE, opt.keyHoldMs);
+        note(L"Space");
+        settle();
+        if (!job.name.empty()) {
+            if (!(why = paste(job.name, L"name")).empty()) return finish(why);
             if (!(why = lost(true)).empty()) return finish(why);
-            // "/w" as characters, then the Space as a real key: GW2 switches its line into the whisper mode (name field)
-            // on the Space key a person presses – a typed space character left "/w" plain text in the line, so the
-            // name and the Tab after it went nowhere (the Tab switched GW2's chat tab, the message went to Say; live
-            // 2026-11-02 – by hand "/w" only switches with the Space key).
-            TypeText(Trim(command), opt.keyHoldMs);
-            note(Trim(command).c_str());
-            settle();  // "/w" in the line before the Space comes – each key in a frame of its own
-            if (!(why = lost(true)).empty()) return finish(why);
-            Tap(VK_SPACE, opt.keyHoldMs);
-            note(L"Space");
-            settle();  // GW2 switches the line into the whisper mode after "/w "
-            if (!recipient.empty()) {
-                // The address is pasted whole, not typed: GW2's name field offers a partner you whispered before from the
-                // first letters on and marks the rest of the name – typed letter by letter, the space deleted that mark
-                // and the name came out wrong, and the Tab then switched GW2's chat tab instead of taking the name (live
-                // 2026-11-02, "Ted Manara"). Pasted it stands as one piece; Tab takes it and moves on to the text. The
-                // clipboard gets the message only after GW2 took the name (the pause and two frames below: without
-                // pauses name and text once came swapped, 2026-10-29).
-                if (!SetClipboardText(owner, recipient)) return finish(Tr(L"The clipboard is blocked"));
-                if (!(why = lost(true)).empty()) return finish(why);
-                CtrlTap('V', opt.keyHoldMs);
-                note(L"name");
-                settle();
-                if (!(why = lost(true)).empty()) return finish(why);
-                Tap(VK_TAB, opt.keyHoldMs);  // confirm it: the cursor moves to the message
-                note(L"Tab");
-                settle();
-            }
-            message = split.body;
-            if (!SetClipboardText(owner, message)) return finish(Tr(L"The clipboard is blocked"));
+            Tap(VK_TAB, opt.keyHoldMs);
+            note(L"Tab");
+            settle();
         }
     }
 
-    // 5. The message pasted, then sent.
-    if (!(why = lost(true)).empty()) return finish(why);
-    CtrlTap('V', opt.keyHoldMs);
-    note(L"Ctrl+V");
-    settle();  // the pasted text must be in the line before Enter
+    // 3. Close (the channel alone): Esc – the line keeps its channel for the next message.
+    if (job.channelOnly) {
+        if (!(why = lost(true)).empty()) return finish(why);
+        Tap(VK_ESCAPE, opt.keyHoldMs);
+        r.confirmedByGame = textbox(false, std::max(1000, 8 * opt.keyHoldMs));
+        note(L"Esc");
+        return finish(std::wstring());
+    }
 
+    // 3. The message pasted, then sent.
+    if (!(why = paste(job.message, L"Ctrl+V")).empty()) return finish(why);
     if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – the text may still be in the chat line"));
     if (!(why = lost(true)).empty()) return finish(why);
     const ULONGLONG tSend = GetTickCount64();
@@ -443,6 +425,36 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
     if (r.confirmedByGame) r.confirmMs = static_cast<int>(GetTickCount64() - tSend);
     if (!r.confirmedByGame) Sleep(opt.stepDelayMs);
     return finish(std::wstring());
+}
+}  // namespace
+
+SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOptions& opt, MumbleLink* mumble,
+                          bool (*keysReachGame)()) {
+    Job job;
+    job.message = text;
+    if (IsPlainCommand(text)) {
+        job.typed = text;
+    } else if (!text.empty() && text[0] == L'/') {  // a channel command you typed yourself ("/p hello", "/w Name, hi")
+        const ChatSplit split = SplitChatCommand(text);
+        const size_t sp = text.find(L' ');
+        if (!split.prefix.empty() && sp != std::wstring::npos) {
+            job.command = text.substr(0, sp);
+            std::wstring name = Trim(split.prefix.substr(sp + 1));
+            if (!name.empty() && name.back() == L',') name.pop_back();
+            job.name = Trim(name);
+            job.message = split.body;
+        }
+    }
+    return Run(owner, job, opt, mumble, keysReachGame);
+}
+
+SendOutcome SetGw2Channel(HWND owner, const std::wstring& command, const std::wstring& name, const SendOptions& opt,
+                          MumbleLink* mumble, bool (*keysReachGame)()) {
+    Job job;
+    job.command = command;
+    job.name = name;
+    job.channelOnly = true;
+    return Run(owner, job, opt, mumble, keysReachGame);
 }
 
 }  // namespace gct

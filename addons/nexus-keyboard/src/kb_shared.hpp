@@ -384,7 +384,8 @@ extern uint64_t g_previewGen;
 extern bool g_sendPending;
 struct PendingSend {  // an Enter waiting for its translation: its channel and language as they were then (g_mu)
     uint64_t id = 0;
-    std::wstring prefix, target;
+    std::wstring prefix, target;  // prefix: a channel command you typed yourself
+    std::wstring channel;         // the channel chosen in the window at your Enter (GW2's line is set to it)
     bool translating = false, swapping = false;
 };
 extern PendingSend g_pendingSend;
@@ -537,7 +538,12 @@ int TranslateRecentLines(bool once = false);
 std::wstring TranslatorTag(const std::shared_ptr<Translator>& tr, int beam);
 void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId = 0);  // sendId: g_pendingSend's
 void ComputeTyping();
-void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring learnText);
+void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring learnText, std::wstring channel = {});
+// GW2's own chat line follows the channel you choose here (footer, a whisper tab, a tab of your own): set once when
+// you choose it – again with every click on it – and a message then only opens the line, pastes and sends.
+extern std::wstring g_syncedChannel;  // the channel ("/m ", "/w Name, ") we last set in GW2's line; "" unknown (g_mu)
+extern std::atomic<bool> g_letGoKeyboard;  // the worker needs the keyboard for GW2: our window lets go (game thread)
+void RequestChannelSync();  // the channel was chosen: GW2's line follows (g_mu held)
 
 }  // namespace kb
 #include "kb_voice_helper.hpp"
