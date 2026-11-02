@@ -358,6 +358,21 @@ void RenderChatSourceNotice() {  // the chat area (g_mu held): only while readin
     ImGui::PopID();
 }
 
+void RenderFrameTimings() {  // what we cost on GW2's render thread – the parts add up to the whole
+    const FrameCosts c = CostsNow();
+    static Steady s_total, s_part[6];  // smoothed, shown 4 times a second
+    auto ms = [](double v) {
+        wchar_t b[16];
+        swprintf_s(b, L"%.3f", v);
+        return std::wstring(b);
+    };
+    ImGui::TextWrapped("%s", UI(TrF(L"Our frame: {1} ms – window {2}, header {3}, chat {4}, input {5}, footer {6}, options {7}",
+                                    {ms(s_total(c.totalMs)), ms(s_part[0](c.ms[kCostWindow] + c.ms[kCostPre])),
+                                     ms(s_part[1](c.ms[kCostHeader])), ms(s_part[2](c.ms[kCostChat])),
+                                     ms(s_part[3](c.ms[kCostInput])), ms(s_part[4](c.ms[kCostFooter])),
+                                     ms(s_part[5](c.ms[kCostOptions]))})).c_str());
+}
+
 void RenderChatSourceDetails() {  // Options > Technical (g_mu held): for the developer
     const View v = StateView();
     std::wstring version, before;
@@ -378,20 +393,11 @@ void RenderChatSourceDetails() {  // Options > Technical (g_mu held): for the de
     StatusRow(UI(Tr(L"Reading")), v.level, UI(v.text));
     ImGui::Text("%s", UI(TrF(L"Lines: {1} shown, {2} dropped, {3} unreadable",
                              {std::to_wstring(shown), std::to_wstring(dropped), std::to_wstring(unreadable)})).c_str());
-    {  // what we cost on GW2's render thread – the parts add up to the whole
-        const FrameCosts c = CostsNow();
-        static Steady s_total, s_part[6], s_line;  // smoothed, shown 4 times a second
-        auto ms = [](double v) {
-            wchar_t b[16];
-            swprintf_s(b, L"%.3f", v);
-            return std::wstring(b);
-        };
-        ImGui::Text("%s", UI(TrF(L"Our frame: {1} ms – window {2}, header {3}, chat {4}, input {5}, footer {6}, options {7}",
-                                 {ms(s_total(c.totalMs)), ms(s_part[0](c.ms[kCostWindow] + c.ms[kCostPre])),
-                                  ms(s_part[1](c.ms[kCostHeader])), ms(s_part[2](c.ms[kCostChat])),
-                                  ms(s_part[3](c.ms[kCostInput])), ms(s_part[4](c.ms[kCostFooter])),
-                                  ms(s_part[5](c.ms[kCostOptions]))})).c_str());
-        ImGui::Text("%s", UI(TrF(L"Per chat line: {1} µs", {ms(s_line(c.lineUs))})).c_str());
+    {  // what one chat line costs (the whole frame: Status > Timings)
+        static Steady s_line;  // smoothed, shown 4 times a second
+        wchar_t b[16];
+        swprintf_s(b, L"%.3f", s_line(CostsNow().lineUs));
+        ImGui::Text("%s", UI(TrF(L"Per chat line: {1} µs", {b})).c_str());
     }
     Buttons(v, true);
     ImGui::SameLine();

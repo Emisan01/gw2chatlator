@@ -1285,6 +1285,10 @@ extern const I18nEntry kGermanStrings[] = {
      L"Zeilenabstand"},
     {L"optional",
      L"optional"},
+    {L"Timings",
+     L"Timings"},
+    {L"Frame timings",
+     L"Frame-Timings"},
 };
 extern const size_t kGermanCount = sizeof(kGermanStrings) / sizeof(kGermanStrings[0]);
 

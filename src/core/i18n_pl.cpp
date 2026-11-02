@@ -1285,6 +1285,10 @@ extern const I18nEntry kPolishStrings[] = {
      L"Odstęp wierszy"},
     {L"optional",
      L"opcjonalnie"},
+    {L"Timings",
+     L"Czasy"},
+    {L"Frame timings",
+     L"Czasy klatki"},
 };
 extern const size_t kPolishCount = sizeof(kPolishStrings) / sizeof(kPolishStrings[0]);
 

@@ -1351,7 +1351,9 @@ void RenderWindow() {
                 if (!l.speaker.empty()) {
                     // Under its name one space in: one item, its wrapped lines start one space from the left, its first
                     // line padded past the name – so it measures and wraps like any line (a width change is exact).
-                    const float sp = std::max(1.0f, ImGui::CalcTextSize(" ").x);
+                    // a space as it is drawn (ImGui::CalcTextSize rounds it up to a whole pixel: the padding fell short
+                    // of a long name by its last letters, and the text covered the colon)
+                    const float sp = std::max(1.0f, ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, 0.0f, " ").x);
                     const float hang = ImGui::GetCursorPosX() - rowX;  // the name and its space
                     const int pads = std::max(0, static_cast<int>(std::ceil((hang - sp) / sp)));
                     ImGui::SetCursorPosX(rowX + sp);

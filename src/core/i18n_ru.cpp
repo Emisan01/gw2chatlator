@@ -1285,6 +1285,10 @@ extern const I18nEntry kRussianStrings[] = {
      L"Межстрочный интервал"},
     {L"optional",
      L"необязательно"},
+    {L"Timings",
+     L"Тайминги"},
+    {L"Frame timings",
+     L"Время кадра"},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

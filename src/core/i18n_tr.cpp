@@ -1285,6 +1285,10 @@ extern const I18nEntry kTurkishStrings[] = {
      L"Satır aralığı"},
     {L"optional",
      L"isteğe bağlı"},
+    {L"Timings",
+     L"Zamanlamalar"},
+    {L"Frame timings",
+     L"Kare süreleri"},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

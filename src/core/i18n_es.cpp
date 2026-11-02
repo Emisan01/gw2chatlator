@@ -1285,6 +1285,10 @@ extern const I18nEntry kSpanishStrings[] = {
      L"Interlineado"},
     {L"optional",
      L"opcional"},
+    {L"Timings",
+     L"Tiempos"},
+    {L"Frame timings",
+     L"Tiempos por fotograma"},
 };
 extern const size_t kSpanishCount = sizeof(kSpanishStrings) / sizeof(kSpanishStrings[0]);
 

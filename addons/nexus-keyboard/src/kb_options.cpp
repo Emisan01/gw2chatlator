@@ -1707,9 +1707,22 @@ void RenderTechnicalPage(Config& edit) {
         ImGui::Text("%s", UI(TrF(L"Chat history buffer: {1} / {2} lines (~{3} MB RAM)",
                                  {std::to_wstring(nLines), std::to_wstring(kMaxLines), ramBuf})).c_str());
     }
-    EndBox();
+    {  // Timings, the box's last rows under a line of their own: what our frame costs, how keys are sent – both folded
+        const float fs = ImGui::GetFontSize();
+        ImGui::Dummy(ImVec2(0.0f, fs * 0.3f));
+        ImGui::TextDisabled("%s", UI(Tr(L"Timings")).c_str());
+        const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
+        const float right = std::floor(ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x - fs * 0.75f);
+        const float y = std::floor((a.y + b.y) * 0.5f);
+        if (right > b.x + fs * 0.4f)
+            ImGui::GetWindowDrawList()->AddLine(ImVec2(b.x + fs * 0.4f, y), ImVec2(right, y), ImGui::GetColorU32(ImGuiCol_Separator));
+    }
+    if (ImGui::TreeNode(UI(Tr(L"Frame timings") + L"###frametimings").c_str())) {
+        RenderFrameTimings();
+        ImGui::TreePop();
+    }
     // The send timing: automatic fits nearly everyone, so the manual values stay folded up.
-    if (ImGui::CollapsingHeader(UI(Tr(L"Send timing (advanced)") + L"###sendtiming").c_str())) {
+    if (ImGui::TreeNode(UI(Tr(L"Send timing (advanced)") + L"###sendtiming").c_str())) {
         Switch("autotiming", UI(Tr(L"Automatic timing (FPS-adapted)")), &edit.send.autoTiming);
         Hint(UI(Tr(L"Calculates key hold and step delays dynamically based on the game's current framerate.")));
         const int oldHold = edit.send.keyHoldMs;
@@ -1722,7 +1735,9 @@ void RenderTechnicalPage(Config& edit) {
             edit.send.autoTiming = false;
         edit.send.keyHoldMs = std::clamp(edit.send.keyHoldMs, 10, 500);
         edit.send.stepDelayMs = std::clamp(edit.send.stepDelayMs, 10, 1000);
+        ImGui::TreePop();
     }
+    EndBox();
     ImGui::Spacing();
     RenderRemoveEverything();  // once, at the very bottom
 }

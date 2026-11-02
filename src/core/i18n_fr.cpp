@@ -1285,6 +1285,10 @@ extern const I18nEntry kFrenchStrings[] = {
      L"Interligne"},
     {L"optional",
      L"facultatif"},
+    {L"Timings",
+     L"Durées"},
+    {L"Frame timings",
+     L"Durées par image"},
 };
 extern const size_t kFrenchCount = sizeof(kFrenchStrings) / sizeof(kFrenchStrings[0]);
 

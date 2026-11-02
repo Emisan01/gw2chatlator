@@ -1285,6 +1285,10 @@ extern const I18nEntry kItalianStrings[] = {
      L"Interlinea"},
     {L"optional",
      L"facoltativo"},
+    {L"Timings",
+     L"Tempi"},
+    {L"Frame timings",
+     L"Tempi per frame"},
 };
 extern const size_t kItalianCount = sizeof(kItalianStrings) / sizeof(kItalianStrings[0]);
 

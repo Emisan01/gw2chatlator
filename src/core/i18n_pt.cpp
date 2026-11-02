@@ -1285,6 +1285,10 @@ extern const I18nEntry kPortugueseStrings[] = {
      L"Espaçamento entre linhas"},
     {L"optional",
      L"opcional"},
+    {L"Timings",
+     L"Tempos"},
+    {L"Frame timings",
+     L"Tempos por quadro"},
 };
 extern const size_t kPortugueseCount = sizeof(kPortugueseStrings) / sizeof(kPortugueseStrings[0]);
 

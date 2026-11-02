@@ -18,6 +18,7 @@ void ChatSourceResume();
 std::string ChatSourceProtocolText();
 void RenderChatSourceNotice();   // g_mu held
 void RenderChatSourceDetails();  // g_mu held (Options > Technical)
+void RenderFrameTimings();       // Options > Technical > Status: what our frame costs
 void ChatSourceTestState(ChatSourceTest* t);
 
 }  // namespace kb
