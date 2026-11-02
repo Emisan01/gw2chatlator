@@ -455,6 +455,7 @@ extern std::atomic<bool> g_bufferingKeys;
 extern std::atomic<ULONGLONG> g_bufferingStartTime;
 extern std::atomic<bool> g_sendInFlight;
 extern std::atomic<bool> g_bufferHadInputFocus;
+int BufferSafetyMs();  // how long kept keys wait for a send that stopped moving (kb_state.cpp)
 extern std::atomic<ULONGLONG> g_lastRenderFrameTime;
 
 extern std::string g_voicePending;
@@ -559,6 +560,7 @@ void SaveCustomTabs();
 void LoadCustomTabs();
 int NewCustomTab();
 void LeaveWhisperTab();
+void ForgetDraft(uint32_t uid);  // a tab closes: what you had started in it goes (g_mu held)
 void OnToggle(const char*, bool release);
 void OnFocusKey(const char*, bool release);
 

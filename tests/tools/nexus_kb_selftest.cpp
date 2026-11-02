@@ -1196,7 +1196,8 @@ int wmain(int argc, wchar_t** argv) {
     }
     // Keyboard buffer safety timeout test:
     // When sending is in flight (e.g. waiting for slow or unreachable translator), OnWndProc blocks movement keys.
-    // If 3000ms elapse, OnWndProc MUST stop swallowing keys, clear the buffer, and restore W/A/S/D without resetting g_sendInFlight.
+    // Once the safety window passed (BufferSafetyMs: up to 25 s while translating), OnWndProc MUST stop swallowing
+    // keys and restore W/A/S/D without resetting g_sendInFlight (the kept keys go into the input, never thrown away).
     auto testWndProc = reinterpret_cast<UINT (*)(HWND, UINT, WPARAM, LPARAM)>(GetProcAddress(dll, "Gw2KbTestWndProc"));
     if (ok && th && testWndProc && th->bufferingKeys && th->sendInFlight && th->bufferingStartTime) {
         *th->bufferingKeys = true;
@@ -1206,8 +1207,8 @@ int wmain(int argc, wchar_t** argv) {
         UINT resBlocked = testWndProc(nullptr, WM_KEYDOWN, 'W', 0);
         // 2. Keyup is passed through (returns WM_KEYUP)
         UINT resUp = testWndProc(nullptr, WM_KEYUP, 'W', 0);
-        // 3. Advance clock past the 3000ms limit (> 3000ms elapsed)
-        *th->bufferingStartTime = GetTickCount64() - 3500;
+        // 3. Advance the clock past the safety window
+        *th->bufferingStartTime = GetTickCount64() - 30000;
         // 4. Movement key 'W' (WM_KEYDOWN) MUST now pass through to GW2 (returns WM_KEYDOWN)
         UINT resAfterTimeout = testWndProc(nullptr, WM_KEYDOWN, 'W', 0);
         bool bufCleared = !th->bufferingKeys->load();

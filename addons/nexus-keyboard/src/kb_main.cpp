@@ -28,24 +28,21 @@ UINT OnWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
     // Tastenpuffer (Punkt 4b): vom Start des Sendens bis Fokus zurück im Eingabefeld alle Nutzertasten puffern
     if (g_bufferingKeys.load()) {
-        if (GetTickCount64() - g_bufferingStartTime.load() >= 3000) {
-            {
-                std::lock_guard<std::mutex> lock(g_keyBufferMu);
-                g_keyBuffer.clear();
-            }
+        // a send that stopped moving frees the keyboard; the keys kept so far still go into our input (game thread)
+        if (GetTickCount64() - g_bufferingStartTime.load() >= static_cast<ULONGLONG>(BufferSafetyMs())) {
             g_bufferingKeys = false;
             return msg;
         }
         if (msg == WM_CHAR) {
             std::lock_guard<std::mutex> lock(g_keyBufferMu);
-            g_keyBuffer.push_back({msg, wp, lp});
+            if (g_keyBuffer.size() < 2048) g_keyBuffer.push_back({msg, wp, lp});  // more than the input holds
             return 0;
         }
         const bool isDown = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
         if (isDown) {
             if (wp == VK_BACK || wp == VK_RETURN) {
                 std::lock_guard<std::mutex> lock(g_keyBufferMu);
-                g_keyBuffer.push_back({msg, wp, lp});
+                if (g_keyBuffer.size() < 2048) g_keyBuffer.push_back({msg, wp, lp});  // more than the input holds
             }
             return 0;  // Block game movement/skills while sending
         }

@@ -1,6 +1,9 @@
 // kb_chat.cpp — incoming chat, tabs, Events: Chat, chat codes and links.
 
 #include "kb_shared.hpp"
+#include "core/soft_wrap.hpp"
+
+#include <map>
 
 namespace kb {
 
@@ -130,6 +133,41 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
 
 // OnChatEvents: kb_chatsource.cpp (the guard between Events: Chat and us).
 
+// What you started in a tab and did not send stays in that tab: each tab shows its own text – a new one is empty – so
+// you can write in several channels side by side and switch back and forth; the chat tab keeps its own as well.
+// Memory only, never saved (g_mu held).
+namespace {
+constexpr uint32_t kChatDraft = 0xFFFFFFFFu, kNoDraft = 0xFFFFFFFEu;
+std::map<uint32_t, std::string> s_drafts;
+uint32_t s_draftOwner = kChatDraft;  // whose text the input shows
+
+void ShowDraftOf(uint32_t uid) {
+    if (uid == s_draftOwner) return;
+    if (s_draftOwner != kNoDraft) s_drafts[s_draftOwner] = g_input;
+    const std::string shown = Flat(g_input);
+    const auto it = s_drafts.find(uid);
+    const std::string next = it == s_drafts.end() ? std::string() : it->second;
+    strncpy_s(g_input, next.c_str(), _TRUNCATE);
+    s_draftOwner = uid;
+    if (g_inputActive) {  // the box keeps its own copy while it has the keyboard: replaced through its callback
+        g_edit.active = true;
+        g_edit.startByte = 0;
+        g_edit.lenBytes = shown.size();
+        g_edit.insert = Flat(next.c_str());
+    }
+    g_flatInput = Flat(g_input);
+    g_wFlatInput = W(g_flatInput);
+    g_historyPos = -1;
+    g_undo.active = false;
+    g_pick = -1;
+}
+}  // namespace
+
+void ForgetDraft(uint32_t uid) {
+    s_drafts.erase(uid);
+    if (s_draftOwner == uid) s_draftOwner = kNoDraft;  // the input showed that tab's text: kept nowhere
+}
+
 // A click on a name: that player's whisper tab (opened, or brought to the front); writing goes to them. g_mu held.
 void OpenWhisperTab(const std::wstring& name) {
     const std::wstring who = Trim(name);
@@ -143,6 +181,7 @@ void OpenWhisperTab(const std::wstring& name) {
         if (whispers >= kMaxWhisperTabs) {  // the oldest whisper tab goes
             const auto oldest = std::find_if(g_tabs.begin(), g_tabs.end(), [](const WhisperTab& t) { return !t.custom; });
             const int gone = static_cast<int>(oldest - g_tabs.begin());
+            ForgetDraft(oldest->uid);
             g_tabs.erase(oldest);
             if (g_activeTab > gone) --g_activeTab;
             else if (g_activeTab == gone) g_activeTab = -1;
@@ -164,6 +203,7 @@ void OpenWhisperTab(const std::wstring& name) {
     }
     g_sendOverride = g_tabs[at].sendLang;
     strncpy_s(g_test.sendLang, U8(g_sendOverride).c_str(), _TRUNCATE);
+    ShowDraftOf(g_tabs[at].uid);
     g_activeTab = g_selectTab = at;
     g_channel = Channel::Whisper;
     g_whisperTo = g_tabs[at].name;
@@ -175,6 +215,7 @@ void OpenWhisperTab(const std::wstring& name) {
 void ActivateCustomTab(int i, bool focus) {  // focus: the input takes the keyboard (not under its settings)
     WhisperTab& t = g_tabs[i];
     t.unread = false;
+    ShowDraftOf(t.uid);
     g_activeTab = g_selectTab = i;
     g_channel = t.write;
     g_whisperTo.clear();
@@ -249,6 +290,7 @@ int NewCustomTab() {  // a copy of the chat: every channel, writing into the act
 }
 
 void LeaveWhisperTab() {  // back to the whole chat, writing in the channel active in GW2 (g_mu held)
+    ShowDraftOf(kChatDraft);
     g_activeTab = -1;
     g_selectTab = -1;
     g_channel = Channel::Unknown;

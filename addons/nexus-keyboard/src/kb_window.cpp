@@ -41,15 +41,15 @@ bool g_ownMoving = false;      // shape only; a new mode ends it (a stale press 
 static const ImVec4 kAccent(0.94f, 0.75f, 0.35f, 1.f);
 
 void ProcessBufferedKeys() {
-    if (!g_bufferingKeys.load()) return;
-    if (GetTickCount64() - g_bufferingStartTime.load() >= 3000) {
+    // Your keys since a send let go of the keyboard go into our input once it is done – or once it stopped moving
+    // for longer than BufferSafetyMs. Never thrown away.
+    if (g_bufferingKeys.load()) {
+        const bool stalled = GetTickCount64() - g_bufferingStartTime.load() >= static_cast<ULONGLONG>(BufferSafetyMs());
+        if (!stalled && (g_sendInFlight.load() || g_sending)) return;
+    } else {
         std::lock_guard<std::mutex> lock(g_keyBufferMu);
-        g_keyBuffer.clear();
-        g_bufferingKeys = false;
-        g_bufferHadInputFocus = false;
-        return;
+        if (g_keyBuffer.empty()) return;  // else: kept keys of a send that stopped moving
     }
-    if (g_sendInFlight.load() || g_sending) return;
     std::vector<BufferedKey> keys;
     bool replayToInput = false;
     {
@@ -932,6 +932,7 @@ void RenderWindow() {
             ImGui::EndTabBar();
             if (close >= 0) {
                 const bool active = close == g_activeTab, custom = g_tabs[close].custom;
+                ForgetDraft(g_tabs[close].uid);
                 g_tabs.erase(g_tabs.begin() + close);
                 if (active) LeaveWhisperTab();
                 else if (close < g_activeTab) g_selectTab = --g_activeTab;
@@ -1073,6 +1074,7 @@ void RenderWindow() {
                 ImGui::EndCombo();
             }
             if (ImGui::Button(UI(Tr(L"Remove tab")).c_str())) {
+                ForgetDraft(g_tabs[i].uid);
                 g_tabs.erase(g_tabs.begin() + i);
                 if (g_activeTab == i) LeaveWhisperTab();
                 else if (i < g_activeTab) g_selectTab = --g_activeTab;

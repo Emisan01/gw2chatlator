@@ -140,6 +140,17 @@ std::atomic<bool> g_bufferingKeys{false};
 std::atomic<ULONGLONG> g_bufferingStartTime{0};
 std::atomic<bool> g_sendInFlight{false};
 std::atomic<bool> g_bufferHadInputFocus{false};
+// Once a send let go of the keyboard, everything you type is kept and goes into our input when it is done (up to
+// the input's 1023 bytes: more than five full GW2 lines). The safety counts from the send's last sign of life: while
+// it is translated, as long as a translator may take (an online one waits up to 20 s); while it is typed into GW2,
+// 60 of its steps at the game's frame rate, at least 3 s – each step renews it. A send that stops moving frees the
+// keyboard; the keys kept so far still go into our input.
+int BufferSafetyMs() {
+    if (!g_sending) return 25000;
+    const int fps = g_fps.load();
+    const int action = fps > 0 ? std::clamp(1000 / fps + 10, 15, 1010) : 60;  // one frame + 10 ms, as the send timing
+    return std::clamp(60 * action, 3000, 15000);
+}
 std::atomic<ULONGLONG> g_lastRenderFrameTime{0};
 
 void RequestAutoEnter(AutoEnterTrigger trigger) {
