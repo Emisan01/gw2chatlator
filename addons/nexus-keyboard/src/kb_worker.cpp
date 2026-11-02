@@ -547,6 +547,7 @@ void SyncChannelJob(std::wstring channel) {  // the channel was chosen in the wi
 void RequestChannelSync() {  // g_mu held
     const std::wstring channel = ComposePrefix();
     if (channel.empty()) return;  // "Active channel": GW2's own, nothing to set
+    if (g_channel == Channel::Whisper && !g_whisperTo.empty()) return;  // a whisper to a name goes with the message
     g_worker.Post([channel] { SyncChannelJob(channel); });
 }
 
@@ -692,11 +693,14 @@ void StartSend() {  // Enter (g_mu held)
     }
     const ChatSplit split = SplitChatCommand(text);
     const std::wstring body = split.prefix.empty() ? text : split.body;
-    // A channel command you typed yourself goes into the message (typed there); the channel chosen in the window is
-    // GW2's line's already (set when chosen, or right before this message) – the message is only pasted.
-    const std::wstring prefix = split.prefix;
-    const std::wstring channel = split.prefix.empty() ? ComposePrefix() : std::wstring();
-    if (!split.prefix.empty()) g_syncedChannel.clear();  // your own command switches GW2's line
+    // A channel command you typed yourself goes into the message (typed there), and so does the whisper of a whisper
+    // tab ("/w", the name pasted, Tab, then the text – a click on a name or a tab sets nothing in GW2). The other
+    // channels chosen in the footer are GW2's line's already (set when chosen, or right before this message): the
+    // message is only pasted.
+    const bool whisperTab = split.prefix.empty() && g_channel == Channel::Whisper && !g_whisperTo.empty();
+    const std::wstring prefix = whisperTab ? ComposePrefix() : split.prefix;
+    const std::wstring channel = split.prefix.empty() && !whisperTab ? ComposePrefix() : std::wstring();
+    if (!prefix.empty()) g_syncedChannel.clear();  // a command in the message switches GW2's line
     // A command line goes as it is, at once: "/wiki", "/dance", "/wiki Tequatl", "/sqjoin Name", or a channel command
     // without a message – nothing to translate, nothing to wait for, nothing learned ("/wiki" alone hung on
     // "translating and sending …" and was never sent, 2026-10-27).
