@@ -93,6 +93,7 @@ bool g_inMap = false;    // MumbleLink: a map is loaded (not character select, n
 bool g_mapOpen = false;  // MumbleLink: the world map is open – the window steps aside like GW2's own chat
 uint64_t g_previewGen = 0;
 bool g_sendPending = false;  // Enter before the translation was there
+PendingSend g_pendingSend;
 std::wstring g_status;
 ULONGLONG g_statusUntil = 0;
 TypingHelp g_help;

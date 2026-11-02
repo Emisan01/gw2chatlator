@@ -295,7 +295,7 @@ int TranslateRecentLines(bool once) {  // g_mu held; how many lines of other pla
 }
 
 // The input into the chat's language.
-void TranslateInput(uint64_t gen, std::wstring text) {
+void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
     AssertNotInteractiveLane("TranslateInput");
     std::shared_ptr<Translator> tr;
     std::wstring target, typing;
@@ -307,6 +307,11 @@ void TranslateInput(uint64_t gen, std::wstring text) {
         typing = VoiceFirst() && !g_dictLang.empty() ? g_dictLang : TypingLang();  // what you said: its language
         translating = Translating();
         swapping = SwapsNames();
+        if (sendId != 0 && sendId == g_pendingSend.id) {  // your Enter: the language of that moment, not of a tab since
+            target = g_pendingSend.target;
+            translating = g_pendingSend.translating;
+            swapping = g_pendingSend.swapping;
+        }
     }
     const ChatSplit split = SplitChatCommand(text);
     const std::wstring body = split.prefix.empty() ? text : split.body;
@@ -397,31 +402,31 @@ void TranslateInput(uint64_t gen, std::wstring text) {
     bool sendNow = false;
     {
         std::lock_guard<std::mutex> lock(g_mu);
-        if (gen != g_inputGen) {
-            if (g_sendPending) {
-                g_sendPending = false;
-                g_sendInFlight = false;
-            }
-            return;  // the text changed meanwhile
+        // The send waiting for this translation (your Enter) goes out with the channel it had then – also when you
+        // switched tabs or typed on meanwhile: never another tab's text, never another channel, never dropped.
+        const bool forSend = sendId != 0 && g_sendPending && sendId == g_pendingSend.id;
+        if (gen != g_inputGen && !forSend) return;  // the text changed meanwhile
+        if (gen == g_inputGen) {
+            g_preview = SanitizeChatText(result);
+            g_back = back;
+            g_previewGen = gen;
         }
-        g_preview = SanitizeChatText(result);
-        g_back = back;
-        g_previewGen = gen;
         if (!error.empty()) SetStatus(error);
         else if (!doubt.empty()) SetStatus(TrF(L"{1} – check the back-translation before you send", {doubt}), 8000);
-        if (g_sendPending) {
+        if (forSend) {
             g_sendPending = false;
             if (!error.empty()) {  // the translation failed: nothing goes out in the wrong language – the text comes back
                 g_sendInFlight = false;
                 if (g_input[0] == 0) {
                     const std::string again = U8(text);
                     strncpy_s(g_input, again.c_str(), _TRUNCATE);
+                } else {
+                    g_history.push_front(text);  // the input holds other text by now: Up brings it back
                 }
                 SetStatus(TrF(L"Not sent: the translation failed – {1}", {error}), 10000);
                 return;
             }
-            const std::wstring prefix = split.prefix.empty() ? ComposePrefix() : split.prefix;
-            parts = SplitForChat(g_preview, prefix, static_cast<size_t>(g_cfg.maxLength));
+            parts = SplitForChat(SanitizeChatText(result), g_pendingSend.prefix, static_cast<size_t>(g_cfg.maxLength));
             sendNow = true;
         }
     }
@@ -674,8 +679,9 @@ void StartSend() {  // Enter (g_mu held)
         });
     } else {  // the translation is not there yet: sent when it arrives
         g_sendPending = true;
+        g_pendingSend = {g_pendingSend.id + 1, prefix, SendLang(), Translating(), SwapsNames()};
         SetStatus(Tr(L"translating and sending …"), 0);
-        g_worker.PostFront([gen = g_inputGen, text] { TranslateInput(gen, text); });
+        g_worker.PostFront([gen = g_inputGen, text, id = g_pendingSend.id] { TranslateInput(gen, text, id); });
     }
 }
 

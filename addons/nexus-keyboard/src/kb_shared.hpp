@@ -382,6 +382,12 @@ extern bool g_inMap;
 extern bool g_mapOpen;
 extern uint64_t g_previewGen;
 extern bool g_sendPending;
+struct PendingSend {  // an Enter waiting for its translation: its channel and language as they were then (g_mu)
+    uint64_t id = 0;
+    std::wstring prefix, target;
+    bool translating = false, swapping = false;
+};
+extern PendingSend g_pendingSend;
 extern std::wstring g_status;
 extern ULONGLONG g_statusUntil;
 extern TypingHelp g_help;
@@ -529,7 +535,7 @@ int TranslateRecentLines(bool once = false);
 // in raw translation – a translation made another way is no repetition, and "Translate visible chat once" does it
 // again.
 std::wstring TranslatorTag(const std::shared_ptr<Translator>& tr, int beam);
-void TranslateInput(uint64_t gen, std::wstring text);
+void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId = 0);  // sendId: g_pendingSend's
 void ComputeTyping();
 void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring learnText);
 
