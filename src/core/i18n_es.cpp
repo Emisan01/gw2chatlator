@@ -1295,8 +1295,6 @@ extern const I18nEntry kSpanishStrings[] = {
      L"Nuestra ventana tomó el teclado – cancelado"},
     {L"GW2's chat line closed – cancelled",
      L"La línea de chat de GW2 se cerró – cancelado"},
-    {L"GW2's chat line does not close – nothing sent",
-     L"La línea de chat de GW2 no se cierra – nada enviado"},
     {L"GW2's chat line did not open – nothing sent",
      L"La línea de chat de GW2 no se abrió – nada enviado"},
 };

@@ -1295,8 +1295,6 @@ extern const I18nEntry kRussianStrings[] = {
      L"Наше окно забрало клавиатуру – отменено"},
     {L"GW2's chat line closed – cancelled",
      L"Строка чата GW2 закрылась – отменено"},
-    {L"GW2's chat line does not close – nothing sent",
-     L"Строка чата GW2 не закрывается – ничего не отправлено"},
     {L"GW2's chat line did not open – nothing sent",
      L"Строка чата GW2 не открылась – ничего не отправлено"},
 };

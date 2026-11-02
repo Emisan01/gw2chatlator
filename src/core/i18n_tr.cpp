@@ -1295,8 +1295,6 @@ extern const I18nEntry kTurkishStrings[] = {
      L"Penceremiz klavyeyi aldı – iptal edildi"},
     {L"GW2's chat line closed – cancelled",
      L"GW2 sohbet satırı kapandı – iptal edildi"},
-    {L"GW2's chat line does not close – nothing sent",
-     L"GW2 sohbet satırı kapanmıyor – hiçbir şey gönderilmedi"},
     {L"GW2's chat line did not open – nothing sent",
      L"GW2 sohbet satırı açılmadı – hiçbir şey gönderilmedi"},
 };

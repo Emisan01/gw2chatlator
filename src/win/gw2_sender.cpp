@@ -239,7 +239,7 @@ struct Job {
     std::wstring name;         // the whisper name after "/w"
     std::wstring message;      // pasted, then Enter
     std::wstring typed;        // a whole command typed and run ("/wiki Tequatl")
-    bool channelOnly = false;  // switch the line and close it again (Esc): the channel stays for the next message
+    bool channelOnly = false;  // switch the line and close it again (Enter on the empty line): the channel stays
 };
 
 SendOutcome Run(HWND owner, const Job& job, const SendOptions& opt, MumbleLink* mumble, bool (*keysReachGame)()) {
@@ -349,29 +349,25 @@ SendOutcome Run(HWND owner, const Job& job, const SendOptions& opt, MumbleLink* 
     injected = true;
     note(L"start");
 
-    // 1. Open: GW2's line shut first (Esc only while MumbleLink says a text box of GW2 has the keyboard – then Esc closes
-    //    that and never the game menu), then Enter, and on only once GW2 says the line has the keyboard.
-    for (int i = 0; i < 2 && watched && lineHasKeys(); ++i) {
+    // 1. Open – only when it is shut: a line you have open stays as it is (we close nothing we did not open). Never Esc:
+    //    in GW2 it closes whatever window is on top, not necessarily the chat line (live 2026-11-02: it closed another
+    //    window). MumbleLink only knows that "a text box of GW2" has the keyboard; an open one is taken as the chat line.
+    const bool wasOpen = watched && lineHasKeys();
+    if (!wasOpen) {
         if (!(why = lost(false)).empty()) return finish(why);
-        Tap(VK_ESCAPE, opt.keyHoldMs);
+        const ULONGLONG t0 = GetTickCount64();
+        Tap(VK_RETURN, opt.keyHoldMs);
         WaitForTargetToDrain(gw2, 1000);
-        textbox(false, std::max(600, 8 * opt.keyHoldMs));
-        note(L"Esc");
+        if (watched) {
+            const bool opened = textbox(true, std::max(600, 8 * opt.keyHoldMs));  // ~8 frames: also a game at a few fps
+            note(L"Enter");
+            if (!opened) return finish(Tr(L"GW2's chat line did not open – nothing sent"));
+            r.openMs = static_cast<int>(GetTickCount64() - t0);
+        } else {
+            note(L"Enter");
+        }
+        settle();
     }
-    if (watched && lineHasKeys()) return finish(Tr(L"GW2's chat line does not close – nothing sent"));
-    if (!(why = lost(false)).empty()) return finish(why);
-    const ULONGLONG t0 = GetTickCount64();
-    Tap(VK_RETURN, opt.keyHoldMs);
-    WaitForTargetToDrain(gw2, 1000);
-    if (watched) {
-        const bool opened = textbox(true, std::max(600, 8 * opt.keyHoldMs));  // ~8 frames: also a game at a few fps
-        note(L"Enter");
-        if (!opened) return finish(Tr(L"GW2's chat line did not open – nothing sent"));
-        r.openMs = static_cast<int>(GetTickCount64() - t0);
-    } else {
-        note(L"Enter");
-    }
-    settle();
 
     // A command typed whole ("/wiki Tequatl", "/dance", "/sqjoin Name"): GW2 runs a typed command, a pasted one lost
     // its command word.
@@ -412,12 +408,14 @@ SendOutcome Run(HWND owner, const Job& job, const SendOptions& opt, MumbleLink* 
         }
     }
 
-    // 3. Close (the channel alone): Esc – the line keeps its channel for the next message.
+    // 3. Close (the channel alone): only a line we opened, with Enter on its empty text – it sends nothing, closes the
+    //    line and the line keeps its channel. A line you had open stays open.
     if (job.channelOnly) {
+        if (wasOpen) return finish(std::wstring());
         if (!(why = lost(true)).empty()) return finish(why);
-        Tap(VK_ESCAPE, opt.keyHoldMs);
+        Tap(VK_RETURN, opt.keyHoldMs);
         r.confirmedByGame = textbox(false, std::max(1000, 8 * opt.keyHoldMs));
-        note(L"Esc");
+        note(L"Enter");
         return finish(std::wstring());
     }
 
