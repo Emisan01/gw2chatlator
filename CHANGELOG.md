@@ -3,6 +3,14 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.8.2 — 2026-11-02 (GW2Chatlator for Nexus)
+
+- **Whispers Arrive, Channels Hold:** the channel chosen in the footer is set in GW2's own chat line once, when you choose it (every click sets it again); a message then only opens the line, pastes and sends. A whisper tab sends "/w", the full name and Tab in front of each message. Whispers had landed in Say and GW2's chat tab moved on: our key buffer swallowed our own characters when the mouse moved, the Space after a command was no real key press, and the name was typed letter by letter into GW2's name suggestion. No Esc any more – it closed whatever GW2 window was on top.
+- **Your Typing Is Kept:** each tab keeps what you started in it; keys typed while a message is on its way go into the input afterwards, however long translating and sending take; a message waiting for its translation keeps the channel and language of your Enter.
+- **Timings in the Status Box:** frame timings and the send timing fold up at the bottom of Options › Technical › Status, the last send step by step; the values by hand are greyed out while the automatic timing is on.
+- **The Colon After a Name** is back in the chat window.
+- **More GW2 Words Translated Right:** chest, mats, mount, glider, event, salvage, boss; boons and conditions (vigor, crippled, torment, confusion, vulnerability, chill, resolution, quickness, immobilize); "fixieren" is immobilize; chat idioms (there there, never mind, count me in, fair enough, piece of cake, hang on, kein Ding, passt schon); "ty" stays translatable in Polish.
+
 ## 2.8.1 — 2026-11-01 (GW2Chatlator for Nexus)
 
 - **"System" Says Which Language:** reading language, typing help and the window's language show what "System" stands for right now – "System (Deutsch)".
