@@ -23,8 +23,17 @@ UINT OnWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (g_disabled) return msg;
     g_gameHwnd = hwnd;
 
-    // Eigene Tasten erkennen: SendToGw2Chat markiert seine SendInput-Tasten mit kGw2SenderExtraInfo
-    if (GetMessageExtraInfo() == gct::kGw2SenderExtraInfo) return msg;
+    // Our own keys (gw2_sender marks its SendInput keys with kGw2SenderExtraInfo) always reach GW2. The mark belongs to
+    // the last input message: a key down carries it, but the characters TranslateMessage makes from it (WM_CHAR: "/m",
+    // the name's letters, Ctrl+V) come as posted messages – a mouse move in between (an input message without the
+    // mark) made them look like your typing, the key buffer swallowed them and later put "/m" into our input; GW2 got
+    // only the keys, never the command. That is why one moved mouse changed the result (live 2026-11-02). Now a
+    // character belongs to whoever pressed the last key down.
+    static bool s_charsOurs = false;
+    const bool ours = GetMessageExtraInfo() == gct::kGw2SenderExtraInfo;
+    if (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN) s_charsOurs = ours;
+    if (ours || (s_charsOurs && (msg == WM_CHAR || msg == WM_SYSCHAR || msg == WM_DEADCHAR || msg == WM_UNICHAR)))
+        return msg;
 
     // Tastenpuffer (Punkt 4b): vom Start des Sendens bis Fokus zurück im Eingabefeld alle Nutzertasten puffern
     if (g_bufferingKeys.load()) {
