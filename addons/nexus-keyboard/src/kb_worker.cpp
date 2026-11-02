@@ -548,7 +548,12 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
         if (!ok) break;
         const MumbleState ms = g_mumbleWorker ? g_mumbleWorker->Read() : MumbleState{};
         const SendOutcome out = SendToGw2Chat(gw2, part, so, ms.live ? g_mumbleWorker : nullptr,
-                                              [] { return g_keyboardFree.load(); });
+                                              [] {
+                                                  // asked before every key: a send that moves on keeps your keys in the
+                                                  // buffer however long it takes; one that hangs frees them after 3 s
+                                                  g_bufferingStartTime = GetTickCount64();
+                                                  return g_keyboardFree.load();
+                                              });
         {
             std::lock_guard<std::mutex> lock(g_mu);
             g_lastSendTrace = out.trace;
@@ -577,6 +582,7 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
     std::lock_guard<std::mutex> lock(g_mu);
     g_sending = false;
     g_sendInFlight = false;
+    g_bufferingStartTime = GetTickCount64();  // the key buffer's 3 s count from here: a long send never lets keys through
     if (ok) {
         SetStatus(copyOnly ? Tr(L"Copied – paste it into the GW2 chat with Ctrl+V") : L"");
         g_history.push_front(typed);
