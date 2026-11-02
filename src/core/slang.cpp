@@ -318,6 +318,21 @@ std::wstring GreetingFor(const std::wstring& line, const std::wstring& target) {
     return L"Hello";
 }
 
+const WordSet* KeepFor(const WordSet* keep, const std::wstring& lang, WordSet& storage) {
+    // found by checking every keep term against the everyday chat words of each language (2026-11-02)
+    static const std::pair<const wchar_t*, const wchar_t*> kCollisions[] = {{L"pl", L"ty"}};
+    if (!keep) return keep;
+    const std::wstring l = ToLowerAscii(lang.substr(0, 2));
+    bool any = false;
+    for (const auto& [code, word] : kCollisions)
+        if (l == code && keep->count(word)) any = true;
+    if (!any) return keep;
+    storage = *keep;
+    for (const auto& [code, word] : kCollisions)
+        if (l == code) storage.erase(word);
+    return &storage;
+}
+
 const WordSet& CommonChatWords(const std::wstring& lang) {
     static const WordSet empty, fr = Make({kChatFrench}, {std::size(kChatFrench)}),
                                 es = Make({kChatSpanish}, {std::size(kChatSpanish)}),

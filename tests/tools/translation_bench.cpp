@@ -99,8 +99,9 @@ int wmain(int argc, wchar_t** argv) {
         const std::vector<std::wstring> must = cols.size() > 2 ? Split(cols[2], L';') : std::vector<std::wstring>();
         const std::vector<std::wstring> never = cols.size() > 3 ? Split(cols[3], L'|') : std::vector<std::wstring>();
         const std::wstring target = source == L"de" ? L"EN" : L"DE";
+        gct::WordSet keepOwn;  // as the add-on: a Polish line keeps no "ty"
         const gct::ProtectedText p = raw ? gct::ProtectCodesOnly(text)
-                                         : gct::ProtectForTranslation(text, gct::BuiltinGlossary(target), &keep);
+                                         : gct::ProtectForTranslation(text, gct::BuiltinGlossary(target), gct::KeepFor(&keep, source, keepOwn));
         const auto t0 = std::chrono::steady_clock::now();
         gct::TranslateResult r;
         const std::wstring hello = raw ? std::wstring() : gct::GreetingFor(text, target);  // as the add-on: looked up

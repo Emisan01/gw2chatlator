@@ -316,6 +316,13 @@ static void TestNameTable() {
 
 // The compiled names and words: the target decides, whatever the sentence or the name is written in; no names in the
 // target → the English ones.
+static void TestKeepFor() {
+    WordSet storage;
+    CHECK(KeepFor(&BuiltinKeepWords(), L"en", storage) == &BuiltinKeepWords());  // nothing collides: the set itself
+    const WordSet* pl = KeepFor(&BuiltinKeepWords(), L"pl", storage);
+    CHECK(pl != &BuiltinKeepWords() && !pl->count(L"ty") && pl->count(L"lfg"));   // Polish "ty" is "you"
+}
+
 static void TestGreetings() {
     CHECK(GreetingFor(L"Hola", L"DE") == L"Hallo" && GreetingFor(L"Selam!", L"EN-GB") == L"Hello");
     CHECK(GreetingFor(L"  hi :) ", L"FR") == L"Salut" && GreetingFor(L"Hola", L"ES") == L"Hola");
@@ -2925,6 +2932,7 @@ int main() {
     TestBuiltinGlossary();
     TestResizePastLeftEdge();
     TestGreetings();
+    TestKeepFor();
     TestProtect();
     TestTranslationCheck();
     TestChatCommands();

@@ -413,7 +413,7 @@ npc	keep	Non-player character
 gg	keep	good game
 gz	keep	congratulations
 gratz	keep	congratulations
-ty	keep	thank you
+ty	keep	thank you (but in a Polish sentence "ty" is "you": slang.cpp KeepFor)
 thx	keep	thanks
 np	keep	no problem
 rdy	keep	ready

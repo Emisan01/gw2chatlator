@@ -71,6 +71,11 @@ bool LooksLikeAbbreviation(const std::wstring& word);
 // ("la", "hot", "de") – only when written like an abbreviation; entries "=Word" (names the user taught) only exactly so.
 bool IsKeepWord(const WordSet& keep, const std::wstring& word);
 
+// A keep term that is an everyday word in another language ("ty": thank you – Polish "ty" is "you") is kept, except in
+// a sentence in that language: the keep set for a sentence in `lang` (sure detection or your typing language) without
+// those words, built in `storage` – or `keep` itself when none apply.
+const WordSet* KeepFor(const WordSet* keep, const std::wstring& lang, WordSet& storage);
+
 // What the word bar offers before it has learned anything: GW2 words as
 // they are written (English and German forms), for completions only.
 // GW2 words for the word bar, for the language you write in ("DE", "EN-GB"; other languages: only the terms

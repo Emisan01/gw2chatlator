@@ -123,7 +123,10 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once, std::w
     const std::wstring& target = what.target;
     const std::wstring detected = what.detected.empty() ? els : what.detected;  // a click: the best guess, sure or not
     // Official names and usual words become the target's ("Löwenstein" → "Lion's Arch"), whatever the line is in.
-    if (!raw) p = ProtectForTranslation(text, BuiltinGlossary(target), keep ? keep.get() : &BuiltinKeepWords(), &names);
+    WordSet keepOwn;  // a Polish line keeps no "ty" (it is "you" there)
+    if (!raw)
+        p = ProtectForTranslation(text, BuiltinGlossary(target),
+                                  KeepFor(keep ? keep.get() : &BuiltinKeepWords(), what.detected, keepOwn), &names);
     // Dynamic throttle: greedy under queue pressure for the lines that come by themselves; a line you asked for
     // ("Translate visible chat once", a click) gets the quality you chose – the throttle made "Best" do nothing there.
     const int quality = g_cfg.localQuality;
@@ -324,10 +327,11 @@ void TranslateInput(uint64_t gen, std::wstring text) {
             names = g_chatNames;
         }
         auto keep = g_spell ? g_spell->KeepWordsSnapshot() : nullptr;
+        WordSet keepOwn;  // a Polish text keeps no "ty" (it is "you" there)
         const bool raw = g_rawTranslate.load();
         ProtectedText p = raw ? ProtectCodesOnly(expanded)
                               : ProtectForTranslation(expanded, BuiltinGlossary(target),
-                                                      keep ? keep.get() : &BuiltinKeepWords(), &names);
+                                                      KeepFor(keep ? keep.get() : &BuiltinKeepWords(), source, keepOwn), &names);
         SetLocalMtRaw(tr, raw);
         if (HasTranslatableText(p.segments)) {
             {

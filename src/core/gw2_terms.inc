@@ -383,7 +383,7 @@
 {L"gg", TermKind::Keep, L"good game"},
 {L"gz", TermKind::Keep, L"congratulations"},
 {L"gratz", TermKind::Keep, L"congratulations"},
-{L"ty", TermKind::Keep, L"thank you"},
+{L"ty", TermKind::Keep, L"thank you (but in a Polish sentence \"ty\" is \"you\": slang.cpp KeepFor)"},
 {L"thx", TermKind::Keep, L"thanks"},
 {L"np", TermKind::Keep, L"no problem"},
 {L"rdy", TermKind::Keep, L"ready"},
