@@ -364,14 +364,9 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
     }
     settle();
 
-    // 3. What the line still holds goes: a draft for another channel, a rest GW2 brought back after Esc.
-    if (watched) {
-        if (!(why = lost(true)).empty()) return finish(why);
-        CtrlTap('A', opt.keyHoldMs);
-        Tap(VK_DELETE, opt.keyHoldMs);
-        note(L"Ctrl+A Del");
-        settle();
-    }
+    // 3. No Ctrl+A to empty the line: GW2's chat line does not select with it – a control character stayed in front,
+    //    "/w " behind it was no command, and the Tab meant for the name switched GW2's chat tab (live 2026-11-02, a
+    //    whisper in Say from a shut line in Say). How GW2 empties a draft is open (Esc above closes the line).
 
     // 4. Any other command ("/wiki Tequatl", "/dance", "/sqjoin Name") is typed whole: GW2 runs a typed command, a
     //    pasted one lost its command word.
