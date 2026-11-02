@@ -261,6 +261,16 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
         return false;
     };
 
+    // The steps for Options > Technical: each key and whether GW2's chat line was open right after it ("open"/"shut";
+    // "?" without MumbleLink) – where a send went wrong shows here. Never the text or the name.
+    const ULONGLONG tStart = GetTickCount64();
+    auto note = [&](const wchar_t* step) {
+        const MumbleState s = mumble ? mumble->Read() : MumbleState{};
+        r.trace += (r.trace.empty() ? L"" : L" → ") + std::wstring(step) + L" " +
+                   (!s.live ? L"?" : s.TextboxHasFocus() ? L"open" : L"shut") + L" " +
+                   std::to_wstring(GetTickCount64() - tStart);
+    };
+
     // The old clipboard may only come back once GW2 has really processed the
     // paste — otherwise a slow frame would paste the *old* content (anything
     // the user had copied) into the chat. If GW2 does not confirm, the
@@ -288,6 +298,7 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
     if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – cancelled"));
     injected = true;
     bool alreadyOpen = ms.live && mumble->Read().TextboxHasFocus();
+    note(L"start");
     // A chat line GW2 already has open (a draft, another channel, a whisper already addressed) is closed first, so
     // every message starts the same way: a fresh line and its own channel command – the native chat's state can no
     // longer send it into the wrong channel or twice. Esc only while GW2 is in front and MumbleLink says its chat line
@@ -296,6 +307,7 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
         Tap(VK_ESCAPE, opt.keyHoldMs);
         WaitForTargetToDrain(gw2, 1000);
         if (textbox(false, std::max(600, 8 * opt.keyHoldMs))) alreadyOpen = false;
+        note(L"Esc");
     }
     // Once GW2 reported the chat line open, the rest goes at full speed: every key is held one frame (+10 ms), so the
     // next one already falls into a later frame – no extra pauses between the steps. Only the moment between the
@@ -306,7 +318,9 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
         const ULONGLONG t0 = GetTickCount64();
         Tap(VK_RETURN, opt.keyHoldMs);  // open chat
         WaitForTargetToDrain(gw2, 1000);
-        if (!textbox(true, std::max(600, 8 * opt.keyHoldMs))) {  // ~8 frames: also a game at a few fps
+        const bool opened = textbox(true, std::max(600, 8 * opt.keyHoldMs));  // ~8 frames: also a game at a few fps
+        note(L"Enter");
+        if (!opened) {
             Sleep(opt.stepDelayMs);
         } else {
             r.openMs = static_cast<int>(GetTickCount64() - t0);
@@ -344,6 +358,7 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
             if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – cancelled"));
             TypeText(command, opt.keyHoldMs);
             WaitForTargetToDrain(gw2, 1000);
+            note(Trim(command).c_str());
             // GW2 switches the line into the whisper mode after "/w ", takes the name, moves on with Tab: each step needs
             // its pause even with the line already open (without, name and text arrived swapped or cut, 2026-10-29)
             Sleep(opt.stepDelayMs);
@@ -353,10 +368,12 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
                 // frame late can no longer put the message into the name field and the name into the message.
                 TypeText(recipient, opt.keyHoldMs);
                 WaitForTargetToDrain(gw2, 1000);
+                note(L"name");
                 Sleep(opt.stepDelayMs);
                 if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – cancelled"));
                 Tap(VK_TAB, opt.keyHoldMs);  // confirm it: the cursor moves to the message
                 WaitForTargetToDrain(gw2, 1000);
+                note(L"Tab");
                 Sleep(opt.stepDelayMs);
             }
             message = split.body;
@@ -367,12 +384,14 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
     if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – cancelled"));
     CtrlTap('V', opt.keyHoldMs);  // paste
     WaitForTargetToDrain(gw2, 1000);
+    note(L"Ctrl+V");
     Sleep(opt.stepDelayMs);  // the pasted text must be in the line before Enter
 
     if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – the text may still be in the chat line"));
     const ULONGLONG tSend = GetTickCount64();
     Tap(VK_RETURN, opt.keyHoldMs);  // send
     r.confirmedByGame = textbox(false, std::max(1000, 8 * opt.keyHoldMs));  // input closed = message went out
+    note(L"Enter");
     if (r.confirmedByGame) r.confirmMs = static_cast<int>(GetTickCount64() - tSend);
     if (!r.confirmedByGame) Sleep(opt.stepDelayMs);
     return finish(std::wstring());

@@ -548,6 +548,10 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
         if (!ok) break;
         const MumbleState ms = g_mumbleWorker ? g_mumbleWorker->Read() : MumbleState{};
         const SendOutcome out = SendToGw2Chat(gw2, part, so, ms.live ? g_mumbleWorker : nullptr);
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            g_lastSendTrace = out.trace;
+        }
         if (!out.ok) {
             ok = false;
             error = out.error;

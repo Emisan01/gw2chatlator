@@ -1735,6 +1735,15 @@ void RenderTechnicalPage(Config& edit) {
             edit.send.autoTiming = false;
         edit.send.keyHoldMs = std::clamp(edit.send.keyHoldMs, 10, 500);
         edit.send.stepDelayMs = std::clamp(edit.send.stepDelayMs, 10, 1000);
+        std::wstring trace;  // each key and whether GW2's chat line was open after it, with the ms since the start
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            trace = g_lastSendTrace;
+        }
+        if (!trace.empty()) {
+            ImGui::TextDisabled("%s", UI(Tr(L"The last send, step by step (chat line open/shut, ms):")).c_str());
+            ImGui::TextWrapped("%s", UI(trace).c_str());
+        }
         ImGui::TreePop();
     }
     EndBox();

@@ -393,6 +393,7 @@ extern Channel g_channel;
 extern std::wstring g_whisperTo;
 extern int g_sendIdx;
 extern bool g_sending;
+extern std::wstring g_lastSendTrace;  // the last send's steps (gw2_sender: SendOutcome::trace), g_mu
 // "Minimise when not in use" (g_layout.autoMinimize): the last moment the window was in use – the input had the focus,
 // the mouse was over it, a menu was open, it was sending or recording, GW2's chat line was open. 0: count from now.
 extern ULONGLONG g_lastUse;

@@ -1289,6 +1289,8 @@ extern const I18nEntry kTurkishStrings[] = {
      L"Zamanlamalar"},
     {L"Frame timings",
      L"Kare süreleri"},
+    {L"The last send, step by step (chat line open/shut, ms):",
+     L"Son gönderim, adım adım (sohbet satırı open/shut, ms):"},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

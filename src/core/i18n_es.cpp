@@ -1289,6 +1289,8 @@ extern const I18nEntry kSpanishStrings[] = {
      L"Tiempos"},
     {L"Frame timings",
      L"Tiempos por fotograma"},
+    {L"The last send, step by step (chat line open/shut, ms):",
+     L"El último envío, paso a paso (línea de chat open/shut, ms):"},
 };
 extern const size_t kSpanishCount = sizeof(kSpanishStrings) / sizeof(kSpanishStrings[0]);
 

@@ -103,6 +103,7 @@ Channel g_channel = Channel::Unknown;  // Unknown = the channel active in GW2
 std::wstring g_whisperTo;
 int g_sendIdx = 0;                     // index into g_cfg.writeLangs; == size: send as written
 bool g_sending = false;
+std::wstring g_lastSendTrace;
 ULONGLONG g_lastUse = 0;
 bool g_gameChatOpen = false;  // GW2's chat line (MumbleLink), g_mu
 bool g_focusInput = false;

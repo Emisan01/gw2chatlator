@@ -30,6 +30,7 @@ struct SendOutcome {
     bool confirmedByGame = false;    // MumbleLink saw the chat input close after sending
     int openMs = -1;                 // Enter -> MumbleLink reports the chat line open (-1: not measured)
     int confirmMs = -1;              // Enter to send -> the line closed (the message went out)
+    std::wstring trace;              // the steps and what MumbleLink said of GW2's chat line between them (no text, no name)
     std::wstring error;              // German, for the status line
 };
 

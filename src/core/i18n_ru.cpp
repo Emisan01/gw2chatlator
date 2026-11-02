@@ -1289,6 +1289,8 @@ extern const I18nEntry kRussianStrings[] = {
      L"Тайминги"},
     {L"Frame timings",
      L"Время кадра"},
+    {L"The last send, step by step (chat line open/shut, ms):",
+     L"Последняя отправка по шагам (строка чата open/shut, мс):"},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 
