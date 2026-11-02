@@ -287,8 +287,14 @@ SendOutcome Run(HWND owner, const Job& job, const SendOptions& opt, MumbleLink* 
     // paste — otherwise a slow frame would paste the *old* content (anything
     // the user had copied) into the chat. If GW2 does not confirm, the
     // translation simply stays on the clipboard.
-    bool injected = false;
+    bool injected = false, clipboardUsed = false;
     auto finish = [&](const std::wstring& error) {
+        if (!clipboardUsed) {  // "/m" alone never touched it: nothing to wait for, your input gets the keyboard back at once
+            r.clipboardRestored = true;
+            r.ok = error.empty();
+            if (!error.empty()) r.error = error;
+            return r;
+        }
         const bool drained = !injected || WaitForTargetToDrain(gw2, 2000);
         if (drained) {
             if (injected) Sleep(opt.restoreDelayMs);
@@ -329,6 +335,7 @@ SendOutcome Run(HWND owner, const Job& job, const SendOptions& opt, MumbleLink* 
         for (int waited = 0; waited < 1000 && mumble->Read().uiTick - from < 2; waited += 5) Sleep(5);
     };
     auto paste = [&](const std::wstring& what, const wchar_t* step) -> std::wstring {
+        clipboardUsed = true;
         if (!SetClipboardText(owner, what)) return Tr(L"The clipboard is blocked");
         std::wstring why = lost(true);
         if (!why.empty()) return why;
