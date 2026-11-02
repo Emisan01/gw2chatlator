@@ -18,3 +18,5 @@
 {L"vulnerability", L"vulnerability|vuln", L"Verwundbarkeit", L"vuln\u00E9rabilit\u00E9", L"vulnerabilidad", L"", L"", L"", L"", L""},
 {L"chill", L"chill|chilled", L"K\u00FChle", L"givre", L"congelado", L"", L"", L"", L"", L""},
 {L"resolution", L"resolution", L"Entschlossenheit", L"r\u00E9solution", L"resoluci\u00F3n", L"", L"", L"", L"", L""},
+{L"quickness", L"quickness", L"Schnelligkeit", L"c\u00E9l\u00E9rit\u00E9", L"rapidez", L"", L"", L"", L"", L""},
+{L"immobilize", L"immobilize|immobilise|immobilized|immob", L"fixieren|fixiert|fixiere", L"immobiliser", L"inmovilizar", L"", L"", L"", L"", L""},
