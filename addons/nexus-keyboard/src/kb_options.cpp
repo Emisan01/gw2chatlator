@@ -1725,14 +1725,21 @@ void RenderTechnicalPage(Config& edit) {
     if (ImGui::TreeNode(UI(Tr(L"Send timing (advanced)") + L"###sendtiming").c_str())) {
         Switch("autotiming", UI(Tr(L"Automatic timing (FPS-adapted)")), &edit.send.autoTiming);
         Hint(UI(Tr(L"Calculates key hold and step delays dynamically based on the game's current framerate.")));
-        const int oldHold = edit.send.keyHoldMs;
-        const int oldStep = edit.send.stepDelayMs;
+        // The values by hand are for a diagnosis only (a slow-motion send): greyed out while the automatic is on, so a
+        // stray edit can no longer switch it off unnoticed.
+        const bool manual = !edit.send.autoTiming;
+        if (!manual) {
+            ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.45f);
+        }
         ImGui::SetNextItemWidth(120);
-        if (ImGui::InputInt(UI(Tr(L"Key hold when sending (ms)") + L"##hold").c_str(), &edit.send.keyHoldMs) && edit.send.keyHoldMs != oldHold)
-            edit.send.autoTiming = false;
+        ImGui::InputInt(UI(Tr(L"Key hold when sending (ms)") + L"##hold").c_str(), &edit.send.keyHoldMs);
         ImGui::SetNextItemWidth(120);
-        if (ImGui::InputInt(UI(Tr(L"Pause between keys (ms)") + L"##step").c_str(), &edit.send.stepDelayMs) && edit.send.stepDelayMs != oldStep)
-            edit.send.autoTiming = false;
+        ImGui::InputInt(UI(Tr(L"Pause between keys (ms)") + L"##step").c_str(), &edit.send.stepDelayMs);
+        if (!manual) {
+            ImGui::PopStyleVar();
+            ImGui::PopItemFlag();
+        }
         edit.send.keyHoldMs = std::clamp(edit.send.keyHoldMs, 10, 500);
         edit.send.stepDelayMs = std::clamp(edit.send.stepDelayMs, 10, 1000);
         std::wstring trace;  // each key and whether GW2's chat line was open after it, with the ms since the start
