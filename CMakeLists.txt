@@ -182,6 +182,13 @@ if(GCT_BUILD_TESTS)
 endif()
 
 # Sources are UTF-8; static CRT (no VC++ redistributable needed).
+# The libraries of the add-on: built for size and optimised across files with it at link time (whatever links them too).
+if(MSVC)
+    set_property(TARGET gct_core gct_win PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+    target_compile_options(gct_core PRIVATE $<$<CONFIG:Release>:/Gw>)
+    target_compile_options(gct_win PRIVATE $<$<CONFIG:Release>:/Gw>)
+    target_link_options(gct_core INTERFACE $<$<CONFIG:Release>:/LTCG>)
+endif()
 foreach(t gct_core gct_win ${GCT_TOOL_TARGETS})
     target_compile_definitions(${t} PRIVATE UNICODE _UNICODE _WIN32_WINNT=0x0A00 WINVER=0x0A00 NOMINMAX)
     target_compile_options(${t} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/utf-8 /W4 /permissive->)
@@ -288,3 +295,7 @@ if(GCT_LOCAL_MT)
     set_target_properties(gw2kb_translate PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
                           RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/addons/nexus-keyboard/$<CONFIG>/GW2Keyboard)
 endif()
+
+# Size over speed for our own code (it spends its time waiting; the frame stays far below a millisecond). Last in this
+# file: whisper, oneDNN and CTranslate2, added above, keep /O2 – that is where the speed counts.
+string(REPLACE "/O2" "/O1" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")

@@ -4,6 +4,7 @@ set(GCT_NEXUS_TP ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
 # The add-on DLL with /EHa, the rest here with /EHsc: a fault in one of our threads, caught by its shield (Shielded,
 # SafeRender), still unwinds – g_mu and every lock are given back, nothing hangs the game after it.
 string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+string(REPLACE "/O2" "/O1" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")  # size over speed, as in the root
 add_library(gw2keyboard_nexus SHARED
     src/kb_main.cpp
     src/kb_state.cpp
@@ -31,7 +32,9 @@ target_include_directories(gw2keyboard_nexus PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 target_link_libraries(gw2keyboard_nexus PRIVATE gct_win)
 target_compile_definitions(gw2keyboard_nexus PRIVATE UNICODE _UNICODE _WIN32_WINNT=0x0A00 WINVER=0x0A00 NOMINMAX
                            WIN32_LEAN_AND_MEAN GCT_NEXUS_KEYBOARD)
-target_compile_options(gw2keyboard_nexus PRIVATE /utf-8 /W4 /permissive- /EHa)
+target_compile_options(gw2keyboard_nexus PRIVATE /utf-8 /W4 /permissive- /EHa $<$<CONFIG:Release>:/Gw>)
+set_property(TARGET gw2keyboard_nexus PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+target_link_options(gw2keyboard_nexus PRIVATE $<$<CONFIG:Release>:/OPT:REF /OPT:ICF>)
 set_source_files_properties(${GCT_NEXUS_TP}/imgui/imgui.cpp ${GCT_NEXUS_TP}/imgui/imgui_draw.cpp
     ${GCT_NEXUS_TP}/imgui/imgui_tables.cpp ${GCT_NEXUS_TP}/imgui/imgui_widgets.cpp PROPERTIES COMPILE_OPTIONS "/W0")
 # Static CRT, like the bridge: independent of the runtime the game has loaded.
