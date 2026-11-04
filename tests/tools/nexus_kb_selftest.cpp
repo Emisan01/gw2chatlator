@@ -431,9 +431,27 @@ int wmain(int argc, wchar_t** argv) {
         frames(60);  // spelling and prediction start on the worker
         *th->focus = true;
         frames(3);
-        type("Hallo zusammen, wir gehen jetzt in die Fraktale und dann vielleicht noch ein bisschen in den WvW, wer "
-             "mag kommt einfach mit, ich lade euch ein sobald alle da sind und dann geht es los mit dem ersten Boss");
+        // The input makes room before the line break comes: its text never scrolls while the box can still grow, not for a
+        // single frame (it went up a line and back at each line's end).
+        auto inputBox = []() -> ImGuiWindow* {  // an InputTextMultiline's child frame
+            for (ImGuiWindow* w : static_cast<ImGuiContext*>(ImGui::GetCurrentContext())->Windows)
+                if (std::strncmp(w->Name, "GW2Chatlator###kbmain/", 22) == 0 && std::strstr(w->Name, "##input_")) return w;
+            return nullptr;
+        };
+        float inputScrolled = 0;
+        for (const char* c = "Hallo zusammen, wir gehen jetzt in die Fraktale und dann vielleicht noch ein bisschen in den WvW, wer "
+                             "mag kommt einfach mit, ich lade euch ein sobald alle da sind und dann geht es los mit dem ersten Boss";
+             *c; ++c) {
+            io.AddInputCharacter(static_cast<unsigned char>(*c));
+            frames(1);
+            if (ImGuiWindow* box = inputBox()) inputScrolled = std::max(inputScrolled, box->Scroll.y);
+        }
         frames(10);
+        std::printf("typing over line ends: the input scrolled %.0f px (box found: %s)\n", inputScrolled, inputBox() ? "yes" : "no");
+        if (!inputBox() || inputScrolled > 0) {
+            std::printf("FAIL: the input jumped at a line's end\n");
+            ok = false;
+        }
         const size_t typed = std::strlen(th->input);
         std::printf("typed %zu bytes, line breaks: %d\n", typed, static_cast<int>(std::count(th->input, th->input + typed, '\n')));
         {  // a word longer than the line (a theme code): broken inside the word, sent whole
