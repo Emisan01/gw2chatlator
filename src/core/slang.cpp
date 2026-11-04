@@ -13,9 +13,10 @@
 namespace gct {
 
 const std::vector<BuiltinTerm>& BuiltinTerms() {
-    static const std::vector<BuiltinTerm> terms = {
+    static const BuiltinTerm kTerms[] = {  // a plain table: constant data, no code building it entry by entry
 #include "gw2_terms.inc"
     };
+    static const std::vector<BuiltinTerm> terms(kTerms, kTerms + sizeof(kTerms) / sizeof(kTerms[0]));
     return terms;
 }
 

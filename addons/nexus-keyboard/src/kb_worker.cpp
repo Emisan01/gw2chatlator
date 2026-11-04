@@ -597,22 +597,17 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
     std::wstring error;
     bool ok = gw2 != nullptr;
     if (!gw2) error = Tr(L"GW2 window not found");
-    bool copyOnlyNow;
+    bool copyOnly;
     std::wstring synced;
     {
         std::lock_guard<std::mutex> lock(g_mu);
-        copyOnlyNow = g_cfg.copyOnly;
+        copyOnly = g_cfg.copyOnly;
         synced = g_syncedChannel;
     }
     // GW2's line not (or no longer) in the channel of your Enter: set first – then the message is only pasted
-    if (ok && !copyOnlyNow && !channel.empty() && channel != synced) {
+    if (ok && !copyOnly && !channel.empty() && channel != synced) {
         error = SetChannelNow(channel);
         ok = error.empty();
-    }
-    bool copyOnly;
-    {
-        std::lock_guard<std::mutex> lock(g_mu);
-        copyOnly = g_cfg.copyOnly;
     }
     if (ok && copyOnly) {  // not a single key reaches the game (invariant 1): only the clipboard
         std::wstring all;

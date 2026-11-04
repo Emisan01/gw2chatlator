@@ -104,7 +104,7 @@ void VoiceHelper::OnLine(const std::string& line) {
         g_edit.lenBytes = 0;
         g_edit.insert = (len && g_input[len - 1] != ' ' && g_input[len - 1] != '\n' ? " " : "") + U8(fixed);
         g_focusInput = true;
-        // Hands free (Punkt 1 & 8): Ende einer Spracheingabe – Sprechpause, PTT-Loslassen oder Mausklick-Stopp.
+        // Hands free: Ende einer Spracheingabe – Sprechpause, PTT-Loslassen oder Mausklick-Stopp.
         // Nur wenn Esc gedrückt wurde (Ebene 2), bricht Auto-Enter ab.
         const bool cancelledByEsc = g_voiceStoppedManually;
         g_voiceStoppedManually = false;

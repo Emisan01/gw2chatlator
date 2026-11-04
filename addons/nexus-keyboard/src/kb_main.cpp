@@ -35,7 +35,7 @@ UINT OnWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (ours || (s_charsOurs && (msg == WM_CHAR || msg == WM_SYSCHAR || msg == WM_DEADCHAR || msg == WM_UNICHAR)))
         return msg;
 
-    // Tastenpuffer (Punkt 4b): vom Start des Sendens bis Fokus zurück im Eingabefeld alle Nutzertasten puffern
+    // The key buffer: from the start of a send until the input has the focus back, your keys are kept for it
     if (g_bufferingKeys.load()) {
         // a send that stopped moving frees the keyboard; the keys kept so far still go into our input (game thread)
         if (GetTickCount64() - g_bufferingStartTime.load() >= static_cast<ULONGLONG>(BufferSafetyMs())) {

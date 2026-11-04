@@ -101,11 +101,7 @@ INPUT Key(WORD vk, bool up) {
     in.type = INPUT_KEYBOARD;
     in.ki.wVk = vk;
     in.ki.wScan = static_cast<WORD>(MapVirtualKeyW(vk, MAPVK_VK_TO_VSC));
-    // Delete and its neighbours share their scan code with the number pad: without the extended flag Delete is the
-    // pad's "," while Num Lock is on
-    const bool extended = vk == VK_DELETE || vk == VK_INSERT || vk == VK_HOME || vk == VK_END || vk == VK_PRIOR ||
-                          vk == VK_NEXT || vk == VK_LEFT || vk == VK_RIGHT || vk == VK_UP || vk == VK_DOWN;
-    in.ki.dwFlags = KEYEVENTF_SCANCODE | (extended ? KEYEVENTF_EXTENDEDKEY : 0) | (up ? KEYEVENTF_KEYUP : 0);
+    in.ki.dwFlags = KEYEVENTF_SCANCODE | (up ? KEYEVENTF_KEYUP : 0);
     in.ki.dwExtraInfo = kGw2SenderExtraInfo;
     return in;
 }
@@ -286,22 +282,16 @@ SendOutcome Run(HWND owner, const Job& job, const SendOptions& opt, MumbleLink* 
     // The old clipboard may only come back once GW2 has really processed the
     // paste — otherwise a slow frame would paste the *old* content (anything
     // the user had copied) into the chat. If GW2 does not confirm, the
-    // translation simply stays on the clipboard.
+    // text simply stays on the clipboard. "/m" alone never touches it: nothing
+    // to wait for, your input gets the keyboard back at once.
     bool injected = false, clipboardUsed = false;
     auto finish = [&](const std::wstring& error) {
-        if (!clipboardUsed) {  // "/m" alone never touched it: nothing to wait for, your input gets the keyboard back at once
-            r.clipboardRestored = true;
-            r.ok = error.empty();
-            if (!error.empty()) r.error = error;
-            return r;
-        }
-        const bool drained = !injected || WaitForTargetToDrain(gw2, 2000);
-        if (drained) {
+        if (clipboardUsed && (!injected || WaitForTargetToDrain(gw2, 2000))) {
             if (injected) Sleep(opt.restoreDelayMs);
-            r.clipboardRestored = RestoreClipboard(owner, saved);
+            RestoreClipboard(owner, saved);
         }
         r.ok = error.empty();
-        if (!error.empty()) r.error = error;
+        r.error = error;
         return r;
     };
 
@@ -355,14 +345,12 @@ SendOutcome Run(HWND owner, const Job& job, const SendOptions& opt, MumbleLink* 
     const bool wasOpen = watched && lineHasKeys();
     if (!wasOpen) {
         if (!(why = lost(false)).empty()) return finish(why);
-        const ULONGLONG t0 = GetTickCount64();
         Tap(VK_RETURN, opt.keyHoldMs);
         WaitForTargetToDrain(gw2, 1000);
         if (watched) {
             const bool opened = textbox(true, std::max(600, 8 * opt.keyHoldMs));  // ~8 frames: also a game at a few fps
             note(L"Enter");
             if (!opened) return finish(Tr(L"GW2's chat line did not open – nothing sent"));
-            r.openMs = static_cast<int>(GetTickCount64() - t0);
         } else {
             note(L"Enter");
         }
@@ -378,12 +366,10 @@ SendOutcome Run(HWND owner, const Job& job, const SendOptions& opt, MumbleLink* 
         settle();
         if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – the text may still be in the chat line"));
         if (!(why = lost(true)).empty()) return finish(why);
-        const ULONGLONG tCommand = GetTickCount64();
         Tap(VK_RETURN, opt.keyHoldMs);
-        r.confirmedByGame = textbox(false, std::max(1000, 8 * opt.keyHoldMs));
+        const bool shut = textbox(false, std::max(1000, 8 * opt.keyHoldMs));
         note(L"Enter");
-        if (r.confirmedByGame) r.confirmMs = static_cast<int>(GetTickCount64() - tCommand);
-        if (!r.confirmedByGame) Sleep(opt.stepDelayMs);
+        if (!shut) Sleep(opt.stepDelayMs);
         return finish(std::wstring());
     }
 
@@ -408,27 +394,25 @@ SendOutcome Run(HWND owner, const Job& job, const SendOptions& opt, MumbleLink* 
         }
     }
 
-    // 3. Close (the channel alone): only a line we opened, with Enter on its empty text – it sends nothing, closes the
-    //    line and the line keeps its channel. A line you had open stays open.
+    // Only the channel: close a line we opened, with Enter on its empty text – it sends nothing and the line keeps its
+    // channel. A line you had open stays open.
     if (job.channelOnly) {
         if (wasOpen) return finish(std::wstring());
         if (!(why = lost(true)).empty()) return finish(why);
         Tap(VK_RETURN, opt.keyHoldMs);
-        r.confirmedByGame = textbox(false, std::max(1000, 8 * opt.keyHoldMs));
+        textbox(false, std::max(1000, 8 * opt.keyHoldMs));
         note(L"Enter");
         return finish(std::wstring());
     }
 
-    // 3. The message pasted, then sent.
+    // 3. The message pasted, then sent: the line shut = it went out.
     if (!(why = paste(job.message, L"Ctrl+V")).empty()) return finish(why);
     if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – the text may still be in the chat line"));
     if (!(why = lost(true)).empty()) return finish(why);
-    const ULONGLONG tSend = GetTickCount64();
     Tap(VK_RETURN, opt.keyHoldMs);
-    r.confirmedByGame = textbox(false, std::max(1000, 8 * opt.keyHoldMs));  // the line shut = the message went out
+    const bool shut = textbox(false, std::max(1000, 8 * opt.keyHoldMs));
     note(L"Enter");
-    if (r.confirmedByGame) r.confirmMs = static_cast<int>(GetTickCount64() - tSend);
-    if (!r.confirmedByGame) Sleep(opt.stepDelayMs);
+    if (!shut) Sleep(opt.stepDelayMs);
     return finish(std::wstring());
 }
 }  // namespace

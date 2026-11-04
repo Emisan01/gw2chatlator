@@ -26,24 +26,18 @@ struct SendOptions {
 
 struct SendOutcome {
     bool ok = false;
-    bool clipboardRestored = false;  // false: GW2 did not confirm, translation stays on the clipboard
-    bool confirmedByGame = false;    // MumbleLink saw the chat input close after sending
-    int openMs = -1;                 // Enter -> MumbleLink reports the chat line open (-1: not measured)
-    int confirmMs = -1;              // Enter to send -> the line closed (the message went out)
-    std::wstring trace;              // the steps and what MumbleLink said of GW2's chat line between them (no text, no name)
-    std::wstring error;              // German, for the status line
+    std::wstring trace;  // the steps and what MumbleLink said of GW2's chat line between them (no text, no name)
+    std::wstring error;  // in the UI language, for the status line
 };
 
 // `processId` from MumbleLink when known (exact), else by window class/title.
 // processId given: only a window of that process (nullptr if it has none); 0: GW2's window by its class / title.
 HWND FindGw2Window(DWORD processId = 0);
 
-// Blocks for roughly 3 * stepDelayMs + restoreDelayMs (longer if GW2 is
-// slow). Call from the UI thread; `owner` must be a window of this process
-// (clipboard ownership). The old clipboard is only restored after GW2 has
-// confirmed it worked through the injected keys.
-// `mumble` (optional): waits on GW2's "chat input open" flag instead of
-// fixed delays and confirms the message went out.
+// One message: opens GW2's chat line, pastes, Enter; a channel command typed into the text goes first. Blocks for the
+// keys (call from the worker); `owner` must be a window of this process (clipboard ownership). The old clipboard
+// comes back only after GW2 has worked through the keys.
+// `mumble` (optional): reads whether GW2's chat line has the keyboard before every key.
 // `keysReachGame` (optional): false while the caller's own window holds the keyboard - then not one key more.
 SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOptions& opt, MumbleLink* mumble = nullptr,
                           bool (*keysReachGame)() = nullptr);

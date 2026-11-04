@@ -444,7 +444,7 @@ void RequestAutoEnter(AutoEnterTrigger trigger);
 void CancelAutoEnter();
 bool IsAutoEnterPending();
 
-// Tastenpuffer während des Sendens (Punkt 4b)
+// The key buffer during a send
 struct BufferedKey {
     UINT msg;
     WPARAM wp;
