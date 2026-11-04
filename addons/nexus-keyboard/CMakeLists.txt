@@ -4,7 +4,8 @@ set(GCT_NEXUS_TP ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
 # The add-on DLL with /EHa, the rest here with /EHsc: a fault in one of our threads, caught by its shield (Shielded,
 # SafeRender), still unwinds – g_mu and every lock are given back, nothing hangs the game after it.
 string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-string(REPLACE "/O2" "/O1" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")  # size over speed, as in the root
+# Size over speed, as in the root – here also little inlining: the window code waits for people, the word model does not.
+string(REPLACE "/O2 /Ob2" "/O1 /Ob1" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
 add_library(gw2keyboard_nexus SHARED
     src/kb_main.cpp
     src/kb_state.cpp
