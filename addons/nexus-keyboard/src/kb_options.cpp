@@ -7,8 +7,8 @@
 #include "imgui/imgui_internal.h"
 #include "win/local_mt_packages.hpp"
 #include "voice_module.hpp"
-#include <iomanip>
-#include <sstream>
+#include <cstdio>
+#include <type_traits>
 
 namespace kb {
 
@@ -1849,8 +1849,46 @@ void RenderOptionsContent() {
 #undef KB_OPTIONS
 #undef KB_VOICE_OPTIONS
 
+namespace {
+// The report's text: ss << "a" << 1 << Fixed{3} << 2.5 – without the weight of the C++ streams in the DLL.
+struct Fixed {
+    int digits;
+};
+class ReportText {
+public:
+    ReportText& operator<<(const char* s) {
+        text_ += s;
+        return *this;
+    }
+    ReportText& operator<<(const std::string& s) {
+        text_ += s;
+        return *this;
+    }
+    template <class T, std::enable_if_t<std::is_integral_v<T>, int> = 0>
+    ReportText& operator<<(T v) {
+        text_ += std::to_string(v);
+        return *this;
+    }
+    ReportText& operator<<(Fixed f) {  // for the numbers after it, like std::fixed with std::setprecision
+        digits_ = f.digits;
+        return *this;
+    }
+    ReportText& operator<<(double v) {
+        char b[64];
+        std::snprintf(b, sizeof(b), "%.*f", digits_, v);
+        text_ += b;
+        return *this;
+    }
+    const std::string& str() const { return text_; }
+
+private:
+    std::string text_;
+    int digits_ = 3;
+};
+}  // namespace
+
 std::string BuildDiagnosticReport() {
-    std::ostringstream ss;
+    ReportText ss;
     SYSTEMTIME st;
     GetLocalTime(&st);
     char timeBuf[64];
@@ -1866,7 +1904,7 @@ std::string BuildDiagnosticReport() {
     ImGuiIO& io = ImGui::GetIO();
     ss << "- Operating System: Windows x64\n";
     ss << "- Display Resolution: " << static_cast<int>(io.DisplaySize.x) << "x" << static_cast<int>(io.DisplaySize.y) << "\n";
-    ss << "- Game Framerate: " << g_fps.load() << " FPS (ImGui Framerate: " << std::fixed << std::setprecision(1) << io.Framerate << ")\n";
+    ss << "- Game Framerate: " << g_fps.load() << " FPS (ImGui Framerate: " << Fixed{1} << io.Framerate << ")\n";
     ss << "- GW2 UI Size: " << g_uiSize.load() << " (0: Small, 1: Normal, 2: Large, 3: Larger)\n";
     ss << "- In Map: " << (g_inMap ? "Yes" : "No") << " (Map ID: " << g_mapId.load() << ")\n";
     ss << "- Map Open: " << (g_mapOpen ? "Yes" : "No") << ", Game Chat Open: " << (g_gameChatOpen ? "Yes" : "No") << "\n";
@@ -1950,7 +1988,7 @@ std::string BuildDiagnosticReport() {
 
     ss << "[Render Thread Frame Profiler (kb_cost)]\n";
     FrameCosts fc = CostsNow();
-    ss << "- Total Add-on Frame Cost: " << std::fixed << std::setprecision(3) << fc.totalMs << " ms\n";
+    ss << "- Total Add-on Frame Cost: " << Fixed{3} << fc.totalMs << " ms\n";
     ss << "- Subsystem Cost Breakdown:\n";
     ss << "  * Window Layout & Frame:   " << fc.ms[kCostWindow] << " ms\n";
     ss << "  * Chat Lines Rendering:    " << fc.ms[kCostChat] << " ms\n";
@@ -1958,7 +1996,7 @@ std::string BuildDiagnosticReport() {
     ss << "  * Header & Navigation:     " << fc.ms[kCostHeader] << " ms\n";
     ss << "  * Footer & Language Chips: " << fc.ms[kCostFooter] << " ms\n";
     ss << "  * Options & Diagnostics:   " << fc.ms[kCostOptions] << " ms\n";
-    ss << "- Line Ingest Overhead:      " << std::fixed << std::setprecision(1) << fc.lineUs << " µs per chat line ("
+    ss << "- Line Ingest Overhead:      " << Fixed{1} << fc.lineUs << " µs per chat line ("
        << fc.lines << " lines observed across " << fc.frames << " frames)\n\n";
 
     ss << "[Voice & Speech-to-Text]\n";

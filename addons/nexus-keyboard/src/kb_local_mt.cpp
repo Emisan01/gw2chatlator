@@ -1,7 +1,6 @@
 // kb_local_mt.cpp — OPUS-MT helper and language packages, installed or removed only on the user's click.
 #include "kb_shared.hpp"
 
-#include <filesystem>
 
 namespace kb {
 
@@ -75,11 +74,19 @@ struct LocalMtState {
 } s_state;
 
 uint64_t FolderBytes(const std::wstring& dir) {  // everything below it; 0 when missing
-    std::error_code ec;
     uint64_t sum = 0;
-    for (auto it = std::filesystem::recursive_directory_iterator(dir, ec);
-         !ec && it != std::filesystem::recursive_directory_iterator(); it.increment(ec))
-        if (it->is_regular_file(ec)) sum += it->file_size(ec);
+    WIN32_FIND_DATAW d;
+    HANDLE h = FindFirstFileW((dir + L"\\*").c_str(), &d);
+    if (h == INVALID_HANDLE_VALUE) return 0;
+    do {
+        if (!(d.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+            sum += (static_cast<uint64_t>(d.nFileSizeHigh) << 32) | d.nFileSizeLow;
+        } else if (!(d.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) && std::wcscmp(d.cFileName, L".") != 0 &&
+                   std::wcscmp(d.cFileName, L"..") != 0) {
+            sum += FolderBytes(dir + L"\\" + d.cFileName);
+        }
+    } while (FindNextFileW(h, &d));
+    FindClose(h);
     return sum;
 }
 std::wstring Mb(uint64_t bytes) { return std::to_wstring((bytes + 512 * 1024) / (1024 * 1024)); }

@@ -4,14 +4,13 @@
 #include <windows.h>
 #include <tlhelp32.h>
 
-#include <fstream>
-#include <sstream>
 #include <vector>
 
 #include "core/json.hpp"
 #include "core/local_mt_protocol.hpp"
 #include "core/text.hpp"
 #include "win/extras_install.hpp"
+#include "win/files.hpp"
 #include "win/local_mt_translator.hpp"
 
 namespace gct {
@@ -36,9 +35,8 @@ uint64_t GetFileBytes(const std::wstring& path) {
 bool CheckModelPackageSizes(const std::wstring& dir) {
     const std::wstring pkgPath = dir + L"\\.package.json";
     if (!ExistsFile(pkgPath)) return true;
-    std::ifstream f(pkgPath, std::ios::binary);
-    if (!f.is_open()) return true;
-    std::string content((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    std::string content;
+    if (!ReadFileBytes(pkgPath, content)) return true;
     JsonValue root;
     if (!ParseJson(content, root) || !root.IsObject()) return false;
     const JsonValue* files = root.Get("files");
@@ -64,10 +62,7 @@ void WriteModelPackageMarker(const std::wstring& dir, const std::string& pair, c
         json += "\"" + JsonEscape(ToUtf8(fn)) + "\":" + std::to_string(sz);
     }
     json += "}}";
-    std::ofstream out(dir + L"\\.package.json", std::ios::binary | std::ios::trunc);
-    if (out.is_open()) {
-        out.write(json.data(), json.size());
-    }
+    WriteFileAtomic(dir + L"\\.package.json", json);
 }
 
 std::wstring FullPath(const std::wstring& path) {  // absolute and in long form, as Windows names a process image
