@@ -3,6 +3,12 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.8.3 — 2026-11-04 (GW2Chatlator for Nexus)
+
+- **The Window Holds Still:** the chat and the input no longer jump at a line's end, on "Translate visible chat once" or with translation on. Changed rows are measured before anything is drawn: at the bottom the chat stays at the bottom and new lines slide in, scrolled up the first row in view stays put. The last translation stays, dimmed, until the next one is there.
+- **A Whisper That Lands Elsewhere Is Said:** when your own whisper comes back in another channel, the status says where it landed and the next footer message sets GW2's line again. Your text is kept in memory for 15 s at most, never on disk.
+- **A Third Smaller, Nothing Taken Away:** `GW2Chatlator.dll` went from 3,085,312 to 2,090,496 bytes: built for size, an unused font gone, the UI texts stored as UTF-8 with only the language in use unpacked, no C++ streams in the DLL. Measured: frame 0.081 → 0.097 ms, word bar 1.71 → about 2.5 ms per key, nothing a player can notice.
+
 ## 2.8.2 — 2026-11-02 (GW2Chatlator for Nexus)
 
 - **Whispers Arrive, Channels Hold:** the channel chosen in the footer is set in GW2's own chat line once, when you choose it (every click sets it again); a message then only opens the line, pastes and sends. A whisper tab sends "/w", the full name and Tab in front of each message. Whispers had landed in Say and GW2's chat tab moved on: our key buffer swallowed our own characters when the mouse moved, the Space after a command was no real key press, and the name was typed letter by letter into GW2's name suggestion. No Esc any more – it closed whatever GW2 window was on top.
