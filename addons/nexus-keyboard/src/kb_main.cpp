@@ -476,6 +476,18 @@ extern "C" __declspec(dllexport) int Gw2KbTestAutoMinimize(int seconds) {  // ne
     return g_collapsed ? 1 : 0;
 }
 
+extern "C" __declspec(dllexport) void Gw2KbTestTranslateLast(const char* text) {  // nexus_kb_selftest: a translation arrives
+    if (!TestHost()) return;
+    std::lock_guard<std::mutex> lock(g_mu);
+    if (g_lines.empty()) return;
+    ChatLine& l = g_lines.back();
+    l.translated = W(text);
+    l.u8translated = text;
+    l.transSegs = PieUI::ChatLinks::SegmentLine(l.u8translated);
+    l.transPending = false;
+    l.transAttempted = true;
+}
+
 extern "C" __declspec(dllexport) void Gw2KbTestWhisper(const char* name) {  // nexus_kb_selftest only: a click on a name
     if (!TestHost()) return;
     std::lock_guard<std::mutex> lock(g_mu);

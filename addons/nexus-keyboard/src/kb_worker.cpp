@@ -283,10 +283,8 @@ int TranslateRecentLines(bool once) {  // g_mu held; how many lines of other pla
             continue;
         }
 
-        l.translated.clear();
-        l.u8translated.clear();
-        l.u8transNote.clear();
-        l.transSegs.clear();
+        // An old translation stays until the new one is there: the row keeps its height (cleared, it fell back to the
+        // original and grew again – the whole chat went down and up). TranslateLine replaces or clears it.
         l.transPending = true;
         l.transAttempted = false;
         g_worker.Post([id = l.id, t = l.text, once] { TranslateLine(id, t, false, once); });

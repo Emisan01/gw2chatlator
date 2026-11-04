@@ -1173,6 +1173,31 @@ int wmain(int argc, wchar_t** argv) {
             expect(hBottom > 0 && hBottom == hLater && hLater == hMiddle && atY > 0 && atY < hMiddle,
                    "the chat's content height changed with the height cache (lines would jump)");
             expect(hWide == hWideLater && hWide < hMiddle, "after a width change the chat did not settle at once");
+            // G3. A translation arrives while the chat stands at its bottom: the new height is right in that very frame
+            // (measured before drawing), and the view only moves up to the new bottom – it never bounces.
+            cw->ScrollTarget.y = cw->ScrollMax.y;  // back to the bottom
+            cw->ScrollTargetCenterRatio.y = 0.0f;
+            frames4(3);
+            auto translateLast = reinterpret_cast<void (*)(const char*)>(GetProcAddress(dll, "Gw2KbTestTranslateLast"));
+            expect(translateLast != nullptr, "no Gw2KbTestTranslateLast");
+            if (translateLast) {
+                const float before = cw->ScrollMax.y;
+                translateLast("a translation long enough to need more rows than the short line it replaces, so that the "
+                              "row grows when it arrives and everything above it has to make room for it at the bottom");
+                frames4(1);
+                const float grown = cw->ScrollMax.y;
+                float last = cw->Scroll.y;
+                bool bounced = false;
+                for (int i = 0; i < 90; ++i) {
+                    frames4(1);
+                    if (cw->Scroll.y < last) bounced = true;
+                    last = cw->Scroll.y;
+                }
+                std::printf("chat with a translation arriving: height %.0f -> %.0f, later %.0f, view at %.0f, bounced %d\n",
+                            before, grown, cw->ScrollMax.y, cw->Scroll.y, static_cast<int>(bounced));
+                expect(grown > before && grown == cw->ScrollMax.y, "a translation's height was not right in its first frame");
+                expect(!bounced && cw->Scroll.y == cw->ScrollMax.y, "the chat bounced or left its bottom when a translation arrived");
+            }
         }
         // H. For the developer: Options > Technical draws the version, the counts and the last lines.
         src(8, nullptr, nullptr);

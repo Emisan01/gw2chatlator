@@ -342,8 +342,8 @@ struct ChatLine {
     bool transAttempted = false;  // true after translation was evaluated (prevents frame re-query)
     // Its height in the chat as last drawn, and what for (width, font, text length): out of view it costs only a
     // placeholder this high – no measuring, no chat code lookups (render thread only).
-    float rowH = -1, rowW = -1, rowFont = -1;
-    size_t rowLen = 0;
+    float rowH = -1, rowW = -1, rowFont = -1, rowGap = -1;
+    size_t rowLen = 0, rowLenNow = 0;  // rowLenNow: this frame's, from the chat's layout pass
 };
 
 struct TypingHelp {  // the worker's answer for one text + caret
@@ -359,7 +359,6 @@ extern std::shared_ptr<Translator> g_translator;
 extern TranslationOrchestrator g_orchestrator;
 extern std::deque<ChatLine> g_lines;
 extern uint64_t g_nextId;
-extern bool g_scrollDown;
 extern std::vector<std::wstring> g_context;
 extern std::wstring g_ownName;
 extern std::atomic<int> g_uiSize;
@@ -415,6 +414,7 @@ struct PendingEdit {
 };
 extern PendingEdit g_edit;
 extern int g_boxLines;
+extern int g_wrapWantLines;  // a line break waits for the box to have room: its lines next frame (0: none)
 extern int g_pick;
 
 struct AutoUndo {  // the last autocorrection: Backspace right after it brings the typed word back

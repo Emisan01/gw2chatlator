@@ -126,7 +126,6 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
                          : ch == Channel::Whisper && t.nameFolded == g_lines.back().speakerFolded)
                 g_tabs[i].unread = true;
         }
-        g_scrollDown = true;
     }
     if (shouldQueue) g_worker.Post([id, t = rawText] { TranslateLine(id, t); });
 }
@@ -157,6 +156,8 @@ void ShowDraftOf(uint32_t uid) {
     }
     g_flatInput = Flat(g_input);
     g_wFlatInput = W(g_flatInput);
+    g_preview.clear();  // another tab's translation
+    g_back.clear();
     g_historyPos = -1;
     g_undo.active = false;
     g_pick = -1;

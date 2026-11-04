@@ -158,7 +158,14 @@ int InputCallback(ImGuiInputTextCallbackData* d) {
                             lineStart = out.size() - n;
                         }
                     }
-                    if (out != std::string(d->Buf, d->BufTextLen)) {
+                    // The box first, then the line break: broken at once, the box (one line too low this frame) would
+                    // scroll its text up and next frame back – the jump at a line's end. So one more line asks for
+                    // the room now (the caret's character still fits: the width keeps a scroll bar's reserve) and the
+                    // break comes next frame, in a box already high enough.
+                    const int outLines = 1 + static_cast<int>(std::count(out.begin(), out.end(), '\n'));
+                    const bool waitForRoom = outLines > g_boxLines && g_boxLines < std::max(8, Lay().inputLines);
+                    if (waitForRoom) g_wrapWantLines = outLines;
+                    if (!waitForRoom && out != std::string(d->Buf, d->BufTextLen)) {
                         size_t at = 0, seen = 0;  // the caret: the same place in the text
                         while (at < out.size() && seen < flatCursor) {
                             if (out[at] == '\r') { at += 2; continue; }
@@ -170,7 +177,7 @@ int InputCallback(ImGuiInputTextCallbackData* d) {
                         d->InsertChars(0, out.c_str());
                         d->CursorPos = d->SelectionStart = d->SelectionEnd = static_cast<int>(std::min(at, out.size()));
                     }
-                    lastSeen = out;
+                    if (!waitForRoom) lastSeen = out;
                 }
             }
             const std::string now = Flat(std::string(d->Buf, d->BufTextLen).c_str());

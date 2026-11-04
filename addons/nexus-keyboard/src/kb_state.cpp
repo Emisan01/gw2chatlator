@@ -73,7 +73,6 @@ std::shared_ptr<Translator> g_translator;
 TranslationOrchestrator g_orchestrator;
 std::deque<ChatLine> g_lines;
 uint64_t g_nextId = 1;
-bool g_scrollDown = false;
 std::vector<std::wstring> g_context;  // speakers and words of the chat (offered as completions, never learned)
 std::wstring g_ownName;               // your character (MumbleLink)
 std::atomic<int> g_uiSize{-1};        // GW2 UI size (0 small .. 3 larger) from MumbleLink
@@ -112,6 +111,7 @@ bool g_gameChatOpen = false;  // GW2's chat line (MumbleLink), g_mu
 bool g_focusInput = false;
 PendingEdit g_edit;
 int g_boxLines = 4;  // the input's lines this frame: your setting, more while a longer text waits to be sent
+int g_wrapWantLines = 0;
 int g_pick = -1;  // Tab / Shift+Tab move through the word bar; Space writes the picked word
 AutoUndo g_undo;
 std::wstring g_finishedLast;  // learning mode: the last word when a space last followed it (see NoteSelfFix)

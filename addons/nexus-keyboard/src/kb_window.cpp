@@ -18,6 +18,23 @@ struct LineHit {
     }
 };
 
+// A window's scroll in this very frame, after its Begin: Begin placed the cursor for the old scroll, everything it derived
+// from it moves along – as if Begin had known. (A scroll set the usual way counts from the next frame on.)
+void ScrollNow(ImGuiWindow* w, float y) {
+    const float d = y - w->Scroll.y;
+    if (d == 0.0f) return;
+    w->Scroll.y = y;
+    w->DC.CursorPos.y -= d;
+    w->DC.CursorPosPrevLine.y -= d;
+    w->DC.CursorStartPos.y -= d;
+    w->DC.CursorMaxPos.y -= d;
+    w->DC.IdealMaxPos.y -= d;
+    w->WorkRect.Min.y -= d;
+    w->WorkRect.Max.y -= d;
+    w->ContentRegionRect.Min.y -= d;
+    w->ContentRegionRect.Max.y -= d;
+}
+
 }  // namespace
 
 bool g_collapsed = false;  // minimised to the small button (its bottom-left corner is the window's)
@@ -202,6 +219,13 @@ void CheckAutoSend() {
     CancelAutoEnter();
     StartSend();
 }
+
+// The input's lines this frame: what its text has, a line break waiting for room, your setting at least, 8 at most.
+static int InputLinesNow() {
+    const int text = 1 + static_cast<int>(std::count(g_input, g_input + std::strlen(g_input), '\n'));
+    return std::clamp(std::max(text, g_wrapWantLines), Lay().inputLines, std::max(8, Lay().inputLines));
+}
+static float g_boxLineH = 0;  // a line of the input, as last laid out
 
 WinSpace WindowSpace(float button) {
     const ImGuiIO& io = ImGui::GetIO();
@@ -800,6 +824,16 @@ void RenderWindow() {
 
     // Without the chat the window is exactly its parts (fitted below, down to nothing but the input).
     const WinMode winMode = Lay().chat ? WinMode::Big : WinMode::Fitted;
+    // The input's height this frame is known already: the window's height follows in the same frame, no frame with the
+    // rows below the input hanging out of the window.
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        if (const int lines = InputLinesNow(); g_boxLineH > 0 && lines != g_boxLines) {
+            const float grown = (lines - g_boxLines) * g_boxLineH;
+            g_winFittedH += grown;
+            g_winNeedH += grown;
+        }
+    }
     const WinSpace space = WindowSpace(minBtn);
     ImGui::SetNextWindowSize(ImVec2(520, 360), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(ImVec2(space.minW, Lay().chat ? space.minH : 16.0f), ImVec2(FLT_MAX, FLT_MAX));
@@ -1213,8 +1247,9 @@ void RenderWindow() {
     const float smallLine = ImGui::GetFontSize() * 0.85f + 2;
     // The input grows with what you write (its soft-wrapped lines) up to 8 lines and falls back once it is sent. A small
     // extra line at its bottom: the translation in compact view (only while something is translated).
-    const int textLines = 1 + static_cast<int>(std::count(g_input, g_input + std::strlen(g_input), '\n'));
-    g_boxLines = std::clamp(textLines, Lay().inputLines, std::max(8, Lay().inputLines));
+    g_boxLines = InputLinesNow();
+    g_wrapWantLines = 0;
+    g_boxLineH = ImGui::GetTextLineHeight();
     const float boxH = ImGui::GetTextLineHeight() * g_boxLines + st.FramePadding.y * 2 +
                        (!showPreview && (Translating() || NamesSwapped()) ? smallLine : 0);  // no preview: it small in the box
     // The preview grows with its wrapped lines like the input (what it needed last frame), up to 8.
@@ -1258,7 +1293,7 @@ void RenderWindow() {
         g_winNeedH = ImGui::GetWindowSize().y + lowerH + line * 2 - ImGui::GetContentRegionAvail().y;
     }
     if (Lay().chat) {
-        static float scrollY = 0, scrollMax = 0, viewH = 1, dragOffset = 0, lastScrollMax = 0;
+        static float scrollY = 0, scrollMax = 0, viewH = 1, dragOffset = 0;
         static bool atBottom = true;
         static int lastActiveTab = -999;
         const float h = std::max(line * 2, ImGui::GetContentRegionAvail().y - lowerH);
@@ -1289,7 +1324,11 @@ void RenderWindow() {
         ImGui::PushStyleColor(ImGuiCol_ChildBg, chatBg);
         ImGui::BeginChild("chat", ImVec2(0, h), false, ImGuiWindowFlags_NoScrollbar);
         ImGui::PopStyleColor();
-        if (setScroll >= 0) ImGui::SetScrollY(setScroll);
+        ImGuiWindow* const cw = ImGui::GetCurrentWindow();
+        static float s_rowsTop = 0, s_leftAt = 0, s_slide = 0;  // the first row's place, the scroll left last frame, the slide
+        // The wheel, or anything else that scrolled up since last frame: no longer at the bottom. (Begin also cuts the
+        // scroll back when the chat gets higher or shorter – then it stands at its end and stays there.)
+        if (atBottom && cw->Scroll.y < s_leftAt - 1.0f && cw->Scroll.y < cw->ScrollMax.y - 4.0f) atBottom = false;
         const ImVec2 childP0 = ImGui::GetWindowPos();
         const ImVec2 childP1 = ImVec2(childP0.x + ImGui::GetWindowSize().x, childP0.y + ImGui::GetWindowSize().y);
         const bool chatHovered = ImGui::IsMouseHoveringRect(childP0, childP1);
@@ -1297,9 +1336,10 @@ void RenderWindow() {
         if (chatHovered && wheel > 0.0f) {
             atBottom = false;
         }
+        bool snapToBottom = false;  // another tab: its newest lines at once
         if (g_activeTab != lastActiveTab) {
             lastActiveTab = g_activeTab;
-            atBottom = true;
+            atBottom = snapToBottom = true;
         }
         static const std::wstring s_emptyW;
         const WhisperTab* front = g_activeTab >= 0 && g_activeTab < static_cast<int>(g_tabs.size()) ? &g_tabs[g_activeTab] : nullptr;
@@ -1308,33 +1348,25 @@ void RenderWindow() {
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,  // the space between chat lines (Window tab: Line spacing) – also the info lines, so it shows at once
                             ImVec2(ImGui::GetStyle().ItemSpacing.x,
                                    ImGui::GetStyle().ItemSpacing.y * std::clamp(g_cfg.chatSpacing, 0, 100) / 100.0f));
-        RenderChatSourceNotice();  // reading Events: Chat is off or paused: why, and what you can do
-        if (g_lines.empty() && g_layout.infoText) {  // nothing arrived yet: what is ready, what is missing, where translation is switched on
-            lock.unlock();
-            RenderModules(true);
-            lock.lock();
-        }
         g_visibleLines.clear();
-        // Only what is in view is drawn: a line measured before (same width, font, text) that lies outside the view
-        // (plus a margin) is just a placeholder of its height – the layout stays exactly the same.
         const float rowWrap = ImGui::GetContentRegionAvail().x, rowFont = ImGui::GetFontSize();
-        const float viewTop = ImGui::GetScrollY() - line * 4;
-        const float viewBottom = ImGui::GetScrollY() + ImGui::GetWindowHeight() + line * 4;
         const float rowGap = ImGui::GetStyle().ItemSpacing.y;
-        for (ChatLine& l : g_lines) {
-            if (!tabName.empty() && (l.channel != Channel::Whisper || l.speakerFolded != tabName)) continue;
-            if (!(tabChannels & ChannelBit(l.channel))) continue;  // a tab of your own: only its channels
-            // the original under a translation (your own line: what you typed), when chosen – part of the row's size
-            const std::wstring ownTyped = g_cfg.showOriginal && l.own ? OwnOriginal(l.text) : std::wstring();
-            const bool originalUnder = g_cfg.showOriginal && ((!l.own && !l.translated.empty()) || !ownTyped.empty());
-            const size_t rowLen = (l.translated.empty() ? l.text.size() : l.translated.size() + 1) +
-                                  (originalUnder ? (ownTyped.empty() ? l.text.size() : ownTyped.size()) + 1 : 0);
+        auto inThisTab = [&](const ChatLine& l) {
+            if (!tabName.empty() && (l.channel != Channel::Whisper || l.speakerFolded != tabName)) return false;
+            return (tabChannels & ChannelBit(l.channel)) != 0;  // a tab of your own: only its channels
+        };
+        // the original under a translation (your own line: what you typed), when chosen – part of the row's size
+        auto typedOf = [&](const ChatLine& l) { return g_cfg.showOriginal && l.own ? OwnOriginal(l.text) : std::wstring(); };
+        auto originalUnderOf = [&](const ChatLine& l, const std::wstring& ownTyped) {
+            return g_cfg.showOriginal && ((!l.own && !l.translated.empty()) || !ownTyped.empty());
+        };
+        auto rowKnown = [&](const ChatLine& l) {  // measured for this width, font, spacing and text
+            return l.rowH > 0 && l.rowW == rowWrap && l.rowFont == rowFont && l.rowGap == rowGap && l.rowLen == l.rowLenNow;
+        };
+        auto drawRow = [&](ChatLine& l) {
             const float y0 = ImGui::GetCursorPosY();
-            if (l.rowH > 0 && l.rowW == rowWrap && l.rowFont == rowFont && l.rowLen == rowLen &&
-                (y0 + l.rowH < viewTop || y0 > viewBottom)) {
-                ImGui::Dummy(ImVec2(1.0f, std::max(0.0f, l.rowH - rowGap)));
-                continue;
-            }
+            const std::wstring ownTyped = typedOf(l);
+            const bool originalUnder = originalUnderOf(l, ownTyped);
             ImGui::PushID(static_cast<int>(l.id));
             const float rowTop = ImGui::GetCursorScreenPos().y;
             const float rowX = ImGui::GetCursorPosX();
@@ -1432,7 +1464,80 @@ void RenderWindow() {
             l.rowH = ImGui::GetCursorPosY() - y0;  // what it took, for the frames it is out of view
             l.rowW = rowWrap;
             l.rowFont = rowFont;
-            l.rowLen = rowLen;
+            l.rowGap = rowGap;
+            l.rowLen = l.rowLenNow;
+        };
+        // The layout first, then the drawing – like a browser, whose scroll and layout reach the screen together. A row that
+        // changed (a translation arrived, a new line, another width) is measured now by drawing it far above the window,
+        // where nothing shows and nothing can be hit. So the height is right before the first row is drawn:
+        // - at the bottom the chat stays at the bottom, in the same frame: no frame with the new text pushing the rows
+        //   down and the next one pulling them up again (that was the jumping);
+        // - scrolled up, the first row in view stays where it is (scroll anchoring), whatever changes above it.
+        if (!cw->SkipItems) {
+            float oldY = s_rowsTop, newY = s_rowsTop, shift = 0;
+            bool anchored = false, anyRow = false;
+            for (ChatLine& l : g_lines) {
+                if (!inThisTab(l)) continue;
+                anyRow = true;
+                const std::wstring ownTyped = typedOf(l);
+                l.rowLenNow = (l.translated.empty() ? l.text.size() : l.translated.size() + 1) +
+                              (originalUnderOf(l, ownTyped) ? (ownTyped.empty() ? l.text.size() : ownTyped.size()) + 1 : 0);
+                const float was = std::max(0.0f, l.rowH);
+                if (!rowKnown(l)) {
+                    const ImVec2 back = ImGui::GetCursorScreenPos();
+                    ImGui::SetCursorScreenPos(ImVec2(back.x, std::floor(cw->Pos.y) - 8000.0f));
+                    drawRow(l);
+                    ImGui::SetCursorScreenPos(back);
+                }
+                if (!anchored && oldY + was > cw->Scroll.y) {  // the first row reaching into the view
+                    anchored = true;
+                    shift = newY - oldY;
+                }
+                oldY += was;
+                newY += std::max(0.0f, l.rowH);
+            }
+            const float contentH = std::floor(newY - (anyRow ? rowGap : 0.0f));
+            const float maxY = std::max(0.0f, contentH + cw->WindowPadding.y * 2.0f - cw->Size.y);
+            const float now = cw->Scroll.y;
+            float next;
+            if (setScroll >= 0) {  // the scroll bar's handle in your hand
+                next = std::min(setScroll, maxY);
+                atBottom = setScroll >= maxY - 4;
+            } else if (atBottom) {
+                next = maxY;
+                // A few lines more at the bottom slide in over a moment, like in a messenger; a long way (another tab, a
+                // big jump) or a shorter chat at once.
+                if (!snapToBottom && maxY > now && maxY - now <= cw->Size.y) {
+                    if (std::fabs(s_slide - now) > 1.0f) s_slide = now;
+                    s_slide += (maxY - s_slide) * (1.0f - std::exp(-io.DeltaTime * 18.0f));
+                    if (maxY - s_slide >= 0.5f) next = std::floor(s_slide);
+                }
+            } else {
+                next = std::clamp(now + shift, 0.0f, maxY);
+            }
+            if (next == maxY || !atBottom || setScroll >= 0) s_slide = next;
+            ScrollNow(cw, std::floor(next));
+            cw->ScrollMax.y = maxY;
+        }
+        RenderChatSourceNotice();  // reading Events: Chat is off or paused: why, and what you can do
+        if (g_lines.empty() && g_layout.infoText) {  // nothing arrived yet: what is ready, what is missing, where translation is switched on
+            lock.unlock();
+            RenderModules(true);
+            lock.lock();
+        }
+        // Only what is in view is drawn: a measured line outside the view (plus a margin) is just a placeholder of its
+        // height – the layout stays exactly the same.
+        const float viewTop = ImGui::GetScrollY() - line * 4;
+        const float viewBottom = ImGui::GetScrollY() + ImGui::GetWindowHeight() + line * 4;
+        s_rowsTop = ImGui::GetCursorPosY();
+        for (ChatLine& l : g_lines) {
+            if (!inThisTab(l)) continue;
+            const float y0 = ImGui::GetCursorPosY();
+            if (rowKnown(l) && (y0 + l.rowH < viewTop || y0 > viewBottom)) {
+                ImGui::Dummy(ImVec2(1.0f, std::max(0.0f, l.rowH - rowGap)));
+                continue;
+            }
+            drawRow(l);
         }
         ImGui::PopStyleVar();  // the chat's line spacing
         // A line's menu (right-click on someone's text): the reading language first, under the pointer; others below.
@@ -1467,19 +1572,11 @@ void RenderWindow() {
             ImGui::EndPopup();
         }
         s_lineMenuOpen = ImGui::IsPopupOpen("##linemenu");
-        // Auto-scroll to bottom only when new lines arrive or content expands (e.g. item names resolved),
-        // provided the user was at the bottom and is not actively scrolling up with the mouse wheel.
-        const bool contentGrew = (ImGui::GetScrollMaxY() > lastScrollMax + 1.0f);  // this frame against the last
-        const bool shouldScrollDown = (g_scrollDown || contentGrew);
-        if (atBottom && shouldScrollDown && setScroll < 0 && (!chatHovered || wheel <= 0.0f)) {
-            ImGui::SetScrollHereY(1.0f);
-        }
-        g_scrollDown = false;
         scrollY = ImGui::GetScrollY();
         scrollMax = ImGui::GetScrollMaxY();
-        lastScrollMax = scrollMax;
         viewH = ImGui::GetWindowHeight();
-        atBottom = scrollY >= scrollMax - 4;
+        if (!atBottom) atBottom = scrollY >= scrollMax - 4;  // scrolled back down: it follows again
+        s_leftAt = scrollY;
         ImGui::EndChild();
     } else {  // no chat: the input stays the lowest line, the space above stays empty (see-through like the window)
         const float fill = ImGui::GetContentRegionAvail().y - lowerH;
@@ -1515,6 +1612,7 @@ void RenderWindow() {
     CostMark(kCostInput);
     // ---- the preview: what arrives in the GW2 chat, the back-translation small under it
     const bool previewCurrent = g_previewGen == g_inputGen && !g_preview.empty();
+    static ULONGLONG s_inputEdited = 0;  // the last change of the text
     if (showPreview) {
         // The same light field as the input below: the two belong together.
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
@@ -1561,15 +1659,21 @@ void RenderWindow() {
                 LookText(U8((own.empty() ? ComposePrefix() : own) + g_preview).c_str(), Bright(kPreview), true);
             else
                 LookText(U8((own.empty() ? ComposePrefix() : std::wstring()) + typed).c_str(), Bright(kPreview), true);
-        } else if (previewCurrent) {
+        } else if (previewCurrent || !g_preview.empty()) {
+            // While the next translation is on its way the last one stays, dimmed: the field keeps its size and the chat
+            // above it stays where it is (a "translating …" in between shrank it at every key).
             const std::wstring own = SplitChatCommand(SanitizeChatText(g_wFlatInput)).prefix;  // as StartSend does it
-            LookText(U8((own.empty() ? ComposePrefix() : own) + g_preview).c_str(), Bright(kPreview), true);
+            const ImVec4 shade = previewCurrent ? kPreview : ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled);
+            LookText(U8((own.empty() ? ComposePrefix() : own) + g_preview).c_str(), Bright(shade), true);
             if (!g_back.empty()) LookText(U8(g_back).c_str(), Bright(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled)), true);
         } else if (g_layout.infoText) {
             ImGui::TextDisabled("%s", UI(Tr(L"translating …")).c_str());
         }
         // the fewest rows whose height (line * (rows + 0.2)) holds what was drawn
-        g_previewRows = std::max(1, static_cast<int>(std::ceil((ImGui::GetCursorPosY() - st.ItemSpacing.y) / line - 0.2f)));
+        const int drawnRows = std::max(1, static_cast<int>(std::ceil((ImGui::GetCursorPosY() - st.ItemSpacing.y) / line - 0.2f)));
+        // It grows at once and shrinks only once the text stands still or is gone: a row coming and going with each key
+        // moved the whole chat above it.
+        if (drawnRows >= g_previewRows || !g_input[0] || GetTickCount64() - s_inputEdited > 1000) g_previewRows = drawnRows;
         ImGui::EndChild();
         ImGui::PopStyleColor();
     }
@@ -1918,14 +2022,17 @@ void RenderWindow() {
     if (g_flatInput != g_lastInput) {
         g_lastInput = g_flatInput;
         NoteSelfFix(g_wFlatInput);
-        g_inputChanged = GetTickCount64();
+        g_inputChanged = s_inputEdited = GetTickCount64();
         ++g_inputGen;
-        g_back.clear();
         g_pick = -1;
         if (!g_helpRequested) {
             g_helpRequested = true;
             g_worker.PostInteractive(ComputeTyping);
         }
+    }
+    if (g_flatInput.empty() && (!g_preview.empty() || !g_back.empty())) {  // sent or emptied: nothing old for the next text
+        g_preview.clear();
+        g_back.clear();
     }
     if (g_inputChanged && GetTickCount64() - g_inputChanged > 400 && !g_flatInput.empty() &&
         (Translating() || SwapsNames())) {
