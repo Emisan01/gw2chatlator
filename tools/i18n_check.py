@@ -52,10 +52,11 @@ LANGS = ("de", "fr", "es", "it", "pl", "pt", "tr", "ru")  # the UI languages bes
 
 def table(lang):
     text = (SRC / "core" / f"i18n_{lang}.cpp").read_text(encoding="utf-8")
-    pairs = re.findall(r'\{\s*((?:L"(?:[^"\\]|\\.)*"\s*)+),\s*((?:L"(?:[^"\\]|\\.)*"\s*)+)\}', text)
+    # {L"the English key", "its translation as UTF-8"}
+    pairs = re.findall(r'\{\s*((?:L"(?:[^"\\]|\\.)*"\s*)+),\s*((?:"(?:[^"\\]|\\.)*"\s*)+)\}', text)
     out = {}
     for en, tr in pairs:
-        out["".join(unescape(x) for x in LIT.findall(en))] = "".join(unescape(x) for x in LIT.findall(tr))
+        out["".join(unescape(x) for x in LIT.findall(en))] = "".join(unescape(x) for x in re.findall(r'"((?:[^"\\]|\\.)*)"', tr))
     return out
 
 def main():

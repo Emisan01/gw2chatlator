@@ -41,7 +41,7 @@ std::wstring FormatArgs(const std::wstring& pattern, std::initializer_list<std::
 // Tests / tools.
 struct I18nEntry {
     const wchar_t* en;
-    const wchar_t* text;
+    const char* text;     // UTF-8: half the size of wide text
 };
 const wchar_t* TranslationFor(UiLang lang, const wchar_t* english);  // nullptr if missing
 size_t TranslationCount(UiLang lang);

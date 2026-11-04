@@ -952,6 +952,13 @@ static void TestI18n() {
     CHECK(FormatArgs(L"{1}{1}{3}", {L"a"}) == L"aa{3}");
     CHECK(UiLangFromCode(L"de-AT") == UiLang::De && UiLangFromCode(L"pt-BR") == UiLang::Pt);
     CHECK(UiLangFromCode(L"ar", UiLang::En) == UiLang::En);  // no Arabic UI (unjoined in ImGui 1.80)
+    {  // the tables hold UTF-8: umlauts and Cyrillic arrive whole as wide text
+        const wchar_t* de = TranslationFor(UiLang::De, L"A GW2 term – never translated");
+        CHECK(de && std::wstring(de) == L"Ein GW2-Begriff – wird nie übersetzt");
+        const wchar_t* ru = TranslationFor(UiLang::Ru, L"Map");
+        CHECK(ru && *ru >= 0x0400 && *ru <= 0x04FF);
+        CHECK(TranslationFor(UiLang::De, L"no such text") == nullptr);
+    }
     SetUiLang(UiLang::De);
     CHECK(Tr(L"Map") == L"Karte");
     CHECK(Tr(L"no such text, falls back") == L"no such text, falls back");

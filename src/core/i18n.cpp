@@ -2,8 +2,11 @@
 
 #include <atomic>
 #include <cwctype>
+#include <mutex>
 #include <unordered_map>
 #include <vector>
+
+#include "core/text.hpp"
 
 namespace gct {
 
@@ -29,7 +32,7 @@ namespace {
 
 std::atomic<uint8_t> g_lang{static_cast<uint8_t>(UiLang::En)};
 
-using Table = std::unordered_map<std::wstring, const wchar_t*>;
+using Table = std::unordered_map<std::wstring, std::wstring>;
 
 const Table& TableFor(UiLang lang) {
     struct Source {
@@ -37,24 +40,29 @@ const Table& TableFor(UiLang lang) {
         const I18nEntry* entries;
         const size_t* count;
     };
-    static const std::vector<Table> tables = [] {  // all at once, the first time (a thread-safe static)
-        const Source sources[] = {
-            {UiLang::De, kGermanStrings, &kGermanCount},
-            {UiLang::Fr, kFrenchStrings, &kFrenchCount},
-            {UiLang::Es, kSpanishStrings, &kSpanishCount},
-            {UiLang::It, kItalianStrings, &kItalianCount},
-            {UiLang::Pl, kPolishStrings, &kPolishCount},
-            {UiLang::Pt, kPortugueseStrings, &kPortugueseCount},
-            {UiLang::Tr, kTurkishStrings, &kTurkishCount},
-            {UiLang::Ru, kRussianStrings, &kRussianCount},
-        };
-        std::vector<Table> t(static_cast<size_t>(UiLang::Ru) + 1);  // English: the empty table
-        for (const Source& s : sources)
-            for (size_t i = 0; i < *s.count; ++i) t[static_cast<size_t>(s.lang)].emplace(s.entries[i].en, s.entries[i].text);
-        return t;
-    }();
-    const size_t i = static_cast<size_t>(lang);
-    return i < tables.size() ? tables[i] : tables[0];
+    // Only the language in use is unpacked, the first time it is asked for (the tables hold UTF-8: half the size).
+    static const Source sources[] = {
+        {UiLang::De, kGermanStrings, &kGermanCount},
+        {UiLang::Fr, kFrenchStrings, &kFrenchCount},
+        {UiLang::Es, kSpanishStrings, &kSpanishCount},
+        {UiLang::It, kItalianStrings, &kItalianCount},
+        {UiLang::Pl, kPolishStrings, &kPolishCount},
+        {UiLang::Pt, kPortugueseStrings, &kPortugueseCount},
+        {UiLang::Tr, kTurkishStrings, &kTurkishCount},
+        {UiLang::Ru, kRussianStrings, &kRussianCount},
+    };
+    constexpr size_t kLangs = static_cast<size_t>(UiLang::Ru) + 1;
+    static Table tables[kLangs];  // English: the empty table
+    static std::once_flag once[kLangs];
+    const size_t i = static_cast<size_t>(lang) < kLangs ? static_cast<size_t>(lang) : 0;
+    std::call_once(once[i], [i] {
+        for (const Source& s : sources) {
+            if (static_cast<size_t>(s.lang) != i) continue;
+            tables[i].reserve(*s.count);
+            for (size_t k = 0; k < *s.count; ++k) tables[i].emplace(s.entries[k].en, FromUtf8(s.entries[k].text));
+        }
+    });
+    return tables[i];
 }
 
 }  // namespace
@@ -93,7 +101,7 @@ const wchar_t* TranslationFor(UiLang lang, const wchar_t* english) {
     if (!english) return nullptr;
     const Table& t = TableFor(lang);
     auto it = t.find(english);
-    return it == t.end() ? nullptr : it->second;
+    return it == t.end() ? nullptr : it->second.c_str();
 }
 
 size_t TranslationCount(UiLang lang) { return TableFor(lang).size(); }
