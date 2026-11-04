@@ -66,6 +66,7 @@ thread_local Lane g_workerLane = Lane::Unknown;
 Worker g_worker;
 SpellService* g_spell = nullptr;
 SendGuard g_guard;
+WhisperWatch g_whisperWatch;
 MumbleLink* g_mumbleWorker = nullptr;
 std::mutex g_mu;
 Config g_cfg;

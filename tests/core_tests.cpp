@@ -43,6 +43,7 @@
 #include "core/voice.hpp"
 #include "core/voice_learn.hpp"
 #include "core/send_guard.hpp"
+#include "core/whisper_watch.hpp"
 #include "core/chat_code.hpp"
 #include "core/chat_source.hpp"
 #include "core/window_layout.hpp"
@@ -2137,6 +2138,38 @@ static void TestPickVoiceCores() {
 }
 
 
+static void TestWhisperWatch() {
+    {  // it comes back as a whisper: nothing to say, and it is done with
+        WhisperWatch w;
+        w.Sent(L"hallo du", 1000);
+        CHECK(!w.WentElsewhere(L"hallo du", true, 1100));
+        CHECK(!w.WentElsewhere(L"hallo du", false, 1200));  // the same words in Say later: yours, on purpose
+    }
+    {  // it comes back in another channel: said once; other own lines are none of its business
+        WhisperWatch w;
+        w.Sent(L"Hallo  du!", 1000);
+        CHECK(!w.WentElsewhere(L"something else", false, 1100));
+        CHECK(w.WentElsewhere(L"hallo du", false, 1200));  // case, spacing, end punctuation do not matter
+        CHECK(!w.WentElsewhere(L"hallo du", false, 1300));
+    }
+    {  // too late, or the send failed: no alarm
+        WhisperWatch w;
+        w.Sent(L"late", 1000);
+        CHECK(!w.WentElsewhere(L"late", false, 1000 + WhisperWatch::kWindowMs + 1));
+        w.Sent(L"failed", 2000);
+        w.Forget(L"failed");
+        CHECK(!w.WentElsewhere(L"failed", false, 2100));
+    }
+    {  // never more than a handful waiting, an empty text never
+        WhisperWatch w;
+        w.Sent(L"", 1000);
+        CHECK(!w.WentElsewhere(L"", false, 1100));
+        for (size_t i = 0; i <= WhisperWatch::kMaxWaiting; ++i) w.Sent(L"line " + std::to_wstring(i), 1000);
+        CHECK(!w.WentElsewhere(L"line 0", false, 1100));
+        CHECK(w.WentElsewhere(L"line 1", false, 1100));
+    }
+}
+
 static void TestSendGuard() {
     {  // ordinary chatting passes, the same line a few times too
         SendGuard g;
@@ -2975,6 +3008,7 @@ int main() {
     TestChatCode();
     TestVoiceFixBook();
     TestSendGuard();
+    TestWhisperWatch();
     TestPickVoiceCores();
     std::printf("%d passed, %d failed\n", g_pass, g_fail);
     return g_fail == 0 ? 0 : 1;

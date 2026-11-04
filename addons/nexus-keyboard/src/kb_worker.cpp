@@ -624,10 +624,21 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
     for (const std::wstring& part : parts) {
         if (!ok) break;
         const MumbleState ms = g_mumbleWorker ? g_mumbleWorker->Read() : MumbleState{};
+        // A whisper (to a name, or the reply set in the footer): watched for coming back in another channel.
+        const ChatSplit sent = SplitChatCommand(part);
+        const std::wstring sentCommand = ToLowerAscii(part.substr(0, part.find(L' ')));
+        const bool whisper = sent.prefix.empty() ? channel == L"/r "
+                                                 : sentCommand == L"/w" || sentCommand == L"/whisper" || sentCommand == L"/tell";
+        const std::wstring whispered = sent.prefix.empty() ? part : sent.body;
+        if (whisper) {
+            std::lock_guard<std::mutex> lock(g_mu);
+            g_whisperWatch.Sent(whispered, GetTickCount64());
+        }
         const SendOutcome out = SendToGw2Chat(gw2, part, so, ms.live ? g_mumbleWorker : nullptr, &KeysReachGame);
         {
             std::lock_guard<std::mutex> lock(g_mu);
             g_lastSendTrace = out.trace;
+            if (whisper && !out.ok) g_whisperWatch.Forget(whispered);
         }
         if (!out.ok) {
             ok = false;

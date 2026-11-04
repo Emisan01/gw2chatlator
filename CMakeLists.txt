@@ -67,6 +67,7 @@ add_library(gct_core STATIC
     src/core/voice.cpp
     src/core/voice_learn.cpp
     src/core/send_guard.cpp
+    src/core/whisper_watch.cpp
     src/core/contrast.cpp
     src/core/chat_source.cpp
     src/core/window_layout.cpp

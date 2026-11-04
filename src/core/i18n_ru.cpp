@@ -1297,6 +1297,8 @@ extern const I18nEntry kRussianStrings[] = {
      L"Строка чата GW2 закрылась – отменено"},
     {L"GW2's chat line did not open – nothing sent",
      L"Строка чата GW2 не открылась – ничего не отправлено"},
+    {L"That whisper landed in {1}, not with the player – check GW2's chat line.",
+     L"Этот шёпот попал в {1}, а не игроку – проверьте строку чата GW2."},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

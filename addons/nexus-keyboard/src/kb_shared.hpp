@@ -36,6 +36,7 @@
 #include "core/languages.hpp"
 #include "core/protect.hpp"
 #include "core/send_guard.hpp"
+#include "core/whisper_watch.hpp"
 #include "core/soft_wrap.hpp"
 #include "core/send_route.hpp"
 #include "core/translation_check.hpp"
@@ -314,6 +315,7 @@ namespace kb {
 // Only the worker touches these (no lock needed).
 extern SpellService* g_spell;
 extern SendGuard g_guard;
+extern WhisperWatch g_whisperWatch;  // g_mu
 extern MumbleLink* g_mumbleWorker;
 extern TranslationCache g_transCache;  // the chat's translations of this session (memory only)
 

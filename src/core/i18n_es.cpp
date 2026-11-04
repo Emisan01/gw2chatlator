@@ -1297,6 +1297,8 @@ extern const I18nEntry kSpanishStrings[] = {
      L"La línea de chat de GW2 se cerró – cancelado"},
     {L"GW2's chat line did not open – nothing sent",
      L"La línea de chat de GW2 no se abrió – nada enviado"},
+    {L"That whisper landed in {1}, not with the player – check GW2's chat line.",
+     L"Ese susurro llegó a {1}, no al jugador: revisa la línea de chat de GW2."},
 };
 extern const size_t kSpanishCount = sizeof(kSpanishStrings) / sizeof(kSpanishStrings[0]);
 
