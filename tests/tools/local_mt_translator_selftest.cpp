@@ -140,6 +140,12 @@ int wmain(int argc, wchar_t** argv) {
     ok &= Check(restarted.ok && restarted.text == L"Bonjour", "helper restarts after a crash");
 
     const ULONGLONG started = GetTickCount64();
+    {  // a sentence seen before does not go to the model again
+        const auto one = translator->Translate({{L"Eins hier. Zwei da.", false}}, L"de", L"en");
+        const auto two = translator->Translate({{L"Eins hier. Drei dort.", false}}, L"de", L"en");
+        ok &= Check(one.ok && one.run.requests == 2 && two.ok && two.run.requests == 1 && two.run.sentencesKept == 1,
+                    "the sentence cache asks the model only for the new sentence");
+    }
     const auto timedOut = translator->Translate({{L"timeout", false}}, L"en", L"fr");
     const ULONGLONG elapsed = GetTickCount64() - started;
     ok &= Check(!timedOut.ok && elapsed < 7500, "a stalled helper returns an error within the timeout bound");

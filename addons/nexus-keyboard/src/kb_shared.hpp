@@ -403,16 +403,69 @@ extern bool g_sending;
 // One translation for the live view: numbers only, never a text (no chat data is kept).
 struct MtRun {
     ULONGLONG at = 0;
-    char kind = 'C';  // C a chat line, I your input, B a back-translation
+    char kind = 'C';  // C a chat line, I your input, B a back-translation, L the load test
     std::wstring from, to, tag, error;
     int beamSet = 0, beamAsked = 0;  // what you set, what this line asked of the model
     size_t waiting = 0;              // lines waiting when it was done
     gct::TranslateRun run;
     long long ms = 0;
+    long long queueMs = 0, prepMs = 0;  // waited in the queue, prepared before it went to the translator
     double score = 0;
     bool scored = false, cached = false, greeting = false, second = false, doubt = false, failed = false;
     int versions = 0;
 };
+// Keys while our input has the keyboard: how often each was pressed, never their order or any text (memory, this session).
+struct KeyStats {
+    uint32_t presses[256] = {};
+    uint32_t total = 0;
+    uint32_t spaceWrote = 0, spaceUndone = 0, wordClicked = 0;  // Space took a word, Backspace took it back; a click on the bar
+    uint32_t buffered = 0, bufferRuns = 0;                      // keys kept during sends, in how many sends
+};
+extern KeyStats g_keys;  // render thread
+
+// The tech palette's logbook: what happened, never a text or a name. Any thread. Area: T translation, H helper, C chat,
+// K keys, S send, O options, N Nexus.
+struct TechEntry {
+    ULONGLONG at = 0;
+    char area = 'T';
+    std::wstring text;
+};
+void TechLog(char area, std::wstring text);
+std::vector<TechEntry> TechLogNow();
+void TechLogClear();
+
+// GW2's own threads, from Windows' numbers (no game memory): the busiest are measured once a second while the palette is open.
+struct GameThreadRow {
+    DWORD id = 0;
+    float core = 0;  // percent of one core
+    std::wstring name;
+    bool render = false, ours = false;
+};
+struct GameThreads {
+    std::vector<GameThreadRow> top;      // the busiest first
+    std::vector<float> history;          // the busiest of the game's threads, per second, the last 120
+    bool atLimit = false;                // 90 % of a core or more
+    int episodes = 0;                    // how often it got there
+    float nowS = 0, longestS = 0, totalS = 0, measuredS = 0;
+    double fpsHelperSum = 0, fpsIdleSum = 0;  // frames per second while at its limit: our helper working, idle
+    int fpsHelperN = 0, fpsIdleN = 0;
+};
+extern std::atomic<bool> g_gameThreadsKeep;  // measure also while the palette is closed
+GameThreads GameThreadsNow();
+void GameThreadsReset();
+
+// The load test: made-up lines through the real translator at the rate you chose, to see where it cannot keep up.
+struct LoadTest {
+    bool on = false;
+    int perSecond = 2;
+    ULONGLONG until = 0, nextAt = 0;
+    int sent = 0;
+    size_t deepest = 0;
+};
+extern LoadTest g_loadTest;  // render thread
+void LoadTestTick();
+void LoadTestLine(int index);
+
 extern std::deque<MtRun> g_mtRuns;  // the newest last (g_mu)
 extern bool g_showMtLive;
 void NoteMtRun(MtRun run);  // g_mu held

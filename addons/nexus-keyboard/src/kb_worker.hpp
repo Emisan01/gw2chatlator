@@ -30,6 +30,8 @@ inline void AssertNotInteractiveLane(const char* operation) {
     }
 }
 
+inline thread_local long long g_jobWaitedMs = 0;  // how long the job running on this thread waited in its lane
+
 class WorkerLane {
 public:
     WorkerLane(const char* name, int priority, size_t maxQueue = 96)
@@ -45,7 +47,7 @@ public:
         {
             std::lock_guard<std::mutex> lock(mu_);
             jobs_.clear();
-            if (last) jobs_.push_back(std::move(last));
+            if (last) jobs_.push_back({std::move(last), GetTickCount64()});
             stop_ = true;
         }
         cv_.notify_all();
@@ -56,7 +58,7 @@ public:
         {
             std::lock_guard<std::mutex> lock(mu_);
             if (jobs_.size() >= maxQueue_) jobs_.pop_front();  // flood: drop oldest
-            jobs_.push_back(std::move(job));
+            jobs_.push_back({std::move(job), GetTickCount64()});
         }
         cv_.notify_one();
     }
@@ -65,7 +67,7 @@ public:
         {
             std::lock_guard<std::mutex> lock(mu_);
             if (jobs_.size() >= maxQueue_) jobs_.pop_back();
-            jobs_.push_front(std::move(job));
+            jobs_.push_front({std::move(job), GetTickCount64()});
         }
         cv_.notify_one();
     }
@@ -74,6 +76,8 @@ public:
         std::lock_guard<std::mutex> lock(mu_);
         return jobs_.size();
     }
+
+    DWORD ThreadId() { return thread_.joinable() ? GetThreadId(thread_.native_handle()) : 0; }
 
     uint64_t CpuTime() {  // its CPU time so far, in 100 ns
         FILETIME created, ended, kernel, user;
@@ -94,7 +98,8 @@ private:
                 std::unique_lock<std::mutex> lock(mu_);
                 cv_.wait(lock, [this] { return stop_ || !jobs_.empty(); });
                 if (jobs_.empty()) break;
-                job = std::move(jobs_.front());
+                job = std::move(jobs_.front().job);
+                g_jobWaitedMs = static_cast<long long>(GetTickCount64() - jobs_.front().at);
                 jobs_.pop_front();
                 stopping = stop_;
             }
@@ -114,7 +119,11 @@ private:
     size_t maxQueue_;
     std::mutex mu_;
     std::condition_variable cv_;
-    std::deque<std::function<void()>> jobs_;
+    struct Queued {
+        std::function<void()> job;
+        ULONGLONG at;
+    };
+    std::deque<Queued> jobs_;
     bool stop_ = false;
     std::thread thread_;
 };
@@ -155,6 +164,7 @@ public:
     }
 
     uint64_t CpuTime() { return interactive_.CpuTime() + network_.CpuTime(); }
+    bool IsOurs(DWORD id) { return id && (id == interactive_.ThreadId() || id == network_.ThreadId()); }
 
     size_t InteractiveQueueSize() {
         return interactive_.QueueSize();

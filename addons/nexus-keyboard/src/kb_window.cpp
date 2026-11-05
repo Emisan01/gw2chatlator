@@ -77,6 +77,11 @@ void ProcessBufferedKeys() {
         replayToInput = g_bufferHadInputFocus.load();
         g_bufferHadInputFocus = false;
     }
+    if (!keys.empty()) {
+        g_keys.buffered += static_cast<uint32_t>(keys.size());
+        ++g_keys.bufferRuns;
+        TechLog('K', std::to_wstring(keys.size()) + (replayToInput ? L" keys kept during a send went into the input" : L" keys kept during a send, no input had the keyboard"));
+    }
     if (keys.empty() || !replayToInput) return;
     bool triggerSend = false;
     for (size_t i = 0; i < keys.size(); ++i) {
@@ -1206,7 +1211,7 @@ void RenderWindow() {
                 g_showOptions = true;
             if (ImGui::MenuItem(UI(g_showDebugWindow ? Tr(L"Close Debug Window") : Tr(L"Debug & Diagnostics …")).c_str()))
                 g_showDebugWindow = !g_showDebugWindow;
-            if (ImGui::MenuItem(UI(g_showMtLive ? Tr(L"Hide the live view") : Tr(L"Show the live view")).c_str())) g_showMtLive = !g_showMtLive;
+            if (ImGui::MenuItem(UI(g_showMtLive ? Tr(L"Hide the tech palette") : Tr(L"Show the tech palette")).c_str())) g_showMtLive = !g_showMtLive;
             ImGui::Separator();
             if (ImGui::MenuItem(UI(Tr(L"Hide (Ctrl+Alt+K shows it again)")).c_str())) g_show = false;
         }
@@ -2075,10 +2080,13 @@ void RenderWindow() {
         g_preview.clear();
         g_back.clear();
     }
-    if (g_inputChanged && GetTickCount64() - g_inputChanged > 400 && !g_flatInput.empty() &&
+    // A pause translates it, and with "translate along" also the end of a word (Space, as the typing help takes it): Enter
+    // then often finds it ready. It goes before the chat's lines; TranslateInput drops what is no longer the newest.
+    const bool wordEnded = g_cfg.thinkAlong && !g_flatInput.empty() && g_flatInput.back() == ' ';
+    if (g_inputChanged && (wordEnded || GetTickCount64() - g_inputChanged > 400) && !g_flatInput.empty() &&
         (Translating() || SwapsNames())) {
         g_inputChanged = 0;
-        g_worker.Post([gen = g_inputGen, t = SanitizeChatText(g_wFlatInput)] { TranslateInput(gen, t); });
+        g_worker.PostFront([gen = g_inputGen, t = SanitizeChatText(g_wFlatInput)] { TranslateInput(gen, t); });
     }
     if (enter) StartSend();
     CheckAutoSend();

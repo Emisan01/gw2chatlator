@@ -246,8 +246,8 @@ static void TestLocalMtProtocol() {
         peak.KeepHighest(b);
         CHECK(peak.helper == 20 && peak.ours == 25 && peak.pc == 60);
     }
-    CHECK(LocalAutoThreads(2, 12) == 3 && LocalAutoThreads(4, 12) == 4 && LocalAutoThreads(8, 12) == 6);
-    CHECK(LocalAutoThreads(1, 2) == 2 && LocalAutoThreads(2, 32) == 4 && LocalAutoThreads(8, 32) == 8);
+    CHECK(LocalAutoThreads(2, 2) == 2 && LocalAutoThreads(2, 4) == 2 && LocalAutoThreads(2, 6) == 4 && LocalAutoThreads(2, 16) == 4);
+    CHECK(LocalAutoThreads(8, 2) == 2 && LocalAutoThreads(8, 4) == 3 && LocalAutoThreads(8, 6) == 5 && LocalAutoThreads(8, 16) == 6);
     {
         LocalMtMessage done;
         CHECK(ParseLocalMtMessage(R"({"evt":"result","id":3,"text":"Hallo","score":-0.5,"ms":120,"beam":4,"thr":3,"cores":3,"tin":6,"tout":7,"alts":["Servus","","Moin"]})", done));

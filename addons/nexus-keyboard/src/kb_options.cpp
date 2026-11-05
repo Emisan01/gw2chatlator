@@ -1103,7 +1103,7 @@ void RenderWordLists() {
     X(voiceSensitivity) X(voiceMinMs) X(voiceGlobalKey) X(voiceChatPause)
 #define KB_OPTIONS(X)                                                                                                  \
     X(engine) X(writeIn) X(backTranslate) X(understoodLangs) X(skipTypingLang) X(readLang) X(showOriginal) X(noJunk)   \
-    X(localQuality) X(beamStepDown) X(versions) X(mtThreads) X(m2m.patience) X(m2m.lengthPenalty) X(m2m.coveragePenalty) X(m2m.repetitionPenalty)   \
+    X(localQuality) X(beamStepDown) X(beamStepUp) X(thinkAlong) X(versions) X(mtThreads) X(m2m.patience) X(m2m.lengthPenalty) X(m2m.coveragePenalty) X(m2m.repetitionPenalty)   \
     X(m2m.noRepeatNgram) X(m2m.disableUnk) X(m2mCompute) X(basicEmail) X(deeplKey) X(googleKey) X(msKey) X(msRegion) X(libreUrl) X(libreKey)   \
     X(uiLangCode) X(spellEnabled) X(autoCorrect) X(suggestions) X(learnWords) X(learnLater) X(returnFocus)            \
     X(copyOnly) X(focusOnGameChat) X(send.autoTiming) X(send.keyHoldMs) X(send.stepDelayMs) KB_VOICE_OPTIONS(X)
@@ -1576,6 +1576,10 @@ void RenderLocalAdvanced(Config& edit) {
     if (static_cast<unsigned>(threads) * 2 > std::thread::hardware_concurrency()) RiskHint(Tr(L"More than half of your processors: the game can stutter."));
     Switch("beamstep", UI(Tr(L"Step down under load")), &edit.beamStepDown,
            UI(Tr(L"Many lines waiting: lines that come by themselves run at beam 2, so the chat keeps up.")).c_str());
+    Switch("beamup", UI(Tr(L"Step up when in doubt")), &edit.beamStepUp,
+           UI(Tr(L"A line the check doubts is tried again at beam 4.")).c_str());
+    Switch("thinkalong", UI(Tr(L"Translate along while typing")), &edit.thinkAlong,
+           UI(Tr(L"At every word's end, so that Enter often finds it ready. Costs CPU while you type.")).c_str());
     RowLabel(UI(Tr(L"Versions to choose from")));
     ImGui::SetNextItemWidth(ControlW());
     const std::string versionsNow = edit.versions > 1 ? std::to_string(edit.versions) : UI(Tr(L"Off"));

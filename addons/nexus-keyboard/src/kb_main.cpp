@@ -295,6 +295,7 @@ void AddonLoad(AddonAPI_t* api) {
         std::lock_guard<std::mutex> lock(g_mu);
         first = !g_nx.setupDone && !g_test.noSend;
     }
+    gct::SetLocalMtLog([](const std::wstring& line) { TechLog('H', line); });
     if (first) FirstStart();  // Events: Chat, the voice module, a voice model – loaded by themselves once
     if (api->GUI_Register && IsCodePointer(reinterpret_cast<const void*>(api->GUI_Register))) {
         api->GUI_Register(RT_Render, SafeRender);
@@ -396,6 +397,15 @@ extern "C" __declspec(dllexport) void Gw2KbTestLiveView() {  // nexus_kb_selftes
     if (!TestHost()) return;
     std::lock_guard<std::mutex> lock(g_mu);
     g_showMtLive = true;
+    g_keys.total = 500;
+    g_keys.presses[VK_BACK] = 90;
+    g_keys.presses[VK_SPACE] = 80;
+    for (int vk = 'A'; vk <= 'Z'; ++vk) g_keys.presses[vk] = static_cast<uint32_t>((vk * 7) % 31);
+    g_keys.spaceWrote = 20;
+    g_keys.spaceUndone = 9;
+    g_keys.wordClicked = 3;
+    g_keys.buffered = 14;
+    g_keys.bufferRuns = 2;
     for (int i = 0; i < 40; ++i) {
         MtRun r;
         r.at = GetTickCount64() - static_cast<ULONGLONG>(40 - i) * 3000;
@@ -421,6 +431,8 @@ extern "C" __declspec(dllexport) void Gw2KbTestLiveView() {  // nexus_kb_selftes
         r.second = i % 13 == 7;
         r.doubt = i % 17 == 9;
         r.versions = i % 3;
+        r.queueMs = i * 7 % 90;
+        r.prepMs = 1 + i % 3;
         NoteMtRun(std::move(r));
     }
 }

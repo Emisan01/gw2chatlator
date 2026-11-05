@@ -47,6 +47,7 @@ struct TranslateRun {
     int tokensIn = 0, tokensOut = 0;
     int modelMs = 0;    // inside the model, summed
     int loadMs = 0;     // the model was loaded during this message
+    int sentencesKept = 0;  // sentences that came from the sentence cache, without the model
     void Add(const TranslateRun& o) {
         requests += o.requests;
         beam = beam > o.beam ? beam : o.beam;
@@ -56,6 +57,7 @@ struct TranslateRun {
         tokensOut += o.tokensOut;
         modelMs += o.modelMs;
         loadMs = o.loadMs ? o.loadMs : loadMs;
+        sentencesKept += o.sentencesKept;
     }
 };
 

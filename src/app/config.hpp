@@ -40,6 +40,8 @@ struct Config {
     bool noJunk = true;         // a doubtful translation: one more try at the best quality, still doubtful – the original
     int localQuality = 2;                                 // the beam, 1 to 8: 1 = Fast, 2 = Balanced, 4 = Best, the rest by hand
     bool beamStepDown = true;                             // [Translate] BeamStepDown: many lines waiting, chat lines run at beam 2
+    bool beamStepUp = true;                               // [Translate] BeamStepUp: a doubtful line is tried again at beam 4
+    bool thinkAlong = true;                               // [Translate] ThinkAlong: your text is translated at every word's end
     int versions = 0;                                     // [Translate] Versions: other versions to choose from, 0 off, else 2 to 5
     int mtThreads = 0;                                    // the local translator's CPU threads, 0 = automatic
     LocalMtDecode m2m = M2mRecommended();                 // [M2M100]: how M2M100 decodes

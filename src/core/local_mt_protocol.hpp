@@ -44,11 +44,15 @@ struct LocalMtDecode {
     }
 };
 
-// CPU threads when they are left on automatic: a higher beam takes more of them, the game keeps the rest.
-inline int LocalAutoThreads(int beam, unsigned logicalCores) {
-    const int part = static_cast<int>(logicalCores) / (beam <= 2 ? 4 : beam <= 4 ? 3 : 2);
-    const int most = beam <= 2 ? 4 : beam <= 4 ? 6 : 8;
-    return part < 2 ? 2 : part > most ? most : part;
+// CPU threads when they are left on automatic: the real cores minus 2 for the game, 2 to 4 (measured on 6 cores, M2M100
+// beam 2: 1 thread 781 ms, 2 448 ms, 3 374 ms, 4 311 ms, 6 331 ms per line). Above beam 4 two more, one core always stays
+// free (beam 8: 3 threads 650 ms, 6 502 ms).
+inline int LocalAutoThreads(int beam, int physicalCores) {
+    int threads = physicalCores - 2;
+    threads = threads < 2 ? 2 : threads > 4 ? 4 : threads;
+    if (beam > 4) threads += 2;
+    const int most = physicalCores > 3 ? physicalCores - 1 : 2;
+    return threads > most ? most : threads;
 }
 
 // The values measured with translation_bench for M2M100.

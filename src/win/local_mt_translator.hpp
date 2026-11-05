@@ -38,6 +38,8 @@ void SetLocalMtDecode(const std::shared_ptr<Translator>& translator, const Local
 void SetLocalMtVersions(const std::shared_ptr<Translator>& translator, int versions);
 void SetLocalMtOneVersion(const std::shared_ptr<Translator>& translator, bool one);
 int LocalMtVersions(const std::shared_ptr<Translator>& translator);
+// Every call and answer of the helper, for a logbook: numbers and settings, never a text.
+void SetLocalMtLog(void (*log)(const std::wstring& line));
 // The helper's CPU time so far, in 100 ns; 0 while none runs. Never waits for a running translation.
 uint64_t LocalMtHelperCpu(const std::shared_ptr<Translator>& translator);
 // What differs from neutral, for the tag a translation carries (" · rep 1.10 · ngram 3"); empty when nothing does.

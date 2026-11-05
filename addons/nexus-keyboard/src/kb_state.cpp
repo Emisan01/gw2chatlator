@@ -2,6 +2,7 @@
 
 #include "kb_shared.hpp"
 #include "imgui/imgui_internal.h"
+#include <tlhelp32.h>
 
 namespace kb {
 
@@ -114,7 +115,132 @@ bool g_showMtLive = false;
 gct::CpuUse g_cpuNow, g_cpuPeak, g_cpuAtPeak;
 ULONGLONG g_cpuPeakAt = 0;
 std::wstring g_cpuPeakDuring;
+KeyStats g_keys;
+LoadTest g_loadTest;
+std::atomic<bool> g_gameThreadsKeep{false};
+namespace {
+std::mutex s_techMu;  // nothing else is locked while it is held
+std::deque<TechEntry> s_techLog;
+GameThreads s_gameThreads;
+std::map<DWORD, uint64_t> s_threadTimes;
+ULONGLONG s_threadsAt = 0;
+std::atomic<DWORD> s_renderThread{0};
+
+void MeasureGameThreads(float helperShare, int fps) {
+    const ULONGLONG now = GetTickCount64();
+    const uint64_t wall = s_threadsAt ? (now - s_threadsAt) * 10000 : 0;
+    const float seconds = static_cast<float>(wall) / 1e7f;
+    s_threadsAt = now;
+    const HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+    if (snapshot == INVALID_HANDLE_VALUE) return;
+    using DescribeFn = HRESULT(WINAPI*)(HANDLE, PWSTR*);
+    static const auto describe = reinterpret_cast<DescribeFn>(GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetThreadDescription"));
+    std::vector<GameThreadRow> rows;
+    std::map<DWORD, uint64_t> times;
+    THREADENTRY32 entry{};
+    entry.dwSize = sizeof(entry);
+    const DWORD self = GetCurrentProcessId();
+    for (BOOL more = Thread32First(snapshot, &entry); more; more = Thread32Next(snapshot, &entry)) {
+        if (entry.th32OwnerProcessID != self) continue;
+        const HANDLE thread = OpenThread(THREAD_QUERY_LIMITED_INFORMATION, FALSE, entry.th32ThreadID);
+        if (!thread) continue;
+        FILETIME created, ended, kernel, user;
+        if (GetThreadTimes(thread, &created, &ended, &kernel, &user)) {
+            const uint64_t busy = (static_cast<uint64_t>(kernel.dwHighDateTime) << 32 | kernel.dwLowDateTime) +
+                                  (static_cast<uint64_t>(user.dwHighDateTime) << 32 | user.dwLowDateTime);
+            times[entry.th32ThreadID] = busy;
+            const auto before = s_threadTimes.find(entry.th32ThreadID);
+            if (wall && before != s_threadTimes.end()) {
+                GameThreadRow row;
+                row.id = entry.th32ThreadID;
+                row.core = gct::CpuPercent(gct::CpuDelta(busy, before->second), wall, 1);
+                row.render = row.id == s_renderThread.load();
+                row.ours = g_worker.IsOurs(row.id);
+                if (row.core >= 1.0f && describe) {
+                    PWSTR name = nullptr;
+                    if (SUCCEEDED(describe(thread, &name)) && name) {
+                        row.name = name;
+                        LocalFree(name);
+                    }
+                }
+                rows.push_back(std::move(row));
+            }
+        }
+        CloseHandle(thread);
+    }
+    CloseHandle(snapshot);
+    s_threadTimes = std::move(times);
+    if (!wall) return;
+    std::sort(rows.begin(), rows.end(), [](const GameThreadRow& a, const GameThreadRow& b) { return a.core > b.core; });
+    float busiest = 0;
+    for (const GameThreadRow& r : rows)
+        if (!r.ours) {
+            busiest = r.core;
+            break;
+        }
+    if (rows.size() > 8) rows.resize(8);
+    std::lock_guard<std::mutex> lock(s_techMu);
+    GameThreads& g = s_gameThreads;
+    g.top = std::move(rows);
+    g.history.push_back(busiest);
+    if (g.history.size() > 120) g.history.erase(g.history.begin());
+    g.measuredS += seconds;
+    const bool atLimit = busiest >= 90.0f;
+    if (atLimit) {
+        if (!g.atLimit) {
+            ++g.episodes;
+            g.nowS = 0;
+        }
+        g.nowS += seconds;
+        g.totalS += seconds;
+        g.longestS = std::max(g.longestS, g.nowS);
+        if (helperShare >= 1.0f) {
+            g.fpsHelperSum += fps;
+            ++g.fpsHelperN;
+        } else {
+            g.fpsIdleSum += fps;
+            ++g.fpsIdleN;
+        }
+    }
+    g.atLimit = atLimit;
+}
+}  // namespace
+
+void TechLog(char area, std::wstring text) {
+    std::lock_guard<std::mutex> lock(s_techMu);
+    s_techLog.push_back({GetTickCount64(), area, std::move(text)});
+    if (s_techLog.size() > 400) s_techLog.pop_front();
+}
+std::vector<TechEntry> TechLogNow() {
+    std::lock_guard<std::mutex> lock(s_techMu);
+    return std::vector<TechEntry>(s_techLog.begin(), s_techLog.end());
+}
+void TechLogClear() {
+    std::lock_guard<std::mutex> lock(s_techMu);
+    s_techLog.clear();
+}
+GameThreads GameThreadsNow() {
+    std::lock_guard<std::mutex> lock(s_techMu);
+    return s_gameThreads;
+}
+void GameThreadsReset() {
+    std::lock_guard<std::mutex> lock(s_techMu);
+    s_gameThreads = {};
+}
+
 void NoteMtRun(MtRun run) {
+    {
+        wchar_t line[160];
+        swprintf_s(line, L"%ls %ls>%ls · beam %d/%d · %d thr · %lld ms (model %d, queue %lld) · %d>%d tok · %d req · %.2f",
+                   run.kind == 'C' ? L"chat" : run.kind == 'I' ? L"input" : run.kind == 'B' ? L"back" : L"load", run.from.c_str(), run.to.c_str(),
+                   run.run.beam ? run.run.beam : run.beamAsked, run.beamSet, run.run.threads, run.ms, run.run.modelMs, run.queueMs,
+                   run.run.tokensIn, run.run.tokensOut, run.run.requests, run.scored ? run.score : 0.0);
+        std::wstring text = line;
+        if (run.run.sentencesKept) text += L" · " + std::to_wstring(run.run.sentencesKept) + L" kept";
+        if (run.second) text += L" · second try";
+        if (run.failed) text += L" · failed: " + run.error;
+        TechLog('T', text + L" · " + run.tag);
+    }
     g_mtRuns.push_back(std::move(run));
     if (g_mtRuns.size() > 120) g_mtRuns.pop_front();
 }
@@ -635,9 +761,15 @@ void CostLine(double us) {
 }
 
 void SampleCpu() {
-    static ULONGLONG lastAt = 0;
-    static uint64_t lastHelper = 0, lastVoice = 0, lastThreads = 0, lastGame = 0, lastIdle = 0, lastKernel = 0, lastUser = 0;
+    s_renderThread = GetCurrentThreadId();
+    LoadTestTick();
+    static ULONGLONG lastAt = 0, lastThreads = 0;
+    static uint64_t lastHelper = 0, lastVoice = 0, lastWorkers = 0, lastGame = 0, lastIdle = 0, lastKernel = 0, lastUser = 0;
     const ULONGLONG now = GetTickCount64();
+    if ((g_showMtLive || g_gameThreadsKeep) && now - lastThreads >= 1000) {
+        lastThreads = now;
+        g_worker.PostInteractive([helper = g_cpuNow.helper, fps = g_fps.load()] { MeasureGameThreads(helper, fps); });
+    }
     if (lastAt && now - lastAt < 500) return;
     const auto ticks = [](const FILETIME& f) { return static_cast<uint64_t>(f.dwHighDateTime) << 32 | f.dwLowDateTime; };
     std::shared_ptr<Translator> tr;
@@ -658,7 +790,7 @@ void SampleCpu() {
         gct::CpuUse use;
         use.helper = gct::CpuPercent(gct::CpuDelta(helper, lastHelper), wall, logical);
         use.voice = gct::CpuPercent(gct::CpuDelta(voice, lastVoice), wall, logical);
-        use.threads = gct::CpuPercent(gct::CpuDelta(threads, lastThreads), wall, logical);
+        use.threads = gct::CpuPercent(gct::CpuDelta(threads, lastWorkers), wall, logical);
         use.draw = static_cast<float>(g_cost.avg.totalMs * g_fps.load() / 10.0 / logical);  // ms per frame * frames per second
         use.ours = use.helper + use.voice + use.threads + use.draw;
         use.game = std::max(0.0f, gct::CpuPercent(gct::CpuDelta(game, lastGame), wall, logical) - use.threads - use.draw);
@@ -677,7 +809,7 @@ void SampleCpu() {
     lastAt = now;
     lastHelper = helper;
     lastVoice = voice;
-    lastThreads = threads;
+    lastWorkers = threads;
     lastGame = game;
     lastIdle = ticks(idle);
     lastKernel = ticks(kernel);

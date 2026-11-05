@@ -63,6 +63,7 @@ static void TrimChatLines() {  // g_mu held
 // Game thread: a line arrives – copy it, queue its translation.
 void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
     if (!text || !*text) return;
+    TechLog('C', L"line in: " + ChannelLabel(ch) + (outgoing ? L", yours, " : L", ") + std::to_wstring(std::strlen(text)) + L" bytes");
     ChatLine l;
     l.channel = ch;
     l.outgoing = outgoing;
@@ -343,6 +344,7 @@ static bool ReadSignatureGuarded(const void* payload, uint32_t* sig) {
 void OnAddonLoaded(void* payload) {
     uint32_t sig = 0;
     if (!ReadSignatureGuarded(payload, &sig) || sig != bridge::kChatEventsSignature) return;
+    TechLog('N', L"Nexus: Events: Chat loaded");
     g_chatEventsPresent = true;
     g_chatNotTakenIn = false;
     g_chatModuleLoaded = true;
@@ -350,6 +352,7 @@ void OnAddonLoaded(void* payload) {
 void OnAddonUnloaded(void* payload) {  // no scan after it: the module may still be mapped for a moment
     uint32_t sig = 0;
     if (!ReadSignatureGuarded(payload, &sig) || sig != bridge::kChatEventsSignature) return;
+    TechLog('N', L"Nexus: Events: Chat unloaded");
     g_chatEventsPresent = false;
     g_chatEventsLive = false;
 }

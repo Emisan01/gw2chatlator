@@ -110,6 +110,8 @@ static long long MsFrom(std::chrono::steady_clock::time_point t0) {
 
 void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once, std::wstring forceTarget) {
     AssertNotInteractiveLane("TranslateLine");
+    const long long queuedMs = g_jobWaitedMs;
+    const auto lineStarted = std::chrono::steady_clock::now();
     std::shared_ptr<Translator> tr;
     std::vector<std::wstring> understood;
     LineToTranslate what;
@@ -178,6 +180,7 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once, std::w
     SetLocalMtRaw(tr, raw);
     const std::wstring by = TranslatorTag(tr, effectiveBeam);
 
+    const long long prepMs = MsFrom(lineStarted);
     const auto t0 = std::chrono::steady_clock::now();
     std::wstring t, note, how = by;
     double score = 0;
@@ -218,8 +221,8 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once, std::w
             note = Tr(L"Maybe inaccurate: the local model was unsure");
         scored = r.scored;
         score = r.score;
-        if (!raw && !note.empty() && g_cfg.noJunk) {
-            if (IsLocalMtTranslator(tr) && effectiveBeam < 4) {
+        if (!raw && !note.empty() && (g_cfg.noJunk || g_cfg.beamStepUp)) {
+            if (g_cfg.beamStepUp && IsLocalMtTranslator(tr) && effectiveBeam < 4) {
                 SetLocalMtBeamSize(tr, 4);
                 const TranslateResult r2 = tr->Translate(p.segments, SourceCode(detected), target);
                 SetLocalMtBeamSize(tr, effectiveBeam);
@@ -240,7 +243,7 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once, std::w
                     }
                 }
             }
-            if (!note.empty()) {
+            if (!note.empty() && g_cfg.noJunk) {
                 how += L" -> still doubtful: the original is shown";
                 t = text;
             }
@@ -269,6 +272,8 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once, std::w
     shown.scored = scored;
     MtRun liveRun = MakeRun('C', detected, target, tr, quality, effectiveBeam, shown, ms);
     liveRun.waiting = waiting;
+    liveRun.queueMs = queuedMs;
+    liveRun.prepMs = prepMs;
     liveRun.cached = !fromModel;
     liveRun.greeting = greeting;
     liveRun.second = secondTry;
@@ -361,12 +366,15 @@ int TranslateRecentLines(bool once) {  // g_mu held; how many lines of other pla
 // The input into the chat's language.
 void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
     AssertNotInteractiveLane("TranslateInput");
+    const long long queuedMs = g_jobWaitedMs;
+    const auto inputStarted = std::chrono::steady_clock::now();
     std::shared_ptr<Translator> tr;
     std::wstring target, typing;
     bool translating, swapping;
     int quality;
     {
         std::lock_guard<std::mutex> lock(g_mu);
+        if (gen != g_inputGen && !(sendId != 0 && sendId == g_pendingSend.id)) return;  // no longer the newest text
         tr = g_translator;
         quality = g_cfg.localQuality;  // what you write gets the quality you chose, whatever the chat just ran at
         target = SendLang();
@@ -416,6 +424,8 @@ void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
             const auto t0 = std::chrono::steady_clock::now();
             const TranslateResult r = tr->Translate(p.segments, source, target);
             liveRuns.push_back(MakeRun('I', source, target, tr, quality, quality, r, MsFrom(t0)));
+            liveRuns.back().queueMs = queuedMs;
+            liveRuns.back().prepMs = std::chrono::duration_cast<std::chrono::milliseconds>(t0 - inputStarted).count();
             if (r.ok) {
                 result = r.text;
                 if (!raw) others = OtherVersions(r, SanitizeChatText(r.text), p.segments, target);
@@ -452,13 +462,28 @@ void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
         auto keep = g_spell ? g_spell->KeepWordsSnapshot() : nullptr;
         result = ApplyGlossary(body, BuiltinGlossary(target), keep ? keep.get() : &BuiltinKeepWords(), &names);
     }
-    // The back-translation: what your message means in your language again (small under it).
-    std::wstring back;
-    bool wantBack;
+    // The translation shows at once, and Enter can use it: the back-translation follows.
+    bool wantBack = false;
     {
         std::lock_guard<std::mutex> lock(g_mu);
+        if (gen == g_inputGen && error.empty()) {
+            const std::wstring shownNow = SanitizeChatText(result);
+            if (shownNow != g_preview || g_previewGen != gen) g_back.clear();
+            g_preview = shownNow;
+            g_previewGen = gen;
+            g_previewVersions.clear();
+            g_previewBacks.clear();
+            g_previewPick = 0;
+            if (!others.empty()) {
+                g_previewVersions.push_back(g_preview);
+                g_previewVersions.insert(g_previewVersions.end(), others.begin(), others.end());
+                g_previewBacks.assign(g_previewVersions.size(), std::wstring());
+            }
+        }
         wantBack = g_cfg.backTranslate && gen == g_inputGen && !g_sendPending;
     }
+    // The back-translation: what your message means in your language again (small under it).
+    std::wstring back;
     if (translating && tr && wantBack && error.empty() && result != body) {
         auto keep = g_spell ? g_spell->KeepWordsSnapshot() : nullptr;
         ProtectedText p = g_rawTranslate.load() ? ProtectCodesOnly(result)
@@ -487,18 +512,10 @@ void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
         const bool forSend = sendId != 0 && g_sendPending && sendId == g_pendingSend.id;
         if (gen != g_inputGen && !forSend) return;  // the text changed meanwhile
         if (gen == g_inputGen) {
-            g_preview = SanitizeChatText(result);
-            g_back = back;
+            if (!g_previewBacks.empty()) g_previewBacks[0] = back;
+            if (g_previewPick == 0) g_back = back;  // another version chosen meanwhile has its own
             g_previewGen = gen;
-            g_previewVersions.clear();
-            g_previewBacks.clear();
-            g_previewPick = 0;
-            if (!others.empty()) {
-                g_previewVersions.push_back(g_preview);
-                g_previewVersions.insert(g_previewVersions.end(), others.begin(), others.end());
-                g_previewBacks.assign(g_previewVersions.size(), std::wstring());
-                g_previewBacks[0] = back;
-            }
+            if (g_previewVersions.empty()) g_preview = SanitizeChatText(result);
         }
         if (!error.empty()) SetStatus(error);
         else if (!doubt.empty()) SetStatus(TrF(L"{1} – check the back-translation before you send", {doubt}), 8000);
@@ -521,6 +538,63 @@ void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
         }
     }
     if (sendNow) SendNow(std::move(parts), text, body, channel);
+}
+
+// The load test: made-up lines, each a little different so that no cache answers.
+void LoadTestTick() {
+    LoadTest& t = g_loadTest;
+    if (!t.on) return;
+    const ULONGLONG now = GetTickCount64();
+    if (now >= t.until) {
+        t.on = false;
+        TechLog('T', L"load test over: " + std::to_wstring(t.sent) + L" lines, the queue at most " + std::to_wstring(t.deepest));
+        return;
+    }
+    t.deepest = std::max(t.deepest, g_worker.QueueSize());
+    while (t.nextAt <= now) {
+        t.nextAt += 1000 / static_cast<ULONGLONG>(std::max(t.perSecond, 1));
+        g_worker.Post([index = t.sent++] { LoadTestLine(index); });
+    }
+}
+
+void LoadTestLine(int index) {
+    AssertNotInteractiveLane("LoadTestLine");
+    static const wchar_t* const kEnglish[] = {
+        L"anyone want to join the world boss train tonight", L"looking for a guild that runs raids on weekends",
+        L"how many stacks of might do we need for this boss", L"the commander is waiting at the north tower with supply",
+        L"could someone give me a port to the waypoint please", L"thanks for the help everyone and see you tomorrow"};
+    static const wchar_t* const kGerman[] = {
+        L"Kommt jemand heute Abend mit zum Weltboss", L"Ich suche eine Gilde für Raids am Wochenende",
+        L"Wie viele Stapel Macht brauchen wir für diesen Boss", L"Der Kommandant wartet mit Vorrat am Nordturm",
+        L"Kann mir bitte jemand einen Port zum Wegpunkt geben", L"Danke für die Hilfe und bis morgen zusammen"};
+    const long long queuedMs = g_jobWaitedMs;
+    std::shared_ptr<Translator> tr;
+    std::wstring target;
+    int quality;
+    bool stepDown;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        tr = g_translator;
+        target = ReadLang();
+        quality = g_cfg.localQuality;
+        stepDown = g_cfg.beamStepDown;
+    }
+    if (!tr) return;
+    const bool english = PrimaryLang(target) != L"EN";
+    const std::wstring source = english ? L"EN" : L"DE";
+    const std::wstring text = std::wstring((english ? kEnglish : kGerman)[index % 6]) + L" " + std::to_wstring(index);
+    const size_t waiting = g_worker.QueueSize();
+    const int beam = stepDown ? g_orchestrator.ComputeBeamSize(static_cast<QualityMode>(quality), waiting) : quality;
+    SetLocalMtBeamSize(tr, beam);
+    SetLocalMtOneVersion(tr, true);
+    const auto t0 = std::chrono::steady_clock::now();
+    const TranslateResult r = tr->Translate({{text, false}}, source, target);
+    SetLocalMtOneVersion(tr, false);
+    MtRun run = MakeRun('L', source, target, tr, quality, beam, r, MsFrom(t0));
+    run.waiting = waiting;
+    run.queueMs = queuedMs;
+    std::lock_guard<std::mutex> lock(g_mu);
+    NoteMtRun(std::move(run));
 }
 
 // Another version chosen in the preview: its back-translation, once.
@@ -638,6 +712,7 @@ std::wstring SetChannelNow(const std::wstring& channel) {
                                           &KeysReachGame);
     std::lock_guard<std::mutex> lock(g_mu);
     g_lastSendTrace = out.trace;
+    TechLog('S', L"channel: " + out.trace);
     if (!out.ok) return out.error;
     g_syncedChannel = channel;
     return std::wstring();
@@ -755,6 +830,7 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
         {
             std::lock_guard<std::mutex> lock(g_mu);
             g_lastSendTrace = out.trace;
+            TechLog('S', L"message: " + out.trace);
             if (whisper && !out.ok) g_whisperWatch.Forget(whispered);
         }
         if (!out.ok) {

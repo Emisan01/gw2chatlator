@@ -1,6 +1,7 @@
 // local_mt_translator.cpp — the game talks to a separate inference process over bounded JSON lines.
 #include "local_mt_translator.hpp"
 
+#include <list>
 #include <functional>
 #include <windows.h>
 
@@ -21,6 +22,10 @@
 namespace gct {
 namespace {
 constexpr size_t kMaxLocalMtJsonLine = 1'048'576;
+std::atomic<void (*)(const std::wstring&)> g_helperLog{nullptr};
+void HelperLog(const std::wstring& line) {
+    if (const auto log = g_helperLog.load()) log(line);
+}
 
 std::vector<std::string> InstalledPairs(const std::wstring& dataDir) {
     std::vector<std::string> pairs;
@@ -206,6 +211,24 @@ public:
         std::wstring translated;
         for (const SentenceSegments& sentence : SegmentsBySentence(segments)) {
             std::vector<std::wstring> others;
+            // A sentence seen before with the same settings: as it came then. While you type, only the sentence you
+            // are writing goes to the model.
+            std::wstring sentenceKey = source + L">" + target + L"|" + std::to_wstring(beamSize_.load()) + L"|" +
+                                       std::to_wstring(versions_.load()) + L"|" + std::to_wstring(oneVersion_.load()) + L"|" + DecodeKey() + L"|";
+            for (const Segment& s : sentence.segments) sentenceKey += (s.keep ? L"\x01" : L"\x02") + s.text;
+            if (const SentenceKept* kept = FindSentence(sentenceKey)) {
+                ++run_.sentencesKept;
+                if (kept->scored) {
+                    lastScore_ = lastScored_ ? std::min(lastScore_, kept->score) : kept->score;
+                    lastScored_ = true;
+                }
+                translated += kept->text + sentence.gap;
+                sentencesDone.push_back({kept->text, sentence.gap, kept->others});
+                continue;
+            }
+            const double scoreBefore = lastScore_;
+            const bool scoredBefore = lastScored_;
+            lastScored_ = false;
             std::vector<Segment> pieces = SplitForLocalMt(sentence.segments);
             const PieceRange range = WholeSentenceRange(pieces);
             std::wstring lead, tail, middle;
@@ -282,6 +305,11 @@ public:
                     others = sentenceVersions(pieceAlts, pieceFrom, [&](const std::wstring& hop) {
                         return lead + middle.substr(0, pieceAt) + hop + middle.substr(pieceAt + pieceLength) + tail;
                     });
+            }
+            KeepSentence(sentenceKey, {lead + middle + tail, others, lastScore_, lastScored_});
+            if (scoredBefore) {
+                lastScore_ = lastScored_ ? std::min(lastScore_, scoreBefore) : scoreBefore;
+                lastScored_ = true;
             }
             translated += lead + middle + tail + sentence.gap;
             sentencesDone.push_back({lead + middle + tail, sentence.gap, std::move(others)});
@@ -392,6 +420,7 @@ private:
         CloseHandle(pi.hThread);
         process_ = pi.hProcess;
         cpuProcess_.store(process_);
+        HelperLog(L"helper started: " + Name());
         LocalMtMessage ready;
         if (!ReadMessage(15000, ready) || ready.kind != LocalMtMessage::Kind::Ready) {
             Stop();
@@ -422,6 +451,7 @@ private:
         }
         info_.status = HelperStatus::Ok;
         info_.outdatedReason.clear();
+        HelperLog(L"helper ready: proto " + std::to_wstring(ready.proto) + L", build " + FromUtf8(ready.build.substr(0, 7)));
         return true;
     }
 
@@ -488,6 +518,7 @@ private:
             if (!ReadMessage(limit - elapsed, message)) break;
             if (message.kind == LocalMtMessage::Kind::Loaded) {
                 run_.loadMs = static_cast<int>(message.milliseconds);
+                HelperLog(L"model loaded: " + FromUtf8(message.pair) + L" in " + std::to_wstring(message.milliseconds) + L" ms");
                 modelLoaded_ = true;
                 started = GetTickCount64();
                 limit = working;
@@ -505,6 +536,12 @@ private:
                     lastScored_ = true;
                 }
                 modelLoaded_ = true;
+                {
+                    wchar_t answer[120];
+                    swprintf_s(answer, L"answer %d %hs>%hs: beam %d, %d thr, %d ms, %d>%d tok, score %.2f, %d other versions", id, source.c_str(), target.c_str(),
+                               message.beam, message.threads, message.modelMs, message.tokensIn, message.tokensOut, message.score, static_cast<int>(message.alts.size()));
+                    HelperLog(answer);
+                }
                 TranslateRun one;
                 one.requests = 1;
                 one.beam = message.beam;
@@ -518,13 +555,39 @@ private:
                 return message.text;
             }
             error = FromUtf8(message.error.empty() ? "local translation failed" : message.error);
+            HelperLog(L"helper error: " + error);
             errorKind = TranslateErrorKind::Other;
             return {};
         }
         Stop();
         error = L"The local translation timed out or its helper stopped";
+        HelperLog(L"helper timed out after " + std::to_wstring(limit) + L" ms");
         errorKind = TranslateErrorKind::Timeout;
         return {};
+    }
+
+    struct SentenceKept {
+        std::wstring text;
+        std::vector<std::wstring> others;
+        double score = 0;
+        bool scored = false;
+    };
+    std::wstring DecodeKey() const {
+        const LocalMtDecode d = Decode();
+        return std::to_wstring(d.patience) + L"," + std::to_wstring(d.lengthPenalty) + L"," + std::to_wstring(d.coveragePenalty) + L"," +
+               std::to_wstring(d.repetitionPenalty) + L"," + std::to_wstring(d.noRepeatNgram) + L"," + std::to_wstring(d.disableUnk);
+    }
+    const SentenceKept* FindSentence(const std::wstring& key) {
+        for (auto it = sentences_.begin(); it != sentences_.end(); ++it) {
+            if (it->first != key) continue;
+            sentences_.splice(sentences_.begin(), sentences_, it);  // the newest first
+            return &sentences_.front().second;
+        }
+        return nullptr;
+    }
+    void KeepSentence(const std::wstring& key, SentenceKept kept) {
+        sentences_.emplace_front(key, std::move(kept));
+        if (sentences_.size() > 64) sentences_.pop_back();  // memory only, a few lines' worth
     }
 
     DWORD LoadAllowanceMs(const std::string& source, const std::string& target) const {
@@ -552,6 +615,7 @@ private:
             if (job_) { CloseHandle(job_); job_ = nullptr; }
             WaitForSingleObject(process_, 1000);
             cpuProcess_.store(nullptr);
+            HelperLog(L"helper stopped");
             CloseHandle(process_);
             process_ = nullptr;
         }
@@ -565,6 +629,7 @@ private:
     mutable std::mutex decodeMu_;  // its own: mu_ is held for a whole translation
     LocalMtDecode decode_;
     HelperInfo info_;
+    std::list<std::pair<std::wstring, SentenceKept>> sentences_;  // the sentence cache, newest first (mu_)
     TranslateRun run_;      // what the model did for the message being translated (mu_)
     std::vector<std::string> lastAlts_;  // the other versions of the last request (mu_)
     std::wstring lastHopText_;           // what that request translated (mu_)
@@ -595,6 +660,8 @@ std::shared_ptr<Translator> MakeLocalMtTranslator(const std::wstring& helperExe,
 std::shared_ptr<Translator> MakeM2mTranslator(const std::wstring& helperExe, const std::wstring& dataDir) {
     return std::make_shared<LocalMtTranslator>(helperExe, dataDir, LocalKind::M2m);
 }
+
+void SetLocalMtLog(void (*log)(const std::wstring& line)) { g_helperLog.store(log); }
 
 void SetLocalMtVersions(const std::shared_ptr<Translator>& translator, int versions) {
     if (auto local = std::dynamic_pointer_cast<LocalMtTranslator>(translator)) local->SetVersions(versions);

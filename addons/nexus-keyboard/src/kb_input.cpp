@@ -58,6 +58,7 @@ void TakeWord(const std::wstring& word) {
     g_edit.lenBytes = U8Offset(text, r.end()) - g_edit.startByte;
     g_edit.insert = U8(word + L" ");
     g_focusInput = true;
+    ++g_keys.wordClicked;
     if (g_spell) g_worker.Post([text, start = r.start, word] { if (g_spell) g_spell->Chose(text, start, word, true); });
 }
 
@@ -90,8 +91,18 @@ bool SpaceWrites() {
     g_edit.lenBytes = U8Offset(text, text.size()) - g_edit.startByte;
     g_edit.insert = U8(word + L" ");
     g_undo = {true, U8(fixed), U8(text), text.substr(r.start, r.length)};
+    ++g_keys.spaceWrote;
     g_worker.Post([text, start = r.start, word, deliberate] { if (g_spell) g_spell->Chose(text, start, word, deliberate); });
     return true;
+}
+
+// While our input has the keyboard: how often each key goes down. Never the order, never the text.
+static void CountKeys() {
+    for (int vk = 8; vk < 256; ++vk)
+        if (vk != VK_SHIFT && vk != VK_CONTROL && vk != VK_MENU && ImGui::IsKeyPressed(vk, false)) {
+            ++g_keys.presses[vk];
+            ++g_keys.total;
+        }
 }
 
 int InputCallback(ImGuiInputTextCallbackData* d) {
@@ -110,6 +121,7 @@ int InputCallback(ImGuiInputTextCallbackData* d) {
             return 0;
         }
         case ImGuiInputTextFlags_CallbackAlways: {
+            CountKeys();
             if (g_edit.active) {  // a word of the bar or an autocorrection
                 g_edit.active = false;
                 const size_t len = static_cast<size_t>(d->BufTextLen);
@@ -185,6 +197,8 @@ int InputCallback(ImGuiInputTextCallbackData* d) {
             // that way again).
             if (g_undo.active && now.size() + 1 == g_undo.after.size() && g_undo.after.compare(0, now.size(), now) == 0) {
                 g_undo.active = false;
+                ++g_keys.spaceUndone;
+                TechLog('K', L"Backspace took back what Space wrote");
                 d->DeleteChars(0, d->BufTextLen);
                 d->InsertChars(0, g_undo.before.c_str());
                 g_finishedLast.clear();  // an undone autocorrection is no correction of your own

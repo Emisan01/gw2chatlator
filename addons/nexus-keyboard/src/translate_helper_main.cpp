@@ -355,7 +355,7 @@ int wmain(int argc, wchar_t** argv) {
         const int set = static_cast<int>(GetPrivateProfileIntW(L"Translate", L"Threads", 0, ini.c_str()));
         const int beam = static_cast<int>(GetPrivateProfileIntW(L"Translate", L"LocalQuality", 2, ini.c_str()));
         g_threads = set > 0 ? static_cast<size_t>(std::min(set, 16))
-                            : static_cast<size_t>(LocalAutoThreads(beam, si.dwNumberOfProcessors));  // GW2 keeps the rest
+                            : static_cast<size_t>(LocalAutoThreads(beam, static_cast<int>(PhysicalCores().size())));  // GW2 keeps the rest
     }
     SelectCores();
     g_unloadMinutes = std::clamp<int>(static_cast<int>(GetPrivateProfileIntW(L"Translate", L"UnloadMinutes", 10,
