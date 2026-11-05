@@ -320,7 +320,7 @@ void Config::Load(const std::wstring& dir) {
     voiceBoost = ini.Int(L"Voice", L"Boost", 0, 0, 3);
     voiceAutoSend = ini.Bool(L"Voice", L"AutoSend", false);
     voiceActivation = ini.Bool(L"Voice", L"Activation", false);
-    voicePauseMs = ini.Int(L"Voice", L"PauseMs", 1500, 400, 3000);
+    voicePauseMs = ini.Int(L"Voice", L"PauseMs", 1200, 400, 3000);
     voicePreRollMs = ini.Int(L"Voice", L"PreRollMs", 300, 0, 1000);
     voiceSensitivity = ini.Int(L"Voice", L"Sensitivity", 50, 0, 100);
     voiceMinMs = ini.Int(L"Voice", L"MinSpeechMs", 250, 100, 1500);
