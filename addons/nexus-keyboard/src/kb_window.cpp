@@ -885,7 +885,8 @@ void RenderWindow() {
     const float icon = ImGui::GetFrameHeight();
     const float gap = std::round(icon * 0.6f);
     const float micPillW = std::floor(icon * 1.15f) + 1.0f + std::floor(icon * 0.75f);
-    const float rightW = (g_cfg.voiceEnabled ? micPillW + gap : 0) + icon + gap + icon + st.ItemSpacing.x + icon;
+    const float cornerW = Lay().header ? std::floor(ImGui::GetFontSize() * 0.8f) : 0.0f;  // the corner top right has its place
+    const float rightW = (g_cfg.voiceEnabled ? micPillW + gap : 0) + icon + gap + icon + st.ItemSpacing.x + icon + cornerW;
     const float tabsW = std::max(60.0f, ImGui::GetContentRegionAvail().x - rightW - gap);
     bool newTab = false, tabMenu = false;
     static bool s_lineRightClick = false;  // a right-click on a chat line (its menu, not the header's)
@@ -1221,6 +1222,32 @@ void RenderWindow() {
     if (Lay().header) {
         ImGui::SameLine();
         if (IconButton("##close", Icon::Close, false, nullptr)) g_show = false;
+        // The corner top right, like GW2's own chat: drag it and the window grows up and to the right; its left and bottom
+        // stay. Quiet until the mouse is on it.
+        ImGuiWindow* self = ImGui::GetCurrentWindow();
+        const ImVec2 saved = ImGui::GetCursorPos();
+        const ImVec2 tr(self->Pos.x + self->Size.x - 2.0f, self->Pos.y + 2.0f);
+        ImGui::PushClipRect(self->Pos, ImVec2(self->Pos.x + self->Size.x, self->Pos.y + self->Size.y), false);
+        ImGui::SetCursorScreenPos(ImVec2(tr.x - cornerW, tr.y));
+        ImGui::InvisibleButton("##corner", ImVec2(cornerW, cornerW));
+        const bool hot = ImGui::IsItemHovered() || ImGui::IsItemActive();
+        if (hot) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNESW);
+        if (ImGui::IsItemActive()) {
+            const ImVec2 d = ImGui::GetIO().MouseDelta;
+            if (d.x != 0.0f || d.y != 0.0f) {
+                const ImVec2 screen = ImGui::GetIO().DisplaySize;
+                g_winOwnDrag = true;
+                g_win.width = std::clamp(g_win.width + d.x, space.minW, std::max(space.minW, screen.x - g_win.left));
+                g_win.height = std::clamp(g_win.height - d.y, space.minH, std::max(space.minH, g_win.bottom));
+            }
+        }
+        const ImU32 mark = hot ? ImGui::GetColorU32(ImVec4(0.94f, 0.75f, 0.35f, 1.f)) : ImGui::GetColorU32(ImGuiCol_TextDisabled, 0.55f);
+        for (int i = 1; i <= 3; ++i) {
+            const float at = cornerW * i / 3.0f;
+            self->DrawList->AddLine(ImVec2(tr.x - at, tr.y), ImVec2(tr.x, tr.y + at), mark, hot ? 1.6f : 1.0f);
+        }
+        ImGui::PopClipRect();
+        ImGui::SetCursorPos(saved);
     }
     headerFont.Pop();
     if (!g_recording && g_micLocked) g_micLocked = false;  // the recording ended (pause, maximum length)
