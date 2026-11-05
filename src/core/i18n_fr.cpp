@@ -1447,6 +1447,18 @@ extern const I18nEntry kFrenchStrings[] = {
      "Au-delà de 4, nous n'avons mesuré aucun gain et les lignes attendent plus longtemps."},
     {L"More than half of your processors: the game can stutter.",
      "Plus de la moitié de tes processeurs : le jeu peut saccader."},
+    {L"Calculate on the graphics card (NVIDIA)",
+     "Calculer sur la carte graphique (NVIDIA)"},
+    {L"Takes about 0.7 GB of video memory with M2M100, 0.9 GB with NLLB-200. Without room it falls back to the CPU.",
+     "Occupe environ 0,7 Go de mémoire vidéo avec M2M100, 0,9 Go avec NLLB-200. Sans place, le CPU prend le relais."},
+    {L"Step up when in doubt",
+     "Augmenter en cas de doute"},
+    {L"A line the check doubts is tried again at beam 4.",
+     "Une ligne douteuse est réessayée en beam 4."},
+    {L"Translate along while typing",
+     "Traduire pendant la frappe"},
+    {L"At every word's end, so that Enter often finds it ready. Costs CPU while you type.",
+     "À chaque fin de mot, pour qu'Entrée la trouve souvent prête. Consomme du CPU pendant la frappe."},
 };
 extern const size_t kFrenchCount = sizeof(kFrenchStrings) / sizeof(kFrenchStrings[0]);
 

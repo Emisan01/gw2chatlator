@@ -1447,6 +1447,18 @@ extern const I18nEntry kSpanishStrings[] = {
      "Por encima de 4 no medimos ninguna mejora y las líneas esperan más."},
     {L"More than half of your processors: the game can stutter.",
      "Más de la mitad de tus procesadores: el juego puede dar tirones."},
+    {L"Calculate on the graphics card (NVIDIA)",
+     "Calcular en la tarjeta gráfica (NVIDIA)"},
+    {L"Takes about 0.7 GB of video memory with M2M100, 0.9 GB with NLLB-200. Without room it falls back to the CPU.",
+     "Ocupa unos 0,7 GB de memoria de vídeo con M2M100, 0,9 GB con NLLB-200. Sin espacio sigue en la CPU."},
+    {L"Step up when in doubt",
+     "Subir en caso de duda"},
+    {L"A line the check doubts is tried again at beam 4.",
+     "Una línea dudosa se intenta de nuevo con beam 4."},
+    {L"Translate along while typing",
+     "Traducir mientras escribes"},
+    {L"At every word's end, so that Enter often finds it ready. Costs CPU while you type.",
+     "Al final de cada palabra, para que Intro la encuentre lista a menudo. Consume CPU mientras escribes."},
 };
 extern const size_t kSpanishCount = sizeof(kSpanishStrings) / sizeof(kSpanishStrings[0]);
 

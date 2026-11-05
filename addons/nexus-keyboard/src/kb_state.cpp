@@ -536,7 +536,9 @@ std::shared_ptr<Translator> MakeTranslator(const Config& c) {  // the engine you
     if (c.engine == Engine::Microsoft && !c.msKey.empty()) return MakeMicrosoftTranslator(c.msKey, c.msRegion);
     if (c.engine == Engine::Libre && !c.libreUrl.empty()) return MakeLibreTranslator(c.libreUrl, c.libreKey);
     if (c.engine == Engine::Local || c.engine == Engine::Nllb || c.engine == Engine::M2m) {
-        const std::wstring helper = AddonsDir() + L"GW2Keyboard\\gw2kb_translate.exe";
+        const std::wstring gpuHelper = AddonsDir() + L"GW2Keyboard\\gw2kb_translate_gpu.exe";
+        const bool gpu = c.useGpu && GetFileAttributesW(gpuHelper.c_str()) != INVALID_FILE_ATTRIBUTES;
+        const std::wstring helper = gpu ? gpuHelper : AddonsDir() + L"GW2Keyboard\\gw2kb_translate.exe";
         auto local = c.engine == Engine::M2m ? MakeM2mTranslator(helper, c.dataDir)
                                              : MakeLocalMtTranslator(helper, c.dataDir, c.engine == Engine::Nllb);
         if (c.engine == Engine::M2m) SetLocalMtDecode(local, c.m2m);

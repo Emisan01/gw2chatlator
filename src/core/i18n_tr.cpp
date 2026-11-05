@@ -1447,6 +1447,18 @@ extern const I18nEntry kTurkishStrings[] = {
      "4'ün üzerinde kazanç ölçmedik ve satırlar daha uzun bekler."},
     {L"More than half of your processors: the game can stutter.",
      "İşlemcilerinin yarısından fazlası: oyun takılabilir."},
+    {L"Calculate on the graphics card (NVIDIA)",
+     "Grafik kartında hesapla (NVIDIA)"},
+    {L"Takes about 0.7 GB of video memory with M2M100, 0.9 GB with NLLB-200. Without room it falls back to the CPU.",
+     "M2M100 ile yaklaşık 0,7 GB, NLLB-200 ile 0,9 GB video belleği kullanır. Yer yoksa işlemciyle devam eder."},
+    {L"Step up when in doubt",
+     "Şüphede yükselt"},
+    {L"A line the check doubts is tried again at beam 4.",
+     "Şüpheli bir satır beam 4 ile yeniden denenir."},
+    {L"Translate along while typing",
+     "Yazarken çevir"},
+    {L"At every word's end, so that Enter often finds it ready. Costs CPU while you type.",
+     "Her kelime sonunda, böylece Enter çoğu zaman hazır bulur. Yazarken işlemci harcar."},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

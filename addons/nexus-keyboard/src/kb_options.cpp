@@ -1,5 +1,6 @@
 // kb_options.cpp — the options window and the modules list.
 
+#include "win/cpu_cores.hpp"
 #include "kb_shared.hpp"
 #include "core/glossary.hpp"
 #include "core/slang.hpp"
@@ -1103,7 +1104,7 @@ void RenderWordLists() {
     X(voiceSensitivity) X(voiceMinMs) X(voiceGlobalKey) X(voiceChatPause)
 #define KB_OPTIONS(X)                                                                                                  \
     X(engine) X(writeIn) X(backTranslate) X(understoodLangs) X(skipTypingLang) X(readLang) X(showOriginal) X(noJunk)   \
-    X(localQuality) X(beamStepDown) X(beamStepUp) X(thinkAlong) X(versions) X(mtThreads) X(m2m.patience) X(m2m.lengthPenalty) X(m2m.coveragePenalty) X(m2m.repetitionPenalty)   \
+    X(localQuality) X(useGpu) X(beamStepDown) X(beamStepUp) X(thinkAlong) X(versions) X(mtThreads) X(m2m.patience) X(m2m.lengthPenalty) X(m2m.coveragePenalty) X(m2m.repetitionPenalty)   \
     X(m2m.noRepeatNgram) X(m2m.disableUnk) X(m2mCompute) X(basicEmail) X(deeplKey) X(googleKey) X(msKey) X(msRegion) X(libreUrl) X(libreKey)   \
     X(uiLangCode) X(spellEnabled) X(autoCorrect) X(suggestions) X(learnWords) X(learnLater) X(returnFocus)            \
     X(copyOnly) X(focusOnGameChat) X(send.autoTiming) X(send.keyHoldMs) X(send.stepDelayMs) KB_VOICE_OPTIONS(X)
@@ -1137,14 +1138,15 @@ void ApplyOptions(Config& edit, Config& opened) {
         pttChanged = next.voiceGlobalKey != old.voiceGlobalKey;
         listenChanged = voiceChanged || next.voiceActivation != old.voiceActivation;
         const bool engineChanged = next.engine != old.engine;
-        const unsigned logical = std::thread::hardware_concurrency();
+        const int physical = static_cast<int>(gct::PhysicalCores().size());
         // Only a changed translator or key builds a new one: a new local helper loads its model again.
         const bool translatorChanged = engineChanged || next.deeplKey != old.deeplKey || next.googleKey != old.googleKey ||
                                        next.msKey != old.msKey || next.msRegion != old.msRegion ||
                                        next.libreUrl != old.libreUrl || next.libreKey != old.libreKey ||
                                        next.basicEmail != old.basicEmail || next.mtThreads != old.mtThreads ||
                                        next.m2mCompute != old.m2mCompute ||  // the helper reads threads and calculation at its start
-                                       (next.mtThreads == 0 && gct::LocalAutoThreads(next.localQuality, logical) != gct::LocalAutoThreads(old.localQuality, logical));
+                                       (next.mtThreads == 0 && gct::LocalAutoThreads(next.localQuality, physical) != gct::LocalAutoThreads(old.localQuality, physical)) ||
+                                       next.useGpu != old.useGpu;
         const bool qualityChanged = next.localQuality != old.localQuality;
         const bool versionsChanged = next.versions != old.versions;
         const bool decodeChanged = versionsChanged || (!(next.m2m == old.m2m) && next.engine == Engine::M2m);
@@ -1570,10 +1572,14 @@ void RenderLocalAdvanced(Config& edit) {
     }
     RowHint(UI(Tr(L"How many candidates the model follows at once. More costs time and CPU and rarely changes the result – the live view shows it.")));
     if (edit.localQuality > 4) RiskHint(Tr(L"Above 4 we measured no gain, and lines wait longer."));
-    const int threads = edit.mtThreads > 0 ? edit.mtThreads : gct::LocalAutoThreads(edit.localQuality, std::thread::hardware_concurrency());
+    const int threads = edit.mtThreads > 0 ? edit.mtThreads : gct::LocalAutoThreads(edit.localQuality, static_cast<int>(gct::PhysicalCores().size()));
     RowHint(UI(edit.mtThreads > 0 ? TrF(L"CPU threads now: {1} (set by hand)", {std::to_wstring(threads)})
                                   : TrF(L"CPU threads now: {1} (automatic, more with a higher beam)", {std::to_wstring(threads)})));
     if (static_cast<unsigned>(threads) * 2 > std::thread::hardware_concurrency()) RiskHint(Tr(L"More than half of your processors: the game can stutter."));
+    if (GetFileAttributesW((AddonsDir() + L"GW2Keyboard\\gw2kb_translate_gpu.exe").c_str()) != INVALID_FILE_ATTRIBUTES) {
+        Switch("usegpu", UI(Tr(L"Calculate on the graphics card (NVIDIA)")), &edit.useGpu,
+               UI(Tr(L"Takes about 0.7 GB of video memory with M2M100, 0.9 GB with NLLB-200. Without room it falls back to the CPU.")).c_str());
+    }
     Switch("beamstep", UI(Tr(L"Step down under load")), &edit.beamStepDown,
            UI(Tr(L"Many lines waiting: lines that come by themselves run at beam 2, so the chat keeps up.")).c_str());
     Switch("beamup", UI(Tr(L"Step up when in doubt")), &edit.beamStepUp,
@@ -1926,7 +1932,7 @@ void RenderTranslatorLive() {
         row(Tr(L"Set"));
         LiveCells(8, quality, ImVec4(0.55f, 0.75f, 0.95f, 1.f));
         ImGui::Text("Beam %d", quality);
-        const int threadsNow = last && last->run.threads ? last->run.threads : threadsSet > 0 ? threadsSet : gct::LocalAutoThreads(quality, logical);
+        const int threadsNow = last && last->run.threads ? last->run.threads : threadsSet > 0 ? threadsSet : gct::LocalAutoThreads(quality, static_cast<int>(gct::PhysicalCores().size()));
         const int coresNow = last && last->run.cores ? last->run.cores : threadsNow;
         row(Tr(L"Threads"));
         LiveCells(static_cast<int>(std::min(logical, 16u)), threadsNow, ImVec4(0.55f, 0.75f, 0.95f, 1.f));

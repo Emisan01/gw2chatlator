@@ -248,6 +248,12 @@ if(GCT_LOCAL_MT)
     set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
     set(WITH_MKL OFF CACHE BOOL "" FORCE)
     set(WITH_DNNL ON CACHE BOOL "" FORCE)
+    # The helper for NVIDIA cards: a build of its own (needs the CUDA Toolkit here, cublas beside it there).
+    option(GCT_MT_CUDA "Build the local translator's helper for NVIDIA graphics cards" OFF)
+    if(GCT_MT_CUDA)
+        set(WITH_CUDA ON CACHE BOOL "" FORCE)
+        set(WITH_CUDNN OFF CACHE BOOL "" FORCE)
+    endif()
     # The model on several threads: OpenMP, the compiler's own (vcomp140.dll beside the helper). Off: one core, whatever
     # [Translate] Threads says.
     option(GCT_MT_PARALLEL "The local translator's model on several threads (OpenMP)" ON)
@@ -299,6 +305,9 @@ if(GCT_LOCAL_MT)
 
     add_executable(gw2kb_translate addons/nexus-keyboard/src/translate_helper_main.cpp)
     target_link_libraries(gw2kb_translate PRIVATE gct_core gct_win ctranslate2 dnnl sentencepiece-static)
+    if(GCT_MT_CUDA)
+        target_compile_definitions(gw2kb_translate PRIVATE GCT_MT_CUDA)
+    endif()
     target_include_directories(gw2kb_translate PRIVATE src "${sentencepiece_SOURCE_DIR}/src")
     target_compile_definitions(gw2kb_translate PRIVATE UNICODE _UNICODE _WIN32_WINNT=0x0A00 WINVER=0x0A00
                                NOMINMAX WIN32_LEAN_AND_MEAN)

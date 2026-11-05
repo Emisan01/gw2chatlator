@@ -272,6 +272,7 @@ void Config::Load(const std::wstring& dir) {
     localQuality = ini.Int(L"Translate", L"LocalQuality", 2, 1, 8);
     beamStepDown = ini.Bool(L"Translate", L"BeamStepDown", true);
     beamStepUp = ini.Bool(L"Translate", L"BeamStepUp", true);
+    useGpu = ini.Bool(L"Translate", L"UseGpu", false);
     thinkAlong = ini.Bool(L"Translate", L"ThinkAlong", true);
     versions = ini.Int(L"Translate", L"Versions", 0, 0, 5);
     if (versions == 1) versions = 0;
@@ -488,6 +489,7 @@ void Config::SaveAll() const {
     SaveBool(L"Translate", L"SkipTypingLang", skipTypingLang);
     SaveBool(L"Translate", L"BeamStepDown", beamStepDown);
     SaveBool(L"Translate", L"BeamStepUp", beamStepUp);
+    SaveBool(L"Translate", L"UseGpu", useGpu);
     SaveBool(L"Translate", L"ThinkAlong", thinkAlong);
     SaveValue(L"Translate", L"Versions", std::to_wstring(versions));
     SaveValue(L"Translate", L"LocalQuality", std::to_wstring(localQuality));  // was read, never written (until 2.6.4)

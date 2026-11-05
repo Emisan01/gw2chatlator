@@ -31,6 +31,7 @@ bool ExistsFile(const std::wstring& path) {
 constexpr size_t kMaxLoadedPairs = 2;
 size_t g_threads = 2;  // CPU threads per model: [Translate] Threads, 0 = automatic (LocalAutoThreads: follows the beam)
 int g_cores = 0;       // the processors they run on
+ctranslate2::Device g_device = ctranslate2::Device::CPU;  // [Translate] Device=cuda: only this build for NVIDIA cards
 
 struct PairModel {
     std::string id;
@@ -73,7 +74,8 @@ std::string ScoreField(const ctranslate2::TranslationResult& result) {
 // What the model did for this request, and its other versions.
 std::string RunFields(int ms, size_t beam, size_t tokensIn, size_t tokensOut, const std::vector<std::string>& alts) {
     std::string out = ",\"ms\":" + std::to_string(ms) + ",\"beam\":" + std::to_string(beam) +
-                      ",\"thr\":" + std::to_string(g_threads) + ",\"cores\":" + std::to_string(g_cores) +
+                      ",\"thr\":" + std::to_string(g_device == ctranslate2::Device::CUDA ? 0 : g_threads) +  // 0: on the graphics card
+                      ",\"cores\":" + std::to_string(g_device == ctranslate2::Device::CUDA ? 0 : g_cores) +
                       ",\"tin\":" + std::to_string(tokensIn) + ",\"tout\":" + std::to_string(tokensOut);
     if (!alts.empty()) {
         out += ",\"alts\":[";
@@ -109,14 +111,22 @@ ManyModel* LoadMany(std::unique_ptr<ManyModel>& slot, const std::string& id, con
         return nullptr;
     }
     ctranslate2::models::ModelLoader loader(ToUtf8(dir));
-    loader.device = ctranslate2::Device::CPU;
-    loader.compute_type = compute;
+    loader.device = g_device;
+    loader.compute_type = g_device == ctranslate2::Device::CUDA ? ctranslate2::ComputeType::INT8_FLOAT16 : compute;
     loader.num_replicas_per_device = 1;
     ctranslate2::ReplicaPoolConfig pool;
     pool.num_threads_per_replica = g_threads;
     pool.max_queued_batches = 1;
     try {
-        model->translator = std::make_unique<ctranslate2::Translator>(loader, pool);
+        try {
+            model->translator = std::make_unique<ctranslate2::Translator>(loader, pool);
+        } catch (const std::exception&) {
+            if (loader.device != ctranslate2::Device::CUDA) throw;
+            g_device = ctranslate2::Device::CPU;  // the card has no room or no driver: on the CPU, never no translation
+            loader.device = ctranslate2::Device::CPU;
+            loader.compute_type = compute;
+            model->translator = std::make_unique<ctranslate2::Translator>(loader, pool);
+        }
     } catch (const std::exception& e) {
         error = e.what();
         return nullptr;
@@ -360,6 +370,13 @@ int wmain(int argc, wchar_t** argv) {
     SelectCores();
     g_unloadMinutes = std::clamp<int>(static_cast<int>(GetPrivateProfileIntW(L"Translate", L"UnloadMinutes", 10,
                                                                               ini.c_str())), 1, 120);
+#ifdef GCT_MT_CUDA
+    {
+        wchar_t device[16] = {};
+        GetPrivateProfileStringW(L"Translate", L"Device", L"cuda", device, 16, ini.c_str());
+        if (std::wstring(device) == L"cuda") g_device = ctranslate2::Device::CUDA;
+    }
+#endif
     {
         wchar_t compute[32] = {};
         GetPrivateProfileStringW(L"M2M100", L"Compute", L"int8", compute, 32, ini.c_str());

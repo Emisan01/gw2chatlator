@@ -1211,7 +1211,7 @@ void RenderWindow() {
                 g_showOptions = true;
             if (ImGui::MenuItem(UI(g_showDebugWindow ? Tr(L"Close Debug Window") : Tr(L"Debug & Diagnostics …")).c_str()))
                 g_showDebugWindow = !g_showDebugWindow;
-            if (ImGui::MenuItem(UI(g_showMtLive ? Tr(L"Hide the tech palette") : Tr(L"Show the tech palette")).c_str())) g_showMtLive = !g_showMtLive;
+            if (ImGui::MenuItem(UI(g_showMtLive ? Tr(L"Hide the live view") : Tr(L"Show the live view")).c_str())) g_showMtLive = !g_showMtLive;
             ImGui::Separator();
             if (ImGui::MenuItem(UI(Tr(L"Hide (Ctrl+Alt+K shows it again)")).c_str())) g_show = false;
         }

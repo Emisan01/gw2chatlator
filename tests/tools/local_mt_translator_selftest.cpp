@@ -141,8 +141,8 @@ int wmain(int argc, wchar_t** argv) {
 
     const ULONGLONG started = GetTickCount64();
     {  // a sentence seen before does not go to the model again
-        const auto one = translator->Translate({{L"Eins hier. Zwei da.", false}}, L"de", L"en");
-        const auto two = translator->Translate({{L"Eins hier. Drei dort.", false}}, L"de", L"en");
+        const auto one = translator->Translate({{L"One here. Two there.", false}}, L"en", L"fr");
+        const auto two = translator->Translate({{L"One here. Three there.", false}}, L"en", L"fr");
         ok &= Check(one.ok && one.run.requests == 2 && two.ok && two.run.requests == 1 && two.run.sentencesKept == 1,
                     "the sentence cache asks the model only for the new sentence");
     }

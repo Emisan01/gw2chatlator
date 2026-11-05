@@ -1447,6 +1447,18 @@ extern const I18nEntry kRussianStrings[] = {
      "Выше 4 мы не измерили выигрыша, а строки ждут дольше."},
     {L"More than half of your processors: the game can stutter.",
      "Больше половины процессоров: игра может подтормаживать."},
+    {L"Calculate on the graphics card (NVIDIA)",
+     "Считать на видеокарте (NVIDIA)"},
+    {L"Takes about 0.7 GB of video memory with M2M100, 0.9 GB with NLLB-200. Without room it falls back to the CPU.",
+     "Занимает около 0,7 ГБ видеопамяти с M2M100, 0,9 ГБ с NLLB-200. Без места продолжает на ЦП."},
+    {L"Step up when in doubt",
+     "Повышать при сомнении"},
+    {L"A line the check doubts is tried again at beam 4.",
+     "Сомнительная строка повторяется с beam 4."},
+    {L"Translate along while typing",
+     "Переводить при наборе"},
+    {L"At every word's end, so that Enter often finds it ready. Costs CPU while you type.",
+     "В конце каждого слова, чтобы Enter часто находил готовый перевод. Нагружает ЦП при наборе."},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 
