@@ -245,12 +245,25 @@ WinSpace WindowSpace(float button) {
     return s;
 }
 
+// A hand is no ruler: a press that wanders a few pixels is no move yet. Windows' own drag threshold, which the player can set.
+float DragThreshold() {
+    static const float s_pixels = static_cast<float>(std::clamp(std::max(GetSystemMetrics(SM_CXDRAG), GetSystemMetrics(SM_CYDRAG)), 2, 32));
+    return s_pixels;
+}
+
 // Before Begin: what changed the window since the last frame (you, ImGui's ini, anyone) is taken over first; then the
 // formula sets this frame's rect – not while ImGui moves or resizes it under your mouse (a new mode ends that hold).
 void PlaceWindow(WinMode mode, const WinSpace& s) {
     ImGuiWindow* w = ImGui::FindWindowByName("GW2Chatlator###kbmain");
     if (w) {  // the rect it has is the last mode's
-        const WinRect now{w->Pos.x, w->Pos.y, w->SizeFull.x, w->SizeFull.y};  // SizeFull: a resize since lands there
+        WinRect now{w->Pos.x, w->Pos.y, w->SizeFull.x, w->SizeFull.y};  // SizeFull: a resize since lands there
+        ImGuiContext& held = *ImGui::GetCurrentContext();
+        if (g_winHolding && !g_winOwnDrag && held.MovingWindow && held.MovingWindow->RootWindow == w &&
+            !ImGui::IsMouseDragging(ImGuiMouseButton_Left, DragThreshold())) {
+            now.x = g_winWas.x;  // ImGui's move has not passed the threshold: the window stays where it is
+            now.y = g_winWas.y;
+            ImGui::SetNextWindowPos(ImVec2(now.x, now.y), ImGuiCond_Always);
+        }
         if (g_winHolding && !g_winOwnDrag && std::fabs(now.h - g_winWas.h) > 0.5f) g_winSizing = true;
         g_win = AdoptRect(g_winMode, g_win, now, g_winWas);
         g_winWas = now;
@@ -1330,7 +1343,7 @@ void RenderWindow() {
         ImGui::InvisibleButton("##corner", ImVec2(cornerW, cornerW));
         const bool hot = ImGui::IsItemHovered() || ImGui::IsItemActive();
         if (hot) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNESW);
-        if (ImGui::IsItemActive()) {
+        if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left, DragThreshold())) {
             const ImVec2 d = ImGui::GetIO().MouseDelta;
             if (d.x != 0.0f || d.y != 0.0f) {
                 const ImVec2 screen = ImGui::GetIO().DisplaySize;
@@ -1416,7 +1429,8 @@ void RenderWindow() {
         if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
             g_ownDownAt = 0;
             g_ownMoving = false;
-        } else if (g_ownDownAt && !g_ownMoving && !g_winSizing && GetTickCount64() - g_ownDownAt > 250) {
+        } else if (g_ownDownAt && !g_ownMoving && !g_winSizing && GetTickCount64() - g_ownDownAt > 250 &&
+                   ImGui::IsMouseDragging(ImGuiMouseButton_Left, DragThreshold())) {
             g_ownMoving = true;
         }
         if (g_ownMoving) {
