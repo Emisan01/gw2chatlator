@@ -809,6 +809,28 @@ void RenderWindow() {
             chatWasOpen = chatOpen;
         }
     }
+    {  // Behind everything else at the game's start: word lists and the translation model only once a map stands and the
+       // game has had 10 s to settle, or at once when you use the window. Before a map nothing of it can be seen anyway.
+        static ULONGLONG s_mapSince = 0;
+        std::lock_guard<std::mutex> lock(g_mu);
+        if (!g_lateStartDone) {
+            const ULONGLONG nowMs = GetTickCount64();
+            const bool onMap = g_inMap || g_test.forceMap;
+            s_mapSince = !onMap ? 0 : s_mapSince ? s_mapSince : nowMs;
+            if (onMap && (g_test.forceMap || g_inputActive || g_focusInput || nowMs - s_mapSince >= 10000)) {
+                g_lateStartDone = true;
+                g_worker.Post([] {  // the typing help first: the model takes seconds and it would wait behind it
+                    if (!g_spell) InitSpelling();
+                    std::shared_ptr<Translator> tr;
+                    {
+                        std::lock_guard<std::mutex> workerLock(g_mu);
+                        tr = g_translator;
+                    }
+                    WarmUpTranslator(tr);
+                });
+            }
+        }
+    }
     if (g_wipeDone != 0) {  // everything removed: only the notice with the last step
         RenderRemovedNotice();
         RenderDiscordVoiceMenu();

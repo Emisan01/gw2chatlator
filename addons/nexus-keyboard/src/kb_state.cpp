@@ -69,6 +69,7 @@ SpellService* g_spell = nullptr;
 SendGuard g_guard;
 WhisperWatch g_whisperWatch;
 MumbleLink* g_mumbleWorker = nullptr;
+bool g_lateStartDone = false;
 std::mutex g_mu;
 Config g_cfg;
 std::shared_ptr<Translator> g_translator;

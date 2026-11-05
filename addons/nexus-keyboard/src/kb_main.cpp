@@ -254,7 +254,7 @@ void AddonLoad(AddonAPI_t* api) {
         SetUiLang(g_cfg.uiLang);
         PrepareFaultAlert();
         g_translator = MakeTranslator(g_cfg);
-        WarmUpTranslator(g_translator);
+        g_lateStartDone = false;  // the model and the word lists wait for a map: the window starts them
         RestoreSend();  // the send language chosen last time, not a recomputed one
         LoadLayout();
         LoadCustomTabs();
@@ -284,7 +284,6 @@ void AddonLoad(AddonAPI_t* api) {
     RemoveDirectoryW((g_cfg.dataDir + L"\\fonts").c_str());  // only if empty
     Config::DeferWrites(true);  // the ini is written on the worker (KickSave), never on the game thread
     g_worker.Start();
-    g_worker.Post(InitSpelling);
     {
         std::lock_guard<std::mutex> lock(g_mu);
         g_links.Start(api);

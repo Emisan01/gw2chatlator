@@ -313,6 +313,7 @@ extern SpellService* g_spell;
 extern SendGuard g_guard;
 extern WhisperWatch g_whisperWatch;  // g_mu
 extern MumbleLink* g_mumbleWorker;
+extern bool g_lateStartDone;  // word lists and the translation model are on their way: only once a map stands (g_mu)
 extern TranslationCache g_transCache;  // the chat's translations of this session (memory only)
 
 // ---------------------------------------------------------------------------------------------------------------
