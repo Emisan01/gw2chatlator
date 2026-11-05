@@ -682,7 +682,7 @@ void RowLabel(const std::string& label);  // a row "label | control" of the opti
 // The local translation as the dashboard shows it: refreshed at most every 2 s, the helper's handshake probed in the
 // background only (game thread).
 struct LocalMtSummary {
-    bool module = false, nllb = false, opus = false;
+    bool module = false, nllb = false, opus = false, m2m = false;
     gct::HelperInfo helper;
 };
 LocalMtSummary LocalMtNow(const std::wstring& dataDir);

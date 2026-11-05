@@ -10,11 +10,12 @@
 
 #include "core/chat_line.hpp"
 #include "core/i18n.hpp"
+#include "core/local_mt_protocol.hpp"
 #include "win/gw2_sender.hpp"
 
 namespace gct {
 
-enum class Engine { Auto, Basic, DeepL, Llm, Google, Microsoft, Libre, Local, Nllb };
+enum class Engine { Auto, Basic, DeepL, Llm, Google, Microsoft, Libre, Local, Nllb, M2m };
 enum class AutoCorrectMode { Off, Safe, Phone };
 
 struct Config {
@@ -39,6 +40,8 @@ struct Config {
     bool noJunk = true;         // a doubtful translation: one more try at the best quality, still doubtful – the original
     int localQuality = 2;                                 // 1 = Fast (Beam 1), 2 = Balanced (Beam 2), 4 = Quality (Beam 4)
     int mtThreads = 0;                                    // the local translator's CPU threads, 0 = automatic
+    LocalMtDecode m2m = M2mRecommended();                 // [M2M100]: how M2M100 decodes
+    std::wstring m2mCompute = L"int8";                    // [M2M100] Compute: int8, int8_float32, int16, float32 (the helper reads it)
     std::wstring sendLang;  // the footer's send language ("FR", "=" as written; empty = not chosen yet)
 
     // [Basic] MyMemory

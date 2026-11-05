@@ -643,11 +643,17 @@ const wchar_t* EngineLabel(Engine e) {
         case Engine::Libre: return L"LibreTranslate";
         case Engine::Local: return L"OPUS-MT (local)";
         case Engine::Nllb: return L"NLLB-200 (local)";
+        case Engine::M2m: return L"M2M100 (local)";
         default: return L"MyMemory (free)";
     }
 }
 
 namespace {
+bool IsLocalEngine(Engine e) { return e == Engine::Nllb || e == Engine::Local || e == Engine::M2m; }
+bool LocalModelThere(const LocalMtSummary& local, Engine e) {
+    return e == Engine::Nllb ? local.nllb : e == Engine::M2m ? local.m2m : local.opus;
+}
+
 // A translator that cannot run before its key (LibreTranslate: its server) is there.
 bool NeedsKey(const Config& c, Engine e) {
     return (e == Engine::DeepL && c.deeplKey.empty()) || (e == Engine::Google && c.googleKey.empty()) ||
@@ -686,6 +692,7 @@ bool EngineItems(const Config& edit, const LocalMtSummary& local, Engine current
     ImGui::TextDisabled("%s", UI(Tr(L"On this PC (offline)")).c_str());
     item(Engine::Nllb, local.module && local.nllb ? std::wstring() : Tr(L"install, about 600 MB"));
     item(Engine::Local, local.module && local.opus ? std::wstring() : Tr(L"choose a language pair first"));
+    if (local.module && local.m2m) item(Engine::M2m, {});  // only where its folder is: no download is offered
     ImGui::Separator();
     ImGui::TextDisabled("%s", UI(Tr(L"With your own API key")).c_str());
     const std::wstring keyNeeded = Tr(L"key needed");
@@ -711,8 +718,8 @@ void RenderTranslatorRows(Config& edit, bool full) {
         s_wantSet = false;
     }
     const Engine shown = s_wantSet ? s_want : edit.engine;
-    const bool isLocal = shown == Engine::Nllb || shown == Engine::Local;
-    const bool localReady = local.module && (shown == Engine::Nllb ? local.nllb : local.opus);
+    const bool isLocal = IsLocalEngine(shown);
+    const bool localReady = local.module && LocalModelThere(local, shown);
     RowLabel(UI(Tr(L"Translator")));
     Engine chosen = shown;
     bool picked = false;
@@ -1082,7 +1089,8 @@ void RenderWordLists() {
     X(voiceSensitivity) X(voiceMinMs) X(voiceGlobalKey) X(voiceChatPause)
 #define KB_OPTIONS(X)                                                                                                  \
     X(engine) X(writeIn) X(backTranslate) X(understoodLangs) X(skipTypingLang) X(readLang) X(showOriginal) X(noJunk)   \
-    X(localQuality) X(mtThreads) X(basicEmail) X(deeplKey) X(googleKey) X(msKey) X(msRegion) X(libreUrl) X(libreKey)   \
+    X(localQuality) X(mtThreads) X(m2m.patience) X(m2m.lengthPenalty) X(m2m.coveragePenalty) X(m2m.repetitionPenalty)   \
+    X(m2m.noRepeatNgram) X(m2m.disableUnk) X(m2mCompute) X(basicEmail) X(deeplKey) X(googleKey) X(msKey) X(msRegion) X(libreUrl) X(libreKey)   \
     X(uiLangCode) X(spellEnabled) X(autoCorrect) X(suggestions) X(learnWords) X(learnLater) X(returnFocus)            \
     X(copyOnly) X(focusOnGameChat) X(send.autoTiming) X(send.keyHoldMs) X(send.stepDelayMs) KB_VOICE_OPTIONS(X)
 
@@ -1119,8 +1127,10 @@ void ApplyOptions(Config& edit, Config& opened) {
         const bool translatorChanged = engineChanged || next.deeplKey != old.deeplKey || next.googleKey != old.googleKey ||
                                        next.msKey != old.msKey || next.msRegion != old.msRegion ||
                                        next.libreUrl != old.libreUrl || next.libreKey != old.libreKey ||
-                                       next.basicEmail != old.basicEmail || next.mtThreads != old.mtThreads;
+                                       next.basicEmail != old.basicEmail || next.mtThreads != old.mtThreads ||
+                                       next.m2mCompute != old.m2mCompute;  // the helper reads threads and calculation at its start
         const bool qualityChanged = next.localQuality != old.localQuality;
+        const bool decodeChanged = !(next.m2m == old.m2m);
         const bool readChanged = next.readLang != old.readLang || next.understoodLangs != old.understoodLangs ||
                                  next.skipTypingLang != old.skipTypingLang;
         const bool uiChanged = next.uiLang != old.uiLang;
@@ -1135,18 +1145,21 @@ void ApplyOptions(Config& edit, Config& opened) {
             g_translator = MakeTranslator(g_cfg);
             WarmUpTranslator(g_translator);
         }
-        if (translatorChanged || typingChanged) {
+        if (decodeChanged && !translatorChanged && g_cfg.engine == Engine::M2m) SetLocalMtDecode(g_translator, g_cfg.m2m);
+        if (translatorChanged || typingChanged || decodeChanged) {
             g_preview.clear();
             ++g_inputGen;
             g_inputChanged = GetTickCount64();
         }
         // the chat in view comes again (a line remembers the target and beam it was made with)
-        if (g_nx.translateChat && (translatorChanged || typingChanged || qualityChanged || readChanged))
+        if (g_nx.translateChat && (translatorChanged || typingChanged || qualityChanged || decodeChanged || readChanged))
             TranslateRecentLines(false);
         if (engineChanged)
             SetStatus(TrF(L"Translator: {1}", {g_translator ? g_translator->Name() : std::wstring(L"-")}), 3000);
         else if (qualityChanged)
             SetStatus(TrF(L"Quality set: beam {1} – the visible chat is translated again", {std::to_wstring(g_cfg.localQuality)}), 4000);
+        else if (decodeChanged)
+            SetStatus(Tr(L"M2M100 settings set – the visible chat is translated again"), 4000);
         edit = opened = g_cfg;
     }
     if (typingChanged) g_worker.Post([] {
@@ -1189,8 +1202,8 @@ void RenderStartPage(Config& edit) {
         ImGui::Spacing();
     }
     const LocalMtSummary local = LocalMtNow(edit.dataDir);
-    const bool isLocal = edit.engine == Engine::Nllb || edit.engine == Engine::Local;
-    const bool localReady = local.module && (edit.engine == Engine::Nllb ? local.nllb : local.opus);
+    const bool isLocal = IsLocalEngine(edit.engine);
+    const bool localReady = local.module && LocalModelThere(local, edit.engine);
     const std::string title = UI(chatOn ? Tr(L"Chat translation is on") : Tr(L"Chat translation is off"));
     const std::string sub = UI(chatOn ? TrF(L"Foreign lines appear in {1} · Ctrl+Alt+T switches", {NativeName(ReadingLangNow())})
                                       : Tr(L"A click on a line translates just that one · Ctrl+Alt+T switches"));
@@ -1370,8 +1383,9 @@ void RenderVoicePage(Config& edit, bool entered) {
         if (PrimaryLang(sendLang) == L"EN") {
             RowHint(UI(Tr(L"Send route: Whisper translates directly to English on this PC.")));
         } else {
-            const bool hasLocalMt = gct::LocalMtModelPresent(edit.dataDir, "opus-mt") || gct::LocalMtModelPresent(edit.dataDir, "nllb-200");
-            RowHint(UI(hasLocalMt && (edit.engine == Engine::Local || edit.engine == Engine::Nllb)
+            const bool hasLocalMt = gct::LocalMtModelPresent(edit.dataDir, "opus-mt") || gct::LocalMtModelPresent(edit.dataDir, "nllb-200") ||
+                                    gct::LocalMtModelPresent(edit.dataDir, "m2m100");
+            RowHint(UI(hasLocalMt && IsLocalEngine(edit.engine)
                            ? Tr(L"Send route: Speech recognized locally, translated with local MT package.")
                            : Tr(L"Send route: Speech recognized locally, translated with online translator.")));
         }
@@ -1517,10 +1531,63 @@ void RenderVoicePage(Config& edit, bool entered) {
     EndBox();
 }
 
+// A setting in hundredths: takes effect when you let go, a new value translates the visible chat again.
+void M2mSlider(const char* id, const std::wstring& label, const std::wstring& hint, int& value, int lo, int hi) {
+    RowLabel(UI(label));
+    static float s_draft = 0.0f;
+    float shown = ImGui::GetActiveID() == ImGui::GetID(id) ? s_draft : value / 100.0f;
+    ImGui::SetNextItemWidth(ControlW());
+    ImGui::SliderFloat(id, &shown, lo / 100.0f, hi / 100.0f, "%.2f");
+    if (ImGui::IsItemActive()) s_draft = shown;
+    if (ImGui::IsItemDeactivatedAfterEdit()) value = std::clamp(static_cast<int>(std::lround(shown * 100.0f)), lo, hi);
+    RowHint(UI(hint));
+}
+
+// M2M100 as CTranslate2 offers it. Left out on purpose: sampling (random, a translation should not be), a prefix bias
+// (needs a target to lean on) and the vocabulary map (needs a file the model does not come with).
+void RenderM2mBox(Config& edit) {
+    BeginBox(UI(Tr(L"M2M100 settings")));
+    M2mSlider("##m2mrep", Tr(L"Repetition penalty"), Tr(L"Above 1: words already written count less – against a translation that stutters."),
+              edit.m2m.repetitionPenalty, 100, 200);
+    RowLabel(UI(Tr(L"No repeats")));
+    ImGui::SetNextItemWidth(ControlW());
+    const std::string ngramNow = edit.m2m.noRepeatNgram > 0 ? std::to_string(edit.m2m.noRepeatNgram) : UI(Tr(L"Off"));
+    if (ImGui::BeginCombo("##m2mngram", ngramNow.c_str())) {
+        for (int n = 0; n <= 6; ++n) {
+            const std::string text = n > 0 ? std::to_string(n) : UI(Tr(L"Off"));
+            if (ImGui::Selectable(text.c_str(), edit.m2m.noRepeatNgram == n)) edit.m2m.noRepeatNgram = n;
+        }
+        ImGui::EndCombo();
+    }
+    RowHint(UI(Tr(L"No run of this many word pieces twice in one translation.")));
+    M2mSlider("##m2mlen", Tr(L"Length penalty"), Tr(L"Above 1: longer translations win, below 1: shorter ones."), edit.m2m.lengthPenalty, 0, 300);
+    M2mSlider("##m2mcov", Tr(L"Coverage penalty"), Tr(L"Above 0: a translation that leaves source words out loses."), edit.m2m.coveragePenalty, 0, 100);
+    M2mSlider("##m2mpat", Tr(L"Patience"), Tr(L"The search goes on longer before it settles – slower, sometimes better."), edit.m2m.patience, 100, 400);
+    RowLabel(UI(Tr(L"No unknown words")));
+    ImGui::Checkbox("##m2munk", &edit.m2m.disableUnk);
+    RowHint(UI(Tr(L"The model never writes its placeholder for a word it does not know.")));
+    RowLabel(UI(Tr(L"Calculation")));
+    ImGui::SetNextItemWidth(ControlW());
+    if (ImGui::BeginCombo("##m2mcompute", U8(edit.m2mCompute).c_str())) {
+        for (const wchar_t* compute : {L"int8", L"int8_float32", L"int16", L"float32"})
+            if (ImGui::Selectable(U8(compute).c_str(), edit.m2mCompute == compute)) edit.m2mCompute = compute;
+        ImGui::EndCombo();
+    }
+    RowHint(UI(Tr(L"int8 is the fastest. A change starts the translator anew.")));
+    ImGui::Indent(s_labelW);
+    if (ImGui::Button(UI(Tr(L"Back to the measured values")).c_str())) {
+        edit.m2m = gct::M2mRecommended();
+        edit.m2mCompute = L"int8";
+    }
+    ImGui::Unindent(s_labelW);
+    EndBox();
+}
+
 void RenderTranslatorPage(Config& edit) {
     BeginBox(UI(Tr(L"Translator")));
     RenderTranslatorRows(edit, true);
     EndBox();
+    if (edit.engine == Engine::M2m && LocalMtNow(edit.dataDir).m2m) RenderM2mBox(edit);
     RenderLocalMtOptions(edit);  // the local translation module, NLLB-200, the quality, OPUS-MT – each in its box
 }
 
@@ -1923,6 +1990,7 @@ std::string BuildDiagnosticReport() {
         case Engine::Auto: ss << "Auto: bester vorhandener Schlüssel, sonst MyMemory\n"; break;
         case Engine::Local: ss << "Local OPUS-MT (CTranslate2 INT8 Native)\n"; break;
         case Engine::Nllb: ss << "Local NLLB-200 (CTranslate2 INT8 Native)\n"; break;
+        case Engine::M2m: ss << "Local M2M100 (CTranslate2 Native)\n"; break;
         case Engine::DeepL: ss << "DeepL API\n"; break;
         case Engine::Google: ss << "Google Cloud Translation API\n"; break;
         case Engine::Microsoft: ss << "Microsoft Azure Translator\n"; break;

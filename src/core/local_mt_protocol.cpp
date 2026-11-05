@@ -77,11 +77,18 @@ const std::vector<LocalMtModelInfo>& LocalMtModelCatalog() {
 
 std::string BuildLocalMtRequest(int id, const std::string& source, const std::string& target,
                                 const std::string& utf8Text, int beam,
-                                const std::string& model) {
+                                const std::string& model, const LocalMtDecode& decode) {
     std::string req = "{\"cmd\":\"translate\",\"id\":" + std::to_string(id) + ",\"src\":\"" + JsonEscape(Lower(source)) +
            "\",\"tgt\":\"" + JsonEscape(Lower(target)) + "\",\"text\":\"" + JsonEscape(utf8Text) + "\"";
     if (beam > 0) req += ",\"beam\":" + std::to_string(beam);
     if (!model.empty()) req += ",\"model\":\"" + JsonEscape(model) + "\"";
+    const LocalMtDecode neutral;
+    if (decode.patience != neutral.patience) req += ",\"patience\":" + std::to_string(decode.patience);
+    if (decode.lengthPenalty != neutral.lengthPenalty) req += ",\"lenp\":" + std::to_string(decode.lengthPenalty);
+    if (decode.coveragePenalty != neutral.coveragePenalty) req += ",\"covp\":" + std::to_string(decode.coveragePenalty);
+    if (decode.repetitionPenalty != neutral.repetitionPenalty) req += ",\"repp\":" + std::to_string(decode.repetitionPenalty);
+    if (decode.noRepeatNgram != neutral.noRepeatNgram) req += ",\"ngram\":" + std::to_string(decode.noRepeatNgram);
+    if (decode.disableUnk) req += ",\"nounk\":1";
     req += "}";
     return req;
 }
@@ -110,6 +117,18 @@ bool ParseLocalMtRequest(const std::string& line, LocalMtRequest& out) {
     if (model && model->type == JsonValue::Type::String) {
         out.model = model->s;
     }
+    const auto number = [&json](const char* key, int lo, int hi, int& into) {  // outside its range: stays neutral
+        const JsonValue* v = json.Get(key);
+        if (v && v->type == JsonValue::Type::Number && v->n >= lo && v->n <= hi) into = static_cast<int>(v->n);
+    };
+    number("patience", 100, 400, out.decode.patience);
+    number("lenp", 0, 300, out.decode.lengthPenalty);
+    number("covp", 0, 100, out.decode.coveragePenalty);
+    number("repp", 100, 200, out.decode.repetitionPenalty);
+    number("ngram", 0, 6, out.decode.noRepeatNgram);
+    int noUnk = 0;
+    number("nounk", 0, 1, noUnk);
+    out.decode.disableUnk = noUnk == 1;
     return true;
 }
 
@@ -179,6 +198,23 @@ bool ParseLocalMtMessage(const std::string& line, LocalMtMessage& out) {
     return true;
 }
 
+std::string M2mLanguageTag(const std::string& langCode) {
+    static const char* const kLanguages[] = {  // the model's own 100
+        "af", "am", "ar", "ast", "az", "ba", "be", "bg", "bn", "br", "bs", "ca", "ceb", "cs", "cy", "da", "de",
+        "el", "en", "es", "et", "fa", "ff", "fi", "fr", "fy", "ga", "gd", "gl", "gu", "ha", "he", "hi", "hr",
+        "ht", "hu", "hy", "id", "ig", "ilo", "is", "it", "ja", "jv", "ka", "kk", "km", "kn", "ko", "lb", "lg",
+        "ln", "lo", "lt", "lv", "mg", "mk", "ml", "mn", "mr", "ms", "my", "ne", "nl", "no", "ns", "oc", "or",
+        "pa", "pl", "ps", "pt", "ro", "ru", "sd", "si", "sk", "sl", "so", "sq", "sr", "ss", "su", "sv", "sw",
+        "ta", "th", "tl", "tn", "tr", "uk", "ur", "uz", "vi", "wo", "xh", "yi", "yo", "zh", "zu"};
+    std::string code = Lower(langCode);
+    code = code.substr(0, code.find('-'));  // en-gb, zh-tw: the model has one of each
+    if (code == "ukr") code = "uk";
+    if (code == "nb") code = "no";
+    for (const char* language : kLanguages)
+        if (code == language) return "__" + code + "__";
+    return {};
+}
+
 std::string NllbLanguageTag(const std::string& langCode) {
     const std::string code = Lower(langCode);
     if (code == "de" || code == "de-de") return "deu_Latn";
@@ -242,6 +278,7 @@ std::vector<std::string> LocalMtRoute(const std::wstring& source, const std::wst
     if (has("nllb-200") && !NllbLanguageTag(src).empty() && !NllbLanguageTag(tgt).empty()) {
         return {direct};
     }
+    if (has("m2m100") && !M2mLanguageTag(src).empty() && !M2mLanguageTag(tgt).empty()) return {direct};
     if (src == "en" || tgt == "en") return {};
     const std::string first = src + "-en", second = "en-" + tgt;
     return has(first) && has(second) ? std::vector<std::string>{first, second} : std::vector<std::string>{};

@@ -226,8 +226,8 @@ const LocalMtModelInfo* FindModel(const std::string& pair) {
 bool LocalMtModulePresent(const std::wstring& kbDir) { return ExistsFile(kbDir + L"\\gw2kb_translate.exe"); }
 
 bool LocalMtModelPresent(const std::wstring& dataDir, const std::string& pair) {
-    if (pair == "nllb-200") {
-        const std::wstring dir = dataDir + L"\\translate\\nllb-200";
+    if (pair == "nllb-200" || pair == "m2m100") {
+        const std::wstring dir = dataDir + L"\\translate\\" + FromUtf8(pair);
         return ExistsFile(dir + L"\\model.bin") && ExistsFile(dir + L"\\sentencepiece.bpe.model") &&
                CheckModelPackageSizes(dir);
     }

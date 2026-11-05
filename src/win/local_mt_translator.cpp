@@ -34,13 +34,17 @@ std::vector<std::string> InstalledPairs(const std::wstring& dataDir) {
     return pairs;
 }
 
+enum class LocalKind { Opus, Nllb, M2m };
+
 class LocalMtTranslator final : public Translator {
 public:
-    LocalMtTranslator(std::wstring helper, std::wstring data, bool forceNllb = false)
-        : helper_(std::move(helper)), data_(std::move(data)), forceNllb_(forceNllb) {}
+    LocalMtTranslator(std::wstring helper, std::wstring data, LocalKind kind = LocalKind::Opus)
+        : helper_(std::move(helper)), data_(std::move(data)), kind_(kind) {}
     ~LocalMtTranslator() override { Stop(); }
 
-    std::wstring Name() const override { return forceNllb_ ? Tr(L"NLLB-200 (local)") : Tr(L"OPUS-MT (local)"); }
+    std::wstring Name() const override {
+        return kind_ == LocalKind::Nllb ? Tr(L"NLLB-200 (local)") : kind_ == LocalKind::M2m ? Tr(L"M2M100 (local)") : Tr(L"OPUS-MT (local)");
+    }
 
     void StopForRemoval() {
         std::lock_guard<std::mutex> lock(mu_);
@@ -49,6 +53,14 @@ public:
 
     void SetBeamSize(int b) { beamSize_.store(b); }
     void SetRaw(bool r) { raw_.store(r); }
+    void SetDecode(const LocalMtDecode& decode) {
+        std::lock_guard<std::mutex> lock(decodeMu_);
+        decode_ = decode;
+    }
+    LocalMtDecode Decode() const {
+        std::lock_guard<std::mutex> lock(decodeMu_);
+        return decode_;
+    }
     HelperInfo GetInfo() const { return info_; }
 
     TranslateResult Translate(const std::vector<Segment>& segments, const std::wstring& sourceLang,
@@ -76,9 +88,12 @@ public:
             return result;
         }
         std::vector<std::string> pairs = CachedInstalledPairs();
-        if (forceNllb_) {
-            const bool hasNllb = std::find(pairs.begin(), pairs.end(), "nllb-200") != pairs.end();
-            pairs = hasNllb ? std::vector<std::string>{"nllb-200"} : std::vector<std::string>{};
+        if (kind_ == LocalKind::Opus) {
+            pairs.erase(std::remove(pairs.begin(), pairs.end(), "m2m100"), pairs.end());
+        } else {  // only this model
+            const std::string only = kind_ == LocalKind::Nllb ? "nllb-200" : "m2m100";
+            const bool has = std::find(pairs.begin(), pairs.end(), only) != pairs.end();
+            pairs = has ? std::vector<std::string>{only} : std::vector<std::string>{};
         }
         const auto route = LocalMtRoute(source, target, pairs);
         if (route.empty()) {
@@ -321,11 +336,12 @@ private:
             error = L"The local translator helper is outdated: " + info_.outdatedReason;
             return false;
         }
-        if (forceNllb_ && !HasCap(ready, "nllb")) {
+        if (kind_ != LocalKind::Opus && !HasCap(ready, kind_ == LocalKind::Nllb ? "nllb" : "m2m")) {
             Stop();
             info_.status = HelperStatus::Outdated;
-            info_.outdatedReason = L"missing capability 'nllb'";
-            error = L"The local translator helper lacks NLLB support: " + info_.outdatedReason;
+            info_.outdatedReason = kind_ == LocalKind::Nllb ? L"missing capability 'nllb'" : L"missing capability 'm2m'";
+            error = (kind_ == LocalKind::Nllb ? L"The local translator helper lacks NLLB support: "
+                                              : L"The local translator helper lacks M2M100 support: ") + info_.outdatedReason;
             return false;
         }
         info_.status = HelperStatus::Ok;
@@ -363,8 +379,8 @@ private:
     std::string Request(const std::wstring& text, const std::string& source, const std::string& target,
                         std::wstring& error, TranslateErrorKind& errorKind) {
         const int id = ++nextId_;
-        const std::string model = forceNllb_ ? "nllb" : "";
-        const std::string line = BuildLocalMtRequest(id, source, target, ToUtf8(text), beamSize_.load(), model) + "\n";
+        const std::string model = kind_ == LocalKind::Nllb ? "nllb" : kind_ == LocalKind::M2m ? "m2m" : "";
+        const std::string line = BuildLocalMtRequest(id, source, target, ToUtf8(text), beamSize_.load(), model, Decode()) + "\n";
         if (line.size() > kMaxLocalMtJsonLine) {
             error = L"The local translation request is too large";
             errorKind = TranslateErrorKind::BadOutput;
@@ -436,7 +452,9 @@ private:
     }
 
     const std::wstring helper_, data_;
-    const bool forceNllb_ = false;
+    const LocalKind kind_ = LocalKind::Opus;
+    mutable std::mutex decodeMu_;  // its own: mu_ is held for a whole translation
+    LocalMtDecode decode_;
     HelperInfo info_;
     double lastScore_ = 0;  // lowest score of the message being translated (mu_)
     bool lastScored_ = false;
@@ -455,7 +473,35 @@ private:
 
 std::shared_ptr<Translator> MakeLocalMtTranslator(const std::wstring& helperExe, const std::wstring& dataDir,
                                                   bool forceNllb) {
-    return std::make_shared<LocalMtTranslator>(helperExe, dataDir, forceNllb);
+    return std::make_shared<LocalMtTranslator>(helperExe, dataDir, forceNllb ? LocalKind::Nllb : LocalKind::Opus);
+}
+
+std::shared_ptr<Translator> MakeM2mTranslator(const std::wstring& helperExe, const std::wstring& dataDir) {
+    return std::make_shared<LocalMtTranslator>(helperExe, dataDir, LocalKind::M2m);
+}
+
+void SetLocalMtDecode(const std::shared_ptr<Translator>& translator, const LocalMtDecode& decode) {
+    if (auto local = std::dynamic_pointer_cast<LocalMtTranslator>(translator)) local->SetDecode(decode);
+}
+
+std::wstring LocalMtDecodeNote(const std::shared_ptr<Translator>& translator) {
+    auto local = std::dynamic_pointer_cast<LocalMtTranslator>(translator);
+    if (!local) return {};
+    const LocalMtDecode d = local->Decode();
+    const LocalMtDecode neutral;
+    const auto hundredths = [](int v) {
+        wchar_t b[16];
+        swprintf_s(b, L"%d.%02d", v / 100, v % 100);
+        return std::wstring(b);
+    };
+    std::wstring note;
+    if (d.patience != neutral.patience) note += L" · patience " + hundredths(d.patience);
+    if (d.lengthPenalty != neutral.lengthPenalty) note += L" · length " + hundredths(d.lengthPenalty);
+    if (d.coveragePenalty != neutral.coveragePenalty) note += L" · coverage " + hundredths(d.coveragePenalty);
+    if (d.repetitionPenalty != neutral.repetitionPenalty) note += L" · rep " + hundredths(d.repetitionPenalty);
+    if (d.noRepeatNgram != neutral.noRepeatNgram) note += L" · ngram " + std::to_wstring(d.noRepeatNgram);
+    if (d.disableUnk) note += L" · no unk";
+    return note;
 }
 
 void StopLocalMtTranslator(const std::shared_ptr<Translator>& translator) {

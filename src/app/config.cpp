@@ -190,6 +190,7 @@ Engine ParseEngine(const std::wstring& s) {
     if (v == L"libre" || v == L"libretranslate") return Engine::Libre;
     if (v == L"local" || v == L"opus" || v == L"opus-mt") return Engine::Local;
     if (v == L"nllb" || v == L"nllb-200") return Engine::Nllb;
+    if (v == L"m2m" || v == L"m2m100") return Engine::M2m;
     return Engine::Auto;
 }
 
@@ -220,6 +221,7 @@ const wchar_t* EngineKey(Engine e) {
         case Engine::Libre: return L"libre";
         case Engine::Local: return L"local";
         case Engine::Nllb: return L"nllb";
+        case Engine::M2m: return L"m2m";
         default: return L"auto";
     }
 }
@@ -287,6 +289,16 @@ void Config::Load(const std::wstring& dir) {
     showOriginal = ini.Bool(L"Translate", L"ShowOriginal", false);
     noJunk = ini.Bool(L"Translate", L"NoJunk", true);
     mtThreads = ini.Int(L"Translate", L"Threads", 0, 0, 16);
+    {
+        const LocalMtDecode measured = M2mRecommended();
+        m2m.patience = ini.Int(L"M2M100", L"Patience", measured.patience, 100, 400);
+        m2m.lengthPenalty = ini.Int(L"M2M100", L"LengthPenalty", measured.lengthPenalty, 0, 300);
+        m2m.coveragePenalty = ini.Int(L"M2M100", L"CoveragePenalty", measured.coveragePenalty, 0, 100);
+        m2m.repetitionPenalty = ini.Int(L"M2M100", L"RepetitionPenalty", measured.repetitionPenalty, 100, 200);
+        m2m.noRepeatNgram = ini.Int(L"M2M100", L"NoRepeatNgram", measured.noRepeatNgram, 0, 6);
+        m2m.disableUnk = ini.Bool(L"M2M100", L"DisableUnk", measured.disableUnk);
+        m2mCompute = ini.Str(L"M2M100", L"Compute", L"int8");
+    }
     sendLang = ini.Str(L"Translate", L"SendLang", L"");
     voiceEnabled = ini.Bool(L"Voice", L"Enabled", true);
     voiceLang = AsciiUnescape(ini.Str(L"Voice", L"Language", L"auto"));
@@ -486,6 +498,13 @@ void Config::SaveAll() const {
     SaveBool(L"Translate", L"ShowOriginal", showOriginal);
     SaveBool(L"Translate", L"NoJunk", noJunk);
     SaveValue(L"Translate", L"Threads", std::to_wstring(mtThreads));
+    SaveValue(L"M2M100", L"Patience", std::to_wstring(m2m.patience));
+    SaveValue(L"M2M100", L"LengthPenalty", std::to_wstring(m2m.lengthPenalty));
+    SaveValue(L"M2M100", L"CoveragePenalty", std::to_wstring(m2m.coveragePenalty));
+    SaveValue(L"M2M100", L"RepetitionPenalty", std::to_wstring(m2m.repetitionPenalty));
+    SaveValue(L"M2M100", L"NoRepeatNgram", std::to_wstring(m2m.noRepeatNgram));
+    SaveBool(L"M2M100", L"DisableUnk", m2m.disableUnk);
+    SaveValue(L"M2M100", L"Compute", m2mCompute);
     SaveValue(L"Translate", L"SendLang", sendLang);
     SaveBool(L"Chat", L"AutoTiming", send.autoTiming);
     SaveValue(L"Chat", L"KeyHoldMs", std::to_wstring(send.keyHoldMs));

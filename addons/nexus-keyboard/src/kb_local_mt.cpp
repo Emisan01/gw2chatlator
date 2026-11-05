@@ -65,6 +65,7 @@ struct LocalMtState {
     bool module = false;
     gct::HelperInfo helperInfo;
     bool nllbInstalled = false;
+    bool m2mInstalled = false;
     bool nllbCorrupted = false;
     uint64_t nllbBytes = 0;
     std::vector<bool> models;
@@ -108,6 +109,7 @@ void RefreshLocalMtState(const std::wstring& dataDir) {
         s_state.helperInfo.status = gct::HelperStatus::Missing;
     }
     s_state.nllbInstalled = gct::LocalMtModelPresent(dataDir, "nllb-200");
+    s_state.m2mInstalled = gct::LocalMtModelPresent(dataDir, "m2m100");
     s_state.nllbCorrupted = gct::IsLocalMtModelCorrupted(dataDir, "nllb-200");
     s_state.nllbBytes = s_state.nllbInstalled ? FolderBytes(dataDir + L"\\translate\\nllb-200") : 0;
     const auto& catalog = gct::LocalMtModelCatalog();
@@ -204,6 +206,7 @@ LocalMtSummary LocalMtNow(const std::wstring& dataDir) {
     LocalMtSummary out;
     out.module = s_state.module;
     out.nllb = s_state.nllbInstalled;
+    out.m2m = s_state.m2mInstalled;
     out.opus = std::find(s_state.models.begin(), s_state.models.end(), true) != s_state.models.end();
     out.helper = s_state.helperInfo;
     return out;
@@ -243,10 +246,10 @@ void RenderLocalMtOptions(Config& edit) {
             ImGui::SameLine();
         }
         if (RemoveButton("localmtmodule")) {
-            if (edit.engine == Engine::Local || edit.engine == Engine::Nllb) edit.engine = Engine::Basic;
+            if (edit.engine == Engine::Local || edit.engine == Engine::Nllb || edit.engine == Engine::M2m) edit.engine = Engine::Basic;
             {
                 std::lock_guard<std::mutex> lock(g_mu);
-                if (g_cfg.engine == Engine::Local || g_cfg.engine == Engine::Nllb) {
+                if (g_cfg.engine == Engine::Local || g_cfg.engine == Engine::Nllb || g_cfg.engine == Engine::M2m) {
                     g_cfg.engine = Engine::Basic;
                     g_cfg.SaveValue(L"Translate", L"Engine", L"basic");
                     g_translator = MakeTranslator(g_cfg);

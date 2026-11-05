@@ -26,11 +26,30 @@ struct LocalMtMessage {
 
 bool HasCap(const LocalMtMessage& msg, const std::string& cap);
 
+// How a many-to-many model decodes besides the beam: CTranslate2's options, in hundredths so the request stays free of
+// float and locale questions. These values are neutral, as if none were given, and are not sent.
+struct LocalMtDecode {
+    int patience = 100;           // the search goes on until beam * this finished hypotheses (1.00 to 4.00)
+    int lengthPenalty = 100;      // score / length ^ this: above 1.00 longer translations win, below shorter ones (0 to 3.00)
+    int coveragePenalty = 0;      // above 0: a translation that leaves source words out loses (0 to 1.00)
+    int repetitionPenalty = 100;  // above 1.00: pieces already written lose (1.00 to 2.00)
+    int noRepeatNgram = 0;        // no run of this many pieces twice, 0 = off (0 to 6)
+    bool disableUnk = false;      // never the unknown token
+    bool operator==(const LocalMtDecode& o) const {
+        return patience == o.patience && lengthPenalty == o.lengthPenalty && coveragePenalty == o.coveragePenalty &&
+               repetitionPenalty == o.repetitionPenalty && noRepeatNgram == o.noRepeatNgram && disableUnk == o.disableUnk;
+    }
+};
+
+// The values measured with translation_bench for M2M100.
+inline LocalMtDecode M2mRecommended() { return {}; }
+
 struct LocalMtRequest {
     int id = 0;
     std::string source, target, text;
     int beam = 0;
     std::string model;
+    LocalMtDecode decode;
 };
 
 struct LocalMtModelInfo {
@@ -45,12 +64,14 @@ const std::vector<LocalMtModelInfo>& LocalMtModelCatalog();
 
 std::string BuildLocalMtRequest(int id, const std::string& source, const std::string& target,
                                 const std::string& utf8Text, int beam = 0,
-                                const std::string& model = {});
+                                const std::string& model = {}, const LocalMtDecode& decode = {});
 bool ParseLocalMtRequest(const std::string& line, LocalMtRequest& out);
 bool ParseLocalMtMessage(const std::string& line, LocalMtMessage& out);
 
 // Returns the FLORES-200 code (e.g. "deu_Latn") for an ISO/DeepL language code, or "" if unmapped.
 std::string NllbLanguageTag(const std::string& langCode);
+// Returns M2M100's tag (e.g. "__de__") for an ISO/DeepL language code, or "" for a language the model does not have.
+std::string M2mLanguageTag(const std::string& langCode);
 
 // Returns one direct pair or a two-step route through English. Pair IDs are lowercase, e.g. "de-en".
 std::vector<std::string> LocalMtRoute(const std::wstring& source, const std::wstring& target,

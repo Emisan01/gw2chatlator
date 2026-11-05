@@ -232,6 +232,33 @@ static void TestLocalMtProtocol() {
     CHECK(NllbLanguageTag("uk") == "ukr_Cyrl");
     CHECK(NllbLanguageTag("ca") == "cat_Latn");
     CHECK(NllbLanguageTag("unknown").empty());
+    CHECK(M2mLanguageTag("de") == "__de__");
+    CHECK(M2mLanguageTag("EN-GB") == "__en__");
+    CHECK(M2mLanguageTag("zh-tw") == "__zh__");
+    CHECK(M2mLanguageTag("ukr") == "__uk__");
+    CHECK(M2mLanguageTag("nb") == "__no__");
+    CHECK(M2mLanguageTag("eu").empty());  // Basque: NLLB has it, M2M100 not
+    CHECK(M2mLanguageTag("unknown").empty());
+    CHECK(LocalMtRoute(L"DE", L"FR", {"m2m100"}) == std::vector<std::string>{"de-fr"});
+    CHECK(LocalMtRoute(L"EU", L"DE", {"m2m100"}).empty());
+    {
+        LocalMtRequest m2mRequest;
+        const std::string neutral = BuildLocalMtRequest(7, "de", "en", "Hallo", 2, "m2m");
+        CHECK(neutral.find("repp") == std::string::npos && neutral.find("nounk") == std::string::npos);
+        CHECK(ParseLocalMtRequest(neutral, m2mRequest) && m2mRequest.decode == LocalMtDecode{});
+        LocalMtDecode tuned;
+        tuned.patience = 150;
+        tuned.lengthPenalty = 120;
+        tuned.coveragePenalty = 20;
+        tuned.repetitionPenalty = 110;
+        tuned.noRepeatNgram = 3;
+        tuned.disableUnk = true;
+        CHECK(ParseLocalMtRequest(BuildLocalMtRequest(8, "de", "en", "Hallo", 2, "m2m", tuned), m2mRequest));
+        CHECK(m2mRequest.model == "m2m" && m2mRequest.decode == tuned);
+        tuned.repetitionPenalty = 999;  // outside its range: stays neutral
+        CHECK(ParseLocalMtRequest(BuildLocalMtRequest(9, "de", "en", "Hallo", 2, "m2m", tuned), m2mRequest));
+        CHECK(m2mRequest.decode.repetitionPenalty == 100 && m2mRequest.decode.noRepeatNgram == 3);
+    }
     CHECK(LocalMtRoute(L"DE", L"FR", {"nllb-200"}) == std::vector<std::string>{"de-fr"});
     CHECK(LocalMtRoute(L"ES", L"PL", {"nllb-200"}) == std::vector<std::string>{"es-pl"});
     CHECK(LocalMtRoute(L"RU", L"DE", {"nllb-200"}) == std::vector<std::string>{"ru-de"});

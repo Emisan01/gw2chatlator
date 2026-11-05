@@ -249,7 +249,7 @@ TranslationCache g_transCache;
 
 std::wstring TranslatorTag(const std::shared_ptr<Translator>& tr, int beam) {
     if (!tr) return {};
-    const std::wstring name = IsLocalMtTranslator(tr) ? tr->Name() + L" · Beam " + std::to_wstring(beam) : tr->Name();
+    const std::wstring name = IsLocalMtTranslator(tr) ? tr->Name() + L" · Beam " + std::to_wstring(beam) + LocalMtDecodeNote(tr) : tr->Name();
     return g_rawTranslate.load() ? name + L" · raw" : name;
 }
 

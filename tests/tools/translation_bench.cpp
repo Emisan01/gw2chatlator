@@ -3,7 +3,8 @@
 // meaning check of the corpus (words the translation must hold, words it must never hold). One mode per run, so the
 // same lines compare our logic, the bare model and the online services:
 //   translation_bench <gw2kb_translate.exe> <data folder with translate\> <corpus.tsv> [mode]
-//   mode: nllb (default, our logic) | nllb-raw (the bare model: codes and links only protected) | opus |
+//   mode: nllb (default, our logic) | nllb-raw (the bare model: codes and links only protected) | m2m | m2m-raw | opus |
+//   GCT_BENCH_BEAM: the beam size; GCT_BENCH_DECODE: how the model decodes, "rp=110,ng=3,lp=120,pa=150,cp=20,nu=1"
 //         mymemory (GCT_MYMEMORY_EMAIL optional) | deepl (GCT_DEEPL_KEY) | google (GCT_GOOGLE_KEY)
 // Corpus line: language <TAB> text [<TAB> must <TAB> never] – must: groups split by ";", each group's alternatives by
 // "|", one of each group in the translation; never: alternatives by "|". A word matches whole, a phrase as written.
@@ -64,18 +65,33 @@ std::wstring Env(const wchar_t* name) {
 int wmain(int argc, wchar_t** argv) {
     if (argc < 4) {
         std::fprintf(stderr, "Usage: translation_bench <gw2kb_translate.exe> <data folder> <corpus.tsv> "
-                             "[nllb|nllb-raw|opus|mymemory|deepl|google]\n");
+                             "[nllb|nllb-raw|m2m|m2m-raw|opus|mymemory|deepl|google]\n");
         return 2;
     }
     SetConsoleOutputCP(CP_UTF8);
     const std::wstring mode = argc < 5 ? L"nllb" : argv[4];
-    const bool raw = mode == L"nllb-raw";
+    const bool raw = mode == L"nllb-raw" || mode == L"m2m-raw";
     std::shared_ptr<gct::Translator> translator;
     if (mode == L"mymemory") translator = gct::MakeMyMemoryTranslator(Env(L"GCT_MYMEMORY_EMAIL"));
     else if (mode == L"deepl") translator = gct::MakeDeepLTranslator(Env(L"GCT_DEEPL_KEY"));
     else if (mode == L"google") translator = gct::MakeGoogleTranslator(Env(L"GCT_GOOGLE_KEY"));
+    else if (mode == L"m2m" || mode == L"m2m-raw") translator = gct::MakeM2mTranslator(argv[1], argv[2]);
     else translator = gct::MakeLocalMtTranslator(argv[1], argv[2], mode != L"opus");
     if (raw) gct::SetLocalMtRaw(translator, true);
+    const std::wstring beam = Env(L"GCT_BENCH_BEAM");
+    if (!beam.empty()) gct::SetLocalMtBeamSize(translator, std::stoi(beam));
+    gct::LocalMtDecode decode;
+    for (const std::wstring& setting : Split(Env(L"GCT_BENCH_DECODE"), L',')) {
+        const std::wstring key = setting.substr(0, 2);
+        const int value = setting.size() > 3 ? std::stoi(setting.substr(3)) : 0;
+        if (key == L"rp") decode.repetitionPenalty = value;
+        else if (key == L"ng") decode.noRepeatNgram = value;
+        else if (key == L"lp") decode.lengthPenalty = value;
+        else if (key == L"pa") decode.patience = value;
+        else if (key == L"cp") decode.coveragePenalty = value;
+        else if (key == L"nu") decode.disableUnk = value != 0;
+    }
+    gct::SetLocalMtDecode(translator, decode);
     std::ifstream file(argv[3], std::ios::binary);
     if (!file) {
         std::fprintf(stderr, "corpus not readable\n");

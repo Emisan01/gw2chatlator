@@ -39,7 +39,7 @@ struct PairModel {
     ULONGLONG used = 0;
 };
 
-struct NllbModel {
+struct ManyModel {  // many-to-many: NLLB-200, M2M100
     sentencepiece::SentencePieceProcessor sp;
     std::unique_ptr<ctranslate2::Translator> translator;
     ULONGLONG used = 0;
@@ -47,7 +47,8 @@ struct NllbModel {
 
 std::wstring g_data;
 std::list<std::unique_ptr<PairModel>> g_models;  // most recently used at the front
-std::unique_ptr<NllbModel> g_nllb;
+std::unique_ptr<ManyModel> g_nllb, g_m2m;
+ctranslate2::ComputeType g_m2mCompute = ctranslate2::ComputeType::INT8;  // [M2M100] Compute
 int g_unloadMinutes = 10;
 ULONGLONG g_lastRequest = 0;
 
@@ -72,25 +73,26 @@ std::wstring PairPath(const std::string& id) {
     return g_data + L"\\translate\\" + FromUtf8(id);
 }
 
-NllbModel* LoadNllb(std::string& error) {
-    if (g_nllb) {
-        g_nllb->used = GetTickCount64();
-        return g_nllb.get();
+ManyModel* LoadMany(std::unique_ptr<ManyModel>& slot, const std::string& id, const char* warmFrom, const char* warmTo,
+                    ctranslate2::ComputeType compute, std::string& error) {
+    if (slot) {
+        slot->used = GetTickCount64();
+        return slot.get();
     }
     const ULONGLONG start = GetTickCount64();
-    const std::wstring dir = g_data + L"\\translate\\nllb-200";
+    const std::wstring dir = PairPath(id);
     if (!ExistsFile(dir + L"\\model.bin") || !ExistsFile(dir + L"\\sentencepiece.bpe.model")) {
-        error = "nllb-200 model files are missing or incomplete";
+        error = id + " model files are missing or incomplete";
         return nullptr;
     }
-    auto model = std::make_unique<NllbModel>();
+    auto model = std::make_unique<ManyModel>();
     if (!model->sp.Load(ToUtf8(dir + L"\\sentencepiece.bpe.model")).ok()) {
-        error = "nllb-200 tokenizer failed to load";
+        error = id + " tokenizer failed to load";
         return nullptr;
     }
     ctranslate2::models::ModelLoader loader(ToUtf8(dir));
     loader.device = ctranslate2::Device::CPU;
-    loader.compute_type = ctranslate2::ComputeType::INT8;
+    loader.compute_type = compute;
     loader.num_replicas_per_device = 1;
     ctranslate2::ReplicaPoolConfig pool;
     pool.num_threads_per_replica = g_threads;
@@ -103,18 +105,63 @@ NllbModel* LoadNllb(std::string& error) {
     }
     // Warm-up call (prevents cold-start latency on user's first chat translation)
     try {
-        std::vector<std::vector<std::string>> warmSrc = {{"deu_Latn", "Hallo", "</s>"}};
-        std::vector<std::vector<std::string>> warmTgt = {{"eng_Latn"}};
+        std::vector<std::vector<std::string>> warmSrc = {{warmFrom, "Hallo", "</s>"}};
+        std::vector<std::vector<std::string>> warmTgt = {{warmTo}};
         ctranslate2::TranslationOptions warmOpt;
         warmOpt.beam_size = 1;
         model->translator->translate_batch(warmSrc, warmTgt, warmOpt);
     } catch (...) {}
 
     model->used = GetTickCount64();
-    g_nllb = std::move(model);
-    Emit("{\"evt\":\"loaded\"" + JsonString("pair", "nllb-200") + ",\"ms\":" +
+    slot = std::move(model);
+    Emit("{\"evt\":\"loaded\"" + JsonString("pair", id) + ",\"ms\":" +
          std::to_string(GetTickCount64() - start) + "}");
-    return g_nllb.get();
+    return slot.get();
+}
+
+// The source's tag in front, the end of sentence behind it, the target's tag as the start of the translation.
+void TranslateMany(ManyModel& model, const LocalMtRequest& request, const std::string& srcTag, const std::string& tgtTag) {
+    std::vector<std::string> tokens;
+    if (!model.sp.Encode(request.text, &tokens).ok()) {
+        Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) +
+             JsonString("msg", "source tokenization failed") + "}");
+        return;
+    }
+    tokens.insert(tokens.begin(), srcTag);
+    tokens.emplace_back("</s>");
+    ctranslate2::TranslationOptions options;
+    options.beam_size = request.beam > 0 ? request.beam : 2;
+    options.return_end_token = false;
+    options.return_scores = true;
+    options.max_decoding_length = std::clamp<size_t>(tokens.size() * 2, 32, 256);
+    options.patience = request.decode.patience / 100.0f;
+    options.length_penalty = request.decode.lengthPenalty / 100.0f;
+    options.coverage_penalty = request.decode.coveragePenalty / 100.0f;
+    options.repetition_penalty = request.decode.repetitionPenalty / 100.0f;
+    options.no_repeat_ngram_size = static_cast<size_t>(request.decode.noRepeatNgram);
+    options.disable_unk = request.decode.disableUnk;
+    try {
+        const std::vector<std::vector<std::string>> srcBatch = {tokens};
+        const std::vector<std::vector<std::string>> tgtPrefixBatch = {{tgtTag}};
+        const auto results = model.translator->translate_batch(srcBatch, tgtPrefixBatch, options);
+        if (results.empty() || results.front().hypotheses.empty()) {
+            Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) +
+                 JsonString("msg", "the model returned no translation") + "}");
+            return;
+        }
+        auto hypo = results.front().hypotheses.front();
+        if (!hypo.empty() && hypo.front() == tgtTag) hypo.erase(hypo.begin());
+        std::string text;
+        if (!model.sp.Decode(hypo, &text).ok()) {
+            Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) +
+                 JsonString("msg", "target detokenization failed") + "}");
+            return;
+        }
+        Emit("{\"evt\":\"result\",\"id\":" + std::to_string(request.id) + JsonString("text", text) +
+             ScoreField(results.front()) + "}");
+    } catch (const std::exception& e) {
+        Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) + JsonString("msg", e.what()) + "}");
+    }
 }
 
 PairModel* LoadPair(const std::string& id, std::string& error) {
@@ -175,6 +222,18 @@ void Translate(const std::string& line) {
     const std::string pair = request.source + "-" + request.target;
     std::string error;
 
+    if (request.model == "m2m") {  // only when asked for by name: it is never a fallback
+        const std::string from = M2mLanguageTag(request.source), to = M2mLanguageTag(request.target);
+        ManyModel* m2m = from.empty() || to.empty() ? nullptr : LoadMany(g_m2m, "m2m100", "__de__", "__en__", g_m2mCompute, error);
+        if (!m2m) {
+            if (error.empty()) error = "m2m100 does not have this language";
+            Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) + JsonString("msg", error) + "}");
+            return;
+        }
+        TranslateMany(*m2m, request, from, to);
+        return;
+    }
+
     const bool hasOpusPair = ExistsFile(PairPath(pair) + L"\\model.bin");
     const bool hasNllb = ExistsFile(g_data + L"\\translate\\nllb-200\\model.bin");
     const std::string srcTag = NllbLanguageTag(request.source);
@@ -184,48 +243,13 @@ void Translate(const std::string& line) {
     const bool canUseNllb = hasNllb && !srcTag.empty() && !tgtTag.empty();
 
     if (canUseNllb && (preferNllb || (!hasOpusPair && !preferOpus))) {
-        NllbModel* nllb = LoadNllb(error);
+        ManyModel* nllb = LoadMany(g_nllb, "nllb-200", "deu_Latn", "eng_Latn", ctranslate2::ComputeType::INT8, error);
         if (!nllb) {
             Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) + JsonString("msg", error) + "}");
             return;
         }
-        std::vector<std::string> tokens;
-        if (!nllb->sp.Encode(request.text, &tokens).ok()) {
-            Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) +
-                 JsonString("msg", "nllb source tokenization failed") + "}");
-            return;
-        }
-        tokens.insert(tokens.begin(), srcTag);
-        tokens.emplace_back("</s>");
-        ctranslate2::TranslationOptions options;
-        options.beam_size = request.beam > 0 ? request.beam : 2;
-        options.return_end_token = false;
-        options.return_scores = true;
-        options.max_decoding_length = std::clamp<size_t>(tokens.size() * 2, 32, 256);
-        try {
-            const std::vector<std::vector<std::string>> srcBatch = {tokens};
-            const std::vector<std::vector<std::string>> tgtPrefixBatch = {{tgtTag}};
-            const auto results = nllb->translator->translate_batch(srcBatch, tgtPrefixBatch, options);
-            if (results.empty() || results.front().hypotheses.empty()) {
-                Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) +
-                     JsonString("msg", "the model returned no translation") + "}");
-                return;
-            }
-            auto hypo = results.front().hypotheses.front();
-            if (!hypo.empty() && hypo.front() == tgtTag) hypo.erase(hypo.begin());
-            std::string text;
-            if (!nllb->sp.Decode(hypo, &text).ok()) {
-                Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) +
-                     JsonString("msg", "nllb target detokenization failed") + "}");
-                return;
-            }
-            Emit("{\"evt\":\"result\",\"id\":" + std::to_string(request.id) + JsonString("text", text) +
-                 ScoreField(results.front()) + "}");
-            return;
-        } catch (const std::exception& e) {
-            Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) + JsonString("msg", e.what()) + "}");
-            return;
-        }
+        TranslateMany(*nllb, request, srcTag, tgtTag);
+        return;
     }
 
     PairModel* model = LoadPair(pair, error);
@@ -297,8 +321,17 @@ int wmain(int argc, wchar_t** argv) {
     }
     g_unloadMinutes = std::clamp<int>(static_cast<int>(GetPrivateProfileIntW(L"Translate", L"UnloadMinutes", 10,
                                                                               ini.c_str())), 1, 120);
+    {
+        wchar_t compute[32] = {};
+        GetPrivateProfileStringW(L"M2M100", L"Compute", L"int8", compute, 32, ini.c_str());
+        const std::wstring c = compute;
+        g_m2mCompute = c == L"float32"        ? ctranslate2::ComputeType::FLOAT32
+                       : c == L"int16"        ? ctranslate2::ComputeType::INT16
+                       : c == L"int8_float32" ? ctranslate2::ComputeType::INT8_FLOAT32
+                                               : ctranslate2::ComputeType::INT8;
+    }
     g_lastRequest = GetTickCount64();
-    std::string readyMsg = "{\"evt\":\"ready\",\"helper\":\"translate\",\"proto\":1,\"caps\":[\"opus\",\"nllb\",\"score\"],\"build\":\"";
+    std::string readyMsg = "{\"evt\":\"ready\",\"helper\":\"translate\",\"proto\":1,\"caps\":[\"opus\",\"nllb\",\"m2m\",\"score\"],\"build\":\"";
     readyMsg += GCT_GIT_BUILD_ID;
     readyMsg += "\"}";
     Emit(readyMsg);
