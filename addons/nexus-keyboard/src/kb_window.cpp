@@ -1274,7 +1274,7 @@ void RenderWindow() {
             g_closedWithX = true;
             ChatSourceSetReading(false, true);
         }
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Off: hides the window and stops reading the chat. Ctrl+Alt+K switches it on again.")).c_str());
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Off: hides the window and stops reading the chat. Your hotkey for the window switches it on again.")).c_str());
         // The corner top right, like GW2's own chat: drag it and the window grows up and to the right; its left and bottom
         // stay. Quiet until the mouse is on it.
         ImGuiWindow* self = ImGui::GetCurrentWindow();
