@@ -7,14 +7,14 @@
 # (ru "рейд"); local forms after it are recognized ("rajdzie" is a raid) but never written. Add only what
 # translation_bench shows a translator gets wrong; an empty column is better than a wrong word.
 raid	raid|raids	Raid|Raids	raid|raids	raid|raids		raid|rajd|rajdy|rajdu|rajdzie|rajdów|rajdach|rajdem|rajdami	raid|raids	рейд|рейды|рейда|рейде|рейдов|рейдах|рейдом|рейдами|рейду
-skin	skin|skins	Skin|Skins	skin|skins	skin|skins		skin|skiny|skina|skinów	skin|skins	скин|скины|скина|скинов
+skin	skin|skins	Skin|Skins	skin|skins	skin|skins		skin|skiny|skina|skinów|skórka|skórkę|skórki	skin|skins	скин|скины|скина|скинов
 waypoint	waypoint|waypoints	Wegpunkt|Wegpunkte|Wegpunkten	point de passage|points de passage	punto de ruta|puntos de ruta
 dungeon	dungeon|dungeons	Dungeon|Dungeons|Verlies|Verliese	donjon|donjons	mazmorra|mazmorras				dungeon|данж|данжи|данжа|подземелье|подземелья
 squad	squad|squads	Squad|Squads	squad|escouade	squad|escuadrón		squad|squadzie|squadu		squad|сквад|сквада|скваде
 chest	chest|chests	Truhe|Truhen	coffre|coffres	cofre|cofres					
 mats	mats|materials	Materialien|Mats	matériaux	materiales					
 mount	mount|mounts	Reittier|Reittiere	monture|montures	montura|monturas					
-glider	glider|gliders	Gleitschirm|Gleitschirme	deltaplane|deltaplanes	planeador|planeadores					
+glider	glider|gliders	Gleitschirm|Gleitschirme	deltaplane|deltaplanes	planeador|planeadores		glider|szybowiec|szybowca|szybowce			
 event	event|events	Event|Events|Ereignis	événement|événements	evento|eventos					
 salvage	salvage|salvaging	wiederverwerten	recycler	reciclar					
 boss	boss|bosses	Boss|Bosse	boss	jefe|jefes					
@@ -35,3 +35,31 @@ piece of cake	piece of cake	ein Kinderspiel	du gâteau	pan comido
 hang on	hang on|hold on	warte	attends	espera					
 no problem	no problem|no prob	kein Problem|kein Ding	pas de problème	no hay problema					
 it's fine	it's fine|that's fine	passt schon	ça va	está bien					
+guild	guild|guilds	Gilde|Gilden	guilde|guildes	clan|clanes|hermandad|hermandades	guild|gilda|gilde	guild|gildia|gildii|gildię|gildie	guild|guilda|guildas	guild|гильдия|гильдии|гильдию|гильдий	guild|lonca|loncalar
+fractal	fractal|fractals	Fraktal|Fraktale|Fraktalen	fractale|fractales	fractal|fractales	fractal|frattale|frattali	fractal|fraktal|fraktale|fraktali|fraktalach	fractal|fractais	fractal|фрактал|фракталы|фракталов|фрактале	fractal|fraktal|fraktallar
+world boss	world boss|world bosses	Weltboss|Weltbosse	boss mondial|boss mondiaux	jefe de mundo|jefes de mundo	world boss|boss mondiale	world boss|boss świata	world boss|chefe mundial	world boss|мировой босс|мирового босса|мировые боссы	world boss|dünya boss
+vendor	vendor|vendors|merchant|merchants	Händler	marchand|marchands	vendedor|vendedores|mercader	vendor|mercante|venditore	vendor|handlarz|sprzedawca	vendor|vendedor|mercador	vendor|торговец|торговца	vendor|satıcı
+healer	healer|healers	Heiler	soigneur|soigneurs	sanador|sanadores	healer|guaritore	healer	healer|curandeiro	healer|хилер|хилера|хил|хила	healer|şifacı
+tower	tower|towers	Turm|Türme						tower|башня|башни|башне	tower|kule|kulesi|kulesinde
+rift	rift|rifts	Riss|Risse	faille|failles
+hero points	hero points|hero point	Heldenpunkte|Heldenpunkt	points de héros|point de héros	puntos de héroe|punto de héroe
+port	port|ports	Port
+gear	gear	Ausrüstung	équipement	equipo
+ectoplasm	ectoplasm	Ektoplasma	ectoplasme	ectoplasma
+superspeed	superspeed|super speed	Supergeschwindigkeit
+stacks	stacks	Stapel
+bleeding	bleeding|bleed	Blutung	saignement	sangrado
+burning	burning	Brennen	brûlure	quemadura
+my bad	my bad	mein Fehler	ma faute	culpa mía
+no rush	no rush	keine Eile	pas pressé	sin prisa
+take your time	take your time	lass dir Zeit	prends ton temps	tómate tu tiempo
+three of us	three of us	zu dritt	à trois
+got lost	got lost	habe mich verlaufen|hab mich verlaufen
+wait a moment	wait a moment	Moment mal	attends	espera
+legendary armor	legendary armor|legendary armour	legendäre Rüstung	armure légendaire	armadura legendaria
+weapon	weapon|weapons	Waffe|Waffen	arme|armes	arma|armas
+farm	farm|farming	farmen	farmer	farmear
+to level	to level	leveln
+level	level|levels	Level|Stufe	niveau|niveaux	nivel|niveles
+good evening	good evening	guten Abend	bonsoir	buenas noches	good evening|buona sera|buonasera	good evening|dobry wieczór	good evening|boa noite	good evening|добрый вечер	good evening|iyi akşamlar
+pulled	pulled	gepullt
