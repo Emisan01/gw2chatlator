@@ -161,7 +161,7 @@ bool VoiceSession::Begin(const VoiceSettings& s, unsigned* session, std::wstring
         autoEndMs_ = s.autoEndMs;
         settings_.maxSeconds = std::clamp(s.maxSeconds, 1, 600);
         audio_.clear();
-        audio_.reserve(static_cast<size_t>(settings_.maxSeconds) * kVoiceRate);
+        audio_.reserve(static_cast<size_t>(std::min(settings_.maxSeconds, 60)) * kVoiceRate);  // longer ones grow as they come
         lastLive_.clear();
         finalWanted_ = false;
         maxReached_ = false;

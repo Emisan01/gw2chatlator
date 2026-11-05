@@ -497,8 +497,6 @@ extern const I18nEntry kGermanStrings[] = {
      "Lokales Übersetzungsmodul bereit"},
     {L"Longer text makes the input grow (up to 8 lines) until it is sent.",
      "Längerer Text lässt das Eingabefeld wachsen (bis 8 Zeilen), bis er gesendet ist."},
-    {L"Longest recording",
-     "Längste Aufnahme"},
     {L"Map",
      "Karte"},
     {L"Maybe inaccurate: the local model was unsure",
@@ -1471,6 +1469,8 @@ extern const I18nEntry kGermanStrings[] = {
      "Geht als {1} Chatzeilen nacheinander raus"},
     {L"Typing",
      "Tippen"},
+    {L"No time limit: only a safety net of 10 minutes against a stuck key. One Enter sends at most 3 chat lines, about 45 seconds of speech.",
+     "Kein Zeitlimit: nur ein Sicherheitsnetz von 10 Minuten gegen eine hängende Taste. Ein Enter sendet höchstens 3 Chatzeilen, das sind etwa 45 Sekunden Sprache."},
 };
 extern const size_t kGermanCount = sizeof(kGermanStrings) / sizeof(kGermanStrings[0]);
 

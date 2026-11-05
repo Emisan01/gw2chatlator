@@ -1098,7 +1098,7 @@ void RenderWordLists() {
 // The settings this window edits through its copy (`edit`); sizes, the layout and the looks are taken and saved at
 // once where they are drawn. One list for both: what counts as changed here, and what goes into the settings.
 #define KB_VOICE_OPTIONS(X)                                                                                            \
-    X(voiceEnabled) X(voiceModel) X(voiceLang) X(voiceToggle) X(voiceMaxSec) X(voiceLive) X(voiceThreads)              \
+    X(voiceEnabled) X(voiceModel) X(voiceLang) X(voiceToggle) X(voiceLive) X(voiceThreads)              \
     X(voiceDevice) X(voiceAutoSend) X(voiceBoost) X(voiceActivation) X(voicePauseMs) X(voicePreRollMs)                \
     X(voiceSensitivity) X(voiceMinMs) X(voiceGlobalKey) X(voiceChatPause)
 #define KB_OPTIONS(X)                                                                                                  \
@@ -1458,8 +1458,7 @@ void RenderVoicePage(Config& edit, bool entered) {
     Hint(UI(Tr(L"Too slow = recognizing took longer than you spoke (and over 2 s). Peak = the highest share of the "
                L"whole CPU the voice module used.")));
     Switch("live", UI(Tr(L"Live text while speaking (more CPU)")), &edit.voiceLive);
-    RowLabel(UI(Tr(L"Longest recording")));
-    RowSlider("##max", &edit.voiceMaxSec, 5, 60, "%d s");
+    Hint(UI(Tr(L"No time limit: only a safety net of 10 minutes against a stuck key. One Enter sends at most 3 chat lines, about 45 seconds of speech.")));
     RowLabel(UI(Tr(L"CPU threads")));
     {
         std::vector<std::string> threads{UI(Tr(L"Automatic"))};

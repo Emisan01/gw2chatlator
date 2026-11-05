@@ -313,7 +313,6 @@ void Config::Load(const std::wstring& dir) {
     // good: "as written" sends it as said, a language translates it (whisper itself into English).
     voiceTranslate = true;
     voiceToggle = ini.Str(L"Voice", L"Mode", L"hold") == L"toggle";
-    voiceMaxSec = ini.Int(L"Voice", L"MaxSeconds", 30, 5, 120);
     voiceLive = ini.Bool(L"Voice", L"Live", true);
     voiceThreads = ini.Int(L"Voice", L"Threads", 0, 0, 16);
     voiceDevice = AsciiUnescape(ini.Str(L"Voice", L"Device", L""));
@@ -525,7 +524,6 @@ void Config::SaveAll() const {
     SaveBool(L"Voice", L"Translate", voiceTranslate);
     SaveBool(L"Voice", L"IntoEnglish", voiceIntoEnglish);
     SaveValue(L"Voice", L"Mode", voiceToggle ? L"toggle" : L"hold");
-    SaveValue(L"Voice", L"MaxSeconds", std::to_wstring(voiceMaxSec));
     SaveBool(L"Voice", L"Live", voiceLive);
     SaveValue(L"Voice", L"Threads", std::to_wstring(voiceThreads));
     SaveValue(L"Voice", L"Device", AsciiEscape(voiceDevice));

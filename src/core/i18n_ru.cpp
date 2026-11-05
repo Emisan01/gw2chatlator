@@ -497,8 +497,6 @@ extern const I18nEntry kRussianStrings[] = {
      "Локальный модуль перевода готов"},
     {L"Longer text makes the input grow (up to 8 lines) until it is sent.",
      "Более длинный текст увеличивает поле ввода (до 8 строк), пока его не отправят."},
-    {L"Longest recording",
-     "Самая длинная запись"},
     {L"Map",
      "Карта"},
     {L"Maybe inaccurate: the local model was unsure",
@@ -1471,6 +1469,8 @@ extern const I18nEntry kRussianStrings[] = {
      "Уходит как {1} строки чата, одна за другой"},
     {L"Typing",
      "Ввод"},
+    {L"No time limit: only a safety net of 10 minutes against a stuck key. One Enter sends at most 3 chat lines, about 45 seconds of speech.",
+     "Без лимита времени: только страховка на 10 минут от залипшей клавиши. Один Enter отправляет не более 3 строк чата, это около 45 секунд речи."},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

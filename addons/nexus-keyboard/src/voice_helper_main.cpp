@@ -113,7 +113,7 @@ bool BuildSettings(VoiceSettings* s, std::wstring* why) {
         s->threads = VoiceThreads(g_cfg.voiceThreads, ProbeVoiceHardware().logicalProcessors);
     }
     s->live = g_cfg.voiceLive;
-    s->maxSeconds = g_cfg.voiceMaxSec;
+    s->maxSeconds = 600;  // no limit to set: only the net against a stuck key, 38 MB at its end
     s->deviceId = g_cfg.voiceDevice;
     s->initialPrompt = "Guild Wars 2";
     s->gainDb = g_cfg.voiceBoost == 1 ? 6.0f : g_cfg.voiceBoost == 2 ? 12.0f : 0.0f;

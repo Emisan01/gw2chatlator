@@ -100,7 +100,6 @@ struct Config {
     bool voiceIntoEnglish = false;    // whisper's own translation into English – the add-on keeps it (the switch on and
                                       // English at "Send"); the voice helper reads it
     bool voiceToggle = false;         // false: hold to talk; true: press to start, press again to stop
-    int voiceMaxSec = 30;             // then the recording ends by itself
     bool voiceLive = true;            // live text while speaking (repeated passes, more CPU)
     int voiceThreads = 0;             // 0 = automatic (half the logical processors, at most 4)
     std::wstring voiceDevice;         // microphone endpoint id; "" = Windows default

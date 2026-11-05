@@ -497,8 +497,6 @@ extern const I18nEntry kTurkishStrings[] = {
      "Yerel çeviri modülü hazır"},
     {L"Longer text makes the input grow (up to 8 lines) until it is sent.",
      "Daha uzun metin, gönderilene kadar giriş alanını büyütür (8 satıra kadar)."},
-    {L"Longest recording",
-     "En uzun kayıt"},
     {L"Map",
      "Harita"},
     {L"Maybe inaccurate: the local model was unsure",
@@ -1471,6 +1469,8 @@ extern const I18nEntry kTurkishStrings[] = {
      "{1} sohbet satırı olarak art arda gider"},
     {L"Typing",
      "Yazma"},
+    {L"No time limit: only a safety net of 10 minutes against a stuck key. One Enter sends at most 3 chat lines, about 45 seconds of speech.",
+     "Süre sınırı yok: yalnızca takılan bir tuşa karşı 10 dakikalık bir güvenlik ağı. Bir Enter en fazla 3 sohbet satırı gönderir, yaklaşık 45 saniyelik konuşma."},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 
