@@ -149,10 +149,12 @@ void RequestTextFont(int pt, const std::wstring& face) {  // pt 0: like the game
 // The options window's font: Segoe UI at the size of Nexus' own UI (user, 2026-10-22: the chat's size is the chat
 // window's only) – our font so every letter of the UI languages shows (Nexus' font lacks ł, ş, ğ and Cyrillic).
 std::atomic<ImFont*> g_uiFont{nullptr};
+std::atomic<bool> g_uiScaleDragging{false};
 float g_uiFontPx = 0;
 std::atomic<float> s_nexusOptionsFontPx{0};
 void OnUiFont(const char*, void* font) { g_uiFont = static_cast<ImFont*>(font); }
 void RequestUiFont(float px) {
+    if (g_uiScaleDragging) return;  // built once you let go
     px = std::round(px);
     if (!g_api || !g_api->Fonts_AddFromFile || px < 6 || px == g_uiFontPx) return;
     if (g_uiFontPx > 0 && g_api->Fonts_Resize) {  // Nexus' UI size changed: only the size

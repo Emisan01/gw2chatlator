@@ -392,6 +392,39 @@ extern "C" __declspec(dllexport) UINT Gw2KbTestWndProc(HWND hwnd, UINT msg, WPAR
     return OnWndProc(hwnd, msg, wp, lp);
 }
 
+extern "C" __declspec(dllexport) void Gw2KbTestLiveView() {  // nexus_kb_selftest only: the live view with made-up numbers
+    if (!TestHost()) return;
+    std::lock_guard<std::mutex> lock(g_mu);
+    g_showMtLive = true;
+    for (int i = 0; i < 40; ++i) {
+        MtRun r;
+        r.at = GetTickCount64() - static_cast<ULONGLONG>(40 - i) * 3000;
+        r.kind = i % 7 == 3 ? 'I' : i % 7 == 4 ? 'B' : 'C';
+        r.from = L"EN";
+        r.to = L"DE";
+        r.beamSet = 8;
+        r.beamAsked = i % 5 == 0 ? 2 : 8;
+        r.waiting = i % 5 == 0 ? 5 : 1;
+        r.tag = L"M2M100 (local) · Beam " + std::to_wstring(r.beamAsked);
+        r.run.requests = 1 + i % 3;
+        r.run.beam = r.beamAsked;
+        r.run.threads = 6;
+        r.run.cores = 6;
+        r.run.tokensIn = 10 + i % 9;
+        r.run.tokensOut = 12 + i % 11;
+        r.run.modelMs = 300 + i * 41 % 900;
+        r.run.loadMs = i == 0 ? 3180 : 0;
+        r.ms = r.run.modelMs + 40;
+        r.score = -0.3 - (i % 8) * 0.17;
+        r.scored = true;
+        r.cached = i % 11 == 6;
+        r.second = i % 13 == 7;
+        r.doubt = i % 17 == 9;
+        r.versions = i % 3;
+        NoteMtRun(std::move(r));
+    }
+}
+
 extern "C" __declspec(dllexport) void Gw2KbTestNewTab(uint32_t channels, bool settings) {  // nexus_kb_selftest only
     if (!TestHost()) return;
     std::lock_guard<std::mutex> lock(g_mu);

@@ -57,6 +57,7 @@ public:
         if (reader_.joinable()) reader_.join();  // its pipe is closed: ReadFile returns
     }
     bool Running() const { return process_ != nullptr; }
+    HANDLE Process() const { return process_; }
 
 private:
     void Close() {

@@ -65,7 +65,47 @@ static void ClearTranslation(ChatLine& l) {
     l.translated.clear();
     l.u8translated.clear();
     l.u8transNote.clear();
+    l.transVariants.clear();
     l.transSegs = {};
+}
+
+// The model's other versions that pass the same check as the best one and really differ from it.
+static std::vector<std::wstring> OtherVersions(const TranslateResult& r, const std::wstring& best,
+                                               const std::vector<Segment>& segments, const std::wstring& target) {
+    std::vector<std::wstring> out;
+    std::vector<std::wstring> seen{NormalizeForCompare(best)};
+    for (const std::wstring& v : r.variants) {
+        const std::wstring s = SanitizeChatText(v);
+        const std::wstring n = NormalizeForCompare(s);
+        if (!CheckNote(CheckTranslation(segments, s, target)).empty() || std::find(seen.begin(), seen.end(), n) != seen.end()) continue;
+        seen.push_back(n);
+        out.push_back(s);
+    }
+    return out;
+}
+
+static MtRun MakeRun(char kind, const std::wstring& from, const std::wstring& to, const std::shared_ptr<Translator>& tr,
+                     int beamSet, int beamAsked, const TranslateResult& r, long long ms) {
+    MtRun run;
+    run.at = GetTickCount64();
+    run.kind = kind;
+    run.from = from;
+    run.to = to;
+    run.tag = TranslatorTag(tr, beamAsked);
+    run.beamSet = beamSet;
+    run.beamAsked = beamAsked;
+    run.waiting = g_worker.QueueSize();
+    run.run = r.run;
+    run.ms = ms;
+    run.score = r.score;
+    run.scored = r.scored;
+    run.failed = !r.ok;
+    run.error = r.error;
+    return run;
+}
+
+static long long MsFrom(std::chrono::steady_clock::time_point t0) {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0).count();
 }
 
 void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once, std::wstring forceTarget) {
@@ -130,9 +170,10 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once, std::w
     // Dynamic throttle: greedy under queue pressure for the lines that come by themselves; a line you asked for
     // ("Translate visible chat once", a click) gets the quality you chose – the throttle made "Best" do nothing there.
     const int quality = g_cfg.localQuality;
-    const int effectiveBeam = (asked || once) ? quality
-                                              : g_orchestrator.ComputeBeamSize(static_cast<QualityMode>(quality),
-                                                                               g_worker.QueueSize());
+    const size_t waiting = g_worker.QueueSize();
+    const int effectiveBeam = (asked || once || !g_cfg.beamStepDown)
+                                  ? quality
+                                  : g_orchestrator.ComputeBeamSize(static_cast<QualityMode>(quality), waiting);
     SetLocalMtBeamSize(tr, effectiveBeam);
     SetLocalMtRaw(tr, raw);
     const std::wstring by = TranslatorTag(tr, effectiveBeam);
@@ -141,18 +182,25 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once, std::w
     std::wstring t, note, how = by;
     double score = 0;
     bool scored = false;
+    TranslateRun modelRun;
+    std::vector<std::wstring> others;
+    bool fromModel = true, secondTry = false, greeting = false;
     const std::wstring hello = raw ? std::wstring() : GreetingFor(text, target);
     if (!hello.empty()) {  // a greeting alone ("Hola", "Selam!") is looked up – a model invented a sentence for it
         t = hello;
         how = L"greeting table";
+        greeting = true;
     } else {
-        const TranslateResult r = g_transCache.Through({text, SourceCode(detected), target, by}, [&] {
+        const auto ask = [&] {
             {
                 std::lock_guard<std::mutex> lock(g_mu);
                 CountMyMemory(CodePointCount(text));  // only a real request counts, never a line from the cache
             }
             return tr->Translate(p.segments, SourceCode(detected), target);
-        });
+        };
+        // Versions to choose from: the cache keeps one text, so they are asked for each time.
+        const TranslateResult r = LocalMtVersions(tr) > 1 ? ask() : g_transCache.Through({text, SourceCode(detected), target, by}, ask, &fromModel);
+        modelRun = r.run;
         if (!r.ok || r.text.empty()) {  // never silent: the status says why (a missing language pack, the quota …)
             clearPending(true);
             if (!r.error.empty()) {
@@ -162,6 +210,7 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once, std::w
             return;
         }
         t = SanitizeChatText(r.text);
+        if (!raw) others = OtherVersions(r, t, p.segments, target);
         // The same check for every translator: nothing lost, nothing cut short. A doubtful translation is shown
         // marked, the reason on hover – unless "no junk" is on: one more try at the best quality, then the original.
         note = raw ? std::wstring() : CheckNote(CheckTranslation(p.segments, t, target));
@@ -175,6 +224,8 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once, std::w
                 const TranslateResult r2 = tr->Translate(p.segments, SourceCode(detected), target);
                 SetLocalMtBeamSize(tr, effectiveBeam);
                 how += L" -> second try at beam 4";
+                secondTry = true;
+                modelRun.Add(r2.run);
                 if (r2.ok && !r2.text.empty()) {
                     const std::wstring t2 = SanitizeChatText(r2.text);
                     std::wstring note2 = CheckNote(CheckTranslation(p.segments, t2, target));
@@ -184,6 +235,7 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once, std::w
                     score = r2.score;
                     if (note2.empty()) {
                         t = t2;
+                        others = OtherVersions(r2, t2, p.segments, target);
                         note.clear();
                     }
                 }
@@ -210,7 +262,20 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once, std::w
         trace += sc;
     }
     if (!note.empty()) trace += L"\nCheck: " + note;
+    TranslateResult shown;
+    shown.ok = true;
+    shown.run = modelRun;
+    shown.score = score;
+    shown.scored = scored;
+    MtRun liveRun = MakeRun('C', detected, target, tr, quality, effectiveBeam, shown, ms);
+    liveRun.waiting = waiting;
+    liveRun.cached = !fromModel;
+    liveRun.greeting = greeting;
+    liveRun.second = secondTry;
+    liveRun.doubt = !note.empty();
+    liveRun.versions = static_cast<int>(others.size());
     std::lock_guard<std::mutex> lock(g_mu);
+    NoteMtRun(std::move(liveRun));
     for (ChatLine& l : g_lines) {
         if (l.id == id) {
             l.transPending = false;
@@ -222,6 +287,7 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once, std::w
                 l.transBy = by;
                 l.u8translated = U8(l.translated);
                 l.u8transNote = U8(note);
+                l.transVariants = others;
                 l.transSegs = PieUI::ChatLinks::SegmentLine(l.u8translated);
             } else {
                 ClearTranslation(l);  // the translation changed nothing (or was not good enough): the original
@@ -298,9 +364,11 @@ void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
     std::shared_ptr<Translator> tr;
     std::wstring target, typing;
     bool translating, swapping;
+    int quality;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         tr = g_translator;
+        quality = g_cfg.localQuality;  // what you write gets the quality you chose, whatever the chat just ran at
         target = SendLang();
         typing = VoiceFirst() && !g_dictLang.empty() ? g_dictLang : TypingLang();  // what you said: its language
         translating = Translating();
@@ -321,6 +389,8 @@ void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
     const std::wstring source = sure.empty() ? typing : sure;
     if (!translating && swapping && !sure.empty() && PrimaryLang(sure) != PrimaryLang(target)) translating = true;
     std::wstring error, doubt;  // doubt: the translation check found something (said, sending stays yours)
+    std::vector<std::wstring> others;  // other versions to choose from
+    std::vector<MtRun> liveRuns;
     if (translating && tr && !IsPlainCommand(text)) {  // "/wiki Tequatl", "/dance": goes as it is
         std::wstring expanded;  // your own words replaced by what they mean (only for the translator)
         NameList names;         // names of the chat you write to stay names
@@ -341,9 +411,15 @@ void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
                 std::lock_guard<std::mutex> lock(g_mu);
                 CountMyMemory(CodePointCount(body));
             }
+            SetLocalMtBeamSize(tr, quality);
+            SetLocalMtOneVersion(tr, false);
+            const auto t0 = std::chrono::steady_clock::now();
             const TranslateResult r = tr->Translate(p.segments, source, target);
+            liveRuns.push_back(MakeRun('I', source, target, tr, quality, quality, r, MsFrom(t0)));
             if (r.ok) {
                 result = r.text;
+                if (!raw) others = OtherVersions(r, SanitizeChatText(r.text), p.segments, target);
+                liveRuns.back().versions = static_cast<int>(others.size());
                 if (!raw) doubt = CheckNote(CheckTranslation(p.segments, r.text, target));
                 if (!raw && doubt.empty() && r.scored && r.score < kUnsureScore)  // as in the chat ("kkkbl" -> "¿Qué es esto?")
                     doubt = Tr(L"Maybe inaccurate: the local model was unsure");
@@ -392,7 +468,11 @@ void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
                 std::lock_guard<std::mutex> lock(g_mu);
                 CountMyMemory(CodePointCount(result));
             }
+            SetLocalMtOneVersion(tr, true);
+            const auto t0 = std::chrono::steady_clock::now();
             const TranslateResult r = tr->Translate(p.segments, SourceCode(target), typing);
+            SetLocalMtOneVersion(tr, false);
+            liveRuns.push_back(MakeRun('B', SourceCode(target), typing, tr, quality, quality, r, MsFrom(t0)));
             if (r.ok) back = SanitizeChatText(r.text);
         }
     }
@@ -403,12 +483,22 @@ void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
         std::lock_guard<std::mutex> lock(g_mu);
         // The send waiting for this translation (your Enter) goes out with the channel it had then – also when you
         // switched tabs or typed on meanwhile: never another tab's text, never another channel, never dropped.
+        for (MtRun& run : liveRuns) NoteMtRun(std::move(run));
         const bool forSend = sendId != 0 && g_sendPending && sendId == g_pendingSend.id;
         if (gen != g_inputGen && !forSend) return;  // the text changed meanwhile
         if (gen == g_inputGen) {
             g_preview = SanitizeChatText(result);
             g_back = back;
             g_previewGen = gen;
+            g_previewVersions.clear();
+            g_previewBacks.clear();
+            g_previewPick = 0;
+            if (!others.empty()) {
+                g_previewVersions.push_back(g_preview);
+                g_previewVersions.insert(g_previewVersions.end(), others.begin(), others.end());
+                g_previewBacks.assign(g_previewVersions.size(), std::wstring());
+                g_previewBacks[0] = back;
+            }
         }
         if (!error.empty()) SetStatus(error);
         else if (!doubt.empty()) SetStatus(TrF(L"{1} – check the back-translation before you send", {doubt}), 8000);
@@ -431,6 +521,38 @@ void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
         }
     }
     if (sendNow) SendNow(std::move(parts), text, body, channel);
+}
+
+// Another version chosen in the preview: its back-translation, once.
+void BackTranslateVersion(uint64_t gen, size_t pick, std::wstring version) {
+    AssertNotInteractiveLane("BackTranslateVersion");
+    std::shared_ptr<Translator> tr;
+    std::wstring target, typing;
+    int quality;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        if (gen != g_inputGen || !g_cfg.backTranslate) return;
+        tr = g_translator;
+        quality = g_cfg.localQuality;
+        target = SendLang();
+        typing = VoiceFirst() && !g_dictLang.empty() ? g_dictLang : TypingLang();
+    }
+    if (!tr) return;
+    auto keep = g_spell ? g_spell->KeepWordsSnapshot() : nullptr;
+    ProtectedText p = g_rawTranslate.load() ? ProtectCodesOnly(version)
+                                            : ProtectForTranslation(version, nullptr, keep ? keep.get() : &BuiltinKeepWords());
+    if (!HasTranslatableText(p.segments)) return;
+    SetLocalMtBeamSize(tr, quality);
+    SetLocalMtOneVersion(tr, true);
+    const auto t0 = std::chrono::steady_clock::now();
+    const TranslateResult r = tr->Translate(p.segments, SourceCode(target), typing);
+    SetLocalMtOneVersion(tr, false);
+    MtRun run = MakeRun('B', SourceCode(target), typing, tr, quality, quality, r, MsFrom(t0));
+    std::lock_guard<std::mutex> lock(g_mu);
+    NoteMtRun(std::move(run));
+    if (!r.ok || gen != g_inputGen || pick >= g_previewBacks.size()) return;
+    g_previewBacks[pick] = SanitizeChatText(r.text);
+    if (g_previewPick == pick) g_back = g_previewBacks[pick];
 }
 
 // The word bar, the grey completion and what Space writes, for the newest text + caret.

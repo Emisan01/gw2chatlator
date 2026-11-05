@@ -38,6 +38,27 @@ inline const wchar_t* TranslateErrorKindName(TranslateErrorKind k) {
     }
 }
 
+// What a local model did for one message, for the live view (no text).
+struct TranslateRun {
+    int requests = 0;   // to the model: one per sentence, more with extra tries
+    int beam = 0;       // the highest beam it really ran
+    int threads = 0;    // its CPU threads ...
+    int cores = 0;      // ... on this many processors
+    int tokensIn = 0, tokensOut = 0;
+    int modelMs = 0;    // inside the model, summed
+    int loadMs = 0;     // the model was loaded during this message
+    void Add(const TranslateRun& o) {
+        requests += o.requests;
+        beam = beam > o.beam ? beam : o.beam;
+        threads = o.threads ? o.threads : threads;
+        cores = o.cores ? o.cores : cores;
+        tokensIn += o.tokensIn;
+        tokensOut += o.tokensOut;
+        modelMs += o.modelMs;
+        loadMs = o.loadMs ? o.loadMs : loadMs;
+    }
+};
+
 struct TranslateResult {
     bool ok = false;
     std::wstring text;            // translated text, protected segments restored
@@ -49,6 +70,8 @@ struct TranslateResult {
     // kUnsureScore it guessed); `scored` only when the helper reports it.
     double score = 0;
     bool scored = false;
+    TranslateRun run;
+    std::vector<std::wstring> variants;  // other versions of `text`, the likeliest first (a local model, when asked for)
 };
 
 constexpr double kUnsureScore = -1.2;  // translation_bench 2026-10-27: a made-up greeting it got wrong scored -1.39, every good line -1.04 or better

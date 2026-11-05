@@ -767,8 +767,10 @@ void RenderWindow() {
     }
     ChatEventsPresent();
     CostMark(kCostOptions);
+    SampleCpu();
     RenderOptionsWindow();
     RenderDebugWindow();
+    RenderMtLiveWindow();
     CostMark(kCostWindow);
     bool inMap;
     {
@@ -1204,6 +1206,7 @@ void RenderWindow() {
                 g_showOptions = true;
             if (ImGui::MenuItem(UI(g_showDebugWindow ? Tr(L"Close Debug Window") : Tr(L"Debug & Diagnostics …")).c_str()))
                 g_showDebugWindow = !g_showDebugWindow;
+            if (ImGui::MenuItem(UI(g_showMtLive ? Tr(L"Hide the live view") : Tr(L"Show the live view")).c_str())) g_showMtLive = !g_showMtLive;
             ImGui::Separator();
             if (ImGui::MenuItem(UI(Tr(L"Hide (Ctrl+Alt+K shows it again)")).c_str())) g_show = false;
         }
@@ -1561,6 +1564,22 @@ void RenderWindow() {
             std::string trace;
             for (const ChatLine& x : g_lines)
                 if (x.id == s_lineMenuId) trace = x.u8trace;
+            // the model's other versions of this line: a click takes one, the one shown takes its place
+            for (ChatLine& x : g_lines) {
+                if (x.id != s_lineMenuId || x.transVariants.empty()) continue;
+                if (ImGui::BeginMenu(UI(Tr(L"Other versions")).c_str())) {
+                    for (std::wstring& version : x.transVariants) {
+                        if (!ImGui::MenuItem(U8(version).c_str())) continue;
+                        std::swap(x.translated, version);
+                        x.u8translated = U8(x.translated);
+                        x.transSegs = PieUI::ChatLinks::SegmentLine(x.u8translated);
+                        ImGui::CloseCurrentPopup();
+                        break;
+                    }
+                    ImGui::EndMenu();
+                }
+                break;
+            }
             if (!trace.empty() && ImGui::BeginMenu(UI(Tr(L"What happened?")).c_str())) {
                 ImGui::TextUnformatted(trace.c_str());
                 ImGui::EndMenu();
@@ -1666,6 +1685,28 @@ void RenderWindow() {
             const ImVec4 shade = previewCurrent ? kPreview : ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled);
             LookText(U8((own.empty() ? ComposePrefix() : own) + g_preview).c_str(), Bright(shade), true);
             if (!g_back.empty()) LookText(U8(g_back).c_str(), Bright(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled)), true);
+            // Versions to choose from: a number each, the one that goes out lit; its back-translation follows.
+            if (previewCurrent && g_previewVersions.size() > 1 && g_previewPick < g_previewVersions.size() &&
+                g_previewVersions[g_previewPick] == g_preview) {
+                for (size_t i = 0; i < g_previewVersions.size(); ++i) {
+                    if (i) ImGui::SameLine(0.0f, ImGui::GetFontSize() * 0.25f);
+                    const bool on = i == g_previewPick;
+                    if (on) ImGui::PushStyleColor(ImGuiCol_Button, kAccent);
+                    const bool clicked = ImGui::SmallButton((std::to_string(i + 1) + "##version" + std::to_string(i)).c_str());
+                    if (on) ImGui::PopStyleColor();
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", U8(g_previewVersions[i]).c_str());
+                    if (clicked && !on) {
+                        g_previewPick = i;
+                        g_preview = g_previewVersions[i];
+                        g_back = g_previewBacks[i];
+                        if (g_back.empty() && g_cfg.backTranslate)
+                            g_worker.Post([gen = g_inputGen, i, version = g_previewVersions[i]] { BackTranslateVersion(gen, i, version); });
+                    }
+                    if (clicked) g_focusInput = true;
+                }
+                ImGui::SameLine();
+                ImGui::TextDisabled("%s", UI(Tr(L"Other versions")).c_str());
+            }
         } else if (g_layout.infoText) {
             ImGui::TextDisabled("%s", UI(Tr(L"translating …")).c_str());
         }

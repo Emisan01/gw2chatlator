@@ -11,6 +11,7 @@
 #include <string>
 
 #include "core/chat_line.hpp"
+#include "core/cpu_use.hpp"
 #include "core/cloud_mt_protocol.hpp"
 #include "core/my_words.hpp"
 #include "core/snippets.hpp"
@@ -232,6 +233,33 @@ static void TestLocalMtProtocol() {
     CHECK(NllbLanguageTag("uk") == "ukr_Cyrl");
     CHECK(NllbLanguageTag("ca") == "cat_Latn");
     CHECK(NllbLanguageTag("unknown").empty());
+    {
+        CHECK(CpuPercent(5'000'000, 10'000'000, 4) == 12.5f);  // half a second of one processor in a second, of four
+        CHECK(CpuPercent(1, 0, 4) == 0.0f && CpuPercent(1, 1, 0) == 0.0f && CpuPercent(9, 1, 1) == 100.0f);
+        CHECK(CpuDelta(30, 10) == 20 && CpuDelta(5, 10) == 5);  // a process started anew counts from zero
+        CpuUse peak, a, b;
+        a.helper = 20;
+        a.ours = 25;
+        b.helper = 5;
+        b.pc = 60;
+        peak.KeepHighest(a);
+        peak.KeepHighest(b);
+        CHECK(peak.helper == 20 && peak.ours == 25 && peak.pc == 60);
+    }
+    CHECK(LocalAutoThreads(2, 12) == 3 && LocalAutoThreads(4, 12) == 4 && LocalAutoThreads(8, 12) == 6);
+    CHECK(LocalAutoThreads(1, 2) == 2 && LocalAutoThreads(2, 32) == 4 && LocalAutoThreads(8, 32) == 8);
+    {
+        LocalMtMessage done;
+        CHECK(ParseLocalMtMessage(R"({"evt":"result","id":3,"text":"Hallo","score":-0.5,"ms":120,"beam":4,"thr":3,"cores":3,"tin":6,"tout":7,"alts":["Servus","","Moin"]})", done));
+        CHECK(done.modelMs == 120 && done.beam == 4 && done.threads == 3 && done.cores == 3 && done.tokensIn == 6 && done.tokensOut == 7);
+        CHECK(done.alts == std::vector<std::string>({"Servus", "Moin"}));
+        CHECK(ParseLocalMtMessage(R"({"evt":"result","id":3,"text":"Hallo"})", done) && done.modelMs == 0 && done.alts.empty());  // an older helper
+        LocalMtDecode versions;
+        versions.hypotheses = 3;
+        LocalMtRequest asked;
+        CHECK(ParseLocalMtRequest(BuildLocalMtRequest(4, "de", "en", "Hallo", 2, "nllb", versions), asked) && asked.decode.hypotheses == 3);
+        CHECK(ParseLocalMtRequest(R"({"cmd":"translate","id":5,"src":"de","tgt":"en","text":"x","hyp":9})", asked) && asked.decode.hypotheses == 1);
+    }
     CHECK(M2mLanguageTag("de") == "__de__");
     CHECK(M2mLanguageTag("EN-GB") == "__en__");
     CHECK(M2mLanguageTag("zh-tw") == "__zh__");

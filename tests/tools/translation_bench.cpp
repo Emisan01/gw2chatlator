@@ -4,6 +4,7 @@
 // same lines compare our logic, the bare model and the online services:
 //   translation_bench <gw2kb_translate.exe> <data folder with translate\> <corpus.tsv> [mode]
 //   mode: nllb (default, our logic) | nllb-raw (the bare model: codes and links only protected) | m2m | m2m-raw | opus |
+//   GCT_BENCH_VERSIONS: versions per line, and how many lines one of them gets right;
 //   GCT_BENCH_BEAM: the beam size; GCT_BENCH_DECODE: how the model decodes, "rp=110,ng=3,lp=120,pa=150,cp=20,nu=1"
 //         mymemory (GCT_MYMEMORY_EMAIL optional) | deepl (GCT_DEEPL_KEY) | google (GCT_GOOGLE_KEY)
 // Corpus line: language <TAB> text [<TAB> must <TAB> never] – must: groups split by ";", each group's alternatives by
@@ -92,6 +93,8 @@ int wmain(int argc, wchar_t** argv) {
         else if (key == L"nu") decode.disableUnk = value != 0;
     }
     gct::SetLocalMtDecode(translator, decode);
+    const std::wstring versions = Env(L"GCT_BENCH_VERSIONS");
+    if (!versions.empty()) gct::SetLocalMtVersions(translator, std::stoi(versions));
     std::ifstream file(argv[3], std::ios::binary);
     if (!file) {
         std::fprintf(stderr, "corpus not readable\n");
@@ -101,7 +104,8 @@ int wmain(int argc, wchar_t** argv) {
     all << file.rdbuf();
     const gct::WordSet keep = gct::BuiltinKeepWords();
     int lines = 0, ok = 0, lostProtected = 0, lostSentence = 0, tooShort = 0, failed = 0, unsure = 0;
-    int judged = 0, meaningOk = 0;
+    int judged = 0, meaningOk = 0, anyVersionOk = 0, withVersions = 0;
+    gct::TranslateRun total;
     size_t sentencesIn = 0, sentencesOut = 0;
     double totalMs = 0;
     std::string row;
@@ -130,6 +134,7 @@ int wmain(int argc, wchar_t** argv) {
         const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
         ++lines;
         totalMs += ms;
+        total.Add(r.run);
         if (!r.ok) {
             ++failed;
             std::printf("[FAILED] %s: %s\n", gct::ToUtf8(source).c_str(), gct::ToUtf8(r.error).c_str());
@@ -157,6 +162,15 @@ int wmain(int argc, wchar_t** argv) {
             }
             for (const std::wstring& w : never)
                 if (Holds(r.text, w)) found += (found.empty() ? L"" : L", ") + w;
+            const auto meaningFits = [&](const std::wstring& candidate) {
+                for (const std::wstring& group : must) {
+                    const std::vector<std::wstring> alts = Split(group, L'|');
+                    if (std::none_of(alts.begin(), alts.end(), [&](const std::wstring& a) { return Holds(candidate, a); })) return false;
+                }
+                return std::none_of(never.begin(), never.end(), [&](const std::wstring& w) { return Holds(candidate, w); });
+            };
+            if (!r.variants.empty()) ++withVersions;
+            if ((missing.empty() && found.empty()) || std::any_of(r.variants.begin(), r.variants.end(), meaningFits)) ++anyVersionOk;
             if (missing.empty() && found.empty()) {
                 ++meaningOk;
                 meaning = L"meaning ok";
@@ -171,11 +185,14 @@ int wmain(int argc, wchar_t** argv) {
                     c.detail.empty() ? "" : " ", gct::ToUtf8(c.detail).c_str(), gct::ToUtf8(source).c_str(),
                     gct::ToUtf8(target).c_str(), out, in, score, ms, meaning.empty() ? "" : " - ", gct::ToUtf8(meaning).c_str(),
                     gct::ToUtf8(text).c_str(), gct::ToUtf8(r.text).c_str());
+        for (const std::wstring& v : r.variants) std::printf("  alt: %s\n", gct::ToUtf8(v).c_str());
     }
     gct::StopLocalMtTranslator(translator);
     std::printf("\ntranslation_bench (%s): %d lines, %d ok, %d lost protected, %d lost a sentence, %d cut short, %d failed; "
                 "sentences kept %zu/%zu; meaning ok %d/%d; %d unsure (score < %.1f); %.0f ms per line\n",
                 gct::ToUtf8(mode).c_str(), lines, ok, lostProtected, lostSentence, tooShort, failed, sentencesOut, sentencesIn,
                 meaningOk, judged, unsure, gct::kUnsureScore, lines ? totalMs / lines : 0.0);
+    std::printf("model: %d requests, beam %d, %d threads on %d cores, %d ms inside it, %d tokens out; versions: %d lines had some, one of them right in %d/%d\n",
+                total.requests, total.beam, total.threads, total.cores, total.modelMs, total.tokensOut, withVersions, anyVersionOk, judged);
     return 0;
 }

@@ -269,8 +269,10 @@ void Config::Load(const std::wstring& dir) {
     translateWriting = ini.Bool(L"Translate", L"Writing", false);  // first use: sent as written
     understoodLangs = ParseLangList(ini.Str(L"Translate", L"Understood", L""));
     skipTypingLang = ini.Bool(L"Translate", L"SkipTypingLang", true);
-    localQuality = ini.Int(L"Translate", L"LocalQuality", 2, 1, 4);
-    if (localQuality != 1 && localQuality != 4) localQuality = 2;
+    localQuality = ini.Int(L"Translate", L"LocalQuality", 2, 1, 8);
+    beamStepDown = ini.Bool(L"Translate", L"BeamStepDown", true);
+    versions = ini.Int(L"Translate", L"Versions", 0, 0, 5);
+    if (versions == 1) versions = 0;
 
     basicEmail = AsciiUnescape(ini.Str(L"Basic", L"Email", L""));
     deeplKey = UnprotectSecret(ini.Str(L"DeepL", L"ApiKey", L""));
@@ -482,6 +484,8 @@ void Config::SaveAll() const {
         SaveValue(L"Translate", L"Understood", list);
     }
     SaveBool(L"Translate", L"SkipTypingLang", skipTypingLang);
+    SaveBool(L"Translate", L"BeamStepDown", beamStepDown);
+    SaveValue(L"Translate", L"Versions", std::to_wstring(versions));
     SaveValue(L"Translate", L"LocalQuality", std::to_wstring(localQuality));  // was read, never written (until 2.6.4)
     SaveValue(L"Basic", L"Email", AsciiEscape(basicEmail));
     SaveValue(L"DeepL", L"ApiKey", ProtectSecret(deeplKey));

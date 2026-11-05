@@ -89,6 +89,7 @@ std::string BuildLocalMtRequest(int id, const std::string& source, const std::st
     if (decode.repetitionPenalty != neutral.repetitionPenalty) req += ",\"repp\":" + std::to_string(decode.repetitionPenalty);
     if (decode.noRepeatNgram != neutral.noRepeatNgram) req += ",\"ngram\":" + std::to_string(decode.noRepeatNgram);
     if (decode.disableUnk) req += ",\"nounk\":1";
+    if (decode.hypotheses != neutral.hypotheses) req += ",\"hyp\":" + std::to_string(decode.hypotheses);
     req += "}";
     return req;
 }
@@ -129,6 +130,7 @@ bool ParseLocalMtRequest(const std::string& line, LocalMtRequest& out) {
     int noUnk = 0;
     number("nounk", 0, 1, noUnk);
     out.decode.disableUnk = noUnk == 1;
+    number("hyp", 1, 5, out.decode.hypotheses);
     return true;
 }
 
@@ -189,6 +191,19 @@ bool ParseLocalMtMessage(const std::string& line, LocalMtMessage& out) {
             out.score = score->n;
             out.scored = true;
         }
+        const auto number = [&json](const char* key, int& into) {
+            const JsonValue* v = json.Get(key);
+            if (v && v->type == JsonValue::Type::Number && v->n >= 0 && v->n < 1e9) into = static_cast<int>(v->n);
+        };
+        number("ms", out.modelMs);
+        number("beam", out.beam);
+        number("thr", out.threads);
+        number("cores", out.cores);
+        number("tin", out.tokensIn);
+        number("tout", out.tokensOut);
+        if (const JsonValue* alts = json.Get("alts"); alts && alts->type == JsonValue::Type::Array)
+            for (const auto& a : alts->arr)
+                if (a.type == JsonValue::Type::String && !a.s.empty()) out.alts.push_back(a.s);
         return true;
     }
     const JsonValue* message = json.Get("msg");

@@ -25,6 +25,7 @@
 #include "app/spell_service.hpp"
 #include "core/chat_code.hpp"
 #include "core/contrast.hpp"
+#include "core/cpu_use.hpp"
 #include "core/chat_line.hpp"
 #include "core/gw2_text.hpp"
 #include "core/hotkey.hpp"
@@ -229,6 +230,7 @@ void ReleaseTextFont();  // before the DLL goes, and before another face is aske
 // The options window: Segoe UI at least 14 pt, raised further when Nexus' UI is larger; independent of chat size.
 constexpr const char* kUiFontId = "GW2Chatlator_UI";
 extern std::atomic<ImFont*> g_uiFont;
+extern std::atomic<bool> g_uiScaleDragging;  // the UI scale slider is held: no new font yet, the options window keeps its size
 extern std::atomic<float> s_nexusOptionsFontPx;
 float FollowUiPx();
 int FollowUiPt();
@@ -321,6 +323,7 @@ struct ChatLine {
     std::wstring speaker, text, translated;
     std::wstring transTarget, transBy;  // what `translated` was made into and by (TranslateRecentLines keeps a fit)
     std::string u8transNote;            // the translation check found something (shown marked, said on hover)
+    std::vector<std::wstring> transVariants;  // the model's other versions of `translated` (memory only)
     std::string u8trace;                // what happened when it was translated ("What happened?"), memory only
     std::wstring speakerFolded;
 
@@ -370,6 +373,10 @@ extern std::string g_lastInput;
 extern ULONGLONG g_inputChanged;
 extern uint64_t g_inputGen;
 extern std::wstring g_preview;
+// The versions of the input's translation to choose from (empty: one), with their back-translations as far as asked (g_mu).
+extern std::vector<std::wstring> g_previewVersions, g_previewBacks;
+extern size_t g_previewPick;
+void BackTranslateVersion(uint64_t gen, size_t pick, std::wstring version);
 extern std::wstring g_back;
 extern bool g_inMap;
 extern bool g_mapOpen;
@@ -393,6 +400,27 @@ extern Channel g_channel;
 extern std::wstring g_whisperTo;
 extern int g_sendIdx;
 extern bool g_sending;
+// One translation for the live view: numbers only, never a text (no chat data is kept).
+struct MtRun {
+    ULONGLONG at = 0;
+    char kind = 'C';  // C a chat line, I your input, B a back-translation
+    std::wstring from, to, tag, error;
+    int beamSet = 0, beamAsked = 0;  // what you set, what this line asked of the model
+    size_t waiting = 0;              // lines waiting when it was done
+    gct::TranslateRun run;
+    long long ms = 0;
+    double score = 0;
+    bool scored = false, cached = false, greeting = false, second = false, doubt = false, failed = false;
+    int versions = 0;
+};
+extern std::deque<MtRun> g_mtRuns;  // the newest last (g_mu)
+extern bool g_showMtLive;
+void NoteMtRun(MtRun run);  // g_mu held
+// What we cost the CPU: over the last half second, each part's highest of this session, all parts at our highest (render thread).
+extern gct::CpuUse g_cpuNow, g_cpuPeak, g_cpuAtPeak;
+extern ULONGLONG g_cpuPeakAt;
+extern std::wstring g_cpuPeakDuring;  // the translator and beam of the last translation then
+void SampleCpu();                     // every frame, acts twice a second (g_mu not held)
 extern std::wstring g_lastSendTrace;  // the last send's steps (gw2_sender: SendOutcome::trace), g_mu
 // "Minimise when not in use" (g_layout.autoMinimize): the last moment the window was in use – the input had the focus,
 // the mouse was over it, a menu was open, it was sending or recording, GW2's chat line was open. 0: count from now.
@@ -731,6 +759,7 @@ Layout& Lay();
 void Hint(const std::string& text);
 void RenderOptionsWindow();
 void RenderDebugWindow();
+void RenderMtLiveWindow();
 std::string BuildDiagnosticReport();
 void SafeOpenUrl(const std::wstring& rawLink);
 void BoxText(const ImVec2& at, const ImVec4& clip, ImU32 color, const std::string& text, float scale = 1.0f);

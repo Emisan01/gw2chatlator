@@ -1,6 +1,7 @@
 // local_mt_translator.cpp — the game talks to a separate inference process over bounded JSON lines.
 #include "local_mt_translator.hpp"
 
+#include <functional>
 #include <windows.h>
 
 #include <algorithm>
@@ -53,6 +54,22 @@ public:
 
     void SetBeamSize(int b) { beamSize_.store(b); }
     void SetRaw(bool r) { raw_.store(r); }
+    // A length or coverage penalty moves the score (coverage 0.20: 105 of 106 lines below the "unsure" mark), so with
+    // them it says nothing about the model's certainty and marks no line.
+    bool ScoreSaysCertainty() const {
+        const LocalMtDecode d = Decode();
+        return d.lengthPenalty == 100 && d.coveragePenalty == 0;
+    }
+    uint64_t HelperCpu() const {
+        const HANDLE process = cpuProcess_.load();
+        FILETIME created, ended, kernel, user;
+        if (!process || !GetProcessTimes(process, &created, &ended, &kernel, &user)) return 0;
+        return (static_cast<uint64_t>(kernel.dwHighDateTime) << 32 | kernel.dwLowDateTime) +
+               (static_cast<uint64_t>(user.dwHighDateTime) << 32 | user.dwLowDateTime);
+    }
+    void SetVersions(int versions) { versions_.store(std::clamp(versions, 1, 5)); }
+    int Versions() const { return versions_.load(); }
+    void SetOneVersion(bool one) { oneVersion_.store(one); }
     void SetDecode(const LocalMtDecode& decode) {
         std::lock_guard<std::mutex> lock(decodeMu_);
         decode_ = decode;
@@ -114,11 +131,14 @@ public:
 
         std::lock_guard<std::mutex> lock(mu_);
         lastScored_ = false;  // the model's certainty, gathered over this message's requests
+        run_ = {};
+        lastAlts_.clear();
         // One text through the route (a pivot language between, when there is no direct pair).
         const auto translateText = [&](std::wstring text) -> std::optional<std::wstring> {
             for (const std::string& pair : route) {
                 const size_t dash = pair.find('-');
                 std::string sourceCode = pair.substr(0, dash), targetCode = pair.substr(dash + 1);
+                lastHopText_ = text;
                 const std::string utf8 = Request(text, sourceCode, targetCode, result.error, result.errorKind);
                 if (!result.error.empty()) return std::nullopt;
                 const std::wstring translatedHop = CleanLocalMtOutput(text, FromUtf8(utf8), targetCode);
@@ -152,7 +172,8 @@ public:
             result.ok = true;
             result.text = std::move(out);
             result.score = lastScore_;
-            result.scored = lastScored_;
+            result.scored = lastScored_ && ScoreSaysCertainty();
+            result.run = run_;
             result.detectedSource = source;
             result.errorKind = TranslateErrorKind::None;
             return result;
@@ -163,8 +184,28 @@ public:
         // placeholders X1, X2 … ("Lion's Arch" became "Löwenbogen", "Wir treffen uns am Wegpunkt in X1" is copied);
         // only then the sentence goes in pieces around them (the way all text went before 2.6.5). Every try is
         // checked the same way; one that is not taken does not count for the score.
+        const std::string targetCode = route.back().substr(route.back().find('-') + 1);
+        // The model's other versions of a sentence: cleaned and checked like the best one; those that keep every
+        // protected part stay. `alts` came with the text `from`; `make` turns one into the whole sentence ("": no).
+        const auto sentenceVersions = [&](const std::vector<std::string>& alts, const std::wstring& from,
+                                          const std::function<std::wstring(const std::wstring&)>& make) {
+            std::vector<std::wstring> out;
+            for (const std::string& alt : alts) {
+                const std::wstring hop = CleanLocalMtOutput(from, FromUtf8(alt), targetCode);
+                if (!IsPlausibleLocalMtOutput(from, hop)) continue;
+                const std::wstring whole = make(hop);
+                if (!whole.empty()) out.push_back(whole);
+            }
+            return out;
+        };
+        struct SentenceDone {
+            std::wstring best, gap;
+            std::vector<std::wstring> others;
+        };
+        std::vector<SentenceDone> sentencesDone;
         std::wstring translated;
         for (const SentenceSegments& sentence : SegmentsBySentence(segments)) {
+            std::vector<std::wstring> others;
             std::vector<Segment> pieces = SplitForLocalMt(sentence.segments);
             const PieceRange range = WholeSentenceRange(pieces);
             std::wstring lead, tail, middle;
@@ -199,9 +240,17 @@ public:
                                                               : FillPlaceholders(*whole, held.parts, filled));
                         // the protected parts themselves ("Tequatl"), not the pieces with the marks around them
                         // ("Tequatl ?" – the model wrote "Tequatl-Meta … ?")
+                        const std::vector<std::string> alts = lastAlts_;
+                        const std::wstring altsFrom = lastHopText_;
                         if (complete && MissingProtected(sentence.segments, lead + filled + tail).empty()) {
                             middle = RestoreKeepSpelling(filled, sentence.segments);
                             done = true;
+                            others = sentenceVersions(alts, altsFrom, [&](const std::wstring& hop) {
+                                std::wstring f = hop;
+                                if (t == 2 && !FillPlaceholders(hop, held.parts, f)) return std::wstring();
+                                if (!MissingProtected(sentence.segments, lead + f + tail).empty()) return std::wstring();
+                                return lead + RestoreKeepSpelling(f, sentence.segments) + tail;
+                            });
                         } else {
                             lastScore_ = score;
                             lastScored_ = scored;
@@ -210,6 +259,10 @@ public:
                         result.errorKind = TranslateErrorKind::None;
                     }
                 }
+                int asked = 0;  // one piece asked of the model: its other versions fit in; of several they would not add up
+                size_t pieceAt = 0, pieceLength = 0;
+                std::vector<std::string> pieceAlts;
+                std::wstring pieceFrom;
                 for (size_t k = 0; !done && k < inner.size(); ++k) {
                     if (inner[k].keep) {
                         middle += inner[k].text;
@@ -217,12 +270,33 @@ public:
                     }
                     const auto piece = translateText(inner[k].text);
                     if (!piece) return result;
+                    if (++asked == 1) {
+                        pieceAt = middle.size();
+                        pieceLength = piece->size();
+                        pieceAlts = lastAlts_;
+                        pieceFrom = lastHopText_;
+                    }
                     middle += *piece;
                 }
+                if (asked == 1)
+                    others = sentenceVersions(pieceAlts, pieceFrom, [&](const std::wstring& hop) {
+                        return lead + middle.substr(0, pieceAt) + hop + middle.substr(pieceAt + pieceLength) + tail;
+                    });
             }
             translated += lead + middle + tail + sentence.gap;
+            sentencesDone.push_back({lead + middle + tail, sentence.gap, std::move(others)});
         }
-        translated = TidyPunctuation(translated, route.back().substr(route.back().find('-') + 1));
+        translated = TidyPunctuation(translated, targetCode);
+        // The whole message's versions: each sentence's n-th other version, its best where it has fewer.
+        for (int n = 0; n + 1 < versions_.load() && !oneVersion_.load(); ++n) {
+            std::wstring version;
+            for (const SentenceDone& s : sentencesDone)
+                version += (static_cast<size_t>(n) < s.others.size() ? s.others[static_cast<size_t>(n)] : s.best) + s.gap;
+            version = TidyPunctuation(version, targetCode);
+            if (version != translated && IsPlausibleLocalMtOutput(original, version) &&
+                std::find(result.variants.begin(), result.variants.end(), version) == result.variants.end())
+                result.variants.push_back(std::move(version));
+        }
         if (!IsPlausibleLocalMtOutput(original, translated)) {
             result.error = L"The local model returned an implausible translation";
             result.errorKind = TranslateErrorKind::BadOutput;
@@ -231,7 +305,8 @@ public:
         result.ok = true;
         result.text = std::move(translated);
         result.score = lastScore_;
-        result.scored = lastScored_;
+        result.scored = lastScored_ && ScoreSaysCertainty();
+        result.run = run_;
         result.detectedSource = source;
         result.errorKind = TranslateErrorKind::None;
         return result;
@@ -316,6 +391,7 @@ private:
         }
         CloseHandle(pi.hThread);
         process_ = pi.hProcess;
+        cpuProcess_.store(process_);
         LocalMtMessage ready;
         if (!ReadMessage(15000, ready) || ready.kind != LocalMtMessage::Kind::Ready) {
             Stop();
@@ -380,7 +456,9 @@ private:
                         std::wstring& error, TranslateErrorKind& errorKind) {
         const int id = ++nextId_;
         const std::string model = kind_ == LocalKind::Nllb ? "nllb" : kind_ == LocalKind::M2m ? "m2m" : "";
-        const std::string line = BuildLocalMtRequest(id, source, target, ToUtf8(text), beamSize_.load(), model, Decode()) + "\n";
+        LocalMtDecode decode = Decode();
+        decode.hypotheses = oneVersion_.load() ? 1 : versions_.load();
+        const std::string line = BuildLocalMtRequest(id, source, target, ToUtf8(text), beamSize_.load(), model, decode) + "\n";
         if (line.size() > kMaxLocalMtJsonLine) {
             error = L"The local translation request is too large";
             errorKind = TranslateErrorKind::BadOutput;
@@ -398,13 +476,23 @@ private:
             errorKind = TranslateErrorKind::HelperCrashed;
             return {};
         }
-        const ULONGLONG started = GetTickCount64();
+        // A higher beam takes longer, the first request also has to load the model (its file's size tells about how
+        // long): neither is a stalled helper.
+        ULONGLONG started = GetTickCount64();
+        const DWORD working = 5000 + 2500 * static_cast<DWORD>(std::max(0, beamSize_.load() - 2));
+        DWORD limit = working + (modelLoaded_ ? 0 : LoadAllowanceMs(source, target));
         for (;;) {
             const DWORD elapsed = static_cast<DWORD>(GetTickCount64() - started);
-            if (elapsed >= 5000) break;
+            if (elapsed >= limit) break;
             LocalMtMessage message;
-            if (!ReadMessage(5000 - elapsed, message)) break;
-            if (message.kind == LocalMtMessage::Kind::Loaded) continue;
+            if (!ReadMessage(limit - elapsed, message)) break;
+            if (message.kind == LocalMtMessage::Kind::Loaded) {
+                run_.loadMs = static_cast<int>(message.milliseconds);
+                modelLoaded_ = true;
+                started = GetTickCount64();
+                limit = working;
+                continue;
+            }
             if (message.id != id) {
                 Stop();
                 error = L"The local translator returned a mismatched response";
@@ -416,6 +504,17 @@ private:
                     lastScore_ = lastScored_ ? std::min(lastScore_, message.score) : message.score;
                     lastScored_ = true;
                 }
+                modelLoaded_ = true;
+                TranslateRun one;
+                one.requests = 1;
+                one.beam = message.beam;
+                one.threads = message.threads;
+                one.cores = message.cores;
+                one.tokensIn = message.tokensIn;
+                one.tokensOut = message.tokensOut;
+                one.modelMs = message.modelMs;
+                run_.Add(one);
+                lastAlts_ = std::move(message.alts);
                 return message.text;
             }
             error = FromUtf8(message.error.empty() ? "local translation failed" : message.error);
@@ -428,7 +527,16 @@ private:
         return {};
     }
 
+    DWORD LoadAllowanceMs(const std::string& source, const std::string& target) const {
+        const std::string id = kind_ == LocalKind::Nllb ? "nllb-200" : kind_ == LocalKind::M2m ? "m2m100" : source + "-" + target;
+        WIN32_FILE_ATTRIBUTE_DATA file;
+        if (!GetFileAttributesExW((data_ + L"\\translate\\" + FromUtf8(id) + L"\\model.bin").c_str(), GetFileExInfoStandard, &file)) return 0;
+        const uint64_t bytes = static_cast<uint64_t>(file.nFileSizeHigh) << 32 | file.nFileSizeLow;
+        return static_cast<DWORD>(std::min<uint64_t>(bytes / 40000, 60000));  // at 40 MB/s, a minute at most
+    }
+
     void Stop() {
+        modelLoaded_ = false;
         if (write_) {
             const char quit[] = "{\"cmd\":\"quit\"}\n";
             DWORD n = 0;
@@ -443,6 +551,7 @@ private:
             }
             if (job_) { CloseHandle(job_); job_ = nullptr; }
             WaitForSingleObject(process_, 1000);
+            cpuProcess_.store(nullptr);
             CloseHandle(process_);
             process_ = nullptr;
         }
@@ -456,6 +565,13 @@ private:
     mutable std::mutex decodeMu_;  // its own: mu_ is held for a whole translation
     LocalMtDecode decode_;
     HelperInfo info_;
+    TranslateRun run_;      // what the model did for the message being translated (mu_)
+    std::vector<std::string> lastAlts_;  // the other versions of the last request (mu_)
+    std::wstring lastHopText_;           // what that request translated (mu_)
+    bool modelLoaded_ = false;  // this helper has answered or loaded (mu_)
+    std::atomic<HANDLE> cpuProcess_{nullptr};  // process_, for the live view (which never takes mu_)
+    std::atomic<int> versions_{1};
+    std::atomic<bool> oneVersion_{false};
     double lastScore_ = 0;  // lowest score of the message being translated (mu_)
     bool lastScored_ = false;
     HANDLE process_ = nullptr, write_ = nullptr, read_ = nullptr, job_ = nullptr;
@@ -480,6 +596,24 @@ std::shared_ptr<Translator> MakeM2mTranslator(const std::wstring& helperExe, con
     return std::make_shared<LocalMtTranslator>(helperExe, dataDir, LocalKind::M2m);
 }
 
+void SetLocalMtVersions(const std::shared_ptr<Translator>& translator, int versions) {
+    if (auto local = std::dynamic_pointer_cast<LocalMtTranslator>(translator)) local->SetVersions(versions);
+}
+
+void SetLocalMtOneVersion(const std::shared_ptr<Translator>& translator, bool one) {
+    if (auto local = std::dynamic_pointer_cast<LocalMtTranslator>(translator)) local->SetOneVersion(one);
+}
+
+uint64_t LocalMtHelperCpu(const std::shared_ptr<Translator>& translator) {
+    auto local = std::dynamic_pointer_cast<LocalMtTranslator>(translator);
+    return local ? local->HelperCpu() : 0;
+}
+
+int LocalMtVersions(const std::shared_ptr<Translator>& translator) {
+    auto local = std::dynamic_pointer_cast<LocalMtTranslator>(translator);
+    return local ? local->Versions() : 1;
+}
+
 void SetLocalMtDecode(const std::shared_ptr<Translator>& translator, const LocalMtDecode& decode) {
     if (auto local = std::dynamic_pointer_cast<LocalMtTranslator>(translator)) local->SetDecode(decode);
 }
@@ -501,6 +635,7 @@ std::wstring LocalMtDecodeNote(const std::shared_ptr<Translator>& translator) {
     if (d.repetitionPenalty != neutral.repetitionPenalty) note += L" · rep " + hundredths(d.repetitionPenalty);
     if (d.noRepeatNgram != neutral.noRepeatNgram) note += L" · ngram " + std::to_wstring(d.noRepeatNgram);
     if (d.disableUnk) note += L" · no unk";
+    if (local->Versions() > 1) note += L" · versions " + std::to_wstring(local->Versions());
     return note;
 }
 

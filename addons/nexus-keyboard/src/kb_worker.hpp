@@ -75,6 +75,13 @@ public:
         return jobs_.size();
     }
 
+    uint64_t CpuTime() {  // its CPU time so far, in 100 ns
+        FILETIME created, ended, kernel, user;
+        if (!thread_.joinable() || !GetThreadTimes(thread_.native_handle(), &created, &ended, &kernel, &user)) return 0;
+        return (static_cast<uint64_t>(kernel.dwHighDateTime) << 32 | kernel.dwLowDateTime) +
+               (static_cast<uint64_t>(user.dwHighDateTime) << 32 | user.dwLowDateTime);
+    }
+
 private:
     void Run(Lane lane) {
         g_workerLane = lane;
@@ -146,6 +153,8 @@ public:
     size_t QueueSize() {
         return network_.QueueSize();
     }
+
+    uint64_t CpuTime() { return interactive_.CpuTime() + network_.CpuTime(); }
 
     size_t InteractiveQueueSize() {
         return interactive_.QueueSize();

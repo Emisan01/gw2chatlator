@@ -345,6 +345,8 @@ int wmain(int argc, wchar_t** argv) {
             WideCharToMultiByte(CP_UTF8, 0, optTab, -1, tab, sizeof tab, nullptr, nullptr);
             src(8, nullptr, tab);
         }
+        if (GetEnvironmentVariableW(L"GW2KB_SHOT_LIVE", nullptr, 0))  // the translator's live view, with made-up numbers
+            if (auto live = reinterpret_cast<void (*)()>(GetProcAddress(dll, "Gw2KbTestLiveView"))) live();
         wchar_t frames[16] = {};  // GW2KB_SHOT_FRAMES: wait longer
         const int n = GetEnvironmentVariableW(L"GW2KB_SHOT_FRAMES", frames, 16) ? _wtoi(frames) : 40;
         wchar_t tabMask[16] = {};  // GW2KB_SHOT_TAB=<channel bits>: a tab of your own in front, its settings open

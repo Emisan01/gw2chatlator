@@ -34,6 +34,12 @@ void StopLocalMtTranslator(const std::shared_ptr<Translator>& translator);
 void SetLocalMtBeamSize(const std::shared_ptr<Translator>& translator, int beamSize);
 // How the model decodes, for the requests to come; never waits for a running translation.
 void SetLocalMtDecode(const std::shared_ptr<Translator>& translator, const LocalMtDecode& decode);
+// Other versions to come back with each translation (0 or 1: none). One-version: for now only the best (a back-translation).
+void SetLocalMtVersions(const std::shared_ptr<Translator>& translator, int versions);
+void SetLocalMtOneVersion(const std::shared_ptr<Translator>& translator, bool one);
+int LocalMtVersions(const std::shared_ptr<Translator>& translator);
+// The helper's CPU time so far, in 100 ns; 0 while none runs. Never waits for a running translation.
+uint64_t LocalMtHelperCpu(const std::shared_ptr<Translator>& translator);
 // What differs from neutral, for the tag a translation carries (" · rep 1.10 · ngram 3"); empty when nothing does.
 std::wstring LocalMtDecodeNote(const std::shared_ptr<Translator>& translator);
 bool IsLocalMtTranslator(const std::shared_ptr<Translator>& translator);

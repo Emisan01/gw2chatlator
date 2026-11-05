@@ -29,7 +29,8 @@ bool ExistsFile(const std::wstring& path) {
 }
 
 constexpr size_t kMaxLoadedPairs = 2;
-size_t g_threads = 2;  // CPU threads per model: [Translate] Threads, 0 = automatic (a quarter of the cores, 2 to 4)
+size_t g_threads = 2;  // CPU threads per model: [Translate] Threads, 0 = automatic (LocalAutoThreads: follows the beam)
+int g_cores = 0;       // the processors they run on
 
 struct PairModel {
     std::string id;
@@ -67,6 +68,23 @@ std::string ScoreField(const ctranslate2::TranslationResult& result) {
     char buf[32];
     std::snprintf(buf, sizeof(buf), ",\"score\":%.3f", static_cast<double>(result.scores.front()));
     return buf;
+}
+
+// What the model did for this request, and its other versions.
+std::string RunFields(int ms, size_t beam, size_t tokensIn, size_t tokensOut, const std::vector<std::string>& alts) {
+    std::string out = ",\"ms\":" + std::to_string(ms) + ",\"beam\":" + std::to_string(beam) +
+                      ",\"thr\":" + std::to_string(g_threads) + ",\"cores\":" + std::to_string(g_cores) +
+                      ",\"tin\":" + std::to_string(tokensIn) + ",\"tout\":" + std::to_string(tokensOut);
+    if (!alts.empty()) {
+        out += ",\"alts\":[";
+        for (size_t i = 0; i < alts.size(); ++i) out += (i ? ",\"" : "\"") + JsonEscape(alts[i]) + "\"";
+        out += "]";
+    }
+    return out;
+}
+
+int MsSince(std::chrono::steady_clock::time_point start) {
+    return static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count());
 }
 
 std::wstring PairPath(const std::string& id) {
@@ -130,7 +148,8 @@ void TranslateMany(ManyModel& model, const LocalMtRequest& request, const std::s
     tokens.insert(tokens.begin(), srcTag);
     tokens.emplace_back("</s>");
     ctranslate2::TranslationOptions options;
-    options.beam_size = request.beam > 0 ? request.beam : 2;
+    options.num_hypotheses = static_cast<size_t>(request.decode.hypotheses);
+    options.beam_size = std::max<size_t>(request.beam > 0 ? request.beam : 2, options.num_hypotheses);
     options.return_end_token = false;
     options.return_scores = true;
     options.max_decoding_length = std::clamp<size_t>(tokens.size() * 2, 32, 256);
@@ -143,7 +162,9 @@ void TranslateMany(ManyModel& model, const LocalMtRequest& request, const std::s
     try {
         const std::vector<std::vector<std::string>> srcBatch = {tokens};
         const std::vector<std::vector<std::string>> tgtPrefixBatch = {{tgtTag}};
+        const auto started = std::chrono::steady_clock::now();
         const auto results = model.translator->translate_batch(srcBatch, tgtPrefixBatch, options);
+        const int ms = MsSince(started);
         if (results.empty() || results.front().hypotheses.empty()) {
             Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) +
                  JsonString("msg", "the model returned no translation") + "}");
@@ -157,8 +178,15 @@ void TranslateMany(ManyModel& model, const LocalMtRequest& request, const std::s
                  JsonString("msg", "target detokenization failed") + "}");
             return;
         }
+        std::vector<std::string> alts;
+        for (size_t h = 1; h < results.front().hypotheses.size(); ++h) {
+            auto other = results.front().hypotheses[h];
+            if (!other.empty() && other.front() == tgtTag) other.erase(other.begin());
+            std::string altText;
+            if (model.sp.Decode(other, &altText).ok() && !altText.empty()) alts.push_back(altText);
+        }
         Emit("{\"evt\":\"result\",\"id\":" + std::to_string(request.id) + JsonString("text", text) +
-             ScoreField(results.front()) + "}");
+             ScoreField(results.front()) + RunFields(ms, options.beam_size, tokens.size(), hypo.size(), alts) + "}");
     } catch (const std::exception& e) {
         Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) + JsonString("msg", e.what()) + "}");
     }
@@ -267,12 +295,15 @@ void Translate(const std::string& line) {
     if (!model->sourcePrefix.empty()) sourceTokens.insert(sourceTokens.begin(), model->sourcePrefix);
     sourceTokens.emplace_back("</s>");
     ctranslate2::TranslationOptions options;
-    options.beam_size = request.beam > 0 ? request.beam : 2;
+    options.num_hypotheses = static_cast<size_t>(request.decode.hypotheses);
+    options.beam_size = std::max<size_t>(request.beam > 0 ? request.beam : 2, options.num_hypotheses);
     options.return_end_token = false;
     options.return_scores = true;
     options.max_decoding_length = std::clamp<size_t>(sourceTokens.size() * 2, 32, 256);
     try {
+        const auto started = std::chrono::steady_clock::now();
         const auto results = model->translator->translate_batch({sourceTokens}, options);
+        const int ms = MsSince(started);
         if (results.empty() || results.front().hypotheses.empty()) {
             Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) +
                  JsonString("msg", "the model returned no translation") + "}");
@@ -284,22 +315,29 @@ void Translate(const std::string& line) {
                  JsonString("msg", "target detokenization failed") + "}");
             return;
         }
+        std::vector<std::string> alts;
+        for (size_t h = 1; h < results.front().hypotheses.size(); ++h) {
+            std::string altText;
+            if (model->target.Decode(results.front().hypotheses[h], &altText).ok() && !altText.empty()) alts.push_back(altText);
+        }
         Emit("{\"evt\":\"result\",\"id\":" + std::to_string(request.id) + JsonString("text", text) +
-             ScoreField(results.front()) + "}");
+             ScoreField(results.front()) +
+             RunFields(ms, options.beam_size, sourceTokens.size(), results.front().hypotheses.front().size(), alts) + "}");
     } catch (const std::exception& e) {
         Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) + JsonString("msg", e.what()) + "}");
     }
 }
 
+// As many processors as threads, the least busy ones (it was always 2: more threads only shared them).
 void SelectCores() {
     CoreLoad load;
     load.Sample();
     Sleep(120);
     load.Sample();
-    const VoiceCorePick pick = PickVoiceCores(load.Busy(), PhysicalCores(), 2);
+    const VoiceCorePick pick = PickVoiceCores(load.Busy(), PhysicalCores(), static_cast<int>(g_threads));
     if (pick.threads > 0) {
         const uint64_t mask = CoreMask(pick.logical);
-        if (mask) SetProcessAffinityMask(GetCurrentProcess(), static_cast<DWORD_PTR>(mask));
+        if (mask && SetProcessAffinityMask(GetCurrentProcess(), static_cast<DWORD_PTR>(mask))) g_cores = pick.threads;
     }
 }
 
@@ -307,7 +345,6 @@ void SelectCores() {
 
 int wmain(int argc, wchar_t** argv) {
     SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS);
-    SelectCores();
     for (int i = 1; i + 1 < argc; ++i)
         if (std::wstring(argv[i]) == L"--data") g_data = argv[++i];
     if (g_data.empty()) return 2;
@@ -316,9 +353,11 @@ int wmain(int argc, wchar_t** argv) {
         SYSTEM_INFO si{};
         GetSystemInfo(&si);
         const int set = static_cast<int>(GetPrivateProfileIntW(L"Translate", L"Threads", 0, ini.c_str()));
+        const int beam = static_cast<int>(GetPrivateProfileIntW(L"Translate", L"LocalQuality", 2, ini.c_str()));
         g_threads = set > 0 ? static_cast<size_t>(std::min(set, 16))
-                            : std::clamp<size_t>(si.dwNumberOfProcessors / 4, 2, 4);  // GW2 keeps the rest
+                            : static_cast<size_t>(LocalAutoThreads(beam, si.dwNumberOfProcessors));  // GW2 keeps the rest
     }
+    SelectCores();
     g_unloadMinutes = std::clamp<int>(static_cast<int>(GetPrivateProfileIntW(L"Translate", L"UnloadMinutes", 10,
                                                                               ini.c_str())), 1, 120);
     {

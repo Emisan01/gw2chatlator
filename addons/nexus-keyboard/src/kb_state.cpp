@@ -107,6 +107,17 @@ std::wstring g_whisperTo;
 int g_sendIdx = 0;                     // index into g_cfg.writeLangs; == size: send as written
 bool g_sending = false;
 std::wstring g_lastSendTrace;
+std::vector<std::wstring> g_previewVersions, g_previewBacks;
+size_t g_previewPick = 0;
+std::deque<MtRun> g_mtRuns;
+bool g_showMtLive = false;
+gct::CpuUse g_cpuNow, g_cpuPeak, g_cpuAtPeak;
+ULONGLONG g_cpuPeakAt = 0;
+std::wstring g_cpuPeakDuring;
+void NoteMtRun(MtRun run) {
+    g_mtRuns.push_back(std::move(run));
+    if (g_mtRuns.size() > 120) g_mtRuns.pop_front();
+}
 ULONGLONG g_lastUse = 0;
 bool g_gameChatOpen = false;  // GW2's chat line (MumbleLink), g_mu
 bool g_focusInput = false;
@@ -398,12 +409,13 @@ std::shared_ptr<Translator> MakeTranslator(const Config& c) {  // the engine you
     if (c.engine == Engine::Google && !c.googleKey.empty()) return MakeGoogleTranslator(c.googleKey);
     if (c.engine == Engine::Microsoft && !c.msKey.empty()) return MakeMicrosoftTranslator(c.msKey, c.msRegion);
     if (c.engine == Engine::Libre && !c.libreUrl.empty()) return MakeLibreTranslator(c.libreUrl, c.libreKey);
-    if (c.engine == Engine::Local) return MakeLocalMtTranslator(AddonsDir() + L"GW2Keyboard\\gw2kb_translate.exe", c.dataDir);
-    if (c.engine == Engine::Nllb) return MakeLocalMtTranslator(AddonsDir() + L"GW2Keyboard\\gw2kb_translate.exe", c.dataDir, true /*forceNllb*/);
-    if (c.engine == Engine::M2m) {
-        auto m2m = MakeM2mTranslator(AddonsDir() + L"GW2Keyboard\\gw2kb_translate.exe", c.dataDir);
-        SetLocalMtDecode(m2m, c.m2m);
-        return m2m;
+    if (c.engine == Engine::Local || c.engine == Engine::Nllb || c.engine == Engine::M2m) {
+        const std::wstring helper = AddonsDir() + L"GW2Keyboard\\gw2kb_translate.exe";
+        auto local = c.engine == Engine::M2m ? MakeM2mTranslator(helper, c.dataDir)
+                                             : MakeLocalMtTranslator(helper, c.dataDir, c.engine == Engine::Nllb);
+        if (c.engine == Engine::M2m) SetLocalMtDecode(local, c.m2m);
+        SetLocalMtVersions(local, c.versions);
+        return local;
     }
     if (!c.deeplKey.empty()) return MakeDeepLTranslator(c.deeplKey);
     if (!c.googleKey.empty()) return MakeGoogleTranslator(c.googleKey);
@@ -620,6 +632,56 @@ void CostMark(int part) {
 void CostLine(double us) {
     g_cost.lineTicks += static_cast<long long>(us * 1000.0);  // in nanoseconds
     ++g_cost.lines;
+}
+
+void SampleCpu() {
+    static ULONGLONG lastAt = 0;
+    static uint64_t lastHelper = 0, lastVoice = 0, lastThreads = 0, lastGame = 0, lastIdle = 0, lastKernel = 0, lastUser = 0;
+    const ULONGLONG now = GetTickCount64();
+    if (lastAt && now - lastAt < 500) return;
+    const auto ticks = [](const FILETIME& f) { return static_cast<uint64_t>(f.dwHighDateTime) << 32 | f.dwLowDateTime; };
+    std::shared_ptr<Translator> tr;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        tr = g_translator;
+    }
+    FILETIME created, ended, kernel, user, idle;
+    const uint64_t helper = LocalMtHelperCpu(tr);
+    const HANDLE voiceProcess = g_voice.Process();
+    const uint64_t voice = voiceProcess && GetProcessTimes(voiceProcess, &created, &ended, &kernel, &user) ? ticks(kernel) + ticks(user) : 0;
+    const uint64_t threads = g_worker.CpuTime();
+    const uint64_t game = GetProcessTimes(GetCurrentProcess(), &created, &ended, &kernel, &user) ? ticks(kernel) + ticks(user) : lastGame;
+    if (!GetSystemTimes(&idle, &kernel, &user)) return;
+    if (lastAt) {
+        const unsigned logical = std::max(1u, std::thread::hardware_concurrency());
+        const uint64_t wall = (now - lastAt) * 10000;  // ms in 100 ns
+        gct::CpuUse use;
+        use.helper = gct::CpuPercent(gct::CpuDelta(helper, lastHelper), wall, logical);
+        use.voice = gct::CpuPercent(gct::CpuDelta(voice, lastVoice), wall, logical);
+        use.threads = gct::CpuPercent(gct::CpuDelta(threads, lastThreads), wall, logical);
+        use.draw = static_cast<float>(g_cost.avg.totalMs * g_fps.load() / 10.0 / logical);  // ms per frame * frames per second
+        use.ours = use.helper + use.voice + use.threads + use.draw;
+        use.game = std::max(0.0f, gct::CpuPercent(gct::CpuDelta(game, lastGame), wall, logical) - use.threads - use.draw);
+        const uint64_t all = gct::CpuDelta(ticks(kernel), lastKernel) + gct::CpuDelta(ticks(user), lastUser);  // the kernel's time holds the idle time
+        const uint64_t idled = gct::CpuDelta(ticks(idle), lastIdle);
+        use.pc = all > idled ? gct::CpuPercent(all - idled, all, 1) : 0.0f;
+        g_cpuNow = use;
+        g_cpuPeak.KeepHighest(use);
+        if (use.ours > g_cpuAtPeak.ours) {
+            g_cpuAtPeak = use;
+            g_cpuPeakAt = now;
+            std::lock_guard<std::mutex> lock(g_mu);
+            g_cpuPeakDuring = g_mtRuns.empty() ? std::wstring() : g_mtRuns.back().tag;
+        }
+    }
+    lastAt = now;
+    lastHelper = helper;
+    lastVoice = voice;
+    lastThreads = threads;
+    lastGame = game;
+    lastIdle = ticks(idle);
+    lastKernel = ticks(kernel);
+    lastUser = ticks(user);
 }
 
 FrameCosts CostsNow() {

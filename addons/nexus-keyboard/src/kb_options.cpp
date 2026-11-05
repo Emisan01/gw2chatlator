@@ -214,7 +214,11 @@ void RenderOptionsWindow() {
         s_optsLang = g_cfg.uiLang;
         s_optsTitle = UI(Tr(L"GW2Chatlator – Options")) + "###kbopts";
     }
-    const float nexusPx = FollowUiPx();
+    // While the UI scale slider is held this window keeps its size: it would move the slider under the mouse, and the
+    // value with it. The chat window follows at once, this one when you let go.
+    static float s_optsPx = 0.0f;
+    if (!g_uiScaleDragging || s_optsPx <= 0.0f) s_optsPx = FollowUiPx();
+    const float nexusPx = s_optsPx;
     RequestUiFont(nexusPx);
     ImFont* uf = g_uiFont.load();
     const float optsW = std::max(820.0f, 820.0f * (nexusPx / 16.0f));
@@ -406,6 +410,16 @@ namespace {
 void RowHint(const std::string& text) {
     ImGui::Indent(s_labelW);
     Hint(text);
+    ImGui::Unindent(s_labelW);
+}
+
+// What a setting risks, in amber under it: nothing breaks, but you should know.
+void RiskHint(const std::wstring& text) {
+    if (text.empty()) return;
+    ImGui::Indent(s_labelW);
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.94f, 0.75f, 0.35f, 1.f));
+    ImGui::TextWrapped("%s", UI(text).c_str());
+    ImGui::PopStyleColor();
     ImGui::Unindent(s_labelW);
 }
 
@@ -736,15 +750,15 @@ void RenderTranslatorRows(Config& edit, bool full) {
         const std::wstring tip[3] = {Tr(L"Beam 1 – about 350 ms per line, the lowest CPU load"),
                                      Tr(L"Beam 2 – about 500 ms per line, recommended"),
                                      Tr(L"Beam 4 – about 900 ms per line, the finest nuance")};
-        const int qi = edit.localQuality == 1 ? 0 : edit.localQuality == 4 ? 2 : 1;
+        const int qi = edit.localQuality == 1 ? 0 : edit.localQuality == 4 ? 2 : edit.localQuality == 2 ? 1 : -1;  // -1: a beam set by hand
         ImGui::SameLine();
         ImGui::SetNextItemWidth(fs * 7.0f);
-        if (ImGui::BeginCombo("##quality", UI(step[qi]).c_str())) {
+        if (ImGui::BeginCombo("##quality", UI(qi >= 0 ? step[qi] : TrF(L"Beam {1}", {std::to_wstring(edit.localQuality)})).c_str())) {
             for (int q = 0; q < 3; ++q)
                 if (ImGui::Selectable((UI(step[q]) + "   " + UI(tip[q])).c_str(), q == qi)) edit.localQuality = kQuality[q];
             ImGui::EndCombo();
         }
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(tip[qi]).c_str());
+        if (qi >= 0 && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(tip[qi]).c_str());
     }
     if (picked && chosen != shown) {
         s_wantSet = false;
@@ -1089,7 +1103,7 @@ void RenderWordLists() {
     X(voiceSensitivity) X(voiceMinMs) X(voiceGlobalKey) X(voiceChatPause)
 #define KB_OPTIONS(X)                                                                                                  \
     X(engine) X(writeIn) X(backTranslate) X(understoodLangs) X(skipTypingLang) X(readLang) X(showOriginal) X(noJunk)   \
-    X(localQuality) X(mtThreads) X(m2m.patience) X(m2m.lengthPenalty) X(m2m.coveragePenalty) X(m2m.repetitionPenalty)   \
+    X(localQuality) X(beamStepDown) X(versions) X(mtThreads) X(m2m.patience) X(m2m.lengthPenalty) X(m2m.coveragePenalty) X(m2m.repetitionPenalty)   \
     X(m2m.noRepeatNgram) X(m2m.disableUnk) X(m2mCompute) X(basicEmail) X(deeplKey) X(googleKey) X(msKey) X(msRegion) X(libreUrl) X(libreKey)   \
     X(uiLangCode) X(spellEnabled) X(autoCorrect) X(suggestions) X(learnWords) X(learnLater) X(returnFocus)            \
     X(copyOnly) X(focusOnGameChat) X(send.autoTiming) X(send.keyHoldMs) X(send.stepDelayMs) KB_VOICE_OPTIONS(X)
@@ -1123,14 +1137,17 @@ void ApplyOptions(Config& edit, Config& opened) {
         pttChanged = next.voiceGlobalKey != old.voiceGlobalKey;
         listenChanged = voiceChanged || next.voiceActivation != old.voiceActivation;
         const bool engineChanged = next.engine != old.engine;
+        const unsigned logical = std::thread::hardware_concurrency();
         // Only a changed translator or key builds a new one: a new local helper loads its model again.
         const bool translatorChanged = engineChanged || next.deeplKey != old.deeplKey || next.googleKey != old.googleKey ||
                                        next.msKey != old.msKey || next.msRegion != old.msRegion ||
                                        next.libreUrl != old.libreUrl || next.libreKey != old.libreKey ||
                                        next.basicEmail != old.basicEmail || next.mtThreads != old.mtThreads ||
-                                       next.m2mCompute != old.m2mCompute;  // the helper reads threads and calculation at its start
+                                       next.m2mCompute != old.m2mCompute ||  // the helper reads threads and calculation at its start
+                                       (next.mtThreads == 0 && gct::LocalAutoThreads(next.localQuality, logical) != gct::LocalAutoThreads(old.localQuality, logical));
         const bool qualityChanged = next.localQuality != old.localQuality;
-        const bool decodeChanged = !(next.m2m == old.m2m);
+        const bool versionsChanged = next.versions != old.versions;
+        const bool decodeChanged = versionsChanged || (!(next.m2m == old.m2m) && next.engine == Engine::M2m);
         const bool readChanged = next.readLang != old.readLang || next.understoodLangs != old.understoodLangs ||
                                  next.skipTypingLang != old.skipTypingLang;
         const bool uiChanged = next.uiLang != old.uiLang;
@@ -1145,7 +1162,10 @@ void ApplyOptions(Config& edit, Config& opened) {
             g_translator = MakeTranslator(g_cfg);
             WarmUpTranslator(g_translator);
         }
-        if (decodeChanged && !translatorChanged && g_cfg.engine == Engine::M2m) SetLocalMtDecode(g_translator, g_cfg.m2m);
+        if (decodeChanged && !translatorChanged) {
+            if (g_cfg.engine == Engine::M2m) SetLocalMtDecode(g_translator, g_cfg.m2m);
+            SetLocalMtVersions(g_translator, g_cfg.versions);
+        }
         if (translatorChanged || typingChanged || decodeChanged) {
             g_preview.clear();
             ++g_inputGen;
@@ -1158,7 +1178,7 @@ void ApplyOptions(Config& edit, Config& opened) {
             SetStatus(TrF(L"Translator: {1}", {g_translator ? g_translator->Name() : std::wstring(L"-")}), 3000);
         else if (qualityChanged)
             SetStatus(TrF(L"Quality set: beam {1} – the visible chat is translated again", {std::to_wstring(g_cfg.localQuality)}), 4000);
-        else if (decodeChanged)
+        else if (decodeChanged && !versionsChanged)
             SetStatus(Tr(L"M2M100 settings set – the visible chat is translated again"), 4000);
         edit = opened = g_cfg;
     }
@@ -1531,8 +1551,49 @@ void RenderVoicePage(Config& edit, bool entered) {
     EndBox();
 }
 
+// For those who want every knob: every beam, stepping down, versions to choose from, the live view.
+void RenderLocalAdvanced(Config& edit) {
+    BeginBox(UI(Tr(L"Advanced local translation")));
+    const auto beamText = [](int beam) {
+        std::string t = std::to_string(beam);
+        if (beam == 1) t += "   " + UI(Tr(L"Fast"));
+        if (beam == 2) t += "   " + UI(Tr(L"Balanced"));
+        if (beam == 4) t += "   " + UI(Tr(L"Best"));
+        return t;
+    };
+    RowLabel(UI(Tr(L"Beam size")));
+    ImGui::SetNextItemWidth(ControlW());
+    if (ImGui::BeginCombo("##beamsize", beamText(edit.localQuality).c_str())) {
+        for (int beam = 1; beam <= 8; ++beam)
+            if (ImGui::Selectable(beamText(beam).c_str(), edit.localQuality == beam)) edit.localQuality = beam;
+        ImGui::EndCombo();
+    }
+    RowHint(UI(Tr(L"How many candidates the model follows at once. More costs time and CPU and rarely changes the result – the live view shows it.")));
+    if (edit.localQuality > 4) RiskHint(Tr(L"Above 4 we measured no gain, and lines wait longer."));
+    const int threads = edit.mtThreads > 0 ? edit.mtThreads : gct::LocalAutoThreads(edit.localQuality, std::thread::hardware_concurrency());
+    RowHint(UI(edit.mtThreads > 0 ? TrF(L"CPU threads now: {1} (set by hand)", {std::to_wstring(threads)})
+                                  : TrF(L"CPU threads now: {1} (automatic, more with a higher beam)", {std::to_wstring(threads)})));
+    if (static_cast<unsigned>(threads) * 2 > std::thread::hardware_concurrency()) RiskHint(Tr(L"More than half of your processors: the game can stutter."));
+    Switch("beamstep", UI(Tr(L"Step down under load")), &edit.beamStepDown,
+           UI(Tr(L"Many lines waiting: lines that come by themselves run at beam 2, so the chat keeps up.")).c_str());
+    RowLabel(UI(Tr(L"Versions to choose from")));
+    ImGui::SetNextItemWidth(ControlW());
+    const std::string versionsNow = edit.versions > 1 ? std::to_string(edit.versions) : UI(Tr(L"Off"));
+    if (ImGui::BeginCombo("##versions", versionsNow.c_str())) {
+        if (ImGui::Selectable(UI(Tr(L"Off")).c_str(), edit.versions < 2)) edit.versions = 0;
+        for (int n = 2; n <= 5; ++n)
+            if (ImGui::Selectable(std::to_string(n).c_str(), edit.versions == n)) edit.versions = n;
+        ImGui::EndCombo();
+    }
+    RowHint(UI(Tr(L"The model hands back its runners-up too: choose another one in the preview or in a chat line's menu. Runs at least at that beam.")));
+    ImGui::Indent(s_labelW);
+    if (ImGui::Button(UI(g_showMtLive ? Tr(L"Hide the live view") : Tr(L"Show the live view")).c_str())) g_showMtLive = !g_showMtLive;
+    ImGui::Unindent(s_labelW);
+    EndBox();
+}
+
 // A setting in hundredths: takes effect when you let go, a new value translates the visible chat again.
-void M2mSlider(const char* id, const std::wstring& label, const std::wstring& hint, int& value, int lo, int hi) {
+void M2mSlider(const char* id, const std::wstring& label, const std::wstring& hint, int& value, int lo, int hi, const std::wstring& risk = {}) {
     RowLabel(UI(label));
     static float s_draft = 0.0f;
     float shown = ImGui::GetActiveID() == ImGui::GetID(id) ? s_draft : value / 100.0f;
@@ -1541,6 +1602,7 @@ void M2mSlider(const char* id, const std::wstring& label, const std::wstring& hi
     if (ImGui::IsItemActive()) s_draft = shown;
     if (ImGui::IsItemDeactivatedAfterEdit()) value = std::clamp(static_cast<int>(std::lround(shown * 100.0f)), lo, hi);
     RowHint(UI(hint));
+    RiskHint(risk);
 }
 
 // M2M100 as CTranslate2 offers it. Left out on purpose: sampling (random, a translation should not be), a prefix bias
@@ -1548,7 +1610,8 @@ void M2mSlider(const char* id, const std::wstring& label, const std::wstring& hi
 void RenderM2mBox(Config& edit) {
     BeginBox(UI(Tr(L"M2M100 settings")));
     M2mSlider("##m2mrep", Tr(L"Repetition penalty"), Tr(L"Above 1: words already written count less – against a translation that stutters."),
-              edit.m2m.repetitionPenalty, 100, 200);
+              edit.m2m.repetitionPenalty, 100, 200,
+              edit.m2m.repetitionPenalty > 120 ? Tr(L"High values made translations worse in our test.") : std::wstring());
     RowLabel(UI(Tr(L"No repeats")));
     ImGui::SetNextItemWidth(ControlW());
     const std::string ngramNow = edit.m2m.noRepeatNgram > 0 ? std::to_string(edit.m2m.noRepeatNgram) : UI(Tr(L"Off"));
@@ -1560,9 +1623,13 @@ void RenderM2mBox(Config& edit) {
         ImGui::EndCombo();
     }
     RowHint(UI(Tr(L"No run of this many word pieces twice in one translation.")));
-    M2mSlider("##m2mlen", Tr(L"Length penalty"), Tr(L"Above 1: longer translations win, below 1: shorter ones."), edit.m2m.lengthPenalty, 0, 300);
-    M2mSlider("##m2mcov", Tr(L"Coverage penalty"), Tr(L"Above 0: a translation that leaves source words out loses."), edit.m2m.coveragePenalty, 0, 100);
-    M2mSlider("##m2mpat", Tr(L"Patience"), Tr(L"The search goes on longer before it settles – slower, sometimes better."), edit.m2m.patience, 100, 400);
+    M2mSlider("##m2mlen", Tr(L"Length penalty"), Tr(L"Above 1: longer translations win, below 1: shorter ones."), edit.m2m.lengthPenalty, 0, 300,
+              edit.m2m.lengthPenalty < 80 || edit.m2m.lengthPenalty > 150 ? Tr(L"Far from 1 is untested: translations can get too short or too long.")
+              : edit.m2m.lengthPenalty != 100 ? Tr(L"Not at 1 the score says nothing about certainty: no line is marked unsure.") : std::wstring());
+    M2mSlider("##m2mcov", Tr(L"Coverage penalty"), Tr(L"Above 0: a translation that leaves source words out loses."), edit.m2m.coveragePenalty, 0, 100,
+              edit.m2m.coveragePenalty > 0 ? Tr(L"Changed 38 of 106 lines in our test, none for the better; no line is marked unsure.") : std::wstring());
+    M2mSlider("##m2mpat", Tr(L"Patience"), Tr(L"The search goes on longer before it settles – slower, sometimes better."), edit.m2m.patience, 100, 400,
+              edit.m2m.patience > 200 ? Tr(L"Up to 2 no line got better in our test; more only costs time.") : std::wstring());
     RowLabel(UI(Tr(L"No unknown words")));
     ImGui::Checkbox("##m2munk", &edit.m2m.disableUnk);
     RowHint(UI(Tr(L"The model never writes its placeholder for a word it does not know.")));
@@ -1574,6 +1641,7 @@ void RenderM2mBox(Config& edit) {
         ImGui::EndCombo();
     }
     RowHint(UI(Tr(L"int8 is the fastest. A change starts the translator anew.")));
+    if (edit.m2mCompute == L"float32") RiskHint(Tr(L"2.5 times slower in our test, and no better."));
     ImGui::Indent(s_labelW);
     if (ImGui::Button(UI(Tr(L"Back to the measured values")).c_str())) {
         edit.m2m = gct::M2mRecommended();
@@ -1588,6 +1656,7 @@ void RenderTranslatorPage(Config& edit) {
     RenderTranslatorRows(edit, true);
     EndBox();
     if (edit.engine == Engine::M2m && LocalMtNow(edit.dataDir).m2m) RenderM2mBox(edit);
+    if (IsLocalEngine(edit.engine)) RenderLocalAdvanced(edit);
     RenderLocalMtOptions(edit);  // the local translation module, NLLB-200, the quality, OPUS-MT – each in its box
 }
 
@@ -1636,6 +1705,7 @@ void RenderWindowPage(Config& edit) {
         edit.uiFontPt = g_cfg.uiFontPt = uiPt;
         g_cfg.SaveValue(L"Window", L"UiFontPt", std::to_wstring(uiPt));
     }
+    g_uiScaleDragging = ImGui::IsItemActive();
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Header tabs, footer buttons, menus and this options window.")).c_str());
     if (ImGui::IsItemDeactivatedAfterEdit()) RequestUiFont(FollowUiPx());
     RowLabel(UI(Tr(L"Font")));
@@ -1725,6 +1795,244 @@ void RenderWindowPage(Config& edit) {
     EndBox();
 }
 
+// The translator, live: what is set, what the model really did, whether it stepped down – numbers only, never a text.
+void LiveCells(int total, int on, const ImVec4& color) {
+    const float s = ImGui::GetFontSize() * 0.62f, gap = s * 0.3f;
+    const ImVec2 p = ImGui::GetCursorScreenPos();
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    for (int i = 0; i < total; ++i) {
+        const ImVec2 a(p.x + i * (s + gap), p.y + ImGui::GetFontSize() * 0.2f), b(a.x + s, a.y + s);
+        if (i < on) dl->AddRectFilled(a, b, ImGui::GetColorU32(color), s * 0.15f);
+        else dl->AddRect(a, b, ImGui::GetColorU32(ImGuiCol_TextDisabled), s * 0.15f);
+    }
+    ImGui::Dummy(ImVec2(total * (s + gap), ImGui::GetTextLineHeight()));
+    ImGui::SameLine();
+}
+
+ImVec4 LiveColor(const MtRun& r) {
+    const ImVec4 ok(0.45f, 0.85f, 0.45f, 1.f), warn(0.94f, 0.75f, 0.35f, 1.f), bad(0.95f, 0.45f, 0.35f, 1.f), info(0.45f, 0.70f, 0.95f, 1.f);
+    if (r.failed || r.doubt) return bad;
+    if (r.cached || r.greeting) return info;
+    return r.beamAsked < r.beamSet ? warn : ok;
+}
+
+std::wstring LiveFlags(const MtRun& r) {
+    std::wstring f;
+    const auto add = [&f](const std::wstring& s) { f += (f.empty() ? L"" : L" · ") + s; };
+    if (r.failed) add(Tr(L"failed") + (r.error.empty() ? L"" : L": " + r.error));
+    if (r.cached) add(Tr(L"from the cache"));
+    if (r.greeting) add(Tr(L"greeting table"));
+    if (r.second) add(Tr(L"second try"));
+    if (r.doubt) add(Tr(L"doubtful"));
+    if (r.versions > 0) add(Tr(L"Other versions") + L" " + std::to_wstring(r.versions));
+    return f;
+}
+
+// What we cost the CPU, now and the highest of this session: the place to look for a bottleneck.
+void RenderCpuLoad() {
+    const float fs = ImGui::GetFontSize(), col = fs * 8.0f, barW = fs * 8.0f;
+    const float nowAt = col + barW + fs * 0.6f, peakAt = nowAt + fs * 4.0f;
+    ImGui::TextDisabled("%s", UI(Tr(L"CPU load (share of all processors)")).c_str());
+    ImGui::SameLine(nowAt);
+    ImGui::TextDisabled("%s", UI(Tr(L"now")).c_str());
+    ImGui::SameLine(peakAt);
+    ImGui::TextDisabled("%s", UI(Tr(L"peak")).c_str());
+    const auto bar = [&](const std::wstring& label, float now, float peak, const ImVec4& color) {
+        ImGui::TextDisabled("%s", UI(label).c_str());
+        ImGui::SameLine(col);
+        const ImVec2 p = ImGui::GetCursorScreenPos();
+        const float h = fs * 0.62f, y = p.y + fs * 0.22f;
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        dl->AddRectFilled(ImVec2(p.x, y), ImVec2(p.x + barW, y + h), ImGui::GetColorU32(ImGuiCol_FrameBg));
+        dl->AddRectFilled(ImVec2(p.x, y), ImVec2(p.x + barW * std::min(now, 100.0f) / 100.0f, y + h), ImGui::GetColorU32(color));
+        const float tick = p.x + barW * std::min(peak, 100.0f) / 100.0f;
+        dl->AddLine(ImVec2(tick, y - 1.0f), ImVec2(tick, y + h + 1.0f), ImGui::GetColorU32(ImVec4(0.95f, 0.45f, 0.35f, 1.f)), 2.0f);
+        ImGui::Dummy(ImVec2(barW, ImGui::GetTextLineHeight()));
+        ImGui::SameLine(nowAt);
+        ImGui::Text("%.1f %%", now);
+        ImGui::SameLine(peakAt);
+        ImGui::Text("%.1f %%", peak);
+    };
+    const ImVec4 ours(0.45f, 0.85f, 0.45f, 1.f), other(0.55f, 0.75f, 0.95f, 1.f);
+    bar(Tr(L"Translator helper"), g_cpuNow.helper, g_cpuPeak.helper, ours);
+    bar(Tr(L"Voice helper"), g_cpuNow.voice, g_cpuPeak.voice, ours);
+    bar(Tr(L"Our threads"), g_cpuNow.threads, g_cpuPeak.threads, ours);
+    bar(Tr(L"Our drawing"), g_cpuNow.draw, g_cpuPeak.draw, ours);
+    bar(Tr(L"We together"), g_cpuNow.ours, g_cpuPeak.ours, ImVec4(0.94f, 0.75f, 0.35f, 1.f));
+    bar(Tr(L"The game"), g_cpuNow.game, g_cpuPeak.game, other);
+    bar(Tr(L"The whole PC"), g_cpuNow.pc, g_cpuPeak.pc, other);
+    if (g_cpuPeakAt) {
+        const unsigned logical = std::max(1u, std::thread::hardware_concurrency());
+        wchar_t cores[16], game[16], pc[16];
+        swprintf_s(cores, L"%.1f", g_cpuAtPeak.ours * logical / 100.0f);
+        swprintf_s(game, L"%.1f", g_cpuAtPeak.game);
+        swprintf_s(pc, L"%.1f", g_cpuAtPeak.pc);
+        std::wstring during;
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            during = g_cpuPeakDuring.empty() ? std::wstring(L"-") : g_cpuPeakDuring;
+        }
+        ImGui::TextWrapped("%s", UI(TrF(L"Our highest, {1} s ago: {2} cores · game {3} % · PC {4} % · {5}",
+                                        {std::to_wstring((GetTickCount64() - g_cpuPeakAt) / 1000), cores, game, pc, during})).c_str());
+        if (ImGui::SmallButton(UI(Tr(L"Reset the peak")).c_str())) {
+            g_cpuPeak = {};
+            g_cpuAtPeak = {};
+            g_cpuPeakAt = 0;
+        }
+    }
+    ImGui::Spacing();
+}
+
+void RenderTranslatorLive() {
+    std::vector<MtRun> runs;
+    std::wstring name, dataDir;
+    int quality, threadsSet;
+    bool stepDown, local;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        runs.assign(g_mtRuns.begin(), g_mtRuns.end());
+        quality = g_cfg.localQuality;
+        threadsSet = g_cfg.mtThreads;
+        stepDown = g_cfg.beamStepDown;
+        dataDir = g_cfg.dataDir;
+        name = g_translator ? g_translator->Name() : std::wstring(L"-");
+        local = IsLocalMtTranslator(g_translator);
+    }
+    const LocalMtSummary summary = LocalMtNow(dataDir);
+    const float fs = ImGui::GetFontSize(), col = fs * 8.0f;
+    const unsigned logical = std::max(1u, std::thread::hardware_concurrency());
+    const size_t waitingNow = g_worker.QueueSize();
+    const auto row = [&](const std::wstring& label) {
+        ImGui::TextDisabled("%s", UI(label).c_str());
+        ImGui::SameLine(col);
+    };
+    RenderCpuLoad();
+    ImGui::TextUnformatted(UI(name).c_str());
+    if (local && !summary.helper.build.empty()) {
+        ImGui::SameLine();
+        ImGui::TextDisabled("helper %s · proto %d", summary.helper.build.substr(0, 7).c_str(), summary.helper.proto);
+    }
+    const MtRun* last = nullptr;
+    for (auto it = runs.rbegin(); it != runs.rend() && !last; ++it)
+        if (!it->cached && !it->greeting && it->kind != 'B') last = &*it;
+    int loadMs = 0;
+    for (const MtRun& r : runs)
+        if (r.run.loadMs) loadMs = r.run.loadMs;
+    if (local) {
+        row(Tr(L"Set"));
+        LiveCells(8, quality, ImVec4(0.55f, 0.75f, 0.95f, 1.f));
+        ImGui::Text("Beam %d", quality);
+        const int threadsNow = last && last->run.threads ? last->run.threads : threadsSet > 0 ? threadsSet : gct::LocalAutoThreads(quality, logical);
+        const int coresNow = last && last->run.cores ? last->run.cores : threadsNow;
+        row(Tr(L"Threads"));
+        LiveCells(static_cast<int>(std::min(logical, 16u)), threadsNow, ImVec4(0.55f, 0.75f, 0.95f, 1.f));
+        ImGui::TextUnformatted(UI(TrF(L"{1} threads on {2} cores", {std::to_wstring(threadsNow), std::to_wstring(coresNow)})).c_str());
+        row(Tr(L"Queue"));
+        LiveCells(8, static_cast<int>(std::min<size_t>(waitingNow, 8)), ImVec4(0.94f, 0.75f, 0.35f, 1.f));
+        const std::wstring waitingText = std::to_wstring(waitingNow);
+        ImGui::TextUnformatted(UI(stepDown ? TrF(L"{1} waiting, steps down above 2", {waitingText})
+                                           : TrF(L"{1} waiting, stepping down is off", {waitingText})).c_str());
+    }
+    if (!last) {
+        ImGui::TextDisabled("%s", UI(Tr(L"Nothing translated yet.")).c_str());
+    } else {
+        ImGui::Spacing();
+        const int used = last->run.beam ? last->run.beam : last->beamAsked;
+        if (local) {
+            row(Tr(L"Last line"));
+            LiveCells(8, used, LiveColor(*last));
+            const std::wstring how = last->beamAsked < last->beamSet ? TrF(L"stepped down: {1} lines were waiting", {std::to_wstring(last->waiting)}) : Tr(L"as set");
+            ImGui::TextColored(LiveColor(*last), "Beam %d/%d · %s", used, last->beamSet, UI(how).c_str());
+        }
+        row(Tr(L"Time"));
+        wchar_t perToken[32] = L"-";
+        if (last->run.tokensOut > 0) swprintf_s(perToken, L"%.1f", static_cast<double>(last->run.modelMs) / last->run.tokensOut);
+        ImGui::TextUnformatted(UI(TrF(L"line {1} ms · model {2} ms · {3} tokens · {4} ms per token · {5} requests",
+                                      {std::to_wstring(last->ms), std::to_wstring(last->run.modelMs),
+                                       std::to_wstring(last->run.tokensIn) + L"→" + std::to_wstring(last->run.tokensOut), perToken,
+                                       std::to_wstring(last->run.requests)})).c_str());
+        row(Tr(L"Quality string"));
+        ImGui::TextUnformatted(UI(last->tag).c_str());
+        if (last->scored) {
+            row(Tr(L"Score"));
+            char label[32];
+            snprintf(label, sizeof(label), "%.2f", last->score);
+            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, last->score < gct::kUnsureScore ? ImVec4(0.95f, 0.45f, 0.35f, 1.f) : ImVec4(0.45f, 0.85f, 0.45f, 1.f));
+            ImGui::ProgressBar(std::clamp(static_cast<float>(1.0 + last->score / 2.0), 0.0f, 1.0f), ImVec2(fs * 10.0f, fs * 0.95f), label);
+            ImGui::PopStyleColor();
+        }
+        const std::wstring flags = LiveFlags(*last);
+        if (!flags.empty()) ImGui::TextColored(LiveColor(*last), "%s", UI(flags).c_str());
+    }
+    if (runs.empty()) return;
+    // The last lines as bars: height the time, colour what happened.
+    ImGui::Spacing();
+    {
+        const size_t n = std::min<size_t>(runs.size(), 60);
+        const float w = std::max(fs * 10.0f, ImGui::GetContentRegionAvail().x), h = fs * 3.0f;
+        const ImVec2 p = ImGui::GetCursorScreenPos();
+        ImGui::InvisibleButton("##mtbars", ImVec2(w, h));
+        const bool hovered = ImGui::IsItemHovered();
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        long long most = 1;
+        for (size_t i = runs.size() - n; i < runs.size(); ++i) most = std::max(most, runs[i].ms);
+        const float bar = w / 60.0f;
+        dl->AddRectFilled(p, ImVec2(p.x + w, p.y + h), ImGui::GetColorU32(ImGuiCol_FrameBg));
+        for (size_t i = 0; i < n; ++i) {
+            const MtRun& r = runs[runs.size() - n + i];
+            const float x = p.x + w - (n - i) * bar;
+            const float top = p.y + h - std::max(1.0f, h * static_cast<float>(r.ms) / static_cast<float>(most));
+            dl->AddRectFilled(ImVec2(x + 1.0f, top), ImVec2(x + bar - 1.0f, p.y + h), ImGui::GetColorU32(LiveColor(r)));
+            if (hovered && ImGui::GetIO().MousePos.x >= x && ImGui::GetIO().MousePos.x < x + bar)
+                ImGui::SetTooltip("%lld ms · Beam %d/%d · %s\n%s", r.ms, r.run.beam ? r.run.beam : r.beamAsked, r.beamSet, UI(r.tag).c_str(), UI(LiveFlags(r)).c_str());
+        }
+        char most_[32];
+        snprintf(most_, sizeof(most_), "%lld ms", most);
+        dl->AddText(ImVec2(p.x + fs * 0.2f, p.y), ImGui::GetColorU32(ImGuiCol_TextDisabled), most_);
+    }
+    if (loadMs) ImGui::TextDisabled("%s", UI(TrF(L"Model load: {1} ms", {std::to_wstring(loadMs)})).c_str());
+    int stepped = 0, seconds = 0, doubtful = 0, cached = 0;
+    for (const MtRun& r : runs) {
+        stepped += r.beamAsked < r.beamSet;
+        seconds += r.second;
+        doubtful += r.doubt;
+        cached += r.cached;
+    }
+    ImGui::TextDisabled("%s", UI(TrF(L"Lines so far: {1} · stepped down {2} · second tries {3} · doubtful {4} · from the cache {5}",
+                                     {std::to_wstring(runs.size()), std::to_wstring(stepped), std::to_wstring(seconds), std::to_wstring(doubtful), std::to_wstring(cached)})).c_str());
+    ImGui::Spacing();
+    ImGui::TextDisabled("%s", UI(Tr(L"Last lines (numbers only, never a text)")).c_str());
+    const float at[] = {0.0f, 3.5f, 7.0f, 11.5f, 14.5f, 17.0f, 20.5f, 24.0f, 27.5f, 30.0f};
+    const char* const heads[] = {"ago", "kind", "lang", "beam", "thr", "ms", "model", "tok", "req", "score"};
+    for (int c = 0; c < 10; ++c) {
+        if (c) ImGui::SameLine(at[c] * fs);
+        ImGui::TextDisabled("%s", heads[c]);
+    }
+    const ULONGLONG nowTick = GetTickCount64();
+    int shown = 0;
+    for (auto it = runs.rbegin(); it != runs.rend() && shown < 12; ++it, ++shown) {
+        const MtRun& r = *it;
+        const ImVec4 color = LiveColor(r);
+        char cell[10][48];
+        snprintf(cell[0], sizeof(cell[0]), "%llus", static_cast<unsigned long long>((nowTick - r.at) / 1000));
+        snprintf(cell[1], sizeof(cell[1]), "%s", r.kind == 'C' ? "chat" : r.kind == 'I' ? "input" : "back");
+        snprintf(cell[2], sizeof(cell[2]), "%s>%s", U8(r.from).c_str(), U8(r.to).c_str());
+        snprintf(cell[3], sizeof(cell[3]), "%d/%d", r.run.beam ? r.run.beam : r.beamAsked, r.beamSet);
+        snprintf(cell[4], sizeof(cell[4]), "%d", r.run.threads);
+        snprintf(cell[5], sizeof(cell[5]), "%lld", r.ms);
+        snprintf(cell[6], sizeof(cell[6]), "%d", r.run.modelMs);
+        snprintf(cell[7], sizeof(cell[7]), "%d>%d", r.run.tokensIn, r.run.tokensOut);
+        snprintf(cell[8], sizeof(cell[8]), "%d", r.run.requests);
+        snprintf(cell[9], sizeof(cell[9]), r.scored ? "%.2f" : "-", r.score);
+        for (int c = 0; c < 10; ++c) {
+            if (c) ImGui::SameLine(at[c] * fs);
+            ImGui::TextColored(color, "%s", cell[c]);
+        }
+        const std::wstring flags = LiveFlags(r);
+        if (!flags.empty() && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(flags).c_str());
+    }
+}
+
 void RenderTechnicalPage(Config& edit) {
     BeginBox(UI(Tr(L"Modules")));
     RenderChatModule(false);  // Events: Chat: loaded, install / remove – reading it follows in the details
@@ -1786,6 +2094,10 @@ void RenderTechnicalPage(Config& edit) {
     }
     if (ImGui::TreeNode(UI(Tr(L"Frame timings") + L"###frametimings").c_str())) {
         RenderFrameTimings();
+        ImGui::TreePop();
+    }
+    if (ImGui::TreeNode(UI(Tr(L"Translator live") + L"###mtlive").c_str())) {
+        RenderTranslatorLive();
         ImGui::TreePop();
     }
     // The send timing: automatic fits nearly everyone, so the manual values stay folded up.
@@ -2028,10 +2340,9 @@ std::string BuildDiagnosticReport() {
 
     ss << "[Smart-Sieve-Manager Telemetry (0% CPU Optimization)]\n";
     const size_t qDepth = g_worker.QueueSize();
-    const int effectiveBeam = g_orchestrator.ComputeBeamSize(static_cast<gct::QualityMode>(g_cfg.localQuality), qDepth);
+    const int effectiveBeam = g_cfg.beamStepDown ? g_orchestrator.ComputeBeamSize(static_cast<gct::QualityMode>(g_cfg.localQuality), qDepth) : g_cfg.localQuality;
     ss << "- Smart-Sieve Status: " << (g_orchestrator.IsPaused() ? "PAUSED (Panic Switch Ctrl+Alt+T)" : "ACTIVE") << "\n";
-    ss << "- Configured Quality Mode: "
-       << (g_cfg.localQuality == 1 ? "Fast (Beam 1)" : g_cfg.localQuality == 4 ? "Quality (Beam 4)" : "Balanced (Beam 2)") << "\n";
+    ss << "- Configured Quality Mode: Beam " << g_cfg.localQuality << (g_cfg.beamStepDown ? " (steps down under load)" : " (never steps down)") << "\n";
     ss << "- Current Effective Beam Size: " << effectiveBeam
        << (effectiveBeam < g_cfg.localQuality ? " (Throttled due to backlog pressure)" : " (Nominal)") << "\n";
     ss << "- Worker Translation Backlog: " << qDepth << " queued jobs\n";
@@ -2085,6 +2396,25 @@ std::string BuildDiagnosticReport() {
     return ss.str();
 }
 
+void RenderMtLiveWindow() {
+    if (!g_showMtLive) return;
+    const float nexusPx = FollowUiPx();
+    RequestUiFont(nexusPx);
+    ImFont* uf = g_uiFont.load();
+    ImGui::SetNextWindowSize(ImVec2(nexusPx * 40.0f, nexusPx * 46.0f), ImGuiCond_FirstUseEver);
+    const std::string title = UI(Tr(L"Translator live")) + "###kbmtlive";
+    const bool visible = ImGui::Begin(title.c_str(), &g_showMtLive);
+    bool pushedUf = false;
+    if (uf && uf->FontSize > 0.0f) {
+        ImGui::SetWindowFontScale(nexusPx / uf->FontSize);
+        ImGui::PushFont(uf);
+        pushedUf = true;
+    }
+    if (visible) RenderTranslatorLive();
+    if (pushedUf) ImGui::PopFont();
+    ImGui::End();
+}
+
 void RenderDebugWindow() {
     if (!g_showDebugWindow) return;
     const float nexusPx = FollowUiPx();
@@ -2134,7 +2464,7 @@ void RenderDebugWindow() {
             if (ImGui::BeginTabItem(UI(Tr(L"Live Telemetry & Engine Status") + L"###tab_live").c_str())) {
                 FrameCosts fc = CostsNow();
                 const size_t qDepth = g_worker.QueueSize();
-                const int effectiveBeam = g_orchestrator.ComputeBeamSize(static_cast<gct::QualityMode>(g_cfg.localQuality), qDepth);
+                const int effectiveBeam = g_cfg.beamStepDown ? g_orchestrator.ComputeBeamSize(static_cast<gct::QualityMode>(g_cfg.localQuality), qDepth) : g_cfg.localQuality;
 
                 StatusRow(UI(Tr(L"Smart-Sieve")), g_orchestrator.IsPaused() ? 1 : 2,
                           UI(g_orchestrator.IsPaused() ? Tr(L"PAUSED (Ctrl+Alt+T)") : Tr(L"Active (Filtering gamer slang & repeated text)")));

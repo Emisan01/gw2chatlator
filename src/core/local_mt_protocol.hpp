@@ -22,6 +22,8 @@ struct LocalMtMessage {
     std::string build;
     double score = 0;       // "result": the model's mean log probability per token (0 best); with `scored`
     bool scored = false;
+    int modelMs = 0, beam = 0, threads = 0, cores = 0, tokensIn = 0, tokensOut = 0;  // "result": what it did (0: not said)
+    std::vector<std::string> alts;                                                  // "result": its other versions
 };
 
 bool HasCap(const LocalMtMessage& msg, const std::string& cap);
@@ -35,11 +37,19 @@ struct LocalMtDecode {
     int repetitionPenalty = 100;  // above 1.00: pieces already written lose (1.00 to 2.00)
     int noRepeatNgram = 0;        // no run of this many pieces twice, 0 = off (0 to 6)
     bool disableUnk = false;      // never the unknown token
+    int hypotheses = 1;           // how many versions come back (1 to 5); the beam is at least this
     bool operator==(const LocalMtDecode& o) const {
-        return patience == o.patience && lengthPenalty == o.lengthPenalty && coveragePenalty == o.coveragePenalty &&
+        return hypotheses == o.hypotheses && patience == o.patience && lengthPenalty == o.lengthPenalty && coveragePenalty == o.coveragePenalty &&
                repetitionPenalty == o.repetitionPenalty && noRepeatNgram == o.noRepeatNgram && disableUnk == o.disableUnk;
     }
 };
+
+// CPU threads when they are left on automatic: a higher beam takes more of them, the game keeps the rest.
+inline int LocalAutoThreads(int beam, unsigned logicalCores) {
+    const int part = static_cast<int>(logicalCores) / (beam <= 2 ? 4 : beam <= 4 ? 3 : 2);
+    const int most = beam <= 2 ? 4 : beam <= 4 ? 6 : 8;
+    return part < 2 ? 2 : part > most ? most : part;
+}
 
 // The values measured with translation_bench for M2M100.
 inline LocalMtDecode M2mRecommended() { return {}; }

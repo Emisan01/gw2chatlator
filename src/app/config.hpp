@@ -38,7 +38,9 @@ struct Config {
     std::wstring readLang;   // the language the chat is read in ("DE"; empty = the system's) – apart from writing and sending
     bool showOriginal = false;  // the original small and grey under a translated line (your own: what you typed)
     bool noJunk = true;         // a doubtful translation: one more try at the best quality, still doubtful – the original
-    int localQuality = 2;                                 // 1 = Fast (Beam 1), 2 = Balanced (Beam 2), 4 = Quality (Beam 4)
+    int localQuality = 2;                                 // the beam, 1 to 8: 1 = Fast, 2 = Balanced, 4 = Best, the rest by hand
+    bool beamStepDown = true;                             // [Translate] BeamStepDown: many lines waiting, chat lines run at beam 2
+    int versions = 0;                                     // [Translate] Versions: other versions to choose from, 0 off, else 2 to 5
     int mtThreads = 0;                                    // the local translator's CPU threads, 0 = automatic
     LocalMtDecode m2m = M2mRecommended();                 // [M2M100]: how M2M100 decodes
     std::wstring m2mCompute = L"int8";                    // [M2M100] Compute: int8, int8_float32, int16, float32 (the helper reads it)

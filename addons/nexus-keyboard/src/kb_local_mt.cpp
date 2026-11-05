@@ -300,11 +300,13 @@ void RenderLocalMtOptions(Config& edit) {
     const std::string qualityText[] = {UI(Tr(L"Fast") + L" – " + Tr(L"Beam 1 – about 350 ms per line, the lowest CPU load")),
                                        UI(Tr(L"Balanced") + L" – " + Tr(L"Beam 2 – about 500 ms per line, recommended")),
                                        UI(Tr(L"Best") + L" – " + Tr(L"Beam 4 – about 900 ms per line, the finest nuance"))};
-    const char* qualityItems[] = {qualityText[0].c_str(), qualityText[1].c_str(), qualityText[2].c_str()};
-    int currentQ = edit.localQuality == 1 ? 0 : edit.localQuality == 4 ? 2 : 1;
+    const bool ownBeam = edit.localQuality != 1 && edit.localQuality != 2 && edit.localQuality != 4;  // set by hand further up
+    const std::string ownBeamText = UI(TrF(L"Beam {1}", {std::to_wstring(edit.localQuality)}));
+    const char* qualityItems[] = {qualityText[0].c_str(), qualityText[1].c_str(), qualityText[2].c_str(), ownBeamText.c_str()};
+    int currentQ = ownBeam ? 3 : edit.localQuality == 1 ? 0 : edit.localQuality == 4 ? 2 : 1;
     RowLabel(UI(Tr(L"Quality Mode")));
     ImGui::SetNextItemWidth(ImGui::GetFontSize() * 20);
-    if (ImGui::Combo("##localmtquality", &currentQ, qualityItems, 3)) {
+    if (ImGui::Combo("##localmtquality", &currentQ, qualityItems, ownBeam ? 4 : 3) && currentQ < 3) {
         edit.localQuality = currentQ == 0 ? 1 : currentQ == 2 ? 4 : 2;
     }
     ImGui::TextDisabled("%s", UI(Tr(L"Under heavy chat load, the orchestrator automatically steps down to Beam 2.")).c_str());
