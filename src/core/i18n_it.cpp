@@ -1467,6 +1467,8 @@ extern const I18nEntry kItalianStrings[] = {
      "Testi informativi di questa sessione"},
     {L"No info texts yet",
      "Ancora nessun testo informativo"},
+    {L"Goes out as {1} chat lines, one after the other",
+     "Esce in {1} righe di chat, una dopo l'altra"},
 };
 extern const size_t kItalianCount = sizeof(kItalianStrings) / sizeof(kItalianStrings[0]);
 

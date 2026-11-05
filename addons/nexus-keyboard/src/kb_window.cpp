@@ -671,25 +671,29 @@ void RenderFooter() {  // g_mu held
         }
         ImGui::EndPopup();
     }
-    const size_t n = CodePointCount(g_wFlatInput);
-    std::string counter = std::to_string(n) + "/" + std::to_string(g_cfg.maxLength);
-    if (n > static_cast<size_t>(g_cfg.maxLength)) {  // sent as several chat lines
-        const bool current = g_previewGen == g_inputGen && !g_preview.empty();
-        const ChatSplit own = SplitChatCommand(SanitizeChatText(g_wFlatInput));  // as StartSend counts it
-        const std::wstring& body = own.prefix.empty() ? g_wFlatInput : own.body;
-        const size_t parts = SplitForChat((Translating() || NamesSwapped()) && current ? g_preview : body,
-                                          own.prefix.empty() ? ComposePrefix() : own.prefix,
-                                          static_cast<size_t>(g_cfg.maxLength)).size();
-        counter += "  (" + std::to_string(parts) + "x)";
-    }
+    // The counter comes only once a text no longer fits one chat line, and shows the lines it goes out as: "199/100".
+    if (!g_input[0]) return;
+    const bool sendsPreview = (Translating() || NamesSwapped()) && g_previewGen == g_inputGen && !g_preview.empty();
+    const size_t limit = static_cast<size_t>(g_cfg.maxLength);
+    if (CodePointCount(sendsPreview ? g_preview : g_wFlatInput) + 64 < limit) return;  // far below it: no prefix is this long
+    const ChatSplit own = SplitChatCommand(SanitizeChatText(g_wFlatInput));  // as StartSend counts it
+    const std::wstring& body = own.prefix.empty() ? g_wFlatInput : own.body;
+    const std::vector<std::wstring> parts = SplitForChat(sendsPreview ? g_preview : body, own.prefix.empty() ? ComposePrefix() : own.prefix, limit);
+    if (parts.size() < 2) return;
+    std::string counter;
+    for (const std::wstring& part : parts) counter += (counter.empty() ? "" : "/") + std::to_string(CodePointCount(part));
     // At the right edge, never over the chips: without room it goes into the next line.
     const float counterX = ImGui::GetWindowContentRegionMax().x - ImGui::CalcTextSize(counter.c_str()).x;
     const float after = ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x + ImGui::GetStyle().ItemSpacing.x * 2;
     if (counterX >= after) ImGui::SameLine(counterX);
     else ImGui::SetCursorPosX(std::max(counterX, ImGui::GetCursorPosX()));
-    if (!g_layout.infoText && !g_input[0]) return;  // info texts off: the counter only while you write
+    const std::wstring lines = std::to_wstring(parts.size());
+    const bool tooMany = parts.size() > kMaxPartsPerEnter;  // one Enter does not send this: StartSend refuses it
     ImGui::AlignTextToFramePadding();
-    ImGui::TextDisabled("%s", counter.c_str());
+    ImGui::TextColored(tooMany ? kInfoWarm : ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), "%s", counter.c_str());
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("%s", UI(tooMany ? TrF(L"Not sent: {1} chat lines – at most 3 per Enter. Shorten it.", {lines})
+                                           : TrF(L"Goes out as {1} chat lines, one after the other", {lines})).c_str());
 }
 
 // The status text (drawn in the input box): a message, else what is going on.

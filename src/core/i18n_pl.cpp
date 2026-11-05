@@ -1467,6 +1467,8 @@ extern const I18nEntry kPolishStrings[] = {
      "Komunikaty z tej sesji"},
     {L"No info texts yet",
      "Brak komunikatów"},
+    {L"Goes out as {1} chat lines, one after the other",
+     "Wychodzi jako {1} linie czatu, jedna po drugiej"},
 };
 extern const size_t kPolishCount = sizeof(kPolishStrings) / sizeof(kPolishStrings[0]);
 
