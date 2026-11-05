@@ -2303,6 +2303,13 @@ static void TestChatCode() {
     CHECK(DecodeChatCode(L"[&BDgAAAA=]").kind == ChatCodeKind::Poi);
     CHECK(DecodeChatCode(L"[&#!x]").kind == ChatCodeKind::Unknown);
     CHECK(ChatCodeApiPath(DecodeChatCode(L"[&BDgAAAA=]")).empty());
+    CHECK(ChatCodeNamesPath(L"items", {89007, 19976}, L"de") == L"/v2/items?lang=de&ids=89007,19976");
+    CHECK(ChatCodeApiLang(L"DE") == L"de" && ChatCodeApiLang(L"zh-Hans") == L"zh" && ChatCodeApiLang(L"pl") == L"en" && ChatCodeApiLang(L"") == L"en");
+    {
+        const auto names = ParseChatCodeNames(R"([{"id":19976,"name":"Mystische Münze","rarity":"Rare"},{"id":5,"rarity":"Basic"},{"name":"no id"},7])");
+        CHECK(names.size() == 1 && names[0].id == 19976 && names[0].name == "Mystische Münze" && names[0].rarity == "Rare");
+        CHECK(ParseChatCodeNames(R"({"text":"all ids provided are invalid"})").empty() && ParseChatCodeNames("<html>").empty());
+    }
     CHECK(UnescapeChatText(L"look \\[&AgGvWwEA\\] ok") == L"look [&AgGvWwEA] ok");
     CHECK(RarityColor("Exotic") == 0xFFA405 && RarityColor("x") == 0);
 }

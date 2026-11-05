@@ -425,6 +425,7 @@ bool g_minimizeRequest = false, g_expandRequest = false;  // on the main window,
 // chat code does nothing (2.3.1 – the click on chat codes crashed the game; copying the code was in the way too): it is
 // swallowed, so it does not translate the line either.
 bool RichLine(const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 color) {  // g_mu held
+    g_links.SetOptions(ReadLang(), g_cfg.chatCodeNames);
     bool clicked = false;
     const float right = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
     const float space = ImGui::CalcTextSize(" ").x;

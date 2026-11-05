@@ -2,6 +2,8 @@
 
 #include <vector>
 
+#include "core/json.hpp"
+
 namespace gct {
 namespace {
 
@@ -81,6 +83,38 @@ std::wstring ChatCodeApiPath(const ChatCode& c) {
         default: return {};
     }
     return std::wstring(L"/v2/") + what + L"?ids=" + std::to_wstring(c.id);
+}
+
+std::wstring ChatCodeNamesPath(const wchar_t* what, const std::vector<uint32_t>& ids, const std::wstring& lang) {
+    std::wstring path = std::wstring(L"/v2/") + what + L"?lang=" + lang + L"&ids=";
+    for (size_t i = 0; i < ids.size(); ++i) {
+        if (i) path += L',';
+        path += std::to_wstring(ids[i]);
+    }
+    return path;
+}
+
+std::wstring ChatCodeApiLang(const std::wstring& readLang) {
+    std::wstring two;
+    for (size_t i = 0; i < readLang.size() && i < 2; ++i)
+        two += readLang[i] >= L'A' && readLang[i] <= L'Z' ? static_cast<wchar_t>(readLang[i] + 32) : readLang[i];
+    return two == L"de" || two == L"fr" || two == L"es" || two == L"zh" ? two : L"en";
+}
+
+std::vector<ChatCodeName> ParseChatCodeNames(const std::string& body) {
+    std::vector<ChatCodeName> names;
+    JsonValue doc;
+    if (!ParseJson(body, doc) || !doc.IsArray()) return names;
+    for (const JsonValue& entry : doc.arr) {
+        const JsonValue* id = entry.IsObject() ? entry.Get("id") : nullptr;
+        if (!id || id->type != JsonValue::Type::Number || id->n <= 0) continue;
+        ChatCodeName name;
+        name.id = static_cast<uint32_t>(id->n);
+        name.name = entry.GetString("name");
+        name.rarity = entry.GetString("rarity");
+        if (!name.name.empty()) names.push_back(std::move(name));
+    }
+    return names;
 }
 
 std::wstring UnescapeChatText(const std::wstring& s) {

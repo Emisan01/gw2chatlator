@@ -1471,6 +1471,10 @@ extern const I18nEntry kSpanishStrings[] = {
      "Escritura"},
     {L"No time limit: only a safety net of 10 minutes against a stuck key. One Enter sends at most 3 chat lines, about 45 seconds of speech.",
      "Sin límite de tiempo: solo una red de seguridad de 10 minutos contra una tecla atascada. Un Enter envía como máximo 3 líneas de chat, unos 45 segundos de voz."},
+    {L"Show chat codes by name",
+     "Mostrar los códigos de chat por su nombre"},
+    {L"Asks GW2's public API. Only the code's number goes out, never a chat text.",
+     "Consulta la API pública de GW2. Solo sale el número del código, nunca un texto del chat."},
 };
 extern const size_t kSpanishCount = sizeof(kSpanishStrings) / sizeof(kSpanishStrings[0]);
 

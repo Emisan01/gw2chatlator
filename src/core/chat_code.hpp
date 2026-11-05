@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace gct {
 
@@ -20,6 +21,18 @@ ChatCode DecodeChatCode(const std::wstring& code);
 
 // The GW2 API path for its name ("/v2/items?ids=23471"), empty when there is none (coins, PoIs, builds ...).
 std::wstring ChatCodeApiPath(const ChatCode& c);
+
+// Asking the GW2 API for several names at once: "/v2/items?lang=de&ids=1,2" (`what`: items, skills, traits ...).
+std::wstring ChatCodeNamesPath(const wchar_t* what, const std::vector<uint32_t>& ids, const std::wstring& lang);
+// The language the API knows for a reading language ("DE", "zh-Hans"): de, fr, es, zh, otherwise en.
+std::wstring ChatCodeApiLang(const std::wstring& readLang);
+// What it answers. Entries without a name and anything that is not such a list give nothing.
+struct ChatCodeName {
+    uint32_t id = 0;
+    std::string name;    // UTF-8
+    std::string rarity;  // items only
+};
+std::vector<ChatCodeName> ParseChatCodeNames(const std::string& body);
 
 // The chat text of Events: Chat escapes brackets ("\[&AgGvWwEA\]"): back to what the game shows.
 std::wstring UnescapeChatText(const std::wstring& s);

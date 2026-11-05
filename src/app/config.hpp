@@ -36,6 +36,7 @@ struct Config {
     std::vector<std::wstring> understoodLangs;            // never translated automatically ("EN")
     bool skipTypingLang = true;                           // nor the language you read in
     std::wstring readLang;   // the language the chat is read in ("DE"; empty = the system's) – apart from writing and sending
+    bool chatCodeNames = true;  // chat codes by name, from GW2's public API (only the code's number goes out)
     bool showOriginal = false;  // the original small and grey under a translated line (your own: what you typed)
     bool noJunk = true;         // a doubtful translation: one more try at the best quality, still doubtful – the original
     int localQuality = 2;                                 // the beam, 1 to 8: 1 = Fast, 2 = Balanced, 4 = Best, the rest by hand

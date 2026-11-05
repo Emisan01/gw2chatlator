@@ -1471,6 +1471,10 @@ extern const I18nEntry kFrenchStrings[] = {
      "Saisie"},
     {L"No time limit: only a safety net of 10 minutes against a stuck key. One Enter sends at most 3 chat lines, about 45 seconds of speech.",
      "Pas de limite de temps : seulement un filet de sécurité de 10 minutes contre une touche bloquée. Une Entrée envoie au plus 3 lignes de chat, soit environ 45 secondes de parole."},
+    {L"Show chat codes by name",
+     "Afficher les codes de chat par leur nom"},
+    {L"Asks GW2's public API. Only the code's number goes out, never a chat text.",
+     "Interroge l'API publique de GW2. Seul le numéro du code est envoyé, jamais un texte de chat."},
 };
 extern const size_t kFrenchCount = sizeof(kFrenchStrings) / sizeof(kFrenchStrings[0]);
 

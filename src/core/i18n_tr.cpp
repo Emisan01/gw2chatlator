@@ -1471,6 +1471,10 @@ extern const I18nEntry kTurkishStrings[] = {
      "Yazma"},
     {L"No time limit: only a safety net of 10 minutes against a stuck key. One Enter sends at most 3 chat lines, about 45 seconds of speech.",
      "Süre sınırı yok: yalnızca takılan bir tuşa karşı 10 dakikalık bir güvenlik ağı. Bir Enter en fazla 3 sohbet satırı gönderir, yaklaşık 45 saniyelik konuşma."},
+    {L"Show chat codes by name",
+     "Sohbet kodlarını adıyla göster"},
+    {L"Asks GW2's public API. Only the code's number goes out, never a chat text.",
+     "GW2'nin herkese açık API'sine sorar. Yalnızca kodun numarası gider, asla sohbet metni gitmez."},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

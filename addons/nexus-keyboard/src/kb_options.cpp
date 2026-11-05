@@ -1102,7 +1102,7 @@ void RenderWordLists() {
     X(voiceDevice) X(voiceAutoSend) X(voiceBoost) X(voiceActivation) X(voicePauseMs) X(voicePreRollMs)                \
     X(voiceSensitivity) X(voiceMinMs) X(voiceGlobalKey) X(voiceChatPause)
 #define KB_OPTIONS(X)                                                                                                  \
-    X(engine) X(writeIn) X(backTranslate) X(understoodLangs) X(skipTypingLang) X(readLang) X(showOriginal) X(noJunk)   \
+    X(engine) X(writeIn) X(backTranslate) X(chatCodeNames) X(understoodLangs) X(skipTypingLang) X(readLang) X(showOriginal) X(noJunk)   \
     X(localQuality) X(useGpu) X(beamStepDown) X(beamStepUp) X(thinkAlong) X(versions) X(mtThreads) X(m2m.patience) X(m2m.lengthPenalty) X(m2m.coveragePenalty) X(m2m.repetitionPenalty)   \
     X(m2m.noRepeatNgram) X(m2m.disableUnk) X(m2mCompute) X(basicEmail) X(deeplKey) X(googleKey) X(msKey) X(msRegion) X(libreUrl) X(libreKey)   \
     X(uiLangCode) X(spellEnabled) X(autoCorrect) X(suggestions) X(learnWords) X(learnLater) X(returnFocus)            \
@@ -1270,6 +1270,8 @@ void RenderStartPage(Config& edit) {
 
 void RenderChatPage(Config& edit) {
     BeginBox(UI(Tr(L"Display")));
+    Switch("codenames", UI(Tr(L"Show chat codes by name")), &edit.chatCodeNames);
+    Hint(UI(Tr(L"Asks GW2's public API. Only the code's number goes out, never a chat text.")));
     Switch("orig", UI(Tr(L"Original under the translation")), &edit.showOriginal);
     Switch("unsure", UI(Tr(L"Unsure: show the original")), &edit.noJunk);
     Hint(UI(Tr(L"A click on a line always translates it. A click on a name opens a whisper tab that answers in "

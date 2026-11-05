@@ -1471,6 +1471,10 @@ extern const I18nEntry kRussianStrings[] = {
      "Ввод"},
     {L"No time limit: only a safety net of 10 minutes against a stuck key. One Enter sends at most 3 chat lines, about 45 seconds of speech.",
      "Без лимита времени: только страховка на 10 минут от залипшей клавиши. Один Enter отправляет не более 3 строк чата, это около 45 секунд речи."},
+    {L"Show chat codes by name",
+     "Показывать коды чата по названию"},
+    {L"Asks GW2's public API. Only the code's number goes out, never a chat text.",
+     "Обращается к открытому API GW2. Уходит только номер кода, но не текст чата."},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 
