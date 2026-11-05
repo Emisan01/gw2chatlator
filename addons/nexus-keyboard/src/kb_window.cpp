@@ -648,16 +648,45 @@ void RenderFooter() {  // g_mu held
             ImGui::SetTooltip("%s", UI(Tr(L"Click to restore original translator")).c_str());
         }
     }
+    // The counter comes only once a text no longer fits one chat line, and shows the lines it goes out as: "199/100".
+    size_t lines = 0;
+    std::string counter;
+    const bool sendsPreview = (Translating() || NamesSwapped()) && g_previewGen == g_inputGen && !g_preview.empty();
+    const size_t limit = static_cast<size_t>(g_cfg.maxLength);
+    if (g_input[0] && CodePointCount(sendsPreview ? g_preview : g_wFlatInput) + 64 >= limit) {  // far below it: no prefix is this long
+        const ChatSplit own = SplitChatCommand(SanitizeChatText(g_wFlatInput));  // as StartSend counts it
+        const std::wstring& body = own.prefix.empty() ? g_wFlatInput : own.body;
+        const std::vector<std::wstring> parts = SplitForChat(sendsPreview ? g_preview : body, own.prefix.empty() ? ComposePrefix() : own.prefix, limit);
+        lines = parts.size();
+        if (lines >= 2)
+            for (const std::wstring& part : parts) counter += (counter.empty() ? "" : "/") + std::to_string(CodePointCount(part));
+    }
+    // Bottom right, never over the chips: the button stays at the edge, the counter comes left of it; without room they go into the next line.
+    // ImGui's own resize corner takes the clicks about one font size from the window's corner: the button stays clear of it.
+    const float gripRoom = std::max(0.0f, ImGui::GetFontSize() * 1.05f - ImGui::GetStyle().WindowPadding.x);
+    const float infoX = ImGui::GetWindowContentRegionMax().x - iconH - gripRoom;
+    const float rowX = counter.empty() ? infoX : infoX - ImGui::CalcTextSize(counter.c_str()).x - ImGui::GetStyle().ItemSpacing.x;
+    const float after = ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x + ImGui::GetStyle().ItemSpacing.x * 2;
+    if (rowX >= after) ImGui::SameLine(rowX);
+    else ImGui::SetCursorPosX(std::max(rowX, ImGui::GetCursorPosX()));
+    if (!counter.empty()) {
+        const std::wstring count = std::to_wstring(lines);
+        const bool tooMany = lines > kMaxPartsPerEnter;  // one Enter does not send this: StartSend refuses it
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextColored(tooMany ? kInfoWarm : ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), "%s", counter.c_str());
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", UI(tooMany ? TrF(L"Not sent: {1} chat lines – at most 3 per Enter. Shorten it.", {count})
+                                               : TrF(L"Goes out as {1} chat lines, one after the other", {count})).c_str());
+        ImGui::SameLine(infoX);
+    }
     // The info texts again: in the box they are often gone before you have read them.
-    ImGui::SameLine();
     const ImVec2 infoBtnPos = ImGui::GetCursorScreenPos();
     ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
     if (ImGui::Button("i##infolog", ImVec2(iconH, iconH))) ImGui::OpenPopup("##infolog_popup");
     ImGui::PopStyleColor();
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Info texts of this session")).c_str());
     const float infoW = ImGui::GetFontSize() * 26.0f;
-    ImGui::SetNextWindowPos(ImVec2(std::clamp(infoBtnPos.x, 0.0f, std::max(0.0f, ImGui::GetIO().DisplaySize.x - infoW)), infoBtnPos.y - 4.0f),
-                            ImGuiCond_Always, ImVec2(0.0f, 1.0f));
+    ImGui::SetNextWindowPos(ImVec2(std::max(infoW, infoBtnPos.x + iconH), infoBtnPos.y - 4.0f), ImGuiCond_Always, ImVec2(1.0f, 1.0f));
     ImGui::SetNextWindowSizeConstraints(ImVec2(infoW, 0.0f), ImVec2(infoW, ImGui::GetFontSize() * 20.0f));
     if (ImGui::BeginPopup("##infolog_popup")) {
         ScopedPopupFont popupFont;
@@ -671,29 +700,6 @@ void RenderFooter() {  // g_mu held
         }
         ImGui::EndPopup();
     }
-    // The counter comes only once a text no longer fits one chat line, and shows the lines it goes out as: "199/100".
-    if (!g_input[0]) return;
-    const bool sendsPreview = (Translating() || NamesSwapped()) && g_previewGen == g_inputGen && !g_preview.empty();
-    const size_t limit = static_cast<size_t>(g_cfg.maxLength);
-    if (CodePointCount(sendsPreview ? g_preview : g_wFlatInput) + 64 < limit) return;  // far below it: no prefix is this long
-    const ChatSplit own = SplitChatCommand(SanitizeChatText(g_wFlatInput));  // as StartSend counts it
-    const std::wstring& body = own.prefix.empty() ? g_wFlatInput : own.body;
-    const std::vector<std::wstring> parts = SplitForChat(sendsPreview ? g_preview : body, own.prefix.empty() ? ComposePrefix() : own.prefix, limit);
-    if (parts.size() < 2) return;
-    std::string counter;
-    for (const std::wstring& part : parts) counter += (counter.empty() ? "" : "/") + std::to_string(CodePointCount(part));
-    // At the right edge, never over the chips: without room it goes into the next line.
-    const float counterX = ImGui::GetWindowContentRegionMax().x - ImGui::CalcTextSize(counter.c_str()).x;
-    const float after = ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x + ImGui::GetStyle().ItemSpacing.x * 2;
-    if (counterX >= after) ImGui::SameLine(counterX);
-    else ImGui::SetCursorPosX(std::max(counterX, ImGui::GetCursorPosX()));
-    const std::wstring lines = std::to_wstring(parts.size());
-    const bool tooMany = parts.size() > kMaxPartsPerEnter;  // one Enter does not send this: StartSend refuses it
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextColored(tooMany ? kInfoWarm : ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), "%s", counter.c_str());
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("%s", UI(tooMany ? TrF(L"Not sent: {1} chat lines – at most 3 per Enter. Shorten it.", {lines})
-                                           : TrF(L"Goes out as {1} chat lines, one after the other", {lines})).c_str());
 }
 
 // The status text (drawn in the input box): a message, else what is going on.
