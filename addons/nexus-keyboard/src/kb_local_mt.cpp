@@ -59,7 +59,7 @@ gct::HelperInfo CachedHelperInfo(const std::wstring& dataDir, bool busy) {
     return {};
 }
 
-enum class LocalMtJob { InstallModule, UpdateModule, RemoveModule, InstallModel, RemoveModel };
+enum class LocalMtJob { InstallModule, UpdateModule, RemoveModule, InstallModel, RemoveModel, InstallGpu, RemoveGpu };
 
 struct LocalMtState {
     bool module = false;
@@ -67,7 +67,9 @@ struct LocalMtState {
     bool nllbInstalled = false;
     bool m2mInstalled = false;
     bool nllbCorrupted = false;
-    uint64_t nllbBytes = 0;
+    bool m2mCorrupted = false;
+    uint64_t nllbBytes = 0, m2mBytes = 0, gpuBytes = 0;
+    bool gpu = false;
     std::vector<bool> models;
     std::vector<bool> modelsCorrupted;
     std::vector<uint64_t> bytes;  // each installed pair's folder on disk
@@ -112,6 +114,10 @@ void RefreshLocalMtState(const std::wstring& dataDir) {
     s_state.m2mInstalled = gct::LocalMtModelPresent(dataDir, "m2m100");
     s_state.nllbCorrupted = gct::IsLocalMtModelCorrupted(dataDir, "nllb-200");
     s_state.nllbBytes = s_state.nllbInstalled ? FolderBytes(dataDir + L"\\translate\\nllb-200") : 0;
+    s_state.m2mCorrupted = gct::IsLocalMtModelCorrupted(dataDir, "m2m100");
+    s_state.m2mBytes = s_state.m2mInstalled ? FolderBytes(dataDir + L"\\translate\\m2m100") : 0;
+    s_state.gpu = gct::GpuModulePresent(KeyboardDir());
+    s_state.gpuBytes = s_state.gpu ? gct::GpuModuleBytes(KeyboardDir()) : 0;
     const auto& catalog = gct::LocalMtModelCatalog();
     s_state.models.assign(catalog.size(), false);
     s_state.modelsCorrupted.assign(catalog.size(), false);
@@ -130,6 +136,8 @@ std::wstring LocalMtJobName(LocalMtJob job) {
         case LocalMtJob::RemoveModule: return Tr(L"the local translation module");
         case LocalMtJob::InstallModel: return Tr(L"the selected language model");
         case LocalMtJob::RemoveModel: return Tr(L"the selected language model");
+        case LocalMtJob::InstallGpu:
+        case LocalMtJob::RemoveGpu: return Tr(L"the graphics card module");
     }
     return Tr(L"local translation files");
 }
@@ -137,7 +145,7 @@ std::wstring LocalMtJobName(LocalMtJob job) {
 void StartLocalMtJob(LocalMtJob job, std::wstring dataDir, std::string pair = {}) {
     if (g_localMtBusy.exchange(true)) return;
     if (g_localMtThread.joinable()) g_localMtThread.join();
-    g_localMtPct = (job == LocalMtJob::InstallModule || job == LocalMtJob::UpdateModule || job == LocalMtJob::InstallModel) ? 0 : -1;
+    g_localMtPct = (job == LocalMtJob::InstallModule || job == LocalMtJob::UpdateModule || job == LocalMtJob::InstallModel || job == LocalMtJob::InstallGpu) ? 0 : -1;
     g_localMtThread = std::thread([job, dataDir = std::move(dataDir), pair = std::move(pair)] {
         ExtrasInstallResult result;
         bool removed = false;
@@ -169,6 +177,15 @@ void StartLocalMtJob(LocalMtJob job, std::wstring dataDir, std::string pair = {}
                             if (!removed) Sleep(300);
                         }
                         break;
+                    case LocalMtJob::InstallGpu:
+                        result = gct::InstallGpuModule(KeyboardDir(), W(GCT_VERSION_STR), progress);
+                        break;
+                    case LocalMtJob::RemoveGpu:
+                        for (int i = 0; i < 10 && !removed; ++i) {
+                            removed = gct::RemoveGpuModule(KeyboardDir());
+                            if (!removed) Sleep(300);
+                        }
+                        break;
                 }
             } catch (const std::exception& e) {
                 result.code = ExtrasInstallCode::DownloadFailed;
@@ -185,10 +202,11 @@ void StartLocalMtJob(LocalMtJob job, std::wstring dataDir, std::string pair = {}
         g_localMtPct = -1;
         g_localMtBusy = false;
         std::wstring status;
-        if (job == LocalMtJob::RemoveModule || job == LocalMtJob::RemoveModel) {
+        if (job == LocalMtJob::RemoveModule || job == LocalMtJob::RemoveModel || job == LocalMtJob::RemoveGpu) {
             status = removed ? Tr(L"Local translation files removed") : TrF(L"Removing {1} failed", {LocalMtJobName(job)});
         } else if (result.code == ExtrasInstallCode::Ok) {
-            status = (job == LocalMtJob::InstallModule || job == LocalMtJob::UpdateModule) ? Tr(L"Local translation module ready") : Tr(L"Language model installed");
+            status = job == LocalMtJob::InstallGpu ? Tr(L"Graphics card module ready")
+                     : (job == LocalMtJob::InstallModule || job == LocalMtJob::UpdateModule) ? Tr(L"Local translation module ready") : Tr(L"Language model installed");
         } else if (result.code == ExtrasInstallCode::NoAnswer) {
             status = TrF(L"GitHub did not answer ({1}) – please try again later", {result.detail});
         } else {
@@ -295,6 +313,62 @@ void RenderLocalMtOptions(Config& edit) {
     }
 
     EndBox();
+    BeginBox(UI(Tr(L"M2M100 model")));
+    ImGui::PushTextWrapPos(0.0f);
+    ImGui::TextDisabled("%s", UI(Tr(L"Meta M2M100 418M, MIT licence - direct translation between 100 languages, a little smaller and faster than NLLB-200.")).c_str());
+    ImGui::PopTextWrapPos();
+    StatusRow(UI(Tr(L"M2M100 model")),
+              g_localMtBusy ? 1 : s_state.m2mCorrupted ? 0 : s_state.m2mInstalled ? 2 : 0,
+              UI(s_state.m2mCorrupted ? Tr(L"Model corrupted – please reinstall")
+                    : s_state.m2mInstalled ? TrF(L"installed ({1} MB)", {Mb(s_state.m2mBytes)})
+                    : Tr(L"missing (about 470 MB)")));
+    if (!g_localMtBusy) {
+        if (s_state.m2mInstalled) {
+            if (RemoveButton("localmtm2m")) {
+                if (edit.engine == Engine::M2m) edit.engine = Engine::Basic;
+                {
+                    std::lock_guard<std::mutex> lock(g_mu);
+                    if (g_cfg.engine == Engine::M2m) {
+                        g_cfg.engine = Engine::Basic;
+                        g_cfg.SaveValue(L"Translate", L"Engine", L"basic");
+                        g_translator = MakeTranslator(g_cfg);
+                    }
+                }
+                StartLocalMtJob(LocalMtJob::RemoveModel, edit.dataDir, "m2m100");
+            }
+        } else if (s_state.module) {
+            if (ImGui::SmallButton(UI(Tr(L"Download M2M100 model")).c_str()))
+                StartLocalMtJob(LocalMtJob::InstallModel, edit.dataDir, "m2m100");
+        } else {
+            ImGui::TextDisabled("%s", UI(Tr(L"Install the local translation module first.")).c_str());
+        }
+    }
+    EndBox();
+    if (NvidiaDriverPresent()) {
+        BeginBox(UI(Tr(L"Graphics card module")));
+        ImGui::PushTextWrapPos(0.0f);
+        ImGui::TextDisabled("%s", UI(Tr(L"For NVIDIA cards from GTX 16 and RTX 20 upwards: the translator runs on the card and leaves the CPU to the game. Holds NVIDIA's libraries, so it is a large download.")).c_str());
+        ImGui::PopTextWrapPos();
+        StatusRow(UI(Tr(L"Graphics card module")), g_localMtBusy ? 1 : s_state.gpu ? 2 : 0,
+                  UI(s_state.gpu ? TrF(L"installed ({1} MB)", {Mb(s_state.gpuBytes)}) : Tr(L"missing (about 560 MB download)")));
+        if (!g_localMtBusy) {
+            if (s_state.gpu) {
+                if (RemoveButton("localmtgpu")) {
+                    edit.useGpu = false;
+                    {
+                        std::lock_guard<std::mutex> lock(g_mu);
+                        g_cfg.useGpu = false;
+                        g_cfg.SaveValue(L"Translate", L"UseGpu", L"0");
+                        g_translator = MakeTranslator(g_cfg);
+                    }
+                    StartLocalMtJob(LocalMtJob::RemoveGpu, edit.dataDir);
+                }
+            } else if (ImGui::SmallButton(UI(Tr(L"Download graphics card module")).c_str())) {
+                StartLocalMtJob(LocalMtJob::InstallGpu, edit.dataDir);
+            }
+        }
+        EndBox();
+    }
     BeginBox(UI(Tr(L"Inference quality & speed")));
     // the same three steps as beside the translator on Start
     const std::string qualityText[] = {UI(Tr(L"Fast") + L" – " + Tr(L"Beam 1 – about 350 ms per line, the lowest CPU load")),

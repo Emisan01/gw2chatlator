@@ -30,7 +30,7 @@ int wmain(int argc, wchar_t** argv) {
     } else if (mode == "no-nllb") {
         std::cout << "{\"evt\":\"ready\",\"helper\":\"translate\",\"proto\":1,\"caps\":[\"opus\"],\"build\":\"test-build\"}\n" << std::flush;
     } else {
-        std::cout << "{\"evt\":\"ready\",\"helper\":\"translate\",\"proto\":1,\"caps\":[\"opus\",\"nllb\"],\"build\":\"test-build\"}\n" << std::flush;
+        std::cout << "{\"evt\":\"ready\",\"helper\":\"translate\",\"proto\":1,\"caps\":[\"opus\",\"nllb\",\"threads\"],\"build\":\"test-build\"}\n" << std::flush;
     }
 
     std::string line;

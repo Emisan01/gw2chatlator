@@ -55,7 +55,6 @@ WinAnchor g_winPressed;        // where it was when the mouse went down (a move 
 int g_previewRows = 1;         // the preview's wrapped lines as last drawn (it grows with them, like the input)
 ULONGLONG g_ownDownAt = 0;     // our own hold-and-drag (the input, the mini window): when the press began – in this
 bool g_ownMoving = false;      // shape only; a new mode ends it (a stale press once dragged the opened window along)
-static const ImVec4 kInfoWarm(0.94f, 0.75f, 0.35f, 1.f);  // the info texts and what went wrong: warm on every theme
 
 void ProcessBufferedKeys() {
     // Your keys since a send let go of the keyboard go into our input once it is done – or once it stopped moving
@@ -686,7 +685,7 @@ void RenderFooter() {  // g_mu held
         const std::wstring count = std::to_wstring(lines);
         const bool tooMany = lines > kMaxPartsPerEnter;  // one Enter does not send this: StartSend refuses it
         ImGui::AlignTextToFramePadding();
-        ImGui::TextColored(tooMany ? kInfoWarm : ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), "%s", counter.c_str());
+        ImGui::TextColored(tooMany ? UiWarm() : ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), "%s", counter.c_str());
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", UI(tooMany ? TrF(L"Not sent: {1} chat lines – at most 3 per Enter. Shorten it.", {count})
                                                : TrF(L"Goes out as {1} chat lines, one after the other", {count})).c_str());
@@ -1780,7 +1779,7 @@ void RenderWindow() {
                 case TranslateErrorKind::Quota: cause = Tr(L"Translation quota exceeded"); break;
                 default: cause = Tr(L"Translation failed"); break;
             }
-            ImGui::TextColored(kInfoWarm, "%s", UI(cause).c_str());
+            ImGui::TextColored(UiWarm(), "%s", UI(cause).c_str());
             ImGui::SameLine();
             if (ImGui::Button((UI(Tr(L"→ MyMemory")) + "##btn_mymem").c_str())) {
                 g_myMemorySessionFallback = true;
@@ -1814,18 +1813,23 @@ void RenderWindow() {
             // above it stays where it is (a "translating …" in between shrank it at every key).
             const std::wstring own = SplitChatCommand(SanitizeChatText(g_wFlatInput)).prefix;  // as StartSend does it
             const ImVec4 shade = previewCurrent ? kPreview : ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled);
-            LookText(U8((own.empty() ? ComposePrefix() : own) + g_preview).c_str(), Bright(shade), true);
-            if (!g_back.empty()) LookText(U8(g_back).c_str(), Bright(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled)), true);
-            // Versions to choose from: a number each, the one that goes out lit; its back-translation follows.
-            if (previewCurrent && g_previewVersions.size() > 1 && g_previewPick < g_previewVersions.size() &&
-                g_previewVersions[g_previewPick] == g_preview) {
+            // Versions to choose from: each one to read and click, a number before it, the one that goes out lit.
+            const bool choose = previewCurrent && g_previewVersions.size() > 1 && g_previewPick < g_previewVersions.size() &&
+                                g_previewVersions[g_previewPick] == g_preview;
+            if (!choose) LookText(U8((own.empty() ? ComposePrefix() : own) + g_preview).c_str(), Bright(shade), true);
+            if (choose) {
+                const float numberW = ImGui::GetFrameHeight();
                 for (size_t i = 0; i < g_previewVersions.size(); ++i) {
-                    if (i) ImGui::SameLine(0.0f, ImGui::GetFontSize() * 0.25f);
                     const bool on = i == g_previewPick;
                     if (on) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
-                    const bool clicked = ImGui::SmallButton((std::to_string(i + 1) + "##version" + std::to_string(i)).c_str());
+                    bool clicked = ImGui::SmallButton((std::to_string(i + 1) + "##version" + std::to_string(i)).c_str());
                     if (on) ImGui::PopStyleColor();
-                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", U8(g_previewVersions[i]).c_str());
+                    ImGui::SameLine(numberW);
+                    ImGui::BeginGroup();
+                    LookText(U8(g_previewVersions[i]).c_str(), Bright(on ? kPreview : ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled)), true);
+                    ImGui::EndGroup();
+                    if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                    clicked = ImGui::IsItemClicked() || clicked;
                     if (clicked && !on) {
                         g_previewPick = i;
                         g_preview = g_previewVersions[i];
@@ -1835,9 +1839,8 @@ void RenderWindow() {
                     }
                     if (clicked) g_focusInput = true;
                 }
-                ImGui::SameLine();
-                ImGui::TextDisabled("%s", UI(Tr(L"Other versions")).c_str());
             }
+            if (!g_back.empty()) LookText(U8(g_back).c_str(), Bright(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled)), true);
         } else if (g_layout.infoText) {
             ImGui::TextDisabled("%s", UI(Tr(L"translating …")).c_str());
         }
@@ -2165,14 +2168,14 @@ void RenderWindow() {
                 s_lastStatusFit = Fit(UI(stW), availW);
             }
             if (g_layout.infoText || !g_status.empty())
-                BoxText(textAt, clip, g_status.empty() ? ImGui::GetColorU32(ImGuiCol_TextDisabled) : ImGui::GetColorU32(kInfoWarm),
+                BoxText(textAt, clip, g_status.empty() ? ImGui::GetColorU32(ImGuiCol_TextDisabled) : ImGui::GetColorU32(UiWarm()),
                         s_lastStatusFit);
         }
     } else if (!g_status.empty()) {
         const std::string s = Fit(UI(g_status), (inputMax.x - inputMin.x) * 0.6f);
         const float w = ImGui::CalcTextSize(s.c_str()).x * 0.85f;
         BoxText(ImVec2(inputMax.x - w - st.FramePadding.x - st.ScrollbarSize, inputMax.y - smallLine - 1), clip,
-                ImGui::GetColorU32(kInfoWarm), s, 0.85f);
+                ImGui::GetColorU32(UiWarm()), s, 0.85f);
     }
     // Compact view: what the chat will get, small in the box's last line (instead of the preview above).
     if (!showPreview && g_input[0] && ((Translating() && (previewCurrent || g_layout.infoText)) || NamesSwapped())) {

@@ -95,6 +95,7 @@ std::wstring PairPath(const std::string& id) {
 
 #ifdef GCT_MT_CUDA
 unsigned long long g_cardReserveMb = 512;  // [Translate] CardReserveMb: what stays free on the card beside the model, for the game
+ctranslate2::ComputeType g_cardCompute = ctranslate2::ComputeType::INT8_FLOAT16;  // [Translate] CardCompute: tried first on the card
 
 struct CardInfo {
     int index = -1;  // -1: not measured (no NVML), then the first card
@@ -196,7 +197,7 @@ ManyModel* LoadMany(std::unique_ptr<ManyModel>& slot, const std::string& id, con
             loader.device = ctranslate2::Device::CUDA;
             if (card.index >= 0) loader.device_indices = {card.index};
             // Not every card can calculate every way: the next that works there. Only a warm-up that ran counts.
-            for (const ctranslate2::ComputeType type : {ctranslate2::ComputeType::INT8_FLOAT16, ctranslate2::ComputeType::FLOAT16, ctranslate2::ComputeType::FLOAT32}) {
+            for (const ctranslate2::ComputeType type : {g_cardCompute, ctranslate2::ComputeType::INT8_FLOAT16, ctranslate2::ComputeType::FLOAT16, ctranslate2::ComputeType::FLOAT32}) {
                 loader.compute_type = type;
                 try {
                     model->translator = std::make_unique<ctranslate2::Translator>(loader, pool);
@@ -493,6 +494,13 @@ int wmain(int argc, wchar_t** argv) {
             g_device = ctranslate2::Device::CUDA;
             _wputenv_s(L"CUDA_DEVICE_ORDER", L"PCI_BUS_ID");  // the same numbers as NVML's, before CUDA first looks
             SetEnvironmentVariableW(L"CUDA_DEVICE_ORDER", L"PCI_BUS_ID");
+            wchar_t cardCompute[32] = {};
+            GetPrivateProfileStringW(L"Translate", L"CardCompute", L"", cardCompute, 32, ini.c_str());
+            const std::wstring wanted = cardCompute;
+            if (wanted == L"float16") g_cardCompute = ctranslate2::ComputeType::FLOAT16;
+            else if (wanted == L"float32") g_cardCompute = ctranslate2::ComputeType::FLOAT32;
+            else if (wanted == L"int8_float32") g_cardCompute = ctranslate2::ComputeType::INT8_FLOAT32;
+            else if (wanted == L"int8") g_cardCompute = ctranslate2::ComputeType::INT8;
             g_cardReserveMb = static_cast<unsigned long long>(std::clamp<int>(static_cast<int>(GetPrivateProfileIntW(L"Translate", L"CardReserveMb", 512, ini.c_str())), 0, 100000));
         }
     }
@@ -507,7 +515,7 @@ int wmain(int argc, wchar_t** argv) {
                                                : ctranslate2::ComputeType::INT8;
     }
     g_lastRequest = GetTickCount64();
-    std::string readyMsg = "{\"evt\":\"ready\",\"helper\":\"translate\",\"proto\":1,\"caps\":[\"opus\",\"nllb\",\"m2m\",\"score\"],\"build\":\"";
+    std::string readyMsg = "{\"evt\":\"ready\",\"helper\":\"translate\",\"proto\":1,\"caps\":[\"opus\",\"nllb\",\"m2m\",\"score\",\"threads\"],\"build\":\"";
     readyMsg += GCT_GIT_BUILD_ID;
     readyMsg += "\"}";
     Emit(readyMsg);

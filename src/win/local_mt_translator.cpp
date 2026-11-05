@@ -453,8 +453,10 @@ private:
                                               : L"The local translator helper lacks M2M100 support: ") + info_.outdatedReason;
             return false;
         }
-        info_.status = HelperStatus::Ok;
-        info_.outdatedReason.clear();
+        // One from before the threads came still translates, on one core: the options offer the update.
+        const bool older = !HasCap(ready, "threads");
+        info_.status = older ? HelperStatus::Outdated : HelperStatus::Ok;
+        info_.outdatedReason = older ? L"it runs on one core only" : L"";
         HelperLog(L"helper ready: proto " + std::to_wstring(ready.proto) + L", build " + FromUtf8(ready.build.substr(0, 7)));
         return true;
     }

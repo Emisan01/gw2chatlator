@@ -6,13 +6,17 @@ namespace kb {
 
 std::vector<uint32_t> g_cbaRoles;  // 0xRRGGBB per role ([NexusTheme] Colours, a theme code)
 bool g_cbaAutoContrast = true;
-const std::vector<uint32_t>& CbaPreset(int i) {  // 0 Slate, 1 Grey, 2 CBA blue (the palette approved in cba4gw2)
-    static const std::vector<uint32_t> kPresets[3] = {
+// 0 Slate, 1 Grey, 2 CBA blue, 3 CBA cyan: grey is the base, the colour the structure, its light stop the accent. Blue's
+// core is the mean of its two neighbours, cyan's base one stop darker so that light text stays readable on it; gold is
+// text and signal colours are dots, never a fill (the CBA scheme).
+const std::vector<uint32_t>& CbaPreset(int i) {
+    static const std::vector<uint32_t> kPresets[4] = {
         {0x121214, 0x333A47, 0x36404F, 0x596B85, 0x404D61, 0xEBEBF0, 0x8C919B, 0xDBE3ED},
         {0x111111, 0x2C2C2C, 0x2C2C2C, 0x4C4C4C, 0x444444, 0xDDDDDD, 0x8A8A8A, 0xDDDDDD},
-        {0x111111, 0x1E1E1E, 0x0D2B45, 0x4A73A3, 0x163D5E, 0xDDDDDD, 0x8A8A8A, 0xB8D8F8},
+        {0x111111, 0x1E1E1E, 0x0D2B45, 0x4376A6, 0x163D5E, 0xDDDDDD, 0xAAAAAA, 0xB8D8F8},
+        {0x111111, 0x1E1E1E, 0x003D3B, 0x006B68, 0x006B68, 0xDDDDDD, 0xAAAAAA, 0x5EEAE4},
     };
-    return kPresets[std::clamp(i, 0, 2)];
+    return kPresets[std::clamp(i, 0, 3)];
 }
 // The text colours as shown: with automatic contrast lifted (or darkened) until they stand out on every fill.
 uint32_t CbaShown(int role) {
@@ -97,6 +101,7 @@ int PushTheme() {
     for (const auto& col : colours) ImGui::PushStyleColor(col.first, col.second);
     return static_cast<int>(std::size(colours)) + PushButtonTint();
 }
+ImVec4 UiWarm() { return g_theme == Theme::Cba ? ImVec4(0xFA / 255.f, 0xD8 / 255.f, 0x40 / 255.f, 1.f) : ImVec4(0.94f, 0.75f, 0.35f, 1.f); }
 static uint32_t RgbOf(const ImVec4& c) {
     const auto byte = [](float v) { return static_cast<uint32_t>(std::clamp(v, 0.0f, 1.0f) * 255.0f + 0.5f); };
     return (byte(c.x) << 16) | (byte(c.y) << 8) | byte(c.z);

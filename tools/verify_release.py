@@ -14,7 +14,7 @@ Measures all gates required for a release:
 
 Modes:
   --full: The one release audit. Refuses a dirty tree, configures and builds every artifact from HEAD
-          (build/ and build-localmt-native/), runs all 8 gates, checks the binaries carry HEAD without
+          (build/ and build-localmt-omp/), runs all 8 gates, checks the binaries carry HEAD without
           "-dirty", runs pack_release.py and writes build/dist/verification.json.
   --check-receipt: Fast (<5s) check that the receipt is from a clean tree, its commit is HEAD (or only
                    doc files changed since), and the artifacts on disk match its hashes.
@@ -294,7 +294,7 @@ def check_receipt() -> int:
     print("==================================================================")
     return 0
 
-LOCAL_MT_BUILD = ROOT / "build-localmt-native"
+LOCAL_MT_BUILD = ROOT / "build-localmt-omp"  # GCT_LOCAL_MT=ON, the model on several threads
 RELEASE_DIR = ROOT / "build" / "addons" / "nexus-keyboard" / "Release"
 
 def build_from_head() -> tuple[bool, float]:
@@ -541,7 +541,7 @@ def main():
 
     dist_dir = ROOT / "build" / "dist"
     artifacts_data = {}
-    for fname in ["GW2Chatlator.dll", "GW2Keyboard-Nexus.zip", "GW2Keyboard-LocalMT.zip", "manifest.json",
+    for fname in ["GW2Chatlator.dll", "GW2Keyboard-Nexus.zip", "GW2Keyboard-LocalMT.zip", "GW2Keyboard-GPU.zip", "manifest.json",
                   "extras-manifest.json"]:
         fpath = dist_dir / fname
         if fpath.exists():

@@ -1,0 +1,16 @@
+GW2Chatlator optional graphics card module
+==========================================
+
+This optional package contains gw2kb_translate_gpu.exe, a separate process that runs the translation models on an
+NVIDIA graphics card. It does not load into the GW2 process. It is only of use on a PC with an NVIDIA graphics card.
+
+1. NVIDIA CUDA Toolkit 12.8 libraries: cublas64_12.dll, cublasLt64_12.dll, cudart64_12.dll
+   Copyright NVIDIA Corporation. Distributed unmodified with this application, as Attachment A of the CUDA Toolkit
+   licence allows. Full text: NVIDIA-CUDA-EULA.txt
+
+2. CTranslate2, oneDNN, SentencePiece: see THIRD_PARTY_NOTICES_LOCAL_MT.txt of the local translation module.
+   CTranslate2: https://github.com/OpenNMT/CTranslate2 (MIT). oneDNN: https://github.com/uxlfoundation/oneDNN (Apache-2.0).
+   SentencePiece: https://github.com/google/sentencepiece (Apache-2.0).
+
+3. Microsoft OpenMP runtime (vcomp140.dll)
+   Part of Microsoft Visual C++ and redistributed under its licence terms as a redistributable file, unmodified.

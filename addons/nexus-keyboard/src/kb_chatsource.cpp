@@ -349,7 +349,7 @@ void RenderChatSourceNotice() {  // the chat area (g_mu held): only while readin
     const View v = StateView();
     if (v.reading && v.pause == kPauseNone) return;
     ImGui::PushID("chatsourcenote");
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.94f, 0.75f, 0.35f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_Text, UiWarm());
     ImGui::TextWrapped("%s", UI(v.text).c_str());
     ImGui::PopStyleColor();
     if (v.reading && ImGui::SmallButton(UI(Tr(L"Resume")).c_str())) ChatSourceResume();

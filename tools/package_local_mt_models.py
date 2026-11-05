@@ -139,6 +139,30 @@ def package_nllb(models_dir, output_dir):
     return archive
 
 
+def package_m2m(model_dir, output_dir):
+    required = ("model.bin", "sentencepiece.bpe.model", "config.json", "shared_vocabulary.json")
+    missing = [name for name in required if not (model_dir / name).is_file()]
+    if missing:
+        raise RuntimeError(f"m2m100 is missing: {', '.join(missing)}")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    archive = output_dir / "GW2Keyboard-M2M100.zip"
+    notice_text = (
+        "M2M100 Universal Translation Model package (m2m100)\n"
+        "Attribution: Meta AI (FAIR) - Fan et al. (2020), Beyond English-Centric Multilingual Machine Translation.\n"
+        "Upstream model: https://huggingface.co/facebook/m2m100_418M\n"
+        "License declared by this model card: MIT\n"
+        "License text: https://opensource.org/license/mit\n"
+        "Changes: converted from upstream Transformers checkpoint to CTranslate2 INT8 format;\n"
+        "SentencePiece model included for local direct many-to-many inference.\n"
+    )
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as z:
+        for name in required:
+            z.write(model_dir / name, f"translate/m2m100/{name}")
+        z.writestr("translate/m2m100/MODEL_NOTICE.txt", notice_text)
+    print(f"[PASS] {archive} ({archive.stat().st_size:,} bytes)")
+    return archive
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--models-dir", type=Path, default=DEFAULT_MODELS)
@@ -146,7 +170,13 @@ def main():
     parser.add_argument("--pairs", nargs="+", help="pair IDs to process; default: converted models present in models-dir")
     parser.add_argument("--nllb", action="store_true", help="package NLLB-200 universal model (GW2Keyboard-NLLB-200.zip)")
     parser.add_argument("--convert", action="store_true", help="download and convert missing models from Hugging Face")
+    parser.add_argument("--m2m", type=Path, help="package M2M100 from this converted folder (GW2Keyboard-M2M100.zip)")
     args = parser.parse_args()
+
+    if args.m2m:
+        package_m2m(args.m2m, args.output_dir)
+        if not args.nllb and not args.pairs:
+            return
 
     if args.nllb or (args.pairs and any(p in ("nllb", "nllb-200") for p in args.pairs)):
         package_nllb(args.models_dir, args.output_dir)

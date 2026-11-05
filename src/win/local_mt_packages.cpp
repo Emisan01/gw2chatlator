@@ -18,6 +18,10 @@ namespace {
 
 constexpr const char* kDownloadPrefix = "https://github.com/Emisan01/gw2chatlator/releases/download/";
 constexpr const wchar_t* kHelperAsset = L"GW2Keyboard-LocalMT.zip";
+constexpr const wchar_t* kGpuAsset = L"GW2Keyboard-GPU.zip";
+constexpr const wchar_t* kGpuHelper = L"gw2kb_translate_gpu.exe";
+constexpr const wchar_t* kOpenMp = L"vcomp140.dll";  // both helpers need it beside them
+constexpr const wchar_t* kGpuFiles[] = {L"cublas64_12.dll", L"cublasLt64_12.dll", L"cudart64_12.dll", L"THIRD_PARTY_NOTICES_GPU.txt", L"NVIDIA-CUDA-EULA.txt"};
 
 bool Exists(const std::wstring& path) { return GetFileAttributesW(path.c_str()) != INVALID_FILE_ATTRIBUTES; }
 
@@ -181,7 +185,7 @@ bool Unpack(const std::wstring& zip, const std::wstring& to) {
     PROCESS_INFORMATION pi{};
     if (!CreateProcessW(nullptr, command.data(), nullptr, nullptr, FALSE,
                         CREATE_NO_WINDOW | BELOW_NORMAL_PRIORITY_CLASS, nullptr, nullptr, &si, &pi)) return false;
-    const bool finished = WaitForSingleObject(pi.hProcess, 120000) == WAIT_OBJECT_0;
+    const bool finished = WaitForSingleObject(pi.hProcess, 600000) == WAIT_OBJECT_0;  // the card's package is large
     DWORD code = 1;
     if (finished) GetExitCodeProcess(pi.hProcess, &code);
     else TerminateProcess(pi.hProcess, 1);
@@ -249,6 +253,7 @@ bool IsLocalMtModelCorrupted(const std::wstring& dataDir, const std::string& pai
 
 bool RemoveLocalMtModule(const std::wstring& kbDir) {
     DeleteFileW((kbDir + L"\\gw2kb_translate.exe").c_str());
+    if (!GpuModulePresent(kbDir)) DeleteFileW((kbDir + L"\\" + kOpenMp).c_str());
     for (const wchar_t* text : {L"THIRD_PARTY_NOTICES_LOCAL_MT.txt", L"LICENSE-CTranslate2-MIT.txt",
                                 L"LICENSE-oneDNN-Apache-2.0.txt", L"LICENSE-Apache-2.0.txt"})
         DeleteFileW((kbDir + L"\\" + text).c_str());
@@ -260,7 +265,7 @@ bool RemoveLocalMtModule(const std::wstring& kbDir) {
 }
 
 bool RemoveLocalMtModel(const std::wstring& dataDir, const std::string& pair) {
-    if (pair != "nllb-200" && !FindModel(pair)) return false;
+    if (pair != "nllb-200" && pair != "m2m100" && !FindModel(pair)) return false;
     const std::wstring dir = dataDir + L"\\translate\\" + FromUtf8(pair);
     RemoveTree(dir);
     return !Exists(dir);
@@ -296,6 +301,7 @@ ExtrasInstallResult InstallLocalMtModule(const std::wstring& kbDir, const std::w
         for (const wchar_t* text : {L"THIRD_PARTY_NOTICES_LOCAL_MT.txt", L"LICENSE-CTranslate2-MIT.txt",
                                     L"LICENSE-oneDNN-Apache-2.0.txt", L"LICENSE-Apache-2.0.txt"})
             copied = CopyFileW((package + L"\\" + text).c_str(), (kbDir + L"\\" + text).c_str(), FALSE) != 0 && copied;
+        if (ExistsFile(package + L"\\" + kOpenMp)) CopyFileW((package + L"\\" + kOpenMp).c_str(), (kbDir + L"\\" + kOpenMp).c_str(), FALSE);
         if (!copied) {
             result.code = ExtrasInstallCode::DownloadFailed;
             result.detail = L"could not copy the local translation helper";
@@ -313,7 +319,8 @@ ExtrasInstallResult InstallLocalMtModel(const std::wstring& dataDir, const std::
                                         const std::wstring& version,
                                         const std::function<bool(uint64_t, uint64_t)>& progress) {
     ExtrasInstallResult result;
-    const bool isNllb = (pair == "nllb-200");
+    const bool isM2m = (pair == "m2m100");
+    const bool isNllb = (pair == "nllb-200") || isM2m;  // both: one model, many languages
     if (!isNllb && !FindModel(pair)) {
         result.code = ExtrasInstallCode::NotChecked;
         result.detail = L"unknown language pair";
@@ -330,7 +337,7 @@ ExtrasInstallResult InstallLocalMtModel(const std::wstring& dataDir, const std::
         result.detail = L"could not create a temporary install folder";
         return result;
     }
-    const std::wstring asset = isNllb ? L"GW2Keyboard-NLLB-200.zip"
+    const std::wstring asset = isM2m ? L"GW2Keyboard-M2M100.zip" : isNllb ? L"GW2Keyboard-NLLB-200.zip"
                                       : (L"GW2Keyboard-OPUS-MT-" + FromUtf8(pair) + L".zip");
     result = DownloadAsset(asset, version, work + L"\\package.zip", progress);
     const std::wstring unpacked = work + L"\\x";
@@ -390,6 +397,7 @@ ExtrasInstallResult SwapLocalMtHelper(const std::wstring& kbDir, const std::wstr
     const std::wstring oldExe = kbDir + L"\\gw2kb_translate.exe.old";
 
     TerminateHelperProcesses(targetExe);
+    if (ExistsFile(packageDir + L"\\" + kOpenMp)) CopyFileW((packageDir + L"\\" + kOpenMp).c_str(), (kbDir + L"\\" + kOpenMp).c_str(), FALSE);  // before the probe: it needs it
     bool hadOld = false;
     if (ExistsFile(targetExe)) {
         DeleteFileW(oldExe.c_str());
@@ -419,6 +427,63 @@ ExtrasInstallResult SwapLocalMtHelper(const std::wstring& kbDir, const std::wstr
     CleanupObsoleteFiles(kbDir);
     result.code = ExtrasInstallCode::Ok;
     return result;
+}
+
+bool GpuModulePresent(const std::wstring& kbDir) {
+    return ExistsFile(kbDir + L"\\" + kGpuHelper) && ExistsFile(kbDir + L"\\cublas64_12.dll") && ExistsFile(kbDir + L"\\cublasLt64_12.dll") &&
+           ExistsFile(kbDir + L"\\cudart64_12.dll");
+}
+
+uint64_t GpuModuleBytes(const std::wstring& kbDir) {
+    uint64_t sum = GetFileBytes(kbDir + L"\\" + kGpuHelper);
+    for (const wchar_t* name : kGpuFiles) sum += GetFileBytes(kbDir + L"\\" + name);
+    return sum;
+}
+
+ExtrasInstallResult InstallGpuModule(const std::wstring& kbDir, const std::wstring& version,
+                                     const std::function<bool(uint64_t, uint64_t)>& progress) {
+    ExtrasInstallResult result;
+    const std::wstring work = WorkDir();
+    if (work.empty() || !CreateDirectoryW(work.c_str(), nullptr)) {
+        result.code = ExtrasInstallCode::DownloadFailed;
+        result.detail = L"could not create a temporary install folder";
+        return result;
+    }
+    const std::wstring zip = work + L"\\package.zip";
+    result = DownloadAsset(kGpuAsset, version, zip, progress);
+    const std::wstring unpacked = work + L"\\x";
+    CreateDirectoryW(unpacked.c_str(), nullptr);
+    const std::wstring package = unpacked + L"\\GW2Keyboard";
+    bool complete = result.code == ExtrasInstallCode::Ok && Unpack(zip, unpacked) && ExistsFile(package + L"\\" + kGpuHelper) &&
+                    ExistsFile(package + L"\\" + kOpenMp);
+    for (const wchar_t* name : kGpuFiles) complete = complete && ExistsFile(package + L"\\" + name);
+    if (result.code == ExtrasInstallCode::Ok && !complete) {
+        result.code = ExtrasInstallCode::DownloadFailed;
+        result.detail = L"the graphics card package is incomplete";
+    }
+    if (result.code == ExtrasInstallCode::Ok) {
+        CreateDirectoryW(kbDir.c_str(), nullptr);
+        TerminateHelperProcesses(kbDir + L"\\" + kGpuHelper);
+        bool copied = CopyFileW((package + L"\\" + kGpuHelper).c_str(), (kbDir + L"\\" + kGpuHelper).c_str(), FALSE) != 0;
+        for (const wchar_t* name : kGpuFiles)
+            copied = CopyFileW((package + L"\\" + name).c_str(), (kbDir + L"\\" + name).c_str(), FALSE) != 0 && copied;
+        // the CPU's helper may hold it open: then the one that is there stays
+        CopyFileW((package + L"\\" + kOpenMp).c_str(), (kbDir + L"\\" + kOpenMp).c_str(), FALSE);
+        if (!copied || !ExistsFile(kbDir + L"\\" + kOpenMp)) {
+            result.code = ExtrasInstallCode::DownloadFailed;
+            result.detail = L"could not copy the graphics card helper";
+        }
+    }
+    RemoveTree(work);
+    return result;
+}
+
+bool RemoveGpuModule(const std::wstring& kbDir) {
+    TerminateHelperProcesses(kbDir + L"\\" + kGpuHelper);
+    DeleteFileW((kbDir + L"\\" + kGpuHelper).c_str());
+    for (const wchar_t* name : kGpuFiles) DeleteFileW((kbDir + L"\\" + name).c_str());
+    if (!LocalMtModulePresent(kbDir)) DeleteFileW((kbDir + L"\\" + kOpenMp).c_str());
+    return !GpuModulePresent(kbDir);
 }
 
 ExtrasInstallResult UpdateLocalMtModule(const std::wstring& kbDir, const std::wstring& version,

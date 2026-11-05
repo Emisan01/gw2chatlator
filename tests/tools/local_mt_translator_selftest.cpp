@@ -87,7 +87,7 @@ int wmain(int argc, wchar_t** argv) {
     SetEnvironmentVariableW(L"GW2KB_FAKE_HELPER_MODE", L"full");
     const auto probeFull = gct::ProbeLocalMtHelper(argv[1], data.wstring());
     ok &= Check(probeFull.status == gct::HelperStatus::Ok && probeFull.proto == 1 &&
-                probeFull.caps.size() == 2 && probeFull.build == "test-build",
+                probeFull.caps.size() == 3 && probeFull.build == "test-build",
                 "probe full helper returns Status::Ok, proto 1, caps, build");
 
     SetEnvironmentVariableW(L"GW2KB_FAKE_HELPER_MODE", L"old");

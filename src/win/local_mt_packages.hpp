@@ -11,6 +11,12 @@ namespace gct {
 
 bool LocalMtModulePresent(const std::wstring& kbDir);
 bool LocalMtModelPresent(const std::wstring& dataDir, const std::string& pair);
+// The helper for NVIDIA cards with NVIDIA's libraries: its own, large download, on the user's click.
+bool GpuModulePresent(const std::wstring& kbDir);
+uint64_t GpuModuleBytes(const std::wstring& kbDir);
+ExtrasInstallResult InstallGpuModule(const std::wstring& kbDir, const std::wstring& version,
+                                     const std::function<bool(uint64_t, uint64_t)>& progress);
+bool RemoveGpuModule(const std::wstring& kbDir);
 bool IsLocalMtModelCorrupted(const std::wstring& dataDir, const std::string& pair);
 bool RemoveLocalMtModule(const std::wstring& kbDir);
 bool RemoveLocalMtModel(const std::wstring& dataDir, const std::string& pair);

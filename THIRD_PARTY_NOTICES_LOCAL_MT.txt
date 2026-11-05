@@ -1,7 +1,7 @@
 GW2Chatlator optional local translation helper
 ==============================================
 
-This optional package contains gw2kb_translate.exe, a separate-process CPU runtime for OPUS-MT models.
+This optional package contains gw2kb_translate.exe, a separate-process CPU runtime for OPUS-MT, NLLB-200 and M2M100 models.
 It uses no CUDA runtime and does not load into the GW2 process.
 
 1. CTranslate2 v4.8.3
@@ -23,5 +23,8 @@ It uses no CUDA runtime and does not load into the GW2 process.
    Each model archive contains MODEL_NOTICE.txt with its exact upstream model repository, attribution,
    license identifier, license link, and conversion notice. Model licenses are read per model card; they
    are not assumed to be uniform across the Helsinki-NLP collection.
+
+5. Microsoft OpenMP runtime (vcomp140.dll)
+   Part of Microsoft Visual C++ and redistributed under its licence terms as a redistributable file, unmodified.
 
 This notice file applies to the helper module. OPUS-MT weights are separate, optional downloads.
