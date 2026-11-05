@@ -63,9 +63,21 @@ const ThemeColours* ColoursOf(Theme t) {
     }
 }
 Theme g_theme = Theme::Slate;
+// All our buttons carry a touch of the accent, on every theme.
+static int PushButtonTint() {
+    const ImVec4 accent = UiAccent();
+    const auto tint = [&accent](ImGuiCol col, float t) {
+        const ImVec4 c = ImGui::GetStyleColorVec4(col);
+        ImGui::PushStyleColor(col, ImVec4(c.x + (accent.x - c.x) * t, c.y + (accent.y - c.y) * t, c.z + (accent.z - c.z) * t, c.w));
+    };
+    tint(ImGuiCol_Button, 0.22f);
+    tint(ImGuiCol_ButtonHovered, 0.40f);
+    tint(ImGuiCol_ButtonActive, 0.55f);
+    return 3;
+}
 int PushTheme() {
     const ThemeColours* c = ColoursOf(g_theme);
-    if (!c) return 0;  // Nexus' own
+    if (!c) return PushButtonTint();  // Nexus' own
     const std::pair<ImGuiCol, uint32_t> colours[] = {
         {ImGuiCol_Text, c->text}, {ImGuiCol_TextDisabled, c->textDim}, {ImGuiCol_WindowBg, c->bg},
         {ImGuiCol_ChildBg, c->child}, {ImGuiCol_PopupBg, c->popup}, {ImGuiCol_Border, c->border},
@@ -83,7 +95,7 @@ int PushTheme() {
         {ImGuiCol_TextSelectedBg, c->selection}, {ImGuiCol_NavHighlight, c->grabActive},
     };
     for (const auto& col : colours) ImGui::PushStyleColor(col.first, col.second);
-    return static_cast<int>(std::size(colours));
+    return static_cast<int>(std::size(colours)) + PushButtonTint();
 }
 static uint32_t RgbOf(const ImVec4& c) {
     const auto byte = [](float v) { return static_cast<uint32_t>(std::clamp(v, 0.0f, 1.0f) * 255.0f + 0.5f); };
@@ -102,6 +114,17 @@ ImVec4 UiAccent() {
     if (coloured > 0.12f && ContrastRatio(own, bg) >= 3.0 && ContrastRatio(own, field) >= 3.0) return ImVec4(grip.x, grip.y, grip.z, 1.f);
     const uint32_t quiet = EnsureContrast(0xA8B8CC, {bg, field}, 3.0);
     return ImVec4(((quiet >> 16) & 0xFF) / 255.f, ((quiet >> 8) & 0xFF) / 255.f, (quiet & 0xFF) / 255.f, 1.f);
+}
+bool ResetButton(const std::string& label) {
+    const ImVec4 accent = UiAccent();
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+    ImGui::PushStyleColor(ImGuiCol_Border, accent);
+    ImGui::PushStyleColor(ImGuiCol_Text, accent);
+    ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));  // on the plain field its text stays readable
+    const bool pressed = ImGui::Button(label.c_str());
+    ImGui::PopStyleColor(3);
+    ImGui::PopStyleVar();
+    return pressed;
 }
 const wchar_t* ThemeKey(Theme t) {
     return t == Theme::Nexus ? L"nexus" : t == Theme::Grey ? L"grey" : t == Theme::Cba ? L"cba" : L"slate";

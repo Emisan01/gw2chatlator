@@ -1651,7 +1651,7 @@ void RenderM2mBox(Config& edit) {
     RowHint(UI(Tr(L"int8 is the fastest. A change starts the translator anew.")));
     if (edit.m2mCompute == L"float32") RiskHint(Tr(L"2.5 times slower in our test, and no better."));
     ImGui::Indent(s_labelW);
-    if (ImGui::Button(UI(Tr(L"Back to the measured values")).c_str())) {
+    if (ResetButton(UI(Tr(L"Back to the measured values")))) {
         edit.m2m = gct::M2mRecommended();
         edit.m2mCompute = L"int8";
     }

@@ -168,6 +168,7 @@ const ThemeColours* ColoursOf(Theme t);
 extern Theme g_theme;
 int PushTheme();
 ImVec4 UiAccent();  // what stands out without being a warning: follows the chosen theme, Nexus' own too
+bool ResetButton(const std::string& label);  // a button that puts settings back: the accent around it and in its text
 const wchar_t* ThemeKey(Theme t);
 
 extern MyWords g_myWords;

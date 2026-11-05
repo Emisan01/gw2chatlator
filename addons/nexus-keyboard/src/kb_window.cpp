@@ -1106,7 +1106,7 @@ void RenderWindow() {
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
-        if (ImGui::Button(UI(Tr(L"Reset to default")).c_str())) {
+        if (ResetButton(UI(Tr(L"Reset to default")))) {
             g_cfg.chatTabName.clear();
             g_cfg.SaveValue(L"Window", L"ChatTabName", L"");
             s_chatTabLabel.clear();
@@ -1892,9 +1892,6 @@ void RenderWindow() {
     g_inputActive = inputActive;
     if (showClearBtn) {
         ImGui::SameLine(0, clearGap);
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.16f, 0.18f, 0.24f, 0.6f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.30f, 0.35f, 0.45f, 0.8f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.22f, 0.25f, 0.35f, 1.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
         if (ImGui::Button("<##clear", ImVec2(clearBtnW, boxH))) {
             g_input[0] = '\0';
@@ -1907,7 +1904,6 @@ void RenderWindow() {
             g_focusInput = true;
         }
         ImGui::PopStyleVar();
-        ImGui::PopStyleColor(3);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("%s", UI(Tr(L"Clear text")).c_str());
         }
