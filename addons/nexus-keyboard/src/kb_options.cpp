@@ -2403,6 +2403,30 @@ std::string BuildDiagnosticReport() {
     ss << "exported in this diagnostic protocol. (CLAUDE.md / AGENTS.md invariant)\n";
     ss << "======================================================================\n";
 
+    // What the tech palette knows, for a test protocol: numbers, settings and times, never a chat text or a name.
+    ss << "\n--- Translator settings ---\n";
+    ss << "- Engine: " << U8(EngineLabel(g_cfg.engine)) << ", beam " << g_cfg.localQuality << ", threads " << g_cfg.mtThreads << " (0 automatic: "
+       << gct::LocalAutoThreads(g_cfg.localQuality, static_cast<int>(gct::PhysicalCores().size())) << "), GPU switch " << (g_cfg.useGpu ? 1 : 0)
+       << ", versions " << g_cfg.versions << ", step down " << (g_cfg.beamStepDown ? 1 : 0) << ", step up " << (g_cfg.beamStepUp ? 1 : 0)
+       << ", translate along " << (g_cfg.thinkAlong ? 1 : 0) << "\n";
+    ss << "\n--- CPU, percent of all processors: now / peak of this session ---\n" << Fixed{1};
+    ss << "- helper " << static_cast<double>(g_cpuNow.helper) << " / " << static_cast<double>(g_cpuPeak.helper) << ", voice " << static_cast<double>(g_cpuNow.voice) << " / " << static_cast<double>(g_cpuPeak.voice)
+       << ", threads " << static_cast<double>(g_cpuNow.threads) << " / " << static_cast<double>(g_cpuPeak.threads) << ", drawing " << static_cast<double>(g_cpuNow.draw) << " / " << static_cast<double>(g_cpuPeak.draw)
+       << ", we " << static_cast<double>(g_cpuNow.ours) << " / " << static_cast<double>(g_cpuPeak.ours) << ", game " << static_cast<double>(g_cpuNow.game) << " / " << static_cast<double>(g_cpuPeak.game)
+       << ", PC " << static_cast<double>(g_cpuNow.pc) << " / " << static_cast<double>(g_cpuPeak.pc) << "\n";
+    ss << "- keys " << g_keys.total << ", Backspace " << g_keys.presses[VK_BACK] << ", Space wrote " << g_keys.spaceWrote << ", undone " << g_keys.spaceUndone
+       << ", kept in the buffer " << g_keys.buffered << " in " << g_keys.bufferRuns << " sends\n";
+    ss << "\n--- Logbook, the last entries (seconds ago) ---\n";
+    {
+        const std::vector<TechEntry> entries = TechLogNow();
+        const ULONGLONG nowTick = GetTickCount64();
+        int left = 150;
+        for (auto it = entries.rbegin(); it != entries.rend() && left > 0; ++it) {
+            if (it->area == 'C') continue;  // the chat's lines: only how many, below
+            ss << static_cast<long long>((nowTick - it->at) / 1000) << "s [" << std::string(1, it->area) << "] " << U8(it->text) << "\n";
+            --left;
+        }
+    }
     return ss.str();
 }
 
