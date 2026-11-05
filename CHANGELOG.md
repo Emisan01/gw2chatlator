@@ -3,6 +3,25 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.9.0 — 2026-11-05 (GW2Chatlator for Nexus)
+
+- **M2M100, a Second Universal Model:** Meta's M2M100 418M (MIT licence, about 470 MB) can be downloaded in Options → Translator, next to NLLB-200. On our made-up test lines at beam 4 M2M100 reached 101 of 106 and 33 of 41, NLLB-200 101 of 106 and 36 of 41; M2M100 is a little faster.
+- **The Translator on Your Graphics Card (NVIDIA, optional, off by default):** a download of its own (about 560 MB, NVIDIA's libraries) for cards from GTX 16 and RTX 20 upwards, with code for cards that do not exist yet. Tested on an RTX 3070 only so far: at beam 4 NLLB-200 took 35 s instead of 64 s on the 106 test lines, M2M100 30 s instead of 43 s, with the same hit rate or one line more, and the CPU stays free for the game. The model goes on the card with the most free video memory, only when it fits beside a reserve for the game; otherwise, on an older card or when the card fails, the CPU takes over and the options say why.
+- **Real Threads:** the local translator now uses several CPU cores; the number follows your cores and the beam, or your own setting.
+- **Every Beam, Every Setting:** beam 1 to 8; M2M100's decoding settings with a hint where a value can go wrong; stepping down under load and up when in doubt can each be switched off.
+- **Translated While You Type:** the translator works on whole words as you type, so sending does not wait. The preview comes before its back-translation.
+- **Versions to Choose From (optional):** the model's runners-up to read and click in the preview, or in a chat line's menu.
+- **The Tech Palette:** the live view shows the CPU load with its session peak, each line's beam, threads and timings, and folds out modules should and is, the work steps of the last line, the game's threads and how often the busiest is at its limit, a keyboard heat map with the Backspace share, RAM and card load, video memory and clock with their peaks, a load test and a logbook. States, numbers and counts only, never a text or a name. The diagnostic report carries them too.
+- **Chat Codes Show Their Names Again:** `[6 Name]` in your reading language and the item's rarity colour, for items, skills, traits, skins, outfits and achievements, from GW2's public API. Only the code's number goes out, never a chat text; a switch on the Chat page turns it off. A click on a code still does nothing.
+- **Guild Slots G1 to G5:** the footer's channel menu lets you write in any of your guilds, also one you do not represent. "Guild" stays the guild you represent.
+- **Last in Line at the Start:** the model and the word lists wait until a map stands and the game has had 10 seconds, or until you use the window.
+- **No Longest Recording to Set:** recording ends when you stop; only a net of 10 minutes stays against a stuck key. The options say what really limits a text: 3 chat lines per Enter, about 45 seconds of speech. The pause that ends a message is 1.2 s for new installs.
+- **The Chat Window:** a corner top right to size it, a small light in the header (quiet green: translating new lines, bright: at work; a click translates the chat in view once, a right-click switches it), the X switches the tool off until its hotkey brings it back, the lower edge may go down to the screen's end, line spacing goes as far as rows touching.
+- **Info Texts to Read Again:** a small button bottom right shows this session's info texts with their time; only in memory.
+- **The Character Counter** comes only when a text goes out as several chat lines, and shows them: `187/112`, counted on what really goes out.
+- **Colours Follow the Theme:** accents, the corner, the microphone's field and its menu no longer stay orange or navy, buttons carry a touch of the accent, buttons that put settings back stand out. The CBA theme takes the CBA scheme as its base (grey, blue as structure, gold as text, signal colours as dots) and gets a cyan preset. Info texts and warnings stay warm because they carry a meaning.
+- **28 More Usual GW2 Words** translated by the lists.
+
 ## 2.8.3 — 2026-11-04 (GW2Chatlator for Nexus)
 
 - **The Window Holds Still:** the chat and the input no longer jump at a line's end, on "Translate visible chat once" or with translation on. Changed rows are measured before anything is drawn: at the bottom the chat stays at the bottom and new lines slide in, scrolled up the first row in view stays put. The last translation stays, dimmed, until the next one is there.

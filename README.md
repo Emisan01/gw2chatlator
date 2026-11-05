@@ -81,7 +81,8 @@ Updating: replace the DLL (or unpack the newer ZIP over the old one) (settings a
 | Events: Chat | your click on "Install" | its own GitHub release |
 | voice module | your click in Options → Voice | the `extras` release |
 | voice models | your click in Options → Voice | whisper.cpp on Hugging Face |
-| local translation module, language models | your click in Options → Translator | the `extras` release |
+| local translation module, language models, M2M100 | your click in Options → Translator | the `extras` release |
+| graphics card module (NVIDIA, about 560 MB) | your click in Options → Translator | the `extras` release |
 | a newer local translation module | your click on "Update local translation module" (shown only when yours is outdated) | the `extras` release |
 
 Every download is checked by SHA-256 – the one GitHub publishes, for voice models the one built into the add-on.
@@ -107,12 +108,17 @@ Nothing is downloaded in the background.
 | **MyMemory** | free, no account | decent | 5,000 characters/day, 50,000 with any e-mail address (a made-up one works) |
 | **DeepL, Google, Microsoft** | own key (free contingents) | very good | Options → Translator |
 | **LibreTranslate** | own server, free | decent | your own address |
-| **Local MT (OPUS-MT & NLLB-200)** | free | offline after download | Options → Translator: fast Helsinki-NLP pair models or Meta's universal NLLB-200 model on CPU |
+| **Local MT (OPUS-MT, NLLB-200, M2M100)** | free | offline after download | Options → Translator: fast Helsinki-NLP pair models or Meta's universal models, on the CPU or, optionally, on an NVIDIA card |
 
-The optional local translator runs CTranslate2 on the CPU outside GW2. It downloads nothing until you request the
-helper or a specific language model. Each model is an independent package; check Options → Translator for the
-installed models and remove them there. Helsinki-NLP and Meta model licenses vary by model, and each package includes its own
-license and attribution.
+The optional local translator runs CTranslate2 outside GW2. It downloads nothing until you request the helper or a
+specific language model. Each model is an independent package; check Options → Translator for the installed models and
+remove them there. Model licenses vary and each package includes its own license and attribution: NLLB-200 is
+CC-BY-NC-4.0 (non-commercial), M2M100 is MIT, Helsinki-NLP's differ per pair.
+
+On an NVIDIA card from GTX 16 and RTX 20 upwards the optional graphics card module runs the model on the card, about
+half the time on the RTX 3070 it was tested on, and leaves the CPU to the game. It is off by default. The options show
+where the model runs; without room on the card or on a card it cannot use, the CPU translates. Other makers' cards stay
+on the CPU, CTranslate2 only runs on NVIDIA's.
 
 Incoming chat is only ever displayed. Whatever comes back from a translator can never send anything.
 
@@ -141,6 +147,10 @@ why GW2Chatlator works like this:
 lines of other players you translate. MyMemory is a public translation memory that may store what it receives. API
 keys are stored encrypted for your Windows account.
 
+**Names of chat codes:** to show a code's name the add-on asks GW2's public API (`api.guildwars2.com`): only the code's
+number and your reading language go out, never a chat text or a name. Options → Chat turns it off; then a code shows
+its kind.
+
 **What it learns stays local.** It learns only from the messages *you* send, never from other players' chat.
 Options → Writing → *Delete everything learned* starts from scratch.
 
@@ -163,7 +173,8 @@ In `Guild Wars 2\addons\GW2Keyboard\`:
 | `snippets.txt` | your text blocks (menu ≡ → Text blocks) |
 | `models\` | voice models (Options → Voice: use, remove, open the folder) |
 | `gw2kb_voice.exe`, `voice\` | the voice module |
-| `gw2kb_translate.exe` | optional local MT helper (CTranslate2 for OPUS-MT & NLLB-200); installed from Options → Translator |
+| `gw2kb_translate.exe`, `vcomp140.dll` | optional local MT helper (CTranslate2 for OPUS-MT, NLLB-200 & M2M100); installed from Options → Translator |
+| `gw2kb_translate_gpu.exe`, `cublas*.dll`, `cudart64_12.dll` | optional graphics card module for NVIDIA cards; installed from Options → Translator |
 | `translate\<pair>\` | individual local translation models downloaded on request |
 
 ## Building

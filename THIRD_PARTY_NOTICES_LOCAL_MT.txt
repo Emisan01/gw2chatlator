@@ -27,4 +27,6 @@ It uses no CUDA runtime and does not load into the GW2 process.
 5. Microsoft OpenMP runtime (vcomp140.dll)
    Part of Microsoft Visual C++ and redistributed under its licence terms as a redistributable file, unmodified.
 
-This notice file applies to the helper module. OPUS-MT weights are separate, optional downloads.
+   NLLB-200 (Meta, CC-BY-NC-4.0, non-commercial) and M2M100 (Meta, MIT) are packaged the same way.
+
+This notice file applies to the helper module. Model weights are separate, optional downloads.
