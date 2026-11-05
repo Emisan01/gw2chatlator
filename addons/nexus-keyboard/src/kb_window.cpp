@@ -972,13 +972,13 @@ void RenderWindow() {
                 if (overArrow) {
                     ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
                     dl->AddRectFilled(ImVec2(x0 + 1.0f, a.y), b,
-                                      IM_COL32(255, 255, 255, ImGui::IsMouseDown(ImGuiMouseButton_Left) ? 35 : 20),
+                                      ImGui::GetColorU32(ImGui::IsMouseDown(ImGuiMouseButton_Left) ? ImGuiCol_ButtonActive : ImGuiCol_ButtonHovered),
                                       ImGui::GetStyle().TabRounding, ImDrawCornerFlags_TopRight);
                 }
-                dl->AddLine(ImVec2(x0, a.y + 4.0f), ImVec2(x0, b.y - 4.0f), IM_COL32(255, 255, 255, 30), 1.0f);
+                dl->AddLine(ImVec2(x0, a.y + 4.0f), ImVec2(x0, b.y - 4.0f), ImGui::GetColorU32(ImGuiCol_Separator), 1.0f);
                 const ImVec2 c(x0 + 1.0f + arrowW * 0.5f, (a.y + b.y) * 0.5f);
                 const float u = ImGui::GetFontSize() / 16.0f;
-                const ImU32 col = overArrow ? IM_COL32(255, 255, 255, 255) : IM_COL32(170, 175, 195, 255);
+                const ImU32 col = ImGui::GetColorU32(overArrow ? ImGuiCol_Text : ImGuiCol_TextDisabled);
                 dl->AddLine(ImVec2(c.x - 3.5f * u, c.y - 1.5f * u), ImVec2(c.x, c.y + 2.0f * u), col, 1.5f * u);
                 dl->AddLine(ImVec2(c.x, c.y + 2.0f * u), ImVec2(c.x + 3.5f * u, c.y - 1.5f * u), col, 1.5f * u);
                 const bool hovered = ImGui::IsItemHovered();

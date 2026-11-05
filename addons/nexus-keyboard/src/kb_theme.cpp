@@ -332,14 +332,12 @@ void MicControl(const char* id, float height, std::unique_lock<std::mutex>* call
     const float micW = std::floor(h * 1.15f);
     const float arrowW = std::floor(h * 0.75f);
     const float totalW = micW + 1.0f + arrowW;
-    const float r = 5.0f;
+    const float r = ImGui::GetStyle().FrameRounding;
     const int layer = MicLayer();
 
     // Background pill
     const ImVec2 pillMax(p.x + totalW, p.y + h);
-    dl->AddRectFilled(p, pillMax, IM_COL32(32, 35, 45, 220), r);
-    dl->AddRect(p, pillMax, IM_COL32(62, 68, 86, 180), r, ImDrawCornerFlags_All, 1.0f);
-    dl->AddLine(ImVec2(p.x + 4.0f, p.y + 1.0f), ImVec2(p.x + totalW - 4.0f, p.y + 1.0f), IM_COL32(255, 255, 255, 25), 1.0f);
+    dl->AddRectFilled(p, pillMax, ImGui::GetColorU32(ImGuiCol_Button), r);
 
     // Left Button: Mic
     const std::string micId = std::string(id) + "_mic";
@@ -351,7 +349,7 @@ void MicControl(const char* id, float height, std::unique_lock<std::mutex>* call
 
     if (micHovered) {
         ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-        dl->AddRectFilled(p, ImVec2(p.x + micW, p.y + h), IM_COL32(255, 255, 255, micActive ? 35 : 20), r, ImDrawCornerFlags_Left);
+        dl->AddRectFilled(p, ImVec2(p.x + micW, p.y + h), ImGui::GetColorU32(micActive ? ImGuiCol_ButtonActive : ImGuiCol_ButtonHovered), r, ImDrawCornerFlags_Left);
     }
 
     if (micClicked) {
@@ -400,9 +398,8 @@ void MicControl(const char* id, float height, std::unique_lock<std::mutex>* call
     // Draw the Mic Icon
     const ImVec2 micC(p.x + micW * 0.5f, p.y + h * 0.5f);
     const float u = h / 20.0f;
-    const ImU32 micCol = (layer == 2) ? IM_COL32(235, 80, 80, 255)
-                                      : micHovered ? IM_COL32(255, 255, 255, 255)
-                                                   : IM_COL32(200, 205, 220, 255);
+    const ImU32 micCol = (layer == 2) ? IM_COL32(235, 80, 80, 255)  // red while it listens, on every theme
+                                      : ImGui::GetColorU32(ImGuiCol_Text, micHovered ? 1.0f : 0.8f);
     dl->AddRectFilled(ImVec2(micC.x - 2.5f * u, micC.y - 6.0f * u), ImVec2(micC.x + 2.5f * u, micC.y + 1.5f * u), micCol, 2.5f * u);
     dl->PathArcTo(ImVec2(micC.x, micC.y - 1.0f * u), 4.5f * u, 0.0f, 3.14159f, 10);
     dl->PathStroke(micCol, false, 1.4f * u);
@@ -410,7 +407,7 @@ void MicControl(const char* id, float height, std::unique_lock<std::mutex>* call
     dl->AddLine(ImVec2(micC.x - 3.0f * u, micC.y + 6.0f * u), ImVec2(micC.x + 3.0f * u, micC.y + 6.0f * u), micCol, 1.4f * u);
     if (layer == 0) {
         // Strike-through slash from bottom-left to top-right (Discord style)
-        dl->AddLine(ImVec2(micC.x - 6.5f * u, micC.y + 6.5f * u), ImVec2(micC.x + 6.5f * u, micC.y - 6.5f * u), IM_COL32(20, 22, 28, 255), 3.0f * u);
+        dl->AddLine(ImVec2(micC.x - 6.5f * u, micC.y + 6.5f * u), ImVec2(micC.x + 6.5f * u, micC.y - 6.5f * u), ImGui::GetColorU32(ImGuiCol_WindowBg), 3.0f * u);
         dl->AddLine(ImVec2(micC.x - 6.0f * u, micC.y + 6.0f * u), ImVec2(micC.x + 6.0f * u, micC.y - 6.0f * u), micCol, 1.6f * u);
     }
 
@@ -421,7 +418,7 @@ void MicControl(const char* id, float height, std::unique_lock<std::mutex>* call
 
     // Divider line
     const float divX = p.x + micW;
-    dl->AddLine(ImVec2(divX, p.y + 4.0f), ImVec2(divX, p.y + h - 4.0f), IM_COL32(255, 255, 255, 30), 1.0f);
+    dl->AddLine(ImVec2(divX, p.y + 4.0f), ImVec2(divX, p.y + h - 4.0f), ImGui::GetColorU32(ImGuiCol_Separator), 1.0f);
 
     // Right Button: Arrow
     const std::string arrowId = std::string(id) + "_arr";
@@ -432,7 +429,7 @@ void MicControl(const char* id, float height, std::unique_lock<std::mutex>* call
 
     if (arrowHovered) {
         ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-        dl->AddRectFilled(ImVec2(divX + 1.0f, p.y), pillMax, IM_COL32(255, 255, 255, arrowActive ? 35 : 20), r, ImDrawCornerFlags_Right);
+        dl->AddRectFilled(ImVec2(divX + 1.0f, p.y), pillMax, ImGui::GetColorU32(arrowActive ? ImGuiCol_ButtonActive : ImGuiCol_ButtonHovered), r, ImDrawCornerFlags_Right);
         ImGui::SetTooltip("%s", UI(Tr(L"Voice Settings")).c_str());
     }
     if (arrowClicked) {
@@ -441,7 +438,7 @@ void MicControl(const char* id, float height, std::unique_lock<std::mutex>* call
 
     // Draw down-chevron
     const ImVec2 arrC(divX + 1.0f + arrowW * 0.5f, p.y + h * 0.5f);
-    const ImU32 arrCol = arrowHovered ? IM_COL32(255, 255, 255, 255) : IM_COL32(170, 175, 195, 255);
+    const ImU32 arrCol = ImGui::GetColorU32(arrowHovered ? ImGuiCol_Text : ImGuiCol_TextDisabled);
     dl->AddLine(ImVec2(arrC.x - 3.5f * u, arrC.y - 1.5f * u), ImVec2(arrC.x, arrC.y + 2.0f * u), arrCol, 1.5f * u);
     dl->AddLine(ImVec2(arrC.x, arrC.y + 2.0f * u), ImVec2(arrC.x + 3.5f * u, arrC.y - 1.5f * u), arrCol, 1.5f * u);
 
@@ -532,12 +529,7 @@ void RenderDiscordVoiceMenu() {
                              ImGuiWindowFlags_AlwaysAutoResize |
                              ImGuiWindowFlags_NoSavedSettings;
 
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.12f, 0.13f, 0.17f, 0.98f));
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.26f, 0.28f, 0.36f, 0.85f));
-    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.20f, 0.23f, 0.32f, 1.00f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.28f, 0.32f, 0.45f, 1.00f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.24f, 0.28f, 0.40f, 1.00f));
-    ImGui::PushStyleColor(ImGuiCol_Separator, ImVec4(0.24f, 0.26f, 0.32f, 0.80f));
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImGui::GetStyleColorVec4(ImGuiCol_PopupBg));  // like every other menu of ours
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 8.0f));
@@ -600,7 +592,7 @@ void RenderDiscordVoiceMenu() {
     }
     ImGui::End();
     ImGui::PopStyleVar(4);
-    ImGui::PopStyleColor(6);
+    ImGui::PopStyleColor();
 }
 
 }  // namespace kb
