@@ -85,7 +85,24 @@ int PushTheme() {
     for (const auto& col : colours) ImGui::PushStyleColor(col.first, col.second);
     return static_cast<int>(std::size(colours));
 }
-ImVec4 UiAccent() { return ImGui::GetStyleColorVec4(ImGuiCol_SliderGrabActive); }
+static uint32_t RgbOf(const ImVec4& c) {
+    const auto byte = [](float v) { return static_cast<uint32_t>(std::clamp(v, 0.0f, 1.0f) * 255.0f + 0.5f); };
+    return (byte(c.x) << 16) | (byte(c.y) << 8) | byte(c.z);
+}
+// Our themes have an accent of their own. Nexus' themes may have a grip as dark as their fields, or a plain grey one:
+// as text that is unreadable or no accent, so a quiet blue-grey takes its place, moved as far as a light theme needs.
+ImVec4 UiAccent() {
+    const ImVec4 grip = ImGui::GetStyleColorVec4(ImGuiCol_SliderGrabActive);
+    if (g_theme != Theme::Nexus) return grip;
+    const ImVec4& frame = ImGui::GetStyleColorVec4(ImGuiCol_FrameBg);
+    const uint32_t bg = RgbOf(ImGui::GetStyleColorVec4(ImGuiCol_WindowBg));
+    const uint32_t field = MixRgb(bg, RgbOf(frame), frame.w);
+    const uint32_t own = RgbOf(grip);
+    const float coloured = std::max({grip.x, grip.y, grip.z}) - std::min({grip.x, grip.y, grip.z});
+    if (coloured > 0.12f && ContrastRatio(own, bg) >= 3.0 && ContrastRatio(own, field) >= 3.0) return ImVec4(grip.x, grip.y, grip.z, 1.f);
+    const uint32_t quiet = EnsureContrast(0xA8B8CC, {bg, field}, 3.0);
+    return ImVec4(((quiet >> 16) & 0xFF) / 255.f, ((quiet >> 8) & 0xFF) / 255.f, (quiet & 0xFF) / 255.f, 1.f);
+}
 const wchar_t* ThemeKey(Theme t) {
     return t == Theme::Nexus ? L"nexus" : t == Theme::Grey ? L"grey" : t == Theme::Cba ? L"cba" : L"slate";
 }
