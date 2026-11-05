@@ -85,6 +85,7 @@ int PushTheme() {
     for (const auto& col : colours) ImGui::PushStyleColor(col.first, col.second);
     return static_cast<int>(std::size(colours));
 }
+ImVec4 UiAccent() { return ImGui::GetStyleColorVec4(ImGuiCol_SliderGrabActive); }
 const wchar_t* ThemeKey(Theme t) {
     return t == Theme::Nexus ? L"nexus" : t == Theme::Grey ? L"grey" : t == Theme::Cba ? L"cba" : L"slate";
 }

@@ -55,7 +55,7 @@ WinAnchor g_winPressed;        // where it was when the mouse went down (a move 
 int g_previewRows = 1;         // the preview's wrapped lines as last drawn (it grows with them, like the input)
 ULONGLONG g_ownDownAt = 0;     // our own hold-and-drag (the input, the mini window): when the press began – in this
 bool g_ownMoving = false;      // shape only; a new mode ends it (a stale press once dragged the opened window along)
-static const ImVec4 kAccent(0.94f, 0.75f, 0.35f, 1.f);
+static const ImVec4 kInfoWarm(0.94f, 0.75f, 0.35f, 1.f);  // the info texts and what went wrong: warm on every theme
 
 void ProcessBufferedKeys() {
     // Your keys since a send let go of the keyboard go into our input once it is done – or once it stopped moving
@@ -608,12 +608,12 @@ void RenderFooter() {  // g_mu held
         ImGui::EndPopup();
     }
 
-    // What the chat gets (orange); who translates is told by the status line.
+    // What the chat gets (the theme's accent); who translates is told by the status line.
     ImGui::SameLine();
     const ImVec2 sendBtnPos = ImGui::GetCursorScreenPos();
     const float sendBtnW = narrow ? s_fc.sendWNarrow : s_fc.sendWFull;
     const std::string& sendBtnLabel = narrow ? s_fc.sendBtnNarrow : s_fc.sendBtnFull;
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.94f, 0.75f, 0.35f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_Text, UiAccent());
     const bool sendLeft = ImGui::Button(sendBtnLabel.c_str(), ImVec2(sendBtnW, iconH));
     ImGui::PopStyleColor();
     const bool sendRight = ImGui::IsItemHovered() && ImGui::IsMouseClicked(1);
@@ -629,7 +629,7 @@ void RenderFooter() {  // g_mu held
     }
     if (g_myMemorySessionFallback) {
         ImGui::SameLine();
-        ImGui::PushStyleColor(ImGuiCol_Text, kAccent);
+        ImGui::PushStyleColor(ImGuiCol_Text, UiAccent());
         const std::string fbLabel = UI(Tr(L"MyMemory (fallback)"));
         if (ImGui::Button((fbLabel + "##fbchip").c_str())) {
             g_myMemorySessionFallback = false;
@@ -1271,7 +1271,7 @@ void RenderWindow() {
                 g_win.height = std::clamp(g_win.height - d.y, space.minH, std::max(space.minH, g_win.bottom));
             }
         }
-        const ImU32 mark = hot ? ImGui::GetColorU32(ImVec4(0.94f, 0.75f, 0.35f, 1.f)) : ImGui::GetColorU32(ImGuiCol_TextDisabled, 0.55f);
+        const ImU32 mark = hot ? ImGui::GetColorU32(UiAccent()) : ImGui::GetColorU32(ImGuiCol_TextDisabled, 0.55f);
         for (int i = 1; i <= 3; ++i) {
             const float at = cornerW * i / 3.0f;
             self->DrawList->AddLine(ImVec2(tr.x - at, tr.y), ImVec2(tr.x, tr.y + at), mark, hot ? 1.6f : 1.0f);
@@ -1711,7 +1711,7 @@ void RenderWindow() {
                 case TranslateErrorKind::Quota: cause = Tr(L"Translation quota exceeded"); break;
                 default: cause = Tr(L"Translation failed"); break;
             }
-            ImGui::TextColored(kAccent, "%s", UI(cause).c_str());
+            ImGui::TextColored(kInfoWarm, "%s", UI(cause).c_str());
             ImGui::SameLine();
             if (ImGui::Button((UI(Tr(L"→ MyMemory")) + "##btn_mymem").c_str())) {
                 g_myMemorySessionFallback = true;
@@ -1753,7 +1753,7 @@ void RenderWindow() {
                 for (size_t i = 0; i < g_previewVersions.size(); ++i) {
                     if (i) ImGui::SameLine(0.0f, ImGui::GetFontSize() * 0.25f);
                     const bool on = i == g_previewPick;
-                    if (on) ImGui::PushStyleColor(ImGuiCol_Button, kAccent);
+                    if (on) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
                     const bool clicked = ImGui::SmallButton((std::to_string(i + 1) + "##version" + std::to_string(i)).c_str());
                     if (on) ImGui::PopStyleColor();
                     if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", U8(g_previewVersions[i]).c_str());
@@ -1801,8 +1801,11 @@ void RenderWindow() {
             if (hot) dl->AddRectFilled(a, b, ImGui::GetColorU32(ImGuiCol_FrameBgHovered));
             const ImVec2 size = ImGui::CalcTextSize(word.c_str());
             const bool pick = g_pick >= 0 ? i == g_pick : i == g_help.bar.autoIndex;
-            dl->AddText(ImVec2((a.x + b.x - size.x) * 0.5f, a.y + (h - size.y) * 0.5f),
-                        pick ? ImGui::GetColorU32(kAccent) : ImGui::GetColorU32(ImGuiCol_Text), word.c_str());
+            const ImVec2 wordAt((a.x + b.x - size.x) * 0.5f, a.y + (h - size.y) * 0.5f);
+            const ImU32 accent = ImGui::GetColorU32(UiAccent());
+            dl->AddText(wordAt, pick ? accent : ImGui::GetColorU32(ImGuiCol_Text), word.c_str());
+            // on a grey theme the colour alone hardly shows which word Space takes
+            if (pick) dl->AddLine(ImVec2(wordAt.x, wordAt.y + size.y), ImVec2(wordAt.x + size.x, wordAt.y + size.y), accent);
         }
         ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + h + st.ItemSpacing.y));
     }
@@ -2097,14 +2100,14 @@ void RenderWindow() {
                 s_lastStatusFit = Fit(UI(stW), availW);
             }
             if (g_layout.infoText || !g_status.empty())
-                BoxText(textAt, clip, g_status.empty() ? ImGui::GetColorU32(ImGuiCol_TextDisabled) : ImGui::GetColorU32(kAccent),
+                BoxText(textAt, clip, g_status.empty() ? ImGui::GetColorU32(ImGuiCol_TextDisabled) : ImGui::GetColorU32(kInfoWarm),
                         s_lastStatusFit);
         }
     } else if (!g_status.empty()) {
         const std::string s = Fit(UI(g_status), (inputMax.x - inputMin.x) * 0.6f);
         const float w = ImGui::CalcTextSize(s.c_str()).x * 0.85f;
         BoxText(ImVec2(inputMax.x - w - st.FramePadding.x - st.ScrollbarSize, inputMax.y - smallLine - 1), clip,
-                ImGui::GetColorU32(kAccent), s, 0.85f);
+                ImGui::GetColorU32(kInfoWarm), s, 0.85f);
     }
     // Compact view: what the chat will get, small in the box's last line (instead of the preview above).
     if (!showPreview && g_input[0] && ((Translating() && (previewCurrent || g_layout.infoText)) || NamesSwapped())) {

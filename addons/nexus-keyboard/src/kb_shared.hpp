@@ -167,6 +167,7 @@ uint32_t CbaShown(int role);
 const ThemeColours* ColoursOf(Theme t);
 extern Theme g_theme;
 int PushTheme();
+ImVec4 UiAccent();  // what stands out without being a warning: follows the chosen theme, Nexus' own too
 const wchar_t* ThemeKey(Theme t);
 
 extern MyWords g_myWords;

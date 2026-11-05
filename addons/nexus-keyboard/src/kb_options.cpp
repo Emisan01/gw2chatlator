@@ -357,7 +357,6 @@ constexpr ImU32 kOnGreen = IM_COL32(47, 158, 101, 255);
 constexpr ImU32 kOffTrack = IM_COL32(58, 61, 68, 255);
 constexpr ImU32 kReadyGreen = IM_COL32(95, 211, 145, 255);
 constexpr ImU32 kMissingOrange = IM_COL32(233, 167, 90, 255);
-const ImVec4 kSendOrange(0.94f, 0.75f, 0.35f, 1.f);  // the footer's colour for what the chat gets
 
 struct BoxFrame {
     ImVec2 at;
@@ -905,7 +904,7 @@ void RenderSendRow() {
     const std::string shown = g_sendIdx >= 0 && g_sendIdx < n ? U8(NativeName(g_cfg.writeLangs[static_cast<size_t>(g_sendIdx)]))
                                                               : UI(Tr(L"as written"));
     ImGui::SetNextItemWidth(ControlW());
-    ImGui::PushStyleColor(ImGuiCol_Text, kSendOrange);
+    ImGui::PushStyleColor(ImGuiCol_Text, UiAccent());
     const bool open = ImGui::BeginCombo("##send", shown.c_str());
     ImGui::PopStyleColor();
     if (open) {
@@ -1249,7 +1248,7 @@ void RenderStartPage(Config& edit) {
     RenderUiLanguageRow(edit);
     auto badge = [](const char* key, const std::string& what) {
         ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
-        ImGui::PushStyleColor(ImGuiCol_Text, kSendOrange);
+        ImGui::PushStyleColor(ImGuiCol_Text, UiAccent());
         ImGui::SmallButton(key);
         ImGui::PopStyleColor(2);
         ImGui::SameLine(0, ImGui::GetFontSize() * 0.35f);
@@ -1515,7 +1514,7 @@ void RenderVoicePage(Config& edit, bool entered) {
     RowLabel(UI(Tr(L"Push-to-talk key")));
     const std::string keyDisplay = g_captureKey ? UI(Tr(L"press a key … (Esc: cancel)"))
                                                 : UI(edit.voiceGlobalKey.empty() ? Tr(L"none") : edit.voiceGlobalKey);
-    ImGui::TextColored(kSendOrange, "[ %s ]", keyDisplay.c_str());
+    ImGui::TextColored(UiAccent(), "[ %s ]", keyDisplay.c_str());
     ImGui::SameLine();
     if (ImGui::Button(UI(Tr(L"Set key…")).c_str())) g_captureKey = true;
     ImGui::SameLine();
@@ -1868,7 +1867,7 @@ void RenderCpuLoad() {
     bar(Tr(L"Voice helper"), g_cpuNow.voice, g_cpuPeak.voice, ours);
     bar(Tr(L"Our threads"), g_cpuNow.threads, g_cpuPeak.threads, ours);
     bar(Tr(L"Our drawing"), g_cpuNow.draw, g_cpuPeak.draw, ours);
-    bar(Tr(L"We together"), g_cpuNow.ours, g_cpuPeak.ours, ImVec4(0.94f, 0.75f, 0.35f, 1.f));
+    bar(Tr(L"We together"), g_cpuNow.ours, g_cpuPeak.ours, UiAccent());
     bar(Tr(L"The game"), g_cpuNow.game, g_cpuPeak.game, other);
     bar(Tr(L"The whole PC"), g_cpuNow.pc, g_cpuPeak.pc, other);
     if (g_cpuPeakAt) {
@@ -1938,7 +1937,7 @@ void RenderTranslatorLive() {
         LiveCells(static_cast<int>(std::min(logical, 16u)), threadsNow, ImVec4(0.55f, 0.75f, 0.95f, 1.f));
         ImGui::TextUnformatted(UI(TrF(L"{1} threads on {2} cores", {std::to_wstring(threadsNow), std::to_wstring(coresNow)})).c_str());
         row(Tr(L"Queue"));
-        LiveCells(8, static_cast<int>(std::min<size_t>(waitingNow, 8)), ImVec4(0.94f, 0.75f, 0.35f, 1.f));
+        LiveCells(8, static_cast<int>(std::min<size_t>(waitingNow, 8)), UiAccent());
         const std::wstring waitingText = std::to_wstring(waitingNow);
         ImGui::TextUnformatted(UI(stepDown ? TrF(L"{1} waiting, steps down above 2", {waitingText})
                                            : TrF(L"{1} waiting, stepping down is off", {waitingText})).c_str());
