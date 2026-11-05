@@ -134,10 +134,11 @@ int InputCallback(ImGuiInputTextCallbackData* d) {
                 }
                 break;
             }
-            // Soft line breaks: the text is broken to the box's width (only when it changed) – at the last space of a line,
+            // Soft line breaks: the text is broken to the box's width (only when it or the width changed) – at the last space of a line,
             // or inside a word that is longer than the line (a code, a link). The caret keeps its place in the text.
             if (g_wrapWidth > 0) {
                 static std::string lastSeen;
+                static float lastWidth = 0.0f;
                 std::string raw(d->Buf, d->BufTextLen);
                 int cursor = d->CursorPos;
                 for (size_t i = 0; i < raw.size(); ++i)  // Backspace took the line end of a broken word: the letter before
@@ -149,7 +150,8 @@ int InputCallback(ImGuiInputTextCallbackData* d) {
                         cursor = static_cast<int>(start);
                         break;
                     }
-                if (raw != lastSeen) {
+                if (raw != lastSeen || std::fabs(g_wrapWidth - lastWidth) > 0.5f) {
+                    lastWidth = g_wrapWidth;
                     const std::string flat = Flat(raw.c_str());
                     const size_t flatCursor = Flat(raw.substr(0, std::min<size_t>(cursor, raw.size())).c_str()).size();
                     std::string out;

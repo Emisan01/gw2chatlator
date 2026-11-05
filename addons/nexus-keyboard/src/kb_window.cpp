@@ -1904,7 +1904,9 @@ void RenderWindow() {
     g_wrapWidth = inputW - st.FramePadding.x * 2 - st.ScrollbarSize - 4;
     const ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CtrlEnterForNewLine |
                                       ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_CallbackCharFilter |
-                                      ImGuiInputTextFlags_CallbackAlways;
+                                      ImGuiInputTextFlags_CallbackAlways |
+                                      // we break the lines ourselves; ImGui keeps a sideways scroll across clicks, from a time the box was narrower
+                                      ImGuiInputTextFlags_NoHorizontalScroll;
     // Intercept Esc before InputTextMultiline so ImGui (imgui_widgets.cpp) does not revert the text to pre-edit state
     const int escKey = ImGui::GetKeyIndex(ImGuiKey_Escape);
     if (escKey >= 0 && io.KeysDown[escKey]) {
