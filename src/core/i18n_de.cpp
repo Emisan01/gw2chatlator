@@ -1459,6 +1459,10 @@ extern const I18nEntry kGermanStrings[] = {
      "Beim Tippen mitübersetzen"},
     {L"At every word's end, so that Enter often finds it ready. Costs CPU while you type.",
      "An jedem Wortende, damit Enter es oft schon fertig vorfindet. Kostet beim Tippen CPU."},
+    {L"Click: translate the chat in view once. Right-click: translating new lines on or off.",
+     "Klick: sichtbaren Chat einmal übersetzen. Rechtsklick: neue Zeilen übersetzen an oder aus."},
+    {L"Off: hides the window and stops reading the chat. Ctrl+Alt+K switches it on again.",
+     "Aus: versteckt das Fenster und liest den Chat nicht mehr. Strg+Alt+K schaltet wieder ein."},
 };
 extern const size_t kGermanCount = sizeof(kGermanStrings) / sizeof(kGermanStrings[0]);
 

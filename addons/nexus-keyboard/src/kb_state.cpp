@@ -111,6 +111,8 @@ std::wstring g_lastSendTrace;
 std::vector<std::wstring> g_previewVersions, g_previewBacks;
 size_t g_previewPick = 0;
 std::deque<MtRun> g_mtRuns;
+std::atomic<int> g_mtWorking{0};
+bool g_closedWithX = false;
 bool g_showMtLive = false;
 gct::CpuUse g_cpuNow, g_cpuPeak, g_cpuAtPeak;
 ULONGLONG g_cpuPeakAt = 0;

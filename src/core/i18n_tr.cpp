@@ -1459,6 +1459,10 @@ extern const I18nEntry kTurkishStrings[] = {
      "Yazarken çevir"},
     {L"At every word's end, so that Enter often finds it ready. Costs CPU while you type.",
      "Her kelime sonunda, böylece Enter çoğu zaman hazır bulur. Yazarken işlemci harcar."},
+    {L"Click: translate the chat in view once. Right-click: translating new lines on or off.",
+     "Tık: görünen sohbeti bir kez çevir. Sağ tık: yeni satırları çevirmeyi aç veya kapat."},
+    {L"Off: hides the window and stops reading the chat. Ctrl+Alt+K switches it on again.",
+     "Kapat: pencereyi gizler ve sohbeti okumayı durdurur. Ctrl+Alt+K yeniden açar."},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

@@ -467,6 +467,12 @@ void LoadTestTick();
 void LoadTestLine(int index);
 
 extern std::deque<MtRun> g_mtRuns;  // the newest last (g_mu)
+extern std::atomic<int> g_mtWorking;  // translations running now: the light in the header
+struct MtWorking {
+    MtWorking() { ++g_mtWorking; }
+    ~MtWorking() { --g_mtWorking; }
+};
+extern bool g_closedWithX;  // the X switched the window and the reading off: showing it again switches both on (g_mu)
 extern bool g_showMtLive;
 void NoteMtRun(MtRun run);  // g_mu held
 // What we cost the CPU: over the last half second, each part's highest of this session, all parts at our highest (render thread).

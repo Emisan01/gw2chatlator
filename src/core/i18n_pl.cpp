@@ -1459,6 +1459,10 @@ extern const I18nEntry kPolishStrings[] = {
      "Tłumacz podczas pisania"},
     {L"At every word's end, so that Enter often finds it ready. Costs CPU while you type.",
      "Na końcu każdego słowa, by Enter często zastał ją gotową. Kosztuje CPU podczas pisania."},
+    {L"Click: translate the chat in view once. Right-click: translating new lines on or off.",
+     "Klik: przetłumacz raz widoczny czat. Prawy klik: tłumaczenie nowych linii wł. lub wył."},
+    {L"Off: hides the window and stops reading the chat. Ctrl+Alt+K switches it on again.",
+     "Wyłącz: ukrywa okno i przestaje czytać czat. Ctrl+Alt+K włącza ponownie."},
 };
 extern const size_t kPolishCount = sizeof(kPolishStrings) / sizeof(kPolishStrings[0]);
 

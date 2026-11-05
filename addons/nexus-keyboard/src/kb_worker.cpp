@@ -110,6 +110,7 @@ static long long MsFrom(std::chrono::steady_clock::time_point t0) {
 
 void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once, std::wstring forceTarget) {
     AssertNotInteractiveLane("TranslateLine");
+    MtWorking working;
     const long long queuedMs = g_jobWaitedMs;
     const auto lineStarted = std::chrono::steady_clock::now();
     std::shared_ptr<Translator> tr;
@@ -366,6 +367,7 @@ int TranslateRecentLines(bool once) {  // g_mu held; how many lines of other pla
 // The input into the chat's language.
 void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
     AssertNotInteractiveLane("TranslateInput");
+    MtWorking working;
     const long long queuedMs = g_jobWaitedMs;
     const auto inputStarted = std::chrono::steady_clock::now();
     std::shared_ptr<Translator> tr;
@@ -559,6 +561,7 @@ void LoadTestTick() {
 
 void LoadTestLine(int index) {
     AssertNotInteractiveLane("LoadTestLine");
+    MtWorking working;
     static const wchar_t* const kEnglish[] = {
         L"anyone want to join the world boss train tonight", L"looking for a guild that runs raids on weekends",
         L"how many stacks of might do we need for this boss", L"the commander is waiting at the north tower with supply",
@@ -600,6 +603,7 @@ void LoadTestLine(int index) {
 // Another version chosen in the preview: its back-translation, once.
 void BackTranslateVersion(uint64_t gen, size_t pick, std::wstring version) {
     AssertNotInteractiveLane("BackTranslateVersion");
+    MtWorking working;
     std::shared_ptr<Translator> tr;
     std::wstring target, typing;
     int quality;

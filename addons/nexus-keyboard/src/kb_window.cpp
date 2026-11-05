@@ -300,6 +300,16 @@ void DragWindow(const ImVec2& d) {
 }
 }  // namespace
 
+// The chat in view, once – and what happens: a local translator first loads its model, that can take a moment (g_mu held).
+static void TranslateViewOnce() {
+    if (const int n = TranslateRecentLines(true); n == 0)
+        SetStatus(Tr(L"No chat lines of other players in view"), 4000);
+    else
+        SetStatus(TrF(L"{1} chat lines in view – foreign ones are being translated with {2} …",
+                      {std::to_wstring(n), g_translator ? TranslatorTag(g_translator, g_cfg.localQuality) : std::wstring(L"-")}),
+                  8000);
+}
+
 // Fonts & scaling: UI (header, footer, popups, options window) follows FollowUiPx(); chat follows fontPt.
 // ScopedFont applies the target size smoothly without reverting during drag, and restores previous scale at scope exit.
 struct ScopedFont {
@@ -887,7 +897,8 @@ void RenderWindow() {
     const float gap = std::round(icon * 0.6f);
     const float micPillW = std::floor(icon * 1.15f) + 1.0f + std::floor(icon * 0.75f);
     const float cornerW = Lay().header ? std::floor(ImGui::GetFontSize() * 0.8f) : 0.0f;  // the corner top right has its place
-    const float rightW = (g_cfg.voiceEnabled ? micPillW + gap : 0) + icon + gap + icon + st.ItemSpacing.x + icon + cornerW;
+    const float ledW = std::round(icon * 0.7f);  // the translation light
+    const float rightW = ledW + st.ItemSpacing.x + (g_cfg.voiceEnabled ? micPillW + gap : 0) + icon + gap + icon + st.ItemSpacing.x + icon + cornerW;
     const float tabsW = std::max(60.0f, ImGui::GetContentRegionAvail().x - rightW - gap);
     bool newTab = false, tabMenu = false;
     static bool s_lineRightClick = false;  // a right-click on a chat line (its menu, not the header's)
@@ -1154,6 +1165,27 @@ void RenderWindow() {
     }
     if (Lay().header) {
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - rightW);
+        {  // The light: grey off, a quiet green while the chat is translated, bright while something is being translated.
+           // A click translates the chat in view once, a right-click switches translating new lines on or off.
+            static ULONGLONG s_litUntil = 0;
+            const ULONGLONG nowLit = GetTickCount64();
+            if (g_mtWorking.load() > 0) s_litUntil = nowLit + 200;
+            const bool lit = nowLit < s_litUntil;
+            const ImVec2 at = ImGui::GetCursorScreenPos();
+            if (ImGui::InvisibleButton("##led", ImVec2(ledW, icon))) TranslateViewOnce();
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) SetChatTranslation(!g_nx.translateChat);
+            const bool ledHot = ImGui::IsItemHovered();
+            if (ledHot) ImGui::SetTooltip("%s", UI(Tr(L"Click: translate the chat in view once. Right-click: translating new lines on or off.")).c_str());
+            const ImVec4 glow = lit ? ImVec4(0.42f, 0.92f, 0.48f, 1.f)
+                                    : g_nx.translateChat ? ImVec4(0.20f, 0.46f, 0.27f, 1.f) : ImVec4(0.26f, 0.27f, 0.29f, 1.f);
+            const ImVec2 center(at.x + ledW * 0.5f, at.y + icon * 0.5f);
+            const float radius = icon * (ledHot ? 0.2f : 0.17f);
+            ImDrawList* ledDraw = ImGui::GetWindowDrawList();
+            if (lit) ledDraw->AddCircleFilled(center, radius * 1.9f, ImGui::GetColorU32(ImVec4(0.42f, 0.92f, 0.48f, 0.18f)), 20);
+            ledDraw->AddCircleFilled(center, radius, ImGui::GetColorU32(glow), 20);
+            ledDraw->AddCircle(center, radius, ImGui::GetColorU32(ImVec4(0.f, 0.f, 0.f, 0.55f)), 20);
+            ImGui::SameLine();
+        }
         if (g_cfg.voiceEnabled) {
             MicControl("##hdr_mic", icon, &lock);
             ImGui::SameLine(0, gap);
@@ -1190,15 +1222,7 @@ void RenderWindow() {
                 ImGui::SetTooltip("%s", UI(Tr(L"Nothing but the input with its help. Three quick clicks on it minimise it; right-click in it: Menu … brings the rest back.")).c_str());
             if (const bool compact = ProfileOn(0); ImGui::MenuItem(UI(Tr(L"Compact view")).c_str(), nullptr, compact))
                 SetProfile(0, !compact);
-            if (ImGui::MenuItem(UI(Tr(L"Translate visible chat once")).c_str(), UI(MyMemoryLeftText()).c_str())) {
-                // say what happens: a local translator first loads its model, that can take a moment
-                if (const int n = TranslateRecentLines(true); n == 0)
-                    SetStatus(Tr(L"No chat lines of other players in view"), 4000);
-                else
-                    SetStatus(TrF(L"{1} chat lines in view – foreign ones are being translated with {2} …",
-                                  {std::to_wstring(n), g_translator ? TranslatorTag(g_translator, g_cfg.localQuality) : std::wstring(L"-")}),
-                            8000);
-            }
+            if (ImGui::MenuItem(UI(Tr(L"Translate visible chat once")).c_str(), UI(MyMemoryLeftText()).c_str())) TranslateViewOnce();
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", UI(Tr(L"What you see of the chat, into the language you write in – once, by the automatic translation's rule: lines in your language, in languages you understand or too short to tell stay as they are (a click on a line translates it anyway).")).c_str());
             if (ImGui::MenuItem(UI(Tr(L"Translate the chat")).c_str(), "Ctrl+Alt+T", g_nx.translateChat)) {
@@ -1222,7 +1246,12 @@ void RenderWindow() {
     RenderSnippets();
     if (Lay().header) {
         ImGui::SameLine();
-        if (IconButton("##close", Icon::Close, false, nullptr)) g_show = false;
+        if (IconButton("##close", Icon::Close, false, nullptr)) {  // the tool off: no window, no reading; its key brings both back
+            g_show = false;
+            g_closedWithX = true;
+            ChatSourceSetReading(false, true);
+        }
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Off: hides the window and stops reading the chat. Ctrl+Alt+K switches it on again.")).c_str());
         // The corner top right, like GW2's own chat: drag it and the window grows up and to the right; its left and bottom
         // stay. Quiet until the mouse is on it.
         ImGuiWindow* self = ImGui::GetCurrentWindow();

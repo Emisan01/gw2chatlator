@@ -1459,6 +1459,10 @@ extern const I18nEntry kRussianStrings[] = {
      "Переводить при наборе"},
     {L"At every word's end, so that Enter often finds it ready. Costs CPU while you type.",
      "В конце каждого слова, чтобы Enter часто находил готовый перевод. Нагружает ЦП при наборе."},
+    {L"Click: translate the chat in view once. Right-click: translating new lines on or off.",
+     "Клик: перевести видимый чат один раз. Правый клик: перевод новых строк вкл. или выкл."},
+    {L"Off: hides the window and stops reading the chat. Ctrl+Alt+K switches it on again.",
+     "Выкл.: скрывает окно и перестаёт читать чат. Ctrl+Alt+K включает снова."},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

@@ -116,13 +116,22 @@ UINT OnWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 }
 
 void OnToggle(const char*, bool release) {
-    if (!release) g_show = !g_show;
+    if (release) return;
+    g_show = !g_show;
+    if (g_show && g_closedWithX) {
+        g_closedWithX = false;
+        ChatSourceSetReading(true, false);
+    }
 }
 void OnFocusKey(const char*, bool release) {
     if (release) return;
     std::lock_guard<std::mutex> lock(g_mu);
     g_show = true;
     g_focusInput = true;
+    if (g_closedWithX) {
+        g_closedWithX = false;
+        ChatSourceSetReading(true, true);
+    }
 }
 
 // The first start: what GW2 Keyboard needs comes by itself – Events: Chat (Nexus loads it), the voice module and,
@@ -323,6 +332,7 @@ void AddonUnload() {
     if (g_api) {
         if (g_api->Events_Unsubscribe && IsCodePointer(reinterpret_cast<const void*>(g_api->Events_Unsubscribe))) {
             g_api->Events_Unsubscribe(bridge::kChatEventsEvent, OnChatEvents);
+            if (g_closedWithX) ChatSourceSetReading(true, false);  // the X counts for this session, the next one reads again
             g_api->Events_Unsubscribe(EV_ADDON_LOADED, OnAddonLoaded);
             g_api->Events_Unsubscribe(EV_ADDON_UNLOADED, OnAddonUnloaded);
             g_addonEventsOn = false;
