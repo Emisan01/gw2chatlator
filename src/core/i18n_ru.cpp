@@ -1463,6 +1463,10 @@ extern const I18nEntry kRussianStrings[] = {
      "Клик: перевести видимый чат один раз. Правый клик: перевод новых строк вкл. или выкл."},
     {L"Off: hides the window and stops reading the chat. Ctrl+Alt+K switches it on again.",
      "Выкл.: скрывает окно и перестаёт читать чат. Ctrl+Alt+K включает снова."},
+    {L"Info texts of this session",
+     "Сообщения этого сеанса"},
+    {L"No info texts yet",
+     "Сообщений пока нет"},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

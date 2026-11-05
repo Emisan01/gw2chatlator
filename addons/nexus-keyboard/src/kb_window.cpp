@@ -531,7 +531,7 @@ void RenderFooter() {  // g_mu held
         s_fc.sendWFull = chipWidth(s_fc.sendFull);
         s_fc.sendWNarrow = chipWidth(s_fc.sendNarrow);
         s_fc.totalNeedFull = iconH + s_fc.labelWFull + s_fc.writeWFull + s_fc.sendWFull +
-                             ImGui::GetFrameHeight() * 4 + ImGui::CalcTextSize("000/199").x;
+                             ImGui::GetFrameHeight() * 5 + ImGui::CalcTextSize("000/199").x;
     }
 
     const bool narrow = s_fc.totalNeedFull > ImGui::GetContentRegionAvail().x;
@@ -647,6 +647,29 @@ void RenderFooter() {  // g_mu held
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("%s", UI(Tr(L"Click to restore original translator")).c_str());
         }
+    }
+    // The info texts again: in the box they are often gone before you have read them.
+    ImGui::SameLine();
+    const ImVec2 infoBtnPos = ImGui::GetCursorScreenPos();
+    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+    if (ImGui::Button("i##infolog", ImVec2(iconH, iconH))) ImGui::OpenPopup("##infolog_popup");
+    ImGui::PopStyleColor();
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Info texts of this session")).c_str());
+    const float infoW = ImGui::GetFontSize() * 26.0f;
+    ImGui::SetNextWindowPos(ImVec2(std::clamp(infoBtnPos.x, 0.0f, std::max(0.0f, ImGui::GetIO().DisplaySize.x - infoW)), infoBtnPos.y - 4.0f),
+                            ImGuiCond_Always, ImVec2(0.0f, 1.0f));
+    ImGui::SetNextWindowSizeConstraints(ImVec2(infoW, 0.0f), ImVec2(infoW, ImGui::GetFontSize() * 20.0f));
+    if (ImGui::BeginPopup("##infolog_popup")) {
+        ScopedPopupFont popupFont;
+        if (g_infoLog.empty()) ImGui::TextDisabled("%s", UI(Tr(L"No info texts yet")).c_str());
+        for (auto it = g_infoLog.rbegin(); it != g_infoLog.rend(); ++it) {  // the newest on top
+            ImGui::TextDisabled("%s", it->clock.c_str());
+            ImGui::SameLine();
+            std::string shown = UI(it->text);
+            if (it->count > 1) shown += " (" + std::to_string(it->count) + "x)";
+            ImGui::TextWrapped("%s", shown.c_str());
+        }
+        ImGui::EndPopup();
     }
     const size_t n = CodePointCount(g_wFlatInput);
     std::string counter = std::to_string(n) + "/" + std::to_string(g_cfg.maxLength);

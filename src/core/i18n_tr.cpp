@@ -1463,6 +1463,10 @@ extern const I18nEntry kTurkishStrings[] = {
      "Tık: görünen sohbeti bir kez çevir. Sağ tık: yeni satırları çevirmeyi aç veya kapat."},
     {L"Off: hides the window and stops reading the chat. Ctrl+Alt+K switches it on again.",
      "Kapat: pencereyi gizler ve sohbeti okumayı durdurur. Ctrl+Alt+K yeniden açar."},
+    {L"Info texts of this session",
+     "Bu oturumun bilgi metinleri"},
+    {L"No info texts yet",
+     "Henüz bilgi metni yok"},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

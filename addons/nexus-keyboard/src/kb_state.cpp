@@ -99,6 +99,7 @@ std::wstring g_syncedChannel;
 std::atomic<bool> g_letGoKeyboard{false};
 std::wstring g_status;
 ULONGLONG g_statusUntil = 0;
+std::deque<InfoEntry> g_infoLog;
 TypingHelp g_help;
 bool g_helpRequested = false;
 std::deque<std::wstring> g_history;
@@ -411,6 +412,18 @@ void SaveLayout() {  // g_mu held
 void SetStatus(const std::wstring& s, ULONGLONG ms) {  // g_mu held
     g_status = s;
     g_statusUntil = ms ? GetTickCount64() + ms : 0;
+    if (s.empty() || !ms) return;  // without an end it says what is running right now: its result comes with one
+    SYSTEMTIME now;
+    GetLocalTime(&now);
+    char clock[16];
+    snprintf(clock, sizeof(clock), "%02u:%02u", static_cast<unsigned>(now.wHour), static_cast<unsigned>(now.wMinute));
+    if (!g_infoLog.empty() && g_infoLog.back().text == s) {
+        ++g_infoLog.back().count;
+        g_infoLog.back().clock = clock;
+        return;
+    }
+    g_infoLog.push_back({clock, s});
+    if (g_infoLog.size() > 50) g_infoLog.pop_front();
 }
 
 const std::wstring& ReadLang() {

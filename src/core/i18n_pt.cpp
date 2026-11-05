@@ -1463,6 +1463,10 @@ extern const I18nEntry kPortugueseStrings[] = {
      "Clique: traduzir uma vez o chat visível. Clique direito: traduzir novas linhas sim ou não."},
     {L"Off: hides the window and stops reading the chat. Ctrl+Alt+K switches it on again.",
      "Desligar: oculta a janela e deixa de ler o chat. Ctrl+Alt+K volta a ligar."},
+    {L"Info texts of this session",
+     "Textos informativos desta sessão"},
+    {L"No info texts yet",
+     "Ainda sem textos informativos"},
 };
 extern const size_t kPortugueseCount = sizeof(kPortugueseStrings) / sizeof(kPortugueseStrings[0]);
 

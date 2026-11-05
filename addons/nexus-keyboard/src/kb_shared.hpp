@@ -392,6 +392,13 @@ struct PendingSend {  // an Enter waiting for its translation: its channel and l
 extern PendingSend g_pendingSend;
 extern std::wstring g_status;
 extern ULONGLONG g_statusUntil;
+// The info texts of this session, to read them again: only in memory, never in a file or the report (g_mu).
+struct InfoEntry {
+    std::string clock;
+    std::wstring text;
+    int count = 1;
+};
+extern std::deque<InfoEntry> g_infoLog;  // the newest last
 extern TypingHelp g_help;
 extern bool g_helpRequested;
 extern std::deque<std::wstring> g_history;

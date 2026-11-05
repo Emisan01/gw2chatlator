@@ -1463,6 +1463,10 @@ extern const I18nEntry kFrenchStrings[] = {
      "Clic : traduire une fois le chat visible. Clic droit : traduction des nouvelles lignes activée ou non."},
     {L"Off: hides the window and stops reading the chat. Ctrl+Alt+K switches it on again.",
      "Arrêt : masque la fenêtre et cesse de lire le chat. Ctrl+Alt+K rallume."},
+    {L"Info texts of this session",
+     "Textes d'info de cette session"},
+    {L"No info texts yet",
+     "Aucun texte d'info pour l'instant"},
 };
 extern const size_t kFrenchCount = sizeof(kFrenchStrings) / sizeof(kFrenchStrings[0]);
 
