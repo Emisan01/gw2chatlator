@@ -1469,6 +1469,8 @@ extern const I18nEntry kGermanStrings[] = {
      "Noch keine Infotexte"},
     {L"Goes out as {1} chat lines, one after the other",
      "Geht als {1} Chatzeilen nacheinander raus"},
+    {L"Typing",
+     "Tippen"},
 };
 extern const size_t kGermanCount = sizeof(kGermanStrings) / sizeof(kGermanStrings[0]);
 

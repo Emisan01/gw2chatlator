@@ -2150,7 +2150,7 @@ std::wstring PageName(int page) {
     switch (page) {
         case kPageStart: return Tr(L"Start");
         case kPageChat: return Tr(L"Chat");
-        case kPageTyping: return Tr(L"Typing help");
+        case kPageTyping: return Tr(L"Typing");
         case kPageVoice: return Tr(L"Voice");
         case kPageTranslator: return Tr(L"Translator");
         case kPageWindow: return Tr(L"Window");

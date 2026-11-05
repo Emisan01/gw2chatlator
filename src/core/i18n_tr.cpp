@@ -1469,6 +1469,8 @@ extern const I18nEntry kTurkishStrings[] = {
      "Henüz bilgi metni yok"},
     {L"Goes out as {1} chat lines, one after the other",
      "{1} sohbet satırı olarak art arda gider"},
+    {L"Typing",
+     "Yazma"},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

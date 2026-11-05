@@ -1469,6 +1469,8 @@ extern const I18nEntry kRussianStrings[] = {
      "Сообщений пока нет"},
     {L"Goes out as {1} chat lines, one after the other",
      "Уходит как {1} строки чата, одна за другой"},
+    {L"Typing",
+     "Ввод"},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 
