@@ -55,6 +55,7 @@ WinAnchor SnapAnchor(WinMode mode, const WinAnchor& a, const WinSpace& s, float 
     else if (x < t) x = 0;
     else if (x + r.w > s.screenW - t) x = std::max(0.0f, std::floor(s.screenW - r.w));
     if (r.y < t) bottom = r.h;  // onto the top edge
+    else if (s.snapBottom > 0 && std::fabs(bottom - s.snapBottom) < t) bottom = std::floor(s.snapBottom);
     else if (bottom > s.screenBottom - t) bottom = std::floor(s.screenBottom);
     WinAnchor n = a;
     n.left = x;

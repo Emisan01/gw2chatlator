@@ -21,7 +21,8 @@ struct WinRect {
 };
 
 struct WinSpace {                     // what the frame knows
-    float screenW = 1920, screenBottom = 1080;  // the screen, and where GW2's bottom bar begins
+    float screenW = 1920, screenBottom = 1080;  // the screen: the window's lower edge may go down to its end
+    float snapBottom = 0;              // where GW2's bottom bar begins: the lower edge snaps there too (0: no such place)
     float minW = 380, minH = 240;      // the big window's minimum (the fitted one: minW only)
     float fittedH = 0;                 // the fitted window: the height of its parts (measured last frame)
     float needH = 0;                   // the big window: the height its content needs at least (measured last frame)

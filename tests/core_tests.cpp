@@ -12,6 +12,7 @@
 
 #include "core/chat_line.hpp"
 #include "core/cpu_use.hpp"
+#include "core/window_layout.hpp"
 #include "core/cloud_mt_protocol.hpp"
 #include "core/my_words.hpp"
 #include "core/snippets.hpp"
@@ -245,6 +246,21 @@ static void TestLocalMtProtocol() {
         peak.KeepHighest(a);
         peak.KeepHighest(b);
         CHECK(peak.helper == 20 && peak.ours == 25 && peak.pc == 60);
+    }
+    {  // the lower edge may go below GW2's bar and still snaps to it
+        WinSpace space;
+        space.screenBottom = 1080;
+        space.snapBottom = 1000;
+        WinAnchor low;
+        low.known = true;
+        low.left = 100;
+        low.bottom = 1060;
+        const WinRect placed = LayoutWindow(WinMode::Big, low, space);
+        CHECK(placed.Bottom() == 1060);
+        low.bottom = 1005;
+        CHECK(SnapAnchor(WinMode::Big, low, space, 14.0f, 0.0f).bottom == 1000);
+        low.bottom = 1075;
+        CHECK(SnapAnchor(WinMode::Big, low, space, 14.0f, 0.0f).bottom == 1080);
     }
     CHECK(LocalAutoThreads(2, 2) == 2 && LocalAutoThreads(2, 4) == 2 && LocalAutoThreads(2, 6) == 4 && LocalAutoThreads(2, 16) == 4);
     CHECK(LocalAutoThreads(8, 2) == 2 && LocalAutoThreads(8, 4) == 3 && LocalAutoThreads(8, 6) == 5 && LocalAutoThreads(8, 16) == 6);

@@ -236,7 +236,8 @@ WinSpace WindowSpace(float button) {
     const ImGuiIO& io = ImGui::GetIO();
     WinSpace s;
     s.screenW = io.DisplaySize.x;
-    s.screenBottom = std::max(button, io.DisplaySize.y - Gw2BottomBarOffset(io.DisplaySize.y, g_uiSize.load()));
+    s.screenBottom = std::max(button, io.DisplaySize.y);  // below GW2's bar too: there the window grew upwards when you dragged down
+    s.snapBottom = std::max(button, io.DisplaySize.y - Gw2BottomBarOffset(io.DisplaySize.y, g_uiSize.load()));
     s.fittedH = g_winFittedH;
     s.needH = g_winNeedH;
     s.button = button;
