@@ -228,6 +228,9 @@ int wmain(int argc, wchar_t** argv) {
         WritePrivateProfileStringW(L"Nexus", L"SetupDone", L"1", (dir + L"\\gw2-chat-translator.ini").c_str());
         WritePrivateProfileStringW(L"NexusTabs", nullptr, nullptr, (dir + L"\\gw2-chat-translator.ini").c_str());  // no old tabs
         WritePrivateProfileStringW(L"Translate", L"WriteLangs", L"DE,EN-GB,FR,ES", (dir + L"\\gw2-chat-translator.ini").c_str());
+        wchar_t engine[16] = {};  // GW2KB_SHOT_ENGINE: the translator for the picture (nllb, m2m ...)
+        if (GetEnvironmentVariableW(L"GW2KB_SHOT_ENGINE", engine, 16))
+            WritePrivateProfileStringW(L"Translate", L"Engine", engine, (dir + L"\\gw2-chat-translator.ini").c_str());
         wchar_t alpha[16] = {};  // GW2KB_SHOT_ALPHA: the window's opacity for the picture (60-255)
         WritePrivateProfileStringW(L"Window", L"Opacity", GetEnvironmentVariableW(L"GW2KB_SHOT_ALPHA", alpha, 16) ? alpha : L"255",
                                    (dir + L"\\gw2-chat-translator.ini").c_str());
