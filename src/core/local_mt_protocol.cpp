@@ -177,6 +177,22 @@ bool ParseLocalMtMessage(const std::string& line, LocalMtMessage& out) {
         out.milliseconds = static_cast<int64_t>(ms->n);
         return true;
     }
+    if (event == "device") {
+        const auto mb = [&json](const char* key) -> int64_t {
+            const JsonValue* v = json.Get(key);
+            return v && v->type == JsonValue::Type::Number && v->n >= 0 ? static_cast<int64_t>(v->n) : 0;
+        };
+        out.kind = LocalMtMessage::Kind::Device;
+        out.onCard = json.GetString("on") == "card";
+        out.cardName = json.GetString("name");
+        out.cardDriver = json.GetString("driver");
+        out.cardWhy = json.GetString("why");
+        out.cardDetail = json.GetString("detail");
+        out.cardFreeMb = mb("free");
+        out.cardTotalMb = mb("total");
+        out.cardNeedMb = mb("need");
+        return true;
+    }
     if (event != "result" && event != "error") return false;
     const JsonValue* id = json.Get("id");
     if (!id || id->type != JsonValue::Type::Number || id->n < 0 || id->n > 2147483647.0) return false;

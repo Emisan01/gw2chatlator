@@ -1576,9 +1576,27 @@ void RenderLocalAdvanced(Config& edit) {
     RowHint(UI(edit.mtThreads > 0 ? TrF(L"CPU threads now: {1} (set by hand)", {std::to_wstring(threads)})
                                   : TrF(L"CPU threads now: {1} (automatic, more with a higher beam)", {std::to_wstring(threads)})));
     if (static_cast<unsigned>(threads) * 2 > std::thread::hardware_concurrency()) RiskHint(Tr(L"More than half of your processors: the game can stutter."));
-    if (GetFileAttributesW((AddonsDir() + L"GW2Keyboard\\gw2kb_translate_gpu.exe").c_str()) != INVALID_FILE_ATTRIBUTES) {
+    if (NvidiaDriverPresent() && GetFileAttributesW((AddonsDir() + L"GW2Keyboard\\gw2kb_translate_gpu.exe").c_str()) != INVALID_FILE_ATTRIBUTES) {
         Switch("usegpu", UI(Tr(L"Calculate on the graphics card (NVIDIA)")), &edit.useGpu,
                UI(Tr(L"Takes about 0.7 GB of video memory with M2M100, 0.9 GB with NLLB-200. Without room it falls back to the CPU.")).c_str());
+        std::shared_ptr<Translator> translator;
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            translator = g_translator;
+        }
+        const gct::LocalMtCard card = gct::GetLocalMtCard(translator);
+        if (edit.useGpu && card.known) {
+            if (card.onCard) {
+                RowHint(UI(TrF(L"On {1}: {2} MB of {3} MB free when the model came, driver {4}.",
+                               {FromUtf8(card.name), std::to_wstring(card.freeMb), std::to_wstring(card.totalMb), FromUtf8(card.driver)})));
+            } else if (card.why == "vram") {
+                RiskHint(TrF(L"On the CPU for now: {1} MB free on the card, the model and the game's reserve need {2} MB.", {std::to_wstring(card.freeMb), std::to_wstring(card.needMb)}));
+            } else if (card.why == "card") {
+                RiskHint(Tr(L"On the CPU: this card or its driver cannot run the model. Cards from GTX 16 and RTX 20 upwards work."));
+            } else {
+                RiskHint(Tr(L"On the CPU: the helper for the graphics card failed, try reinstalling it."));
+            }
+        }
     }
     Switch("beamstep", UI(Tr(L"Step down under load")), &edit.beamStepDown,
            UI(Tr(L"Many lines waiting: lines that come by themselves run at beam 2, so the chat keeps up.")).c_str());
@@ -1898,6 +1916,7 @@ void RenderTranslatorLive() {
     std::wstring name, dataDir;
     int quality, threadsSet;
     bool stepDown, local;
+    std::shared_ptr<Translator> translator;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         runs.assign(g_mtRuns.begin(), g_mtRuns.end());
@@ -1907,6 +1926,7 @@ void RenderTranslatorLive() {
         dataDir = g_cfg.dataDir;
         name = g_translator ? g_translator->Name() : std::wstring(L"-");
         local = IsLocalMtTranslator(g_translator);
+        translator = g_translator;
     }
     const LocalMtSummary summary = LocalMtNow(dataDir);
     const float fs = ImGui::GetFontSize(), col = fs * 8.0f;
@@ -1921,6 +1941,11 @@ void RenderTranslatorLive() {
     if (local && !summary.helper.build.empty()) {
         ImGui::SameLine();
         ImGui::TextDisabled("helper %s · proto %d", summary.helper.build.substr(0, 7).c_str(), summary.helper.proto);
+        const gct::LocalMtCard card = gct::GetLocalMtCard(translator);
+        if (card.known) {
+            ImGui::SameLine();
+            ImGui::TextDisabled("· %s", card.onCard ? card.name.c_str() : ("CPU: " + card.why).c_str());
+        }
     }
     const MtRun* last = nullptr;
     for (auto it = runs.rbegin(); it != runs.rend() && !last; ++it)
@@ -2303,6 +2328,11 @@ std::string BuildDiagnosticReport() {
     gct::HelperInfo helper = gct::GetLocalMtHelperInfo(g_translator);
     if (!helper.build.empty()) {
         ss << "- Local MT Helper Build: " << helper.build << " (proto: " << helper.proto << ")\n";
+        const gct::LocalMtCard card = gct::GetLocalMtCard(g_translator);
+        if (card.known) {
+            ss << "- Model runs on: " << (card.onCard ? "card" : "CPU") << " | " << card.name << " | driver " << card.driver << " | " << card.freeMb << " of " << card.totalMb
+               << " MB free, needs " << card.needMb << " MB | " << card.why << " " << card.detail << "\n";
+        }
     }
     ss << "\n";
 

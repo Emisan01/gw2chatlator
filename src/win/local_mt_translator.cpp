@@ -84,6 +84,10 @@ public:
         return decode_;
     }
     HelperInfo GetInfo() const { return info_; }
+    LocalMtCard GetCard() const {
+        std::lock_guard<std::mutex> lock(cardMu_);
+        return card_;
+    }
 
     TranslateResult Translate(const std::vector<Segment>& segments, const std::wstring& sourceLang,
                               const std::wstring& targetLang) override {
@@ -494,7 +498,7 @@ private:
             errorKind = TranslateErrorKind::BadOutput;
             return {};
         }
-        if (!Start(error)) {
+        if (!Start(error) && (!LeaveCard("start") || !Start(error))) {
             errorKind = (error.find(L"not installed") != std::wstring::npos) ? TranslateErrorKind::HelperMissing : TranslateErrorKind::HelperCrashed;
             return {};
         }
@@ -516,6 +520,27 @@ private:
             if (elapsed >= limit) break;
             LocalMtMessage message;
             if (!ReadMessage(limit - elapsed, message)) break;
+            if (message.kind == LocalMtMessage::Kind::Device) {
+                LocalMtCard card;
+                card.known = true;
+                card.onCard = message.onCard;
+                card.name = message.cardName;
+                card.driver = message.cardDriver;
+                card.why = message.cardWhy;
+                card.detail = message.cardDetail;
+                card.freeMb = message.cardFreeMb;
+                card.totalMb = message.cardTotalMb;
+                card.needMb = message.cardNeedMb;
+                {
+                    std::lock_guard<std::mutex> lock(cardMu_);
+                    card_ = card;
+                }
+                HelperLog((message.onCard ? L"on the card: " : L"on the CPU (" + FromUtf8(message.cardWhy) + L"): ") + FromUtf8(message.cardName) + L", " +
+                          std::to_wstring(message.cardFreeMb) + L" MB free, needs " + std::to_wstring(message.cardNeedMb) + L" MB");
+                started = GetTickCount64();  // reloading on the CPU is no stalled helper
+                limit = working + LoadAllowanceMs(source, target);
+                continue;
+            }
             if (message.kind == LocalMtMessage::Kind::Loaded) {
                 run_.loadMs = static_cast<int>(message.milliseconds);
                 HelperLog(L"model loaded: " + FromUtf8(message.pair) + L" in " + std::to_wstring(message.milliseconds) + L" ms");
@@ -559,11 +584,28 @@ private:
             errorKind = TranslateErrorKind::Other;
             return {};
         }
+        const bool died = process_ && WaitForSingleObject(process_, 0) == WAIT_OBJECT_0;
         Stop();
+        if (died) LeaveCard("crash");
         error = L"The local translation timed out or its helper stopped";
         HelperLog(L"helper timed out after " + std::to_wstring(limit) + L" ms");
         errorKind = TranslateErrorKind::Timeout;
         return {};
+    }
+
+    // The helper for the graphics card does not start or died (a missing file, a driver crash): from now on the CPU's.
+    bool LeaveCard(const char* why) {
+        static const std::wstring kCard = L"gw2kb_translate_gpu.exe";
+        if (helper_.size() < kCard.size() || helper_.compare(helper_.size() - kCard.size(), kCard.size(), kCard) != 0) return false;
+        helper_.replace(helper_.size() - kCard.size(), kCard.size(), L"gw2kb_translate.exe");
+        {
+            std::lock_guard<std::mutex> lock(cardMu_);
+            card_ = {};
+            card_.known = true;
+            card_.why = why;
+        }
+        HelperLog(L"the card's helper failed, the CPU's takes over");
+        return true;
     }
 
     struct SentenceKept {
@@ -624,11 +666,14 @@ private:
         pending_.clear();
     }
 
-    const std::wstring helper_, data_;
+    std::wstring helper_;  // the CPU's after the card's failed
+    const std::wstring data_;
     const LocalKind kind_ = LocalKind::Opus;
     mutable std::mutex decodeMu_;  // its own: mu_ is held for a whole translation
     LocalMtDecode decode_;
     HelperInfo info_;
+    mutable std::mutex cardMu_;  // never held while waiting for the helper
+    LocalMtCard card_;
     std::list<std::pair<std::wstring, SentenceKept>> sentences_;  // the sentence cache, newest first (mu_)
     TranslateRun run_;      // what the model did for the message being translated (mu_)
     std::vector<std::string> lastAlts_;  // the other versions of the last request (mu_)
@@ -720,6 +765,11 @@ void SetLocalMtRaw(const std::shared_ptr<Translator>& translator, bool raw) {
 
 bool IsLocalMtTranslator(const std::shared_ptr<Translator>& translator) {
     return std::dynamic_pointer_cast<LocalMtTranslator>(translator) != nullptr;
+}
+
+LocalMtCard GetLocalMtCard(const std::shared_ptr<Translator>& translator) {
+    auto local = std::dynamic_pointer_cast<LocalMtTranslator>(translator);
+    return local ? local->GetCard() : LocalMtCard{};
 }
 
 HelperInfo GetLocalMtHelperInfo(const std::shared_ptr<Translator>& translator) {

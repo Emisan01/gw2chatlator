@@ -93,6 +93,68 @@ std::wstring PairPath(const std::string& id) {
     return g_data + L"\\translate\\" + FromUtf8(id);
 }
 
+#ifdef GCT_MT_CUDA
+unsigned long long g_cardReserveMb = 512;  // [Translate] CardReserveMb: what stays free on the card beside the model, for the game
+
+struct CardInfo {
+    int index = -1;  // -1: not measured (no NVML), then the first card
+    unsigned long long freeMb = 0, totalMb = 0;
+    std::string name, driver;
+};
+
+// The card with the most free video memory. NVML comes with every NVIDIA driver; nothing here is needed to translate.
+CardInfo PickCard() {
+    CardInfo best;
+    HMODULE nvml = LoadLibraryExW(L"nvml.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+    if (!nvml) return best;
+    struct Memory {
+        unsigned long long total, free, used;
+    };
+    const auto init = reinterpret_cast<int (*)()>(GetProcAddress(nvml, "nvmlInit_v2"));
+    const auto shutdown = reinterpret_cast<int (*)()>(GetProcAddress(nvml, "nvmlShutdown"));
+    const auto count = reinterpret_cast<int (*)(unsigned*)>(GetProcAddress(nvml, "nvmlDeviceGetCount_v2"));
+    const auto handle = reinterpret_cast<int (*)(unsigned, void**)>(GetProcAddress(nvml, "nvmlDeviceGetHandleByIndex_v2"));
+    const auto memory = reinterpret_cast<int (*)(void*, Memory*)>(GetProcAddress(nvml, "nvmlDeviceGetMemoryInfo"));
+    const auto name = reinterpret_cast<int (*)(void*, char*, unsigned)>(GetProcAddress(nvml, "nvmlDeviceGetName"));
+    const auto driver = reinterpret_cast<int (*)(char*, unsigned)>(GetProcAddress(nvml, "nvmlSystemGetDriverVersion"));
+    if (init && shutdown && count && handle && memory && name && driver && init() == 0) {
+        unsigned cards = 0;
+        if (count(&cards) == 0) {
+            for (unsigned i = 0; i < cards; ++i) {
+                void* device = nullptr;
+                Memory m{};
+                if (handle(i, &device) != 0 || memory(device, &m) != 0) continue;
+                const unsigned long long freeMb = m.free / (1024 * 1024);
+                if (best.index >= 0 && freeMb <= best.freeMb) continue;
+                best.index = static_cast<int>(i);
+                best.freeMb = freeMb;
+                best.totalMb = m.total / (1024 * 1024);
+                char text[96] = {};
+                best.name = name(device, text, sizeof(text)) == 0 ? text : "";
+            }
+        }
+        char version[96] = {};
+        if (driver(version, sizeof(version)) == 0) best.driver = version;
+        shutdown();
+    }
+    FreeLibrary(nvml);
+    return best;
+}
+
+unsigned long long FileMb(const std::wstring& path) {
+    WIN32_FILE_ATTRIBUTE_DATA file{};
+    if (!GetFileAttributesExW(path.c_str(), GetFileExInfoStandard, &file)) return 0;
+    return ((static_cast<unsigned long long>(file.nFileSizeHigh) << 32) | file.nFileSizeLow) / (1024 * 1024);
+}
+
+// Where the model runs now, and why not on the card ("vram": no room, "card": this card or driver cannot).
+void EmitDevice(bool onCard, const CardInfo& card, const char* why, unsigned long long needMb, const std::string& detail) {
+    Emit(std::string("{\"evt\":\"device\"") + JsonString("on", onCard ? "card" : "cpu") + JsonString("name", card.name) +
+         JsonString("driver", card.driver) + ",\"free\":" + std::to_string(card.freeMb) + ",\"total\":" + std::to_string(card.totalMb) +
+         ",\"need\":" + std::to_string(needMb) + JsonString("why", why) + JsonString("detail", detail) + "}");
+}
+#endif
+
 ManyModel* LoadMany(std::unique_ptr<ManyModel>& slot, const std::string& id, const char* warmFrom, const char* warmTo,
                     ctranslate2::ComputeType compute, std::string& error) {
     if (slot) {
@@ -111,34 +173,63 @@ ManyModel* LoadMany(std::unique_ptr<ManyModel>& slot, const std::string& id, con
         return nullptr;
     }
     ctranslate2::models::ModelLoader loader(ToUtf8(dir));
-    loader.device = g_device;
-    loader.compute_type = g_device == ctranslate2::Device::CUDA ? ctranslate2::ComputeType::INT8_FLOAT16 : compute;
     loader.num_replicas_per_device = 1;
     ctranslate2::ReplicaPoolConfig pool;
     pool.num_threads_per_replica = g_threads;
     pool.max_queued_batches = 1;
-    try {
-        try {
-            model->translator = std::make_unique<ctranslate2::Translator>(loader, pool);
-        } catch (const std::exception&) {
-            if (loader.device != ctranslate2::Device::CUDA) throw;
-            g_device = ctranslate2::Device::CPU;  // the card has no room or no driver: on the CPU, never no translation
-            loader.device = ctranslate2::Device::CPU;
-            loader.compute_type = compute;
-            model->translator = std::make_unique<ctranslate2::Translator>(loader, pool);
-        }
-    } catch (const std::exception& e) {
-        error = e.what();
-        return nullptr;
-    }
     // Warm-up call (prevents cold-start latency on user's first chat translation)
-    try {
+    const auto warmUp = [&] {
         std::vector<std::vector<std::string>> warmSrc = {{warmFrom, "Hallo", "</s>"}};
         std::vector<std::vector<std::string>> warmTgt = {{warmTo}};
         ctranslate2::TranslationOptions warmOpt;
         warmOpt.beam_size = 1;
         model->translator->translate_batch(warmSrc, warmTgt, warmOpt);
-    } catch (...) {}
+    };
+#ifdef GCT_MT_CUDA
+    if (g_device == ctranslate2::Device::CUDA) {
+        const CardInfo card = PickCard();
+        const unsigned long long needMb = FileMb(dir + L"\\model.bin") * 3 / 2 + g_cardReserveMb;
+        const char* why = "vram";
+        std::string detail;
+        if (card.index < 0 || card.freeMb >= needMb) {
+            why = "card";
+            loader.device = ctranslate2::Device::CUDA;
+            if (card.index >= 0) loader.device_indices = {card.index};
+            // Not every card can calculate every way: the next that works there. Only a warm-up that ran counts.
+            for (const ctranslate2::ComputeType type : {ctranslate2::ComputeType::INT8_FLOAT16, ctranslate2::ComputeType::FLOAT16, ctranslate2::ComputeType::FLOAT32}) {
+                loader.compute_type = type;
+                try {
+                    model->translator = std::make_unique<ctranslate2::Translator>(loader, pool);
+                    warmUp();
+                    break;
+                } catch (const std::exception& e) {
+                    detail = e.what();
+                    model->translator.reset();
+                }
+            }
+        }
+        if (model->translator) {
+            EmitDevice(true, card, "", needMb, "");
+        } else {
+            g_device = ctranslate2::Device::CPU;  // on the CPU, never no translation
+            loader.device_indices = {0};
+            EmitDevice(false, card, why, needMb, detail);
+        }
+    }
+#endif
+    if (!model->translator) {
+        loader.device = ctranslate2::Device::CPU;
+        loader.compute_type = compute;
+        try {
+            model->translator = std::make_unique<ctranslate2::Translator>(loader, pool);
+        } catch (const std::exception& e) {
+            error = e.what();
+            return nullptr;
+        }
+        try {
+            warmUp();
+        } catch (...) {}
+    }
 
     model->used = GetTickCount64();
     slot = std::move(model);
@@ -148,12 +239,13 @@ ManyModel* LoadMany(std::unique_ptr<ManyModel>& slot, const std::string& id, con
 }
 
 // The source's tag in front, the end of sentence behind it, the target's tag as the start of the translation.
-void TranslateMany(ManyModel& model, const LocalMtRequest& request, const std::string& srcTag, const std::string& tgtTag) {
+// false, with `cardError`: the card gave up (no room any more, a driver reset), nothing was said to the add-on yet.
+bool TranslateMany(ManyModel& model, const LocalMtRequest& request, const std::string& srcTag, const std::string& tgtTag, std::string* cardError = nullptr) {
     std::vector<std::string> tokens;
     if (!model.sp.Encode(request.text, &tokens).ok()) {
         Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) +
              JsonString("msg", "source tokenization failed") + "}");
-        return;
+        return true;
     }
     tokens.insert(tokens.begin(), srcTag);
     tokens.emplace_back("</s>");
@@ -178,7 +270,7 @@ void TranslateMany(ManyModel& model, const LocalMtRequest& request, const std::s
         if (results.empty() || results.front().hypotheses.empty()) {
             Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) +
                  JsonString("msg", "the model returned no translation") + "}");
-            return;
+            return true;
         }
         auto hypo = results.front().hypotheses.front();
         if (!hypo.empty() && hypo.front() == tgtTag) hypo.erase(hypo.begin());
@@ -186,7 +278,7 @@ void TranslateMany(ManyModel& model, const LocalMtRequest& request, const std::s
         if (!model.sp.Decode(hypo, &text).ok()) {
             Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) +
                  JsonString("msg", "target detokenization failed") + "}");
-            return;
+            return true;
         }
         std::vector<std::string> alts;
         for (size_t h = 1; h < results.front().hypotheses.size(); ++h) {
@@ -198,8 +290,31 @@ void TranslateMany(ManyModel& model, const LocalMtRequest& request, const std::s
         Emit("{\"evt\":\"result\",\"id\":" + std::to_string(request.id) + JsonString("text", text) +
              ScoreField(results.front()) + RunFields(ms, options.beam_size, tokens.size(), hypo.size(), alts) + "}");
     } catch (const std::exception& e) {
+        if (cardError && g_device == ctranslate2::Device::CUDA) {
+            *cardError = e.what();
+            return false;
+        }
         Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) + JsonString("msg", e.what()) + "}");
     }
+    return true;
+}
+
+// Translates; when the card gives up the model goes to the CPU and the line is done there.
+void TranslateManyAnywhere(std::unique_ptr<ManyModel>& slot, const std::string& id, const char* warmFrom, const char* warmTo,
+                           ctranslate2::ComputeType compute, const LocalMtRequest& request, const std::string& srcTag, const std::string& tgtTag) {
+    std::string cardError;
+    if (TranslateMany(*slot, request, srcTag, tgtTag, &cardError)) return;
+    g_device = ctranslate2::Device::CPU;
+    slot.reset();
+#ifdef GCT_MT_CUDA
+    EmitDevice(false, CardInfo{}, "card", 0, cardError);
+#endif
+    std::string error;
+    if (!LoadMany(slot, id, warmFrom, warmTo, compute, error)) {
+        Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) + JsonString("msg", error) + "}");
+        return;
+    }
+    TranslateMany(*slot, request, srcTag, tgtTag);
 }
 
 PairModel* LoadPair(const std::string& id, std::string& error) {
@@ -268,7 +383,7 @@ void Translate(const std::string& line) {
             Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) + JsonString("msg", error) + "}");
             return;
         }
-        TranslateMany(*m2m, request, from, to);
+        TranslateManyAnywhere(g_m2m, "m2m100", "__de__", "__en__", g_m2mCompute, request, from, to);
         return;
     }
 
@@ -286,7 +401,7 @@ void Translate(const std::string& line) {
             Emit("{\"evt\":\"error\",\"id\":" + std::to_string(request.id) + JsonString("msg", error) + "}");
             return;
         }
-        TranslateMany(*nllb, request, srcTag, tgtTag);
+        TranslateManyAnywhere(g_nllb, "nllb-200", "deu_Latn", "eng_Latn", ctranslate2::ComputeType::INT8, request, srcTag, tgtTag);
         return;
     }
 
@@ -374,7 +489,12 @@ int wmain(int argc, wchar_t** argv) {
     {
         wchar_t device[16] = {};
         GetPrivateProfileStringW(L"Translate", L"Device", L"cuda", device, 16, ini.c_str());
-        if (std::wstring(device) == L"cuda") g_device = ctranslate2::Device::CUDA;
+        if (std::wstring(device) == L"cuda") {
+            g_device = ctranslate2::Device::CUDA;
+            _wputenv_s(L"CUDA_DEVICE_ORDER", L"PCI_BUS_ID");  // the same numbers as NVML's, before CUDA first looks
+            SetEnvironmentVariableW(L"CUDA_DEVICE_ORDER", L"PCI_BUS_ID");
+            g_cardReserveMb = static_cast<unsigned long long>(std::clamp<int>(static_cast<int>(GetPrivateProfileIntW(L"Translate", L"CardReserveMb", 512, ini.c_str())), 0, 100000));
+        }
     }
 #endif
     {

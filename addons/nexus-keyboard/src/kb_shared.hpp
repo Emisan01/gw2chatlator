@@ -608,6 +608,7 @@ bool SwapsNames();
 bool NamesSwapped();
 const std::wstring& ComposePrefix();
 std::shared_ptr<Translator> MakeTranslator(const Config& c);
+bool NvidiaDriverPresent();  // an NVIDIA driver on this PC: only then the helper for graphics cards is any use
 bool UsingMyMemory();
 std::wstring Today();
 void CountMyMemory(size_t chars);

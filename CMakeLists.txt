@@ -253,6 +253,10 @@ if(GCT_LOCAL_MT)
     if(GCT_MT_CUDA)
         set(WITH_CUDA ON CACHE BOOL "" FORCE)
         set(WITH_CUDNN OFF CACHE BOOL "" FORCE)
+        # From the GTX 16 and RTX 20 cards upwards, each generation with code of its own; the PTX lets the driver build for
+        # cards that do not exist yet. Older cards stay on the CPU. RTX 50 goes in by hand: CMake only reads one digit there.
+        set(CUDA_ARCH_LIST "7.5+PTX;8.6;8.9" CACHE STRING "" FORCE)
+        set(CUDA_NVCC_FLAGS "--generate-code=arch=compute_120,code=sm_120" CACHE STRING "" FORCE)
     endif()
     # The model on several threads: OpenMP, the compiler's own (vcomp140.dll beside the helper). Off: one core, whatever
     # [Translate] Threads says.

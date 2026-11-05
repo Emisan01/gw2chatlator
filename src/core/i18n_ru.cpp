@@ -1475,6 +1475,14 @@ extern const I18nEntry kRussianStrings[] = {
      "Показывать коды чата по названию"},
     {L"Asks GW2's public API. Only the code's number goes out, never a chat text.",
      "Обращается к открытому API GW2. Уходит только номер кода, но не текст чата."},
+    {L"On {1}: {2} MB of {3} MB free when the model came, driver {4}.",
+     "На {1}: {2} МБ из {3} МБ свободно при загрузке модели, драйвер {4}."},
+    {L"On the CPU for now: {1} MB free on the card, the model and the game's reserve need {2} MB.",
+     "Пока на CPU: на карте свободно {1} МБ, модели и резерву для игры нужно {2} МБ."},
+    {L"On the CPU: this card or its driver cannot run the model. Cards from GTX 16 and RTX 20 upwards work.",
+     "На CPU: эта карта или её драйвер не может выполнить модель. Подходят карты от GTX 16 и RTX 20."},
+    {L"On the CPU: the helper for the graphics card failed, try reinstalling it.",
+     "На CPU: помощник для видеокарты вышел из строя, лучше переустановить его."},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

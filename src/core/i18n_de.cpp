@@ -1475,6 +1475,14 @@ extern const I18nEntry kGermanStrings[] = {
      "Chat-Codes mit Namen zeigen"},
     {L"Asks GW2's public API. Only the code's number goes out, never a chat text.",
      "Fragt die öffentliche GW2-API. Es geht nur die Nummer des Codes raus, nie ein Chattext."},
+    {L"On {1}: {2} MB of {3} MB free when the model came, driver {4}.",
+     "Auf {1}: {2} MB von {3} MB frei, als das Modell kam, Treiber {4}."},
+    {L"On the CPU for now: {1} MB free on the card, the model and the game's reserve need {2} MB.",
+     "Vorerst auf der CPU: {1} MB frei auf der Karte, Modell und Reserve fürs Spiel brauchen {2} MB."},
+    {L"On the CPU: this card or its driver cannot run the model. Cards from GTX 16 and RTX 20 upwards work.",
+     "Auf der CPU: Diese Karte oder ihr Treiber kann das Modell nicht rechnen. Ab GTX 16 und RTX 20 geht es."},
+    {L"On the CPU: the helper for the graphics card failed, try reinstalling it.",
+     "Auf der CPU: Der Helfer für die Grafikkarte ist ausgefallen, installiere ihn am besten neu."},
 };
 extern const size_t kGermanCount = sizeof(kGermanStrings) / sizeof(kGermanStrings[0]);
 

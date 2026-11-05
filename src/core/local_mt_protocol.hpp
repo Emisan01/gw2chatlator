@@ -10,7 +10,7 @@
 namespace gct {
 
 struct LocalMtMessage {
-    enum class Kind { Invalid, Ready, Loaded, Result, Error } kind = Kind::Invalid;
+    enum class Kind { Invalid, Ready, Loaded, Result, Error, Device } kind = Kind::Invalid;
     int id = 0;
     std::string pair;
     std::string text;
@@ -24,6 +24,10 @@ struct LocalMtMessage {
     bool scored = false;
     int modelMs = 0, beam = 0, threads = 0, cores = 0, tokensIn = 0, tokensOut = 0;  // "result": what it did (0: not said)
     std::vector<std::string> alts;                                                  // "result": its other versions
+    // "device" (only the helper for graphics cards): where the model runs; why: vram, card
+    bool onCard = false;
+    std::string cardName, cardDriver, cardWhy, cardDetail;
+    int64_t cardFreeMb = 0, cardTotalMb = 0, cardNeedMb = 0;
 };
 
 bool HasCap(const LocalMtMessage& msg, const std::string& cap);

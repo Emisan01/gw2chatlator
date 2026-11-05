@@ -1475,6 +1475,14 @@ extern const I18nEntry kTurkishStrings[] = {
      "Sohbet kodlarını adıyla göster"},
     {L"Asks GW2's public API. Only the code's number goes out, never a chat text.",
      "GW2'nin herkese açık API'sine sorar. Yalnızca kodun numarası gider, asla sohbet metni gitmez."},
+    {L"On {1}: {2} MB of {3} MB free when the model came, driver {4}.",
+     "{1} üzerinde: model yüklenirken {3} MB'nin {2} MB'si boştu, sürücü {4}."},
+    {L"On the CPU for now: {1} MB free on the card, the model and the game's reserve need {2} MB.",
+     "Şimdilik CPU'da: kartta {1} MB boş, model ve oyun payı için {2} MB gerekiyor."},
+    {L"On the CPU: this card or its driver cannot run the model. Cards from GTX 16 and RTX 20 upwards work.",
+     "CPU'da: bu kart veya sürücüsü modeli çalıştıramıyor. GTX 16 ve RTX 20 ve üzeri kartlar çalışır."},
+    {L"On the CPU: the helper for the graphics card failed, try reinstalling it.",
+     "CPU'da: grafik kartı yardımcısı devre dışı kaldı, yeniden kurmanız önerilir."},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

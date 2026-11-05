@@ -26,11 +26,19 @@ struct HelperInfo {
     std::wstring outdatedReason;
 };
 
+// Where the model runs with the helper for graphics cards; known once a model was loaded.
+struct LocalMtCard {
+    bool known = false, onCard = false;
+    std::string name, driver, why, detail;  // why: vram (no room), card (it cannot), start, crash (its helper)
+    int64_t freeMb = 0, totalMb = 0, needMb = 0;
+};
+
 std::shared_ptr<Translator> MakeLocalMtTranslator(const std::wstring& helperExe, const std::wstring& dataDir,
                                                   bool forceNllb = false);
 // M2M100 from translate\m2m100 (a folder put there by hand, no download offered).
 std::shared_ptr<Translator> MakeM2mTranslator(const std::wstring& helperExe, const std::wstring& dataDir);
 void StopLocalMtTranslator(const std::shared_ptr<Translator>& translator);
+LocalMtCard GetLocalMtCard(const std::shared_ptr<Translator>& translator);
 void SetLocalMtBeamSize(const std::shared_ptr<Translator>& translator, int beamSize);
 // How the model decodes, for the requests to come; never waits for a running translation.
 void SetLocalMtDecode(const std::shared_ptr<Translator>& translator, const LocalMtDecode& decode);

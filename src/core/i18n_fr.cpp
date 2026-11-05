@@ -1475,6 +1475,14 @@ extern const I18nEntry kFrenchStrings[] = {
      "Afficher les codes de chat par leur nom"},
     {L"Asks GW2's public API. Only the code's number goes out, never a chat text.",
      "Interroge l'API publique de GW2. Seul le numéro du code est envoyé, jamais un texte de chat."},
+    {L"On {1}: {2} MB of {3} MB free when the model came, driver {4}.",
+     "Sur {1} : {2} Mo libres sur {3} Mo au chargement du modèle, pilote {4}."},
+    {L"On the CPU for now: {1} MB free on the card, the model and the game's reserve need {2} MB.",
+     "Sur le CPU pour l'instant : {1} Mo libres sur la carte, le modèle et la réserve du jeu demandent {2} Mo."},
+    {L"On the CPU: this card or its driver cannot run the model. Cards from GTX 16 and RTX 20 upwards work.",
+     "Sur le CPU : cette carte ou son pilote ne peut pas exécuter le modèle. Les cartes à partir des GTX 16 et RTX 20 conviennent."},
+    {L"On the CPU: the helper for the graphics card failed, try reinstalling it.",
+     "Sur le CPU : l'assistant pour la carte graphique a échoué, réinstallez-le si possible."},
 };
 extern const size_t kFrenchCount = sizeof(kFrenchStrings) / sizeof(kFrenchStrings[0]);
 

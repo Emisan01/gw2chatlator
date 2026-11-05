@@ -262,6 +262,12 @@ static void TestLocalMtProtocol() {
         low.bottom = 1075;
         CHECK(SnapAnchor(WinMode::Big, low, space, 14.0f, 0.0f).bottom == 1080);
     }
+    {  // where the model runs: said by the helper for graphics cards
+        LocalMtMessage card;
+        CHECK(ParseLocalMtMessage(R"({"evt":"device","on":"cpu","name":"RTX","driver":"621.14","free":900,"total":2048,"need":1418,"why":"vram","detail":""})", card));
+        CHECK(card.kind == LocalMtMessage::Kind::Device && !card.onCard && card.cardWhy == "vram" && card.cardName == "RTX" && card.cardFreeMb == 900 && card.cardNeedMb == 1418);
+        CHECK(ParseLocalMtMessage(R"({"evt":"device","on":"card","free":-5})", card) && card.onCard && card.cardFreeMb == 0);
+    }
     CHECK(LocalAutoThreads(2, 2) == 2 && LocalAutoThreads(2, 4) == 2 && LocalAutoThreads(2, 6) == 4 && LocalAutoThreads(2, 16) == 4);
     CHECK(LocalAutoThreads(8, 2) == 2 && LocalAutoThreads(8, 4) == 3 && LocalAutoThreads(8, 6) == 5 && LocalAutoThreads(8, 16) == 6);
     {
