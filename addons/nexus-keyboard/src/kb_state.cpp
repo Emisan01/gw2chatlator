@@ -106,6 +106,7 @@ bool g_helpRequested = false;
 std::deque<std::wstring> g_history;
 int g_historyPos = -1;
 Channel g_channel = Channel::Unknown;  // Unknown = the channel active in GW2
+int g_guildSlot = 0;
 std::wstring g_whisperTo;
 int g_sendIdx = 0;                     // index into g_cfg.writeLangs; == size: send as written
 bool g_sending = false;
@@ -530,11 +531,15 @@ const std::wstring& ComposePrefix() {
     static std::wstring s_cachedPrefix;
     static Channel s_cachedChannel = Channel::Unknown;
     static std::wstring s_cachedWhisper;
-    if (s_cachedChannel != g_channel || (g_channel == Channel::Whisper && s_cachedWhisper != g_whisperTo)) {
+    static int s_cachedSlot = 0;
+    if (s_cachedChannel != g_channel || s_cachedSlot != g_guildSlot || (g_channel == Channel::Whisper && s_cachedWhisper != g_whisperTo)) {
         s_cachedChannel = g_channel;
+        s_cachedSlot = g_guildSlot;
         s_cachedWhisper = g_whisperTo;
         if (g_channel == Channel::Whisper) {
             s_cachedPrefix = g_whisperTo.empty() ? L"/r " : L"/w " + g_whisperTo + L", ";
+        } else if (g_channel == Channel::Guild && g_guildSlot > 0) {
+            s_cachedPrefix = L"/g" + std::to_wstring(g_guildSlot) + L" ";
         } else if (const wchar_t* cmd = ChannelCommand(g_channel)) {
             s_cachedPrefix = std::wstring(cmd) + L" ";
         } else {

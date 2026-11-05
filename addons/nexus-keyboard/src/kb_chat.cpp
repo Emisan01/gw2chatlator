@@ -224,6 +224,7 @@ void ActivateCustomTab(int i, bool focus) {  // focus: the input takes the keybo
     ShowDraftOf(t.uid);
     g_activeTab = g_selectTab = i;
     g_channel = t.write;
+    g_guildSlot = 0;
     g_whisperTo.clear();
     g_sendOverride = t.sendLang;
     if (focus) g_focusInput = true;

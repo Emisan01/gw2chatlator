@@ -475,6 +475,7 @@ void RenderFooter() {  // g_mu held
         UiLang uiLang = static_cast<UiLang>(-1);
         float fontSize = 0.0f;
         Channel channel = Channel::Unknown;
+        int guildSlot = 0;
         std::wstring whisperTo;
         std::wstring writeIn;
         std::wstring sendLang;
@@ -494,17 +495,19 @@ void RenderFooter() {  // g_mu held
     const bool sendOrig = SendOriginal();
     const std::wstring sendLang = SendLang();
     const float curFontPx = ImGui::GetFontSize();
-    if (s_fc.uiLang != g_cfg.uiLang || s_fc.fontSize != curFontPx || s_fc.channel != g_channel || s_fc.whisperTo != g_whisperTo ||
+    if (s_fc.uiLang != g_cfg.uiLang || s_fc.fontSize != curFontPx || s_fc.channel != g_channel || s_fc.guildSlot != g_guildSlot || s_fc.whisperTo != g_whisperTo ||
         s_fc.writeIn != g_cfg.writeIn || s_fc.sendLang != sendLang || s_fc.sendOrig != sendOrig) {
         s_fc.uiLang = g_cfg.uiLang;
         s_fc.fontSize = curFontPx;
         s_fc.channel = g_channel;
+        s_fc.guildSlot = g_guildSlot;
         s_fc.whisperTo = g_whisperTo;
         s_fc.writeIn = g_cfg.writeIn;
         s_fc.sendLang = sendLang;
         s_fc.sendOrig = sendOrig;
 
         s_fc.labelFull = g_channel == Channel::Unknown ? UI(Tr(L"Active channel")) : UI(ChannelLabel(g_channel));
+        if (g_channel == Channel::Guild && g_guildSlot > 0) s_fc.labelFull = "G" + std::to_string(g_guildSlot);
         if (g_channel == Channel::Whisper && !g_whisperTo.empty()) s_fc.labelFull += " " + U8(g_whisperTo);
         s_fc.labelNarrow = g_channel == Channel::Unknown ? UI(Tr(L"Active")) : s_fc.labelFull;
         s_fc.labelBtnFull = s_fc.labelFull + "##chbtn";
@@ -550,19 +553,29 @@ void RenderFooter() {  // g_mu held
 
     // Dropdown menu opens UPWARDS directly above the button, overlaying the window upwards!
     ImGui::SetNextWindowPos(ImVec2(chBtnPos.x, chBtnPos.y - 4.0f), ImGuiCond_Always, ImVec2(0.0f, 1.0f));
-    ImGui::SetNextWindowSizeConstraints(ImVec2(chBtnW, 0.0f), ImVec2(FLT_MAX, ImGui::GetFontSize() * 16.0f));
+    ImGui::SetNextWindowSizeConstraints(ImVec2(chBtnW, 0.0f), ImVec2(FLT_MAX, ImGui::GetFontSize() * 18.0f));
     if (ImGui::BeginPopup("##channel_popup")) {
         ScopedPopupFont popupFont;
+        const auto choose = [](Channel c, int slot) {
+            if (c != Channel::Whisper && g_activeTab >= 0) LeaveWhisperTab();  // the whisper tab is left
+            g_channel = c;
+            g_guildSlot = slot;
+            if (c != Channel::Whisper) g_whisperTo.clear();
+            g_focusInput = true;
+            RequestChannelSync();  // GW2's line follows – every click, also on the channel already chosen
+            ImGui::CloseCurrentPopup();
+        };
         for (Channel c : kChannels) {
             const std::string name = c == Channel::Unknown ? UI(Tr(L"Active channel")) : UI(ChannelLabel(c));
             ImGui::PushStyleColor(ImGuiCol_Text, NameColorOf(c == Channel::Unknown ? Channel::Say : c));
-            if (ImGui::Selectable(name.c_str(), c == g_channel)) {
-                if (c != Channel::Whisper && g_activeTab >= 0) LeaveWhisperTab();  // the whisper tab is left
-                g_channel = c;
-                if (c != Channel::Whisper) g_whisperTo.clear();
-                g_focusInput = true;
-                RequestChannelSync();  // GW2's line follows – every click, also on the channel already chosen
-                ImGui::CloseCurrentPopup();
+            if (ImGui::Selectable(name.c_str(), c == g_channel && (c != Channel::Guild || g_guildSlot == 0))) choose(c, 0);
+            if (c == Channel::Guild) {  // your guilds by their slot, one row: also those you do not represent
+                for (int slot = 1; slot <= 5; ++slot) {
+                    const std::string label = "G" + std::to_string(slot);
+                    if (slot > 1) ImGui::SameLine();
+                    if (ImGui::Selectable(label.c_str(), g_channel == Channel::Guild && g_guildSlot == slot, 0, ImVec2(ImGui::CalcTextSize(label.c_str()).x, 0.0f)))
+                        choose(Channel::Guild, slot);
+                }
             }
             ImGui::PopStyleColor();
         }
@@ -1182,6 +1195,7 @@ void RenderWindow() {
                         changed = true;
                         if (g_activeTab == i) {
                             g_channel = c;
+                            g_guildSlot = 0;
                             RequestChannelSync();
                         }
                     }

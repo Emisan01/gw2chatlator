@@ -407,6 +407,7 @@ extern std::deque<std::wstring> g_history;
 extern int g_historyPos;
 // The channel to write in and the send language.
 extern Channel g_channel;
+extern int g_guildSlot;  // with Channel::Guild: 0 the guild you represent (/g), 1 to 5 that slot (/g1 to /g5)
 extern std::wstring g_whisperTo;
 extern int g_sendIdx;
 extern bool g_sending;
