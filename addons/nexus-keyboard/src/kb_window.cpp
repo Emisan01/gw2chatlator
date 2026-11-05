@@ -1412,7 +1412,7 @@ void RenderWindow() {
         const uint32_t tabChannels = front && front->custom ? front->channels : 0xFFFFFFFFu;
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,  // the space between chat lines (Window tab: Line spacing) – also the info lines, so it shows at once
                             ImVec2(ImGui::GetStyle().ItemSpacing.x,
-                                   ImGui::GetStyle().ItemSpacing.y * std::clamp(g_cfg.chatSpacing, 0, 100) / 100.0f));
+                                   ImGui::GetStyle().ItemSpacing.y * std::clamp(g_cfg.chatSpacing, 0, 100) / 100.0f - ImGui::GetFontSize() * 0.2f * (100 - std::clamp(g_cfg.chatSpacing, 0, 100)) / 100.0f));
         g_visibleLines.clear();
         const float rowWrap = ImGui::GetContentRegionAvail().x, rowFont = ImGui::GetFontSize();
         const float rowGap = ImGui::GetStyle().ItemSpacing.y;
