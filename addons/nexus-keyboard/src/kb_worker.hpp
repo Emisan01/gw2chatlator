@@ -131,16 +131,19 @@ private:
 // Two-lane architecture:
 //  - Interactive lane: CPU-only, typing suggestions, dropdown choices, instant response (< 1ms).
 //  - Network/Background lane: HTTP, translations, WordModel mutations, disk persistence.
+// Beside them chat code names and the waypoint table: never behind a translation or the model's start.
 class Worker {
 public:
     void Start() {
         interactive_.Start(Lane::Interactive);
         network_.Start(Lane::Network);
+        lookups_.Start(Lane::Network);
     }
 
     // Stop interactive first (drops typing jobs), then network (runs `last` cleanup).
     void Stop(std::function<void()> last = {}) {
         interactive_.Stop();
+        lookups_.Stop();
         network_.Stop(std::move(last));
     }
 
@@ -154,6 +157,10 @@ public:
         network_.PostFront(std::move(job));
     }
 
+    void PostLookup(std::function<void()> job) {
+        lookups_.Post(std::move(job));
+    }
+
     // CPU-only interactive work: ComputeTyping, word bar suggestions (< 1ms).
     void PostInteractive(std::function<void()> job) {
         interactive_.Post(std::move(job));
@@ -163,8 +170,8 @@ public:
         return network_.QueueSize();
     }
 
-    uint64_t CpuTime() { return interactive_.CpuTime() + network_.CpuTime(); }
-    bool IsOurs(DWORD id) { return id && (id == interactive_.ThreadId() || id == network_.ThreadId()); }
+    uint64_t CpuTime() { return interactive_.CpuTime() + network_.CpuTime() + lookups_.CpuTime(); }
+    bool IsOurs(DWORD id) { return id && (id == interactive_.ThreadId() || id == network_.ThreadId() || id == lookups_.ThreadId()); }
 
     size_t InteractiveQueueSize() {
         return interactive_.QueueSize();
@@ -173,6 +180,7 @@ public:
 private:
     WorkerLane interactive_{"Interactive", THREAD_PRIORITY_ABOVE_NORMAL, 8};
     WorkerLane network_{"Network", THREAD_PRIORITY_BELOW_NORMAL, 96};
+    WorkerLane lookups_{"Lookups", THREAD_PRIORITY_BELOW_NORMAL, 96};
 };
 
 extern Worker g_worker;

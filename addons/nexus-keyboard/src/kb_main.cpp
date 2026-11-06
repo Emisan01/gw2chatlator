@@ -288,7 +288,7 @@ void AddonLoad(AddonAPI_t* api) {
     {
         std::lock_guard<std::mutex> lock(g_mu);
         g_links.Start(api, [](std::function<void()> job) {
-            if (!g_test.noSend) g_worker.Post(std::move(job));  // the self-test asks nobody
+            if (!g_test.noSend) g_worker.PostLookup(std::move(job));  // the self-test asks nobody
         }, g_cfg.dataDir);
     }
     bool voice = false;

@@ -33,7 +33,7 @@ std::set<std::string> s_askedTiles;
 
 std::thread s_thread;
 std::atomic<bool> s_busy{false}, s_stop{false}, s_through{false}, s_teaching{false}, s_lineMoved{false};
-std::atomic<bool> s_sendDone{false}, s_sendFailed{false};
+std::atomic<bool> s_sendDone{true}, s_sendFailed{false};
 std::atomic<int> s_linesCame{0};  // a whisper to yourself comes back twice: "from" and "to"
 std::atomic<unsigned long long> s_teachUntil{0};
 std::atomic<unsigned> s_frames{0};
@@ -44,6 +44,7 @@ std::atomic<bool> s_linkRead{false}, s_linkToSave{false};
 constexpr size_t kHistoryMax = 30;
 
 void Say(const std::wstring& text, ULONGLONG ms) {
+    for (int waited = 0; waited < 2000 && !s_sendDone && !s_stop; waited += 20) Sleep(20);  // a send's last word clears the status
     std::lock_guard<std::mutex> lock(g_mu);
     SetStatus(text, ms);
 }
@@ -166,7 +167,8 @@ void Flight(uint32_t id) {
         s_sendFailed = !g_status.empty();  // the reason stands in the status
         s_sendDone = true;
     });
-    for (int waited = 0; waited < 15000 && !s_sendDone && !s_stop; waited += 20) Sleep(20);  // the send's own last word first
+    // Until both lines are back: by then the send is only giving the clipboard back, which needs no waiting.
+    for (int waited = 0; waited < 15000 && !s_sendDone && s_linesCame < 2 && !s_stop; waited += 10) Sleep(10);
     if (s_sendFailed) return;
     for (int waited = 0; waited < 3000 && s_linesCame == 0 && !s_stop; waited += 20) Sleep(20);
     if (s_linesCame == 0) {
@@ -243,10 +245,8 @@ void Fly(uint32_t id) {  // the game's thread
     });
 }
 
-void NoTexture(const char*, Texture_t*) {}
-
 Texture_t* Tile(int continent, int floor, int zoom, int x, int y) {
-    if (!g_api || !g_api->Textures_Get || !g_api->Textures_LoadFromURL) return nullptr;
+    if (!g_api || !g_api->Textures_Get || !g_api->Textures_GetOrCreateFromURL) return nullptr;
     char id[64], path[64];
     snprintf(id, sizeof(id), "GW2KB_TILE_%d_%d_%d_%d_%d", continent, floor, zoom, x, y);
     snprintf(path, sizeof(path), "/%d/%d/%d/%d/%d.jpg", continent, floor, zoom, x, y);
@@ -255,10 +255,7 @@ Texture_t* Tile(int continent, int floor, int zoom, int x, int y) {
         std::lock_guard<std::mutex> lock(s_mu);
         first = s_askedTiles.insert(id).second;
     }
-    if (first) {  // once per tile: GW2's public map tiles, only their numbers go out
-        g_api->Textures_LoadFromURL(id, "https://tiles.guildwars2.com", path, NoTexture);
-        return nullptr;
-    }
+    if (first) return g_api->Textures_GetOrCreateFromURL(id, "https://tiles.guildwars2.com", path);  // once per tile: only its numbers go out
     return g_api->Textures_Get(id);
 }
 
@@ -307,6 +304,8 @@ void DrawMap(const gct::ChatLinks::PoiView& center, bool mayFly) {
     dl->AddCircle(middle, r * 2.2f, dark, 24, 3.5f);
     dl->AddCircle(middle, r * 2.2f, accent, 24, 2.0f);
     dl->PopClipRect();
+    const float mx = mouse.x - middle.x, my = mouse.y - middle.y;
+    if (!hit && hovered && mx * mx + my * my < r * r * 6.0f) hit = &center;  // the point itself always answers, map or no map
     if (hit) {
         ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
         ImGui::SetTooltip("%s\n%s", hit->name.c_str(), hit->map.c_str());
@@ -316,6 +315,28 @@ void DrawMap(const gct::ChatLinks::PoiView& center, bool mayFly) {
         }
         if (mayFly && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) Fly(hit->id);
     }
+}
+
+// The table is not there yet: the point itself is, and its code is all a flight needs.
+void DrawBareMarker(uint32_t id, bool mayFly) {
+    const ImVec2 p = ImGui::GetCursorScreenPos(), size = ImGui::GetContentRegionAvail();
+    if (size.x < 8.0f || size.y < 8.0f) return;
+    ImGui::InvisibleButton("##wparea", size);
+    const bool hovered = ImGui::IsItemHovered();
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    dl->AddRectFilled(p, ImVec2(p.x + size.x, p.y + size.y), ImGui::GetColorU32(ImGuiCol_FrameBg));
+    const ImVec2 middle(p.x + size.x * 0.5f, p.y + size.y * 0.5f), mouse = ImGui::GetIO().MousePos;
+    const float r = ImGui::GetFontSize() * 0.32f;
+    const ImU32 accent = ImGui::GetColorU32(UiAccent()), dark = IM_COL32(0, 0, 0, 200);
+    dl->AddCircleFilled(middle, r + 1.0f, dark, 12);
+    dl->AddCircleFilled(middle, r, accent, 12);
+    dl->AddCircle(middle, r * 2.2f, dark, 24, 3.5f);
+    dl->AddCircle(middle, r * 2.2f, accent, 24, 2.0f);
+    const float mx = mouse.x - middle.x, my = mouse.y - middle.y;
+    if (!hovered || mx * mx + my * my >= r * r * 6.0f) return;
+    ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+    ImGui::SetTooltip("%s", UI(Tr(L"Waypoint")).c_str());
+    if (mayFly && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) Fly(id);
 }
 
 std::wstring PoiKind(const std::string& type) {
@@ -443,7 +464,7 @@ void RenderWaypointPreview() {
         ImGui::BeginChild("##wpmap", ImVec2(std::max(fs * 8.0f, ImGui::GetContentRegionAvail().x - listW - ImGui::GetStyle().ItemSpacing.x), mapH), false,
                           ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
         if (known) DrawMap(poi, mayFly);
-        else ImGui::TextDisabled("%s", UI(Tr(L"The table of waypoints is on its way …")).c_str());
+        else if (selected) DrawBareMarker(selected, mayFly);
         ImGui::EndChild();
         ImGui::SameLine();
         ImGui::BeginChild("##wplist", ImVec2(0.0f, mapH), true);
@@ -464,8 +485,10 @@ void RenderWaypointPreview() {
             ImGui::TextUnformatted(poi.name.c_str());
             ImGui::SameLine();
             ImGui::TextDisabled("%s · %s", UI(PoiKind(poi.type)).c_str(), poi.map.c_str());
+        } else {
+            ImGui::TextDisabled("%s", UI(Tr(L"The table of waypoints is on its way …")).c_str());
         }
-        if (mayFly && known) {
+        if (mayFly && selected) {
             if (ImGui::Button(UI(Tr(L"Show it in GW2")).c_str())) Fly(selected);
             ImGui::SameLine();
             if (ImGui::Button(UI(Tr(L"Teach the place again")).c_str())) {
