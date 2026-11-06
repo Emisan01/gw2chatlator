@@ -32,7 +32,9 @@ std::string s_awaited;  // the code on its way, without its brackets
 std::set<std::string> s_askedTiles;
 
 std::thread s_thread;
-std::atomic<bool> s_busy{false}, s_stop{false}, s_through{false}, s_teaching{false}, s_lineCame{false}, s_lineMoved{false};
+std::atomic<bool> s_busy{false}, s_stop{false}, s_through{false}, s_teaching{false}, s_lineMoved{false};
+std::atomic<bool> s_sendDone{false}, s_sendFailed{false};
+std::atomic<int> s_linesCame{0};  // a whisper to yourself comes back twice: "from" and "to"
 std::atomic<unsigned long long> s_teachUntil{0};
 std::atomic<unsigned> s_frames{0};
 // Where the link stands in the last line of GW2's chat, from one click of yours; in the game window's client pixels.
@@ -131,21 +133,37 @@ void Flight(uint32_t id) {
         std::lock_guard<std::mutex> lock(s_mu);
         s_awaited = code.size() > 3 ? code.substr(2, code.size() - 3) : code;
     }
-    s_lineCame = false;
+    s_linesCame = 0;
     s_lineMoved = false;
+    s_sendDone = false;
+    s_sendFailed = false;
     const std::wstring line = L"/w " + own + L", " + FromUtf8(code);
     g_worker.PostFront([line] {
+        {  // as every send: your input lets go of the keyboard and what you type meanwhile is kept for it
+            std::lock_guard<std::mutex> lock(g_mu);
+            g_sending = true;
+            g_bufferHadInputFocus = g_inputActive || g_focusInput;
+            g_bufferingStartTime = GetTickCount64();
+            g_bufferingKeys = true;
+        }
+        g_letGoKeyboard = true;
+        for (int i = 0; i < 50 && !g_keyboardFree; ++i) Sleep(10);
         SendNow({line}, line, std::wstring());  // through GW2's own chat line: so the link stands in GW2's own chat
         std::lock_guard<std::mutex> lock(g_mu);
         if (!g_history.empty() && g_history.front() == line) g_history.pop_front();  // not for your Up key
+        if (ToUtf8(line) == g_input) g_input[0] = 0;  // a send that failed gives its text back: this one was never yours
         g_syncedChannel.clear();  // GW2's line now stands in this whisper: the next message sets its channel again
+        s_sendFailed = !g_status.empty();  // the reason stands in the status
+        s_sendDone = true;
     });
-    for (int waited = 0; waited < 5000 && !s_lineCame && !s_stop; waited += 20) Sleep(20);
-    if (!s_lineCame) {
+    for (int waited = 0; waited < 15000 && !s_sendDone && !s_stop; waited += 20) Sleep(20);  // the send's own last word first
+    if (s_sendFailed) return;
+    for (int waited = 0; waited < 3000 && s_linesCame == 0 && !s_stop; waited += 20) Sleep(20);
+    if (s_linesCame == 0) {
         Say(Tr(L"The code did not come back in the chat: GW2 may not let you whisper to yourself here."), 10000);
         return;
     }
-    Sleep(Dice(250, 350));  // a whisper to yourself may come back twice: the second line too before the place counts
+    for (int waited = 0; waited < 400 && s_linesCame < 2 && !s_stop; waited += 10) Sleep(10);  // both, before the place counts
     if (s_linkX < 0) {  // once: your own click shows where the link stands
         s_teachUntil = GetTickCount64() + 30000;
         s_teaching = true;
@@ -334,10 +352,10 @@ bool WaypointSawLine(bool whisper, const char* content) {  // from Events: Chat,
     std::lock_guard<std::mutex> lock(s_mu);
     if (s_awaited.empty()) return false;
     if (whisper && std::strstr(content, s_awaited.c_str())) {
-        s_lineCame = true;
+        ++s_linesCame;
         return true;
     }
-    if (s_lineCame) s_lineMoved = true;
+    if (s_linesCame > 0) s_lineMoved = true;
     return false;
 }
 
