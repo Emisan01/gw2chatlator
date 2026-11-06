@@ -1719,6 +1719,8 @@ extern const I18nEntry kSpanishStrings[] = {
      "Respuesta inesperada de Supertext"},
     {L"Still busy with a translation: the waypoint was not posted. Click again.",
      "Aún ocupado con una traducción: el punto no se publicó. Vuelve a pulsar."},
+    {L"Click: GW2's map flies there. Right-click: only look.",
+     "Clic: el mapa de GW2 va allí. Clic derecho: solo mirar."},
 };
 extern const size_t kSpanishCount = sizeof(kSpanishStrings) / sizeof(kSpanishStrings[0]);
 

@@ -1719,6 +1719,8 @@ extern const I18nEntry kTurkishStrings[] = {
      "Supertext'dan beklenmeyen yanıt"},
     {L"Still busy with a translation: the waypoint was not posted. Click again.",
      "Hâlâ çeviri yapılıyor: nokta gönderilmedi. Yeniden tıkla."},
+    {L"Click: GW2's map flies there. Right-click: only look.",
+     "Tık: GW2 haritası oraya gider. Sağ tık: yalnızca bak."},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

@@ -443,6 +443,7 @@ void ChatLinks::Tooltip(const PieUI::ChatLinks::LinkSegment& seg) {  // what it 
     ImGui::TextUnformatted(ToUtf8(line).c_str());
     if (known && !name.description.empty()) ImGui::TextUnformatted(name.description.c_str());
     ImGui::TextDisabled("%s", seg.raw.c_str());
+    if (seg.linkType == LINK_MAP) ImGui::TextDisabled("%s", ToUtf8(Tr(L"Click: GW2's map flies there. Right-click: only look.")).c_str());
     ImGui::PopTextWrapPos();
     ImGui::EndTooltip();
 }

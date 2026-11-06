@@ -474,10 +474,15 @@ bool RichLine(const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 col
             case PieUI::ChatLinks::SegmentKind::Link: {
                 const std::string lbl = g_links.Label(seg);
                 place(lbl);
-                if (g_links.Render(seg, lbl, [](const std::string& l, ImVec4 c) { LookText(l.c_str(), Bright(c), false); }) &&
-                    seg.linkType == PieUI::ChatLinks::LINK_MAP && seg.primaryId) {  // GW2's own flight; the window shows if it cannot run
-                    FlyToWaypoint(seg.primaryId);
-                    clicked = true;
+                const bool leftClick = g_links.Render(seg, lbl, [](const std::string& l, ImVec4 c) { LookText(l.c_str(), Bright(c), false); });
+                if (seg.linkType == PieUI::ChatLinks::LINK_MAP && seg.primaryId) {
+                    if (leftClick) {  // GW2's own flight; the window shows if it cannot run
+                        FlyToWaypoint(seg.primaryId);
+                        clicked = true;
+                    } else if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {  // only a look: no message, no click
+                        OpenWaypointPreview(seg.primaryId);
+                        clicked = true;
+                    }
                 }
                 break;
             }

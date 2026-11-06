@@ -32,8 +32,8 @@ Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustot
 - **A chat window built like GW2's own:** tabs at the top – the chat and up to five whisper tabs (click a name, or
   right-click the header to open one); fold it up to its header (V) and open it again (A); it snaps to the screen edges
   and appears only on a map, never on the character screen. Chat codes (waypoints, items …) are found by
-  GW2Chatlator itself and show their names, with their details on mouse-over. A click on a waypoint flies GW2's own map there. The waypoints window
-  (menu ≡ → Waypoints) shows GW2's map around a point, the points near it, your last ones and a collection of your own. `/self` in the footer's
+  GW2Chatlator itself and show their names, with their details on mouse-over. A click on a waypoint flies GW2's own map there, a right-click only shows it. The waypoints
+  window (menu ≡ → Waypoints) shows GW2's map around a point, the points near it, your last ones and a collection of your own. `/self` in the footer's
   channels, or typed, whispers to yourself: a code for your eyes only, no one gets spammed. Web links open only after a
   question.
 - **Write in your language,** the chat gets the translation: you see it (and what it means in your language again)

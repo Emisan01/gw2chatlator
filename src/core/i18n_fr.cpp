@@ -1719,6 +1719,8 @@ extern const I18nEntry kFrenchStrings[] = {
      "Réponse inattendue de Supertext"},
     {L"Still busy with a translation: the waypoint was not posted. Click again.",
      "Encore occupé par une traduction : le point n'a pas été publié. Cliquez à nouveau."},
+    {L"Click: GW2's map flies there. Right-click: only look.",
+     "Clic : la carte de GW2 s'y rend. Clic droit : seulement regarder."},
 };
 extern const size_t kFrenchCount = sizeof(kFrenchStrings) / sizeof(kFrenchStrings[0]);
 

@@ -1719,6 +1719,8 @@ extern const I18nEntry kRussianStrings[] = {
      "Неожиданный ответ Supertext"},
     {L"Still busy with a translation: the waypoint was not posted. Click again.",
      "Ещё идёт перевод: точка не отправлена. Нажмите ещё раз."},
+    {L"Click: GW2's map flies there. Right-click: only look.",
+     "Клик: карта GW2 летит туда. Правый клик: только посмотреть."},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 
