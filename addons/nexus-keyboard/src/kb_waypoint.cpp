@@ -245,7 +245,8 @@ void Flight(uint32_t id) {
         Say(Tr(L"Still busy with a translation: the waypoint was not posted. Click again."), 8000);
         return;
     }
-    for (int waited = 0; waited < 15000 && !s_sendDone && !s_stop; waited += 10) Sleep(10);  // the whole send, only then the mouse
+    // Until the line is back, or the send ended without it. The clipboard coming back needs no waiting.
+    for (int waited = 0; waited < 15000 && !s_sendDone && s_linesCame == 0 && !s_stop; waited += 10) Sleep(10);
     if (s_sendFailed) return;
     TechLog('S', L"waypoint: whisper sent");
     for (int waited = 0; waited < 3000 && s_linesCame == 0 && !s_stop; waited += 20) Sleep(20);
