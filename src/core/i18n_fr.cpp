@@ -1715,8 +1715,6 @@ extern const I18nEntry kFrenchStrings[] = {
      "Retirer de la collection"},
     {L"Click a waypoint in the chat, or choose one from your lists.",
      "Cliquez sur un point de passage dans le chat ou choisissez-en un dans vos listes."},
-    {L"GW2's line stays in the whisper to you: which channel it was in before, I have not seen yet.",
-     "La ligne de GW2 reste dans le chuchotement à vous-même : je n'ai pas encore vu quel canal était actif avant."},
     {L"Shift+click in GW2 brings the code into the input",
      "Maj+clic dans GW2 amène le code dans la saisie"},
     {L"With Enter opening the input: a Shift+click on a map point, an item or a skill puts its code into GW2's own line. It comes over into the input here and that line closes, with a few keys per click.",

@@ -1715,8 +1715,6 @@ extern const I18nEntry kTurkishStrings[] = {
      "Koleksiyondan çıkar"},
     {L"Click a waypoint in the chat, or choose one from your lists.",
      "Sohbette bir geçiş noktasına tıkla veya listelerinden birini seç."},
-    {L"GW2's line stays in the whisper to you: which channel it was in before, I have not seen yet.",
-     "GW2 satırı sana fısıltıda kalıyor: önce hangi kanalın etkin olduğunu henüz görmedim."},
     {L"Shift+click in GW2 brings the code into the input",
      "GW2'de Shift+tık kodu giriş alanına getirir"},
     {L"With Enter opening the input: a Shift+click on a map point, an item or a skill puts its code into GW2's own line. It comes over into the input here and that line closes, with a few keys per click.",

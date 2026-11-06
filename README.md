@@ -141,8 +141,8 @@ why GW2Chatlator works like this:
   one line when you finish speaking (pause, release of the push-to-talk key or a mouse click). A tool that reads chat
   and answers by itself would be a bot, and there is none of that here, AI or not.
 - **GW2's own map flight, only if you switch it on (off by default):** a click of yours on a point in the waypoint
-  preview whispers its code to yourself, sets GW2's chat line back to its channel and clicks that link once with the
-  real mouse. One message and one synthetic click per click of yours, nothing after it: your decision, at your own risk
+  preview whispers its code to yourself and clicks that link once with the real mouse. GW2's chat line stays in that
+  whisper; a channel chosen in the footer comes back with your next message. One message and one synthetic click per click of yours, nothing after it: your decision, at your own risk
   under ArenaNet's rules. The map is never dragged, game memory is never touched.
 - **Shift+click while Enter opens the input:** the code GW2 put into its own line comes over into the input, with a few
   keys per click of yours and nothing sent; Options → Chat turns it off.

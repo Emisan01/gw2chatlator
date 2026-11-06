@@ -719,7 +719,6 @@ std::wstring SetChannelNow(const std::wstring& channel) {
     TechLog('S', L"channel: " + out.trace);
     if (!out.ok) return out.error;
     g_syncedChannel = channel;
-    g_gw2LineChannel = channel;
     return std::wstring();
 }
 
@@ -743,8 +742,6 @@ void SyncChannelJob(std::wstring channel) {  // the channel was chosen in the wi
     if (!error.empty()) SetStatus(error, 8000);
 }
 }  // namespace
-
-std::wstring SetLineChannel(const std::wstring& channel) { return SetChannelNow(channel); }
 
 void RequestCodePickUp() {
     g_worker.PostFront([] {

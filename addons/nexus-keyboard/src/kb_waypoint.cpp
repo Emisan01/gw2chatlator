@@ -162,19 +162,13 @@ void Flight(uint32_t id) {
     struct EndHold {
         ~EndHold() { s_through = false; }
     } endHold;
-    std::wstring own, before;
-    bool copyOnly, lineUnknown;
+    std::wstring own;
+    bool copyOnly;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         own = g_ownName;
         copyOnly = g_cfg.copyOnly;
         // Where GW2's line goes back to: GW2 does not say. The footer's channel, else the one we last saw it in.
-        // Only a plain channel ("/s ", "/g2 ") goes back, the one way of setting it that is proven; a whisper chosen in the
-        // footer goes with its next message anyway, and after this whisper a reply would answer yourself.
-        const std::wstring footer = ComposePrefix();
-        before = footer.empty() ? g_gw2LineChannel : footer;
-        if (before.find(L',') != std::wstring::npos || before == L"/r ") before.clear();
-        lineUnknown = footer.empty() && before.empty();
     }
     if (own.empty() || copyOnly) {
         Say(copyOnly ? Tr(L"In \"only copy\" mode the waypoint cannot be posted.") : Tr(L"Your character's name is not known yet."), 8000);
@@ -202,70 +196,34 @@ void Flight(uint32_t id) {
     s_sendDone = false;
     s_sendFailed = false;
     const std::wstring line = L"/w " + own + L", " + FromUtf8(code);
-    g_worker.PostFront([line, before] {
-        bool hadInput;
+    g_worker.PostFront([line] {
         {  // as every send: your input lets go of the keyboard and what you type meanwhile is kept for it
             std::lock_guard<std::mutex> lock(g_mu);
             g_sending = true;
-            hadInput = g_inputActive || g_focusInput;
-            g_bufferHadInputFocus = hadInput;
+            g_bufferHadInputFocus = g_inputActive || g_focusInput;
             g_bufferingStartTime = GetTickCount64();
             g_bufferingKeys = true;
         }
         HoldWindows();
         LetGoOfKeyboard();
         SendNow({line}, line, std::wstring());  // through GW2's own chat line: so the link stands in GW2's own chat
-        MumbleLink mumble;
-        int shutAfter = -1;
-        for (int waited = 0; waited <= 1000 && !s_stop; waited += 20) {
-            const MumbleState ms = mumble.Read();
-            if (!ms.live || !ms.TextboxHasFocus()) {
-                shutAfter = waited;
-                break;
-            }
-            Sleep(20);
-        }
-        TechLog('S', shutAfter < 0 ? std::wstring(L"waypoint: GW2's line still open 1 s after the whisper")
-                                   : L"waypoint: GW2's line shut " + std::to_wstring(shutAfter) + L" ms after the whisper");
-        bool setBack;
-        {
-            std::lock_guard<std::mutex> lock(g_mu);
-            if (!g_history.empty() && g_history.front() == line) g_history.pop_front();  // not for your Up key
-            if (ToUtf8(line) == g_input) g_input[0] = 0;  // a send that failed gives its text back: this one was never yours
-            g_syncedChannel.clear();  // GW2's line now stands in this whisper
-            s_sendFailed = !g_status.empty();  // the reason stands in the status
-            if (s_sendFailed) s_runBroke = true;
-            setBack = !s_sendFailed && !before.empty() && shutAfter >= 0;  // no key into an open line
-            if (setBack) {  // the same run goes on: the input keeps waiting
-                g_sending = true;
-                g_focusInput = false;
-                g_bufferHadInputFocus = hadInput;
-                g_bufferingStartTime = GetTickCount64();
-                g_bufferingKeys = true;
-            }
-        }
-        if (setBack) {  // before the click, not after it: typing stops the flight, and later you are playing again
-            HoldWindows();
-            LetGoOfKeyboard();
-            const std::wstring error = SetLineChannel(before);
-            std::lock_guard<std::mutex> lock(g_mu);
-            g_sending = false;
-            g_bufferingStartTime = GetTickCount64();
-            if (hadInput || g_cfg.returnFocus) g_focusInput = true;
-            if (!error.empty()) SetStatus(error, 8000);
-        }
+        std::lock_guard<std::mutex> lock(g_mu);
+        if (!g_history.empty() && g_history.front() == line) g_history.pop_front();  // not for your Up key
+        if (ToUtf8(line) == g_input) g_input[0] = 0;  // a send that failed gives its text back: this one was never yours
+        g_syncedChannel.clear();  // GW2's line now stands in this whisper: the next message from the footer's channel sets it again
+        s_sendFailed = !g_status.empty();  // the reason stands in the status
+        if (s_sendFailed) s_runBroke = true;
         s_sendDone = true;
     });
-    for (int waited = 0; waited < 15000 && !s_sendDone && !s_stop; waited += 10) Sleep(10);  // the whole run, only then the mouse
+    for (int waited = 0; waited < 15000 && !s_sendDone && !s_stop; waited += 10) Sleep(10);  // the whole send, only then the mouse
     if (s_sendFailed) return;
-    TechLog('S', before.empty() ? L"waypoint: whisper sent, channel not known, it stays" : L"waypoint: whisper sent, channel set back");
+    TechLog('S', L"waypoint: whisper sent");
     for (int waited = 0; waited < 3000 && s_linesCame == 0 && !s_stop; waited += 20) Sleep(20);
     if (s_linesCame == 0) {
         Say(Tr(L"The code did not come back in the chat: GW2 may not let you whisper to yourself here."), 10000);
         return;
     }
     for (int waited = 0; waited < 400 && s_linesCame < 2 && !s_stop; waited += 10) Sleep(10);  // both, before the place counts
-    if (lineUnknown) Say(Tr(L"GW2's line stays in the whisper to you: which channel it was in before, I have not seen yet."), 8000);
     const HWND gw2 = FindGw2Window(GetCurrentProcessId());
     RECT client{};
     if (!gw2 || !GetClientRect(gw2, &client) || client.right <= 0 || client.bottom <= 0) return;
@@ -315,7 +273,6 @@ void Flight(uint32_t id) {
     GetCursorPos(&now);
     if (std::abs(now.x - at.x) <= 2 && std::abs(now.y - at.y) <= 2) MoveCursor(was);  // not hit and not moved by you: back
     TechLog('S', L"waypoint: clicked, the map did not open");
-    s_forgetPlace = true;  // the place is wrong or old: the next run asks for your click
     Say(Tr(L"The map did not open: the link was not hit. Teach the place again in the preview; GW2's chat must show whispers and stand at its end."), 12000);
 }
 
