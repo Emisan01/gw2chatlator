@@ -51,6 +51,7 @@ std::map<std::wstring, POINT> s_places;  // s_mu: read or learned this session
 std::atomic<unsigned long long> s_linkClickAt{0};
 
 constexpr size_t kHistoryMax = 30, kCollectionMax = 200;
+constexpr int kMaxTiles = 200;
 
 // From the first key to the click: our windows let the mouse through and your clicks wait (a click on a window of ours would
 // take the keyboard, one in the world would shut GW2's line, either tears the run apart). It ends by itself, whatever happens.
@@ -394,8 +395,8 @@ void DrawMap(const gct::ChatLinks::PoiView& center, bool mayFly) {
     dl->PushClipRect(p, ImVec2(p.x + size.x, p.y + size.y), true);
     dl->AddRectFilled(p, ImVec2(p.x + size.x, p.y + size.y), ImGui::GetColorU32(ImGuiCol_FrameBg));
     int shown = 0;
-    for (int ty = std::max(0, static_cast<int>(std::floor(top / tileUnits))); ty * tileUnits < top + size.y / perUnit && shown < 30; ++ty) {
-        for (int tx = std::max(0, static_cast<int>(std::floor(left / tileUnits))); tx * tileUnits < left + size.x / perUnit && shown < 30; ++tx, ++shown) {
+    for (int ty = std::max(0, static_cast<int>(std::floor(top / tileUnits))); ty * tileUnits < top + size.y / perUnit && shown < kMaxTiles; ++ty) {
+        for (int tx = std::max(0, static_cast<int>(std::floor(left / tileUnits))); tx * tileUnits < left + size.x / perUnit && shown < kMaxTiles; ++tx, ++shown) {
             const Texture_t* tile = Tile(center.continent, center.floor, zoom, tx, ty);
             if (!tile || !tile->Resource) continue;
             const ImVec2 a(p.x + (tx * tileUnits - left) * perUnit, p.y + (ty * tileUnits - top) * perUnit);
