@@ -1,26 +1,12 @@
 # GW2Chatlator — Quality Test Protocol
 
 Status: Active Quality Protocol  
-Reference: [AGENTS.md](file:///C:/Users/Emi/Documents/github/gw2chatlator/AGENTS.md) (Single Source of Truth)  
+Reference: [AGENTS.md](../AGENTS.md) (Single Source of Truth)  
 Target: Guild Wars 2 / Raidcore Nexus Add-on (`GW2Chatlator.dll`)
 
 ---
 
-## 1. Pre-Build Findings & Settle Status
-
-| # | Finding from Code Review | Risk / Context | Resolution Status |
-|---|---|---|---|
-| **1** | `ImAnimate/` untracked in git | Build failure on other checkouts / CI | **Resolved (`6956ac9`):** Removed `ImAnimate` entirely. Replaced card hover glow with a lightweight 2-line frame-rate independent lerp in `kb_options.cpp`. Zero untracked dependencies. |
-| **2** | Local MT / NLLB removal side-effects | Worker concurrency or config bypass | **Resolved (`6956ac9`):** Restored `if (inUse)` safety guard in `kb_local_mt.cpp`. Model/module removal is disabled while actively chosen; user is prompted to select another engine and save first. |
-| **3** | `SpellService` snapshots & C++ standard | Uninitialized reads or unnecessary copies | **Resolved (`6956ac9`):** `gameSnap_` initialized to non-null empty set; `IgnoreForSession` only reallocates snapshot if new word was actually inserted (`.second == true`); C++17 `std::atomic_store`/`load` on `shared_ptr` standard compliant. |
-| **4** | Worker lanes non-blocking audit | Micro-stuttering during live typing | **Resolved (`6956ac9`):** `PostInteractive` strictly isolated to `ComputeTyping`. All blocking operations (translation, network, disk, Windows send) assert `AssertNotInteractiveLane` and run on background lane. |
-| **5** | Color-blind accessibility & Mic mute | Color-only state distinction | **Resolved (`6956ac9`):** Implemented `Icon::MicMuted` with a diagonal strike-through slash across capsule and stand; removed red tint on mute (red reserved exclusively for recording activity); text badges for all tile states. |
-| **6** | i18n diff bloat & line endings | Messy git history and newline churn | **Resolved (`6956ac9`):** Preserved native `\r\n` (CRLF) line endings; removed 20 dead keys and appended 39 new keys in place without reordering; `i18n_check.py` reports 0 missing, 0 unused. |
-| **7** | UI Simplicity & Clean Layout | Visual clutter and redundant controls | **Resolved (`6956ac9`):** Removed redundant "Show the window" checkbox from dashboard; added generous vertical spacing; consolidated Translation & Languages section below tiles. |
-
----
-
-## 2. Quality Architecture (Three Levels)
+## 1. Quality Architecture (Three Levels)
 
 Quality verification is strictly stratified into three distinct levels:
 
@@ -32,7 +18,7 @@ Quality verification is strictly stratified into three distinct levels:
 
 ---
 
-## 3. Rules Enforced by This Protocol
+## 2. Rules Enforced by This Protocol
 
 1. **Pre-Release First, Push After Approval:** Releases are published initially as Pre-Release (never directly as Latest). No push to remote and no public release without explicit maintainer approval (`AGENTS.md` §4).
 2. **Privacy Invariant:** Never store, log, or export other players' messages, account names, or chat content. Counts only. The word model learns exclusively from the user's own typing.
@@ -44,7 +30,7 @@ Quality verification is strictly stratified into three distinct levels:
 
 ---
 
-## 4. Test Matrix
+## 3. Test Matrix
 
 | ID | Area | Step | Expected | Level | Touches (files) | Last run (version, date, result) |
 |---|---|---|---|:---:|---|---|
@@ -151,7 +137,7 @@ Quality verification is strictly stratified into three distinct levels:
 
 ---
 
-## 5. Change-Scoped Execution Mapping
+## 4. Change-Scoped Execution Mapping
 
 When running change-scoped validation (`python tools/verify_release.py --changed`):
 - `src/core/`: Evaluates `MT-01`, `MT-02`, `MT-08`, `TYPE-01`, `TYPE-04`, `UI-02`.

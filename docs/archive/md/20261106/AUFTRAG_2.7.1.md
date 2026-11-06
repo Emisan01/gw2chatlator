@@ -1,6 +1,6 @@
 # ToDo 2.7.1
 
-Regeln: [AGENTS.md](../AGENTS.md) (Evidence bei feat/fix/perf/refactor, messen statt raten), nur erfundene Testzeilen,
+Regeln: [AGENTS.md](../../../../AGENTS.md) (Evidence bei feat/fix/perf/refactor, messen statt raten), nur erfundene Testzeilen,
 keine AI-Attribution, kein Push/Release (nur auf Emis Wort). Claude prüft zuletzt.
 
 ## ZUERST (Emi, 2026-11-01, hohe Priorität)
