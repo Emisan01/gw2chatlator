@@ -357,11 +357,12 @@ std::string Fit(const std::string& s, float width) {
     return U8(w.substr(0, low)) + "...";
 }
 
-// Text drawn into the input box (status, the translation in the compact view): on top, clipped to the box.
+// Text drawn into the input box (status, the translation in the compact view), clipped to the box. Into the current window,
+// the see-through child above the box: never over a menu or another window, as the foreground list did.
 void BoxText(const ImVec2& at, const ImVec4& clip, ImU32 color, const std::string& text, float scale) {
     std::string plain;
-    ImGui::GetForegroundDrawList()->AddText(ImGui::GetFont(), ImGui::GetFontSize() * scale, at, color,
-                                            FontSafe(text.c_str(), plain), nullptr, 0, &clip);
+    ImGui::GetWindowDrawList()->AddText(ImGui::GetFont(), ImGui::GetFontSize() * scale, at, color,
+                                        FontSafe(text.c_str(), plain), nullptr, 0, &clip);
 }
 
 int MicLayer() {

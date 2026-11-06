@@ -2184,8 +2184,15 @@ void RenderWindow() {
     }
     const ImVec4 clip(inputMin.x, inputMin.y, inputMax.x, inputMax.y);
     const ImVec2 textAt(inputMin.x + st.FramePadding.x, inputMin.y + st.FramePadding.y);
+    // What is drawn into the box: a see-through child right above it, on the window's own level, so menus and other windows
+    // cover it. It takes no mouse: clicks go to the box.
+    const ImVec2 belowBox = ImGui::GetCursorScreenPos();
+    ImGui::SetCursorScreenPos(inputMin);
+    ImGui::BeginChild("##boxtext", ImVec2(inputMax.x - inputMin.x, inputMax.y - inputMin.y), false,
+                      ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar |
+                          ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings);
     if (const std::wstring rest = GhostRest(g_wFlatInput); !rest.empty() && inputActive) {  // what Space / Tab writes
-        // In the line where the text ends (the box is its own child window: drawn on top, clipped to the box).
+        // In the line where the text ends, clipped to the box.
         const size_t inLen = std::strlen(g_input);
         const char* lastLine = std::strrchr(g_input, '\n');
         const int lineNo = static_cast<int>(std::count(g_input, g_input + inLen, '\n'));
@@ -2225,6 +2232,8 @@ void RenderWindow() {
         BoxText(ImVec2(textAt.x, inputMax.y - smallLine - 1), clip, ImGui::GetColorU32(kPreview),
                 Fit(t, (inputMax.x - inputMin.x) * (g_status.empty() ? 0.95f : 0.38f)), 0.85f);
     }
+    ImGui::EndChild();
+    ImGui::SetCursorScreenPos(belowBox);
     chatFont.Pop();
 
     CostMark(kCostFooter);
