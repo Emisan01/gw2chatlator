@@ -475,8 +475,8 @@ bool RichLine(const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 col
                 const std::string lbl = g_links.Label(seg);
                 place(lbl);
                 if (g_links.Render(seg, lbl, [](const std::string& l, ImVec4 c) { LookText(l.c_str(), Bright(c), false); }) &&
-                    seg.linkType == PieUI::ChatLinks::LINK_MAP && seg.primaryId) {  // where is that: the preview
-                    OpenWaypointPreview(seg.primaryId);
+                    seg.linkType == PieUI::ChatLinks::LINK_MAP && seg.primaryId) {  // GW2's own flight; the window shows if it cannot run
+                    FlyToWaypoint(seg.primaryId);
                     clicked = true;
                 }
                 break;

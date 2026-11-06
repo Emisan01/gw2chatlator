@@ -1,9 +1,9 @@
-// kb_waypoint.cpp — a waypoint from the chat. A click on it opens a preview: GW2's own map tiles around the point, the points
-// near it, a list of your last ones; nothing goes to the game for that. Switched on in the options (off by default), a click
-// on a point there gets the game's own reaction: its code is whispered to yourself, so its place in GW2's chat is known, and
+// kb_waypoint.cpp — a waypoint from the chat. A click on it, or on a point in the waypoints window, gets the game's own
+// reaction: its code is whispered to yourself, so its place in GW2's chat is known, and
 // clicked once with the real mouse in GW2's own chat: onto the link, about 400 ms for GW2's mouse-over to land, then the
 // press (GW2 reads the mouse once a frame and takes no click on a link it has not seen the mouse on).
 // One click of yours, one message and one click of ours; every step only while GW2 is in front. No hook, no game memory.
+// The window (menu, or when the flight cannot run): GW2's own map tiles around the point, the points near it, your lists.
 
 #include "kb_shared.hpp"
 
@@ -44,6 +44,7 @@ std::atomic<unsigned> s_frames{0};
 // moves with your character's name, the window's size and GW2's interface size: learned once for each, nothing guessed.
 std::atomic<int> s_linkX{-1}, s_linkY{-1};
 std::atomic<bool> s_forgetPlace{false}, s_mapOpenFrame{false}, s_hidePreview{false};
+std::atomic<uint32_t> s_flyRequest{0};  // a click in the chat, drawn with g_mu held: the flight starts in the next frame
 std::atomic<unsigned> s_runCount{0}, s_runWaiting{0};  // the run posted to the worker and not begun yet; 0: none
 std::atomic<int> s_previewL{0}, s_previewT{0}, s_previewR{0}, s_previewB{0};  // the preview's rectangle, empty while it is closed
 std::wstring s_placeKey;  // s_mu: the place being learned
@@ -515,6 +516,15 @@ void OpenWaypointPreview(uint32_t id) {  // g_mu held or not: only s_mu
     s_open = true;
 }
 
+void FlyToWaypoint(uint32_t id) {  // a click on a waypoint in the chat; g_mu held or not: only s_mu
+    {
+        std::lock_guard<std::mutex> lock(s_mu);
+        s_selected = id;
+        s_open = true;
+    }
+    s_flyRequest = id;
+}
+
 void OpenWaypointWindow() {  // from the menu: your lists, without a code from the chat
     std::lock_guard<std::mutex> lock(s_mu);
     s_open = true;
@@ -630,14 +640,17 @@ void RenderWaypointPreview() {
         if (!s_open || WaypointPassThrough() || s_hidePreview) return;
     }
     const bool teaching = s_teaching.load() && GetTickCount64() <= s_teachUntil.load();  // no new run: your click on the link comes first
-    bool mayFly, onMap, namesOn, clickOn;
+    bool mayFly, onMap, namesOn;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         ReadStored(g_cfg.dataDir);
         namesOn = g_cfg.chatCodeNames;
-        clickOn = g_cfg.waypointClick;
-        mayFly = clickOn && !s_busy.load() && !teaching;
+        mayFly = !s_busy.load() && !teaching;
         onMap = (g_inMap || g_test.forceMap) && !g_mapOpen;
+    }
+    if (const uint32_t wanted = s_flyRequest.exchange(0); wanted && mayFly) {
+        Fly(wanted);
+        return;
     }
     if (!onMap) return;  // as our chat: never on a loading screen or at the character choice, never over GW2's open map
     {
@@ -715,8 +728,6 @@ void RenderWaypointPreview() {
                 s_forgetPlace = true;
                 Fly(selected);
             }
-        } else if (!clickOn) {
-            ImGui::TextDisabled("%s", UI(Tr(L"Options > Chat: a click here can get GW2's own map flight.")).c_str());
         }
     }
     if (pushedUf) ImGui::PopFont();
