@@ -326,12 +326,12 @@ bool ChatLinks::Poi(uint32_t id, PoiView* out) {
     return true;
 }
 
-std::vector<ChatLinks::PoiView> ChatLinks::PoisIn(int continent, float left, float top, float right, float bottom) {
+std::vector<ChatLinks::PoiView> ChatLinks::PoisIn(int continent, int floor, float left, float top, float right, float bottom) {
     std::vector<PoiView> found;
     std::lock_guard<std::mutex> lock(mu_);
     for (const auto& entry : pois_) {
         const Name& n = entry.second;
-        if (n.continent != continent || n.x < left || n.x > right || n.y < top || n.y > bottom) continue;
+        if (n.continent != continent || n.floor != floor || n.x < left || n.x > right || n.y < top || n.y > bottom) continue;
         PoiView view;
         view.id = entry.first;
         view.name = n.text;
@@ -342,7 +342,7 @@ std::vector<ChatLinks::PoiView> ChatLinks::PoisIn(int continent, float left, flo
         view.x = n.x;
         view.y = n.y;
         found.push_back(std::move(view));
-        if (found.size() >= 200) break;
+        if (found.size() >= 500) break;
     }
     return found;
 }

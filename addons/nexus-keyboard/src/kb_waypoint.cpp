@@ -405,7 +405,7 @@ void DrawMap(const gct::ChatLinks::PoiView& center, bool mayFly) {
     const ImVec2 mouse = ImGui::GetIO().MousePos;
     const ImU32 accent = ImGui::GetColorU32(UiAccent()), dark = IM_COL32(0, 0, 0, 200);
     const gct::ChatLinks::PoiView* hit = nullptr;
-    const std::vector<gct::ChatLinks::PoiView> around = g_links.PoisIn(center.continent, left, top, left + size.x / perUnit, top + size.y / perUnit);
+    const std::vector<gct::ChatLinks::PoiView> around = g_links.PoisIn(center.continent, center.floor, left, top, left + size.x / perUnit, top + size.y / perUnit);
     const float r = ImGui::GetFontSize() * 0.32f;
     float hitDistance = r * r * 6.0f;
     for (const gct::ChatLinks::PoiView& poi : around) {
