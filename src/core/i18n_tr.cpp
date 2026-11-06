@@ -1193,8 +1193,6 @@ extern const I18nEntry kTurkishStrings[] = {
      "ses modülü eksik"},
     {L"together {1} MB",
      "toplam {1} MB"},
-    {L"too many requests – the public server allows 20 per minute",
-     "çok fazla istek – herkese açık sunucu dakikada 20'ye izin verir"},
     {L"translating and sending …",
      "çevriliyor ve gönderiliyor …"},
     {L"translating …",

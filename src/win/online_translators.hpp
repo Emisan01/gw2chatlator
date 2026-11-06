@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 
-#include "core/languagetool_protocol.hpp"
 #include "core/translator.hpp"
 
 namespace gct {
@@ -68,9 +67,5 @@ struct LocalServerResult {
 
 // Probes common local AI endpoints (Ollama :11434, LM Studio :1234, llama-server :8080).
 bool DiscoverLocalLlmServer(LocalServerResult* result, std::wstring* error = nullptr);
-
-// LanguageTool check (public API or own server); blocking.
-LtResult CheckWithLanguageTool(const std::wstring& serverUrl, const std::wstring& text, const std::wstring& lang,
-                               const std::wstring& motherTongue);
 
 }  // namespace gct

@@ -63,7 +63,6 @@ add_library(gct_core STATIC
     src/core/i18n_tr.cpp
     src/core/i18n_ru.cpp
     src/core/word_model.cpp
-    src/core/languagetool_protocol.cpp
     src/core/voice.cpp
     src/core/voice_learn.cpp
     src/core/send_guard.cpp

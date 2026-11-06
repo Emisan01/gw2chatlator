@@ -1193,8 +1193,6 @@ extern const I18nEntry kItalianStrings[] = {
      "il modulo vocale manca"},
     {L"together {1} MB",
      "in totale {1} MB"},
-    {L"too many requests – the public server allows 20 per minute",
-     "troppe richieste – il server pubblico ne consente 20 al minuto"},
     {L"translating and sending …",
      "traduzione e invio …"},
     {L"translating …",

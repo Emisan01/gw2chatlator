@@ -1193,8 +1193,6 @@ extern const I18nEntry kGermanStrings[] = {
      "das Sprachmodul fehlt"},
     {L"together {1} MB",
      "zusammen {1} MB"},
-    {L"too many requests – the public server allows 20 per minute",
-     "zu viele Anfragen – der öffentliche Server erlaubt 20 pro Minute"},
     {L"translating and sending …",
      "übersetze und sende …"},
     {L"translating …",

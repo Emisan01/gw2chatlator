@@ -79,24 +79,14 @@ public:
     std::shared_ptr<const WordModelSnapshot> ModelSnapshot() const { return model_.GetSnapshot(); }
     const TypoMemory& Typos() const { return typos_; }
     std::shared_ptr<const TypoMemory> TyposSnapshot() const { return std::atomic_load(&typosSnap_); }
-    // A correction was kept (Space/Tab wrote `fix` for `typed`): a typo you make, corrected without guessing next
-    // time. Completions are no typos. Backspace right after it (RejectCorrection) forgets it again.
-    void NoteFix(const std::wstring& typed, const std::wstring& fix);
-    // You taught it (GW2 Keyboard for Nexus: right-click in the input): `typed` is your typo for `fix`. Like NoteFix,
-    // also with learning switched off; never for a word the dictionary knows (invariant 6). False: not taken.
+    // You taught it (GW2 Keyboard for Nexus: right-click in the input): `typed` is your typo for `fix`, also with
+    // learning switched off; never for a word the dictionary knows (invariant 6). False: not taken.
     bool TeachFix(const std::wstring& typed, const std::wstring& fix);
     bool IsLearned(const std::wstring& word) const { return model_.Count(word) > 0; }
     // A word taught by mistake: gone from the word bar and autocorrection.
     bool Forget(const std::wstring& word);
     // Deletes everything learned, in every language (learned_*.txt).
     void ForgetAll();
-
-    // Issues worth showing. Skips GW2 words, anything with digits, chat
-    // codes, the chat-command prefix and the word the caret is touching
-    // (still being typed). `caret` = npos to check everything.
-    std::vector<SpellIssue> Check(const std::wstring& text, size_t caret) const;
-
-    std::vector<std::wstring> Suggest(const std::wstring& word) const;
 
     // Correction for a just-finished word: Safe = only Windows' sure fixes,
     // Phone = also the most likely word for a typo (see ChooseCorrection).
@@ -179,7 +169,6 @@ private:
     std::vector<std::wstring> terms_;  // yours, as written
     void RebuildKeep();                // built-in + your terms + taught names -> keep_ and its snapshot
     WordSet keep_ = BuiltinKeepWords();
-    void SaveNames();
     std::shared_ptr<const TypoMemory> typosSnap_ = std::make_shared<const TypoMemory>();
     std::shared_ptr<const std::unordered_map<std::wstring, std::wstring>> namesSnap_ =
         std::make_shared<const std::unordered_map<std::wstring, std::wstring>>();

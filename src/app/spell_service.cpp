@@ -236,17 +236,6 @@ size_t SpellService::TypoPatterns() const {
     return s ? s->Size() : 0;
 }
 
-void SpellService::SaveNames() {
-    RebuildKeep();
-    std::atomic_store(&namesSnap_, std::make_shared<const std::unordered_map<std::wstring, std::wstring>>(names_));
-    std::vector<std::wstring> all;
-    for (const auto& kv : names_) all.push_back(kv.second);
-    std::sort(all.begin(), all.end());
-    std::string out = "# Names you taught – written exactly like this. One per line.\n";
-    for (const std::wstring& n : all) out += ToUtf8(n) + "\n";
-    WriteFileAtomic(namesPath_, out);
-}
-
 std::wstring SpellService::NameFor(const std::wstring& word) const {
     auto snap = std::atomic_load(&namesSnap_);
     if (!snap) return std::wstring();
@@ -432,15 +421,6 @@ bool SpellService::DictionarySlip(const std::wstring& typed, const std::wstring&
     return false;
 }
 
-void SpellService::NoteFix(const std::wstring& typed, const std::wstring& fix) {
-    if (!learnChoices_ || typed.size() < 3 || fix.empty() || !LettersOnly(typed) || IsValidWord(typed)) return;
-    const std::wstring tk = WordKey(typed), fk = WordKey(fix);
-    if (fk.size() > tk.size() && fk.compare(0, tk.size(), tk) == 0) return;  // a completion, no typo
-    if (fix.find(L' ') != std::wstring::npos) return;
-    typos_.Add(typed, fix);
-    SaveLearned();
-}
-
 bool SpellService::TeachFix(const std::wstring& typed, const std::wstring& fix) {
     if (typed.size() < 3 || fix.empty() || !LettersOnly(typed) || IsValidWord(typed)) return false;
     if (fix.find(L' ') != std::wstring::npos || WordKey(typed) == WordKey(fix)) return false;
@@ -550,25 +530,6 @@ std::vector<Span> SpellService::ProtectedSpans(const std::wstring& text) {
     }
     return spans;
 }
-
-std::vector<SpellIssue> SpellService::Check(const std::wstring& text, size_t caret) const {
-    std::vector<SpellIssue> out;
-    if (!checker_.Ready()) return out;
-    const std::vector<Span> blocked = ProtectedSpans(text);
-
-    for (SpellIssue& issue : checker_.Check(text)) {
-        const Span& s = issue.span;
-        if (std::any_of(blocked.begin(), blocked.end(), [&](const Span& b) { return b.Overlaps(s); })) continue;
-        if (caret != std::wstring::npos && caret >= s.start && caret <= s.end()) continue;  // still typing
-        const std::wstring word = text.substr(s.start, s.length);
-        if (HasDigit(word)) continue;
-        if (IsKnown(word)) continue;  // also silences doubled words the player ignored ("ha ha")
-        out.push_back(std::move(issue));
-    }
-    return out;
-}
-
-std::vector<std::wstring> SpellService::Suggest(const std::wstring& word) const { return CheckerSuggest(word); }
 
 bool SpellService::LettersOnly(const std::wstring& w) {
     for (wchar_t c : w)

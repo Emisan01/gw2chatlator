@@ -7,7 +7,6 @@
 #include "core/cloud_mt_protocol.hpp"
 #include "core/json.hpp"
 #include "core/langs.hpp"
-#include "core/languagetool_protocol.hpp"
 #include "core/languages.hpp"
 #include "core/llm_protocol.hpp"
 #include "core/mymemory_protocol.hpp"
@@ -630,30 +629,6 @@ bool DiscoverLocalLlmServer(LocalServerResult* result, std::wstring* error) {
     }
     if (error) *error = Tr(L"No local AI server found (Ollama, LM Studio, llama-server)");
     return false;
-}
-
-LtResult CheckWithLanguageTool(const std::wstring& serverUrl, const std::wstring& text, const std::wstring& lang,
-                               const std::wstring& motherTongue) {
-    const HttpResponse http =
-        HttpRequestUrl(L"POST", NormalizeLanguageToolUrl(serverUrl),
-                       L"Content-Type: application/x-www-form-urlencoded\r\nAccept: application/json\r\n",
-                       BuildLanguageToolForm(text, lang, motherTongue), 8000);
-    LtResult r;
-    if (!http.transportOk) {
-        r.error = L"LanguageTool: " + http.error;
-        return r;
-    }
-    if (http.status == 429) {
-        r.error = L"LanguageTool: " + Tr(L"too many requests – the public server allows 20 per minute");
-        return r;
-    }
-    if (http.status != 200) {
-        r.error = L"LanguageTool: HTTP " + std::to_wstring(http.status);
-        return r;
-    }
-    r = ParseLanguageToolResponse(http.body, text);
-    if (!r.ok) r.error = L"LanguageTool: " + r.error;
-    return r;
 }
 
 }  // namespace gct

@@ -1193,8 +1193,6 @@ extern const I18nEntry kRussianStrings[] = {
      "нет голосового модуля"},
     {L"together {1} MB",
      "всего {1} МБ"},
-    {L"too many requests – the public server allows 20 per minute",
-     "слишком много запросов – публичный сервер разрешает 20 в минуту"},
     {L"translating and sending …",
      "перевод и отправка …"},
     {L"translating …",

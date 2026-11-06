@@ -31,7 +31,6 @@
 #include "core/mymemory_protocol.hpp"
 #include "core/glossary.hpp"
 #include "core/i18n.hpp"
-#include "core/languagetool_protocol.hpp"
 #include "core/typo_memory.hpp"
 #include "core/word_model.hpp"
 #include "core/hotkey.hpp"
@@ -1169,32 +1168,6 @@ static void TestNames() {
     CHECK(names.Size() == NameList::kMax);
 }
 
-
-static void TestLanguageTool() {
-    CHECK(LanguageToolLang(L"DE") == L"de-DE" && LanguageToolLang(L"en-GB") == L"en-GB" && LanguageToolLang(L"") == L"auto");
-    CHECK(LanguageToolLang(L"AR") == L"ar" && LanguageToolLang(L"ZH-HANS") == L"zh-CN" && LanguageToolLang(L"fr_FR") == L"fr-FR");
-    const std::string form = BuildLanguageToolForm(L"Ich komme morgn", L"DE", L"");
-    CHECK(form.find("text=Ich%20komme%20morgn") != std::string::npos || form.find("text=Ich+komme+morgn") != std::string::npos);
-    CHECK(form.find("language=de-DE") != std::string::npos);
-    const std::wstring text = L"Ich komme morgn \U0001F600 dann";
-    const std::string body = R"({"software":{},"language":{"code":"de-DE"},"matches":[
-        {"message":"Möglicher Tippfehler","shortMessage":"Tippfehler","replacements":[{"value":"morgen"},{"value":"Morgen"}],
-         "offset":10,"length":5,"rule":{"id":"GERMAN_SPELLER_RULE","issueType":"misspelling"}},
-        {"message":"x","replacements":[],"offset":19,"length":4,"rule":{"id":"R","issueType":"grammar"}}]})";
-    const LtResult r = ParseLanguageToolResponse(body, text);
-    CHECK(r.ok && r.language == L"de-DE" && r.matches.size() == 2);
-    if (r.matches.size() == 2) {
-        CHECK(text.substr(r.matches[0].span.start, r.matches[0].span.length) == L"morgn");
-        CHECK(r.matches[0].Spelling() && r.matches[0].replacements.size() == 2 && r.matches[0].replacements[0] == L"morgen");
-        CHECK(text.substr(r.matches[1].span.start, r.matches[1].span.length) == L"dann");  // after an emoji (2 UTF-16 units)
-    }
-    CHECK(!ParseLanguageToolResponse("Too many requests", text).ok);
-    CHECK(NormalizeLanguageToolUrl(L"") == L"https://api.languagetool.org/v2/check");
-    CHECK(NormalizeLanguageToolUrl(L"http://localhost:8081/") == L"http://localhost:8081/v2/check");
-    CHECK(NormalizeLanguageToolUrl(L"http://x/v2") == L"http://x/v2/check");
-    RateLimiter rl(2);
-    CHECK(rl.Allow(0) && rl.Allow(1000) && !rl.Allow(2000) && rl.Allow(61000));
-}
 
 
 
@@ -2751,7 +2724,6 @@ int main() {
     TestGuessLanguage();
     TestLinks();
     TestStarterWords();
-    TestLanguageTool();
     TestModelList();
     TestVoiceCatalog();
     TestFindSpeech();

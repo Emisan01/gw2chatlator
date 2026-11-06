@@ -16,10 +16,6 @@ struct SpellIssue {
     Span span;
     Kind kind = Kind::Suggest;
     std::wstring replacement;  // Kind::Replace: Windows' safe autocorrection
-    // Grammar checks (LanguageTool): their own suggestions and explanation.
-    bool grammar = false;
-    std::vector<std::wstring> suggestions;
-    std::wstring message;
 };
 
 class SpellChecker {
