@@ -72,12 +72,10 @@ void MoveCursor(POINT at) {  // as a real mouse would: absolute, over the whole 
 }
 
 // One left click at `at`, on GW2's own window: our windows let the mouse through, the cursor comes onto the link in two steps
-// as a hand does, stays about 400 ms for GW2's mouse-over, the button down, held, up, the cursor back. Your hand moving the
-// cursor ends it: yours.
-bool RealClick(HWND gw2, POINT at) {
+// as a hand does, stays about 400 ms for GW2's mouse-over, the button down, held, up; the mouse is yours again where it
+// stands. Your hand moving the cursor ends it: yours.
+bool RealClick(HWND gw2, POINT at, POINT was) {
     const auto front = [gw2] { return GetForegroundWindow() == gw2; };
-    POINT was{};
-    GetCursorPos(&was);
     if (!front()) return false;
     struct Through {
         Through() { s_through = true; }
@@ -113,8 +111,6 @@ bool RealClick(HWND gw2, POINT at) {
     Sleep(Dice(40, 70));
     in.mi.dwFlags = MOUSEEVENTF_LEFTUP;
     SendInput(1, &in, sizeof(in));
-    Sleep(Dice(10, 25));
-    MoveCursor(was);
     return true;
 }
 
@@ -166,16 +162,25 @@ void Flight(uint32_t id) {
         Say(Tr(L"Another line came in between: nothing was clicked. Try again."), 8000);
         return;
     }
-    if (!RealClick(gw2, at)) {
+    POINT was{};
+    GetCursorPos(&was);
+    if (!RealClick(gw2, at, was)) {
         Say(Tr(L"The click was left out: GW2 was not in front, the mouse moved, or GW2's chat line was open."), 8000);
         return;
     }
     MumbleLink mumble;
     for (int waited = 0; waited < 1500 && !s_stop; waited += 50) {
         const MumbleState ms = mumble.Read();
-        if (ms.live && ms.MapOpen()) return;  // the game flies
+        if (ms.live && ms.MapOpen()) {  // the game flies: the mouse just goes free, and the preview stands in nobody's way
+            std::lock_guard<std::mutex> lock(s_mu);
+            s_open = false;
+            return;
+        }
         Sleep(50);
     }
+    POINT now{};
+    GetCursorPos(&now);
+    if (std::abs(now.x - at.x) <= 2 && std::abs(now.y - at.y) <= 2) MoveCursor(was);  // not hit and not moved by you: back
     Say(Tr(L"The map did not open: the link was not hit. Teach the place again in the preview; GW2's chat must show whispers and stand at its end."), 12000);
 }
 
