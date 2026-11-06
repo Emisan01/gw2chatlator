@@ -43,7 +43,8 @@ std::atomic<unsigned> s_frames{0};
 // Where the link stands in the newest line of GW2's chat, from one click of yours, in the game window's client pixels. It
 // moves with your character's name, the window's size and GW2's interface size: learned once for each, nothing guessed.
 std::atomic<int> s_linkX{-1}, s_linkY{-1};
-std::atomic<bool> s_forgetPlace{false};
+std::atomic<bool> s_forgetPlace{false}, s_mapOpenFrame{false};
+std::atomic<int> s_previewL{0}, s_previewT{0}, s_previewR{0}, s_previewB{0};  // the preview's rectangle, empty while it is closed
 std::wstring s_placeKey;  // s_mu: the place being learned
 std::map<std::wstring, POINT> s_places;  // s_mu: read or learned this session
 std::atomic<unsigned long long> s_shiftClickAt{0}, s_linkClickAt{0};
@@ -586,9 +587,24 @@ void WaypointSawClick(WPARAM wp, LPARAM lp) {  // the game's thread: a left pres
         s_teaching = false;
         return;
     }
-    if (ImGui::GetIO().WantCaptureMouse) return;  // on a window of ours or of another add-on: not the link
-    s_linkX = static_cast<short>(LOWORD(lp));
-    s_linkY = static_cast<short>(HIWORD(lp));
+    const int clickX = static_cast<short>(LOWORD(lp)), clickY = static_cast<short>(HIWORD(lp));
+    const std::wstring where = std::to_wstring(clickX) + L"," + std::to_wstring(clickY);
+    if (ImGui::GetIO().WantCaptureMouse) {  // on a window of ours or of another add-on: not the link
+        TechLog('S', L"waypoint: learning, click at " + where + L" on a window, ignored");
+        return;
+    }
+    // the preview just came back after the run: ImGui does not know it is under the mouse yet
+    if (clickX >= s_previewL && clickX < s_previewR && clickY >= s_previewT && clickY < s_previewB) {
+        TechLog('S', L"waypoint: learning, click at " + where + L" on the preview, ignored");
+        return;
+    }
+    if (s_mapOpenFrame) {  // a click in the open map opens nothing
+        TechLog('S', L"waypoint: learning, click at " + where + L" with the map open, ignored");
+        return;
+    }
+    TechLog('S', L"waypoint: learning, click at " + where);
+    s_linkX = clickX;
+    s_linkY = clickY;
     s_linkClickAt = GetTickCount64();  // it counts when GW2's map opens: only the link does that
 }
 
@@ -601,21 +617,15 @@ void WaypointStop() {
 
 void RenderWaypointPreview() {
     ++s_frames;
-    if (const unsigned long long clicked = s_linkClickAt.load()) {
-        bool mapOpen;
-        {
-            std::lock_guard<std::mutex> lock(g_mu);
-            mapOpen = g_mapOpen;
-        }
-        if (!mapOpen && GetTickCount64() - clicked > 1500) {
-            s_linkClickAt = 0;
-            TechLog('S', L"waypoint: that click did not open the map, not remembered");
-        }
-    }
     bool mapOpenNow;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         mapOpenNow = g_mapOpen;
+    }
+    s_mapOpenFrame = mapOpenNow;
+    if (const unsigned long long clicked = s_linkClickAt.load(); clicked && !mapOpenNow && GetTickCount64() - clicked > 1500) {
+        s_linkClickAt = 0;
+        TechLog('S', L"waypoint: that click did not open the map, not remembered");
     }
     if (s_linkClickAt.load() && mapOpenNow) {  // your click opened GW2's map: that was the link
         s_linkClickAt = 0;
@@ -637,6 +647,7 @@ void RenderWaypointPreview() {
     std::vector<uint32_t> history, collection;
     {
         std::lock_guard<std::mutex> lock(s_mu);
+        if (!s_open) s_previewL = s_previewT = s_previewR = s_previewB = 0;
         if (!s_open || WaypointPassThrough()) return;
     }
     const bool teaching = s_teaching.load() && GetTickCount64() <= s_teachUntil.load();  // no new run: your click on the link comes first
@@ -662,6 +673,13 @@ void RenderWaypointPreview() {
     bool open = true;
     const std::string title = UI(Tr(L"Waypoints")) + "###kbwaypoint";
     const bool visible = ImGui::Begin(title.c_str(), &open, ImGuiWindowFlags_NoCollapse);
+    {
+        const ImVec2 at = ImGui::GetWindowPos(), size = ImGui::GetWindowSize();
+        s_previewL = static_cast<int>(at.x);
+        s_previewT = static_cast<int>(at.y);
+        s_previewR = static_cast<int>(at.x + size.x);
+        s_previewB = static_cast<int>(at.y + size.y);
+    }
     bool pushedUf = false;
     if (uf && uf->FontSize > 0.0f) {
         ImGui::SetWindowFontScale(nexusPx / uf->FontSize);
@@ -670,7 +688,10 @@ void RenderWaypointPreview() {
     }
     if (visible) {
         const float fs = ImGui::GetFontSize();
-        const float footer = ImGui::GetFrameHeightWithSpacing() * 2.0f;
+        const std::string teachText = UI(Tr(L"Click the new link in GW2's chat once yourself, at its start. I remember the place, from then on it goes by itself."));
+        const float rowH = teaching ? ImGui::CalcTextSize(teachText.c_str(), nullptr, false, ImGui::GetContentRegionAvail().x).y + ImGui::GetStyle().ItemSpacing.y
+                                    : ImGui::GetTextLineHeightWithSpacing();
+        const float footer = rowH + ImGui::GetFrameHeightWithSpacing();
         const float listW = fs * 13.0f;
         const float mapH = std::max(fs * 6.0f, ImGui::GetContentRegionAvail().y - footer);
         gct::ChatLinks::PoiView poi;
@@ -687,7 +708,7 @@ void RenderWaypointPreview() {
         ImGui::EndChild();
         if (teaching) {
             ImGui::PushStyleColor(ImGuiCol_Text, UiWarm());
-            ImGui::TextWrapped("%s", UI(Tr(L"Click the new link in GW2's chat once yourself, at its start. I remember the place, from then on it goes by itself.")).c_str());
+            ImGui::TextWrapped("%s", teachText.c_str());
             ImGui::PopStyleColor();
         } else if (known) {
             ImGui::TextUnformatted(poi.name.c_str());
