@@ -1687,8 +1687,8 @@ extern const I18nEntry kSpanishStrings[] = {
      "El código no volvió al chat: quizá GW2 no permite susurrarte a ti mismo aquí."},
     {L"Click the new link in GW2's chat once yourself, at its start. I remember the place, from then on it goes by itself.",
      "Pulsa una vez tú mismo el enlace nuevo en el chat de GW2, al principio. Recuerdo el lugar y después va solo."},
-    {L"The click was left out: GW2 was not in front, the mouse moved, or GW2's chat line was open.",
-     "Se omitió el clic: GW2 no estaba al frente, el ratón se movió o la línea de chat de GW2 estaba abierta."},
+    {L"The click was left out: GW2 was not in front, or the mouse moved.",
+     "Se omitió el clic: GW2 no estaba al frente o el ratón se movió."},
     {L"The map did not open: the link was not hit. Teach the place again in the preview; GW2's chat must show whispers and stand at its end.",
      "El mapa no se abrió: no se acertó el enlace. Enseña el lugar de nuevo en la vista previa; el chat de GW2 debe mostrar susurros y estar al final."},
     {L"Place remembered. A click in the preview now does this by itself.",
@@ -1727,8 +1727,6 @@ extern const I18nEntry kSpanishStrings[] = {
      "Susúrrate a ti mismo"},
     {L"GW2's chat line is open. Close it with Enter, then click again.",
      "La línea de chat de GW2 está abierta. Ciérrala con Intro y vuelve a pulsar."},
-    {L"GW2's chat line did not close: nothing was clicked. Please check it by hand.",
-     "La línea de chat de GW2 no se cerró: no se pulsó nada. Revísala a mano."},
 };
 extern const size_t kSpanishCount = sizeof(kSpanishStrings) / sizeof(kSpanishStrings[0]);
 

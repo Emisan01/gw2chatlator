@@ -1687,8 +1687,8 @@ extern const I18nEntry kRussianStrings[] = {
      "Код не вернулся в чат: возможно, GW2 здесь не позволяет шептать самому себе."},
     {L"Click the new link in GW2's chat once yourself, at its start. I remember the place, from then on it goes by itself.",
      "Один раз сами нажмите новую ссылку в чате GW2, в её начале. Место запомнится, дальше всё само."},
-    {L"The click was left out: GW2 was not in front, the mouse moved, or GW2's chat line was open.",
-     "Клик пропущен: GW2 не на переднем плане, мышь сдвинулась или открыта строка чата GW2."},
+    {L"The click was left out: GW2 was not in front, or the mouse moved.",
+     "Клик пропущен: GW2 не на переднем плане или мышь сдвинулась."},
     {L"The map did not open: the link was not hit. Teach the place again in the preview; GW2's chat must show whispers and stand at its end.",
      "Карта не открылась: в ссылку не попали. Обучите место заново в предпросмотре; чат GW2 должен показывать шёпот и стоять в конце."},
     {L"Place remembered. A click in the preview now does this by itself.",
@@ -1727,8 +1727,6 @@ extern const I18nEntry kRussianStrings[] = {
      "Шёпот себе"},
     {L"GW2's chat line is open. Close it with Enter, then click again.",
      "Строка чата GW2 открыта. Закройте её клавишей Enter и нажмите ещё раз."},
-    {L"GW2's chat line did not close: nothing was clicked. Please check it by hand.",
-     "Строка чата GW2 не закрылась: ничего не нажато. Проверьте её вручную."},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

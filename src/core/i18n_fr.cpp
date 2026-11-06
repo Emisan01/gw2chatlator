@@ -1687,8 +1687,8 @@ extern const I18nEntry kFrenchStrings[] = {
      "Le code n'est pas revenu dans le chat : GW2 ne permet peut-être pas de se chuchoter à soi-même ici."},
     {L"Click the new link in GW2's chat once yourself, at its start. I remember the place, from then on it goes by itself.",
      "Cliquez une fois vous-même sur le nouveau lien dans le chat de GW2, à son début. L'endroit est mémorisé, ensuite cela se fait tout seul."},
-    {L"The click was left out: GW2 was not in front, the mouse moved, or GW2's chat line was open.",
-     "Le clic a été annulé : GW2 n'était pas au premier plan, la souris a bougé ou la ligne de chat de GW2 était ouverte."},
+    {L"The click was left out: GW2 was not in front, or the mouse moved.",
+     "Le clic a été annulé : GW2 n'était pas au premier plan ou la souris a bougé."},
     {L"The map did not open: the link was not hit. Teach the place again in the preview; GW2's chat must show whispers and stand at its end.",
      "La carte ne s'est pas ouverte : le lien n'a pas été touché. Réapprenez l'endroit dans l'aperçu ; le chat de GW2 doit afficher les chuchotements et être en bas."},
     {L"Place remembered. A click in the preview now does this by itself.",
@@ -1727,8 +1727,6 @@ extern const I18nEntry kFrenchStrings[] = {
      "Se chuchoter à soi-même"},
     {L"GW2's chat line is open. Close it with Enter, then click again.",
      "La ligne de chat de GW2 est ouverte. Fermez-la avec Entrée, puis cliquez à nouveau."},
-    {L"GW2's chat line did not close: nothing was clicked. Please check it by hand.",
-     "La ligne de chat de GW2 ne s'est pas fermée : rien n'a été cliqué. Vérifiez-la à la main."},
 };
 extern const size_t kFrenchCount = sizeof(kFrenchStrings) / sizeof(kFrenchStrings[0]);
 

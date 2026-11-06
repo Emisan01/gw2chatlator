@@ -1687,8 +1687,8 @@ extern const I18nEntry kTurkishStrings[] = {
      "Kod sohbete geri dönmedi: GW2 burada kendine fısıldamaya izin vermiyor olabilir."},
     {L"Click the new link in GW2's chat once yourself, at its start. I remember the place, from then on it goes by itself.",
      "GW2 sohbetindeki yeni bağlantıya başından bir kez kendin tıkla. Yeri hatırlarım, sonra kendiliğinden olur."},
-    {L"The click was left out: GW2 was not in front, the mouse moved, or GW2's chat line was open.",
-     "Tıklama yapılmadı: GW2 önde değildi, fare hareket etti veya GW2 sohbet satırı açıktı."},
+    {L"The click was left out: GW2 was not in front, or the mouse moved.",
+     "Tıklama yapılmadı: GW2 önde değildi veya fare hareket etti."},
     {L"The map did not open: the link was not hit. Teach the place again in the preview; GW2's chat must show whispers and stand at its end.",
      "Harita açılmadı: bağlantıya isabet edilmedi. Yeri önizlemede yeniden öğret; GW2 sohbeti fısıltıları göstermeli ve en altta olmalı."},
     {L"Place remembered. A click in the preview now does this by itself.",
@@ -1727,8 +1727,6 @@ extern const I18nEntry kTurkishStrings[] = {
      "Kendine fısılda"},
     {L"GW2's chat line is open. Close it with Enter, then click again.",
      "GW2 sohbet satırı açık. Enter ile kapat, sonra yeniden tıkla."},
-    {L"GW2's chat line did not close: nothing was clicked. Please check it by hand.",
-     "GW2 sohbet satırı kapanmadı: hiçbir şey tıklanmadı. Elle kontrol et."},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

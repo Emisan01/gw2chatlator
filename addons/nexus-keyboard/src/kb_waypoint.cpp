@@ -112,9 +112,7 @@ bool RealClick(HWND gw2, POINT at, POINT was) {
     if (std::abs(now.x - at.x) > 2 || std::abs(now.y - at.y) > 2) return false;
     const HWND under = WindowFromPoint(at);
     const bool buttonHeld = (GetAsyncKeyState(VK_LBUTTON) | GetAsyncKeyState(VK_RBUTTON) | GetAsyncKeyState(VK_MBUTTON)) & 0x8000;
-    MumbleLink mumble;
-    const MumbleState ms = mumble.Read();
-    if (!front() || !under || GetAncestor(under, GA_ROOT) != gw2 || buttonHeld || (ms.live && ms.TextboxHasFocus())) {  // typing stops the flight
+    if (!front() || !under || GetAncestor(under, GA_ROOT) != gw2 || buttonHeld) {
         MoveCursor(was);
         return false;
     }
@@ -214,7 +212,17 @@ void Flight(uint32_t id) {
         LetGoOfKeyboard();
         SendNow({line}, line, std::wstring());  // through GW2's own chat line: so the link stands in GW2's own chat
         MumbleLink mumble;
-        const MumbleState afterSend = mumble.Read();
+        int shutAfter = -1;
+        for (int waited = 0; waited <= 1000 && !s_stop; waited += 20) {
+            const MumbleState ms = mumble.Read();
+            if (!ms.live || !ms.TextboxHasFocus()) {
+                shutAfter = waited;
+                break;
+            }
+            Sleep(20);
+        }
+        TechLog('S', shutAfter < 0 ? std::wstring(L"waypoint: GW2's line still open 1 s after the whisper")
+                                   : L"waypoint: GW2's line shut " + std::to_wstring(shutAfter) + L" ms after the whisper");
         bool setBack;
         {
             std::lock_guard<std::mutex> lock(g_mu);
@@ -222,12 +230,7 @@ void Flight(uint32_t id) {
             if (ToUtf8(line) == g_input) g_input[0] = 0;  // a send that failed gives its text back: this one was never yours
             g_syncedChannel.clear();  // GW2's line now stands in this whisper
             s_sendFailed = !g_status.empty();  // the reason stands in the status
-            if (!s_sendFailed && afterSend.live && afterSend.TextboxHasFocus()) {  // the last Enter did not send: stop here
-                SetStatus(Tr(L"GW2's chat line did not close: nothing was clicked. Please check it by hand."), 12000);
-                TechLog('S', L"waypoint: GW2's line stayed open after the whisper, stopped");
-                s_sendFailed = true;
-            }
-            setBack = !s_sendFailed && !before.empty();
+            setBack = !s_sendFailed && !before.empty() && shutAfter >= 0;  // no key into an open line
             if (setBack) {  // the same run goes on: the input keeps waiting
                 g_sending = true;
                 g_focusInput = false;
@@ -282,8 +285,13 @@ void Flight(uint32_t id) {
     }
     POINT was{};
     GetCursorPos(&was);
+    {
+        MumbleLink line;
+        const MumbleState ms = line.Read();
+        TechLog('S', ms.live && ms.TextboxHasFocus() ? L"waypoint: click, GW2's line open" : L"waypoint: click, GW2's line shut");
+    }
     if (!RealClick(gw2, at, was)) {
-        Say(Tr(L"The click was left out: GW2 was not in front, the mouse moved, or GW2's chat line was open."), 8000);
+        Say(Tr(L"The click was left out: GW2 was not in front, or the mouse moved."), 8000);
         return;
     }
     MumbleLink mumble;
