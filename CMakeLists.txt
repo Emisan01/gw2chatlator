@@ -48,7 +48,7 @@ add_library(gct_core STATIC
     src/core/deepl_protocol.cpp
     src/core/mymemory_protocol.cpp
     src/core/llm_protocol.cpp
-    src/core/chat_line.cpp
+    src/core/channel.cpp
     src/core/chat_code.cpp
     src/core/names.cpp
     src/core/gw2_text.cpp

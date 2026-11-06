@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "core/chat_line.hpp"
+#include "core/channel.hpp"
 #include "core/i18n.hpp"
 #include "core/local_mt_protocol.hpp"
 #include "win/gw2_sender.hpp"

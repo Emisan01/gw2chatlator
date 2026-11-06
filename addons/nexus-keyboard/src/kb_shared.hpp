@@ -26,7 +26,7 @@
 #include "core/chat_code.hpp"
 #include "core/contrast.hpp"
 #include "core/cpu_use.hpp"
-#include "core/chat_line.hpp"
+#include "core/channel.hpp"
 #include "core/gw2_text.hpp"
 #include "core/hotkey.hpp"
 #include "core/i18n.hpp"

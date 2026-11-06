@@ -10,7 +10,7 @@
 #include <sstream>
 #include <string>
 
-#include "core/chat_line.hpp"
+#include "core/channel.hpp"
 #include "core/cpu_use.hpp"
 #include "core/window_layout.hpp"
 #include "core/cloud_mt_protocol.hpp"
@@ -749,80 +749,6 @@ static void TestLanguages() {
     CHECK(SourceCode(L"EN-GB") == L"EN");
 }
 
-static void TestColors() {
-    const auto pal = DefaultChannelColors();
-    CHECK(ClassifyColor({200, 140, 255}, pal) == Channel::Whisper);
-    CHECK(ClassifyColor({140, 98, 178}, pal) == Channel::Whisper);  // darker anti-aliased purple
-    CHECK(ClassifyColor({245, 200, 80}, pal) == Channel::Guild);
-    CHECK(ClassifyColor({110, 175, 255}, pal) == Channel::Party);
-    CHECK(ClassifyColor({240, 240, 240}, pal) == Channel::Unknown);  // white system text
-    CHECK(ClassifyColor({20, 20, 20}, pal) == Channel::Unknown);
-    Rgb c;
-    CHECK(RgbFromHex(L"#C88CFF", c) && c == Rgb{200, 140, 255});
-    CHECK(RgbToHex({200, 140, 255}) == L"c88cff");
-    CHECK(!RgbFromHex(L"12345", c));
-}
-
-static void TestParseLine() {
-    Channel tag;
-    auto m = ParseChatLine(L"[12:34] [Map] Emi Sonnenschein: wer kommt mit?", &tag);
-    CHECK(tag == Channel::Map && m.speaker == L"Emi Sonnenschein" && m.text == L"wer kommt mit?");
-    m = ParseChatLine(L"[M] [ABC] Rygar: lfg meta 12:30", &tag);
-    CHECK(tag == Channel::Map && m.speaker == L"Rygar" && m.text == L"lfg meta 12:30");
-    m = ParseChatLine(L"1:05 PM Alice: hi", &tag);
-    CHECK(tag == Channel::Unknown && m.speaker == L"Alice" && m.text == L"hi");
-    m = ParseChatLine(L"From Bob.1234: psst", &tag);
-    CHECK(m.speaker == L"From Bob.1234" && m.text == L"psst");
-    m = ParseChatLine(L"Der Weltboss erscheint in 5 Minuten", &tag);
-    CHECK(m.speaker.empty() && m.text == L"Der Weltboss erscheint in 5 Minuten");
-    m = ParseChatLine(L"http://example.com: nope", &tag);
-    CHECK(m.speaker.empty());
-}
-
-static void TestBuildMessages() {
-    const auto pal = DefaultChannelColors();
-    std::vector<OcrLine> lines = {
-        {L"Alice: hello everyone, anyone up for the", {240, 165, 155}, 0, 14},
-        {L"world boss later?", {238, 160, 150}, 15, 14},                   // wrapped continuation
-        {L"From Bob.1234: hey, kannst du helfen?", {200, 140, 255}, 32, 14},
-        {L"To Bob.1234: klar!", {198, 138, 250}, 48, 14},
-        {L"[G] Carl: guild missions now", {245, 200, 80}, 64, 14},
-        {L"Server restart in 10 minutes", {240, 240, 240}, 80, 14},
-    };
-    auto msgs = BuildMessages(lines, pal);
-    CHECK(msgs.size() == 5);
-    if (msgs.size() == 5) {
-        CHECK(msgs[0].channel == Channel::Map && msgs[0].speaker == L"Alice" &&
-              msgs[0].text == L"hello everyone, anyone up for the world boss later?");
-        CHECK(msgs[1].channel == Channel::Whisper && msgs[1].speaker == L"Bob.1234" && !msgs[1].outgoingWhisper);
-        CHECK(msgs[2].channel == Channel::Whisper && msgs[2].speaker == L"Bob.1234" && msgs[2].outgoingWhisper);
-        CHECK(msgs[3].channel == Channel::Guild && msgs[3].speaker == L"Carl");
-        CHECK(msgs[4].channel == Channel::System && msgs[4].speaker.empty());
-        CHECK((msgs[0].color == Rgb{240, 165, 155}));
-    }
-
-    std::vector<OcrLine> hyphen1 = {
-        {L"Alice: unter-", {240, 165, 155}, 0, 14},
-        {L"brechung", {238, 160, 150}, 15, 14},
-    };
-    auto m1 = BuildMessages(hyphen1, pal);
-    CHECK(m1.size() == 1 && m1[0].text == L"unterbrechung");
-
-    std::vector<OcrLine> hyphen2 = {
-        {L"Alice: 80-", {240, 165, 155}, 0, 14},
-        {L"er Zone", {238, 160, 150}, 15, 14},
-    };
-    auto m2 = BuildMessages(hyphen2, pal);
-    CHECK(m2.size() == 1 && m2[0].text == L"80-er Zone");
-
-    std::vector<OcrLine> hyphen3 = {
-        {L"Alice: PvP-", {240, 165, 155}, 0, 14},
-        {L"Event startet", {238, 160, 150}, 15, 14},
-    };
-    auto m3 = BuildMessages(hyphen3, pal);
-    CHECK(m3.size() == 1 && m3[0].text == L"PvP-Event startet");
-}
-
 // German QWERTZ letter rows as KeyLayout (what keyboard_layout.cpp builds from Windows).
 static KeyLayout Qwertz() {
     KeyLayout k;
@@ -1158,67 +1084,6 @@ static void TestWordModel() {
 // A synthetic chat panel: dark background, "letters" as bright stripes.
 
 
-static void TestMangledStamps() {
-    // Timestamps whose brackets text recognition misread, as seen on real 4K captures.
-    struct Case {
-        const wchar_t* line;
-        Channel channel;
-        const wchar_t* speaker;
-        const wchar_t* text;
-    };
-    const Case cases[] = {
-        {L"117:46J[M] Kiro Vale: wer kommt mit", Channel::Map, L"Kiro Vale", L"wer kommt mit"},
-        {L"(17-46)(M) Pell Brand: gleich da >", Channel::Map, L"Pell Brand", L"gleich da >"},
-        {L"(17: 46)(M) Tamsin: hallo", Channel::Map, L"Tamsin", L"hallo"},
-        {L"(17-471(M) Kiro Vale: bin weg", Channel::Map, L"Kiro Vale", L"bin weg"},
-        {L"[17:48J1IWJ] An Rook: ich warte", Channel::Whisper, L"Rook", L"ich warte"},
-        {L"[7:571[M] Sivo Dahl: anyone for the meta", Channel::Map, L"Sivo Dahl", L"anyone for the meta"},
-        {L"10M] Tamsin: gute Nacht", Channel::Map, L"Tamsin", L"gute Nacht"},
-        {L"[(W] An Rook: ich", Channel::Whisper, L"Rook", L"ich"},
-        {L"[10:12][P] Kiro Vale: komm", Channel::Party, L"Kiro Vale", L"komm"},
-        {L"tO:13JtPJ Kiro Vale: danke", Channel::Party, L"Kiro Vale", L"danke"},          // Windows OCR
-        {L"(17:47 10M] Tamsin: gute Nacht", Channel::Map, L"Tamsin", L"gute Nacht"},
-        {L"[10:12JtPJ Kiro Vale; [Wegmarke Felder]", Channel::Party, L"Kiro Vale", L"[Wegmarke Felder]"},
-    };
-    for (const Case& c : cases) {
-        std::vector<OcrLine> one(1);
-        one[0].text = c.line;
-        one[0].height = 15;
-        const auto msgs = BuildMessages(one, DefaultChannelColors());
-        CHECK(msgs.size() == 1);
-        if (msgs.size() != 1) continue;
-        if (!msgs[0].stamped || msgs[0].channel != c.channel || msgs[0].speaker != c.speaker)
-            std::printf("case: %ls -> [%ls] [%ls]\n", c.line, msgs[0].speaker.c_str(), msgs[0].text.c_str());
-        CHECK(msgs[0].stamped && msgs[0].channel == c.channel);
-        CHECK(msgs[0].speaker == c.speaker);
-        CHECK(msgs[0].text == c.text);
-    }
-    // Lone misread brackets before a name.
-    CHECK(ParseChatLine(L") Kiro Vale: bis gleich").speaker == L"Kiro Vale");
-    CHECK(ParseChatLine(L"J Von Rook: in was").speaker == L"Von Rook");
-    // Not a stamp: plain text and names that start with tag letters.
-    Channel ch = Channel::Unknown;
-    CHECK(MangledStampAndTagLength(L"[7:50] Bedrohung entdeckt!", &ch) == 0);
-    CHECK(MangledStampAndTagLength(L"[10:13] Mad ist nicht mehr", &ch) == 0);
-    CHECK(MangledStampAndTagLength(L"Mad Kiro: hallo", &ch) == 0);
-    CHECK(MangledStampAndTagLength(L"2 Pakete (P) bitte", &ch) == 0);
-
-    // A wrapped line continues the text even when the speaker's name has another colour.
-    std::vector<OcrLine> wrap(2);
-    wrap[0].text = L"[7:57][M] Sivo Dahl: our guild is looking for new players";
-    wrap[0].top = 0;
-    wrap[0].height = 15;
-    wrap[0].words = {{L"[7:57][M]", {200, 200, 200}, true}, {L"Sivo", {240, 110, 100}, true},
-                     {L"Dahl:", {240, 110, 100}, true},     {L"looking", {250, 220, 205}, true},
-                     {L"new", {250, 220, 205}, true},       {L"players", {250, 220, 205}, true}};
-    wrap[1].text = L"for raids and fractals, whisper me";
-    wrap[1].top = 20;
-    wrap[1].height = 15;
-    wrap[1].words = {{L"for", {248, 221, 207}, true}, {L"raids", {248, 221, 207}, true}, {L"and", {248, 221, 207}, true}};
-    const auto wm = BuildMessages(wrap, DefaultChannelColors());
-    CHECK(wm.size() == 1 && wm[0].text.find(L"raids and fractals") != std::wstring::npos);
-}
-
 static void TestStarterWords() {
     const auto& v = Gw2StarterWords();
     CHECK(v.size() > 60);
@@ -1272,79 +1137,6 @@ static void TestLinks() {
     CHECK(p.segments.size() == 3 && p.segments[1].keep && p.segments[1].text == L"www.gw2efficiency.com");
 }
 
-
-static void TestNotChat() {
-    // The character selection shows character data where the chat is: no
-    // timestamp, no tag, no "Name:" -> nothing is read.
-    const wchar_t* selection[] = {L"Kiro Vale", L"Stufe 80 Schnitterin (Mensch)", L"54% der Karte erforscht",
-                                  L"@ Löwenstein", L"Weltname [DE]", L"80 t"};
-    std::vector<OcrLine> lines;
-    int top = 0;
-    for (const wchar_t* t : selection) {
-        OcrLine l;
-        l.text = t;
-        l.top = top;
-        l.height = 15;
-        l.color = {240, 200, 120};
-        top += 20;
-        lines.push_back(l);
-    }
-    CHECK(BuildMessages(lines, DefaultChannelColors()).empty());
-    // Real chat in the same frame still comes through; fragments without letters do not.
-    lines[2].text = L"[19:20][M] Tamsin: wer kommt mit zum Tequatl";
-    lines[4].text = L"[19:21] Bedrohung entdeckt! Tequatl greift an";
-    lines[5].text = L"[19:22] 80 t";
-    const auto msgs = BuildMessages(lines, DefaultChannelColors());
-    CHECK(msgs.size() == 2);
-    if (msgs.size() == 2) {
-        CHECK(msgs[0].speaker == L"Tamsin");
-        CHECK(msgs[1].text.find(L"Bedrohung") == 0);
-    }
-    // Read down to the window edge: the input line with what you are typing
-    // and the number row below it are no messages.
-    std::vector<OcrLine> bottom(4);
-    const wchar_t* texts[] = {L"[19:20][P] Tamsin: kommt ihr", L"[19:21][P] Rook: gleich", L"[Gruppe] bin gleich da",
-                              L"621"};
-    for (int i = 0; i < 4; ++i) {
-        bottom[i].text = texts[i];
-        bottom[i].top = i * 20;
-        bottom[i].height = 15;
-    }
-    const auto b = BuildMessages(bottom, DefaultChannelColors());
-    CHECK(b.size() == 2 && b.back().speaker == L"Rook");
-}
-
-static void TestLocateChat() {
-    // The game's corner: a health number, then the chat (timestamps aligned at x=40), the input line.
-    struct L {
-        const wchar_t* text;
-        int left, top, width;
-    };
-    const L in[] = {
-        {L"12.345", 600, 10, 60},
-        {L"[19:20][M] Tamsin: wer kommt mit zum", 40, 100, 380},
-        {L"Tequatl heute abend", 40, 120, 200},
-        {L"[19:21][P] Rook: ich", 41, 140, 160},
-        {L"[19:22] Bedrohung entdeckt!", 39, 160, 300},
-        {L"[Gruppe]", 40, 200, 80},
-    };
-    std::vector<OcrLine> lines;
-    for (const L& l : in) {
-        OcrLine o;
-        o.text = l.text;
-        o.left = l.left;
-        o.top = l.top;
-        o.width = l.width;
-        o.height = 15;
-        lines.push_back(o);
-    }
-    ChatBlock b;
-    CHECK(LocateChatLines(lines, &b));
-    CHECK(b.stamped == 3 && b.top == 100 && b.bottom == 175 && b.left == 39 && b.right == 420);
-    // Only one timestamp: not sure enough.
-    std::vector<OcrLine> one(lines.begin(), lines.begin() + 3);
-    CHECK(!LocateChatLines(one, &b));
-}
 
 static void TestNames() {
     NameList names;
@@ -1404,65 +1196,9 @@ static void TestLanguageTool() {
     CHECK(rl.Allow(0) && rl.Allow(1000) && !rl.Allow(2000) && rl.Allow(61000));
 }
 
-static void TestOcrTimestamps() {
-    struct Case {
-        const wchar_t* line;
-        const wchar_t* rest;  // what remains after the timestamp, nullptr = no timestamp
-    };
-    const Case cases[] = {
-        {L"[19:17] Emi: hi", L"Emi: hi"},
-        {L"C9;19J Krypts hecken etwas", L"Krypts hecken etwas"},
-        {L"C920J entdeckt! Modr", L"entdeckt! Modr"},
-        {L"[92 9J Es kommen Berichte", L"Es kommen Berichte"},
-        {L"19:35) entdeckt! Der", L"entdeckt! Der"},
-        {L"19:37 JIM) Dr Hamwick: x", L"IM) Dr Hamwick: x"},
-        {L"1927 J Bob: hey", L"Bob: hey"},
-        {L"t9\u202220J Text", L"Text"},
-        {L"C9;f7J Text", L"Text"},
-        {L"19:42 JCSJ Pell: Thanks!", L"CSJ Pell: Thanks!"},
-        {L"1234 Gold fehlen noch", nullptr},
-        {L"Jemand da?", nullptr},
-        {L"C4 ist kaputt", nullptr},
-        {L"12 Leute fehlen", nullptr},
-    };
-    for (const Case& c : cases) {
-        const std::wstring s = c.line;
-        const size_t n = OcrTimestampLength(s);
-        if (!c.rest) {
-            CHECK(n == 0);
-            if (n != 0) std::printf("   unexpected timestamp in: %ls\n", c.line);
-        } else {
-            CHECK(n > 0 && Trim(s.substr(n)) == c.rest);
-            if (!(n > 0 && Trim(s.substr(n)) == c.rest)) std::printf("   timestamp case: %ls -> %zu\n", c.line, n);
-        }
-    }
-    Channel ch = Channel::Unknown;
-    CHECK(FuzzyTagLength(L"CSJ Pell", &ch) == 3 && ch == Channel::Say);
-    CHECK(FuzzyTagLength(L"IM) Dr", &ch) == 3 && ch == Channel::Map);
-    CHECK(FuzzyTagLength(L"[Sagen) Bob: x", &ch) == 7 && ch == Channel::Say);
-    CHECK(FuzzyTagLength(L"CKontakteJ Emi ist online", &ch) == 10 && ch == Channel::System);
-    CHECK(FuzzyTagLength(L"[Gilde] Carl: x", &ch) == 7 && ch == Channel::Guild);
-    CHECK(FuzzyTagLength(L"Couch: x", &ch) == 0);
-    auto m = ParseChatLine(L"19:42 JCSJ Pell The Unnamed: Thanks!");
-    CHECK(m.stamped && m.speaker == L"Pell The Unnamed" && m.text == L"Thanks!");
-    m = ParseChatLine(L"[Sagen]");
-    CHECK(m.tagOnly);
-    m = ParseChatLine(L"C9;19J Krypts hecken etwas Gro\u00dfes");
-    CHECK(m.stamped && m.speaker.empty() && m.text == L"Krypts hecken etwas Gro\u00dfes");
-}
 
 
 
-
-
-static void TestChatTextFilter() {
-    CHECK(LooksLikeChatText(L"wer kommt mit zum Tequatl?"));
-    CHECK(LooksLikeChatText(L"gg"));
-    CHECK(LooksLikeChatText(L"\u0645\u0631\u062d\u0628\u0627"));
-    CHECK(!LooksLikeChatText(L"\u00a7\u00b0^~ |l \u00a6\u00ac"));
-    CHECK(!LooksLikeChatText(L"~~ ** =="));
-    CHECK(!LooksLikeChatText(L"123 456"));
-}
 
 static void TestModelList() {
     auto a = ParseModelList(R"({"object":"list","data":[{"id":"qwen2.5:7b"},{"id":"llama3.1:8b"}]})");
@@ -1766,55 +1502,6 @@ static void TestWordCase() {
     CHECK(back.Complete(L"tis", L"", 1) == std::vector<std::wstring>{L"Tisch"});
 }
 
-static void TestStampShape() {
-    // Timestamps the recognition mangled (seen in a real whisper chat), each the start of its own message.
-    Channel c = Channel::Unknown;
-    CHECK(StampShapeLength(L"CO•.54JCWJ An A Brave Knight: hope you are better", &c) == 10 && c == Channel::Whisper);
-    CHECK(StampShapeLength(L"CO:58JCWJ Von A Brave Knight: only those", &c) == 9 && c == Channel::Whisper);
-    CHECK(StampShapeLength(L"CD;56JCWJ An A Brave Knight: you will be here", &c) == 9);
-    CHECK(StampShapeLength(L"CIIOOJCWJ Von A Brave Knight: discord open", &c) == 9 && c == Channel::Whisper);
-    CHECK(StampShapeLength(L"CO•.50JCS) Gwyn: hi", &c) == 10 && c == Channel::Say);
-    CHECK(StampShapeLength(L"[11:05] Bedrohung entdeckt!", &c) == 7 && c == Channel::Unknown);
-    // Words are no timestamps.
-    CHECK(StampShapeLength(L"Cool idea", &c) == 0);
-    CHECK(StampShapeLength(L"Dodo is here", &c) == 0);
-    CHECK(StampShapeLength(L"ok test when?", &c) == 0);
-    // The parser takes the tag as the channel (the whisper prefix "Von" is removed later, in BuildMessages).
-    Channel tag = Channel::Unknown;
-    const ChatMessage m = ParseChatLine(L"CO:58JCWJ Von A Brave Knight: only those who face the fury", &tag);
-    CHECK(m.stamped && tag == Channel::Whisper && m.speaker == L"Von A Brave Knight" &&
-          m.text == L"only those who face the fury");
-}
-
-static void TestInputLineTags() {
-    // The GW2 input line "[Gilde][ABC]" with misread brackets (and the chat bubble in front) is never a message.
-    CHECK(GluedTagsAtStart(L"O tüldeJCABCJ") > 0);
-    CHECK(GluedTagsAtStart(L"CGIdeJCABCJ") > 0);
-    CHECK(GluedTagsAtStart(L"[Gilde][ABC] hello") > 0);
-    CHECK(GluedTagsAtStart(L"platziert einige Artefakte") == 0);
-    CHECK(GluedTagsAtStart(L"Nia Stone: grrr") == 0);
-    CHECK(GluedTagsAtStart(L"or or or") == 0);
-    // The guild tag in front of a name, also with misread brackets.
-    CHECK(StripGuildTag(L"tABCJ Nia Stone") == L"Nia Stone");
-    CHECK(StripGuildTag(L"[ABC] Nia Stone") == L"Nia Stone");
-    CHECK(StripGuildTag(L"IABCJ Nia Stone") == L"Nia Stone");
-    CHECK(StripGuildTag(L"Nia Stone") == L"Nia Stone");
-    CHECK(StripGuildTag(L"Tom Brave") == L"Tom Brave");
-    // In a chat picture: the input line is not glued to the last message, the guild tag leaves the name.
-    std::vector<OcrLine> lines(2);
-    lines[0].text = L"[12:19] [G] [ABC] Nia Stone: it works well";
-    lines[0].top = 0;
-    lines[0].height = 20;
-    lines[0].color = {240, 220, 120};
-    lines[1].text = L"O tüldeJCABCJ";
-    lines[1].top = 22;
-    lines[1].height = 20;
-    lines[1].color = {240, 220, 120};
-    const auto msgs = BuildMessages(lines, DefaultChannelColors());
-    CHECK(msgs.size() == 1);
-    if (!msgs.empty()) CHECK(msgs[0].text == L"it works well" && msgs[0].speaker == L"Nia Stone");
-}
-
 static void TestPhraseMemory() {
     WordModel m;
     for (int i = 0; i < 4; ++i) m.Learn(L"gute nacht bis morgen mit micro");
@@ -1829,27 +1516,6 @@ static void TestPhraseMemory() {
     CHECK(m.ContinueSure(L"nacht", L"gute", 2).size() == 2);
     // Nothing sure: nothing offered.
     CHECK(m.ContinueSure(L"irgendwas", L"").empty());
-}
-
-static void TestActiveBottom() {
-    // Ten text lines 20 px apart; two paragraphs (gap after line 3).
-    std::vector<OcrLine> lines;
-    for (int i = 0; i < 10; ++i) {
-        OcrLine l;
-        l.text = L"line number " + std::to_wstring(i) + (i == 3 ? L"." : L"");
-        l.top = i * 20 + (i >= 4 ? 30 : 0);
-        l.height = 14;
-        l.left = 10;
-        l.width = 200;
-        lines.push_back(l);
-    }
-    const std::vector<ChatMessage> all = BuildFreeTextMessages(lines);
-    CHECK(all.size() == 2);
-    // Only what reaches into the lowest 6 lines: the old paragraph above is left out, the lower one stays.
-    const std::vector<ChatMessage> active = KeepActiveBottom(all, lines, 6);
-    CHECK(active.size() == 1 && active[0].text.find(L"line number 9") != std::wstring::npos);
-    // Few lines: everything stays.
-    CHECK(KeepActiveBottom(all, lines, 20).size() == 2);
 }
 
 
@@ -1875,54 +1541,6 @@ static void TestSureLanguage() {
     CHECK(SureLanguage(L"mille", L"").empty());
     CHECK(SureLanguage(L"vamos amigo", L"").empty());
     CHECK(SureLanguage(L"ty", L"").empty());
-}
-
-static void TestFreeText() {
-    auto line = [](const wchar_t* t, int top, int left = 10) {
-        OcrLine l;
-        l.text = t;
-        l.top = top;
-        l.height = 20;
-        l.left = left;
-        l.width = 300;
-        return l;
-    };
-    // Two lines close together are one paragraph, a gap starts the next; a
-    // hyphenated word at the line end is joined again.
-    const auto m = BuildFreeTextMessages({line(L"The quick brown fox jumps over the lazy", 0),
-                                          line(L"dog and runs into the for-", 24), line(L"est.", 48),
-                                          line(L"Second paragraph here.", 100)});
-    CHECK(m.size() == 2);
-    CHECK(m.size() == 2 && m[0].text == L"The quick brown fox jumps over the lazy dog and runs into the forest.");
-    CHECK(m.size() == 2 && m[1].text == L"Second paragraph here." && m[1].freeText);
-    // Hyphen kept when digit precedes or capital follows.
-    const auto hy1 = BuildFreeTextMessages({line(L"ein 10-", 0), line(L"facher Gewinn", 24)});
-    CHECK(hy1.size() == 1 && hy1[0].text == L"ein 10-facher Gewinn");
-    const auto hy2 = BuildFreeTextMessages({line(L"in Nord-", 0), line(L"Rheinland", 24)});
-    CHECK(hy2.size() == 1 && hy2[0].text == L"in Nord-Rheinland");
-    // A long text is cut after a sentence.
-    const auto cut = BuildFreeTextMessages({line(L"One sentence here.", 0), line(L"Another one follows.", 24)}, 20);
-    CHECK(cut.size() == 2);
-    // A clearly different indent (another column) is its own paragraph.
-    CHECK(BuildFreeTextMessages({line(L"left column", 0, 10), line(L"right column", 24, 400)}).size() == 2);
-    // Two columns side by side, lines sorted top to bottom alternate: each column stays one paragraph.
-    const auto cols = BuildFreeTextMessages({line(L"New", 0, 10), line(L"The quick brown fox", 0, 400),
-                                             line(L"Projects", 24, 10), line(L"jumps over the dog.", 24, 400)});
-    CHECK(cols.size() == 2);
-    CHECK(cols.size() == 2 && cols[0].text == L"New Projects" && cols[1].text == L"The quick brown fox jumps over the dog.");
-    // The same paragraph read again: grown while typing, or read slightly differently.
-    CHECK(SameFreeParagraph(L"es verhält sich relativ flott", L"es verhält sich relativ flott! ich finds super"));
-    CHECK(SameFreeParagraph(L"when scanning it seems to read the lines mixed up",
-                            L"when scanning it seems to read the lines mixed up not line by line"));
-    CHECK(SameFreeParagraph(L"the window gets the same long list as before", L"the windovv gets the same long list as before"));
-    CHECK(!SameFreeParagraph(L"Who wants to join the world boss?", L"Thanks for the help, see you later"));
-    // Noise from UI icons and half-hidden letters is not translated; normal text is.
-    CHECK(!LooksLikeFreeText(L"s•ch c:em'•"));
-    CHECK(!LooksLikeFreeText(L"not-y •st öffent •ches Lloersetzungsgeciächtn•s:"));
-    CHECK(!LooksLikeFreeText(L"VyVemory -3as•s: o:"));
-    CHECK(LooksLikeFreeText(L"Ohne Konto 5.000 Zeichen am Tag. Mit deiner E-Mail-Adresse 50.000 am Tag – keine Anmeldung."));
-    CHECK(LooksLikeFreeText(L"(Hallo, wer kommt mit?)"));
-    CHECK(!LooksLikeFreeText(L"123 456"));
 }
 
 
@@ -3087,17 +2705,13 @@ int main() {
     TestChatSource();
     TestContrast();
     TestUtf();
-    TestFreeText();
     TestCloudMt();
     TestMyWords();
     TestSnippets();
     TestSureLanguage();
-    TestActiveBottom();
     TestWordTriples();
     TestWordModelWeights();
     TestPhraseMemory();
-    TestStampShape();
-    TestInputLineTags();
     TestWordCase();
     TestLooksLikeSlip();
     TestTypoMemory();
@@ -3122,9 +2736,6 @@ int main() {
     TestBuiltinTerms();
     TestDeepL();
     TestLanguages();
-    TestColors();
-    TestParseLine();
-    TestBuildMessages();
     TestGw2Text();
     TestLlm();
     TestDeepLBatch();
@@ -3134,19 +2745,14 @@ int main() {
     TestAsciiEscape();
     TestI18n();
     TestWordModel();
-    TestMangledStamps();
     TestNames();
-    TestLocateChat();
-    TestNotChat();
     TestEmoticons();
     TestTypingSlips();
     TestGuessLanguage();
     TestLinks();
     TestStarterWords();
     TestLanguageTool();
-    TestOcrTimestamps();
     TestModelList();
-    TestChatTextFilter();
     TestVoiceCatalog();
     TestFindSpeech();
     TestCleanTranscript();
