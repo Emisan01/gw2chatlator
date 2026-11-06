@@ -707,7 +707,9 @@ void RenderWaypointPreview() {
         } else if (known) {
             ImGui::TextUnformatted(poi.name.c_str());
             ImGui::SameLine();
-            ImGui::TextDisabled("%s · %s", UI(PoiKind(poi.type)).c_str(), poi.map.c_str());
+            const std::string kind = UI(PoiKind(poi.type));
+            if (poi.name.find(kind) != std::string::npos) ImGui::TextDisabled("%s", poi.map.c_str());  // "Wegmarke Fort Marriner" says it already
+            else ImGui::TextDisabled("%s · %s", kind.c_str(), poi.map.c_str());
         } else if (selected) {
             ImGui::TextDisabled("%s", UI(!namesOn || g_links.PoisLoaded() ? Tr(L"Waypoint") : Tr(L"The table of waypoints is on its way …")).c_str());
         } else {
