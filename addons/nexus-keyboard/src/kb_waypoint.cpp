@@ -43,10 +43,10 @@ std::atomic<unsigned> s_frames{0};
 // Where the link stands in the newest line of GW2's chat, from one click of yours, in the game window's client pixels. It
 // moves with your character's name, the window's size and GW2's interface size: learned once for each, nothing guessed.
 std::atomic<int> s_linkX{-1}, s_linkY{-1};
-std::atomic<bool> s_linkToSave{false}, s_forgetPlace{false};
+std::atomic<bool> s_forgetPlace{false};
 std::wstring s_placeKey;  // s_mu: the place being learned
 std::map<std::wstring, POINT> s_places;  // s_mu: read or learned this session
-std::atomic<unsigned long long> s_shiftClickAt{0};
+std::atomic<unsigned long long> s_shiftClickAt{0}, s_linkClickAt{0};
 
 constexpr size_t kHistoryMax = 30, kCollectionMax = 200;
 
@@ -292,7 +292,8 @@ void Flight(uint32_t id) {
     {
         MumbleLink line;
         const MumbleState ms = line.Read();
-        TechLog('S', ms.live && ms.TextboxHasFocus() ? L"waypoint: click, GW2's line open" : L"waypoint: click, GW2's line shut");
+        TechLog('S', L"waypoint: click at " + std::to_wstring(at.x) + L"," + std::to_wstring(at.y) +
+                         (ms.live && ms.TextboxHasFocus() ? L", GW2's line open" : L", GW2's line shut"));
     }
     if (!RealClick(gw2, at, was)) {
         Say(Tr(L"The click was left out: GW2 was not in front, or the mouse moved."), 8000);
@@ -313,6 +314,7 @@ void Flight(uint32_t id) {
     GetCursorPos(&now);
     if (std::abs(now.x - at.x) <= 2 && std::abs(now.y - at.y) <= 2) MoveCursor(was);  // not hit and not moved by you: back
     TechLog('S', L"waypoint: clicked, the map did not open");
+    s_forgetPlace = true;  // the place is wrong or old: the next run asks for your click
     Say(Tr(L"The map did not open: the link was not hit. Teach the place again in the preview; GW2's chat must show whispers and stand at its end."), 12000);
 }
 
@@ -585,10 +587,9 @@ void WaypointSawClick(WPARAM wp, LPARAM lp) {  // the game's thread: a left pres
         return;
     }
     if (ImGui::GetIO().WantCaptureMouse) return;  // on a window of ours or of another add-on: not the link
-    s_teaching = false;
     s_linkX = static_cast<short>(LOWORD(lp));
     s_linkY = static_cast<short>(HIWORD(lp));
-    s_linkToSave = true;
+    s_linkClickAt = GetTickCount64();  // it counts when GW2's map opens: only the link does that
 }
 
 void WaypointStop() {
@@ -600,7 +601,25 @@ void WaypointStop() {
 
 void RenderWaypointPreview() {
     ++s_frames;
-    if (s_linkToSave.exchange(false)) {
+    if (const unsigned long long clicked = s_linkClickAt.load()) {
+        bool mapOpen;
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            mapOpen = g_mapOpen;
+        }
+        if (!mapOpen && GetTickCount64() - clicked > 1500) {
+            s_linkClickAt = 0;
+            TechLog('S', L"waypoint: that click did not open the map, not remembered");
+        }
+    }
+    bool mapOpenNow;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        mapOpenNow = g_mapOpen;
+    }
+    if (s_linkClickAt.load() && mapOpenNow) {  // your click opened GW2's map: that was the link
+        s_linkClickAt = 0;
+        s_teaching = false;
         const POINT place{s_linkX.load(), s_linkY.load()};
         std::wstring key;
         {
@@ -608,6 +627,7 @@ void RenderWaypointPreview() {
             key = s_placeKey;
             s_places[key] = place;
         }
+        TechLog('S', L"waypoint: place learned at " + std::to_wstring(place.x) + L"," + std::to_wstring(place.y));
         std::lock_guard<std::mutex> lock(g_mu);
         g_cfg.SaveValue(L"Waypoint", (key + L"X").c_str(), std::to_wstring(place.x));
         g_cfg.SaveValue(L"Waypoint", (key + L"Y").c_str(), std::to_wstring(place.y));

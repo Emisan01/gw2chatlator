@@ -374,6 +374,7 @@ SendOutcome Run(HWND owner, const Job& job, const SendOptions& opt, MumbleLink* 
         };
         std::wstring text;
         if (!(why = copyLine(&text)).empty()) return finish(why);
+        note(text.empty() ? L"copied nothing" : HoldsChatCode(text) ? L"copied a code" : L"copied other text");
         if (!HoldsChatCode(text)) return finish(std::wstring());  // not ours: the line stays as it is
         if (!(why = lost(true)).empty()) return finish(why);
         Tap(VK_BACK, opt.keyHoldMs);
