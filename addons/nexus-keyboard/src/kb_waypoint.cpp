@@ -272,7 +272,10 @@ void Flight(uint32_t id) {
         return;
     }
     ClientToScreen(gw2, &at);
-    if (!WaitFrames(3)) return;  // the line is drawn
+    if (!WaitFrames(3)) {  // the line is drawn; no frames, a minimised game: no click, and it says so
+        Say(Tr(L"The click was left out: GW2 was not in front, or the mouse moved."), 8000);
+        return;
+    }
     if (s_lineMoved) {  // someone's line pushed ours up: the place is no longer known, nothing is clicked blind
         Say(Tr(L"Another line came in between: nothing was clicked. Try again."), 8000);
         return;
