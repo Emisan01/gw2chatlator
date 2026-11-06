@@ -8,12 +8,14 @@
 #include "kb_shared.hpp"
 
 #include "chat/ChatLinks.h"
+#include "core/chat_code.hpp"
 
 #include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <cstring>
 #include <deque>
+#include <map>
 #include <random>
 #include <set>
 #include <string>
@@ -38,9 +40,13 @@ std::atomic<bool> s_sendDone{true}, s_sendFailed{false};
 std::atomic<int> s_linesCame{0};  // a whisper to yourself comes back twice: "from" and "to"
 std::atomic<unsigned long long> s_teachUntil{0};
 std::atomic<unsigned> s_frames{0};
-// Where the link stands in the last line of GW2's chat, from one click of yours; in the game window's client pixels.
-std::atomic<int> s_linkX{-1}, s_linkY{-1}, s_linkW{0}, s_linkH{0};
-std::atomic<bool> s_linkRead{false}, s_linkToSave{false};
+// Where the link stands in the newest line of GW2's chat, from one click of yours, in the game window's client pixels. It
+// moves with your character's name, the window's size and GW2's interface size: learned once for each, nothing guessed.
+std::atomic<int> s_linkX{-1}, s_linkY{-1};
+std::atomic<bool> s_linkToSave{false}, s_forgetPlace{false};
+std::wstring s_placeKey;  // s_mu: the place being learned
+std::map<std::wstring, POINT> s_places;  // s_mu: read or learned this session
+std::atomic<unsigned long long> s_shiftClickAt{0};
 
 constexpr size_t kHistoryMax = 30, kCollectionMax = 200;
 
@@ -116,6 +122,21 @@ bool RealClick(HWND gw2, POINT at, POINT was) {
     in.mi.dwFlags = MOUSEEVENTF_LEFTUP;
     SendInput(1, &in, sizeof(in));
     return true;
+}
+
+POINT StoredPlace(const std::wstring& key) {
+    std::wstring ini;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        ini = g_cfg.iniPath;
+    }
+    std::lock_guard<std::mutex> lock(s_mu);
+    const auto known = s_places.find(key);
+    if (known != s_places.end()) return known->second;
+    const POINT at{static_cast<int>(GetPrivateProfileIntW(L"Waypoint", (key + L"X").c_str(), -1, ini.c_str())),
+                   static_cast<int>(GetPrivateProfileIntW(L"Waypoint", (key + L"Y").c_str(), -1, ini.c_str()))};
+    s_places[key] = at;
+    return at;
 }
 
 // Your click in the preview is still under way, and with "keep typing" the input holds the keyboard since the last send:
@@ -200,6 +221,7 @@ void Flight(uint32_t id) {
     });
     for (int waited = 0; waited < 15000 && !s_sendDone && !s_stop; waited += 10) Sleep(10);  // the whole run, only then the mouse
     if (s_sendFailed) return;
+    TechLog('S', before.empty() ? L"waypoint: whisper sent, channel not known, it stays" : L"waypoint: whisper sent, channel set back");
     for (int waited = 0; waited < 3000 && s_linesCame == 0 && !s_stop; waited += 20) Sleep(20);
     if (s_linesCame == 0) {
         Say(Tr(L"The code did not come back in the chat: GW2 may not let you whisper to yourself here."), 10000);
@@ -207,16 +229,22 @@ void Flight(uint32_t id) {
     }
     for (int waited = 0; waited < 400 && s_linesCame < 2 && !s_stop; waited += 10) Sleep(10);  // both, before the place counts
     if (before.empty()) Say(Tr(L"GW2's line stays in the whisper to you: which channel it was in before, I have not seen yet."), 8000);
-    if (s_linkX < 0) {  // once: your own click shows where the link stands
+    const HWND gw2 = FindGw2Window(GetCurrentProcessId());
+    RECT client{};
+    if (!gw2 || !GetClientRect(gw2, &client) || client.right <= 0 || client.bottom <= 0) return;
+    const std::wstring placeKey = ChatCodePlaceKey(own, client.right, client.bottom, static_cast<int>(g_uiSize.load()));
+    POINT at{-1, -1};
+    if (!s_forgetPlace.exchange(false)) at = StoredPlace(placeKey);
+    if (at.x < 0 || at.y < 0) {  // once: your own click shows where the link stands
+        {
+            std::lock_guard<std::mutex> lock(s_mu);
+            s_placeKey = placeKey;
+        }
         s_teachUntil = GetTickCount64() + 30000;
         s_teaching = true;
         Say(Tr(L"Click the new link in GW2's chat once yourself, at its start. I remember the place, from then on it goes by itself."), 30000);
         return;
     }
-    const HWND gw2 = FindGw2Window(GetCurrentProcessId());
-    RECT client{};
-    if (!gw2 || !GetClientRect(gw2, &client) || client.right <= 0 || client.bottom <= 0) return;
-    POINT at{s_linkX * client.right / std::max(1, s_linkW.load()), s_linkY * client.bottom / std::max(1, s_linkH.load())};
     ClientToScreen(gw2, &at);
     if (!WaitFrames(3)) return;  // the line is drawn
     if (s_lineMoved) {  // someone's line pushed ours up: the place is no longer known, nothing is clicked blind
@@ -233,6 +261,7 @@ void Flight(uint32_t id) {
     for (int waited = 0; waited < 1500 && !s_stop; waited += 50) {
         const MumbleState ms = mumble.Read();
         if (ms.live && ms.MapOpen()) {  // the game flies: the mouse just goes free, and the preview stands in nobody's way
+            TechLog('S', L"waypoint: clicked, map open after " + std::to_wstring(waited) + L" ms");
             std::lock_guard<std::mutex> lock(s_mu);
             s_open = false;
             return;
@@ -242,6 +271,7 @@ void Flight(uint32_t id) {
     POINT now{};
     GetCursorPos(&now);
     if (std::abs(now.x - at.x) <= 2 && std::abs(now.y - at.y) <= 2) MoveCursor(was);  // not hit and not moved by you: back
+    TechLog('S', L"waypoint: clicked, the map did not open");
     Say(Tr(L"The map did not open: the link was not hit. Teach the place again in the preview; GW2's chat must show whispers and stand at its end."), 12000);
 }
 
@@ -431,14 +461,7 @@ void PoiList(const std::wstring& title, const std::vector<uint32_t>& ids, uint32
     ImGui::Spacing();
 }
 
-void ReadStored(const std::wstring& ini, const std::wstring& dataDir) {  // once
-    if (!s_linkRead.exchange(true)) {
-        s_linkX = static_cast<int>(GetPrivateProfileIntW(L"Waypoint", L"LinkX", static_cast<UINT>(-1), ini.c_str()));
-        s_linkY = static_cast<int>(GetPrivateProfileIntW(L"Waypoint", L"LinkY", static_cast<UINT>(-1), ini.c_str()));
-        s_linkW = static_cast<int>(GetPrivateProfileIntW(L"Waypoint", L"LinkW", 0, ini.c_str()));
-        s_linkH = static_cast<int>(GetPrivateProfileIntW(L"Waypoint", L"LinkH", 0, ini.c_str()));
-        if (s_linkW <= 0 || s_linkH <= 0) s_linkX = -1;
-    }
+void ReadStored(const std::wstring& dataDir) {  // once
     std::lock_guard<std::mutex> lock(s_mu);
     if (s_historyRead) return;
     s_historyRead = true;
@@ -473,7 +496,10 @@ bool WaypointSawLine(bool whisper, const char* content) {  // from Events: Chat,
     return false;
 }
 
-void WaypointSawClick(HWND hwnd, LPARAM lp) {  // the game's thread: a left press
+bool WaypointShiftClickJustNow() { return GetTickCount64() - s_shiftClickAt.load() < 800; }
+
+void WaypointSawClick(WPARAM wp, LPARAM lp) {  // the game's thread: a left press
+    if ((wp & MK_SHIFT) && ImGui::GetCurrentContext() && !ImGui::GetIO().WantCaptureMouse) s_shiftClickAt = GetTickCount64();
     if (!s_teaching.load()) return;
     if (GetTickCount64() > s_teachUntil.load()) {
         s_teaching = false;
@@ -481,10 +507,6 @@ void WaypointSawClick(HWND hwnd, LPARAM lp) {  // the game's thread: a left pres
     }
     if (ImGui::GetIO().WantCaptureMouse) return;  // on a window of ours or of another add-on: not the link
     s_teaching = false;
-    RECT client{};
-    if (!GetClientRect(hwnd, &client)) return;
-    s_linkW = client.right;
-    s_linkH = client.bottom;
     s_linkX = static_cast<short>(LOWORD(lp));
     s_linkY = static_cast<short>(HIWORD(lp));
     s_linkToSave = true;
@@ -500,11 +522,16 @@ void WaypointStop() {
 void RenderWaypointPreview() {
     ++s_frames;
     if (s_linkToSave.exchange(false)) {
+        const POINT place{s_linkX.load(), s_linkY.load()};
+        std::wstring key;
+        {
+            std::lock_guard<std::mutex> lock(s_mu);
+            key = s_placeKey;
+            s_places[key] = place;
+        }
         std::lock_guard<std::mutex> lock(g_mu);
-        g_cfg.SaveValue(L"Waypoint", L"LinkX", std::to_wstring(s_linkX.load()));
-        g_cfg.SaveValue(L"Waypoint", L"LinkY", std::to_wstring(s_linkY.load()));
-        g_cfg.SaveValue(L"Waypoint", L"LinkW", std::to_wstring(s_linkW.load()));
-        g_cfg.SaveValue(L"Waypoint", L"LinkH", std::to_wstring(s_linkH.load()));
+        g_cfg.SaveValue(L"Waypoint", (key + L"X").c_str(), std::to_wstring(place.x));
+        g_cfg.SaveValue(L"Waypoint", (key + L"Y").c_str(), std::to_wstring(place.y));
         SetStatus(Tr(L"Place remembered. A click in the preview now does this by itself."), 8000);
     }
     uint32_t selected;
@@ -513,12 +540,14 @@ void RenderWaypointPreview() {
         std::lock_guard<std::mutex> lock(s_mu);
         if (!s_open || s_through.load()) return;
     }
-    bool mayFly;
+    bool mayFly, onMap;
     {
         std::lock_guard<std::mutex> lock(g_mu);
-        ReadStored(g_cfg.iniPath, g_cfg.dataDir);
+        ReadStored(g_cfg.dataDir);
         mayFly = g_cfg.waypointClick && !s_busy.load();
+        onMap = (g_inMap || g_test.forceMap) && !g_mapOpen;
     }
+    if (!onMap) return;  // as our chat: never on a loading screen or at the character choice, never over GW2's open map
     {
         std::lock_guard<std::mutex> lock(s_mu);
         if (!s_selected) s_selected = !s_collection.empty() ? s_collection.front() : !s_history.empty() ? s_history.front() : 0;
@@ -548,7 +577,7 @@ void RenderWaypointPreview() {
         const bool known = g_links.Poi(selected, &poi);
         ImGui::BeginChild("##wpmap", ImVec2(std::max(fs * 8.0f, ImGui::GetContentRegionAvail().x - listW - ImGui::GetStyle().ItemSpacing.x), mapH), false,
                           ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
-        if (known) DrawMap(poi, mayFly);
+        if (known && (poi.x != 0.0f || poi.y != 0.0f)) DrawMap(poi, mayFly);
         else if (selected) DrawBareMarker(selected, mayFly);
         ImGui::EndChild();
         ImGui::SameLine();
@@ -561,7 +590,7 @@ void RenderWaypointPreview() {
             ImGui::SameLine();
             ImGui::TextDisabled("%s · %s", UI(PoiKind(poi.type)).c_str(), poi.map.c_str());
         } else if (selected) {
-            ImGui::TextDisabled("%s", UI(Tr(L"The table of waypoints is on its way …")).c_str());
+            ImGui::TextDisabled("%s", UI(g_links.PoisLoaded() ? Tr(L"Waypoint") : Tr(L"The table of waypoints is on its way …")).c_str());
         } else {
             ImGui::TextDisabled("%s", UI(Tr(L"Click a waypoint in the chat, or choose one from your lists.")).c_str());
         }
@@ -576,7 +605,7 @@ void RenderWaypointPreview() {
         }
         if (mayFly && selected) {
             if (ImGui::Button(UI(Tr(L"Teach the place again")).c_str())) {
-                s_linkX = -1;
+                s_forgetPlace = true;
                 Fly(selected);
             }
         } else if (!g_cfg.waypointClick) {

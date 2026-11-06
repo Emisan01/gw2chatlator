@@ -82,6 +82,8 @@ bool IsChannelCommand(const std::wstring& command);
 // Any other chat command ("/wiki Tequatl", "/dance", "/sqjoin Name", "/age"): the line goes into the game as it is –
 // typed whole, never translated (a pasted "/wiki …" lost its command, 2026-10-27).
 bool IsPlainCommand(const std::wstring& text);
+// "/self text": a whisper to yourself, "/w Your Name, text". Anything else, or no name known yet: as it is.
+std::wstring ExpandSelfCommand(const std::wstring& text, const std::wstring& ownName);
 
 // Chat links such as [&AgH1WQAA] (waypoints, items, skills ...).
 std::vector<Span> FindChatCodes(const std::wstring& s);

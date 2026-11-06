@@ -6,6 +6,8 @@
 #include <cstring>
 #include <vector>
 
+#include "core/chat_code.hpp"
+
 namespace gct {
 namespace {
 
@@ -91,6 +93,19 @@ bool SetClipboardText(HWND owner, const std::wstring& text) {
     bool ok = PutGlobal(CF_UNICODETEXT, text.c_str(), (text.size() + 1) * sizeof(wchar_t));
     CloseClipboard();
     return ok;
+}
+
+bool ClipboardText(HWND owner, std::wstring* out) {
+    out->clear();
+    if (!OpenClipboardRetry(owner)) return false;
+    if (HANDLE data = GetClipboardData(CF_UNICODETEXT)) {
+        if (const wchar_t* text = static_cast<const wchar_t*>(GlobalLock(data))) {
+            out->assign(text, wcsnlen(text, GlobalSize(data) / sizeof(wchar_t)));
+            GlobalUnlock(data);
+        }
+    }
+    CloseClipboard();
+    return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -236,6 +251,7 @@ struct Job {
     std::wstring message;      // pasted, then Enter
     std::wstring typed;        // a whole command typed and run ("/wiki Tequatl")
     bool channelOnly = false;  // switch the line and close it again (Enter on the empty line): the channel stays
+    std::wstring* take = nullptr;  // only with an open line: its chat code comes out to here and the line closes
 };
 
 SendOutcome Run(HWND owner, const Job& job, const SendOptions& opt, MumbleLink* mumble, bool (*keysReachGame)()) {
@@ -339,6 +355,41 @@ SendOutcome Run(HWND owner, const Job& job, const SendOptions& opt, MumbleLink* 
     injected = true;
     note(L"start");
 
+    if (job.take) {
+        if (!watched || !lineHasKeys()) return finish(std::wstring());  // never opens a line for this
+        clipboardUsed = true;
+        auto copyLine = [&](std::wstring* out) -> std::wstring {
+            if (!SetClipboardText(owner, L"")) return Tr(L"The clipboard is blocked");
+            std::wstring reason = lost(true);
+            if (!reason.empty()) return reason;
+            CtrlTap('A', opt.keyHoldMs);
+            note(L"Ctrl+A");
+            settle();
+            if (!(reason = lost(true)).empty()) return reason;
+            CtrlTap('C', opt.keyHoldMs);
+            note(L"Ctrl+C");
+            settle();
+            settle();  // GW2 works through the keys in its frames: the copy is there before it is read
+            return ClipboardText(owner, out) ? std::wstring() : Tr(L"The clipboard is blocked");
+        };
+        std::wstring text;
+        if (!(why = copyLine(&text)).empty()) return finish(why);
+        if (!HoldsChatCode(text)) return finish(std::wstring());  // not ours: the line stays as it is
+        if (!(why = lost(true)).empty()) return finish(why);
+        Tap(VK_BACK, opt.keyHoldMs);
+        note(L"Backspace");
+        settle();
+        std::wstring left;
+        if (!(why = copyLine(&left)).empty()) return finish(why);
+        if (!left.empty()) return finish(Tr(L"GW2's chat line still holds text – it stays open."));  // never an Enter on text
+        if (!(why = lost(true)).empty()) return finish(why);
+        Tap(VK_RETURN, opt.keyHoldMs);
+        textbox(false, std::max(1000, 8 * opt.keyHoldMs));
+        note(L"Enter");
+        *job.take = text;
+        return finish(std::wstring());
+    }
+
     // 1. Open – only when it is shut: a line you have open stays as it is (we close nothing we did not open). Never Esc:
     //    in GW2 it closes whatever window is on top, not necessarily the chat line (live 2026-11-02: it closed another
     //    window). MumbleLink only knows that "a text box of GW2" has the keyboard; an open one is taken as the chat line.
@@ -434,6 +485,13 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
             job.message = split.body;
         }
     }
+    return Run(owner, job, opt, mumble, keysReachGame);
+}
+
+SendOutcome TakeChatCodeFromGw2Line(HWND owner, std::wstring* taken, const SendOptions& opt, MumbleLink* mumble,
+                                    bool (*keysReachGame)()) {
+    Job job;
+    job.take = taken;
     return Run(owner, job, opt, mumble, keysReachGame);
 }
 

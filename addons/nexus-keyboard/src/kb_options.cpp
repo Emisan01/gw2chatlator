@@ -1104,7 +1104,7 @@ void RenderWordLists() {
     X(voiceDevice) X(voiceAutoSend) X(voiceBoost) X(voiceActivation) X(voicePauseMs) X(voicePreRollMs)                \
     X(voiceSensitivity) X(voiceMinMs) X(voiceGlobalKey) X(voiceChatPause)
 #define KB_OPTIONS(X)                                                                                                  \
-    X(engine) X(writeIn) X(backTranslate) X(chatCodeNames) X(waypointClick) X(understoodLangs) X(skipTypingLang) X(readLang) X(showOriginal) X(noJunk)   \
+    X(engine) X(writeIn) X(backTranslate) X(chatCodeNames) X(waypointClick) X(codePickUp) X(understoodLangs) X(skipTypingLang) X(readLang) X(showOriginal) X(noJunk)   \
     X(localQuality) X(useGpu) X(beamStepDown) X(beamStepUp) X(thinkAlong) X(versions) X(mtThreads) X(m2m.patience) X(m2m.lengthPenalty) X(m2m.coveragePenalty) X(m2m.repetitionPenalty)   \
     X(m2m.noRepeatNgram) X(m2m.disableUnk) X(m2mCompute) X(basicEmail) X(deeplKey) X(googleKey) X(msKey) X(msRegion) X(libreUrl) X(libreKey)   \
     X(uiLangCode) X(spellEnabled) X(autoCorrect) X(suggestions) X(learnWords) X(learnLater) X(returnFocus)            \
@@ -1298,6 +1298,8 @@ void RenderChatPage(Config& edit) {
     Hint(UI(Tr(L"Instead of GW2's own chat line: you type here, with the typing help and the translation.")));
     Switch("return", UI(Tr(L"After sending, keep typing in GW2Chatlator")), &edit.returnFocus);
     Hint(UI(Tr(L"The input keeps the keyboard after Enter – the next message goes right after.")));
+    Switch("pickup", UI(Tr(L"Shift+click in GW2 brings the code into the input")), &edit.codePickUp);
+    Hint(UI(Tr(L"With Enter opening the input: a Shift+click on a map point, an item or a skill puts its code into GW2's own line. It comes over into the input here and that line closes, with a few keys per click.")));
     EndBox();
     BeginBox(UI(Tr(L"Sending")));
     RowLabel(UI(Tr(L"Enter does")));

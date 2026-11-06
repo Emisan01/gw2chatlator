@@ -520,7 +520,10 @@ void RenderFooter() {  // g_mu held
 
         s_fc.labelFull = g_channel == Channel::Unknown ? UI(Tr(L"Active channel")) : UI(ChannelLabel(g_channel));
         if (g_channel == Channel::Guild && g_guildSlot > 0) s_fc.labelFull = "G" + std::to_string(g_guildSlot);
-        if (g_channel == Channel::Whisper && !g_whisperTo.empty()) s_fc.labelFull += " " + U8(g_whisperTo);
+        if (g_channel == Channel::Whisper && !g_whisperTo.empty()) {
+            if (g_whisperTo == g_ownName) s_fc.labelFull = "/self";
+            else s_fc.labelFull += " " + U8(g_whisperTo);
+        }
         s_fc.labelNarrow = g_channel == Channel::Unknown ? UI(Tr(L"Active")) : s_fc.labelFull;
         s_fc.labelBtnFull = s_fc.labelFull + "##chbtn";
         s_fc.labelBtnNarrow = s_fc.labelNarrow + "##chbtn";
@@ -577,10 +580,22 @@ void RenderFooter() {  // g_mu held
             RequestChannelSync();  // GW2's line follows – every click, also on the channel already chosen
             ImGui::CloseCurrentPopup();
         };
+        const bool toSelf = g_channel == Channel::Whisper && !g_ownName.empty() && g_whisperTo == g_ownName;
         for (Channel c : kChannels) {
             const std::string name = c == Channel::Unknown ? UI(Tr(L"Active channel")) : UI(ChannelLabel(c));
             ImGui::PushStyleColor(ImGuiCol_Text, NameColorOf(c == Channel::Unknown ? Channel::Say : c));
-            if (ImGui::Selectable(name.c_str(), c == g_channel && (c != Channel::Guild || g_guildSlot == 0))) choose(c, 0);
+            if (ImGui::Selectable(name.c_str(), c == g_channel && (c != Channel::Guild || g_guildSlot == 0) && !(c == Channel::Whisper && toSelf))) {
+                if (c == Channel::Whisper && toSelf) g_whisperTo.clear();
+                choose(c, 0);
+            }
+            if (c == Channel::Whisper && !g_ownName.empty()) {  // a whisper to yourself, on whichever character you are
+                if (ImGui::Selectable("/self", toSelf)) {
+                    if (g_activeTab >= 0) LeaveWhisperTab();
+                    g_whisperTo = g_ownName;
+                    choose(Channel::Whisper, 0);
+                }
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Whisper yourself")).c_str());
+            }
             if (c == Channel::Guild) {  // your guilds by their slot, one row: also those you do not represent
                 for (int slot = 1; slot <= 5; ++slot) {
                     const std::string label = "G" + std::to_string(slot);
@@ -822,6 +837,9 @@ void RenderWindow() {
             g_mapOpen = ms.live && ms.MapOpen();
             g_gameHasFocus = ms.live ? ms.GameHasFocus() : true;
             if (ms.live) {
+                // "To myself" stays that on another character
+                if (g_channel == Channel::Whisper && !g_ownName.empty() && g_whisperTo == g_ownName && !ms.identity.name.empty())
+                    g_whisperTo = ms.identity.name;
                 g_ownName = ms.identity.name;
                 g_uiSize.store(ms.identity.uiSize);
                 g_mapId.store(ms.identity.mapId);
@@ -829,7 +847,10 @@ void RenderWindow() {
             const bool chatOpen = ms.live && ms.TextboxHasFocus();
             g_gameChatOpen = chatOpen;
             const bool chatOpened = chatOpen && !chatWasOpen && g_show && !g_sending;  // not the line our own send opens
-            if (chatOpened && g_cfg.focusOnGameChat) g_focusInput = true;   // the focus comes over (opens it as well)
+            if (chatOpened && g_cfg.focusOnGameChat) {  // the focus comes over (opens it as well)
+                if (g_cfg.codePickUp && !g_cfg.copyOnly && WaypointShiftClickJustNow()) RequestCodePickUp();  // that line holds a code
+                else g_focusInput = true;
+            }
             else if (chatOpened && g_layout.autoOpen && g_collapsed) g_expandRequest = true;  // only opened
             chatWasOpen = chatOpen;
         }

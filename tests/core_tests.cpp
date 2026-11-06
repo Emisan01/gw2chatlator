@@ -98,6 +98,11 @@ static void TestText() {
 }
 
 static void TestChat() {
+    CHECK(ExpandSelfCommand(L"/self hi there", L"Some Name") == L"/w Some Name, hi there");
+    CHECK(ExpandSelfCommand(L"/SELF [&BCkEAAA=]", L"Some Name") == L"/w Some Name, [&BCkEAAA=]");
+    CHECK(ExpandSelfCommand(L"/selfish", L"Some Name") == L"/selfish");
+    CHECK(ExpandSelfCommand(L"/self hi", L"") == L"/self hi");
+    CHECK(ExpandSelfCommand(L"hallo", L"Some Name") == L"hallo");
     auto s = SplitChatCommand(L"hallo zusammen");
     CHECK(s.prefix.empty() && s.body == L"hallo zusammen");
     s = SplitChatCommand(L"/p hallo");
@@ -2325,6 +2330,12 @@ static void TestChatCode() {
         CHECK(CleanChatCodeText(std::string(500, 'x')).size() == 403 && CleanChatCodeText("a < b") == "a < b");
         ChatCodePoi poi;
         CHECK(ParseChatCodePoi("598\twaypoint\tWegmarke\tKlippen", &poi) && poi.id == 598 && poi.type == "waypoint" && poi.name == "Wegmarke" && poi.map == "Klippen");
+        CHECK(HoldsChatCode(L"[&BCkEAAA=]") && HoldsChatCode(L"here [&BCkEAAA=] please"));
+        CHECK(!HoldsChatCode(L"[&]") && !HoldsChatCode(L"[&BCk") && !HoldsChatCode(L"no code") && !HoldsChatCode(L""));
+        CHECK(ChatCodePlaceKey(L"Some Name", 1920, 1080, 1) == ChatCodePlaceKey(L"Some Name", 1920, 1080, 1));
+        CHECK(ChatCodePlaceKey(L"Some Name", 1920, 1080, 1) != ChatCodePlaceKey(L"Some Nam", 1920, 1080, 1));
+        CHECK(ChatCodePlaceKey(L"Some Name", 1920, 1080, 1) != ChatCodePlaceKey(L"Some Name", 2560, 1080, 1));
+        CHECK(ChatCodePlaceKey(L"Some Name", 1920, 1080, 1) != ChatCodePlaceKey(L"Some Name", 1920, 1080, 2));
         CHECK(ParseChatCodePoi("1065\tlandmark\tL\tM\t1\t-2\t45100.5\t30200.0", &poi) && poi.map == "M" && poi.continent == 1 && poi.floor == -2 && poi.x > 45100.0f && poi.y == 30200.0f);
         CHECK(!ParseChatCodePoi("598\twaypoint", &poi) && !ParseChatCodePoi("x\ta\tb\tc", &poi) && !ParseChatCodePoi("1\ta\t\tc", &poi));
     }

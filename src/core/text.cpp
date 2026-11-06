@@ -386,6 +386,11 @@ ChatSplit SplitChatCommand(const std::wstring& text) {
     return r;
 }
 
+std::wstring ExpandSelfCommand(const std::wstring& text, const std::wstring& ownName) {
+    if (ownName.empty() || text.size() < 5 || ToLowerAscii(text.substr(0, 5)) != L"/self" || (text.size() > 5 && text[5] != L' ')) return text;
+    return L"/w " + ownName + L", " + Trim(text.substr(5));
+}
+
 bool IsChannelCommand(const std::wstring& command) {
     static const wchar_t* const kChannels[] = {
         // the game's channel shortcuts (say, guild, party, squad, team, map, whisper, reply)

@@ -49,6 +49,10 @@ struct ChatCodePoi {
     float x = 0, y = 0;
 };
 bool ParseChatCodePoi(const std::string& line, ChatCodePoi* out);
+// Text holds a chat code ("[&BCkEAAA=]", also among other words).
+bool HoldsChatCode(const std::wstring& text);
+// Names the place of a link in GW2's chat: it moves with your character's name, the window's size and GW2's interface size.
+std::wstring ChatCodePlaceKey(const std::wstring& name, int width, int height, int uiSize);
 
 // The chat text of Events: Chat escapes brackets ("\[&AgGvWwEA\]"): back to what the game shows.
 std::wstring UnescapeChatText(const std::wstring& s);

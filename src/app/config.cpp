@@ -291,6 +291,7 @@ void Config::Load(const std::wstring& dir) {
     writeIn = ToUpperAscii(ini.Str(L"Spelling", L"WriteIn", L""));
     // the chat used to be read in the writing language: an INI from before keeps reading that way
     readLang = ToUpperAscii(ini.Str(L"Translate", L"ReadLang", writeIn.c_str()));
+    codePickUp = ini.Bool(L"Translate", L"CodePickUp", true);
     waypointClick = ini.Bool(L"Translate", L"WaypointClick", false);
     chatCodeNames = ini.Bool(L"Translate", L"ChatCodeNames", true);
     showOriginal = ini.Bool(L"Translate", L"ShowOriginal", false);
@@ -506,6 +507,7 @@ void Config::SaveAll() const {
     SaveValue(L"LLM", L"ApiKey", ProtectSecret(llmKey));
     SaveValue(L"Spelling", L"WriteIn", writeIn);
     SaveValue(L"Translate", L"ReadLang", readLang);
+    SaveBool(L"Translate", L"CodePickUp", codePickUp);
     SaveBool(L"Translate", L"WaypointClick", waypointClick);
     SaveBool(L"Translate", L"ChatCodeNames", chatCodeNames);
     SaveBool(L"Translate", L"ShowOriginal", showOriginal);

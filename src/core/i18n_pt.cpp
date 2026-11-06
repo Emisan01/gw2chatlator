@@ -1717,6 +1717,14 @@ extern const I18nEntry kPortugueseStrings[] = {
      "Clique num ponto de passagem no chat ou escolha um das suas listas."},
     {L"GW2's line stays in the whisper to you: which channel it was in before, I have not seen yet.",
      "A linha do GW2 fica no sussurro a si próprio: ainda não vi que canal estava ativo antes."},
+    {L"Shift+click in GW2 brings the code into the input",
+     "Shift+clique no GW2 traz o código para a entrada"},
+    {L"With Enter opening the input: a Shift+click on a map point, an item or a skill puts its code into GW2's own line. It comes over into the input here and that line closes, with a few keys per click.",
+     "Quando Enter abre a entrada: um Shift+clique num ponto do mapa, item ou habilidade coloca o código na linha do GW2. Chega aqui à entrada e essa linha fecha-se, com algumas teclas por clique."},
+    {L"GW2's chat line still holds text – it stays open.",
+     "A linha de chat do GW2 ainda tem texto: continua aberta."},
+    {L"Whisper yourself",
+     "Sussurre a si próprio"},
 };
 extern const size_t kPortugueseCount = sizeof(kPortugueseStrings) / sizeof(kPortugueseStrings[0]);
 

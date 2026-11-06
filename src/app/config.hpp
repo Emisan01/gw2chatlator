@@ -36,6 +36,7 @@ struct Config {
     std::vector<std::wstring> understoodLangs;            // never translated automatically ("EN")
     bool skipTypingLang = true;                           // nor the language you read in
     std::wstring readLang;   // the language the chat is read in ("DE"; empty = the system's) – apart from writing and sending
+    bool codePickUp = true;  // with Enter opening our input: a Shift+click's code comes from GW2's line into it
     bool waypointClick = false;  // a click in the waypoint preview posts the code to yourself and clicks it (off by default)
     bool chatCodeNames = true;  // chat codes by name, from GW2's public API (only the code's number goes out)
     bool showOriginal = false;  // the original small and grey under a translated line (your own: what you typed)

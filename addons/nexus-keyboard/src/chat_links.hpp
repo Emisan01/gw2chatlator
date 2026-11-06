@@ -27,6 +27,7 @@ public:
         float x = 0, y = 0;
     };
     bool Poi(uint32_t id, PoiView* out);  // false while the table is not there (it is asked for)
+    bool PoisLoaded();  // the table has come, or will not come this session
     std::vector<PoiView> PoisIn(int continent, float left, float top, float right, float bottom);
     void Start(AddonAPI_t* api, Poster post, std::wstring dataDir);
     void Stop();

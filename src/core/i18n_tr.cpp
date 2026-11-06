@@ -1717,6 +1717,14 @@ extern const I18nEntry kTurkishStrings[] = {
      "Sohbette bir geçiş noktasına tıkla veya listelerinden birini seç."},
     {L"GW2's line stays in the whisper to you: which channel it was in before, I have not seen yet.",
      "GW2 satırı sana fısıltıda kalıyor: önce hangi kanalın etkin olduğunu henüz görmedim."},
+    {L"Shift+click in GW2 brings the code into the input",
+     "GW2'de Shift+tık kodu giriş alanına getirir"},
+    {L"With Enter opening the input: a Shift+click on a map point, an item or a skill puts its code into GW2's own line. It comes over into the input here and that line closes, with a few keys per click.",
+     "Enter giriş alanını açtığında: bir harita noktası, eşya veya yeteneğe Shift+tık, kodunu GW2 satırına koyar. Kod buraya giriş alanına gelir ve o satır kapanır; tık başına birkaç tuşla."},
+    {L"GW2's chat line still holds text – it stays open.",
+     "GW2 sohbet satırında hâlâ metin var: açık kalıyor."},
+    {L"Whisper yourself",
+     "Kendine fısılda"},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

@@ -1,6 +1,7 @@
 #include "core/chat_code.hpp"
 
 #include <cstdlib>
+#include <cwchar>
 #include <vector>
 
 #include "core/json.hpp"
@@ -170,6 +171,30 @@ std::string CleanChatCodeText(const std::string& text) {
         out += "...";
     }
     return out;
+}
+
+bool HoldsChatCode(const std::wstring& text) {
+    const auto base64 = [](wchar_t c) {
+        return (c >= L'A' && c <= L'Z') || (c >= L'a' && c <= L'z') || (c >= L'0' && c <= L'9') || c == L'+' || c == L'/' || c == L'=';
+    };
+    for (size_t at = text.find(L"[&"); at != std::wstring::npos; at = text.find(L"[&", at + 2)) {
+        size_t end = at + 2;
+        while (end < text.size() && base64(text[end])) ++end;
+        if (end > at + 2 && end < text.size() && text[end] == L']') return true;
+    }
+    return false;
+}
+
+std::wstring ChatCodePlaceKey(const std::wstring& name, int width, int height, int uiSize) {
+    uint32_t hash = 2166136261u;  // FNV-1a
+    const auto add = [&hash](uint32_t value) { hash = (hash ^ value) * 16777619u; };
+    for (const wchar_t c : name) add(static_cast<uint32_t>(c));
+    add(static_cast<uint32_t>(width));
+    add(static_cast<uint32_t>(height));
+    add(static_cast<uint32_t>(uiSize));
+    wchar_t key[12];
+    swprintf(key, 12, L"%08X", hash);
+    return key;
 }
 
 bool ParseChatCodePoi(const std::string& line, ChatCodePoi* out) {

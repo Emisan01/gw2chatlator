@@ -48,6 +48,12 @@ SendOutcome SendToGw2Chat(HWND owner, const std::wstring& text, const SendOption
 SendOutcome SetGw2Channel(HWND owner, const std::wstring& command, const std::wstring& name, const SendOptions& opt,
                           MumbleLink* mumble = nullptr, bool (*keysReachGame)() = nullptr);
 
+// The line GW2 itself opened for a Shift+click: a chat code in it comes out into `taken`, with the rest of the line's text,
+// and the line closes (the Enter only after a second look found it empty, so nothing is sent). Any other text, or no open
+// line: nothing changes, `taken` stays empty. Without MumbleLink it does nothing.
+SendOutcome TakeChatCodeFromGw2Line(HWND owner, std::wstring* taken, const SendOptions& opt, MumbleLink* mumble,
+                                    bool (*keysReachGame)());
+
 // SetForegroundWindow with a fallback for the foreground lock (a synthetic
 // Alt tap, delivered to whichever window is in front — never needed while
 // this process is in front). `allowAltTap = false` never synthesizes input.

@@ -300,6 +300,11 @@ void ChatLinks::Fetch() {
     Kick();
 }
 
+bool ChatLinks::PoisLoaded() {
+    std::lock_guard<std::mutex> lock(mu_);
+    return poiLoaded_;
+}
+
 bool ChatLinks::Poi(uint32_t id, PoiView* out) {
     std::lock_guard<std::mutex> lock(mu_);
     const auto it = pois_.find(id);

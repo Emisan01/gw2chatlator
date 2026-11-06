@@ -1717,6 +1717,14 @@ extern const I18nEntry kItalianStrings[] = {
      "Clicca un punto di passaggio nella chat o scegline uno dalle tue liste."},
     {L"GW2's line stays in the whisper to you: which channel it was in before, I have not seen yet.",
      "La riga di GW2 resta nel sussurro a te stesso: non ho ancora visto quale canale era attivo prima."},
+    {L"Shift+click in GW2 brings the code into the input",
+     "Maiusc+clic in GW2 porta il codice nell'input"},
+    {L"With Enter opening the input: a Shift+click on a map point, an item or a skill puts its code into GW2's own line. It comes over into the input here and that line closes, with a few keys per click.",
+     "Quando Invio apre l'input: un Maiusc+clic su un punto della mappa, un oggetto o un'abilità mette il codice nella riga di GW2. Arriva qui nell'input e quella riga si chiude, con pochi tasti per clic."},
+    {L"GW2's chat line still holds text – it stays open.",
+     "La riga di chat di GW2 contiene ancora testo: resta aperta."},
+    {L"Whisper yourself",
+     "Sussurra a te stesso"},
 };
 extern const size_t kItalianCount = sizeof(kItalianStrings) / sizeof(kItalianStrings[0]);
 

@@ -34,7 +34,7 @@ UINT OnWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN) s_charsOurs = ours;
     if (ours || (s_charsOurs && (msg == WM_CHAR || msg == WM_SYSCHAR || msg == WM_DEADCHAR || msg == WM_UNICHAR)))
         return msg;
-    if (msg == WM_LBUTTONDOWN) WaypointSawClick(hwnd, lp);
+    if (msg == WM_LBUTTONDOWN) WaypointSawClick(wp, lp);
 
     // The key buffer: from the start of a send until the input has the focus back, your keys are kept for it
     if (g_bufferingKeys.load()) {

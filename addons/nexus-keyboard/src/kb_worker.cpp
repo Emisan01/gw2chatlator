@@ -746,6 +746,42 @@ void SyncChannelJob(std::wstring channel) {  // the channel was chosen in the wi
 
 std::wstring SetLineChannel(const std::wstring& channel) { return SetChannelNow(channel); }
 
+void RequestCodePickUp() {
+    g_worker.PostFront([] {
+        const HWND gw2 = FindGw2Window(GetCurrentProcessId());
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            if (g_test.noSend || !gw2) {
+                g_focusInput = true;
+                return;
+            }
+            g_sending = true;  // your input waits with the keyboard; what you type meanwhile is kept for it
+            g_bufferHadInputFocus = true;
+            g_bufferingStartTime = GetTickCount64();
+            g_bufferingKeys = true;
+        }
+        g_letGoKeyboard = true;
+        for (int i = 0; i < 50 && !g_keyboardFree; ++i) Sleep(10);
+        std::wstring taken;
+        const MumbleState ms = g_mumbleWorker ? g_mumbleWorker->Read() : MumbleState{};
+        const SendOutcome out = TakeChatCodeFromGw2Line(gw2, &taken, SendTiming(), ms.live ? g_mumbleWorker : nullptr, &KeysReachGame);
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_lastSendTrace = out.trace;
+        TechLog('S', L"code from GW2's line: " + out.trace);
+        g_sending = false;
+        g_bufferingStartTime = GetTickCount64();
+        if (!out.ok) SetStatus(out.error, 8000);
+        if (!taken.empty()) {
+            const size_t len = std::strlen(g_input);
+            g_edit.active = true;
+            g_edit.startByte = len;
+            g_edit.lenBytes = 0;
+            g_edit.insert = (len && g_input[len - 1] != ' ' && g_input[len - 1] != '\n' ? " " : "") + U8(Trim(taken));
+        }
+        g_focusInput = true;
+    });
+}
+
 void RequestChannelSync() {  // g_mu held
     const std::wstring channel = ComposePrefix();
     if (channel.empty()) return;  // "Active channel": GW2's own, nothing to set
@@ -884,7 +920,7 @@ void StartSend() {  // Enter (g_mu held)
         g_sendInFlight = false;
         g_bufferingKeys = false;
     }
-    const std::wstring text = SanitizeChatText(g_wFlatInput);
+    const std::wstring text = ExpandSelfCommand(SanitizeChatText(g_wFlatInput), g_ownName);
     if (text.empty() || g_sending || g_sendInFlight) return;
     if (g_userRecording && g_recording) {  // what you said is still being recognized: it comes into the input first
         SetStatus(Tr(L"Not sent yet: what you said is still being recognized"), 4000);
