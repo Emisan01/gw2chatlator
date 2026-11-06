@@ -1715,6 +1715,8 @@ extern const I18nEntry kRussianStrings[] = {
      "Из коллекции"},
     {L"Click a waypoint in the chat, or choose one from your lists.",
      "Нажмите точку в чате или выберите её из своих списков."},
+    {L"GW2's line stays in the whisper to you: which channel it was in before, I have not seen yet.",
+     "Строка GW2 остаётся в шёпоте вам: какой канал был активен раньше, я ещё не видел."},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

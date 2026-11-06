@@ -1715,6 +1715,8 @@ extern const I18nEntry kPortugueseStrings[] = {
      "Remover da coleção"},
     {L"Click a waypoint in the chat, or choose one from your lists.",
      "Clique num ponto de passagem no chat ou escolha um das suas listas."},
+    {L"GW2's line stays in the whisper to you: which channel it was in before, I have not seen yet.",
+     "A linha do GW2 fica no sussurro a si próprio: ainda não vi que canal estava ativo antes."},
 };
 extern const size_t kPortugueseCount = sizeof(kPortugueseStrings) / sizeof(kPortugueseStrings[0]);
 

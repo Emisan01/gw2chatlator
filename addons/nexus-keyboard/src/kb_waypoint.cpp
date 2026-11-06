@@ -118,13 +118,32 @@ bool RealClick(HWND gw2, POINT at, POINT was) {
     return true;
 }
 
+// Your click in the preview is still under way, and with "keep typing" the input holds the keyboard since the last send:
+// the button up, our windows off the keyboard, and that held for a few frames (at most 1.5 s).
+void LetGoOfKeyboard() {
+    unsigned freeSince = s_frames;
+    for (int waited = 0; waited < 1500 && !s_stop; waited += 5) {
+        if (!g_keyboardFree || (GetAsyncKeyState(VK_LBUTTON) & 0x8000)) {
+            g_letGoKeyboard = true;
+            freeSince = s_frames;
+        } else if (s_frames - freeSince >= 3) {
+            return;
+        }
+        Sleep(5);
+    }
+}
+
 void Flight(uint32_t id) {
-    std::wstring own;
+    std::wstring own, before;
     bool copyOnly;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         own = g_ownName;
         copyOnly = g_cfg.copyOnly;
+        // Where GW2's line goes back to: GW2 does not say. The footer's channel, else the one we last saw it in.
+        before = ComposePrefix();
+        if (before.empty()) before = g_gw2LineChannel;
+        if (before == L"/r ") before.clear();  // after this whisper a reply would answer yourself
     }
     if (own.empty() || copyOnly) {
         Say(copyOnly ? Tr(L"In \"only copy\" mode the waypoint cannot be posted.") : Tr(L"Your character's name is not known yet."), 8000);
@@ -140,36 +159,46 @@ void Flight(uint32_t id) {
     s_sendDone = false;
     s_sendFailed = false;
     const std::wstring line = L"/w " + own + L", " + FromUtf8(code);
-    g_worker.PostFront([line] {
+    g_worker.PostFront([line, before] {
+        bool hadInput;
         {  // as every send: your input lets go of the keyboard and what you type meanwhile is kept for it
             std::lock_guard<std::mutex> lock(g_mu);
             g_sending = true;
-            g_bufferHadInputFocus = g_inputActive || g_focusInput;
+            hadInput = g_inputActive || g_focusInput;
+            g_bufferHadInputFocus = hadInput;
             g_bufferingStartTime = GetTickCount64();
             g_bufferingKeys = true;
         }
-        // Your click in the preview is still under way, and with "keep typing" the input holds the keyboard since the last
-        // send: the button up, our windows off the keyboard, and that held for a few frames (at most 1.5 s).
-        unsigned freeSince = s_frames;
-        for (int waited = 0; waited < 1500 && !s_stop; waited += 5) {
-            if (!g_keyboardFree || (GetAsyncKeyState(VK_LBUTTON) & 0x8000)) {
-                g_letGoKeyboard = true;
-                freeSince = s_frames;
-            } else if (s_frames - freeSince >= 3) {
-                break;
-            }
-            Sleep(5);
-        }
+        LetGoOfKeyboard();
         SendNow({line}, line, std::wstring());  // through GW2's own chat line: so the link stands in GW2's own chat
-        std::lock_guard<std::mutex> lock(g_mu);
-        if (!g_history.empty() && g_history.front() == line) g_history.pop_front();  // not for your Up key
-        if (ToUtf8(line) == g_input) g_input[0] = 0;  // a send that failed gives its text back: this one was never yours
-        g_syncedChannel.clear();  // GW2's line now stands in this whisper: the next message sets its channel again
-        s_sendFailed = !g_status.empty();  // the reason stands in the status
+        bool setBack;
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            if (!g_history.empty() && g_history.front() == line) g_history.pop_front();  // not for your Up key
+            if (ToUtf8(line) == g_input) g_input[0] = 0;  // a send that failed gives its text back: this one was never yours
+            g_syncedChannel.clear();  // GW2's line now stands in this whisper
+            s_sendFailed = !g_status.empty();  // the reason stands in the status
+            setBack = !s_sendFailed && !before.empty();
+            if (setBack) {  // the same run goes on: the input keeps waiting
+                g_sending = true;
+                g_focusInput = false;
+                g_bufferHadInputFocus = hadInput;
+                g_bufferingStartTime = GetTickCount64();
+                g_bufferingKeys = true;
+            }
+        }
+        if (setBack) {  // before the click, not after it: typing stops the flight, and later you are playing again
+            LetGoOfKeyboard();
+            const std::wstring error = SetLineChannel(before);
+            std::lock_guard<std::mutex> lock(g_mu);
+            g_sending = false;
+            g_bufferingStartTime = GetTickCount64();
+            if (hadInput || g_cfg.returnFocus) g_focusInput = true;
+            if (!error.empty()) SetStatus(error, 8000);
+        }
         s_sendDone = true;
     });
-    // Until both lines are back: by then the send is only giving the clipboard back, which needs no waiting.
-    for (int waited = 0; waited < 15000 && !s_sendDone && s_linesCame < 2 && !s_stop; waited += 10) Sleep(10);
+    for (int waited = 0; waited < 15000 && !s_sendDone && !s_stop; waited += 10) Sleep(10);  // the whole run, only then the mouse
     if (s_sendFailed) return;
     for (int waited = 0; waited < 3000 && s_linesCame == 0 && !s_stop; waited += 20) Sleep(20);
     if (s_linesCame == 0) {
@@ -177,6 +206,7 @@ void Flight(uint32_t id) {
         return;
     }
     for (int waited = 0; waited < 400 && s_linesCame < 2 && !s_stop; waited += 10) Sleep(10);  // both, before the place counts
+    if (before.empty()) Say(Tr(L"GW2's line stays in the whisper to you: which channel it was in before, I have not seen yet."), 8000);
     if (s_linkX < 0) {  // once: your own click shows where the link stands
         s_teachUntil = GetTickCount64() + 30000;
         s_teaching = true;

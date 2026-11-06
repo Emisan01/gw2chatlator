@@ -1715,6 +1715,8 @@ extern const I18nEntry kTurkishStrings[] = {
      "Koleksiyondan çıkar"},
     {L"Click a waypoint in the chat, or choose one from your lists.",
      "Sohbette bir geçiş noktasına tıkla veya listelerinden birini seç."},
+    {L"GW2's line stays in the whisper to you: which channel it was in before, I have not seen yet.",
+     "GW2 satırı sana fısıltıda kalıyor: önce hangi kanalın etkin olduğunu henüz görmedim."},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

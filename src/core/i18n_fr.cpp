@@ -1715,6 +1715,8 @@ extern const I18nEntry kFrenchStrings[] = {
      "Retirer de la collection"},
     {L"Click a waypoint in the chat, or choose one from your lists.",
      "Cliquez sur un point de passage dans le chat ou choisissez-en un dans vos listes."},
+    {L"GW2's line stays in the whisper to you: which channel it was in before, I have not seen yet.",
+     "La ligne de GW2 reste dans le chuchotement à vous-même : je n'ai pas encore vu quel canal était actif avant."},
 };
 extern const size_t kFrenchCount = sizeof(kFrenchStrings) / sizeof(kFrenchStrings[0]);
 

@@ -86,6 +86,12 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
         brake = LimitedContingent();
         l.own = own;
         l.receivedTime = GetTickCount64();
+        if (own) {  // GW2's line stood there (kept in memory): where a waypoint's flight sets it back
+            const wchar_t* cmd = ChannelCommand(ch);
+            if (ch == Channel::Whisper) g_gw2LineChannel = outgoing && !l.speaker.empty() ? L"/w " + l.speaker + L", " : std::wstring();
+            else if (ch == Channel::Guild || !cmd) g_gw2LineChannel.clear();  // which guild slot, the line does not say
+            else g_gw2LineChannel = std::wstring(cmd) + L" ";
+        }
         if (own && g_whisperWatch.WentElsewhere(l.text, ch == Channel::Whisper, l.receivedTime)) {
             g_syncedChannel.clear();  // GW2's line is not where we thought: the next message sets it again
             SetStatus(TrF(L"That whisper landed in {1}, not with the player – check GW2's chat line.", {ChannelLabel(ch)}), 15000);
