@@ -34,7 +34,7 @@ struct Line {
 
 // Invented messages in the style of the GW2 chat (no real player's chat).
 const Line kGerman[] = {
-    {L"hallo zusammen", 30}, {L"hi", 20}, {L"danke", 25}, {L"danke dir", 15}, {L"gg", 20}, {L"gute nacht", 8},
+    {L"it doesnt matters", 3}, {L"hallo zusammen", 30}, {L"hi", 20}, {L"danke", 25}, {L"danke dir", 15}, {L"gg", 20}, {L"gute nacht", 8},
     {L"gute nacht bis morgen", 6}, {L"bin gleich da", 12}, {L"bin gleich wieder da", 8}, {L"kurz afk", 10},
     {L"wer kommt mit zu tequatl", 6}, {L"kommst du mit", 10}, {L"kommst du mit in den dungeon", 6},
     {L"ich lade dich ein", 8}, {L"lade mich bitte ein", 6}, {L"use tp", 15}, {L"bitte alle stacken", 8},

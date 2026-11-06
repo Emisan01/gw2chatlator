@@ -171,6 +171,7 @@ void AddMyTerms(WordSet& keep, const std::vector<std::wstring>& mine) {
 
 // The most common English words of a chat (written for this list, everyday vocabulary).
 const wchar_t* const kChatEnglish[] = {
+    L"doesnt", L"feels", L"helps", L"knows", L"longer", L"matter", L"matters", L"seems", L"silver", L"wants", L"wasnt",
     L"a", L"about", L"after", L"again", L"all", L"almost", L"also", L"always", L"am", L"an", L"and", L"any",
     L"anyone", L"anything", L"are", L"around", L"as", L"ask", L"at", L"away", L"back", L"bad", L"be", L"because",
     L"been", L"before", L"being", L"best", L"better", L"big", L"boss", L"both", L"bring", L"busy", L"but", L"buy",

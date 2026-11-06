@@ -421,7 +421,13 @@ bool SpellService::DictionarySlip(const std::wstring& typed, const std::wstring&
     if (!checker_.Ready()) return false;
     for (const std::wstring& s : CheckerSuggest(typed)) {
         if (s.find(L' ') != std::wstring::npos || !LettersOnly(s)) continue;
-        return WordKey(s) == WordKey(fix) && LooksLikeSlip(WordKey(typed), WordKey(fix), layout_, false);
+        const std::wstring t = WordKey(typed), f = WordKey(fix);
+        if (WordKey(s) != f) return false;
+        // A letter "left out" in the last two places changes the ending: another language or grammar ("matters", not "matteres").
+        size_t same = 0;
+        while (same < t.size() && same < f.size() && t[same] == f[same]) ++same;
+        if (f.size() == t.size() + 1 && same + 2 >= f.size()) return false;
+        return LooksLikeSlip(t, f, layout_, false);
     }
     return false;
 }
@@ -591,8 +597,8 @@ std::optional<std::wstring> SpellService::AutoCorrection(const std::wstring& wor
     if (checker_.Ready()) {
         for (const SpellIssue& issue : checker_.Check(word)) {
             if (issue.kind == SpellIssue::Kind::Replace && issue.span.start == 0 && issue.span.length == word.size() &&
-                !issue.replacement.empty() && issue.replacement != word)
-                return issue.replacement;  // Windows' own sure fix ("teh" -> "the")
+                !issue.replacement.empty() && issue.replacement != word && EditDistance(word, issue.replacement, 2) <= 2)
+                return issue.replacement;  // Windows' own sure fix ("teh" -> "the"), never a different word
         }
     }
     if (mode != AutoCorrectMode::Phone) return std::nullopt;
@@ -776,6 +782,10 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
     return s;
 }
 
+// More typed than this is a word you finished, even if the dictionary does not know it (another language, your slang):
+// Space writes no word of the dictionary or the lists over it; Tab still offers them, your own learned words still come.
+constexpr size_t kMaxUnfinished = 4;
+
 WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCorrectMode mode) const {
     WordChoices c;
     if (mode == AutoCorrectMode::Off || caret > text.size()) return c;
@@ -838,7 +848,7 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
             if (completions.size() >= 3) break;
             if (std::any_of(completions.begin(), completions.end(), [&](const std::wstring& x) { return WordKey(x) == WordKey(w); }))
                 continue;
-            if (first && firstPredicted && !valid && typed.size() >= 2 && w.size() >= typed.size() + 2)
+            if (first && firstPredicted && !valid && typed.size() >= 2 && typed.size() <= kMaxUnfinished && w.size() >= typed.size() + 2)
                 strong.push_back(w);
             first = false;
             completions.push_back(w);
@@ -849,7 +859,7 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
     // fresh tool showed no grey word at all; "use" -> "User" (+1) stays a Tab offer.
     // Without a dictionary "not a word" is only a guess ("an", "break" may be finished): from 3 letters, +4.
     const size_t minTyped = checker_.Ready() ? 2 : 3, minMore = checker_.Ready() ? 3 : 4;
-    if (!valid && typed.size() >= minTyped)
+    if (!valid && typed.size() >= minTyped && typed.size() <= kMaxUnfinished)
         for (const std::wstring& w : completions)
             if (w.size() >= typed.size() + minMore && w.find(L' ') == std::wstring::npos) strong.push_back(w);
     std::vector<std::wstring> fixes;
