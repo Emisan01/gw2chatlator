@@ -36,7 +36,7 @@ std::set<std::string> s_askedTiles;
 
 std::thread s_thread;
 std::atomic<bool> s_busy{false}, s_stop{false}, s_through{false}, s_teaching{false}, s_lineMoved{false};
-std::atomic<bool> s_sendDone{true}, s_sendFailed{false};
+std::atomic<bool> s_sendDone{true}, s_sendFailed{false}, s_runBroke{false};
 std::atomic<int> s_linesCame{0};  // a whisper to yourself comes back twice: "from" and "to"
 std::atomic<unsigned long long> s_teachUntil{0}, s_throughUntil{0};
 std::atomic<unsigned> s_frames{0};
@@ -179,14 +179,17 @@ void Flight(uint32_t id) {
         Say(copyOnly ? Tr(L"In \"only copy\" mode the waypoint cannot be posted.") : Tr(L"Your character's name is not known yet."), 8000);
         return;
     }
-    {  // GW2's line open: what stands in it, and in which of its fields, nobody can see. Not one key into it.
+    {  // A run of ours that broke off may have left GW2's line half done: not one key into that. A line simply open (Enter
+       // in the game) is fine: every send goes through it.
         MumbleLink mumble;
         const MumbleState ms = mumble.Read();
-        if (ms.live && ms.TextboxHasFocus()) {
-            TechLog('S', L"waypoint: GW2's line is open, nothing done");
+        const bool open = ms.live && ms.TextboxHasFocus();
+        if (open && s_runBroke) {
+            TechLog('S', L"waypoint: GW2's line open after a run that broke off, nothing done");
             Say(Tr(L"GW2's chat line is open. Close it with Enter, then click again."), 8000);
             return;
         }
+        if (!open) s_runBroke = false;
     }
     const std::string code = PieUI::ChatLinks::EncodeMap(id);  // "[&BCkEAAA=]"
     {
@@ -230,6 +233,7 @@ void Flight(uint32_t id) {
             if (ToUtf8(line) == g_input) g_input[0] = 0;  // a send that failed gives its text back: this one was never yours
             g_syncedChannel.clear();  // GW2's line now stands in this whisper
             s_sendFailed = !g_status.empty();  // the reason stands in the status
+            if (s_sendFailed) s_runBroke = true;
             setBack = !s_sendFailed && !before.empty() && shutAfter >= 0;  // no key into an open line
             if (setBack) {  // the same run goes on: the input keeps waiting
                 g_sending = true;
