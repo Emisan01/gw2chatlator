@@ -837,10 +837,10 @@ void RenderWindow() {
             g_mapOpen = ms.live && ms.MapOpen();
             g_gameHasFocus = ms.live ? ms.GameHasFocus() : true;
             if (ms.live) {
-                // "To myself" stays that on another character
-                if (g_channel == Channel::Whisper && !g_ownName.empty() && g_whisperTo == g_ownName && !ms.identity.name.empty())
-                    g_whisperTo = ms.identity.name;
-                g_ownName = ms.identity.name;
+                if (!ms.identity.name.empty()) {  // no name for a moment: the last one stays, or /self would lose its character
+                    if (g_channel == Channel::Whisper && !g_ownName.empty() && g_whisperTo == g_ownName) g_whisperTo = ms.identity.name;
+                    g_ownName = ms.identity.name;
+                }
                 g_uiSize.store(ms.identity.uiSize);
                 g_mapId.store(ms.identity.mapId);
             }
