@@ -630,11 +630,13 @@ void RenderWaypointPreview() {
         if (!s_open || WaypointPassThrough() || s_hidePreview) return;
     }
     const bool teaching = s_teaching.load() && GetTickCount64() <= s_teachUntil.load();  // no new run: your click on the link comes first
-    bool mayFly, onMap;
+    bool mayFly, onMap, namesOn, clickOn;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         ReadStored(g_cfg.dataDir);
-        mayFly = g_cfg.waypointClick && !s_busy.load() && !teaching;
+        namesOn = g_cfg.chatCodeNames;
+        clickOn = g_cfg.waypointClick;
+        mayFly = clickOn && !s_busy.load() && !teaching;
         onMap = (g_inMap || g_test.forceMap) && !g_mapOpen;
     }
     if (!onMap) return;  // as our chat: never on a loading screen or at the character choice, never over GW2's open map
@@ -695,7 +697,7 @@ void RenderWaypointPreview() {
             ImGui::SameLine();
             ImGui::TextDisabled("%s · %s", UI(PoiKind(poi.type)).c_str(), poi.map.c_str());
         } else if (selected) {
-            ImGui::TextDisabled("%s", UI(g_links.PoisLoaded() ? Tr(L"Waypoint") : Tr(L"The table of waypoints is on its way …")).c_str());
+            ImGui::TextDisabled("%s", UI(!namesOn || g_links.PoisLoaded() ? Tr(L"Waypoint") : Tr(L"The table of waypoints is on its way …")).c_str());
         } else {
             ImGui::TextDisabled("%s", UI(Tr(L"Click a waypoint in the chat, or choose one from your lists.")).c_str());
         }
@@ -713,7 +715,7 @@ void RenderWaypointPreview() {
                 s_forgetPlace = true;
                 Fly(selected);
             }
-        } else if (!g_cfg.waypointClick) {
+        } else if (!clickOn) {
             ImGui::TextDisabled("%s", UI(Tr(L"Options > Chat: a click here can get GW2's own map flight.")).c_str());
         }
     }
