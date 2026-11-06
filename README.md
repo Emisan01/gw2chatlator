@@ -32,7 +32,10 @@ Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustot
 - **A chat window built like GW2's own:** tabs at the top – the chat and up to five whisper tabs (click a name, or
   right-click the header to open one); fold it up to its header (V) and open it again (A); it snaps to the screen edges
   and appears only on a map, never on the character screen. Chat codes (waypoints, items …) are found by
-  GW2Chatlator itself and show their kind and code on mouse-over. Web links open only after a question.
+  GW2Chatlator itself and show their kind and code on mouse-over. A click on a waypoint opens its preview: GW2's map
+  around it, the points near it, your last ones and a collection of your own (menu ≡ → Waypoints). `/self` in the footer's
+  channels, or typed, whispers to yourself: a code for your eyes only, no one gets spammed. Web links open only after a
+  question.
 - **Write in your language,** the chat gets the translation: you see it (and what it means in your language again)
   before Enter sends it. Longer than one chat line: split into several. Translators: MyMemory (free), Google,
   Microsoft, DeepL, your own LibreTranslate server.
@@ -84,6 +87,7 @@ Updating: replace the DLL (or unpack the newer ZIP over the old one) (settings a
 | local translation module, language models, M2M100 | your click in Options → Translator | the `extras` release |
 | graphics card module (NVIDIA, about 560 MB) | your click in Options → Translator | the `extras` release |
 | table of waypoint names (a few hundred KB) | when the first waypoint code is in view, unless chat code names are off in Options → Chat; kept 30 days | the `extras` release |
+| map tiles of a waypoint's preview | when the preview shows a point | GW2's public tile server (`tiles.guildwars2.com`) |
 | a newer local translation module | your click on "Update local translation module" (shown only when yours is outdated) | the `extras` release |
 
 Every download is checked by SHA-256 – the one GitHub publishes, for voice models the one built into the add-on.
@@ -135,6 +139,12 @@ why GW2Chatlator works like this:
 - **It never sends on its own.** One line per Enter you press – or, only if you switch Hands free on (off by default),
   one line when you finish speaking (pause, release of the push-to-talk key or a mouse click). A tool that reads chat
   and answers by itself would be a bot, and there is none of that here, AI or not.
+- **GW2's own map flight, only if you switch it on (off by default):** a click of yours on a point in the waypoint
+  preview whispers its code to yourself, sets GW2's chat line back to its channel and clicks that link once with the
+  real mouse. One message and one synthetic click per click of yours, nothing after it: your decision, at your own risk
+  under ArenaNet's rules. The map is never dragged, game memory is never touched.
+- **Shift+click while Enter opens the input:** the code GW2 put into its own line comes over into the input, with a few
+  keys per click of yours and nothing sent; Options → Chat turns it off.
 - **"Only copy" mode:** Enter just copies the line. You paste it in GW2 yourself, so not a single synthetic key reaches
   the game.
 - It never stores other players' chat. (Raidcore: what you do counts – translating is fine, collecting chat data is
@@ -150,7 +160,8 @@ keys are stored encrypted for your Windows account.
 
 **Names of chat codes:** to show a code's name and details the add-on asks GW2's public API (`api.guildwars2.com`): only
 the code's number and your reading language go out, never a chat text or a name. Waypoints come from a table in this
-project's `extras` release. Options → Chat turns both off; then a code shows its kind.
+project's `extras` release. Options → Chat turns both off; then a code shows its kind. The preview's map comes from GW2's
+public tile server (`tiles.guildwars2.com`): only the tile's numbers go out.
 
 **What it learns stays local.** It learns only from the messages *you* send, never from other players' chat.
 Options → Writing → *Delete everything learned* starts from scratch.
@@ -176,7 +187,8 @@ In `Guild Wars 2\addons\GW2Keyboard\`:
 | `gw2kb_voice.exe`, `voice\` | the voice module |
 | `gw2kb_translate.exe`, `vcomp140.dll` | optional local MT helper (CTranslate2 for OPUS-MT, NLLB-200 & M2M100); installed from Options → Translator |
 | `gw2kb_translate_gpu.exe`, `cublas*.dll`, `cudart64_12.dll` | optional graphics card module for NVIDIA cards; installed from Options → Translator |
-| `poi-<lang>.tsv` | names of waypoints in your reading language (fetched once, kept 30 days, safe to delete) |
+| `poi-<lang>.tsv` | names and positions of waypoints in your reading language (fetched once, kept 30 days, safe to delete) |
+| `poi-history.txt`, `poi-collection.txt` | the waypoints you flew to and the ones you keep, as numbers only (safe to delete) |
 | `translate\<pair>\` | individual local translation models downloaded on request |
 
 ## Building
