@@ -832,6 +832,13 @@ void Hint(const std::string& text);
 void RenderOptionsWindow();
 void RenderDebugWindow();
 void RenderMtLiveWindow();
+// A waypoint from the chat: the preview, and on request GW2's own reaction (kb_waypoint.cpp).
+void OpenWaypointPreview(uint32_t id);
+void RenderWaypointPreview();
+bool WaypointPassThrough();  // our windows let the mouse through while the click runs
+bool WaypointSawLine(bool whisper, const char* content);
+void WaypointSawClick(HWND hwnd, LPARAM lp);
+void WaypointStop();
 std::string BuildDiagnosticReport();
 void SafeOpenUrl(const std::wstring& rawLink);
 void BoxText(const ImVec2& at, const ImVec4& clip, ImU32 color, const std::string& text, float scale = 1.0f);

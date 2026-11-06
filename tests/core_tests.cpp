@@ -2325,6 +2325,7 @@ static void TestChatCode() {
         CHECK(CleanChatCodeText(std::string(500, 'x')).size() == 403 && CleanChatCodeText("a < b") == "a < b");
         ChatCodePoi poi;
         CHECK(ParseChatCodePoi("598\twaypoint\tWegmarke\tKlippen", &poi) && poi.id == 598 && poi.type == "waypoint" && poi.name == "Wegmarke" && poi.map == "Klippen");
+        CHECK(ParseChatCodePoi("1065\tlandmark\tL\tM\t1\t-2\t45100.5\t30200.0", &poi) && poi.map == "M" && poi.continent == 1 && poi.floor == -2 && poi.x > 45100.0f && poi.y == 30200.0f);
         CHECK(!ParseChatCodePoi("598\twaypoint", &poi) && !ParseChatCodePoi("x\ta\tb\tc", &poi) && !ParseChatCodePoi("1\ta\t\tc", &poi));
     }
     CHECK(UnescapeChatText(L"look \\[&AgGvWwEA\\] ok") == L"look [&AgGvWwEA] ok");

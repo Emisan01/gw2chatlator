@@ -3,7 +3,8 @@
 tools/gen_pois.py - Writes the names of all waypoints and points of interest from GW2's public API.
 
 The API cannot answer a single point by the number in its chat code: only whole floors of a continent hold them. So the
-table is made here once per release, data/poi/poi-<lang>.tsv, one line per point: id, type, name, map. The add-on fetches
+table is made here once per release, data/poi/poi-<lang>.tsv, one line per point: id, type, name, map, continent, floor, x,
+y. The add-on fetches
 the table of the reading language from the extras release when the first such code is in view.
 
 All floors are read once in English to learn which of them add anything; the other languages read only those.
@@ -48,14 +49,16 @@ def read_floor(continent, floor, lang, points):
                 name = clean(point.get("name", ""))
                 if not name or point["id"] in points:
                     continue
-                points[point["id"]] = (point.get("type", ""), name, clean(game_map.get("name", "")))
+                coord = point.get("coord", [0, 0])
+                points[point["id"]] = (point.get("type", ""), name, clean(game_map.get("name", "")), continent,
+                                       point.get("floor", floor), round(coord[0], 1), round(coord[1], 1))
                 new += 1
     return new
 
 
 def write(lang, points):
     OUT.mkdir(parents=True, exist_ok=True)
-    lines = [f"{key}\t{value[0]}\t{value[1]}\t{value[2]}\n" for key, value in sorted(points.items())]
+    lines = ["\t".join(str(part) for part in (key, *value)) + "\n" for key, value in sorted(points.items())]
     (OUT / f"poi-{lang}.tsv").write_text("".join(lines), encoding="utf-8", newline="\n")
     print(f"poi-{lang}.tsv: {len(lines)} points, {sum(len(l.encode('utf-8')) for l in lines):,} bytes", flush=True)
 

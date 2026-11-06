@@ -867,6 +867,7 @@ void RenderWindow() {
     RenderOptionsWindow();
     RenderDebugWindow();
     RenderMtLiveWindow();
+    RenderWaypointPreview();
     CostMark(kCostWindow);
     bool inMap;
     {
@@ -893,6 +894,7 @@ void RenderWindow() {
         ImGuiWindowFlags minFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
                                    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse |
                                    ImGuiWindowFlags_NoScrollWithMouse;
+        if (WaypointPassThrough()) minFlags |= ImGuiWindowFlags_NoInputs;
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(2, 2));
         const bool beginOk = ImGui::Begin("GW2Chatlator###kbmain", nullptr, minFlags);
         ImGui::PopStyleVar();
@@ -939,6 +941,7 @@ void RenderWindow() {
     ImGui::SetNextWindowBgAlpha(std::clamp(g_cfg.opacity, 0, 255) / 255.0f);  // up to fully see-through (the small button keeps 60)
     ImGuiWindowFlags wflags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                               ImGuiWindowFlags_NoScrollWithMouse;
+    if (WaypointPassThrough()) wflags |= ImGuiWindowFlags_NoInputs;
     // Without the chat: a thin edge only, the window is hardly more than its parts (the grey input in the end).
     if (!Lay().chat) ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
     const bool begun = ImGui::Begin("GW2Chatlator###kbmain", nullptr, wflags);

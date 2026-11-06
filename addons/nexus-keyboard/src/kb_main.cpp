@@ -34,6 +34,7 @@ UINT OnWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN) s_charsOurs = ours;
     if (ours || (s_charsOurs && (msg == WM_CHAR || msg == WM_SYSCHAR || msg == WM_DEADCHAR || msg == WM_UNICHAR)))
         return msg;
+    if (msg == WM_LBUTTONDOWN) WaypointSawClick(hwnd, lp);
 
     // The key buffer: from the start of a send until the input has the focus back, your keys are kept for it
     if (g_bufferingKeys.load()) {
@@ -357,6 +358,7 @@ void AddonUnload() {
     if (g_voiceModuleThread.joinable()) g_voiceModuleThread.join();
     if (g_localMtThread.joinable()) g_localMtThread.join();
     if (g_localMtProbeThread.joinable()) g_localMtProbeThread.join();
+    WaypointStop();
     g_links.Stop();
     ReleaseTextFont();  // no call into a gone DLL
     ReleaseUiFont();
@@ -408,6 +410,7 @@ extern "C" __declspec(dllexport) void Gw2KbTestLiveView() {  // nexus_kb_selftes
     if (!TestHost()) return;
     std::lock_guard<std::mutex> lock(g_mu);
     g_showMtLive = true;
+    OpenWaypointPreview(1065);
     g_keys.total = 500;
     g_keys.presses[VK_BACK] = 90;
     g_keys.presses[VK_SPACE] = 80;

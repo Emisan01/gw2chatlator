@@ -474,7 +474,11 @@ bool RichLine(const std::vector<PieUI::ChatLinks::LinkSegment>& segs, ImVec4 col
             case PieUI::ChatLinks::SegmentKind::Link: {
                 const std::string lbl = g_links.Label(seg);
                 place(lbl);
-                g_links.Render(seg, lbl, [](const std::string& l, ImVec4 c) { LookText(l.c_str(), Bright(c), false); });
+                if (g_links.Render(seg, lbl, [](const std::string& l, ImVec4 c) { LookText(l.c_str(), Bright(c), false); }) &&
+                    seg.linkType == PieUI::ChatLinks::LINK_MAP && seg.primaryId) {  // where is that: the preview
+                    OpenWaypointPreview(seg.primaryId);
+                    clicked = true;
+                }
                 break;
             }
             case PieUI::ChatLinks::SegmentKind::Ae2: {

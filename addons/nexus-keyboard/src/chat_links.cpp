@@ -192,6 +192,10 @@ void ChatLinks::LoadPois() {
                 name.text = std::move(poi.name);
                 name.type = std::move(poi.type);
                 name.where = std::move(poi.map);
+                name.continent = poi.continent;
+                name.floor = poi.floor;
+                name.x = poi.x;
+                name.y = poi.y;
             }
             at = end + 1;
         }
@@ -294,6 +298,48 @@ void ChatLinks::Fetch() {
         }
     }
     Kick();
+}
+
+bool ChatLinks::Poi(uint32_t id, PoiView* out) {
+    std::lock_guard<std::mutex> lock(mu_);
+    const auto it = pois_.find(id);
+    if (it == pois_.end()) {
+        if (on_ && !poiLoaded_) {
+            poiWanted_ = true;
+            Kick();
+        }
+        return false;
+    }
+    out->id = id;
+    out->name = it->second.text;
+    out->type = it->second.type;
+    out->map = it->second.where;
+    out->continent = it->second.continent;
+    out->floor = it->second.floor;
+    out->x = it->second.x;
+    out->y = it->second.y;
+    return true;
+}
+
+std::vector<ChatLinks::PoiView> ChatLinks::PoisIn(int continent, float left, float top, float right, float bottom) {
+    std::vector<PoiView> found;
+    std::lock_guard<std::mutex> lock(mu_);
+    for (const auto& entry : pois_) {
+        const Name& n = entry.second;
+        if (n.continent != continent || n.x < left || n.x > right || n.y < top || n.y > bottom) continue;
+        PoiView view;
+        view.id = entry.first;
+        view.name = n.text;
+        view.type = n.type;
+        view.map = n.where;
+        view.continent = n.continent;
+        view.floor = n.floor;
+        view.x = n.x;
+        view.y = n.y;
+        found.push_back(std::move(view));
+        if (found.size() >= 200) break;
+    }
+    return found;
 }
 
 bool ChatLinks::Find(const PieUI::ChatLinks::LinkSegment& seg, Name* out) {

@@ -41,10 +41,12 @@ struct ChatCodeName {
 std::vector<ChatCodeName> ParseChatCodeNames(const std::string& body);
 // An API description for a tooltip: the game's colour tags gone, one line, at most about 400 bytes.
 std::string CleanChatCodeText(const std::string& text);
-// One line of the waypoint table (tools/gen_pois.py): id, type, name, map, split by tabs.
+// One line of the waypoint table (tools/gen_pois.py): id, type, name, map, continent, floor, x, y, split by tabs.
 struct ChatCodePoi {
     uint32_t id = 0;
     std::string type, name, map;
+    int continent = 1, floor = 1;
+    float x = 0, y = 0;
 };
 bool ParseChatCodePoi(const std::string& line, ChatCodePoi* out);
 

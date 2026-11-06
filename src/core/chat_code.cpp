@@ -182,8 +182,18 @@ bool ParseChatCodePoi(const std::string& line, ChatCodePoi* out) {
     out->id = static_cast<uint32_t>(id);
     out->type = line.substr(a + 1, b - a - 1);
     out->name = line.substr(b + 1, c - b - 1);
-    out->map = line.substr(c + 1);
+    const size_t d = line.find('\t', c + 1);
+    out->map = line.substr(c + 1, d == std::string::npos ? d : d - c - 1);
     if (!out->map.empty() && out->map.back() == '\r') out->map.pop_back();
+    out->continent = out->floor = 1;
+    out->x = out->y = 0;
+    if (d != std::string::npos) {
+        char* at = nullptr;
+        out->continent = static_cast<int>(std::strtol(line.c_str() + d + 1, &at, 10));
+        out->floor = static_cast<int>(std::strtol(at, &at, 10));
+        out->x = std::strtof(at, &at);
+        out->y = std::strtof(at, &at);
+    }
     return true;
 }
 

@@ -20,6 +20,14 @@ namespace gct {
 class ChatLinks {
 public:
     using Poster = std::function<void(std::function<void()>)>;  // hands a job to a background thread
+    struct PoiView {
+        uint32_t id = 0;
+        std::string name, type, map;
+        int continent = 1, floor = 1;
+        float x = 0, y = 0;
+    };
+    bool Poi(uint32_t id, PoiView* out);  // false while the table is not there (it is asked for)
+    std::vector<PoiView> PoisIn(int continent, float left, float top, float right, float bottom);
     void Start(AddonAPI_t* api, Poster post, std::wstring dataDir);
     void Stop();
     // Names on or off, and in which language (what is known in another one goes).
@@ -37,6 +45,8 @@ private:
         std::string text;    // empty: the API knows none, not asked again
         std::string rarity, type, description, where;  // for the tooltip; where: a waypoint's map
         int level = -1, rating = -1;
+        int continent = 1, floor = 1;  // a waypoint
+        float x = 0, y = 0;
         uint32_t color = 0;  // 0xRRGGBB of an item's rarity, 0 none
     };
     bool Find(const PieUI::ChatLinks::LinkSegment& seg, Name* out);  // mu_ held

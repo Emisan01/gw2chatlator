@@ -137,6 +137,7 @@ std::wstring PauseText(int reason, const std::wstring& ver) {
 }
 
 void Dispatch(const gct::ChatSourceLine& l) {
+    if (WaypointSawLine(l.type == gct::kSrcWhisper, l.content)) return;  // the code you just sent yourself for the map flight
     Channel ch;
     switch (l.type) {
         case gct::kSrcParty: ch = Channel::Party; break;
