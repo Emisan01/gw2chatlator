@@ -26,13 +26,27 @@ std::wstring ChatCodeApiPath(const ChatCode& c);
 std::wstring ChatCodeNamesPath(const wchar_t* what, const std::vector<uint32_t>& ids, const std::wstring& lang);
 // The language the API knows for a reading language ("DE", "zh-Hans"): de, fr, es, zh, otherwise en.
 std::wstring ChatCodeApiLang(const std::wstring& readLang);
+// WvW objectives are asked by "map-id" ("95-34").
+std::wstring ChatCodeObjectivesPath(const std::vector<std::wstring>& ids, const std::wstring& lang);
 // What it answers. Entries without a name and anything that is not such a list give nothing.
 struct ChatCodeName {
     uint32_t id = 0;
-    std::string name;    // UTF-8
+    uint32_t mapId = 0;  // a WvW objective's map
+    std::string name;    // UTF-8; a recipe has none, only what it makes
     std::string rarity;  // items only
+    std::string type, description;
+    int level = -1, rating = -1;  // an item's level, what a recipe needs of the crafter
+    uint32_t outputItem = 0;      // a recipe: what it makes
 };
 std::vector<ChatCodeName> ParseChatCodeNames(const std::string& body);
+// An API description for a tooltip: the game's colour tags gone, one line, at most about 400 bytes.
+std::string CleanChatCodeText(const std::string& text);
+// One line of the waypoint table (tools/gen_pois.py): id, type, name, map, split by tabs.
+struct ChatCodePoi {
+    uint32_t id = 0;
+    std::string type, name, map;
+};
+bool ParseChatCodePoi(const std::string& line, ChatCodePoi* out);
 
 // The chat text of Events: Chat escapes brackets ("\[&AgGvWwEA\]"): back to what the game shows.
 std::wstring UnescapeChatText(const std::wstring& s);

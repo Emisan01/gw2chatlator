@@ -1,5 +1,6 @@
 #include "core/chat_code.hpp"
 
+#include <cstdlib>
 #include <vector>
 
 #include "core/json.hpp"
@@ -94,6 +95,15 @@ std::wstring ChatCodeNamesPath(const wchar_t* what, const std::vector<uint32_t>&
     return path;
 }
 
+std::wstring ChatCodeObjectivesPath(const std::vector<std::wstring>& ids, const std::wstring& lang) {
+    std::wstring path = L"/v2/wvw/objectives?lang=" + lang + L"&ids=";
+    for (size_t i = 0; i < ids.size(); ++i) {
+        if (i) path += L',';
+        path += ids[i];
+    }
+    return path;
+}
+
 std::wstring ChatCodeApiLang(const std::wstring& readLang) {
     std::wstring two;
     for (size_t i = 0; i < readLang.size() && i < 2; ++i)
@@ -107,14 +117,74 @@ std::vector<ChatCodeName> ParseChatCodeNames(const std::string& body) {
     if (!ParseJson(body, doc) || !doc.IsArray()) return names;
     for (const JsonValue& entry : doc.arr) {
         const JsonValue* id = entry.IsObject() ? entry.Get("id") : nullptr;
-        if (!id || id->type != JsonValue::Type::Number || id->n <= 0) continue;
+        if (!id) continue;
         ChatCodeName name;
-        name.id = static_cast<uint32_t>(id->n);
+        if (id->type == JsonValue::Type::Number && id->n > 0) {
+            name.id = static_cast<uint32_t>(id->n);
+        } else if (id->type == JsonValue::Type::String) {  // a WvW objective: "95-34"
+            const size_t dash = id->s.find('-');
+            if (dash == std::string::npos || dash == 0 || dash + 1 >= id->s.size()) continue;
+            name.mapId = static_cast<uint32_t>(std::strtoul(id->s.c_str(), nullptr, 10));
+            name.id = static_cast<uint32_t>(std::strtoul(id->s.c_str() + dash + 1, nullptr, 10));
+            if (!name.id) continue;
+        } else {
+            continue;
+        }
         name.name = entry.GetString("name");
         name.rarity = entry.GetString("rarity");
-        if (!name.name.empty()) names.push_back(std::move(name));
+        name.type = entry.GetString("type");
+        name.description = entry.GetString("description");
+        if (const JsonValue* v = entry.Get("level"); v && v->type == JsonValue::Type::Number) name.level = static_cast<int>(v->n);
+        if (const JsonValue* v = entry.Get("min_rating"); v && v->type == JsonValue::Type::Number) name.rating = static_cast<int>(v->n);
+        if (const JsonValue* v = entry.Get("output_item_id"); v && v->type == JsonValue::Type::Number && v->n > 0) name.outputItem = static_cast<uint32_t>(v->n);
+        if (!name.name.empty() || name.outputItem) names.push_back(std::move(name));
     }
     return names;
+}
+
+std::string CleanChatCodeText(const std::string& text) {
+    std::string out;
+    bool space = false;
+    for (size_t i = 0; i < text.size(); ++i) {
+        const char c = text[i];
+        if (c == '<') {  // <c=@flavor>, </c>, <br>
+            const size_t end = text.find('>', i);
+            if (end != std::string::npos) {
+                i = end;
+                continue;
+            }
+        }
+        if (c == ' ' || c == '\n' || c == '\r' || c == '\t') {
+            space = !out.empty();
+            continue;
+        }
+        if (space) out += ' ';
+        space = false;
+        out += c;
+    }
+    constexpr size_t kMax = 400;
+    if (out.size() > kMax) {
+        size_t cut = kMax;
+        while (cut > 0 && (static_cast<unsigned char>(out[cut]) & 0xC0) == 0x80) --cut;  // never inside a letter
+        out.resize(cut);
+        out += "...";
+    }
+    return out;
+}
+
+bool ParseChatCodePoi(const std::string& line, ChatCodePoi* out) {
+    const size_t a = line.find('\t');
+    const size_t b = a == std::string::npos ? a : line.find('\t', a + 1);
+    const size_t c = b == std::string::npos ? b : line.find('\t', b + 1);
+    if (c == std::string::npos) return false;
+    const unsigned long id = std::strtoul(line.c_str(), nullptr, 10);
+    if (!id || c == b + 1) return false;
+    out->id = static_cast<uint32_t>(id);
+    out->type = line.substr(a + 1, b - a - 1);
+    out->name = line.substr(b + 1, c - b - 1);
+    out->map = line.substr(c + 1);
+    if (!out->map.empty() && out->map.back() == '\r') out->map.pop_back();
+    return true;
 }
 
 std::wstring UnescapeChatText(const std::wstring& s) {

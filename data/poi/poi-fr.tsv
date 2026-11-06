@@ -1,0 +1,3240 @@
+3	waypoint	Point de passage de Fort Salma	Collines de Kessex
+4	waypoint	Point de passage du seigneur	Collines de Kessex
+6	waypoint	Point de passage d'Halacorn	Collines de Kessex
+7	waypoint	Point de passage de l'Itinérant	Collines de Kessex
+8	waypoint	Point de passage de Delania	Collines de Kessex
+10	waypoint	Point de passage du Comptoir d'Ireko	Collines de Kessex
+12	waypoint	Point de passage du Site d'Ombrecœur	Collines de Kessex
+16	waypoint	Point de passage de Viathan	Collines de Kessex
+17	waypoint	Point de passage de Sombreplaie	Collines de Kessex
+18	waypoint	Point de passage de Cereboth	Collines de Kessex
+19	waypoint	Point de passage du Refuge d'Overlac	Collines de Kessex
+20	waypoint	Point de passage du Refuge de Kessex	Collines de Kessex
+21	waypoint	Point de passage du Camp de Cavernhold	Collines de Kessex
+22	waypoint	Point de passage du Camp de Sabogris	Collines de Kessex
+23	landmark	Refuge noir	Collines de Kessex
+24	landmark	Fosse de Gort	Collines de Kessex
+25	landmark	Garenhoff	Collines de Kessex
+26	landmark	Bandits de Jannaj	Collines de Kessex
+27	landmark	Côté carrière	Collines de Kessex
+28	landmark	Quai de Triskel	Collines de Kessex
+29	landmark	Bandits de Goff	Collines de Kessex
+30	landmark	Bandits de Kenna	Collines de Kessex
+31	landmark	Vieille-Rive	Collines de Kessex
+32	landmark	Camp du Gardemur	Collines de Kessex
+33	landmark	Excavations de Baie-de-boue	Collines de Kessex
+34	landmark	Terres togatls	Collines de Kessex
+35	landmark	Cellier du Krait	Collines de Kessex
+36	landmark	Collectivité des vrilles glorieuses n° 4	Côte de la marée sanglante
+37	landmark	Arche des glaneurs	Côte de la marée sanglante
+38	landmark	Terres lapatls	Côte de la marée sanglante
+39	landmark	Hydroposte d'Aquanarium	Côte de la marée sanglante
+40	landmark	Phare de la Falaise tumultueuse	Côte de la marée sanglante
+41	landmark	Grotte de l'impasse	Côte de la marée sanglante
+42	landmark	Fort de Covington	Côte de la marée sanglante
+43	landmark	Base des Becs sanglants	Côte de la marée sanglante
+44	landmark	Sillage de Sullivan	Côte de la marée sanglante
+45	landmark	Camp de Maraifangeux	Côte de la marée sanglante
+46	landmark	Vonooroovah	Côte de la marée sanglante
+47	landmark	Morgooroo	Côte de la marée sanglante
+48	landmark	Fanal brisé	Côte de la marée sanglante
+49	landmark	Nid de Challdar	Côte de la marée sanglante
+50	landmark	Répit de Rhiann	Côte de la marée sanglante
+51	landmark	Labos d'Incinergie	Province de Metrica
+52	landmark	Place du champ de bataille	Province de Metrica
+53	landmark	L'Opticalium	Province de Metrica
+54	landmark	Terres durotls	Province de Metrica
+55	landmark	Groupe de recherche aquannien	Province de Metrica
+56	landmark	Campement du docteur Bleent	Province de Metrica
+57	landmark	Labo d'Oola l'Ancêtre	Province de Metrica
+58	landmark	Portail de Parnna	Province de Metrica
+59	landmark	Tour d'alimentation Blig	Province de Metrica
+60	landmark	Tour d'alimentation Nopp	Province de Metrica
+61	landmark	Complexe de l'Enqueste interne	Province de Metrica
+62	landmark	Portail de transfert (Privé)	Province de Metrica
+63	landmark	Tour d'alimentation Scoln	Province de Metrica
+64	waypoint	Point de passage de Soren Draa	Province de Metrica
+65	waypoint	Point de passage des Chutes de Jeztar	Province de Metrica
+66	waypoint	Point de passage des Contrées sauvages d'Akk	Province de Metrica
+67	waypoint	Point de passage de la Zone d'amarrage Rana	Province de Metrica
+68	waypoint	Point de passage du Refuge d'Arterium	Province de Metrica
+69	waypoint	Point de passage du Dénivelé d'Hexane	Province de Metrica
+70	waypoint	Point de passage du Campement des rescapés	Province de Metrica
+71	waypoint	Point de passage muridienne	Province de Metrica
+72	waypoint	Point de passage de Desider Atum	Province de Metrica
+74	waypoint	Point de passage de l'Étreinte des lamentations	Étreinte des lamentations
+75	landmark	Terres ogotls	Terres sauvages de Brisban
+76	landmark	Base invariante	Terres sauvages de Brisban
+77	landmark	Pointe de Joy	Terres sauvages de Brisban
+78	landmark	Cime de Beldame	Terres sauvages de Brisban
+79	landmark	Protecteurs séraphins	Terres sauvages de Brisban
+80	landmark	Bandits de Willem	Terres sauvages de Brisban
+81	landmark	Bandits de Scotta	Terres sauvages de Brisban
+82	landmark	Bandits d'Angelan	Terres sauvages de Brisban
+83	landmark	Skrittsatawney	Terres sauvages de Brisban
+84	landmark	Poste d'exploration Enrav	Terres sauvages de Brisban
+85	landmark	Bandits de Breean	Terres sauvages de Brisban
+86	landmark	Fort du Pillage	Terres sauvages de Brisban
+87	landmark	Bandits de Seanan	Terres sauvages de Brisban
+88	landmark	Bandits de Robbari	Terres sauvages de Brisban
+89	landmark	Fort du Vandale	Terres sauvages de Brisban
+90	landmark	Centre d'Enquête Thaumacore	Terres sauvages de Brisban
+91	landmark	Térébinthe révéré	Terres sauvages de Brisban
+92	waypoint	Point de passage de la Source de la Vigilance	Terres sauvages de Brisban
+93	waypoint	Point de passage de Wendon	Terres sauvages de Brisban
+94	waypoint	Point de passage des Tunnels	Terres sauvages de Brisban
+95	waypoint	Point de passage de la Colline	Terres sauvages de Brisban
+96	waypoint	Point de passage de l'Extrêmité Est	Terres sauvages de Brisban
+97	waypoint	Point de passage de Brilitine	Terres sauvages de Brisban
+98	waypoint	Point de passage des Observateurs séraphins	Terres sauvages de Brisban
+99	waypoint	Point de passage des Champs de la potence	Terres sauvages de Brisban
+100	waypoint	Point de passage de la Pointe de Triforge	Terres sauvages de Brisban
+101	waypoint	Point de passage de la Métamagique d'Ulta	Terres sauvages de Brisban
+102	landmark	Laboratoire d'Aethervolt	Terres sauvages de Brisban
+103	landmark	Ile solitaire	Forêt de Caledon
+104	landmark	Caer Emeraude	Forêt de Caledon
+105	landmark	Terres golotls	Forêt de Caledon
+106	landmark	Refuge de la Baie	Forêt de Caledon
+107	landmark	Terres morgatls	Forêt de Caledon
+108	landmark	Refuge de Nauletête	Forêt de Caledon
+109	landmark	Profondeurs d'Épavetempête	Forêt de Caledon
+110	landmark	Cercle de ciguë	Forêt de Caledon
+111	landmark	Comptoir d'Hanto	Forêt de Caledon
+112	landmark	Terres hazuplz	Forêt de Caledon
+113	landmark	Soggorsort	Forêt de Caledon
+114	landmark	Profondeurs de l'Esclavagiste	Forêt de Caledon
+115	landmark	Percée de la banshee	Forêt de Caledon
+116	landmark	Terres dengatls	Forêt de Caledon
+117	waypoint	Point de passage de Mrot Boru	Terres sauvages de Brisban
+118	waypoint	Point de passage de Mirkrise	Terres sauvages de Brisban
+119	landmark	Cénote de Melandru	Champs de Gendarran
+120	landmark	Grotte aux amarantes	Champs de Gendarran
+121	landmark	Le Bassin des bêtes	Champs de Gendarran
+122	landmark	Plage de Poissonpierre	Champs de Gendarran
+123	landmark	Crique de Wiley	Champs de Gendarran
+124	landmark	Quartier général des Veilleurs	Champs de Gendarran
+125	landmark	Taupenheide	Champs de Gendarran
+126	landmark	Résidence Almuten	Champs de Gendarran
+127	landmark	Verger d'Eda	La Vallée de la reine
+128	landmark	Ranch à moas de Mépi	La Vallée de la reine
+129	landmark	Champ de blé de Jeb	La Vallée de la reine
+130	landmark	Station de pompage de Dalin	La Vallée de la reine
+131	landmark	Comptoir de l'Autel du Ruisseau	La Vallée de la reine
+132	landmark	Carrefour de l'Autel du Ruisseau	La Vallée de la reine
+133	landmark	Pavillon de chasse	La Vallée de la reine
+134	landmark	Monastère Eldvin	La Vallée de la reine
+135	landmark	Camp de la forge	La Vallée de la reine
+136	landmark	Camp de la falaise cachée	La Vallée de la reine
+137	landmark	Camp de Guettefalaise	La Vallée de la reine
+138	landmark	Cabane de Morte-racine	La Vallée de la reine
+139	landmark	Temple des Ages	La Vallée de la reine
+140	landmark	Camp de Bronchesabot	La Vallée de la reine
+141	landmark	P.U.R.E. Station	Province de Metrica
+142	landmark	Drakentelt	Congères d'Antreneige
+143	landmark	Cale de Svannijem	Congères d'Antreneige
+144	landmark	Urgulp	Congères d'Antreneige
+145	landmark	Cap Tala	Congères d'Antreneige
+146	landmark	Lachouche	Congères d'Antreneige
+147	landmark	Colonie de Durgar	Congères d'Antreneige
+148	landmark	Zone restreinte XRB	Hinterlands harathis
+149	landmark	Camp avant	Hinterlands harathis
+150	landmark	Camp de Pâturenord	Hinterlands harathis
+151	landmark	Camp de Forgesud	Hinterlands harathis
+152	landmark	Campement du Roi de guerre	Hinterlands harathis
+153	landmark	Camp de la Porte des rois	Hinterlands harathis
+154	landmark	Armurerie de Watchlin	Hinterlands harathis
+155	landmark	Camp de Bluffecôte	Hinterlands harathis
+156	landmark	Camp du belvédère	Hinterlands harathis
+157	landmark	Camp de confinement	Hinterlands harathis
+158	landmark	Camp de la Mine de Cernoire	Hinterlands harathis
+159	landmark	Antre de Drakken	Hinterlands harathis
+160	landmark	Repaire de Racinecrustal	Hinterlands harathis
+161	landmark	Koofooloo	Hinterlands harathis
+162	landmark	Tombe du martyre	Hinterlands harathis
+163	landmark	Pavillon de la Chouette	Congères d'Antreneige
+164	landmark	Refuge ravagé	Congères d'Antreneige
+165	waypoint	Point de passage du faune	Hinterlands harathis
+166	waypoint	Point de passage de Chimèrepavois	Hinterlands harathis
+167	waypoint	Point de passage du Plateau du Séraphin	Hinterlands harathis
+168	waypoint	Point de passage du Point de ralliement de Wynchona	Hinterlands harathis
+169	waypoint	Point de passage de Grey Gritta	Hinterlands harathis
+170	waypoint	Point de passage de Gardenuit	Hinterlands harathis
+171	waypoint	Point de passage de Demetra	Hinterlands harathis
+172	waypoint	Point de passage du Camp de Récupération	Hinterlands harathis
+173	waypoint	Point de passage du Camp de la barricade	Hinterlands harathis
+174	waypoint	Point de passage du Belvédère de Trebusha	Hinterlands harathis
+175	waypoint	Point de passage du Camp du Guet du pont	Hinterlands harathis
+176	waypoint	Point de passage du Camp de la jonction	Hinterlands harathis
+177	waypoint	Point de passage du Sabot fendu	Hinterlands harathis
+178	waypoint	Point de passage d'Arca	Hinterlands harathis
+179	waypoint	Point de passage de Skradden	Congères d'Antreneige
+180	waypoint	Point de passage de Lornar	Congères d'Antreneige
+181	waypoint	Point de passage du Refuge de la Haute-passe	Congères d'Antreneige
+182	waypoint	Point de passage du Chagrin de l'enfant perdu	Congères d'Antreneige
+183	waypoint	Point de passage de la Faille de l'érudit	Congères d'Antreneige
+184	waypoint	Point de passage d'Isenfall	Congères d'Antreneige
+185	waypoint	Point de passage du Refuge de la Congère	Congères d'Antreneige
+186	waypoint	Point de passage des Précurseurs séraphins	Congères d'Antreneige
+187	waypoint	Point de passage de la Colonie de Torstvedt	Congères d'Antreneige
+188	waypoint	Point de passage de l'Exil	Congères d'Antreneige
+189	waypoint	Point de passage de Njorstead	Congères d'Antreneige
+190	waypoint	Point de passage de la Maison de Soderhem	Congères d'Antreneige
+191	waypoint	Point de passage de la Terrasse du Faucon des neiges	Congères d'Antreneige
+192	waypoint	Point de passage du Faucheur	Congères d'Antreneige
+193	waypoint	Point de passage de la Chouette	Congères d'Antreneige
+194	waypoint	Point de passage de la Maison Podaga	Congères d'Antreneige
+195	waypoint	Point de passage d'Arcallion	Hinterlands harathis
+196	landmark	Porte du désert	Champs de ruine
+197	landmark	Les Portails du faucon	Champs de ruine
+198	landmark	Portail de Posterne	Champs de ruine
+199	landmark	Base du Guetteur	Champs de ruine
+200	landmark	Site de fouilles de Sapper	Champs de ruine
+201	landmark	Sauvetage de Cymbel	Champs de ruine
+202	landmark	Kraal d'Otyugh	Champs de ruine
+203	landmark	Décombres du guet de Vilindic	Champs de ruine
+204	landmark	Avant-poste de Varimhold	Champs de ruine
+205	landmark	Délégation de Noirfaucon	Champs de ruine
+206	landmark	Point Culminant	Champs de ruine
+207	landmark	Étang de Gillscale	Champs de ruine
+208	landmark	Délégation des légions	Champs de ruine
+209	landmark	L'Antre du Tonnerre	Champs de ruine
+210	landmark	Kraal d'Oursefol	Champs de ruine
+211	waypoint	Point de passage des Portails du faucon	Champs de ruine
+212	waypoint	Point de passage du Guet de Mortelame	Champs de ruine
+213	waypoint	Point de passage du Sommet	Champs de ruine
+214	waypoint	Point de passage du Bivouac de Tyler	Champs de ruine
+215	waypoint	Point de passage de Tenaebron	Champs de ruine
+216	waypoint	Point de passage du Campement de Rosko	Champs de ruine
+217	waypoint	Point de passage du Refuge de Porticharr	Plateau de Diessa
+218	waypoint	Point de passage des landes ravagées	Plateau de Diessa
+219	waypoint	Point de passage de la Scierie de Mortesciée	Plateau de Diessa
+220	waypoint	Point de passage de la Fontaine de Rhand	Plateau de Diessa
+221	waypoint	Point de passage de Nageling	Plateau de Diessa
+222	waypoint	Point de passage de Nolan	Plateau de Diessa
+223	waypoint	Point de passage de la Vallée du voyageur	Champs de Gendarran
+224	waypoint	Point de passage du Portail de Gardepierre	Champs de Gendarran
+225	waypoint	Point de passage du gouffre	Champs de Gendarran
+226	waypoint	Point de passage d'Oogooth	Champs de Gendarran
+227	waypoint	Point de passage des Champs de Cornabonde	Champs de Gendarran
+228	waypoint	Point de passage de la Côte de Provern	Champs de Gendarran
+229	waypoint	Point de passage de la Maison de Vanjir	Passage de Lornar
+230	waypoint	Point de passage de la Gueule du démon	Passage de Lornar
+231	waypoint	Point de passage du dégel	Passage de Lornar
+232	waypoint	Point de passage du Lac trompeur	Passage de Lornar
+233	waypoint	Point de passage du Prieuré de Durmand	Passage de Lornar
+234	waypoint	Point de passage de la Complainte	Passage de Lornar
+235	waypoint	Point de passage des Cornes foudroyantes	Passage de Lornar
+236	waypoint	Point de passage de Nentor	Passage de Lornar
+237	waypoint	Point de passage du Refuge de la jonction	Champs de Gendarran
+238	waypoint	Point de passage du Refuge hivernal	Champs de Gendarran
+239	waypoint	Point de passage de Shaemoor	La Vallée de la reine
+240	waypoint	Point de passage des champs	La Vallée de la reine
+241	waypoint	Point de passage de la Garnison	La Vallée de la reine
+242	waypoint	Point de passage du Carrefour	La Vallée de la reine
+243	waypoint	Point de passage de Phinney	La Vallée de la reine
+244	waypoint	Point de passage de la vallée	La Vallée de la reine
+245	waypoint	Point de passage du Camp de la passe de Boisecœur	La Vallée de la reine
+246	waypoint	Point de passage de Claypool	La Vallée de la reine
+247	waypoint	Point de passage du Refuge des Marais de la Perdition	La Vallée de la reine
+248	waypoint	Point de passage krytien	La Vallée de la reine
+249	waypoint	Point de passage de la Scierie d'Ojon	La Vallée de la reine
+250	waypoint	Point de passage de Beetletun	La Vallée de la reine
+251	waypoint	Point de passage de Redoute Miretun	La Vallée de la reine
+252	waypoint	Point de passage du Marais d'Anathema	La Vallée de la reine
+253	landmark	Sanctuaire des Six	Le Promontoire divin
+254	landmark	Quartier général des Séraphins	Le Promontoire divin
+255	landmark	Salle du trône de la reine	Le Promontoire divin
+256	landmark	Stand de tir de Mina	Le Promontoire divin
+257	landmark	Hall de Durmand	Le Promontoire divin
+258	landmark	Le Murmure de la jeune fille	Le Promontoire divin
+259	landmark	Orchestre mécanique d'Uzolan	Le Promontoire divin
+260	landmark	Hall des Veilleurs	Le Promontoire divin
+261	landmark	Hôpital de l'Avant-garde	Le Promontoire divin
+262	landmark	Orphelinat de Cœur-royal	Le Promontoire divin
+263	landmark	Villa du Ministre Zamon	Le Promontoire divin
+264	landmark	Villa du Ministre Wi	Le Promontoire divin
+265	landmark	Conseil des ministres	Le Promontoire divin
+266	landmark	Colline des manoirs	Le Promontoire divin
+267	landmark	Virage de la chaumière	Le Promontoire divin
+268	landmark	La Venelle du corbeau	Le Promontoire divin
+269	landmark	Ménagerie de Haidryn	Le Promontoire divin
+270	landmark	Place principale	Le Promontoire divin
+271	landmark	Débris de caravane	Plateau de Diessa
+272	landmark	Domaine de Bovarine	Plateau de Diessa
+273	landmark	Ruines de Grendich	Plateau de Diessa
+274	landmark	Ravin de Dunrock	Plateau de Diessa
+275	landmark	Ile du Rituel	Plateau de Diessa
+276	landmark	Bassin de Brûlecrin	Plateau de Diessa
+277	landmark	Scierie de Bûchepluie	Plateau de Diessa
+278	landmark	Domaine de Chutepierre	Plateau de Diessa
+279	landmark	Abbaye du vieux Holtimm	Plateau de Diessa
+280	landmark	Labo de recherche ettin	Passage de Lornar
+281	landmark	Moulin de Barl le Noir	Passage de Lornar
+282	landmark	Passage du Pinion	Passage de Lornar
+283	landmark	Excavations de Molitage	Passage de Lornar
+284	landmark	Pont de la cascade	Passage de Lornar
+285	landmark	Plat de la Vieille Barbe	Passage de Lornar
+286	landmark	Ile Jetsam	Passage de Lornar
+287	landmark	Koolookuu	Passage de Lornar
+288	landmark	Clairière d'Olia	Passage de Lornar
+289	landmark	Maison d'Afgar	Passage de Lornar
+290	landmark	Porte de Grenth	Passage de Lornar
+291	landmark	Chute de Prisonglace	Passage de Lornar
+292	landmark	Place de Vontaupe	Passage de Lornar
+293	landmark	Archives du Prieuré	Passage de Lornar
+294	landmark	Quartiers d'Ogden	Passage de Lornar
+295	landmark	Les Stèles draconiques	Passage de Lornar
+296	landmark	Crypte de Martelfer	Passage de Lornar
+297	landmark	Hall de Korakatt	Passage de Lornar
+298	landmark	Mine consolidée de Nentor	Passage de Lornar
+299	landmark	Heaume de la Garde de Belldron	Passage de Lornar
+300	landmark	Plate-forme de surveillance	Étreinte des lamentations
+301	landmark	L'Arsenal	Étreinte des lamentations
+302	landmark	Salle de relais de pompe	Étreinte des lamentations
+303	landmark	Tombeau de Molenin	Étreinte des lamentations
+304	landmark	Porte Keno Decca Quatre	Étreinte des lamentations
+305	landmark	Eperon de la passerelle	Étreinte des lamentations
+306	landmark	Le Glorieux forgeron	Étreinte des lamentations
+307	landmark	Le S S Polype	Creuset de l'éternité
+308	waypoint	Point de passage d'Astorea	Forêt de Caledon
+309	waypoint	Point de passage de la Spirale	Forêt de Caledon
+310	waypoint	Point de passage de Caer Astorea	Forêt de Caledon
+311	waypoint	Point de passage de la Crique des glaneurs	Forêt de Caledon
+312	waypoint	Point de passage du Belvédère de Brigid	Forêt de Caledon
+313	waypoint	Point de passage de Sperrins	Forêt de Caledon
+314	waypoint	Point de passage de Mabon	Forêt de Caledon
+315	waypoint	Point de passage de la Ville de Cathal	Forêt de Caledon
+316	waypoint	Point de passage du Refuge de Caledon	Forêt de Caledon
+317	waypoint	Point de passage de l'Escalier du titan	Forêt de Caledon
+318	waypoint	Point de passage de Falias Thorp	Forêt de Caledon
+319	waypoint	Point de passage du Hameau d'Annwen	Forêt de Caledon
+320	waypoint	Point de passage du Refuge de Kraitban	Forêt de Caledon
+321	waypoint	Point de passage du Marais de Wychmire	Forêt de Caledon
+322	waypoint	Point de passage de Wardenhurst	Forêt de Caledon
+323	landmark	Dôme du surveillant de recherche	Creuset de l'éternité
+324	landmark	Porte Keno Decca Cinq	Creuset de l'éternité
+325	landmark	Noyau de contrôle de golem	Creuset de l'éternité
+326	landmark	Creuset de Kudu	Creuset de l'éternité
+328	landmark	Caisson de confinement brisé	Creuset de l'éternité
+329	landmark	Focus de l'Éternité	Creuset de l'éternité
+330	waypoint	Point de passage du Bivouac de Skoll	Champs de ruine
+331	waypoint	Point de passage de la Mine d'Hellion	Champs de ruine
+332	waypoint	Point de passage du Guet de Mordrage	Champs de ruine
+333	waypoint	Point de passage du Vautour	Champs de ruine
+334	waypoint	Point de passage des Décombres du guet de Gorgesang	Champs de ruine
+335	waypoint	Point de passage de la Route de l'Ogre	Champs de ruine
+336	waypoint	Point de passage du Portail de Folespoir	Champs de ruine
+337	waypoint	Point de passage de la Garnison des Anges déchus	Champs de ruine
+338	landmark	Avant-poste de Croisefer	Plaines d'Ashford
+339	landmark	Cœur du Fléau de feu	Plaines d'Ashford
+340	landmark	La Colline du Guet	Plaines d'Ashford
+341	landmark	Repaire de Calhaan	Plaines d'Ashford
+342	landmark	Cénotaphe de la Victoire	Plaines d'Ashford
+343	landmark	Le chantier de casse	Plaines d'Ashford
+344	landmark	Kraal de Rochepierre	Plaines d'Ashford
+345	landmark	Campement de Queue-leste	Plaines d'Ashford
+346	landmark	Camp fortifié d'Igni	Plaines d'Ashford
+347	landmark	QG d'Exterminatus	Plaines d'Ashford
+348	landmark	Sommet du fantôme	Plaines d'Ashford
+349	landmark	Repaire du dieu mort	Plaines d'Ashford
+350	waypoint	Point de passage de Portevieille	Plateau de Diessa
+351	waypoint	Point de passage du Bloc du boucher	Plateau de Diessa
+352	waypoint	Point de passage du domaine de Charradis	Plateau de Diessa
+353	waypoint	Point de passage du Mur fendu	Plateau de Diessa
+354	waypoint	Point de passage d'Incendio	Plateau de Diessa
+355	waypoint	Point de passage du Bosquet de Nemus	Plateau de Diessa
+356	waypoint	Point de passage de Brèchezeaux	Plateau de Diessa
+357	landmark	Cœur du Loup	Contreforts du voyageur
+358	landmark	Camp d'Hirbadd	Contreforts du voyageur
+359	landmark	Fosse de Drakkerjorg	Contreforts du voyageur
+360	landmark	Refuge d'Hostra	Contreforts du voyageur
+361	landmark	Cœur de l'Ourse	Contreforts du voyageur
+362	landmark	Cœur du Corbeau	Contreforts du voyageur
+363	landmark	Cœur de la Panthère des neiges	Contreforts du voyageur
+364	landmark	Grotte d'Alpenzure	Contreforts du voyageur
+365	landmark	Sommet de Gaerta	Contreforts du voyageur
+366	landmark	Guet de l'ermite	Contreforts du voyageur
+367	landmark	Point du Vainqueur	Contreforts du voyageur
+368	landmark	Colonie d'Edenvar	Contreforts du voyageur
+369	landmark	Colonie de Kevach	Contreforts du voyageur
+370	waypoint	Point de passage du Paria	Contreforts du voyageur
+371	waypoint	Point de passage du Festibière du Héros	Contreforts du voyageur
+372	waypoint	Point de passage d'Appelcor	Contreforts du voyageur
+373	waypoint	Point de passage d'Ecorchenuit	Contreforts du voyageur
+374	waypoint	Point de passage de Taigan	Contreforts du voyageur
+375	waypoint	Point de passage des Sources chaudes de Zelechor	Contreforts du voyageur
+376	waypoint	Point de passage d'Halvaunt	Contreforts du voyageur
+377	waypoint	Point de passage du Refuge du croisement	Contreforts du voyageur
+378	waypoint	Point de passage de l'aube	Contreforts du voyageur
+379	waypoint	Point de passage du Col du dolyak	Contreforts du voyageur
+380	waypoint	Point de passage de la solitude	Contreforts du voyageur
+381	waypoint	Point de passage du Refuge de Doubléperon	Contreforts du voyageur
+382	waypoint	Point de passage de la Colonie de Vendrake	Contreforts du voyageur
+383	waypoint	Point de passage du Portail de Vir	Plaines d'Ashford
+384	waypoint	Point de passage de Fumerolles	Plaines d'Ashford
+385	waypoint	Point de passage de l'Armurerie de Grisacier	Plaines d'Ashford
+386	waypoint	Point de passage du martyre	Plaines d'Ashford
+387	waypoint	Point de passage du Point de Temperus	Plaines d'Ashford
+388	waypoint	Point de passage d'Ashford	Plaines d'Ashford
+389	waypoint	Point de passage d'Adoréa	Plaines d'Ashford
+390	waypoint	Point de passage des Catacombes d'Ascalon	Plaines d'Ashford
+391	waypoint	Point de passage de la Cité d'Ascalon	Plaines d'Ashford
+392	waypoint	Point de passage de la Tour de guet de l'Escarpement	Plaines d'Ashford
+393	waypoint	Point de passage du Belvédère de Scinde-nuit	Plaines d'Ashford
+394	waypoint	Point de passage du Chantier naval de Dockfer	Plaines d'Ashford
+395	waypoint	Point de passage du Premier Refuge	Champs de Gendarran
+396	waypoint	Point de passage de Talajian	Champs de Gendarran
+397	waypoint	Point de passage de la Colline pourpre	Champs de Gendarran
+398	waypoint	Point de passage de la Terrasse de Nebo	Champs de Gendarran
+399	waypoint	Point de passage de la Colonie d'Ascalon	Champs de Gendarran
+400	waypoint	Point de passage des Champs du nord	Champs de Gendarran
+401	waypoint	Point de passage du Hameau de Pommeville	Champs de Gendarran
+402	waypoint	Point de passage du Fort des Veilleurs	Champs de Gendarran
+403	waypoint	Point de passage de la porte des glaces	Champs de Gendarran
+404	waypoint	Point de passage d'Almuten	Champs de Gendarran
+405	waypoint	Point de passage du Creuset	Creuset de l'éternité
+406	waypoint	Point de passage de la Colonie de Guutra	Passage de Lornar
+407	waypoint	Point de passage de Sèmeroche	Passage de Lornar
+408	waypoint	Point de passage de l'Enclave du Pinacle	Passage de Lornar
+409	waypoint	Point de passage de Mistriven	Passage de Lornar
+410	waypoint	Point de passage du Focus de l'Éternité	Creuset de l'éternité
+411	landmark	Sépulcre de Ralena	Catacombes d'Ascalon
+412	landmark	L'Épée brisée	Catacombes d'Ascalon
+413	landmark	Caveau de Vassar	Catacombes d'Ascalon
+414	landmark	Chapelle de Kasha	Catacombes d'Ascalon
+415	landmark	Socle de Nente	Catacombes d'Ascalon
+416	landmark	L'Autel de la Mort	Catacombes d'Ascalon
+417	landmark	Camp fortifié Silex	Plateau de Diessa
+418	landmark	Camp fortifié de Phasma	Plateau de Diessa
+419	waypoint	Point de passage du Promontoire d'Archen	Côte de la marée sanglante
+420	waypoint	Point de passage des Lamentations	Côte de la marée sanglante
+421	waypoint	Point de passage de la Falaise tumultueuse	Côte de la marée sanglante
+422	waypoint	Point de passage du Refuge de Miremarais	Côte de la marée sanglante
+423	waypoint	Point de passage de Remanda	Côte de la marée sanglante
+424	waypoint	Point de passage de la Mouette rieuse	Côte de la marée sanglante
+425	waypoint	Point de passage du Camp de la barrière	Côte de la marée sanglante
+426	waypoint	Point de passage du Poste de surveillance de l'Estuaire	Côte de la marée sanglante
+427	waypoint	Point de passage d'Épaveperdue	Côte de la marée sanglante
+428	waypoint	Point de passage du Camp des marais	Côte de la marée sanglante
+429	waypoint	Point de passage lugubre	Côte de la marée sanglante
+430	waypoint	Point de passage de Castavall	Côte de la marée sanglante
+431	waypoint	Point de passage de Jelako	Côte de la marée sanglante
+432	waypoint	Point de passage de Murmureguise	Côte de la marée sanglante
+433	landmark	Étendues de Mortom	Marais de Lumillule
+434	landmark	Terres porgotls	Marais de Lumillule
+435	landmark	Terres occuintls	Marais de Lumillule
+436	landmark	Terres nicantls	Marais de Lumillule
+437	landmark	La Tour de Modius	Marais de Lumillule
+438	landmark	Morte-terres quinatls	Marais de Lumillule
+439	landmark	Chaladeen englouti	Marais de Lumillule
+440	landmark	Morte-terres jinotls	Marais de Lumillule
+441	landmark	Village d'Espoirvain	Marais de Lumillule
+442	landmark	Sanctuaire d'Usharr	Marais de Lumillule
+443	landmark	Hexfonderie G-14 de l'Enqueste	Marais de Lumillule
+444	landmark	Vallah en ruines	Marais de Lumillule
+445	landmark	Laboratoire des Arcanistes unis	Marais de Lumillule
+446	landmark	Djannor légendaire	Marais de Lumillule
+447	landmark	Profondeurs de Vaguecolère	Marais de Lumillule
+448	landmark	Épave du Guerrier d'argent	Marais de Lumillule
+449	landmark	Poste de Guet du rivage	Marais de Lumillule
+450	landmark	Guet de Gardemarais	Marais de Lumillule
+451	landmark	Poste du Guet du sud	Marais de Lumillule
+452	waypoint	Point de passage du Vallon d'Orvar	Marais de Lumillule
+453	waypoint	Point de passage de Fort Cadence	Marais de Lumillule
+454	waypoint	Point de passage de la Maison de Braggi	Marais de Lumillule
+455	waypoint	Point de passage d'Inondesel	Marais de Lumillule
+456	waypoint	Point de passage des Terres sacrées de Zintl	Marais de Lumillule
+457	waypoint	Point de passage du Goulet de l'océan	Marais de Lumillule
+458	waypoint	Point de passage de Forvar	Marais de Lumillule
+459	waypoint	Point de passage de la Tête du crapaud	Marais de Lumillule
+460	waypoint	Point de passage de Brûlereinette	Marais de Lumillule
+461	waypoint	Point de passage du ciel lugubre	Marais de Lumillule
+462	waypoint	Point de passage d'Ondesaline	Marais de Lumillule
+463	waypoint	Point de passage d'Aleem	Marais de Lumillule
+464	waypoint	Point de passage de la Côte effilochée	Marais de Lumillule
+465	waypoint	Point de passage de Brooloonu	Marais de Lumillule
+466	waypoint	Point de passage de la Tonnelle du crépuscule	Tonnelle du crépuscule
+467	waypoint	Point de passage de la Tonnelle du crépuscule	Tonnelle du crépuscule
+468	landmark	Ergoville	Marais de fer
+469	landmark	Le Chaudron brûlant	Marais de fer
+470	landmark	Bastion du berger	Marais de fer
+471	landmark	Manoir de Bria	Marais de fer
+472	landmark	Folie de la vermine	Marais de fer
+473	landmark	Décombres du travail du jour	Marais de fer
+474	landmark	Camp fortifié d'Invictus	Marais de fer
+475	landmark	Kraal Jeunetrouée	Marais de fer
+476	landmark	Le Foyer dévasté	Marais de fer
+477	landmark	Repaire de Grondallion	Marais de fer
+478	landmark	Chutes de Malbrume	Marais de fer
+479	landmark	Chutes de Sondcœur	Marais de fer
+480	landmark	Repos de Kilnn	Marais de fer
+481	landmark	Profondeur de Poumonvide	Marais de fer
+482	waypoint	Point de passage d'Ergoville	Marais de fer
+483	waypoint	Point de passage du Lac Pourprenage	Marais de fer
+484	waypoint	Point de passage des Ruines de Piken la vieille	Marais de fer
+485	waypoint	Point de passage du Village de Molosseguerre	Marais de fer
+486	waypoint	Point de passage d'Hellion	Marais de fer
+487	waypoint	Point de passage du Village d'Attrapécaille	Marais de fer
+488	waypoint	Point de passage du camp de Doucepelisse	Marais de fer
+489	waypoint	Point de passage du Campement du Guet du stigmate	Marais de fer
+490	waypoint	Point de passage de la Piste de la Vipère	Marais de fer
+491	waypoint	Point de passage de la Ville de l'Etoile de Caninecol	Marais de fer
+492	waypoint	Point de passage du Rempart	Marais de fer
+493	waypoint	Point de passage du Campement de Guet-du-feu	Marais de fer
+494	waypoint	Point de passage de Gladefall	Marais de fer
+495	waypoint	Point de passage du Kraal de Grostogg	Marais de fer
+496	landmark	Pointe du dieu des astres	Les Steppes de la strie flamboyante
+497	landmark	Village de Ferrusatos	Les Steppes de la strie flamboyante
+498	landmark	Kraal de la Trouée-de-Suie	Les Steppes de la strie flamboyante
+499	landmark	Grand Kraal béhémien	Les Steppes de la strie flamboyante
+500	landmark	Pic de Serres-de-Gryffe	Les Steppes de la strie flamboyante
+501	landmark	Skara Braevus	Les Steppes de la strie flamboyante
+502	landmark	Décombres de la Sérénité	Les Steppes de la strie flamboyante
+503	landmark	La Folie de Delirius	Les Steppes de la strie flamboyante
+504	landmark	Campement de Garde-Nuisible	Les Steppes de la strie flamboyante
+505	waypoint	Point de passage du Dernier pour la route	Les Steppes de la strie flamboyante
+506	waypoint	Point de passage de l'Œil-d'acier	Les Steppes de la strie flamboyante
+507	waypoint	Point de passage de Tumok	Les Steppes de la strie flamboyante
+508	waypoint	Point de passage des Sœurs Jumelles	Les Steppes de la strie flamboyante
+509	waypoint	Point de passage de Behem	Les Steppes de la strie flamboyante
+510	waypoint	Point de passage de la plaine	Les Steppes de la strie flamboyante
+511	waypoint	Point de passage de la Pierre gardienne	Les Steppes de la strie flamboyante
+512	waypoint	Point de passage du Kraal des Ogres	Les Steppes de la strie flamboyante
+513	waypoint	Point de passage de Terra Carorunda	Les Steppes de la strie flamboyante
+514	waypoint	Point de passage du gouffre de Cassedent	Les Steppes de la strie flamboyante
+515	waypoint	Point de passage de Petit-bois	Les Steppes de la strie flamboyante
+516	waypoint	Point de passage du Glaive	Les Steppes de la strie flamboyante
+517	waypoint	Point de passage du Sanctuaire	Les Steppes de la strie flamboyante
+518	landmark	Guet de la houillère	Montée de Flambecœur
+519	landmark	Faille de l'ombre	Montée de Flambecœur
+520	landmark	Falaise Voilée	Montée de Flambecœur
+521	landmark	Tour Piquedent	Montée de Flambecœur
+522	landmark	Portes de la flamme	Montée de Flambecœur
+523	landmark	Camp fortifié de Termerarus	Montée de Flambecœur
+524	landmark	Camp fortifié de Provatum	Montée de Flambecœur
+525	landmark	Camp fortifié d'Atrox	Montée de Flambecœur
+526	landmark	Camp fortifié de Noxious	Montée de Flambecœur
+527	landmark	Pointe d'Haymal	Montée de Flambecœur
+528	landmark	Cœur muet	Montée de Flambecœur
+529	landmark	Œil de Dieu	Montée de Flambecœur
+530	landmark	Crâne de Dieu	Montée de Flambecœur
+531	landmark	Main de Dieu	Montée de Flambecœur
+532	landmark	Bivouac de Mangonel	Montée de Flambecœur
+533	landmark	Sanctuaire de la Division	Montée de Flambecœur
+534	waypoint	Point de passage de Sati	Montée de Flambecœur
+535	waypoint	Point de passage de fonte brute	Montée de Flambecœur
+536	waypoint	Point de passage du Poste de commandement de Tuyère	Montée de Flambecœur
+537	waypoint	Point de passage de Brèche brisée	Montée de Flambecœur
+538	waypoint	Point de passage de Cassedent	Montée de Flambecœur
+539	waypoint	Point de passage d'Havoc	Montée de Flambecœur
+540	waypoint	Point de passage du Camp fortifié de Vidius	Montée de Flambecœur
+541	waypoint	Point de passage de l'Apostat	Montée de Flambecœur
+542	waypoint	Point de passage de Bolrouille	Montée de Flambecœur
+543	waypoint	Point de passage des Lacets	Montée de Flambecœur
+544	waypoint	Point de passage de la Pointe de glace	Montée de Flambecœur
+545	waypoint	Point de passage du Camp de la Crête de neige	Montée de Flambecœur
+546	waypoint	Point de passage de la Garnison de Vorgas	Montée de Flambecœur
+547	waypoint	Point de passage de Folespoir	Montée de Flambecœur
+548	waypoint	Point de passage du Camp fortifié de Sénécus	Montée de Flambecœur
+549	waypoint	Point de passage de Simurgh	Montée de Flambecœur
+550	waypoint	Point de passage du Gardien	Montée de Flambecœur
+551	landmark	Esotérisme - PR&T	Province de Metrica
+552	landmark	Optique d'Incomp	Province de Metrica
+553	landmark	Laboratoires de l'Alliance de Brill	Province de Metrica
+554	landmark	Les pierres penchées	Falaises de Hantedraguerre
+555	landmark	Pavillon de Fridgardr	Falaises de Hantedraguerre
+556	landmark	Refuge du mantelet	Falaises de Hantedraguerre
+557	landmark	Griffure d'Esjudare	Falaises de Hantedraguerre
+558	landmark	Pointe du havre	Falaises de Hantedraguerre
+559	landmark	Dent de Viper	Falaises de Hantedraguerre
+560	landmark	Belvédère de Theign	Falaises de Hantedraguerre
+561	landmark	Abri du glissement de terrain	Falaises de Hantedraguerre
+562	landmark	Maison de Travelen	Falaises de Hantedraguerre
+563	landmark	Bergtrolde	Falaises de Hantedraguerre
+564	landmark	Demeure de Skovtrolde	Falaises de Hantedraguerre
+565	landmark	Maison de Conterécit	Falaises de Hantedraguerre
+566	landmark	Le Lieu de Parole	Falaises de Hantedraguerre
+567	landmark	Caer Pinède	Chutes de la canopée
+568	landmark	Okarinoo	Chutes de la canopée
+569	landmark	Banc irénique	Chutes de la canopée
+570	landmark	Profondeurs de Sipedon	Chutes de la canopée
+571	landmark	Rocher de Kiriel	Chutes de la canopée
+572	landmark	Le grand Oouo	Chutes de la canopée
+573	landmark	Chutes des Murmures	Chutes de la canopée
+574	landmark	Mont de la Cheminée	Chutes de la canopée
+575	landmark	Temple de la lumière dorée	Chutes de la canopée
+576	landmark	Bosquet de Piqueroseau	Chutes de la canopée
+577	landmark	Kyesjard	Chutes de la canopée
+578	landmark	Balddistead	Chutes de la canopée
+579	landmark	Mines de Mailletcuivré	Chutes de la canopée
+580	waypoint	Point de passage de Talus	Chutes de la canopée
+581	waypoint	Point de passage du Serpent	Chutes de la canopée
+582	waypoint	Point de passage d'Okarinoo	Chutes de la canopée
+583	waypoint	Point de passage de l'anneau	Chutes de la canopée
+584	waypoint	Point de passage de Fil d'Écaille	Chutes de la canopée
+585	waypoint	Point de passage de Nonmoa	Chutes de la canopée
+586	waypoint	Point de passage des Terres Eztlitl	Chutes de la canopée
+587	waypoint	Point de passage des Rapides de Gyre	Chutes de la canopée
+588	waypoint	Point de passage du Tutorat de Valance	Chutes de la canopée
+589	waypoint	Point de passage d'Ogduk	Chutes de la canopée
+590	waypoint	Point de passage de la Fondation 86	Chutes de la canopée
+591	waypoint	Point de passage de Feuilleblanche	Chutes de la canopée
+592	waypoint	Point de passage de la Rivière tranquille	Chutes de la canopée
+593	waypoint	Point de passage de Piqueroseau	Chutes de la canopée
+594	waypoint	Point de passage de Krongar	Chutes de la canopée
+595	waypoint	Point de passage du Voile de fer	Chutes de la canopée
+596	waypoint	Point de passage des Ruines de Rankor	Chutes de la canopée
+597	waypoint	Point de passage de Concordia	Chutes de la canopée
+598	waypoint	Point de passage de la tribulation	Falaises de Hantedraguerre
+599	waypoint	Point de passage des Terres gelées	Falaises de Hantedraguerre
+600	waypoint	Point de passage de Dociu	Falaises de Hantedraguerre
+601	waypoint	Point de passage des Sept Pins	Falaises de Hantedraguerre
+602	waypoint	Point de passage de la Route grise	Falaises de Hantedraguerre
+603	waypoint	Point de passage de Steelbrachen	Falaises de Hantedraguerre
+604	waypoint	Point de passage de la Crevasse de Toran	Falaises de Hantedraguerre
+605	waypoint	Point de passage du Rassemblement d'Hessdallen	Falaises de Hantedraguerre
+606	waypoint	Point de passage du Terrain d'entraînement du Belvédère	Falaises de Hantedraguerre
+607	waypoint	Point de passage de la Grande étendue	Falaises de Hantedraguerre
+608	waypoint	Point de passage de la Faille de Nouzottr	Falaises de Hantedraguerre
+609	waypoint	Point de passage de la Queue de la montagne	Falaises de Hantedraguerre
+610	waypoint	Point de passage de Graupel	Falaises de Hantedraguerre
+611	waypoint	Point de passage du Bassin d'Havfrue	Falaises de Hantedraguerre
+612	waypoint	Point de passage de Travelen	Falaises de Hantedraguerre
+613	waypoint	Point de passage de Wyrmsang	Falaises de Hantedraguerre
+614	landmark	Armurerie de la Légion de la Flamme	Citadelle de la Flamme
+615	landmark	Caserne de la Légion de la Flamme	Citadelle de la Flamme
+616	landmark	Portail du demandeur	Citadelle de la Flamme
+617	waypoint	Point de passage de la Chambre de la puissance	Citadelle de la Flamme
+618	landmark	Le Fourneau sonique	Détroit des gorges glacées
+619	landmark	Forgepuits	Détroit des gorges glacées
+620	landmark	Tombeau d'Arkor	Détroit des gorges glacées
+621	landmark	Ruine de Krok	Détroit des gorges glacées
+622	landmark	Confiance sacrée	Détroit des gorges glacées
+623	landmark	Val du Doyen	Détroit des gorges glacées
+624	landmark	Vallée du Guetsûr	Détroit des gorges glacées
+625	landmark	Orsippus	Détroit des gorges glacées
+626	landmark	Moshpoipoi	Détroit des gorges glacées
+627	landmark	Zuckermaloo	Détroit des gorges glacées
+628	landmark	Eaux troubles et profondes	Détroit des gorges glacées
+629	landmark	Le Barostède	Détroit des gorges glacées
+630	landmark	Guet du serpent	Détroit des gorges glacées
+631	landmark	Guet de la Griffe	Détroit des gorges glacées
+632	waypoint	Point de passage d'Arundon	Détroit des gorges glacées
+633	waypoint	Point de passage de Groznev	Détroit des gorges glacées
+634	waypoint	Point de passage de Trembleterre	Détroit des gorges glacées
+635	waypoint	Point de passage du Sentier des Cieux étoilés	Détroit des gorges glacées
+636	waypoint	Point de passage du Bourbier de la Mélancolie	Détroit des gorges glacées
+637	waypoint	Point de passage de la Vigilance	Détroit des gorges glacées
+638	waypoint	Point de passage de la Banquise	Détroit des gorges glacées
+639	waypoint	Point de passage de Dimotiki	Détroit des gorges glacées
+640	waypoint	Point de passage de Doubleboucle	Détroit des gorges glacées
+641	waypoint	Point de passage de la Maison de Hautecieux	Détroit des gorges glacées
+642	waypoint	Point de passage des Pics glacés	Détroit des gorges glacées
+643	waypoint	Point de passage du Camp de Rochecrête	Détroit des gorges glacées
+644	waypoint	Point de passage de la Courbe du Yak	Détroit des gorges glacées
+645	waypoint	Point de passage de la Lumière froide	Détroit des gorges glacées
+646	waypoint	Point de passage de Drakkar	Détroit des gorges glacées
+647	landmark	Poste de Pagga	Saut de Malchor
+648	landmark	Ile de la Dent de requin	Saut de Malchor
+649	landmark	Colonnade est	Saut de Malchor
+650	landmark	Fanal	Saut de Malchor
+651	landmark	Place des lumières	Saut de Malchor
+652	landmark	Autel des tempêtes	Saut de Malchor
+653	landmark	Alarjann Bayt	Saut de Malchor
+654	landmark	Le Bois de Weald	Saut de Malchor
+655	landmark	Presbytère de Kitah	Saut de Malchor
+656	landmark	Centre de test Upsilon	Saut de Malchor
+657	landmark	Extrémité du sculpteur	Saut de Malchor
+658	landmark	Centre de tests Omicron	Saut de Malchor
+659	landmark	Profondeurs arcadiennes	Saut de Malchor
+660	landmark	Autel des mensonges	Saut de Malchor
+661	landmark	Étincelle d'Ilya	Saut de Malchor
+662	landmark	Chanson de Lyss	Saut de Malchor
+663	landmark	Sceau d'Union	Saut de Malchor
+664	landmark	Angoisse de Malchor	Saut de Malchor
+665	landmark	Poignée du miroir	Saut de Malchor
+666	landmark	Île des murmures	Saut de Malchor
+667	landmark	Docks de l'Abri	Saut de Malchor
+668	landmark	Sanctuaire de Doric	Saut de Malchor
+669	landmark	Village de Kahloipoi	Saut de Malchor
+670	landmark	Rayhan Bayt	Saut de Malchor
+671	landmark	Bayt Fallahin	Saut de Malchor
+672	landmark	Bayt de Saliah	Saut de Malchor
+673	landmark	Épave du Qashvian	Saut de Malchor
+674	landmark	Pont du familier	Saut de Malchor
+675	landmark	Baroud d'honneur de Dhuum	Saut de Malchor
+676	landmark	Village de Wren	Saut de Malchor
+677	landmark	Chutes de l'Espoir	Saut de Malchor
+678	waypoint	Point de passage de Pagga	Saut de Malchor
+679	waypoint	Point de passage de Doric	Saut de Malchor
+680	waypoint	Point de passage des Crevasses oubliées	Saut de Malchor
+681	waypoint	Point de passage de la Colonnade	Saut de Malchor
+682	waypoint	Point de passage de la Vallée de Lyss	Saut de Malchor
+683	waypoint	Point de passage d'Union	Saut de Malchor
+684	waypoint	Point de passage de Wren	Saut de Malchor
+685	waypoint	Point de passage de Lyssa	Saut de Malchor
+686	waypoint	Point de passage de l'Arche corrompue	Saut de Malchor
+687	waypoint	Point de passage des Murmures	Saut de Malchor
+688	waypoint	Point de passage des Tempêtes	Saut de Malchor
+689	waypoint	Point de passage de Versoconjuration	Saut de Malchor
+690	waypoint	Point de passage des lumières	Saut de Malchor
+692	landmark	Vallée de Gwaun	Mont Maelström
+693	landmark	Terres Tzanopls	Mont Maelström
+694	landmark	Profondeurs agitées	Mont Maelström
+695	landmark	Epine de Gorlois	Mont Maelström
+696	landmark	Ruinevenin	Mont Maelström
+697	landmark	Folie du brave	Mont Maelström
+698	landmark	Repaire de l'Eventromancien	Mont Maelström
+699	landmark	Malxa Pyrotechnique	Mont Maelström
+700	landmark	Ruisseau de la Pleine Lune	Mont Maelström
+701	landmark	Zone Mauve	Mont Maelström
+702	landmark	Zone Blanche	Mont Maelström
+703	landmark	Zone Verte	Mont Maelström
+704	landmark	Zone Noire	Mont Maelström
+705	landmark	Zone Rouge	Mont Maelström
+706	landmark	Zone Bleue (en construction)	Mont Maelström
+707	landmark	Breth Ayahusasca	Mont Maelström
+708	landmark	Rata Pten	Mont Maelström
+709	landmark	Côte d'Herot	Mont Maelström
+710	landmark	Volute Théurgique	Mont Maelström
+711	waypoint	Point de passage de Valbrouillard	Mont Maelström
+712	waypoint	Point de passage de Govoran	Mont Maelström
+713	waypoint	Point de passage de Criterion	Mont Maelström
+714	waypoint	Point de passage de Fort Barfeu	Mont Maelström
+715	waypoint	Point de passage de Spaecia Illogica	Mont Maelström
+716	waypoint	Point de passage du Barde	Mont Maelström
+717	waypoint	Point de passage de Maelström	Mont Maelström
+718	waypoint	Point de passage des Cendres	Mont Maelström
+719	waypoint	Point de passage d'Avernan	Mont Maelström
+720	waypoint	Point de passage de la Flèche brisée	Mont Maelström
+721	waypoint	Point de passage de l'Ile du Méandre	Mont Maelström
+722	waypoint	Point de passage de l'Ile d'Irwin	Mont Maelström
+723	waypoint	Point de passage du Gantelet	Mont Maelström
+724	waypoint	Point de passage du Site du Vieux traîneau	Mont Maelström
+725	waypoint	Point de passage du Jugement	Mont Maelström
+726	waypoint	Point de passage magmatique	Mont Maelström
+727	landmark	Artillerie maritime	Détroit de la dévastation
+728	landmark	Bivouac de Glisselame	Détroit de la dévastation
+729	landmark	Canonnade du Stentor	Détroit de la dévastation
+730	landmark	Batterie de tonnecaboche	Détroit de la dévastation
+731	landmark	Jetée de Cadrigan	Détroit de la dévastation
+732	landmark	Izz-al-Din Sarayi	Détroit de la dévastation
+733	landmark	Pointe brisée	Détroit de la dévastation
+734	landmark	La Tour du Vizir	Détroit de la dévastation
+735	landmark	Profondeurs des Ténèbres	Détroit de la dévastation
+736	landmark	Place du savoir perdu	Détroit de la dévastation
+737	landmark	Poste isolé	Détroit de la dévastation
+738	landmark	Marina de la Conquête	Détroit de la dévastation
+739	landmark	Plage de Serrecuivre	Détroit de la dévastation
+740	landmark	Colline de la Bécasse	Détroit de la dévastation
+741	landmark	Autel de la trahison	Détroit de la dévastation
+742	landmark	Pont de la boussole	Détroit de la dévastation
+743	landmark	Din al-Jindi	Détroit de la dévastation
+744	landmark	Chapelle de Dame Glaive	Détroit de la dévastation
+745	landmark	Le Forum Royal	Détroit de la dévastation
+746	landmark	La Cloche vespérale	Détroit de la dévastation
+747	landmark	Monastère de Tughra	Détroit de la dévastation
+748	waypoint	Point de passage du Passage ronceux	Détroit de la dévastation
+749	waypoint	Point de passage du Pic de signal	Détroit de la dévastation
+750	waypoint	Point de passage de Fort Trinité	Détroit de la dévastation
+751	waypoint	Point de passage de la Sente aux épines	Détroit de la dévastation
+752	waypoint	Point de passage de Tonnecaboche	Détroit de la dévastation
+753	waypoint	Point de passage de la Pointe brisée	Détroit de la dévastation
+754	waypoint	Point de passage de la Cloche vespérale	Détroit de la dévastation
+755	waypoint	Point de passage du Forum Royal	Détroit de la dévastation
+756	waypoint	Point de passage de Serrecuivre	Détroit de la dévastation
+757	waypoint	Point de passage de l'Atheneum	Détroit de la dévastation
+758	waypoint	Point de passage de la Marina de la Conquête	Détroit de la dévastation
+759	waypoint	Point de passage du Poste isolé	Détroit de la dévastation
+760	waypoint	Point de passage du rétif	Détroit de la dévastation
+761	waypoint	Point de passage de Xenarius	Détroit de la dévastation
+762	waypoint	Point de passage de la Glorieuse victoire	Détroit de la dévastation
+763	waypoint	Point de passage de la sentinelle	Détroit de la dévastation
+764	landmark	Montagne amère	Rivage maudit
+765	landmark	Caer Mande-Ombre	Rivage maudit
+766	landmark	Village de Sayix	Rivage maudit
+767	landmark	Bâches de Changemer	Rivage maudit
+768	landmark	R&D cachistique	Rivage maudit
+769	landmark	Plage de Gavbeorn	Rivage maudit
+770	landmark	Bakkir Sarayi	Rivage maudit
+771	landmark	Labyrinthe du Gladiver	Rivage maudit
+772	landmark	Portail de l'Abri	Rivage maudit
+773	landmark	Corde de potence	Rivage maudit
+774	landmark	Village d'Ewan	Rivage maudit
+775	landmark	Dock de l'Epine	Rivage maudit
+776	landmark	L'épave du Golden Vanity	Rivage maudit
+777	landmark	Torche du présage	Rivage maudit
+778	landmark	Torche du Regard de la Mort	Rivage maudit
+779	landmark	Archives ensevelies	Rivage maudit
+780	landmark	Autel des rêves anéantis	Rivage maudit
+781	landmark	Hymne de la Mort	Rivage maudit
+782	landmark	L'épave du Saehrimnir	Rivage maudit
+783	landmark	Crête indiscrète	Rivage maudit
+784	landmark	Tertre de Telmat	Rivage maudit
+785	landmark	Torche d'Augur	Rivage maudit
+786	landmark	Mouillage de Shank	Rivage maudit
+787	landmark	Camp libre de Sharn	Rivage maudit
+788	landmark	Caveau du Reliquaire	Rivage maudit
+789	landmark	Portes d'Arah	Rivage maudit
+790	landmark	Autel du cœur flétri	Rivage maudit
+791	waypoint	Point de passage du Passage de la poursuite	Rivage maudit
+792	waypoint	Point de passage R&D	Rivage maudit
+793	waypoint	Point de passage du pénitent	Rivage maudit
+794	waypoint	Point de passage de Gavbeorn	Rivage maudit
+795	waypoint	Point de passage de Verdance	Rivage maudit
+796	waypoint	Point de passage du Portail de l'Abri	Rivage maudit
+797	waypoint	Point de passage de Jofast	Rivage maudit
+798	waypoint	Point de passage de la Crête indiscrète	Rivage maudit
+799	waypoint	Point de passage du Mouillage	Rivage maudit
+800	waypoint	Point de passage d'Arah	Rivage maudit
+801	waypoint	Point de passage de Caer Mande-Ombre	Rivage maudit
+802	waypoint	Point de passage des rêves anéantis	Rivage maudit
+803	waypoint	Point de passage de Dwayna	Le Promontoire divin
+804	waypoint	Point de passage de Grenth	Le Promontoire divin
+805	waypoint	Point de passage de Kormir	Le Promontoire divin
+806	waypoint	Point de passage de Lyssa	Le Promontoire divin
+807	waypoint	Point de passage de Melandru	Le Promontoire divin
+808	waypoint	Point de passage de Balthazar	Le Promontoire divin
+809	waypoint	Point de passage du Palais	Le Promontoire divin
+810	waypoint	Point de passage du quartier populaire	Le Promontoire divin
+811	waypoint	Point de passage de Rurikton	Le Promontoire divin
+812	waypoint	Point de passage du Pavillon de la Couronne	Le Promontoire divin
+813	waypoint	Point de passage d'Ossa	Le Promontoire divin
+814	waypoint	Point de passage de Salma	Le Promontoire divin
+816	landmark	Atheneum zaishen	Détroit de la dévastation
+817	landmark	Place du Crâne	Le Promontoire divin
+820	waypoint	Point de passage de l'honneur	Honneur des vagues
+821	waypoint	Point de passage de l'honneur	Honneur des vagues
+822	landmark	Cachette d'Uzolan	Collines de Kessex
+823	landmark	Cercle des tire-laines	Terres sauvages de Brisban
+824	landmark	Mennerheim	Congères d'Antreneige
+825	waypoint	Point de passage du Manoir de Caudecus	Manoir de Caudecus
+826	waypoint	Point de passage du Manoir de Caudecus	Manoir de Caudecus
+827	landmark	Quartiers du tribun de la Légion des Cendres	La Citadelle noire
+828	landmark	Quartiers du tribun de la Légion Sanglante	La Citadelle noire
+829	landmark	Fahrar des jeunes héros	La Citadelle noire
+830	landmark	Cavernes abandonnées (Accès interdit)	La Citadelle noire
+831	landmark	Quartiers du tribun de la Légion de Fer	La Citadelle noire
+832	landmark	Scriptorium de Durmand	La Citadelle noire
+833	landmark	Salle capitulaire des Veilleurs	La Citadelle noire
+834	landmark	Taverne de la Lame dentelée	La Citadelle noire
+835	landmark	Ravin Broie-les-Os	La Vallée de la reine
+836	waypoint	Point de passage du verger	La Vallée de la reine
+837	waypoint	Point de passage de Scaver	La Vallée de la reine
+838	waypoint	Point de passage de la Galerie de Peatrot	Tonnelle du crépuscule
+839	waypoint	Point de passage du Lac de la Peur	Tonnelle du crépuscule
+840	waypoint	Point de passage du Hall du Remord amoureux	Tonnelle du crépuscule
+841	landmark	Queue du serpent de feu	Détroit des gorges glacées
+842	landmark	Pierre d'offrande	Détroit des gorges glacées
+843	landmark	Le Pichet sans fond	Le Promontoire divin
+844	waypoint	Point de passage du Dépôt de la Garde du Lion	Forêt de Caledon
+845	waypoint	Point de passage du Village de Tersech	Marais de Lumillule
+846	waypoint	Point de passage des Basses Terres Calcinées	Les Steppes de la strie flamboyante
+847	waypoint	Point de passage du Gosier de Gastor	Les Steppes de la strie flamboyante
+848	waypoint	Point de passage de Fort Kinar	Les Steppes de la strie flamboyante
+849	waypoint	Point de passage du Fort de Crête-Fendue	Les Steppes de la strie flamboyante
+850	waypoint	Point de passage de la Route de Suie	Les Steppes de la strie flamboyante
+851	landmark	Terrasse de l'initiateur	La Vallée de la reine
+852	landmark	Vallon des drakes	Les Steppes de la strie flamboyante
+853	landmark	Bastion Est	Manoir de Caudecus
+854	landmark	Quartiers des serviteurs	Manoir de Caudecus
+855	landmark	Grange du manoir	Manoir de Caudecus
+856	landmark	Camp des Séparatistes	Manoir de Caudecus
+857	landmark	Caserne des bandits	Manoir de Caudecus
+858	landmark	Campement du Pacte	La Cité en ruine d'Arah
+859	waypoint	Point de passage du Campement du Pacte	La victoire ou la mort
+860	landmark	Dôme de Melandru	La Cité en ruine d'Arah
+861	landmark	Bas-fonds du démon	La Cité en ruine d'Arah
+862	landmark	Batterie draconique	La victoire ou la mort
+863	landmark	Le dernier baroud de Zhaïtan	La victoire ou la mort
+864	landmark	Épave de l'Orgueil d'Ours Blanc	La Cité en ruine d'Arah
+865	landmark	Épave du Rêve de Riannoc	La Cité en ruine d'Arah
+866	landmark	Épave du Lady Livia	La Cité en ruine d'Arah
+867	landmark	La Crypte d'abattage	La Cité en ruine d'Arah
+868	landmark	L'épave du Lamebrûlante	La Cité en ruine d'Arah
+869	landmark	Banc de test des Mursaats de Zeleph	La Cité en ruine d'Arah
+870	landmark	Le télescope mystique	La Cité en ruine d'Arah
+871	landmark	La grand-porte processionnelle	La Cité en ruine d'Arah
+872	landmark	La destruction des pierres de sang	La Cité en ruine d'Arah
+873	landmark	L'autel de Glaust	La Cité en ruine d'Arah
+874	landmark	La barge impériale d'Orr	La Cité en ruine d'Arah
+875	waypoint	Point de passage de l'entrée	Catacombes d'Ascalon
+876	waypoint	Point de passage des archives	Catacombes d'Ascalon
+881	landmark	Brasserie Courage	Hoelbrak
+882	landmark	Croc du Serpent	Hoelbrak
+883	landmark	Marché aux crosses	Hoelbrak
+884	landmark	La Grande Butte	Hoelbrak
+885	landmark	Maison de Skarti	Hoelbrak
+886	landmark	Maison de Sculpteroche	Hoelbrak
+887	landmark	Maison de Sigfast	Hoelbrak
+888	landmark	Maison de Maître Forgenoire	Hoelbrak
+889	landmark	Ecole de Fiach l'Ancien	Hoelbrak
+890	landmark	Hall de l'esbroufe	Hoelbrak
+891	landmark	Repos de Hrothbeir	Hoelbrak
+892	landmark	Taverne de Vheratha	Hoelbrak
+893	landmark	Campement du Prieuré	Hoelbrak
+894	landmark	Sanctuaire du Dragon	Hoelbrak
+895	landmark	Cantonnement des Veilleurs	Hoelbrak
+896	landmark	Sanctuaire des Esprits perdus	Hoelbrak
+897	landmark	Sanctuaire de l'Ourse	Hoelbrak
+898	landmark	Sanctuaire du Loup	Hoelbrak
+899	landmark	Sanctuaire du Corbeau	Hoelbrak
+900	landmark	Sanctuaire de la Panthère des neiges	Hoelbrak
+901	waypoint	Point de passage d'Agora	Hoelbrak
+902	waypoint	Point de passage du Forum du commerce	Hoelbrak
+903	waypoint	Point de passage de la Panthère des neiges	Hoelbrak
+904	waypoint	Point de passage du Corbeau	Hoelbrak
+905	waypoint	Point de passage de l'Ourse	Hoelbrak
+906	waypoint	Point de passage du Loup	Hoelbrak
+907	waypoint	Point de passage du Rocher de l'abri	Hoelbrak
+908	waypoint	Point de passage des Légendes	Hoelbrak
+909	waypoint	Point de passage du Poste d'observation est	Hoelbrak
+910	waypoint	Point de passage du Poste d'observation sud	Hoelbrak
+911	waypoint	Point de passage de Peeta	Hoelbrak
+912	waypoint	Point de passage de la Boussole du Héros	Hoelbrak
+913	waypoint	Point de passage de l'entrée	Catacombes d'Ascalon
+914	waypoint	Point de passage des murailles	Catacombes d'Ascalon
+915	landmark	Camp Keiran	Plaines d'Ashford
+916	landmark	Niche de Moque	Plaines d'Ashford
+917	landmark	Cour des Trois Légions	Plaines d'Ashford
+918	landmark	Éclats de guerre	Plaines d'Ashford
+919	waypoint	Point de passage de Feritas	Plaines d'Ashford
+920	waypoint	Point de passage du Point de garde de Décimus	Plaines d'Ashford
+921	waypoint	Point de passage du Camp du Chasseur d'esprits	Plaines d'Ashford
+922	waypoint	Point de passage du Domaine de Dawnright.	Plateau de Diessa
+923	waypoint	Point de passage du Pont-aux-Lions	Champs de Gendarran
+924	landmark	Point de contrôle 13 de la Légion des Cendres	La Citadelle noire
+925	landmark	Forum du Héros	La Citadelle noire
+926	landmark	20e Cohorte sanglante	La Citadelle noire
+927	landmark	Porte d'Ashford	La Citadelle noire
+928	landmark	12e Manipule de Fer	La Citadelle noire
+929	landmark	Prison de la Citadelle	La Citadelle noire
+930	landmark	Triomphe de l'Appel de la Tempête	La Citadelle noire
+931	landmark	Le Conseil de guerre	La Citadelle noire
+932	waypoint	Point de passage du gladium	La Citadelle noire
+933	waypoint	Point de passage des Terres du rassemblement	La Citadelle noire
+934	waypoint	Point de passage du Mémorial	La Citadelle noire
+935	waypoint	Point de passage du Factorium	La Citadelle noire
+936	waypoint	Point de passage de la Porte de Diessa	La Citadelle noire
+937	waypoint	Point de passage de Ligacus Aquilo	La Citadelle noire
+938	waypoint	Point de passage du Fléau	La Citadelle noire
+939	waypoint	Point de passage du Héros	La Citadelle noire
+940	waypoint	Point de passage des Ruines de Rin	La Citadelle noire
+941	waypoint	Point de passage de l'Imperator	La Citadelle noire
+942	waypoint	Point de passage de la Tombe de Kasha	Catacombes d'Ascalon
+943	waypoint	Point de passage du Reliquaire	Catacombes d'Ascalon
+944	landmark	Camp Althea	Plateau de Diessa
+945	landmark	Rivage des remparts	Marais de Lumillule
+946	landmark	Plage du mauvais présage	Champs de Gendarran
+947	waypoint	Point de passage de Caer Bruyère	Marais de Lumillule
+948	waypoint	Point de passage du Bourbier	Marais de Lumillule
+950	waypoint	Point de passage de la cathédrale	Catacombes d'Ascalon
+952	landmark	Planque de Knut Ours Blanc	Dans les Brumes
+953	waypoint	Point de passage du Camp Façonneterre	Collines de Kessex
+954	waypoint	Point de passage du ravin	Collines de Kessex
+955	landmark	Camp de l'embuscade	Champs de Gendarran
+956	landmark	Fosse à combats de Vollym	Champs de Gendarran
+957	landmark	Récif des Charognards	Champs de Gendarran
+958	landmark	Baie de Slade	Champs de Gendarran
+959	waypoint	Point de passage des Étendues gelées	Congères d'Antreneige
+960	waypoint	Point de passage de Valselac	Congères d'Antreneige
+961	waypoint	Point de passage de la Caverne de Pertevyrm	Contreforts du voyageur
+962	waypoint	Point de passage de la Colonie de Krennak	Contreforts du voyageur
+963	waypoint	Point de passage du Fjord des Grawls	Contreforts du voyageur
+964	waypoint	Point de passage de Rougefalaise	Plateau de Diessa
+965	waypoint	Point de passage du Sanctuaire	Plateau de Diessa
+966	waypoint	Point de passage de la Scierie de Couperouge	Plateau de Diessa
+967	waypoint	Point de passage de Fablegriffe	Plaines d'Ashford
+968	waypoint	Point de passage de Phasmatis	Plaines d'Ashford
+969	waypoint	Point de passage du Mort-Homme	Plateau de Diessa
+972	waypoint	Point de passage d'Aveugleneige	Champs de Gendarran
+973	waypoint	Point de passage de Brigantine	Champs de Gendarran
+974	landmark	Rassemblement d'Haivoissen	Contreforts du voyageur
+975	landmark	Fort Bondragon	Contreforts du voyageur
+976	landmark	Cabane du ruisseau gelé	Contreforts du voyageur
+981	waypoint	Point de passage de la Grand-loge	Hoelbrak
+984	landmark	Le Gouffre gelé	Contreforts du voyageur
+987	landmark	Tour de Mirelande	Plateau de Diessa
+988	landmark	Centrale de Bergenoire	Plateau de Diessa
+989	waypoint	Point de passage du Camp du Prieuré	Catacombes d'Ascalon
+990	landmark	Fort de Brumepierre	Champs de bataille éternels
+991	landmark	Grande porte nord	Champs de bataille éternels
+992	landmark	Grande porte est	Champs de bataille éternels
+993	landmark	Grande porte ouest	Champs de bataille éternels
+994	landmark	Fort	Champs de bataille éternels
+995	landmark	Poste de Durios	Champs de bataille éternels
+996	landmark	Scierie d'Ombreclair	Champs de bataille éternels
+997	landmark	Tour de Langor	Champs de bataille éternels
+998	landmark	Tour de Bravost	Champs de bataille éternels
+999	landmark	Mine Danelon	Champs de bataille éternels
+1000	landmark	Poste de Quentin	Champs de bataille éternels
+1001	landmark	Kraal de Dragoss	Champs de bataille éternels
+1002	landmark	Terres novotls	Champs de bataille éternels
+1003	landmark	Fort	Champs de bataille éternels
+1004	landmark	Poste d'Anzalias	Champs de bataille éternels
+1005	landmark	Scierie de Speldan	Champs de bataille éternels
+1006	landmark	Tour de Veloka	Champs de bataille éternels
+1007	landmark	Tour de Mendon	Champs de bataille éternels
+1008	landmark	Mine de Pangloss	Champs de bataille éternels
+1009	landmark	Poste de Gardogre	Champs de bataille éternels
+1010	landmark	Fortifications de Molevek	Champs de bataille éternels
+1011	landmark	Fort	Champs de bataille éternels
+1012	landmark	Poste de Klovan	Champs de bataille éternels
+1013	landmark	Moulin de Golanta	Champs de bataille éternels
+1014	landmark	Tour de Jerrifer	Champs de bataille éternels
+1015	landmark	Tour d'Aldon	Champs de bataille éternels
+1016	landmark	Carrière du voleur	Champs de bataille éternels
+1017	landmark	Poste du ruisseau sauvage	Champs de bataille éternels
+1018	waypoint	Point de passage de la colline	Champs de bataille éternels
+1019	waypoint	Point de passage de la colline	Champs de bataille éternels
+1020	waypoint	Point de passage de la colline	Champs de bataille éternels
+1021	landmark	Port de l'Armada	Détroit de la dévastation
+1022	landmark	Générateur d'Alseta	Détroit de la dévastation
+1023	landmark	Caer Aval	Détroit de la dévastation
+1024	landmark	Sanctuaire de Mellaggan	Champs de Gendarran
+1025	waypoint	Point de passage d'Osenfold	Contreforts du voyageur
+1026	waypoint	Point de passage des Champs du sang	Champs de Gendarran
+1027	waypoint	Point de passage des mécanismes	Étreinte des lamentations
+1028	waypoint	Point de passage du dépôt	Étreinte des lamentations
+1029	waypoint	Point de passage de Place Draguerre	Étreinte des lamentations
+1030	waypoint	Point de passage de Volcanium	Étreinte des lamentations
+1031	waypoint	Point de passage KD-4	Étreinte des lamentations
+1032	landmark	Grotte de Sourcechaude	Contreforts du voyageur
+1033	landmark	Cour du boucher	Plateau de Diessa
+1034	landmark	Point de Moldary	Congères d'Antreneige
+1035	waypoint	Point de passage de l'Impasse	Côte de la marée sanglante
+1036	waypoint	Point de passage du Quartier du Commodore	L'Arche du Lion
+1037	waypoint	Point de passage des Falaises de la guilde	L'Arche du Lion
+1038	waypoint	Point de passage du quartier de la Côte sanglante	L'Arche du Lion
+1039	waypoint	Point de passage du Portage de l'Île de la griffe	L'Arche du Lion
+1040	waypoint	Point de passage du Forum des commerçants	L'Arche du Lion
+1041	waypoint	Point de passage de la Grand-place de la porte	L'Arche du Lion
+1042	waypoint	Point de passage de Caledon	Le Bosquet
+1043	waypoint	Point de passage de la Cour métrique	Rata Sum
+1044	waypoint	Point de passage de la Cour de Magustan	Rata Sum
+1045	landmark	Grottes de Janus	Champs de Gendarran
+1046	waypoint	Point de passage de l'accueil JcJ	Cœur des Brumes
+1047	waypoint	Point de passage de la Galerie de la rage	Citadelle de la Flamme
+1048	waypoint	Point de passage de la Nef de lumière	Citadelle de la Flamme
+1049	waypoint	Point de passage de la Salle ferrique	Citadelle de la Flamme
+1050	waypoint	Point de passage de l'Étreinte des lamentations	Étreinte des lamentations
+1051	landmark	Le Cœur de Faucon	Champs de ruine
+1052	landmark	Ancienne Arche du Lion	L'Arche du Lion
+1053	landmark	Portail des Brumes	L'Arche du Lion
+1054	landmark	Mémorial de Moran	L'Arche du Lion
+1055	landmark	Taverne du Nid de Corneille (Conseil du capitaine)	L'Arche du Lion
+1056	landmark	Place Coriolis	L'Arche du Lion
+1057	landmark	Place mystique	L'Arche du Lion
+1058	landmark	Jardins Deverol	L'Arche du Lion
+1059	landmark	Perchoir du Phénix	L'Arche du Lion
+1060	landmark	Moulin de Tokk	L'Arche du Lion
+1061	landmark	Pont en mémoire du capitaine Théo Ashford	L'Arche du Lion
+1062	landmark	Les Caveaux	L'Arche du Lion
+1063	landmark	Site de recherche du Prieuré de Durmand	L'Arche du Lion
+1064	landmark	Le marché souterrain	L'Arche du Lion
+1065	landmark	Cour du Lion	L'Arche du Lion
+1066	landmark	Porte barrée	L'Arche du Lion
+1067	landmark	Bâtiment central des Veilleurs	L'Arche du Lion
+1068	landmark	Étang aux grenouilles	L'Arche du Lion
+1069	waypoint	Point de passage des Corniches diverses	L'Arche du Lion
+1070	waypoint	Point de passage du Quartier ouest	L'Arche du Lion
+1071	waypoint	Point de passage du Port du sanctuaire	L'Arche du Lion
+1072	waypoint	Point de passage de Fort Marrin	L'Arche du Lion
+1073	waypoint	Point de passage du Quartier est	L'Arche du Lion
+1074	waypoint	Point de passage de la caverne	L'Arche du Lion
+1075	waypoint	Point de passage d'Autrerive	L'Arche du Lion
+1076	landmark	Labo de métamystique de Splorge	Province de Metrica
+1077	landmark	Marché de Kestrel	Champs de ruine
+1078	landmark	Champ du défenseur	Champs de ruine
+1079	waypoint	Point de passage des épaves	La Citadelle noire
+1084	waypoint	Point de passage du Guetteur	Champs de ruine
+1085	waypoint	Point de passage de Kestrel	Champs de ruine
+1086	waypoint	Point de passage de Brise-tonnerre	Champs de ruine
+1087	landmark	Antre de Bercebruyère	Forêt de Caledon
+1088	landmark	L'Ile pleureuse	Forêt de Caledon
+1089	landmark	Val de la douleur	Forêt de Caledon
+1090	waypoint	Point de passage de Lamenoire	Plateau de Diessa
+1091	waypoint	Point de passage des amants	Catacombes d'Ascalon
+1092	landmark	Perchoir de la sentinelle	Champs de ruine
+1093	landmark	Jardin de Rime	Forêt de Caledon
+1094	waypoint	Point de passage de Stromkarl	Chutes de la canopée
+1095	waypoint	Point de passage du Temple inondé	Catacombes d'Ascalon
+1100	waypoint	Point de ralliement de l'Equipe bleue	Bataille de Kyhlo
+1101	waypoint	Point de ralliement de l'Equipe rouge	Bataille de Kyhlo
+1102	waypoint	Point de ralliement de l'Equipe bleue	Forêt de Niflhel
+1103	waypoint	Point de ralliement de l'Equipe rouge	Forêt de Niflhel
+1104	waypoint	Point de passage de la Galerie de la rage	Citadelle de la Flamme
+1105	waypoint	Point de passage de la Fonderie en fusion	Citadelle de la Flamme
+1106	waypoint	Point de passage du Transept occidental	Citadelle de la Flamme
+1107	waypoint	Point de passage du Caveau sanguin	Citadelle de la Flamme
+1110	waypoint	Point de passage de la Contemplation	Honneur des vagues
+1126	waypoint	Point de passage du Transept oriental	Citadelle de la Flamme
+1127	waypoint	Point de passage de la Nef de lumière	Citadelle de la Flamme
+1128	waypoint	Point de passage de la Salle des Cendres	Citadelle de la Flamme
+1129	waypoint	Point de passage dévorien	Citadelle de la Flamme
+1130	waypoint	Point de passage du Sanctuaire du sacrifice	Citadelle de la Flamme
+1131	waypoint	Point de passage du Praesidium	Citadelle de la Flamme
+1132	waypoint	Point de passage de Khan-Ur	Citadelle de la Flamme
+1133	waypoint	Point de passage de la Crypte	Citadelle de la Flamme
+1134	landmark	Centre de transformation Kachong	Province de Metrica
+1135	landmark	Planque du voyageur	La maladie d'un chiot
+1136	landmark	Galerie de Bilrost	Hoelbrak
+1140	landmark	Place du souvenir	La Citadelle noire
+1141	landmark	La Maison d'Aife	Le Bosquet
+1142	landmark	La Maison de Kahedins	Le Bosquet
+1143	landmark	La Maison de Riannoc	Le Bosquet
+1144	landmark	La Maison de Caithe	Le Bosquet
+1145	landmark	La Maison de Malomedies	Le Bosquet
+1146	landmark	La Maison de Niamh	Le Bosquet
+1147	landmark	L'Abri caché	Le Bosquet
+1148	landmark	Nurserie Starbower	Le Bosquet
+1149	landmark	Affectation de Durmand	Le Bosquet
+1150	landmark	Abri des Veilleurs	Le Bosquet
+1151	landmark	L'Ame de l'Arbre clair	Le Bosquet
+1152	landmark	Tunnel de Courtilleracine	Le Bosquet
+1153	landmark	Tunnel des racines cachées	Le Bosquet
+1154	landmark	La Voie du Centaure	Le Bosquet
+1155	landmark	Cercle de l'Arbre clair	Le Bosquet
+1156	landmark	Porte du Protecteur	Le Bosquet
+1157	landmark	L'Abri de l'émissaire	Le Bosquet
+1158	landmark	La Voie du faiseur	Le Bosquet
+1159	landmark	Tablette de Ventari	Le Bosquet
+1160	waypoint	Point de passage du Focus de l'Éternité	Creuset de l'éternité
+1161	waypoint	Point de passage de la Préparation	Creuset de l'éternité
+1162	waypoint	Point de passage de la Recherche indépendante	Creuset de l'éternité
+1163	waypoint	Point de passage du Surveillant	Creuset de l'éternité
+1164	waypoint	Point de passage de la Purification	Creuset de l'éternité
+1165	waypoint	Point de passage du Diagnostic golemétrique	Creuset de l'éternité
+1166	waypoint	Point de passage du Réacteur arcanique	Creuset de l'éternité
+1167	waypoint	Point de passage de l'entrepôt de données central	Creuset de l'éternité
+1168	landmark	Dept. de l'Œil des arcanes	Rata Sum
+1169	landmark	Atrium de Polymock	Rata Sum
+1170	landmark	Conseil des arcanes	Rata Sum
+1171	landmark	Prototype de golem PR-1000	Rata Sum
+1172	landmark	Station de recrutement de l'Enqueste	Rata Sum
+1173	landmark	Quartier général des Pacificateurs	Rata Sum
+1174	landmark	Station de recrutement du Prieuré	Rata Sum
+1175	landmark	Le Magièdre	Rata Sum
+1176	landmark	Hall de la forge	Rata Sum
+1177	landmark	Calcul thaumaturgique	Rata Sum
+1178	landmark	Hall du dépeçage	Rata Sum
+1179	landmark	Station de recrutement des Veilleurs	Rata Sum
+1180	landmark	L'Aquatarium	Rata Sum
+1181	landmark	Station de démo engagée	Rata Sum
+1182	landmark	Station de travail de Zojja (Pas touche !)	Rata Sum
+1183	landmark	Station d'utilisation	Rata Sum
+1184	landmark	Hall de la manufacture	Rata Sum
+1189	landmark	Champ des défunts	L'Arche du Lion
+1190	landmark	Village de Moorookoo	L'Arche du Lion
+1191	landmark	Biochaudron alchimique	Province de Metrica
+1196	landmark	Breekeelee	Côte de la marée sanglante
+1197	landmark	Terres lorantls	Côte de la marée sanglante
+1198	waypoint	Point de passage de la Vieille fonderie de golems	Province de Metrica
+1199	waypoint	Point de passage du Loch	Province de Metrica
+1200	waypoint	Point de passage de la Fourmilière	Province de Metrica
+1201	waypoint	Point de passage des Terres michotls	Province de Metrica
+1202	waypoint	Point de passage Cuatl	Province de Metrica
+1203	waypoint	Point de passage d'Artegon	Province de Metrica
+1204	waypoint	Point de passage de la Cour magique	Rata Sum
+1205	waypoint	Point de passage de l'incubateur	Rata Sum
+1206	waypoint	Point de passage de la Comptabilité	Rata Sum
+1207	waypoint	Point de passage des apprentis	Rata Sum
+1208	waypoint	Point de passage de la recherche	Rata Sum
+1209	waypoint	Point de passage auxiliaire	Rata Sum
+1210	waypoint	Point de passage de la Terrasse commune supérieure	Le Bosquet
+1211	waypoint	Point de passage du Spéculateur	Le Bosquet
+1212	waypoint	Point de passage de Ronan	Le Bosquet
+1213	waypoint	Point de passage de Brumepierre	Champs de bataille éternels
+1214	waypoint	Point de passage du belvédère	Champs de bataille éternels
+1215	waypoint	Point de passage de la vallée	Champs de bataille éternels
+1216	waypoint	Point de passage des Basses terres	Champs de bataille éternels
+1221	landmark	Grotte venteuse	Passage de Lornar
+1222	landmark	Sanctuaire des secrets	Chapelle des Secrets
+1229	landmark	Torche du Lion	Île de la griffe
+1230	landmark	Passerelle de Lasciate	Détroit de la dévastation
+1231	landmark	Torche Brûlecuivre	Détroit de la dévastation
+1232	landmark	Point de ralliement du pacte	Détroit de la dévastation
+1233	landmark	Conservatoire	Détroit de la dévastation
+1234	waypoint	Point de passage du Ralliement	Détroit de la dévastation
+1235	waypoint	Point de passage de la Baie de l'Ascension	- Territoires alpins
+1236	waypoint	Point de passage frontalier	- Territoires alpins
+1237	waypoint	Point de passage de la Garnison	- Territoires alpins
+1238	waypoint	Point de passage de la Citadelle	- Territoires alpins
+1239	waypoint	Point de passage des Collines d'Askalion	- Territoires alpins
+1240	waypoint	Point de passage frontalier	- Territoires alpins
+1241	waypoint	Point de passage de la Baie du Noir déclin	- Territoires alpins
+1242	waypoint	Point de passage frontalier	- Territoires alpins
+1243	waypoint	Point de passage de la Garnison	- Territoires alpins
+1244	waypoint	Point de passage de la Citadelle	- Territoires alpins
+1245	waypoint	Point de passage des Collines Shadaran	- Territoires alpins
+1246	waypoint	Point de passage frontalier	- Territoires alpins
+1247	landmark	Chambre principale	Manoir de Caudecus
+1248	landmark	Chambre d'invité	Manoir de Caudecus
+1249	landmark	Cabinet du ministre	Manoir de Caudecus
+1250	landmark	Grand salon	Manoir de Caudecus
+1251	landmark	Salle de dessin	Manoir de Caudecus
+1252	landmark	Salle de lecture	Manoir de Caudecus
+1253	landmark	Atelier principal	Manoir de Caudecus
+1254	landmark	Cave à vin	Manoir de Caudecus
+1255	landmark	Cuisine	Manoir de Caudecus
+1256	landmark	Office	Manoir de Caudecus
+1257	landmark	Cellier	Manoir de Caudecus
+1258	landmark	Salle à manger principale	Manoir de Caudecus
+1259	landmark	Grotte d'Augur	Saut de Malchor
+1260	landmark	Camp de Jofast	Rivage maudit
+1261	landmark	Sentinelle de Rochecrête	Détroit des gorges glacées
+1262	waypoint	Point de passage de la Citadelle de granite	Falaises de Hantedraguerre
+1263	landmark	Demeure du Corbeau	Hoelbrak
+1264	waypoint	Point de ralliement de l'Equipe bleue	Héritage du Fléau de feu
+1265	waypoint	Point de ralliement de l'Equipe rouge	Héritage du Fléau de feu
+1266	landmark	Base de tir de Taupek	Falaises de Hantedraguerre
+1267	landmark	Tombeau de Morlog	Falaises de Hantedraguerre
+1268	landmark	Tombeau de Poudrenoire	Falaises de Hantedraguerre
+1269	landmark	Tombeau de Pierraille	Falaises de Hantedraguerre
+1270	landmark	Garde de Barnaby	Collines de Kessex
+1271	waypoint	Point de passage de l'Unité Hydrone	Province de Metrica
+1273	landmark	Présage	Saut de Malchor
+1274	landmark	Pyramide est	Île de la griffe
+1275	landmark	L'abîme et l'orgueil	Île de la griffe
+1276	landmark	Pyramide ouest	Île de la griffe
+1277	landmark	Étendue de Versoconjuration	Saut de Malchor
+1278	waypoint	Point de passage des ministres	Le Promontoire divin
+1279	waypoint	Point de passage du Cœur du Fléau de feu	Catacombes d'Ascalon
+1280	landmark	Chenil de Danador	Forêt de Caledon
+1281	landmark	Terres zopatls	Forêt de Caledon
+1282	landmark	Autel des secrets	Temple du Dieu oublié
+1283	landmark	Hauts d'Isgarren	Collines de Kessex
+1284	landmark	Marché indépendant	L'Arche du Lion
+1285	landmark	Mouillage du couchant	Rata Sum
+1286	landmark	Quai du levant	Rata Sum
+1287	waypoint	Point de passage du port	Rata Sum
+1288	waypoint	Point de passage du Balcon supérieur	Hoelbrak
+1289	landmark	Laboratoire terranexique	Province de Metrica
+1290	landmark	Laboratoire aéronautique	Province de Metrica
+1291	landmark	Maison de Brandalf	Falaises de Hantedraguerre
+1292	waypoint	Point de passage du Campement du Pacte	La Cité en ruine d'Arah
+1293	landmark	Troupeau de Lyot	Passage de Lornar
+1294	landmark	Bassin de divination	Œil du Nord
+1311	landmark	Croisement du Heaume spirituel	- Territoires alpins
+1312	landmark	Bastion de l'Ascension	- Territoires alpins
+1313	landmark	Scierie du Bosquet étoilé	- Territoires alpins
+1314	landmark	Vallon de bataille	- Territoires alpins
+1315	landmark	Camp de Brunecrinière	- Territoires alpins
+1316	landmark	Bastion d'Askalion	- Territoires alpins
+1317	landmark	Verger du Champion	- Territoires alpins
+1318	landmark	Village d'Eau-Verdoyante	- Territoires alpins
+1319	landmark	Camp de Chitterogg	- Territoires alpins
+1320	landmark	Bastion	- Territoires alpins
+1321	landmark	Carrière de Savoir divin	- Territoires alpins
+1322	landmark	Tour de Bruyerouge	- Territoires alpins
+1323	landmark	Tour de Lac Vert	- Territoires alpins
+1324	landmark	Tour de Boisrefuge	- Territoires alpins
+1325	landmark	Tour de l'aube	- Territoires alpins
+1326	landmark	Atelier de Valrouge	- Territoires alpins
+1327	landmark	Bastion Shadaran	- Territoires alpins
+1328	landmark	Bastion	- Territoires alpins
+1329	landmark	Croisement du Bras du Titan	- Territoires alpins
+1330	landmark	Bastion du Noir déclin	- Territoires alpins
+1331	landmark	Scierie de Havre gris	- Territoires alpins
+1332	landmark	Vallon de bataille	- Territoires alpins
+1333	landmark	Camp de Jais	- Territoires alpins
+1334	landmark	Tour de la Colline ensoleillée	- Territoires alpins
+1335	landmark	Tour du Sommet de Hautcrag	- Territoires alpins
+1336	landmark	Atelier de Bleuval	- Territoires alpins
+1337	landmark	Verger du Héros	- Territoires alpins
+1338	landmark	Village de Rubicon	- Territoires alpins
+1339	landmark	Camp de Neuskrittia	- Territoires alpins
+1340	landmark	Carrière du Saut de la Foi	- Territoires alpins
+1341	landmark	Tour de Bruyazur	- Territoires alpins
+1342	landmark	Tour de Lac rouge	- Territoires alpins
+1343	waypoint	Point de passage de l'Étreinte des lamentations	Falaises de Hantedraguerre
+1344	waypoint	Point de passage de la Citadelle de la Flamme	Montée de Flambecœur
+1345	waypoint	Point de passage de la Tonnelle du crépuscule	Forêt de Caledon
+1346	waypoint	Point de passage du Creuset de l'éternité	Mont Maelström
+1347	waypoint	Point de passage d'Honneur des vagues	Détroit des gorges glacées
+1348	waypoint	Point de passage de Long-route	Étreinte des lamentations
+1349	waypoint	Point de passage de l'entrepôt de données central	Creuset de l'éternité
+1350	waypoint	Point de passage du Diagnostic golemétrique	Creuset de l'éternité
+1351	waypoint	Point de passage de la Purification	Creuset de l'éternité
+1352	waypoint	Point de passage de la Préparation	Creuset de l'éternité
+1353	waypoint	Portail vers l'Arche du Lion	Cœur des Brumes
+1354	waypoint	Point de passage de l'entraînement au combat	Cœur des Brumes
+1355	landmark	Monument du champion	Cœur des Brumes
+1356	landmark	Arène	Cœur des Brumes
+1357	landmark	Île d'entraînement au combat	Cœur des Brumes
+1359	landmark	Aire d'entraînement d'Harfler	Cœur des Brumes
+1360	landmark	Marché	Cœur des Brumes
+1454	waypoint	Point de passage de Reza	La Cité en ruine d'Arah
+1455	waypoint	Point de passage des Rois bien-nés	La Cité en ruine d'Arah
+1456	waypoint	Point de passage des Bas-fonds du démon	La Cité en ruine d'Arah
+1457	waypoint	Point de passage du Panthéon	La Cité en ruine d'Arah
+1458	landmark	Caveau de Barradin	Plaines d'Ashford
+1459	landmark	QG de la Compagnie commerciale du Lion noir	L'Arche du Lion
+1486	landmark	Falooaloo	Falaises de Hantedraguerre
+1511	landmark	Mines du Cheval de Fer	Détroit des gorges glacées
+1526	landmark	Repaire de la sorcière sanglante	Collines de Kessex
+1527	landmark	Noyau mafique	Collines de Kessex
+1528	landmark	Canal de Quaggankeep	Champs de Gendarran
+1533	waypoint	Point de passage de la Place divine	La Cité en ruine d'Arah
+1534	waypoint	Point de passage de Sleive	Forêt de Caledon
+1535	landmark	Vieux labo de Flamen	Province de Metrica
+1557	landmark	Repos de Zhaïtan	La Cité en ruine d'Arah
+1559	landmark	Épave de l'Orgueil d'Ours Blanc	La victoire ou la mort
+1560	landmark	Campement du Pacte	La victoire ou la mort
+1561	landmark	Épave du Rêve de Riannoc	La victoire ou la mort
+1562	landmark	Épave du Lady Livia	La victoire ou la mort
+1577	landmark	Sanctuaire des Dents de l'Ourse	Falaises de Hantedraguerre
+1578	landmark	Sanctuaire du Cri de la Panthère	Falaises de Hantedraguerre
+1579	landmark	Sanctuaire de l'Aile du Corbeau	Falaises de Hantedraguerre
+1580	landmark	Sanctuaire de la Tanière du Loup	Falaises de Hantedraguerre
+1588	landmark	Aiguille de Peloopoo	Détroit des gorges glacées
+1597	landmark	Ecluse de Jorand	Congères d'Antreneige
+1598	landmark	Colline des Skritts	Passage de Lornar
+1599	landmark	Fouilles draguerres glorieuses #74	Passage de Lornar
+1600	landmark	Sanctuaire de la Chouette perdue	Passage de Lornar
+1601	landmark	Sanctuaire du Bec du Corbeau	Passage de Lornar
+1602	landmark	Sanctuaire d'Ourseroche	Passage de Lornar
+1603	landmark	Sanctuaire de la Patte du Loup	Passage de Lornar
+1604	landmark	Sanctuaire d'Ombrepanthère	Passage de Lornar
+1605	landmark	La Voie déchirée	Passage de Lornar
+1606	landmark	Moraine de Keddle	Passage de Lornar
+1607	landmark	Pont du Prieuré	Passage de Lornar
+1608	landmark	Porte mécanique à vapeur	Passage de Lornar
+1609	landmark	Zone d'atterrissage de marionnette	Passage de Lornar
+1610	landmark	Souvenir de la dame du ciel	Passage de Lornar
+1611	landmark	Affectation de Mette	Passage de Lornar
+1612	landmark	Crépuscule des Nains	Passage de Lornar
+1613	landmark	Rassemblement de Groguenoir	Passage de Lornar
+1614	landmark	Secret de Guutra	Passage de Lornar
+1615	landmark	Pré des Deux têtes	Passage de Lornar
+1616	landmark	Complexe de forage merveilleux #73	Passage de Lornar
+1617	waypoint	Point de passage du Démon des glaces	Passage de Lornar
+1618	waypoint	Point de passage du Pic du refuge	Passage de Lornar
+1619	waypoint	Point de passage d'Afgar	Passage de Lornar
+1620	waypoint	Point de passage du Pont de la Cascade	Passage de Lornar
+1621	landmark	Passage d'Épaveperdue	Côte de la marée sanglante
+1622	landmark	Produits alchimiques de bauxite	Saut de Malchor
+1623	landmark	Passage du Roi	Saut de Malchor
+1624	waypoint	Point de passage des Terres forestières de Plinthe	Détroit de la dévastation
+1625	waypoint	Point de passage de la Menace	Détroit de la dévastation
+1626	landmark	La Menace	Détroit de la dévastation
+1627	landmark	Aqueduc du vieux Grendich	Plateau de Diessa
+1628	landmark	Cavernes de Posternus	Passage de Lornar
+1629	landmark	Antreroche	Passage de Lornar
+1630	waypoint	Point de passage de la sécurité	Creuset de l'éternité
+1631	waypoint	Point de passage des Humbles	La victoire ou la mort
+1632	waypoint	Point de passage du "Glorieuse Tyrie"	La victoire ou la mort
+1639	waypoint	Point de passage de la Chambre de l'envie	Tonnelle du crépuscule
+1640	waypoint	Point de passage de l'Arboretum	Tonnelle du crépuscule
+1641	waypoint	Point de passage de la Chambre de l'envie	Tonnelle du crépuscule
+1642	waypoint	Point de passage du Jardin officiel	Manoir de Caudecus
+1643	waypoint	Point de passage du Jardin officiel	Manoir de Caudecus
+1644	waypoint	Point de passage de Vert-Horizon	Manoir de Caudecus
+1645	waypoint	Point de passage de la Cour de réception	Manoir de Caudecus
+1646	waypoint	Point de passage du Don des ascendants	La Cité en ruine d'Arah
+1647	waypoint	Point de passage des Domaines	La Cité en ruine d'Arah
+1648	waypoint	Point de passage de l'Orgueil des Ours blancs	La Cité en ruine d'Arah
+1649	waypoint	Point de passage des Caveaux de sainteté	La Cité en ruine d'Arah
+1650	waypoint	Point de passage caché	La Cité en ruine d'Arah
+1651	waypoint	Point de passage des Rois bien-nés	La Cité en ruine d'Arah
+1652	waypoint	Point de passage	La Cité en ruine d'Arah
+1653	waypoint	Point de passage du Don des ascendants	La Cité en ruine d'Arah
+1654	waypoint	Point de passage des Caveaux de sainteté	La Cité en ruine d'Arah
+1668	waypoint	Point de passage des Caveaux de sainteté	La Cité en ruine d'Arah
+1669	waypoint	Point de passage des morts-rêvants	La Cité en ruine d'Arah
+1670	waypoint	Point de passage de la Faille	La Cité en ruine d'Arah
+1671	waypoint	Point de passage du Cristal céleste	La Cité en ruine d'Arah
+1672	landmark	Corral de Kappa	La Vallée de la reine
+1673	landmark	Station hydraulique de Beetletun	La Vallée de la reine
+1674	landmark	Bois Grand-cœur	La Vallée de la reine
+1675	landmark	Ranch de Bar Curtis	La Vallée de la reine
+1676	landmark	Quais des frères Duran	La Vallée de la reine
+1677	landmark	Aquabase de la Terreur 7	Mont Maelström
+1678	landmark	Nouvelle Skritterie	Mont Maelström
+1679	landmark	Fondations de la forge	Mont Maelström
+1680	landmark	Avant-poste de Gloomirk	Mont Maelström
+1681	landmark	Moussmarée Walfts	Mont Maelström
+1682	landmark	Repaire d'Aliyana	Mont Maelström
+1683	landmark	Vents de la traîtrise	Mont Maelström
+1684	landmark	Cœur du Maelström	Mont Maelström
+1685	landmark	Chutes de la Bouche du diable	Mont Maelström
+1686	landmark	Plaines de Felsic	Mont Maelström
+1687	landmark	Camp de base de Clandest	Mont Maelström
+1688	landmark	Terres lonatls	Mont Maelström
+1689	landmark	Plate-forme d'observation XKV	Mont Maelström
+1690	landmark	Crique de la réflexion	Saut de Malchor
+1691	landmark	Cœur de corruption	Contreforts du voyageur
+1700	landmark	Pierres fantômes	Falaises de Hantedraguerre
+1701	landmark	Station de la Lumière froide	Détroit des gorges glacées
+1709	landmark	Camp du Guet de Gorgesang	Champs de ruine
+1731	waypoint	Point de passage de l'Armada putride	La Cité en ruine d'Arah
+1732	unlock	Étreinte des Lamentations	Falaises de Hantedraguerre
+1733	unlock	Catacombes d'Ascalon	Plaines d'Ashford
+1734	unlock	Citadelle de la Flamme	Montée de Flambecœur
+1735	unlock	La Cité en ruine d'Arah	Rivage maudit
+1736	unlock	Tonnelle du crépuscule	Forêt de Caledon
+1737	unlock	Manoir de Caudecus	La Vallée de la reine
+1738	unlock	Creuset de l'éternité	Mont Maelström
+1739	unlock	Honneur des vagues	Détroit des gorges glacées
+1740	waypoint	Point de passage de l'Ascension vers la folie	Ascension vers la folie
+1741	waypoint	Point de passage du Labyrinthe du Roi Dément	Labyrinthe du Roi Dément
+1742	waypoint	Point de ralliement de l'Equipe bleue	Fracas de la Faucheuse
+1743	waypoint	Point de ralliement de l'Equipe rouge	Fracas de la Faucheuse
+1744	waypoint	Point de passage du Point du Lion	Crique de Sud-Soleil
+1745	waypoint	Point de ralliement de l'Equipe bleue	Temple de la Tempête silencieuse
+1746	waypoint	Point de passage du Point de la Fierté	Crique de Sud-Soleil
+1747	waypoint	Point de ralliement de l'Equipe rouge	Temple de la Tempête silencieuse
+1748	landmark	Champ d'onyx	Crique de Sud-Soleil
+1749	waypoint	Point de passage de l'Îlot de perles	Crique de Sud-Soleil
+1750	landmark	Vaisseau du corsaire	Crique de Sud-Soleil
+1751	waypoint	Point de passage de Camp karka	Crique de Sud-Soleil
+1752	waypoint	Point de passage du Refuge d'Owain	Crique de Sud-Soleil
+1753	landmark	Passage des braises	Crique de Sud-Soleil
+1754	landmark	Folie de Canach	Crique de Sud-Soleil
+1755	landmark	Ruche karka	Crique de Sud-Soleil
+1756	waypoint	Point de passage de l'avant-poste de Kiel	Crique de Sud-Soleil
+1757	unlock	Fractales des Brumes	L'Arche du Lion
+1758	landmark	Plage de Macha	L'Arche du Lion
+1759	landmark	Quartier général de l'Ordre des Soupirs	L'Arche du Lion
+1760	waypoint	Point de ralliement de l'Equipe bleue	Chaos des neiges
+1761	waypoint	Point de ralliement de l'Equipe rouge	Chaos des neiges
+1762	waypoint	Point de passage de l'aéronef du fabricant de jouets	Infinirarium de Tixx
+1763	waypoint	Réapparition de joueur	Joueffervescence
+1764	waypoint	Point de passage du Rocher de l'épave	Rivage maudit
+1765	waypoint	Point de passage des Bas-fonds funestes	Détroit de la dévastation
+1766	waypoint	Point de passage du Bout de la route	Étreinte des lamentations
+1767	waypoint	Point de passage de la Base de l'Enqueste	Étreinte des lamentations
+1768	waypoint	Point de passage coopératif	Étreinte des lamentations
+1769	waypoint	Point de passage des Mines de Zalten	Étreinte des lamentations
+1770	waypoint	Point de passage de la Carrière	Étreinte des lamentations
+1771	waypoint	Point de passage de la Citadelle	Étreinte des lamentations
+1772	waypoint	Point de passage du Repaire de Faolain	Tonnelle du crépuscule
+1773	waypoint	Point de passage de la Nurserie	Tonnelle du crépuscule
+1774	waypoint	Point de passage des Pédipalpes	Tonnelle du crépuscule
+1775	waypoint	Point de passage du Palais des récoltes	Honneur des vagues
+1776	waypoint	Point de passage du Passavant	Honneur des vagues
+1777	waypoint	Point de passage du Hall de l'équilibre	Honneur des vagues
+1778	waypoint	Point de passage des Quartiers de poupe	Honneur des vagues
+1779	waypoint	Point de passage de la Proue	Honneur des vagues
+1780	waypoint	Point de passage des Tubes de Geoffrey	Honneur des vagues
+1781	waypoint	Point de passage du Tunnel est	Manoir de Caudecus
+1782	waypoint	Point de ralliement de l'Equipe bleue	Observatoire des Esprits
+1783	waypoint	Point de ralliement de l'Equipe rouge	Observatoire des Esprits
+1784	waypoint	Point de passage du Domaine de Langmar	Plaines d'Ashford
+1785	waypoint	Point de passage du Laboratoire de proxémie	Terres sauvages de Brisban
+1791	waypoint	Point de passage de la Cache d'Angvar	Congères d'Antreneige
+1792	landmark	Maison de Rugnar	Contreforts du voyageur
+1793	landmark	Elevage du nord de Nolan	Plateau de Diessa
+1794	waypoint	Point de passage du Sanctuaire d'obsidienne	Sanctuaire d'obsidienne
+1795	waypoint	Point de passage du Sanctuaire d'obsidienne	Sanctuaire d'obsidienne
+1796	waypoint	Point de passage du Sanctuaire d'obsidienne	Sanctuaire d'obsidienne
+1797	waypoint	Point de ralliement de l'Equipe bleue	Marteau céleste
+1798	waypoint	Point de ralliement de l'Equipe rouge	Marteau céleste
+1799	waypoint	Point de passage de l'entrée de la caverne	Fournaise de la Fusion
+1800	waypoint	Point de passage du belvédère	Fournaise de la Fusion
+1801	waypoint	Point de passage du traitement des minerais	Fournaise de la Fusion
+1802	landmark	Maison Tubavapeur	Crique de Sud-Soleil
+1803	waypoint	Point de ralliement de l'Equipe bleue	Arène de dragonball
+1804	waypoint	Point de ralliement de l'Equipe rouge	Arène de dragonball
+1805	landmark	Le Cul-de-sac	Le Promontoire divin
+1806	waypoint	Point de passage du Bourdon de la brute	Refuge étherlame
+1807	waypoint	Point de passage des Conceptions kleptotroniques avancées	Refuge étherlame
+1808	waypoint	Point de passage du Taudis de la canaille	Refuge étherlame
+1809	landmark	Deuxième site étherlame	Champs de Gendarran
+1810	landmark	Cave du voleur	Refuge étherlame
+1818	waypoint	Point de ralliement de l'Equipe bleue	Arène des aspects
+1819	waypoint	Point de ralliement de l'Equipe rouge	Arène des aspects
+1820	waypoint	Point de passage des Quais du bazar	Falaises labyrinthiques
+1821	waypoint	Point de passage des Quais du ciel	Falaises labyrinthiques
+1823	waypoint	Point de passage du Pavillon de la Couronne	Le Pavillon de la Couronne
+1825	landmark	Fontaine de limon	Tonnelle du crépuscule
+1826	landmark	La Forêt rasée	Tonnelle du crépuscule
+1827	landmark	Chantier naval étherlame	Tonnelle du crépuscule
+1828	landmark	Salle de sécurité	Tonnelle du crépuscule
+1829	landmark	Générateur de cœur mécanique	Tonnelle du crépuscule
+1830	waypoint	Point de passage du Sous-bois de la Fougère	Tonnelle du crépuscule
+1831	waypoint	Point de passage du Chantier naval étherlame	Tonnelle du crépuscule
+1832	waypoint	Point de passage de la Fontaine de limon	Tonnelle du crépuscule
+1833	waypoint	Point de passage de Nolani hanté	La Citadelle noire
+1834	waypoint	Point de passage du Labyrinthe du Roi Dément	Labyrinthe du Roi Dément
+1837	landmark	Camp de la Crête du tonnerre	Collines de Kessex
+1838	landmark	Tour des Cauchemars	Collines de Kessex
+1839	waypoint	Point de passage de la tour des Cauchemars	La tour des Cauchemars (public)
+1840	waypoint	Réacteur de Thaumanova	Fractales des Brumes
+1841	waypoint	Point de passage du fleuve trompeur	Passage de Lornar
+1843	landmark	Forteresse aride	La lisière des Brumes
+1844	landmark	Réacteur de la Forteresse aride	La lisière des Brumes
+1845	landmark	Réacteur de l'Aiguille infernale	La lisière des Brumes
+1846	landmark	Réacteur du Temple surdimensionné	La lisière des Brumes
+1847	landmark	Réacteur du Pic de Pierregard	La lisière des Brumes
+1848	landmark	Réacteur de Tonnecrevasse	La lisière des Brumes
+1849	landmark	Réacteur du Perchoir de Tytone	La lisière des Brumes
+1850	landmark	Forge	La lisière des Brumes
+1851	landmark	Sanctuaire	La lisière des Brumes
+1852	landmark	Clocher	La lisière des Brumes
+1853	landmark	Perchoir de Tytone	La lisière des Brumes
+1854	landmark	Tonnecrevasse	La lisière des Brumes
+1855	landmark	Tunnel de guivre	La lisière des Brumes
+1856	landmark	Atelier	La lisière des Brumes
+1857	landmark	Aéroport	La lisière des Brumes
+1858	landmark	Aiguille infernale	La lisière des Brumes
+1859	waypoint	Point de passage de la zone sécurisée croissante	La lisière des Brumes
+1860	landmark	Statue	La lisière des Brumes
+1861	landmark	Observatoire	La lisière des Brumes
+1862	landmark	Autel	La lisière des Brumes
+1863	landmark	Pic de Pierregard	La lisière des Brumes
+1864	landmark	Temple surdimensionné	La lisière des Brumes
+1865	waypoint	Point de passage de la zone sécurisée du Promontoire gelé	La lisière des Brumes
+1866	waypoint	Point de passage de la zone sécurisée de Morneterre	La lisière des Brumes
+1867	waypoint	Point de passage de la Forteresse aride	La lisière des Brumes
+1868	waypoint	Point de passage de Tonnecrevasse	La lisière des Brumes
+1869	waypoint	Point de passage du Temple surdimensionné	La lisière des Brumes
+1874	landmark	Épave du Percegarde	L'Arche du Lion
+1884	landmark	Quartier général de l'Initiative de la guilde	L'Arche du Lion
+1894	waypoint	Point de ralliement de l'Equipe bleue	Cour
+1895	waypoint	Point de ralliement de l'Equipe rouge	Cour
+1904	landmark	Avant-poste de Brouille-racine	Terres sauvages de Brisban
+1905	landmark	Canyon de l'éperon courbé	Cimesèche
+1906	landmark	Désert des plaines	Cimesèche
+1907	landmark	Canyon étrangleur	Cimesèche
+1908	landmark	Chute du navire	Cimesèche
+1909	landmark	Site du crash n°1	Cimesèche
+1910	landmark	Montée de la Salamandre	Cimesèche
+1913	landmark	Roche antagoniste	Cimesèche
+1914	waypoint	Point de passage de Prospérité	Cimesèche
+1915	landmark	Mine abandonnée	Cimesèche
+1916	landmark	Repaire de la Bête	Cimesèche
+1917	landmark	Mine de Prospérité	Cimesèche
+1918	landmark	Ville de Prospérité	Cimesèche
+1919	waypoint	Point de passage du Camp de la détermination	Les Contrées sauvages d'argent
+1920	waypoint	Point de passage d'entrée à la Cimesèche	Cimesèche
+1922	landmark	Machine d'Omadd	Cimesèche
+1923	landmark	Point de convergence des lignes de force	Cimesèche
+1926	waypoint	Point de passage du pont de lianes	Cimesèche
+1927	landmark	Refuge de restauration	Cimesèche
+1928	waypoint	Point de passage du refuge de restauration	Cimesèche
+1929	landmark	Tonnelle d'Azarr	Cimesèche
+1930	landmark	Palais de l'escarpement rocheux	Cimesèche
+1931	landmark	Oasis	Cimesèche
+1932	landmark	Site du crash n°2	Cimesèche
+1934	landmark	Maraude du raptor	Cimesèche
+1939	landmark	Base de l'Enqueste	Cimesèche
+1940	landmark	Atelier de réparation	Cimesèche
+1942	landmark	Site du crash n°3	Cimesèche
+1943	waypoint	Point de passage de l'atelier de réparation	Cimesèche
+1947	waypoint	Point de ralliement de l'Equipe rouge	Bataille du crépuscule du Champion
+1949	waypoint	Point de ralliement de l'Equipe bleue	Bataille du crépuscule du Champion
+1950	landmark	Le labyrinthe	Les Contrées sauvages d'argent
+1951	landmark	Arche de l'envergure	Les Contrées sauvages d'argent
+1958	landmark	Bastion de Roche-rouge	Les Contrées sauvages d'argent
+1959	landmark	Camp de la détermination	Les Contrées sauvages d'argent
+1961	landmark	Grotte indigo	Les Contrées sauvages d'argent
+1962	landmark	Cascade d'ambre	Les Contrées sauvages d'argent
+1963	landmark	Oasis bleue	Les Contrées sauvages d'argent
+1964	waypoint	Point de passage des profondeurs silencieuses	Les Contrées sauvages d'argent
+1965	landmark	Vice-versa	Les Contrées sauvages d'argent
+1966	landmark	Terre du fugitif	Les Contrées sauvages d'argent
+1967	landmark	Cavernes de la dune de sable	Les Contrées sauvages d'argent
+1968	landmark	Fissure du Filou	Les Contrées sauvages d'argent
+1970	landmark	Sables des lamentations	Les Contrées sauvages d'argent
+1971	landmark	Charniers	Les Contrées sauvages d'argent
+1972	landmark	Carrière asséchée	Les Contrées sauvages d'argent
+1973	landmark	Saut du Nord	Les Contrées sauvages d'argent
+1974	landmark	Refuge du spectre	Les Contrées sauvages d'argent
+1975	landmark	Enchevêtrement de rageliane	Les Contrées sauvages d'argent
+1976	landmark	Fonderie du marginal	Les Contrées sauvages d'argent
+1978	waypoint	Point de passage de la grotte de Quai-sec	Les Contrées sauvages d'argent
+1984	waypoint	Point de passage du Pic de l'épave	Orée d'émeraude
+1985	landmark	Feuillage d'or	Orée d'émeraude
+1986	landmark	Perchoir de la matriarche	Dans la jungle
+1987	landmark	Trône de Luminante	Bassin aurique
+1988	landmark	Belvédère arborescent	Connaissances cachées
+1990	waypoint	Point de passage de la Cité des Oubliés	Bassin aurique
+1991	landmark	Épave du Brisetonnerre	Orée d'émeraude
+1992	landmark	Garde des Épines	Bassin aurique
+1993	landmark	Porte nord	Bassin aurique
+1994	landmark	Habitation des kaanas	Orée d'émeraude
+1995	landmark	Épave de la Bravoure de Mellaggan	Orée d'émeraude
+1996	waypoint	Point de passage du Camp ogre	Profondeurs verdoyantes
+1997	landmark	Caverne du surveillant	Bassin aurique
+1998	landmark	Générateur des lignes de force	Connaissances cachées
+1999	landmark	Épave du Pointe-Mortelle	Orée d'émeraude
+2000	landmark	Plateau ronceux	Bassin aurique
+2001	landmark	Mur de lianes	Connaissances cachées
+2002	landmark	Terres capitzels	Bassin aurique
+2003	landmark	Terres quazupls	Bassin aurique
+2004	landmark	Clairière éplorée	Bassin aurique
+2005	waypoint	Point de passage de la Bravoure de Mellaggan	Orée d'émeraude
+2006	waypoint	Point de passage du voyageur	Bassin aurique
+2007	landmark	Chambre intérieure	Bassin aurique
+2008	landmark	Reflux de force	Connaissances cachées
+2009	landmark	Terres jawatls	Bassin aurique
+2010	landmark	Centre de commandement de Rata Novus	Connaissances cachées
+2011	landmark	Refuge paisible	Connaissances cachées
+2012	landmark	Zone de déploiement des chaks	Connaissances cachées
+2013	waypoint	Point de passage de la Garde du Nord	Bassin aurique
+2014	waypoint	Point de passage du Pic de l'épave	Orée d'émeraude
+2015	landmark	Nid de chaks délabré	Connaissances cachées
+2016	waypoint	Point de passage de Jaka Itzel	Orée d'émeraude
+2017	landmark	Temple d'Ameyalli	Orée d'émeraude
+2018	landmark	Masques des défunts	Bassin aurique
+2019	landmark	Porte est	Bassin aurique
+2020	landmark	Site du crash des Ogres	Connaissances cachées
+2021	landmark	Ruines précaires	Orée d'émeraude
+2022	landmark	Terrasse de Kaana	Connaissances cachées
+2023	landmark	Racines noueuses	Connaissances cachées
+2024	landmark	Piliers de l'héritage	Bassin aurique
+2025	landmark	Grand saut	Dans la jungle
+2026	landmark	Nouvelle Skrittaire	Bassin aurique
+2028	landmark	Site du crash de l'Endurance	Bassin aurique
+2029	landmark	Porte ouest	Bassin aurique
+2030	landmark	Grottes de fumerolles	Orée d'émeraude
+2031	waypoint	Point de passage de l'Envol de Faren	Orée d'émeraude
+2032	landmark	Bosquet aux cadavres	Orée d'émeraude
+2033	landmark	Antre du viveliane	Bassin aurique
+2035	landmark	Descente de la cascade	Connaissances cachées
+2036	landmark	Coztic Itzel	Orée d'émeraude
+2037	waypoint	Point de passage de la Confluence des lignes de force	Profondeurs verdoyantes
+2038	landmark	Porte sud	Bassin aurique
+2039	landmark	Périmètre de Rata Novus	Connaissances cachées
+2040	landmark	Ruines de la Garde de l'Est	Bassin aurique
+2041	landmark	Camp du Prieuré de la Garde du Nord	Bassin aurique
+2042	landmark	Chutes batraciennes	Orée d'émeraude
+2043	landmark	Ravin inquiétant	Orée d'émeraude
+2044	landmark	Terres fahautls	Bassin aurique
+2045	landmark	Source ombragée	Orée d'émeraude
+2046	landmark	Cercle de l'ascendant	Dans la jungle
+2048	waypoint	Point de passage du Camp du B.R.U.T.A.L.	Profondeurs verdoyantes
+2049	waypoint	Point de passage des Ruines sibyllines	Orée d'émeraude
+2050	waypoint	Point de passage de la Garde du Sud	Bassin aurique
+2051	waypoint	Point de passage de Rata Novus	Profondeurs verdoyantes
+2052	landmark	Lac souterrain	Connaissances cachées
+2053	landmark	Camp de l'Ordre des Soupirs	Connaissances cachées
+2054	waypoint	Point de passage de la Garde de l'Ouest	Bassin aurique
+2055	landmark	Vergers de Rata Novus	Connaissances cachées
+2056	waypoint	Point de passage du Campement du Pacte	Orée d'émeraude
+2057	landmark	Passage condamné	Bassin aurique
+2058	landmark	Clairière abritée	Connaissances cachées
+2060	waypoint	Point de passage de Teku Nuhoch	Profondeurs verdoyantes
+2061	landmark	Vallon de l'ancrage	Orée d'émeraude
+2062	waypoint	Point de passage du Camp de l'Ordre des Soupirs	Profondeurs verdoyantes
+2063	landmark	Viaduc sinueux	Connaissances cachées
+2064	waypoint	Point de passage du Campement de base du Pacte	Repli du dragon
+2065	landmark	Tombeau éveillé	Orée d'émeraude
+2066	landmark	Chute de la gloire	Orée d'émeraude
+2067	landmark	Plateau de Dansepoussière	Orée d'émeraude
+2068	landmark	Ruche en terrasse	Connaissances cachées
+2069	landmark	Avant-poste de l'Ordre des Soupirs	Connaissances cachées
+2071	landmark	Paradis déraciné	Orée d'émeraude
+2072	landmark	Perchoir précaire	Dans la jungle
+2073	landmark	Forêt silencieuse	Dans la jungle
+2074	landmark	Cavernes bruissantes	Orée d'émeraude
+2075	landmark	Intrication	Orée d'émeraude
+2076	waypoint	Point de passage du Sentier tortueux	Orée d'émeraude
+2077	landmark	Pavillon de Bongo	Orée d'émeraude
+2080	unlock	Raid – Taillis abandonné	Orée d'émeraude
+2089	landmark	Antre de Boettiger	- Territoires du désert
+2091	waypoint	Point de passage d'urgence du Rempart stoïque A	- Territoires du désert
+2094	waypoint	Point de passage du Camp avant central	Repli du dragon
+2097	landmark	Campement de base du Pacte	Repli du dragon
+2100	waypoint	Point de passage d'urgence de l'Avant-poste dévasté	- Territoires du désert
+2103	waypoint	Point de passage d'urgence du Ravin de Langor	Champs de bataille éternels
+2104	landmark	Ruines glorieuses	Repli du dragon
+2107	waypoint	Point de passage des fouilles du canyon	Précipice perdu
+2109	waypoint	Point de passage d'urgence de la Corniche d'Aldon	Champs de bataille éternels
+2110	landmark	Premier point de contrôle nord	Repli du dragon
+2115	landmark	Palais du balbuzard	- Territoires du désert
+2117	landmark	Avant-poste dévasté	- Territoires du désert
+2118	landmark	Griffure de Tikiteck	- Territoires du désert
+2119	landmark	Cimetière des lignes de force	Repli du dragon
+2121	waypoint	Point de passage du Vallon du chak	Bassin aurique
+2124	landmark	Nid des vouivres	Repli du dragon
+2125	landmark	Belvédère des lignes de force	Repli du dragon
+2127	waypoint	Point de passage du Camp avant sud	Repli du dragon
+2129	waypoint	Point de passage du belvédère des berges	Précipice perdu
+2130	waypoint	Point de passage du Camp avant nord	Repli du dragon
+2131	waypoint	Point de passage du Camp avancé central	Repli du dragon
+2134	waypoint	Point de passage d'urgence du Col d'Anzalias	Champs de bataille éternels
+2135	waypoint	Point de passage sud du Domaine du dragon	Repli du dragon
+2142	landmark	Corniche de Mordremoth	Repli du dragon
+2143	landmark	Troisième point de contrôle central	Repli du dragon
+2145	waypoint	Point de passage d'urgence du Petit ravin de Klovan	Champs de bataille éternels
+2147	landmark	Premier point de contrôle central	Repli du dragon
+2148	waypoint	Point de passage d'urgence de la Percée de Gardogre	Champs de bataille éternels
+2149	waypoint	Point de passage du Camp avancé sud	Repli du dragon
+2150	waypoint	Point de passage du Palais du balbuzard	- Territoires du désert
+2154	waypoint	Point de passage d'urgence de la Falaise de Bravost	Champs de bataille éternels
+2156	waypoint	Point de passage de la Garde de l'Est	Bassin aurique
+2162	waypoint	Point de passage des Mines de la caverne	Caverne dorée
+2167	waypoint	Point de passage de la place supérieure	Précipice perdu
+2169	landmark	Vestiges rata novans	Repli du dragon
+2170	waypoint	Point de passage sud du Campement de base du Pacte	Repli du dragon
+2172	landmark	Vignoble mordrem	Repli du dragon
+2175	landmark	Alcôve de la sérénité	Repli du dragon
+2176	landmark	Tour viciée nord	Repli du dragon
+2177	landmark	Deuxième point de contrôle sud	Repli du dragon
+2181	landmark	Tour viciée centrale	Repli du dragon
+2182	landmark	Crypte embrasée	- Territoires du désert
+2184	waypoint	Point de passage de la Traverse du dragon	Profondeurs verdoyantes
+2187	waypoint	Point de passage frontalier	- Territoires du désert
+2190	landmark	Campement de McLain	- Territoires du désert
+2191	landmark	Dépôt Vilebrequin	- Territoires du désert
+2193	landmark	Premier point de contrôle sud	Repli du dragon
+2195	waypoint	Point de passage d'urgence du Palais du balbuzard A	- Territoires du désert
+2196	landmark	Escarpement de Crocalciné	- Territoires du désert
+2197	landmark	Nécropole éternelle	- Territoires du désert
+2199	waypoint	Point de passage central du Domaine du dragon	Repli du dragon
+2200	landmark	Tour viciée sud	Repli du dragon
+2207	waypoint	Point de passage d'urgence de l'Académie de O'del	- Territoires du désert
+2209	waypoint	Point de passage d'urgence de la Nécropole éternelle	- Territoires du désert
+2210	landmark	Deuxième point de contrôle nord	Repli du dragon
+2217	waypoint	Point de passage d'urgence du Flanc de Veloka	Champs de bataille éternels
+2221	waypoint	Point de passage de la Crypte embrasée	- Territoires du désert
+2222	waypoint	Point de passage nord du Domaine du dragon	Repli du dragon
+2223	landmark	Rempart stoïque	- Territoires du désert
+2224	landmark	Repaire de chaks	Repli du dragon
+2225	landmark	Laboratoire de Hamm	- Territoires du désert
+2228	waypoint	Point de passage d'urgence du Château Brumepierre A	Champs de bataille éternels
+2233	landmark	Troisième point de contrôle nord	Repli du dragon
+2238	waypoint	Point de passage du tunnel du sanctuaire	Précipice perdu
+2241	landmark	La fosse inverse	Repli du dragon
+2242	waypoint	Point de passage du Précipice central	Précipice perdu
+2243	waypoint	Point de passage d'urgence du belvédère A	Champs de bataille éternels
+2244	waypoint	Point de passage d'urgence du Dépôt Vilebrequin	- Territoires du désert
+2247	waypoint	Point de passage frontalier	- Territoires du désert
+2248	waypoint	Point de passage d'urgence de la Crypte embrasée A	- Territoires du désert
+2252	waypoint	Point de passage d'urgence des Basses terres A	Champs de bataille éternels
+2253	waypoint	Point de passage d'urgence du Lac Quentin	Champs de bataille éternels
+2259	landmark	Puits du Souffle-poussière	- Territoires du désert
+2260	waypoint	Point de passage de la Tour de l'arène	Caverne dorée
+2263	waypoint	Point de passage d'urgence du Bourbier de Jerrifer	Champs de bataille éternels
+2267	waypoint	Point de passage d'urgence du Ravin de Durios	Champs de bataille éternels
+2271	landmark	Académie de O'del	- Territoires du désert
+2273	waypoint	Point de passage de la Grand-place de la cascade	Caverne dorée
+2274	landmark	Deuxième point de contrôle central	Repli du dragon
+2275	waypoint	Point de passage d'urgence de la Faille de Mendon	Champs de bataille éternels
+2276	waypoint	Point de passage de la Citadelle	- Territoires du désert
+2280	waypoint	Point de passage d'urgence de la Piste du ruisseau sauvage	Champs de bataille éternels
+2289	landmark	Troisième point de contrôle sud	Repli du dragon
+2290	landmark	Marais vicié	Repli du dragon
+2291	landmark	Ferme Bauer	- Territoires du désert
+2292	waypoint	Point de passage de l'amphithéâtre de Grès	Précipice perdu
+2293	waypoint	Point de passage d'urgence de la vallée A	Champs de bataille éternels
+2294	landmark	Refuge de Roy	- Territoires du désert
+2301	waypoint	Point de passage du Rempart stoïque	- Territoires du désert
+2303	waypoint	Point de passage de la Caverne centrale	Caverne dorée
+2304	waypoint	Point de passage du Camp avancé nord	Repli du dragon
+2305	waypoint	Point de passage du Tunnel de la surface	Caverne dorée
+2307	landmark	Oasis centrale	- Territoires du désert
+2309	landmark	Rivière des Esprits	Vallée des esprits
+2310	landmark	Avant-poste abandonné	Vallée des esprits
+2311	landmark	Le Poêlon	Vallée des esprits
+2312	landmark	Pylônes mystérieux	Vallée des esprits
+2313	landmark	Repos du bandit	Vallée des esprits
+2314	landmark	Perchoir de Gorseval	Vallée des esprits
+2315	landmark	Antre du Paressor	Passage de la rédemption
+2316	landmark	Camp de prisonniers	Passage de la rédemption
+2317	landmark	Temple de la rédemption	Passage de la rédemption
+2318	landmark	Fosse brûlante	Passage de la rédemption
+2320	landmark	Gorge de l'homme mort	Passage de la rédemption
+2321	landmark	Camp de travail	Passage de la rédemption
+2322	waypoint	Point de passage d'urgence de la garnison A	- Territoires alpins
+2324	waypoint	Point de passage d'urgence	- Territoires alpins
+2325	waypoint	Point de passage d'urgence	- Territoires alpins
+2328	waypoint	Point de passage d'urgence des Collines d'Askalion A	- Territoires alpins
+2336	waypoint	Point de passage de l'aérodrome	Aérodrome de l'Arche du Lion
+2337	waypoint	Point de passage d'urgence des Collines Shadaran A	- Territoires alpins
+2338	waypoint	Point de passage d'urgence	- Territoires alpins
+2339	waypoint	Point de passage d'urgence	- Territoires alpins
+2341	waypoint	Point de passage d'urgence	- Territoires alpins
+2343	waypoint	Point de passage d'urgence	- Territoires alpins
+2345	waypoint	Point de passage d'urgence	- Territoires alpins
+2347	waypoint	Point de passage d'urgence de la garnison A	- Territoires alpins
+2348	waypoint	Point de passage d'urgence	- Territoires alpins
+2350	waypoint	Point de passage d'urgence de la Baie du Noir déclin A	- Territoires alpins
+2351	waypoint	Point de passage d'urgence de la Baie de l'Ascension A	- Territoires alpins
+2357	landmark	Temple de l'éveil	Forteresse des Fidèles
+2359	landmark	Bastion du dévot	Forteresse des Fidèles
+2364	landmark	Tunnel du répit	Forteresse des Fidèles
+2365	landmark	Château corrompu	Forteresse des Fidèles
+2366	landmark	Fontaine de purification	Forteresse des Fidèles
+2367	waypoint	Point de passage des Profondeurs du Gouffre	Marais de la pierre de sang
+2369	waypoint	Point de passage du niveau zéro	Marais de la pierre de sang
+2371	waypoint	Point de ralliement de l'Equipe bleue	Revanche du Capricorne
+2373	landmark	Temple du renouveau	Marais de la pierre de sang
+2374	landmark	Colisée des Fidèles	Marais de la pierre de sang
+2375	waypoint	Point de ralliement de l'Equipe rouge	Revanche du Capricorne
+2377	landmark	Tombeau des confesseurs	Marais de la pierre de sang
+2379	waypoint	Point de passage de l'aéronef du Garde-âme	Marais de la pierre de sang
+2380	landmark	Sources de la rédemption	Marais de la pierre de sang
+2382	waypoint	Point de passage du Belvédère du zélote	Marais de la pierre de sang
+2383	landmark	Temple du sacrifice	Marais de la pierre de sang
+2384	landmark	Précipice du cratère	Marais de la pierre de sang
+2385	landmark	Coquille de la pierre de sang	Marais de la pierre de sang
+2386	landmark	Crânes jumeaux	Baie des braises
+2387	landmark	Salle de la fournaise	Baie des braises
+2389	waypoint	Point de passage du Portail de Griffure	Baie des braises
+2390	landmark	Horreur brillante	Baie des braises
+2391	landmark	Barrières d'aiguilles	Baie des braises
+2392	landmark	Tête de pont asura	Baie des braises
+2393	landmark	Griffure du fou	Baie des braises
+2394	waypoint	Point de ralliement de l'Equipe bleue	Amphithéâtre éternel
+2395	landmark	Drain de magma	Baie des braises
+2396	landmark	Nids de balbuzard	Baie des braises
+2398	landmark	Rivière de lave	Baie des braises
+2399	waypoint	Point de passage du Promontoire	Baie des braises
+2400	waypoint	Point de passage de la Piste escarpée	Baie des braises
+2401	landmark	Retraite de Quickk	Baie des braises
+2402	landmark	Cirque spectaculaire d'Ivy	Baie des braises
+2403	landmark	Piédestal des flammes	Baie des braises
+2405	landmark	Bassins de scories	Baie des braises
+2407	waypoint	Point de ralliement de l'Equipe rouge	Amphithéâtre éternel
+2409	landmark	Couvoir karka	Baie des braises
+2410	landmark	Point de départ du sentier de la falaise	Baie des braises
+2412	landmark	Avant-poste d'observation	Baie des braises
+2414	landmark	Griffure du Visage de pierre	Baie des braises
+2415	landmark	Champ de foire de la Reine des paresseux	Baie des braises
+2421	landmark	Entrée condamnée	Baie des braises
+2423	landmark	Mélange-a-tron	Baie des braises
+2424	waypoint	Point de passage du Cirque des naufragés	Baie des braises
+2425	landmark	Gueule de la destruction	Baie des braises
+2426	landmark	Perchoir du titan	Baie des braises
+2427	landmark	Calice des larmes	Baie des braises
+2428	landmark	Chaudron bouillonnant	Confins de Givramer
+2429	waypoint	Point de passage de l'Éclipse des lamentations	Confins de Givramer
+2430	landmark	Lagon des Volutes	Confins de Givramer
+2431	landmark	Trône de Chokocooka	Confins de Givramer
+2432	landmark	Chute de glace de Barreflot	Confins de Givramer
+2433	waypoint	Point de passage de l'Accueil de Koda	Confins de Givramer
+2434	landmark	Profondeurs de Gooloopa	Confins de Givramer
+2435	landmark	Chutes de la Tristesse	Confins de Givramer
+2436	landmark	Jonction de la caverne noire	Confins de Givramer
+2440	landmark	Gouffre de corruption	Confins de Givramer
+2441	landmark	Panorama de l'œil de dragon	Confins de Givramer
+2442	landmark	Tanière de l'os creux	Confins de Givramer
+2444	landmark	Caverne des veines de glace	Confins de Givramer
+2445	landmark	Passage du jugement	Confins de Givramer
+2447	landmark	L'arbre-titan	Confins de Givramer
+2448	landmark	Pont terrestre	Lac Doric
+2450	landmark	Vallon du chef	Lac Doric
+2452	unlock	Raid — Bastion du pénitent	Marais de la pierre de sang
+2453	landmark	Quartier général de défense	Lac Doric
+2454	landmark	Le bureau du gardien	Bastion du pénitent
+2455	landmark	Station hydraulique divine	Lac Doric
+2457	landmark	Cellule d'isolement	Bastion du pénitent
+2458	landmark	Repos de Soren	Lac Doric
+2459	landmark	Tunnel d'évasion	Bastion du pénitent
+2460	landmark	Temple des Six	Lac Doric
+2463	landmark	Perchoir de Cairn	Bastion du pénitent
+2464	landmark	Eaux mystiques	Bastion du pénitent
+2466	landmark	Chambre des coupables	Bastion du pénitent
+2467	landmark	Confessionnal	Bastion du pénitent
+2468	landmark	Fort Evennie	Lac Doric
+2469	landmark	Arbre de la Solitude	Bastion du pénitent
+2470	landmark	Souffle de la crête	Lac Doric
+2471	landmark	Pêcher	Lac Doric
+2472	landmark	Le Vairon	Lac Doric
+2475	landmark	Demeure de Noran	Lac Doric
+2476	landmark	Salle de jeux	Bastion du pénitent
+2477	waypoint	Point de passage du Débarcadère de Doric	Lac Doric
+2478	landmark	Club-house de Sylveglèbe	Lac Doric
+2479	waypoint	Point de passage de la retraite de la feuille rouge	Lac Doric
+2480	landmark	Retraite de la feuille rouge	Lac Doric
+2481	landmark	Couloir de la mort	Bastion du pénitent
+2483	landmark	Tour de guet effondrée	Lac Doric
+2484	waypoint	Point de passage du Bazar lacustre	Lac Doric
+2485	landmark	Villa du lac	Lac Doric
+2486	landmark	Navire de pêche	Lac Doric
+2490	landmark	Coffre zêta	Mont Draconis
+2492	landmark	Portail asura	Mont Draconis
+2493	waypoint	Point de passage du Débarcadère du marin	Mont Draconis
+2494	landmark	Bassin éternel	Mont Draconis
+2497	landmark	Piédestal écumant	Mont Draconis
+2499	landmark	Appontement de sous-marins	Mont Draconis
+2500	landmark	Arche de grès	Mont Draconis
+2501	landmark	Grotte druidique	Mont Draconis
+2502	landmark	Cimetière des golems	Mont Draconis
+2503	landmark	Perchoir du prisonnier	Mont Draconis
+2504	landmark	Pilier bouillant	Mont Draconis
+2505	landmark	Terres de la paix	Mont Draconis
+2507	landmark	Fournaise de la guivre	Mont Draconis
+2508	landmark	Campement des mercenaires	Mont Draconis
+2509	waypoint	Point de passage du Fort du païen	Mont Draconis
+2510	landmark	Salut de Viraddi	Mont Draconis
+2511	landmark	Ascension brûlante	Mont Draconis
+2512	landmark	Clairière de l'éclaireur	Mont Draconis
+2513	landmark	Chambre funéraire	Mont Draconis
+2514	landmark	Coffre iota	Mont Draconis
+2515	landmark	Coffre nu II	Mont Draconis
+2516	landmark	Laboratoire de campagne de l'Enqueste	Mont Draconis
+2517	waypoint	Point de passage de la Grotte ancienne	Mont Draconis
+2518	landmark	Coffre nu	Mont Draconis
+2519	landmark	Portail de feu	Mont Draconis
+2520	waypoint	Point de passage du marché	Cœur des Brumes
+2521	waypoint	Point de passage de l'entraînement de siège	Cœur des Brumes
+2522	waypoint	Point de passage de l'arène	Cœur des Brumes
+2524	vista	Tonnelle en mosaïques	Plage des sirènes
+2525	landmark	Épave du Temps jadis	Plage des sirènes
+2526	vista	Bras d'Abaddon	Plage des sirènes
+2527	vista	Allée du courant ascendant	Plage des sirènes
+2528	landmark	Larmes d'Orr	Plage des sirènes
+2529	landmark	Jardin secret	Plage des sirènes
+2530	landmark	Bras d'Abaddon	Plage des sirènes
+2531	landmark	Reliquaire caché	Plage des sirènes
+2532	landmark	Veine de Balthazar	Plage des sirènes
+2533	landmark	Camp Reconquête	Plage des sirènes
+2534	landmark	Camp Winfred	Plage des sirènes
+2535	landmark	Belvédère surdimensionné	Plage des sirènes
+2536	landmark	Antre de la vouivre	Plage des sirènes
+2537	landmark	Camp d'Hiffa	Plage des sirènes
+2539	landmark	Place des Oubliés	Plage des sirènes
+2540	landmark	Perchoir du veilleur	Plage des sirènes
+2541	landmark	Serre ancienne	Plage des sirènes
+2542	landmark	Cœur de Balthazar	Plage des sirènes
+2543	waypoint	Point de passage de Camp Reconquête	Plage des sirènes
+2544	landmark	Branche flottante	Plage des sirènes
+2545	landmark	Ruines de la rue	Plage des sirènes
+2547	waypoint	Point de passage du Sanctuaire de Gardebrume	Sanctuaire de Gardebrume
+2548	vista	Panorama gâché	Plage des sirènes
+2550	landmark	La ménagerie	L'ennemi de mon ennemi : la maréchale des bêtes
+2552	landmark	Sanctuaire de Nabkha	Oasis de cristal
+2553	landmark	Fissure de repli	Rives de l'Elon
+2554	landmark	Gueule nord	La Désolation
+2555	landmark	La promenade	L'ennemi de mon ennemi : la maréchale des bêtes
+2557	landmark	Guet de Sabkha	Hautes-terres du désert
+2558	landmark	Le sépulcre	Rives de l'Elon
+2559	landmark	Ruines de Mihanu	L'ennemi de mon ennemi : la maréchale des bêtes
+2561	landmark	Lamentation de la maréchale de la lance	L'ennemi de mon ennemi : la maréchale des bêtes
+2562	landmark	Le palais des os	La Désolation
+2563	landmark	Station thermale	L'ennemi de mon ennemi : la maréchale des bêtes
+2564	landmark	Camp de réfugiés de Marifa	Oasis de cristal
+2567	landmark	Repos de pierre	Rives de l'Elon
+2570	landmark	Courbe de la décimation	Rives de l'Elon
+2571	waypoint	Point de passage du Domaine de Joko	La Désolation
+2573	landmark	Lac de la paralysie	Hautes-terres du désert
+2574	landmark	Rotonde royale de Vehjin	L'ennemi de mon ennemi : la maréchale des bêtes
+2575	waypoint	Point de passage de l'académie des Vehtendi	Domaine de Vabbi
+2577	landmark	Bassin âcre	La Désolation
+2578	landmark	Guet junundu	La Désolation
+2579	landmark	Impasse des syrtes	Rives de l'Elon
+2580	landmark	Autel des six dieux	Oasis de cristal
+2581	landmark	L'entrepôt	L'ennemi de mon ennemi : la maréchale des bêtes
+2582	landmark	Point de vue de la matriarche	La Désolation
+2583	landmark	Soufrière impériale	La Désolation
+2584	landmark	Kraal de Squaross	Oasis de cristal
+2585	landmark	Passage fermé	Hautes-terres du désert
+2586	landmark	Base de tir forgée	La Désolation
+2587	landmark	Échelle des frappesols	La Désolation
+2588	landmark	Portail de Zayan	La Désolation
+2589	landmark	Piliers délavés	La Désolation
+2591	landmark	Service de l'eau d'Amnoon	Oasis de cristal
+2592	landmark	Amnoon-la-Vieille	Oasis de cristal
+2593	landmark	Tombeau des abandonnés	Oasis de cristal
+2594	landmark	Garnison des éveillés	Le sacrifice
+2595	landmark	Ranch de Longsaut	Hautes-terres du désert
+2597	landmark	Résurgence des lamentations	Hautes-terres du désert
+2598	landmark	Le Tératohédron	Oasis de cristal
+2599	landmark	Roc de Tawla	Oasis de cristal
+2600	waypoint	Point de passage du camp de l'oasis d'Olishar	Rives de l'Elon
+2602	landmark	Nids de junundus	L'ennemi de mon ennemi : la maréchale des bêtes
+2603	landmark	Autel de Dakhma	Hautes-terres du désert
+2604	landmark	Campement du maréchal des bêtes	L'ennemi de mon ennemi : la maréchale des bêtes
+2605	landmark	Chutes de l'Elon	Rives de l'Elon
+2607	landmark	Ossements d'Uhiwi	La Désolation
+2608	landmark	Belvédère des héros	Rives de l'Elon
+2609	landmark	Belvédère de Chukeht	La Désolation
+2610	landmark	Point d'eau de Kusini	Oasis de cristal
+2611	landmark	Le Vermithéâtre	La Désolation
+2612	landmark	Campement du maréchal des troupes	L'ennemi de mon ennemi : la maréchale des bêtes
+2613	landmark	Col de Soufflefroid	Hautes-terres du désert
+2614	landmark	Butte des géants	Rives de l'Elon
+2615	landmark	Point d'eau des Sang-de-vie	Hautes-terres du désert
+2616	landmark	Temple d'Atar	Oasis de cristal
+2619	landmark	Belvédère de la conquête	La Désolation
+2620	landmark	Premier camp	Rives de l'Elon
+2621	landmark	Cercle de Seborhin	L'ennemi de mon ennemi : la maréchale des bêtes
+2622	landmark	Marches des géants	Hautes-terres du désert
+2623	landmark	Kraal de Lommuld	Hautes-terres du désert
+2624	waypoint	Point de passage du Temple de Kormir	Oasis de cristal
+2625	landmark	Éboulis surélevés	Hautes-terres du désert
+2626	landmark	Liens immenses	La Désolation
+2627	landmark	Creux de Piquezone	Hautes-terres du désert
+2629	landmark	Gisement de la fortune	Oasis de cristal
+2630	landmark	Village des chercheurs	Oasis de cristal
+2631	landmark	Grand casino Sahil	Oasis de cristal
+2632	unlock	Monture : raptor	Oasis de cristal
+2633	unlock	Monture : voldécume	Rives de l'Elon
+2634	waypoint	Point de passage de la nécropole	Domaine de Vabbi
+2635	landmark	Second camp	Rives de l'Elon
+2637	landmark	Foyer des dragons	Rives de l'Elon
+2638	landmark	Guet du tourment	La Désolation
+2640	landmark	Sablons oubliés des dieux	Rives de l'Elon
+2641	landmark	Trace du zéphyr	Oasis de cristal
+2642	landmark	Pergola du maréchal des clans	La Désolation
+2643	waypoint	Point de passage de l'Ombre de l'augure	Rives de l'Elon
+2644	landmark	Caveau interdit	La Désolation
+2645	unlock	Monture : frappesol	Hautes-terres du désert
+2646	landmark	Colline de l'arbre solitaire	La Désolation
+2647	landmark	Avant-poste de Makali	Le sacrifice
+2648	landmark	Fort Huduh	La Désolation
+2650	landmark	La tour de guet	Hautes-terres du désert
+2651	landmark	Autel du silence	Oasis de cristal
+2652	landmark	Templier brisé	Oasis de cristal
+2653	landmark	Corridor vabbien	La Désolation
+2656	landmark	Creuset de la consécration	Oasis de cristal
+2658	landmark	Verger de Tihark	L'ennemi de mon ennemi : la maréchale des bêtes
+2659	landmark	Piliers de la suprématie	Rives de l'Elon
+2660	landmark	La bouche du tourment	La Désolation
+2661	landmark	Cascades des Sang-de-vie	Hautes-terres du désert
+2662	landmark	Allée des marchands	L'ennemi de mon ennemi : la maréchale des bêtes
+2663	waypoint	Point de passage du ranch des voldécumes	Rives de l'Elon
+2665	landmark	Hauteurs de braises	La Désolation
+2666	waypoint	Point de passage du Kraal de Lommuld	Hautes-terres du désert
+2667	waypoint	Point de passage de l'avant-poste de Makali	Hautes-terres du désert
+2669	landmark	Le foyer	L'ennemi de mon ennemi : la maréchale des bêtes
+2670	landmark	Goulet du Léviathan	Rives de l'Elon
+2671	landmark	Triple embuscade	Rives de l'Elon
+2672	landmark	Guet du rétif	La Désolation
+2673	landmark	Chutes rayonnantes	Hautes-terres du désert
+2674	landmark	Cascades transcendantes	Hautes-terres du désert
+2675	waypoint	Point de passage de la voie du fléau	La Désolation
+2676	waypoint	Point de passage des ruines du marché	Domaine de Vabbi
+2677	landmark	Temple de Kormir	Oasis de cristal
+2679	waypoint	Point de passage de la piste des chacals des sables	La Désolation
+2680	landmark	Antre de Brill	Hautes-terres du désert
+2682	landmark	Seuil du fléau	La Désolation
+2683	landmark	Cimetière de Lupicus	La Désolation
+2684	landmark	Poste des cavaliers d'Amnoon	Oasis de cristal
+2688	landmark	Centre communautaire d'Amnoon	Oasis de cristal
+2689	landmark	Arcade des ombres	La Désolation
+2690	waypoint	Point de passage de l'arène de Chassevent	Refuge de Chassevent
+2694	landmark	Trône de Pellentia	Rives de l'Elon
+2696	landmark	Ruines du marché	L'ennemi de mon ennemi : la maréchale des bêtes
+2697	landmark	Retraite de Vautresable	Rives de l'Elon
+2698	landmark	Le portail	Hautes-terres du désert
+2701	landmark	Gueule est	La Désolation
+2702	landmark	Bassins toxiques	La Désolation
+2703	landmark	Cache de Kanuz	Le sacrifice
+2704	landmark	Grâce de Palawa	Rives de l'Elon
+2705	waypoint	Point de passage d'Eauvive	Hautes-terres du désert
+2706	landmark	Kraal de Craggip	Hautes-terres du désert
+2707	waypoint	Point de passage de la gorge de la destinée	Oasis de cristal
+2708	landmark	Relais nord	Oasis de cristal
+2710	landmark	Jardins suspendus	L'ennemi de mon ennemi : la maréchale des bêtes
+2711	landmark	Port d'Amnoon	Oasis de cristal
+2712	landmark	Veillée de Bahdaj	Rives de l'Elon
+2713	landmark	Le triomphe de Palawa Joko	Rives de l'Elon
+2714	landmark	Dortoir de la maison Ingene	L'ennemi de mon ennemi : la maréchale des bêtes
+2715	landmark	Monument du grand Palawa Joko	L'ennemi de mon ennemi : la maréchale des bêtes
+2717	waypoint	Point de passage du ranch de Longsaut	Hautes-terres du désert
+2718	landmark	Sanctuaire des sablons	La Désolation
+2720	landmark	Lice	L'ennemi de mon ennemi : la maréchale des bêtes
+2721	waypoint	Point de passage du belvédère des grottes	Refuge de Chassevent
+2722	landmark	La porte de Joko	Rives de l'Elon
+2723	waypoint	Point de passage des terres noires	La Désolation
+2724	waypoint	Point de passage de l'antre abandonné	Hautes-terres du désert
+2725	waypoint	Point de passage du vallon escarpé	Domaine de Vabbi
+2726	landmark	Folie du pèlerin	Rives de l'Elon
+2727	landmark	Garnison de l'ossuaire	La Désolation
+2728	landmark	Chapelle des ombres	La Désolation
+2730	landmark	Palais d'Aban	Hautes-terres du désert
+2731	landmark	Dortoir de la maison Ventura	L'ennemi de mon ennemi : la maréchale des bêtes
+2732	landmark	Relais sud	Oasis de cristal
+2734	landmark	Table des géants	Le sacrifice
+2735	landmark	Couvoir des junundus	La Désolation
+2736	landmark	Repos de l'exilé	Rives de l'Elon
+2737	landmark	Bureau du capitaine Kiel	L'Arche du Lion
+2740	landmark	Jardin de l'élu	Rives de l'Elon
+2741	landmark	Ravin de Longsaut	Hautes-terres du désert
+2742	landmark	Le quartier abandonné	Oasis de cristal
+2743	landmark	Restes éparpillés	Rives de l'Elon
+2744	landmark	Salle de l'Ascension	Rives de l'Elon
+2747	waypoint	Point de passage d'Amnoon	Oasis de cristal
+2748	landmark	Site d'excavation	L'ennemi de mon ennemi : la maréchale des bêtes
+2751	landmark	Bazar d'Amnoon	Oasis de cristal
+2752	landmark	Le cimetière	L'ennemi de mon ennemi : la maréchale des bêtes
+2753	waypoint	Point de passage du repaire des Oubliés	La Désolation
+2754	landmark	Gueule ouest	La Désolation
+2755	landmark	Vignoble des Vehtendi	L'ennemi de mon ennemi : la maréchale des bêtes
+2758	landmark	Théâtre des Fous de Lyssa	L'ennemi de mon ennemi : la maréchale des bêtes
+2759	landmark	Foi aveugle	La Désolation
+2760	landmark	Village de la pureté	La Désolation
+2761	landmark	Corniche du dévoileur	La Désolation
+2762	landmark	Aven de Jinx	Hautes-terres du désert
+2763	landmark	Cour des morts	L'ennemi de mon ennemi : la maréchale des bêtes
+2764	landmark	Réserve de bitume	La Désolation
+2765	landmark	Motte tempétueuse	Hautes-terres du désert
+2766	landmark	Cromlech de Joko	La Désolation
+2768	waypoint	Point de passage de Seborhin	Domaine de Vabbi
+2769	landmark	Défaite d'Ossa	Rives de l'Elon
+2770	landmark	Paddock des cages en os	La Désolation
+2772	landmark	Tours ensablées	Rives de l'Elon
+2773	landmark	Navires abandonnés	Hautes-terres du désert
+2774	unlock	Monture : chacal	La Désolation
+2775	waypoint	Point de passage du dôme surélevé	Refuge de Chassevent
+2776	landmark	Bureau du directeur	L'ennemi de mon ennemi : la maréchale des bêtes
+2777	landmark	Antre abandonné	Hautes-terres du désert
+2779	landmark	Dortoir de la maison Rolic	L'ennemi de mon ennemi : la maréchale des bêtes
+2780	waypoint	Point de passage de l'ossuaire	La Désolation
+2781	waypoint	Point de passage de la terrasse du havre	Refuge de Chassevent
+2783	landmark	Ruines de la horde de Jennur	L'ennemi de mon ennemi : la maréchale des bêtes
+2784	landmark	Grand magasin d'Amnoon	Oasis de cristal
+2786	landmark	Larmes de Naphtedure	La Désolation
+2787	landmark	Retraite des déterminés	Oasis de cristal
+2788	landmark	Sanctuaire de Sablépars	La Désolation
+2789	landmark	Village de Kweli	Oasis de cristal
+2790	landmark	Enclave des djinns	La Désolation
+2791	landmark	Audience des Skritts	Rives de l'Elon
+2792	landmark	Veilleur solitaire	Rives de l'Elon
+2793	landmark	Carrière de Talatat	Oasis de cristal
+2794	landmark	Jardin céleste du roi Joko	L'ennemi de mon ennemi : la maréchale des bêtes
+2795	landmark	Les cryptes	L'ennemi de mon ennemi : la maréchale des bêtes
+2796	landmark	Repaire de Zommoros	L'ennemi de mon ennemi : la maréchale des bêtes
+2797	waypoint	Point de passage du palais de Vehjin	Domaine de Vabbi
+2799	landmark	Gouffre de l'excès	Hautes-terres du désert
+2800	landmark	Tour de la chute des dieux	Le sacrifice
+2802	landmark	Ruines du miroir de Lyss	L'ennemi de mon ennemi : la maréchale des bêtes
+2804	landmark	Provenance de la rivière	Salle des chaînes
+2805	landmark	Refuge du libre-échange	Domaine d'Istan
+2806	landmark	L'obscur Léviathan	Domaine d'Istan
+2807	landmark	Temple de Joko	Domaine d'Istan
+2808	landmark	Miroir du Soleil	Domaine d'Istan
+2809	landmark	Quais royaux anciens	Domaine d'Istan
+2810	waypoint	Point de passage de l'Astralarium	Domaine d'Istan
+2811	landmark	Miroir de la Terre	Domaine d'Istan
+2812	landmark	Les quais du Soleil	Domaine d'Istan
+2813	landmark	Ruines assiégées	Salle des chaînes
+2814	landmark	Tour d'observation brisée	Domaine d'Istan
+2815	landmark	Scène de sacrifice	Domaine d'Istan
+2816	landmark	Caveau d'azumière	Domaine d'Istan
+2817	landmark	Creuset de l'apostat	Domaine d'Istan
+2818	landmark	Station hydraulique de Zehlon	Domaine d'Istan
+2819	landmark	Grotte des vaincus	Domaine d'Istan
+2820	landmark	Statue des ténèbres	Salle des chaînes
+2821	landmark	Promenade du maréchal des clans	Domaine d'Istan
+2823	landmark	Place de la résurgence	Domaine d'Istan
+2824	landmark	Héritage de Jakumba	Domaine d'Istan
+2825	waypoint	Point de passage des Quais de Chalon	Domaine d'Istan
+2826	landmark	Statue de la glace	Salle des chaînes
+2827	landmark	Les Cieux chancelants	Domaine d'Istan
+2830	landmark	Dortoirs de Palawadan	Domaine d'Istan
+2831	landmark	Miroir de la Lune	Domaine d'Istan
+2833	landmark	La pierre écumante	Domaine d'Istan
+2834	landmark	Statue de la mort et de la résurrection	Salle des chaînes
+2835	landmark	Miroir des étoiles	Domaine d'Istan
+2836	landmark	Hall du jugement	Salle des chaînes
+2837	landmark	Lame de Mehtani	Domaine d'Istan
+2838	landmark	Assaut de Chahbek	Domaine d'Istan
+2839	landmark	Champ de cratères de Lahdok	Domaine d'Istan
+2840	landmark	Hall du jugement	Domaine d'Istan
+2842	waypoint	Point de passage de l'Aube du Champion	Domaine d'Istan
+2843	landmark	Champ de l'espoir	Domaine d'Istan
+2846	landmark	Quartiers de la protectrice	Domaine d'Istan
+2847	landmark	Rivière des âmes	Salle des chaînes
+2849	waypoint	Réapparition de joueur	Joueffervescence
+2851	landmark	Contrôleur des communications	Îles de Ventesable
+2852	landmark	Marché de Jemandi	Îles de Ventesable
+2853	waypoint	Point de passage du campement d'Anniogel	Îles de Ventesable
+2854	landmark	Labo Sigma-05	Îles de Ventesable
+2855	landmark	La baleine de fer	Îles de Ventesable
+2856	landmark	Galerie de Magitempête	Îles de Ventesable
+2857	landmark	Entrée du tunnel Epsilon	Îles de Ventesable
+2858	landmark	Entrée du tunnel Bêta	Îles de Ventesable
+2859	landmark	Terres rituelles	Îles de Ventesable
+2860	landmark	Refuge d'Ewyn	Îles de Ventesable
+2861	landmark	Labo de magnétisme	Îles de Ventesable
+2862	landmark	Entrée du tunnel Delta	Îles de Ventesable
+2864	landmark	Noyau d'énergie de secours	Îles de Ventesable
+2865	landmark	Bassin de refroidissement profond	Îles de Ventesable
+2866	landmark	Site funéraire de la grotte céleste	Îles de Ventesable
+2867	landmark	Jetée de bois flotté	Îles de Ventesable
+2868	landmark	Laboratoire d'émulation de nécrostigmate	Îles de Ventesable
+2869	landmark	Quais d'Atholma	Îles de Ventesable
+2870	landmark	Ranch de Malor	Îles de Ventesable
+2871	landmark	Réseau de communications	Îles de Ventesable
+2872	landmark	Entrée du tunnel Alpha	Îles de Ventesable
+2873	landmark	Complexe de recherche de lignes de force	Îles de Ventesable
+2875	landmark	Réseau d'écoulement d'effluents	Îles de Ventesable
+2877	landmark	Héritage d'Olma	Îles de Ventesable
+2878	landmark	Chutes de Griselarme	Îles de Ventesable
+2879	landmark	Entrée du tunnel Gamma	Îles de Ventesable
+2880	landmark	Tours de guet de Cerbère	Îles de Ventesable
+2882	landmark	Débarcadère d'Anniogel	Îles de Ventesable
+2883	waypoint	Point de passage d'Atholma	Îles de Ventesable
+2884	landmark	Labo Forge-portail	Îles de Ventesable
+2886	landmark	Salle des spécimens	Îles de Ventesable
+2887	landmark	Canal de Rata Primus	Îles de Ventesable
+2888	landmark	Garnison de Zelbahn	Domaine de Kourna
+2889	landmark	Terres apizmiques	Domaine de Kourna
+2891	landmark	Accès à l'unité centrale de recherche	Domaine de Kourna
+2892	landmark	Petit de Grand-brèche	Domaine de Kourna
+2894	landmark	Accès des alliés occidentaux	Domaine de Kourna
+2896	waypoint	Point de passage des Terres apizmiques	Domaine de Kourna
+2897	landmark	Accès des alliés orientaux	Domaine de Kourna
+2898	landmark	Débarcadère de l'armée et portail d'entrée	Domaine de Kourna
+2899	landmark	Repaire des fidèles	Domaine de Kourna
+2900	landmark	Canons corsaires	Domaine de Kourna
+2902	landmark	Ruines de la Prison Bokoss	Domaine de Kourna
+2903	waypoint	Point de passage du campement allié	Domaine de Kourna
+2904	landmark	Sources de Dunlon	Domaine de Kourna
+2905	landmark	Ruines de Dejarin	Domaine de Kourna
+2906	landmark	Caveau de recherche Bêta	Domaine de Kourna
+2908	landmark	Terrain d'essai des Falaises de Pogahn	Domaine de Kourna
+2909	landmark	Épave du Cimeterre	Domaine de Kourna
+2910	landmark	Idole des choyas	Domaine de Kourna
+2911	landmark	Cratère de la brosse	Domaine de Kourna
+2912	landmark	Voie principale de Gandara	Domaine de Kourna
+2913	landmark	Voie ouest de Gandara	Domaine de Kourna
+2914	landmark	Voie secrète	Domaine de Kourna
+2915	landmark	Bienveillance de Palawa	Domaine de Kourna
+2917	landmark	Chenils d'Arkjok	Domaine de Kourna
+2918	landmark	Caveau de recherche Alpha	Domaine de Kourna
+2919	landmark	Centre impérial de pestilence appliquée	Domaine de Kourna
+2920	landmark	Corniche de la tanière de crocuta	Domaine de Kourna
+2921	landmark	Arène des Brumes	La lisière des Brumes
+2923	landmark	Vision des anciens	Patrimoine
+2925	landmark	Tour du Vizir déplacée	Patrimoine
+2926	landmark	Portail d'acquisition	Gambit de forgeconte
+2928	landmark	Plates-formes organisées	Patrimoine
+2929	landmark	Grand-Salle de Jahai	Patrimoine
+2931	landmark	Rayon de jugement	Patrimoine
+2932	landmark	Antre de la griffe	Patrimoine
+2933	landmark	Pont du Reliquaire	Gambit de forgeconte
+2934	landmark	Poste de Riyid	Patrimoine
+2936	landmark	Cour de la forteresse	Patrimoine
+2937	landmark	Balise éternelle	Patrimoine
+2938	landmark	Arbre ancestral	Patrimoine
+2939	landmark	Jardin des trèfles mystiques	Gambit de forgeconte
+2940	landmark	Remparts du champ de bataille	Patrimoine
+2941	landmark	Cœur du chaudron	Gambit de forgeconte
+2942	waypoint	Point de passage du village de Yatendi	Promontoire de Jahai
+2943	landmark	Tour du relais de la garnison	Patrimoine
+2944	landmark	Promenade des nobles	Patrimoine
+2946	landmark	Campement de la maréchale des guivres	Patrimoine
+2947	waypoint	Point de passage de la Vendetta de l'âme	Promontoire de Jahai
+2948	landmark	Ménagerie des miniatures	Gambit de forgeconte
+2949	landmark	Confinement ectoplasmique	Gambit de forgeconte
+2950	landmark	Réserve de soldats	Gambit de forgeconte
+2952	landmark	Cascade de Rilohn	Patrimoine
+2953	landmark	Confluence des éléments	Patrimoine
+2954	landmark	Retraite de l'archonte	Patrimoine
+2955	landmark	Commandement de la garnison	Patrimoine
+2956	landmark	Tour d'accès de la garnison	Patrimoine
+2957	landmark	Artillerie de l'Avant-garde	Patrimoine
+2958	landmark	Vénération de Kormir	Patrimoine
+2959	landmark	Repos de Mirza	Patrimoine
+2960	landmark	Chantier de récupération de l'Avant-garde	Patrimoine
+2961	landmark	Monument au retour de Palawa Joko	Patrimoine
+2962	landmark	Ferme de Yatendi	Patrimoine
+2963	waypoint	Point de passage du Passage de Venta	Promontoire de Jahai
+2964	landmark	Caverne de cristal	Patrimoine
+2967	landmark	Perchoir des vouivres	Patrimoine
+2968	landmark	Mairie du croissant	Patrimoine
+2969	waypoint	Point de passage de la chapelle récupérée	Promontoire de Jahai
+2971	waypoint	Point de passage du Circuit du Roi Dément	Circuit du Roi Dément
+2972	waypoint	Point de ralliement de l'Equipe rouge	Empire du djinn
+2973	waypoint	Point de ralliement de l'Equipe bleue	Empire du djinn
+2974	landmark	Chutes silencieuses	Pics de Chef-Tonnerre
+2975	landmark	Joie du raffineur	Pics de Chef-Tonnerre
+2976	landmark	Défi de Brechnar	Pics de Chef-Tonnerre
+2977	landmark	Garnison de Deldrimor	Pics de Chef-Tonnerre
+2978	landmark	Le Tombeau du consul	Pics de Chef-Tonnerre
+2979	landmark	Chutes oubliées	Pics de Chef-Tonnerre
+2981	landmark	Pont de fer	Pics de Chef-Tonnerre
+2982	waypoint	Point de passage du Cœur de la révolution	Pics de Chef-Tonnerre
+2983	landmark	Voile de la vierge	Pics de Chef-Tonnerre
+2985	landmark	Les Sœurs éplorées	Pics de Chef-Tonnerre
+2986	landmark	Passage de Martelfer	Pics de Chef-Tonnerre
+2987	landmark	La Lamebrûlante III	Pics de Chef-Tonnerre
+2988	landmark	Guet du corsaire	Pics de Chef-Tonnerre
+2989	landmark	Repos de la mélodie	Pics de Chef-Tonnerre
+2990	landmark	Pont de pierre	Pics de Chef-Tonnerre
+2992	landmark	Grand lycée	Pics de Chef-Tonnerre
+2993	landmark	Caves de Deldrimor	Pics de Chef-Tonnerre
+2994	landmark	Grotte des lamentations	Pics de Chef-Tonnerre
+2996	landmark	Montagnes labyrinthiques	Pics de Chef-Tonnerre
+2998	landmark	Voie des Exaltés	Pics de Chef-Tonnerre
+2999	landmark	Griffe du dragon	Pics de Chef-Tonnerre
+3001	waypoint	Point de passage du Pont d'observation	Pics de Chef-Tonnerre
+3002	waypoint	Point de passage de l'Amarrage	Pics de Chef-Tonnerre
+3003	waypoint	Point de passage de la Fin de l'histoire	Pics de Chef-Tonnerre
+3004	landmark	Fosse de scories	Pics de Chef-Tonnerre
+3005	landmark	Le Magot du Marteau	Pics de Chef-Tonnerre
+3006	landmark	Cœur de la forge	Pics de Chef-Tonnerre
+3008	landmark	Chutepierre	Pics de Chef-Tonnerre
+3009	landmark	Réserve de la liberté	Pics de Chef-Tonnerre
+3010	landmark	Baie brisée	Pics de Chef-Tonnerre
+3012	landmark	Caserne	Pics de Chef-Tonnerre
+3013	waypoint	Point de passage du Portail des Brumes	Bastion de l'armistice
+3014	waypoint	Point de passage de l'Arène des Gladiateurs	Bastion de l'armistice
+3015	waypoint	Point de passage de l'Atrium du salon	Bastion de l'armistice
+3016	waypoint	Point de passage des Brèches des Brumes	Brèches des Brumes
+3017	landmark	Avant-poste des Veilleurs des Brumes	Chute draconique
+3018	landmark	Fléau de cristal	Chute draconique
+3019	landmark	Avant-poste olmakhan	Chute draconique
+3021	landmark	Tour de la Troisième déesse	Chute draconique
+3022	landmark	Saillie enchaînée	Chute draconique
+3023	landmark	Repaire des dracailles	Chute draconique
+3024	landmark	Répit de Grenth	Chute draconique
+3025	waypoint	Point de passage de l'Outre-monde	Chute draconique
+3026	waypoint	Point de passage du Domaine perdu de Melandru	Chute draconique
+3027	landmark	Porte charnelle	Chute draconique
+3028	landmark	Porte du chaos	Chute draconique
+3032	landmark	Folie de Balthazar	Chute draconique
+3033	landmark	Avant-poste du Pacte	Chute draconique
+3034	landmark	Avant-poste de la Fleur de cristal	Chute draconique
+3035	landmark	Chaire répugnante	Chute draconique
+3036	landmark	Steppes des Cendres	Chute draconique
+3037	landmark	Bassin des lamentations	Chute draconique
+3038	waypoint	Point de passage du haut commandement du Pacte	Chute draconique
+3040	landmark	Chutes de Verdance	Chute draconique
+3041	landmark	Piste de cendres	Chute draconique
+3042	landmark	Précipice du dieu du feu	Chute draconique
+3044	landmark	Port de l'aérodrome	Chute draconique
+3046	waypoint	Point de passage de la forêt en feu	Chute draconique
+3048	landmark	Porte verdoyante	Chute draconique
+3050	landmark	Porte des braises	Chute draconique
+3051	landmark	Sanctuaire de la terre	La clé d'Ahdashim
+3052	landmark	Portes d'Ahdashim	La clé d'Ahdashim
+3054	landmark	Puits d'Ahdashim	La clé d'Ahdashim
+3055	landmark	Fontaine de la clé	La clé d'Ahdashim
+3056	landmark	Ascension du Nirvana	La clé d'Ahdashim
+3057	landmark	Station de recherche du Prieuré	Vallée de Grothmar
+3058	landmark	Forge de Santia	Vallée de Grothmar
+3059	landmark	Barrage sanglant	Vallée de Grothmar
+3060	landmark	Atelier d'Auris	Vallée de Grothmar
+3061	landmark	Camp de la Légion des Cendres	Vallée de Grothmar
+3062	landmark	Bureau de l'Imperator Porteruine	Vallée de Grothmar
+3064	waypoint	Point de passage du Sentier de la guerre	Vallée de Grothmar
+3065	landmark	Prison	Vallée de Grothmar
+3067	landmark	Cuisine du fort	Vallée de Grothmar
+3068	landmark	Porte de la Cathédrale des Flammes	Vallée de Grothmar
+3069	landmark	Colisée des concurrents	Vallée de Grothmar
+3070	landmark	Grâce d'Aurene	Vallée de Grothmar
+3071	landmark	Foyer de Garde-âme	Vallée de Grothmar
+3073	landmark	Sanctuaire de la légende funeste	Vallée de Grothmar
+3074	landmark	Bureau du gardien	Vallée de Grothmar
+3075	landmark	Ferme de Foudregriffe	Vallée de Grothmar
+3076	landmark	Pub "Bidass"	Vallée de Grothmar
+3077	landmark	Pavillon du Grand rassemblement	Vallée de Grothmar
+3079	landmark	Chaudron éternel	Vallée de Grothmar
+3081	waypoint	Point de passage de l'Œil du Nord	Œil du Nord
+3082	landmark	Fahrar de la Légion Sanglante	Vallée de Grothmar
+3084	landmark	Salle d'opérations	Vallée de Grothmar
+3085	landmark	Lagon sanglant	Vallée de Grothmar
+3086	waypoint	Point de passage de la Forêt de Dalada	Vallée de Grothmar
+3087	landmark	Quartier des légions	Vallée de Grothmar
+3089	landmark	Crique de reconnaissance	Vallée de Grothmar
+3090	landmark	Caveau du Khan-Ur	Vallée de Grothmar
+3093	landmark	Place du tireur embusqué	Vallée de Grothmar
+3095	landmark	Porte froide	Vallée de Grothmar
+3096	landmark	Porte principale du Fort sanglant	Vallée de Grothmar
+3097	landmark	Scène de l'Étal sanglant	Vallée de Grothmar
+3098	landmark	Bivouac du groupe	Vallée de Grothmar
+3099	waypoint	Point de passage du Fort sanglant	Vallée de Grothmar
+3100	landmark	Grand-Salle	Vallée de Grothmar
+3101	landmark	Fanal de l'unité	Vallée de Grothmar
+3102	landmark	Cabane en ruines	Frontière de Bjora
+3104	landmark	Portail des Veilleurs	Frontière de Bjora
+3105	landmark	Perchoir de la Griffe	Frontière de Bjora
+3106	landmark	Portail du Corbeau	Frontière de Bjora
+3108	landmark	Passe du Corbeau	Frontière de Bjora
+3109	landmark	Ruines de Sombregivre	Frontière de Bjora
+3111	waypoint	Point de passage du Fort de Jora	Frontière de Bjora
+3112	landmark	Portes de Svanir	Frontière de Bjora
+3113	landmark	Camp nord-ouest des Fils de Svanir	Frontière de Bjora
+3114	landmark	Quartiers du général	Frontière de Bjora
+3115	landmark	Repaire du désosseur	Frontière de Bjora
+3117	landmark	Camp sud-est des Fils de Svanir	Frontière de Bjora
+3118	landmark	Camp sud-ouest des Fils de Svanir	Frontière de Bjora
+3120	landmark	Repaire aberrant	Frontière de Bjora
+3121	landmark	Camp nord-est des Fils de Svanir	Frontière de Bjora
+3124	landmark	Sanctuaire de l'Ourse	Frontière de Bjora
+3125	landmark	Épave kodan	Frontière de Bjora
+3126	landmark	Mystère des ruines du portail du Corbeau	Frontière de Bjora
+3127	landmark	Bond du Kodan	Frontière de Bjora
+3129	waypoint	Point de passage des Eaux calmes	Frontière de Bjora
+3130	landmark	Mystère du labyrinthe	Frontière de Bjora
+3131	landmark	Ruines de Sifhalla	Frontière de Bjora
+3133	landmark	Sanctuaire du Carcajou valeureux	Frontière de Bjora
+3134	landmark	Sanctuaire du Taureau robuste	Frontière de Bjora
+3135	landmark	Caverne des fils perdus	Frontière de Bjora
+3136	landmark	Sanctuaire de l'Aigle vigilant	Frontière de Bjora
+3137	landmark	Antre des murmures	Frontière de Bjora
+3139	landmark	Larmes de Koda	Frontière de Bjora
+3140	landmark	Mystère de la tour cachée	Frontière de Bjora
+3141	landmark	La voix des Eaux calmes	Frontière de Bjora
+3142	landmark	Grotte de Soufflevent	Frontière de Bjora
+3144	waypoint	Camp de la troupe	Forge de l'acier (publique)
+3145	waypoint	Forge thermique	Forge de l'acier (publique)
+3146	waypoint	Portail de Gardepierre	Forge de l'acier (publique)
+3147	landmark	Chutes de Sombredeuil	Côte de Bruinebois
+3149	landmark	Pont de la Croisée du Loup	Côte de Bruinebois
+3150	landmark	Hameau de Grand-arbre	Côte de Bruinebois
+3151	landmark	Quartiers des troupes	Côte de Bruinebois
+3152	landmark	Décharge sous-marine	Côte de Bruinebois
+3154	landmark	Village Piedplombé	Côte de Bruinebois
+3155	landmark	Chutes verdoyantes	Côte de Bruinebois
+3158	landmark	Port de Cascadia	Côte de Bruinebois
+3159	landmark	Quartier populaire de Petraj	Côte de Bruinebois
+3161	landmark	Halte de Petraj	Côte de Bruinebois
+3162	landmark	Rivage de Sablerouge	Côte de Bruinebois
+3166	landmark	Mine de Vlox	Côte de Bruinebois
+3167	landmark	Camp de base des Légions unies	Côte de Bruinebois
+3168	landmark	Piste des éclats de glace	Côte de Bruinebois
+3169	landmark	Pilier du griffon	Côte de Bruinebois
+3170	landmark	Éclats de Vlox	Côte de Bruinebois
+3171	landmark	Lumière de Dwayna	Côte de Bruinebois
+3172	waypoint	Point de passage du Camp de base	Côte de Bruinebois
+3173	landmark	Racine de pierre	Côte de Bruinebois
+3175	landmark	Cimetière de la porte brumeuse	Côte de Bruinebois
+3176	landmark	Ferme Olafson	Côte de Bruinebois
+3177	landmark	Pavillon des Légions	Côte de Bruinebois
+3179	landmark	Étang verdoyant	Côte de Bruinebois
+3180	landmark	Veines de Jormag	Côte de Bruinebois
+3181	landmark	Conduit thermique	Côte de Bruinebois
+3183	landmark	Camp impérial d'Archepierre	Côte de Bruinebois
+3184	landmark	Canal de Glacesang	Côte de Bruinebois
+3186	waypoint	Point de passage du Camp avant	Côte de Bruinebois
+3187	landmark	Sanctuaire sauvage	Côte de Bruinebois
+3188	landmark	L'Aiguillon	Côte de Bruinebois
+3189	landmark	Vigie de Fer	Côte de Bruinebois
+3191	landmark	Belvédère de la canopée	Côte de Bruinebois
+3193	landmark	Camp avant des Légions unies	Côte de Bruinebois
+3194	landmark	Pente du tireur embusqué	Côte de Bruinebois
+3195	landmark	Porte du dragon des glaces	Côte de Bruinebois
+3196	landmark	Camp impérial du littoral	Côte de Bruinebois
+3198	landmark	Camp impérial de Givreveine	Côte de Bruinebois
+3199	landmark	Entrée de la caverne	Côte de Bruinebois
+3200	landmark	Arches de pierre	Côte de Bruinebois
+3203	waypoint	Point de passage de la Tempête de dragons	Tempête de dragons (escouade privée)
+3204	waypoint	Point de ralliement des spectateurs de l'arène des Brumes	La lisière des Brumes
+3205	waypoint	Point de ralliement de l'équipe rouge de l'arène des Brumes	La lisière des Brumes
+3206	waypoint	Point de ralliement de l'équipe bleue de l'arène des Brumes	La lisière des Brumes
+3207	waypoint	Point de passage d'urgence du Pacte	La marionnette détraquée (public)
+3208	waypoint	Point de passage d'urgence du Pacte	La marionnette détraquée (public)
+3209	waypoint	Point de passage d'urgence du Pacte	La marionnette détraquée (public)
+3210	landmark	Cachette de la Confrérie de Jade	Néo-Kaineng
+3211	waypoint	Point de passage de la décharge	Terres sauvages d'Echovald
+3212	landmark	Monastère de la Mer gelée	Trépas du dragon
+3213	landmark	Étang de Saprophyte	Terres sauvages d'Echovald
+3214	landmark	Vestibule des esprits	Province de Seitung
+3216	landmark	Perchoir des embruns	Trépas du dragon
+3217	landmark	Traversée du gardien des mers	Trépas du dragon
+3219	landmark	Perchoir de Yarrow	Terres sauvages d'Echovald
+3220	landmark	Quai de Tanasen	Trépas du dragon
+3221	landmark	Ministère du Transit	Province de Seitung
+3222	landmark	Quartiers du Ministère	Néo-Kaineng
+3223	landmark	Camp des Étherlames	Néo-Kaineng
+3224	landmark	Refuge du Vent de jade	Trépas du dragon
+3225	landmark	Sous-station du sud	Néo-Kaineng
+3226	landmark	Arène de combat	Province de Seitung
+3227	landmark	Quartier général du Ministère de la Sécurité	Néo-Kaineng
+3228	landmark	Site du crash des Étherlames du nord	Province de Seitung
+3229	landmark	Laboratoire de Sunjiang	Néo-Kaineng
+3230	waypoint	Point de passage du village	Province de Seitung
+3231	landmark	Armurerie des Vasburg	Terres sauvages d'Echovald
+3232	waypoint	Point de passage du Complexe des moissons	Trépas du dragon
+3233	landmark	La Grande Fonte	Trépas du dragon
+3234	waypoint	Point de passage de la Carrière de Jade	Trépas du dragon
+3235	landmark	Belvédère paisible	Néo-Kaineng
+3236	landmark	Village de Karstadt	Terres sauvages d'Echovald
+3237	landmark	Temple des moissons	Trépas du dragon
+3238	landmark	Observatoire du Temple des moissons	Trépas du dragon
+3240	landmark	Marché du port	Province de Seitung
+3241	landmark	Perchoir du gardien	Trépas du dragon
+3242	landmark	Village de pêcheurs	Province de Seitung
+3243	landmark	Village Goa	Terres sauvages d'Echovald
+3244	landmark	Passage des cloches	Province de Seitung
+3246	landmark	Décharge Daigo	Province de Seitung
+3247	landmark	Larmes de Haebaragi	Néo-Kaineng
+3248	landmark	Temple de Zen Daijun	Province de Seitung
+3249	landmark	Autel broussailleux	Terres sauvages d'Echovald
+3250	landmark	Ministère des Archives	Néo-Kaineng
+3251	landmark	Place de l'ingéniosité	Terres sauvages d'Echovald
+3252	landmark	Campements des Orateurs	Trépas du dragon
+3253	landmark	Couvoir de Juno	Trépas du dragon
+3255	landmark	Jardin de Lyssa	Néo-Kaineng
+3256	unlock	Collection : maîtresse de tortues de siège Rota	Pierre Arborea
+3258	landmark	Laboratoire de Nahpui	Néo-Kaineng
+3259	landmark	Place de Mori	Terres sauvages d'Echovald
+3261	landmark	Temple du monastère	Province de Seitung
+3262	landmark	La Grande Muraille de jade	Trépas du dragon
+3263	waypoint	Point de passage du monastère	Province de Seitung
+3264	landmark	Site minier JS-02	Trépas du dragon
+3265	landmark	Mémorial de jade	Province de Seitung
+3266	landmark	Désolation des Couvegivres	Trépas du dragon
+3267	landmark	Belvédère impérial	Province de Seitung
+3268	landmark	Sanctuaire de Hanuku	Trépas du dragon
+3269	landmark	Refuge des Étherlames	Province de Seitung
+3270	waypoint	Point de passage de la promenade	Néo-Kaineng
+3271	waypoint	Point de passage du village de Mori	Terres sauvages d'Echovald
+3272	landmark	Prison de Seitung	Province de Seitung
+3273	landmark	Grottes mornes	Province de Seitung
+3274	waypoint	Point de passage zu Heltzer	Terres sauvages d'Echovald
+3275	landmark	Cour royale	Province de Seitung
+3276	waypoint	Point de passage de Kropa	Terres sauvages d'Echovald
+3277	landmark	Cour de la chanson	Terres sauvages d'Echovald
+3278	landmark	Avant-poste de la Confrérie de Jade	Trépas du dragon
+3279	landmark	Quartier logistique	Trépas du dragon
+3280	landmark	Source des anciens	Trépas du dragon
+3281	landmark	Sanctuaire sensali	Province de Seitung
+3282	landmark	Protection de Soo-Won	Néo-Kaineng
+3283	landmark	Crique de la bruine	Province de Seitung
+3284	waypoint	Point de passage de Qinkai	Terres sauvages d'Echovald
+3285	landmark	Sous-niveau de Trembleforêt B1	Terres sauvages d'Echovald
+3286	landmark	Décharge publique 3	Terres sauvages d'Echovald
+3287	landmark	Falaise d'émeraude	Trépas du dragon
+3288	landmark	Sanctuaire du serpent	Trépas du dragon
+3289	landmark	Temple de la tortue	Trépas du dragon
+3290	landmark	Solitude d'Archemorus	Trépas du dragon
+3291	landmark	Place des Tengus	Néo-Kaineng
+3292	landmark	Ruines de Lutgardis	Terres sauvages d'Echovald
+3293	landmark	Quai de l'ermite	Terres sauvages d'Echovald
+3294	waypoint	Point de passage de l'arène du Reflet	Île du Reflet
+3296	landmark	Chantier de récupération	Néo-Kaineng
+3297	landmark	Arbre éternel	Terres sauvages d'Echovald
+3299	landmark	Temple des défunts	Trépas du dragon
+3300	landmark	Chutes de Qinkaishi	Terres sauvages d'Echovald
+3301	landmark	Statuette de jade	Néo-Kaineng
+3302	landmark	Grottes creuses	Province de Seitung
+3303	landmark	Épave du vaisseau amiral des Étherlames	Province de Seitung
+3304	landmark	Enclave d'Aurene	Province de Seitung
+3305	landmark	Monument de jade	Néo-Kaineng
+3307	landmark	Chambre ancienne	Néo-Kaineng
+3308	landmark	Temple de la prééminence	Néo-Kaineng
+3309	landmark	Mines d'Altrumm	Terres sauvages d'Echovald
+3310	landmark	Hameau de pêcheurs	Province de Seitung
+3311	landmark	Ancien atelier-vapeur	Néo-Kaineng
+3312	landmark	Archives anciennes	Terres sauvages d'Echovald
+3313	waypoint	Point de passage de la Mer gelée	Trépas du dragon
+3314	landmark	Chutes d'Alua	Trépas du dragon
+3315	waypoint	Point de passage des quais du Reflet	Île du Reflet
+3317	landmark	Folie du mineur	Trépas du dragon
+3318	landmark	Île de Hanasha	Néo-Kaineng
+3319	landmark	Rampant d'Argo	Trépas du dragon
+3320	landmark	Chaos des trépassés	Trépas du dragon
+3321	waypoint	Point de passage de la Porte de jade	Terres sauvages d'Echovald
+3322	landmark	Chapelle de Pierretaille	Terres sauvages d'Echovald
+3323	landmark	Salon de thé du Canard rouge	Néo-Kaineng
+3324	landmark	Tour de guet de l'empereur	Province de Seitung
+3325	landmark	Bassin de la sérénité	Province de Seitung
+3326	landmark	Cathédrale des Astronomes	Terres sauvages d'Echovald
+3327	landmark	Plate-forme de peintre	Province de Seitung
+3328	landmark	Décharge publique 2	Terres sauvages d'Echovald
+3329	landmark	Station du réacteur	Néo-Kaineng
+3330	landmark	Perchoir d'Aoi	Terres sauvages d'Echovald
+3331	landmark	Avant-poste de la décharge de Xunlai Jade E-1	Terres sauvages d'Echovald
+3332	landmark	Torrent de Qinkai	Terres sauvages d'Echovald
+3333	landmark	Étendue de jade	Trépas du dragon
+3334	landmark	Perchoir d'Arianna	Terres sauvages d'Echovald
+3336	landmark	Pont des moissons	Trépas du dragon
+3337	landmark	Camp de l'intendance	Terres sauvages d'Echovald
+3339	landmark	Domaine de Tae-Jin	Néo-Kaineng
+3341	landmark	Sanctuaire de la révérence	Province de Seitung
+3342	waypoint	Point de passage du Reflet cristallin	Île du Reflet
+3343	landmark	Jardin de Dreslav	Terres sauvages d'Echovald
+3345	waypoint	Point de passage de la Confrérie	Trépas du dragon
+3347	landmark	Grotte verte	Trépas du dragon
+3349	landmark	Décharge publique 1	Terres sauvages d'Echovald
+3350	waypoint	Point de passage des Hauts jardins	Néo-Kaineng
+3352	landmark	Quai de Xinrae	Trépas du dragon
+3353	waypoint	Point de passage du quartier des ministères	Néo-Kaineng
+3354	landmark	Île aux Chats	Province de Seitung
+3355	landmark	Désert du destructeur	Trépas du dragon
+3356	landmark	Tour de Kaolai	Trépas du dragon
+3357	landmark	Site du crash des Étherlames de l'ouest	Province de Seitung
+3358	landmark	Allée brumeuse	Néo-Kaineng
+3359	landmark	Quais pétrifiés	Néo-Kaineng
+3360	waypoint	Point de passage de la Place de Lutgardis	Néo-Kaineng
+3361	landmark	Passage de la carrière	Trépas du dragon
+3362	landmark	Abords de la ville	Province de Seitung
+3363	landmark	Chapelle du crabe	Trépas du dragon
+3364	landmark	Mare de la tranquillité	Néo-Kaineng
+3365	landmark	Domaine des Naga	Province de Seitung
+3366	landmark	Héritage de Seung-Gi	Néo-Kaineng
+3367	landmark	Avant-poste des Orateurs	Trépas du dragon
+3368	landmark	Sanctuaire des Orateurs	Terres sauvages d'Echovald
+3369	landmark	Village de Teleri	Terres sauvages d'Echovald
+3370	landmark	Butte stigmatisée	Trépas du dragon
+3372	landmark	Quartier résidentiel	Trépas du dragon
+3373	landmark	Site minier JS-36	Trépas du dragon
+3374	landmark	Sanctuaire de Sainte Anjeka	Terres sauvages d'Echovald
+3375	landmark	Village de Kropa	Terres sauvages d'Echovald
+3376	landmark	Commissariat de l'est	Néo-Kaineng
+3377	landmark	Centrale du centre	Néo-Kaineng
+3379	landmark	Musée de Xunlai Jade	Trépas du dragon
+3380	landmark	Marché aux poissons de Kaineng	Néo-Kaineng
+3381	landmark	Sous-station du nord	Néo-Kaineng
+3384	landmark	Village de Misa	Néo-Kaineng
+3385	landmark	Centre de recherche de Trembleforêt	Terres sauvages d'Echovald
+3386	landmark	Tunnel des kappas	Néo-Kaineng
+3387	waypoint	Point de passage des Orateurs	Trépas du dragon
+3388	landmark	Porte sécurisée	Province de Seitung
+3389	landmark	Plage de Rhea	Trépas du dragon
+3390	landmark	Course d'obstacles	Province de Seitung
+3391	landmark	Promontoire de la Confrérie	Trépas du dragon
+3392	landmark	Temple des Draguerres	Terres sauvages d'Echovald
+3393	landmark	Perchoir de l'ancien	Terres sauvages d'Echovald
+3394	landmark	Premier couvoir	Province de Seitung
+3396	landmark	Camp de réfugiés de Xiko	Trépas du dragon
+3399	landmark	Marché de Lutgardis	Néo-Kaineng
+3400	landmark	Sanctuaire de Ione	Trépas du dragon
+3402	landmark	Avant-poste de Cylow	Terres sauvages d'Echovald
+3403	landmark	Perchoir de Kage	Terres sauvages d'Echovald
+3404	landmark	Mémorial des zu Heltzer	Terres sauvages d'Echovald
+3405	landmark	Site du crash des Étherlames de l'est	Province de Seitung
+3406	landmark	Fléau des mordrems	Trépas du dragon
+3407	landmark	Camp provisoire du Ministère de la Sécurité	Province de Seitung
+3408	landmark	Temple en ruines	Province de Seitung
+3409	landmark	Plage d'Elora	Trépas du dragon
+3410	landmark	Manoir de Joon	Province de Seitung
+3411	landmark	Chambre des esprits	Terres sauvages d'Echovald
+3412	landmark	Jardin des avatars célestes	Néo-Kaineng
+3413	landmark	Jardin de l'illumination	Néo-Kaineng
+3415	landmark	Laboratoire de Mi-Shen	Terres sauvages d'Echovald
+3416	landmark	Sanctuaire de la bravoure	Province de Seitung
+3417	landmark	Cryptes de Valdhertz	Terres sauvages d'Echovald
+3418	landmark	Cimetière d'épaves	Néo-Kaineng
+3420	landmark	Pavillon de Kuan Jun	Trépas du dragon
+3421	landmark	Village de Qinkai	Terres sauvages d'Echovald
+3422	landmark	Hall de Sizhou	Province de Seitung
+3423	landmark	Maison zu Heltzer	Terres sauvages d'Echovald
+3425	landmark	Grâce d'Ihn	Néo-Kaineng
+3426	landmark	Quartier des entrepôts	Trépas du dragon
+3427	waypoint	Point de passage de Pierre Arborea	Pierre Arborea
+3428	waypoint	Point de passage des Quais de Haiju	Province de Seitung
+3429	waypoint	Point de passage du Quartier Daigo	Province de Seitung
+3430	landmark	Camp de montagne des Tengus	Province de Seitung
+3431	landmark	Oasis d'Erys	Terres sauvages d'Echovald
+3432	landmark	Cachette des Étherlames	Terres sauvages d'Echovald
+3433	landmark	Caverne secrète	Terres sauvages d'Echovald
+3435	landmark	Phare abandonné	Province de Seitung
+3436	landmark	Hall du souvenir	Pierre Arborea
+3437	landmark	La Salle de préparation	Pierre Arborea
+3438	landmark	Le Perchoir	Pierre Arborea
+3439	landmark	Place Plumelong	Pierre Arborea
+3440	landmark	Fontaine du chanteur	Pierre Arborea
+3441	landmark	Auberge de Pierre Arborea	Pierre Arborea
+3442	landmark	Foyer de Kaga	Pierre Arborea
+3443	landmark	Allée du quartier-maître	Pierre Arborea
+3444	landmark	Sanctuaire des Cinq	Pierre Arborea
+3445	landmark	Archives des Kestrels	Pierre Arborea
+3446	landmark	Le Point d'échange	Pierre Arborea
+3447	landmark	Club Canach	Pierre Arborea
+3448	landmark	Répit de Danika	Pierre Arborea
+3449	waypoint	Point de passage du Pavillon des mille mers	Pavillon des mille mers
+3450	waypoint	Point de passage du Club Canach	Pierre Arborea
+3457	waypoint	Point de passage de la tour des Cauchemars	La tour des Cauchemars (public)
+3458	waypoint	Point de passage du Forum des commerçants	Souvenir de l'ancienne Arche du Lion
+3459	waypoint	Point de passage des Corniches diverses	Souvenir de l'ancienne Arche du Lion
+3460	waypoint	Point de passage du quartier de la Côte sanglante	Souvenir de l'ancienne Arche du Lion
+3461	waypoint	Point de passage d'Autrerive	Souvenir de l'ancienne Arche du Lion
+3462	waypoint	Point de passage de la caverne	La bataille pour l'Arche du Lion (Escouade privée)
+3463	waypoint	Point de passage du Quartier est	Souvenir de l'ancienne Arche du Lion
+3464	waypoint	Point de passage de la caverne	Souvenir de l'ancienne Arche du Lion
+3465	waypoint	Point de passage du quartier de la Côte sanglante	La bataille pour l'Arche du Lion (Escouade privée)
+3466	waypoint	Point de passage du Quartier du canal	La bataille pour l'Arche du Lion (Escouade privée)
+3467	waypoint	Point de passage du Port du sanctuaire	Souvenir de l'ancienne Arche du Lion
+3468	waypoint	Point de passage des Falaises de la guilde	Souvenir de l'ancienne Arche du Lion
+3469	waypoint	Point de passage du Quartier du Commodore	Souvenir de l'ancienne Arche du Lion
+3470	waypoint	Point de passage de Fort Marrin	Souvenir de l'ancienne Arche du Lion
+3471	waypoint	Point de passage du Quartier ouest	Souvenir de l'ancienne Arche du Lion
+3472	waypoint	Point de passage de la Grand-place de la porte	Souvenir de l'ancienne Arche du Lion
+3473	waypoint	Point de passage du Portage de l'Île de la griffe	Souvenir de l'ancienne Arche du Lion
+3474	waypoint	Point de passage du Ravin du béhémoth	Fosse de Gyala
+3475	landmark	Site de fouilles de l'épave	Fosse de Gyala
+3476	landmark	Fort de Terminus luxon	Fosse de Gyala
+3477	landmark	Bassin de tailings	Fosse de Gyala
+3478	landmark	Colonie de mycélium	Fosse de Gyala
+3479	landmark	Îlot aux stalagmites	Fosse de Gyala
+3480	landmark	Site de fouilles du coquillage	Fosse de Gyala
+3481	waypoint	Point de passage de Terminus luxon	Fosse de Gyala
+3482	landmark	Exploitation minière Park	Fosse de Gyala
+3483	landmark	Base du Ravin du béhémoth	Fosse de Gyala
+3484	landmark	Débarcadère du prospecteur	Fosse de Gyala
+3485	landmark	Bassins de fonte	Fosse de Gyala
+3486	landmark	Base de la Position du pilier de jade	Fosse de Gyala
+3488	landmark	Belvédère fossilisé	Fosse de Gyala
+3489	landmark	Nexus de lignes de force	Fosse de Gyala
+3492	waypoint	Point de passage de la Position du pilier de jade	Fosse de Gyala
+3493	landmark	Carrière Park	Fosse de Gyala
+3494	landmark	Îlot des lignes de force	Fosse de Gyala
+3495	landmark	Tranchée de la crête effondrée	Fosse de Gyala
+3496	landmark	Bassin céleste	Fosse de Gyala
+3497	landmark	Descente du béhémoth	Fosse de Gyala
+3498	waypoint	Point de passage de l'Exploitation minière Park	Fosse de Gyala
+3499	landmark	Grotte littorale	Fosse de Gyala
+3500	landmark	Caverne de cristal	Fosse de Gyala
+3501	landmark	Enclos aux tortues	Fosse de Gyala
+3502	landmark	Point d'excavation 7-G	Fosse de Gyala
+3503	landmark	Folie du serpent	Fosse de Gyala
+3504	landmark	Effondrement de la fortune	Fosse de Gyala
+3506	landmark	Écurie de dracailles	La Tour du sorcier
+3507	landmark	Pelouse de l'harmonie	Amnytas
+3508	landmark	Anneau d'observation empyréen	L'Aiguillon du monde : Bastion de l'Avatar céleste
+3509	landmark	La Cour des sorciers	La Tour du sorcier
+3510	landmark	Couvoir chak	Archipel de l'observatoire céleste
+3511	landmark	Forge de Droknar	Archipel de l'observatoire céleste
+3512	landmark	Quartiers de Mabon	La Tour du sorcier
+3514	landmark	Trône du jugement	Archipel de l'observatoire céleste
+3515	landmark	Atelier de préparation de sorts	Amnytas
+3516	landmark	Musée des curiosités : galerie principale	Amnytas
+3517	landmark	Laboratoire de recherche sur les portails	Archipel de l'observatoire céleste
+3518	waypoint	Point de passage de la Lumière de Droknar	Archipel de l'observatoire céleste
+3519	landmark	Tour de Mabon	Amnytas
+3520	landmark	Plate-forme de glace de Witman	Archipel de l'observatoire céleste
+3521	landmark	Île crépusculaire	Amnytas
+3522	landmark	Sacrifice d'Akeem	Archipel de l'observatoire céleste
+3523	landmark	Détermination de Mabon	Archipel de l'observatoire céleste
+3524	landmark	Porte sud de la Tour du sorcier	Archipel de l'observatoire céleste
+3525	landmark	Salle de la galanterie	La Tour du sorcier
+3526	landmark	Bassin de cristal	Amnytas
+3527	landmark	Connecteur de l'Arche du Lion	La Tour du sorcier
+3529	landmark	Ligne de front kryptis	Amnytas
+3531	landmark	Camp des réfugiés de Garenhoff	Archipel de l'observatoire céleste
+3532	landmark	Cuisine de Briella	Archipel de l'observatoire céleste
+3533	landmark	Nid de la matriarche	Archipel de l'observatoire céleste
+3535	landmark	Anneau central astronomique	L'Aiguillon du monde : Bastion de l'Avatar céleste
+3537	landmark	Serment des Kestrels	Archipel de l'observatoire céleste
+3538	landmark	Compassion de Vass	Archipel de l'observatoire céleste
+3539	waypoint	Point de passage du Bastion de la Force	Amnytas
+3540	landmark	Salle de Deldrimor	Archipel de l'observatoire céleste
+3541	landmark	Le reliquaire	La Tour du sorcier
+3543	landmark	Répit du sorcier	La Tour du sorcier
+3544	landmark	Bassin de réflexion	Amnytas
+3546	landmark	Natatorium Obscurus	Amnytas
+3547	landmark	Quartier est	Archipel de l'observatoire céleste
+3548	landmark	Ruines délabrées	Archipel de l'observatoire céleste
+3550	landmark	Plate-forme d'entraînement	La Tour du sorcier
+3552	waypoint	Point de passage de la promenade de Rata Novus	Archipel de l'observatoire céleste
+3553	landmark	Chambre forte du sorcier	La Tour du sorcier
+3554	landmark	Quartiers de Dagda	La Tour du sorcier
+3556	landmark	Campement naga	Archipel de l'observatoire céleste
+3557	landmark	Rempart en ruines	Archipel de l'observatoire céleste
+3558	landmark	Connecteur d'Amnytas	La Tour du sorcier
+3559	landmark	Centre de commandement du Phare des Âges	Archipel de l'observatoire céleste
+3560	landmark	Salon des Chasseurs de brèches	La Tour du sorcier
+3562	landmark	Quartiers d'Isgarren	La Tour du sorcier
+3564	landmark	Place empyréenne	La Tour du sorcier
+3565	landmark	Musée des curiosités : salle des géants	Amnytas
+3566	landmark	Dessein de Lyhr	Archipel de l'observatoire céleste
+3567	landmark	Taillis de l'orée du pouvoir	Amnytas
+3569	landmark	Tour d'Isgarren	Amnytas
+3570	landmark	Clairière de l'Équilibre	Amnytas
+3571	landmark	Moulin à vent d'Aanisah	Archipel de l'observatoire céleste
+3572	landmark	Jardin céleste botanique	Amnytas
+3573	landmark	Camp de Balkor	Archipel de l'observatoire céleste
+3574	landmark	Arcade de l'érudition	Amnytas
+3575	landmark	Passage divisé	Archipel de l'observatoire céleste
+3577	landmark	Lac de Mirenuage	Archipel de l'observatoire céleste
+3578	landmark	Débarcadère de Droknar	Archipel de l'observatoire céleste
+3579	landmark	Perception de Dagda	Archipel de l'observatoire céleste
+3580	landmark	Bibliothèque cachée d'Isgarren	La Tour du sorcier
+3582	landmark	Place médicale du mémorial de Vass	Amnytas
+3583	landmark	Monument du roi Jalis Martelfer	Archipel de l'observatoire céleste
+3584	landmark	Les sables plongeants	Archipel de l'observatoire céleste
+3586	landmark	Grande bibliothèque d'Amnytas	Amnytas
+3587	landmark	Centre spirituel	Amnytas
+3588	landmark	Temple de Brill	Archipel de l'observatoire céleste
+3589	landmark	Effondrement de la fille de la tempête	Archipel de l'observatoire céleste
+3590	landmark	Anneau de contrôle céleste	L'Aiguillon du monde : Bastion de l'Avatar céleste
+3591	landmark	Laboratoire abandonné	Archipel de l'observatoire céleste
+3592	landmark	Centre de recherche ouest	Archipel de l'observatoire céleste
+3593	landmark	Grande salle de débats	Amnytas
+3594	waypoint	Point de passage du Bastion de l'Avatar céleste	Amnytas
+3595	landmark	Tour de Lyhr	Amnytas
+3596	landmark	Labo des brèches	Amnytas
+3597	landmark	Contretemps	Amnytas
+3598	waypoint	Point de passage du campement de la Garde astrale	Archipel de l'observatoire céleste
+3599	landmark	Forge de l'intemporalité	La Tour du sorcier
+3600	landmark	Lac des Bastions	Amnytas
+3601	landmark	Cœur de l'Aiguillon	L'Aiguillon du monde : Bastion de l'Avatar céleste
+3602	landmark	Ruines des Exaltés	Archipel de l'observatoire céleste
+3603	landmark	Cercle de méditation du Haut-lac	Amnytas
+3604	landmark	Flèche solitaire	Amnytas
+3605	waypoint	Point de passage du camp des réfugiés de Garenhoff	Archipel de l'observatoire céleste
+3606	landmark	Le cristal de lumière	Archipel de l'observatoire céleste
+3608	landmark	Pont entre les mondes	Archipel de l'observatoire céleste
+3609	landmark	Passage mystique	La Tour du sorcier
+3610	landmark	Terrains d'entraînement de la Garde astrale	Amnytas
+3611	landmark	Guet de l'observatoire céleste	Archipel de l'observatoire céleste
+3614	landmark	Parc de Thaumaturgie	Amnytas
+3615	waypoint	Point de passage de la cour de la tour	La Tour du sorcier
+3616	landmark	Terminal de diffusion bêta de N.K.	Archipel de l'observatoire céleste
+3617	landmark	Connecteur des rêves	La Tour du sorcier
+3618	landmark	Cour de rassemblement des forces	Amnytas
+3619	landmark	Pavillon d'entraînement	Archipel de l'observatoire céleste
+3620	landmark	Chambre de cartographie	Amnytas
+3621	landmark	Véranda	Amnytas
+3622	landmark	Infirmerie	Amnytas
+3623	landmark	Cave des arcanes	Amnytas
+3624	landmark	Îlot douteux	Amnytas
+3625	landmark	Cercle des rituels	Amnytas
+3626	landmark	Tour d'Akeem	Amnytas
+3627	waypoint	Point de passage du Phare des Âges	Archipel de l'observatoire céleste
+3628	landmark	La forteresse incandescente	Archipel de l'observatoire céleste
+3629	landmark	Cercle de méditation du rivage de la Nature	Amnytas
+3630	landmark	Quartiers de Lyhr	La Tour du sorcier
+3631	landmark	Clinique des réfugiés	La Tour du sorcier
+3632	landmark	Salle des serveurs de la Sécurité	Archipel de l'observatoire céleste
+3633	landmark	Arsenal de réserve	Archipel de l'observatoire céleste
+3634	landmark	Belvédère d'Esme	Archipel de l'observatoire céleste
+3635	landmark	Ruines de Rhawat	Archipel de l'observatoire céleste
+3636	waypoint	Point de passage du Bastion du Naturel	Amnytas
+3637	landmark	Chutes cachées	Archipel de l'observatoire céleste
+3639	landmark	Labo du préparateur	Amnytas
+3640	landmark	Village de Farisan	Archipel de l'observatoire céleste
+3641	landmark	Place conquise	Archipel de l'observatoire céleste
+3644	landmark	Île de la connaissance	Amnytas
+3645	waypoint	Point de passage du Bastion de l'Équilibre	Amnytas
+3646	landmark	Entrepôt de reliques	Amnytas
+3647	waypoint	Point de passage du Serment des Kestrels	Archipel de l'observatoire céleste
+3648	landmark	Lagon de l'ombre de l'Aiguillon	Amnytas
+3649	landmark	Réfectoire de la Garde astrale	Archipel de l'observatoire céleste
+3650	waypoint	Point de passage du Bastion du Savoir	Amnytas
+3652	landmark	Tour de Vass	Amnytas
+3654	waypoint	Point de passage du camp d'observation	Archipel de l'observatoire céleste
+3655	waypoint	Point de passage du Bastion de l'Obscur	Amnytas
+3656	landmark	Voies souterraines	Amnytas
+3657	landmark	Camp des opérations défensives	Amnytas
+3658	landmark	Regard de la mémoire	La Tour du sorcier
+3660	landmark	Corral des créatures	Amnytas
+3661	landmark	Mer de nuages	Amnytas
+3663	landmark	Anneau du théâtre cosmique	L'Aiguillon du monde : Bastion de l'Avatar céleste
+3664	landmark	Caserne de la Garde astrale	La Tour du sorcier
+3666	landmark	Épreuve du sorcier	La Tour du sorcier
+3667	landmark	Monument de l'Ordre	Archipel de l'observatoire céleste
+3668	landmark	Salle d'opérations	La Tour du sorcier
+3669	landmark	La Tour fracturée	Archipel de l'observatoire céleste
+3670	landmark	Lamentation du marin	Archipel de l'observatoire céleste
+3671	landmark	Étreinte brûlante	Porte de Heitor : territoire de Heitor
+3672	landmark	Lac de la nuit éternelle	Contrainte : territoire de Heitor
+3673	landmark	Arbre du deuil	Porte de Heitor : territoire de Heitor
+3674	landmark	La Putrescence	Porte de Heitor : territoire de Heitor
+3675	landmark	Arbre aux innombrables visages	Contrainte : territoire de Heitor
+3676	landmark	Gueule de Heitor	Porte de Heitor : territoire de Heitor
+3677	landmark	Le Gouffre des lamentations	Porte de Heitor : territoire de Heitor
+3678	landmark	Porte de Heitor	Porte de Heitor : territoire de Heitor
+3682	landmark	Falaise menaçante	Porte de Heitor : territoire de Heitor
+3683	landmark	Creux de l'avide	Porte de Heitor : territoire de Heitor
+3684	landmark	Les piliers de Mosyn	Contrainte : territoire de Heitor
+3685	landmark	Camp de la Garde astrale	Contrainte : territoire de Heitor
+3686	waypoint	Point de passage du Camp de la Garde astrale	Nayos intérieur
+3687	landmark	Autel perdu	Contrainte : territoire de Heitor
+3688	landmark	Le Rêve ascendant	Porte de Heitor : territoire de Heitor
+3689	landmark	La Fracture	Porte de Heitor : territoire de Heitor
+3690	landmark	L'extracteur sud	Porte de Heitor : territoire de Heitor
+3691	landmark	L'extracteur nord	Porte de Heitor : territoire de Heitor
+3692	landmark	Nichée du roi céleste	Porte de Heitor : territoire de Heitor
+3693	landmark	Les Eaux du regret	Porte de Heitor : territoire de Heitor
+3694	landmark	Le bassin des murmures	Porte de Heitor : territoire de Heitor
+3695	landmark	Pont des soupirs	Nayos intérieur
+3696	landmark	Temple de Charybda	Nayos intérieur
+3698	landmark	Eaux du premier rêve	Nayos intérieur
+3699	landmark	Repos de Mosyn	Nayos intérieur
+3700	landmark	Procession de la reine	Nayos intérieur
+3701	landmark	Prairies isolées	Nayos intérieur
+3702	waypoint	Point de passage du bivouac avancé	Nayos intérieur
+3703	landmark	Pilier corrompu	Nayos intérieur
+3704	landmark	Antre de la rivière	Nayos intérieur
+3705	landmark	Galeries souterraines	Nayos intérieur
+3707	landmark	Arche des héros défunts	Nayos intérieur
+3708	landmark	Voie des anciens	Nayos intérieur
+3709	landmark	Forteresse des fondateurs	Nayos intérieur
+3711	landmark	Extracteurs secondaires	Nayos intérieur
+3712	landmark	Cour des lamentations	Nayos intérieur
+3713	landmark	Défilé du déclin	Nayos intérieur
+3714	landmark	Terrains de récolte	Nayos intérieur
+3715	landmark	Puits de l'angoisse	Nayos intérieur
+3716	landmark	Colisée du Roi de minuit	Nayos intérieur
+3717	landmark	Bosquet des premiers Kryptis	Nayos intérieur
+3719	landmark	Bassin des rêves perdus	Nayos intérieur
+3721	landmark	Étang isolé	Nayos intérieur
+3722	landmark	Le couvoir royal	Nayos intérieur
+3723	landmark	Conseil des maisons	Nayos intérieur
+3724	landmark	Balcon de la création	Nayos intérieur
+3725	landmark	Reliquaire des Élus	Nayos intérieur
+3726	landmark	Le trône de Minuit	Nayos intérieur
+3727	landmark	Scène des rêveurs	Nayos intérieur
+3728	landmark	Balcon de la rédemption	Nayos intérieur
+3729	landmark	Le filtre des songes	Nayos intérieur
+3731	landmark	Chambre de réhabilitation	Nayos intérieur
+3732	waypoint	Point de passage d'urgence du belvédère C	Champs de bataille éternels
+3733	waypoint	Point de passage d'urgence de la garnison B	- Territoires alpins
+3734	waypoint	Point de passage d'urgence de la Crypte embrasée B	- Territoires du désert
+3735	waypoint	Point de passage d'urgence du Rempart stoïque C	- Territoires du désert
+3736	waypoint	Point de passage d'urgence du Château Brumepierre C	Champs de bataille éternels
+3737	waypoint	Point de passage d'urgence de la vallée C	Champs de bataille éternels
+3738	waypoint	Point de passage d'urgence de la Baie du Noir déclin B	- Territoires alpins
+3739	waypoint	Point de passage d'urgence du Château Brumepierre B	Champs de bataille éternels
+3740	waypoint	Point de passage d'urgence du Palais du balbuzard C	- Territoires du désert
+3741	waypoint	Point de passage d'urgence des Collines d'Askalion B	- Territoires alpins
+3742	waypoint	Point de passage d'urgence de la vallée B	Champs de bataille éternels
+3743	waypoint	Point de passage d'urgence des Basses terres B	Champs de bataille éternels
+3744	waypoint	Point de passage d'urgence de la garnison B	- Territoires alpins
+3745	waypoint	Point de passage d'urgence de la Baie de l'Ascension B	- Territoires alpins
+3746	waypoint	Point de passage d'urgence du Rempart stoïque B	- Territoires du désert
+3747	waypoint	Point de passage d'urgence des Collines d'Askalion C	- Territoires alpins
+3748	waypoint	Point de passage d'urgence des Basses terres C	Champs de bataille éternels
+3749	waypoint	Point de passage d'urgence du Palais du balbuzard B	- Territoires du désert
+3750	waypoint	Point de passage d'urgence des Collines Shadaran B	- Territoires alpins
+3751	waypoint	Point de passage d'urgence de la garnison C	- Territoires alpins
+3752	waypoint	Point de passage d'urgence de la garnison C	- Territoires alpins
+3753	waypoint	Point de passage d'urgence de la Baie du Noir déclin C	- Territoires alpins
+3754	waypoint	Point de passage d'urgence de la Baie de l'Ascension C	- Territoires alpins
+3755	waypoint	Point de passage d'urgence du belvédère B	Champs de bataille éternels
+3756	waypoint	Point de passage d'urgence de la Crypte embrasée C	- Territoires du désert
+3757	waypoint	Point de passage d'urgence des Collines Shadaran C	- Territoires alpins
+3758	waypoint	Point de passage du Repaire des moissons	Côte des basses terres
+3759	landmark	La source rôdeuse	Syntri de Janthir
+3760	landmark	Marées putrides	Côte des basses terres
+3761	landmark	Camp de recherche de la pierre de sang	Syntri de Janthir
+3763	landmark	Les pierres faucheuses	Syntri de Janthir
+3764	landmark	Enclos des trottetins	Côte des basses terres
+3765	landmark	Loch luisant	Côte des basses terres
+3767	waypoint	Point de passage de la Halte de chasse du cueilleur	Syntri de Janthir
+3768	waypoint	Point de passage du Bassin putride	Syntri de Janthir
+3769	landmark	Perche du lampiste	Côte des basses terres
+3772	landmark	Profondeurs de bois balafré	Syntri de Janthir
+3773	landmark	Geyser brûlant	Côte des basses terres
+3774	landmark	Terrier des forêts	Côte des basses terres
+3775	landmark	Maison de Vallée hérissée	Côte des basses terres
+3776	landmark	Observatoire de l'orage d'été	Syntri de Janthir
+3777	landmark	Terres du derby	Côte des basses terres
+3778	landmark	Steppe de la toundra	Côte des basses terres
+3780	landmark	Affluent superficiel	Syntri de Janthir
+3781	waypoint	Point de passage de pavillon	Lueur de l'âtre
+3782	landmark	Huis clos du troll	Côte des basses terres
+3784	landmark	La confiance de la reine	Côte des basses terres
+3785	waypoint	Point de passage des sources chaudes	Côte des basses terres
+3786	landmark	Bifurcation du delta	Côte des basses terres
+3787	landmark	Perchoir de Rhea	Syntri de Janthir
+3788	landmark	Le chêne immortel	Syntri de Janthir
+3789	landmark	Galeries d'iboga	Côte des basses terres
+3790	landmark	Envergure du pêcheur	Côte des basses terres
+3791	landmark	Mine	Lueur de l'âtre
+3792	landmark	Battement du saumon	Côte des basses terres
+3793	landmark	Camp de recherche tempétueux	Syntri de Janthir
+3794	landmark	Forge du repaire	Côte des basses terres
+3795	landmark	Zone de chasse	Syntri de Janthir
+3796	landmark	Le bourbier écumant	Syntri de Janthir
+3797	landmark	Cathédrale des consacrés	Syntri de Janthir
+3798	landmark	Le poste d'observation	Syntri de Janthir
+3799	landmark	Échappatoire silencieuse	Syntri de Janthir
+3801	landmark	Clairière de bourbe	Côte des basses terres
+3802	landmark	L'atrium	Syntri de Janthir
+3803	landmark	Crique de Dellam	Syntri de Janthir
+3804	landmark	Guet de la falaise	Syntri de Janthir
+3806	landmark	Maison de Lichen narquois	Côte des basses terres
+3807	waypoint	Point de passage de la Côte des moissons	Côte des basses terres
+3808	landmark	La table des jumeaux	Syntri de Janthir
+3809	landmark	Baie tonitruante	Syntri de Janthir
+3810	landmark	Les terres morbides	Syntri de Janthir
+3811	landmark	Sacrement enfoui	Syntri de Janthir
+3812	landmark	Lopins de récolte	Côte des basses terres
+3813	landmark	Plage de la danse guerrière	Syntri de Janthir
+3814	landmark	Athénée des miracles	Syntri de Janthir
+3815	landmark	Place du vieux Gavril	Syntri de Janthir
+3816	landmark	Maison d'Aurore estompée	Côte des basses terres
+3817	landmark	Rocher des amants déchus	Syntri de Janthir
+3818	landmark	Sources chaudes des basses terres	Côte des basses terres
+3819	landmark	Bassins reptiliens	Côte des basses terres
+3821	landmark	Voie de la rédemption	Syntri de Janthir
+3822	landmark	Col terni	Syntri de Janthir
+3823	landmark	Le premier arbre de sang	Syntri de Janthir
+3824	landmark	Hangar à bateaux	Côte des basses terres
+3825	landmark	Ruisselet de Nivermer	Syntri de Janthir
+3826	landmark	Les Marais ridés	Syntri de Janthir
+3827	landmark	Encoche érodée	Syntri de Janthir
+3828	landmark	Pic du frappesol	Côte des basses terres
+3829	landmark	Vigie du défilé de la montagne	Syntri de Janthir
+3833	landmark	L'auberge	Syntri de Janthir
+3834	landmark	Plage de tête magique	Syntri de Janthir
+3835	waypoint	Point de passage de l'avant-poste des trottetins	Côte des basses terres
+3838	landmark	Aquarium du village de pêcheurs	Côte des basses terres
+3839	landmark	Le deuxième arbre de sang	Syntri de Janthir
+3840	landmark	Souillure du ruissellement	Côte des basses terres
+3841	landmark	Landes brûlantes	Syntri de Janthir
+3842	landmark	Chutes divines	Côte des basses terres
+3843	landmark	Grotte d'hibernation	Côte des basses terres
+3845	landmark	Hauts-fonds décharnés	Syntri de Janthir
+3846	landmark	La Cathédrale du sang	Syntri de Janthir
+3847	landmark	Terres sacrificielles	Syntri de Janthir
+3848	landmark	Pointe de la baie tonitruante	Syntri de Janthir
+3849	landmark	Crique d'Aulne	Côte des basses terres
+3850	landmark	Taverne de la torpeur	Côte des basses terres
+3851	landmark	Repli du frappesol	Côte des basses terres
+3852	landmark	Maison d'Aulne stoïque	Côte des basses terres
+3853	landmark	Crevasses des murmures	Syntri de Janthir
+3854	landmark	Division désastreuse	Syntri de Janthir
+3855	landmark	Grotte Bagou	Côte des basses terres
+3856	landmark	Terrier rucher	Côte des basses terres
+3857	landmark	Camp de la lune de la Garde astrale	Côte des basses terres
+3858	landmark	Chambre de Vaste caldera	Côte des basses terres
+3859	landmark	Chutes du basilic	Côte des basses terres
+3860	landmark	Grotte grise	Côte des basses terres
+3861	landmark	Scierie	Lueur de l'âtre
+3862	landmark	Plateau du chasseur	Côte des basses terres
+3863	landmark	Manoir du molosse cruel	Syntri de Janthir
+3864	landmark	Perchoir de valravn	Côte des basses terres
+3865	landmark	Halte de chasse du cueilleur	Syntri de Janthir
+3867	landmark	Juchoir de valravn	Côte des basses terres
+3868	landmark	Kiosque du Val	Côte des basses terres
+3869	landmark	Champs de Patours	Côte des basses terres
+3870	landmark	Base des frappesols	Côte des basses terres
+3871	landmark	Logis de Lahar habile	Côte des basses terres
+3872	landmark	Jardin de Loetor	Syntri de Janthir
+3873	landmark	Le bourbier infesté	Syntri de Janthir
+3874	landmark	Marches escarpées	Côte des basses terres
+3875	landmark	L'atelier	Lueur de l'âtre
+3876	landmark	Gîte du feu de joie	Côte des basses terres
+3877	landmark	Nœud des amphibiens	Côte des basses terres
+3878	landmark	Cadavre du rampant des profondeurs	Syntri de Janthir
+3879	waypoint	Point de passage du Camp de la lune de la Garde astrale	Côte des basses terres
+3880	landmark	Antre des wargs	Côte des basses terres
+3881	landmark	Huis clos fluctuant	Côte des basses terres
+3882	waypoint	Point de passage des Plaines affligées	Syntri de Janthir
+3883	landmark	Chemin vers Balrior	Syntri de Janthir
+3884	waypoint	Point de passage du Cratère sanguin	Syntri de Janthir
+3885	landmark	Maison de Crête ascendante	Côte des basses terres
+3886	waypoint	Point de passage du Val d'automne	Côte des basses terres
+3887	landmark	Lacets du bourbier	Côte des basses terres
+3888	landmark	Futaie fongique	Côte des basses terres
+3889	landmark	Le troisième arbre de sang	Syntri de Janthir
+3890	landmark	Le quatrième arbre de sang	Syntri de Janthir
+3891	landmark	Ferme	Lueur de l'âtre
+3892	landmark	Champs de rixe du limier	Côte des basses terres
+3893	landmark	Avant-poste des trottetins	Côte des basses terres
+3894	landmark	Cimetières mutilés	Côte des basses terres
+3895	landmark	Laboratoire de Greer	Convergence : mont Balrior (escouade privée)
+3896	landmark	Caverne du Balrior	Mont Balrior
+3897	landmark	Gouffre du Balrior	Mont Balrior
+3898	landmark	Confluence de magma	Convergence : mont Balrior (escouade privée)
+3899	landmark	Site de percuteur de la plage ouest	Convergence : mont Balrior (escouade privée)
+3900	landmark	Site de percuteur de la plage nord	Convergence : mont Balrior (escouade privée)
+3901	waypoint	Point de passage du caveau des Brumes	Caveau des Brumes
+3902	landmark	Champ tempétueux de Decima	Convergence : mont Balrior (escouade privée)
+3903	landmark	Plage ouest	Mont Balrior
+3904	landmark	Plage sud	Mont Balrior
+3905	landmark	Plage nord	Mont Balrior
+3906	landmark	Traversée d'Eldrin	Convergence : mont Balrior (escouade privée)
+3907	landmark	Site de percuteur de la plage sud	Convergence : mont Balrior (escouade privée)
+3909	landmark	Site de percuteur de la caverne du Balrior	Convergence : mont Balrior (escouade privée)
+3910	landmark	Camp de base	Convergence : mont Balrior (escouade privée)
+3911	landmark	Trône d'Ura	Convergence : mont Balrior (escouade privée)
+3912	landmark	Site de percuteur du gouffre du Balrior	Convergence : mont Balrior (escouade privée)
+3913	landmark	La Balafre d'obsidienne	Landes de Feu-de-Brume
+3914	landmark	L'Approche dorée	Landes de Feu-de-Brume
+3915	landmark	Guet lacustre	Landes de Feu-de-Brume
+3916	landmark	Don de Yagon	Landes de Feu-de-Brume
+3917	landmark	La Chambre de canalisation	Landes de Feu-de-Brume
+3918	landmark	Guet des valravns	Landes de Feu-de-Brume
+3919	landmark	Avant-poste en ruines	Landes de Feu-de-Brume
+3920	waypoint	Base opérationnelle de l'alliance	Landes de Feu-de-Brume
+3921	landmark	Autel des maudits	Landes de Feu-de-Brume
+3922	landmark	La Butte d'obsidienne	Landes de Feu-de-Brume
+3923	landmark	Lac de vue véritable	Landes de Feu-de-Brume
+3925	landmark	Cimetière de sentinelles	Landes de Feu-de-Brume
+3926	landmark	Verger de Celsa	Landes de Feu-de-Brume
+3929	landmark	Vision de Saul	Landes de Feu-de-Brume
+3930	landmark	Forge du Prodige sanguin	Landes de Feu-de-Brume
+3931	landmark	La bibliothèque voilée	Landes de Feu-de-Brume
+3932	landmark	Arche effondrée	Landes de Feu-de-Brume
+3933	landmark	Salle de trépas	Landes de Feu-de-Brume
+3934	landmark	Le Passage invisible	Landes de Feu-de-Brume
+3935	landmark	Chambre à organe sud	Bava Nisos
+3936	landmark	Forum des dorés	Bava Nisos
+3937	waypoint	Point de passage de l'arrivage du Manteau	Bava Nisos
+3938	landmark	Chambre à organe nord	Bava Nisos
+3939	landmark	Porte des Brumes	Bava Nisos
+3940	landmark	La route dorée	Bava Nisos
+3941	landmark	Réseau des miroirs	Bava Nisos
+3944	landmark	Embouchure du gosier	Bava Nisos
+3945	landmark	Le forum encombré	Bava Nisos
+3947	landmark	Aboutissement du gosier	Bava Nisos
+3948	landmark	Camp de l'alliance	Bava Nisos
+3949	waypoint	Point de passage du nodule caché	Bava Nisos
+3950	landmark	Profondeurs azurées	Rive aux épaves
+3951	landmark	Place consacrée	Bois étoilé
+3952	landmark	Ferme	Île Comosus
+3953	landmark	Lycée revendiqué	Bois étoilé
+3954	vista	Panorama de Goussardin	Rive aux épaves
+3955	landmark	Terrier de Tournevol	Rive aux épaves
+3956	landmark	Chutes paisibles	Bois étoilé
+3957	landmark	Batterie de Cerf-marteau	Rive aux épaves
+3958	landmark	Grotte perdue	Bois étoilé
+3959	landmark	Ravin de Fleur-d'épine	Rive aux épaves
+3960	landmark	Site de fouilles Gamma	Bois étoilé
+3961	landmark	Avenue des voldécumes de la grotte étoilée	Rive aux épaves
+3962	landmark	Les chutes éternelles	Rive aux épaves
+3963	landmark	Mine	Île Comosus
+3964	landmark	Fontaine des bénédictions	Bois étoilé
+3965	landmark	Les grandes cascades	Bois étoilé
+3966	landmark	Sanctuaire des égarés	Bois étoilé
+3967	landmark	Antichambre abandonnée	Bois étoilé
+3968	landmark	Caveau interdit	Bois étoilé
+3970	landmark	Pub Canach	Rive aux épaves
+3971	landmark	Complexe de recherche souterrain de l'Enqueste	Rive aux épaves
+3972	landmark	Trou bleu	Rive aux épaves
+3973	landmark	Lac des lys	Bois étoilé
+3974	landmark	Bayou stellaire	Bois étoilé
+3975	landmark	Couvée nichée	Bois étoilé
+3976	landmark	Piliers éclatés	Bois étoilé
+3977	landmark	Cascade de la crique aux nénuphars	Rive aux épaves
+3978	waypoint	Point de passage du camp de chasse	Bois étoilé
+3979	landmark	Avenue des voldécumes du chenal inextricable	Rive aux épaves
+3980	landmark	Rocher du gaillard d'avant	Rive aux épaves
+3981	landmark	Le portail déchu	Bois étoilé
+3982	landmark	Grande graine sauvage	Rive aux épaves
+3983	waypoint	Point de passage de pavillon	Île Comosus
+3984	landmark	Aiguillon brisé	Bois étoilé
+3985	waypoint	Point de passage du Pub Canach	Rive aux épaves
+3986	landmark	Aquifère caché	Bois étoilé
+3988	landmark	Source secrète	Bois étoilé
+3989	landmark	Place du dortoir	Rive aux épaves
+3991	landmark	Opération minière de l'Enqueste	Rive aux épaves
+3992	landmark	Geysers jumelés	Bois étoilé
+3993	landmark	Processeur fondamental	Bois étoilé
+3994	landmark	Fontaine aux feuilles cramoisies	Rive aux épaves
+3995	landmark	Chez Lance-grog	Rive aux épaves
+3996	waypoint	Point de passage de l'obscur Léviathan	Rive aux épaves
+3997	landmark	Assemblée des Abrités	Rive aux épaves
+3998	waypoint	Point de passage de l'expédition du Prieuré	Bois étoilé
+3999	landmark	Tour du géant	Bois étoilé
+4000	landmark	Enclos de confinement de l'Enqueste	Rive aux épaves
+4001	landmark	Puits des étoiles	Bois étoilé
+4002	landmark	Chutes sanglotantes	Bois étoilé
+4003	landmark	Refuge sinueux	Bois étoilé
+4005	landmark	Archive sanctifiée	Bois étoilé
+4006	landmark	La voie des flibustiers	Rive aux épaves
+4007	landmark	Bosquet ascendant	Rive aux épaves
+4009	landmark	Promontoire de pierre des lignes de force	Rive aux épaves
+4011	landmark	Escalier stellaire	Rive aux épaves
+4012	landmark	Confinement de spécimen	Bois étoilé
+4013	landmark	L'atelier	Île Comosus
+4015	landmark	Place du village de Goussardin	Rive aux épaves
+4016	landmark	La salve d'ouverture	Bois étoilé
+4017	landmark	Avenue des voldécumes de la grotte aux débris	Rive aux épaves
+4018	landmark	Confinement de spécimen du Prieuré	Bois étoilé
+4019	landmark	Arche des valeureux	Bois étoilé
+4020	landmark	Caverne à provisions de l'Enqueste	Rive aux épaves
+4021	landmark	Chutes prismatiques	Bois étoilé
+4022	landmark	Cœur de marin	Rive aux épaves
+4023	landmark	Clairière lumineuse	Rive aux épaves
+4024	landmark	L'obscur Léviathan	Rive aux épaves
+4025	landmark	Source artésienne des lignes de force	Bois étoilé
+4026	landmark	Grotte des esprits	Bois étoilé
+4027	landmark	L'arbre du rivage	Rive aux épaves
+4028	landmark	Passage des flibustiers	Rive aux épaves
+4029	landmark	Avenue des voldécumes de la grotte aux verracines	Rive aux épaves
+4030	landmark	Sentier abrité	Rive aux épaves
+4031	landmark	Renfort de l'intégrité structurelle	Rive aux épaves
+4032	waypoint	Point de passage du bivouac de base	Bois étoilé
+4033	landmark	L'équilibre des âmes	Bois étoilé
+4035	landmark	Scierie	Île Comosus
+4037	landmark	Carré des officiers	Rive aux épaves
+4038	landmark	Nef en ruines	Bois étoilé
+4039	landmark	Base avancée Bravo	Bois étoilé
+4040	landmark	Le caveau final	Bois étoilé
+4041	landmark	Proue du Lever du matin	Rive aux épaves
+4042	landmark	Fontaine de la vérité	Bois étoilé
+4043	landmark	Larmes des naufragés	Rive aux épaves
+4044	waypoint	Point de passage du quai de Goussardin	Rive aux épaves
+4046	landmark	Pierre de faîte brisée	Bois étoilé
+4047	landmark	Sanctuaire étincelant	Bois étoilé
+4048	landmark	Berceau sylvain	Bois étoilé
+4049	landmark	Étang de Petitaile	Rive aux épaves
+4050	landmark	Nid de corneille	Rive aux épaves
+4051	landmark	Bosquet aux noix de coco	Rive aux épaves
+4052	landmark	Conclave des choyas	Bois étoilé
+4053	landmark	Sables du sénéchal	Rive aux épaves
+4054	landmark	Seuil céleste	Bois étoilé
+4055	landmark	Le bassin à moteurs	Bois étoilé
+4056	landmark	Avant-poste du Bois profond	Jardin de l'éternité
+4057	landmark	Camp de l'Enqueste déserté	Jardin de l'éternité
+4058	landmark	Le premier Aîné	Jardin de l'éternité
+4059	landmark	L'Apothicaire des animaux	Jardin de l'éternité
+4060	landmark	Avant-poste ouest	Jardin de l'éternité
+4061	landmark	Auditorium délabré	Jardin de l'éternité
+4062	landmark	Atelier de Gardesano	Jardin de l'éternité
+4063	landmark	Jardin de Luce	Jardin de l'éternité
+4065	landmark	Supra Fortis	Jardin de l'éternité
+4066	landmark	Cascade sécurisée	Jardin de l'éternité
+4067	landmark	Reliquaire d'Issvano	Jardin de l'éternité
+4068	waypoint	Point de passage de l'avant-poste du Bois profond	Jardin de l'éternité
+4069	landmark	Station d'exploration arcanologique	Jardin de l'éternité
+4070	landmark	Antre des requinets	Jardin de l'éternité
+4071	landmark	Retraite illuminée des lignes de force	Jardin de l'éternité
+4072	landmark	Édifice effondré	Jardin de l'éternité
+4073	landmark	Tunnels de scarabée	Jardin de l'éternité
+4075	landmark	Voie de l'ascendant	Jardin de l'éternité
+4076	landmark	Poste de garde de Raul	Jardin de l'éternité
+4078	landmark	Nurserie sereine	Jardin de l'éternité
+4079	landmark	Conduits hydrothermiques	Jardin de l'éternité
+4080	waypoint	Point de passage du Sanctuaire extérieur	Jardin de l'éternité
+4081	landmark	Sous-sol caché	Jardin de l'éternité
+4082	landmark	Le Grand Aruspice	Jardin de l'éternité
+4083	landmark	Monument renversé	Jardin de l'éternité
+4086	landmark	Profondeurs de la carrière	Jardin de l'éternité
+4087	landmark	Chambre des épreuves de l'intendant	Jardin de l'éternité
+4088	landmark	Aiguillon de l'exaltation	Jardin de l'éternité
+4089	landmark	Camp expéditionnaire de l'alliance	Jardin de l'éternité
+4090	waypoint	Point de passage du Temple de l'abnégation	Jardin de l'éternité
+4091	landmark	Dépôt logistique	Jardin de l'éternité
+4092	waypoint	Point de passage du Repos du pèlerin	Jardin de l'éternité
+4093	landmark	Dôme du Mot immuable	Jardin de l'éternité
+4094	landmark	Grande colonnade	Jardin de l'éternité
+4095	landmark	La Forge	Jardin de l'éternité
+4096	landmark	Source des lignes de force engloutie	Jardin de l'éternité
+4097	landmark	Tête de pont de l'Enqueste	Jardin de l'éternité
+4098	landmark	Équipement de l'Enqueste pillé	Jardin de l'éternité
+4099	landmark	Approche du pèlerin	Jardin de l'éternité
+4101	landmark	Chambre de la discipline	Jardin de l'éternité
+4102	landmark	Artefact chuchotant	Jardin de l'éternité
+4103	landmark	Chutes d'ouverture	Jardin de l'éternité
+4104	landmark	Étang scintillant	Jardin de l'éternité
+4105	landmark	Taillis infesté	Jardin de l'éternité
+4106	landmark	Phase de spécimens bêta	Crevasses aux sources des lignes de force
+4107	landmark	Ruche de chaks	Crevasses aux sources des lignes de force
+4108	landmark	Labyrinthe du fou	Crevasses aux sources des lignes de force
+4109	landmark	Autel des lignes de force	Crevasses aux sources des lignes de force
+4110	landmark	Chapelle de tactique	Crevasses aux sources des lignes de force
+4111	landmark	Descente spirituelle	Crevasses aux sources des lignes de force
+4113	landmark	Salle de duel	Crevasses aux sources des lignes de force
+4114	landmark	Terrains d'essai	Crevasses aux sources des lignes de force
+4115	landmark	Poste d'écoute de l'alliance	Crevasses aux sources des lignes de force
+4116	landmark	Racine de force exposée	Crevasses aux sources des lignes de force
+4117	landmark	Chambres de songe	Crevasses aux sources des lignes de force
+4118	waypoint	Point de passage du Vestibule scellé	Crevasses aux sources des lignes de force
+4119	landmark	Nid cristallin	Crevasses aux sources des lignes de force
+4121	landmark	La canule	Crevasses aux sources des lignes de force
+4122	landmark	Chaire du pleureur	Crevasses aux sources des lignes de force
+4123	landmark	L'accomplissement de l'Ancien	Crevasses aux sources des lignes de force
+4124	landmark	Annexe de recherche Primus Minor	Crevasses aux sources des lignes de force
+4126	landmark	Tonnelle des lamentations	Crevasses aux sources des lignes de force
+4127	waypoint	Point de passage de l'Adyton du doyen	Crevasses aux sources des lignes de force
+4128	landmark	Sequen Cromatica	Crevasses aux sources des lignes de force
+4129	landmark	Écu cristallin	Crevasses aux sources des lignes de force
+4130	landmark	Cylindre des lignes de force	Crevasses aux sources des lignes de force
+4131	landmark	Chemin illuminé	Crevasses aux sources des lignes de force
+4132	landmark	Chambre d'harmonisation	Crevasses aux sources des lignes de force
+4133	landmark	Sous-sol de stockage	Crevasses aux sources des lignes de force
+4134	landmark	Cascade éthérée	Crevasses aux sources des lignes de force
+4135	landmark	Lande de stalagmites	Crevasses aux sources des lignes de force
+4136	landmark	Phase de spécimens alpha	Crevasses aux sources des lignes de force
+4137	landmark	Atelier augmenté	Crevasses aux sources des lignes de force
+4138	landmark	Coffre fermé	Crevasses aux sources des lignes de force
+4139	landmark	Couloir fuyant	Crevasses aux sources des lignes de force
+4140	landmark	Primus Minor	Crevasses aux sources des lignes de force
+4141	landmark	Arche naturelle	Crevasses aux sources des lignes de force
+4142	landmark	Voie des dévoilés	Crevasses aux sources des lignes de force
+4143	landmark	Le Scriptorium	Crevasses aux sources des lignes de force
+4144	landmark	Siège du directeur	Crevasses aux sources des lignes de force
+4146	landmark	Barbacane des lignes de force	Crevasses aux sources des lignes de force
+4147	landmark	Terrier caché	Crevasses aux sources des lignes de force
+4148	landmark	Cour crépusculaire	Crevasses aux sources des lignes de force
+4149	landmark	Couloir souterrain	Crevasses aux sources des lignes de force
+4150	waypoint	Point de passage du Hall d'assemblée	Crevasses aux sources des lignes de force
+4151	landmark	Phase de spécimens gamma	Crevasses aux sources des lignes de force
+4154	landmark	Phase de spécimens delta	Crevasses aux sources des lignes de force

@@ -1,0 +1,3240 @@
+3	waypoint	Fort Salma Waypoint	Kessex Hills
+4	waypoint	Overlord's Waypoint	Kessex Hills
+6	waypoint	Halacon Waypoint	Kessex Hills
+7	waypoint	Sojourner's Waypoint	Kessex Hills
+8	waypoint	Delanian Waypoint	Kessex Hills
+10	waypoint	Ireko Tradecamp Waypoint	Kessex Hills
+12	waypoint	Shadowheart Site Waypoint	Kessex Hills
+16	waypoint	Viathan Waypoint	Kessex Hills
+17	waypoint	Darkwound Waypoint	Kessex Hills
+18	waypoint	Cereboth Waypoint	Kessex Hills
+19	waypoint	Overlake Haven Waypoint	Kessex Hills
+20	waypoint	Kessex Haven Waypoint	Kessex Hills
+21	waypoint	Cavernhold Camp Waypoint	Kessex Hills
+22	waypoint	Greyhoof Camp Waypoint	Kessex Hills
+23	landmark	Black Haven	Kessex Hills
+24	landmark	Gort's Pit	Kessex Hills
+25	landmark	Garenhoff	Kessex Hills
+26	landmark	Jannaj's Bandits	Kessex Hills
+27	landmark	Quarryside	Kessex Hills
+28	landmark	Triskell Quay	Kessex Hills
+29	landmark	Goff's Bandits	Kessex Hills
+30	landmark	Kenna's Bandits	Kessex Hills
+31	landmark	Auld Red Wharf	Kessex Hills
+32	landmark	Wallwatcher Camp	Kessex Hills
+33	landmark	Mudbay Digs	Kessex Hills
+34	landmark	Togatl Grounds	Kessex Hills
+35	landmark	Krait's Larder	Kessex Hills
+36	landmark	Glorious Drill Collective #4	Bloodtide Coast
+37	landmark	Gleaner's Archway	Bloodtide Coast
+38	landmark	Lapatl Grounds	Bloodtide Coast
+39	landmark	Aquanarium Hydropost	Bloodtide Coast
+40	landmark	Stormbluff Beacon	Bloodtide Coast
+41	landmark	Deadend Cave	Bloodtide Coast
+42	landmark	Covington Keep	Bloodtide Coast
+43	landmark	Bloody Bill's Base	Bloodtide Coast
+44	landmark	Sullivan's Wake	Bloodtide Coast
+45	landmark	Mudflat Camp	Bloodtide Coast
+46	landmark	Vonooroovah	Bloodtide Coast
+47	landmark	Morgooroo	Bloodtide Coast
+48	landmark	Broken Beacon	Bloodtide Coast
+49	landmark	Challdar's Nest	Bloodtide Coast
+50	landmark	Rhiann's Respite	Bloodtide Coast
+51	landmark	Incinergen Labs	Metrica Province
+52	landmark	Battleground Plaza	Metrica Province
+53	landmark	The Opticalium	Metrica Province
+54	landmark	Durotl Grounds	Metrica Province
+55	landmark	Aquannian Research Group	Metrica Province
+56	landmark	Dr. Bleent's Encampment	Metrica Province
+57	landmark	Old Oola Lab	Metrica Province
+58	landmark	Parnna's Gate	Metrica Province
+59	landmark	Conduit Tower Blig	Metrica Province
+60	landmark	Conduit Tower Nopp	Metrica Province
+61	landmark	Inner Inquest Complex	Metrica Province
+62	landmark	Transfer Gate (Private)	Metrica Province
+63	landmark	Conduit Tower Scoln	Metrica Province
+64	waypoint	Soren Draa Waypoint	Metrica Province
+65	waypoint	Jeztar Falls Waypoint	Metrica Province
+66	waypoint	Akk Wilds Waypoint	Metrica Province
+67	waypoint	Rana Landing Complex Waypoint	Metrica Province
+68	waypoint	Arterium Haven Waypoint	Metrica Province
+69	waypoint	Hexane Regrade Waypoint	Metrica Province
+70	waypoint	Survivor's Encampment Waypoint	Metrica Province
+71	waypoint	Muridian Waypoint	Metrica Province
+72	waypoint	Desider Atum Waypoint	Metrica Province
+74	waypoint	Sorrow's Embrace Waypoint	Sorrow's Embrace
+75	landmark	Ogotl Grounds	Brisban Wildlands
+76	landmark	Invariant Base	Brisban Wildlands
+77	landmark	Joy's End	Brisban Wildlands
+78	landmark	Beldame's Rise	Brisban Wildlands
+79	landmark	Seraph Protectors	Brisban Wildlands
+80	landmark	Willem's Bandits	Brisban Wildlands
+81	landmark	Scotta's Bandits	Brisban Wildlands
+82	landmark	Angelan's Bandits	Brisban Wildlands
+83	landmark	Skrittsatawney	Brisban Wildlands
+84	landmark	Enrav Exploration Post	Brisban Wildlands
+85	landmark	Breean's Bandits	Brisban Wildlands
+86	landmark	Plunder Hold	Brisban Wildlands
+87	landmark	Seanan's Bandits	Brisban Wildlands
+88	landmark	Robbari's Bandits	Brisban Wildlands
+89	landmark	Fort Vandal	Brisban Wildlands
+90	landmark	Thaumacore Inquiry Center	Brisban Wildlands
+91	landmark	Revered Terebinth	Brisban Wildlands
+92	waypoint	Watchful Source Waypoint	Brisban Wildlands
+93	waypoint	Wendon Waypoint	Brisban Wildlands
+94	waypoint	Tunnels Waypoint	Brisban Wildlands
+95	waypoint	Hillstead Waypoint	Brisban Wildlands
+96	waypoint	East End Waypoint	Brisban Wildlands
+97	waypoint	Brilitine Waypoint	Brisban Wildlands
+98	waypoint	Seraph Observers Waypoint	Brisban Wildlands
+99	waypoint	Gallowfields Waypoint	Brisban Wildlands
+100	waypoint	Triforge Point Waypoint	Brisban Wildlands
+101	waypoint	Ulta Metamagicals Waypoint	Brisban Wildlands
+102	landmark	Aethervolt Lab	Brisban Wildlands
+103	landmark	Solitaire Island	Caledon Forest
+104	landmark	Caer Verdant	Caledon Forest
+105	landmark	Golotl Grounds	Caledon Forest
+106	landmark	Bay Haven	Caledon Forest
+107	landmark	Morgatl Grounds	Caledon Forest
+108	landmark	Naulshead Refuge	Caledon Forest
+109	landmark	Stormwreck Deeps	Caledon Forest
+110	landmark	Hemlock Coil	Caledon Forest
+111	landmark	Hanto Trading Post	Caledon Forest
+112	landmark	Hazupl Grounds	Caledon Forest
+113	landmark	Soggorsort	Caledon Forest
+114	landmark	Slaver's Deeps	Caledon Forest
+115	landmark	Banshee's Keen	Caledon Forest
+116	landmark	Dengatl Grounds	Caledon Forest
+117	waypoint	Mrot Boru Waypoint	Brisban Wildlands
+118	waypoint	Mirkrise Waypoint	Brisban Wildlands
+119	landmark	Melandru's Cenote	Gendarran Fields
+120	landmark	Amaranth Grotto	Gendarran Fields
+121	landmark	The Beastpool	Gendarran Fields
+122	landmark	Stonefish Beach	Gendarran Fields
+123	landmark	Wiley's Cove	Gendarran Fields
+124	landmark	Vigil HQ	Gendarran Fields
+125	landmark	Molenheide	Gendarran Fields
+126	landmark	Almuten Mansion	Gendarran Fields
+127	landmark	Eda's Orchard	Queensdale
+128	landmark	Mepi's Moa Ranch	Queensdale
+129	landmark	Jeb's Wheatfield	Queensdale
+130	landmark	Dalin's Pumping Station	Queensdale
+131	landmark	Altar Brook Trading Post	Queensdale
+132	landmark	Altar Brook Crossing	Queensdale
+133	landmark	Hunting Lodge	Queensdale
+134	landmark	Eldvin Monastery	Queensdale
+135	landmark	Holdland Camp	Queensdale
+136	landmark	Hidden Cliff Camp	Queensdale
+137	landmark	Cliffwatch Camp	Queensdale
+138	landmark	Deathroot Shack	Queensdale
+139	landmark	Temple of the Ages	Queensdale
+140	landmark	Righteous Hoofmoot	Queensdale
+141	landmark	C.L.E.A.N. Station	Metrica Province
+142	landmark	Drakentelt	Snowden Drifts
+143	landmark	Svannijem Hold	Snowden Drifts
+144	landmark	Urgulp	Snowden Drifts
+145	landmark	Tala Point	Snowden Drifts
+146	landmark	Lashoosh	Snowden Drifts
+147	landmark	Durgar's Homestead	Snowden Drifts
+148	landmark	Restricted Zone XRB	Harathi Hinterlands
+149	landmark	Forward Camp	Harathi Hinterlands
+150	landmark	Northpasture Camp	Harathi Hinterlands
+151	landmark	Southforge Camp	Harathi Hinterlands
+152	landmark	War King's Greatcamp	Harathi Hinterlands
+153	landmark	Kingsgate Camp	Harathi Hinterlands
+154	landmark	Watchlin Armory	Harathi Hinterlands
+155	landmark	Shorebluff Camp	Harathi Hinterlands
+156	landmark	Overwatch Camp	Harathi Hinterlands
+157	landmark	Confinement Camp	Harathi Hinterlands
+158	landmark	Blackhold Mine Camp	Harathi Hinterlands
+159	landmark	Drakken's Den	Harathi Hinterlands
+160	landmark	Mountainroot Lair	Harathi Hinterlands
+161	landmark	Koofooloo	Harathi Hinterlands
+162	landmark	Martyr's Tomb	Harathi Hinterlands
+163	landmark	Owl Lodge	Snowden Drifts
+164	landmark	Blasted Haven	Snowden Drifts
+165	waypoint	Faun's Waypoint	Harathi Hinterlands
+166	waypoint	Shieldbluff Waypoint	Harathi Hinterlands
+167	waypoint	Seraph's Landing Waypoint	Harathi Hinterlands
+168	waypoint	Wynchona Rally Point Waypoint	Harathi Hinterlands
+169	waypoint	Grey Gritta's Waypoint	Harathi Hinterlands
+170	waypoint	Nightguard Waypoint	Harathi Hinterlands
+171	waypoint	Demetra Waypoint	Harathi Hinterlands
+172	waypoint	Recovery Camp Waypoint	Harathi Hinterlands
+173	waypoint	Barricade Camp Waypoint	Harathi Hinterlands
+174	waypoint	Trebusha's Overlook Waypoint	Harathi Hinterlands
+175	waypoint	Bridgewatch Camp Waypoint	Harathi Hinterlands
+176	waypoint	Junction Camp Waypoint	Harathi Hinterlands
+177	waypoint	Cloven Hoof Waypoint	Harathi Hinterlands
+178	waypoint	Arca Waypoint	Harathi Hinterlands
+179	waypoint	Skradden Waypoint	Snowden Drifts
+180	waypoint	Lornar's Waypoint	Snowden Drifts
+181	waypoint	Highpass Haven Waypoint	Snowden Drifts
+182	waypoint	Lost Child's Sorrow Waypoint	Snowden Drifts
+183	waypoint	Scholar's Cleft Waypoint	Snowden Drifts
+184	waypoint	Isenfall Waypoint	Snowden Drifts
+185	waypoint	Snowdrift Haven Waypoint	Snowden Drifts
+186	waypoint	Seraph Outriders' Waypoint	Snowden Drifts
+187	waypoint	Torstvedt Homestead Waypoint	Snowden Drifts
+188	waypoint	Exile Waypoint	Snowden Drifts
+189	waypoint	Njordstead Waypoint	Snowden Drifts
+190	waypoint	Soderhem Steading Waypoint	Snowden Drifts
+191	waypoint	Snowhawk Landing Waypoint	Snowden Drifts
+192	waypoint	Reaver's Waypoint	Snowden Drifts
+193	waypoint	Owl Waypoint	Snowden Drifts
+194	waypoint	Podaga Steading Waypoint	Snowden Drifts
+195	waypoint	Arcallion Waypoint	Harathi Hinterlands
+196	landmark	Desert Gate	Fields of Ruin
+197	landmark	The Hawkgates	Fields of Ruin
+198	landmark	Postern Gate	Fields of Ruin
+199	landmark	Spotter's Base	Fields of Ruin
+200	landmark	Sapper's Delve	Fields of Ruin
+201	landmark	Cymbel's Rescue	Fields of Ruin
+202	landmark	Otyugh's Kraal	Fields of Ruin
+203	landmark	Wreckage of Doomspy's Watch	Fields of Ruin
+204	landmark	Varimhold Outpost	Fields of Ruin
+205	landmark	Ebonhawke Delegation	Fields of Ruin
+206	landmark	Summit Peak	Fields of Ruin
+207	landmark	Gillscale Pond	Fields of Ruin
+208	landmark	Delegation of the Legions	Fields of Ruin
+209	landmark	The Thunder Den	Fields of Ruin
+210	landmark	Foulbear Kraal	Fields of Ruin
+211	waypoint	Hawkgates Waypoint	Fields of Ruin
+212	waypoint	Deathblade's Watch Waypoint	Fields of Ruin
+213	waypoint	Summit Waypoint	Fields of Ruin
+214	waypoint	Tyler's Bivouac Waypoint	Fields of Ruin
+215	waypoint	Tenaebron Waypoint	Fields of Ruin
+216	waypoint	Rosko's Campsite Waypoint	Fields of Ruin
+217	waypoint	Charrgate Haven Waypoint	Diessa Plateau
+218	waypoint	Blasted Moors Waypoint	Diessa Plateau
+219	waypoint	Bloodsaw Mill Waypoint	Diessa Plateau
+220	waypoint	Font of Rhand Waypoint	Diessa Plateau
+221	waypoint	Nageling Waypoint	Diessa Plateau
+222	waypoint	Nolan Waypoint	Diessa Plateau
+223	waypoint	Traveler's Dale Waypoint	Gendarran Fields
+224	waypoint	Stoneguard Gate Waypoint	Gendarran Fields
+225	waypoint	Broadhollow Waypoint	Gendarran Fields
+226	waypoint	Oogooth Waypoint	Gendarran Fields
+227	waypoint	Cornucopian Fields Waypoint	Gendarran Fields
+228	waypoint	Provern Shore Waypoint	Gendarran Fields
+229	waypoint	Vanjir's Stead Waypoint	Lornar's Pass
+230	waypoint	Demon's Maw Waypoint	Lornar's Pass
+231	waypoint	Winterthaw Waypoint	Lornar's Pass
+232	waypoint	False Lake Waypoint	Lornar's Pass
+233	waypoint	Durmand Priory Waypoint	Lornar's Pass
+234	waypoint	Lamentation Waypoint	Lornar's Pass
+235	waypoint	Thunderhorns Waypoint	Lornar's Pass
+236	waypoint	Nentor Waypoint	Lornar's Pass
+237	waypoint	Junction Haven Waypoint	Gendarran Fields
+238	waypoint	Winter Haven Waypoint	Gendarran Fields
+239	waypoint	Shaemoor Waypoint	Queensdale
+240	waypoint	Fields Waypoint	Queensdale
+241	waypoint	Garrison Waypoint	Queensdale
+242	waypoint	Crossing Waypoint	Queensdale
+243	waypoint	Phinney Waypoint	Queensdale
+244	waypoint	Vale Waypoint	Queensdale
+245	waypoint	Heartwood Pass Camp Waypoint	Queensdale
+246	waypoint	Claypool Waypoint	Queensdale
+247	waypoint	Swamplost Haven Waypoint	Queensdale
+248	waypoint	Krytan Waypoint	Queensdale
+249	waypoint	Ojon's Lumbermill Waypoint	Queensdale
+250	waypoint	Beetletun Waypoint	Queensdale
+251	waypoint	Tunwatch Redoubt Waypoint	Queensdale
+252	waypoint	Godslost Waypoint	Queensdale
+253	landmark	Shrine of the Six	Divinity's Reach
+254	landmark	Seraph Headquarters	Divinity's Reach
+255	landmark	Queen's Throne Room	Divinity's Reach
+256	landmark	Mina's Target Shooting	Divinity's Reach
+257	landmark	Durmand Hall	Divinity's Reach
+258	landmark	Maiden's Whisper	Divinity's Reach
+259	landmark	Uzolan's Mechanical Orchestra	Divinity's Reach
+260	landmark	Vigil Hall	Divinity's Reach
+261	landmark	Vanguard Hospital	Divinity's Reach
+262	landmark	Queen's Heart Orphanage	Divinity's Reach
+263	landmark	Minister Zamon's Mansion	Divinity's Reach
+264	landmark	Minister Wi's Mansion	Divinity's Reach
+265	landmark	Chamber of Ministers	Divinity's Reach
+266	landmark	Manor Hill	Divinity's Reach
+267	landmark	Cottage Bend	Divinity's Reach
+268	landmark	Rook's Row	Divinity's Reach
+269	landmark	Haidryn's Menagerie	Divinity's Reach
+270	landmark	Central Plaza	Divinity's Reach
+271	landmark	Caravan Wreckage	Diessa Plateau
+272	landmark	Bovarin Estate	Diessa Plateau
+273	landmark	Grendich Ruins	Diessa Plateau
+274	landmark	Dunrock Gulch	Diessa Plateau
+275	landmark	Ritual Isle	Diessa Plateau
+276	landmark	Burntfur's Pool	Diessa Plateau
+277	landmark	Raintimber Mill	Diessa Plateau
+278	landmark	Stonefall Estate	Diessa Plateau
+279	landmark	Old Holtimm Abbey	Diessa Plateau
+280	landmark	Ettinworks Lab	Lornar's Pass
+281	landmark	Black Barl's Mill	Lornar's Pass
+282	landmark	Pinion Pass	Lornar's Pass
+283	landmark	The Molitage Digs	Lornar's Pass
+284	landmark	Cascade Bridge	Lornar's Pass
+285	landmark	Greybeard's Landing	Lornar's Pass
+286	landmark	Jetsam Isle	Lornar's Pass
+287	landmark	Koolookuu	Lornar's Pass
+288	landmark	Olia's Clearing	Lornar's Pass
+289	landmark	Afgar's Steading	Lornar's Pass
+290	landmark	Grenth's Door	Lornar's Pass
+291	landmark	Icebound Plunge	Lornar's Pass
+292	landmark	Molevon Portage	Lornar's Pass
+293	landmark	Priory Archives	Lornar's Pass
+294	landmark	Ogden's Quarters	Lornar's Pass
+295	landmark	The Dracon Steles	Lornar's Pass
+296	landmark	Ironhammer's Crypt	Lornar's Pass
+297	landmark	Korakatt's Hall	Lornar's Pass
+298	landmark	Nentor's Consolidated Mine	Lornar's Pass
+299	landmark	Belldron's Guardholme	Lornar's Pass
+300	landmark	Oversight Platform	Sorrow's Embrace
+301	landmark	The Arsenal	Sorrow's Embrace
+302	landmark	Pump Relay Room	Sorrow's Embrace
+303	landmark	Molenin's Tomb	Sorrow's Embrace
+304	landmark	Gate Keno Decca Four	Sorrow's Embrace
+305	landmark	Gateway Spur	Sorrow's Embrace
+306	landmark	The Glorious Forgeman	Sorrow's Embrace
+307	landmark	The S S Cuttlefish	Crucible of Eternity
+308	waypoint	Astorea Waypoint	Caledon Forest
+309	waypoint	Spiral Waypoint	Caledon Forest
+310	waypoint	Caer Astorea Waypoint	Caledon Forest
+311	waypoint	Gleaner's Cove Waypoint	Caledon Forest
+312	waypoint	Brigid's Overlook Waypoint	Caledon Forest
+313	waypoint	Sperrins Waypoint	Caledon Forest
+314	waypoint	Mabon Waypoint	Caledon Forest
+315	waypoint	Town of Cathal Waypoint	Caledon Forest
+316	waypoint	Caledon Haven Waypoint	Caledon Forest
+317	waypoint	Titan's Staircase Waypoint	Caledon Forest
+318	waypoint	Falias Thorp Waypoint	Caledon Forest
+319	waypoint	Hamlet of Annwen Waypoint	Caledon Forest
+320	waypoint	Kraitbane Haven Waypoint	Caledon Forest
+321	waypoint	Wychmire Waypoint	Caledon Forest
+322	waypoint	Wardenhurst Waypoint	Caledon Forest
+323	landmark	Research Overseer Dome	Crucible of Eternity
+324	landmark	Gate Keno Decca Five	Crucible of Eternity
+325	landmark	Golem Control Nexus	Crucible of Eternity
+326	landmark	Kudu's Crucible	Crucible of Eternity
+328	landmark	Shattered Containment Pod	Crucible of Eternity
+329	landmark	Eternity's Focus	Crucible of Eternity
+330	waypoint	Skoll's Bivouac Waypoint	Fields of Ruin
+331	waypoint	Helliot Mine Waypoint	Fields of Ruin
+332	waypoint	Fangfury Watch Waypoint	Fields of Ruin
+333	waypoint	Vulture's Waypoint	Fields of Ruin
+334	waypoint	Wreckage of Bloodgorge Watch Waypoint	Fields of Ruin
+335	waypoint	Ogre Road Waypoint	Fields of Ruin
+336	waypoint	Forlorn Gate Waypoint	Fields of Ruin
+337	waypoint	Fallen Angels Garrison Waypoint	Fields of Ruin
+338	landmark	Swordcross Outpost	Plains of Ashford
+339	landmark	Foefire's Heart	Plains of Ashford
+340	landmark	The Viewing Hill	Plains of Ashford
+341	landmark	Calhaan's Haunt	Plains of Ashford
+342	landmark	Victory Cenotaph	Plains of Ashford
+343	landmark	The Wrecking Yard	Plains of Ashford
+344	landmark	Stonecrag Kraal	Plains of Ashford
+345	landmark	Sharptail Encampment	Plains of Ashford
+346	landmark	Igni Castrum	Plains of Ashford
+347	landmark	Exterminatus HQ	Plains of Ashford
+348	landmark	Ghostsummit	Plains of Ashford
+349	landmark	Deadgod's Lair	Plains of Ashford
+350	waypoint	Oldgate Waypoint	Diessa Plateau
+351	waypoint	Butcher's Block Waypoint	Diessa Plateau
+352	waypoint	Charradis Estate Waypoint	Diessa Plateau
+353	waypoint	Breached Wall Waypoint	Diessa Plateau
+354	waypoint	Incendio Waypoint	Diessa Plateau
+355	waypoint	Nemus Grove Waypoint	Diessa Plateau
+356	waypoint	Breachwater Waypoint	Diessa Plateau
+357	landmark	Heart of the Wolf	Wayfarer Foothills
+358	landmark	Hirbadd's Camp	Wayfarer Foothills
+359	landmark	Drakkerjorg Pit	Wayfarer Foothills
+360	landmark	Hostra's Refuge	Wayfarer Foothills
+361	landmark	Heart of the Bear	Wayfarer Foothills
+362	landmark	Heart of the Raven	Wayfarer Foothills
+363	landmark	Heart of the Snow Leopard	Wayfarer Foothills
+364	landmark	Alpenzure Cave	Wayfarer Foothills
+365	landmark	Gaerta's Summit	Wayfarer Foothills
+366	landmark	Hermit's Watch	Wayfarer Foothills
+367	landmark	Victor's Point	Wayfarer Foothills
+368	landmark	Edenvar's Homestead	Wayfarer Foothills
+369	landmark	Kevach's Homestead	Wayfarer Foothills
+370	waypoint	Outcast's Waypoint	Wayfarer Foothills
+371	waypoint	Hero's Moot Waypoint	Wayfarer Foothills
+372	waypoint	Horncall Waypoint	Wayfarer Foothills
+373	waypoint	Darkriven Waypoint	Wayfarer Foothills
+374	waypoint	Taigan Waypoint	Wayfarer Foothills
+375	waypoint	Zelechor Hot Springs Waypoint	Wayfarer Foothills
+376	waypoint	Halvaunt Waypoint	Wayfarer Foothills
+377	waypoint	Crossroads Haven Waypoint	Wayfarer Foothills
+378	waypoint	Dawnrise Waypoint	Wayfarer Foothills
+379	waypoint	Dolyak Pass Waypoint	Wayfarer Foothills
+380	waypoint	Solitude Waypoint	Wayfarer Foothills
+381	waypoint	Twinspur Haven Waypoint	Wayfarer Foothills
+382	waypoint	Vendrake's Homestead Waypoint	Wayfarer Foothills
+383	waypoint	Vir's Gate Waypoint	Plains of Ashford
+384	waypoint	Smokestead Waypoint	Plains of Ashford
+385	waypoint	Greysteel Armory Waypoint	Plains of Ashford
+386	waypoint	Martyr's Waypoint	Plains of Ashford
+387	waypoint	Temperus Point Waypoint	Plains of Ashford
+388	waypoint	Ashford Waypoint	Plains of Ashford
+389	waypoint	Adorea Waypoint	Plains of Ashford
+390	waypoint	Ascalonian Catacombs Waypoint	Plains of Ashford
+391	waypoint	Ascalon City Waypoint	Plains of Ashford
+392	waypoint	Watchcrag Tower Waypoint	Plains of Ashford
+393	waypoint	Duskrend Overlook Waypoint	Plains of Ashford
+394	waypoint	Irondock Shipyard Waypoint	Plains of Ashford
+395	waypoint	First Haven Waypoint	Gendarran Fields
+396	waypoint	Talajian Waypoint	Gendarran Fields
+397	waypoint	Blood Hill Waypoint	Gendarran Fields
+398	waypoint	Nebo Terrace Waypoint	Gendarran Fields
+399	waypoint	Ascalon Settlement Waypoint	Gendarran Fields
+400	waypoint	Northfields Waypoint	Gendarran Fields
+401	waypoint	Applenook Hamlet Waypoint	Gendarran Fields
+402	waypoint	Vigil Keep Waypoint	Gendarran Fields
+403	waypoint	Icegate Waypoint	Gendarran Fields
+404	waypoint	Almuten Waypoint	Gendarran Fields
+405	waypoint	Crucible Access Waypoint	Crucible of Eternity
+406	waypoint	Guutra's Homestead Waypoint	Lornar's Pass
+407	waypoint	Stonescatter Waypoint	Lornar's Pass
+408	waypoint	Pinnacle Enclave Waypoint	Lornar's Pass
+409	waypoint	Mistriven Waypoint	Lornar's Pass
+410	waypoint	Eternity's Focus Waypoint	Crucible of Eternity
+411	landmark	Ralena's Sepulchre	Ascalonian Catacombs
+412	landmark	The Shattered Sword	Ascalonian Catacombs
+413	landmark	Vassar's Vault	Ascalonian Catacombs
+414	landmark	Kasha's Chapel	Ascalonian Catacombs
+415	landmark	Nente's Plinth	Ascalonian Catacombs
+416	landmark	The Altar of Death	Ascalonian Catacombs
+417	landmark	Silex Castrum	Diessa Plateau
+418	landmark	Phasma Castrum	Diessa Plateau
+419	waypoint	Archen Foreland Waypoint	Bloodtide Coast
+420	waypoint	Sorrowful Waypoint	Bloodtide Coast
+421	waypoint	Stormbluff Waypoint	Bloodtide Coast
+422	waypoint	Marshwatch Haven Waypoint	Bloodtide Coast
+423	waypoint	Remanda Waypoint	Bloodtide Coast
+424	waypoint	Laughing Gull Waypoint	Bloodtide Coast
+425	waypoint	Barrier Camp Waypoint	Bloodtide Coast
+426	waypoint	Firthside Vigil Waypoint	Bloodtide Coast
+427	waypoint	Lostwreck Waypoint	Bloodtide Coast
+428	waypoint	Bogside Camp Waypoint	Bloodtide Coast
+429	waypoint	Mournful Waypoint	Bloodtide Coast
+430	waypoint	Castavall Waypoint	Bloodtide Coast
+431	waypoint	Jelako Waypoint	Bloodtide Coast
+432	waypoint	Whisperwill Waypoint	Bloodtide Coast
+433	landmark	Deadman's Reach	Sparkfly Fen
+434	landmark	Porgotl Grounds	Sparkfly Fen
+435	landmark	Occuintl Grounds	Sparkfly Fen
+436	landmark	Nicantl Grounds	Sparkfly Fen
+437	landmark	The Tower of Modius	Sparkfly Fen
+438	landmark	Quinatl Deadgrounds	Sparkfly Fen
+439	landmark	Sunken Chaladeen	Sparkfly Fen
+440	landmark	Jinotl Deadgrounds	Sparkfly Fen
+441	landmark	Brokenhope Village	Sparkfly Fen
+442	landmark	Shrine of Usharr	Sparkfly Fen
+443	landmark	Inquest Hexfoundry G-14	Sparkfly Fen
+444	landmark	Ruined Vallah	Sparkfly Fen
+445	landmark	United Arcanist Lab	Sparkfly Fen
+446	landmark	Fabled Djannor	Sparkfly Fen
+447	landmark	Wrathwave Deeps	Sparkfly Fen
+448	landmark	Wreck of the Argent Warrior	Sparkfly Fen
+449	landmark	Shorewatch Post	Sparkfly Fen
+450	landmark	Swampwatch Post	Sparkfly Fen
+451	landmark	Southwatch Post	Sparkfly Fen
+452	waypoint	Orvar's Glen Waypoint	Sparkfly Fen
+453	waypoint	Fort Cadence Waypoint	Sparkfly Fen
+454	waypoint	Braggi's Stead Waypoint	Sparkfly Fen
+455	waypoint	Saltflood Waypoint	Sparkfly Fen
+456	waypoint	Zintl Holy Grounds Waypoint	Sparkfly Fen
+457	waypoint	Ocean's Gullet Waypoint	Sparkfly Fen
+458	waypoint	Forvar's Waypoint	Sparkfly Fen
+459	waypoint	Toade's Head Waypoint	Sparkfly Fen
+460	waypoint	Flamefrog Waypoint	Sparkfly Fen
+461	waypoint	Darkweather Waypoint	Sparkfly Fen
+462	waypoint	Brackwater Waypoint	Sparkfly Fen
+463	waypoint	Aleem's Waypoint	Sparkfly Fen
+464	waypoint	Splintered Coast Waypoint	Sparkfly Fen
+465	waypoint	Brooloonu Waypoint	Sparkfly Fen
+466	waypoint	Twilight Arbor Waypoint	Twilight Arbor
+467	waypoint	Twilight Arbor Waypoint	Twilight Arbor
+468	landmark	Dewclaw Village	Iron Marches
+469	landmark	The Cauldron of Searing	Iron Marches
+470	landmark	Herdsman's Bastion	Iron Marches
+471	landmark	Bria's Manor	Iron Marches
+472	landmark	Vermin's Folly	Iron Marches
+473	landmark	Wreckage of Day's Labor	Iron Marches
+474	landmark	Invictus Castrum	Iron Marches
+475	landmark	Newglade Kraal	Iron Marches
+476	landmark	The Blasted Hearth	Iron Marches
+477	landmark	Grundallion's Lair	Iron Marches
+478	landmark	Fellmyst Falls	Iron Marches
+479	landmark	Heartsond Falls	Iron Marches
+480	landmark	Kilnn's Rest	Iron Marches
+481	landmark	Spentlung Depth	Iron Marches
+482	waypoint	Dewclaw Waypoint	Iron Marches
+483	waypoint	Bloodfin Lake Waypoint	Iron Marches
+484	waypoint	Old Piken Ruins Waypoint	Iron Marches
+485	waypoint	Warhound Village Waypoint	Iron Marches
+486	waypoint	Hellion Waypoint	Iron Marches
+487	waypoint	Village of Scalecatch Waypoint	Iron Marches
+488	waypoint	Sleekfur Encampment Waypoint	Iron Marches
+489	waypoint	Brandwatch Encampment Waypoint	Iron Marches
+490	waypoint	Viper's Run Waypoint	Iron Marches
+491	waypoint	Town of Cowlfang's Star Waypoint	Iron Marches
+492	waypoint	Bulwark Waypoint	Iron Marches
+493	waypoint	Firewatch Encampment Waypoint	Iron Marches
+494	waypoint	Gladefall Waypoint	Iron Marches
+495	waypoint	Grostogg's Kraal Waypoint	Iron Marches
+496	landmark	Tail of the Star God	Blazeridge Steppes
+497	landmark	Ferrusatos Village	Blazeridge Steppes
+498	landmark	Sootpan Kraal	Blazeridge Steppes
+499	landmark	Behemian Grand Kraal	Blazeridge Steppes
+500	landmark	Griffonclaw Peak	Blazeridge Steppes
+501	landmark	Skara Braevus	Blazeridge Steppes
+502	landmark	Wreckage of Serenity	Blazeridge Steppes
+503	landmark	Craze's Folly	Blazeridge Steppes
+504	landmark	Foewatch Encampment	Blazeridge Steppes
+505	waypoint	The Last Whiskey Bar Waypoint	Blazeridge Steppes
+506	waypoint	Steeleye Waypoint	Blazeridge Steppes
+507	waypoint	Tumok's Waypoint	Blazeridge Steppes
+508	waypoint	Twin Sisters Waypoint	Blazeridge Steppes
+509	waypoint	Behem Waypoint	Blazeridge Steppes
+510	waypoint	Expanse Waypoint	Blazeridge Steppes
+511	waypoint	Guardian Stone Waypoint	Blazeridge Steppes
+512	waypoint	Lunk Kraal Waypoint	Blazeridge Steppes
+513	waypoint	Terra Carorunda Waypoint	Blazeridge Steppes
+514	waypoint	Brokentooth Maw Waypoint	Blazeridge Steppes
+515	waypoint	Kindling Waypoint	Blazeridge Steppes
+516	waypoint	Brandview Waypoint	Blazeridge Steppes
+517	waypoint	Refuge Sanctum Waypoint	Blazeridge Steppes
+518	landmark	Coalpit Watchpost	Fireheart Rise
+519	landmark	Shadow Cleft	Fireheart Rise
+520	landmark	Veiled Cliff	Fireheart Rise
+521	landmark	Piketooth Tower	Fireheart Rise
+522	landmark	Gates of Flame	Fireheart Rise
+523	landmark	Termerarus Castrum	Fireheart Rise
+524	landmark	Provatum Castrum	Fireheart Rise
+525	landmark	Atrox Castrum	Fireheart Rise
+526	landmark	Noxious Castrum	Fireheart Rise
+527	landmark	Haymal Gore	Fireheart Rise
+528	landmark	Heart Speaks Not	Fireheart Rise
+529	landmark	God's Eye	Fireheart Rise
+530	landmark	God's Skull	Fireheart Rise
+531	landmark	God's Hand	Fireheart Rise
+532	landmark	Mangonel Bivouac	Fireheart Rise
+533	landmark	Division Shrine	Fireheart Rise
+534	waypoint	Sati Waypoint	Fireheart Rise
+535	waypoint	Pig Iron Waypoint	Fireheart Rise
+536	waypoint	Tuyere Command Post Waypoint	Fireheart Rise
+537	waypoint	Severed Breach Waypoint	Fireheart Rise
+538	waypoint	Breaktooth's Waypoint	Fireheart Rise
+539	waypoint	Havoc Waypoint	Fireheart Rise
+540	waypoint	Vidius Castrum Waypoint	Fireheart Rise
+541	waypoint	Apostate Waypoint	Fireheart Rise
+542	waypoint	Rustbowl Waypoint	Fireheart Rise
+543	waypoint	Switchback Waypoint	Fireheart Rise
+544	waypoint	Icespear's Waypoint	Fireheart Rise
+545	waypoint	Snow Ridge Camp Waypoint	Fireheart Rise
+546	waypoint	Vorgas Garrison Waypoint	Fireheart Rise
+547	waypoint	Forlorn Waypoint	Fireheart Rise
+548	waypoint	Senecus Castrum Waypoint	Fireheart Rise
+549	waypoint	Simurgh Waypoint	Fireheart Rise
+550	waypoint	Keeper's Waypoint	Fireheart Rise
+551	landmark	PR&T Esoterics	Metrica Province
+552	landmark	Incomp Optics	Metrica Province
+553	landmark	Brill Alliance Labs	Metrica Province
+554	landmark	Leaning Grade	Dredgehaunt Cliffs
+555	landmark	Fridgardr Lodge	Dredgehaunt Cliffs
+556	landmark	Mantelet Refuge	Dredgehaunt Cliffs
+557	landmark	Esjudare Scratch	Dredgehaunt Cliffs
+558	landmark	Shelter Pointe	Dredgehaunt Cliffs
+559	landmark	Vpered Drill	Dredgehaunt Cliffs
+560	landmark	Theign Kenning	Dredgehaunt Cliffs
+561	landmark	Landslide Lee	Dredgehaunt Cliffs
+562	landmark	Travelen's Steading	Dredgehaunt Cliffs
+563	landmark	Bergtrolde	Dredgehaunt Cliffs
+564	landmark	Skovtrolde Hearthstead	Dredgehaunt Cliffs
+565	landmark	Talecrafting Steading	Dredgehaunt Cliffs
+566	landmark	The Speaking Place	Dredgehaunt Cliffs
+567	landmark	Caer Evermore	Timberline Falls
+568	landmark	Okarinoo	Timberline Falls
+569	landmark	Irenic Shoal	Timberline Falls
+570	landmark	Sipedon Deeps	Timberline Falls
+571	landmark	Kiriel Rock	Timberline Falls
+572	landmark	The Great Oouo	Timberline Falls
+573	landmark	Whispering Falls	Timberline Falls
+574	landmark	Stovepipe Pogue	Timberline Falls
+575	landmark	Goldenlight Hallow	Timberline Falls
+576	landmark	Thistlereed Grove	Timberline Falls
+577	landmark	Kyesjard	Timberline Falls
+578	landmark	Balddistead	Timberline Falls
+579	landmark	Copperhammer Mines	Timberline Falls
+580	waypoint	Talus Waypoint	Timberline Falls
+581	waypoint	Serpent Waypoint	Timberline Falls
+582	waypoint	Okarinoo Waypoint	Timberline Falls
+583	waypoint	Coil Waypoint	Timberline Falls
+584	waypoint	Scale Strand Waypoint	Timberline Falls
+585	waypoint	Nonmoa Waypoint	Timberline Falls
+586	waypoint	Eztlitl Grounds Waypoint	Timberline Falls
+587	waypoint	Gyre Rapids Waypoint	Timberline Falls
+588	waypoint	Valance Tutory Waypoint	Timberline Falls
+589	waypoint	Ogduk Waypoint	Timberline Falls
+590	waypoint	Foundation 86 Waypoint	Timberline Falls
+591	waypoint	White Paper Waypoint	Timberline Falls
+592	waypoint	Gentle River Waypoint	Timberline Falls
+593	waypoint	Thistlereed Waypoint	Timberline Falls
+594	waypoint	Krongar Waypoint	Timberline Falls
+595	waypoint	Iron Veil Waypoint	Timberline Falls
+596	waypoint	Rankor Ruins Waypoint	Timberline Falls
+597	waypoint	Concordia Waypoint	Timberline Falls
+598	waypoint	Tribulation Waypoint	Dredgehaunt Cliffs
+599	waypoint	Frostland Waypoint	Dredgehaunt Cliffs
+600	waypoint	Dociu Waypoint	Dredgehaunt Cliffs
+601	waypoint	Seven Pines Waypoint	Dredgehaunt Cliffs
+602	waypoint	Grey Road Waypoint	Dredgehaunt Cliffs
+603	waypoint	Steelbrachen Waypoint	Dredgehaunt Cliffs
+604	waypoint	Toran Hollow Waypoint	Dredgehaunt Cliffs
+605	waypoint	Hessdallen Kenning Waypoint	Dredgehaunt Cliffs
+606	waypoint	Kenning Testing Ground Waypoint	Dredgehaunt Cliffs
+607	waypoint	Wide Expanse Waypoint	Dredgehaunt Cliffs
+608	waypoint	Nottowr Fault Waypoint	Dredgehaunt Cliffs
+609	waypoint	Mountain's Tail Waypoint	Dredgehaunt Cliffs
+610	waypoint	Graupel Waypoint	Dredgehaunt Cliffs
+611	waypoint	Havfrue Basin Waypoint	Dredgehaunt Cliffs
+612	waypoint	Travelen's Waypoint	Dredgehaunt Cliffs
+613	waypoint	Wyrmblood Waypoint	Dredgehaunt Cliffs
+614	landmark	Flame Legion Armory	Citadel of Flame
+615	landmark	Flame Legion Barracks	Citadel of Flame
+616	landmark	Petitioner's Gate	Citadel of Flame
+617	waypoint	Chamber of Might Waypoint	Citadel of Flame
+618	landmark	The Sonic Furnace	Frostgorge Sound
+619	landmark	Forgepits	Frostgorge Sound
+620	landmark	Arkor's Tomb	Frostgorge Sound
+621	landmark	Krok's Ruin	Frostgorge Sound
+622	landmark	Sacred Trust	Frostgorge Sound
+623	landmark	Elder's Vale	Frostgorge Sound
+624	landmark	Safewatch Vale	Frostgorge Sound
+625	landmark	Orsippus	Frostgorge Sound
+626	landmark	Moshpoipoi	Frostgorge Sound
+627	landmark	Zuckermaloo	Frostgorge Sound
+628	landmark	Deep and Troubled Waters	Frostgorge Sound
+629	landmark	The Barrowstead	Frostgorge Sound
+630	landmark	Coiled Watch	Frostgorge Sound
+631	landmark	Claw Watch	Frostgorge Sound
+632	waypoint	Arundon Waypoint	Frostgorge Sound
+633	waypoint	Groznev Waypoint	Frostgorge Sound
+634	waypoint	Earthshake Waypoint	Frostgorge Sound
+635	waypoint	Path of Starry Skies Waypoint	Frostgorge Sound
+636	waypoint	Slough of Despond Waypoint	Frostgorge Sound
+637	waypoint	Watchful Waypoint	Frostgorge Sound
+638	waypoint	Ice Floe Waypoint	Frostgorge Sound
+639	waypoint	Dimotiki Waypoint	Frostgorge Sound
+640	waypoint	Twoloop Waypoint	Frostgorge Sound
+641	waypoint	Skyheight Steading Waypoint	Frostgorge Sound
+642	waypoint	Highpeaks Waypoint	Frostgorge Sound
+643	waypoint	Ridgerock Camp Waypoint	Frostgorge Sound
+644	waypoint	Yak's Bend Waypoint	Frostgorge Sound
+645	waypoint	Blue Ice Shining Waypoint	Frostgorge Sound
+646	waypoint	Drakkar Waypoint	Frostgorge Sound
+647	landmark	Pagga's Post	Malchor's Leap
+648	landmark	Shark's Tooth Isle	Malchor's Leap
+649	landmark	Eastern Colonnade	Malchor's Leap
+650	landmark	Beacon Torch	Malchor's Leap
+651	landmark	Plaza of Lights	Malchor's Leap
+652	landmark	Altar of Tempests	Malchor's Leap
+653	landmark	Alarjann Bayt	Malchor's Leap
+654	landmark	The Wealdwood	Malchor's Leap
+655	landmark	Kitah Manse	Malchor's Leap
+656	landmark	Upsilon Test Facility	Malchor's Leap
+657	landmark	Sculptor's End	Malchor's Leap
+658	landmark	Omicron Test Facility	Malchor's Leap
+659	landmark	Arcadian Deeps	Malchor's Leap
+660	landmark	Altar of Lies	Malchor's Leap
+661	landmark	Spark of Ilya	Malchor's Leap
+662	landmark	Song of Lyss	Malchor's Leap
+663	landmark	Seal of Union	Malchor's Leap
+664	landmark	Malchor's Anguish	Malchor's Leap
+665	landmark	Mirror's Handle	Malchor's Leap
+666	landmark	Murmur Isle	Malchor's Leap
+667	landmark	Shelter Docks	Malchor's Leap
+668	landmark	Doric's Shrine	Malchor's Leap
+669	landmark	Kahloipoi Village	Malchor's Leap
+670	landmark	Rayhan Bayt	Malchor's Leap
+671	landmark	Bayt Fallahin	Malchor's Leap
+672	landmark	Saliah Bayt	Malchor's Leap
+673	landmark	Wreck of the Qashvian	Malchor's Leap
+674	landmark	Follower's Bridge	Malchor's Leap
+675	landmark	Dhuum's Last Stand	Malchor's Leap
+676	landmark	Village of Wren	Malchor's Leap
+677	landmark	Hope Falls	Malchor's Leap
+678	waypoint	Pagga's Waypoint	Malchor's Leap
+679	waypoint	Doric's Waypoint	Malchor's Leap
+680	waypoint	Waste Hollows Waypoint	Malchor's Leap
+681	waypoint	Colonnade Waypoint	Malchor's Leap
+682	waypoint	Valley of Lyss Waypoint	Malchor's Leap
+683	waypoint	Union Waypoint	Malchor's Leap
+684	waypoint	Wren Waypoint	Malchor's Leap
+685	waypoint	Lyssa Waypoint	Malchor's Leap
+686	waypoint	Blighted Arch Waypoint	Malchor's Leap
+687	waypoint	Murmur Waypoint	Malchor's Leap
+688	waypoint	Tempest Waypoint	Malchor's Leap
+689	waypoint	Versoconjouring Waypoint	Malchor's Leap
+690	waypoint	Lights Waypoint	Malchor's Leap
+692	landmark	Valley of Gwaun	Mount Maelstrom
+693	landmark	Tzanopl Grounds	Mount Maelstrom
+694	landmark	Restless Deeps	Mount Maelstrom
+695	landmark	Gorlois Spine	Mount Maelstrom
+696	landmark	Venomblight	Mount Maelstrom
+697	landmark	Gallant's Folly	Mount Maelstrom
+698	landmark	Evisomancer's Resort	Mount Maelstrom
+699	landmark	Malxa Pyronetics	Mount Maelstrom
+700	landmark	Moonlight Rill	Mount Maelstrom
+701	landmark	Zone Violet	Mount Maelstrom
+702	landmark	Zone White	Mount Maelstrom
+703	landmark	Zone Green	Mount Maelstrom
+704	landmark	Zone Black	Mount Maelstrom
+705	landmark	Zone Red	Mount Maelstrom
+706	landmark	Zone Blue (Under Construction)	Mount Maelstrom
+707	landmark	Breth Ayahusasca	Mount Maelstrom
+708	landmark	Rata Pten	Mount Maelstrom
+709	landmark	Herot's Ascent	Mount Maelstrom
+710	landmark	Theurgic Volute	Mount Maelstrom
+711	waypoint	Murkvale Waypoint	Mount Maelstrom
+712	waypoint	Govoran Waypoint	Mount Maelstrom
+713	waypoint	Criterion Waypoint	Mount Maelstrom
+714	waypoint	Firebreak Fort Waypoint	Mount Maelstrom
+715	waypoint	Spaecia Illogica Waypoint	Mount Maelstrom
+716	waypoint	Bard's Waypoint	Mount Maelstrom
+717	waypoint	Maelstrom's Waypoint	Mount Maelstrom
+718	waypoint	Ashen Waypoint	Mount Maelstrom
+719	waypoint	Avernan Waypoint	Mount Maelstrom
+720	waypoint	Broken Arrow Waypoint	Mount Maelstrom
+721	waypoint	Oxbow Isle Waypoint	Mount Maelstrom
+722	waypoint	Irwin Isle Waypoint	Mount Maelstrom
+723	waypoint	Gauntlet Waypoint	Mount Maelstrom
+724	waypoint	Old Sledge Site Waypoint	Mount Maelstrom
+725	waypoint	Judgment Waypoint	Mount Maelstrom
+726	waypoint	Magmatic Waypoint	Mount Maelstrom
+727	landmark	Oceanside Ordnance	Straits of Devastation
+728	landmark	Razorslide Bivouac	Straits of Devastation
+729	landmark	Stentor Cannonade	Straits of Devastation
+730	landmark	Thunderhead Battery	Straits of Devastation
+731	landmark	Cadrigan's Jetty	Straits of Devastation
+732	landmark	Izz-al-Din Sarayi	Straits of Devastation
+733	landmark	Broken Spit	Straits of Devastation
+734	landmark	The Vizier's Tower	Straits of Devastation
+735	landmark	Stygian Deeps	Straits of Devastation
+736	landmark	Plaza of Lost Wisdom	Straits of Devastation
+737	landmark	Lone Post	Straits of Devastation
+738	landmark	Conquest Marina	Straits of Devastation
+739	landmark	Brassclaw Landing	Straits of Devastation
+740	landmark	Snipe Hill	Straits of Devastation
+741	landmark	Altar of Betrayal	Straits of Devastation
+742	landmark	Compass Bridge	Straits of Devastation
+743	landmark	Din al-Jindi	Straits of Devastation
+744	landmark	Chapel of Lady Glaive	Straits of Devastation
+745	landmark	The Royal Forum	Straits of Devastation
+746	landmark	The Vesper Bell	Straits of Devastation
+747	landmark	Monastery of Tughra	Straits of Devastation
+748	waypoint	Bramble Pass Waypoint	Straits of Devastation
+749	waypoint	Signal Peak Waypoint	Straits of Devastation
+750	waypoint	Fort Trinity Waypoint	Straits of Devastation
+751	waypoint	Thorn Pass Waypoint	Straits of Devastation
+752	waypoint	Thunderhead Waypoint	Straits of Devastation
+753	waypoint	Broken Spit Waypoint	Straits of Devastation
+754	waypoint	Vesper Bell Waypoint	Straits of Devastation
+755	waypoint	Royal Forum Waypoint	Straits of Devastation
+756	waypoint	Brassclaw Waypoint	Straits of Devastation
+757	waypoint	Antheneum Waypoint	Straits of Devastation
+758	waypoint	Conquest Marina Waypoint	Straits of Devastation
+759	waypoint	Lone Post Waypoint	Straits of Devastation
+760	waypoint	Waywarde Waypoint	Straits of Devastation
+761	waypoint	Xenarius Waypoint	Straits of Devastation
+762	waypoint	Glorious Victory Waypoint	Straits of Devastation
+763	waypoint	Sentry Waypoint	Straits of Devastation
+764	landmark	Bitter Mountain	Cursed Shore
+765	landmark	Caer Shadowfain	Cursed Shore
+766	landmark	Village Sayix	Cursed Shore
+767	landmark	Seachange Tidepools	Cursed Shore
+768	landmark	Cachistic R&D	Cursed Shore
+769	landmark	Gavbeorn's Landing	Cursed Shore
+770	landmark	Bakkir Sarayi	Cursed Shore
+771	landmark	Winterknell Labyrinth	Cursed Shore
+772	landmark	Shelter's Gate	Cursed Shore
+773	landmark	Gallow's Hang	Cursed Shore
+774	landmark	Village of Ewan	Cursed Shore
+775	landmark	Thorn Dock	Cursed Shore
+776	landmark	The Wreck of the Golden Vanity	Cursed Shore
+777	landmark	Harbinger Torch	Cursed Shore
+778	landmark	Death's Gaze Torch	Cursed Shore
+779	landmark	Buried Archives	Cursed Shore
+780	landmark	Altar of Murdered Dreams	Cursed Shore
+781	landmark	Death's Anthem	Cursed Shore
+782	landmark	The Wreck of the Saehrimnir	Cursed Shore
+783	landmark	Meddler's Summit	Cursed Shore
+784	landmark	Telmat Knoll	Cursed Shore
+785	landmark	Augur's Torch	Cursed Shore
+786	landmark	Shank Anchorage	Cursed Shore
+787	landmark	Sharn's Free Camp	Cursed Shore
+788	landmark	Reliquary Vault	Cursed Shore
+789	landmark	Gates of Arah	Cursed Shore
+790	landmark	Altar of the Withered Heart	Cursed Shore
+791	waypoint	Pursuit Pass Waypoint	Cursed Shore
+792	waypoint	R&D Waypoint	Cursed Shore
+793	waypoint	Penitent Waypoint	Cursed Shore
+794	waypoint	Gavbeorn's Waypoint	Cursed Shore
+795	waypoint	Verdance Waypoint	Cursed Shore
+796	waypoint	Shelter's Gate Waypoint	Cursed Shore
+797	waypoint	Jofast's Waypoint	Cursed Shore
+798	waypoint	Meddler's Waypoint	Cursed Shore
+799	waypoint	Anchorage Waypoint	Cursed Shore
+800	waypoint	Arah Waypoint	Cursed Shore
+801	waypoint	Caer Shadowfain Waypoint	Cursed Shore
+802	waypoint	Murdered Dreams Waypoint	Cursed Shore
+803	waypoint	Dwayna Waypoint	Divinity's Reach
+804	waypoint	Grenth Waypoint	Divinity's Reach
+805	waypoint	Kormir Waypoint	Divinity's Reach
+806	waypoint	Lyssa Waypoint	Divinity's Reach
+807	waypoint	Melandru Waypoint	Divinity's Reach
+808	waypoint	Balthazar Waypoint	Divinity's Reach
+809	waypoint	Palace Waypoint	Divinity's Reach
+810	waypoint	Commons Waypoint	Divinity's Reach
+811	waypoint	Rurikton Waypoint	Divinity's Reach
+812	waypoint	Crown Pavilion Waypoint	Divinity's Reach
+813	waypoint	Ossan Waypoint	Divinity's Reach
+814	waypoint	Salma Waypoint	Divinity's Reach
+816	landmark	Zaishen Antheneum	Straits of Devastation
+817	landmark	Skull Plaza	Divinity's Reach
+820	waypoint	Honor's Waypoint	Honor of the Waves
+821	waypoint	Honor's Waypoint	Honor of the Waves
+822	landmark	Uzolan's Hideout	Kessex Hills
+823	landmark	Cutpurse Circle	Brisban Wildlands
+824	landmark	Mennerheim	Snowden Drifts
+825	waypoint	Caudecus's Manor Waypoint	Caudecus's Manor
+826	waypoint	Caudecus's Manor Waypoint	Caudecus's Manor
+827	landmark	Ash Tribune Quarters	Black Citadel
+828	landmark	Blood Tribune Quarters	Black Citadel
+829	landmark	Fahrar of Young Heroes	Black Citadel
+830	landmark	Abandoned Caverns (Access Prohibited)	Black Citadel
+831	landmark	Iron Tribune Quarters	Black Citadel
+832	landmark	Durmand Scriptorium	Black Citadel
+833	landmark	Vigil Chapterhouse	Black Citadel
+834	landmark	Serrated Blade Tavern	Black Citadel
+835	landmark	Bonegrinder's Gully	Queensdale
+836	waypoint	Orchard Waypoint	Queensdale
+837	waypoint	Scaver Waypoint	Queensdale
+838	waypoint	Peatrot Gallery Waypoint	Twilight Arbor
+839	waypoint	Lake of Fear Waypoint	Twilight Arbor
+840	waypoint	Hall of Heart's Remorse Waypoint	Twilight Arbor
+841	landmark	Firesnake's Tail	Frostgorge Sound
+842	landmark	Offering Stone	Frostgorge Sound
+843	landmark	The Busted Flagon	Divinity's Reach
+844	waypoint	Lionguard Waystation Waypoint	Caledon Forest
+845	waypoint	Dryground Village Waypoint	Sparkfly Fen
+846	waypoint	Lowland Burns Waypoint	Blazeridge Steppes
+847	waypoint	Gastor Gullet Waypoint	Blazeridge Steppes
+848	waypoint	Kinar Fort Waypoint	Blazeridge Steppes
+849	waypoint	Splintercrest Fort Waypoint	Blazeridge Steppes
+850	waypoint	Soot Road Waypoint	Blazeridge Steppes
+851	landmark	Trainer's Terrace	Queensdale
+852	landmark	Drake Hollow	Blazeridge Steppes
+853	landmark	Eastern Bastion	Caudecus's Manor
+854	landmark	Servant Quarters	Caudecus's Manor
+855	landmark	Manor Barn	Caudecus's Manor
+856	landmark	Separatist Camp	Caudecus's Manor
+857	landmark	Bandit Barracks	Caudecus's Manor
+858	landmark	Pact Encampment	The Ruined City of Arah
+859	waypoint	Pact Camp Waypoint	Victory or Death
+860	landmark	Melandru's Dome	The Ruined City of Arah
+861	landmark	Demon's Shoal	The Ruined City of Arah
+862	landmark	Draconic Battery	Victory or Death
+863	landmark	Zhaitan's Last Stand	Victory or Death
+864	landmark	Salvage of the "Whitebear's Pride"	The Ruined City of Arah
+865	landmark	Salvage of the "Riannoc's Dream"	The Ruined City of Arah
+866	landmark	Salvage of the "Lady Livia"	The Ruined City of Arah
+867	landmark	The Slaughtercrypt	The Ruined City of Arah
+868	landmark	The Wreck of the Scorchrazor	The Ruined City of Arah
+869	landmark	Mursaat Test Bed Zeleph	The Ruined City of Arah
+870	landmark	The Mystic Telescope	The Ruined City of Arah
+871	landmark	The Grand Processional Gate	The Ruined City of Arah
+872	landmark	The Bloodstones' Unmaking	The Ruined City of Arah
+873	landmark	The Altar of Glaust	The Ruined City of Arah
+874	landmark	The Imperial Barge of Orr	The Ruined City of Arah
+875	waypoint	Entrance Waypoint	Ascalonian Catacombs
+876	waypoint	Archive Waypoint	Ascalonian Catacombs
+881	landmark	Courage Brewery	Hoelbrak
+882	landmark	Fang of the Serpent	Hoelbrak
+883	landmark	Brawler's Bout	Hoelbrak
+884	landmark	The Great Rise	Hoelbrak
+885	landmark	Skarti's Steading	Hoelbrak
+886	landmark	Stonewright's Steading	Hoelbrak
+887	landmark	Sigfast's Steading	Hoelbrak
+888	landmark	Master Blackforge's Steading	Hoelbrak
+889	landmark	Old Fiach's Lorestead	Hoelbrak
+890	landmark	Boasting Hall	Hoelbrak
+891	landmark	Hrothbeir's Rest	Hoelbrak
+892	landmark	Vheratha's Tavern	Hoelbrak
+893	landmark	Priory Encampment	Hoelbrak
+894	landmark	Dragon Hallow	Hoelbrak
+895	landmark	Vigil Billet	Hoelbrak
+896	landmark	Lost Spirits' Hallow	Hoelbrak
+897	landmark	Bear Hallow	Hoelbrak
+898	landmark	Wolf Hallow	Hoelbrak
+899	landmark	Raven Hallow	Hoelbrak
+900	landmark	Snow Leopard Hallow	Hoelbrak
+901	waypoint	Might and Main Waypoint	Hoelbrak
+902	waypoint	Trade Commons Waypoint	Hoelbrak
+903	waypoint	Snow Leopard Waypoint	Hoelbrak
+904	waypoint	Raven Waypoint	Hoelbrak
+905	waypoint	Bear Waypoint	Hoelbrak
+906	waypoint	Wolf Waypoint	Hoelbrak
+907	waypoint	Shelter Rock Waypoint	Hoelbrak
+908	waypoint	Legends Waypoint	Hoelbrak
+909	waypoint	Eastern Watchpost Waypoint	Hoelbrak
+910	waypoint	Southern Watchpost Waypoint	Hoelbrak
+911	waypoint	Peeta's Waypoint	Hoelbrak
+912	waypoint	Hero's Compass Waypoint	Hoelbrak
+913	waypoint	Entrance Waypoint	Ascalonian Catacombs
+914	waypoint	Murals Waypoint	Ascalonian Catacombs
+915	landmark	Camp Keiran	Plains of Ashford
+916	landmark	Mock's Niche	Plains of Ashford
+917	landmark	Three Legions Court	Plains of Ashford
+918	landmark	Shards of War	Plains of Ashford
+919	waypoint	Feritas Waypoint	Plains of Ashford
+920	waypoint	Guardpoint Decimus Waypoint	Plains of Ashford
+921	waypoint	Spirit Hunter Camp Waypoint	Plains of Ashford
+922	waypoint	Dawnright Estate Waypoint	Diessa Plateau
+923	waypoint	Lionbridge Waypoint	Gendarran Fields
+924	landmark	Ash Checkpoint 13	Black Citadel
+925	landmark	Hero's Forum	Black Citadel
+926	landmark	20th Blood Cohort	Black Citadel
+927	landmark	Ashford Gate	Black Citadel
+928	landmark	12th Iron Maniple	Black Citadel
+929	landmark	Citadel Stockade	Black Citadel
+930	landmark	Storm Caller Triumph	Black Citadel
+931	landmark	The War Council	Black Citadel
+932	waypoint	Gladium Waypoint	Black Citadel
+933	waypoint	Mustering Ground Waypoint	Black Citadel
+934	waypoint	Memorial Waypoint	Black Citadel
+935	waypoint	Factorium Waypoint	Black Citadel
+936	waypoint	Diessa Gate Waypoint	Black Citadel
+937	waypoint	Ligacus Aquilo Waypoint	Black Citadel
+938	waypoint	Bane Waypoint	Black Citadel
+939	waypoint	Hero's Waypoint	Black Citadel
+940	waypoint	Ruins of Rin Waypoint	Black Citadel
+941	waypoint	Imperator's Waypoint	Black Citadel
+942	waypoint	Kasha's Tomb Waypoint	Ascalonian Catacombs
+943	waypoint	Reliquary Waypoint	Ascalonian Catacombs
+944	landmark	Camp Althea	Diessa Plateau
+945	landmark	Battlement Shore	Sparkfly Fen
+946	landmark	Bad Omen Beach	Gendarran Fields
+947	waypoint	Caer Brier Waypoint	Sparkfly Fen
+948	waypoint	Mire Waypoint	Sparkfly Fen
+950	waypoint	Cathedral Waypoint	Ascalonian Catacombs
+952	landmark	Knut Whitebear's Loft	Into the Mists
+953	waypoint	Earthworks Camp Waypoint	Kessex Hills
+954	waypoint	Gap Waypoint	Kessex Hills
+955	landmark	Ambush Camp	Gendarran Fields
+956	landmark	Vollym's Battle Pit	Gendarran Fields
+957	landmark	Jackdaw's Reef	Gendarran Fields
+958	landmark	Slade's Bay	Gendarran Fields
+959	waypoint	Frozen Sweeps Waypoint	Snowden Drifts
+960	waypoint	Valslake Waypoint	Snowden Drifts
+961	waypoint	Lostvyrm Cave Waypoint	Wayfarer Foothills
+962	waypoint	Krennak's Homestead Waypoint	Wayfarer Foothills
+963	waypoint	Grawlenfjord Waypoint	Wayfarer Foothills
+964	waypoint	Bloodcliff Waypoint	Diessa Plateau
+965	waypoint	Sanctum Waypoint	Diessa Plateau
+966	waypoint	Redreave Mill Waypoint	Diessa Plateau
+967	waypoint	Loreclaw Waypoint	Plains of Ashford
+968	waypoint	Phasmatis Waypoint	Plains of Ashford
+969	waypoint	Manbane's Waypoint	Diessa Plateau
+972	waypoint	Snowblind Waypoint	Gendarran Fields
+973	waypoint	Brigantine Waypoint	Gendarran Fields
+974	landmark	Haivoissen Kenning	Wayfarer Foothills
+975	landmark	Dragonblest Hold	Wayfarer Foothills
+976	landmark	Frostcreek Steading	Wayfarer Foothills
+981	waypoint	Great Lodge Waypoint	Hoelbrak
+984	landmark	The Frozen Maw	Wayfarer Foothills
+987	landmark	Moorwatch Tower	Diessa Plateau
+988	landmark	Ebonshore Plant	Diessa Plateau
+989	waypoint	Priory Camp Waypoint	Ascalonian Catacombs
+990	landmark	Stonemist Keep	Eternal Battlegrounds
+991	landmark	Great Northern Gate	Eternal Battlegrounds
+992	landmark	Great Eastern Gate	Eternal Battlegrounds
+993	landmark	Great Western Gate	Eternal Battlegrounds
+994	landmark	Keep	Eternal Battlegrounds
+995	landmark	Durios Post	Eternal Battlegrounds
+996	landmark	Umberglade Mill	Eternal Battlegrounds
+997	landmark	Langor Tower	Eternal Battlegrounds
+998	landmark	Bravost Tower	Eternal Battlegrounds
+999	landmark	Danelon Mine	Eternal Battlegrounds
+1000	landmark	Quentin Post	Eternal Battlegrounds
+1001	landmark	Dragoss Kraal	Eternal Battlegrounds
+1002	landmark	Novotl Grounds	Eternal Battlegrounds
+1003	landmark	Keep	Eternal Battlegrounds
+1004	landmark	Anzalias Post	Eternal Battlegrounds
+1005	landmark	Speldan Mill	Eternal Battlegrounds
+1006	landmark	Veloka Tower	Eternal Battlegrounds
+1007	landmark	Mendon's Tower	Eternal Battlegrounds
+1008	landmark	Pangloss Mine	Eternal Battlegrounds
+1009	landmark	Ogrewatch Post	Eternal Battlegrounds
+1010	landmark	Molevek Works	Eternal Battlegrounds
+1011	landmark	Keep	Eternal Battlegrounds
+1012	landmark	Klovan Post	Eternal Battlegrounds
+1013	landmark	Golanta Mill	Eternal Battlegrounds
+1014	landmark	Jerrifer's Tower	Eternal Battlegrounds
+1015	landmark	Aldon's Tower	Eternal Battlegrounds
+1016	landmark	Rogue's Quarry	Eternal Battlegrounds
+1017	landmark	Wildcreek Post	Eternal Battlegrounds
+1018	waypoint	Hill Waypoint	Eternal Battlegrounds
+1019	waypoint	Hill Waypoint	Eternal Battlegrounds
+1020	waypoint	Hill Waypoint	Eternal Battlegrounds
+1021	landmark	Armada Harbor	Straits of Devastation
+1022	landmark	Alseta Generator	Straits of Devastation
+1023	landmark	Caer Aval	Straits of Devastation
+1024	landmark	Mellaggan Shrine	Gendarran Fields
+1025	waypoint	Osenfold Waypoint	Wayfarer Foothills
+1026	waypoint	Bloodfields Waypoint	Gendarran Fields
+1027	waypoint	Mechanisms Waypoint	Sorrow's Embrace
+1028	waypoint	Depot Waypoint	Sorrow's Embrace
+1029	waypoint	Dredge Square Waypoint	Sorrow's Embrace
+1030	waypoint	Volcanium Waypoint	Sorrow's Embrace
+1031	waypoint	KD-4 Waypoint	Sorrow's Embrace
+1032	landmark	Warmspring Grotto	Wayfarer Foothills
+1033	landmark	Butcher's Yard	Diessa Plateau
+1034	landmark	Moldary Point	Snowden Drifts
+1035	waypoint	Deadend Waypoint	Bloodtide Coast
+1036	waypoint	Commodore's Quarter Waypoint	Lion's Arch
+1037	waypoint	Guild Bluff Waypoint	Lion's Arch
+1038	waypoint	Bloodcoast Ward Waypoint	Lion's Arch
+1039	waypoint	Claw Island Portage Waypoint	Lion's Arch
+1040	waypoint	Trader's Forum Waypoint	Lion's Arch
+1041	waypoint	Gate Hub Plaza Waypoint	Lion's Arch
+1042	waypoint	Caledon Waypoint	The Grove
+1043	waypoint	Metrical Court Waypoint	Rata Sum
+1044	waypoint	Magustan Court Waypoint	Rata Sum
+1045	landmark	Janusian Caves	Gendarran Fields
+1046	waypoint	PvP Lobby Waypoint	Heart of the Mists
+1047	waypoint	Gallery of Rage Waypoint	Citadel of Flame
+1048	waypoint	Illuminated Nave Waypoint	Citadel of Flame
+1049	waypoint	Ferric Chamber Waypoint	Citadel of Flame
+1050	waypoint	Sorrow's Embrace Waypoint	Sorrow's Embrace
+1051	landmark	The Hawke Heart	Fields of Ruin
+1052	landmark	Old Lion's Arch	Lion's Arch
+1053	landmark	Mist Portals	Lion's Arch
+1054	landmark	Moran Memorial	Lion's Arch
+1055	landmark	Crow's Nest Tavern (Captain's Council)	Lion's Arch
+1056	landmark	Coriolis Plaza	Lion's Arch
+1057	landmark	Mystic Plaza	Lion's Arch
+1058	landmark	Deverol Gardens	Lion's Arch
+1059	landmark	Phoenix Roost	Lion's Arch
+1060	landmark	Tokk's Mill	Lion's Arch
+1061	landmark	Captain Theo Ashford Memorial Bridge	Lion's Arch
+1062	landmark	The Vaults	Lion's Arch
+1063	landmark	Durmand Priory Research Site	Lion's Arch
+1064	landmark	The Undermarket	Lion's Arch
+1065	landmark	Lion's Court	Lion's Arch
+1066	landmark	Shuttered Gate	Lion's Arch
+1067	landmark	Vigil Centerhouse	Lion's Arch
+1068	landmark	Frog Pond	Lion's Arch
+1069	waypoint	Diverse Ledges Waypoint	Lion's Arch
+1070	waypoint	Western Ward Waypoint	Lion's Arch
+1071	waypoint	Sanctum Harbor Waypoint	Lion's Arch
+1072	waypoint	Fort Marriner Waypoint	Lion's Arch
+1073	waypoint	Eastern Ward Waypoint	Lion's Arch
+1074	waypoint	Cavern Waypoint	Lion's Arch
+1075	waypoint	Farshore Waypoint	Lion's Arch
+1076	landmark	Splorg Metamystics Lab	Metrica Province
+1077	landmark	Kestrel Market	Fields of Ruin
+1078	landmark	Defender's Field	Fields of Ruin
+1079	waypoint	Junker's Waypoint	Black Citadel
+1084	waypoint	Spotter's Waypoint	Fields of Ruin
+1085	waypoint	Kestrel Waypoint	Fields of Ruin
+1086	waypoint	Thunderbreak Waypoint	Fields of Ruin
+1087	landmark	Briarthorn Den	Caledon Forest
+1088	landmark	The Weeping Isle	Caledon Forest
+1089	landmark	Dolorous Vale	Caledon Forest
+1090	waypoint	Blackblade Waypoint	Diessa Plateau
+1091	waypoint	Lovers' Waypoint	Ascalonian Catacombs
+1092	landmark	Sentinel's Perch	Fields of Ruin
+1093	landmark	Rime's Garden	Caledon Forest
+1094	waypoint	Stromkarl Waypoint	Timberline Falls
+1095	waypoint	Flooded Temple Waypoint	Ascalonian Catacombs
+1100	waypoint	Blue Team Rally Point	Battle of Kyhlo
+1101	waypoint	Red Team Rally Point	Battle of Kyhlo
+1102	waypoint	Blue Team Rally Point	Forest of Niflhel
+1103	waypoint	Red Team Rally Point	Forest of Niflhel
+1104	waypoint	Gallery of Rage Waypoint	Citadel of Flame
+1105	waypoint	Molten Foundry Waypoint	Citadel of Flame
+1106	waypoint	Western Transept Waypoint	Citadel of Flame
+1107	waypoint	Sanguine Vault Waypoint	Citadel of Flame
+1110	waypoint	Contemplation Waypoint	Honor of the Waves
+1126	waypoint	Eastern Transept Waypoint	Citadel of Flame
+1127	waypoint	Illuminated Nave Waypoint	Citadel of Flame
+1128	waypoint	Ashen Chamber Waypoint	Citadel of Flame
+1129	waypoint	Devourian Waypoint	Citadel of Flame
+1130	waypoint	Shrine of Sacrifice Waypoint	Citadel of Flame
+1131	waypoint	Praesidium Waypoint	Citadel of Flame
+1132	waypoint	Khan-Ur Waypoint	Citadel of Flame
+1133	waypoint	Undercroft Waypoint	Citadel of Flame
+1134	landmark	Transformer Hub Kachong	Metrica Province
+1135	landmark	Traveler's Loft	A Pup's Illness
+1136	landmark	Bilrost Gallery	Hoelbrak
+1140	landmark	Plaza of Remembrance	Black Citadel
+1141	landmark	The House of Aife	The Grove
+1142	landmark	The House of Kahedins	The Grove
+1143	landmark	The House of Riannoc	The Grove
+1144	landmark	The House of Caithe	The Grove
+1145	landmark	The House of Malomedies	The Grove
+1146	landmark	The House of Niamh	The Grove
+1147	landmark	The Hidden Shelter	The Grove
+1148	landmark	Starbower Nursery	The Grove
+1149	landmark	Durmand Posting	The Grove
+1150	landmark	Vigil Shelter	The Grove
+1151	landmark	The Soul of the Pale Tree	The Grove
+1152	landmark	Gardenroot Tunnel	The Grove
+1153	landmark	Backroot Tunnel	The Grove
+1154	landmark	The Centaur's Path	The Grove
+1155	landmark	Pale Tree's Circle	The Grove
+1156	landmark	Warden's Watchgate	The Grove
+1157	landmark	The Envoy's Shelter	The Grove
+1158	landmark	The Maker's Path	The Grove
+1159	landmark	Ventari's Tablet	The Grove
+1160	waypoint	Eternity's Focus Waypoint	Crucible of Eternity
+1161	waypoint	Preparation Waypoint	Crucible of Eternity
+1162	waypoint	Independent Research Waypoint	Crucible of Eternity
+1163	waypoint	Overseer Waypoint	Crucible of Eternity
+1164	waypoint	Purification Waypoint	Crucible of Eternity
+1165	waypoint	Golemetric Diagnostics Waypoint	Crucible of Eternity
+1166	waypoint	Arcanic Reactor Waypoint	Crucible of Eternity
+1167	waypoint	Central Data Repository Waypoint	Crucible of Eternity
+1168	landmark	Dept. Of Arcane Eye	Rata Sum
+1169	landmark	Polymock Atrium	Rata Sum
+1170	landmark	Arcane Council	Rata Sum
+1171	landmark	PR-1000 Prototype Golem	Rata Sum
+1172	landmark	Inquest Recruiting Station	Rata Sum
+1173	landmark	Peacemakers Headquarters	Rata Sum
+1174	landmark	Priory Recruiting Station	Rata Sum
+1175	landmark	The Magihedron	Rata Sum
+1176	landmark	Forge Hall	Rata Sum
+1177	landmark	Thamaturgic Calculus	Rata Sum
+1178	landmark	Skinner Hall	Rata Sum
+1179	landmark	Vigil Recruiting Station	Rata Sum
+1180	landmark	The Aquatarium	Rata Sum
+1181	landmark	Engaged Demo Station	Rata Sum
+1182	landmark	Zojja's Workstation (Don't Touch!)	Rata Sum
+1183	landmark	Usability Station	Rata Sum
+1184	landmark	Artisan Hall	Rata Sum
+1189	landmark	Field of the Fallen	Lion's Arch
+1190	landmark	Moorookoo Village	Lion's Arch
+1191	landmark	Biocauldron Alchemics	Metrica Province
+1196	landmark	Breekeelee	Bloodtide Coast
+1197	landmark	Lorantl Grounds	Bloodtide Coast
+1198	waypoint	Old Golem Factory Waypoint	Metrica Province
+1199	waypoint	Loch Waypoint	Metrica Province
+1200	waypoint	Anthill Waypoint	Metrica Province
+1201	waypoint	Michotl Grounds Waypoint	Metrica Province
+1202	waypoint	Cuatl Waypoint	Metrica Province
+1203	waypoint	Artergon Waypoint	Metrica Province
+1204	waypoint	Magicat Court Waypoint	Rata Sum
+1205	waypoint	Incubation Waypoint	Rata Sum
+1206	waypoint	Accountancy Waypoint	Rata Sum
+1207	waypoint	Apprentice Waypoint	Rata Sum
+1208	waypoint	Research Waypoint	Rata Sum
+1209	waypoint	Auxiliary Waypoint	Rata Sum
+1210	waypoint	Upper Commons Waypoint	The Grove
+1211	waypoint	Reckoner's Waypoint	The Grove
+1212	waypoint	Ronan's Waypoint	The Grove
+1213	waypoint	Stonemist Waypoint	Eternal Battlegrounds
+1214	waypoint	Overlook Waypoint	Eternal Battlegrounds
+1215	waypoint	Valley Waypoint	Eternal Battlegrounds
+1216	waypoint	Lowlands Waypoint	Eternal Battlegrounds
+1221	landmark	Windy Cave	Lornar's Pass
+1222	landmark	Sanctum of Secrets	Chantry of Secrets
+1229	landmark	Lion's Torch	Claw Island
+1230	landmark	Lasciate Gateway	Straits of Devastation
+1231	landmark	Brassburn Torch	Straits of Devastation
+1232	landmark	Pact Rally Point	Straits of Devastation
+1233	landmark	Conservatory	Straits of Devastation
+1234	waypoint	Rally Waypoint	Straits of Devastation
+1235	waypoint	Ascension Bay Waypoint	Alpine Borderlands
+1236	waypoint	Border Waypoint	Alpine Borderlands
+1237	waypoint	Garrison Waypoint	Alpine Borderlands
+1238	waypoint	Citadel Waypoint	Alpine Borderlands
+1239	waypoint	Askalion Hills Waypoint	Alpine Borderlands
+1240	waypoint	Border Waypoint	Alpine Borderlands
+1241	waypoint	Dreadfall Bay Waypoint	Alpine Borderlands
+1242	waypoint	Border Waypoint	Alpine Borderlands
+1243	waypoint	Garrison Waypoint	Alpine Borderlands
+1244	waypoint	Citadel Waypoint	Alpine Borderlands
+1245	waypoint	Shadaran Hills Waypoint	Alpine Borderlands
+1246	waypoint	Border Waypoint	Alpine Borderlands
+1247	landmark	Master Chamber	Caudecus's Manor
+1248	landmark	Guest Chamber	Caudecus's Manor
+1249	landmark	Minister's Cabinet Room	Caudecus's Manor
+1250	landmark	Grand Salon	Caudecus's Manor
+1251	landmark	Drawing Room	Caudecus's Manor
+1252	landmark	Reading Room	Caudecus's Manor
+1253	landmark	Main Workshop	Caudecus's Manor
+1254	landmark	Wine Cellar	Caudecus's Manor
+1255	landmark	Kitchen	Caudecus's Manor
+1256	landmark	Pantry	Caudecus's Manor
+1257	landmark	Larder	Caudecus's Manor
+1258	landmark	Main Dining Room	Caudecus's Manor
+1259	landmark	Augur's Grotto	Malchor's Leap
+1260	landmark	Jofast's Camp	Cursed Shore
+1261	landmark	Ridgepost Sentry	Frostgorge Sound
+1262	waypoint	Granite Citadel Waypoint	Dredgehaunt Cliffs
+1263	landmark	Raven Hearth	Hoelbrak
+1264	waypoint	Blue Team Rally Point	Legacy of the Foefire
+1265	waypoint	Red Team Rally Point	Legacy of the Foefire
+1266	landmark	Firebase Molek	Dredgehaunt Cliffs
+1267	landmark	Tomb of Morlog	Dredgehaunt Cliffs
+1268	landmark	Tomb of Blackpowder	Dredgehaunt Cliffs
+1269	landmark	Tomb of Stoneskin	Dredgehaunt Cliffs
+1270	landmark	Barnaby's Watch	Kessex Hills
+1271	waypoint	Hydrone Unit Waypoint	Metrica Province
+1273	landmark	Harbinger	Malchor's Leap
+1274	landmark	Eastern Pyramid	Claw Island
+1275	landmark	Maw and Pride	Claw Island
+1276	landmark	Western Pyramid	Claw Island
+1277	landmark	Versoconjouring Array	Malchor's Leap
+1278	waypoint	Ministers Waypoint	Divinity's Reach
+1279	waypoint	Foefire's Heart Waypoint	Ascalonian Catacombs
+1280	landmark	Danador's Kennel	Caledon Forest
+1281	landmark	Zopatl Grounds	Caledon Forest
+1282	landmark	Altar of Secrets	Temple of the Forgotten God
+1283	landmark	Isgarren's View	Kessex Hills
+1284	landmark	The Free Market	Lion's Arch
+1285	landmark	Antidawn Anchorage	Rata Sum
+1286	landmark	Dawnside Quay	Rata Sum
+1287	waypoint	Port Waypoint	Rata Sum
+1288	waypoint	Upper Balcony Waypoint	Hoelbrak
+1289	landmark	Terranexic Lab	Metrica Province
+1290	landmark	Aeronotics Lab	Metrica Province
+1291	landmark	Brandalf's Steading	Dredgehaunt Cliffs
+1292	waypoint	Pact Encampment Waypoint	The Ruined City of Arah
+1293	landmark	Lyot's Herd	Lornar's Pass
+1294	landmark	Scrying Pool	Eye of the North
+1311	landmark	Spiritholme Crossroads	Alpine Borderlands
+1312	landmark	Ascension Bastion	Alpine Borderlands
+1313	landmark	Stargrove Mill	Alpine Borderlands
+1314	landmark	Battle's Hollow	Alpine Borderlands
+1315	landmark	Brownmane Camp	Alpine Borderlands
+1316	landmark	Askalion Bastion	Alpine Borderlands
+1317	landmark	Champion's Orchard	Alpine Borderlands
+1318	landmark	Greenwater Village	Alpine Borderlands
+1319	landmark	Chitterogg Camp	Alpine Borderlands
+1320	landmark	Bastion	Alpine Borderlands
+1321	landmark	Godslore Quarry	Alpine Borderlands
+1322	landmark	Redbriar Tower	Alpine Borderlands
+1323	landmark	Greenlake Tower	Alpine Borderlands
+1324	landmark	Woodhaven Tower	Alpine Borderlands
+1325	landmark	Dawn's Tower	Alpine Borderlands
+1326	landmark	Redvale Workshop	Alpine Borderlands
+1327	landmark	Shadaran Bastion	Alpine Borderlands
+1328	landmark	Bastion	Alpine Borderlands
+1329	landmark	Titanpaw Crossroads	Alpine Borderlands
+1330	landmark	Dreadfall Bastion	Alpine Borderlands
+1331	landmark	Foghaven Mill	Alpine Borderlands
+1332	landmark	Battle's Hollow	Alpine Borderlands
+1333	landmark	Eboneigh Camp	Alpine Borderlands
+1334	landmark	Sunnyhill Tower	Alpine Borderlands
+1335	landmark	Cragtop Tower	Alpine Borderlands
+1336	landmark	Bluevale Workshop	Alpine Borderlands
+1337	landmark	Hero's Orchard	Alpine Borderlands
+1338	landmark	Redwater Village	Alpine Borderlands
+1339	landmark	Neuskrittia Camp	Alpine Borderlands
+1340	landmark	Faithleap Quarry	Alpine Borderlands
+1341	landmark	Bluebriar Tower	Alpine Borderlands
+1342	landmark	Redlake Tower	Alpine Borderlands
+1343	waypoint	Sorrow's Embrace Waypoint	Dredgehaunt Cliffs
+1344	waypoint	The Citadel of Flame Waypoint	Fireheart Rise
+1345	waypoint	Twilight Arbor Waypoint	Caledon Forest
+1346	waypoint	Crucible of Eternity Waypoint	Mount Maelstrom
+1347	waypoint	Honor of the Waves Waypoint	Frostgorge Sound
+1348	waypoint	The Long Road Waypoint	Sorrow's Embrace
+1349	waypoint	Central Data Repository Waypoint	Crucible of Eternity
+1350	waypoint	Golemetric Diagnostics Waypoint	Crucible of Eternity
+1351	waypoint	Purification Waypoint	Crucible of Eternity
+1352	waypoint	Preparation Waypoint	Crucible of Eternity
+1353	waypoint	Portal to Lion's Arch	Heart of the Mists
+1354	waypoint	Combat Training Waypoint	Heart of the Mists
+1355	landmark	Champion's Monument	Heart of the Mists
+1356	landmark	Arena	Heart of the Mists
+1357	landmark	Combat Training Island	Heart of the Mists
+1359	landmark	Harfler Training Range	Heart of the Mists
+1360	landmark	Market	Heart of the Mists
+1454	waypoint	Reza's Waypoint	The Ruined City of Arah
+1455	waypoint	Highborn Kings Waypoint	The Ruined City of Arah
+1456	waypoint	Demon's Shoal Waypoint	The Ruined City of Arah
+1457	waypoint	Pantheon Waypoint	The Ruined City of Arah
+1458	landmark	Barradin's Vaults	Plains of Ashford
+1459	landmark	Black Lion Trading Company HQ	Lion's Arch
+1486	landmark	Falooaloo	Dredgehaunt Cliffs
+1511	landmark	Iron Horse Mines	Frostgorge Sound
+1526	landmark	Lair of the Seawitch	Kessex Hills
+1527	landmark	Mafic Core	Kessex Hills
+1528	landmark	Quaggankeep Channel	Gendarran Fields
+1533	waypoint	Divine Piazza Waypoint	The Ruined City of Arah
+1534	waypoint	Sleive's Waypoint	Caledon Forest
+1535	landmark	Old Flamen Lab	Metrica Province
+1557	landmark	Zhaitan's Rest	The Ruined City of Arah
+1559	landmark	Salvage of the "Whitebear's Pride"	Victory or Death
+1560	landmark	Pact Encampment	Victory or Death
+1561	landmark	Salvage of the "Riannoc's Dream"	Victory or Death
+1562	landmark	Salvage of the "Lady Livia"	Victory or Death
+1577	landmark	Bear's Jaws Shrine	Dredgehaunt Cliffs
+1578	landmark	Leopard's Snarl Shrine	Dredgehaunt Cliffs
+1579	landmark	Raven's Wing Shrine	Dredgehaunt Cliffs
+1580	landmark	Wolf's Lair Shrine	Dredgehaunt Cliffs
+1588	landmark	Peloopoo Needle	Frostgorge Sound
+1597	landmark	Jorand's Sluice	Snowden Drifts
+1598	landmark	Skritt Hill	Lornar's Pass
+1599	landmark	Glorious Dredge Excavation #74	Lornar's Pass
+1600	landmark	Lost Owl Shrine	Lornar's Pass
+1601	landmark	Ravenbeak Shrine	Lornar's Pass
+1602	landmark	Bearstone Shrine	Lornar's Pass
+1603	landmark	Wolfpaw Shrine	Lornar's Pass
+1604	landmark	Leopardshadow Shrine	Lornar's Pass
+1605	landmark	The Riven Path	Lornar's Pass
+1606	landmark	Keddle Moraine	Lornar's Pass
+1607	landmark	Priory Bridge	Lornar's Pass
+1608	landmark	Steam Mechagate	Lornar's Pass
+1609	landmark	Marionette's Landing	Lornar's Pass
+1610	landmark	Skylady's Memory	Lornar's Pass
+1611	landmark	Mette's Posting	Lornar's Pass
+1612	landmark	Dwarves' Gloaming	Lornar's Pass
+1613	landmark	Grogshadow Kenning	Lornar's Pass
+1614	landmark	Guutra's Secret	Lornar's Pass
+1615	landmark	Twoheaded Meadows	Lornar's Pass
+1616	landmark	Wonderous Drill Installation #73	Lornar's Pass
+1617	waypoint	Icedevil's Waypoint	Lornar's Pass
+1618	waypoint	Refuge Peak Waypoint	Lornar's Pass
+1619	waypoint	Afgar's Waypoint	Lornar's Pass
+1620	waypoint	Cascade Bridge Waypoint	Lornar's Pass
+1621	landmark	Lostwreck Passage	Bloodtide Coast
+1622	landmark	Bauxite Alchemicals	Malchor's Leap
+1623	landmark	King's Passage	Malchor's Leap
+1624	waypoint	Plinth Timberland Waypoint	Straits of Devastation
+1625	waypoint	Underbelly Waypoint	Straits of Devastation
+1626	landmark	The Underbelly	Straits of Devastation
+1627	landmark	Old Grendich Aqueduct	Diessa Plateau
+1628	landmark	Posternus Caverns	Lornar's Pass
+1629	landmark	Rocklair	Lornar's Pass
+1630	waypoint	Security Waypoint	Crucible of Eternity
+1631	waypoint	The Humble Waypoint	Victory or Death
+1632	waypoint	The Glory of Tyria's Waypoint	Victory or Death
+1639	waypoint	Chamber of Envy Waypoint	Twilight Arbor
+1640	waypoint	The Arboretum Waypoint	Twilight Arbor
+1641	waypoint	Chamber of Envy Waypoint	Twilight Arbor
+1642	waypoint	Formal Garden Waypoint	Caudecus's Manor
+1643	waypoint	Formal Garden Waypoint	Caudecus's Manor
+1644	waypoint	Vista Lawn Waypoint	Caudecus's Manor
+1645	waypoint	Reception Court Waypoint	Caudecus's Manor
+1646	waypoint	Ascendant's Bounty Waypoint	The Ruined City of Arah
+1647	waypoint	Estates Waypoint	The Ruined City of Arah
+1648	waypoint	White Bears Pride Waypoint	The Ruined City of Arah
+1649	waypoint	Vaults of Holiness Waypoint	The Ruined City of Arah
+1650	waypoint	Hidden Waypoint	The Ruined City of Arah
+1651	waypoint	Highborn Kings Waypoint	The Ruined City of Arah
+1652	waypoint	Passage Waypoint	The Ruined City of Arah
+1653	waypoint	Ascendant's Bounty Waypoint	The Ruined City of Arah
+1654	waypoint	Vaults of Holiness Waypoint	The Ruined City of Arah
+1668	waypoint	Vaults of Holiness Waypoint	The Ruined City of Arah
+1669	waypoint	Dreaming Dead Waypoint	The Ruined City of Arah
+1670	waypoint	Cleft Waypoint	The Ruined City of Arah
+1671	waypoint	Heavencrystal Waypoint	The Ruined City of Arah
+1672	landmark	Kappa's Corral	Queensdale
+1673	landmark	Beetletun Waterworks	Queensdale
+1674	landmark	Greatheart Weald	Queensdale
+1675	landmark	Bar Curtis Ranch	Queensdale
+1676	landmark	Duran Brothers' Docks	Queensdale
+1677	landmark	Aquabase Terror Seven	Mount Maelstrom
+1678	landmark	New Skrittstead	Mount Maelstrom
+1679	landmark	Forge Foundations	Mount Maelstrom
+1680	landmark	Gloomirk Outpost	Mount Maelstrom
+1681	landmark	Mosstide Walfts	Mount Maelstrom
+1682	landmark	Aliyana's Haunt	Mount Maelstrom
+1683	landmark	Treacherous Vents	Mount Maelstrom
+1684	landmark	Maelstrom's Core	Mount Maelstrom
+1685	landmark	Hellmouth Falls	Mount Maelstrom
+1686	landmark	Felsic Plains	Mount Maelstrom
+1687	landmark	Clandest Basecamp	Mount Maelstrom
+1688	landmark	Lonatl Grounds	Mount Maelstrom
+1689	landmark	Observation Platform XKV	Mount Maelstrom
+1690	landmark	Reflection Cove	Malchor's Leap
+1691	landmark	Heart of Corruption	Wayfarer Foothills
+1700	landmark	Ghost Stones	Dredgehaunt Cliffs
+1701	landmark	Blue Ice Station	Frostgorge Sound
+1709	landmark	Bloodgorge Watch Camp	Fields of Ruin
+1731	waypoint	Rotten Armada Waypoint	The Ruined City of Arah
+1732	unlock	Sorrow's Embrace	Dredgehaunt Cliffs
+1733	unlock	Ascalonian Catacombs	Plains of Ashford
+1734	unlock	Citadel of Flame	Fireheart Rise
+1735	unlock	The Ruined City of Arah	Cursed Shore
+1736	unlock	Twilight Arbor	Caledon Forest
+1737	unlock	Caudecus's Manor	Queensdale
+1738	unlock	Crucible of Eternity	Mount Maelstrom
+1739	unlock	Honor of the Waves	Frostgorge Sound
+1740	waypoint	Ascent to Madness Waypoint	Ascent to Madness
+1741	waypoint	Mad King's Labyrinth Waypoint	Mad King's Labyrinth
+1742	waypoint	Blue Team Rally Point	Reaper's Rumble
+1743	waypoint	Red Team Rally Point	Reaper's Rumble
+1744	waypoint	Lion Point Waypoint	Southsun Cove
+1745	waypoint	Blue Team Rally Point	Temple of the Silent Storm
+1746	waypoint	Pride Point Waypoint	Southsun Cove
+1747	waypoint	Red Team Rally Point	Temple of the Silent Storm
+1748	landmark	Onyx Field	Southsun Cove
+1749	waypoint	Pearl Islet Waypoint	Southsun Cove
+1750	landmark	Privateer's Moorage	Southsun Cove
+1751	waypoint	Camp Karka Waypoint	Southsun Cove
+1752	waypoint	Owain's Refuge Waypoint	Southsun Cove
+1753	landmark	Ember Passage	Southsun Cove
+1754	landmark	Canach's Folly	Southsun Cove
+1755	landmark	Karka Hive	Southsun Cove
+1756	waypoint	Kiel's Outpost Waypoint	Southsun Cove
+1757	unlock	Fractals of the Mists	Lion's Arch
+1758	landmark	Macha's Landing	Lion's Arch
+1759	landmark	Order of Whispers Headquarters	Lion's Arch
+1760	waypoint	Blue Team Rally Point	Snowball Mayhem
+1761	waypoint	Red Team Rally Point	Snowball Mayhem
+1762	waypoint	Toymaker's Airship Waypoint	Tixx's Infinirarium
+1763	waypoint	Player Respawn	Toypocalypse
+1764	waypoint	Shipwreck Rock Waypoint	Cursed Shore
+1765	waypoint	Dire Shoal Waypoint	Straits of Devastation
+1766	waypoint	End of the Road Waypoint	Sorrow's Embrace
+1767	waypoint	Inquest Base Waypoint	Sorrow's Embrace
+1768	waypoint	Co-operative Waypoint	Sorrow's Embrace
+1769	waypoint	Zalten Mines Waypoint	Sorrow's Embrace
+1770	waypoint	Quarry Waypoint	Sorrow's Embrace
+1771	waypoint	Citadel Waypoint	Sorrow's Embrace
+1772	waypoint	Faolain's Lair Waypoint	Twilight Arbor
+1773	waypoint	Nursery Waypoint	Twilight Arbor
+1774	waypoint	Pedipalp Waypoint	Twilight Arbor
+1775	waypoint	Palace of Gathering Waypoint	Honor of the Waves
+1776	waypoint	Midship Waypoint	Honor of the Waves
+1777	waypoint	Hall of Balance Waypoint	Honor of the Waves
+1778	waypoint	Sternquarters Waypoint	Honor of the Waves
+1779	waypoint	Prow Waypoint	Honor of the Waves
+1780	waypoint	Geoffrey's Tube Waypoint	Honor of the Waves
+1781	waypoint	Eastern Tunnel Waypoint	Caudecus's Manor
+1782	waypoint	Blue Team Rally Point	Spirit Watch
+1783	waypoint	Red Team Rally Point	Spirit Watch
+1784	waypoint	Langmar Estate Waypoint	Plains of Ashford
+1785	waypoint	Proxemics Lab Waypoint	Brisban Wildlands
+1791	waypoint	Angvar's Trove Waypoint	Snowden Drifts
+1792	landmark	Rugnar's Steading	Wayfarer Foothills
+1793	landmark	North Nolan Hatchery	Diessa Plateau
+1794	waypoint	Obsidian Sanctum Waypoint	Obsidian Sanctum
+1795	waypoint	Obsidian Sanctum Waypoint	Obsidian Sanctum
+1796	waypoint	Obsidian Sanctum Waypoint	Obsidian Sanctum
+1797	waypoint	Blue Team Rally Point	Skyhammer
+1798	waypoint	Red Team Rally Point	Skyhammer
+1799	waypoint	Cavern Entrance Waypoint	Molten Furnace
+1800	waypoint	Overlook Waypoint	Molten Furnace
+1801	waypoint	Ore Processing Waypoint	Molten Furnace
+1802	landmark	Steampipe Steading	Southsun Cove
+1803	waypoint	Blue Team Rally Point	Dragon Ball Arena
+1804	waypoint	Red Team Rally Point	Dragon Ball Arena
+1805	landmark	The Dead End	Divinity's Reach
+1806	waypoint	Roughneck Crook Waypoint	Aetherblade Retreat
+1807	waypoint	Kleptotronic Advanced Designs Waypoint	Aetherblade Retreat
+1808	waypoint	Scoundrel's Hovel Waypoint	Aetherblade Retreat
+1809	landmark	Second Aetherblade Site	Gendarran Fields
+1810	landmark	Rogue's Landing	Aetherblade Retreat
+1818	waypoint	Blue Team Rally Point	Aspect Arena
+1819	waypoint	Red Team Rally Point	Aspect Arena
+1820	waypoint	Bazaar Docks Waypoint	Labyrinthine Cliffs
+1821	waypoint	Sky Docks Waypoint	Labyrinthine Cliffs
+1823	waypoint	Crown Pavilion Waypoint	The Crown Pavilion
+1825	landmark	Ooze Font	Twilight Arbor
+1826	landmark	The Clearcut	Twilight Arbor
+1827	landmark	Aetherblade Shipyard	Twilight Arbor
+1828	landmark	Security Room	Twilight Arbor
+1829	landmark	Clockheart Generator	Twilight Arbor
+1830	waypoint	Ferndog Backwoods Waypoint	Twilight Arbor
+1831	waypoint	Aetherblade Shipyard Waypoint	Twilight Arbor
+1832	waypoint	Ooze Font Waypoint	Twilight Arbor
+1833	waypoint	Haunted Nolani Waypoint	Black Citadel
+1834	waypoint	Mad King's Labyrinth Waypoint	Mad King's Labyrinth
+1837	landmark	Thunder Ridge Camp	Kessex Hills
+1838	landmark	Tower of Nightmares	Kessex Hills
+1839	waypoint	Tower of Nightmares Waypoint	The Tower of Nightmares (Public)
+1840	waypoint	Thaumanova Reactor	Fractals of the Mists
+1841	waypoint	False River Waypoint	Lornar's Pass
+1843	landmark	Arid Fortress	Edge of the Mists
+1844	landmark	Arid Fortress Reactor	Edge of the Mists
+1845	landmark	Inferno's Needle Reactor	Edge of the Mists
+1846	landmark	Overgrown Fane Reactor	Edge of the Mists
+1847	landmark	Stonegaze Spire Reactor	Edge of the Mists
+1848	landmark	Thunder Hollow Reactor	Edge of the Mists
+1849	landmark	Tytone Perch Reactor	Edge of the Mists
+1850	landmark	Forge	Edge of the Mists
+1851	landmark	Shrine	Edge of the Mists
+1852	landmark	Bell Tower	Edge of the Mists
+1853	landmark	Tytone Perch	Edge of the Mists
+1854	landmark	Thunder Hollow	Edge of the Mists
+1855	landmark	Wurm Tunnel	Edge of the Mists
+1856	landmark	Workshop	Edge of the Mists
+1857	landmark	Airport	Edge of the Mists
+1858	landmark	Inferno's Needle	Edge of the Mists
+1859	waypoint	Overgrowth Safe Zone Waypoint	Edge of the Mists
+1860	landmark	Statuary	Edge of the Mists
+1861	landmark	Observatory	Edge of the Mists
+1862	landmark	Altar	Edge of the Mists
+1863	landmark	Stonegaze Spire	Edge of the Mists
+1864	landmark	Overgrown Fane	Edge of the Mists
+1865	waypoint	Frostreach Safe Zone Waypoint	Edge of the Mists
+1866	waypoint	Badlands Safe Zone Waypoint	Edge of the Mists
+1867	waypoint	Arid Fortress Waypoint	Edge of the Mists
+1868	waypoint	Thunder Hollow Waypoint	Edge of the Mists
+1869	waypoint	Overgrown Fane Waypoint	Edge of the Mists
+1874	landmark	Wreckage of the Breachmaker	Lion's Arch
+1884	landmark	Guild Initiative Headquarters	Lion's Arch
+1894	waypoint	Blue Team Rally Point	Courtyard
+1895	waypoint	Red Team Rally Point	Courtyard
+1904	landmark	Tangle Root Outpost	Brisban Wildlands
+1905	landmark	Spurbend Canyon	Dry Top
+1906	landmark	Flatland Wastes	Dry Top
+1907	landmark	Choke Canyon	Dry Top
+1908	landmark	Ship's Fall	Dry Top
+1909	landmark	Crash Site 1	Dry Top
+1910	landmark	Salamander's Rise	Dry Top
+1913	landmark	Sparring Rock	Dry Top
+1914	waypoint	Prosperity Waypoint	Dry Top
+1915	landmark	Abandoned Mine	Dry Top
+1916	landmark	Lair of the Beast	Dry Top
+1917	landmark	Prosperity Mine	Dry Top
+1918	landmark	Town of Prosperity	Dry Top
+1919	waypoint	Camp Resolve Waypoint	The Silverwastes
+1920	waypoint	Dry Top Entry Waypoint	Dry Top
+1922	landmark	Omadd's Machine	Dry Top
+1923	landmark	Ley Line Hub	Dry Top
+1926	waypoint	Vine Bridge Waypoint	Dry Top
+1927	landmark	Restoration Refuge	Dry Top
+1928	waypoint	Restoration Refuge Waypoint	Dry Top
+1929	landmark	Azarr's Arbor	Dry Top
+1930	landmark	Cragrock Palace	Dry Top
+1931	landmark	Oasis	Dry Top
+1932	landmark	Crash Site 2	Dry Top
+1934	landmark	Raptor Prowl	Dry Top
+1939	landmark	Inquest Base	Dry Top
+1940	landmark	Repair Station	Dry Top
+1942	landmark	Crash Site 3	Dry Top
+1943	waypoint	Repair Station Waypoint	Dry Top
+1947	waypoint	Red Team Rally Point	Battle of Champion's Dusk
+1949	waypoint	Blue Team Rally Point	Battle of Champion's Dusk
+1950	landmark	The Labyrinth	The Silverwastes
+1951	landmark	Wingspan Arch	The Silverwastes
+1958	landmark	Red Rock Bastion	The Silverwastes
+1959	landmark	Camp Resolve	The Silverwastes
+1961	landmark	Indigo Cave	The Silverwastes
+1962	landmark	Amber Sandfall	The Silverwastes
+1963	landmark	Blue Oasis	The Silverwastes
+1964	waypoint	Hidden Depths Waypoint	The Silverwastes
+1965	landmark	SS Topsy-Turvy	The Silverwastes
+1966	landmark	Fugitive's Claim	The Silverwastes
+1967	landmark	Sand Dune Caverns	The Silverwastes
+1968	landmark	Picaroon Scratch	The Silverwastes
+1970	landmark	Wailing Sands	The Silverwastes
+1971	landmark	Charnel Grounds	The Silverwastes
+1972	landmark	Dry Quarry	The Silverwastes
+1973	landmark	Northern Shelf	The Silverwastes
+1974	landmark	Remnant's Retreat	The Silverwastes
+1975	landmark	Vinewrath Tangle	The Silverwastes
+1976	landmark	Outlier's Foundry	The Silverwastes
+1978	waypoint	Drydock Grotto Waypoint	The Silverwastes
+1984	waypoint	Shipwreck Peak Waypoint	Verdant Brink
+1985	landmark	Golden Boughs	Verdant Brink
+1986	landmark	Matriarch's Perch	The Jungle Provides
+1987	landmark	Luminate's Throne	Auric Basin
+1988	landmark	Arboreal Overlook	Buried Insight
+1990	waypoint	Forgotten City Waypoint	Auric Basin
+1991	landmark	Wreck of the Thunderbreaker	Verdant Brink
+1992	landmark	Thornwatch	Auric Basin
+1993	landmark	Northgate	Auric Basin
+1994	landmark	Dwelling of the Kaanas	Verdant Brink
+1995	landmark	Wreck of the Mellaggan's Valor	Verdant Brink
+1996	waypoint	Ogre Camp Waypoint	Tangled Depths
+1997	landmark	Overseer's Cave	Auric Basin
+1998	landmark	Ley Line Node	Buried Insight
+1999	landmark	Wreck of the Lethal Vantage	Verdant Brink
+2000	landmark	Bramble Plateau	Auric Basin
+2001	landmark	Vine Wall	Buried Insight
+2002	landmark	Capitzel Grounds	Auric Basin
+2003	landmark	Quazupl Grounds	Auric Basin
+2004	landmark	Weeping Glade	Auric Basin
+2005	waypoint	Mellaggan's Valor Waypoint	Verdant Brink
+2006	waypoint	Wanderer's Waypoint	Auric Basin
+2007	landmark	Inner Chamber	Auric Basin
+2008	landmark	Ley Flow	Buried Insight
+2009	landmark	Jawatl Grounds	Auric Basin
+2010	landmark	Rata Novus Command Center	Buried Insight
+2011	landmark	Tranquil Refuge	Buried Insight
+2012	landmark	Chak Staging Area	Buried Insight
+2013	waypoint	Northwatch Waypoint	Auric Basin
+2014	waypoint	Shipwreck Peak Waypoint	Verdant Brink
+2015	landmark	Decrepit Chak Nest	Buried Insight
+2016	waypoint	Jaka Itzel Waypoint	Verdant Brink
+2017	landmark	Temple of Ameyalli	Verdant Brink
+2018	landmark	Masks of the Fallen	Auric Basin
+2019	landmark	Eastgate	Auric Basin
+2020	landmark	Ogre Crash Site	Buried Insight
+2021	landmark	Precarious Ruin	Verdant Brink
+2022	landmark	Kaana's Terrace	Buried Insight
+2023	landmark	Gnarled Roots	Buried Insight
+2024	landmark	Legacy Pillars	Auric Basin
+2025	landmark	Last Leap	The Jungle Provides
+2026	landmark	New Skrittington	Auric Basin
+2028	landmark	Endurance Crash Site	Auric Basin
+2029	landmark	Westgate	Auric Basin
+2030	landmark	Fumerol Caves	Verdant Brink
+2031	waypoint	Faren's Flyer Waypoint	Verdant Brink
+2032	landmark	The Corpse Grove	Verdant Brink
+2033	landmark	Vinetooth Den	Auric Basin
+2035	landmark	Cascade Descent	Buried Insight
+2036	landmark	Coztic Itzel	Verdant Brink
+2037	waypoint	Ley-Line Confluence Waypoint	Tangled Depths
+2038	landmark	Southgate	Auric Basin
+2039	landmark	Rata Novus Perimeter	Buried Insight
+2040	landmark	Eastwatch Ruins	Auric Basin
+2041	landmark	Northwatch Priory Camp	Auric Basin
+2042	landmark	Batrach Falls	Verdant Brink
+2043	landmark	Brooding Gulch	Verdant Brink
+2044	landmark	Fahautl Grounds	Auric Basin
+2045	landmark	Shaded Spring	Verdant Brink
+2046	landmark	Ascendant's Ring	The Jungle Provides
+2048	waypoint	SCAR Camp Waypoint	Tangled Depths
+2049	waypoint	Shrouded Ruins Waypoint	Verdant Brink
+2050	waypoint	Southwatch Waypoint	Auric Basin
+2051	waypoint	Rata Novus Waypoint	Tangled Depths
+2052	landmark	Subterranean Lake	Buried Insight
+2053	landmark	Order of Whispers Camp	Buried Insight
+2054	waypoint	Westwatch Waypoint	Auric Basin
+2055	landmark	Rata Novus Orchards	Buried Insight
+2056	waypoint	Pact Encampment Waypoint	Verdant Brink
+2057	landmark	Sealed Passageway	Auric Basin
+2058	landmark	Sheltered Clearing	Buried Insight
+2060	waypoint	Teku Nuhoch Waypoint	Tangled Depths
+2061	landmark	Holdfast Hollow	Verdant Brink
+2062	waypoint	Order of Whispers Camp Waypoint	Tangled Depths
+2063	landmark	Twisting Viaduct	Buried Insight
+2064	waypoint	Pact Base Camp Waypoint	Dragon's Stand
+2065	landmark	The Waking Tomb	Verdant Brink
+2066	landmark	Glory's Fall	Verdant Brink
+2067	landmark	Dust Dancer Plateau	Verdant Brink
+2068	landmark	Terraced Hive	Buried Insight
+2069	landmark	Order of Whispers Outpost	Buried Insight
+2071	landmark	Uprooted Paradise	Verdant Brink
+2072	landmark	Precarious Perch	The Jungle Provides
+2073	landmark	Silent Woods	The Jungle Provides
+2074	landmark	Creaking Caverns	Verdant Brink
+2075	landmark	The Tangle	Verdant Brink
+2076	waypoint	Treacherous Path Waypoint	Verdant Brink
+2077	landmark	Bongo's Bungalow	Verdant Brink
+2080	unlock	Raid—Forsaken Thicket	Verdant Brink
+2089	landmark	Boettiger's Hideaway	Desert Borderlands
+2091	waypoint	Stoic Rampart Emergency Waypoint A	Desert Borderlands
+2094	waypoint	Central Forward Camp Waypoint	Dragon's Stand
+2097	landmark	Pact Base Camp	Dragon's Stand
+2100	waypoint	Parched Outpost Emergency Waypoint	Desert Borderlands
+2103	waypoint	Langor Gulch Emergency Waypoint	Eternal Battlegrounds
+2104	landmark	Ruined Glory	Dragon's Stand
+2107	waypoint	Canyon Dig Waypoint	Lost Precipice
+2109	waypoint	Aldon's Ledge Emergency Waypoint	Eternal Battlegrounds
+2110	landmark	First Northern Checkpoint	Dragon's Stand
+2115	landmark	Osprey's Palace	Desert Borderlands
+2117	landmark	Parched Outpost	Desert Borderlands
+2118	landmark	Tikitecki Scratch	Desert Borderlands
+2119	landmark	Ley Line Boneyard	Dragon's Stand
+2121	waypoint	Chak Hollow Waypoint	Auric Basin
+2124	landmark	Wyvern Nest	Dragon's Stand
+2125	landmark	Ley Line Overlook	Dragon's Stand
+2127	waypoint	Southern Forward Camp Waypoint	Dragon's Stand
+2129	waypoint	Riverside Overlook Waypoint	Lost Precipice
+2130	waypoint	Northern Forward Camp Waypoint	Dragon's Stand
+2131	waypoint	Central Advance Camp Waypoint	Dragon's Stand
+2134	waypoint	Anzalias Pass Emergency Waypoint	Eternal Battlegrounds
+2135	waypoint	Dragon's Domain Southern Waypoint	Dragon's Stand
+2142	landmark	Mordremoth's Vantage	Dragon's Stand
+2143	landmark	Third Central Checkpoint	Dragon's Stand
+2145	waypoint	Klovan Gully Emergency Waypoint	Eternal Battlegrounds
+2147	landmark	First Central Checkpoint	Dragon's Stand
+2148	waypoint	Ogrewatch Cut Emergency Waypoint	Eternal Battlegrounds
+2149	waypoint	Southern Advance Camp Waypoint	Dragon's Stand
+2150	waypoint	Osprey's Palace Waypoint	Desert Borderlands
+2154	waypoint	Bravost Escarpment Emergency Waypoint	Eternal Battlegrounds
+2156	waypoint	Eastwatch Waypoint	Auric Basin
+2162	waypoint	Cavern Mine Waypoint	Gilded Hollow
+2167	waypoint	Upper Plaza Waypoint	Lost Precipice
+2169	landmark	Rata Novan Remnants	Dragon's Stand
+2170	waypoint	Pact Base Camp Southern Waypoint	Dragon's Stand
+2172	landmark	Mordrem Vineyard	Dragon's Stand
+2175	landmark	Serenity's Cove	Dragon's Stand
+2176	landmark	Northern Blighting Tower	Dragon's Stand
+2177	landmark	Second Southern Checkpoint	Dragon's Stand
+2181	landmark	Central Blighting Tower	Dragon's Stand
+2182	landmark	Blistering Undercroft	Desert Borderlands
+2184	waypoint	Dragon's Passage Waypoint	Tangled Depths
+2187	waypoint	Border Waypoint	Desert Borderlands
+2190	landmark	McLain's Encampment	Desert Borderlands
+2191	landmark	Crankshaft Depot	Desert Borderlands
+2193	landmark	First Southern Checkpoint	Dragon's Stand
+2195	waypoint	Osprey's Palace Emergency Waypoint A	Desert Borderlands
+2196	landmark	Emberfang Crag	Desert Borderlands
+2197	landmark	Eternal Necropolis	Desert Borderlands
+2199	waypoint	Dragon's Domain Central Waypoint	Dragon's Stand
+2200	landmark	Southern Blighting Tower	Dragon's Stand
+2207	waypoint	O'del Academy Emergency Waypoint	Desert Borderlands
+2209	waypoint	Eternal Necropolis Emergency Waypoint	Desert Borderlands
+2210	landmark	Second Northern Checkpoint	Dragon's Stand
+2217	waypoint	Veloka Slope Emergency Waypoint	Eternal Battlegrounds
+2221	waypoint	Blistering Undercroft Waypoint	Desert Borderlands
+2222	waypoint	Dragon's Domain Northern Waypoint	Dragon's Stand
+2223	landmark	Stoic Rampart	Desert Borderlands
+2224	landmark	Chak Den	Dragon's Stand
+2225	landmark	Hamm's Lab	Desert Borderlands
+2228	waypoint	Stonemist Castle Emergency Waypoint A	Eternal Battlegrounds
+2233	landmark	Third Northern Checkpoint	Dragon's Stand
+2238	waypoint	Shrine Tunnel Waypoint	Lost Precipice
+2241	landmark	The Inverse Pit	Dragon's Stand
+2242	waypoint	Central Precipice Waypoint	Lost Precipice
+2243	waypoint	Overlook Emergency Waypoint A	Eternal Battlegrounds
+2244	waypoint	Crankshaft Depot Emergency Waypoint	Desert Borderlands
+2247	waypoint	Border Waypoint	Desert Borderlands
+2248	waypoint	Blistering Undercroft Emergency Waypoint A	Desert Borderlands
+2252	waypoint	Lowlands Emergency Waypoint A	Eternal Battlegrounds
+2253	waypoint	Quentin Lake Emergency Waypoint	Eternal Battlegrounds
+2259	landmark	Dustwhisper Well	Desert Borderlands
+2260	waypoint	Arena Tower Waypoint	Gilded Hollow
+2263	waypoint	Jerrifer's Slough Emergency Waypoint	Eternal Battlegrounds
+2267	waypoint	Durios Gulch Emergency Waypoint	Eternal Battlegrounds
+2271	landmark	O'del Academy	Desert Borderlands
+2273	waypoint	Waterfall Plaza Waypoint	Gilded Hollow
+2274	landmark	Second Central Checkpoint	Dragon's Stand
+2275	waypoint	Mendon's Gap Emergency Waypoint	Eternal Battlegrounds
+2276	waypoint	Citadel Waypoint	Desert Borderlands
+2280	waypoint	Wildcreek Run Emergency Waypoint	Eternal Battlegrounds
+2289	landmark	Third Southern Checkpoint	Dragon's Stand
+2290	landmark	Blighted Bog	Dragon's Stand
+2291	landmark	Bauer Farmstead	Desert Borderlands
+2292	waypoint	Sandstone Coliseum Waypoint	Lost Precipice
+2293	waypoint	Valley Emergency Waypoint A	Eternal Battlegrounds
+2294	landmark	Roy's Refuge	Desert Borderlands
+2301	waypoint	Stoic Rampart Waypoint	Desert Borderlands
+2303	waypoint	Central Hollow Waypoint	Gilded Hollow
+2304	waypoint	Northern Advance Camp Waypoint	Dragon's Stand
+2305	waypoint	Surface Tunnel Waypoint	Gilded Hollow
+2307	landmark	Central Oasis	Desert Borderlands
+2309	landmark	River of Spirits	Spirit Vale
+2310	landmark	Abandoned Outpost	Spirit Vale
+2311	landmark	The Skillet	Spirit Vale
+2312	landmark	Mysterious Pylons	Spirit Vale
+2313	landmark	Bandit's Rest	Spirit Vale
+2314	landmark	Gorseval's Perch	Spirit Vale
+2315	landmark	Slothasor's Den	Salvation Pass
+2316	landmark	Prison Camp	Salvation Pass
+2317	landmark	Temple of Salvation	Salvation Pass
+2318	landmark	Burn Pit	Salvation Pass
+2320	landmark	Dead Man's Gorge	Salvation Pass
+2321	landmark	Labor Camp	Salvation Pass
+2322	waypoint	Garrison Emergency Waypoint A	Alpine Borderlands
+2324	waypoint	Emergency Waypoint	Alpine Borderlands
+2325	waypoint	Emergency Waypoint	Alpine Borderlands
+2328	waypoint	Askalion Hills Emergency Waypoint A	Alpine Borderlands
+2336	waypoint	Aerodrome Waypoint	Lion's Arch Aerodrome
+2337	waypoint	Shadaran Hills Emergency Waypoint A	Alpine Borderlands
+2338	waypoint	Emergency Waypoint	Alpine Borderlands
+2339	waypoint	Emergency Waypoint	Alpine Borderlands
+2341	waypoint	Emergency Waypoint	Alpine Borderlands
+2343	waypoint	Emergency Waypoint	Alpine Borderlands
+2345	waypoint	Emergency Waypoint	Alpine Borderlands
+2347	waypoint	Garrison Emergency Waypoint A	Alpine Borderlands
+2348	waypoint	Emergency Waypoint	Alpine Borderlands
+2350	waypoint	Dreadfall Bay Emergency Waypoint A	Alpine Borderlands
+2351	waypoint	Ascension Bay Emergency Waypoint A	Alpine Borderlands
+2357	landmark	Temple of Awakening	Stronghold of the Faithful
+2359	landmark	Zealot's Bastion	Stronghold of the Faithful
+2364	landmark	Tunnel of Respite	Stronghold of the Faithful
+2365	landmark	Twisted Castle	Stronghold of the Faithful
+2366	landmark	Fountain of Cleansing	Stronghold of the Faithful
+2367	waypoint	Depths of the Maw Waypoint	Bloodstone Fen
+2369	waypoint	Ground Zero Waypoint	Bloodstone Fen
+2371	waypoint	Blue Team Rally Point	Revenge of the Capricorn
+2373	landmark	Temple of Renewal	Bloodstone Fen
+2374	landmark	Colosseum of the Faithful	Bloodstone Fen
+2375	waypoint	Red Team Rally Point	Revenge of the Capricorn
+2377	landmark	Tomb of the Confessors	Bloodstone Fen
+2379	waypoint	Soulkeeper's Airship Waypoint	Bloodstone Fen
+2380	landmark	Salvation Springs	Bloodstone Fen
+2382	waypoint	Zealot's Overlook Waypoint	Bloodstone Fen
+2383	landmark	Temple of Sacrifice	Bloodstone Fen
+2384	landmark	Crater's Precipice	Bloodstone Fen
+2385	landmark	Bloodstone's Shell	Bloodstone Fen
+2386	landmark	Twin Skulls	Ember Bay
+2387	landmark	Furnace Chamber	Ember Bay
+2389	waypoint	Scratch Gate Waypoint	Ember Bay
+2390	landmark	The Dread Shiny	Ember Bay
+2391	landmark	Barrier Spires	Ember Bay
+2392	landmark	Asuran Beachhead	Ember Bay
+2393	landmark	Fool's Scratch	Ember Bay
+2394	waypoint	Blue Team Rally Point	Eternal Coliseum
+2395	landmark	Magma Outlet	Ember Bay
+2396	landmark	Osprey Aeries	Ember Bay
+2398	landmark	Lava River	Ember Bay
+2399	waypoint	Promontory Waypoint	Ember Bay
+2400	waypoint	Crumbling Trail Waypoint	Ember Bay
+2401	landmark	Quickk's Retreat	Ember Bay
+2402	landmark	Ivy's Circus Spectacular	Ember Bay
+2403	landmark	Pedestal of Flames	Ember Bay
+2405	landmark	Slag Pools	Ember Bay
+2407	waypoint	Red Team Rally Point	Eternal Coliseum
+2409	landmark	Karka Hatchery	Ember Bay
+2410	landmark	Cliffwalk Trailhead	Ember Bay
+2412	landmark	Observation Outpost	Ember Bay
+2414	landmark	Rock Face Scratch	Ember Bay
+2415	landmark	Sloth Queen's Showground	Ember Bay
+2421	landmark	Sealed Entrance	Ember Bay
+2423	landmark	Smoosh-a-Tron	Ember Bay
+2424	waypoint	Castaway Circus Waypoint	Ember Bay
+2425	landmark	Destruction's Maw	Ember Bay
+2426	landmark	Titan's Perch	Ember Bay
+2427	landmark	Chalice of Tears	Ember Bay
+2428	landmark	Blister Cauldron	Bitterfrost Frontier
+2429	waypoint	Sorrow's Eclipse Waypoint	Bitterfrost Frontier
+2430	landmark	Whorl Lagoon	Bitterfrost Frontier
+2431	landmark	Chokocooka's Throne	Bitterfrost Frontier
+2432	landmark	Lockflow Ice Fall	Bitterfrost Frontier
+2433	waypoint	Koda's Welcome Waypoint	Bitterfrost Frontier
+2434	landmark	Gooloopa Deeps	Bitterfrost Frontier
+2435	landmark	Joyless Falls	Bitterfrost Frontier
+2436	landmark	Black Cavern Junction	Bitterfrost Frontier
+2440	landmark	Maw of Corruption	Bitterfrost Frontier
+2441	landmark	Dragon's Eye View	Bitterfrost Frontier
+2442	landmark	Hollow Bone Den	Bitterfrost Frontier
+2444	landmark	Ice Vein Cavern	Bitterfrost Frontier
+2445	landmark	Judgment Pass	Bitterfrost Frontier
+2447	landmark	The Titan Tree	Bitterfrost Frontier
+2448	landmark	Land Bridge	Lake Doric
+2450	landmark	Chieftain's Hollow	Lake Doric
+2452	unlock	Raid—Bastion of the Penitent	Bloodstone Fen
+2453	landmark	Defense Headquarters	Lake Doric
+2454	landmark	The Warden's Office	Bastion of the Penitent
+2455	landmark	Divinity's Waterworks	Lake Doric
+2457	landmark	Solitary Confinement	Bastion of the Penitent
+2458	landmark	Soren's Rest	Lake Doric
+2459	landmark	Escape Tunnel	Bastion of the Penitent
+2460	landmark	Temple of the Six	Lake Doric
+2463	landmark	Cairn's Perch	Bastion of the Penitent
+2464	landmark	Mystic Waters	Bastion of the Penitent
+2466	landmark	Chamber of the Guilty	Bastion of the Penitent
+2467	landmark	Confessional	Bastion of the Penitent
+2468	landmark	Fort Evennia	Lake Doric
+2469	landmark	Tree of Solitude	Bastion of the Penitent
+2470	landmark	Bluster Watershed	Lake Doric
+2471	landmark	Peach Tree	Lake Doric
+2472	landmark	SS Pinkeens	Lake Doric
+2475	landmark	Noran's Homestead	Lake Doric
+2476	landmark	Recreation Sector	Bastion of the Penitent
+2477	waypoint	Doric's Landing Waypoint	Lake Doric
+2478	landmark	Loamhurst Clubhouse	Lake Doric
+2479	waypoint	Red Leaf Retreat Waypoint	Lake Doric
+2480	landmark	Red Leaf Retreat	Lake Doric
+2481	landmark	Death Row	Bastion of the Penitent
+2483	landmark	Fallen Watchtower	Lake Doric
+2484	waypoint	Lakeside Bazaar Waypoint	Lake Doric
+2485	landmark	Lakeview Villa	Lake Doric
+2486	landmark	Fisherman's Ship	Lake Doric
+2490	landmark	Zeta Vault	Draconis Mons
+2492	landmark	Asura Gate	Draconis Mons
+2493	waypoint	Mariner Landing Waypoint	Draconis Mons
+2494	landmark	Eternal Pool	Draconis Mons
+2497	landmark	Frothing Pedestal	Draconis Mons
+2499	landmark	Sub Landing	Draconis Mons
+2500	landmark	Sandstone Archway	Draconis Mons
+2501	landmark	Druid's Grotto	Draconis Mons
+2502	landmark	Golem Graveyard	Draconis Mons
+2503	landmark	Prisoner's Perch	Draconis Mons
+2504	landmark	Seething Pillar	Draconis Mons
+2505	landmark	Peace Grounds	Draconis Mons
+2507	landmark	Wurm's Furnace	Draconis Mons
+2508	landmark	Mercenary Encampment	Draconis Mons
+2509	waypoint	Heathen's Hold Waypoint	Draconis Mons
+2510	landmark	Viraddi's Salvation	Draconis Mons
+2511	landmark	Searing Ascent	Draconis Mons
+2512	landmark	Scout's Clearing	Draconis Mons
+2513	landmark	Burial Chamber	Draconis Mons
+2514	landmark	Iota Vault	Draconis Mons
+2515	landmark	Nu II Vault	Draconis Mons
+2516	landmark	Inquest Field Lab	Draconis Mons
+2517	waypoint	Ancient Hollow Waypoint	Draconis Mons
+2518	landmark	Nu Vault	Draconis Mons
+2519	landmark	Gate of Fire	Draconis Mons
+2520	waypoint	Market Waypoint	Heart of the Mists
+2521	waypoint	Siege Training Waypoint	Heart of the Mists
+2522	waypoint	Arena Waypoint	Heart of the Mists
+2524	vista	Mosaic Bower	Siren's Landing
+2525	landmark	Wreck of the Yesteryear	Siren's Landing
+2526	vista	The Arm of Abaddon	Siren's Landing
+2527	vista	Updraft Alley	Siren's Landing
+2528	landmark	Tears of Orr	Siren's Landing
+2529	landmark	Secret Garden	Siren's Landing
+2530	landmark	The Arm of Abaddon	Siren's Landing
+2531	landmark	Hidden Reliquary	Siren's Landing
+2532	landmark	Balthazar's Vein	Siren's Landing
+2533	landmark	Camp Reclamation	Siren's Landing
+2534	landmark	Camp Winfred	Siren's Landing
+2535	landmark	Overgrown Gazebo	Siren's Landing
+2536	landmark	Wyvern's Den	Siren's Landing
+2537	landmark	Hiffa's Camp	Siren's Landing
+2539	landmark	Forgotten Plaza	Siren's Landing
+2540	landmark	Watchman's Roost	Siren's Landing
+2541	landmark	Ancient Greenhouse	Siren's Landing
+2542	landmark	Balthazar's Heart	Siren's Landing
+2543	waypoint	Camp Reclamation Waypoint	Siren's Landing
+2544	landmark	The Buoyant Bough	Siren's Landing
+2545	landmark	Thoroughfare Ruins	Siren's Landing
+2547	waypoint	Mistlock Sanctuary Waypoint	Mistlock Sanctuary
+2548	vista	Ruined Panorama	Siren's Landing
+2550	landmark	The Menagerie	Enemy of My Enemy: The Beastmarshal
+2552	landmark	Sanctum of Nabkha	Crystal Oasis
+2553	landmark	Fallback Fissure	Elon Riverlands
+2554	landmark	Northern Maw	The Desolation
+2555	landmark	The Promenade	Enemy of My Enemy: The Beastmarshal
+2557	landmark	Sabkha Watchpost	Desert Highlands
+2558	landmark	The Sepulcher	Elon Riverlands
+2559	landmark	Ruins of Mihanu Township	Enemy of My Enemy: The Beastmarshal
+2561	landmark	Spearmarshal's Lament	Enemy of My Enemy: The Beastmarshal
+2562	landmark	The Bone Palace	The Desolation
+2563	landmark	Spa	Enemy of My Enemy: The Beastmarshal
+2564	landmark	Marifa Refugee Camp	Crystal Oasis
+2567	landmark	Stoneyard Rest	Elon Riverlands
+2570	landmark	Decimation Bend	Elon Riverlands
+2571	waypoint	Joko's Domain Waypoint	The Desolation
+2573	landmark	Standstill Lake	Desert Highlands
+2574	landmark	Vehjin Royal Rotunda	Enemy of My Enemy: The Beastmarshal
+2575	waypoint	Vehtendi Academy Waypoint	Domain of Vabbi
+2577	landmark	Acrid Sink	The Desolation
+2578	landmark	Junundu Lookout	The Desolation
+2579	landmark	Syrtic Impasse	Elon Riverlands
+2580	landmark	Altar of the Six Gods	Crystal Oasis
+2581	landmark	The Warehouse	Enemy of My Enemy: The Beastmarshal
+2582	landmark	Matriarch's View	The Desolation
+2583	landmark	Imperial Sulfurworks	The Desolation
+2584	landmark	Squaross Kraal	Crystal Oasis
+2585	landmark	Closed Passage	Desert Highlands
+2586	landmark	Forged Firebase	The Desolation
+2587	landmark	Springer's Ladder	The Desolation
+2588	landmark	Zayan Gate	The Desolation
+2589	landmark	Bleached Pillars	The Desolation
+2591	landmark	Amnoon Water Authority	Crystal Oasis
+2592	landmark	Old Amnoon	Crystal Oasis
+2593	landmark	Tomb of the Abandoned	Crystal Oasis
+2594	landmark	Awakened Garrison	The Sacrifice
+2595	landmark	Highjump Ranch	Desert Highlands
+2597	landmark	Wayment Seep	Desert Highlands
+2598	landmark	The Teratohedron	Crystal Oasis
+2599	landmark	Tawla Rock	Crystal Oasis
+2600	waypoint	Olishar's Oasis Camp Waypoint	Elon Riverlands
+2602	landmark	Junundu Nests	Enemy of My Enemy: The Beastmarshal
+2603	landmark	Altar of Dakhma	Desert Highlands
+2604	landmark	Beastmarshal's Encampment	Enemy of My Enemy: The Beastmarshal
+2605	landmark	Elon Falls	Elon Riverlands
+2607	landmark	Uhiwi's Bones	The Desolation
+2608	landmark	Heroes' Overlook	Elon Riverlands
+2609	landmark	Chukeht Overlook	The Desolation
+2610	landmark	Kusini Water Hole	Crystal Oasis
+2611	landmark	The Vermitheater	The Desolation
+2612	landmark	Troopmarshal's Encampment	Enemy of My Enemy: The Beastmarshal
+2613	landmark	Windchill Pass	Desert Highlands
+2614	landmark	Giant's Rise	Elon Riverlands
+2615	landmark	Lifeblood Waterhole	Desert Highlands
+2616	landmark	Temple of Atar	Crystal Oasis
+2619	landmark	Conquest Overlook	The Desolation
+2620	landmark	First Camp	Elon Riverlands
+2621	landmark	Seborhin Circle	Enemy of My Enemy: The Beastmarshal
+2622	landmark	Giant's Steps	Desert Highlands
+2623	landmark	Lommuld Kraal	Desert Highlands
+2624	waypoint	Temple of Kormir Waypoint	Crystal Oasis
+2625	landmark	Vantage Scree	Desert Highlands
+2626	landmark	Towering Links	The Desolation
+2627	landmark	Pricklepatch Hollow	Desert Highlands
+2629	landmark	Fortunate Strike	Crystal Oasis
+2630	landmark	Seeker's Village	Crystal Oasis
+2631	landmark	Grand Sahil Casino	Crystal Oasis
+2632	unlock	Mount: Raptor	Crystal Oasis
+2633	unlock	Mount: Skimmer	Elon Riverlands
+2634	waypoint	Necropolis Waypoint	Domain of Vabbi
+2635	landmark	Second Camp	Elon Riverlands
+2637	landmark	Dragoon Hearth	Elon Riverlands
+2638	landmark	Torment's Watch	The Desolation
+2640	landmark	Godslost Sandfalls	Elon Riverlands
+2641	landmark	Zephyr's Trace	Crystal Oasis
+2642	landmark	Clanmarshal's Pergola	The Desolation
+2643	waypoint	Augury's Shadow Waypoint	Elon Riverlands
+2644	landmark	Forbidden Vault	The Desolation
+2645	unlock	Mount: Springer	Desert Highlands
+2646	landmark	Lone-Tree Hill	The Desolation
+2647	landmark	Makali Outpost	The Sacrifice
+2648	landmark	Fort Huduh	The Desolation
+2650	landmark	The Watchtower	Desert Highlands
+2651	landmark	Altar of Silence	Crystal Oasis
+2652	landmark	Shattered Templar	Crystal Oasis
+2653	landmark	Vabbian Corridor	The Desolation
+2656	landmark	Crucible of Consecration	Crystal Oasis
+2658	landmark	Tihark Orchard	Enemy of My Enemy: The Beastmarshal
+2659	landmark	Pillars of Supremacy	Elon Riverlands
+2660	landmark	The Mouth of Torment	The Desolation
+2661	landmark	Lifeblood Falls	Desert Highlands
+2662	landmark	Merchant's Row	Enemy of My Enemy: The Beastmarshal
+2663	waypoint	Skimmer Ranch Waypoint	Elon Riverlands
+2665	landmark	Ember Heights	The Desolation
+2666	waypoint	Lommuld Kraal Waypoint	Desert Highlands
+2667	waypoint	Makali Outpost Waypoint	Desert Highlands
+2669	landmark	The Hearth	Enemy of My Enemy: The Beastmarshal
+2670	landmark	Leviathan's Gullet	Elon Riverlands
+2671	landmark	Threefold Waylay	Elon Riverlands
+2672	landmark	Wayward Watch	The Desolation
+2673	landmark	Radiant Falls	Desert Highlands
+2674	landmark	Transcendent Falls	Desert Highlands
+2675	waypoint	The Scourgeway Waypoint	The Desolation
+2676	waypoint	Market Ruins Waypoint	Domain of Vabbi
+2677	landmark	Temple of Kormir	Crystal Oasis
+2679	waypoint	Sand Jackal Run Waypoint	The Desolation
+2680	landmark	Glint's Lair	Desert Highlands
+2682	landmark	Scourge's Threshold	The Desolation
+2683	landmark	Lupicus Boneyard	The Desolation
+2684	landmark	Amnoon Cavalier Station	Crystal Oasis
+2688	landmark	Amnoon Civic Center	Crystal Oasis
+2689	landmark	Shadow Arcade	The Desolation
+2690	waypoint	Windswept Arena Waypoint	Windswept Haven
+2694	landmark	Throne of Pellentia	Elon Riverlands
+2696	landmark	Market Ruins	Enemy of My Enemy: The Beastmarshal
+2697	landmark	Sandwallow Retreat	Elon Riverlands
+2698	landmark	The Portal	Desert Highlands
+2701	landmark	Eastern Maw	The Desolation
+2702	landmark	Toxic Pools	The Desolation
+2703	landmark	Kanuz Cache	The Sacrifice
+2704	landmark	Palawa's Grace	Elon Riverlands
+2705	waypoint	Brightwater Waypoint	Desert Highlands
+2706	landmark	Craggip Kraal	Desert Highlands
+2707	waypoint	Destiny's Gorge Waypoint	Crystal Oasis
+2708	landmark	Northern Way Station	Crystal Oasis
+2710	landmark	Hanging Gardens	Enemy of My Enemy: The Beastmarshal
+2711	landmark	Amnoon Harbor	Crystal Oasis
+2712	landmark	Bahdaj Vigil	Elon Riverlands
+2713	landmark	The Triumph of Palawa Joko	Elon Riverlands
+2714	landmark	House Ingene Dormitory	Enemy of My Enemy: The Beastmarshal
+2715	landmark	Great Palawa Joko Monument	Enemy of My Enemy: The Beastmarshal
+2717	waypoint	Highjump Ranch Waypoint	Desert Highlands
+2718	landmark	Sandfall Sanctum	The Desolation
+2720	landmark	Tournament Battlegrounds	Enemy of My Enemy: The Beastmarshal
+2721	waypoint	Cavern Overlook Waypoint	Windswept Haven
+2722	landmark	The Joko Gate	Elon Riverlands
+2723	waypoint	The Darklands Waypoint	The Desolation
+2724	waypoint	Derelict Delve Waypoint	Desert Highlands
+2725	waypoint	Cragged Vale Waypoint	Domain of Vabbi
+2726	landmark	Pilgrims' Folly	Elon Riverlands
+2727	landmark	Bonestrand Garrison	The Desolation
+2728	landmark	Chantry of Shadows	The Desolation
+2730	landmark	Palace of Aban	Desert Highlands
+2731	landmark	House Ventura Dormitory	Enemy of My Enemy: The Beastmarshal
+2732	landmark	Southern Way Station	Crystal Oasis
+2734	landmark	Giant's Tea Table	The Sacrifice
+2735	landmark	Junundu Hatchery	The Desolation
+2736	landmark	Exile's Rest	Elon Riverlands
+2737	landmark	Captain Kiel's Office	Lion's Arch
+2740	landmark	Garden of the Chosen	Elon Riverlands
+2741	landmark	Highjump Gap	Desert Highlands
+2742	landmark	The Empty Quarter	Crystal Oasis
+2743	landmark	Scattered Remnants	Elon Riverlands
+2744	landmark	Hall of Ascension	Elon Riverlands
+2747	waypoint	Amnoon Waypoint	Crystal Oasis
+2748	landmark	Excavation Site	Enemy of My Enemy: The Beastmarshal
+2751	landmark	Amnoon Bazaar	Crystal Oasis
+2752	landmark	The Boneyard	Enemy of My Enemy: The Beastmarshal
+2753	waypoint	Lair of the Forgotten Waypoint	The Desolation
+2754	landmark	Western Maw	The Desolation
+2755	landmark	Vehtendi Vineyard	Enemy of My Enemy: The Beastmarshal
+2758	landmark	Lyssan Fools Theater	Enemy of My Enemy: The Beastmarshal
+2759	landmark	Blind Faith	The Desolation
+2760	landmark	Village of Purity	The Desolation
+2761	landmark	Revealer Vantage	The Desolation
+2762	landmark	Jinx Hollow	Desert Highlands
+2763	landmark	Court of the Dead	Enemy of My Enemy: The Beastmarshal
+2764	landmark	Bitumen Reserve	The Desolation
+2765	landmark	Nimbose Butte	Desert Highlands
+2766	landmark	Henge of Joko	The Desolation
+2768	waypoint	Seborhin Waypoint	Domain of Vabbi
+2769	landmark	Ossa's Defeat	Elon Riverlands
+2770	landmark	Bonecage Paddock	The Desolation
+2772	landmark	Sandbound Towers	Elon Riverlands
+2773	landmark	Discarded Vessels	Desert Highlands
+2774	unlock	Mount: Jackal	The Desolation
+2775	waypoint	Vantage Dome Waypoint	Windswept Haven
+2776	landmark	Headmaster's Office	Enemy of My Enemy: The Beastmarshal
+2777	landmark	Derelict Delve	Desert Highlands
+2779	landmark	House Rolic Dormitory	Enemy of My Enemy: The Beastmarshal
+2780	waypoint	Bonestrand Waypoint	The Desolation
+2781	waypoint	Haven Terrace Waypoint	Windswept Haven
+2783	landmark	Ruins of Jennur's Horde	Enemy of My Enemy: The Beastmarshal
+2784	landmark	Amnoon Emporium	Crystal Oasis
+2786	landmark	Tarstone Weeps	The Desolation
+2787	landmark	Retreat of the Resolute	Crystal Oasis
+2788	landmark	Sandstrewn Shrine	The Desolation
+2789	landmark	Village of Kweli	Crystal Oasis
+2790	landmark	Djinn Enclave	The Desolation
+2791	landmark	Skritt's Audience	Elon Riverlands
+2792	landmark	Lonely Vigil	Elon Riverlands
+2793	landmark	Talatat Quarry	Crystal Oasis
+2794	landmark	King Joko's Sky Garden	Enemy of My Enemy: The Beastmarshal
+2795	landmark	The Crypts	Enemy of My Enemy: The Beastmarshal
+2796	landmark	Lair of Zommoros	Enemy of My Enemy: The Beastmarshal
+2797	waypoint	Vehjin Palace Waypoint	Domain of Vabbi
+2799	landmark	Overreach Chasm	Desert Highlands
+2800	landmark	Godfall Tower	The Sacrifice
+2802	landmark	Ruins of the Mirror of Lyss	Enemy of My Enemy: The Beastmarshal
+2804	landmark	River's Provenance	Hall of Chains
+2805	landmark	Freetrader Haven	Domain of Istan
+2806	landmark	The Dark Leviathan	Domain of Istan
+2807	landmark	Temple of Joko	Domain of Istan
+2808	landmark	Mirror of the Sun	Domain of Istan
+2809	landmark	Ancient Royal Docks	Domain of Istan
+2810	waypoint	Astralarium Waypoint	Domain of Istan
+2811	landmark	Mirror of the Earth	Domain of Istan
+2812	landmark	The Sun Docks	Domain of Istan
+2813	landmark	Besieged Ruins	Hall of Chains
+2814	landmark	Broken Observation Tower	Domain of Istan
+2815	landmark	Stage of Sacrifice	Domain of Istan
+2816	landmark	Skylight Vault	Domain of Istan
+2817	landmark	Crucible of the Apostate	Domain of Istan
+2818	landmark	Zehlon Waterworks	Domain of Istan
+2819	landmark	Grotto of the Defeated	Domain of Istan
+2820	landmark	Statue of Darkness	Hall of Chains
+2821	landmark	Clanmarshal's Promenade	Domain of Istan
+2823	landmark	Plaza of Resurgence	Domain of Istan
+2824	landmark	Jakumba's Legacy	Domain of Istan
+2825	waypoint	Chalon Docks Waypoint	Domain of Istan
+2826	landmark	Statue of Ice	Hall of Chains
+2827	landmark	The Wobbling Skies	Domain of Istan
+2830	landmark	Palawadan Dormitories	Domain of Istan
+2831	landmark	Mirror of the Moon	Domain of Istan
+2833	landmark	The Skimming Stone	Domain of Istan
+2834	landmark	Statue of Death and Resurrection	Hall of Chains
+2835	landmark	Mirror of the Stars	Domain of Istan
+2836	landmark	Hall of Judgment	Hall of Chains
+2837	landmark	Mehtani's Blade	Domain of Istan
+2838	landmark	Chahbek Thrust	Domain of Istan
+2839	landmark	Lahdok Craterlands	Domain of Istan
+2840	landmark	Hall of Judgment	Domain of Istan
+2842	waypoint	Champion's Dawn Waypoint	Domain of Istan
+2843	landmark	Field of the Hopeful	Domain of Istan
+2846	landmark	Warden's Quarters	Domain of Istan
+2847	landmark	River of Souls	Hall of Chains
+2849	waypoint	Player Respawn	Toypocalypse
+2851	landmark	Communications Control	Sandswept Isles
+2852	landmark	Jemandi Market	Sandswept Isles
+2853	waypoint	Anniogel Encampment Waypoint	Sandswept Isles
+2854	landmark	Lab Sigma-05	Sandswept Isles
+2855	landmark	The Iron Whale	Sandswept Isles
+2856	landmark	Magistorm Gallery	Sandswept Isles
+2857	landmark	Tunnel Access Epsilon	Sandswept Isles
+2858	landmark	Tunnel Access Beta	Sandswept Isles
+2859	landmark	Ritual Grounds	Sandswept Isles
+2860	landmark	Ewyn's Retreat	Sandswept Isles
+2861	landmark	Magnetics Lab	Sandswept Isles
+2862	landmark	Tunnel Access Delta	Sandswept Isles
+2864	landmark	Reserve Power Core	Sandswept Isles
+2865	landmark	Deepwater Cooling Sink	Sandswept Isles
+2866	landmark	Skycavern Burial Grounds	Sandswept Isles
+2867	landmark	Driftwood Jetty	Sandswept Isles
+2868	landmark	Necrobrand Emulation Lab	Sandswept Isles
+2869	landmark	Atholma Docks	Sandswept Isles
+2870	landmark	Malor's Ranch	Sandswept Isles
+2871	landmark	Communications Array	Sandswept Isles
+2872	landmark	Tunnel Access Alpha	Sandswept Isles
+2873	landmark	Leyfinder Research Facility	Sandswept Isles
+2875	landmark	Effluent Outflow Network	Sandswept Isles
+2877	landmark	Olma's Legacy	Sandswept Isles
+2878	landmark	Greytear Falls	Sandswept Isles
+2879	landmark	Tunnel Access Gamma	Sandswept Isles
+2880	landmark	Cerberus Watchtowers	Sandswept Isles
+2882	landmark	Anniogel Landing	Sandswept Isles
+2883	waypoint	Atholma Waypoint	Sandswept Isles
+2884	landmark	Portalforge Lab	Sandswept Isles
+2886	landmark	Specimen Chamber	Sandswept Isles
+2887	landmark	Rata Primus Canal	Sandswept Isles
+2888	landmark	Zelbahn Garrison	Domain of Kourna
+2889	landmark	Apizmic Grounds	Domain of Kourna
+2891	landmark	Research Mainframe Access	Domain of Kourna
+2892	landmark	Deeprift Brood	Domain of Kourna
+2894	landmark	Western Allied Access	Domain of Kourna
+2896	waypoint	Apizmic Grounds Waypoint	Domain of Kourna
+2897	landmark	Eastern Allied Access	Domain of Kourna
+2898	landmark	Army Landing & Entry Portal	Domain of Kourna
+2899	landmark	Loyalist Warren	Domain of Kourna
+2900	landmark	Corsair Cannons	Domain of Kourna
+2902	landmark	Bokoss Prison Ruins	Domain of Kourna
+2903	waypoint	Allied Encampment Waypoint	Domain of Kourna
+2904	landmark	Dunlon Springs	Domain of Kourna
+2905	landmark	Dejarin Ruins	Domain of Kourna
+2906	landmark	Research Vault Beta	Domain of Kourna
+2908	landmark	Pogahn Bluffs Proving Ground	Domain of Kourna
+2909	landmark	Wreck of the Scimitar	Domain of Kourna
+2910	landmark	Idol of the Choya	Domain of Kourna
+2911	landmark	Barbellate Crater	Domain of Kourna
+2912	landmark	Gandara Main Approach	Domain of Kourna
+2913	landmark	Gandara Western Approach	Domain of Kourna
+2914	landmark	Secret Throughway	Domain of Kourna
+2915	landmark	Palawa's Benevolence	Domain of Kourna
+2917	landmark	Arkjok Kennels	Domain of Kourna
+2918	landmark	Research Vault Alpha	Domain of Kourna
+2919	landmark	Imperial Center for Applied Pestilence	Domain of Kourna
+2920	landmark	Crocuta Vantage	Domain of Kourna
+2921	landmark	Mists Arena	Edge of the Mists
+2923	landmark	Gaze of the Ancients	Legacy
+2925	landmark	Displaced Vizier's Tower	Legacy
+2926	landmark	Acquisition Portal	Mythwright Gambit
+2928	landmark	Staging Platform	Legacy
+2929	landmark	Jahai Great Hall	Legacy
+2931	landmark	Ring of Judgment	Legacy
+2932	landmark	Claw Den	Legacy
+2933	landmark	Reliquary Bridge	Mythwright Gambit
+2934	landmark	Riyid's Post	Legacy
+2936	landmark	Fortress Courtyard	Legacy
+2937	landmark	Sleepless Beacon	Legacy
+2938	landmark	Ancestor Tree	Legacy
+2939	landmark	Mystic Clover Garden	Mythwright Gambit
+2940	landmark	Battleground Ramparts	Legacy
+2941	landmark	Heart of the Cauldron	Mythwright Gambit
+2942	waypoint	Yatendi Village Waypoint	Jahai Bluffs
+2943	landmark	Garrison Relay Tower	Legacy
+2944	landmark	Noble's Walk	Legacy
+2946	landmark	Wurmmarshal's Encampment	Legacy
+2947	waypoint	Soul's Vendetta Waypoint	Jahai Bluffs
+2948	landmark	Miniature-Pet Menagerie	Mythwright Gambit
+2949	landmark	Ectoplasmic Containment	Mythwright Gambit
+2950	landmark	Private Reserve	Mythwright Gambit
+2952	landmark	Rilohn Falls	Legacy
+2953	landmark	Confluence of the Elements	Legacy
+2954	landmark	Archon's Retreat	Legacy
+2955	landmark	Garrison Command	Legacy
+2956	landmark	Garrison Access Tower	Legacy
+2957	landmark	Vanguard Ordinance	Legacy
+2958	landmark	Kormir's Reverence	Legacy
+2959	landmark	Mirza's Rest	Legacy
+2960	landmark	Vanguard Salvage Yard	Legacy
+2961	landmark	Monument to the Return of Palawa Joko	Legacy
+2962	landmark	Yatendi Farm	Legacy
+2963	waypoint	Venta Pass Waypoint	Jahai Bluffs
+2964	landmark	Crystal Cavern	Legacy
+2967	landmark	Wyvern Roost	Legacy
+2968	landmark	Crescent's Town Hall	Legacy
+2969	waypoint	Reclaimed Chantry Waypoint	Jahai Bluffs
+2971	waypoint	Mad King's Raceway Waypoint	Mad King's Raceway
+2972	waypoint	Red Team Rally Point	Djinn's Dominion
+2973	waypoint	Blue Team Rally Point	Djinn's Dominion
+2974	landmark	Silent Falls	Thunderhead Peaks
+2975	landmark	Refiner's Joy	Thunderhead Peaks
+2976	landmark	Brechnar's Gauntlet	Thunderhead Peaks
+2977	landmark	Deldrimor Garrison	Thunderhead Peaks
+2978	landmark	The Consul's Tomb	Thunderhead Peaks
+2979	landmark	Forgotten Falls	Thunderhead Peaks
+2981	landmark	Ironbridge	Thunderhead Peaks
+2982	waypoint	Revolution's Heart Waypoint	Thunderhead Peaks
+2983	landmark	Maiden's Veil	Thunderhead Peaks
+2985	landmark	The Weeping Sisters	Thunderhead Peaks
+2986	landmark	Ironhammer Crossing	Thunderhead Peaks
+2987	landmark	The Scorchrazor III	Thunderhead Peaks
+2988	landmark	Corsair's Stand	Thunderhead Peaks
+2989	landmark	Melody's Rest	Thunderhead Peaks
+2990	landmark	Stonebridge	Thunderhead Peaks
+2992	landmark	Grand Lyceum	Thunderhead Peaks
+2993	landmark	Deldrimor Cellars	Thunderhead Peaks
+2994	landmark	Sorrow's Cave	Thunderhead Peaks
+2996	landmark	Labyrinthine Mountains	Thunderhead Peaks
+2998	landmark	Path of the Exalted	Thunderhead Peaks
+2999	landmark	Dragon's Claw	Thunderhead Peaks
+3001	waypoint	Observation Deck Waypoint	Thunderhead Peaks
+3002	waypoint	Moorage Waypoint	Thunderhead Peaks
+3003	waypoint	History's End Waypoint	Thunderhead Peaks
+3004	landmark	Slag Pit	Thunderhead Peaks
+3005	landmark	The Hammer's Hoard	Thunderhead Peaks
+3006	landmark	Heart of the Forge	Thunderhead Peaks
+3008	landmark	Stonefall	Thunderhead Peaks
+3009	landmark	Freedom's Catchment	Thunderhead Peaks
+3010	landmark	Shattered Bay	Thunderhead Peaks
+3012	landmark	Barracks	Thunderhead Peaks
+3013	waypoint	Mist Portals Waypoint	Armistice Bastion
+3014	waypoint	Gladiator Pits Waypoint	Armistice Bastion
+3015	waypoint	Lounge Atrium Waypoint	Armistice Bastion
+3016	waypoint	Mists Rift Waypoint	Mists Rift
+3017	landmark	Mist Warden Outpost	Dragonfall
+3018	landmark	Crystal Cudgel	Dragonfall
+3019	landmark	Olmakhan Outpost	Dragonfall
+3021	landmark	Tower of the Third	Dragonfall
+3022	landmark	Shackled Grasp	Dragonfall
+3023	landmark	Skyscale Eyrie	Dragonfall
+3024	landmark	Grenth's Respite	Dragonfall
+3025	waypoint	The Underworld Waypoint	Dragonfall
+3026	waypoint	Melandru's Lost Domain Waypoint	Dragonfall
+3027	landmark	Charnel Gate	Dragonfall
+3028	landmark	Chaos Gate	Dragonfall
+3032	landmark	Balthazar's Folly	Dragonfall
+3033	landmark	Pact Outpost	Dragonfall
+3034	landmark	Crystal Bloom Outpost	Dragonfall
+3035	landmark	Loathsome Pulpit	Dragonfall
+3036	landmark	Ashen Steppes	Dragonfall
+3037	landmark	Wailing Basin	Dragonfall
+3038	waypoint	Pact Command Waypoint	Dragonfall
+3040	landmark	Verdance Falls	Dragonfall
+3041	landmark	Trail of Cinder	Dragonfall
+3042	landmark	Fire God's Precipice	Dragonfall
+3044	landmark	Airdrome Port	Dragonfall
+3046	waypoint	Burning Forest Waypoint	Dragonfall
+3048	landmark	Verdant Gate	Dragonfall
+3050	landmark	Ember Gate	Dragonfall
+3051	landmark	Earthen Shrine	The Key of Ahdashim
+3052	landmark	Gates of Ahdashim	The Key of Ahdashim
+3054	landmark	Well of Ahdashim	The Key of Ahdashim
+3055	landmark	Key's Fountain	The Key of Ahdashim
+3056	landmark	Nirvana's Ascent	The Key of Ahdashim
+3057	landmark	Priory Research Station	Grothmar Valley
+3058	landmark	Santia's Forge	Grothmar Valley
+3059	landmark	Blood Dam	Grothmar Valley
+3060	landmark	Auris's Workshop	Grothmar Valley
+3061	landmark	Ash Legion Camp	Grothmar Valley
+3062	landmark	Imperator Ruinbringer's Office	Grothmar Valley
+3064	waypoint	Wardowns Waypoint	Grothmar Valley
+3065	landmark	Stockade	Grothmar Valley
+3067	landmark	Keep Kitchen	Grothmar Valley
+3068	landmark	Cathedral of Flames Gate	Grothmar Valley
+3069	landmark	Contender's Colosseum	Grothmar Valley
+3070	landmark	Aurene's Grace	Grothmar Valley
+3071	landmark	Soul's Hearth	Grothmar Valley
+3073	landmark	Doomlore Shrine	Grothmar Valley
+3074	landmark	Warden's Office	Grothmar Valley
+3075	landmark	Fangstorm's Farmhouse	Grothmar Valley
+3076	landmark	Rank 'n' File Pub	Grothmar Valley
+3077	landmark	Rally Pavilion	Grothmar Valley
+3079	landmark	Eternal Cauldron	Grothmar Valley
+3081	waypoint	Eye of the North Waypoint	Eye of the North
+3082	landmark	Blood Legion Fahrar	Grothmar Valley
+3084	landmark	War Room	Grothmar Valley
+3085	landmark	Blood Lagoon	Grothmar Valley
+3086	waypoint	Dalada Forest Waypoint	Grothmar Valley
+3087	landmark	All-Legion Commons	Grothmar Valley
+3089	landmark	Recon Cove	Grothmar Valley
+3090	landmark	Vault of the Khan-Ur	Grothmar Valley
+3093	landmark	Sniper's Square	Grothmar Valley
+3095	landmark	Shiver Gate	Grothmar Valley
+3096	landmark	Blood Keep Main Gate	Grothmar Valley
+3097	landmark	Blood Stand Stage	Grothmar Valley
+3098	landmark	Band's Bivouac	Grothmar Valley
+3099	waypoint	Blood Keep Waypoint	Grothmar Valley
+3100	landmark	Great Hall	Grothmar Valley
+3101	landmark	Unity's Beacon	Grothmar Valley
+3102	landmark	Ruined Hut	Bjora Marches
+3104	landmark	Vigil Gate	Bjora Marches
+3105	landmark	Claw's Perch	Bjora Marches
+3106	landmark	Raven's Gate	Bjora Marches
+3108	landmark	Raven Pass	Bjora Marches
+3109	landmark	Darkrime Ruins	Bjora Marches
+3111	waypoint	Jora's Keep Waypoint	Bjora Marches
+3112	landmark	Gates of Svanir	Bjora Marches
+3113	landmark	Northwest Svanir Camp	Bjora Marches
+3114	landmark	General's Quarters	Bjora Marches
+3115	landmark	Boneskinner Den	Bjora Marches
+3117	landmark	Southeast Svanir Camp	Bjora Marches
+3118	landmark	Southwest Svanir Camp	Bjora Marches
+3120	landmark	Aberrant Den	Bjora Marches
+3121	landmark	Northeast Svanir Camp	Bjora Marches
+3124	landmark	Bear Shrine	Bjora Marches
+3125	landmark	Kodan Shipwreck	Bjora Marches
+3126	landmark	Mystery of the Raven Gate Ruins	Bjora Marches
+3127	landmark	Kodan's Leap	Bjora Marches
+3129	waypoint	Still Waters Speaking Waypoint	Bjora Marches
+3130	landmark	Mystery of the Labyrinth	Bjora Marches
+3131	landmark	Sifhalla Ruins	Bjora Marches
+3133	landmark	Shrine of the Valorous Wolverine	Bjora Marches
+3134	landmark	Shrine of the Resilient Ox	Bjora Marches
+3135	landmark	Cavern of Lost Sons	Bjora Marches
+3136	landmark	Shrine of the Vigilant Eagle	Bjora Marches
+3137	landmark	Den of Whispers	Bjora Marches
+3139	landmark	Koda's Tears	Bjora Marches
+3140	landmark	Mystery of the Hidden Tower	Bjora Marches
+3141	landmark	Still Waters Speaking	Bjora Marches
+3142	landmark	Whisperwind Grotto	Bjora Marches
+3144	waypoint	Warband Camp	Forging Steel (Public)
+3145	waypoint	Thermal Forge	Forging Steel (Public)
+3146	waypoint	Stoneward Gate	Forging Steel (Public)
+3147	landmark	Griefshadow Falls	Drizzlewood Coast
+3149	landmark	Wolf's Crossing Bridge	Drizzlewood Coast
+3150	landmark	Greattree Hamlet	Drizzlewood Coast
+3151	landmark	Troop Quarters	Drizzlewood Coast
+3152	landmark	Submerged Scrapyard	Drizzlewood Coast
+3154	landmark	Leadfoot Village	Drizzlewood Coast
+3155	landmark	Verdant Falls	Drizzlewood Coast
+3158	landmark	Port Cascadia	Drizzlewood Coast
+3159	landmark	Petraj Commons	Drizzlewood Coast
+3161	landmark	Petraj's Rest	Drizzlewood Coast
+3162	landmark	Redsand Strand	Drizzlewood Coast
+3166	landmark	Vloxen Mine	Drizzlewood Coast
+3167	landmark	United Legions Base Camp	Drizzlewood Coast
+3168	landmark	Iceshard Trail	Drizzlewood Coast
+3169	landmark	Griffon's Pillar	Drizzlewood Coast
+3170	landmark	Vloxen Shards	Drizzlewood Coast
+3171	landmark	Dwayna's Light	Drizzlewood Coast
+3172	waypoint	Base Camp Waypoint	Drizzlewood Coast
+3173	landmark	Stone Root	Drizzlewood Coast
+3175	landmark	Mistgate Graveyard	Drizzlewood Coast
+3176	landmark	Olafson Farmstead	Drizzlewood Coast
+3177	landmark	Pavilion of the Legions	Drizzlewood Coast
+3179	landmark	Evergreen Pond	Drizzlewood Coast
+3180	landmark	Veins of Jormag	Drizzlewood Coast
+3181	landmark	Thermal Vent	Drizzlewood Coast
+3183	landmark	Archstone Dominion Camp	Drizzlewood Coast
+3184	landmark	Iceblood Channel	Drizzlewood Coast
+3186	waypoint	Forward Camp Waypoint	Drizzlewood Coast
+3187	landmark	Sanctum of the Wild	Drizzlewood Coast
+3188	landmark	The Spire	Drizzlewood Coast
+3189	landmark	Iron Lookout	Drizzlewood Coast
+3191	landmark	Canopy Overlook	Drizzlewood Coast
+3193	landmark	United Legions Forward Camp	Drizzlewood Coast
+3194	landmark	Sniper's Slope	Drizzlewood Coast
+3195	landmark	Ice Dragon's Gate	Drizzlewood Coast
+3196	landmark	Shoreline Dominion Camp	Drizzlewood Coast
+3198	landmark	Frostvein Dominion Camp	Drizzlewood Coast
+3199	landmark	Cavern Entryway	Drizzlewood Coast
+3200	landmark	Stone Archways	Drizzlewood Coast
+3203	waypoint	Dragonstorm Waypoint	Dragonstorm (Private Squad)
+3204	waypoint	Mists Arena Spectator Rally Point	Edge of the Mists
+3205	waypoint	Mists Arena Red Team Rally Point	Edge of the Mists
+3206	waypoint	Mists Arena Blue Team Rally Point	Edge of the Mists
+3207	waypoint	Pact Emergency Waypoint	The Twisted Marionette (Public)
+3208	waypoint	Pact Emergency Waypoint	The Twisted Marionette (Public)
+3209	waypoint	Pact Emergency Waypoint	The Twisted Marionette (Public)
+3210	landmark	Jade Brotherhood Hideout	New Kaineng City
+3211	waypoint	Junkyard Waypoint	The Echovald Wilds
+3212	landmark	Frozen Sea Monastery	Dragon's End
+3213	landmark	Saprophyte's Pond	The Echovald Wilds
+3214	landmark	Spirit Vestibule	Seitung Province
+3216	landmark	Saltspray Roost	Dragon's End
+3217	landmark	Seaguard's Crossing	Dragon's End
+3219	landmark	Yarrow's Perch	The Echovald Wilds
+3220	landmark	Tanasen Pier	Dragon's End
+3221	landmark	Ministry of Transit	Seitung Province
+3222	landmark	Ministry Headquarters	New Kaineng City
+3223	landmark	Aetherblade Camp	New Kaineng City
+3224	landmark	Jade Wind's Respite	Dragon's End
+3225	landmark	South Substation	New Kaineng City
+3226	landmark	Combat Arena	Seitung Province
+3227	landmark	Ministry of Security Headquarters	New Kaineng City
+3228	landmark	Northern Aetherblade Crash Site	Seitung Province
+3229	landmark	Sunjiang Lab	New Kaineng City
+3230	waypoint	Village Waypoint	Seitung Province
+3231	landmark	Vasburg Armory	The Echovald Wilds
+3232	waypoint	Harvest Complex Waypoint	Dragon's End
+3233	landmark	The Great Melt	Dragon's End
+3234	waypoint	Jade Quarry Waypoint	Dragon's End
+3235	landmark	Tranquil Overlook	New Kaineng City
+3236	landmark	Karstadt Village	The Echovald Wilds
+3237	landmark	Harvest Temple	Dragon's End
+3238	landmark	Harvest Temple Observatory	Dragon's End
+3240	landmark	Harbor Market	Seitung Province
+3241	landmark	Guardian's Perch	Dragon's End
+3242	landmark	Fishing Village	Seitung Province
+3243	landmark	Goa Village	The Echovald Wilds
+3244	landmark	Bell Passage	Seitung Province
+3246	landmark	Daigo Dump Site	Seitung Province
+3247	landmark	Haebaragi's Tears	New Kaineng City
+3248	landmark	Zen Daijun Temple	Seitung Province
+3249	landmark	Tangled Altar	The Echovald Wilds
+3250	landmark	Ministry of Archives	New Kaineng City
+3251	landmark	Ingenuity Square	The Echovald Wilds
+3252	landmark	Speakers Encampment	Dragon's End
+3253	landmark	Juno Hatchery	Dragon's End
+3255	landmark	Garden of Lyssa	New Kaineng City
+3256	unlock	Collection: Siege Turtle Master Rota	Arborstone
+3258	landmark	Nahpui Lab	New Kaineng City
+3259	landmark	Mori Plaza	The Echovald Wilds
+3261	landmark	Monastery Temple	Seitung Province
+3262	landmark	The Great Jade Wall	Dragon's End
+3263	waypoint	Monastery Waypoint	Seitung Province
+3264	landmark	Mine Site JS-02	Dragon's End
+3265	landmark	Jade Memorial	Seitung Province
+3266	landmark	Icebrood's Desolation	Dragon's End
+3267	landmark	Imperial Overlook	Seitung Province
+3268	landmark	Shrine to Hanuku	Dragon's End
+3269	landmark	Aetherblade Refuge	Seitung Province
+3270	waypoint	Promenade Waypoint	New Kaineng City
+3271	waypoint	Mori Village Waypoint	The Echovald Wilds
+3272	landmark	Seitung Prison	Seitung Province
+3273	landmark	Dreary Caves	Seitung Province
+3274	waypoint	Waypoint zu Heltzer	The Echovald Wilds
+3275	landmark	Royal Court	Seitung Province
+3276	waypoint	Kropa Waypoint	The Echovald Wilds
+3277	landmark	Court of Song	The Echovald Wilds
+3278	landmark	Jade Brotherhood Outpost	Dragon's End
+3279	landmark	Logistics District	Dragon's End
+3280	landmark	Font of Elders	Dragon's End
+3281	landmark	Sensali Shrine	Seitung Province
+3282	landmark	Soo-Won's Protection	New Kaineng City
+3283	landmark	Drizzle Cove	Seitung Province
+3284	waypoint	Qinkai Waypoint	The Echovald Wilds
+3285	landmark	Aspenwood Sublevel B1	The Echovald Wilds
+3286	landmark	Dump Site 3	The Echovald Wilds
+3287	landmark	Emerald Bluff	Dragon's End
+3288	landmark	Shrine of the Serpent	Dragon's End
+3289	landmark	Temple of the Turtle	Dragon's End
+3290	landmark	Archemorus's Solitude	Dragon's End
+3291	landmark	Tengu Square	New Kaineng City
+3292	landmark	Lutgardis Ruins	The Echovald Wilds
+3293	landmark	Hermit's Dock	The Echovald Wilds
+3294	waypoint	Reflection Arena Waypoint	Isle of Reflection
+3296	landmark	Salvage Yard	New Kaineng City
+3297	landmark	Forever Tree	The Echovald Wilds
+3299	landmark	Temple of the Fallen	Dragon's End
+3300	landmark	Qinkaishi Falls	The Echovald Wilds
+3301	landmark	Jade Statuette	New Kaineng City
+3302	landmark	Hollow Caves	Seitung Province
+3303	landmark	Aetherblade Flagship Wreckage	Seitung Province
+3304	landmark	Aurene's Enclave	Seitung Province
+3305	landmark	Jade Monument	New Kaineng City
+3307	landmark	Ancient Vault	New Kaineng City
+3308	landmark	Temple of Preeminence	New Kaineng City
+3309	landmark	Altrumm Mines	The Echovald Wilds
+3310	landmark	Fishing Hamlet	Seitung Province
+3311	landmark	The Old Steamshop	New Kaineng City
+3312	landmark	Ancient Archives	The Echovald Wilds
+3313	waypoint	Frozen Sea Waypoint	Dragon's End
+3314	landmark	Alua Falls	Dragon's End
+3315	waypoint	Reflection Docks Waypoint	Isle of Reflection
+3317	landmark	Miner's Folly	Dragon's End
+3318	landmark	Isle of Hanasha	New Kaineng City
+3319	landmark	Argo Crawler	Dragon's End
+3320	landmark	Risen's Havoc	Dragon's End
+3321	waypoint	Jade Gate Waypoint	The Echovald Wilds
+3322	landmark	Wrightstone Chantry	The Echovald Wilds
+3323	landmark	Red Duck Teahouse	New Kaineng City
+3324	landmark	Emperor's Watchtower	Seitung Province
+3325	landmark	Serene Pool	Seitung Province
+3326	landmark	Skygazer Cathedral	The Echovald Wilds
+3327	landmark	Painter's Platform	Seitung Province
+3328	landmark	Dump Site 2	The Echovald Wilds
+3329	landmark	Reactor Station	New Kaineng City
+3330	landmark	Aoi's Perch	The Echovald Wilds
+3331	landmark	Xunlai Jade Junkyard Outpost E-1	The Echovald Wilds
+3332	landmark	Qinkai Stream	The Echovald Wilds
+3333	landmark	The Jade Expanse	Dragon's End
+3334	landmark	Arianna's Perch	The Echovald Wilds
+3336	landmark	Harvest Bridge	Dragon's End
+3337	landmark	Caretaker's Camp	The Echovald Wilds
+3339	landmark	Tae-Jin's Estate	New Kaineng City
+3341	landmark	Shrine of Reverence	Seitung Province
+3342	waypoint	Reflection Crystal Waypoint	Isle of Reflection
+3343	landmark	Dreslav's Garden	The Echovald Wilds
+3345	waypoint	Brotherhood Waypoint	Dragon's End
+3347	landmark	The Green Grotto	Dragon's End
+3349	landmark	Dump Site 1	The Echovald Wilds
+3350	waypoint	Garden Heights Waypoint	New Kaineng City
+3352	landmark	Xinrae's Wharf	Dragon's End
+3353	waypoint	Ministry Ward Waypoint	New Kaineng City
+3354	landmark	Cat Island	Seitung Province
+3355	landmark	Wasteland of the Destroyer	Dragon's End
+3356	landmark	Kaolai Tower	Dragon's End
+3357	landmark	Western Aetherblade Crash Site	Seitung Province
+3358	landmark	Brume Alley	New Kaineng City
+3359	landmark	Petrified Shipping Docks	New Kaineng City
+3360	waypoint	Lutgardis Plaza Waypoint	New Kaineng City
+3361	landmark	Quarry Passage	Dragon's End
+3362	landmark	Town Outskirts	Seitung Province
+3363	landmark	Chantry of the Crab	Dragon's End
+3364	landmark	Pool of Tranquility	New Kaineng City
+3365	landmark	Naga Domain	Seitung Province
+3366	landmark	Seung-Gi's Legacy	New Kaineng City
+3367	landmark	Speakers Outpost	Dragon's End
+3368	landmark	Speaker's Sanctum	The Echovald Wilds
+3369	landmark	Teleri Village	The Echovald Wilds
+3370	landmark	Branded Rise	Dragon's End
+3372	landmark	Residential District	Dragon's End
+3373	landmark	Mine Site JS-36	Dragon's End
+3374	landmark	Saint Anjeka's Shrine	The Echovald Wilds
+3375	landmark	Kropa Village	The Echovald Wilds
+3376	landmark	East Precinct	New Kaineng City
+3377	landmark	Central Power Station	New Kaineng City
+3379	landmark	Xunlai Jade Museum	Dragon's End
+3380	landmark	Kaineng Fish Market	New Kaineng City
+3381	landmark	North Substation	New Kaineng City
+3384	landmark	Misa Village	New Kaineng City
+3385	landmark	Aspenwood Research Facility	The Echovald Wilds
+3386	landmark	Kappa Underpass	New Kaineng City
+3387	waypoint	Speakers Waypoint	Dragon's End
+3388	landmark	Secured Gate	Seitung Province
+3389	landmark	Rhea's Landing	Dragon's End
+3390	landmark	Obstacle Course	Seitung Province
+3391	landmark	Brotherhood's Watch	Dragon's End
+3392	landmark	Temple of the Dredge	The Echovald Wilds
+3393	landmark	Elder's Roost	The Echovald Wilds
+3394	landmark	Fish Hatchery	Seitung Province
+3396	landmark	Xiko Refugee Camp	Dragon's End
+3399	landmark	Lutgardis Market	New Kaineng City
+3400	landmark	Sanctuary of Ione	Dragon's End
+3402	landmark	Cylow Outpost	The Echovald Wilds
+3403	landmark	Kage's Perch	The Echovald Wilds
+3404	landmark	Memorial zu Heltzer	The Echovald Wilds
+3405	landmark	Eastern Aetherblade Crash Site	Seitung Province
+3406	landmark	Mordrem's Blight	Dragon's End
+3407	landmark	Provisional MinSec Camp	Seitung Province
+3408	landmark	Derelict Temple	Seitung Province
+3409	landmark	Elora's Beach	Dragon's End
+3410	landmark	Joon's Mansion	Seitung Province
+3411	landmark	Chamber of the Spirits	The Echovald Wilds
+3412	landmark	Garden of the Celestials	New Kaineng City
+3413	landmark	Garden of Enlightenment	New Kaineng City
+3415	landmark	Mi-Shen's Lab	The Echovald Wilds
+3416	landmark	Valor Shrine	Seitung Province
+3417	landmark	Valdhertz Crypts	The Echovald Wilds
+3418	landmark	Shipwreck Graveyard	New Kaineng City
+3420	landmark	Kuan Jun Pavilion	Dragon's End
+3421	landmark	Qinkai Village	The Echovald Wilds
+3422	landmark	Sizhou Hall	Seitung Province
+3423	landmark	House zu Heltzer	The Echovald Wilds
+3425	landmark	Ihn's Grace	New Kaineng City
+3426	landmark	Warehouse District	Dragon's End
+3427	waypoint	Arborstone Waypoint	Arborstone
+3428	waypoint	Haiju Docks Waypoint	Seitung Province
+3429	waypoint	Daigo Ward Waypoint	Seitung Province
+3430	landmark	Tengu Alpine Camp	Seitung Province
+3431	landmark	Erys Oasis	The Echovald Wilds
+3432	landmark	Aetherblade Hideout	The Echovald Wilds
+3433	landmark	Secret Cavern	The Echovald Wilds
+3435	landmark	Abandoned Lighthouse	Seitung Province
+3436	landmark	Hall of Remembrance	Arborstone
+3437	landmark	The Ready Room	Arborstone
+3438	landmark	The Roost	Arborstone
+3439	landmark	Longfeather Plaza	Arborstone
+3440	landmark	Singer's Fountain	Arborstone
+3441	landmark	Arborstone Inn	Arborstone
+3442	landmark	Kaga's Hearth	Arborstone
+3443	landmark	Quartermaster's Row	Arborstone
+3444	landmark	Sanctuary of the Five	Arborstone
+3445	landmark	Kestrel Archives	Arborstone
+3446	landmark	The Exchange	Arborstone
+3447	landmark	Club Canach	Arborstone
+3448	landmark	Danika's Respite	Arborstone
+3449	waypoint	Thousand Seas Pavilion Waypoint	Thousand Seas Pavilion
+3450	waypoint	Club Canach Waypoint	Arborstone
+3457	waypoint	Tower of Nightmares Waypoint	The Tower of Nightmares (Public)
+3458	waypoint	Trader's Forum Waypoint	Memory of Old Lion's Arch
+3459	waypoint	Diverse Ledges Waypoint	Memory of Old Lion's Arch
+3460	waypoint	Bloodcoast Ward Waypoint	Memory of Old Lion's Arch
+3461	waypoint	Farshore Waypoint	Memory of Old Lion's Arch
+3462	waypoint	Cavern Waypoint	The Battle for Lion's Arch (Private Squad)
+3463	waypoint	Eastern Ward Waypoint	Memory of Old Lion's Arch
+3464	waypoint	Cavern Waypoint	Memory of Old Lion's Arch
+3465	waypoint	Bloodcoast Ward Waypoint	The Battle for Lion's Arch (Private Squad)
+3466	waypoint	Canal Ward Waypoint	The Battle for Lion's Arch (Private Squad)
+3467	waypoint	Sanctum Harbor Waypoint	Memory of Old Lion's Arch
+3468	waypoint	Guild Bluff Waypoint	Memory of Old Lion's Arch
+3469	waypoint	Commodore's Quarter Waypoint	Memory of Old Lion's Arch
+3470	waypoint	Fort Marriner Waypoint	Memory of Old Lion's Arch
+3471	waypoint	Western Ward Waypoint	Memory of Old Lion's Arch
+3472	waypoint	Gate Hub Plaza Waypoint	Memory of Old Lion's Arch
+3473	waypoint	Claw Island Portage Waypoint	Memory of Old Lion's Arch
+3474	waypoint	Behemoth's Gap Waypoint	Gyala Delve
+3475	landmark	Shipwreck Excavation	Gyala Delve
+3476	landmark	Luxon Terminus Fort	Gyala Delve
+3477	landmark	Tailings Pond	Gyala Delve
+3478	landmark	Mycelium Colony	Gyala Delve
+3479	landmark	Stalagmite Islet	Gyala Delve
+3480	landmark	Shell-Side Excavation	Gyala Delve
+3481	waypoint	Luxon Terminus Waypoint	Gyala Delve
+3482	landmark	Park Mining Ops	Gyala Delve
+3483	landmark	Behemoth's Gap Base	Gyala Delve
+3484	landmark	Prospector's Landing	Gyala Delve
+3485	landmark	Melting Pools	Gyala Delve
+3486	landmark	Jadepillar Point Base	Gyala Delve
+3488	landmark	Fossilized Overlook	Gyala Delve
+3489	landmark	Ley-Line Nexus	Gyala Delve
+3492	waypoint	Jadepillar Point Waypoint	Gyala Delve
+3493	landmark	Park Quarry	Gyala Delve
+3494	landmark	Ley-Line Islet	Gyala Delve
+3495	landmark	Crestfallen Trench	Gyala Delve
+3496	landmark	Celestial Pool	Gyala Delve
+3497	landmark	Behemoth's Drop	Gyala Delve
+3498	waypoint	Park Mining Ops Waypoint	Gyala Delve
+3499	landmark	Littoral Cave	Gyala Delve
+3500	landmark	Crystal Cavern	Gyala Delve
+3501	landmark	Turtle Pen	Gyala Delve
+3502	landmark	Excavation Point 7-G	Gyala Delve
+3503	landmark	Serpent's Folly	Gyala Delve
+3504	landmark	Fortune's Collapse	Gyala Delve
+3506	landmark	Skyscale Stables	The Wizard's Tower
+3507	landmark	Harmony Green	Amnytas
+3508	landmark	Empyreal Observation Ring	The World Spire: Bastion of the Celestial
+3509	landmark	The Wizard's Court	The Wizard's Tower
+3510	landmark	Chak Hatchery	Skywatch Archipelago
+3511	landmark	Droknar's Forge	Skywatch Archipelago
+3512	landmark	Mabon's Quarters	The Wizard's Tower
+3514	landmark	Throne of Judgment	Skywatch Archipelago
+3515	landmark	Spellcrafting Workshop	Amnytas
+3516	landmark	Museum of Curiosities: Main Gallery	Amnytas
+3517	landmark	Gate Research Lab	Skywatch Archipelago
+3518	waypoint	Droknar's Light Waypoint	Skywatch Archipelago
+3519	landmark	Mabon's Tower	Amnytas
+3520	landmark	Witman's Ice Shelf	Skywatch Archipelago
+3521	landmark	Gloaming Isle	Amnytas
+3522	landmark	Akeem's Sacrifice	Skywatch Archipelago
+3523	landmark	Mabon's Resolve	Skywatch Archipelago
+3524	landmark	Wizard's Tower South Gate	Skywatch Archipelago
+3525	landmark	Hall of Gallantry	The Wizard's Tower
+3526	landmark	Crystalpool	Amnytas
+3527	landmark	Lion's Arch Connector	The Wizard's Tower
+3529	landmark	Kryptis Front Line	Amnytas
+3531	landmark	Garenhoff Refugee Camp	Skywatch Archipelago
+3532	landmark	Briella's Kitchen	Skywatch Archipelago
+3533	landmark	Matriarch's Nest	Skywatch Archipelago
+3535	landmark	Astronomic Nexus Ring	The World Spire: Bastion of the Celestial
+3537	landmark	Kestrel's Vow	Skywatch Archipelago
+3538	landmark	Vass's Compassion	Skywatch Archipelago
+3539	waypoint	Bastion of Strength Waypoint	Amnytas
+3540	landmark	Hall of Deldrimor	Skywatch Archipelago
+3541	landmark	The Reliquary	The Wizard's Tower
+3543	landmark	Wizard's Respite	The Wizard's Tower
+3544	landmark	Pool of Reflection	Amnytas
+3546	landmark	Natatorium Obscurus	Amnytas
+3547	landmark	Eastern Ward	Skywatch Archipelago
+3548	landmark	Derelict Ruins	Skywatch Archipelago
+3550	landmark	Training Platform	The Wizard's Tower
+3552	waypoint	Rata Novus Promenade Waypoint	Skywatch Archipelago
+3553	landmark	Wizard's Vault	The Wizard's Tower
+3554	landmark	Dagda's Quarters	The Wizard's Tower
+3556	landmark	Naga Encampment	Skywatch Archipelago
+3557	landmark	The Ruined Rampart	Skywatch Archipelago
+3558	landmark	Amnytas Connector	The Wizard's Tower
+3559	landmark	Beacon of Ages Command Center	Skywatch Archipelago
+3560	landmark	Rift Hunter Lounge	The Wizard's Tower
+3562	landmark	Isgarren's Quarters	The Wizard's Tower
+3564	landmark	Empyrean Plaza	The Wizard's Tower
+3565	landmark	Museum of Curiosities: Hall of Giants	Amnytas
+3566	landmark	Lyhr's Design	Skywatch Archipelago
+3567	landmark	Might's Brink Thicket	Amnytas
+3569	landmark	Isgarren's Tower	Amnytas
+3570	landmark	Equilibrium Glade	Amnytas
+3571	landmark	Aanisah's Windmill	Skywatch Archipelago
+3572	landmark	Botanical Skygarden	Amnytas
+3573	landmark	Balkor's Camp	Skywatch Archipelago
+3574	landmark	Erudition Arcade	Amnytas
+3575	landmark	Fragmented Passage	Skywatch Archipelago
+3577	landmark	Cloudview Lake	Skywatch Archipelago
+3578	landmark	Droknar's Landing	Skywatch Archipelago
+3579	landmark	Dagda's Perception	Skywatch Archipelago
+3580	landmark	Isgarren's Hidden Library	The Wizard's Tower
+3582	landmark	Vass Memorial Medical Plaza	Amnytas
+3583	landmark	Monument to King Jalis Ironhammer	Skywatch Archipelago
+3584	landmark	The Falling Sands	Skywatch Archipelago
+3586	landmark	Grand Library of Amnytas	Amnytas
+3587	landmark	Spiritual Center	Amnytas
+3588	landmark	Temple of Glint	Skywatch Archipelago
+3589	landmark	Crash of the Storm's Daughter	Skywatch Archipelago
+3590	landmark	Celestial Control Ring	The World Spire: Bastion of the Celestial
+3591	landmark	Abandoned Lab	Skywatch Archipelago
+3592	landmark	Western Research Facilities	Skywatch Archipelago
+3593	landmark	Great Debate Hall	Amnytas
+3594	waypoint	Bastion of the Celestial Waypoint	Amnytas
+3595	landmark	Lyhr's Tower	Amnytas
+3596	landmark	The Riftworks	Amnytas
+3597	landmark	Contretemps	Amnytas
+3598	waypoint	Astral Ward Encampment Waypoint	Skywatch Archipelago
+3599	landmark	Forge of Timelessness	The Wizard's Tower
+3600	landmark	Bastionmere	Amnytas
+3601	landmark	Spire's Heart	The World Spire: Bastion of the Celestial
+3602	landmark	Exalted Ruins	Skywatch Archipelago
+3603	landmark	Overmere Meditation Circle	Amnytas
+3604	landmark	Lonesome Steeple	Amnytas
+3605	waypoint	Garenhoff Refugee Camp Waypoint	Skywatch Archipelago
+3606	landmark	The Light Crystal	Skywatch Archipelago
+3608	landmark	Bridge between Worlds	Skywatch Archipelago
+3609	landmark	Mystic Passage	The Wizard's Tower
+3610	landmark	Astral Ward Training Grounds	Amnytas
+3611	landmark	Skywatch Lookout	Skywatch Archipelago
+3614	landmark	Thaumaturgy Park	Amnytas
+3615	waypoint	Tower Courtyard Waypoint	The Wizard's Tower
+3616	landmark	N.K. Broadcast Terminal Beta	Skywatch Archipelago
+3617	landmark	Dream Connector	The Wizard's Tower
+3618	landmark	Courtyard of Gathering Strength	Amnytas
+3619	landmark	Training Pavilion	Skywatch Archipelago
+3620	landmark	Cartography Chamber	Amnytas
+3621	landmark	The Veranda	Amnytas
+3622	landmark	The Infirmary	Amnytas
+3623	landmark	Cellar of Arcana	Amnytas
+3624	landmark	Dubious Islet	Amnytas
+3625	landmark	Circle of Rituals	Amnytas
+3626	landmark	Akeem's Tower	Amnytas
+3627	waypoint	Beacon of Ages Waypoint	Skywatch Archipelago
+3628	landmark	The Burning Fortress	Skywatch Archipelago
+3629	landmark	Nature's Shore Meditation Circle	Amnytas
+3630	landmark	Lyhr's Quarters	The Wizard's Tower
+3631	landmark	Refugee Clinic	The Wizard's Tower
+3632	landmark	MinSec Server Room	Skywatch Archipelago
+3633	landmark	Reserve Arsenal	Skywatch Archipelago
+3634	landmark	Esme's Overlook	Skywatch Archipelago
+3635	landmark	Ruins of Rhawat	Skywatch Archipelago
+3636	waypoint	Bastion of the Natural Waypoint	Amnytas
+3637	landmark	Hidden Falls	Skywatch Archipelago
+3639	landmark	Concocter's Lab	Amnytas
+3640	landmark	Farisan Village	Skywatch Archipelago
+3641	landmark	Conquered Plaza	Skywatch Archipelago
+3644	landmark	Island of Cognizance	Amnytas
+3645	waypoint	Bastion of Balance Waypoint	Amnytas
+3646	landmark	Relic Repository	Amnytas
+3647	waypoint	Kestrel's Vow Waypoint	Skywatch Archipelago
+3648	landmark	Spireshadow Lagoon	Amnytas
+3649	landmark	Astral Ward Dining Hall	Skywatch Archipelago
+3650	waypoint	Bastion of Knowledge Waypoint	Amnytas
+3652	landmark	Vass's Tower	Amnytas
+3654	waypoint	Observation Camp Waypoint	Skywatch Archipelago
+3655	waypoint	Bastion of the Obscure Waypoint	Amnytas
+3656	landmark	The Underways	Amnytas
+3657	landmark	Defensive Operations Camp	Amnytas
+3658	landmark	Memory's Gaze	The Wizard's Tower
+3660	landmark	Creature Corral	Amnytas
+3661	landmark	The Sea of Clouds	Amnytas
+3663	landmark	Cosmic Theater Ring	The World Spire: Bastion of the Celestial
+3664	landmark	Astral Ward Barracks	The Wizard's Tower
+3666	landmark	Wizard's Trial	The Wizard's Tower
+3667	landmark	Monument to the Order	Skywatch Archipelago
+3668	landmark	War Room	The Wizard's Tower
+3669	landmark	The Fractured Tower	Skywatch Archipelago
+3670	landmark	Sailor's Lament	Skywatch Archipelago
+3671	landmark	Seething Embrace	Heitor's Gate: Heitor's Territory
+3672	landmark	Mere of Everlasting Night	Duress: Heitor's Territory
+3673	landmark	Tree of Mourning	Heitor's Gate: Heitor's Territory
+3674	landmark	The Rot	Heitor's Gate: Heitor's Territory
+3675	landmark	Tree of Many Faces	Duress: Heitor's Territory
+3676	landmark	Heitor's Maw	Heitor's Gate: Heitor's Territory
+3677	landmark	The Wailing Chasm	Heitor's Gate: Heitor's Territory
+3678	landmark	Heitor's Gate	Heitor's Gate: Heitor's Territory
+3682	landmark	Sullen Cliffside	Heitor's Gate: Heitor's Territory
+3683	landmark	Hollow of the Covetous	Heitor's Gate: Heitor's Territory
+3684	landmark	The Pillars of Mosyn	Duress: Heitor's Territory
+3685	landmark	Astral Ward Camp	Duress: Heitor's Territory
+3686	waypoint	Astral Ward Camp Waypoint	Inner Nayos
+3687	landmark	Lost Altar	Duress: Heitor's Territory
+3688	landmark	The Ascending Dream	Heitor's Gate: Heitor's Territory
+3689	landmark	The Divide	Heitor's Gate: Heitor's Territory
+3690	landmark	The Southern Extractor	Heitor's Gate: Heitor's Territory
+3691	landmark	The Northern Extractor	Heitor's Gate: Heitor's Territory
+3692	landmark	Sky King's Aerie	Heitor's Gate: Heitor's Territory
+3693	landmark	The Waters of Regret	Heitor's Gate: Heitor's Territory
+3694	landmark	The Pool of Whispers	Heitor's Gate: Heitor's Territory
+3695	landmark	Bridge of Sighs	Inner Nayos
+3696	landmark	Temple of Charybda	Inner Nayos
+3698	landmark	Waters of the First Dream	Inner Nayos
+3699	landmark	Mosyn's Repose	Inner Nayos
+3700	landmark	The Queen's Procession	Inner Nayos
+3701	landmark	Isolated Grasslands	Inner Nayos
+3702	waypoint	Forward Bivouac Waypoint	Inner Nayos
+3703	landmark	The Blighted Pillar	Inner Nayos
+3704	landmark	River Hideaway	Inner Nayos
+3705	landmark	The Burrows	Inner Nayos
+3707	landmark	Archway of the Fallen Heroes	Inner Nayos
+3708	landmark	Path of the Ancients	Inner Nayos
+3709	landmark	Fortress of the Founding	Inner Nayos
+3711	landmark	Secondary Extractors	Inner Nayos
+3712	landmark	The Lamented Courtyard	Inner Nayos
+3713	landmark	Eventide's March	Inner Nayos
+3714	landmark	The Gathering Grounds	Inner Nayos
+3715	landmark	Well of Anguish	Inner Nayos
+3716	landmark	Coliseum of the Midnight King	Inner Nayos
+3717	landmark	Grove of the First Kryptis	Inner Nayos
+3719	landmark	Pool of Lost Dreams	Inner Nayos
+3721	landmark	Secluded Pond	Inner Nayos
+3722	landmark	The Royal Hatchery	Inner Nayos
+3723	landmark	Council of Houses	Inner Nayos
+3724	landmark	Balcony of Creation	Inner Nayos
+3725	landmark	Reliquary of the Chosen	Inner Nayos
+3726	landmark	The Midnight Throne	Inner Nayos
+3727	landmark	Stage of Dreamers	Inner Nayos
+3728	landmark	Balcony of Redemption	Inner Nayos
+3729	landmark	The Dream Filter	Inner Nayos
+3731	landmark	Chamber of Rehabilitation	Inner Nayos
+3732	waypoint	Overlook Emergency Waypoint C	Eternal Battlegrounds
+3733	waypoint	Garrison Emergency Waypoint B	Alpine Borderlands
+3734	waypoint	Blistering Undercroft Emergency Waypoint B	Desert Borderlands
+3735	waypoint	Stoic Rampart Emergency Waypoint C	Desert Borderlands
+3736	waypoint	Stonemist Castle Emergency Waypoint C	Eternal Battlegrounds
+3737	waypoint	Valley Emergency Waypoint C	Eternal Battlegrounds
+3738	waypoint	Dreadfall Bay Emergency Waypoint B	Alpine Borderlands
+3739	waypoint	Stonemist Castle Emergency Waypoint B	Eternal Battlegrounds
+3740	waypoint	Osprey's Palace Emergency Waypoint C	Desert Borderlands
+3741	waypoint	Askalion Hills Emergency Waypoint B	Alpine Borderlands
+3742	waypoint	Valley Emergency Waypoint B	Eternal Battlegrounds
+3743	waypoint	Lowlands Emergency Waypoint B	Eternal Battlegrounds
+3744	waypoint	Garrison Emergency Waypoint B	Alpine Borderlands
+3745	waypoint	Ascension Bay Emergency Waypoint B	Alpine Borderlands
+3746	waypoint	Stoic Rampart Emergency Waypoint B	Desert Borderlands
+3747	waypoint	Askalion Hills Emergency Waypoint C	Alpine Borderlands
+3748	waypoint	Lowlands Emergency Waypoint C	Eternal Battlegrounds
+3749	waypoint	Osprey's Palace Emergency Waypoint B	Desert Borderlands
+3750	waypoint	Shadaran Hills Emergency Waypoint B	Alpine Borderlands
+3751	waypoint	Garrison Emergency Waypoint C	Alpine Borderlands
+3752	waypoint	Garrison Emergency Waypoint C	Alpine Borderlands
+3753	waypoint	Dreadfall Bay Emergency Waypoint C	Alpine Borderlands
+3754	waypoint	Ascension Bay Emergency Waypoint C	Alpine Borderlands
+3755	waypoint	Overlook Emergency Waypoint B	Eternal Battlegrounds
+3756	waypoint	Blistering Undercroft Emergency Waypoint C	Desert Borderlands
+3757	waypoint	Shadaran Hills Emergency Waypoint C	Alpine Borderlands
+3758	waypoint	Harvest Den Waypoint	Lowland Shore
+3759	landmark	The Lurking Spring	Janthir Syntri
+3760	landmark	Rotting Tides	Lowland Shore
+3761	landmark	Bloodstone Research Camp	Janthir Syntri
+3763	landmark	The Reaping Stones	Janthir Syntri
+3764	landmark	Journeykin Pens	Lowland Shore
+3765	landmark	Loch Lucent	Lowland Shore
+3767	waypoint	Forager's Hunt Waypoint	Janthir Syntri
+3768	waypoint	Festering Basin Waypoint	Janthir Syntri
+3769	landmark	Lamplighter's Perch	Lowland Shore
+3772	landmark	Scarwood Depths	Janthir Syntri
+3773	landmark	Scalding Geyser	Lowland Shore
+3774	landmark	Timberland Holt	Lowland Shore
+3775	landmark	Barbed Vale's House	Lowland Shore
+3776	landmark	Summerstorm Watch	Janthir Syntri
+3777	landmark	Derby Grounds	Lowland Shore
+3778	landmark	Tundra Steppe	Lowland Shore
+3780	landmark	Shallow Tributary	Janthir Syntri
+3781	waypoint	Homestead Waypoint	Hearth's Glow
+3782	landmark	Troll's Tailgate	Lowland Shore
+3784	landmark	Queen's Confidence	Lowland Shore
+3785	waypoint	Hot Springs Waypoint	Lowland Shore
+3786	landmark	Delta Bifurcation	Lowland Shore
+3787	landmark	Rhea's Perch	Janthir Syntri
+3788	landmark	The Immortal Oak	Janthir Syntri
+3789	landmark	Iboga Burrows	Lowland Shore
+3790	landmark	Fisher's Spread	Lowland Shore
+3791	landmark	Mine	Hearth's Glow
+3792	landmark	Salmon's Fluttering	Lowland Shore
+3793	landmark	Storm Research Camp	Janthir Syntri
+3794	landmark	Denning Forge	Lowland Shore
+3795	landmark	Hunting Grounds	Janthir Syntri
+3796	landmark	The Foaming Mire	Janthir Syntri
+3797	landmark	Cathedral of the Blessed	Janthir Syntri
+3798	landmark	The Observation Post	Janthir Syntri
+3799	landmark	Quiet Escape	Janthir Syntri
+3801	landmark	Haar Clearing	Lowland Shore
+3802	landmark	The Atrium	Janthir Syntri
+3803	landmark	Dellam's Cove	Janthir Syntri
+3804	landmark	Cliffside Lookout	Janthir Syntri
+3806	landmark	Wry Lichen's House	Lowland Shore
+3807	waypoint	Harvest Shore Waypoint	Lowland Shore
+3808	landmark	The Twin's Table	Janthir Syntri
+3809	landmark	Thunder Bay	Janthir Syntri
+3810	landmark	The Molded Lands	Janthir Syntri
+3811	landmark	Buried Sacrament	Janthir Syntri
+3812	landmark	Harvest Plots	Lowland Shore
+3813	landmark	Battledance Beach	Janthir Syntri
+3814	landmark	Athenaeum of Miracles	Janthir Syntri
+3815	landmark	Old Gavril Plaza	Janthir Syntri
+3816	landmark	Fading Aurora's House	Lowland Shore
+3817	landmark	Dead Lovers Rock	Janthir Syntri
+3818	landmark	Lowland Hot Springs	Lowland Shore
+3819	landmark	Reptilia Pools	Lowland Shore
+3821	landmark	Pathway to Redemption	Janthir Syntri
+3822	landmark	The Faded Neck	Janthir Syntri
+3823	landmark	The First Bloodtree	Janthir Syntri
+3824	landmark	Boathouse	Lowland Shore
+3825	landmark	Nivermer Rill	Janthir Syntri
+3826	landmark	The Wrinkled Wetlands	Janthir Syntri
+3827	landmark	Eroded Notch	Janthir Syntri
+3828	landmark	Springer's Peak	Lowland Shore
+3829	landmark	Mountain Pass Lookout	Janthir Syntri
+3833	landmark	The Inn	Janthir Syntri
+3834	landmark	Maghead Beach	Janthir Syntri
+3835	waypoint	Journeykin Outpost Waypoint	Lowland Shore
+3838	landmark	Fishing Village Aquarium	Lowland Shore
+3839	landmark	The Second Bloodtree	Janthir Syntri
+3840	landmark	Runoff Taint	Lowland Shore
+3841	landmark	Kindle Barrens	Janthir Syntri
+3842	landmark	Divinity's Falls	Lowland Shore
+3843	landmark	Hibernation Grotto	Lowland Shore
+3845	landmark	Wasted Shallows	Janthir Syntri
+3846	landmark	The Cathedral of Blood	Janthir Syntri
+3847	landmark	Sacrifical Grounds	Janthir Syntri
+3848	landmark	Thunder Bay Point	Janthir Syntri
+3849	landmark	Alder Cove	Lowland Shore
+3850	landmark	Torpor Tavern	Lowland Shore
+3851	landmark	Springer's Retreat	Lowland Shore
+3852	landmark	Stoic Alder's House	Lowland Shore
+3853	landmark	Whispering Hollows	Janthir Syntri
+3854	landmark	Ruinous Divide	Janthir Syntri
+3855	landmark	Bagoo Cave	Lowland Shore
+3856	landmark	Apiary Holt	Lowland Shore
+3857	landmark	Astral Ward Moon Camp	Lowland Shore
+3858	landmark	Vast Caldera's Room	Lowland Shore
+3859	landmark	Basilisk Falls	Lowland Shore
+3860	landmark	Timber Cave	Lowland Shore
+3861	landmark	Lumber Mill	Hearth's Glow
+3862	landmark	Hunter's Mesa	Lowland Shore
+3863	landmark	Manor of the Cruel Hound	Janthir Syntri
+3864	landmark	Valravn's Perch	Lowland Shore
+3865	landmark	Forager's Hunt	Janthir Syntri
+3867	landmark	Valravn's Post	Lowland Shore
+3868	landmark	Vale Gazebo	Lowland Shore
+3869	landmark	Bearpaw Fields	Lowland Shore
+3870	landmark	Springer's Base	Lowland Shore
+3871	landmark	Deft Lahar's Abode	Lowland Shore
+3872	landmark	Garden of Loetor	Janthir Syntri
+3873	landmark	The Infested Quag	Janthir Syntri
+3874	landmark	Cragged Steps	Lowland Shore
+3875	landmark	The Workshop	Hearth's Glow
+3876	landmark	Bonfire Lodge	Lowland Shore
+3877	landmark	Amphibian's Knot	Lowland Shore
+3878	landmark	Corpse of the Deep Crawler	Janthir Syntri
+3879	waypoint	Astral Ward Moon Camp Waypoint	Lowland Shore
+3880	landmark	Warg Den	Lowland Shore
+3881	landmark	Tidal Tailgate	Lowland Shore
+3882	waypoint	Stricken Plains Waypoint	Janthir Syntri
+3883	landmark	Path to Balrior	Janthir Syntri
+3884	waypoint	Sanguine Crater Waypoint	Janthir Syntri
+3885	landmark	Soaring Crest's House	Lowland Shore
+3886	waypoint	Autumn's Vale Waypoint	Lowland Shore
+3887	landmark	Mire Switchback	Lowland Shore
+3888	landmark	Fungal Woodland	Lowland Shore
+3889	landmark	The Third Bloodtree	Janthir Syntri
+3890	landmark	The Fourth Bloodtree	Janthir Syntri
+3891	landmark	Farm	Hearth's Glow
+3892	landmark	Sleuth Brawlfields	Lowland Shore
+3893	landmark	Journeykin Outpost	Lowland Shore
+3894	landmark	Maul Boneyards	Lowland Shore
+3895	landmark	Greer's Lab	Convergence: Mount Balrior (Private Squad)
+3896	landmark	Balrior Cavern	Mount Balrior
+3897	landmark	Maw of Balrior	Mount Balrior
+3898	landmark	Magma Confluence	Convergence: Mount Balrior (Private Squad)
+3899	landmark	Western Landing Thumper Site	Convergence: Mount Balrior (Private Squad)
+3900	landmark	Northern Landing Thumper Site	Convergence: Mount Balrior (Private Squad)
+3901	waypoint	Mists Vault Waypoint	Mists Vault
+3902	landmark	Decima's Stormfield	Convergence: Mount Balrior (Private Squad)
+3903	landmark	Western Landing	Mount Balrior
+3904	landmark	Southern Landing	Mount Balrior
+3905	landmark	Northern Landing	Mount Balrior
+3906	landmark	Eldrin Crossing	Convergence: Mount Balrior (Private Squad)
+3907	landmark	Southern Landing Thumper Site	Convergence: Mount Balrior (Private Squad)
+3909	landmark	Balrior Cavern Thumper Site	Convergence: Mount Balrior (Private Squad)
+3910	landmark	Base Camp	Convergence: Mount Balrior (Private Squad)
+3911	landmark	Ura's Throne	Convergence: Mount Balrior (Private Squad)
+3912	landmark	Maw of Balrior Thumper Site	Convergence: Mount Balrior (Private Squad)
+3913	landmark	The Obsidian Scar	Mistburned Barrens
+3914	landmark	The Gilded Approach	Mistburned Barrens
+3915	landmark	Lakeside Watch	Mistburned Barrens
+3916	landmark	Yagon's Gift	Mistburned Barrens
+3917	landmark	The Channeling Chamber	Mistburned Barrens
+3918	landmark	Valravn's Vigil	Mistburned Barrens
+3919	landmark	Ruin Outpost	Mistburned Barrens
+3920	waypoint	Alliance Staging Ground	Mistburned Barrens
+3921	landmark	Altar of the Accursed	Mistburned Barrens
+3922	landmark	The Obsidian Rise	Mistburned Barrens
+3923	landmark	Tarn of True Sight	Mistburned Barrens
+3925	landmark	Construct Graveyard	Mistburned Barrens
+3926	landmark	Celsa's Orchard	Mistburned Barrens
+3929	landmark	Saul's Vision	Mistburned Barrens
+3930	landmark	Forge of the Blood Phenom	Mistburned Barrens
+3931	landmark	The Veiled Library	Mistburned Barrens
+3932	landmark	Collapsed Arch	Mistburned Barrens
+3933	landmark	Hall of Passing	Mistburned Barrens
+3934	landmark	The Unseen Passage	Mistburned Barrens
+3935	landmark	Southern Organ Chamber	Bava Nisos
+3936	landmark	Gilded Forum	Bava Nisos
+3937	waypoint	Mantle's Arrival Waypoint	Bava Nisos
+3938	landmark	Northern Organ Chamber	Bava Nisos
+3939	landmark	Mists Gate	Bava Nisos
+3940	landmark	The Gilded Road	Bava Nisos
+3941	landmark	Mirror Nexus	Bava Nisos
+3944	landmark	Gullet's Beginning	Bava Nisos
+3945	landmark	The Trodden Forum	Bava Nisos
+3947	landmark	Gullet's End	Bava Nisos
+3948	landmark	Alliance Camp	Bava Nisos
+3949	waypoint	Hidden Nodule Waypoint	Bava Nisos
+3950	landmark	Azure Depths	Shipwreck Strand
+3951	landmark	Consecrated Piazza	Starlit Weald
+3952	landmark	Farm	Comosus Isle
+3953	landmark	Reclaimed Lyceum	Starlit Weald
+3954	vista	Hullgarden Vista	Shipwreck Strand
+3955	landmark	Spindrift Burrow	Shipwreck Strand
+3956	landmark	Tranquil Falls	Starlit Weald
+3957	landmark	Hammerhart Battery	Shipwreck Strand
+3958	landmark	Lost Grotto	Starlit Weald
+3959	landmark	Thornbloom Ravine	Shipwreck Strand
+3960	landmark	Dig Site Gamma	Starlit Weald
+3961	landmark	Starry Grotto Skimmerway	Shipwreck Strand
+3962	landmark	The Neverfalls	Shipwreck Strand
+3963	landmark	Mine	Comosus Isle
+3964	landmark	Fountain of Blessings	Starlit Weald
+3965	landmark	The Great Cascades	Starlit Weald
+3966	landmark	Shrine of the Lost	Starlit Weald
+3967	landmark	Abandoned Antechamber	Starlit Weald
+3968	landmark	Forbidden Vault	Starlit Weald
+3970	landmark	Pub Canach	Shipwreck Strand
+3971	landmark	Inquest Subterranean Research Facility	Shipwreck Strand
+3972	landmark	Blue Hole	Shipwreck Strand
+3973	landmark	Lake of Lillies	Starlit Weald
+3974	landmark	Starlight Bayou	Starlit Weald
+3975	landmark	Nestled Clutch	Starlit Weald
+3976	landmark	Splintered Pillars	Starlit Weald
+3977	landmark	Lilycreek Cascade	Shipwreck Strand
+3978	waypoint	Hunter's Camp Waypoint	Starlit Weald
+3979	landmark	Overgrown Channel Skimmerway	Shipwreck Strand
+3980	landmark	Forecastle Rock	Shipwreck Strand
+3981	landmark	The Fallen Gate	Starlit Weald
+3982	landmark	Great Bewilderseed	Shipwreck Strand
+3983	waypoint	Homestead Waypoint	Comosus Isle
+3984	landmark	Shattered Spire	Starlit Weald
+3985	waypoint	Pub Canach Waypoint	Shipwreck Strand
+3986	landmark	Hidden Aquifer	Starlit Weald
+3988	landmark	Secret Spring	Starlit Weald
+3989	landmark	Bunkhome Square	Shipwreck Strand
+3991	landmark	Inquest Mining Operation	Shipwreck Strand
+3992	landmark	Twin Geysers	Starlit Weald
+3993	landmark	Core Processor	Starlit Weald
+3994	landmark	Crimsonleaf Fountain	Shipwreck Strand
+3995	landmark	Grogslinger's	Shipwreck Strand
+3996	waypoint	Dark Leviathan Waypoint	Shipwreck Strand
+3997	landmark	Congregation of the Sheltered	Shipwreck Strand
+3998	waypoint	Priory Expedition Waypoint	Starlit Weald
+3999	landmark	Giant's Lap	Starlit Weald
+4000	landmark	Inquest Confinement Pens	Shipwreck Strand
+4001	landmark	Well of Stars	Starlit Weald
+4002	landmark	Weeping Falls	Starlit Weald
+4003	landmark	Winding Haven	Starlit Weald
+4005	landmark	Hallowed Archive	Starlit Weald
+4006	landmark	The 'Booter's Path	Shipwreck Strand
+4007	landmark	Soaring Copse	Shipwreck Strand
+4009	landmark	Leystone Promontory	Shipwreck Strand
+4011	landmark	Starlit Stair	Shipwreck Strand
+4012	landmark	Specimen Containment	Starlit Weald
+4013	landmark	The Workshop	Comosus Isle
+4015	landmark	Hullgarden Village Plaza	Shipwreck Strand
+4016	landmark	The Opening Salvo	Starlit Weald
+4017	landmark	Flotsam Grotto Skimmerway	Shipwreck Strand
+4018	landmark	Priority Specimen Containment	Starlit Weald
+4019	landmark	Archway of the Worthy	Starlit Weald
+4020	landmark	Inquest Supply Cavern	Shipwreck Strand
+4021	landmark	Prismatic Falls	Starlit Weald
+4022	landmark	Sailor's Heart	Shipwreck Strand
+4023	landmark	Luminous Glade	Shipwreck Strand
+4024	landmark	The Dark Leviathan	Shipwreck Strand
+4025	landmark	Artesian Ley Spring	Starlit Weald
+4026	landmark	Grotto of Spirits	Starlit Weald
+4027	landmark	The Beachtree	Shipwreck Strand
+4028	landmark	Freebooter's Throughway	Shipwreck Strand
+4029	landmark	Greenroot Grotto Skimmerway	Shipwreck Strand
+4030	landmark	Sheltered Path	Shipwreck Strand
+4031	landmark	Structural Integrity Reinforcement	Shipwreck Strand
+4032	waypoint	Foothold Bivouac Waypoint	Starlit Weald
+4033	landmark	The Balance of Souls	Starlit Weald
+4035	landmark	Lumber Mill	Comosus Isle
+4037	landmark	The Wardroom	Shipwreck Strand
+4038	landmark	Ruined Nave	Starlit Weald
+4039	landmark	Forward Base Bravo	Starlit Weald
+4040	landmark	The Last Vault	Starlit Weald
+4041	landmark	Morningrise Prow	Shipwreck Strand
+4042	landmark	Font of Truth	Starlit Weald
+4043	landmark	Castaway's Tears	Shipwreck Strand
+4044	waypoint	Hullgarden Pier Waypoint	Shipwreck Strand
+4046	landmark	Shattered Capstone	Starlit Weald
+4047	landmark	Sparkling Sanctum	Starlit Weald
+4048	landmark	Sylvan Cradle	Starlit Weald
+4049	landmark	Littlewing Pond	Shipwreck Strand
+4050	landmark	Crow's Nest	Shipwreck Strand
+4051	landmark	Coconut Grove	Shipwreck Strand
+4052	landmark	Choya Conclave	Starlit Weald
+4053	landmark	Seneschal Sands	Shipwreck Strand
+4054	landmark	Threshold of Heaven	Starlit Weald
+4055	landmark	The Motor Pool	Starlit Weald
+4056	landmark	Deepwood Outpost	Eternity's Garden
+4057	landmark	Deserted Inquest Camp	Eternity's Garden
+4058	landmark	The First Elder	Eternity's Garden
+4059	landmark	The Animal Apothecary	Eternity's Garden
+4060	landmark	Western Outpost	Eternity's Garden
+4061	landmark	Dilapidated Auditorium	Eternity's Garden
+4062	landmark	Gardesano's Atelier	Eternity's Garden
+4063	landmark	Luce's Garden	Eternity's Garden
+4065	landmark	Supra Fortis	Eternity's Garden
+4066	landmark	Gated Waterfall	Eternity's Garden
+4067	landmark	Issvano's Reliquary	Eternity's Garden
+4068	waypoint	Deepwood Outpost Waypoint	Eternity's Garden
+4069	landmark	Arcanological Survey Station	Eternity's Garden
+4070	landmark	Kitshark Den	Eternity's Garden
+4071	landmark	Leylit Retreat	Eternity's Garden
+4072	landmark	Crumbling Edifice	Eternity's Garden
+4073	landmark	Beetle Gallery	Eternity's Garden
+4075	landmark	Ascendant's Way	Eternity's Garden
+4076	landmark	Raul's Watch	Eternity's Garden
+4078	landmark	Serene Nursery	Eternity's Garden
+4079	landmark	Hydrothermal Vents	Eternity's Garden
+4080	waypoint	Sanctum Exterior Waypoint	Eternity's Garden
+4081	landmark	Hidden Cellar	Eternity's Garden
+4082	landmark	The All Seer	Eternity's Garden
+4083	landmark	Toppled Monument	Eternity's Garden
+4086	landmark	Quarry Depths	Eternity's Garden
+4087	landmark	Steward Trial Chamber	Eternity's Garden
+4088	landmark	Spire of Exaltation	Eternity's Garden
+4089	landmark	Alliance Expedition Camp	Eternity's Garden
+4090	waypoint	Temple of Abnegation Waypoint	Eternity's Garden
+4091	landmark	Logistics Depot	Eternity's Garden
+4092	waypoint	Pilgrim's Rest Waypoint	Eternity's Garden
+4093	landmark	Dome of the Indelible Word	Eternity's Garden
+4094	landmark	Grand Colonnade	Eternity's Garden
+4095	landmark	The Forge	Eternity's Garden
+4096	landmark	Sunken Leyspring	Eternity's Garden
+4097	landmark	Inquest Bridgehead	Eternity's Garden
+4098	landmark	Pilfered Inquest Equipment	Eternity's Garden
+4099	landmark	Pilgrim's Approach	Eternity's Garden
+4101	landmark	Chamber of Discipline	Eternity's Garden
+4102	landmark	Whispering Artifact	Eternity's Garden
+4103	landmark	Aperture Falls	Eternity's Garden
+4104	landmark	Glowing Pond	Eternity's Garden
+4105	landmark	Infested Thicket	Eternity's Garden
+4106	landmark	Specimen Stage Beta	Leyspring Hollows
+4107	landmark	Chak Hive	Leyspring Hollows
+4108	landmark	Fool's Maze	Leyspring Hollows
+4109	landmark	Ley Altar	Leyspring Hollows
+4110	landmark	Tactician's Chantry	Leyspring Hollows
+4111	landmark	Spirit's Descent	Leyspring Hollows
+4113	landmark	The Dueling Halls	Leyspring Hollows
+4114	landmark	Proving Grounds	Leyspring Hollows
+4115	landmark	Alliance Listening Post	Leyspring Hollows
+4116	landmark	Exposed Ley Root	Leyspring Hollows
+4117	landmark	Dreaming Chambers	Leyspring Hollows
+4118	waypoint	Sealed Vestibule Waypoint	Leyspring Hollows
+4119	landmark	Crystalline Nidus	Leyspring Hollows
+4121	landmark	The Cannulae	Leyspring Hollows
+4122	landmark	Wailer's Pulpit	Leyspring Hollows
+4123	landmark	The Elder's Fruition	Leyspring Hollows
+4124	landmark	Primus Minor Research Annex	Leyspring Hollows
+4126	landmark	Arbor of Lamentation	Leyspring Hollows
+4127	waypoint	Doyen's Adytum Waypoint	Leyspring Hollows
+4128	landmark	Sequen Cromatica	Leyspring Hollows
+4129	landmark	Crystalline Crest	Leyspring Hollows
+4130	landmark	Leyspring Bore	Leyspring Hollows
+4131	landmark	The Illuminated Path	Leyspring Hollows
+4132	landmark	Attuning Chamber	Leyspring Hollows
+4133	landmark	Storage Cellar	Leyspring Hollows
+4134	landmark	Ethereal Cascade	Leyspring Hollows
+4135	landmark	Flowstone Moor	Leyspring Hollows
+4136	landmark	Specimen Stage Alpha	Leyspring Hollows
+4137	landmark	Augmented Atelier	Leyspring Hollows
+4138	landmark	Sealed Vault	Leyspring Hollows
+4139	landmark	Skittering Corridor	Leyspring Hollows
+4140	landmark	Primus Minor	Leyspring Hollows
+4141	landmark	Natural Arch	Leyspring Hollows
+4142	landmark	Path of the Uncloaked	Leyspring Hollows
+4143	landmark	The Scriptorium	Leyspring Hollows
+4144	landmark	Seat of the Director	Leyspring Hollows
+4146	landmark	Ley Barbican	Leyspring Hollows
+4147	landmark	Hidden Burrow	Leyspring Hollows
+4148	landmark	Gloamlit Courtyard	Leyspring Hollows
+4149	landmark	Subterranean Corridor	Leyspring Hollows
+4150	waypoint	Hall of Assemblage Waypoint	Leyspring Hollows
+4151	landmark	Specimen Stage Gamma	Leyspring Hollows
+4154	landmark	Specimen Stage Delta	Leyspring Hollows

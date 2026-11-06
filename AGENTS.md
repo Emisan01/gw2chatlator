@@ -125,6 +125,7 @@ Everything a user gets through Nexus fits together and is checkable: DLL, transl
 | `GW2Keyboard-LocalMT.zip` | translator helper `gw2kb_translate.exe` + `vcomp140.dll` + license texts | `extras` |
 | `GW2Keyboard-GPU.zip` | helper for NVIDIA cards `gw2kb_translate_gpu.exe` + NVIDIA's `cublas64_12`, `cublasLt64_12`, `cudart64_12` + `vcomp140.dll` + licence texts; built in `build-localmt-gpu2` inside vcvars 14.44 with CUDA 12.8 | `extras` |
 | `GW2Keyboard-OPUS-MT-<pair>.zip`, `GW2Keyboard-NLLB-200.zip`, `GW2Keyboard-M2M100.zip` | language models | `extras` (plus `extras-manifest.json`) |
+| `GW2Keyboard-POI-<lang>.tsv` | names of waypoints and points of interest, `python tools/gen_pois.py` once per release; the add-on fetches its language when such a code is in view, kept 30 days | `extras` |
 
 - **One commit:** `verify_release.py --full` refuses a dirty tree, configures and builds `build/` and `build-localmt-omp/` (`GCT_LOCAL_MT=ON`) from HEAD, runs the gates, and `pack_release.py` packs all artifacts. The commit (7 characters) and a `-dirty` mark are compiled into the DLL's version line (`2.6.3 · abc1234`); the helpers report the 12-character commit as `build`. Gate 7 refuses binaries that do not carry HEAD without `-dirty`.
 - **Manifests:** `manifest.json` (version tag) and `extras-manifest.json` (`extras`) list per artifact name, role, bytes, SHA-256 and target, for zips every file inside, for the translator helper the `proto`, `caps` and `build` read from its own `ready` line.

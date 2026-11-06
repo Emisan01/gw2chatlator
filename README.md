@@ -83,10 +83,11 @@ Updating: replace the DLL (or unpack the newer ZIP over the old one) (settings a
 | voice models | your click in Options → Voice | whisper.cpp on Hugging Face |
 | local translation module, language models, M2M100 | your click in Options → Translator | the `extras` release |
 | graphics card module (NVIDIA, about 560 MB) | your click in Options → Translator | the `extras` release |
+| table of waypoint names (a few hundred KB) | when the first waypoint code is in view, unless chat code names are off in Options → Chat; kept 30 days | the `extras` release |
 | a newer local translation module | your click on "Update local translation module" (shown only when yours is outdated) | the `extras` release |
 
 Every download is checked by SHA-256 – the one GitHub publishes, for voice models the one built into the add-on.
-Nothing is downloaded in the background.
+Apart from that small table, nothing is downloaded in the background.
 
 ## Keys
 
@@ -147,9 +148,9 @@ why GW2Chatlator works like this:
 lines of other players you translate. MyMemory is a public translation memory that may store what it receives. API
 keys are stored encrypted for your Windows account.
 
-**Names of chat codes:** to show a code's name the add-on asks GW2's public API (`api.guildwars2.com`): only the code's
-number and your reading language go out, never a chat text or a name. Options → Chat turns it off; then a code shows
-its kind.
+**Names of chat codes:** to show a code's name and details the add-on asks GW2's public API (`api.guildwars2.com`): only
+the code's number and your reading language go out, never a chat text or a name. Waypoints come from a table in this
+project's `extras` release. Options → Chat turns both off; then a code shows its kind.
 
 **What it learns stays local.** It learns only from the messages *you* send, never from other players' chat.
 Options → Writing → *Delete everything learned* starts from scratch.
@@ -175,6 +176,7 @@ In `Guild Wars 2\addons\GW2Keyboard\`:
 | `gw2kb_voice.exe`, `voice\` | the voice module |
 | `gw2kb_translate.exe`, `vcomp140.dll` | optional local MT helper (CTranslate2 for OPUS-MT, NLLB-200 & M2M100); installed from Options → Translator |
 | `gw2kb_translate_gpu.exe`, `cublas*.dll`, `cudart64_12.dll` | optional graphics card module for NVIDIA cards; installed from Options → Translator |
+| `poi-<lang>.tsv` | names of waypoints in your reading language (fetched once, kept 30 days, safe to delete) |
 | `translate\<pair>\` | individual local translation models downloaded on request |
 
 ## Building

@@ -1,0 +1,3240 @@
+3	waypoint	Wegmarke Fort Salma	Kessex-Hügel
+4	waypoint	Wegmarke Oberherr	Kessex-Hügel
+6	waypoint	Wegmarke Halacon	Kessex-Hügel
+7	waypoint	Wegmarke Reisender	Kessex-Hügel
+8	waypoint	Wegmarke Delania	Kessex-Hügel
+10	waypoint	Wegmarke Ireko-Händlerlager	Kessex-Hügel
+12	waypoint	Wegmarke Schattenherzgrund	Kessex-Hügel
+16	waypoint	Wegmarke Viathan	Kessex-Hügel
+17	waypoint	Wegmarke Dunkelwund-Klause	Kessex-Hügel
+18	waypoint	Wegmarke Cereboth	Kessex-Hügel
+19	waypoint	Wegmarke Obersee-Freistatt	Kessex-Hügel
+20	waypoint	Wegmarke Kessex-Freistatt	Kessex-Hügel
+21	waypoint	Wegmarke Höhlengrifflager	Kessex-Hügel
+22	waypoint	Wegmarke Grauhuf-Lager	Kessex-Hügel
+23	landmark	Schwarz-Freistatt	Kessex-Hügel
+24	landmark	Gorts Grube	Kessex-Hügel
+25	landmark	Garrenhoff	Kessex-Hügel
+26	landmark	Jannajs Banditen	Kessex-Hügel
+27	landmark	Bruchseite	Kessex-Hügel
+28	landmark	Triskell-Kai	Kessex-Hügel
+29	landmark	Goffs Banditen	Kessex-Hügel
+30	landmark	Kennas Banditen	Kessex-Hügel
+31	landmark	Alte Rote Werft	Kessex-Hügel
+32	landmark	Wallwächterlager	Kessex-Hügel
+33	landmark	Schlammbucht-Ausgrabungen	Kessex-Hügel
+34	landmark	Togatl-Gründe	Kessex-Hügel
+35	landmark	Krait-Speisekammer	Kessex-Hügel
+36	landmark	Ruhmreiches Übungskollektiv #4	Blutstrom-Küste
+37	landmark	Bogengang des Ährenlesers	Blutstrom-Küste
+38	landmark	Lapatl-Gründe	Blutstrom-Küste
+39	landmark	Aquanarium-Hydroposten	Blutstrom-Küste
+40	landmark	Sturmklippen-Leuchte	Blutstrom-Küste
+41	landmark	Sackgassenhöhle	Blutstrom-Küste
+42	landmark	Covington-Fort	Blutstrom-Küste
+43	landmark	Basis des Blutigen Bill	Blutstrom-Küste
+44	landmark	Sullivans Wacht	Blutstrom-Küste
+45	landmark	Flachschlammlager	Blutstrom-Küste
+46	landmark	Vonuuruuvah	Blutstrom-Küste
+47	landmark	Morguuruu	Blutstrom-Küste
+48	landmark	Zerstörtes Leuchtfeuer	Blutstrom-Küste
+49	landmark	Challdars Nest	Blutstrom-Küste
+50	landmark	Rhianns Ruhe	Blutstrom-Küste
+51	landmark	Incinergen-Labor	Provinz Metrica
+52	landmark	Schlachtfeldplatz	Provinz Metrica
+53	landmark	Das Optikalium	Provinz Metrica
+54	landmark	Durotl-Gründe	Provinz Metrica
+55	landmark	Aquannianische Forschergruppe	Provinz Metrica
+56	landmark	Dr. Bleents Lager	Provinz Metrica
+57	landmark	Oolas altes Labor	Provinz Metrica
+58	landmark	Parnnas Tor	Provinz Metrica
+59	landmark	Verbindungsturm Blig	Provinz Metrica
+60	landmark	Verbindungsturm Nopp	Provinz Metrica
+61	landmark	Innerer Inquestur-Komplex	Provinz Metrica
+62	landmark	Transfertor (Privat)	Provinz Metrica
+63	landmark	Verbindungsturm Scoln	Provinz Metrica
+64	waypoint	Wegmarke Soran Draa	Provinz Metrica
+65	waypoint	Wegmarke Jeztar-Fälle	Provinz Metrica
+66	waypoint	Wegmarke Akk-Wildnis	Provinz Metrica
+67	waypoint	Wegmarke Rana-Anlegestellenkomplex	Provinz Metrica
+68	waypoint	Wegmarke Arterium-Freistatt	Provinz Metrica
+69	waypoint	Wegmarke Hexan-Abflachung	Provinz Metrica
+70	waypoint	Wegmarke Überlebendenlager	Provinz Metrica
+71	waypoint	Wegmarke Muridianisches Hochland	Provinz Metrica
+72	waypoint	Wegmarke Desider Atum	Provinz Metrica
+74	waypoint	Wegmarke Umarmung der Betrübnis	Umarmung der Betrübnis
+75	landmark	Ogotl-Gebiet	Brisban-Wildnis
+76	landmark	Invariante Basis	Brisban-Wildnis
+77	landmark	Freudentod	Brisban-Wildnis
+78	landmark	Beldames Anhöhe	Brisban-Wildnis
+79	landmark	Seraphen-Beschützer	Brisban-Wildnis
+80	landmark	Willems Banditen	Brisban-Wildnis
+81	landmark	Scottas Banditen	Brisban-Wildnis
+82	landmark	Angelans Banditen	Brisban-Wildnis
+83	landmark	Skrittsatawney	Brisban-Wildnis
+84	landmark	Enrav-Forschungsposten	Brisban-Wildnis
+85	landmark	Breeans Banditen	Brisban-Wildnis
+86	landmark	Plünderfeste	Brisban-Wildnis
+87	landmark	Seanans Banditen	Brisban-Wildnis
+88	landmark	Robbaris Banditen	Brisban-Wildnis
+89	landmark	Fort Vandale	Brisban-Wildnis
+90	landmark	Befragungszentrum Thaumakern	Brisban-Wildnis
+91	landmark	Verehrter Pistazienbaum	Brisban-Wildnis
+92	waypoint	Wegmarke Wachsame Quelle	Brisban-Wildnis
+93	waypoint	Wegmarke Wendon	Brisban-Wildnis
+94	waypoint	Wegmarke Tunnel	Brisban-Wildnis
+95	waypoint	Wegmarke Hügelstatt	Brisban-Wildnis
+96	waypoint	Wegmarke Ostend	Brisban-Wildnis
+97	waypoint	Wegmarke Brilitin	Brisban-Wildnis
+98	waypoint	Wegmarke Seraphen-Beobachter	Brisban-Wildnis
+99	waypoint	Wegmarke Spukfelder	Brisban-Wildnis
+100	waypoint	Wegmarke Trischmiede	Brisban-Wildnis
+101	waypoint	Wegmarke Ulta Metamagikale	Brisban-Wildnis
+102	landmark	Äthervolt-Labor	Brisban-Wildnis
+103	landmark	Insel der Einsamkeit	Caledon-Wald
+104	landmark	Kastell Grasgrün	Caledon-Wald
+105	landmark	Golotl-Gründe	Caledon-Wald
+106	landmark	Bucht-Freistatt	Caledon-Wald
+107	landmark	Morgatl-Gründe	Caledon-Wald
+108	landmark	Naulskopf-Zuflucht	Caledon-Wald
+109	landmark	Sturmtrümmertiefen	Caledon-Wald
+110	landmark	Schierlingswiege	Caledon-Wald
+111	landmark	Hanto-Handelsposten	Caledon-Wald
+112	landmark	Hazupl-Gründe	Caledon-Wald
+113	landmark	Soggorsort	Caledon-Wald
+114	landmark	Sklavenhändlertiefen	Caledon-Wald
+115	landmark	Wehklagen der Banshee	Caledon-Wald
+116	landmark	Dengatl-Gründe	Caledon-Wald
+117	waypoint	Wegmarke Mrot Boru	Brisban-Wildnis
+118	waypoint	Wegmarke Düsterhöhe	Brisban-Wildnis
+119	landmark	Melandrus Cenote	Gendarran-Felder
+120	landmark	Amaranth-Grotte	Gendarran-Felder
+121	landmark	Der Bestientümpel	Gendarran-Felder
+122	landmark	Steinfischstrand	Gendarran-Felder
+123	landmark	Wileys Bucht	Gendarran-Felder
+124	landmark	Hauptquartier der Wachsamen	Gendarran-Felder
+125	landmark	Maulenheide	Gendarran-Felder
+126	landmark	Almuten-Anwesen	Gendarran-Felder
+127	landmark	Edas Obstgarten	Königintal
+128	landmark	Mepis Moa-Hof	Königintal
+129	landmark	Jebs Weizenfeld	Königintal
+130	landmark	Dalins Pumpenhaus	Königintal
+131	landmark	Altarbach-Handelsposten	Königintal
+132	landmark	Altarbach-Kreuzung	Königintal
+133	landmark	Jagdhütte	Königintal
+134	landmark	Kloster Eldvin	Königintal
+135	landmark	Holdland-Lager	Königintal
+136	landmark	Lager am Verborgenen Fels	Königintal
+137	landmark	Klippenwacht-Lager	Königintal
+138	landmark	Todeswurzel-Hütte	Königintal
+139	landmark	Tempel der Zeitalter	Königintal
+140	landmark	Hufversammlungs-Lager	Königintal
+141	landmark	S.A.U.B.E.R. Station	Provinz Metrica
+142	landmark	Drakentelt	Schneekuhlenhöhen
+143	landmark	Svannijem-Festung	Schneekuhlenhöhen
+144	landmark	Urgulp	Schneekuhlenhöhen
+145	landmark	Talaspitze	Schneekuhlenhöhen
+146	landmark	Lashuush	Schneekuhlenhöhen
+147	landmark	Durgars Gehöft	Schneekuhlenhöhen
+148	landmark	Verbotene Zone XRB	Harathi-Hinterland
+149	landmark	Vorstoßlager	Harathi-Hinterland
+150	landmark	Nordweide-Lager	Harathi-Hinterland
+151	landmark	Südschmiede-Lager	Harathi-Hinterland
+152	landmark	Großlager des Kriegskönigs	Harathi-Hinterland
+153	landmark	Königstorlager	Harathi-Hinterland
+154	landmark	Wachtlin-Waffenkammer	Harathi-Hinterland
+155	landmark	Uferklippen-Lager	Harathi-Hinterland
+156	landmark	Überwacht-Lager	Harathi-Hinterland
+157	landmark	Sperrlager	Harathi-Hinterland
+158	landmark	Lager der Schwarzhaltmine	Harathi-Hinterland
+159	landmark	Drakkens Bau	Harathi-Hinterland
+160	landmark	Bergfußlager	Harathi-Hinterland
+161	landmark	Kuufuuluu	Harathi-Hinterland
+162	landmark	Märtyrer-Grab	Harathi-Hinterland
+163	landmark	Halle der Eule	Schneekuhlenhöhen
+164	landmark	Verdammnis-Freistatt	Schneekuhlenhöhen
+165	waypoint	Wegmarke Fauns	Harathi-Hinterland
+166	waypoint	Wegmarke Schildklippe	Harathi-Hinterland
+167	waypoint	Wegmarke Seraphenlände	Harathi-Hinterland
+168	waypoint	Wegmarke Wynchona-Sammelpunkt	Harathi-Hinterland
+169	waypoint	Wegmarke Grau-Grittas Posten	Harathi-Hinterland
+170	waypoint	Wegmarke Nachtwache	Harathi-Hinterland
+171	waypoint	Wegmarke Demetra	Harathi-Hinterland
+172	waypoint	Wegmarke Erholungslager	Harathi-Hinterland
+173	waypoint	Wegmarke Barrikadenlager	Harathi-Hinterland
+174	waypoint	Wegmarke Trebushas Aussicht	Harathi-Hinterland
+175	waypoint	Wegmarke Brückenwachtlager	Harathi-Hinterland
+176	waypoint	Wegmarke Knotenpunkt-Lager	Harathi-Hinterland
+177	waypoint	Wegmarke Spalthuf	Harathi-Hinterland
+178	waypoint	Wegmarke Arca	Harathi-Hinterland
+179	waypoint	Wegmarke Skradden	Schneekuhlenhöhen
+180	waypoint	Wegmarke Lornar	Schneekuhlenhöhen
+181	waypoint	Wegmarke Hochpass-Freistatt	Schneekuhlenhöhen
+182	waypoint	Wegmarke Die Leiden des verirrten Kindes	Schneekuhlenhöhen
+183	waypoint	Wegmarke Gelehrtenkluft	Schneekuhlenhöhen
+184	waypoint	Wegmarke Isenfall	Schneekuhlenhöhen
+185	waypoint	Wegmarke Schneeweh-Freistatt	Schneekuhlenhöhen
+186	waypoint	Wegmarke Seraphen-Vorreiter	Schneekuhlenhöhen
+187	waypoint	Wegmarke Torstvedt-Gehöft	Schneekuhlenhöhen
+188	waypoint	Wegmarke Exil	Schneekuhlenhöhen
+189	waypoint	Wegmarke Njordhof	Schneekuhlenhöhen
+190	waypoint	Wegmarke Soderhem-Gehöft	Schneekuhlenhöhen
+191	waypoint	Wegmarke Schneefalken-Posten	Schneekuhlenhöhen
+192	waypoint	Wegmarke Reißertal	Schneekuhlenhöhen
+193	waypoint	Wegmarke Eulenhütte	Schneekuhlenhöhen
+194	waypoint	Wegmarke Podaga-Gehöft	Schneekuhlenhöhen
+195	waypoint	Wegmarke Arcallion	Harathi-Hinterland
+196	landmark	Wüstentor	Felder der Verwüstung
+197	landmark	Die Falkentore	Felder der Verwüstung
+198	landmark	Ausfalltor	Felder der Verwüstung
+199	landmark	Späherlager	Felder der Verwüstung
+200	landmark	Pioniersenke	Felder der Verwüstung
+201	landmark	Cymbels Rettung	Felder der Verwüstung
+202	landmark	Otyughs Kral	Felder der Verwüstung
+203	landmark	Trümmer der Unheilwacht	Felder der Verwüstung
+204	landmark	Varimhold-Außenposten	Felder der Verwüstung
+205	landmark	Ebonfalke-Delegation	Felder der Verwüstung
+206	landmark	Gipfelspitze	Felder der Verwüstung
+207	landmark	Kiemenschuppenteich	Felder der Verwüstung
+208	landmark	Delegation der Legionen	Felder der Verwüstung
+209	landmark	Der Donnerbau	Felder der Verwüstung
+210	landmark	Faulbär-Kral	Felder der Verwüstung
+211	waypoint	Wegmarke Die Falkentore	Felder der Verwüstung
+212	waypoint	Wegmarke Todesklingenwacht	Felder der Verwüstung
+213	waypoint	Wegmarke Gipfel	Felder der Verwüstung
+214	waypoint	Wegmarke Tylers Biwak	Felder der Verwüstung
+215	waypoint	Wegmarke Tenaebron-See	Felder der Verwüstung
+216	waypoint	Wegmarke Roskos Lager	Felder der Verwüstung
+217	waypoint	Wegmarke Charrtor-Freistatt	Diessa-Plateau
+218	waypoint	Wegmarke Ödmoore	Diessa-Plateau
+219	waypoint	Wegmarke Blutklingen-Sägewerk	Diessa-Plateau
+220	waypoint	Wegmarke Rhands Brunnen	Diessa-Plateau
+221	waypoint	Wegmarke Nageling	Diessa-Plateau
+222	waypoint	Wegmarke Nolan	Diessa-Plateau
+223	waypoint	Wegmarke Tal des Reisenden	Gendarran-Felder
+224	waypoint	Wegmarke Steinwächtertor	Gendarran-Felder
+225	waypoint	Wegmarke Weitsenke	Gendarran-Felder
+226	waypoint	Wegmarke Uuguuth	Gendarran-Felder
+227	waypoint	Wegmarke Füllhorn-Felder	Gendarran-Felder
+228	waypoint	Wegmarke Provern-Ufer	Gendarran-Felder
+229	waypoint	Wegmarke Vanjirs Hof	Lornars Pass
+230	waypoint	Wegmarke Dämonenschlund	Lornars Pass
+231	waypoint	Wegmarke Wintertau-Schneefeld	Lornars Pass
+232	waypoint	Wegmarke Falschsee	Lornars Pass
+233	waypoint	Wegmarke Abtei Durmand	Lornars Pass
+234	waypoint	Wegmarke See der Wehklagen	Lornars Pass
+235	waypoint	Wegmarke Donnerhörner	Lornars Pass
+236	waypoint	Wegmarke Nentor	Lornars Pass
+237	waypoint	Wegmarke Knotenpunkt-Freistatt	Gendarran-Felder
+238	waypoint	Wegmarke Winter-Freistatt	Gendarran-Felder
+239	waypoint	Wegmarke Shaemoor	Königintal
+240	waypoint	Wegmarke Felder	Königintal
+241	waypoint	Wegmarke Festung	Königintal
+242	waypoint	Wegmarke Kreuzung	Königintal
+243	waypoint	Wegmarke Phinney	Königintal
+244	waypoint	Wegmarke Tal	Königintal
+245	waypoint	Wegmarke Herzholzpass-Lager	Königintal
+246	waypoint	Wegmarke Tonteich	Königintal
+247	waypoint	Wegmarke Sumpf-Freistatt	Königintal
+248	waypoint	Wegmarke Kryta	Königintal
+249	waypoint	Wegmarke Ojons Sägewerk	Königintal
+250	waypoint	Wegmarke Beetletun	Königintal
+251	waypoint	Wegmarke Tunwacht-Schanze	Königintal
+252	waypoint	Wegmarke Gottloser Sumpf	Königintal
+253	landmark	Schrein der Sechs	Götterfels
+254	landmark	Seraphen-Hauptquartier	Götterfels
+255	landmark	Thronsaal der Königin	Götterfels
+256	landmark	Minas "Kimme&Korn"-Schießstand	Götterfels
+257	landmark	Durmand-Halle	Götterfels
+258	landmark	Maidenwispern	Götterfels
+259	landmark	Uzolans Mechanisches Orchester	Götterfels
+260	landmark	Halle der Wachsamen	Götterfels
+261	landmark	Vorhut-Hospital	Götterfels
+262	landmark	Waisenhaus vom Herz der Königin	Götterfels
+263	landmark	Minister Zamons Anwesen	Götterfels
+264	landmark	Minister Wis Anwesen	Götterfels
+265	landmark	Kammer der Minister	Götterfels
+266	landmark	Herrenhaus-Hügel	Götterfels
+267	landmark	Hüttenbiegung	Götterfels
+268	landmark	Gaunergasse	Götterfels
+269	landmark	Haidryns Menagerie	Götterfels
+270	landmark	Zentralplatz	Götterfels
+271	landmark	Karawanentrümmer	Diessa-Plateau
+272	landmark	Bovarin-Anwesen	Diessa-Plateau
+273	landmark	Grendich-Ruinen	Diessa-Plateau
+274	landmark	Dunkelfels-Schlucht	Diessa-Plateau
+275	landmark	Ritualinsel	Diessa-Plateau
+276	landmark	Brandpelz' Teich	Diessa-Plateau
+277	landmark	Regenholz-Sägewerk	Diessa-Plateau
+278	landmark	Steinfall-Anwesen	Diessa-Plateau
+279	landmark	Alte Holtimm-Abtei	Diessa-Plateau
+280	landmark	Ettin-Werkstattlabor	Lornars Pass
+281	landmark	Mühle des schwarzen Barl	Lornars Pass
+282	landmark	Schwingen-Pass	Lornars Pass
+283	landmark	Die Maulitage-Gruben	Lornars Pass
+284	landmark	Kaskadenbrücke	Lornars Pass
+285	landmark	Graubarts Anlegestelle	Lornars Pass
+286	landmark	Treibgut-Insel	Lornars Pass
+287	landmark	Kuuluuku	Lornars Pass
+288	landmark	Olias Lichtung	Lornars Pass
+289	landmark	Afgars Gehöft	Lornars Pass
+290	landmark	Grenths Tür	Lornars Pass
+291	landmark	Eisbindersprung	Lornars Pass
+292	landmark	Maulevon-Portage	Lornars Pass
+293	landmark	Abteiarchive	Lornars Pass
+294	landmark	Ogdens Quartier	Lornars Pass
+295	landmark	Die Drachenstelen	Lornars Pass
+296	landmark	Eisenhammers Krypta	Lornars Pass
+297	landmark	Korakatts Halle	Lornars Pass
+298	landmark	Nentors konsolidierte Mine	Lornars Pass
+299	landmark	Belldrons Wachtholme	Lornars Pass
+300	landmark	Aufsichtsplattform	Umarmung der Betrübnis
+301	landmark	Das Arsenal	Umarmung der Betrübnis
+302	landmark	Pumpenrelais-Raum	Umarmung der Betrübnis
+303	landmark	Molenins Gruft	Umarmung der Betrübnis
+304	landmark	Tor Keno Decca Vier	Umarmung der Betrübnis
+305	landmark	Torweg-Vorsprung	Umarmung der Betrübnis
+306	landmark	Der Glorreiche Schmied	Umarmung der Betrübnis
+307	landmark	Die S.S. Tintenfisch	Schmelztiegel der Ewigkeit
+308	waypoint	Wegmarke Astorea	Caledon-Wald
+309	waypoint	Wegmarke Morgan-Spirale	Caledon-Wald
+310	waypoint	Wegmarke Kastell Astorea	Caledon-Wald
+311	waypoint	Wegmarke Ährenleser-Bucht	Caledon-Wald
+312	waypoint	Wegmarke Brigids Aussichtspunkt	Caledon-Wald
+313	waypoint	Wegmarke Gipfelchen	Caledon-Wald
+314	waypoint	Wegmarke Mabon-Markt	Caledon-Wald
+315	waypoint	Wegmarke Cathal	Caledon-Wald
+316	waypoint	Wegmarke Caledon-Freistatt	Caledon-Wald
+317	waypoint	Wegmarke Titanen-Treppe	Caledon-Wald
+318	waypoint	Wegmarke Falias-Dorf	Caledon-Wald
+319	waypoint	Wegmarke Annwen-Weiler	Caledon-Wald
+320	waypoint	Wegmarke Kraitbann-Freistatt	Caledon-Wald
+321	waypoint	Wegmarke Bergsuhlensumpf	Caledon-Wald
+322	waypoint	Wegmarke Wächterwäldchen	Caledon-Wald
+323	landmark	Forschungsaufsichtsdom	Schmelztiegel der Ewigkeit
+324	landmark	Tor Keno Decca Fünf	Schmelztiegel der Ewigkeit
+325	landmark	Golem-Steuerungszentrale	Schmelztiegel der Ewigkeit
+326	landmark	Kudus Tiegel	Schmelztiegel der Ewigkeit
+328	landmark	Gesprungene Aufbewahrungskapsel	Schmelztiegel der Ewigkeit
+329	landmark	Fokus der Ewigkeit	Schmelztiegel der Ewigkeit
+330	waypoint	Wegmarke Skolls Biwak	Felder der Verwüstung
+331	waypoint	Wegmarke Helliot-Mine	Felder der Verwüstung
+332	waypoint	Wegmarke Fangzornwacht	Felder der Verwüstung
+333	waypoint	Wegmarke Geierbogen	Felder der Verwüstung
+334	waypoint	Wegmarke Trümmer der Blutschluchtwacht	Felder der Verwüstung
+335	waypoint	Wegmarke Ogerstraße	Felder der Verwüstung
+336	waypoint	Wegmarke Verlorenes Tor	Felder der Verwüstung
+337	waypoint	Wegmarke Festung der Gefallenen Engel	Felder der Verwüstung
+338	landmark	Schwertkreuz-Außenposten	Ebenen von Aschfurt
+339	landmark	Feindfeuers Herz	Ebenen von Aschfurt
+340	landmark	Der Aussichtshügel	Ebenen von Aschfurt
+341	landmark	Calhaans Schlupfwinkel	Ebenen von Aschfurt
+342	landmark	Sieges-Kenotaph	Ebenen von Aschfurt
+343	landmark	Der Schrottplatz	Ebenen von Aschfurt
+344	landmark	Schroffstein-Kral	Ebenen von Aschfurt
+345	landmark	Scharfschweif-Feldlager	Ebenen von Aschfurt
+346	landmark	Igni Castrum	Ebenen von Aschfurt
+347	landmark	Exterminatus-Hauptquartier	Ebenen von Aschfurt
+348	landmark	Geistergipfel	Ebenen von Aschfurt
+349	landmark	Totgotts Versteck	Ebenen von Aschfurt
+350	waypoint	Wegmarke Ruinen von Alttor	Diessa-Plateau
+351	waypoint	Wegmarke Schlachterblock	Diessa-Plateau
+352	waypoint	Wegmarke Charradis-Anwesen	Diessa-Plateau
+353	waypoint	Wegmarke Durchbrochener Wall	Diessa-Plateau
+354	waypoint	Wegmarke Incendio Templum	Diessa-Plateau
+355	waypoint	Wegmarke Nemus-Hain	Diessa-Plateau
+356	waypoint	Wegmarke Bruchwasser-See	Diessa-Plateau
+357	landmark	Herz des Wolfes	Wanderer-Hügel
+358	landmark	Hirbadds Lager	Wanderer-Hügel
+359	landmark	Drakkerjorg-Grube	Wanderer-Hügel
+360	landmark	Hostras Zuflucht	Wanderer-Hügel
+361	landmark	Herz der Bärin	Wanderer-Hügel
+362	landmark	Herz des Raben	Wanderer-Hügel
+363	landmark	Herz der Schneeleopardin	Wanderer-Hügel
+364	landmark	Alpenzur-Höhle	Wanderer-Hügel
+365	landmark	Gaertas Gipfel	Wanderer-Hügel
+366	landmark	Einsiedlerwacht	Wanderer-Hügel
+367	landmark	Sieger-Spitze	Wanderer-Hügel
+368	landmark	Edenvars Gehöft	Wanderer-Hügel
+369	landmark	Kevachs Gehöft	Wanderer-Hügel
+370	waypoint	Wegmarke Geächtetenkluft	Wanderer-Hügel
+371	waypoint	Wegmarke Helden-Bierrat	Wanderer-Hügel
+372	waypoint	Wegmarke Hornruf-Krause	Wanderer-Hügel
+373	waypoint	Wegmarke Dunkelfluss-Klippen	Wanderer-Hügel
+374	waypoint	Wegmarke Taigan-Hain	Wanderer-Hügel
+375	waypoint	Wegmarke Zelechor-Thermalbad	Wanderer-Hügel
+376	waypoint	Wegmarke Halvaunt	Wanderer-Hügel
+377	waypoint	Wegmarke Kreuzungs-Freistatt	Wanderer-Hügel
+378	waypoint	Wegmarke Dämmerstieg-Pass	Wanderer-Hügel
+379	waypoint	Wegmarke Dolyak-Pass	Wanderer-Hügel
+380	waypoint	Wegmarke Einsamkeit	Wanderer-Hügel
+381	waypoint	Wegmarke Doppelsporn-Freistatt	Wanderer-Hügel
+382	waypoint	Wegmarke Vendrakes Gehöft	Wanderer-Hügel
+383	waypoint	Wegmarke Virs Tor	Ebenen von Aschfurt
+384	waypoint	Wegmarke Rauchheim	Ebenen von Aschfurt
+385	waypoint	Wegmarke Graustahl-Rüstkammer	Ebenen von Aschfurt
+386	waypoint	Wegmarke Märtyrer	Ebenen von Aschfurt
+387	waypoint	Wegmarke Temperusspitze	Ebenen von Aschfurt
+388	waypoint	Wegmarke Aschfurt	Ebenen von Aschfurt
+389	waypoint	Wegmarke Adorea	Ebenen von Aschfurt
+390	waypoint	Wegmarke Katakomben von Ascalon	Ebenen von Aschfurt
+391	waypoint	Wegmarke Stadt Ascalon	Ebenen von Aschfurt
+392	waypoint	Wegmarke Wächterfels-Turm	Ebenen von Aschfurt
+393	waypoint	Wegmarke Dämmerspalt-Aussichtspunkt	Ebenen von Aschfurt
+394	waypoint	Wegmarke Eisendock-Werft	Ebenen von Aschfurt
+395	waypoint	Wegmarke Erste Freistatt	Gendarran-Felder
+396	waypoint	Wegmarke Talajisches Bergvorland	Gendarran-Felder
+397	waypoint	Wegmarke Bluthügel-Lager	Gendarran-Felder
+398	waypoint	Wegmarke Nebo-Terrasse	Gendarran-Felder
+399	waypoint	Wegmarke Siedlung Ascalon	Gendarran-Felder
+400	waypoint	Wegmarke Nordfelder	Gendarran-Felder
+401	waypoint	Wegmarke Apfeleck-Weiler	Gendarran-Felder
+402	waypoint	Wegmarke Feste der Wachsamen	Gendarran-Felder
+403	waypoint	Wegmarke Eistor-Schlucht	Gendarran-Felder
+404	waypoint	Wegmarke Almuten-Anwesen	Gendarran-Felder
+405	waypoint	Wegmarke Schmelztiegel-Zugang	Schmelztiegel der Ewigkeit
+406	waypoint	Wegmarke Guutras Heimstatt	Lornars Pass
+407	waypoint	Wegmarke Steinstreu	Lornars Pass
+408	waypoint	Wegmarke Gipfelenklave	Lornars Pass
+409	waypoint	Wegmarke Nebelriss-Klamm	Lornars Pass
+410	waypoint	Wegmarke Fokus der Ewigkeit	Schmelztiegel der Ewigkeit
+411	landmark	Ralenas Grabkammer	Katakomben von Ascalon
+412	landmark	Das Zertrümmerte Schwert	Katakomben von Ascalon
+413	landmark	Vassars Gruft	Katakomben von Ascalon
+414	landmark	Kashas Kapelle	Katakomben von Ascalon
+415	landmark	Nentes Sockel	Katakomben von Ascalon
+416	landmark	Der Altar des Todes	Katakomben von Ascalon
+417	landmark	Silex Castrum	Diessa-Plateau
+418	landmark	Phasma Castrum	Diessa-Plateau
+419	waypoint	Wegmarke Archen-Vorland	Blutstrom-Küste
+420	waypoint	Wegmarke Gramvoll	Blutstrom-Küste
+421	waypoint	Wegmarke Sturmklippe	Blutstrom-Küste
+422	waypoint	Wegmarke Marschwacht-Freistatt	Blutstrom-Küste
+423	waypoint	Wegmarke Remanda	Blutstrom-Küste
+424	waypoint	Wegmarke Lachmöwe	Blutstrom-Küste
+425	waypoint	Wegmarke Grenzlager	Blutstrom-Küste
+426	waypoint	Wegmarke Wachsame der Fördenmündung	Blutstrom-Küste
+427	waypoint	Wegmarke Verlorenes Wrack	Blutstrom-Küste
+428	waypoint	Wegmarke Sumpfufer-Lager	Blutstrom-Küste
+429	waypoint	Wegmarke Schwermut	Blutstrom-Küste
+430	waypoint	Wegmarke Castavall	Blutstrom-Küste
+431	waypoint	Wegmarke Jelako	Blutstrom-Küste
+432	waypoint	Wegmarke Wisperwille	Blutstrom-Küste
+433	landmark	Totenfels	Funkenschwärmersumpf
+434	landmark	Porgotl-Gründe	Funkenschwärmersumpf
+435	landmark	Occuintl-Gründe	Funkenschwärmersumpf
+436	landmark	Nicantl-Gründe	Funkenschwärmersumpf
+437	landmark	Turm von Modius	Funkenschwärmersumpf
+438	landmark	Quinatl-Totengründe	Funkenschwärmersumpf
+439	landmark	Versunkenes Chaladeen	Funkenschwärmersumpf
+440	landmark	Jinotl-Totengrund	Funkenschwärmersumpf
+441	landmark	Hoffnungsschwund	Funkenschwärmersumpf
+442	landmark	Schrein des Usharr	Funkenschwärmersumpf
+443	landmark	Inquestur-Fluchgießerei G-14	Funkenschwärmersumpf
+444	landmark	Zerstörtes Vallah	Funkenschwärmersumpf
+445	landmark	Labor der Vereinten Arkanisten	Funkenschwärmersumpf
+446	landmark	Sagenumwobener Djannor	Funkenschwärmersumpf
+447	landmark	Zornwellen-Tiefen	Funkenschwärmersumpf
+448	landmark	Wrack der "Silberner Krieger"	Funkenschwärmersumpf
+449	landmark	Küstenwacht-Posten	Funkenschwärmersumpf
+450	landmark	Sumpfwacht-Posten	Funkenschwärmersumpf
+451	landmark	Südwacht-Posten	Funkenschwärmersumpf
+452	waypoint	Wegmarke Orvars Schlucht	Funkenschwärmersumpf
+453	waypoint	Wegmarke Fort Gleichschritt	Funkenschwärmersumpf
+454	waypoint	Wegmarke Prahlhansls Heimstätte	Funkenschwärmersumpf
+455	waypoint	Wegmarke Salzflut	Funkenschwärmersumpf
+456	waypoint	Wegmarke Zintl-Heiligtum	Funkenschwärmersumpf
+457	waypoint	Wegmarke Ozeanschlund	Funkenschwärmersumpf
+458	waypoint	Wegmarke Forvars Anlegestelle	Funkenschwärmersumpf
+459	waypoint	Wegmarke Toades Kopf	Funkenschwärmersumpf
+460	waypoint	Wegmarke Flammenfrosch	Funkenschwärmersumpf
+461	waypoint	Wegmarke Dunkelwetter	Funkenschwärmersumpf
+462	waypoint	Wegmarke Brackwasser	Funkenschwärmersumpf
+463	waypoint	Wegmarke Aleems Buße	Funkenschwärmersumpf
+464	waypoint	Wegmarke Splitterküste	Funkenschwärmersumpf
+465	waypoint	Wegmarke Bruuluunu	Funkenschwärmersumpf
+466	waypoint	Wegmarke Zwielichtgarten	Zwielichtgarten
+467	waypoint	Wegmarke Zwielichtgarten	Zwielichtgarten
+468	landmark	Taukrallendorf	Eisenmark
+469	landmark	Der Kessel des Großen Feuers	Eisenmark
+470	landmark	Schäferbastion	Eisenmark
+471	landmark	Brias Anwesen	Eisenmark
+472	landmark	Vermins Torheit	Eisenmark
+473	landmark	Trümmer von Tagewerk	Eisenmark
+474	landmark	Invictus Castrum	Eisenmark
+475	landmark	Neulichtung Kral	Eisenmark
+476	landmark	Die zerschmetterte Feuerstelle	Eisenmark
+477	landmark	Grundallions Versteck	Eisenmark
+478	landmark	Sinknebel-Fälle	Eisenmark
+479	landmark	Herzsund-Fälle	Eisenmark
+480	landmark	Kilnns Rast	Eisenmark
+481	landmark	Spentlung-Tiefe	Eisenmark
+482	waypoint	Wegmarke Taukrallendorf	Eisenmark
+483	waypoint	Wegmarke Blutflossen-See	Eisenmark
+484	waypoint	Wegmarke Alte Pikenruinen	Eisenmark
+485	waypoint	Wegmarke Kriegshunddorf	Eisenmark
+486	waypoint	Wegmarke Teufelsbraten-Wald	Eisenmark
+487	waypoint	Wegmarke Dorf Schuppenfang	Eisenmark
+488	waypoint	Wegmarke Glanzfell-Lager	Eisenmark
+489	waypoint	Wegmarke Brandwacht-Lager	Eisenmark
+490	waypoint	Wegmarke Schlangenlauf	Eisenmark
+491	waypoint	Wegmarke Kuttenzahns Stern	Eisenmark
+492	waypoint	Wegmarke Westliches Bollwerk	Eisenmark
+493	waypoint	Wegmarke Feuerwacht-Lager	Eisenmark
+494	waypoint	Wegmarke Lichtungssturz	Eisenmark
+495	waypoint	Wegmarke Grostoggs Kral	Eisenmark
+496	landmark	Schweif des Sternengottes	Flammenkamm-Steppe
+497	landmark	Dorf Ferrusato	Flammenkamm-Steppe
+498	landmark	Rußpfannen-Kral	Flammenkamm-Steppe
+499	landmark	Behemia-Großkral	Flammenkamm-Steppe
+500	landmark	Greifenkrallengipfel	Flammenkamm-Steppe
+501	landmark	Skara Braevus	Flammenkamm-Steppe
+502	landmark	Überreste des Tempels der Gelassenheit	Flammenkamm-Steppe
+503	landmark	Crazes Torheit	Flammenkamm-Steppe
+504	landmark	Feindwacht-Lager	Flammenkamm-Steppe
+505	waypoint	Wegmarke Bar Zum Letzten Whiskey	Flammenkamm-Steppe
+506	waypoint	Wegmarke Stahlauge	Flammenkamm-Steppe
+507	waypoint	Wegmarke Tumok	Flammenkamm-Steppe
+508	waypoint	Wegmarke Zwillingsschwestern	Flammenkamm-Steppe
+509	waypoint	Wegmarke Behem	Flammenkamm-Steppe
+510	waypoint	Wegmarke Weite	Flammenkamm-Steppe
+511	waypoint	Wegmarke Wächterstein	Flammenkamm-Steppe
+512	waypoint	Wegmarke Lunk-Kral	Flammenkamm-Steppe
+513	waypoint	Wegmarke Terra Carorunda	Flammenkamm-Steppe
+514	waypoint	Wegmarke Bruchzahn-Schlund	Flammenkamm-Steppe
+515	waypoint	Wegmarke Kienspan	Flammenkamm-Steppe
+516	waypoint	Wegmarke Brandblick	Flammenkamm-Steppe
+517	waypoint	Wegmarke Zufluchtsrefugium	Flammenkamm-Steppe
+518	landmark	Kohlengrube-Wachposten	Feuerherzhügel
+519	landmark	Schattenkluft	Feuerherzhügel
+520	landmark	Verschleierte Klippe	Feuerherzhügel
+521	landmark	Speerzahnturm	Feuerherzhügel
+522	landmark	Tore der Flamme	Feuerherzhügel
+523	landmark	Termerarus Castrum	Feuerherzhügel
+524	landmark	Provatum Castrum	Feuerherzhügel
+525	landmark	Atrox Castrum	Feuerherzhügel
+526	landmark	Giftiges Castrum	Feuerherzhügel
+527	landmark	Haymal-Keil	Feuerherzhügel
+528	landmark	Stummherz	Feuerherzhügel
+529	landmark	Gottes Auge	Feuerherzhügel
+530	landmark	Gottes Schädel	Feuerherzhügel
+531	landmark	Gottes Hand	Feuerherzhügel
+532	landmark	Mangonel-Biwak	Feuerherzhügel
+533	landmark	Trennungsschrein	Feuerherzhügel
+534	waypoint	Wegmarke Sati	Feuerherzhügel
+535	waypoint	Wegmarke Roheisen	Feuerherzhügel
+536	waypoint	Wegmarke Tuyere-Kommandostelle	Feuerherzhügel
+537	waypoint	Wegmarke Zerklüftete Bresche	Feuerherzhügel
+538	waypoint	Wegmarke Bruchzahn	Feuerherzhügel
+539	waypoint	Wegmarke Chaos	Feuerherzhügel
+540	waypoint	Wegmarke Vidius Castrum	Feuerherzhügel
+541	waypoint	Wegmarke Häretiker-Einöde	Feuerherzhügel
+542	waypoint	Wegmarke Rostschale	Feuerherzhügel
+543	waypoint	Wegmarke Serpentine	Feuerherzhügel
+544	waypoint	Wegmarke Eisspeer	Feuerherzhügel
+545	waypoint	Wegmarke Schneegrat-Lager	Feuerherzhügel
+546	waypoint	Wegmarke Vorgas-Festung	Feuerherzhügel
+547	waypoint	Wegmarke Verlorener Haufen	Feuerherzhügel
+548	waypoint	Wegmarke Senecus Castrum	Feuerherzhügel
+549	waypoint	Wegmarke Simurgh	Feuerherzhügel
+550	waypoint	Wegmarke Hüter	Feuerherzhügel
+551	landmark	PR&T Esoterik	Provinz Metrica
+552	landmark	Incomp-Optik	Provinz Metrica
+553	landmark	Brill-Allianz-Labor	Provinz Metrica
+554	landmark	Neigungsgrad	Schauflerschreck-Klippen
+555	landmark	Fridgardr-Hütte	Schauflerschreck-Klippen
+556	landmark	Mantelet-Zuflucht	Schauflerschreck-Klippen
+557	landmark	Esjudare-Riss	Schauflerschreck-Klippen
+558	landmark	Zufluchtsspitze	Schauflerschreck-Klippen
+559	landmark	Vpered-Bohrung	Schauflerschreck-Klippen
+560	landmark	Theign Kenning	Schauflerschreck-Klippen
+561	landmark	Erdrutschschutz	Schauflerschreck-Klippen
+562	landmark	Travelens Gehöft	Schauflerschreck-Klippen
+563	landmark	Bergtrolde	Schauflerschreck-Klippen
+564	landmark	Skovtrolde-Heimstätte	Schauflerschreck-Klippen
+565	landmark	Geschichtenschmiede-Gehöft	Schauflerschreck-Klippen
+566	landmark	Der Redeplatz	Schauflerschreck-Klippen
+567	landmark	Kastell Immerdar	Baumgrenzen-Fälle
+568	landmark	Okarinuu	Baumgrenzen-Fälle
+569	landmark	Irenische Untiefe	Baumgrenzen-Fälle
+570	landmark	Schlangentiefen	Baumgrenzen-Fälle
+571	landmark	Kiriel-Fels	Baumgrenzen-Fälle
+572	landmark	Der Große Oouo	Baumgrenzen-Fälle
+573	landmark	Flüsterfälle	Baumgrenzen-Fälle
+574	landmark	Ofenpfeifen-Versteck	Baumgrenzen-Fälle
+575	landmark	Goldlichtsenke	Baumgrenzen-Fälle
+576	landmark	Distelschilfhain	Baumgrenzen-Fälle
+577	landmark	Kyesjard	Baumgrenzen-Fälle
+578	landmark	Balddihof	Baumgrenzen-Fälle
+579	landmark	Kupferhammer-Minen	Baumgrenzen-Fälle
+580	waypoint	Wegmarke Talus-Wassersturz	Baumgrenzen-Fälle
+581	waypoint	Wegmarke Schlangensteine	Baumgrenzen-Fälle
+582	waypoint	Wegmarke Okarinuu	Baumgrenzen-Fälle
+583	waypoint	Wegmarke Höhle der Windung	Baumgrenzen-Fälle
+584	waypoint	Wegmarke Schuppenstrand	Baumgrenzen-Fälle
+585	waypoint	Wegmarke Nonmoa-See	Baumgrenzen-Fälle
+586	waypoint	Wegmarke Eztlitl-Gründe	Baumgrenzen-Fälle
+587	waypoint	Wegmarke Wirbelstromschnellen	Baumgrenzen-Fälle
+588	waypoint	Wegmarke Vorsprunghut	Baumgrenzen-Fälle
+589	waypoint	Wegmarke Ogduk	Baumgrenzen-Fälle
+590	waypoint	Wegmarke Fundament 86	Baumgrenzen-Fälle
+591	waypoint	Wegmarke Weißpapierhügel	Baumgrenzen-Fälle
+592	waypoint	Wegmarke Sanfter Fluss	Baumgrenzen-Fälle
+593	waypoint	Wegmarke Distelschilfhain	Baumgrenzen-Fälle
+594	waypoint	Wegmarke Krongar-Pass	Baumgrenzen-Fälle
+595	waypoint	Wegmarke Eiserner Schleier	Baumgrenzen-Fälle
+596	waypoint	Wegmarke Rankor-Ruinen	Baumgrenzen-Fälle
+597	waypoint	Wegmarke Concordia	Baumgrenzen-Fälle
+598	waypoint	Wegmarke Trübsalriss	Schauflerschreck-Klippen
+599	waypoint	Wegmarke Frostland-Schmelze	Schauflerschreck-Klippen
+600	waypoint	Wegmarke Dociu-Ausgrabung	Schauflerschreck-Klippen
+601	waypoint	Wegmarke Sieben Kiefern	Schauflerschreck-Klippen
+602	waypoint	Wegmarke Graue Straße	Schauflerschreck-Klippen
+603	waypoint	Wegmarke Stahlbrachen	Schauflerschreck-Klippen
+604	waypoint	Wegmarke Toran-Senke	Schauflerschreck-Klippen
+605	waypoint	Wegmarke Hessdallen Kenning	Schauflerschreck-Klippen
+606	waypoint	Wegmarke Kenning-Testgelände	Schauflerschreck-Klippen
+607	waypoint	Wegmarke Große Weite	Schauflerschreck-Klippen
+608	waypoint	Wegmarke Nottowr-Bruch	Schauflerschreck-Klippen
+609	waypoint	Wegmarke Bergausläufer	Schauflerschreck-Klippen
+610	waypoint	Wegmarke Graupel-Kohn	Schauflerschreck-Klippen
+611	waypoint	Wegmarke Havfrue-Becken	Schauflerschreck-Klippen
+612	waypoint	Travelens Wegmarke	Schauflerschreck-Klippen
+613	waypoint	Wegmarke Wyrmblut	Schauflerschreck-Klippen
+614	landmark	Flammen-Legion-Waffenkammer	Flammenzitadelle
+615	landmark	Flammen-Legion-Kaserne	Flammenzitadelle
+616	landmark	Bittstellertor	Flammenzitadelle
+617	waypoint	Wegmarke Kammer der Macht	Flammenzitadelle
+618	landmark	Der Schallofen	Eisklamm-Sund
+619	landmark	Schmiedegruben	Eisklamm-Sund
+620	landmark	Arkors Grab	Eisklamm-Sund
+621	landmark	Kroks Niedergang	Eisklamm-Sund
+622	landmark	Heiliges Vertrauen	Eisklamm-Sund
+623	landmark	Ältestental	Eisklamm-Sund
+624	landmark	Sicherwachttal	Eisklamm-Sund
+625	landmark	Orsippus	Eisklamm-Sund
+626	landmark	Moshpoipoi	Eisklamm-Sund
+627	landmark	Zuckermaluu	Eisklamm-Sund
+628	landmark	Tiefes Wildwasser	Eisklamm-Sund
+629	landmark	Das Grabhügelheim	Eisklamm-Sund
+630	landmark	Windewacht	Eisklamm-Sund
+631	landmark	Klauenwacht	Eisklamm-Sund
+632	waypoint	Wegmarke Arundon	Eisklamm-Sund
+633	waypoint	Wegmarke Groznev	Eisklamm-Sund
+634	waypoint	Wegmarke Erdbeben	Eisklamm-Sund
+635	waypoint	Wegmarke Pfad der Sternenhimmel	Eisklamm-Sund
+636	waypoint	Wegmarke Pfuhl der Verzweiflung	Eisklamm-Sund
+637	waypoint	Wegmarke Wehrhaft	Eisklamm-Sund
+638	waypoint	Wegmarke Eisscholle	Eisklamm-Sund
+639	waypoint	Wegmarke Dimotiki	Eisklamm-Sund
+640	waypoint	Wegmarke Twoluup	Eisklamm-Sund
+641	waypoint	Wegmarke Himmelshöh-Gehöft	Eisklamm-Sund
+642	waypoint	Wegmarke Hochgipfel	Eisklamm-Sund
+643	waypoint	Wegmarke Kammfelslager	Eisklamm-Sund
+644	waypoint	Wegmarke Yakbiegung	Eisklamm-Sund
+645	waypoint	Wegmarke Blaue Eisglanz	Eisklamm-Sund
+646	waypoint	Wegmarke Drakkar	Eisklamm-Sund
+647	landmark	Paggas Posten	Malchors Sprung
+648	landmark	Haizahn-Insel	Malchors Sprung
+649	landmark	Östlicher Säulengang	Malchors Sprung
+650	landmark	Leuchtsignalfackel	Malchors Sprung
+651	landmark	Platz der Lichter	Malchors Sprung
+652	landmark	Altar der Gezeiten	Malchors Sprung
+653	landmark	Alarjann Bayt	Malchors Sprung
+654	landmark	Der Freiwald	Malchors Sprung
+655	landmark	Kitah Manse	Malchors Sprung
+656	landmark	Upsilon-Testanlage	Malchors Sprung
+657	landmark	Bildhauerende	Malchors Sprung
+658	landmark	Omicron-Testanlage	Malchors Sprung
+659	landmark	Arcadische Tiefen	Malchors Sprung
+660	landmark	Altar der Lügen	Malchors Sprung
+661	landmark	Ilyas Funke	Malchors Sprung
+662	landmark	Lied der Lyss	Malchors Sprung
+663	landmark	Siegel der Vereinigung	Malchors Sprung
+664	landmark	Malchors Qual	Malchors Sprung
+665	landmark	Spiegelgriff	Malchors Sprung
+666	landmark	Wisperinsel	Malchors Sprung
+667	landmark	Schutzhafen	Malchors Sprung
+668	landmark	Dorics Schrein	Malchors Sprung
+669	landmark	Kahloipoi-Dorf	Malchors Sprung
+670	landmark	Rayhan Bayt	Malchors Sprung
+671	landmark	Bayt Fallahin	Malchors Sprung
+672	landmark	Saliah Bayt	Malchors Sprung
+673	landmark	Trümmer der Qashvian	Malchors Sprung
+674	landmark	Gefolgebrücke	Malchors Sprung
+675	landmark	Dhuums letzter Widerstand	Malchors Sprung
+676	landmark	Dorf Wren	Malchors Sprung
+677	landmark	Hoffnungsfälle	Malchors Sprung
+678	waypoint	Wegmarke Pagga	Malchors Sprung
+679	waypoint	Wegmarke Dorics	Malchors Sprung
+680	waypoint	Wegmarke Abfall-Senken	Malchors Sprung
+681	waypoint	Wegmarke Säulengang	Malchors Sprung
+682	waypoint	Wegmarke Tal der Lyss	Malchors Sprung
+683	waypoint	Wegmarke Vereinigung	Malchors Sprung
+684	waypoint	Wegmarke Wren	Malchors Sprung
+685	waypoint	Wegmarke Lyssa	Malchors Sprung
+686	waypoint	Wegmarke Vermodertes Gewölbe	Malchors Sprung
+687	waypoint	Wegmarke Wisper	Malchors Sprung
+688	waypoint	Wegmarke Gezeiten	Malchors Sprung
+689	waypoint	Wegmarke Gegenzauber	Malchors Sprung
+690	waypoint	Wegmarke Lichter	Malchors Sprung
+692	landmark	Gwauns Tal	Mahlstromgipfel
+693	landmark	Tzanopl-Gründe	Mahlstromgipfel
+694	landmark	Ruhelose Tiefen	Mahlstromgipfel
+695	landmark	Gorlois Rückgrat	Mahlstromgipfel
+696	landmark	Giftpest	Mahlstromgipfel
+697	landmark	Torheit des Galans	Mahlstromgipfel
+698	landmark	Evisomanten-Zuflucht	Mahlstromgipfel
+699	landmark	Malxa Pyronetik	Mahlstromgipfel
+700	landmark	Mondlichtbächlein	Mahlstromgipfel
+701	landmark	Zone Violett	Mahlstromgipfel
+702	landmark	Zone Weiß	Mahlstromgipfel
+703	landmark	Zone Grün	Mahlstromgipfel
+704	landmark	Zone Schwarz	Mahlstromgipfel
+705	landmark	Zone Rot	Mahlstromgipfel
+706	landmark	Zone Blau (im Bau)	Mahlstromgipfel
+707	landmark	Breth Ayahusasca	Mahlstromgipfel
+708	landmark	Rata Pten	Mahlstromgipfel
+709	landmark	Aufstieg der Helden	Mahlstromgipfel
+710	landmark	Theurgische Schnecke	Mahlstromgipfel
+711	waypoint	Wegmarke Finstertal	Mahlstromgipfel
+712	waypoint	Wegmarke Govoran	Mahlstromgipfel
+713	waypoint	Wegmarke Richtwert	Mahlstromgipfel
+714	waypoint	Wegmarke Feuerbruchfort	Mahlstromgipfel
+715	waypoint	Wegmarke Spaecia Illogica	Mahlstromgipfel
+716	waypoint	Wegmarke des Barden	Mahlstromgipfel
+717	waypoint	Wegmarke Mahlstrom	Mahlstromgipfel
+718	waypoint	Wegmarke Aschen	Mahlstromgipfel
+719	waypoint	Wegmarke Avernan	Mahlstromgipfel
+720	waypoint	Wegmarke Gebrochener Pfeil	Mahlstromgipfel
+721	waypoint	Wegmarke Ochsenjoch-Insel	Mahlstromgipfel
+722	waypoint	Wegmarke Irwin-Insel	Mahlstromgipfel
+723	waypoint	Wegmarke Stulpenschlucht	Mahlstromgipfel
+724	waypoint	Wegmarke Alter Hammergrund	Mahlstromgipfel
+725	waypoint	Wegmarke Urteil	Mahlstromgipfel
+726	waypoint	Wegmarke Magmatisch	Mahlstromgipfel
+727	landmark	Meeresufer-Geschütz	Meerenge der Verwüstung
+728	landmark	Klingenrutsch-Biwak	Meerenge der Verwüstung
+729	landmark	Stentor-Kanonade	Meerenge der Verwüstung
+730	landmark	Donnerkopf-Batterie	Meerenge der Verwüstung
+731	landmark	Cadrigans Steg	Meerenge der Verwüstung
+732	landmark	Izz-al-Din Sarayi	Meerenge der Verwüstung
+733	landmark	Geknickte Landzunge	Meerenge der Verwüstung
+734	landmark	Der Turm des Wesirs	Meerenge der Verwüstung
+735	landmark	Stygische Tiefen	Meerenge der Verwüstung
+736	landmark	Platz der Verlorenen Weisheit	Meerenge der Verwüstung
+737	landmark	Verlassener Posten	Meerenge der Verwüstung
+738	landmark	Eroberungs-Jachthafen	Meerenge der Verwüstung
+739	landmark	Anlegestelle Messingklaue	Meerenge der Verwüstung
+740	landmark	Schnepfenhügel	Meerenge der Verwüstung
+741	landmark	Altar des Verrats	Meerenge der Verwüstung
+742	landmark	Kompass-Brücke	Meerenge der Verwüstung
+743	landmark	Din al-Jindi	Meerenge der Verwüstung
+744	landmark	Kapelle von Lady Glaive	Meerenge der Verwüstung
+745	landmark	Der royale Markt	Meerenge der Verwüstung
+746	landmark	Die Abendsternglocke	Meerenge der Verwüstung
+747	landmark	Kloster von Tughra	Meerenge der Verwüstung
+748	waypoint	Wegmarke Brombeer-Pass	Meerenge der Verwüstung
+749	waypoint	Wegmarke Signalgipfel	Meerenge der Verwüstung
+750	waypoint	Wegmarke Fort der Dreifaltigkeit	Meerenge der Verwüstung
+751	waypoint	Wegmarke Dornenpass	Meerenge der Verwüstung
+752	waypoint	Wegmarke Donnerkopf	Meerenge der Verwüstung
+753	waypoint	Wegmarke Geknickte Landzunge	Meerenge der Verwüstung
+754	waypoint	Wegmarke Die Abendsternglocke	Meerenge der Verwüstung
+755	waypoint	Wegmarke Der royale Markt	Meerenge der Verwüstung
+756	waypoint	Wegmarke Anlegestelle Messingklaue	Meerenge der Verwüstung
+757	waypoint	Wegmarke Anthenäum	Meerenge der Verwüstung
+758	waypoint	Wegmarke Eroberungs-Jachthafen	Meerenge der Verwüstung
+759	waypoint	Wegmarke Verlassener Posten	Meerenge der Verwüstung
+760	waypoint	Wegmarke Abwege	Meerenge der Verwüstung
+761	waypoint	Wegmarke Xenarius	Meerenge der Verwüstung
+762	waypoint	Wegmarke Glorreicher Sieg	Meerenge der Verwüstung
+763	waypoint	Wegmarke Wachposten	Meerenge der Verwüstung
+764	landmark	Bitterberg	Fluchküste
+765	landmark	Kastell Schattenlieb	Fluchküste
+766	landmark	Dorf Sayix	Fluchküste
+767	landmark	Seewechsel-Gezeitenbecken	Fluchküste
+768	landmark	Cachistic R&D	Fluchküste
+769	landmark	Gavbeorns Anlegestelle	Fluchküste
+770	landmark	Bakkir Sarayi	Fluchküste
+771	landmark	Wintertotengeläut-Labyrinth	Fluchküste
+772	landmark	Zufluchtstor	Fluchküste
+773	landmark	Spukhang	Fluchküste
+774	landmark	Dorf Ewan	Fluchküste
+775	landmark	Dornenhafen	Fluchküste
+776	landmark	Wrack der "Goldenen Eitelkeit"	Fluchküste
+777	landmark	Heroldfackel	Fluchküste
+778	landmark	Todesblick-Fackel	Fluchküste
+779	landmark	Verschüttete Archive	Fluchküste
+780	landmark	Altar der ermordeten Träume	Fluchküste
+781	landmark	Hymne des Todes	Fluchküste
+782	landmark	Wrack der "Saehrimnir"	Fluchküste
+783	landmark	Wichtigtuergipfel	Fluchküste
+784	landmark	Telmat-Höhe	Fluchküste
+785	landmark	Augur-Fackel	Fluchküste
+786	landmark	Schaft-Ankerplatz	Fluchküste
+787	landmark	Sharns freies Lager	Fluchküste
+788	landmark	Reliquiargruft	Fluchküste
+789	landmark	Tore von Arah	Fluchküste
+790	landmark	Altar des welken Herzens	Fluchküste
+791	waypoint	Wegmarke Verfolgungspass	Fluchküste
+792	waypoint	Wegmarke R&D	Fluchküste
+793	waypoint	Bußfertige Wegmarke	Fluchküste
+794	waypoint	Wegmarke Gavbeorns Anlegestelle	Fluchküste
+795	waypoint	Wegmarke Kathedrale des frischen Grüns	Fluchküste
+796	waypoint	Wegmarke Zufluchtstor	Fluchküste
+797	waypoint	Jofasts Wegmarke	Fluchküste
+798	waypoint	Wegmarke Wichtigtuergipfel	Fluchküste
+799	waypoint	Wegmarke Ankerplatz	Fluchküste
+800	waypoint	Wegmarke Arah	Fluchküste
+801	waypoint	Wegmarke Kastell Schattenlieb	Fluchküste
+802	waypoint	Wegmarke Altar der ermordeten Träume	Fluchküste
+803	waypoint	Wegmarke Dwayna	Götterfels
+804	waypoint	Wegmarke Grenth	Götterfels
+805	waypoint	Wegmarke Kormir	Götterfels
+806	waypoint	Wegmarke Lyssa	Götterfels
+807	waypoint	Wegmarke Melandru	Götterfels
+808	waypoint	Wegmarke Balthasar	Götterfels
+809	waypoint	Wegmarke Palast	Götterfels
+810	waypoint	Wegmarke Marktviertel	Götterfels
+811	waypoint	Wegmarke Rurikstadt	Götterfels
+812	waypoint	Wegmarke Kronpavillon	Götterfels
+813	waypoint	Wegmarke Ossa	Götterfels
+814	waypoint	Wegmarke Salma	Götterfels
+816	landmark	Zaishen-Anthenäum	Meerenge der Verwüstung
+817	landmark	Schädelplatz	Götterfels
+820	waypoint	Wegmarke Zierde der Wogen	Zierde der Wogen
+821	waypoint	Wegmarke Zierde der Wogen	Zierde der Wogen
+822	landmark	Uzolans Versteck	Kessex-Hügel
+823	landmark	Taschendieb-Zirkel	Brisban-Wildnis
+824	landmark	Mennerheim	Schneekuhlenhöhen
+825	waypoint	Wegmarke Caudecus' Anwesen	Caudecus' Anwesen
+826	waypoint	Wegmarke Caudecus' Anwesen	Caudecus' Anwesen
+827	landmark	Aschetribun-Quartier	Schwarze Zitadelle
+828	landmark	Bluttribun-Quartier	Schwarze Zitadelle
+829	landmark	Fahrar der jungen Helden	Schwarze Zitadelle
+830	landmark	Verlassene Höhlen (Zutritt verboten)	Schwarze Zitadelle
+831	landmark	Eisentribun-Quartier	Schwarze Zitadelle
+832	landmark	Durmand-Skriptorium	Schwarze Zitadelle
+833	landmark	Wachsamen-Ordenshaus	Schwarze Zitadelle
+834	landmark	Taverne "Zur gezackten Klinge"	Schwarze Zitadelle
+835	landmark	Knochenmahlers Schlucht	Königintal
+836	waypoint	Wegmarke Obstgarten	Königintal
+837	waypoint	Wegmarke Schnorrer	Königintal
+838	waypoint	Wegmarke Torfmoder-Galerie	Zwielichtgarten
+839	waypoint	Wegmarke See der Furcht	Zwielichtgarten
+840	waypoint	Wegmarke Halle des Reumütigen Herzens	Zwielichtgarten
+841	landmark	Schwanz der Feuerschlange	Eisklamm-Sund
+842	landmark	Opferstein	Eisklamm-Sund
+843	landmark	Der Gewürgte Flaschenhals	Götterfels
+844	waypoint	Wegmarke Wegstation der Löwengarde	Caledon-Wald
+845	waypoint	Wegmarke Trockengrund-Dorf	Funkenschwärmersumpf
+846	waypoint	Wegmarke Tiefland-Brand	Flammenkamm-Steppe
+847	waypoint	Wegmarke Gastor-Schlund	Flammenkamm-Steppe
+848	waypoint	Wegmarke Kinar-Fort	Flammenkamm-Steppe
+849	waypoint	Wegmarke Splitterkamm-Fort	Flammenkamm-Steppe
+850	waypoint	Wegmarke Rußstraße	Flammenkamm-Steppe
+851	landmark	Terrasse der Trainer	Königintal
+852	landmark	Lindwurmloch	Flammenkamm-Steppe
+853	landmark	Ost-Bastion	Caudecus' Anwesen
+854	landmark	Bediensteten-Quartiere	Caudecus' Anwesen
+855	landmark	Herrenhaus-Scheune	Caudecus' Anwesen
+856	landmark	Separatistenlager	Caudecus' Anwesen
+857	landmark	Banditen-Kaserne	Caudecus' Anwesen
+858	landmark	Pakt-Lager	Die Ruinenstadt Arah
+859	waypoint	Wegmarke Paktlager	Triumph oder Tod
+860	landmark	Melandrus Dom	Die Ruinenstadt Arah
+861	landmark	Dämonenuntiefe	Die Ruinenstadt Arah
+862	landmark	Drachenbatterie	Triumph oder Tod
+863	landmark	Zhaitans letzter Kampf	Triumph oder Tod
+864	landmark	Bergungsgut von der "Stolz des Weißbären"	Die Ruinenstadt Arah
+865	landmark	Bergungsgut von der "Riannocs Traum"	Die Ruinenstadt Arah
+866	landmark	Bergungsgut von der Lady Livia	Die Ruinenstadt Arah
+867	landmark	Die Metzelgruft	Die Ruinenstadt Arah
+868	landmark	Wrack der Flammenklinge	Die Ruinenstadt Arah
+869	landmark	Mursaat-Prüfstand Zeleph	Die Ruinenstadt Arah
+870	landmark	Das Mystische Teleskop	Die Ruinenstadt Arah
+871	landmark	Das Große Tor der Prozession	Die Ruinenstadt Arah
+872	landmark	Die Beseitigung der Blutsteine	Die Ruinenstadt Arah
+873	landmark	Der Altar von Glaust	Die Ruinenstadt Arah
+874	landmark	Die kaiserliche Barge Orrs	Die Ruinenstadt Arah
+875	waypoint	Wegmarke Eingang	Katakomben von Ascalon
+876	waypoint	Wegmarke Archiv	Katakomben von Ascalon
+881	landmark	Brauerei Schneid	Hoelbrak
+882	landmark	Fangzahn der Schlange	Hoelbrak
+883	landmark	Raufboldwettkampf	Hoelbrak
+884	landmark	Die Große Anhöhe	Hoelbrak
+885	landmark	Skartis Gehöft	Hoelbrak
+886	landmark	Steinmacher-Gehöft	Hoelbrak
+887	landmark	Sigfasts Gehöft	Hoelbrak
+888	landmark	Meister Schwarzschmieds Gehöft	Hoelbrak
+889	landmark	Wissensstätte des alten Fiach	Hoelbrak
+890	landmark	Prahlhalle	Hoelbrak
+891	landmark	Hrothbeirs Rast	Hoelbrak
+892	landmark	Vherathas Schänke	Hoelbrak
+893	landmark	Abtei-Lager	Hoelbrak
+894	landmark	Heiligtum des Drachen	Hoelbrak
+895	landmark	Wachsamen-Unterkunft	Hoelbrak
+896	landmark	Senke der verlorenen Geister	Hoelbrak
+897	landmark	Heiligtum der Bärin	Hoelbrak
+898	landmark	Heiligtum des Wolfs	Hoelbrak
+899	landmark	Heiligtum des Raben	Hoelbrak
+900	landmark	Heiligtum der Schneeleopardin	Hoelbrak
+901	waypoint	Wegmarke Platz der Macht	Hoelbrak
+902	waypoint	Wegmarke Handelsdistrikt	Hoelbrak
+903	waypoint	Wegmarke der Schneeleopardin	Hoelbrak
+904	waypoint	Wegmarke des Raben	Hoelbrak
+905	waypoint	Wegmarke der Bärin	Hoelbrak
+906	waypoint	Wegmarke des Wolfs	Hoelbrak
+907	waypoint	Wegmarke Zufluchtsfelsen	Hoelbrak
+908	waypoint	Wegmarke Halle der Legenden	Hoelbrak
+909	waypoint	Wegmarke Östlicher Wachposten	Hoelbrak
+910	waypoint	Wegmarke Südlicher Wachposten	Hoelbrak
+911	waypoint	Peetas Wegmarke	Hoelbrak
+912	waypoint	Wegmarke Heldenzirkel	Hoelbrak
+913	waypoint	Wegmarke Eingang	Katakomben von Ascalon
+914	waypoint	Wegmarke Wandmalereien	Katakomben von Ascalon
+915	landmark	Keirans Lager	Ebenen von Aschfurt
+916	landmark	Mocks Winkel	Ebenen von Aschfurt
+917	landmark	Hof der Drei Legionen	Ebenen von Aschfurt
+918	landmark	Scherben des Krieges	Ebenen von Aschfurt
+919	waypoint	Wegmarke Feritas	Ebenen von Aschfurt
+920	waypoint	Wegmarke Decimus Wachpunkt	Ebenen von Aschfurt
+921	waypoint	Wegmarke Geistjäger-Lager	Ebenen von Aschfurt
+922	waypoint	Wegmarke Morgenrecht-Anwesen	Diessa-Plateau
+923	waypoint	Wegmarke Löwenbrücke	Gendarran-Felder
+924	landmark	Asche-Kontrollpunkt 13	Schwarze Zitadelle
+925	landmark	Heldenmarkt	Schwarze Zitadelle
+926	landmark	20. Blutkohorte	Schwarze Zitadelle
+927	landmark	Aschfurt-Tor	Schwarze Zitadelle
+928	landmark	12. Eisenmanipel	Schwarze Zitadelle
+929	landmark	Militärgefängnis der Zitadelle	Schwarze Zitadelle
+930	landmark	Sturmrufer-Triumph	Schwarze Zitadelle
+931	landmark	Der Kriegsrat	Schwarze Zitadelle
+932	waypoint	Wegmarke Gladium	Schwarze Zitadelle
+933	waypoint	Wegmarke Appellplatz	Schwarze Zitadelle
+934	waypoint	Wegmarke Ehrenmal	Schwarze Zitadelle
+935	waypoint	Wegmarke Factorium	Schwarze Zitadelle
+936	waypoint	Wegmarke Diessa-Tor	Schwarze Zitadelle
+937	waypoint	Wegmarke Ligacus Aquilo	Schwarze Zitadelle
+938	waypoint	Wegmarke Fluch	Schwarze Zitadelle
+939	waypoint	Wegmarke des Helden	Schwarze Zitadelle
+940	waypoint	Wegmarke Ruinen von Rin	Schwarze Zitadelle
+941	waypoint	Wegmarke des Imperators	Schwarze Zitadelle
+942	waypoint	Wegmarke Kashas Grab	Katakomben von Ascalon
+943	waypoint	Wegmarke Reliquiar	Katakomben von Ascalon
+944	landmark	Lager Althea	Diessa-Plateau
+945	landmark	Felskettenufer	Funkenschwärmersumpf
+946	landmark	Strand des schlechten Omens	Gendarran-Felder
+947	waypoint	Wegmarke Kastell Dornstrauch	Funkenschwärmersumpf
+948	waypoint	Wegmarke Morast	Funkenschwärmersumpf
+950	waypoint	Wegmarke Kathedrale	Katakomben von Ascalon
+952	landmark	Knut Weißbärs Speicher	Hinein in die Nebel
+953	waypoint	Wegmarke Erdbaulager	Kessex-Hügel
+954	waypoint	Wegmarke Bresche	Kessex-Hügel
+955	landmark	Hinterhaltlager	Gendarran-Felder
+956	landmark	Vollyms Schlachtgrube	Gendarran-Felder
+957	landmark	Jackdaw-Riff	Gendarran-Felder
+958	landmark	Slade-Bucht	Gendarran-Felder
+959	waypoint	Wegmarke Gefrorene Bögen	Schneekuhlenhöhen
+960	waypoint	Wegmarke Vals-See	Schneekuhlenhöhen
+961	waypoint	Wegmarke Findwurm-Höhle	Wanderer-Hügel
+962	waypoint	Wegmarke Krennaks Gehöft	Wanderer-Hügel
+963	waypoint	Wegmarke Grawlenfjord	Wanderer-Hügel
+964	waypoint	Wegmarke Blutklippen-Steinbruch	Diessa-Plateau
+965	waypoint	Wegmarke Refugium	Diessa-Plateau
+966	waypoint	Wegmarke Rotraub-Mühle	Diessa-Plateau
+967	waypoint	Wegmarke Sagenklaue	Ebenen von Aschfurt
+968	waypoint	Wegmarke Phasmatis	Ebenen von Aschfurt
+969	waypoint	Wegmarke Manbanes Felsaufschluss	Diessa-Plateau
+972	waypoint	Wegmarke Schneeblindgipfel	Gendarran-Felder
+973	waypoint	Wegmarke Brigantine	Gendarran-Felder
+974	landmark	Haivoissen-Kenning	Wanderer-Hügel
+975	landmark	Drachensegenfeste	Wanderer-Hügel
+976	landmark	Frostbach-Gehöft	Wanderer-Hügel
+981	waypoint	Wegmarke Große Halle	Hoelbrak
+984	landmark	Der gefrorene Schlund	Wanderer-Hügel
+987	landmark	Moorwachtturm	Diessa-Plateau
+988	landmark	Ebonufer-Werk	Diessa-Plateau
+989	waypoint	Wegmarke Abteilager	Katakomben von Ascalon
+990	landmark	Steinnebel-Bergfried	Ewige Schlachtfelder
+991	landmark	Großes Nordtor	Ewige Schlachtfelder
+992	landmark	Großes Osttor	Ewige Schlachtfelder
+993	landmark	Großes Westtor	Ewige Schlachtfelder
+994	landmark	Feste	Ewige Schlachtfelder
+995	landmark	Durios-Posten	Ewige Schlachtfelder
+996	landmark	Umberlichtung-Mühle	Ewige Schlachtfelder
+997	landmark	Langor-Turm	Ewige Schlachtfelder
+998	landmark	Bravost-Turm	Ewige Schlachtfelder
+999	landmark	Danelon-Mine	Ewige Schlachtfelder
+1000	landmark	Quentin-Posten	Ewige Schlachtfelder
+1001	landmark	Dragoss-Kral	Ewige Schlachtfelder
+1002	landmark	Novotl-Gründe	Ewige Schlachtfelder
+1003	landmark	Feste	Ewige Schlachtfelder
+1004	landmark	Anzalias-Posten	Ewige Schlachtfelder
+1005	landmark	Speldan-Mühle	Ewige Schlachtfelder
+1006	landmark	Veloka-Turm	Ewige Schlachtfelder
+1007	landmark	Mendons Turm	Ewige Schlachtfelder
+1008	landmark	Pangloss-Mine	Ewige Schlachtfelder
+1009	landmark	Ogerwacht-Posten	Ewige Schlachtfelder
+1010	landmark	Maulevek-Werk	Ewige Schlachtfelder
+1011	landmark	Feste	Ewige Schlachtfelder
+1012	landmark	Klovan-Posten	Ewige Schlachtfelder
+1013	landmark	Golanta-Mühle	Ewige Schlachtfelder
+1014	landmark	Jerrifers Turm	Ewige Schlachtfelder
+1015	landmark	Aldons Turm	Ewige Schlachtfelder
+1016	landmark	Schurkenbruch	Ewige Schlachtfelder
+1017	landmark	Wildbach-Posten	Ewige Schlachtfelder
+1018	waypoint	Wegmarke Hügel	Ewige Schlachtfelder
+1019	waypoint	Wegmarke Hügel	Ewige Schlachtfelder
+1020	waypoint	Wegmarke Hügel	Ewige Schlachtfelder
+1021	landmark	Armada-Hafen	Meerenge der Verwüstung
+1022	landmark	Alseta-Generator	Meerenge der Verwüstung
+1023	landmark	Kastell Aval	Meerenge der Verwüstung
+1024	landmark	Mellaggan-Schrein	Gendarran-Felder
+1025	waypoint	Wegmarke Osenfold-Schneide	Wanderer-Hügel
+1026	waypoint	Wegmarke Blutfelder	Gendarran-Felder
+1027	waypoint	Wegmarke Produktionsmechanismen	Umarmung der Betrübnis
+1028	waypoint	Wegmarke Mechanismusdepot	Umarmung der Betrübnis
+1029	waypoint	Wegmarke Schaufler-Platz	Umarmung der Betrübnis
+1030	waypoint	Wegmarke Vulkangrube	Umarmung der Betrübnis
+1031	waypoint	Wegmarke Inquesturbasis KD-4	Umarmung der Betrübnis
+1032	landmark	Warmquellengrotte	Wanderer-Hügel
+1033	landmark	Schlachterhof	Diessa-Plateau
+1034	landmark	Moldarspitze	Schneekuhlenhöhen
+1035	waypoint	Wegmarke Sackgasse	Blutstrom-Küste
+1036	waypoint	Wegmarke Kommodore-Viertel	Löwenstein
+1037	waypoint	Wegmarke Gilden-Klippen	Löwenstein
+1038	waypoint	Wegmarke Blutküste-Bezirk	Löwenstein
+1039	waypoint	Wegmarke Klaueninsel-Portage	Löwenstein
+1040	waypoint	Wegmarke Händlerforum	Löwenstein
+1041	waypoint	Wegmarke Torknotenpunkt-Platz	Löwenstein
+1042	waypoint	Wegmarke Caledon	Der Hain
+1043	waypoint	Wegmarke Metrischer Hof	Rata Sum
+1044	waypoint	Wegmarke Magustan-Hof	Rata Sum
+1045	landmark	Janus-Höhlen	Gendarran-Felder
+1046	waypoint	Wegmarke PvP-Lobby	Herz der Nebel
+1047	waypoint	Wegmarke Galerie der Rage	Flammenzitadelle
+1048	waypoint	Wegmarke Ausgeleuchtetes Hauptschiff	Flammenzitadelle
+1049	waypoint	Wegmarke Eisenkammer	Flammenzitadelle
+1050	waypoint	Wegmarke Umarmung der Betrübnis	Umarmung der Betrübnis
+1051	landmark	Das Herz des Falken	Felder der Verwüstung
+1052	landmark	Altes Löwenstein	Löwenstein
+1053	landmark	Nebelportale	Löwenstein
+1054	landmark	Moran-Denkmal	Löwenstein
+1055	landmark	Krähennest (Kapitänsrat)	Löwenstein
+1056	landmark	Coriolis-Platz	Löwenstein
+1057	landmark	Platz der Mystik	Löwenstein
+1058	landmark	Deverol-Gärten	Löwenstein
+1059	landmark	Phönix-Horst	Löwenstein
+1060	landmark	Tokks Sägewerk	Löwenstein
+1061	landmark	Gedenk-Brücke von Kapitän Theo Aschfurt	Löwenstein
+1062	landmark	Die Gewölbe	Löwenstein
+1063	landmark	Forschungsstätte der Abtei Durmand	Löwenstein
+1064	landmark	Der Untermarkt	Löwenstein
+1065	landmark	Löwenhof	Löwenstein
+1066	landmark	Verschlossenes Tor	Löwenstein
+1067	landmark	Wachsamen-Zentrum	Löwenstein
+1068	landmark	Froschteich	Löwenstein
+1069	waypoint	Wegmarke Verschiedene Vorsprünge	Löwenstein
+1070	waypoint	Wegmarke westlicher Bezirk	Löwenstein
+1071	waypoint	Wegmarke Sanctum-Hafen	Löwenstein
+1072	waypoint	Wegmarke Fort Marriner	Löwenstein
+1073	waypoint	Wegmarke östlicher Bezirk	Löwenstein
+1074	waypoint	Wegmarke Höhle	Löwenstein
+1075	waypoint	Wegmarke Küstenferne	Löwenstein
+1076	landmark	Splorg Metamystik-Labor	Provinz Metrica
+1077	landmark	Kestrel-Markt	Felder der Verwüstung
+1078	landmark	Verteidigerfeld	Felder der Verwüstung
+1079	waypoint	Wegmarke Rümpler	Schwarze Zitadelle
+1084	waypoint	Wegmarke Späher	Felder der Verwüstung
+1085	waypoint	Wegmarke Kestrel	Felder der Verwüstung
+1086	waypoint	Wegmarke Donnerbruch	Felder der Verwüstung
+1087	landmark	Wilddornhöhle	Caledon-Wald
+1088	landmark	Insel des Trauernden Steins	Caledon-Wald
+1089	landmark	Schmerzvolles Tal	Caledon-Wald
+1090	waypoint	Wegmarke Schwarzklinge	Diessa-Plateau
+1091	waypoint	Wegmarke der Liebenden	Katakomben von Ascalon
+1092	landmark	Späherheim	Felder der Verwüstung
+1093	landmark	Raureif-Garten	Caledon-Wald
+1094	waypoint	Wegmarke Stromkarl	Baumgrenzen-Fälle
+1095	waypoint	Wegmarke Gefluteter Tempel	Katakomben von Ascalon
+1100	waypoint	Sammelpunkt Blaues Team	Die Schlacht von Kyhlo
+1101	waypoint	Sammelpunkt Rotes Team	Die Schlacht von Kyhlo
+1102	waypoint	Sammelpunkt Blaues Team	Der Wald von Niflhel
+1103	waypoint	Sammelpunkt Rotes Team	Der Wald von Niflhel
+1104	waypoint	Wegmarke Galerie der Rage	Flammenzitadelle
+1105	waypoint	Wegmarke Feurige Gießerei	Flammenzitadelle
+1106	waypoint	Wegmarke Westliches Querschiff	Flammenzitadelle
+1107	waypoint	Wegmarke Blutrote Kammer	Flammenzitadelle
+1110	waypoint	Wegmarke Besinnung	Zierde der Wogen
+1126	waypoint	Wegmarke östliches Querschiff	Flammenzitadelle
+1127	waypoint	Wegmarke Ausgeleuchtetes Hauptschiff	Flammenzitadelle
+1128	waypoint	Wegmarke Aschenkammer	Flammenzitadelle
+1129	waypoint	Wegmarke Verschlingerställe	Flammenzitadelle
+1130	waypoint	Wegmarke Schrein des Opfers	Flammenzitadelle
+1131	waypoint	Wegmarke Templum Praesidium	Flammenzitadelle
+1132	waypoint	Wegmarke Khan-Ur	Flammenzitadelle
+1133	waypoint	Wegmarke Gewölbe	Flammenzitadelle
+1134	landmark	Transformator-Zentrum Kachong	Provinz Metrica
+1135	landmark	Speicher des Reisenden	Die Krankheit des Lehrlings
+1136	landmark	Bilrost-Galerie	Hoelbrak
+1140	landmark	Platz des Mementos	Schwarze Zitadelle
+1141	landmark	Das Haus Aife	Der Hain
+1142	landmark	Das Haus Kahedins	Der Hain
+1143	landmark	Das Haus Riannoc	Der Hain
+1144	landmark	Das Haus Caithe	Der Hain
+1145	landmark	Das Haus Malomedies	Der Hain
+1146	landmark	Das Haus Niamh	Der Hain
+1147	landmark	Die verborgene Unterkunft	Der Hain
+1148	landmark	Sternlaube-Kinderstube	Der Hain
+1149	landmark	Durmand-Posten	Der Hain
+1150	landmark	Unterkunft des Wachsamen	Der Hain
+1151	landmark	Die Seele des Blassen Baums	Der Hain
+1152	landmark	Gartenwurzel-Tunnel	Der Hain
+1153	landmark	Hinterwurzel-Tunnel	Der Hain
+1154	landmark	Der Weg des Zentauren	Der Hain
+1155	landmark	Zirkel des Blassen Baums	Der Hain
+1156	landmark	Hüter-Wachtor	Der Hain
+1157	landmark	Die Gesandten-Unterkunft	Der Hain
+1158	landmark	Der Weg des Erschaffers	Der Hain
+1159	landmark	Ventaris Tafel	Der Hain
+1160	waypoint	Wegmarke Fokus der Ewigkeit	Schmelztiegel der Ewigkeit
+1161	waypoint	Wegmarke Vorbereitung	Schmelztiegel der Ewigkeit
+1162	waypoint	Wegmarke Unabhängige Forschung	Schmelztiegel der Ewigkeit
+1163	waypoint	Wegmarke Aufseher	Schmelztiegel der Ewigkeit
+1164	waypoint	Wegmarke Reinigung	Schmelztiegel der Ewigkeit
+1165	waypoint	Wegmarke Golemetrie-Diagnostik	Schmelztiegel der Ewigkeit
+1166	waypoint	Wegmarke Arkanreaktor	Schmelztiegel der Ewigkeit
+1167	waypoint	Wegmarke Zentrales Datenlager	Schmelztiegel der Ewigkeit
+1168	landmark	Abt. des Arkanen Auges	Rata Sum
+1169	landmark	Polymock Atrium	Rata Sum
+1170	landmark	Der Arkane Rat	Rata Sum
+1171	landmark	PR-1000 Golem-Prototyp	Rata Sum
+1172	landmark	Inquestur-Rekrutierungsstation	Rata Sum
+1173	landmark	Hauptquartier der Friedensstifter	Rata Sum
+1174	landmark	Abtei-Rekrutierungsstation	Rata Sum
+1175	landmark	Das Magihedron	Rata Sum
+1176	landmark	Schmiedehalle	Rata Sum
+1177	landmark	Wundersame Rechnung	Rata Sum
+1178	landmark	Kürschner-Halle	Rata Sum
+1179	landmark	Wachsamen-Rekrutierungsstation	Rata Sum
+1180	landmark	Das Aquatarium	Rata Sum
+1181	landmark	Verwendete Demo-Station	Rata Sum
+1182	landmark	Zojjas Arbeitsplatz (Finger weg!)	Rata Sum
+1183	landmark	Nutzbarkeitstation	Rata Sum
+1184	landmark	Halle der Konstrukteure	Rata Sum
+1189	landmark	Feld der Gefallenen	Löwenstein
+1190	landmark	Muuruukuu-Dorf	Löwenstein
+1191	landmark	Biokessel Alchemie	Provinz Metrica
+1196	landmark	Breekeelee	Blutstrom-Küste
+1197	landmark	Lorantl-Anlagen	Blutstrom-Küste
+1198	waypoint	Wegmarke Alte Golem-Fabrik	Provinz Metrica
+1199	waypoint	Wegmarke Loch	Provinz Metrica
+1200	waypoint	Wegmarke Ameisenhügel	Provinz Metrica
+1201	waypoint	Wegmarke Michotl-Gründe	Provinz Metrica
+1202	waypoint	Wegmarke Cuatl	Provinz Metrica
+1203	waypoint	Wegmarke Artergon	Provinz Metrica
+1204	waypoint	Wegmarke Magicat-Hof	Rata Sum
+1205	waypoint	Wegmarke Ideengeburten	Rata Sum
+1206	waypoint	Wegmarke Buchhaltung	Rata Sum
+1207	waypoint	Wegmarke Lehrling	Rata Sum
+1208	waypoint	Wegmarke Forschung	Rata Sum
+1209	waypoint	Wegmarke Zusätzliche Studierräume	Rata Sum
+1210	waypoint	Wegmarke Obere Distrikte	Der Hain
+1211	waypoint	Wegmarke Rechenmeister	Der Hain
+1212	waypoint	Wegmarke Ronan	Der Hain
+1213	waypoint	Wegmarke Steinnebel	Ewige Schlachtfelder
+1214	waypoint	Wegmarke Aussichtspunkt	Ewige Schlachtfelder
+1215	waypoint	Wegmarke Tal	Ewige Schlachtfelder
+1216	waypoint	Wegmarke Tiefland	Ewige Schlachtfelder
+1221	landmark	Zugige Höhle	Lornars Pass
+1222	landmark	Heilige Halle der Geheimnisse	Heilige Halle der Geheimnisse
+1229	landmark	Löwenfackel	Klaueninsel
+1230	landmark	Lasciate-Tor	Meerenge der Verwüstung
+1231	landmark	Kupferbrand-Fackel	Meerenge der Verwüstung
+1232	landmark	Pakt-Sammelpunkt	Meerenge der Verwüstung
+1233	landmark	Gewächshaus	Meerenge der Verwüstung
+1234	waypoint	Wegmarke Sammelpunkt	Meerenge der Verwüstung
+1235	waypoint	Wegmarke Aufstiegsbucht	Alpine Grenzlande
+1236	waypoint	Wegmarke Grenze	Alpine Grenzlande
+1237	waypoint	Wegmarke Festung	Alpine Grenzlande
+1238	waypoint	Wegmarke Zitadelle	Alpine Grenzlande
+1239	waypoint	Wegmarke Askalion-Hügel	Alpine Grenzlande
+1240	waypoint	Wegmarke Grenze	Alpine Grenzlande
+1241	waypoint	Wegmarke Schreckfallbucht	Alpine Grenzlande
+1242	waypoint	Wegmarke Grenze	Alpine Grenzlande
+1243	waypoint	Wegmarke Festung	Alpine Grenzlande
+1244	waypoint	Wegmarke Zitadelle	Alpine Grenzlande
+1245	waypoint	Wegmarke Shadaran-Hügel	Alpine Grenzlande
+1246	waypoint	Wegmarke Grenze	Alpine Grenzlande
+1247	landmark	Meisterkammer	Caudecus' Anwesen
+1248	landmark	Gästezimmer	Caudecus' Anwesen
+1249	landmark	Kabinettsraum des Ministers	Caudecus' Anwesen
+1250	landmark	Großer Salon	Caudecus' Anwesen
+1251	landmark	Zeichenzimmer	Caudecus' Anwesen
+1252	landmark	Lesezimmer	Caudecus' Anwesen
+1253	landmark	Hauptwerkstatt	Caudecus' Anwesen
+1254	landmark	Weinkeller	Caudecus' Anwesen
+1255	landmark	Küche	Caudecus' Anwesen
+1256	landmark	Speisekammer	Caudecus' Anwesen
+1257	landmark	Vorratskammer	Caudecus' Anwesen
+1258	landmark	Hauptspeisezimmer	Caudecus' Anwesen
+1259	landmark	Augurs Grotte	Malchors Sprung
+1260	landmark	Jofasts Lager	Fluchküste
+1261	landmark	Bergkamm-Wachposten	Eisklamm-Sund
+1262	waypoint	Wegmarke Granitzitadelle	Schauflerschreck-Klippen
+1263	landmark	Rabenherd	Hoelbrak
+1264	waypoint	Sammelpunkt Blaues Team	Vermächtnis des Feindfeuers
+1265	waypoint	Sammelpunkt Rotes Team	Vermächtnis des Feindfeuers
+1266	landmark	Feuerbasis Molek	Schauflerschreck-Klippen
+1267	landmark	Morlogs Grab	Schauflerschreck-Klippen
+1268	landmark	Schwarzpulvers Grab	Schauflerschreck-Klippen
+1269	landmark	Steinhauts Grab	Schauflerschreck-Klippen
+1270	landmark	Barnabys Wacht	Kessex-Hügel
+1271	waypoint	Wegmarke Hydron-Einheit	Provinz Metrica
+1273	landmark	Vorbote	Malchors Sprung
+1274	landmark	Ostpyramide	Klaueninsel
+1275	landmark	Schlund und Stolz	Klaueninsel
+1276	landmark	Westpyramide	Klaueninsel
+1277	landmark	Gegenzauberanordnung	Malchors Sprung
+1278	waypoint	Wegmarke Minister	Götterfels
+1279	waypoint	Wegmarke Feindfeuers Herz	Katakomben von Ascalon
+1280	landmark	Danadors Zwinger	Caledon-Wald
+1281	landmark	Zopatl-Gründe	Caledon-Wald
+1282	landmark	Altar der Geheimnisse	Der Tempel des vergessenen Gottes
+1283	landmark	Isgarren-Ausblick	Kessex-Hügel
+1284	landmark	Der freie Markt	Löwenstein
+1285	landmark	Gegenabend-Ankerplatz	Rata Sum
+1286	landmark	Morgenrot-Kai	Rata Sum
+1287	waypoint	Wegmarke Hafen	Rata Sum
+1288	waypoint	Wegmarke Oberer Balkon	Hoelbrak
+1289	landmark	Terranexik-Labor	Provinz Metrica
+1290	landmark	Aeronotek-Labor	Provinz Metrica
+1291	landmark	Brandalfs Gehöft	Schauflerschreck-Klippen
+1292	waypoint	Wegmarke Pakt-Lager	Die Ruinenstadt Arah
+1293	landmark	Lyots Herde	Lornars Pass
+1294	landmark	Spähbecken	Auge des Nordens
+1311	landmark	Geistholm-Kreuzung	Alpine Grenzlande
+1312	landmark	Bastion des Aufstiegs	Alpine Grenzlande
+1313	landmark	Sternhain-Mühle	Alpine Grenzlande
+1314	landmark	Schlachten-Senke	Alpine Grenzlande
+1315	landmark	Braunmähnen-Lager	Alpine Grenzlande
+1316	landmark	Bastion Askalion	Alpine Grenzlande
+1317	landmark	Obstgarten des Champions	Alpine Grenzlande
+1318	landmark	Dorf Grünwasser	Alpine Grenzlande
+1319	landmark	Chitterogg-Lager	Alpine Grenzlande
+1320	landmark	Bastion	Alpine Grenzlande
+1321	landmark	Gottessage-Steinbruch	Alpine Grenzlande
+1322	landmark	Rotstrauch-Turm	Alpine Grenzlande
+1323	landmark	Grünsee-Turm	Alpine Grenzlande
+1324	landmark	Wald-Freistatt-Turm	Alpine Grenzlande
+1325	landmark	Turm der Morgendämmerung	Alpine Grenzlande
+1326	landmark	Rottal-Werkstatt	Alpine Grenzlande
+1327	landmark	Bastion Shadaran	Alpine Grenzlande
+1328	landmark	Bastion	Alpine Grenzlande
+1329	landmark	Titanenpranken-Kreuzung	Alpine Grenzlande
+1330	landmark	Bastion Schreckensfall	Alpine Grenzlande
+1331	landmark	Nebel-Freistatt-Mühle	Alpine Grenzlande
+1332	landmark	Schlachten-Senke	Alpine Grenzlande
+1333	landmark	Ebonhöhen-Lager	Alpine Grenzlande
+1334	landmark	Sonnenhügel-Turm	Alpine Grenzlande
+1335	landmark	Schroffgipfel-Turm	Alpine Grenzlande
+1336	landmark	Blautal-Werkstatt	Alpine Grenzlande
+1337	landmark	Obstgarten des Helden	Alpine Grenzlande
+1338	landmark	Dorf Rotwasser	Alpine Grenzlande
+1339	landmark	Neuskrittia-Lager	Alpine Grenzlande
+1340	landmark	Glaubenssprung-Steinbruch	Alpine Grenzlande
+1341	landmark	Blaustrauch-Turm	Alpine Grenzlande
+1342	landmark	Rotsee-Turm	Alpine Grenzlande
+1343	waypoint	Wegmarke Umarmung der Betrübnis	Schauflerschreck-Klippen
+1344	waypoint	Wegmarke Flammenzitadelle	Feuerherzhügel
+1345	waypoint	Wegmarke Zwielichtgarten	Caledon-Wald
+1346	waypoint	Wegmarke Schmelztiegel der Ewigkeit	Mahlstromgipfel
+1347	waypoint	Wegmarke Zierde der Wogen	Eisklamm-Sund
+1348	waypoint	Wegmarke Der Lange Weg	Umarmung der Betrübnis
+1349	waypoint	Wegmarke Zentrales Datenlager	Schmelztiegel der Ewigkeit
+1350	waypoint	Wegmarke Golemetrie-Diagnostik	Schmelztiegel der Ewigkeit
+1351	waypoint	Wegmarke Reinigung	Schmelztiegel der Ewigkeit
+1352	waypoint	Wegmarke Vorbereitung	Schmelztiegel der Ewigkeit
+1353	waypoint	Portal nach Löwenstein	Herz der Nebel
+1354	waypoint	Wegmarke Kampftraining	Herz der Nebel
+1355	landmark	Championsmonument	Herz der Nebel
+1356	landmark	Arena	Herz der Nebel
+1357	landmark	Kampftrainingsinsel	Herz der Nebel
+1359	landmark	Harfler-Trainingsbereich	Herz der Nebel
+1360	landmark	Markt	Herz der Nebel
+1454	waypoint	Wegmarke Reza	Die Ruinenstadt Arah
+1455	waypoint	Wegmarke Hochwohlgeborene Könige	Die Ruinenstadt Arah
+1456	waypoint	Wegmarke Dämonenuntiefe	Die Ruinenstadt Arah
+1457	waypoint	Wegmarke Pantheon	Die Ruinenstadt Arah
+1458	landmark	Barradin-Gewölbe	Ebenen von Aschfurt
+1459	landmark	Schwarzlöwen-Handelsgesellschaft HQ	Löwenstein
+1486	landmark	Faluualuu	Schauflerschreck-Klippen
+1511	landmark	Eisenrossminen	Eisklamm-Sund
+1526	landmark	Höhle der Meerhexe	Kessex-Hügel
+1527	landmark	Mafischer Kern	Kessex-Hügel
+1528	landmark	Quaggan-Bergfried-Kanal	Gendarran-Felder
+1533	waypoint	Wegmarke Piazza der Götter	Die Ruinenstadt Arah
+1534	waypoint	Wegmarke Sleive	Caledon-Wald
+1535	landmark	Altes Flamen-Labor	Provinz Metrica
+1557	landmark	Zhaitansruh	Die Ruinenstadt Arah
+1559	landmark	Bergungsgut von der "Stolz des Weißbären"	Triumph oder Tod
+1560	landmark	Pakt-Lager	Triumph oder Tod
+1561	landmark	Bergungsgut von der "Riannocs Traum"	Triumph oder Tod
+1562	landmark	Bergungsgut von der Lady Livia	Triumph oder Tod
+1577	landmark	Schrein der Zähne der Bärin	Schauflerschreck-Klippen
+1578	landmark	Schrein der fauchenden Leopardin	Schauflerschreck-Klippen
+1579	landmark	Schrein der Schwinge des Raben	Schauflerschreck-Klippen
+1580	landmark	Schrein des Lagers der Wölfin	Schauflerschreck-Klippen
+1588	landmark	Peluupuu-Felsnadel	Eisklamm-Sund
+1597	landmark	Jorands Schleuse	Schneekuhlenhöhen
+1598	landmark	Skritthöhe	Lornars Pass
+1599	landmark	Ruhmreiche Schaufler-Ausgrabung Nr. 74	Lornars Pass
+1600	landmark	Vergessener Eulenschrein	Lornars Pass
+1601	landmark	Rabenschnabelschrein	Lornars Pass
+1602	landmark	Bärensteinschrein	Lornars Pass
+1603	landmark	Wolfpfotenschrein	Lornars Pass
+1604	landmark	Leopardenschattenschrein	Lornars Pass
+1605	landmark	Der Rivenweg	Lornars Pass
+1606	landmark	Keddle-Moräne	Lornars Pass
+1607	landmark	Abteibrücke	Lornars Pass
+1608	landmark	Dampf-Mechator	Lornars Pass
+1609	landmark	Marionetten-Landestelle	Lornars Pass
+1610	landmark	Gedenken der Himmelsdame	Lornars Pass
+1611	landmark	Mettes Posten	Lornars Pass
+1612	landmark	Zwergenzwielicht	Lornars Pass
+1613	landmark	Grogschatten-Kenning	Lornars Pass
+1614	landmark	Guutras Geheimnis	Lornars Pass
+1615	landmark	Zweiköpfige Weiden	Lornars Pass
+1616	landmark	Wunderbare Bohrinstallation Nr. 73	Lornars Pass
+1617	waypoint	Wegmarke Eisteufel	Lornars Pass
+1618	waypoint	Wegmarke Zufluchtgipfel	Lornars Pass
+1619	waypoint	Wegmarke Afgars	Lornars Pass
+1620	waypoint	Wegmarke Kaskadenbrücke	Lornars Pass
+1621	landmark	Schwundwrack-Passage	Blutstrom-Küste
+1622	landmark	Bauxit-Alchemikalien	Malchors Sprung
+1623	landmark	Königspassage	Malchors Sprung
+1624	waypoint	Wegmarke Sockel-Waldland	Meerenge der Verwüstung
+1625	waypoint	Wegmarke Schattenseite	Meerenge der Verwüstung
+1626	landmark	Die Schattenseite	Meerenge der Verwüstung
+1627	landmark	Altes Grendich-Aquädukt	Diessa-Plateau
+1628	landmark	Posternus-Höhlen	Lornars Pass
+1629	landmark	Felsnest	Lornars Pass
+1630	waypoint	Wegmarke Sicherheit	Schmelztiegel der Ewigkeit
+1631	waypoint	Wegmarke Bescheidenheit	Triumph oder Tod
+1632	waypoint	Wegmarke Ruhm von Tyria	Triumph oder Tod
+1639	waypoint	Wegmarke Kammer des Neids	Zwielichtgarten
+1640	waypoint	Wegmarke Arboretum	Zwielichtgarten
+1641	waypoint	Wegmarke Kammer des Neids	Zwielichtgarten
+1642	waypoint	Wegmarke Formgarten	Caudecus' Anwesen
+1643	waypoint	Wegmarke Formgarten	Caudecus' Anwesen
+1644	waypoint	Wegmarke Rasenplatz	Caudecus' Anwesen
+1645	waypoint	Wegmarke Empfangshof	Caudecus' Anwesen
+1646	waypoint	Wegmarke Großzügigkeit des Aufsteigenden	Die Ruinenstadt Arah
+1647	waypoint	Wegmarke Anwesen	Die Ruinenstadt Arah
+1648	waypoint	Wegmarke Stolz des Weißbären	Die Ruinenstadt Arah
+1649	waypoint	Wegmarke Kammern der Heiligkeit	Die Ruinenstadt Arah
+1650	waypoint	Wegmarke Versteck	Die Ruinenstadt Arah
+1651	waypoint	Wegmarke Hochwohlgeborene Könige	Die Ruinenstadt Arah
+1652	waypoint	Wegmarke Passage	Die Ruinenstadt Arah
+1653	waypoint	Wegmarke Großzügigkeit des Aufsteigenden	Die Ruinenstadt Arah
+1654	waypoint	Wegmarke Kammern der Heiligkeit	Die Ruinenstadt Arah
+1668	waypoint	Wegmarke Kammern der Heiligkeit	Die Ruinenstadt Arah
+1669	waypoint	Wegmarke Träumende Tote	Die Ruinenstadt Arah
+1670	waypoint	Wegmarke Kluft	Die Ruinenstadt Arah
+1671	waypoint	Wegmarke Himmelskristall	Die Ruinenstadt Arah
+1672	landmark	Kappas Gehege	Königintal
+1673	landmark	Wasserwerk Beetletun	Königintal
+1674	landmark	Großherz-Tiefland	Königintal
+1675	landmark	Curtis-Hof	Königintal
+1676	landmark	Docks der Gebrüder Duran	Königintal
+1677	landmark	Aquabasis Terror-Sieben	Mahlstromgipfel
+1678	landmark	Neuskrittstatt	Mahlstromgipfel
+1679	landmark	Fundament der Schmiede	Mahlstromgipfel
+1680	landmark	Außenposten Trübsinn	Mahlstromgipfel
+1681	landmark	Moosflutschwaden	Mahlstromgipfel
+1682	landmark	Aliyanas Schlupfwinkel	Mahlstromgipfel
+1683	landmark	Trügerische Gaslöcher	Mahlstromgipfel
+1684	landmark	Mahlstromkern	Mahlstromgipfel
+1685	landmark	Höllenschlundfälle	Mahlstromgipfel
+1686	landmark	Felsitische Tiefebene	Mahlstromgipfel
+1687	landmark	Geheimes Basislager	Mahlstromgipfel
+1688	landmark	Lonatl-Gründe	Mahlstromgipfel
+1689	landmark	Beobachtungsplattform XKV	Mahlstromgipfel
+1690	landmark	Spiegelbucht	Malchors Sprung
+1691	landmark	Herz der Verderbnis	Wanderer-Hügel
+1700	landmark	Geistersteine	Schauflerschreck-Klippen
+1701	landmark	Station Blaue Eisglanz	Eisklamm-Sund
+1709	landmark	Blutschluchtwacht-Lager	Felder der Verwüstung
+1731	waypoint	Wegmarke Verfaulte Armada	Die Ruinenstadt Arah
+1732	unlock	Umarmung der Betrübnis	Schauflerschreck-Klippen
+1733	unlock	Katakomben von Ascalon	Ebenen von Aschfurt
+1734	unlock	Flammenzitadelle	Feuerherzhügel
+1735	unlock	Die Ruinenstadt Arah	Fluchküste
+1736	unlock	Zwielichtgarten	Caledon-Wald
+1737	unlock	Caudecus' Anwesen	Königintal
+1738	unlock	Schmelztiegel der Ewigkeit	Mahlstromgipfel
+1739	unlock	Zierde der Wogen	Eisklamm-Sund
+1740	waypoint	Wegmarke Aufstieg in den Wahnsinn	Aufstieg in den Wahnsinn
+1741	waypoint	Wegmarke Labyrinth des Verrückten Königs	Labyrinth des Verrückten Königs
+1742	waypoint	Sammelpunkt Blaues Team	Grollen des Schnitters
+1743	waypoint	Sammelpunkt Rotes Team	Grollen des Schnitters
+1744	waypoint	Wegmarke Löwenpunkt	Südlicht-Bucht
+1745	waypoint	Sammelpunkt Blaues Team	Tempel des stillen Sturms
+1746	waypoint	Wegmarke Stolzpunkt	Südlicht-Bucht
+1747	waypoint	Sammelpunkt Rotes Team	Tempel des stillen Sturms
+1748	landmark	Onyx-Feld	Südlicht-Bucht
+1749	waypoint	Wegmarke Perlen-Inselchen	Südlicht-Bucht
+1750	landmark	Freibeuter-Anlegestelle	Südlicht-Bucht
+1751	waypoint	Wegmarke Karka-Lager	Südlicht-Bucht
+1752	waypoint	Wegmarke Owains Zuflucht	Südlicht-Bucht
+1753	landmark	Glut-Passage	Südlicht-Bucht
+1754	landmark	Canachs Torheit	Südlicht-Bucht
+1755	landmark	Karka-Bau	Südlicht-Bucht
+1756	waypoint	Wegmarke Kiels Außenposten	Südlicht-Bucht
+1757	unlock	Fraktale der Nebel	Löwenstein
+1758	landmark	Machas Anlegestelle	Löwenstein
+1759	landmark	Hauptquartier des Ordens der Gerüchte	Löwenstein
+1760	waypoint	Sammelpunkt Blaues Team	Schneeballkrawall
+1761	waypoint	Sammelpunkt Rotes Team	Schneeballkrawall
+1762	waypoint	Wegmarke Luftschiff des Spielzeugmachers	Tixx' Infinirarium
+1763	waypoint	Spieler-Wiedereinstieg	Spielzeukalypse
+1764	waypoint	Wegmarke Schiffswrackfelsen	Fluchküste
+1765	waypoint	Wegmarke Dämonische Untiefe	Meerenge der Verwüstung
+1766	waypoint	Wegmarke Ende der Straße	Umarmung der Betrübnis
+1767	waypoint	Wegmarke Inquestur-Basis	Umarmung der Betrübnis
+1768	waypoint	Wegmarke Genossenschaft	Umarmung der Betrübnis
+1769	waypoint	Wegmarke Zalten-Minen	Umarmung der Betrübnis
+1770	waypoint	Wegmarke Steinbruch	Umarmung der Betrübnis
+1771	waypoint	Wegmarke Zitadelle	Umarmung der Betrübnis
+1772	waypoint	Wegmarke Faolain-Höhle	Zwielichtgarten
+1773	waypoint	Wegmarke Die Schonung	Zwielichtgarten
+1774	waypoint	Wegmarke Pedipalpus	Zwielichtgarten
+1775	waypoint	Wegmarke Palast der Sammlung	Zierde der Wogen
+1776	waypoint	Wegmarke Halle Übergang	Zierde der Wogen
+1777	waypoint	Wegmarke Halle des Einklangs	Zierde der Wogen
+1778	waypoint	Wegmarke Heckquartiere	Zierde der Wogen
+1779	waypoint	Wegmarke Bug	Zierde der Wogen
+1780	waypoint	Wegmarke Geoffreys Tunnel	Zierde der Wogen
+1781	waypoint	Wegmarke Ost-Tunnel	Caudecus' Anwesen
+1782	waypoint	Sammelpunkt Blaues Team	Geisterwacht
+1783	waypoint	Sammelpunkt Rotes Team	Geisterwacht
+1784	waypoint	Wegmarke Langmar-Anwesen	Ebenen von Aschfurt
+1785	waypoint	Wegmarke Proxemik-Labor	Brisban-Wildnis
+1791	waypoint	Wegmarke Angvars Schatzkammer	Schneekuhlenhöhen
+1792	landmark	Rugnars Gehöft	Wanderer-Hügel
+1793	landmark	Nördliche Nolan-Brutstätte	Diessa-Plateau
+1794	waypoint	Wegmarke Obsidianrefugium	Obsidianrefugium
+1795	waypoint	Wegmarke Obsidianrefugium	Obsidianrefugium
+1796	waypoint	Wegmarke Obsidianrefugium	Obsidianrefugium
+1797	waypoint	Sammelpunkt Blaues Team	Hammer des Himmels
+1798	waypoint	Sammelpunkt Rotes Team	Hammer des Himmels
+1799	waypoint	Wegmarke Höhleneingang	Feuriger Hochofen
+1800	waypoint	Wegmarke Aussichtspunkt	Feuriger Hochofen
+1801	waypoint	Wegmarke Erzverarbeitung	Feuriger Hochofen
+1802	landmark	Dampfrohr-Gehöft	Südlicht-Bucht
+1803	waypoint	Sammelpunkt Blaues Team	Drachenball-Arena
+1804	waypoint	Sammelpunkt rotes Team	Drachenball-Arena
+1805	landmark	Die Sackgasse	Götterfels
+1806	waypoint	Wegmarke Raubeinkrücke	Ätherklingen-Zuflucht
+1807	waypoint	Wegmarke Fortgeschrittene Kleptotronische Entwürfe	Ätherklingen-Zuflucht
+1808	waypoint	Wegmarke Gaunerschuppen	Ätherklingen-Zuflucht
+1809	landmark	Zweites Ätherklingen-Lager	Gendarran-Felder
+1810	landmark	Schurken-Anlegestelle	Ätherklingen-Zuflucht
+1818	waypoint	Sammelpunkt Blaues Team	Aspekt-Arena
+1819	waypoint	Sammelpunkt rotes Team	Aspekt-Arena
+1820	waypoint	Wegmarke Basar-Docks	Labyrinthklippen
+1821	waypoint	Wegmarke Himmels-Docks	Labyrinthklippen
+1823	waypoint	Wegmarke Kronpavillon	Der Kronpavillon
+1825	landmark	Schleimbecken	Zwielichtgarten
+1826	landmark	Der Kahlschlag	Zwielichtgarten
+1827	landmark	Ätherklingen-Werft	Zwielichtgarten
+1828	landmark	Sicherheitszentrale	Zwielichtgarten
+1829	landmark	Uhrherz-Generator	Zwielichtgarten
+1830	waypoint	Wegmarke Hundsfarn-Hinterwälder	Zwielichtgarten
+1831	waypoint	Wegmarke Ätherklingen-Werft	Zwielichtgarten
+1832	waypoint	Wegmarke Schleimbecken	Zwielichtgarten
+1833	waypoint	Wegmarke Verwunschenes Nolani	Schwarze Zitadelle
+1834	waypoint	Wegmarke Labyrinth des Verrückten Königs	Labyrinth des Verrückten Königs
+1837	landmark	Donnergrat-Lager	Kessex-Hügel
+1838	landmark	Turm der Albträume	Kessex-Hügel
+1839	waypoint	Wegmarke Turm der Albträume	Der Turm der Albträume (Öffentlich)
+1840	waypoint	Thaumanova-Reaktor	Fraktale der Nebel
+1841	waypoint	Wegmarke Falschfluss	Lornars Pass
+1843	landmark	Dürrefestung	Rand der Nebel
+1844	landmark	Dürrefestungreaktor	Rand der Nebel
+1845	landmark	Infernonadel-Reaktor	Rand der Nebel
+1846	landmark	Überwucherter Gotteshaus-Reaktor	Rand der Nebel
+1847	landmark	Steinblick-Zackenstabreaktor	Rand der Nebel
+1848	landmark	Donnersenkenreaktor	Rand der Nebel
+1849	landmark	Tytonenwarte-Reaktor	Rand der Nebel
+1850	landmark	Schmiede	Rand der Nebel
+1851	landmark	Schrein	Rand der Nebel
+1852	landmark	Glockenturm	Rand der Nebel
+1853	landmark	Tytonenwarte	Rand der Nebel
+1854	landmark	Donnersenke	Rand der Nebel
+1855	landmark	Wurmtunnel	Rand der Nebel
+1856	landmark	Werkstatt	Rand der Nebel
+1857	landmark	Flughafen	Rand der Nebel
+1858	landmark	Infernonadel	Rand der Nebel
+1859	waypoint	Wegmarke Sichere Zone von Überwucherung	Rand der Nebel
+1860	landmark	Statue	Rand der Nebel
+1861	landmark	Observatorium	Rand der Nebel
+1862	landmark	Altar	Rand der Nebel
+1863	landmark	Steinblick-Zackenstab	Rand der Nebel
+1864	landmark	Überwuchertes Gotteshaus	Rand der Nebel
+1865	waypoint	Wegmarke Sichere Zone von Frostfels	Rand der Nebel
+1866	waypoint	Wegmarke Sichere Zone von Ödland	Rand der Nebel
+1867	waypoint	Wegmarke Dürrefestung	Rand der Nebel
+1868	waypoint	Wegmarke Donnersenke	Rand der Nebel
+1869	waypoint	Wegmarke Überwuchertes Gotteshaus	Rand der Nebel
+1874	landmark	Trümmer der Bruchbringer	Löwenstein
+1884	landmark	Hauptquartier der Gilden-Initiative	Löwenstein
+1894	waypoint	Sammelpunkt Blaues Team	Hof
+1895	waypoint	Sammelpunkt rotes Team	Hof
+1904	landmark	Wildwurzel-Außenposten	Brisban-Wildnis
+1905	landmark	Spornschlucht	Trockenkuppe
+1906	landmark	Flachland-Einöde	Trockenkuppe
+1907	landmark	Engpass-Schlucht	Trockenkuppe
+1908	landmark	Schiffstod	Trockenkuppe
+1909	landmark	Absturzstelle 1	Trockenkuppe
+1910	landmark	Salamanderhöhe	Trockenkuppe
+1913	landmark	Kampffels	Trockenkuppe
+1914	waypoint	Wegmarke Wohlstand	Trockenkuppe
+1915	landmark	Verlassene Mine	Trockenkuppe
+1916	landmark	Höhle der Bestie	Trockenkuppe
+1917	landmark	Wohlstand-Mine	Trockenkuppe
+1918	landmark	Wohlstand-Stadt	Trockenkuppe
+1919	waypoint	Wegmarke Lager der Standhaftigkeit	Die Silberwüste
+1920	waypoint	Wegmarke Trockenkuppenzugang	Trockenkuppe
+1922	landmark	Omadds Maschine	Trockenkuppe
+1923	landmark	Ley-Linien-Knoten	Trockenkuppe
+1926	waypoint	Wegmarke Rankenbrücke	Trockenkuppe
+1927	landmark	Erneuerungszuflucht	Trockenkuppe
+1928	waypoint	Wegmarke Erneuerungszuflucht	Trockenkuppe
+1929	landmark	Azarrs Garten	Trockenkuppe
+1930	landmark	Klippenfelspalast	Trockenkuppe
+1931	landmark	Oase	Trockenkuppe
+1932	landmark	Absturzstelle 2	Trockenkuppe
+1934	landmark	Raptorenstreifzug	Trockenkuppe
+1939	landmark	Inquestur-Basis	Trockenkuppe
+1940	landmark	Reparaturwerkstatt	Trockenkuppe
+1942	landmark	Absturzstelle 3	Trockenkuppe
+1943	waypoint	Wegmarke Reparaturwerkstatt	Trockenkuppe
+1947	waypoint	Sammelpunkt rotes Team	Die Schlacht von Champions Dämmerung
+1949	waypoint	Sammelpunkt Blaues Team	Die Schlacht von Champions Dämmerung
+1950	landmark	Das Labyrinth	Die Silberwüste
+1951	landmark	Bogen der Flügelspanne	Die Silberwüste
+1958	landmark	Rotstein-Bastion	Die Silberwüste
+1959	landmark	Lager der Standhaftigkeit	Die Silberwüste
+1961	landmark	Indigo-Höhle	Die Silberwüste
+1962	landmark	Bernstein-Wanderdüne	Die Silberwüste
+1963	landmark	Blaue Oase	Die Silberwüste
+1964	waypoint	Wegmarke Verborgene Tiefen	Die Silberwüste
+1965	landmark	MS Tohuwabohu	Die Silberwüste
+1966	landmark	Anrecht der Flüchtlinge	Die Silberwüste
+1967	landmark	Sanddünen-Höhlen	Die Silberwüste
+1968	landmark	Picaroon-Riss	Die Silberwüste
+1970	landmark	Klagesande	Die Silberwüste
+1971	landmark	Leichengründe	Die Silberwüste
+1972	landmark	Trockener Steinbruch	Die Silberwüste
+1973	landmark	Nordschelf	Die Silberwüste
+1974	landmark	Zuflucht der Überbleibsel	Die Silberwüste
+1975	landmark	Rankenzorn-Gewirr	Die Silberwüste
+1976	landmark	Gießerei des Sonderlings	Die Silberwüste
+1978	waypoint	Wegmarke Trockendock-Grotte	Die Silberwüste
+1984	waypoint	Wegmarke Schiffswrackspitze	Grasgrüne Schwelle
+1985	landmark	Goldenes Geäst	Grasgrüne Schwelle
+1986	landmark	Warte der Matriarchin	Mutter Dschungel sorgt für uns
+1987	landmark	Thron der Luminatin	Güldener Talkessel
+1988	landmark	Baum-Aussichtspunkt	Begrabene Einsichten
+1990	waypoint	Wegmarke Vergessene Stadt	Güldener Talkessel
+1991	landmark	Wrack der Donnerbrecher	Grasgrüne Schwelle
+1992	landmark	Dornwacht	Güldener Talkessel
+1993	landmark	Nordtor	Güldener Talkessel
+1994	landmark	Wohnstätte der Kaanas	Grasgrüne Schwelle
+1995	landmark	Wrack der Mellaggans Tapferkeit	Grasgrüne Schwelle
+1996	waypoint	Wegmarke Oger-Lager	Verschlungene Tiefen
+1997	landmark	Aufseherhöhle	Güldener Talkessel
+1998	landmark	Ley-Linien-Knoten	Begrabene Einsichten
+1999	landmark	Wrack der Tödlicher Vorteil	Grasgrüne Schwelle
+2000	landmark	Dornen-Plateau	Güldener Talkessel
+2001	landmark	Rankenwand	Begrabene Einsichten
+2002	landmark	Capitzel-Gründe	Güldener Talkessel
+2003	landmark	Quazupl-Gründe	Güldener Talkessel
+2004	landmark	Weinende Lichtung	Güldener Talkessel
+2005	waypoint	Wegmarke Mellaggans Tapferkeit	Grasgrüne Schwelle
+2006	waypoint	Wegmarke des Wanderers	Güldener Talkessel
+2007	landmark	Innere Kammer	Güldener Talkessel
+2008	landmark	Ley-Fluss	Begrabene Einsichten
+2009	landmark	Jawatl-Gründe	Güldener Talkessel
+2010	landmark	Kommandozentrale von Rata Novus	Begrabene Einsichten
+2011	landmark	Friedliche Zuflucht	Begrabene Einsichten
+2012	landmark	Chak-Aufmarschgebiet	Begrabene Einsichten
+2013	waypoint	Wegmarke Nordwacht	Güldener Talkessel
+2014	waypoint	Wegmarke Schiffswrackspitze	Grasgrüne Schwelle
+2015	landmark	Heruntergekommenes Chak-Nest	Begrabene Einsichten
+2016	waypoint	Wegmarke Jaka Itzel	Grasgrüne Schwelle
+2017	landmark	Tempel der Ameyalli	Grasgrüne Schwelle
+2018	landmark	Masken der Gefallenen	Güldener Talkessel
+2019	landmark	Osttor	Güldener Talkessel
+2020	landmark	Oger-Absturzstelle	Begrabene Einsichten
+2021	landmark	Gefährliche Ruine	Grasgrüne Schwelle
+2022	landmark	Kaanas Terrasse	Begrabene Einsichten
+2023	landmark	Knorrige Wurzeln	Begrabene Einsichten
+2024	landmark	Vermächtnissäulen	Güldener Talkessel
+2025	landmark	Letzter Hüpfer	Mutter Dschungel sorgt für uns
+2026	landmark	Neu-Skrittingen	Güldener Talkessel
+2028	landmark	Ausdauer-Absturzstelle	Güldener Talkessel
+2029	landmark	Westtor	Güldener Talkessel
+2030	landmark	Fumarolen-Höhlen	Grasgrüne Schwelle
+2031	waypoint	Wegmarke Farens Luftschiff	Grasgrüne Schwelle
+2032	landmark	Der Leichen-Hain	Grasgrüne Schwelle
+2033	landmark	Rankenzahn-Bau	Güldener Talkessel
+2035	landmark	Kaskaden-Abstieg	Begrabene Einsichten
+2036	landmark	Coztic-Itzel	Grasgrüne Schwelle
+2037	waypoint	Wegmarke Zusammenfluss der Ley-Linien	Verschlungene Tiefen
+2038	landmark	Südtor	Güldener Talkessel
+2039	landmark	Umland von Rata Novus	Begrabene Einsichten
+2040	landmark	Ostwacht-Ruinen	Güldener Talkessel
+2041	landmark	Nordwacht-Abteilager	Güldener Talkessel
+2042	landmark	Batrach-Fälle	Grasgrüne Schwelle
+2043	landmark	Brütende Schlucht	Grasgrüne Schwelle
+2044	landmark	Fahautl-Gründe	Güldener Talkessel
+2045	landmark	Schattenquell	Grasgrüne Schwelle
+2046	landmark	Ring des Aufsteigenden	Mutter Dschungel sorgt für uns
+2048	waypoint	Wegmarke NARBE-Lager	Verschlungene Tiefen
+2049	waypoint	Wegmarke Verschleierte Ruinen	Grasgrüne Schwelle
+2050	waypoint	Wegmarke Südwacht	Güldener Talkessel
+2051	waypoint	Wegmarke Rata Novus	Verschlungene Tiefen
+2052	landmark	Unterirdischer See	Begrabene Einsichten
+2053	landmark	Lager des Ordens der Gerüchte	Begrabene Einsichten
+2054	waypoint	Wegmarke Westwacht	Güldener Talkessel
+2055	landmark	Obstgärten von Rata Novus	Begrabene Einsichten
+2056	waypoint	Wegmarke Pakt-Lager	Grasgrüne Schwelle
+2057	landmark	Versiegelter Durchgang	Güldener Talkessel
+2058	landmark	Geschützte Lichtung	Begrabene Einsichten
+2060	waypoint	Wegmarke Teku Nuhoch	Verschlungene Tiefen
+2061	landmark	Zwingen-Senke	Grasgrüne Schwelle
+2062	waypoint	Wegmarke Lager des Ordens der Gerüchte	Verschlungene Tiefen
+2063	landmark	Kurviger Viadukt	Begrabene Einsichten
+2064	waypoint	Wegmarke Basislager des Pakts	Widerstand des Drachen
+2065	landmark	Wachende Gruft	Grasgrüne Schwelle
+2066	landmark	Ruhmes Sturz	Grasgrüne Schwelle
+2067	landmark	Staubtänzer-Plateau	Grasgrüne Schwelle
+2068	landmark	Terrassierter Bau	Begrabene Einsichten
+2069	landmark	Außenposten des Ordens der Gerüchte	Begrabene Einsichten
+2071	landmark	Entwurzeltes Paradies	Grasgrüne Schwelle
+2072	landmark	Gefährliche Warte	Mutter Dschungel sorgt für uns
+2073	landmark	Stille Wälder	Mutter Dschungel sorgt für uns
+2074	landmark	Knirsch-Höhlen	Grasgrüne Schwelle
+2075	landmark	Wirrwarrschlingen	Grasgrüne Schwelle
+2076	waypoint	Wegmarke Trügerischer Pfad	Grasgrüne Schwelle
+2077	landmark	Bongos Bude	Grasgrüne Schwelle
+2080	unlock	Schlachtzug: Verlassenes Dickicht	Grasgrüne Schwelle
+2089	landmark	Boettigers Versteck	Wüsten-Grenzlande
+2091	waypoint	Notwegmarke Stoischer Festungswall, A	Wüsten-Grenzlande
+2094	waypoint	Wegmarke Zentrales Vorstoßlager	Widerstand des Drachen
+2097	landmark	Basislager des Pakts	Widerstand des Drachen
+2100	waypoint	Notwegmarke Verdörrter Außenposten	Wüsten-Grenzlande
+2103	waypoint	Notwegmarke Langor-Schlucht	Ewige Schlachtfelder
+2104	landmark	Verfallene Pracht	Widerstand des Drachen
+2107	waypoint	Wegmarke Schlucht-Grabung	Verlorener Abgrund
+2109	waypoint	Notwegmarke Aldons Vorsprung	Ewige Schlachtfelder
+2110	landmark	Erster nördlicher Kontrollpunkt	Widerstand des Drachen
+2115	landmark	Fischadler-Palast	Wüsten-Grenzlande
+2117	landmark	Verdörrter Außenposten	Wüsten-Grenzlande
+2118	landmark	Tikitecki-Riss	Wüsten-Grenzlande
+2119	landmark	Ley-Linien-Friedhof	Widerstand des Drachen
+2121	waypoint	Wegmarke Chak-Senke	Güldener Talkessel
+2124	landmark	Wyvern-Nest	Widerstand des Drachen
+2125	landmark	Ley-Linien-Aussichtspunkt	Widerstand des Drachen
+2127	waypoint	Wegmarke Südliches Vorstoßlager	Widerstand des Drachen
+2129	waypoint	Wegmarke Aussichtspunkt am Fluss	Verlorener Abgrund
+2130	waypoint	Wegmarke Nördliches Vorstoßlager	Widerstand des Drachen
+2131	waypoint	Wegmarke Zentrales vorgeschobenes Lager	Widerstand des Drachen
+2134	waypoint	Notwegmarke Anzalias-Pass	Ewige Schlachtfelder
+2135	waypoint	Südliche Wegmarke Domäne des Drachen	Widerstand des Drachen
+2142	landmark	Mordremoths Aussichtspunkt	Widerstand des Drachen
+2143	landmark	Dritter zentraler Kontrollpunkt	Widerstand des Drachen
+2145	waypoint	Notwegmarke Klovan-Senke	Ewige Schlachtfelder
+2147	landmark	Erster zentraler Kontrollpunkt	Widerstand des Drachen
+2148	waypoint	Notwegmarke Ogerwacht-Kanal	Ewige Schlachtfelder
+2149	waypoint	Wegmarke Südliches vorgeschobenes Lager	Widerstand des Drachen
+2150	waypoint	Wegmarke Fischadler-Palast	Wüsten-Grenzlande
+2154	waypoint	Notwegmarke Bravost-Abhang	Ewige Schlachtfelder
+2156	waypoint	Wegmarke Ostwacht	Güldener Talkessel
+2162	waypoint	Wegmarke Höhlenbergwerk	Vergoldete Senke
+2167	waypoint	Wegmarke Oberer Platz	Verlorener Abgrund
+2169	landmark	Überreste von Rata Novus	Widerstand des Drachen
+2170	waypoint	Südliche Wegmarke Basislager des Pakts	Widerstand des Drachen
+2172	landmark	Mordrem-Rankengarten	Widerstand des Drachen
+2175	landmark	Bucht der Gelassenheit	Widerstand des Drachen
+2176	landmark	Vermoderter Nordturm	Widerstand des Drachen
+2177	landmark	Zweiter südlicher Kontrollpunkt	Widerstand des Drachen
+2181	landmark	Vermoderter Zentralturm	Widerstand des Drachen
+2182	landmark	Brennende Gruft	Wüsten-Grenzlande
+2184	waypoint	Wegmarke Passage des Drachen	Verschlungene Tiefen
+2187	waypoint	Wegmarke Grenze	Wüsten-Grenzlande
+2190	landmark	McLains Lager	Wüsten-Grenzlande
+2191	landmark	Kurbelwellen-Depot	Wüsten-Grenzlande
+2193	landmark	Erster südlicher Kontrollpunkt	Widerstand des Drachen
+2195	waypoint	Notwegmarke Fischadler-Palast, A	Wüsten-Grenzlande
+2196	landmark	Bernsteinzahn-Klippe	Wüsten-Grenzlande
+2197	landmark	Ewige Nekropole	Wüsten-Grenzlande
+2199	waypoint	Zentrale Wegmarke Domäne des Drachen	Widerstand des Drachen
+2200	landmark	Vermoderter Südturm	Widerstand des Drachen
+2207	waypoint	Notwegmarke O'del-Akademie	Wüsten-Grenzlande
+2209	waypoint	Notwegmarke Ewige Nekropole	Wüsten-Grenzlande
+2210	landmark	Zweiter nördlicher Kontrollpunkt	Widerstand des Drachen
+2217	waypoint	Notwegmarke Veloka-Hang	Ewige Schlachtfelder
+2221	waypoint	Wegmarke Brennende Gruft	Wüsten-Grenzlande
+2222	waypoint	Nördliche Wegmarke Domäne des Drachen	Widerstand des Drachen
+2223	landmark	Stoischer Festungswall	Wüsten-Grenzlande
+2224	landmark	Chak-Bau	Widerstand des Drachen
+2225	landmark	Hamms Labor	Wüsten-Grenzlande
+2228	waypoint	Notwegmarke Schloss Steinnebel, A	Ewige Schlachtfelder
+2233	landmark	Dritter nördlicher Kontrollpunkt	Widerstand des Drachen
+2238	waypoint	Wegmarke Schrein-Tunnel	Verlorener Abgrund
+2241	landmark	Umgekehrte Grube	Widerstand des Drachen
+2242	waypoint	Wegmarke Zentraler Abgrund	Verlorener Abgrund
+2243	waypoint	Notwegmarke Aussichtspunkt, A	Ewige Schlachtfelder
+2244	waypoint	Notwegmarke Kurbelwellen-Depot	Wüsten-Grenzlande
+2247	waypoint	Wegmarke Grenze	Wüsten-Grenzlande
+2248	waypoint	Notwegmarke Brennende Gruft, A	Wüsten-Grenzlande
+2252	waypoint	Notwegmarke Tiefland, A	Ewige Schlachtfelder
+2253	waypoint	Notwegmarke Quentin-See	Ewige Schlachtfelder
+2259	landmark	Brunnen des Staubflüsterns	Wüsten-Grenzlande
+2260	waypoint	Wegmarke Arenaturm	Vergoldete Senke
+2263	waypoint	Notwegmarke Jerrifers Sumpfloch	Ewige Schlachtfelder
+2267	waypoint	Notwegmarke Durios-Schlucht	Ewige Schlachtfelder
+2271	landmark	O'del-Akademie	Wüsten-Grenzlande
+2273	waypoint	Wegmarke Wasserfall-Platz	Vergoldete Senke
+2274	landmark	Zweiter zentraler Kontrollpunkt	Widerstand des Drachen
+2275	waypoint	Notwegmarke Mendons Spalt	Ewige Schlachtfelder
+2276	waypoint	Wegmarke Zitadelle	Wüsten-Grenzlande
+2280	waypoint	Notwegmarke Wildbach-Strecke	Ewige Schlachtfelder
+2289	landmark	Dritter südlicher Kontrollpunkt	Widerstand des Drachen
+2290	landmark	Vermoderter Sumpf	Widerstand des Drachen
+2291	landmark	Bauer-Gehöft	Wüsten-Grenzlande
+2292	waypoint	Wegmarke Sandstein-Kolosseum	Verlorener Abgrund
+2293	waypoint	Notwegmarke Tal, A	Ewige Schlachtfelder
+2294	landmark	Roys Zuflucht	Wüsten-Grenzlande
+2301	waypoint	Wegmarke Stoischer Festungswall	Wüsten-Grenzlande
+2303	waypoint	Wegmarke Zentrale Senke	Vergoldete Senke
+2304	waypoint	Wegmarke Nördliches vorgeschobenes Lager	Widerstand des Drachen
+2305	waypoint	Wegmarke Oberflächen-Tunnel	Vergoldete Senke
+2307	landmark	Zentraloase	Wüsten-Grenzlande
+2309	landmark	Fluss der Geister	Geistertal
+2310	landmark	Verlassener Außenposten	Geistertal
+2311	landmark	Die Bratpfanne	Geistertal
+2312	landmark	Mysteriöse Pylone	Geistertal
+2313	landmark	Banditen-Rastplatz	Geistertal
+2314	landmark	Gorsevals Warte	Geistertal
+2315	landmark	Faultierions Bau	Erlösungspass
+2316	landmark	Gefangenenlager	Erlösungspass
+2317	landmark	Tempel der Erlösung	Erlösungspass
+2318	landmark	Verbrennungsgrube	Erlösungspass
+2320	landmark	Totmann-Klamm	Erlösungspass
+2321	landmark	Arbeitslager	Erlösungspass
+2322	waypoint	Notwegmarke Garnison, A	Alpine Grenzlande
+2324	waypoint	Notwegmarke	Alpine Grenzlande
+2325	waypoint	Notwegmarke	Alpine Grenzlande
+2328	waypoint	Notwegmarke Askalion-Hügel, A	Alpine Grenzlande
+2336	waypoint	Wegmarke Flugplatz	Flugplatz von Löwenstein
+2337	waypoint	Notwegmarke Shadaran-Hügel, A	Alpine Grenzlande
+2338	waypoint	Notwegmarke	Alpine Grenzlande
+2339	waypoint	Notwegmarke	Alpine Grenzlande
+2341	waypoint	Notwegmarke	Alpine Grenzlande
+2343	waypoint	Notwegmarke	Alpine Grenzlande
+2345	waypoint	Notwegmarke	Alpine Grenzlande
+2347	waypoint	Notwegmarke Garnison, A	Alpine Grenzlande
+2348	waypoint	Notwegmarke	Alpine Grenzlande
+2350	waypoint	Notwegmarke Schreckensfall-Bucht, A	Alpine Grenzlande
+2351	waypoint	Notwegmarke Aufstiegsbucht, A	Alpine Grenzlande
+2357	landmark	Tempel des Erwachens	Festung der Treuen
+2359	landmark	Bastion des Eifernden	Festung der Treuen
+2364	landmark	Tunnel der Ruhe	Festung der Treuen
+2365	landmark	Verdrehtes Schloss	Festung der Treuen
+2366	landmark	Brunnen der Reinigung	Festung der Treuen
+2367	waypoint	Wegmarke Schlundtiefen	Blutsteinsumpf
+2369	waypoint	Wegmarke Explosionsort	Blutsteinsumpf
+2371	waypoint	Sammelpunkt Blaues Team	Rache der "Steinbock"
+2373	landmark	Tempel der Erneuerung	Blutsteinsumpf
+2374	landmark	Kolosseum der Treuen	Blutsteinsumpf
+2375	waypoint	Sammelpunkt Rotes Team	Rache der "Steinbock"
+2377	landmark	Grab des Beichtvaters	Blutsteinsumpf
+2379	waypoint	Wegmarke Seelenhüters Luftschiff	Blutsteinsumpf
+2380	landmark	Erlösungsquelle	Blutsteinsumpf
+2382	waypoint	Wegmarke Aussichtspunkt des Eiferers	Blutsteinsumpf
+2383	landmark	Tempel des Opfers	Blutsteinsumpf
+2384	landmark	Kraterabgrund	Blutsteinsumpf
+2385	landmark	Blutstein-Gehäuse	Blutsteinsumpf
+2386	landmark	Zwillingsschädel	Glutbucht
+2387	landmark	Hochofen-Kammer	Glutbucht
+2389	waypoint	Wegmarke Riss-Tor	Glutbucht
+2390	landmark	Glänziges des Schreckens	Glutbucht
+2391	landmark	Barriere-Spitzen	Glutbucht
+2392	landmark	Asura-Brückenkopf	Glutbucht
+2393	landmark	Riss des Narren	Glutbucht
+2394	waypoint	Sammelpunkt Blaues Team	Ewiges Kolosseum
+2395	landmark	Magma-Abfluss	Glutbucht
+2396	landmark	Fischadlerhorste	Glutbucht
+2398	landmark	Lavafluss	Glutbucht
+2399	waypoint	Wegmarke Kap	Glutbucht
+2400	waypoint	Wegmarke Bröckelnder Pfad	Glutbucht
+2401	landmark	Quickks Rückzugsort	Glutbucht
+2402	landmark	Ivys Zirkusspektakel	Glutbucht
+2403	landmark	Flammenpodest	Glutbucht
+2405	landmark	Schlackebecken	Glutbucht
+2407	waypoint	Sammelpunkt Rotes Team	Ewiges Kolosseum
+2409	landmark	Karka-Brutstätte	Glutbucht
+2410	landmark	Ausgangspunkt des Klippenwanderpfads	Glutbucht
+2412	landmark	Beobachtungs-Außenposten	Glutbucht
+2414	landmark	Felskopfs Riss	Glutbucht
+2415	landmark	Veranstaltungsgelände der Faultierkönigin	Glutbucht
+2421	landmark	Versiegelter Eingang	Glutbucht
+2423	landmark	Zermatsch-a-Tron	Glutbucht
+2424	waypoint	Wegmarke Zirkus der Schiffbrüchigen	Glutbucht
+2425	landmark	Schlund der Zerstörung	Glutbucht
+2426	landmark	Titanenwarte	Glutbucht
+2427	landmark	Kelch der Tränen	Glutbucht
+2428	landmark	Brandblasen-Kessel	Bitterfrost-Grenzland
+2429	waypoint	Wegmarke Tiefste Betrübnis	Bitterfrost-Grenzland
+2430	landmark	Windungs-Lagune	Bitterfrost-Grenzland
+2431	landmark	Chokocookas Thron	Bitterfrost-Grenzland
+2432	landmark	Umklammerungs-Eisfall	Bitterfrost-Grenzland
+2433	waypoint	Wegmarke Willkommensgruß des Koda	Bitterfrost-Grenzland
+2434	landmark	Guuluupa-Tiefen	Bitterfrost-Grenzland
+2435	landmark	Freudlose Fälle	Bitterfrost-Grenzland
+2436	landmark	Schwarzhöhlen-Knotenpunkt	Bitterfrost-Grenzland
+2440	landmark	Schlund der Verdorbenheit	Bitterfrost-Grenzland
+2441	landmark	Drachenaugen-Panorama	Bitterfrost-Grenzland
+2442	landmark	Hohlknochen-Bau	Bitterfrost-Grenzland
+2444	landmark	Eisaderhöhle	Bitterfrost-Grenzland
+2445	landmark	Urteilspass	Bitterfrost-Grenzland
+2447	landmark	Titanenbaum	Bitterfrost-Grenzland
+2448	landmark	Landbrücke	Doric-See
+2450	landmark	Häuptlingssenke	Doric-See
+2452	unlock	Schlachtzug: Bastion der Bußfertigen	Blutsteinsumpf
+2453	landmark	Hauptquartier der Verteidigung	Doric-See
+2454	landmark	Die Schreibstube des Aufsehers	Bastion der Bußfertigen
+2455	landmark	Wasserwerke von Götterfels	Doric-See
+2457	landmark	Einzelhaft	Bastion der Bußfertigen
+2458	landmark	Sorens Rast	Doric-See
+2459	landmark	Fluchttunnel	Bastion der Bußfertigen
+2460	landmark	Tempel der Sechs	Doric-See
+2463	landmark	Cairns Warte	Bastion der Bußfertigen
+2464	landmark	Mystische Gewässer	Bastion der Bußfertigen
+2466	landmark	Kammer der Schuldigen	Bastion der Bußfertigen
+2467	landmark	Beichtstuhl	Bastion der Bußfertigen
+2468	landmark	Fort Evennia	Doric-See
+2469	landmark	Baum der Einsamkeit	Bastion der Bußfertigen
+2470	landmark	Sturm-Wasserscheide	Doric-See
+2471	landmark	Pfirsichbaum	Doric-See
+2472	landmark	DS Pinkeens	Doric-See
+2475	landmark	Norans Heimstatt	Doric-See
+2476	landmark	Erholungssektor	Bastion der Bußfertigen
+2477	waypoint	Wegmarke Doric-Anlegestelle	Doric-See
+2478	landmark	Vereinsheim von Neulehmwald	Doric-See
+2479	waypoint	Wegmarke Rotblatt-Rückzug	Doric-See
+2480	landmark	Rotblatt-Rückzug	Doric-See
+2481	landmark	Todestrakt	Bastion der Bußfertigen
+2483	landmark	Gefallener Wachturm	Doric-See
+2484	waypoint	Wegmarke Seeufer-Basar	Doric-See
+2485	landmark	Villa Seeblick	Doric-See
+2486	landmark	Boot des Anglers	Doric-See
+2490	landmark	Zeta-Kammer	Draconis Mons
+2492	landmark	Asura-Portal	Draconis Mons
+2493	waypoint	Wegmarke Seemanns Anlegestelle	Draconis Mons
+2494	landmark	Ewiges Becken	Draconis Mons
+2497	landmark	Schäumendes Podest	Draconis Mons
+2499	landmark	U-Boot-Anlegestelle	Draconis Mons
+2500	landmark	Sandstein-Bogengang	Draconis Mons
+2501	landmark	Druidengrotte	Draconis Mons
+2502	landmark	Golem-Friedhof	Draconis Mons
+2503	landmark	Sträflingswarte	Draconis Mons
+2504	landmark	Brodelnde Säule	Draconis Mons
+2505	landmark	Friedensgründe	Draconis Mons
+2507	landmark	Hochofen des Wurms	Draconis Mons
+2508	landmark	Söldner-Lager	Draconis Mons
+2509	waypoint	Wegmarke Heidenhalt	Draconis Mons
+2510	landmark	Viraddis Erlösung	Draconis Mons
+2511	landmark	Sengender Aufstieg	Draconis Mons
+2512	landmark	Späher-Lichtung	Draconis Mons
+2513	landmark	Begräbniskammer	Draconis Mons
+2514	landmark	Iota-Kammer	Draconis Mons
+2515	landmark	Nu II-Kammer	Draconis Mons
+2516	landmark	Inquestur-Feldlabor	Draconis Mons
+2517	waypoint	Wegmarke Uralte Senke	Draconis Mons
+2518	landmark	Nu-Kammer	Draconis Mons
+2519	landmark	Tor des Feuers	Draconis Mons
+2520	waypoint	Wegmarke Markt	Herz der Nebel
+2521	waypoint	Wegmarke Belagerungstraining	Herz der Nebel
+2522	waypoint	Wegmarke Arena	Herz der Nebel
+2524	vista	Mosaik-Laube	Zaubersängerlände
+2525	landmark	Wrack der "Vergangenheit"	Zaubersängerlände
+2526	vista	Der Arm des Abaddon	Zaubersängerlände
+2527	vista	Aufwindgasse	Zaubersängerlände
+2528	landmark	Tränen von Orr	Zaubersängerlände
+2529	landmark	Geheimer Garten	Zaubersängerlände
+2530	landmark	Der Arm des Abaddon	Zaubersängerlände
+2531	landmark	Verstecktes Reliquiar	Zaubersängerlände
+2532	landmark	Vene des Balthasar	Zaubersängerlände
+2533	landmark	Lager der Rückgewinnung	Zaubersängerlände
+2534	landmark	Lager Winfred	Zaubersängerlände
+2535	landmark	Überwucherter Pavillon	Zaubersängerlände
+2536	landmark	Wyvernbau	Zaubersängerlände
+2537	landmark	Hiffas Lager	Zaubersängerlände
+2539	landmark	Vergessener Platz	Zaubersängerlände
+2540	landmark	Wachposten-Horst	Zaubersängerlände
+2541	landmark	Antikes Gewächshaus	Zaubersängerlände
+2542	landmark	Herz des Balthasar	Zaubersängerlände
+2543	waypoint	Wegmarke Lager der Rückgewinnung	Zaubersängerlände
+2544	landmark	Der Schwimmende Zweig	Zaubersängerlände
+2545	landmark	Durchgangs-Ruinen	Zaubersängerlände
+2547	waypoint	Wegmarke Nebelsperren-Zuflucht	Nebelsperren-Zuflucht
+2548	vista	Zerstörtes Panorama	Zaubersängerlände
+2550	landmark	Die Menagerie	Feind meines Feindes: Der Fellmarschall
+2552	landmark	Nabkhas Refugium	Kristalloase
+2553	landmark	Rückzugs-Spalt	Elon-Flusslande
+2554	landmark	Nördlicher Schlund	Das Ödland
+2555	landmark	Die Promenade	Feind meines Feindes: Der Fellmarschall
+2557	landmark	Sabkha-Wachtposten	Wüsten-Hochland
+2558	landmark	Die Grabstätte	Elon-Flusslande
+2559	landmark	Ruinen der Gemeinde Mihanu	Feind meines Feindes: Der Fellmarschall
+2561	landmark	Speermarschalls Klage	Feind meines Feindes: Der Fellmarschall
+2562	landmark	Der Knochenpalast	Das Ödland
+2563	landmark	Heilbad	Feind meines Feindes: Der Fellmarschall
+2564	landmark	Flüchtlingslager Marifa	Kristalloase
+2567	landmark	Steingarten-Ruhestätte	Elon-Flusslande
+2570	landmark	Schwächungskurve	Elon-Flusslande
+2571	waypoint	Wegmarke Jokos Domäne	Das Ödland
+2573	landmark	Stillstand-See	Wüsten-Hochland
+2574	landmark	Königlicher Rundbau von Vehjin	Feind meines Feindes: Der Fellmarschall
+2575	waypoint	Wegmarke Vehtendi-Akademie	Domäne Vaabi
+2577	landmark	Gallensenke	Das Ödland
+2578	landmark	Junundu-Beobachtungsposten	Das Ödland
+2579	landmark	Syrtic-Sackgasse	Elon-Flusslande
+2580	landmark	Altar der sechs Götter	Kristalloase
+2581	landmark	Das Lagerhaus	Feind meines Feindes: Der Fellmarschall
+2582	landmark	Ausblick der Matriarchin	Das Ödland
+2583	landmark	Imperiale Schwefelgruben	Das Ödland
+2584	landmark	Squaross-Kral	Kristalloase
+2585	landmark	Geschlossene Passage	Wüsten-Hochland
+2586	landmark	Geschmiedeten-Artilleriestützpunkt	Das Ödland
+2587	landmark	Springerleiter	Das Ödland
+2588	landmark	Zayan-Tor	Das Ödland
+2589	landmark	Gebleichte Säulen	Das Ödland
+2591	landmark	Wasseramt von Amnoon	Kristalloase
+2592	landmark	Alt-Amnoon	Kristalloase
+2593	landmark	Grabmal der Verlassenen	Kristalloase
+2594	landmark	Erweckten-Festung	Das Opfer
+2595	landmark	Hochsprunghof	Wüsten-Hochland
+2597	landmark	Höhle der Klagetränen	Wüsten-Hochland
+2598	landmark	Das Teratoeder	Kristalloase
+2599	landmark	Tawlafels	Kristalloase
+2600	waypoint	Wegmarke Olishars Oasenlager	Elon-Flusslande
+2602	landmark	Junundu-Nester	Feind meines Feindes: Der Fellmarschall
+2603	landmark	Dakhmas Altar	Wüsten-Hochland
+2604	landmark	Lager des Fellmarschalls	Feind meines Feindes: Der Fellmarschall
+2605	landmark	Elon-Fälle	Elon-Flusslande
+2607	landmark	Uhiwis Knochen	Das Ödland
+2608	landmark	Helden-Aussichtspunkt	Elon-Flusslande
+2609	landmark	Chukeht-Aussichtspunkt	Das Ödland
+2610	landmark	Kusini-Wasserloch	Kristalloase
+2611	landmark	Die Wurmarena	Das Ödland
+2612	landmark	Lager des Truppmarschalls	Feind meines Feindes: Der Fellmarschall
+2613	landmark	Windkälte-Pass	Wüsten-Hochland
+2614	landmark	Riesenanhöhe	Elon-Flusslande
+2615	landmark	Herzblut-Wasserloch	Wüsten-Hochland
+2616	landmark	Tempel von Atar	Kristalloase
+2619	landmark	Eroberungs-Aussichtspunkt	Das Ödland
+2620	landmark	Erstes Lager	Elon-Flusslande
+2621	landmark	Seborhin-Kreis	Feind meines Feindes: Der Fellmarschall
+2622	landmark	Riesenstieg	Wüsten-Hochland
+2623	landmark	Lommuld-Kral	Wüsten-Hochland
+2624	waypoint	Wegmarke Tempel der Kormir	Kristalloase
+2625	landmark	Geröll-Warte	Wüsten-Hochland
+2626	landmark	Gewaltige Glieder	Das Ödland
+2627	landmark	Stachelbeet-Senke	Wüsten-Hochland
+2629	landmark	Vielversprechender Fund	Kristalloase
+2630	landmark	Dorf des Suchers	Kristalloase
+2631	landmark	Großes Sahil-Kasino	Kristalloase
+2632	unlock	Reittier: Raptor	Kristalloase
+2633	unlock	Reittier: Schweberochen	Elon-Flusslande
+2634	waypoint	Wegmarke Nekropole	Domäne Vaabi
+2635	landmark	Zweites Lager	Elon-Flusslande
+2637	landmark	Dragoner-Feuerstelle	Elon-Flusslande
+2638	landmark	Qualwacht	Das Ödland
+2640	landmark	Gottlose Sandfälle	Elon-Flusslande
+2641	landmark	Zephyrs Spur	Kristalloase
+2642	landmark	Pergola des Clanmarschalls	Das Ödland
+2643	waypoint	Wegmarke Schatten der Weissagung	Elon-Flusslande
+2644	landmark	Verbotene Kammer	Das Ödland
+2645	unlock	Reittier: Springer	Wüsten-Hochland
+2646	landmark	Ein-Baum-Hügel	Das Ödland
+2647	landmark	Makali-Außenposten	Das Opfer
+2648	landmark	Fort Huduh	Das Ödland
+2650	landmark	Der Wachturm	Wüsten-Hochland
+2651	landmark	Altar der Stille	Kristalloase
+2652	landmark	Zerschmetterter Templer	Kristalloase
+2653	landmark	Vaabischer Korridor	Das Ödland
+2656	landmark	Schmelztiegel der Segnung	Kristalloase
+2658	landmark	Obstgarten von Tihark	Feind meines Feindes: Der Fellmarschall
+2659	landmark	Säulen der Überlegenheit	Elon-Flusslande
+2660	landmark	Der Schlund der Qual	Das Ödland
+2661	landmark	Herzblut-Fälle	Wüsten-Hochland
+2662	landmark	Händlerstraße	Feind meines Feindes: Der Fellmarschall
+2663	waypoint	Wegmarke Schweberochen-Hof	Elon-Flusslande
+2665	landmark	Gluthöhen	Das Ödland
+2666	waypoint	Wegmarke Lommuld-Kral	Wüsten-Hochland
+2667	waypoint	Wegmarke Makali-Außenposten	Wüsten-Hochland
+2669	landmark	Die Feuerstelle	Feind meines Feindes: Der Fellmarschall
+2670	landmark	Leviathan-Schlund	Elon-Flusslande
+2671	landmark	Dreifacher Überfall	Elon-Flusslande
+2672	landmark	Abwegwacht	Das Ödland
+2673	landmark	Strahlende Fälle	Wüsten-Hochland
+2674	landmark	Transzendente Fälle	Wüsten-Hochland
+2675	waypoint	Wegmarke Geißelweg	Das Ödland
+2676	waypoint	Wegmarke Marktruinen	Domäne Vaabi
+2677	landmark	Tempel der Kormir	Kristalloase
+2679	waypoint	Wegmarke Sandschakal-Lauf	Das Ödland
+2680	landmark	Glints Höhle	Wüsten-Hochland
+2682	landmark	Geißels Schwelle	Das Ödland
+2683	landmark	Lupicus-Knochengrube	Das Ödland
+2684	landmark	Kavalierdienststelle von Amnoon	Kristalloase
+2688	landmark	Gemeindezentrum von Amnoon	Kristalloase
+2689	landmark	Schattenarkade	Das Ödland
+2690	waypoint	Wegmarke Windgepeitschte Arena	Windgepeitschte Freistatt
+2694	landmark	Thron von Pellentia	Elon-Flusslande
+2696	landmark	Marktruinen	Feind meines Feindes: Der Fellmarschall
+2697	landmark	Sandsuhlen-Rückzugsort	Elon-Flusslande
+2698	landmark	Das Portal	Wüsten-Hochland
+2701	landmark	Östlicher Schlund	Das Ödland
+2702	landmark	Toxische Tümpel	Das Ödland
+2703	landmark	Kanuz' Lager	Das Opfer
+2704	landmark	Palawas Gnade	Elon-Flusslande
+2705	waypoint	Wegmarke Hellwasser	Wüsten-Hochland
+2706	landmark	Craggip-Kral	Wüsten-Hochland
+2707	waypoint	Wegmarke Schicksalsschlucht	Kristalloase
+2708	landmark	Nördliche Wegstation	Kristalloase
+2710	landmark	Hängende Gärten	Feind meines Feindes: Der Fellmarschall
+2711	landmark	Hafen von Amnoon	Kristalloase
+2712	landmark	Bahdaj-Wacht	Elon-Flusslande
+2713	landmark	Der Triumph des Palawa Joko	Elon-Flusslande
+2714	landmark	Wohnheim von Haus Ingene	Feind meines Feindes: Der Fellmarschall
+2715	landmark	Monument von Palawa Joko dem Großen	Feind meines Feindes: Der Fellmarschall
+2717	waypoint	Wegmarke Hochsprunghof	Wüsten-Hochland
+2718	landmark	Sandfall-Sanktum	Das Ödland
+2720	landmark	Turnierplatz	Feind meines Feindes: Der Fellmarschall
+2721	waypoint	Wegmarke Höhlen-Aussichtspunkt	Windgepeitschte Freistatt
+2722	landmark	Das Joko-Tor	Elon-Flusslande
+2723	waypoint	Wegmarke Dunkellande	Das Ödland
+2724	waypoint	Wegmarke Verlassene Senke	Wüsten-Hochland
+2725	waypoint	Wegmarke Schartental	Domäne Vaabi
+2726	landmark	Pilgers Torheit	Elon-Flusslande
+2727	landmark	Knochenufer-Festung	Das Ödland
+2728	landmark	Heilige Halle der Schatten	Das Ödland
+2730	landmark	Palast von Aban	Wüsten-Hochland
+2731	landmark	Wohnheim von Haus Ventura	Feind meines Feindes: Der Fellmarschall
+2732	landmark	Südliche Wegstation	Kristalloase
+2734	landmark	Riesenteetisch	Das Opfer
+2735	landmark	Junundu-Brutstätte	Das Ödland
+2736	landmark	Ruhestätte der Verbannten	Elon-Flusslande
+2737	landmark	Kapitän Kiels Schreibstube	Löwenstein
+2740	landmark	Garten der Auserwählten	Elon-Flusslande
+2741	landmark	Hochsprung-Spalt	Wüsten-Hochland
+2742	landmark	Das verlassene Viertel	Kristalloase
+2743	landmark	Verstreute Überreste	Elon-Flusslande
+2744	landmark	Halle des Aufstiegs	Elon-Flusslande
+2747	waypoint	Wegmarke Amnoon	Kristalloase
+2748	landmark	Ausgrabungsstätte	Feind meines Feindes: Der Fellmarschall
+2751	landmark	Basar von Amnoon	Kristalloase
+2752	landmark	Die Knochengrube	Feind meines Feindes: Der Fellmarschall
+2753	waypoint	Wegmarke Höhle der Vergessenen	Das Ödland
+2754	landmark	Westlicher Schlund	Das Ödland
+2755	landmark	Vehtendi-Weinberg	Feind meines Feindes: Der Fellmarschall
+2758	landmark	Theater der Lyssa-Narren	Feind meines Feindes: Der Fellmarschall
+2759	landmark	Blinder Glaube	Das Ödland
+2760	landmark	Dorf Reinheit	Das Ödland
+2761	landmark	Enthüller-Aussichtspunkt	Das Ödland
+2762	landmark	Unglückssenke	Wüsten-Hochland
+2763	landmark	Gerichtshof der Toten	Feind meines Feindes: Der Fellmarschall
+2764	landmark	Bitumen-Lager	Das Ödland
+2765	landmark	Nimbose-Kuppe	Wüsten-Hochland
+2766	landmark	Jokos Steinkreis	Das Ödland
+2768	waypoint	Wegmarke Seborhin	Domäne Vaabi
+2769	landmark	Ossas Niederlage	Elon-Flusslande
+2770	landmark	Knochenkäfig-Koppel	Das Ödland
+2772	landmark	Sandverwehte Türme	Elon-Flusslande
+2773	landmark	Weggeworfene Gefäße	Wüsten-Hochland
+2774	unlock	Reittier: Schakal	Das Ödland
+2775	waypoint	Wegmarke Aussichtskuppel	Windgepeitschte Freistatt
+2776	landmark	Direktoren-Schreibstube	Feind meines Feindes: Der Fellmarschall
+2777	landmark	Verlassene Senke	Wüsten-Hochland
+2779	landmark	Wohnheim von Haus Rolic	Feind meines Feindes: Der Fellmarschall
+2780	waypoint	Wegmarke Knochenufer	Das Ödland
+2781	waypoint	Wegmarke Freistatt-Terrasse	Windgepeitschte Freistatt
+2783	landmark	Ruinen von Jennurs Horde	Feind meines Feindes: Der Fellmarschall
+2784	landmark	Handelszentrum von Amnoon	Kristalloase
+2786	landmark	Teersteintränen	Das Ödland
+2787	landmark	Rückzug der Entschlossenen	Kristalloase
+2788	landmark	Sandbedeckter Schrein	Das Ödland
+2789	landmark	Dorf Kweli	Kristalloase
+2790	landmark	Dschinn-Enklave	Das Ödland
+2791	landmark	Skritts Audienz	Elon-Flusslande
+2792	landmark	Einsame Wacht	Elon-Flusslande
+2793	landmark	Talatat-Steinbruch	Kristalloase
+2794	landmark	König Jokos Himmelsgarten	Feind meines Feindes: Der Fellmarschall
+2795	landmark	Die Grüfte	Feind meines Feindes: Der Fellmarschall
+2796	landmark	Höhle des Zommoros	Feind meines Feindes: Der Fellmarschall
+2797	waypoint	Wegmarke Vehjin-Palast	Domäne Vaabi
+2799	landmark	Übergreif-Abgrund	Wüsten-Hochland
+2800	landmark	Götterfall-Turm	Das Opfer
+2802	landmark	Ruinen des Spiegels von Lyss	Feind meines Feindes: Der Fellmarschall
+2804	landmark	Fluss-Ursprung	Halle der Ketten
+2805	landmark	Freihändler-Hafen	Domäne Istan
+2806	landmark	Dunkler Leviathan	Domäne Istan
+2807	landmark	Tempel des Joko	Domäne Istan
+2808	landmark	Spiegel der Sonne	Domäne Istan
+2809	landmark	Uralte Königsdocks	Domäne Istan
+2810	waypoint	Wegmarke Astralarium	Domäne Istan
+2811	landmark	Spiegel der Erde	Domäne Istan
+2812	landmark	Sonnendocks	Domäne Istan
+2813	landmark	Belagerte Ruinen	Halle der Ketten
+2814	landmark	Kaputter Beobachtungsturm	Domäne Istan
+2815	landmark	Bühne des Opfers	Domäne Istan
+2816	landmark	Lukenkammer	Domäne Istan
+2817	landmark	Schmelztiegel des Häretikers	Domäne Istan
+2818	landmark	Wasserwerk Zehlon	Domäne Istan
+2819	landmark	Grotte des Bezwungenen	Domäne Istan
+2820	landmark	Statue der Dunkelheit	Halle der Ketten
+2821	landmark	Promenade des Clanmarschalls	Domäne Istan
+2823	landmark	Platz der Wiederkehr	Domäne Istan
+2824	landmark	Jakumbas Vermächtnis	Domäne Istan
+2825	waypoint	Wegmarke Chalon-Docks	Domäne Istan
+2826	landmark	Statue des Eises	Halle der Ketten
+2827	landmark	Schwankende Himmel	Domäne Istan
+2830	landmark	Wohnquartiere von Palawadan	Domäne Istan
+2831	landmark	Spiegel des Mondes	Domäne Istan
+2833	landmark	Springender Stein	Domäne Istan
+2834	landmark	Statue des Todes und der Wiederbelebung	Halle der Ketten
+2835	landmark	Spiegel der Sterne	Domäne Istan
+2836	landmark	Halle des jüngsten Gerichts	Halle der Ketten
+2837	landmark	Klinge Mehtanis	Domäne Istan
+2838	landmark	Chahbek-Stoß	Domäne Istan
+2839	landmark	Lahdok-Kraterland	Domäne Istan
+2840	landmark	Halle des jüngsten Gerichts	Domäne Istan
+2842	waypoint	Wegmarke Champions Erwachen	Domäne Istan
+2843	landmark	Feld der Hoffnungsvollen	Domäne Istan
+2846	landmark	Quartier der Wärterin	Domäne Istan
+2847	landmark	Fluss der Seelen	Halle der Ketten
+2849	waypoint	Spieler-Wiedereinstieg	Spielzeukalypse
+2851	landmark	Kommunikatorsteuerung	Sandgepeitschte Inseln
+2852	landmark	Jemandi-Markt	Sandgepeitschte Inseln
+2853	waypoint	Wegmarke Anniogel-Lager	Sandgepeitschte Inseln
+2854	landmark	Labor Sigma-05	Sandgepeitschte Inseln
+2855	landmark	Die "Eiserner Wal"	Sandgepeitschte Inseln
+2856	landmark	Magiesturm-Galerie	Sandgepeitschte Inseln
+2857	landmark	Tunnel-Zugang Epsilon	Sandgepeitschte Inseln
+2858	landmark	Tunnel-Zugang Beta	Sandgepeitschte Inseln
+2859	landmark	Ritualgründe	Sandgepeitschte Inseln
+2860	landmark	Ewyns Rückzug	Sandgepeitschte Inseln
+2861	landmark	Magnet-Labor	Sandgepeitschte Inseln
+2862	landmark	Tunnel-Zugang Delta	Sandgepeitschte Inseln
+2864	landmark	Reserveenergiekern	Sandgepeitschte Inseln
+2865	landmark	Tiefwasser-Kühlbecken	Sandgepeitschte Inseln
+2866	landmark	Himmelskammer-Grabstätte	Sandgepeitschte Inseln
+2867	landmark	Treibholz-Anlegesteg	Sandgepeitschte Inseln
+2868	landmark	Nekrobrand-Emulationslabor	Sandgepeitschte Inseln
+2869	landmark	Atholma-Docks	Sandgepeitschte Inseln
+2870	landmark	Malors Hof	Sandgepeitschte Inseln
+2871	landmark	Kommunikationsantenne	Sandgepeitschte Inseln
+2872	landmark	Tunnel-Zugang Alpha	Sandgepeitschte Inseln
+2873	landmark	Leyfinder-Forschungseinrichtung	Sandgepeitschte Inseln
+2875	landmark	Abflussnetzwerk	Sandgepeitschte Inseln
+2877	landmark	Olmas Vermächtnis	Sandgepeitschte Inseln
+2878	landmark	Grautränen-Fälle	Sandgepeitschte Inseln
+2879	landmark	Tunnel-Zugang Gamma	Sandgepeitschte Inseln
+2880	landmark	Zerberus-Wachtürme	Sandgepeitschte Inseln
+2882	landmark	Anniogel-Anlegestelle	Sandgepeitschte Inseln
+2883	waypoint	Wegmarke Atholma	Sandgepeitschte Inseln
+2884	landmark	Portalschmiede-Labor	Sandgepeitschte Inseln
+2886	landmark	Versuchsobjekt-Kammer	Sandgepeitschte Inseln
+2887	landmark	"Rata Primus"-Kanal	Sandgepeitschte Inseln
+2888	landmark	Zelbahn-Garnison	Domäne Kourna
+2889	landmark	Apizmic-Gründe	Domäne Kourna
+2891	landmark	Forschungszentralrechner-Zugang	Domäne Kourna
+2892	landmark	Tiefrissbrut	Domäne Kourna
+2894	landmark	Westlicher Zugang zum Lager der Verbündeten	Domäne Kourna
+2896	waypoint	Wegmarke Apizmic-Gründe	Domäne Kourna
+2897	landmark	Östlicher Zugang zum Lager der Verbündeten	Domäne Kourna
+2898	landmark	Landung- & Zugang-Portal der Armee	Domäne Kourna
+2899	landmark	Bau der Getreuen	Domäne Kourna
+2900	landmark	Korsaren-Kanonen	Domäne Kourna
+2902	landmark	Bokoss-Gefängnisruinen	Domäne Kourna
+2903	waypoint	Wegmarke Lager der Verbündeten	Domäne Kourna
+2904	landmark	Dunlon-Quellen	Domäne Kourna
+2905	landmark	Dejarin-Ruinen	Domäne Kourna
+2906	landmark	Forschungsgewölbe Beta	Domäne Kourna
+2908	landmark	Übungsgelände der Klippen von Pogahn	Domäne Kourna
+2909	landmark	Wrack der "Krummsäbel"	Domäne Kourna
+2910	landmark	Idol der Choya	Domäne Kourna
+2911	landmark	Hakenstachel-Krater	Domäne Kourna
+2912	landmark	Hauptzugang nach Gandara	Domäne Kourna
+2913	landmark	Westlicher Zugang nach Gandara	Domäne Kourna
+2914	landmark	Geheimer Durchgang	Domäne Kourna
+2915	landmark	Palawas Wohlwollen	Domäne Kourna
+2917	landmark	Arkjok-Zwinger	Domäne Kourna
+2918	landmark	Forschungsgewölbe Alpha	Domäne Kourna
+2919	landmark	Imperiales Zentrum für Angewandte Pestilenz	Domäne Kourna
+2920	landmark	Crocuta-Aussichtspunkt	Domäne Kourna
+2921	landmark	Nebel-Arena	Rand der Nebel
+2923	landmark	Blick der Uralten	Vermächtnis
+2925	landmark	Verlegter Turm des Wesirs	Vermächtnis
+2926	landmark	Erwerbs-Portal	Mythenschreiber-Wagnis
+2928	landmark	Altes Kolosseum	Vermächtnis
+2929	landmark	Große Halle von Jahai	Vermächtnis
+2931	landmark	Ring des Urteils	Vermächtnis
+2932	landmark	Klauen-Fels	Vermächtnis
+2933	landmark	Reliquiar-Brücke	Mythenschreiber-Wagnis
+2934	landmark	Riyids Posten	Vermächtnis
+2936	landmark	Festungshof	Vermächtnis
+2937	landmark	Ruheloses Leuchtfeuer	Vermächtnis
+2938	landmark	Ahnenbaum	Vermächtnis
+2939	landmark	Garten des Mystischen Glücksklees	Mythenschreiber-Wagnis
+2940	landmark	Schlachtfeld-Festungswälle	Vermächtnis
+2941	landmark	Herz des Kessels	Mythenschreiber-Wagnis
+2942	waypoint	Wegmarke Yatendi-Dorf	Jahai-Klippen
+2943	landmark	Übertragungsturm der Festung	Vermächtnis
+2944	landmark	Adligen-Weg	Vermächtnis
+2946	landmark	Lager des Wurmmarschalls	Vermächtnis
+2947	waypoint	Wegmarke "Rache der Seele"	Jahai-Klippen
+2948	landmark	Mini-Menagerie	Mythenschreiber-Wagnis
+2949	landmark	Ektoplasmatische Eindämmung	Mythenschreiber-Wagnis
+2950	landmark	Privat-Reservat	Mythenschreiber-Wagnis
+2952	landmark	Rilohn-Fälle	Vermächtnis
+2953	landmark	Zusammenfluss der Elemente	Vermächtnis
+2954	landmark	Archons Rückzug	Vermächtnis
+2955	landmark	Festungskommando	Vermächtnis
+2956	landmark	Zugangsturm der Festung	Vermächtnis
+2957	landmark	Vorhut-Artillerie	Vermächtnis
+2958	landmark	Kormirs Ehrfurcht	Vermächtnis
+2959	landmark	Mirzas Bucht	Vermächtnis
+2960	landmark	Vorhut-Schrottplatz	Vermächtnis
+2961	landmark	Monument zur Rückkehr Palawa Jokos	Vermächtnis
+2962	landmark	Yatendi-Hof	Vermächtnis
+2963	waypoint	Wegmarke Venta-Pass	Jahai-Klippen
+2964	landmark	Kristallhöhle	Vermächtnis
+2967	landmark	Wyvern-Horst	Vermächtnis
+2968	landmark	Mondsichel-Gemeindehaus	Vermächtnis
+2969	waypoint	Wegmarke Zurückeroberte Heilige Halle	Jahai-Klippen
+2971	waypoint	Wegmarke Rennbahn des Verrückten Königs	Rennbahn des Verrückten Königs
+2972	waypoint	Sammelpunkt Rotes Team	Dschinn-Reich
+2973	waypoint	Sammelpunkt Blaues Team	Dschinn-Reich
+2974	landmark	Stille Fälle	Donnerkopf-Gipfel
+2975	landmark	Frischers Freude	Donnerkopf-Gipfel
+2976	landmark	Spießrutenlauf Brechnars	Donnerkopf-Gipfel
+2977	landmark	Festung von Deldrimor	Donnerkopf-Gipfel
+2978	landmark	Grabmal des Konsuls	Donnerkopf-Gipfel
+2979	landmark	Vergessenen-Fälle	Donnerkopf-Gipfel
+2981	landmark	Eisenbrücke	Donnerkopf-Gipfel
+2982	waypoint	Wegmarke Herz der Revolution	Donnerkopf-Gipfel
+2983	landmark	Schleier der Maid	Donnerkopf-Gipfel
+2985	landmark	Weinende Schwestern	Donnerkopf-Gipfel
+2986	landmark	Eisenhammerkreuzung	Donnerkopf-Gipfel
+2987	landmark	Flammenklinge III	Donnerkopf-Gipfel
+2988	landmark	Korsaren-Stand	Donnerkopf-Gipfel
+2989	landmark	Ende der Melodie	Donnerkopf-Gipfel
+2990	landmark	Steinbrücke	Donnerkopf-Gipfel
+2992	landmark	Großes Lyzeum	Donnerkopf-Gipfel
+2993	landmark	Deldrimor-Keller	Donnerkopf-Gipfel
+2994	landmark	Höhle der Betrübnis	Donnerkopf-Gipfel
+2996	landmark	Labyrinthgebirge	Donnerkopf-Gipfel
+2998	landmark	Pfad der Erhabenen	Donnerkopf-Gipfel
+2999	landmark	Drachenklaue	Donnerkopf-Gipfel
+3001	waypoint	Wegmarke Aussichtsdeck	Donnerkopf-Gipfel
+3002	waypoint	Wegmarke Anlegestelle	Donnerkopf-Gipfel
+3003	waypoint	Wegmarke Ende der Geschichte	Donnerkopf-Gipfel
+3004	landmark	Schlackegrube	Donnerkopf-Gipfel
+3005	landmark	Hort des Hammers	Donnerkopf-Gipfel
+3006	landmark	Herz der Schmiede	Donnerkopf-Gipfel
+3008	landmark	Steinfall	Donnerkopf-Gipfel
+3009	landmark	Reservoir der Freiheit	Donnerkopf-Gipfel
+3010	landmark	Zerschmetterte Bucht	Donnerkopf-Gipfel
+3012	landmark	Kaserne	Donnerkopf-Gipfel
+3013	waypoint	Wegmarke Nebelportale	Bastion des Waffenstillstands
+3014	waypoint	Wegmarke Gladiatorengrube	Bastion des Waffenstillstands
+3015	waypoint	Wegmarke Salon-Atrium	Bastion des Waffenstillstands
+3016	waypoint	Wegmarke Nebel-Riss	Nebel-Riss
+3017	landmark	Nebelwächter-Außenposten	Drachensturz
+3018	landmark	Kristallknüppel	Drachensturz
+3019	landmark	Olmakhan-Außenposten	Drachensturz
+3021	landmark	Turm des Dritten	Drachensturz
+3022	landmark	Gefesselter Griff	Drachensturz
+3023	landmark	Himmelsschuppen-Horst	Drachensturz
+3024	landmark	Ruhe des Grenth	Drachensturz
+3025	waypoint	Wegmarke Die Unterwelt	Drachensturz
+3026	waypoint	Wegmarke Verlorene Domäne Melandrus	Drachensturz
+3027	landmark	Leichentor	Drachensturz
+3028	landmark	Chaostor	Drachensturz
+3032	landmark	Torheit des Balthasar	Drachensturz
+3033	landmark	Pakt-Außenposten	Drachensturz
+3034	landmark	Kristallblüten-Außenposten	Drachensturz
+3035	landmark	Widerliche Kanzel	Drachensturz
+3036	landmark	Aschen-Steppe	Drachensturz
+3037	landmark	Talkessel der Klage	Drachensturz
+3038	waypoint	Wegmarke Kommando des Pakts	Drachensturz
+3040	landmark	Fälle des frischen Grüns	Drachensturz
+3041	landmark	Spur der Schlacke	Drachensturz
+3042	landmark	Abgrund des Feuergotts	Drachensturz
+3044	landmark	Luftschiff-Hafen	Drachensturz
+3046	waypoint	Wegmarke Brennender Wald	Drachensturz
+3048	landmark	Grasgrünes Tor	Drachensturz
+3050	landmark	Gluttor	Drachensturz
+3051	landmark	Irdischer Schrein	Schlüssel von Ahdashim
+3052	landmark	Tore von Ahdashim	Schlüssel von Ahdashim
+3054	landmark	Brunnen von Ahdashim	Schlüssel von Ahdashim
+3055	landmark	Brunnen des Schlüssels	Schlüssel von Ahdashim
+3056	landmark	Nirwanas Aufstieg	Schlüssel von Ahdashim
+3057	landmark	Forschungsstation der Abtei	Grothmar-Tal
+3058	landmark	Schmiede Santias	Grothmar-Tal
+3059	landmark	Blutdamm	Grothmar-Tal
+3060	landmark	Werkstatt Auris'	Grothmar-Tal
+3061	landmark	Lager der Asche-Legion	Grothmar-Tal
+3062	landmark	Schreibstube Bangar Todbringers	Grothmar-Tal
+3064	waypoint	Wegmarke Kriegshügel	Grothmar-Tal
+3065	landmark	Militärgefängnis	Grothmar-Tal
+3067	landmark	Festen-Küche	Grothmar-Tal
+3068	landmark	"Kathedrale der Flammen"-Tor	Grothmar-Tal
+3069	landmark	Kolosseum der Teilnehmer	Grothmar-Tal
+3070	landmark	Gunst Aurenes	Grothmar-Tal
+3071	landmark	Herd der Seele	Grothmar-Tal
+3073	landmark	Schrein des Schicksalswissens	Grothmar-Tal
+3074	landmark	Schreibstube des Aufsehers	Grothmar-Tal
+3075	landmark	Bauernhaus Hauersturms	Grothmar-Tal
+3076	landmark	Schänke "Saufbursche"	Grothmar-Tal
+3077	landmark	Versammlungspavillon	Grothmar-Tal
+3079	landmark	Ewiger Kessel	Grothmar-Tal
+3081	waypoint	Wegmarke Auge des Nordens	Auge des Nordens
+3082	landmark	Fahrar der Blut-Legion	Grothmar-Tal
+3084	landmark	Lagezentrum	Grothmar-Tal
+3085	landmark	Blutlagune	Grothmar-Tal
+3086	waypoint	Wegmarke Dalada-Wald	Grothmar-Tal
+3087	landmark	Marktviertel aller Legionen	Grothmar-Tal
+3089	landmark	Aufklärungs-Bucht	Grothmar-Tal
+3090	landmark	Gewölbe des Khan-Ur	Grothmar-Tal
+3093	landmark	Scharfschützen-Platz	Grothmar-Tal
+3095	landmark	Zittertor	Grothmar-Tal
+3096	landmark	Haupttor der Blut-Feste	Grothmar-Tal
+3097	landmark	Bühne der Blut-Legion	Grothmar-Tal
+3098	landmark	Biwak der Musikgruppe	Grothmar-Tal
+3099	waypoint	Wegmarke Blut-Feste	Grothmar-Tal
+3100	landmark	Große Halle	Grothmar-Tal
+3101	landmark	Signalfeuer der Einheit	Grothmar-Tal
+3102	landmark	Verfallene Hütte	Bjora-Sümpfe
+3104	landmark	Wachsamen-Tor	Bjora-Sümpfe
+3105	landmark	Klauen-Warte	Bjora-Sümpfe
+3106	landmark	Tor des Raben	Bjora-Sümpfe
+3108	landmark	Rabenpass	Bjora-Sümpfe
+3109	landmark	Düsterfels-Ruinen	Bjora-Sümpfe
+3111	waypoint	Wegmarke Joras Feste	Bjora-Sümpfe
+3112	landmark	Tore Svanirs	Bjora-Sümpfe
+3113	landmark	Nordwest-Lager der Söhne Svanirs	Bjora-Sümpfe
+3114	landmark	Quartier des Generals	Bjora-Sümpfe
+3115	landmark	Knochenhäuter-Höhle	Bjora-Sümpfe
+3117	landmark	Südost-Lager der Söhne Svanirs	Bjora-Sümpfe
+3118	landmark	Südwest-Lager der Söhne Svanirs	Bjora-Sümpfe
+3120	landmark	Anomale Höhle	Bjora-Sümpfe
+3121	landmark	Nordost-Lager der Söhne Svanirs	Bjora-Sümpfe
+3124	landmark	Bärenschrein	Bjora-Sümpfe
+3125	landmark	Kodan-Schiffswrack	Bjora-Sümpfe
+3126	landmark	Geheimnis der Raben-Tor-Ruinen	Bjora-Sümpfe
+3127	landmark	Kodans Sprung	Bjora-Sümpfe
+3129	waypoint	Wegmarke Sprechen Stiller Wasser	Bjora-Sümpfe
+3130	landmark	Geheimnis des Labyrinths	Bjora-Sümpfe
+3131	landmark	Sifhalla-Ruinen	Bjora-Sümpfe
+3133	landmark	Schrein des tapferen Vielfraßes	Bjora-Sümpfe
+3134	landmark	Schrein des unverwüstlichen Ochsen	Bjora-Sümpfe
+3135	landmark	Höhle der verlorenen Söhne	Bjora-Sümpfe
+3136	landmark	Schrein des wachsamen Adlers	Bjora-Sümpfe
+3137	landmark	Bau des Geflüsters	Bjora-Sümpfe
+3139	landmark	Tränen Kodas	Bjora-Sümpfe
+3140	landmark	Geheimnis des verborgenen Turms	Bjora-Sümpfe
+3141	landmark	Sprechen Stiller Wasser	Bjora-Sümpfe
+3142	landmark	Flüsterwindgrotte	Bjora-Sümpfe
+3144	waypoint	Trupp-Lager	Stahlschmiede (öffentlich)
+3145	waypoint	Thermale Schmiede	Stahlschmiede (öffentlich)
+3146	waypoint	Steinwachentor	Stahlschmiede (öffentlich)
+3147	landmark	Trauerschatten-Fälle	Nieselwald-Küste
+3149	landmark	Wolfskreuzung-Brücke	Nieselwald-Küste
+3150	landmark	Großbaum-Dörfchen	Nieselwald-Küste
+3151	landmark	Soldaten-Quartiere	Nieselwald-Küste
+3152	landmark	Versunkener Schrottplatz	Nieselwald-Küste
+3154	landmark	Bleifuß-Dorf	Nieselwald-Küste
+3155	landmark	Grasgrüne Fälle	Nieselwald-Küste
+3158	landmark	Kaskadia-Hafen	Nieselwald-Küste
+3159	landmark	Petraj-Marktviertel	Nieselwald-Küste
+3161	landmark	Petrajs Rast	Nieselwald-Küste
+3162	landmark	Rotsandstrand	Nieselwald-Küste
+3166	landmark	Vloxen-Mine	Nieselwald-Küste
+3167	landmark	Basislager der Vereinten Legionen	Nieselwald-Küste
+3168	landmark	Eisscherben-Pfad	Nieselwald-Küste
+3169	landmark	Greifen-Säule	Nieselwald-Küste
+3170	landmark	Vloxen-Scherben	Nieselwald-Küste
+3171	landmark	Licht Dwaynas	Nieselwald-Küste
+3172	waypoint	Wegmarke Basislager	Nieselwald-Küste
+3173	landmark	Steinwurzel	Nieselwald-Küste
+3175	landmark	Dunsttor-Friedhof	Nieselwald-Küste
+3176	landmark	Olafson-Gehöft	Nieselwald-Küste
+3177	landmark	Pavillon der Legionen	Nieselwald-Küste
+3179	landmark	Immergrün-Teich	Nieselwald-Küste
+3180	landmark	Adern des Jormag	Nieselwald-Küste
+3181	landmark	Thermoschacht	Nieselwald-Küste
+3183	landmark	Bogenstein-Oberherrschaft-Lager	Nieselwald-Küste
+3184	landmark	Eisblut-Kanal	Nieselwald-Küste
+3186	waypoint	Wegmarke Vorstoßlager	Nieselwald-Küste
+3187	landmark	Refugium der Wildnis	Nieselwald-Küste
+3188	landmark	Der Turm	Nieselwald-Küste
+3189	landmark	Eisen-Beobachtungsposten	Nieselwald-Küste
+3191	landmark	Blätterdach-Aussichtspunkt	Nieselwald-Küste
+3193	landmark	"Vereinte Legionen"-Vorstoßlager	Nieselwald-Küste
+3194	landmark	Scharfschützen-Steilhang	Nieselwald-Küste
+3195	landmark	Eisdrachen-Tor	Nieselwald-Küste
+3196	landmark	Küsten-Oberherrschaft-Lager	Nieselwald-Küste
+3198	landmark	Frostvenen-Oberherrschaft-Lager	Nieselwald-Küste
+3199	landmark	Höhleneingang	Nieselwald-Küste
+3200	landmark	Stein-Bogengänge	Nieselwald-Küste
+3203	waypoint	Wegmarke Drachensturm	Drachensturm (Privater Einsatztrupp)
+3204	waypoint	Nebel-Arena: Sammelpunkt Zuschauer	Rand der Nebel
+3205	waypoint	Nebel-Arena: Sammelpunkt Rotes Team	Rand der Nebel
+3206	waypoint	Nebel-Arena: Sammelpunkt Blaues Team	Rand der Nebel
+3207	waypoint	Pakt-Notwegmarke	Die Verdrehte Marionette (öffentlich)
+3208	waypoint	Pakt-Notwegmarke	Die Verdrehte Marionette (öffentlich)
+3209	waypoint	Pakt-Notwegmarke	Die Verdrehte Marionette (öffentlich)
+3210	landmark	Jadebruderschaft-Versteck	Stadt Neu-Kaineng
+3211	waypoint	Wegmarke Schrottplatz	Die Echowald-Wildnis
+3212	landmark	Kloster des Gefrorenen Meeres	Drachen-Ende
+3213	landmark	Saprophyten-Teich	Die Echowald-Wildnis
+3214	landmark	Geister-Vorhof	Provinz Seitung
+3216	landmark	Salzgischt-Horst	Drachen-Ende
+3217	landmark	Seewachen-Kreuzung	Drachen-Ende
+3219	landmark	Yarrows Warte	Die Echowald-Wildnis
+3220	landmark	Tanasen-Pier	Drachen-Ende
+3221	landmark	Ministerium für Transit	Provinz Seitung
+3222	landmark	Hauptquartier der Ministerien	Stadt Neu-Kaineng
+3223	landmark	Ätherklingen-Lager	Stadt Neu-Kaineng
+3224	landmark	Jadewind-Pause	Drachen-Ende
+3225	landmark	Südliches Umspannwerk	Stadt Neu-Kaineng
+3226	landmark	Kampfarena	Provinz Seitung
+3227	landmark	Hauptquartier des Ministeriums der Sicherheit	Stadt Neu-Kaineng
+3228	landmark	Nördliche Absturzstelle der Ätherklingen	Provinz Seitung
+3229	landmark	Sunjiang-Labor	Stadt Neu-Kaineng
+3230	waypoint	Wegmarke Dorf	Provinz Seitung
+3231	landmark	Vasburg-Zeughaus	Die Echowald-Wildnis
+3232	waypoint	Wegmarke Ernte-Komplex	Drachen-Ende
+3233	landmark	Die Große Schmelze	Drachen-Ende
+3234	waypoint	Wegmarke Jadesteinbruch	Drachen-Ende
+3235	landmark	Friedlicher Aussichtspunkt	Stadt Neu-Kaineng
+3236	landmark	Korstadt-Dorf	Die Echowald-Wildnis
+3237	landmark	Erntetempel	Drachen-Ende
+3238	landmark	Erntetempel-Observatorium	Drachen-Ende
+3240	landmark	Hafen-Markt	Provinz Seitung
+3241	landmark	Wächter-Warte	Drachen-Ende
+3242	landmark	Fischerdorf	Provinz Seitung
+3243	landmark	Goa-Dorf	Die Echowald-Wildnis
+3244	landmark	Glockenpassage	Provinz Seitung
+3246	landmark	Daigo-Mülldeponie	Provinz Seitung
+3247	landmark	Haebaragis Tränen	Stadt Neu-Kaineng
+3248	landmark	Tempel von Zen Daijun	Provinz Seitung
+3249	landmark	Verschlungener Altar	Die Echowald-Wildnis
+3250	landmark	Archivministerium	Stadt Neu-Kaineng
+3251	landmark	Platz der Erfinder	Die Echowald-Wildnis
+3252	landmark	Sprecher-Lager	Drachen-Ende
+3253	landmark	Juno-Brutstätte	Drachen-Ende
+3255	landmark	Garten der Lyssa	Stadt Neu-Kaineng
+3256	unlock	Sammlung: Belagerungsschildkröten-Meisterin Rota	Arborstein
+3258	landmark	Nahpui-Labor	Stadt Neu-Kaineng
+3259	landmark	Mori-Platz	Die Echowald-Wildnis
+3261	landmark	Klostertempel	Provinz Seitung
+3262	landmark	Die Große Jademauer	Drachen-Ende
+3263	waypoint	Wegmarke Kloster	Provinz Seitung
+3264	landmark	Minenstandort JS-02	Drachen-Ende
+3265	landmark	Jade-Denkmal	Provinz Seitung
+3266	landmark	Eisbrut-Ödland	Drachen-Ende
+3267	landmark	Kaiserlicher Aussichtspunkt	Provinz Seitung
+3268	landmark	Schrein des Hanuku	Drachen-Ende
+3269	landmark	Ätherklingen-Zuflucht	Provinz Seitung
+3270	waypoint	Wegmarke Promenade	Stadt Neu-Kaineng
+3271	waypoint	Wegmarke Mori-Dorf	Die Echowald-Wildnis
+3272	landmark	Seitung-Gefängnis	Provinz Seitung
+3273	landmark	Trostlose Höhlen	Provinz Seitung
+3274	waypoint	Wegmarke zu Heltzer	Die Echowald-Wildnis
+3275	landmark	Königshof	Provinz Seitung
+3276	waypoint	Wegmarke Kropa	Die Echowald-Wildnis
+3277	landmark	Hof der Lieder	Die Echowald-Wildnis
+3278	landmark	Außenposten der Jadebruderschaft	Drachen-Ende
+3279	landmark	Logistik-Distrikt	Drachen-Ende
+3280	landmark	Quell der Ältesten	Drachen-Ende
+3281	landmark	Sensali-Schrein	Provinz Seitung
+3282	landmark	Soo-Wons Schutz	Stadt Neu-Kaineng
+3283	landmark	Nieselbucht	Provinz Seitung
+3284	waypoint	Wegmarke Qinkai	Die Echowald-Wildnis
+3285	landmark	Espenwald, Unterebene B1	Die Echowald-Wildnis
+3286	landmark	Deponie 3	Die Echowald-Wildnis
+3287	landmark	Smaragdklippen	Drachen-Ende
+3288	landmark	Schrein der Schlange	Drachen-Ende
+3289	landmark	Tempel der Schildkröte	Drachen-Ende
+3290	landmark	Einsamkeit des Archemorus	Drachen-Ende
+3291	landmark	Tengu-Platz	Stadt Neu-Kaineng
+3292	landmark	Lutgardis-Ruinen	Die Echowald-Wildnis
+3293	landmark	Einsiedlerdock	Die Echowald-Wildnis
+3294	waypoint	Wegmarke Reflexions-Arena	Insel der Reflexion
+3296	landmark	Schrottplatz	Stadt Neu-Kaineng
+3297	landmark	Ewiger Baum	Die Echowald-Wildnis
+3299	landmark	Tempel der Gefallenen	Drachen-Ende
+3300	landmark	Qinkaishi-Fälle	Die Echowald-Wildnis
+3301	landmark	Jade-Figürchen	Stadt Neu-Kaineng
+3302	landmark	Hohle Höhlen	Provinz Seitung
+3303	landmark	Trümmer des Ätherklingen-Flaggschiffs	Provinz Seitung
+3304	landmark	Aurenes Enklave	Provinz Seitung
+3305	landmark	Jade-Monument	Stadt Neu-Kaineng
+3307	landmark	Uralte Gruft	Stadt Neu-Kaineng
+3308	landmark	Tempel der Vorherrschaft	Stadt Neu-Kaineng
+3309	landmark	Altrumm-Minen	Die Echowald-Wildnis
+3310	landmark	Fischerdorf	Provinz Seitung
+3311	landmark	Der alte Dampfladen	Stadt Neu-Kaineng
+3312	landmark	Uralte Archive	Die Echowald-Wildnis
+3313	waypoint	Wegmarke Gefrorenes Meer	Drachen-Ende
+3314	landmark	Alua-Fälle	Drachen-Ende
+3315	waypoint	Wegmarke Reflexions-Docks	Insel der Reflexion
+3317	landmark	Bergmanns Torheit	Drachen-Ende
+3318	landmark	Insel von Hanasha	Stadt Neu-Kaineng
+3319	landmark	Argo-Krabbler	Drachen-Ende
+3320	landmark	Auferstandenen-Chaos	Drachen-Ende
+3321	waypoint	Wegmarke Jadetor	Die Echowald-Wildnis
+3322	landmark	Heilige Halle von Wrunkenstein	Die Echowald-Wildnis
+3323	landmark	Teehaus "Rote Ente"	Stadt Neu-Kaineng
+3324	landmark	Kaiserlicher Wachturm	Provinz Seitung
+3325	landmark	Becken der Gelassenheit	Provinz Seitung
+3326	landmark	Himmelsgucker-Kathedrale	Die Echowald-Wildnis
+3327	landmark	Maler-Plattform	Provinz Seitung
+3328	landmark	Deponie 2	Die Echowald-Wildnis
+3329	landmark	Reaktor-Station	Stadt Neu-Kaineng
+3330	landmark	Aois Warte	Die Echowald-Wildnis
+3331	landmark	Xunlai-Jade-Schrottplatz Außenposten E-1	Die Echowald-Wildnis
+3332	landmark	Qinkai-Flüsschen	Die Echowald-Wildnis
+3333	landmark	Die Jade-Weite	Drachen-Ende
+3334	landmark	Ariannas Warte	Die Echowald-Wildnis
+3336	landmark	Erntebrücke	Drachen-Ende
+3337	landmark	Wärter-Lager	Die Echowald-Wildnis
+3339	landmark	Tae-Jins Anwesen	Stadt Neu-Kaineng
+3341	landmark	Schrein der Ehrfurcht	Provinz Seitung
+3342	waypoint	Wegmarke Reflexions-Kristall	Insel der Reflexion
+3343	landmark	Dreslavs Garten	Die Echowald-Wildnis
+3345	waypoint	Wegmarke Bruderschaft	Drachen-Ende
+3347	landmark	Die Grüne Grotte	Drachen-Ende
+3349	landmark	Deponie 1	Die Echowald-Wildnis
+3350	waypoint	Wegmarke Gartenhöhen	Stadt Neu-Kaineng
+3352	landmark	Xinraes Werft	Drachen-Ende
+3353	waypoint	Wegmarke Ministeriumsviertel	Stadt Neu-Kaineng
+3354	landmark	Katzeninsel	Provinz Seitung
+3355	landmark	Ödland des Zerstörers	Drachen-Ende
+3356	landmark	Kaolai-Turm	Drachen-Ende
+3357	landmark	Westliche Absturzstelle der Ätherklingen	Provinz Seitung
+3358	landmark	Dunstgasse	Stadt Neu-Kaineng
+3359	landmark	Versteinerte Handelsdocks	Stadt Neu-Kaineng
+3360	waypoint	Wegmarke Lutgardis-Platz	Stadt Neu-Kaineng
+3361	landmark	Steinbruchpassage	Drachen-Ende
+3362	landmark	Stadtrand	Provinz Seitung
+3363	landmark	Heilige Halle des Krebses	Drachen-Ende
+3364	landmark	Becken der Ruhe	Stadt Neu-Kaineng
+3365	landmark	Naga-Domäne	Provinz Seitung
+3366	landmark	Seung-Gis Vermächtnis	Stadt Neu-Kaineng
+3367	landmark	Sprecher-Außenposten	Drachen-Ende
+3368	landmark	Sprecher-Refugium	Die Echowald-Wildnis
+3369	landmark	Teleri-Dorf	Die Echowald-Wildnis
+3370	landmark	Gebrandmarkte Höhe	Drachen-Ende
+3372	landmark	Wohnviertel	Drachen-Ende
+3373	landmark	Minenstandort JS-36	Drachen-Ende
+3374	landmark	Schrein der Heiligen Anjeka	Die Echowald-Wildnis
+3375	landmark	Kropa-Dorf	Die Echowald-Wildnis
+3376	landmark	Ost-Bezirk	Stadt Neu-Kaineng
+3377	landmark	Zentralkraftwerk	Stadt Neu-Kaineng
+3379	landmark	Xunlai-Jade-Museum	Drachen-Ende
+3380	landmark	Fischmarkt von Kaineng	Stadt Neu-Kaineng
+3381	landmark	Nördliches Umspannwerk	Stadt Neu-Kaineng
+3384	landmark	Misa-Dorf	Stadt Neu-Kaineng
+3385	landmark	Espenwald-Forschungseinrichtung	Die Echowald-Wildnis
+3386	landmark	Kappa-Unterführung	Stadt Neu-Kaineng
+3387	waypoint	Wegmarke Sprecher	Drachen-Ende
+3388	landmark	Gesichertes Tor	Provinz Seitung
+3389	landmark	Rheas Anlegestelle	Drachen-Ende
+3390	landmark	Hindernisparcours	Provinz Seitung
+3391	landmark	Bruderschafts-Wache	Drachen-Ende
+3392	landmark	Tempel der Schaufler	Die Echowald-Wildnis
+3393	landmark	Ältesten-Horst	Die Echowald-Wildnis
+3394	landmark	Fisch-Brutstätte	Provinz Seitung
+3396	landmark	Flüchtlingslager Xiko	Drachen-Ende
+3399	landmark	Lutgardis-Markt	Stadt Neu-Kaineng
+3400	landmark	Zuflucht von Ione	Drachen-Ende
+3402	landmark	Cylow-Außenposten	Die Echowald-Wildnis
+3403	landmark	Kages Warte	Die Echowald-Wildnis
+3404	landmark	Ehrenmal derer zu Heltzer	Die Echowald-Wildnis
+3405	landmark	Östliche Absturzstelle der Ätherklingen	Provinz Seitung
+3406	landmark	Mordrems Schande	Drachen-Ende
+3407	landmark	Provisorisches MiSi-Lager	Provinz Seitung
+3408	landmark	Verfallener Tempel	Provinz Seitung
+3409	landmark	Eloras Strand	Drachen-Ende
+3410	landmark	Joons Villa	Provinz Seitung
+3411	landmark	Kammer der Geister	Die Echowald-Wildnis
+3412	landmark	Garten der Himmlischen	Stadt Neu-Kaineng
+3413	landmark	Garten der Erleuchtung	Stadt Neu-Kaineng
+3415	landmark	Mi-Shens Labor	Die Echowald-Wildnis
+3416	landmark	Tapferkeits-Schrein	Provinz Seitung
+3417	landmark	Valdhertz-Grüfte	Die Echowald-Wildnis
+3418	landmark	Schiffsfriedhof	Stadt Neu-Kaineng
+3420	landmark	Kuan-Jun-Pavillon	Drachen-Ende
+3421	landmark	Qinkai-Dorf	Die Echowald-Wildnis
+3422	landmark	Sizhou-Halle	Provinz Seitung
+3423	landmark	Haus zu Heltzer	Die Echowald-Wildnis
+3425	landmark	Ihns Gunst	Stadt Neu-Kaineng
+3426	landmark	Lagerhaus-Bezirk	Drachen-Ende
+3427	waypoint	Wegmarke Arborstein	Arborstein
+3428	waypoint	Wegmarke Haiju-Docks	Provinz Seitung
+3429	waypoint	Wegmarke Daigo-Bezirk	Provinz Seitung
+3430	landmark	Tengu-Berglager	Provinz Seitung
+3431	landmark	Erys-Oase	Die Echowald-Wildnis
+3432	landmark	Ätherklingen-Unterschlupf	Die Echowald-Wildnis
+3433	landmark	Geheime Höhle	Die Echowald-Wildnis
+3435	landmark	Verlassener Leuchtturm	Provinz Seitung
+3436	landmark	Halle des Gedenkens	Arborstein
+3437	landmark	Der Bereitschaftsraum	Arborstein
+3438	landmark	Der Horst	Arborstein
+3439	landmark	Langfeder-Platz	Arborstein
+3440	landmark	Sängerbrunnen	Arborstein
+3441	landmark	Gasthaus von Arborstein	Arborstein
+3442	landmark	Kagas Herdfeuer	Arborstein
+3443	landmark	Quartiermeister-Straße	Arborstein
+3444	landmark	Zuflucht der Fünf	Arborstein
+3445	landmark	Falken-Archive	Arborstein
+3446	landmark	Die Börse	Arborstein
+3447	landmark	Canachs Klub	Arborstein
+3448	landmark	Danikas Rast	Arborstein
+3449	waypoint	Wegmarke Pavillon der Tausend Meere	Pavillon der Tausend Meere
+3450	waypoint	Wegmarke Canachs Klub	Arborstein
+3457	waypoint	Wegmarke Turm der Albträume	Der Turm der Albträume (Öffentlich)
+3458	waypoint	Wegmarke Händlerforum	Erinnerungen an das alte Löwenstein
+3459	waypoint	Wegmarke Verschiedene Vorsprünge	Erinnerungen an das alte Löwenstein
+3460	waypoint	Wegmarke Blutküste-Bezirk	Erinnerungen an das alte Löwenstein
+3461	waypoint	Wegmarke Küstenferne	Erinnerungen an das alte Löwenstein
+3462	waypoint	Wegmarke Höhle	Die Schlacht um Löwenstein (privater Einsatztrupp)
+3463	waypoint	Wegmarke östlicher Bezirk	Erinnerungen an das alte Löwenstein
+3464	waypoint	Wegmarke Höhle	Erinnerungen an das alte Löwenstein
+3465	waypoint	Wegmarke Blutküste-Bezirk	Die Schlacht um Löwenstein (privater Einsatztrupp)
+3466	waypoint	Wegmarke Kanalbezirk	Die Schlacht um Löwenstein (privater Einsatztrupp)
+3467	waypoint	Wegmarke Sanctum-Hafen	Erinnerungen an das alte Löwenstein
+3468	waypoint	Wegmarke Gilden-Klippen	Erinnerungen an das alte Löwenstein
+3469	waypoint	Wegmarke Kommodore-Viertel	Erinnerungen an das alte Löwenstein
+3470	waypoint	Wegmarke Fort Marriner	Erinnerungen an das alte Löwenstein
+3471	waypoint	Wegmarke westlicher Bezirk	Erinnerungen an das alte Löwenstein
+3472	waypoint	Wegmarke Torknotenpunkt-Platz	Erinnerungen an das alte Löwenstein
+3473	waypoint	Wegmarke Klaueninsel-Portage	Erinnerungen an das alte Löwenstein
+3474	waypoint	Wegmarke Behemoth-Bresche	Gyala-Senke
+3475	landmark	Schiffswrack-Ausgrabung	Gyala-Senke
+3476	landmark	Luxon-Endpunkt-Fort	Gyala-Senke
+3477	landmark	Absetzbecken	Gyala-Senke
+3478	landmark	Myzelkolonie	Gyala-Senke
+3479	landmark	Stalagmiten-Inselchen	Gyala-Senke
+3480	landmark	Muschelseiten-Ausgrabung	Gyala-Senke
+3481	waypoint	Wegmarke Luxon-Endpunkt	Gyala-Senke
+3482	landmark	Park-Bergbaubetrieb	Gyala-Senke
+3483	landmark	Basis Behemoth-Bresche	Gyala-Senke
+3484	landmark	Anlegestelle des Prospektors	Gyala-Senke
+3485	landmark	Schmelzbecken	Gyala-Senke
+3486	landmark	Basis Jadesäulen-Punkt	Gyala-Senke
+3488	landmark	Fossiler Aussichtspunkt	Gyala-Senke
+3489	landmark	Ley-Linien-Nexus	Gyala-Senke
+3492	waypoint	Wegmarke Jadesäulen-Punkt	Gyala-Senke
+3493	landmark	Park-Steinbruch	Gyala-Senke
+3494	landmark	Ley-Linien-Inselchen	Gyala-Senke
+3495	landmark	Trübsinniger Graben	Gyala-Senke
+3496	landmark	Himmlisches Becken	Gyala-Senke
+3497	landmark	Behemoths Gefälle	Gyala-Senke
+3498	waypoint	Wegmarke Park-Bergbaubetrieb	Gyala-Senke
+3499	landmark	Litoral-Höhle	Gyala-Senke
+3500	landmark	Kristallhöhle	Gyala-Senke
+3501	landmark	Schildkrötengehege	Gyala-Senke
+3502	landmark	Ausgrabungspunkt 7-G	Gyala-Senke
+3503	landmark	Torheit der Schlange	Gyala-Senke
+3504	landmark	Zusammenbruch des Glücks	Gyala-Senke
+3506	landmark	Himmelsschuppen-Stallungen	Der Turm des Zauberers
+3507	landmark	Harmonisches Grün	Amnytas
+3508	landmark	Erhabener Observierungsring	Der Weltenturm: Bastion des Himmlischen
+3509	landmark	Der Zaubererhof	Der Turm des Zauberers
+3510	landmark	Chak-Brutstätte	Himmelswacht-Archipel
+3511	landmark	Droknars Schmiede	Himmelswacht-Archipel
+3512	landmark	Mabons Gemächer	Der Turm des Zauberers
+3514	landmark	Thron des Urteils	Himmelswacht-Archipel
+3515	landmark	Zauberei-Werkstatt	Amnytas
+3516	landmark	Kuriositätenmuseum: Hauptgalerie	Amnytas
+3517	landmark	Tor-Forschungslabor	Himmelswacht-Archipel
+3518	waypoint	Wegmarke Droknars Licht	Himmelswacht-Archipel
+3519	landmark	Mabons Turm	Amnytas
+3520	landmark	Witmans Eisschelf	Himmelswacht-Archipel
+3521	landmark	Insel der Dämmerung	Amnytas
+3522	landmark	Akeems Opfer	Himmelswacht-Archipel
+3523	landmark	Mabons Entschlossenheit	Himmelswacht-Archipel
+3524	landmark	Turm des Zauberers: Südtor	Himmelswacht-Archipel
+3525	landmark	Halle des Edelmuts	Der Turm des Zauberers
+3526	landmark	Kristallbecken	Amnytas
+3527	landmark	Löwenstein-Konnektor	Der Turm des Zauberers
+3529	landmark	Kryptis-Frontlinie	Amnytas
+3531	landmark	Flüchtlingslager Garrenhoff	Himmelswacht-Archipel
+3532	landmark	Briellas Küche	Himmelswacht-Archipel
+3533	landmark	Nest der Matriarchin	Himmelswacht-Archipel
+3535	landmark	Astronomischer Nexusring	Der Weltenturm: Bastion des Himmlischen
+3537	landmark	Falkenschwur	Himmelswacht-Archipel
+3538	landmark	Vass' Mitgefühl	Himmelswacht-Archipel
+3539	waypoint	Wegmarke Bastion der Stärke	Amnytas
+3540	landmark	Halle von Deldrimor	Himmelswacht-Archipel
+3541	landmark	Das Reliquiar	Der Turm des Zauberers
+3543	landmark	Zauberers Ruh	Der Turm des Zauberers
+3544	landmark	Becken der Reflexion	Amnytas
+3546	landmark	Natatorium Obscurus	Amnytas
+3547	landmark	Östlicher Bezirk	Himmelswacht-Archipel
+3548	landmark	Verfallene Ruinen	Himmelswacht-Archipel
+3550	landmark	Trainingsplattform	Der Turm des Zauberers
+3552	waypoint	Wegmarke Promenade von Rata Novus	Himmelswacht-Archipel
+3553	landmark	Gewölbe des Zauberers	Der Turm des Zauberers
+3554	landmark	Dagdas Gemächer	Der Turm des Zauberers
+3556	landmark	Naga-Feldlager	Himmelswacht-Archipel
+3557	landmark	Der eingestürzte Festungswall	Himmelswacht-Archipel
+3558	landmark	Amnytas-Konnektor	Der Turm des Zauberers
+3559	landmark	Kommandozentrale am Leuchtfeuer der Zeitalter	Himmelswacht-Archipel
+3560	landmark	Rissjäger-Lounge	Der Turm des Zauberers
+3562	landmark	Isgarrens Gemächer	Der Turm des Zauberers
+3564	landmark	Lichthimmel-Platz	Der Turm des Zauberers
+3565	landmark	Kuriositätenmuseum: Halle der Riesen	Amnytas
+3566	landmark	Lyhrs Entwurf	Himmelswacht-Archipel
+3567	landmark	Grenzdickicht der Macht	Amnytas
+3569	landmark	Isgarrens Turm	Amnytas
+3570	landmark	Lichtung des Gleichgewichts	Amnytas
+3571	landmark	Aanisahs Windmühle	Himmelswacht-Archipel
+3572	landmark	Botanischer Himmelsgarten	Amnytas
+3573	landmark	Balkors Lager	Himmelswacht-Archipel
+3574	landmark	Gelehrsamkeits-Arkade	Amnytas
+3575	landmark	Fragmentierte Passage	Himmelswacht-Archipel
+3577	landmark	Wolkenblick-See	Himmelswacht-Archipel
+3578	landmark	Droknars Anlegestelle	Himmelswacht-Archipel
+3579	landmark	Dagdas Wahrnehmung	Himmelswacht-Archipel
+3580	landmark	Isgarrens verborgene Bibliothek	Der Turm des Zauberers
+3582	landmark	Gedenkstätte für Vass am Sanitätsplatz	Amnytas
+3583	landmark	Monument für König Jalis Eisenhammer	Himmelswacht-Archipel
+3584	landmark	Der Fallende Sand	Himmelswacht-Archipel
+3586	landmark	Prachtvolle Bibliothek von Amnytas	Amnytas
+3587	landmark	Spirituelles Zentrum	Amnytas
+3588	landmark	Tempel von Glint	Himmelswacht-Archipel
+3589	landmark	Absturz der Sturmtochter	Himmelswacht-Archipel
+3590	landmark	Himmlischer Kontrollring	Der Weltenturm: Bastion des Himmlischen
+3591	landmark	Verlassenes Labor	Himmelswacht-Archipel
+3592	landmark	Westliche Forschungseinrichtungen	Himmelswacht-Archipel
+3593	landmark	Großer Debattiersaal	Amnytas
+3594	waypoint	Wegmarke Bastion des Himmlischen	Amnytas
+3595	landmark	Lyhrs Turm	Amnytas
+3596	landmark	Das Risswerk	Amnytas
+3597	landmark	Malheur	Amnytas
+3598	waypoint	Wegmarke Lager der Astralwache	Himmelswacht-Archipel
+3599	landmark	Schmiede der Zeitlosigkeit	Der Turm des Zauberers
+3600	landmark	Bastionsweiher	Amnytas
+3601	landmark	Herz des Turms	Der Weltenturm: Bastion des Himmlischen
+3602	landmark	Erhabene Ruinen	Himmelswacht-Archipel
+3603	landmark	Meditationskreis überm Wasser	Amnytas
+3604	landmark	Einsame Spitze	Amnytas
+3605	waypoint	Wegmarke Flüchtlingslager Garrenhoff	Himmelswacht-Archipel
+3606	landmark	Der Lichtkristall	Himmelswacht-Archipel
+3608	landmark	Brücke zwischen den Welten	Himmelswacht-Archipel
+3609	landmark	Mystische Passage	Der Turm des Zauberers
+3610	landmark	Astralwachen-Trainingsanlagen	Amnytas
+3611	landmark	Himmelswacht-Beobachtungsposten	Himmelswacht-Archipel
+3614	landmark	Thaumaturgie-Park	Amnytas
+3615	waypoint	Wegmarke Turm-Innenhof	Der Turm des Zauberers
+3616	landmark	N.-K. Sendeterminal Beta	Himmelswacht-Archipel
+3617	landmark	Traum-Konnektor	Der Turm des Zauberers
+3618	landmark	Innenhof der wachsenden Stärke	Amnytas
+3619	landmark	Trainingspavillon	Himmelswacht-Archipel
+3620	landmark	Kartografie-Kammer	Amnytas
+3621	landmark	Die Veranda	Amnytas
+3622	landmark	Die Krankenstation	Amnytas
+3623	landmark	Keller der Arkana	Amnytas
+3624	landmark	Zweifelhaftes Inselchen	Amnytas
+3625	landmark	Kreis der Rituale	Amnytas
+3626	landmark	Akeems Turm	Amnytas
+3627	waypoint	Wegmarke Leuchtfeuer der Zeitalter	Himmelswacht-Archipel
+3628	landmark	Die Brennende Festung	Himmelswacht-Archipel
+3629	landmark	Meditationskreis am Naturgestade	Amnytas
+3630	landmark	Lyhrs Gemächer	Der Turm des Zauberers
+3631	landmark	Flüchtlingsklinik	Der Turm des Zauberers
+3632	landmark	MiSi-Serverraum	Himmelswacht-Archipel
+3633	landmark	Reserve-Arsenal	Himmelswacht-Archipel
+3634	landmark	Esmes Aussichtspunkt	Himmelswacht-Archipel
+3635	landmark	Ruinen von Rhawat	Himmelswacht-Archipel
+3636	waypoint	Wegmarke Bastion des Natürlichen	Amnytas
+3637	landmark	Verborgener Wasserfall	Himmelswacht-Archipel
+3639	landmark	Labor des Zusammenbrauers	Amnytas
+3640	landmark	Farisan-Dorf	Himmelswacht-Archipel
+3641	landmark	Eroberter Platz	Himmelswacht-Archipel
+3644	landmark	Insel der Erkenntnis	Amnytas
+3645	waypoint	Wegmarke Bastion des Gleichgewichts	Amnytas
+3646	landmark	Relikt-Sammellager	Amnytas
+3647	waypoint	Wegmarke Falkenschwur	Himmelswacht-Archipel
+3648	landmark	Turmschatten-Lagune	Amnytas
+3649	landmark	Speisesaal der Astralwache	Himmelswacht-Archipel
+3650	waypoint	Wegmarke Bastion des Wissens	Amnytas
+3652	landmark	Vass' Turm	Amnytas
+3654	waypoint	Wegmarke Beobachtungslager	Himmelswacht-Archipel
+3655	waypoint	Wegmarke Bastion des Obskuren	Amnytas
+3656	landmark	Die Unterwege	Amnytas
+3657	landmark	Lager der defensiven Operationen	Amnytas
+3658	landmark	Blick der Erinnerung	Der Turm des Zauberers
+3660	landmark	Kreaturen-Gehege	Amnytas
+3661	landmark	Das Wolkenmeer	Amnytas
+3663	landmark	Kosmischer Theaterring	Der Weltenturm: Bastion des Himmlischen
+3664	landmark	Astralwachen-Kaserne	Der Turm des Zauberers
+3666	landmark	Zaubererprüfung	Der Turm des Zauberers
+3667	landmark	Monument für den Orden	Himmelswacht-Archipel
+3668	landmark	Lagezentrum	Der Turm des Zauberers
+3669	landmark	Der Zerbrochene Turm	Himmelswacht-Archipel
+3670	landmark	Seemanns Wehklage	Himmelswacht-Archipel
+3671	landmark	Wutentbrannte Umarmung	Heitors Tor: Heitors Territorium
+3672	landmark	Weiher der ewigen Nacht	Zwangsweise: Heitors Territorium
+3673	landmark	Baum der Trauer	Heitors Tor: Heitors Territorium
+3674	landmark	Die Fäulnis	Heitors Tor: Heitors Territorium
+3675	landmark	Baum der vielen Gesichter	Zwangsweise: Heitors Territorium
+3676	landmark	Heitors Schlund	Heitors Tor: Heitors Territorium
+3677	landmark	Der Jammernde Abgrund	Heitors Tor: Heitors Territorium
+3678	landmark	Heitors Tor	Heitors Tor: Heitors Territorium
+3682	landmark	Grämliche Felswand	Heitors Tor: Heitors Territorium
+3683	landmark	Senke der Begehrlichen	Heitors Tor: Heitors Territorium
+3684	landmark	Die Säulen von Mosyn	Zwangsweise: Heitors Territorium
+3685	landmark	Astralwachen-Lager	Zwangsweise: Heitors Territorium
+3686	waypoint	Wegmarke Astralwachen-Lager	Inneres Nayos
+3687	landmark	Verlorener Altar	Zwangsweise: Heitors Territorium
+3688	landmark	Der Aufsteigende Traum	Heitors Tor: Heitors Territorium
+3689	landmark	Der Spalt	Heitors Tor: Heitors Territorium
+3690	landmark	Der südliche Extraktor	Heitors Tor: Heitors Territorium
+3691	landmark	Der nördliche Extraktor	Heitors Tor: Heitors Territorium
+3692	landmark	Horst des Himmelskönigs	Heitors Tor: Heitors Territorium
+3693	landmark	Die Wasser des Bedauerns	Heitors Tor: Heitors Territorium
+3694	landmark	Das Becken des Geflüsters	Heitors Tor: Heitors Territorium
+3695	landmark	Seufzerbrücke	Inneres Nayos
+3696	landmark	Tempel der Charybda	Inneres Nayos
+3698	landmark	Wasser des Ersten Traums	Inneres Nayos
+3699	landmark	Mosyns Erholung	Inneres Nayos
+3700	landmark	Prozession der Königin	Inneres Nayos
+3701	landmark	Isoliertes Grasland	Inneres Nayos
+3702	waypoint	Wegmarke Vorstoß-Biwak	Inneres Nayos
+3703	landmark	Die Verderbte Säule	Inneres Nayos
+3704	landmark	Flussversteck	Inneres Nayos
+3705	landmark	Die Baue	Inneres Nayos
+3707	landmark	Bogengang der Gefallenen Helden	Inneres Nayos
+3708	landmark	Weg der Uralten	Inneres Nayos
+3709	landmark	Gründerfeste	Inneres Nayos
+3711	landmark	Sekundäre Extraktoren	Inneres Nayos
+3712	landmark	Der Betrauerte Hof	Inneres Nayos
+3713	landmark	Abendrotmarsch	Inneres Nayos
+3714	landmark	Die Sammelgründe	Inneres Nayos
+3715	landmark	Brunnen der Qual	Inneres Nayos
+3716	landmark	Kolosseum des Mitternachtskönigs	Inneres Nayos
+3717	landmark	Hain der Ersten Kryptis	Inneres Nayos
+3719	landmark	Becken der Verlorenen Träume	Inneres Nayos
+3721	landmark	Entlegener Teich	Inneres Nayos
+3722	landmark	Die Königliche Brutstätte	Inneres Nayos
+3723	landmark	Rat der Häuser	Inneres Nayos
+3724	landmark	Balkon der Schöpfung	Inneres Nayos
+3725	landmark	Reliquiar der Auserwählten	Inneres Nayos
+3726	landmark	Der Mitternachtsthron	Inneres Nayos
+3727	landmark	Bühne der Träumer	Inneres Nayos
+3728	landmark	Balkon der Erlösung	Inneres Nayos
+3729	landmark	Der Traumfilter	Inneres Nayos
+3731	landmark	Kammer der Rehabilitierung	Inneres Nayos
+3732	waypoint	Notwegmarke Aussichtspunkt, C	Ewige Schlachtfelder
+3733	waypoint	Notwegmarke Garnison, B	Alpine Grenzlande
+3734	waypoint	Notwegmarke Brennende Gruft, B	Wüsten-Grenzlande
+3735	waypoint	Notwegmarke Stoischer Festungswall, C	Wüsten-Grenzlande
+3736	waypoint	Notwegmarke Schloss Steinnebel, C	Ewige Schlachtfelder
+3737	waypoint	Notwegmarke Tal, C	Ewige Schlachtfelder
+3738	waypoint	Notwegmarke Schreckensfall-Bucht, B	Alpine Grenzlande
+3739	waypoint	Notwegmarke Schloss Steinnebel, B	Ewige Schlachtfelder
+3740	waypoint	Notwegmarke Fischadler-Palast, C	Wüsten-Grenzlande
+3741	waypoint	Notwegmarke Askalion-Hügel, B	Alpine Grenzlande
+3742	waypoint	Notwegmarke Tal, B	Ewige Schlachtfelder
+3743	waypoint	Notwegmarke Tiefland, B	Ewige Schlachtfelder
+3744	waypoint	Notwegmarke Garnison, B	Alpine Grenzlande
+3745	waypoint	Notwegmarke Aufstiegsbucht, B	Alpine Grenzlande
+3746	waypoint	Notwegmarke Stoischer Festungswall, B	Wüsten-Grenzlande
+3747	waypoint	Notwegmarke Askalion-Hügel, C	Alpine Grenzlande
+3748	waypoint	Notwegmarke Tiefland, C	Ewige Schlachtfelder
+3749	waypoint	Notwegmarke Fischadler-Palast, B	Wüsten-Grenzlande
+3750	waypoint	Notwegmarke Shadaran-Hügel, B	Alpine Grenzlande
+3751	waypoint	Notwegmarke Garnison, C	Alpine Grenzlande
+3752	waypoint	Notwegmarke Garnison, C	Alpine Grenzlande
+3753	waypoint	Notwegmarke Schreckensfall-Bucht, C	Alpine Grenzlande
+3754	waypoint	Notwegmarke Aufstiegsbucht, C	Alpine Grenzlande
+3755	waypoint	Notwegmarke Aussichtspunkt, B	Ewige Schlachtfelder
+3756	waypoint	Notwegmarke Brennende Gruft, C	Wüsten-Grenzlande
+3757	waypoint	Notwegmarke Shadaran-Hügel, C	Alpine Grenzlande
+3758	waypoint	Wegmarke Erntehöhle	Tiefland-Küste
+3759	landmark	Die lauernde Quelle	Janthir Syntri
+3760	landmark	Faulige Fluten	Tiefland-Küste
+3761	landmark	Blutstein-Forschungslager	Janthir Syntri
+3763	landmark	Die Erntesteine	Janthir Syntri
+3764	landmark	Wanderling-Gehege	Tiefland-Küste
+3765	landmark	Schillerloch	Tiefland-Küste
+3767	waypoint	Wegmarke Sammlersruh	Janthir Syntri
+3768	waypoint	Wegmarke Schwärendes Becken	Janthir Syntri
+3769	landmark	Ansitz des Lampenanzünders	Tiefland-Küste
+3772	landmark	Narbenwald-Tiefen	Janthir Syntri
+3773	landmark	Verbrühender Geysir	Tiefland-Küste
+3774	landmark	Waldland-Hölzchen	Tiefland-Küste
+3775	landmark	Stacheltals Haus	Tiefland-Küste
+3776	landmark	Sommersturm-Wacht	Janthir Syntri
+3777	landmark	Derby-Gelände	Tiefland-Küste
+3778	landmark	Tundra-Steppe	Tiefland-Küste
+3780	landmark	Seichter Nebenfluss	Janthir Syntri
+3781	waypoint	Wegmarke Heimstatt	Herdglut
+3782	landmark	Troll-Heck	Tiefland-Küste
+3784	landmark	Zuversicht der Königin	Tiefland-Küste
+3785	waypoint	Wegmarke Thermalquellen	Tiefland-Küste
+3786	landmark	Delta-Gabelung	Tiefland-Küste
+3787	landmark	Rheas Warte	Janthir Syntri
+3788	landmark	Die Unsterbliche Eiche	Janthir Syntri
+3789	landmark	Iboga-Bau	Tiefland-Küste
+3790	landmark	Fischerbreite	Tiefland-Küste
+3791	landmark	Bergwerk	Herdglut
+3792	landmark	Lachsgeflatter	Tiefland-Küste
+3793	landmark	Sturm-Forschungslager	Janthir Syntri
+3794	landmark	Höhlenschmiede	Tiefland-Küste
+3795	landmark	Jagdgründe	Janthir Syntri
+3796	landmark	Der Schäumende Morast	Janthir Syntri
+3797	landmark	Kathedrale der Gesegneten	Janthir Syntri
+3798	landmark	Der Beobachtungsposten	Janthir Syntri
+3799	landmark	Stille Flucht	Janthir Syntri
+3801	landmark	Ha'ar-Lichtung	Tiefland-Küste
+3802	landmark	Das Atrium	Janthir Syntri
+3803	landmark	Dellams Bucht	Janthir Syntri
+3804	landmark	Felswand-Beobachtungsposten	Janthir Syntri
+3806	landmark	Dröge Flechtes Haus	Tiefland-Küste
+3807	waypoint	Wegmarke Ernteküste	Tiefland-Küste
+3808	landmark	Der Tisch der Zwillinge	Janthir Syntri
+3809	landmark	Donnerbucht	Janthir Syntri
+3810	landmark	Die Geformten Lande	Janthir Syntri
+3811	landmark	Vergrabenes Sakrament	Janthir Syntri
+3812	landmark	Ernte-Beete	Tiefland-Küste
+3813	landmark	Kampftanz-Strand	Janthir Syntri
+3814	landmark	Athenäum der Wunder	Janthir Syntri
+3815	landmark	Alter Platz von Gavril	Janthir Syntri
+3816	landmark	Fahle Auroras Haus	Tiefland-Küste
+3817	landmark	Fels der toten Liebenden	Janthir Syntri
+3818	landmark	Tiefland-Thermalquellen	Tiefland-Küste
+3819	landmark	Reptilia-Becken	Tiefland-Küste
+3821	landmark	Weg zur Erlösung	Janthir Syntri
+3822	landmark	Der Verblichene Nacken	Janthir Syntri
+3823	landmark	Der erste Blutbaum	Janthir Syntri
+3824	landmark	Bootshaus	Tiefland-Küste
+3825	landmark	Nivermer-Bächlein	Janthir Syntri
+3826	landmark	Runzel-Auen	Janthir Syntri
+3827	landmark	Verwitterter Engpass	Janthir Syntri
+3828	landmark	Springer-Gipfel	Tiefland-Küste
+3829	landmark	Bergpass-Beobachtungsposten	Janthir Syntri
+3833	landmark	Das Gasthaus	Janthir Syntri
+3834	landmark	Madekopf-Strand	Janthir Syntri
+3835	waypoint	Wegmarke Wanderling-Außenposten	Tiefland-Küste
+3838	landmark	Fischerdorf-Aquarium	Tiefland-Küste
+3839	landmark	Der zweite Blutbaum	Janthir Syntri
+3840	landmark	Ablauf-Fleck	Tiefland-Küste
+3841	landmark	Zündel-Ödland	Janthir Syntri
+3842	landmark	Fälle der Göttlichkeit	Tiefland-Küste
+3843	landmark	Überwinterungsgrotte	Tiefland-Küste
+3845	landmark	Verwüstete Untiefen	Janthir Syntri
+3846	landmark	Die Kathedrale des Blutes	Janthir Syntri
+3847	landmark	Opferstätte	Janthir Syntri
+3848	landmark	Donnerbucht-Punkt	Janthir Syntri
+3849	landmark	Erlenbucht	Tiefland-Küste
+3850	landmark	Gasthaus zur Kältestarre	Tiefland-Küste
+3851	landmark	Springers Rückzugsort	Tiefland-Küste
+3852	landmark	Standfeste Erles Haus	Tiefland-Küste
+3853	landmark	Flüsternde Senken	Janthir Syntri
+3854	landmark	Zerstörerischer Spalt	Janthir Syntri
+3855	landmark	Bagu-Höhle	Tiefland-Küste
+3856	landmark	Bienenflug-Hölzchen	Tiefland-Küste
+3857	landmark	Astralwachen-Mondlager	Tiefland-Küste
+3858	landmark	Breiter Kraters Zimmer	Tiefland-Küste
+3859	landmark	Basiliskenfälle	Tiefland-Küste
+3860	landmark	Holzfällerhöhle	Tiefland-Küste
+3861	landmark	Sägemühle	Herdglut
+3862	landmark	Jäger-Hochebene	Tiefland-Küste
+3863	landmark	Herrenhaus des Grausamen Hundes	Janthir Syntri
+3864	landmark	Valravn-Ansitz	Tiefland-Küste
+3865	landmark	Sammlersruh	Janthir Syntri
+3867	landmark	Valravn-Posten	Tiefland-Küste
+3868	landmark	Park-Pavillon	Tiefland-Küste
+3869	landmark	Bärentatzen-Felder	Tiefland-Küste
+3870	landmark	Springers Basis	Tiefland-Küste
+3871	landmark	Hurtiger Lahars Wohnstätte	Tiefland-Küste
+3872	landmark	Garten von Loetor	Janthir Syntri
+3873	landmark	Der infizierte Quagg	Janthir Syntri
+3874	landmark	Zerklüftete Stufen	Tiefland-Küste
+3875	landmark	Die Werkstatt	Herdglut
+3876	landmark	Lagerfeuerhütte	Tiefland-Küste
+3877	landmark	Amphibien-Knoten	Tiefland-Küste
+3878	landmark	Leichnam des Tiefenkriechers	Janthir Syntri
+3879	waypoint	Wegmarke Astralwachen-Mondlager	Tiefland-Küste
+3880	landmark	Warghöhle	Tiefland-Küste
+3881	landmark	Gezeiten-Heck	Tiefland-Küste
+3882	waypoint	Wegmarke Geplagte Ebene	Janthir Syntri
+3883	landmark	Weg nach Balrior	Janthir Syntri
+3884	waypoint	Wegmarke Blutroter Krater	Janthir Syntri
+3885	landmark	Hoher Wellenkamms Haus	Tiefland-Küste
+3886	waypoint	Wegmarke Herbsttal	Tiefland-Küste
+3887	landmark	Schlamm-Serpentine	Tiefland-Küste
+3888	landmark	Pilzwald	Tiefland-Küste
+3889	landmark	Der dritte Blutbaum	Janthir Syntri
+3890	landmark	Der vierte Blutbaum	Janthir Syntri
+3891	landmark	Bauernhof	Herdglut
+3892	landmark	Spürnasen-Rauf-Arena	Tiefland-Küste
+3893	landmark	Wanderling-Außenposten	Tiefland-Küste
+3894	landmark	Malmer-Knochengrube	Tiefland-Küste
+3895	landmark	Greers Labor	Konvergenz: Berg Balrior (privater Einsatztrupp)
+3896	landmark	Balrior-Höhle	Berg Balrior
+3897	landmark	Balriors Schlund	Berg Balrior
+3898	landmark	Magma-Zusammenfluss	Konvergenz: Berg Balrior (privater Einsatztrupp)
+3899	landmark	Klopfer-Standort Westliche Anlegestelle	Konvergenz: Berg Balrior (privater Einsatztrupp)
+3900	landmark	Klopfer-Standort Nördliche Anlegestelle	Konvergenz: Berg Balrior (privater Einsatztrupp)
+3901	waypoint	Wegmarke Nebelgewölbe	Nebelgewölbe
+3902	landmark	Decimas Gewitterzone	Konvergenz: Berg Balrior (privater Einsatztrupp)
+3903	landmark	Westliche Anlegestelle	Berg Balrior
+3904	landmark	Südliche Anlegestelle	Berg Balrior
+3905	landmark	Nördliche Anlegestelle	Berg Balrior
+3906	landmark	Eldrin-Querung	Konvergenz: Berg Balrior (privater Einsatztrupp)
+3907	landmark	Klopfer-Standort Südliche Anlegestelle	Konvergenz: Berg Balrior (privater Einsatztrupp)
+3909	landmark	Klopfer-Standort Balrior-Höhle	Konvergenz: Berg Balrior (privater Einsatztrupp)
+3910	landmark	Basislager	Konvergenz: Berg Balrior (privater Einsatztrupp)
+3911	landmark	Uras Thron	Konvergenz: Berg Balrior (privater Einsatztrupp)
+3912	landmark	Klopfer-Standort Balriors Schlund	Konvergenz: Berg Balrior (privater Einsatztrupp)
+3913	landmark	Die Obsidian-Narbe	Nebelbrand-Ödland
+3914	landmark	Der Vergoldete Zugang	Nebelbrand-Ödland
+3915	landmark	Die Wacht am See	Nebelbrand-Ödland
+3916	landmark	Yagons Geschenk	Nebelbrand-Ödland
+3917	landmark	Die Kanalisierungskammer	Nebelbrand-Ödland
+3918	landmark	Valravns Warte	Nebelbrand-Ödland
+3919	landmark	Ruinen-Außenposten	Nebelbrand-Ödland
+3920	waypoint	Sammelpunkt der Allianz	Nebelbrand-Ödland
+3921	landmark	Altar der Verfluchten	Nebelbrand-Ödland
+3922	landmark	Die Obsidian-Erhebung	Nebelbrand-Ödland
+3923	landmark	Bergsee des Wahren Blicks	Nebelbrand-Ödland
+3925	landmark	Konstrukt-Friedhof	Nebelbrand-Ödland
+3926	landmark	Celsas Obstgarten	Nebelbrand-Ödland
+3929	landmark	Sauls Vision	Nebelbrand-Ödland
+3930	landmark	Schmiede des Blut-Phänoms	Nebelbrand-Ödland
+3931	landmark	Die Verschleierte Bibliothek	Nebelbrand-Ödland
+3932	landmark	Eingestürzter Torbogen	Nebelbrand-Ödland
+3933	landmark	Halle des Abgangs	Nebelbrand-Ödland
+3934	landmark	Die Ungesehene Passage	Nebelbrand-Ödland
+3935	landmark	Südliche Organkammer	Bava Nisos
+3936	landmark	Vergoldetes Forum	Bava Nisos
+3937	waypoint	Wegmarke Mantels Ankunft	Bava Nisos
+3938	landmark	Nördliche Organkammer	Bava Nisos
+3939	landmark	Nebeltor	Bava Nisos
+3940	landmark	Die Vergoldete Straße	Bava Nisos
+3941	landmark	Spiegel-Nexus	Bava Nisos
+3944	landmark	Beginn des Schlunds	Bava Nisos
+3945	landmark	Das Getretene Forum	Bava Nisos
+3947	landmark	Ende des Schlunds	Bava Nisos
+3948	landmark	Allianz-Lager	Bava Nisos
+3949	waypoint	Wegmarke Verborgener Knoten	Bava Nisos
+3950	landmark	Himmelblaue Tiefen	Strand der Wracks
+3951	landmark	Geweihte Piazza	Sternenlicht-Gehölz
+3952	landmark	Bauernhof	Insel Comosus
+3953	landmark	Zurückerobertes Lyzeum	Sternenlicht-Gehölz
+3954	vista	Rumpfgarten-Panorama	Strand der Wracks
+3955	landmark	Sprühnebel-Grube	Strand der Wracks
+3956	landmark	Beschauliche Fälle	Sternenlicht-Gehölz
+3957	landmark	Hammerhart-Batterie	Strand der Wracks
+3958	landmark	Verlorene Grotte	Sternenlicht-Gehölz
+3959	landmark	Dornblüte-Klamm	Strand der Wracks
+3960	landmark	Ausgrabungsstätte Gamma	Sternenlicht-Gehölz
+3961	landmark	Sternengrotte-Schweberochenweg	Strand der Wracks
+3962	landmark	Die Nimmerfälle	Strand der Wracks
+3963	landmark	Bergwerk	Insel Comosus
+3964	landmark	Borne der Segnungen	Sternenlicht-Gehölz
+3965	landmark	Die Großen Kaskaden	Sternenlicht-Gehölz
+3966	landmark	Schrein der Verlorenen	Sternenlicht-Gehölz
+3967	landmark	Verlassene Vorkammer	Sternenlicht-Gehölz
+3968	landmark	Verbotene Kammer	Sternenlicht-Gehölz
+3970	landmark	Canachs Kaschemme	Strand der Wracks
+3971	landmark	Unterirdische Forschungseinrichtung der Inquestur	Strand der Wracks
+3972	landmark	Blaues Loch	Strand der Wracks
+3973	landmark	Liliensee	Sternenlicht-Gehölz
+3974	landmark	Sternenlicht-Marsch	Sternenlicht-Gehölz
+3975	landmark	Eingebettetes Gelege	Sternenlicht-Gehölz
+3976	landmark	Gesplitterte Säulen	Sternenlicht-Gehölz
+3977	landmark	Lilienbach-Kaskade	Strand der Wracks
+3978	waypoint	Wegmarke Jäger-Lager	Sternenlicht-Gehölz
+3979	landmark	"Überwucherter Kanal"-Schweberochenweg	Strand der Wracks
+3980	landmark	Vorderdeckfelsen	Strand der Wracks
+3981	landmark	Das gefallene Tor	Sternenlicht-Gehölz
+3982	landmark	Großer Ohwunderbaum	Strand der Wracks
+3983	waypoint	Wegmarke Heimstatt	Insel Comosus
+3984	landmark	Zerbrochener Turm	Sternenlicht-Gehölz
+3985	waypoint	Wegmarke Canachs Kaschemme	Strand der Wracks
+3986	landmark	Versteckter Aquifer	Sternenlicht-Gehölz
+3988	landmark	Geheime Quelle	Sternenlicht-Gehölz
+3989	landmark	Kojenheim-Platz	Strand der Wracks
+3991	landmark	Inquestur-Bergbaubetrieb	Strand der Wracks
+3992	landmark	Zwillingsgeysire	Sternenlicht-Gehölz
+3993	landmark	Kernprozessor	Sternenlicht-Gehölz
+3994	landmark	Purpurblatt-Brunnen	Strand der Wracks
+3995	landmark	Grog-Krug	Strand der Wracks
+3996	waypoint	Wegmarke Dunkler Leviathan	Strand der Wracks
+3997	landmark	Versammlung der Behüteten	Strand der Wracks
+3998	waypoint	Wegmarke Abtei-Expedition	Sternenlicht-Gehölz
+3999	landmark	Schoß des Riesen	Sternenlicht-Gehölz
+4000	landmark	Inquestur-Einschlussgehege	Strand der Wracks
+4001	landmark	Sternenborn	Sternenlicht-Gehölz
+4002	landmark	Weinende Fälle	Sternenlicht-Gehölz
+4003	landmark	Gewundene Freistatt	Sternenlicht-Gehölz
+4005	landmark	Geheiligtes Archiv	Sternenlicht-Gehölz
+4006	landmark	Der Beuterpfad	Strand der Wracks
+4007	landmark	Schwebender Hain	Strand der Wracks
+4009	landmark	Leystein-Kap	Strand der Wracks
+4011	landmark	Sternenlicht-Treppe	Strand der Wracks
+4012	landmark	Probenaufbewahrung	Sternenlicht-Gehölz
+4013	landmark	Die Werkstatt	Insel Comosus
+4015	landmark	Dorfplatz Rumpfgarten	Strand der Wracks
+4016	landmark	Die Eröffnungssalve	Sternenlicht-Gehölz
+4017	landmark	Treibholzgrotte-Schweberochenweg	Strand der Wracks
+4018	landmark	Prioritäts-Probenaufbewahrung	Sternenlicht-Gehölz
+4019	landmark	Bogengang der Würdigen	Sternenlicht-Gehölz
+4020	landmark	Vorratshöhle der Inquestur	Strand der Wracks
+4021	landmark	Prismatische Fälle	Sternenlicht-Gehölz
+4022	landmark	Matrosenherz	Strand der Wracks
+4023	landmark	Leuchtende Lichtung	Strand der Wracks
+4024	landmark	Dunkler Leviathan	Strand der Wracks
+4025	landmark	Artesische Ley-Quelle	Sternenlicht-Gehölz
+4026	landmark	Geistergrotte	Sternenlicht-Gehölz
+4027	landmark	Der Strandbaum	Strand der Wracks
+4028	landmark	Freibeuter-Durchgang	Strand der Wracks
+4029	landmark	Grünwurzelgrotte-Schweberochenweg	Strand der Wracks
+4030	landmark	Behüteter Weg	Strand der Wracks
+4031	landmark	Verstärkung der Gebäudefestigkeit	Strand der Wracks
+4032	waypoint	Wegmarke Stützpunkt-Biwak	Sternenlicht-Gehölz
+4033	landmark	Das Gleichgewicht der Seelen	Sternenlicht-Gehölz
+4035	landmark	Sägemühle	Insel Comosus
+4037	landmark	Der Wachenraum	Strand der Wracks
+4038	landmark	Ruinen-Hauptschiff	Sternenlicht-Gehölz
+4039	landmark	Vorgeschobenes Basislager Bravo	Sternenlicht-Gehölz
+4040	landmark	Das letzte Gewölbe	Sternenlicht-Gehölz
+4041	landmark	Morgenrot-Bug	Strand der Wracks
+4042	landmark	Quell der Wahrheit	Sternenlicht-Gehölz
+4043	landmark	Tränen des Schiffbrüchigen	Strand der Wracks
+4044	waypoint	Wegmarke Rumpfgarten-Pier	Strand der Wracks
+4046	landmark	Zersprungener Deckstein	Sternenlicht-Gehölz
+4047	landmark	Funkelndes Refugium	Sternenlicht-Gehölz
+4048	landmark	Wald-Wiege	Sternenlicht-Gehölz
+4049	landmark	Kleinflügelteich	Strand der Wracks
+4050	landmark	Krähennest	Strand der Wracks
+4051	landmark	Kokosnusshain	Strand der Wracks
+4052	landmark	Choya-Konklave	Sternenlicht-Gehölz
+4053	landmark	Seneschall-Sand	Strand der Wracks
+4054	landmark	Himmelsschwelle	Sternenlicht-Gehölz
+4055	landmark	Das Motorbecken	Sternenlicht-Gehölz
+4056	landmark	Tiefenwald-Außenposten	Ewigkeitsgarten
+4057	landmark	Verlassenes Inquestur-Lager	Ewigkeitsgarten
+4058	landmark	Der Erste Älteste	Ewigkeitsgarten
+4059	landmark	Die Tier-Apotheke	Ewigkeitsgarten
+4060	landmark	Westlicher Außenposten	Ewigkeitsgarten
+4061	landmark	Baufälliges Auditorium	Ewigkeitsgarten
+4062	landmark	Gardesanos Atelier	Ewigkeitsgarten
+4063	landmark	Luces Garten	Ewigkeitsgarten
+4065	landmark	Supra Fortis	Ewigkeitsgarten
+4066	landmark	Tor-Wasserfall	Ewigkeitsgarten
+4067	landmark	Issvanos Reliquiar	Ewigkeitsgarten
+4068	waypoint	Wegmarke Tiefenwald-Außenposten	Ewigkeitsgarten
+4069	landmark	Arkanologische Überwachungsstation	Ewigkeitsgarten
+4070	landmark	Miezhai-Bau	Ewigkeitsgarten
+4071	landmark	Ley-beleuchtete Zuflucht	Ewigkeitsgarten
+4072	landmark	Bröckelndes Bauwerk	Ewigkeitsgarten
+4073	landmark	Käfer-Galerie	Ewigkeitsgarten
+4075	landmark	Weg des Aufsteigenden	Ewigkeitsgarten
+4076	landmark	Rauls Wache	Ewigkeitsgarten
+4078	landmark	Friedvolle Kinderstube	Ewigkeitsgarten
+4079	landmark	Hydrothermale Schlote	Ewigkeitsgarten
+4080	waypoint	Wegmarke Äußeres Refugium	Ewigkeitsgarten
+4081	landmark	Verborgener Keller	Ewigkeitsgarten
+4082	landmark	Der Allseher	Ewigkeitsgarten
+4083	landmark	Umgestürztes Monument	Ewigkeitsgarten
+4086	landmark	Tiefen des Steinbruchs	Ewigkeitsgarten
+4087	landmark	Verwalter-Prüfungskammer	Ewigkeitsgarten
+4088	landmark	Turm der Verherrlichung	Ewigkeitsgarten
+4089	landmark	Allianz-Expeditionslager	Ewigkeitsgarten
+4090	waypoint	Wegmarke Tempel der Verleugnung	Ewigkeitsgarten
+4091	landmark	Logistik-Depot	Ewigkeitsgarten
+4092	waypoint	Wegmarke Pilgersruh	Ewigkeitsgarten
+4093	landmark	Dom des Unauslöschlichen Wortes	Ewigkeitsgarten
+4094	landmark	Großer Säulengang	Ewigkeitsgarten
+4095	landmark	Die Schmiede	Ewigkeitsgarten
+4096	landmark	Versunkene Leyquelle	Ewigkeitsgarten
+4097	landmark	Inquestur-Brückenkopf	Ewigkeitsgarten
+4098	landmark	Entwendete Inquestur-Ausrüstung	Ewigkeitsgarten
+4099	landmark	Pilgerzugang	Ewigkeitsgarten
+4101	landmark	Kammer der Disziplin	Ewigkeitsgarten
+4102	landmark	Flüsterndes Artefakt	Ewigkeitsgarten
+4103	landmark	Apertur-Fälle	Ewigkeitsgarten
+4104	landmark	Leuchtender Teich	Ewigkeitsgarten
+4105	landmark	Befallenes Dickicht	Ewigkeitsgarten
+4106	landmark	Versuchsobjekt im Beta-Stadium	Leyquellen-Senke
+4107	landmark	Chak-Bau	Leyquellen-Senke
+4108	landmark	Labyrinth des Narren	Leyquellen-Senke
+4109	landmark	Ley-Altar	Leyquellen-Senke
+4110	landmark	Heilige Halle des Taktikers	Leyquellen-Senke
+4111	landmark	Geister-Abstieg	Leyquellen-Senke
+4113	landmark	Die Zweikampf-Hallen	Leyquellen-Senke
+4114	landmark	Prüfgelände	Leyquellen-Senke
+4115	landmark	Allianz-Horchposten	Leyquellen-Senke
+4116	landmark	Freigelegte Leywurzel	Leyquellen-Senke
+4117	landmark	Traumkammern	Leyquellen-Senke
+4118	waypoint	Wegmarke Versiegelter Vorhof	Leyquellen-Senke
+4119	landmark	Kristallines Nest	Leyquellen-Senke
+4121	landmark	Die Kanülen	Leyquellen-Senke
+4122	landmark	Jammerkanzel	Leyquellen-Senke
+4123	landmark	Reife des Ältesten	Leyquellen-Senke
+4124	landmark	"Primus Minor"-Forschungsanbau	Leyquellen-Senke
+4126	landmark	Laube der Wehklagen	Leyquellen-Senke
+4127	waypoint	Wegmarke Altmeisters Adyton	Leyquellen-Senke
+4128	landmark	Sequen Cromatica	Leyquellen-Senke
+4129	landmark	Kristallines Wappen	Leyquellen-Senke
+4130	landmark	Leyquellen-Bohrung	Leyquellen-Senke
+4131	landmark	Der Erleuchtete Pfad	Leyquellen-Senke
+4132	landmark	Einstimmungskammer	Leyquellen-Senke
+4133	landmark	Vorratskeller	Leyquellen-Senke
+4134	landmark	Ätherische Kaskade	Leyquellen-Senke
+4135	landmark	Fließsteinmoor	Leyquellen-Senke
+4136	landmark	Versuchsobjekt im Alpha-Stadium	Leyquellen-Senke
+4137	landmark	Verstärktes Atelier	Leyquellen-Senke
+4138	landmark	Versiegeltes Gewölbe	Leyquellen-Senke
+4139	landmark	Trappel-Korridor	Leyquellen-Senke
+4140	landmark	Primus Minor	Leyquellen-Senke
+4141	landmark	Natürlicher Bogen	Leyquellen-Senke
+4142	landmark	Weg der Unverhüllten	Leyquellen-Senke
+4143	landmark	Das Skriptorium	Leyquellen-Senke
+4144	landmark	Sitz des Direktors	Leyquellen-Senke
+4146	landmark	Ley-Vorwerk	Leyquellen-Senke
+4147	landmark	Versteckter Bau	Leyquellen-Senke
+4148	landmark	Zwielicht-Hof	Leyquellen-Senke
+4149	landmark	Unterirdischer Korridor	Leyquellen-Senke
+4150	waypoint	Wegmarke Halle des Zusammenbaus	Leyquellen-Senke
+4151	landmark	Versuchsobjekt im Gamma-Stadium	Leyquellen-Senke
+4154	landmark	Versuchsobjekt im Delta-Stadium	Leyquellen-Senke

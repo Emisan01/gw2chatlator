@@ -2315,6 +2315,17 @@ static void TestChatCode() {
         const auto names = ParseChatCodeNames(R"([{"id":19976,"name":"Mystische Münze","rarity":"Rare"},{"id":5,"rarity":"Basic"},{"name":"no id"},7])");
         CHECK(names.size() == 1 && names[0].id == 19976 && names[0].name == "Mystische Münze" && names[0].rarity == "Rare");
         CHECK(ParseChatCodeNames(R"({"text":"all ids provided are invalid"})").empty() && ParseChatCodeNames("<html>").empty());
+        const auto recipe = ParseChatCodeNames(R"([{"id":7314,"output_item_id":46730,"min_rating":450}])");
+        CHECK(recipe.size() == 1 && recipe[0].outputItem == 46730 && recipe[0].rating == 450 && recipe[0].name.empty());
+        const auto camp = ParseChatCodeNames(R"([{"id":"95-34","name":"Heldenhalle","type":"Camp"},{"id":"95","name":"x"},{"id":"-3","name":"y"}])");
+        CHECK(camp.size() == 1 && camp[0].mapId == 95 && camp[0].id == 34 && camp[0].type == "Camp");
+        CHECK(ChatCodeObjectivesPath({L"95-34", L"38-6"}, L"de") == L"/v2/wvw/objectives?lang=de&ids=95-34,38-6");
+        const auto item = ParseChatCodeNames(R"([{"id":1,"name":"N","type":"Trophy","level":80,"description":"<c=@flavor>a\nb</c>"}])");
+        CHECK(item.size() == 1 && item[0].level == 80 && CleanChatCodeText(item[0].description) == "a b");
+        CHECK(CleanChatCodeText(std::string(500, 'x')).size() == 403 && CleanChatCodeText("a < b") == "a < b");
+        ChatCodePoi poi;
+        CHECK(ParseChatCodePoi("598\twaypoint\tWegmarke\tKlippen", &poi) && poi.id == 598 && poi.type == "waypoint" && poi.name == "Wegmarke" && poi.map == "Klippen");
+        CHECK(!ParseChatCodePoi("598\twaypoint", &poi) && !ParseChatCodePoi("x\ta\tb\tc", &poi) && !ParseChatCodePoi("1\ta\t\tc", &poi));
     }
     CHECK(UnescapeChatText(L"look \\[&AgGvWwEA\\] ok") == L"look [&AgGvWwEA] ok");
     CHECK(RarityColor("Exotic") == 0xFFA405 && RarityColor("x") == 0);

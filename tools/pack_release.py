@@ -280,6 +280,18 @@ def main():
                 "files": inspect_zip(model_zip)
             })
 
+    # The names of waypoints: the API cannot be asked for one by its number (tools/gen_pois.py makes these tables).
+    for table in sorted((ROOT / "data" / "poi").glob("poi-*.tsv")):
+        out_table = dist_dir / f"GW2Keyboard-POI-{table.stem[4:]}.tsv"
+        shutil.copy2(table, out_table)
+        extras_artifacts.append({
+            "name": out_table.name,
+            "role": "poi_names",
+            "bytes": out_table.stat().st_size,
+            "sha256": sha256_file(out_table),
+            "target": "extras"
+        })
+
     extras_manifest_data = {
         "schema": "1.0",
         "version": version,
