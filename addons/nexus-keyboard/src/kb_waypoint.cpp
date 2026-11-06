@@ -47,7 +47,7 @@ std::atomic<bool> s_forgetPlace{false}, s_mapOpenFrame{false};
 std::atomic<int> s_previewL{0}, s_previewT{0}, s_previewR{0}, s_previewB{0};  // the preview's rectangle, empty while it is closed
 std::wstring s_placeKey;  // s_mu: the place being learned
 std::map<std::wstring, POINT> s_places;  // s_mu: read or learned this session
-std::atomic<unsigned long long> s_shiftClickAt{0}, s_linkClickAt{0};
+std::atomic<unsigned long long> s_linkClickAt{0};
 
 constexpr size_t kHistoryMax = 30, kCollectionMax = 200;
 
@@ -523,22 +523,7 @@ bool WaypointSawLine(bool whisper, const char* content) {  // from Events: Chat,
     return false;
 }
 
-// True once for a Shift+click of yours that went to the game, a moment later: GW2 has put its code into its line by then.
-bool WaypointTakeShiftClick() {
-    const unsigned long long at = s_shiftClickAt.load();
-    if (!at) return false;
-    if (s_busy.load()) {  // never into a run of ours
-        s_shiftClickAt = 0;
-        return false;
-    }
-    const unsigned long long age = GetTickCount64() - at;
-    if (age < 120) return false;
-    s_shiftClickAt = 0;
-    return age < 1500;
-}
-
-void WaypointSawClick(WPARAM wp, LPARAM lp) {  // the game's thread: a left press
-    if ((wp & MK_SHIFT) && ImGui::GetCurrentContext() && !ImGui::GetIO().WantCaptureMouse) s_shiftClickAt = GetTickCount64();
+void WaypointSawClick(LPARAM lp) {  // the game's thread: a left press
     if (!s_teaching.load()) return;
     if (GetTickCount64() > s_teachUntil.load()) {
         s_teaching = false;

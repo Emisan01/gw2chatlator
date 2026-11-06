@@ -847,11 +847,7 @@ void RenderWindow() {
             const bool chatOpen = ms.live && ms.TextboxHasFocus();
             g_gameChatOpen = chatOpen;
             const bool chatOpened = chatOpen && !chatWasOpen && g_show && !g_sending;  // not the line our own send opens
-            // A Shift+click puts its code into GW2's line, also one already open behind our input (Enter in the game opens
-            // it): the code comes over from there.
-            if (chatOpen && g_show && !g_sending && g_cfg.focusOnGameChat && g_cfg.codePickUp && !g_cfg.copyOnly && WaypointTakeShiftClick())
-                RequestCodePickUp();
-            else if (chatOpened && g_cfg.focusOnGameChat) g_focusInput = true;   // the focus comes over (opens it as well)
+            if (chatOpened && g_cfg.focusOnGameChat) g_focusInput = true;   // the focus comes over (opens it as well)
             else if (chatOpened && g_layout.autoOpen && g_collapsed) g_expandRequest = true;  // only opened
             chatWasOpen = chatOpen;
         }

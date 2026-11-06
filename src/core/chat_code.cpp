@@ -173,18 +173,6 @@ std::string CleanChatCodeText(const std::string& text) {
     return out;
 }
 
-bool HoldsChatCode(const std::wstring& text) {
-    const auto base64 = [](wchar_t c) {
-        return (c >= L'A' && c <= L'Z') || (c >= L'a' && c <= L'z') || (c >= L'0' && c <= L'9') || c == L'+' || c == L'/' || c == L'=';
-    };
-    for (size_t at = text.find(L"[&"); at != std::wstring::npos; at = text.find(L"[&", at + 2)) {
-        size_t end = at + 2;
-        while (end < text.size() && base64(text[end])) ++end;
-        if (end > at + 2 && end < text.size() && text[end] == L']') return true;
-    }
-    return false;
-}
-
 std::wstring ChatCodePlaceKey(const std::wstring& name, int width, int height, int uiSize) {
     uint32_t hash = 2166136261u;  // FNV-1a
     const auto add = [&hash](uint32_t value) { hash = (hash ^ value) * 16777619u; };
