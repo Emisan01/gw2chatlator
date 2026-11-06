@@ -656,6 +656,7 @@ const wchar_t* EngineLabel(Engine e) {
         case Engine::DeepL: return L"DeepL";
         case Engine::Google: return L"Google";
         case Engine::Microsoft: return L"Microsoft";
+        case Engine::Supertext: return L"Supertext";
         case Engine::Libre: return L"LibreTranslate";
         case Engine::Local: return L"OPUS-MT (local)";
         case Engine::Nllb: return L"NLLB-200 (local)";
@@ -673,11 +674,14 @@ bool LocalModelThere(const LocalMtSummary& local, Engine e) {
 // A translator that cannot run before its key (LibreTranslate: its server) is there.
 bool NeedsKey(const Config& c, Engine e) {
     return (e == Engine::DeepL && c.deeplKey.empty()) || (e == Engine::Google && c.googleKey.empty()) ||
-           (e == Engine::Microsoft && c.msKey.empty()) || (e == Engine::Libre && c.libreUrl.empty());
+           (e == Engine::Microsoft && c.msKey.empty()) || (e == Engine::Supertext && c.supertextKey.empty()) ||
+           (e == Engine::Libre && c.libreUrl.empty());
 }
-bool UsesKey(Engine e) { return e == Engine::DeepL || e == Engine::Google || e == Engine::Microsoft || e == Engine::Libre; }
+bool UsesKey(Engine e) {
+    return e == Engine::DeepL || e == Engine::Google || e == Engine::Microsoft || e == Engine::Supertext || e == Engine::Libre;
+}
 std::wstring& KeyOf(Config& c, Engine e) {
-    return e == Engine::DeepL ? c.deeplKey : e == Engine::Google ? c.googleKey : e == Engine::Microsoft ? c.msKey : c.libreKey;
+    return e == Engine::DeepL ? c.deeplKey : e == Engine::Google ? c.googleKey : e == Engine::Microsoft ? c.msKey : e == Engine::Supertext ? c.supertextKey : c.libreKey;
 }
 
 // A text field in a row: shows the setting while you are not in it, takes what you wrote when you leave it.
@@ -715,6 +719,7 @@ bool EngineItems(const Config& edit, const LocalMtSummary& local, Engine current
     item(Engine::DeepL, edit.deeplKey.empty() ? keyNeeded : std::wstring());
     item(Engine::Google, edit.googleKey.empty() ? keyNeeded : std::wstring());
     item(Engine::Microsoft, edit.msKey.empty() ? keyNeeded : std::wstring());
+    item(Engine::Supertext, edit.supertextKey.empty() ? keyNeeded : std::wstring());
     item(Engine::Libre, edit.libreUrl.empty() ? Tr(L"server needed") : std::wstring());
     return picked;
 }
@@ -1106,7 +1111,7 @@ void RenderWordLists() {
 #define KB_OPTIONS(X)                                                                                                  \
     X(engine) X(writeIn) X(backTranslate) X(chatCodeNames) X(waypointClick) X(codePickUp) X(understoodLangs) X(skipTypingLang) X(readLang) X(showOriginal) X(noJunk)   \
     X(localQuality) X(useGpu) X(beamStepDown) X(beamStepUp) X(thinkAlong) X(versions) X(mtThreads) X(m2m.patience) X(m2m.lengthPenalty) X(m2m.coveragePenalty) X(m2m.repetitionPenalty)   \
-    X(m2m.noRepeatNgram) X(m2m.disableUnk) X(m2mCompute) X(basicEmail) X(deeplKey) X(googleKey) X(msKey) X(msRegion) X(libreUrl) X(libreKey)   \
+    X(m2m.noRepeatNgram) X(m2m.disableUnk) X(m2mCompute) X(basicEmail) X(deeplKey) X(googleKey) X(msKey) X(msRegion) X(supertextKey) X(libreUrl) X(libreKey)   \
     X(uiLangCode) X(spellEnabled) X(autoCorrect) X(suggestions) X(learnWords) X(learnLater) X(returnFocus)            \
     X(copyOnly) X(focusOnGameChat) X(send.autoTiming) X(send.keyHoldMs) X(send.stepDelayMs) KB_VOICE_OPTIONS(X)
 
@@ -1142,7 +1147,7 @@ void ApplyOptions(Config& edit, Config& opened) {
         const int physical = static_cast<int>(gct::PhysicalCores().size());
         // Only a changed translator or key builds a new one: a new local helper loads its model again.
         const bool translatorChanged = engineChanged || next.deeplKey != old.deeplKey || next.googleKey != old.googleKey ||
-                                       next.msKey != old.msKey || next.msRegion != old.msRegion ||
+                                       next.msKey != old.msKey || next.msRegion != old.msRegion || next.supertextKey != old.supertextKey ||
                                        next.libreUrl != old.libreUrl || next.libreKey != old.libreKey ||
                                        next.basicEmail != old.basicEmail || next.mtThreads != old.mtThreads ||
                                        next.m2mCompute != old.m2mCompute ||  // the helper reads threads and calculation at its start
@@ -2352,6 +2357,7 @@ std::string BuildDiagnosticReport() {
         case Engine::DeepL: ss << "DeepL API\n"; break;
         case Engine::Google: ss << "Google Cloud Translation API\n"; break;
         case Engine::Microsoft: ss << "Microsoft Azure Translator\n"; break;
+        case Engine::Supertext: ss << "Supertext API\n"; break;
         case Engine::Libre: ss << "LibreTranslate Server\n"; break;
         case Engine::Basic: ss << "MyMemory Basic\n"; break;
         default: ss << "Custom\n"; break;

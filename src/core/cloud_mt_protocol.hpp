@@ -41,6 +41,15 @@ CloudMtPayload BuildMicrosoftPayload(const std::vector<std::vector<Segment>>& it
 std::wstring MicrosoftQuery(const std::wstring& sourceLang, const std::wstring& targetLang, bool html);
 std::vector<CloudMtParsed> ParseMicrosoftResponse(const std::string& body, bool html, size_t expected);
 
+// Supertext: POST https://api.supertext.com/v1/translate/ai/text (header Authorization: Supertext-Auth-Key <key>), from its
+// published https://api.supertext.com/v1/openapi.json. A target is a language with its region ("de-DE"), a source the plain
+// language ("de"), left out to detect it.
+std::wstring SupertextTargetLang(const std::wstring& code);
+std::wstring SupertextSourceLang(const std::wstring& code);
+CloudMtPayload BuildSupertextPayload(const std::vector<std::vector<Segment>>& items, const std::wstring& sourceLang,
+                                     const std::wstring& targetLang);
+std::vector<CloudMtParsed> ParseSupertextResponse(const std::string& body, bool html, size_t expected);
+
 // LibreTranslate (own server or any instance): POST <url>/translate.
 std::wstring LibreLang(const std::wstring& code);
 CloudMtPayload BuildLibrePayload(const std::vector<std::vector<Segment>>& items, const std::wstring& sourceLang,

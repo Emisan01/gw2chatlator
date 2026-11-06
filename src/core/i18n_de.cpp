@@ -1727,6 +1727,10 @@ extern const I18nEntry kGermanStrings[] = {
      "Flüster dir selbst"},
     {L"GW2's chat line is open. Close it with Enter, then click again.",
      "GW2s Chatzeile ist offen. Schließ sie mit Enter und klick noch einmal."},
+    {L"Answer from Supertext not readable",
+     "Antwort von Supertext nicht lesbar"},
+    {L"Unexpected answer from Supertext",
+     "Unerwartete Antwort von Supertext"},
 };
 extern const size_t kGermanCount = sizeof(kGermanStrings) / sizeof(kGermanStrings[0]);
 

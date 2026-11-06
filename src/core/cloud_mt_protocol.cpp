@@ -210,6 +210,79 @@ std::vector<CloudMtParsed> ParseMicrosoftResponse(const std::string& body, bool 
     return out;
 }
 
+std::wstring SupertextTargetLang(const std::wstring& code) {
+    const std::wstring c = ToUpperAscii(Trim(code));
+    if (c.empty()) return L"";
+    const std::wstring lang = Lower(Primary(c));
+    const size_t dash = c.find(L'-');
+    if (dash != std::wstring::npos && c.size() == dash + 3) return lang + L"-" + c.substr(dash + 1);  // EN-GB, PT-BR
+    static const struct {
+        const wchar_t* lang;
+        const wchar_t* withRegion;
+    } kRegions[] = {{L"de", L"de-DE"}, {L"en", L"en-US"}, {L"fr", L"fr-FR"}, {L"es", L"es-ES"}, {L"it", L"it-IT"},
+                    {L"pl", L"pl-PL"}, {L"pt", L"pt-PT"}, {L"ru", L"ru-RU"}, {L"tr", L"tr-TR"}};
+    for (const auto& r : kRegions)
+        if (lang == r.lang) return r.withRegion;
+    return lang;
+}
+
+std::wstring SupertextSourceLang(const std::wstring& code) { return Lower(Primary(code)); }
+
+CloudMtPayload BuildSupertextPayload(const std::vector<std::vector<Segment>>& items, const std::wstring& sourceLang,
+                                     const std::wstring& targetLang) {
+    CloudMtPayload p;
+    p.html = AnyProtected(items);
+    std::string j = "{\"text\":[";
+    for (size_t i = 0; i < items.size(); ++i) {
+        if (i) j += ",";
+        j += "\"" + JsonEscape(ToUtf8(Encode(items[i], p.html))) + "\"";
+    }
+    j += "],\"target_lang\":\"" + JsonEscape(ToUtf8(SupertextTargetLang(targetLang))) + "\"";
+    const std::wstring src = SupertextSourceLang(sourceLang);
+    if (!src.empty()) j += ",\"source_lang\":\"" + JsonEscape(ToUtf8(src)) + "\"";
+    if (p.html) j += ",\"tag_handling\":\"html\"";
+    j += "}";
+    p.json = std::move(j);
+    return p;
+}
+
+std::vector<CloudMtParsed> ParseSupertextResponse(const std::string& body, bool html, size_t expected) {
+    std::vector<CloudMtParsed> out(expected);
+    auto failAll = [&](const std::wstring& e, TranslateErrorKind k) {
+        for (auto& r : out) {
+            r.error = e;
+            r.errorKind = k;
+        }
+        return out;
+    };
+    JsonValue root;
+    if (!ParseJson(body, root)) return failAll(Tr(L"Answer from Supertext not readable"), TranslateErrorKind::BadOutput);
+    const JsonValue* t = root.Get("translated_text");
+    if (!t || !t->IsArray() || t->arr.size() != expected) {
+        const std::string code = root.GetString("error_code");
+        std::string msg = root.GetString("message");
+        if (msg.empty()) msg = root.GetString("detail");
+        TranslateErrorKind k = TranslateErrorKind::Other;
+        if (code == "API_KEY_INVALID") k = TranslateErrorKind::Auth;
+        else if (code == "RATE_LIMIT_EXCEEDED" || code == "REQUEST_LIMIT_EXCEEDED") k = TranslateErrorKind::Quota;
+        else if (code == "INVALID_TARGET_LANGUAGE" || code == "FEATURE_ERROR") k = TranslateErrorKind::UnsupportedPair;
+        return failAll(msg.empty() ? Tr(L"Unexpected answer from Supertext") : L"Supertext: " + FromUtf8(msg), k);
+    }
+    const std::wstring detected = Primary(FromUtf8(root.GetString("detected_source_lang")));
+    for (size_t i = 0; i < expected; ++i) {
+        if (t->arr[i].type != JsonValue::Type::String) {
+            out[i].error = Tr(L"Unexpected answer from Supertext");
+            out[i].errorKind = TranslateErrorKind::BadOutput;
+            continue;
+        }
+        out[i].ok = true;
+        out[i].text = html ? RestoreFromHtml(FromUtf8(t->arr[i].s)) : FromUtf8(t->arr[i].s);
+        out[i].detectedSource = detected;
+        out[i].errorKind = TranslateErrorKind::None;
+    }
+    return out;
+}
+
 std::wstring LibreLang(const std::wstring& code) {
     const std::wstring c = ToUpperAscii(Trim(code));
     if (c.empty()) return L"auto";

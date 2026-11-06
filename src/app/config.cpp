@@ -187,6 +187,7 @@ Engine ParseEngine(const std::wstring& s) {
     if (v == L"llm") return Engine::Llm;
     if (v == L"google") return Engine::Google;
     if (v == L"microsoft") return Engine::Microsoft;
+    if (v == L"supertext") return Engine::Supertext;
     if (v == L"libre" || v == L"libretranslate") return Engine::Libre;
     if (v == L"local" || v == L"opus" || v == L"opus-mt") return Engine::Local;
     if (v == L"nllb" || v == L"nllb-200") return Engine::Nllb;
@@ -218,6 +219,7 @@ const wchar_t* EngineKey(Engine e) {
         case Engine::Llm: return L"llm";
         case Engine::Google: return L"google";
         case Engine::Microsoft: return L"microsoft";
+        case Engine::Supertext: return L"supertext";
         case Engine::Libre: return L"libre";
         case Engine::Local: return L"local";
         case Engine::Nllb: return L"nllb";
@@ -281,6 +283,7 @@ void Config::Load(const std::wstring& dir) {
     deeplKey = UnprotectSecret(ini.Str(L"DeepL", L"ApiKey", L""));
     googleKey = UnprotectSecret(ini.Str(L"Google", L"ApiKey", L""));
     msKey = UnprotectSecret(ini.Str(L"Microsoft", L"ApiKey", L""));
+    supertextKey = UnprotectSecret(ini.Str(L"Supertext", L"ApiKey", L""));
     msRegion = AsciiUnescape(ini.Str(L"Microsoft", L"Region", L""));
     libreUrl = AsciiUnescape(ini.Str(L"Libre", L"Url", L""));
     libreKey = UnprotectSecret(ini.Str(L"Libre", L"ApiKey", L""));
@@ -499,6 +502,7 @@ void Config::SaveAll() const {
     SaveValue(L"DeepL", L"ApiKey", ProtectSecret(deeplKey));
     SaveValue(L"Google", L"ApiKey", ProtectSecret(googleKey));
     SaveValue(L"Microsoft", L"ApiKey", ProtectSecret(msKey));
+    SaveValue(L"Supertext", L"ApiKey", ProtectSecret(supertextKey));
     SaveValue(L"Microsoft", L"Region", AsciiEscape(msRegion));
     SaveValue(L"Libre", L"Url", AsciiEscape(libreUrl));
     SaveValue(L"Libre", L"ApiKey", ProtectSecret(libreKey));

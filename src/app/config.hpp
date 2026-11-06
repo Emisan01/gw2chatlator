@@ -15,7 +15,7 @@
 
 namespace gct {
 
-enum class Engine { Auto, Basic, DeepL, Llm, Google, Microsoft, Libre, Local, Nllb, M2m };
+enum class Engine { Auto, Basic, DeepL, Llm, Google, Microsoft, Libre, Local, Nllb, M2m, Supertext };
 enum class AutoCorrectMode { Off, Safe, Phone };
 
 struct Config {
@@ -60,6 +60,7 @@ struct Config {
     std::wstring deeplKey;
     // [Google] Cloud Translation (500,000 characters a month free)
     std::wstring googleKey;
+    std::wstring supertextKey;
     // [Microsoft] Translator (2 million characters a month free, key + Azure region)
     std::wstring msKey, msRegion;
     // [Libre] own translation server (LibreTranslate-compatible), any address

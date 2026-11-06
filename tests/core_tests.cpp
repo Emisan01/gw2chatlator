@@ -1482,6 +1482,27 @@ static void TestCloudMt() {
     CHECK(GoogleLang(L"EN-GB") == L"en" && GoogleLang(L"ZH-HANS") == L"zh-CN" && GoogleLang(L"ZH-HANT") == L"zh-TW");
     CHECK(GoogleLang(L"PT-PT") == L"pt-PT" && GoogleLang(L"PT-BR") == L"pt" && GoogleLang(L"NB") == L"no");
     CHECK(MicrosoftLang(L"ZH-HANS") == L"zh-Hans" && MicrosoftLang(L"DE") == L"de" && MicrosoftLang(L"") == L"");
+    CHECK(SupertextTargetLang(L"DE") == L"de-DE" && SupertextTargetLang(L"EN-GB") == L"en-GB" && SupertextTargetLang(L"PT-BR") == L"pt-BR");
+    CHECK(SupertextTargetLang(L"tr") == L"tr-TR" && SupertextTargetLang(L"") == L"" && SupertextSourceLang(L"EN-GB") == L"en" && SupertextSourceLang(L"") == L"");
+    {
+        const CloudMtPayload st = BuildSupertextPayload({{{L"hello", false}}}, L"", L"DE");
+        CHECK(!st.html && st.json == "{\"text\":[\"hello\"],\"target_lang\":\"de-DE\"}");
+        const CloudMtPayload stKept = BuildSupertextPayload({{{L"hi ", false}, {L"Kiro Vale", true}}, {{L"bye", false}}}, L"EN-GB", L"FR");
+        CHECK(stKept.html && stKept.json.find("\"source_lang\":\"en\"") != std::string::npos && stKept.json.find("\"target_lang\":\"fr-FR\"") != std::string::npos);
+        CHECK(stKept.json.find("\"tag_handling\":\"html\"") != std::string::npos && stKept.json.find("translate=") != std::string::npos);
+        const auto stOk = ParseSupertextResponse(R"({"request_id":"3f","detected_source_lang":"en-GB","translated_text":["hallo <span translate=\"no\" class=\"notranslate\">Kiro Vale</span> &amp; du","tschüss"]})", true, 2);
+        CHECK(stOk.size() == 2 && stOk[0].ok && stOk[0].text == L"hallo Kiro Vale & du" && stOk[0].detectedSource == L"EN" && stOk[1].text == L"tschüss");
+        const auto stKey = ParseSupertextResponse(R"({"error_code":"API_KEY_INVALID","message":"Invalid API key provided."})", false, 1);
+        CHECK(!stKey[0].ok && stKey[0].errorKind == TranslateErrorKind::Auth && stKey[0].error == L"Supertext: Invalid API key provided.");
+        const auto stLang = ParseSupertextResponse(R"({"error_code":"INVALID_TARGET_LANGUAGE","message":"Unsupported target language","target_lang":"de"})", false, 1);
+        CHECK(stLang[0].errorKind == TranslateErrorKind::UnsupportedPair);
+        const auto stRate = ParseSupertextResponse(R"({"error_code":"RATE_LIMIT_EXCEEDED","message":"Rate limit"})", false, 1);
+        CHECK(stRate[0].errorKind == TranslateErrorKind::Quota);
+        const auto stDetail = ParseSupertextResponse(R"({"detail":"Not authenticated"})", false, 1);
+        CHECK(!stDetail[0].ok && stDetail[0].error == L"Supertext: Not authenticated");
+        CHECK(ParseSupertextResponse("<html>502</html>", false, 1)[0].errorKind == TranslateErrorKind::BadOutput);
+        CHECK(ParseSupertextResponse(R"({"translated_text":["only one"]})", false, 2)[0].errorKind == TranslateErrorKind::Other);
+    }
     // Plain text without protected parts; HTML with them.
     const CloudMtPayload plain = BuildGooglePayload({{{L"hello", false}}}, L"", L"DE");
     CHECK(!plain.html && plain.json.find("\"format\":\"text\"") != std::string::npos);

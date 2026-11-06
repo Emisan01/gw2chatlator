@@ -9,6 +9,7 @@ diagnosis show it.
 - **GW2's Own Map Flight (optional, off by default, Options → Chat):** a click on a point in the preview whispers its code to yourself, sets GW2's chat line back to its channel and clicks that link once with the real mouse, so the game flies its map there itself. One message and one synthetic click per click of yours, nothing after it. The first time for each character, window size and interface size asks you to click the link once. The map is never dragged, game memory is never touched; your decision, at your own risk under ArenaNet's rules.
 - **`/self`:** whisper yourself, from the footer's channel menu or typed: a code for your eyes only, nobody spammed. It follows your character.
 - **Shift+Click While Enter Opens the Input:** the code GW2 puts into its own line comes over into the input and that line closes, nothing sent. Options → Chat turns it off.
+- **Supertext as a Translator (your own API key, paid):** Options → Translator takes a Supertext key, stored encrypted like the others. Names and chat codes stay protected the same way. Built against Supertext's published API description; its quality on GW2 chat is not measured yet.
 - **More Chat Codes by Name:** waypoints, points of interest, recipes and WvW objectives show their names, and a code's details come on hover.
 - **The Input Holds Still:** the text no longer shifts sideways when you click into it, and a press that wanders a few pixels no longer moves or sizes the window.
 

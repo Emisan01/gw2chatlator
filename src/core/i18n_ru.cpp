@@ -1727,6 +1727,10 @@ extern const I18nEntry kRussianStrings[] = {
      "Шёпот себе"},
     {L"GW2's chat line is open. Close it with Enter, then click again.",
      "Строка чата GW2 открыта. Закройте её клавишей Enter и нажмите ещё раз."},
+    {L"Answer from Supertext not readable",
+     "Ответ Supertext не читается"},
+    {L"Unexpected answer from Supertext",
+     "Неожиданный ответ Supertext"},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

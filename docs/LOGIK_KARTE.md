@@ -40,7 +40,7 @@ flowchart TD
 | Übersetzer | Wie geschützte Stellen behandelt werden | Folge |
 |---|---|---|
 | MyMemory (Standard!) | `JoinSegments` – alles zusammengeklebt und roh gesendet (`online_translators.cpp:37`) | Schutzwörter, Namen, Codes ungeschützt (A2) |
-| Google, Microsoft, DeepL | ganzer Satz, geschützte Stellen als `<span translate="no">` (`cloud_mt_protocol.cpp:17`) | richtig: Kontext bleibt, Schutz hält |
+| Google, Microsoft, DeepL, Supertext | ganzer Satz, geschützte Stellen als `<span translate="no">` (`cloud_mt_protocol.cpp:17`) | richtig: Kontext bleibt, Schutz hält |
 | OPUS-MT, NLLB (lokal) | Satz an jeder Schutzstelle **zerschnitten**, Stücke einzeln übersetzt (`local_mt_translator.cpp:88-119`) | Kontext geht verloren; mehrere Sätze am Stück → NLLB lässt Sätze weg (A1) |
 
 ## 2. Ausgehend: dein Text bis in den GW2-Chat
@@ -73,7 +73,7 @@ Befund: der Sende-Wächter schützt vor Missbrauch (Invariante 1), aber **keine 
 |---|---|---|
 | OPUS-MT / NLLB (CTranslate2) | **ja**: `return_scores` liefert pro Übersetzung die mittlere Log-Wahrscheinlichkeit = wie sicher das Modell war | nicht abgefragt (`translate_helper_main.cpp:191`, `:234`) |
 | MyMemory | `match`-Wert im JSON; mit `mt=1` (reine Maschinenübersetzung) wenig aussagekräftig | nicht gelesen |
-| DeepL, Google, Microsoft | keine Konfidenz | – |
+| DeepL, Google, Microsoft, Supertext | keine Konfidenz | – |
 | eigene Prüfungen (für alle) | Abdeckung (Satzzahl, Längenverhältnis), Schutzstellen erhalten, Ergebnissprache = Ziel, Rückübersetzung | fehlen (A3) |
 
 Wie bei RapidOCR die Erkennungs-Sicherheit: der Score der lokalen Modelle plus unsere eigenen Prüfungen ergeben eine

@@ -38,7 +38,7 @@ Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustot
   question.
 - **Write in your language,** the chat gets the translation: you see it (and what it means in your language again)
   before Enter sends it. Longer than one chat line: split into several. Translators: MyMemory (free), Google,
-  Microsoft, DeepL, your own LibreTranslate server.
+  Microsoft, DeepL, Supertext, your own LibreTranslate server.
 - **Typing help that learns you:** grey completion from Windows' word prediction (Space writes it), three suggestions
   from what you write (Tab picks one, Space writes it), autocorrection like a phone keyboard (Backspace undoes it).
   **Right-click in the input:** the words you corrected yourself while typing – learned once, written right from then
@@ -112,6 +112,7 @@ Apart from that small table, nothing is downloaded in the background.
 |---|---|---|---|
 | **MyMemory** | free, no account | decent | 5,000 characters/day, 50,000 with any e-mail address (a made-up one works) |
 | **DeepL, Google, Microsoft** | own key (free contingents) | very good | Options → Translator |
+| **Supertext** | own key, paid (as of November 2026: EUR 4.90 a month plus EUR 20 per million characters) | not measured yet | Options → Translator |
 | **LibreTranslate** | own server, free | decent | your own address |
 | **Local MT (OPUS-MT, NLLB-200, M2M100)** | free | offline after download | Options → Translator: fast Helsinki-NLP pair models or Meta's universal models, on the CPU or, optionally, on an NVIDIA card |
 

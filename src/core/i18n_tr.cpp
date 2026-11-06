@@ -1727,6 +1727,10 @@ extern const I18nEntry kTurkishStrings[] = {
      "Kendine fısılda"},
     {L"GW2's chat line is open. Close it with Enter, then click again.",
      "GW2 sohbet satırı açık. Enter ile kapat, sonra yeniden tıkla."},
+    {L"Answer from Supertext not readable",
+     "Supertext yanıtı okunamıyor"},
+    {L"Unexpected answer from Supertext",
+     "Supertext'dan beklenmeyen yanıt"},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

@@ -579,6 +579,7 @@ std::shared_ptr<Translator> MakeTranslator(const Config& c) {  // the engine you
     if (c.engine == Engine::DeepL && !c.deeplKey.empty()) return MakeDeepLTranslator(c.deeplKey);
     if (c.engine == Engine::Google && !c.googleKey.empty()) return MakeGoogleTranslator(c.googleKey);
     if (c.engine == Engine::Microsoft && !c.msKey.empty()) return MakeMicrosoftTranslator(c.msKey, c.msRegion);
+    if (c.engine == Engine::Supertext && !c.supertextKey.empty()) return MakeSupertextTranslator(c.supertextKey);
     if (c.engine == Engine::Libre && !c.libreUrl.empty()) return MakeLibreTranslator(c.libreUrl, c.libreKey);
     if (c.engine == Engine::Local || c.engine == Engine::Nllb || c.engine == Engine::M2m) {
         const std::wstring gpuHelper = AddonsDir() + L"GW2Keyboard\\gw2kb_translate_gpu.exe";
@@ -593,6 +594,7 @@ std::shared_ptr<Translator> MakeTranslator(const Config& c) {  // the engine you
     if (!c.deeplKey.empty()) return MakeDeepLTranslator(c.deeplKey);
     if (!c.googleKey.empty()) return MakeGoogleTranslator(c.googleKey);
     if (!c.msKey.empty()) return MakeMicrosoftTranslator(c.msKey, c.msRegion);
+    if (!c.supertextKey.empty()) return MakeSupertextTranslator(c.supertextKey);
     if (!c.libreUrl.empty()) return MakeLibreTranslator(c.libreUrl, c.libreKey);
     return MakeMyMemoryTranslator(c.basicEmail);
 }

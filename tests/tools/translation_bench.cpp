@@ -6,7 +6,7 @@
 //   mode: nllb (default, our logic) | nllb-raw (the bare model: codes and links only protected) | m2m | m2m-raw | opus |
 //   GCT_BENCH_VERSIONS: versions per line, and how many lines one of them gets right;
 //   GCT_BENCH_BEAM: the beam size; GCT_BENCH_DECODE: how the model decodes, "rp=110,ng=3,lp=120,pa=150,cp=20,nu=1"
-//         mymemory (GCT_MYMEMORY_EMAIL optional) | deepl (GCT_DEEPL_KEY) | google (GCT_GOOGLE_KEY)
+//         mymemory (GCT_MYMEMORY_EMAIL optional) | deepl (GCT_DEEPL_KEY) | google (GCT_GOOGLE_KEY) | supertext (GCT_SUPERTEXT_KEY)
 // Corpus line: language <TAB> text [<TAB> must <TAB> never] – must: groups split by ";", each group's alternatives by
 // "|", one of each group in the translation; never: alternatives by "|". A word matches whole, a phrase as written.
 #include <windows.h>
@@ -66,7 +66,7 @@ std::wstring Env(const wchar_t* name) {
 int wmain(int argc, wchar_t** argv) {
     if (argc < 4) {
         std::fprintf(stderr, "Usage: translation_bench <gw2kb_translate.exe> <data folder> <corpus.tsv> "
-                             "[nllb|nllb-raw|m2m|m2m-raw|opus|mymemory|deepl|google]\n");
+                             "[nllb|nllb-raw|m2m|m2m-raw|opus|mymemory|deepl|google|supertext]\n");
         return 2;
     }
     SetConsoleOutputCP(CP_UTF8);
@@ -75,6 +75,7 @@ int wmain(int argc, wchar_t** argv) {
     std::shared_ptr<gct::Translator> translator;
     if (mode == L"mymemory") translator = gct::MakeMyMemoryTranslator(Env(L"GCT_MYMEMORY_EMAIL"));
     else if (mode == L"deepl") translator = gct::MakeDeepLTranslator(Env(L"GCT_DEEPL_KEY"));
+    else if (mode == L"supertext") translator = gct::MakeSupertextTranslator(Env(L"GCT_SUPERTEXT_KEY"));
     else if (mode == L"google") translator = gct::MakeGoogleTranslator(Env(L"GCT_GOOGLE_KEY"));
     else if (mode == L"m2m" || mode == L"m2m-raw") translator = gct::MakeM2mTranslator(argv[1], argv[2]);
     else translator = gct::MakeLocalMtTranslator(argv[1], argv[2], mode != L"opus");

@@ -254,6 +254,40 @@ private:
     const std::wstring key_, region_;
 };
 
+class SupertextTranslator final : public Translator {
+public:
+    explicit SupertextTranslator(std::wstring key) : key_(Trim(key)) {}
+    std::wstring Name() const override { return L"Supertext"; }
+
+    TranslateResult Translate(const std::vector<Segment>& segments, const std::wstring& sourceLang,
+                              const std::wstring& targetLang) override {
+        return TranslateBatch({segments}, sourceLang, targetLang)[0];
+    }
+
+    std::vector<TranslateResult> TranslateBatch(const std::vector<std::vector<Segment>>& items,
+                                                const std::wstring& sourceLang,
+                                                const std::wstring& targetLang) override {
+        if (items.empty()) return {};
+        const CloudMtPayload p = BuildSupertextPayload(items, sourceLang, targetLang);
+        const std::wstring headers = L"Authorization: Supertext-Auth-Key " + key_ + L"\r\nContent-Type: application/json\r\n";
+        const HttpResponse http = HttpsRequest(L"POST", L"api.supertext.com", L"/v1/translate/ai/text", headers, p.json);
+        if (!http.transportOk) return CloudFailure(L"Supertext", 0, L"Supertext: " + http.error, items.size());
+        const auto parsed = ParseSupertextResponse(http.body, p.html, items.size());
+        if (http.status != 200) {
+            auto failed = CloudFailure(L"Supertext", http.status, parsed[0].error, items.size());
+            if (parsed[0].errorKind == TranslateErrorKind::UnsupportedPair)
+                for (auto& r : failed) r.errorKind = TranslateErrorKind::UnsupportedPair;
+            return failed;
+        }
+        std::vector<TranslateResult> out;
+        for (const auto& x : parsed) out.push_back(FromParsed(x));
+        return out;
+    }
+
+private:
+    const std::wstring key_;
+};
+
 class LibreTranslator final : public Translator {
 public:
     LibreTranslator(std::wstring url, std::wstring key) : url_(LibreTranslateUrl(url)), key_(Trim(key)) {}
@@ -292,6 +326,10 @@ std::shared_ptr<Translator> MakeLibreTranslator(const std::wstring& url, const s
 
 std::shared_ptr<Translator> MakeGoogleTranslator(const std::wstring& apiKey) {
     return std::make_shared<GoogleTranslator>(apiKey);
+}
+
+std::shared_ptr<Translator> MakeSupertextTranslator(const std::wstring& apiKey) {
+    return std::make_shared<SupertextTranslator>(apiKey);
 }
 
 std::shared_ptr<Translator> MakeMicrosoftTranslator(const std::wstring& apiKey, const std::wstring& region) {
