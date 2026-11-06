@@ -841,7 +841,7 @@ void RenderWaypointPreview();
 bool WaypointPassThrough();  // our windows let the mouse through while the click runs
 bool WaypointSawLine(bool whisper, const char* content);
 void WaypointSawClick(WPARAM wp, LPARAM lp);
-bool WaypointShiftClickJustNow();  // a Shift+click of yours went to the game a moment ago
+bool WaypointTakeShiftClick();  // a Shift+click of yours went to the game a moment ago (true once)
 void RequestCodePickUp();  // the line GW2 opened for it: its code comes into our input
 void WaypointStop();
 std::string BuildDiagnosticReport();

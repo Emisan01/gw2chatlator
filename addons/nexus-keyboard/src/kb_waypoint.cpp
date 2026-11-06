@@ -496,7 +496,15 @@ bool WaypointSawLine(bool whisper, const char* content) {  // from Events: Chat,
     return false;
 }
 
-bool WaypointShiftClickJustNow() { return GetTickCount64() - s_shiftClickAt.load() < 800; }
+// True once for a Shift+click of yours that went to the game, a moment later: GW2 has put its code into its line by then.
+bool WaypointTakeShiftClick() {
+    const unsigned long long at = s_shiftClickAt.load();
+    if (!at) return false;
+    const unsigned long long age = GetTickCount64() - at;
+    if (age < 120) return false;
+    s_shiftClickAt = 0;
+    return age < 1500;
+}
 
 void WaypointSawClick(WPARAM wp, LPARAM lp) {  // the game's thread: a left press
     if ((wp & MK_SHIFT) && ImGui::GetCurrentContext() && !ImGui::GetIO().WantCaptureMouse) s_shiftClickAt = GetTickCount64();
