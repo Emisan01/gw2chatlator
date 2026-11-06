@@ -146,8 +146,18 @@ void Flight(uint32_t id) {
             g_bufferingStartTime = GetTickCount64();
             g_bufferingKeys = true;
         }
-        g_letGoKeyboard = true;
-        for (int i = 0; i < 50 && !g_keyboardFree; ++i) Sleep(10);
+        // Your click in the preview is still under way, and with "keep typing" the input holds the keyboard since the last
+        // send: the button up, our windows off the keyboard, and that held for a few frames (at most 1.5 s).
+        unsigned freeSince = s_frames;
+        for (int waited = 0; waited < 1500 && !s_stop; waited += 5) {
+            if (!g_keyboardFree || (GetAsyncKeyState(VK_LBUTTON) & 0x8000)) {
+                g_letGoKeyboard = true;
+                freeSince = s_frames;
+            } else if (s_frames - freeSince >= 3) {
+                break;
+            }
+            Sleep(5);
+        }
         SendNow({line}, line, std::wstring());  // through GW2's own chat line: so the link stands in GW2's own chat
         std::lock_guard<std::mutex> lock(g_mu);
         if (!g_history.empty() && g_history.front() == line) g_history.pop_front();  // not for your Up key
