@@ -3,6 +3,15 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.10.0 — 2026-11-06 (GW2Chatlator for Nexus)
+
+- **A Waypoint's Preview:** a click on a waypoint in the chat opens a window at once, usable before anything has loaded: GW2's map around the point, the points near it, the ones you flew to and a collection of your own, saved as numbers only. Menu ≡ → Waypoints opens it without a code. Only the map tiles' numbers go to GW2's public tile server.
+- **GW2's Own Map Flight (optional, off by default, Options → Chat):** a click on a point in the preview whispers its code to yourself, sets GW2's chat line back to its channel and clicks that link once with the real mouse, so the game flies its map there itself. One message and one synthetic click per click of yours, nothing after it. The first time for each character, window size and interface size asks you to click the link once. The map is never dragged, game memory is never touched; your decision, at your own risk under ArenaNet's rules.
+- **`/self`:** whisper yourself, from the footer's channel menu or typed: a code for your eyes only, nobody spammed. It follows your character.
+- **Shift+Click While Enter Opens the Input:** the code GW2 puts into its own line comes over into the input and that line closes, nothing sent. Options → Chat turns it off.
+- **More Chat Codes by Name:** waypoints, points of interest, recipes and WvW objectives show their names, and a code's details come on hover.
+- **The Input Holds Still:** the text no longer shifts sideways when you click into it, and a press that wanders a few pixels no longer moves or sizes the window.
+
 ## 2.9.0 — 2026-11-05 (GW2Chatlator for Nexus)
 
 - **M2M100, a Second Universal Model:** Meta's M2M100 418M (MIT licence, about 470 MB) can be downloaded in Options → Translator, next to NLLB-200. On our made-up test lines at beam 4 M2M100 reached 101 of 106 and 33 of 41, NLLB-200 101 of 106 and 36 of 41; M2M100 is a little faster.
