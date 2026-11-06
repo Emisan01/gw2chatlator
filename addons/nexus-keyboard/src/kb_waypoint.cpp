@@ -649,6 +649,7 @@ void RenderWaypointPreview() {
     RequestUiFont(nexusPx);
     ImFont* uf = g_uiFont.load();
     ImGui::SetNextWindowSize(ImVec2(nexusPx * 42.0f, nexusPx * 26.0f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(nexusPx * 36.0f, nexusPx * 16.0f), ImVec2(FLT_MAX, FLT_MAX));  // the buttons always fit
     bool open = true;
     const std::string title = UI(Tr(L"Waypoints")) + "###kbwaypoint";
     const bool visible = ImGui::Begin(title.c_str(), &open, ImGuiWindowFlags_NoCollapse);
