@@ -445,6 +445,7 @@ struct TechEntry {
 void TechLog(char area, std::wstring text);
 std::vector<TechEntry> TechLogNow();
 void TechLogClear();
+void TechLogToFile(std::wstring path);  // [Debug] SendLog=1: the send steps also go to a file (steps only, never a text or a name)
 
 // GW2's own threads, from Windows' numbers (no game memory): the busiest are measured once a second while the palette is open.
 struct GameThreadRow {
@@ -838,7 +839,8 @@ void RenderMtLiveWindow();
 void OpenWaypointPreview(uint32_t id);
 void OpenWaypointWindow();
 void RenderWaypointPreview();
-bool WaypointPassThrough();  // our windows let the mouse through while the click runs
+bool WaypointPassThrough();  // our windows let the mouse through while the run goes
+bool WaypointSwallowsMouse(UINT msg);  // your clicks wait until the run is over
 bool WaypointSawLine(bool whisper, const char* content);
 void WaypointSawClick(WPARAM wp, LPARAM lp);
 bool WaypointTakeShiftClick();  // a Shift+click of yours went to the game a moment ago (true once)

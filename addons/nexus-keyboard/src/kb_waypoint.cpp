@@ -38,7 +38,7 @@ std::thread s_thread;
 std::atomic<bool> s_busy{false}, s_stop{false}, s_through{false}, s_teaching{false}, s_lineMoved{false};
 std::atomic<bool> s_sendDone{true}, s_sendFailed{false};
 std::atomic<int> s_linesCame{0};  // a whisper to yourself comes back twice: "from" and "to"
-std::atomic<unsigned long long> s_teachUntil{0};
+std::atomic<unsigned long long> s_teachUntil{0}, s_throughUntil{0};
 std::atomic<unsigned> s_frames{0};
 // Where the link stands in the newest line of GW2's chat, from one click of yours, in the game window's client pixels. It
 // moves with your character's name, the window's size and GW2's interface size: learned once for each, nothing guessed.
@@ -49,6 +49,13 @@ std::map<std::wstring, POINT> s_places;  // s_mu: read or learned this session
 std::atomic<unsigned long long> s_shiftClickAt{0};
 
 constexpr size_t kHistoryMax = 30, kCollectionMax = 200;
+
+// From the first key to the click: our windows let the mouse through and your clicks wait (a click on a window of ours would
+// take the keyboard, one in the world would shut GW2's line, either tears the run apart). It ends by itself, whatever happens.
+void HoldWindows() {
+    s_throughUntil = GetTickCount64() + 8000;
+    s_through = true;
+}
 
 void Say(const std::wstring& text, ULONGLONG ms) {
     for (int waited = 0; waited < 2000 && !s_sendDone && !s_stop; waited += 20) Sleep(20);  // a send's last word clears the status
@@ -87,10 +94,7 @@ void MoveCursor(POINT at) {  // as a real mouse would: absolute, over the whole 
 bool RealClick(HWND gw2, POINT at, POINT was) {
     const auto front = [gw2] { return GetForegroundWindow() == gw2; };
     if (!front()) return false;
-    struct Through {
-        Through() { s_through = true; }
-        ~Through() { s_through = false; }
-    } through;
+    HoldWindows();
     if (!WaitFrames(2) || !front()) return false;
     MoveCursor(POINT{at.x - 3, at.y});
     if (!WaitFrames(2)) {
@@ -116,6 +120,7 @@ bool RealClick(HWND gw2, POINT at, POINT was) {
     }
     INPUT in{};
     in.type = INPUT_MOUSE;
+    in.mi.dwExtraInfo = gct::kGw2SenderExtraInfo;  // ours: not one of the clicks that wait
     in.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
     SendInput(1, &in, sizeof(in));
     Sleep(Dice(40, 70));
@@ -155,20 +160,35 @@ void LetGoOfKeyboard() {
 }
 
 void Flight(uint32_t id) {
+    struct EndHold {
+        ~EndHold() { s_through = false; }
+    } endHold;
     std::wstring own, before;
-    bool copyOnly;
+    bool copyOnly, lineUnknown;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         own = g_ownName;
         copyOnly = g_cfg.copyOnly;
         // Where GW2's line goes back to: GW2 does not say. The footer's channel, else the one we last saw it in.
-        before = ComposePrefix();
-        if (before.empty()) before = g_gw2LineChannel;
-        if (before == L"/r ") before.clear();  // after this whisper a reply would answer yourself
+        // Only a plain channel ("/s ", "/g2 ") goes back, the one way of setting it that is proven; a whisper chosen in the
+        // footer goes with its next message anyway, and after this whisper a reply would answer yourself.
+        const std::wstring footer = ComposePrefix();
+        before = footer.empty() ? g_gw2LineChannel : footer;
+        if (before.find(L',') != std::wstring::npos || before == L"/r ") before.clear();
+        lineUnknown = footer.empty() && before.empty();
     }
     if (own.empty() || copyOnly) {
         Say(copyOnly ? Tr(L"In \"only copy\" mode the waypoint cannot be posted.") : Tr(L"Your character's name is not known yet."), 8000);
         return;
+    }
+    {  // GW2's line open: what stands in it, and in which of its fields, nobody can see. Not one key into it.
+        MumbleLink mumble;
+        const MumbleState ms = mumble.Read();
+        if (ms.live && ms.TextboxHasFocus()) {
+            TechLog('S', L"waypoint: GW2's line is open, nothing done");
+            Say(Tr(L"GW2's chat line is open. Close it with Enter, then click again."), 8000);
+            return;
+        }
     }
     const std::string code = PieUI::ChatLinks::EncodeMap(id);  // "[&BCkEAAA=]"
     {
@@ -190,8 +210,11 @@ void Flight(uint32_t id) {
             g_bufferingStartTime = GetTickCount64();
             g_bufferingKeys = true;
         }
+        HoldWindows();
         LetGoOfKeyboard();
         SendNow({line}, line, std::wstring());  // through GW2's own chat line: so the link stands in GW2's own chat
+        MumbleLink mumble;
+        const MumbleState afterSend = mumble.Read();
         bool setBack;
         {
             std::lock_guard<std::mutex> lock(g_mu);
@@ -199,6 +222,11 @@ void Flight(uint32_t id) {
             if (ToUtf8(line) == g_input) g_input[0] = 0;  // a send that failed gives its text back: this one was never yours
             g_syncedChannel.clear();  // GW2's line now stands in this whisper
             s_sendFailed = !g_status.empty();  // the reason stands in the status
+            if (!s_sendFailed && afterSend.live && afterSend.TextboxHasFocus()) {  // the last Enter did not send: stop here
+                SetStatus(Tr(L"GW2's chat line did not close: nothing was clicked. Please check it by hand."), 12000);
+                TechLog('S', L"waypoint: GW2's line stayed open after the whisper, stopped");
+                s_sendFailed = true;
+            }
             setBack = !s_sendFailed && !before.empty();
             if (setBack) {  // the same run goes on: the input keeps waiting
                 g_sending = true;
@@ -209,6 +237,7 @@ void Flight(uint32_t id) {
             }
         }
         if (setBack) {  // before the click, not after it: typing stops the flight, and later you are playing again
+            HoldWindows();
             LetGoOfKeyboard();
             const std::wstring error = SetLineChannel(before);
             std::lock_guard<std::mutex> lock(g_mu);
@@ -228,7 +257,7 @@ void Flight(uint32_t id) {
         return;
     }
     for (int waited = 0; waited < 400 && s_linesCame < 2 && !s_stop; waited += 10) Sleep(10);  // both, before the place counts
-    if (before.empty()) Say(Tr(L"GW2's line stays in the whisper to you: which channel it was in before, I have not seen yet."), 8000);
+    if (lineUnknown) Say(Tr(L"GW2's line stays in the whisper to you: which channel it was in before, I have not seen yet."), 8000);
     const HWND gw2 = FindGw2Window(GetCurrentProcessId());
     RECT client{};
     if (!gw2 || !GetClientRect(gw2, &client) || client.right <= 0 || client.bottom <= 0) return;
@@ -482,7 +511,33 @@ void OpenWaypointWindow() {  // from the menu: your lists, without a code from t
     s_open = true;
 }
 
-bool WaypointPassThrough() { return s_through.load(); }
+bool WaypointPassThrough() { return s_through.load() && GetTickCount64() < s_throughUntil.load(); }
+
+bool WaypointSwallowsMouse(UINT msg) {  // the game's thread: a press that waits, and its release, whenever that comes
+    static bool held[3] = {};
+    int button;
+    bool down;
+    switch (msg) {
+        case WM_LBUTTONDOWN:
+        case WM_LBUTTONDBLCLK: button = 0; down = true; break;
+        case WM_LBUTTONUP: button = 0; down = false; break;
+        case WM_RBUTTONDOWN:
+        case WM_RBUTTONDBLCLK: button = 1; down = true; break;
+        case WM_RBUTTONUP: button = 1; down = false; break;
+        case WM_MBUTTONDOWN:
+        case WM_MBUTTONDBLCLK: button = 2; down = true; break;
+        case WM_MBUTTONUP: button = 2; down = false; break;
+        default: return false;
+    }
+    if (down) {
+        if (!WaypointPassThrough()) return false;
+        held[button] = true;
+        return true;
+    }
+    if (!held[button]) return false;
+    held[button] = false;
+    return true;
+}
 
 bool WaypointSawLine(bool whisper, const char* content) {  // from Events: Chat, every line; true: ours, not for our window
     if (!s_busy.load() || !content) return false;
@@ -500,6 +555,10 @@ bool WaypointSawLine(bool whisper, const char* content) {  // from Events: Chat,
 bool WaypointTakeShiftClick() {
     const unsigned long long at = s_shiftClickAt.load();
     if (!at) return false;
+    if (s_busy.load()) {  // never into a run of ours
+        s_shiftClickAt = 0;
+        return false;
+    }
     const unsigned long long age = GetTickCount64() - at;
     if (age < 120) return false;
     s_shiftClickAt = 0;
@@ -546,13 +605,14 @@ void RenderWaypointPreview() {
     std::vector<uint32_t> history, collection;
     {
         std::lock_guard<std::mutex> lock(s_mu);
-        if (!s_open || s_through.load()) return;
+        if (!s_open || WaypointPassThrough()) return;
     }
+    const bool teaching = s_teaching.load() && GetTickCount64() <= s_teachUntil.load();  // no new run: your click on the link comes first
     bool mayFly, onMap;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         ReadStored(g_cfg.dataDir);
-        mayFly = g_cfg.waypointClick && !s_busy.load();
+        mayFly = g_cfg.waypointClick && !s_busy.load() && !teaching;
         onMap = (g_inMap || g_test.forceMap) && !g_mapOpen;
     }
     if (!onMap) return;  // as our chat: never on a loading screen or at the character choice, never over GW2's open map
@@ -593,7 +653,11 @@ void RenderWaypointPreview() {
         PoiList(Tr(L"Collection"), collection, selected);
         PoiList(Tr(L"Your last ones"), history, selected);
         ImGui::EndChild();
-        if (known) {
+        if (teaching) {
+            ImGui::PushStyleColor(ImGuiCol_Text, UiWarm());
+            ImGui::TextWrapped("%s", UI(Tr(L"Click the new link in GW2's chat once yourself, at its start. I remember the place, from then on it goes by itself.")).c_str());
+            ImGui::PopStyleColor();
+        } else if (known) {
             ImGui::TextUnformatted(poi.name.c_str());
             ImGui::SameLine();
             ImGui::TextDisabled("%s · %s", UI(PoiKind(poi.type)).c_str(), poi.map.c_str());

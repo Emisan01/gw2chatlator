@@ -34,6 +34,7 @@ UINT OnWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN) s_charsOurs = ours;
     if (ours || (s_charsOurs && (msg == WM_CHAR || msg == WM_SYSCHAR || msg == WM_DEADCHAR || msg == WM_UNICHAR)))
         return msg;
+    if (WaypointSwallowsMouse(msg)) return 0;
     if (msg == WM_LBUTTONDOWN) WaypointSawClick(wp, lp);
 
     // The key buffer: from the start of a send until the input has the focus back, your keys are kept for it
@@ -287,6 +288,7 @@ void AddonLoad(AddonAPI_t* api) {
     g_worker.Start();
     {
         std::lock_guard<std::mutex> lock(g_mu);
+        if (GetPrivateProfileIntW(L"Debug", L"SendLog", 0, g_cfg.iniPath.c_str())) TechLogToFile(g_cfg.dataDir + L"\\send-steps.log");
         g_links.Start(api, [](std::function<void()> job) {
             if (!g_test.noSend) g_worker.PostLookup(std::move(job));  // the self-test asks nobody
         }, g_cfg.dataDir);

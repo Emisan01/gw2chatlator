@@ -1725,6 +1725,10 @@ extern const I18nEntry kPolishStrings[] = {
      "Linia czatu GW2 nadal zawiera tekst – pozostaje otwarta."},
     {L"Whisper yourself",
      "Szepnij do siebie"},
+    {L"GW2's chat line is open. Close it with Enter, then click again.",
+     "Linia czatu GW2 jest otwarta. Zamknij ją Enterem i kliknij ponownie."},
+    {L"GW2's chat line did not close: nothing was clicked. Please check it by hand.",
+     "Linia czatu GW2 się nie zamknęła: nic nie kliknięto. Sprawdź ją ręcznie."},
 };
 extern const size_t kPolishCount = sizeof(kPolishStrings) / sizeof(kPolishStrings[0]);
 

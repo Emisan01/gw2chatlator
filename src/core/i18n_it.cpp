@@ -1725,6 +1725,10 @@ extern const I18nEntry kItalianStrings[] = {
      "La riga di chat di GW2 contiene ancora testo: resta aperta."},
     {L"Whisper yourself",
      "Sussurra a te stesso"},
+    {L"GW2's chat line is open. Close it with Enter, then click again.",
+     "La riga di chat di GW2 è aperta. Chiudila con Invio, poi clicca di nuovo."},
+    {L"GW2's chat line did not close: nothing was clicked. Please check it by hand.",
+     "La riga di chat di GW2 non si è chiusa: non è stato cliccato nulla. Controllala a mano."},
 };
 extern const size_t kItalianCount = sizeof(kItalianStrings) / sizeof(kItalianStrings[0]);
 

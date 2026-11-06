@@ -1725,6 +1725,10 @@ extern const I18nEntry kFrenchStrings[] = {
      "La ligne de chat de GW2 contient encore du texte – elle reste ouverte."},
     {L"Whisper yourself",
      "Se chuchoter à soi-même"},
+    {L"GW2's chat line is open. Close it with Enter, then click again.",
+     "La ligne de chat de GW2 est ouverte. Fermez-la avec Entrée, puis cliquez à nouveau."},
+    {L"GW2's chat line did not close: nothing was clicked. Please check it by hand.",
+     "La ligne de chat de GW2 ne s'est pas fermée : rien n'a été cliqué. Vérifiez-la à la main."},
 };
 extern const size_t kFrenchCount = sizeof(kFrenchStrings) / sizeof(kFrenchStrings[0]);
 

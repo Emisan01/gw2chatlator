@@ -1725,6 +1725,10 @@ extern const I18nEntry kGermanStrings[] = {
      "In GW2s Chatzeile steht noch Text – sie bleibt offen."},
     {L"Whisper yourself",
      "Flüster dir selbst"},
+    {L"GW2's chat line is open. Close it with Enter, then click again.",
+     "GW2s Chatzeile ist offen. Schließ sie mit Enter und klick noch einmal."},
+    {L"GW2's chat line did not close: nothing was clicked. Please check it by hand.",
+     "GW2s Chatzeile ging nicht zu: Es wurde nichts geklickt. Bitte prüf sie von Hand."},
 };
 extern const size_t kGermanCount = sizeof(kGermanStrings) / sizeof(kGermanStrings[0]);
 

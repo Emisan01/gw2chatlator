@@ -127,6 +127,7 @@ std::atomic<bool> g_gameThreadsKeep{false};
 namespace {
 std::mutex s_techMu;  // nothing else is locked while it is held
 std::deque<TechEntry> s_techLog;
+std::wstring s_techFile;
 GameThreads s_gameThreads;
 std::map<DWORD, uint64_t> s_threadTimes;
 ULONGLONG s_threadsAt = 0;
@@ -212,8 +213,21 @@ void MeasureGameThreads(float helperShare, int fps) {
 }
 }  // namespace
 
+void TechLogToFile(std::wstring path) {
+    std::lock_guard<std::mutex> lock(s_techMu);
+    s_techFile = std::move(path);
+}
+
 void TechLog(char area, std::wstring text) {
     std::lock_guard<std::mutex> lock(s_techMu);
+    if (area == 'S' && !s_techFile.empty()) {
+        FILE* file = nullptr;
+        if (_wfopen_s(&file, s_techFile.c_str(), L"ab") == 0 && file) {
+            const std::string line = std::to_string(GetTickCount64()) + " " + U8(text) + "\n";
+            fwrite(line.data(), 1, line.size(), file);
+            fclose(file);
+        }
+    }
     s_techLog.push_back({GetTickCount64(), area, std::move(text)});
     if (s_techLog.size() > 400) s_techLog.pop_front();
 }
