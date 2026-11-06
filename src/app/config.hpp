@@ -83,16 +83,12 @@ struct Config {
     SendOptions send;
 
     int opacity = 255;
-    int fontPercent = 100;            // chat text: 100 % = 11 pt (older ini; FontPt wins)
     int fontPt = 15;                  // chat text size in pt (default 15 pt, 8..28)
     int uiFontPt = 15;                // UI/options font size in pt (default 15 pt, 11..24)
     std::wstring fontFace = L"segoeui";  // its font: a file in Windows\Fonts (segoeui, seguisb, tahoma – kFontFaces)
     std::wstring chatTabName;          // custom name of the main chat tab (empty = default "Chat")
     int chatSpacing = 100;             // space between chat lines, % of the style's (0 = nearly touching)
     bool focusOnGameChat = false;  // focus input when in-game chat box gains focus
-    // Key presses vs. letters sent (the word help's benefit): today and in total.
-    int typingDay = 0;  // yyyymmdd
-    int dayKeys = 0, dayChars = 0, totalKeys = 0, totalChars = 0, totalMessages = 0;
 
     // [Voice] — voice input of GW2 Keyboard (hold the microphone button or the key, speak, release, check, Enter).
     bool voiceEnabled = true;

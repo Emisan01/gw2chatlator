@@ -286,7 +286,6 @@ bool g_autoSendPending = false;
 bool g_userRecording = false;
 bool g_voiceStoppedManually = false;
 HWND g_gameHwnd = nullptr;
-bool g_gameHasFocus = true;
 TranslateErrorKind g_lastErrorKind = TranslateErrorKind::None;
 std::wstring g_lastErrorTime = L"-";
 bool g_myMemorySessionFallback = false;
@@ -295,7 +294,6 @@ bool g_inputActive = false;
 
 bool g_escRequested = false;
 bool g_escCapturable = false;
-AutoEnterTrigger g_autoEnterTrigger = AutoEnterTrigger::None;
 std::vector<BufferedKey> g_keyBuffer;
 std::mutex g_keyBufferMu;
 std::atomic<bool> g_bufferingKeys{false};
@@ -315,15 +313,13 @@ int BufferSafetyMs() {
 }
 std::atomic<ULONGLONG> g_lastRenderFrameTime{0};
 
-void RequestAutoEnter(AutoEnterTrigger trigger) {
+void RequestAutoEnter() {
     if (!g_cfg.voiceAutoSend) return;
-    g_autoEnterTrigger = trigger;
     g_autoSendPending = true;
 }
 
 void CancelAutoEnter() {
     g_autoSendPending = false;
-    g_autoEnterTrigger = AutoEnterTrigger::None;
     g_sendInFlight = false;
 }
 

@@ -835,7 +835,6 @@ void RenderWindow() {
             std::lock_guard<std::mutex> lock(g_mu);
             g_inMap = ms.live && ms.inMap;
             g_mapOpen = ms.live && ms.MapOpen();
-            g_gameHasFocus = ms.live ? ms.GameHasFocus() : true;
             if (ms.live) {
                 if (!ms.identity.name.empty()) {  // no name for a moment: the last one stays, or /self would lose its character
                     if (g_channel == Channel::Whisper && !g_ownName.empty() && g_whisperTo == g_ownName) g_whisperTo = ms.identity.name;

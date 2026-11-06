@@ -14,7 +14,6 @@ namespace kb {
 
 enum class Lane {
     Unknown,
-    MainUI,
     Interactive,
     Network
 };

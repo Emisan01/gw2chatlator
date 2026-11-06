@@ -109,7 +109,7 @@ void VoiceHelper::OnLine(const std::string& line) {
         const bool cancelledByEsc = g_voiceStoppedManually;
         g_voiceStoppedManually = false;
         if (!cancelledByEsc) {
-            RequestAutoEnter(AutoEnterTrigger::Voice);
+            RequestAutoEnter();
         }
         g_userRecording = false;
         SetStatus(L"");

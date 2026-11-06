@@ -350,7 +350,6 @@ void Config::Load(const std::wstring& dir) {
     send.restoreDelayMs = ini.Int(L"Chat", L"RestoreDelayMs", 250, 50, 3000);
 
     opacity = ini.Int(L"Window", L"Opacity", 255, 0, 255);
-    fontPercent = ini.Int(L"Window", L"FontPercent", 100, 70, 300);
     fontPt = ini.Int(L"Window", L"FontPt", 15, 0, 40);
     uiFontPt = ini.Int(L"Window", L"UiFontPt", 15, 0, 40);
     if (fontPt == 0) fontPt = 15;
@@ -360,12 +359,6 @@ void Config::Load(const std::wstring& dir) {
     chatTabName = ini.Str(L"Window", L"ChatTabName", L"");
     chatSpacing = ini.Int(L"Window", L"LineSpacing", 100, 0, 100);
     focusOnGameChat = ini.Bool(L"Window", L"FocusOnGameChat", false);
-    typingDay = ini.Int(L"Typing", L"Day", 0, 0, 99991231);
-    dayKeys = ini.Int(L"Typing", L"DayKeys", 0, 0, 2000000000);
-    dayChars = ini.Int(L"Typing", L"DayChars", 0, 0, 2000000000);
-    totalKeys = ini.Int(L"Typing", L"TotalKeys", 0, 0, 2000000000);
-    totalChars = ini.Int(L"Typing", L"TotalChars", 0, 0, 2000000000);
-    totalMessages = ini.Int(L"Typing", L"TotalMessages", 0, 0, 2000000000);
 }
 
 namespace {
