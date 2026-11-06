@@ -1705,6 +1705,16 @@ extern const I18nEntry kGermanStrings[] = {
      "Optionen > Chat: Ein Klick hier kann GW2s eigene Kartenfahrt auslösen."},
     {L"Another line came in between: nothing was clicked. Try again.",
      "Eine andere Zeile kam dazwischen: Es wurde nichts geklickt. Versuch es noch einmal."},
+    {L"Waypoints",
+     "Wegmarken"},
+    {L"Collection",
+     "Sammlung"},
+    {L"Add to collection",
+     "In die Sammlung"},
+    {L"Remove from collection",
+     "Aus der Sammlung"},
+    {L"Click a waypoint in the chat, or choose one from your lists.",
+     "Klick eine Wegmarke im Chat an oder wähle eine aus deinen Listen."},
 };
 extern const size_t kGermanCount = sizeof(kGermanStrings) / sizeof(kGermanStrings[0]);
 

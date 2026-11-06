@@ -834,6 +834,7 @@ void RenderDebugWindow();
 void RenderMtLiveWindow();
 // A waypoint from the chat: the preview, and on request GW2's own reaction (kb_waypoint.cpp).
 void OpenWaypointPreview(uint32_t id);
+void OpenWaypointWindow();
 void RenderWaypointPreview();
 bool WaypointPassThrough();  // our windows let the mouse through while the click runs
 bool WaypointSawLine(bool whisper, const char* content);

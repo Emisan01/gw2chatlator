@@ -1705,6 +1705,16 @@ extern const I18nEntry kTurkishStrings[] = {
      "Seçenekler > Sohbet: buradaki tıklama GW2'nin harita uçuşunu başlatabilir."},
     {L"Another line came in between: nothing was clicked. Try again.",
      "Araya başka bir satır girdi: hiçbir şey tıklanmadı. Yeniden dene."},
+    {L"Waypoints",
+     "Geçiş noktaları"},
+    {L"Collection",
+     "Koleksiyon"},
+    {L"Add to collection",
+     "Koleksiyona ekle"},
+    {L"Remove from collection",
+     "Koleksiyondan çıkar"},
+    {L"Click a waypoint in the chat, or choose one from your lists.",
+     "Sohbette bir geçiş noktasına tıkla veya listelerinden birini seç."},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

@@ -1705,6 +1705,16 @@ extern const I18nEntry kPolishStrings[] = {
      "Opcje > Czat: kliknięcie tutaj może uruchomić przelot mapy GW2."},
     {L"Another line came in between: nothing was clicked. Try again.",
      "W międzyczasie przyszła inna linia: nic nie kliknięto. Spróbuj ponownie."},
+    {L"Waypoints",
+     "Punkty podróży"},
+    {L"Collection",
+     "Kolekcja"},
+    {L"Add to collection",
+     "Dodaj do kolekcji"},
+    {L"Remove from collection",
+     "Usuń z kolekcji"},
+    {L"Click a waypoint in the chat, or choose one from your lists.",
+     "Kliknij punkt podróży na czacie lub wybierz go ze swoich list."},
 };
 extern const size_t kPolishCount = sizeof(kPolishStrings) / sizeof(kPolishStrings[0]);
 

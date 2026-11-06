@@ -1705,6 +1705,16 @@ extern const I18nEntry kFrenchStrings[] = {
      "Options > Chat : un clic ici peut lancer le vol de carte de GW2."},
     {L"Another line came in between: nothing was clicked. Try again.",
      "Une autre ligne est arrivée entre-temps : rien n'a été cliqué. Réessayez."},
+    {L"Waypoints",
+     "Points de passage"},
+    {L"Collection",
+     "Collection"},
+    {L"Add to collection",
+     "Ajouter à la collection"},
+    {L"Remove from collection",
+     "Retirer de la collection"},
+    {L"Click a waypoint in the chat, or choose one from your lists.",
+     "Cliquez sur un point de passage dans le chat ou choisissez-en un dans vos listes."},
 };
 extern const size_t kFrenchCount = sizeof(kFrenchStrings) / sizeof(kFrenchStrings[0]);
 

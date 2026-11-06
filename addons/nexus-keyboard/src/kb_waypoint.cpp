@@ -26,7 +26,8 @@ std::mutex s_mu;  // after g_mu
 bool s_open = false;
 uint32_t s_selected = 0;
 int s_zoomOut = 1;  // steps below the map's finest tiles
-std::deque<uint32_t> s_history;  // the newest first
+std::deque<uint32_t> s_history;  // the ones you flew to, the newest first
+std::deque<uint32_t> s_collection;  // the ones you keep, the newest first
 bool s_historyRead = false;
 std::string s_awaited;  // the code on its way, without its brackets
 std::set<std::string> s_askedTiles;
@@ -41,7 +42,7 @@ std::atomic<unsigned> s_frames{0};
 std::atomic<int> s_linkX{-1}, s_linkY{-1}, s_linkW{0}, s_linkH{0};
 std::atomic<bool> s_linkRead{false}, s_linkToSave{false};
 
-constexpr size_t kHistoryMax = 30;
+constexpr size_t kHistoryMax = 30, kCollectionMax = 200;
 
 void Say(const std::wstring& text, ULONGLONG ms) {
     for (int waited = 0; waited < 2000 && !s_sendDone && !s_stop; waited += 20) Sleep(20);  // a send's last word clears the status
@@ -214,13 +215,35 @@ void Flight(uint32_t id) {
     Say(Tr(L"The map did not open: the link was not hit. Teach the place again in the preview; GW2's chat must show whispers and stand at its end."), 12000);
 }
 
-void SaveHistory(const std::wstring& dataDir) {  // on the worker
-    std::string out;
+void SaveLists(const std::wstring& dataDir) {  // on the worker; only the points' public numbers
+    std::string history, collection;
     {
         std::lock_guard<std::mutex> lock(s_mu);
-        for (const uint32_t id : s_history) out += std::to_string(id) + "\n";
+        for (const uint32_t id : s_history) history += std::to_string(id) + "\n";
+        for (const uint32_t id : s_collection) collection += std::to_string(id) + "\n";
     }
-    if (!g_wiped) WriteFileAtomic(dataDir + L"\\poi-history.txt", out);
+    if (g_wiped) return;
+    WriteFileAtomic(dataDir + L"\\poi-history.txt", history);
+    WriteFileAtomic(dataDir + L"\\poi-collection.txt", collection);
+}
+
+void ToggleCollection(uint32_t id) {
+    std::wstring dataDir;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        dataDir = g_cfg.dataDir;
+    }
+    {
+        std::lock_guard<std::mutex> lock(s_mu);
+        const auto at = std::find(s_collection.begin(), s_collection.end(), id);
+        if (at != s_collection.end()) {
+            s_collection.erase(at);
+        } else {
+            s_collection.push_front(id);
+            if (s_collection.size() > kCollectionMax) s_collection.pop_back();
+        }
+    }
+    g_worker.Post([dataDir] { SaveLists(dataDir); });
 }
 
 void Fly(uint32_t id) {  // the game's thread
@@ -236,7 +259,7 @@ void Fly(uint32_t id) {  // the game's thread
         s_history.push_front(id);
         if (s_history.size() > kHistoryMax) s_history.pop_back();
     }
-    g_worker.Post([dataDir] { SaveHistory(dataDir); });
+    g_worker.Post([dataDir] { SaveLists(dataDir); });
     if (s_thread.joinable()) s_thread.join();  // the last one has ended: s_busy
     s_stop = false;
     s_thread = std::thread([id] {
@@ -346,6 +369,38 @@ std::wstring PoiKind(const std::string& type) {
     return Tr(L"Point of interest");
 }
 
+void ReadIds(const std::wstring& path, std::deque<uint32_t>& into, size_t most) {
+    std::string text;
+    if (!ReadFileBytes(path, text)) return;
+    size_t at = 0;
+    while (at < text.size() && into.size() < most) {
+        size_t end = text.find('\n', at);
+        if (end == std::string::npos) end = text.size();
+        if (const unsigned long id = std::strtoul(text.c_str() + at, nullptr, 10)) into.push_back(static_cast<uint32_t>(id));
+        at = end + 1;
+    }
+}
+
+// A click on a name only shows it in the preview.
+void PoiList(const std::wstring& title, const std::vector<uint32_t>& ids, uint32_t selected) {
+    if (ids.empty()) return;
+    ImGui::TextDisabled("%s", UI(title).c_str());
+    ImGui::PushID(&ids);
+    for (const uint32_t id : ids) {
+        gct::ChatLinks::PoiView poi;
+        if (!g_links.Poi(id, &poi)) continue;
+        ImGui::PushID(static_cast<int>(id));
+        if (ImGui::Selectable(poi.name.c_str(), id == selected)) {
+            std::lock_guard<std::mutex> lock(s_mu);
+            s_selected = id;
+        }
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", poi.map.c_str());
+        ImGui::PopID();
+    }
+    ImGui::PopID();
+    ImGui::Spacing();
+}
+
 void ReadStored(const std::wstring& ini, const std::wstring& dataDir) {  // once
     if (!s_linkRead.exchange(true)) {
         s_linkX = static_cast<int>(GetPrivateProfileIntW(L"Waypoint", L"LinkX", static_cast<UINT>(-1), ini.c_str()));
@@ -357,15 +412,8 @@ void ReadStored(const std::wstring& ini, const std::wstring& dataDir) {  // once
     std::lock_guard<std::mutex> lock(s_mu);
     if (s_historyRead) return;
     s_historyRead = true;
-    std::string text;
-    if (!ReadFileBytes(dataDir + L"\\poi-history.txt", text)) return;
-    size_t at = 0;
-    while (at < text.size() && s_history.size() < kHistoryMax) {
-        size_t end = text.find('\n', at);
-        if (end == std::string::npos) end = text.size();
-        if (const unsigned long id = std::strtoul(text.c_str() + at, nullptr, 10)) s_history.push_back(static_cast<uint32_t>(id));
-        at = end + 1;
-    }
+    ReadIds(dataDir + L"\\poi-history.txt", s_history, kHistoryMax);
+    ReadIds(dataDir + L"\\poi-collection.txt", s_collection, kCollectionMax);
 }
 
 }  // namespace
@@ -373,6 +421,11 @@ void ReadStored(const std::wstring& ini, const std::wstring& dataDir) {  // once
 void OpenWaypointPreview(uint32_t id) {  // g_mu held or not: only s_mu
     std::lock_guard<std::mutex> lock(s_mu);
     s_selected = id;
+    s_open = true;
+}
+
+void OpenWaypointWindow() {  // from the menu: your lists, without a code from the chat
+    std::lock_guard<std::mutex> lock(s_mu);
     s_open = true;
 }
 
@@ -425,7 +478,7 @@ void RenderWaypointPreview() {
         SetStatus(Tr(L"Place remembered. A click in the preview now does this by itself."), 8000);
     }
     uint32_t selected;
-    std::vector<uint32_t> history;
+    std::vector<uint32_t> history, collection;
     {
         std::lock_guard<std::mutex> lock(s_mu);
         if (!s_open || s_through.load()) return;
@@ -438,15 +491,17 @@ void RenderWaypointPreview() {
     }
     {
         std::lock_guard<std::mutex> lock(s_mu);
+        if (!s_selected) s_selected = !s_collection.empty() ? s_collection.front() : !s_history.empty() ? s_history.front() : 0;
         selected = s_selected;
         history.assign(s_history.begin(), s_history.end());
+        collection.assign(s_collection.begin(), s_collection.end());
     }
     const float nexusPx = FollowUiPx();
     RequestUiFont(nexusPx);
     ImFont* uf = g_uiFont.load();
     ImGui::SetNextWindowSize(ImVec2(nexusPx * 42.0f, nexusPx * 26.0f), ImGuiCond_FirstUseEver);
     bool open = true;
-    const std::string title = UI(Tr(L"Waypoint")) + "###kbwaypoint";
+    const std::string title = UI(Tr(L"Waypoints")) + "###kbwaypoint";
     const bool visible = ImGui::Begin(title.c_str(), &open, ImGuiWindowFlags_NoCollapse);
     bool pushedUf = false;
     if (uf && uf->FontSize > 0.0f) {
@@ -468,29 +523,28 @@ void RenderWaypointPreview() {
         ImGui::EndChild();
         ImGui::SameLine();
         ImGui::BeginChild("##wplist", ImVec2(0.0f, mapH), true);
-        ImGui::TextDisabled("%s", UI(Tr(L"Your last ones")).c_str());
-        for (const uint32_t id : history) {
-            gct::ChatLinks::PoiView past;
-            if (!g_links.Poi(id, &past)) continue;
-            ImGui::PushID(static_cast<int>(id));
-            if (ImGui::Selectable(past.name.c_str(), id == selected)) {
-                std::lock_guard<std::mutex> lock(s_mu);
-                s_selected = id;
-            }
-            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", past.map.c_str());
-            ImGui::PopID();
-        }
+        PoiList(Tr(L"Collection"), collection, selected);
+        PoiList(Tr(L"Your last ones"), history, selected);
         ImGui::EndChild();
         if (known) {
             ImGui::TextUnformatted(poi.name.c_str());
             ImGui::SameLine();
             ImGui::TextDisabled("%s · %s", UI(PoiKind(poi.type)).c_str(), poi.map.c_str());
-        } else {
+        } else if (selected) {
             ImGui::TextDisabled("%s", UI(Tr(L"The table of waypoints is on its way …")).c_str());
+        } else {
+            ImGui::TextDisabled("%s", UI(Tr(L"Click a waypoint in the chat, or choose one from your lists.")).c_str());
         }
         if (mayFly && selected) {
             if (ImGui::Button(UI(Tr(L"Show it in GW2")).c_str())) Fly(selected);
             ImGui::SameLine();
+        }
+        if (selected) {
+            const bool kept = std::find(collection.begin(), collection.end(), selected) != collection.end();
+            if (ImGui::Button(UI(kept ? Tr(L"Remove from collection") : Tr(L"Add to collection")).c_str())) ToggleCollection(selected);
+            ImGui::SameLine();
+        }
+        if (mayFly && selected) {
             if (ImGui::Button(UI(Tr(L"Teach the place again")).c_str())) {
                 s_linkX = -1;
                 Fly(selected);

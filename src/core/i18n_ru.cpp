@@ -1705,6 +1705,16 @@ extern const I18nEntry kRussianStrings[] = {
      "Настройки > Чат: клик здесь может запустить полёт карты GW2."},
     {L"Another line came in between: nothing was clicked. Try again.",
      "Между тем пришла другая строка: ничего не нажато. Попробуйте ещё раз."},
+    {L"Waypoints",
+     "Точки"},
+    {L"Collection",
+     "Коллекция"},
+    {L"Add to collection",
+     "В коллекцию"},
+    {L"Remove from collection",
+     "Из коллекции"},
+    {L"Click a waypoint in the chat, or choose one from your lists.",
+     "Нажмите точку в чате или выберите её из своих списков."},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 
