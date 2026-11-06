@@ -1721,6 +1721,8 @@ extern const I18nEntry kPolishStrings[] = {
      "Trwa jeszcze tłumaczenie: punkt nie został wysłany. Kliknij ponownie."},
     {L"Click: GW2's map flies there. Right-click: only look.",
      "Klik: mapa GW2 leci tam. Prawy klik: tylko podgląd."},
+    {L"A Shift+click's code stands in GW2's chat line, in another channel than this one. Send or clear it there first; your text stays here.",
+     "Kod z Shift+kliknięcia stoi w linii czatu GW2, na innym kanale niż tutaj. Najpierw wyślij go lub usuń tam; twój tekst zostaje tutaj."},
 };
 extern const size_t kPolishCount = sizeof(kPolishStrings) / sizeof(kPolishStrings[0]);
 

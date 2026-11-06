@@ -1721,6 +1721,8 @@ extern const I18nEntry kRussianStrings[] = {
      "Ещё идёт перевод: точка не отправлена. Нажмите ещё раз."},
     {L"Click: GW2's map flies there. Right-click: only look.",
      "Клик: карта GW2 летит туда. Правый клик: только посмотреть."},
+    {L"A Shift+click's code stands in GW2's chat line, in another channel than this one. Send or clear it there first; your text stays here.",
+     "Код от Shift+клика стоит в строке чата GW2, в другом канале. Сначала отправьте или удалите его там; ваш текст останется здесь."},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

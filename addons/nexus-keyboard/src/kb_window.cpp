@@ -846,6 +846,8 @@ void RenderWindow() {
             }
             const bool chatOpen = ms.live && ms.TextboxHasFocus();
             g_gameChatOpen = chatOpen;
+            if (!chatOpen) g_lineHoldsCode = false;
+            else if (GetTickCount64() - g_shiftClickAt.load() < 1500) g_lineHoldsCode = true;
             const bool chatOpened = chatOpen && !chatWasOpen && g_show && !g_sending;  // not the line our own send opens
             if (chatOpened && g_cfg.focusOnGameChat) g_focusInput = true;   // the focus comes over (opens it as well)
             else if (chatOpened && g_layout.autoOpen && g_collapsed) g_expandRequest = true;  // only opened

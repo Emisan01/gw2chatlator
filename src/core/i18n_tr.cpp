@@ -1721,6 +1721,8 @@ extern const I18nEntry kTurkishStrings[] = {
      "Hâlâ çeviri yapılıyor: nokta gönderilmedi. Yeniden tıkla."},
     {L"Click: GW2's map flies there. Right-click: only look.",
      "Tık: GW2 haritası oraya gider. Sağ tık: yalnızca bak."},
+    {L"A Shift+click's code stands in GW2's chat line, in another channel than this one. Send or clear it there first; your text stays here.",
+     "Shift+tık kodu GW2 sohbet satırında, buradakinden farklı bir kanalda duruyor. Önce orada gönder veya sil; metnin burada kalır."},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

@@ -1721,6 +1721,8 @@ extern const I18nEntry kFrenchStrings[] = {
      "Encore occupé par une traduction : le point n'a pas été publié. Cliquez à nouveau."},
     {L"Click: GW2's map flies there. Right-click: only look.",
      "Clic : la carte de GW2 s'y rend. Clic droit : seulement regarder."},
+    {L"A Shift+click's code stands in GW2's chat line, in another channel than this one. Send or clear it there first; your text stays here.",
+     "Le code d'un Maj+clic se trouve dans la ligne de chat de GW2, dans un autre canal qu'ici. Envoyez-le ou effacez-le d'abord là-bas ; votre texte reste ici."},
 };
 extern const size_t kFrenchCount = sizeof(kFrenchStrings) / sizeof(kFrenchStrings[0]);
 

@@ -637,6 +637,8 @@ std::wstring GuardRefusal(SendGuard::Reason reason);  // what the status says wh
 bool SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring learnText, std::wstring channel = {});
 // GW2's own chat line follows the channel you choose here (footer, a whisper tab, a tab of your own): set once when
 // you choose it – again with every click on it – and a message then only opens the line, pastes and sends.
+extern std::atomic<unsigned long long> g_shiftClickAt;  // your last Shift+click that went to the game
+extern bool g_lineHoldsCode;  // it opened GW2's line, and that line has stood open since: a code is in it (g_mu)
 extern std::wstring g_syncedChannel;  // the channel ("/m ", "/w Name, ") we last set in GW2's line; "" unknown (g_mu)
 extern std::atomic<bool> g_letGoKeyboard;  // the worker needs the keyboard for GW2: our window lets go (game thread)
 void RequestChannelSync();  // the channel was chosen: GW2's line follows (g_mu held)

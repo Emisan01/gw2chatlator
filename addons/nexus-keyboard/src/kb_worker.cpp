@@ -798,12 +798,18 @@ bool SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
     std::wstring error;
     bool ok = gw2 != nullptr;
     if (!gw2) error = Tr(L"GW2 window not found");
-    bool copyOnly;
+    bool copyOnly, lineHoldsCode;
     std::wstring synced;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         copyOnly = g_cfg.copyOnly;
         synced = g_syncedChannel;
+        lineHoldsCode = g_lineHoldsCode;
+    }
+    // A channel command typed behind a Shift+click's code would go out as text: "[code]/p hello" in the old channel.
+    if (ok && !copyOnly && lineHoldsCode && ((!channel.empty() && channel != synced) || parts.front()[0] == L'/')) {
+        error = Tr(L"A Shift+click's code stands in GW2's chat line, in another channel than this one. Send or clear it there first; your text stays here.");
+        ok = false;
     }
     // GW2's line not (or no longer) in the channel of your Enter: set first – then the message is only pasted
     if (ok && !copyOnly && !channel.empty() && channel != synced) {

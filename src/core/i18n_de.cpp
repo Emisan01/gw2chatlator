@@ -1721,6 +1721,8 @@ extern const I18nEntry kGermanStrings[] = {
      "Noch mit einer Übersetzung beschäftigt: Die Wegmarke wurde nicht gepostet. Klick noch einmal."},
     {L"Click: GW2's map flies there. Right-click: only look.",
      "Klick: GW2s Karte fährt dorthin. Rechtsklick: nur ansehen."},
+    {L"A Shift+click's code stands in GW2's chat line, in another channel than this one. Send or clear it there first; your text stays here.",
+     "In GW2s Chatzeile steht ein Code aus einem Shift+Klick, in einem anderen Kanal als hier. Schick oder lösche ihn dort zuerst; dein Text bleibt hier."},
 };
 extern const size_t kGermanCount = sizeof(kGermanStrings) / sizeof(kGermanStrings[0]);
 
