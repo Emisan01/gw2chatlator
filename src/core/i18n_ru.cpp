@@ -1723,6 +1723,8 @@ extern const I18nEntry kRussianStrings[] = {
      "Ответ Supertext не читается"},
     {L"Unexpected answer from Supertext",
      "Неожиданный ответ Supertext"},
+    {L"Still busy with a translation: the waypoint was not posted. Click again.",
+     "Ещё идёт перевод: точка не отправлена. Нажмите ещё раз."},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

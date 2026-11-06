@@ -1723,6 +1723,8 @@ extern const I18nEntry kGermanStrings[] = {
      "Antwort von Supertext nicht lesbar"},
     {L"Unexpected answer from Supertext",
      "Unerwartete Antwort von Supertext"},
+    {L"Still busy with a translation: the waypoint was not posted. Click again.",
+     "Noch mit einer Übersetzung beschäftigt: Die Wegmarke wurde nicht gepostet. Klick noch einmal."},
 };
 extern const size_t kGermanCount = sizeof(kGermanStrings) / sizeof(kGermanStrings[0]);
 

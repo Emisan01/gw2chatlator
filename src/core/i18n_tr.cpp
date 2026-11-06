@@ -1723,6 +1723,8 @@ extern const I18nEntry kTurkishStrings[] = {
      "Supertext yanıtı okunamıyor"},
     {L"Unexpected answer from Supertext",
      "Supertext'dan beklenmeyen yanıt"},
+    {L"Still busy with a translation: the waypoint was not posted. Click again.",
+     "Hâlâ çeviri yapılıyor: nokta gönderilmedi. Yeniden tıkla."},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

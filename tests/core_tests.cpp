@@ -2281,6 +2281,22 @@ static void TestWhisperWatch() {
 }
 
 static void TestSendGuard() {
+    {  // a click that asks again is refused, but no strike: it must not lock the sending of a whole session
+        SendGuard g;
+        const std::wstring line = L"/w Some Name, [&BCkEAAA=]";
+        for (int i = 0; i < 50; ++i) CHECK(g.WouldAllow(line, 10u * i).allow);  // asking counts nothing
+        for (int i = 0; i < SendGuard::kRepeatMax; ++i) CHECK(g.Check(line, false, false, 1000u * i).allow);
+        for (int i = 0; i < 5; ++i) {
+            const SendGuard::Verdict v = g.WouldAllow(line, 10000u + i);
+            CHECK(!v.allow && v.reason == SendGuard::Reason::Repeat);
+        }
+        CHECK(g.Strikes() == 0 && !g.Locked());
+        CHECK(g.WouldAllow(L"another line", 11000).allow);
+        CHECK(g.WouldAllow(line, 1000u + SendGuard::kRepeatWindowMs * 2).allow);  // the window passed
+        SendGuard locked;
+        for (int i = 0; i < SendGuard::kStrikesToLock; ++i) locked.Check(L"hi", true, false, 0);
+        CHECK(locked.Locked() && locked.WouldAllow(L"hi", 1).reason == SendGuard::Reason::Locked);
+    }
     {  // ordinary chatting passes, the same line a few times too
         SendGuard g;
         for (int i = 0; i < 4; ++i) CHECK(g.Check(L"lfg Fraktale", false, false, 1000u * i).allow);

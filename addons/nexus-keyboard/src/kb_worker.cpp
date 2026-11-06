@@ -750,7 +750,7 @@ void RequestChannelSync() {  // g_mu held
     g_worker.Post([channel] { SyncChannelJob(channel); });
 }
 
-void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring learnText, std::wstring channel) {
+bool SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring learnText, std::wstring channel) {
     AssertNotInteractiveLane("SendNow");
     {  // what you typed, for your own line when it comes back translated (memory only, the last ones)
         const ChatSplit own = SplitChatCommand(typed);
@@ -767,7 +767,7 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
     g_bufferingStartTime = GetTickCount64();  // Safety clock begins afresh at actual send
     if (parts.empty()) {
         g_sendInFlight = false;
-        return;
+        return false;
     }
     if (parts.size() > kMaxPartsPerEnter) {  // the translation came out longer (sent when it arrived): not sent either
         std::lock_guard<std::mutex> lock(g_mu);
@@ -775,7 +775,7 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
         g_history.push_front(typed);
         SetStatus(TrF(L"Not sent: {1} chat lines – at most 3 per Enter. Shorten it (Up brings it back).",
                       {std::to_wstring(parts.size())}), 10000);
-        return;
+        return false;
     }
     if (g_test.noSend) {  // the self-test: what would go into the chat
         std::lock_guard<std::mutex> lock(g_mu);
@@ -784,7 +784,7 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
         g_sending = false;  // as after a real send
         g_sendInFlight = false;
         g_history.push_front(typed);
-        return;
+        return true;
     }
     {
         std::lock_guard<std::mutex> lock(g_mu);
@@ -874,6 +874,14 @@ void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
             strncpy_s(g_input, back.c_str(), _TRUNCATE);
         }
     }
+    return ok;
+}
+
+std::wstring GuardRefusal(SendGuard::Reason reason) {
+    return reason == SendGuard::Reason::Repeat ? Tr(L"Not sent: the same line too often in a short time.")
+           : reason == SendGuard::Reason::Rate ? Tr(L"Not sent: more lines than a person writes in a minute.")
+                                               : Tr(L"Sending is switched off for this session (misuse detected). "
+                                                    L"Restart the program to send again.");
 }
 
 void StartSend() {  // Enter (g_mu held)
@@ -890,11 +898,7 @@ void StartSend() {  // Enter (g_mu held)
     const SendGuard::Verdict v = g_guard.Check(text, false, false, GetTickCount64());
     if (!v.allow) {
         CancelAutoEnter();
-        SetStatus(v.reason == SendGuard::Reason::Repeat ? Tr(L"Not sent: the same line too often in a short time.")
-                  : v.reason == SendGuard::Reason::Rate  ? Tr(L"Not sent: more lines than a person writes in a minute.")
-                                                         : Tr(L"Sending is switched off for this session (misuse detected). "
-                                                              L"Restart the program to send again."),
-                  10000);
+        SetStatus(GuardRefusal(v.reason), 10000);
         return;
     }
     const ChatSplit split = SplitChatCommand(text);

@@ -37,6 +37,9 @@ public:
     // One Enter that would send `text` (as it goes to the game) at `nowMs` (a steady clock). An allowed line is
     // counted for the spam rules.
     Verdict Check(const std::wstring& text, bool injectedEnter, bool foreignText, uint64_t nowMs);
+    // The same spam rules without counting and without a strike: for a click that may simply be repeated, which is
+    // refused but must not lock the sending of a whole session. Call Check to count a line that goes out.
+    Verdict WouldAllow(const std::wstring& text, uint64_t nowMs) const;
 
     bool Locked() const { return locked_; }
     int Strikes() const { return strikes_; }
@@ -49,6 +52,7 @@ private:
     };
     static std::wstring Key(const std::wstring& text);  // case- and spacing-insensitive, end punctuation ignored
     Verdict Strike(Reason r);
+    Reason SpamReason(const std::wstring& key, uint64_t nowMs) const;
 
     std::deque<Sent> sent_;
     int strikes_ = 0;

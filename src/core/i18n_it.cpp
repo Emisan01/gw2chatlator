@@ -1723,6 +1723,8 @@ extern const I18nEntry kItalianStrings[] = {
      "Risposta di Supertext illeggibile"},
     {L"Unexpected answer from Supertext",
      "Risposta inattesa da Supertext"},
+    {L"Still busy with a translation: the waypoint was not posted. Click again.",
+     "Ancora occupato con una traduzione: il punto non è stato inviato. Clicca di nuovo."},
 };
 extern const size_t kItalianCount = sizeof(kItalianStrings) / sizeof(kItalianStrings[0]);
 

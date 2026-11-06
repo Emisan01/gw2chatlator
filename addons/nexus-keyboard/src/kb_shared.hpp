@@ -633,7 +633,8 @@ int TranslateRecentLines(bool once = false);
 std::wstring TranslatorTag(const std::shared_ptr<Translator>& tr, int beam);
 void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId = 0);  // sendId: g_pendingSend's
 void ComputeTyping();
-void SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring learnText, std::wstring channel = {});
+std::wstring GuardRefusal(SendGuard::Reason reason);  // what the status says when the guard refuses a line
+bool SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring learnText, std::wstring channel = {});
 // GW2's own chat line follows the channel you choose here (footer, a whisper tab, a tab of your own): set once when
 // you choose it – again with every click on it – and a message then only opens the line, pastes and sends.
 extern std::wstring g_syncedChannel;  // the channel ("/m ", "/w Name, ") we last set in GW2's line; "" unknown (g_mu)

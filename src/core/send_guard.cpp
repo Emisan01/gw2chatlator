@@ -48,15 +48,28 @@ SendGuard::Verdict SendGuard::Check(const std::wstring& text, bool injectedEnter
     const uint64_t keep = kRepeatWindowMs > kRateWindowMs ? kRepeatWindowMs : kRateWindowMs;
     while (!sent_.empty() && nowMs - sent_.front().ms > keep) sent_.pop_front();
     const std::wstring key = Key(text);
+    const Reason spam = SpamReason(key, nowMs);
+    if (spam != Reason::None) return Strike(spam);
+    sent_.push_back({nowMs, key});
+    return {};
+}
+
+SendGuard::Reason SendGuard::SpamReason(const std::wstring& key, uint64_t nowMs) const {
     int same = 0, recent = 0;
     for (const Sent& s : sent_) {
         if (nowMs - s.ms <= kRepeatWindowMs && s.key == key) ++same;
         if (nowMs - s.ms <= kRateWindowMs) ++recent;
     }
-    if (!key.empty() && same >= kRepeatMax) return Strike(Reason::Repeat);
-    if (recent >= kRateMax) return Strike(Reason::Rate);
-    sent_.push_back({nowMs, key});
-    return {};
+    if (!key.empty() && same >= kRepeatMax) return Reason::Repeat;
+    if (recent >= kRateMax) return Reason::Rate;
+    return Reason::None;
+}
+
+SendGuard::Verdict SendGuard::WouldAllow(const std::wstring& text, uint64_t nowMs) const {
+    Verdict v;
+    v.reason = locked_ ? Reason::Locked : SpamReason(Key(text), nowMs);
+    v.allow = v.reason == Reason::None;
+    return v;
 }
 
 }  // namespace gct

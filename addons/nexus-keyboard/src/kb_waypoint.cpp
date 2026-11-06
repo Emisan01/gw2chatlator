@@ -43,7 +43,8 @@ std::atomic<unsigned> s_frames{0};
 // Where the link stands in the newest line of GW2's chat, from one click of yours, in the game window's client pixels. It
 // moves with your character's name, the window's size and GW2's interface size: learned once for each, nothing guessed.
 std::atomic<int> s_linkX{-1}, s_linkY{-1};
-std::atomic<bool> s_forgetPlace{false}, s_mapOpenFrame{false};
+std::atomic<bool> s_forgetPlace{false}, s_mapOpenFrame{false}, s_hidePreview{false};
+std::atomic<unsigned> s_runCount{0}, s_runWaiting{0};  // the run posted to the worker and not begun yet; 0: none
 std::atomic<int> s_previewL{0}, s_previewT{0}, s_previewR{0}, s_previewB{0};  // the preview's rectangle, empty while it is closed
 std::wstring s_placeKey;  // s_mu: the place being learned
 std::map<std::wstring, POINT> s_places;  // s_mu: read or learned this session
@@ -89,6 +90,9 @@ void MoveCursor(POINT at) {  // as a real mouse would: absolute, over the whole 
     SendInput(1, &in, sizeof(in));
 }
 
+// With the buttons swapped in Windows the physical right one is the main one: GetAsyncKeyState and SendInput speak physical.
+bool MainButtonSwapped() { return GetSystemMetrics(SM_SWAPBUTTON) != 0; }
+
 // One left click at `at`, on GW2's own window: our windows let the mouse through, the cursor comes onto the link in two steps
 // as a hand does, stays about 400 ms for GW2's mouse-over, the button down, held, up; the mouse is yours again where it
 // stands. Your hand moving the cursor ends it: yours.
@@ -120,10 +124,10 @@ bool RealClick(HWND gw2, POINT at, POINT was) {
     INPUT in{};
     in.type = INPUT_MOUSE;
     in.mi.dwExtraInfo = gct::kGw2SenderExtraInfo;  // ours: not one of the clicks that wait
-    in.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+    in.mi.dwFlags = MainButtonSwapped() ? MOUSEEVENTF_RIGHTDOWN : MOUSEEVENTF_LEFTDOWN;
     SendInput(1, &in, sizeof(in));
     Sleep(Dice(40, 70));
-    in.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+    in.mi.dwFlags = MainButtonSwapped() ? MOUSEEVENTF_RIGHTUP : MOUSEEVENTF_LEFTUP;
     SendInput(1, &in, sizeof(in));
     return true;
 }
@@ -148,7 +152,7 @@ POINT StoredPlace(const std::wstring& key) {
 void LetGoOfKeyboard() {
     unsigned freeSince = s_frames;
     for (int waited = 0; waited < 1500 && !s_stop; waited += 5) {
-        if (!g_keyboardFree || (GetAsyncKeyState(VK_LBUTTON) & 0x8000)) {
+        if (!g_keyboardFree || (GetAsyncKeyState(MainButtonSwapped() ? VK_RBUTTON : VK_LBUTTON) & 0x8000)) {
             g_letGoKeyboard = true;
             freeSince = s_frames;
         } else if (s_frames - freeSince >= 3) {
@@ -160,7 +164,10 @@ void LetGoOfKeyboard() {
 
 void Flight(uint32_t id) {
     struct EndHold {
-        ~EndHold() { s_through = false; }
+        ~EndHold() {
+            s_through = false;
+            s_hidePreview = false;
+        }
     } endHold;
     std::wstring own;
     bool copyOnly;
@@ -168,7 +175,6 @@ void Flight(uint32_t id) {
         std::lock_guard<std::mutex> lock(g_mu);
         own = g_ownName;
         copyOnly = g_cfg.copyOnly;
-        // Where GW2's line goes back to: GW2 does not say. The footer's channel, else the one we last saw it in.
     }
     if (own.empty() || copyOnly) {
         Say(copyOnly ? Tr(L"In \"only copy\" mode the waypoint cannot be posted.") : Tr(L"Your character's name is not known yet."), 8000);
@@ -187,6 +193,18 @@ void Flight(uint32_t id) {
         if (!open) s_runBroke = false;
     }
     const std::string code = PieUI::ChatLinks::EncodeMap(id);  // "[&BCkEAAA=]"
+    const std::wstring line = L"/w " + own + L", " + FromUtf8(code);
+    {  // the same rules as every message: no spam by clicking, but a repeated click locks nothing
+        std::lock_guard<std::mutex> lock(g_mu);
+        const uint64_t now = GetTickCount64();
+        const SendGuard::Verdict verdict = g_guard.WouldAllow(line, now);
+        if (!verdict.allow) {
+            SetStatus(GuardRefusal(verdict.reason), 10000);
+            TechLog('S', L"waypoint: refused by the send guard");
+            return;
+        }
+        g_guard.Check(line, false, false, now);
+    }
     {
         std::lock_guard<std::mutex> lock(s_mu);
         s_awaited = code.size() > 3 ? code.substr(2, code.size() - 3) : code;
@@ -195,8 +213,11 @@ void Flight(uint32_t id) {
     s_lineMoved = false;
     s_sendDone = false;
     s_sendFailed = false;
-    const std::wstring line = L"/w " + own + L", " + FromUtf8(code);
-    g_worker.PostFront([line] {
+    const unsigned run = ++s_runCount;
+    s_runWaiting = run;
+    g_worker.PostFront([line, run] {
+        unsigned waiting = run;
+        if (!s_runWaiting.compare_exchange_strong(waiting, 0)) return;  // your click gave up waiting: nothing goes out late
         {  // as every send: your input lets go of the keyboard and what you type meanwhile is kept for it
             std::lock_guard<std::mutex> lock(g_mu);
             g_sending = true;
@@ -206,15 +227,24 @@ void Flight(uint32_t id) {
         }
         HoldWindows();
         LetGoOfKeyboard();
-        SendNow({line}, line, std::wstring());  // through GW2's own chat line: so the link stands in GW2's own chat
+        const bool sent = SendNow({line}, line, std::wstring());  // through GW2's own chat line: so the link stands in GW2's own chat
         std::lock_guard<std::mutex> lock(g_mu);
         if (!g_history.empty() && g_history.front() == line) g_history.pop_front();  // not for your Up key
         if (ToUtf8(line) == g_input) g_input[0] = 0;  // a send that failed gives its text back: this one was never yours
         g_syncedChannel.clear();  // GW2's line now stands in this whisper: the next message from the footer's channel sets it again
-        s_sendFailed = !g_status.empty();  // the reason stands in the status
+        s_sendFailed = !sent;  // the reason stands in the status
         if (s_sendFailed) s_runBroke = true;
         s_sendDone = true;
     });
+    // The worker may be busy with a translation or the model's start: the click waits at most 15 s, then it is off.
+    for (int waited = 0; waited < 15000 && s_runWaiting == run && !s_stop; waited += 10) Sleep(10);
+    unsigned stillWaiting = run;
+    if (s_runWaiting.compare_exchange_strong(stillWaiting, 0)) {
+        s_sendDone = true;
+        TechLog('S', L"waypoint: the worker stayed busy, nothing sent");
+        Say(Tr(L"Still busy with a translation: the waypoint was not posted. Click again."), 8000);
+        return;
+    }
     for (int waited = 0; waited < 15000 && !s_sendDone && !s_stop; waited += 10) Sleep(10);  // the whole send, only then the mouse
     if (s_sendFailed) return;
     TechLog('S', L"waypoint: whisper sent");
@@ -258,6 +288,8 @@ void Flight(uint32_t id) {
         Say(Tr(L"The click was left out: GW2 was not in front, or the mouse moved."), 8000);
         return;
     }
+    s_hidePreview = true;  // still out of the way while GW2 opens its map
+    s_through = false;     // the press is out: the mouse and your clicks are yours again
     MumbleLink mumble;
     for (int waited = 0; waited < 1500 && !s_stop; waited += 50) {
         const MumbleState ms = mumble.Read();
@@ -590,7 +622,7 @@ void RenderWaypointPreview() {
     {
         std::lock_guard<std::mutex> lock(s_mu);
         if (!s_open) s_previewL = s_previewT = s_previewR = s_previewB = 0;
-        if (!s_open || WaypointPassThrough()) return;
+        if (!s_open || WaypointPassThrough() || s_hidePreview) return;
     }
     const bool teaching = s_teaching.load() && GetTickCount64() <= s_teachUntil.load();  // no new run: your click on the link comes first
     bool mayFly, onMap;
