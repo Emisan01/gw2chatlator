@@ -121,16 +121,6 @@ std::wstring PrimaryLang(const std::wstring& code) {
     return ToUpperAscii(dash == std::wstring::npos ? t : t.substr(0, dash));
 }
 
-std::string Gw2ApiLang(const std::wstring& deeplCode) {
-    const std::wstring p = PrimaryLang(deeplCode);
-    if (p == L"EN") return "en";
-    if (p == L"DE") return "de";
-    if (p == L"FR") return "fr";
-    if (p == L"ES") return "es";
-    if (p == L"ZH") return "zh";
-    return "";
-}
-
 std::vector<std::wstring> SpellTagCandidates(const std::wstring& lang, const std::wstring& userLocale) {
     std::vector<std::wstring> out;
     auto add = [&](const std::wstring& tag) {

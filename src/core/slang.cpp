@@ -284,27 +284,6 @@ static std::wstring ContractionStem(const std::wstring& word) {
 
 bool IsGermanContraction(const std::wstring& word) { return !ContractionStem(word).empty(); }
 
-std::wstring ExpandGermanContractions(const std::wstring& text) {
-    std::wstring out;
-    size_t i = 0;
-    while (i < text.size()) {
-        auto inWord = [&](size_t k) {
-            return IsWordChar(text[k]) || ((text[k] == L'\'' || text[k] == L'\u2019') && k > 0 && IsWordChar(text[k - 1]));
-        };
-        if (!inWord(i)) {
-            out += text[i++];
-            continue;
-        }
-        size_t e = i;
-        while (e < text.size() && inWord(e)) ++e;
-        const std::wstring word = text.substr(i, e - i);
-        const std::wstring stem = ContractionStem(word);
-        out += stem.empty() ? word : stem + L" es";
-        i = e;
-    }
-    return out;
-}
-
 std::wstring GreetingFor(const std::wstring& line, const std::wstring& target) {
     static const WordSet hello = [] {
         WordSet s;

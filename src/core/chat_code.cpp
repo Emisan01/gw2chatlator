@@ -43,50 +43,6 @@ uint32_t Le(const std::vector<uint8_t>& b, size_t at, size_t n) {
 
 }  // namespace
 
-ChatCode DecodeChatCode(const std::wstring& code) {
-    ChatCode c;
-    std::wstring body = code;
-    if (body.size() >= 3 && body.compare(0, 2, L"[&") == 0 && body.back() == L']') body = body.substr(2, body.size() - 3);
-    std::vector<uint8_t> b;
-    if (!Base64Decode(body, &b) || b.size() < 2) return c;
-    switch (b[0]) {
-        case 0x01:
-            if (b.size() >= 5) c = {ChatCodeKind::Coin, Le(b, 1, 4), 1};
-            break;
-        case 0x02:  // item: count, 3-byte id, flags (+ skin / upgrades)
-            if (b.size() >= 5) c = {ChatCodeKind::Item, Le(b, 2, 3), b[1]};
-            break;
-        case 0x03: c = {ChatCodeKind::Text, Le(b, 1, 4), 1}; break;
-        case 0x04: c = {ChatCodeKind::Poi, Le(b, 1, 4), 1}; break;
-        case 0x06: c = {ChatCodeKind::Skill, Le(b, 1, 4), 1}; break;
-        case 0x07: c = {ChatCodeKind::Trait, Le(b, 1, 4), 1}; break;
-        case 0x09: c = {ChatCodeKind::Recipe, Le(b, 1, 4), 1}; break;
-        case 0x0A: c = {ChatCodeKind::Skin, Le(b, 1, 4), 1}; break;
-        case 0x0B: c = {ChatCodeKind::Outfit, Le(b, 1, 4), 1}; break;
-        case 0x0C: c = {ChatCodeKind::Objective, Le(b, 1, 4), 1}; break;
-        case 0x0D: c = {ChatCodeKind::Build, 0, 1}; break;
-        case 0x0E: c = {ChatCodeKind::Achievement, Le(b, 1, 4), 1}; break;
-        default: break;
-    }
-    if (c.kind != ChatCodeKind::Unknown && c.kind != ChatCodeKind::Build && c.id == 0) c.kind = ChatCodeKind::Unknown;
-    return c;
-}
-
-std::wstring ChatCodeApiPath(const ChatCode& c) {
-    const wchar_t* what = nullptr;
-    switch (c.kind) {
-        case ChatCodeKind::Item: what = L"items"; break;
-        case ChatCodeKind::Skill: what = L"skills"; break;
-        case ChatCodeKind::Trait: what = L"traits"; break;
-        case ChatCodeKind::Recipe: what = L"recipes"; break;
-        case ChatCodeKind::Skin: what = L"skins"; break;
-        case ChatCodeKind::Outfit: what = L"outfits"; break;
-        case ChatCodeKind::Achievement: what = L"achievements"; break;
-        default: return {};
-    }
-    return std::wstring(L"/v2/") + what + L"?ids=" + std::to_wstring(c.id);
-}
-
 std::wstring ChatCodeNamesPath(const wchar_t* what, const std::vector<uint32_t>& ids, const std::wstring& lang) {
     std::wstring path = std::wstring(L"/v2/") + what + L"?lang=" + lang + L"&ids=";
     for (size_t i = 0; i < ids.size(); ++i) {

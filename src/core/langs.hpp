@@ -10,9 +10,6 @@ namespace gct {
 // "EN-GB" -> "EN", "zh-hans" -> "ZH", "de" -> "DE"
 std::wstring PrimaryLang(const std::wstring& code);
 
-// DeepL code -> GW2 API language ("en", "de", "fr", "es", "zh"), or "" when
-// the game has no such language (then there is no glossary for it).
-std::string Gw2ApiLang(const std::wstring& deeplCode);
 
 // A guess from letters only one language (or script) uses: ı ğ ş -> TR,
 // ñ ¿ ¡ -> ES, ą ę ł ż -> PL, ß/ä ö ü -> DE, ç œ ê -> FR, ã õ -> PT, ő ű -> HU,

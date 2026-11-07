@@ -61,9 +61,6 @@ std::vector<uint8_t> Base64Decode(const std::string& encoded) {
 // Little-endian readers / writers
 // ---------------------------------------------------------------------------
 
-static uint16_t ReadU16LE(const uint8_t* p) {
-    return (uint16_t)p[0] | ((uint16_t)p[1] << 8);
-}
 static uint32_t ReadU24LE(const uint8_t* p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16);
 }
@@ -71,17 +68,6 @@ static uint32_t ReadU32LE(const uint8_t* p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
            ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
-static void WriteU16LE(std::vector<uint8_t>& buf, uint16_t v) {
-    buf.push_back((uint8_t)(v & 0xFF));
-    buf.push_back((uint8_t)((v >> 8) & 0xFF));
-}
-static void WriteU32LE(std::vector<uint8_t>& buf, uint32_t v) {
-    buf.push_back((uint8_t)(v & 0xFF));
-    buf.push_back((uint8_t)((v >> 8) & 0xFF));
-    buf.push_back((uint8_t)((v >> 16) & 0xFF));
-    buf.push_back((uint8_t)((v >> 24) & 0xFF));
-}
-
 // ---------------------------------------------------------------------------
 // Plain-text un-escape
 // ---------------------------------------------------------------------------
@@ -116,45 +102,9 @@ bool ExtractPayload(const std::string& link, std::string& payload) {
     return !payload.empty();
 }
 
-ChatLinkType DetectType(const std::string& link) {
-    std::string payload;
-    if (!ExtractPayload(link, payload)) return LINK_NONE;
-    auto bytes = Base64Decode(payload);
-    if (bytes.empty()) return LINK_NONE;
-    return (ChatLinkType)bytes[0];
-}
-
 // ---------------------------------------------------------------------------
 // Encoders
 // ---------------------------------------------------------------------------
-
-std::string EncodeItem(uint32_t item_id, int count, uint32_t skin_id,
-                       uint32_t upgrade1, uint32_t upgrade2) {
-    std::vector<uint8_t> buf;
-    buf.push_back(LINK_ITEM);
-    buf.push_back((uint8_t)std::min(count, 250));
-    buf.push_back((uint8_t)(item_id & 0xFF));
-    buf.push_back((uint8_t)((item_id >> 8) & 0xFF));
-    buf.push_back((uint8_t)((item_id >> 16) & 0xFF));
-
-    uint8_t flags = 0;
-    if (skin_id)  flags |= ITEM_FLAG_SKINNED;
-    if (upgrade1) flags |= ITEM_FLAG_UPGRADE1;
-    if (upgrade2) flags |= ITEM_FLAG_UPGRADE2;
-    buf.push_back(flags);
-
-    auto pushU24 = [&](uint32_t v) {
-        buf.push_back((uint8_t)(v & 0xFF));
-        buf.push_back((uint8_t)((v >> 8) & 0xFF));
-        buf.push_back((uint8_t)((v >> 16) & 0xFF));
-        buf.push_back(0);
-    };
-    if (skin_id)  pushU24(skin_id);
-    if (upgrade1) pushU24(upgrade1);
-    if (upgrade2) pushU24(upgrade2);
-
-    return "[&" + Base64Encode(buf.data(), buf.size()) + "]";
-}
 
 static std::string EncodeSimpleLink(uint8_t type, uint32_t id) {
     uint8_t buf[5] = {0};
@@ -166,168 +116,7 @@ static std::string EncodeSimpleLink(uint8_t type, uint32_t id) {
     return "[&" + Base64Encode(buf, 5) + "]";
 }
 
-std::string EncodeSkill(uint32_t skill_id) { return EncodeSimpleLink(LINK_SKILL, skill_id); }
-std::string EncodeTrait(uint32_t trait_id) { return EncodeSimpleLink(LINK_TRAIT, trait_id); }
-std::string EncodeSkin(uint32_t skin_id)   { return EncodeSimpleLink(LINK_SKIN, skin_id); }
 std::string EncodeMap(uint32_t poi_id)     { return EncodeSimpleLink(LINK_MAP, poi_id); }
-
-std::string EncodeBuild(const DecodedBuildLink& build) {
-    std::vector<uint8_t> buf;
-    buf.push_back(LINK_BUILD);
-    buf.push_back(build.profession);
-
-    for (int i = 0; i < 3; i++) {
-        buf.push_back(build.specs[i].spec_id);
-        uint8_t tb = 0;
-        tb |= (build.specs[i].traits[0] & 0x03);
-        tb |= (build.specs[i].traits[1] & 0x03) << 2;
-        tb |= (build.specs[i].traits[2] & 0x03) << 4;
-        buf.push_back(tb);
-    }
-
-    for (int i = 0; i < 5; i++) {
-        WriteU16LE(buf, build.terrestrial_skills[i]);
-        WriteU16LE(buf, build.aquatic_skills[i]);
-    }
-
-    if (build.profession == PROF_RANGER) {
-        for (int i = 0; i < 4; i++) buf.push_back(build.pets[i]);
-        for (int i = 0; i < 12; i++) buf.push_back(0);
-    } else if (build.profession == PROF_REVENANT) {
-        for (int i = 0; i < 4; i++) buf.push_back(build.legends[i]);
-        for (int i = 0; i < 6; i++) WriteU16LE(buf, build.inactive_rev_skills[i]);
-    } else {
-        for (int i = 0; i < 16; i++) buf.push_back(0);
-    }
-
-    buf.push_back((uint8_t)build.weapons.size());
-    for (auto w : build.weapons) WriteU16LE(buf, w);
-
-    buf.push_back((uint8_t)build.skill_overrides.size());
-    for (auto s : build.skill_overrides) WriteU32LE(buf, s);
-
-    return "[&" + Base64Encode(buf.data(), buf.size()) + "]";
-}
-
-// ---------------------------------------------------------------------------
-// Decoders
-// ---------------------------------------------------------------------------
-
-bool DecodeItem(const std::string& link, DecodedItemLink& out) {
-    std::string payload;
-    if (!ExtractPayload(link, payload)) return false;
-    auto bytes = Base64Decode(payload);
-    if (bytes.size() < 6 || bytes[0] != LINK_ITEM) return false;
-
-    out.count   = bytes[1];
-    out.item_id = ReadU24LE(&bytes[2]);
-
-    uint8_t flags = bytes[5];
-    size_t offset = 6;
-    if (flags & ITEM_FLAG_SKINNED) {
-        if (offset + 4 > bytes.size()) return false;
-        out.skin_id = ReadU24LE(&bytes[offset]); offset += 4;
-    }
-    if (flags & ITEM_FLAG_UPGRADE1) {
-        if (offset + 4 > bytes.size()) return false;
-        out.upgrade1_id = ReadU24LE(&bytes[offset]); offset += 4;
-    }
-    if (flags & ITEM_FLAG_UPGRADE2) {
-        if (offset + 4 > bytes.size()) return false;
-        out.upgrade2_id = ReadU24LE(&bytes[offset]); offset += 4;
-    }
-    return true;
-}
-
-bool DecodeBuild(const std::string& link, DecodedBuildLink& out) {
-    std::string payload;
-    if (!ExtractPayload(link, payload)) return false;
-    auto bytes = Base64Decode(payload);
-    if (bytes.size() < 2 || bytes[0] != LINK_BUILD) return false;
-
-    out = DecodedBuildLink{};
-    out.profession = bytes[1];
-
-    size_t offset = 2;
-    for (int i = 0; i < 3; i++) {
-        if (offset + 2 > bytes.size()) return true;  // partial decode OK
-        out.specs[i].spec_id = bytes[offset];
-        uint8_t tb = bytes[offset + 1];
-        out.specs[i].traits[0] = tb & 0x03;
-        out.specs[i].traits[1] = (tb >> 2) & 0x03;
-        out.specs[i].traits[2] = (tb >> 4) & 0x03;
-        offset += 2;
-    }
-
-    if (offset + 20 > bytes.size()) return true;
-    for (int i = 0; i < 5; i++) {
-        out.terrestrial_skills[i] = ReadU16LE(&bytes[offset]); offset += 2;
-        out.aquatic_skills[i]     = ReadU16LE(&bytes[offset]); offset += 2;
-    }
-
-    if (out.profession == PROF_RANGER) {
-        if (offset + 4 <= bytes.size())
-            for (int i = 0; i < 4; i++) out.pets[i] = bytes[offset + i];
-        offset += 16;
-    } else if (out.profession == PROF_REVENANT) {
-        if (offset + 4 <= bytes.size())
-            for (int i = 0; i < 4; i++) out.legends[i] = bytes[offset + i];
-        offset += 4;
-        for (int i = 0; i < 6; i++) {
-            if (offset + 2 <= bytes.size())
-                out.inactive_rev_skills[i] = ReadU16LE(&bytes[offset]);
-            offset += 2;
-        }
-    } else {
-        offset += 16;
-    }
-
-    if (offset < bytes.size()) {
-        uint8_t weapon_count = bytes[offset++];
-        for (int i = 0; i < weapon_count && offset + 2 <= bytes.size(); i++) {
-            out.weapons.push_back(ReadU16LE(&bytes[offset])); offset += 2;
-        }
-    }
-    if (offset < bytes.size()) {
-        uint8_t override_count = bytes[offset++];
-        for (int i = 0; i < override_count && offset + 4 <= bytes.size(); i++) {
-            out.skill_overrides.push_back(ReadU32LE(&bytes[offset])); offset += 4;
-        }
-    }
-    return true;
-}
-
-bool DecodeWardrobe(const std::string& link, DecodedWardrobeLink& out) {
-    std::string payload;
-    if (!ExtractPayload(link, payload)) return false;
-    auto bytes = Base64Decode(payload);
-    if (bytes.size() < 2 || bytes[0] != LINK_WARDROBE_TMPL) return false;
-
-    out = DecodedWardrobeLink{};
-    size_t offset = 1;
-    auto read16 = [&]() -> uint16_t {
-        if (offset + 2 > bytes.size()) return 0;
-        uint16_t v = ReadU16LE(&bytes[offset]); offset += 2; return v;
-    };
-
-    out.aquabreather_skin = read16();
-    out.backpack_skin = read16(); for (int i = 0; i < 4; i++) out.backpack_dyes[i] = read16();
-    out.chest_skin = read16();    for (int i = 0; i < 4; i++) out.chest_dyes[i] = read16();
-    out.boots_skin = read16();    for (int i = 0; i < 4; i++) out.boots_dyes[i] = read16();
-    out.gloves_skin = read16();   for (int i = 0; i < 4; i++) out.gloves_dyes[i] = read16();
-    out.helm_skin = read16();     for (int i = 0; i < 4; i++) out.helm_dyes[i] = read16();
-    out.leggings_skin = read16(); for (int i = 0; i < 4; i++) out.leggings_dyes[i] = read16();
-    out.shoulders_skin = read16();for (int i = 0; i < 4; i++) out.shoulders_dyes[i] = read16();
-    out.outfit_id = read16();     for (int i = 0; i < 4; i++) out.outfit_dyes[i] = read16();
-    out.aquatic_weapon_a = read16();
-    out.aquatic_weapon_b = read16();
-    out.weapon_a_main = read16();
-    out.weapon_a_off  = read16();
-    out.weapon_b_main = read16();
-    out.weapon_b_off  = read16();
-    out.visibility_flags = read16();
-    return true;
-}
 
 // ---------------------------------------------------------------------------
 // Name lookups

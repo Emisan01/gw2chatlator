@@ -57,7 +57,6 @@ const WordSet& CommonChatWords(const std::wstring& lang);
 // written out ("hab es", "geht es", "gibt es"; translators leave "habs" as it is and break the sentence). Only the text
 // that goes to the translator; what you see and send stays as written.
 bool IsGermanContraction(const std::wstring& word);
-std::wstring ExpandGermanContractions(const std::wstring& text);
 
 // A line that is nothing but a greeting ("Hola", "Selam!", "hi :)"): the greeting in the target language ("Hallo");
 // empty for anything else. A model invents a whole sentence for a lone greeting ("Hola" -> "Hey, das ist alles").

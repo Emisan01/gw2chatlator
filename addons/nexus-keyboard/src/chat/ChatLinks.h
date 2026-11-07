@@ -81,48 +81,6 @@ enum ProfessionCode : uint8_t {
     PROF_REVENANT     = 9,
 };
 
-struct DecodedItemLink {
-    uint32_t item_id = 0;
-    int      count = 1;
-    uint32_t skin_id = 0;      // 0 = no skin override
-    uint32_t upgrade1_id = 0;  // 0 = no upgrade
-    uint32_t upgrade2_id = 0;
-};
-
-struct DecodedBuildLink {
-    uint8_t profession = 0;
-    struct SpecChoice {
-        uint8_t spec_id = 0;
-        uint8_t traits[3] = {0, 0, 0};  // 0=none, 1=top, 2=mid, 3=bottom
-    } specs[3];
-    uint16_t terrestrial_skills[5] = {0};  // heal, util1-3, elite (palette IDs)
-    uint16_t aquatic_skills[5] = {0};
-    uint8_t  pets[4] = {0};    // ranger
-    uint8_t  legends[4] = {0}; // revenant
-    uint16_t inactive_rev_skills[6] = {0};
-    std::vector<uint16_t> weapons;          // SotO+
-    std::vector<uint32_t> skill_overrides;  // Weaponmaster
-};
-
-struct DecodedWardrobeLink {
-    uint16_t aquabreather_skin = 0;
-    uint16_t backpack_skin = 0;   uint16_t backpack_dyes[4] = {0};
-    uint16_t chest_skin = 0;      uint16_t chest_dyes[4] = {0};
-    uint16_t boots_skin = 0;      uint16_t boots_dyes[4] = {0};
-    uint16_t gloves_skin = 0;     uint16_t gloves_dyes[4] = {0};
-    uint16_t helm_skin = 0;       uint16_t helm_dyes[4] = {0};
-    uint16_t leggings_skin = 0;   uint16_t leggings_dyes[4] = {0};
-    uint16_t shoulders_skin = 0;  uint16_t shoulders_dyes[4] = {0};
-    uint16_t outfit_id = 0;       uint16_t outfit_dyes[4] = {0};
-    uint16_t aquatic_weapon_a = 0;
-    uint16_t aquatic_weapon_b = 0;
-    uint16_t weapon_a_main = 0;
-    uint16_t weapon_a_off = 0;
-    uint16_t weapon_b_main = 0;
-    uint16_t weapon_b_off = 0;
-    uint16_t visibility_flags = 0;
-};
-
 // --- Base64 ---
 // Encode raw bytes to a Base64 string (standard alphabet, with padding).
 std::string          Base64Encode(const uint8_t* data, size_t len);
@@ -132,30 +90,9 @@ std::vector<uint8_t> Base64Decode(const std::string& encoded);
 // --- Payload / type ---
 // Extract the base64 between [& and ] (tolerates the \] escape GW2 uses internally).
 bool          ExtractPayload(const std::string& link, std::string& payload);
-// Decode the first payload byte of a [&...] link to its ChatLinkType; returns LINK_NONE on failure.
-ChatLinkType  DetectType(const std::string& link);
 
-// --- Decode ---
-// Decode a [&...] item link into its constituent IDs, count, skin, and upgrade slots; returns false on type mismatch or truncation.
-bool DecodeItem(const std::string& link, DecodedItemLink& out);
-// Decode a [&...] build-template link into profession, specs/traits, skills, pets, legends, and SotO weapon/override extensions; returns false on type mismatch or truncation.
-bool DecodeBuild(const std::string& link, DecodedBuildLink& out);
-// Decode a [&...] wardrobe-template link into per-slot skin and dye IDs plus weapon and visibility data; returns false on type mismatch or truncation.
-bool DecodeWardrobe(const std::string& link, DecodedWardrobeLink& out);
 
-// --- Encode ---
-// Encode an item link; count is clamped to 250, skin/upgrade IDs are omitted when zero.
-std::string EncodeItem(uint32_t item_id, int count = 1, uint32_t skin_id = 0,
-                       uint32_t upgrade1 = 0, uint32_t upgrade2 = 0);
-// Encode a skill palette ID as a [&...] skill link.
-std::string EncodeSkill(uint32_t skill_id);
-// Encode a trait ID as a [&...] trait link.
-std::string EncodeTrait(uint32_t trait_id);
-// Encode a skin ID as a [&...] skin link.
-std::string EncodeSkin(uint32_t skin_id);
 std::string EncodeMap(uint32_t poi_id);   // waypoint / PoI link
-// Encode a DecodedBuildLink (including SotO weapon and Weaponmaster override extensions) as a [&...] build link.
-std::string EncodeBuild(const DecodedBuildLink& build);
 
 // --- Names ---
 // Return the profession name string for a ProfessionCode; returns nullptr for unknown codes.

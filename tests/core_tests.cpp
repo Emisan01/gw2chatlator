@@ -361,9 +361,6 @@ static void TestLocalMtProtocol() {
 
 static void TestLangs() {
     CHECK(PrimaryLang(L"en-gb") == L"EN");
-    CHECK(Gw2ApiLang(L"EN-GB") == "en");
-    CHECK(Gw2ApiLang(L"ZH-HANS") == "zh");
-    CHECK(Gw2ApiLang(L"IT").empty());
     auto tags = SpellTagCandidates(L"DE", L"de-AT");
     CHECK(!tags.empty() && tags[0] == L"de-AT");
     CHECK(tags.size() >= 2 && tags[1] == L"de-DE");
@@ -385,14 +382,6 @@ static NameTable En() {
             {"wvw:38-1", L"Stonemist Castle"}, {"wvw:38-2", L"Stonemist"}, {"prof:Elementalist", L"Elementalist"},
             {"map:99", L"Arena"},             {"map:98", L"Breach"},      {"map:97", L"Fracture"},
             {"map:1", L"East"},               {"map:2", L"(Placeholder)"}};
-}
-
-static void TestNameTable() {
-    NameTable t{{"map:1", L"A\tB"}, {"map:2", L"L\u00f6wenstein"}};
-    const std::string ser = SerializeNameTable(t);
-    CHECK(ser.find("map:1\tA B\n") != std::string::npos);
-    const NameTable back = ParseNameTable(ser + "garbage-without-tab\n\r\n");
-    CHECK(back.size() == 2 && back.at("map:2") == L"L\u00f6wenstein");
 }
 
 // The compiled names and words: the target decides, whatever the sentence or the name is written in; no names in the
@@ -475,13 +464,6 @@ static void TestGlossary() {
     const auto none = g.FindAll(L"L\u00f6wenstein", {Span{0, 3}});
     CHECK(none.empty());
 
-    WordSet words;
-    g.CollectSourceWords(words);
-    CHECK(words.count(L"steinnebel") && words.count(L"k\u00f6nigintal") && !words.count(L"bruch"));
-
-    WordSet all;
-    CollectNameWords(De(), all);
-    CHECK(all.count(L"bruch") && all.count(L"l\u00f6wenstein") && all.count(L"platzhalter") && all.count(L"ost"));
 }
 
 static void TestProtect() {
@@ -1363,12 +1345,6 @@ static void TestLooksLikeSlip() {
     CHECK(!LooksLikeSlip(L"shon", L"schon", k, true));            // strict: only swaps and doubles
 }
 
-static void TestGermanContractions() {
-    CHECK(ExpandGermanContractions(L"habs schon, gehts dir gut? Gibt's das") == L"hab es schon, geht es dir gut? Gibt es das");
-    CHECK(ExpandGermanContractions(L"nice hats and old wars, finds") == L"nice hats and old wars, finds");
-    CHECK(IsGermanContraction(L"wirds") && IsGermanContraction(L"klappt’s") && !IsGermanContraction(L"teams"));
-}
-
 static void TestTypoMemory() {
     TypoMemory m;
     m.Add(L"shon", L"schon");
@@ -1867,13 +1843,6 @@ static void TestVoiceFixBook() {
 }
 
 static void TestChatCode() {
-    const ChatCode item = DecodeChatCode(L"[&AgGvWwEA]");
-    CHECK(item.kind == ChatCodeKind::Item && item.id == 89007 && item.count == 1);
-    CHECK(ChatCodeApiPath(item) == L"/v2/items?ids=89007");
-    CHECK(DecodeChatCode(L"AgGvWwEA").id == 89007);
-    CHECK(DecodeChatCode(L"[&BDgAAAA=]").kind == ChatCodeKind::Poi);
-    CHECK(DecodeChatCode(L"[&#!x]").kind == ChatCodeKind::Unknown);
-    CHECK(ChatCodeApiPath(DecodeChatCode(L"[&BDgAAAA=]")).empty());
     CHECK(ChatCodeNamesPath(L"items", {89007, 19976}, L"de") == L"/v2/items?lang=de&ids=89007,19976");
     CHECK(ChatCodeApiLang(L"DE") == L"de" && ChatCodeApiLang(L"zh-Hans") == L"zh" && ChatCodeApiLang(L"pl") == L"en" && ChatCodeApiLang(L"") == L"en");
     {
@@ -2620,7 +2589,6 @@ int main() {
     TestWordCase();
     TestLooksLikeSlip();
     TestTypoMemory();
-    TestGermanContractions();
     TestGw2Abbreviations();
     TestText();
     TestChat();
@@ -2628,7 +2596,6 @@ int main() {
     TestJson();
     TestLocalMtProtocol();
     TestLangs();
-    TestNameTable();
     TestGlossary();
     TestBuiltinGlossary();
     TestResizePastLeftEdge();

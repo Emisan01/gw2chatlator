@@ -118,47 +118,6 @@ const Glossary* BuiltinGlossary(const std::wstring& target) {
     return &it->second;
 }
 
-std::string SerializeNameTable(const NameTable& names) {
-    std::vector<std::pair<std::string, std::wstring>> rows(names.begin(), names.end());
-    std::sort(rows.begin(), rows.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
-    std::string out = "# GW2 names, key<TAB>name\n";
-    for (const auto& [key, name] : rows) {
-        std::wstring clean = name;
-        for (auto& c : clean)
-            if (c == L'\t' || c == L'\n' || c == L'\r') c = L' ';
-        out += key;
-        out += '\t';
-        out += ToUtf8(clean);
-        out += '\n';
-    }
-    return out;
-}
-
-NameTable ParseNameTable(const std::string& utf8) {
-    NameTable t;
-    size_t pos = 0;
-    while (pos < utf8.size()) {
-        size_t eol = utf8.find('\n', pos);
-        if (eol == std::string::npos) eol = utf8.size();
-        std::string line = utf8.substr(pos, eol - pos);
-        pos = eol + 1;
-        if (!line.empty() && line.back() == '\r') line.pop_back();
-        if (line.empty() || line[0] == '#') continue;
-        const size_t tab = line.find('\t');
-        if (tab == std::string::npos || tab == 0) continue;
-        t[line.substr(0, tab)] = FromUtf8(line.substr(tab + 1));
-    }
-    return t;
-}
-
-void CollectNameWords(const NameTable& names, WordSet& out) {
-    for (const auto& kv : names) {
-        const std::wstring f = CaseFold(kv.second);
-        for (const Span& w : WordSpans(f))
-            if (w.length >= 2) out.insert(f.substr(w.start, w.length));
-    }
-}
-
 Glossary Glossary::Build(const NameTable& source, const NameTable& target) {
     Glossary g;
     std::unordered_map<std::wstring, size_t> index;  // folded source -> term
@@ -231,11 +190,6 @@ std::vector<GlossaryMatch> Glossary::FindAll(const std::wstring& text, const std
         if (!matched) ++i;
     }
     return out;
-}
-
-void Glossary::CollectSourceWords(WordSet& out) const {
-    for (const Term& t : terms_)
-        for (const Span& w : WordSpans(t.folded)) out.insert(t.folded.substr(w.start, w.length));
 }
 
 }  // namespace gct

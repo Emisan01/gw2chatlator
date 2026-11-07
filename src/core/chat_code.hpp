@@ -16,11 +16,7 @@ struct ChatCode {
     int count = 1;       // items: the stack size
 };
 
-// "[&AgGvWwEA]" (with or without the brackets) -> what it links; kind Unknown when it cannot be read.
-ChatCode DecodeChatCode(const std::wstring& code);
 
-// The GW2 API path for its name ("/v2/items?ids=23471"), empty when there is none (coins, PoIs, builds ...).
-std::wstring ChatCodeApiPath(const ChatCode& c);
 
 // Asking the GW2 API for several names at once: "/v2/items?lang=de&ids=1,2" (`what`: items, skills, traits ...).
 std::wstring ChatCodeNamesPath(const wchar_t* what, const std::vector<uint32_t>& ids, const std::wstring& lang);
