@@ -17,6 +17,13 @@ add_library(gw2keyboard_nexus SHARED
     src/kb_chatsource.cpp
     src/kb_window.cpp
     src/kb_options.cpp
+    src/kb_options_start.cpp
+    src/kb_options_translator.cpp
+    src/kb_options_voice.cpp
+    src/kb_options_typing.cpp
+    src/kb_options_window.cpp
+    src/kb_options_tech.cpp
+    src/kb_options_debug.cpp
     src/kb_local_mt.cpp
     src/kb_waypoint.cpp
     src/voice_module.cpp
