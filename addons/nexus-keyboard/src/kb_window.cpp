@@ -830,7 +830,6 @@ void RenderWindow() {
                 ImGui::Separator();
             }
             if (ImGui::MenuItem(UI(Tr(L"Options …")).c_str())) g_showOptions = true;
-            if (ImGui::MenuItem(UI(Tr(L"Waypoints") + L" …").c_str())) OpenWaypointWindow();
             if (const bool mini = ProfileOn(1); ImGui::MenuItem(UI(Tr(L"Mini mode")).c_str(), nullptr, mini)) SetProfile(1, !mini);
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", UI(Tr(L"Nothing but the input with its help. Three quick clicks on it minimise it; right-click in it: Menu … brings the rest back.")).c_str());
@@ -844,6 +843,7 @@ void RenderWindow() {
                 SetStatus(g_nx.translateChat ? Tr(L"Chat translation on (Ctrl+Alt+T)") : Tr(L"Chat translation off (Ctrl+Alt+T)"), 4000);
             }
             if (ImGui::MenuItem(UI(Tr(L"New whisper tab …")).c_str())) newTabNext = true;
+            if (ImGui::MenuItem(UI(Tr(L"Waypoints") + L" …").c_str())) OpenWaypointWindow();
             if (ImGui::MenuItem(UI(Tr(L"Text blocks …")).c_str())) g_openSnippets = true;
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", UI(Tr(L"Your own text, saved from the input – a click puts it back.")).c_str());
