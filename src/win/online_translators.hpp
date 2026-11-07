@@ -1,9 +1,5 @@
-// online_translators.hpp — the two other backends next to DeepL:
-//
-//  * MyMemory: free, no key — the "basic" engine that works out of the box
-//    (small daily quota; an e-mail address in the INI raises it).
-//  * LLM: any OpenAI-compatible chat endpoint — a local Ollama / LM Studio
-//    (free, private, unlimited) or a cloud provider with your own key.
+// online_translators.hpp — the backends next to DeepL: MyMemory (free, no key; an e-mail address in the INI raises its
+// daily quota), Google, Microsoft, Supertext and LibreTranslate.
 #pragma once
 
 #include <memory>
@@ -21,51 +17,5 @@ std::shared_ptr<Translator> MakeMicrosoftTranslator(const std::wstring& apiKey, 
 std::shared_ptr<Translator> MakeSupertextTranslator(const std::wstring& apiKey);
 // Any LibreTranslate-compatible server ("http://localhost:5000", a public instance ...).
 std::shared_ptr<Translator> MakeLibreTranslator(const std::wstring& url, const std::wstring& apiKey);
-
-struct LlmSettings {
-    std::wstring url = L"http://localhost:11434/v1/chat/completions";  // Ollama default
-    std::wstring model;
-    std::wstring apiKey;  // empty for local servers
-    int timeoutMs = 60000;
-};
-
-class LlmTranslator : public Translator {
-public:
-    // Same text in Latin letters (Arabizi, Pinyin ...), not translated.
-    virtual TranslateResult Romanize(const std::wstring& text) = 0;
-};
-
-std::shared_ptr<LlmTranslator> MakeLlmTranslator(const LlmSettings& settings);
-
-// "http://localhost:11434" or ".../v1" -> full chat-completions URL.
-std::wstring NormalizeLlmUrl(const std::wstring& url);
-
-// True for an LLM on this PC or in the home network (Ollama, LM Studio), false for cloud APIs.
-bool IsLocalLlmUrl(const std::wstring& url);
-
-// Models the server offers: tries <base>/v1/models, then Ollama's /api/tags.
-// Blocking (call from a worker thread).
-std::vector<std::wstring> FetchLlmModels(const std::wstring& url, const std::wstring& apiKey, std::wstring* error);
-
-// Local models offered with an install button (Ollama names), smallest first.
-struct LocalModelOffer {
-    const wchar_t* id;       // "gemma3:1b"
-    const wchar_t* summary;  // English UI text (translated with Tr): size, hardware, strengths
-};
-const std::vector<LocalModelOffer>& LocalModelOffers();
-
-// True if an Ollama server answers at the host of `llmUrl` (default localhost:11434).
-bool OllamaReachable(const std::wstring& llmUrl);
-// Ollama downloads `model` (blocking: minutes for gigabytes; call from a worker thread).
-bool PullOllamaModel(const std::wstring& llmUrl, const std::wstring& model, std::wstring* error);
-
-struct LocalServerResult {
-    std::wstring url;
-    std::wstring name;  // "Ollama", "LM Studio", "llama-server"
-    std::vector<std::wstring> models;
-};
-
-// Probes common local AI endpoints (Ollama :11434, LM Studio :1234, llama-server :8080).
-bool DiscoverLocalLlmServer(LocalServerResult* result, std::wstring* error = nullptr);
 
 }  // namespace gct

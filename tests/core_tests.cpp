@@ -25,7 +25,6 @@
 #include "core/gw2_text.hpp"
 #include "core/names.hpp"
 #include "core/languages.hpp"
-#include "core/llm_protocol.hpp"
 #include "core/local_mt_protocol.hpp"
 #include "core/mumble.hpp"
 #include "core/mymemory_protocol.hpp"
@@ -744,7 +743,6 @@ static void TestLanguages() {
     CHECK(FindLanguage(L"zh") && std::wstring(FindLanguage(L"zh")->code) == L"ZH-HANS");
     CHECK(FindLanguage(L"ar-SA") && !FindLanguage(L"ar-SA")->latinScript);
     CHECK(!FindLanguage(L"xx"));
-    CHECK(LanguageEnglishName(L"DE") == L"German");
     CHECK(SourceCode(L"EN-GB") == L"EN");
 }
 
@@ -812,58 +810,6 @@ static void TestGw2Text() {
     CHECK(fits);
     CHECK(!parts.empty() && parts[0] == L"/p Das ist der erste Satz.");
     CHECK(SplitForChat(L"kurz", L"", 199).size() == 1);
-}
-
-static void TestLlm() {
-    std::vector<std::vector<Segment>> items = {{{L"Treffen in ", false}, {L"Lion's Arch", true}},
-                                               {{L"say \"hi\"", false}}};
-    const std::string req = BuildLlmRequest(items, L"German", L"qwen2.5:7b");
-    JsonValue v;
-    CHECK(ParseJson(req, v));
-    CHECK(v.GetString("model") == "qwen2.5:7b");
-    const JsonValue* msgs = v.Get("messages");
-    CHECK(msgs && msgs->arr.size() == 2);
-    if (msgs && msgs->arr.size() == 2) {
-        const std::string user = msgs->arr[1].GetString("content");
-        JsonValue arr;
-        CHECK(ParseJson(user, arr) && arr.arr.size() == 2);
-        CHECK(arr.arr.size() == 2 && arr.arr[0].s == "Treffen in <k>Lion's Arch</k>" && arr.arr[1].s == "say \"hi\"");
-        CHECK(msgs->arr[0].GetString("content").find("German") != std::string::npos);
-    }
-
-    auto r = ParseLlmResponse(
-        R"({"choices":[{"message":{"role":"assistant","content":"<think>hmm</think>\n```json\n[\"Meet in <k>Lion's Arch</k>\", \"sag \\\"hi\\\"\"]\n```"}}]})",
-        2);
-    CHECK(r.ok && r.texts.size() == 2 && r.texts[0] == L"Meet in Lion's Arch" && r.texts[1] == L"sag \"hi\"");
-    r = ParseLlmResponse(R"({"choices":[{"message":{"content":"Hallo zusammen"}}]})", 1);
-    CHECK(r.ok && r.texts.size() == 1 && r.texts[0] == L"Hallo zusammen");
-    // Native Ollama /api/chat response
-    r = ParseLlmResponse(R"({"message":{"role":"assistant","content":"[\"Meet in Lion's Arch\", \"sag \\\"hi\\\"\"]"}})", 2);
-    CHECK(r.ok && r.texts.size() == 2 && r.texts[0] == L"Meet in Lion's Arch" && r.texts[1] == L"sag \"hi\"");
-    r = ParseLlmResponse(R"({"choices":[{"message":{"content":"[\"nur eins\"]"}}]})", 2);
-    CHECK(!r.ok && r.formatError);  // -> the translator retries line by line
-    r = ParseLlmResponse(R"({"error":{"message":"model not found"}})", 1);
-    CHECK(!r.ok && !r.formatError && r.error.find(L"model not found") != std::wstring::npos);
-    r = ParseLlmResponse(R"({"error":"model 'xyz' not found, try pulling it first"})", 1);
-    CHECK(!r.ok && !r.formatError && r.error.find(L"model 'xyz' not found") != std::wstring::npos);
-
-    // Ollama CPU-friendly options in request
-    const std::string reqOllama = BuildLlmRequest(items, L"German", L"gemma3:1b", false, true, true);
-    JsonValue vOllama;
-    CHECK(ParseJson(reqOllama, vOllama));
-    CHECK(vOllama.GetBool("stream", true) == false);
-    CHECK(vOllama.GetString("keep_alive") == "30m");
-    CHECK(vOllama.GetBool("think", true) == false);  // no thinking phase
-    const JsonValue* opt = vOllama.Get("options");
-    CHECK(opt != nullptr);
-    if (opt) {
-        const JsonValue* numGpu = opt->Get("num_gpu");
-        CHECK(numGpu && numGpu->n == 0.0);
-        const JsonValue* numThread = opt->Get("num_thread");
-        CHECK(numThread && numThread->n == 4.0);
-        const JsonValue* numCtx = opt->Get("num_ctx");
-        CHECK(numCtx && numCtx->n == 4096.0);  // never the 128k context Ollama may be set to
-    }
 }
 
 static void TestDeepLBatch() {
@@ -1172,20 +1118,6 @@ static void TestNames() {
 
 
 
-
-static void TestModelList() {
-    auto a = ParseModelList(R"({"object":"list","data":[{"id":"qwen2.5:7b"},{"id":"llama3.1:8b"}]})");
-    CHECK(a.size() == 2 && a[0] == L"llama3.1:8b");
-    auto b = ParseModelList(R"({"models":[{"name":"qwen2.5:7b","size":1},{"name":"gemma2:9b"}]})");
-    CHECK(b.size() == 2 && b[0] == L"gemma2:9b");
-    CHECK(ParseModelList("nope").empty());
-    const std::string req = BuildLlmRequest({{{L"Hallo Lête", false}}}, L"English", L"m", true);
-    CHECK(req.find("recognition errors") != std::string::npos);
-    CHECK(BuildLlmRequest({{{L"x", false}}}, L"English", L"m").find("recognition errors") == std::string::npos);
-    // Cloud reasoning models reject any temperature: left out for them.
-    CHECK(BuildLlmRequest({{{L"x", false}}}, L"English", L"m").find("temperature") != std::string::npos);
-    CHECK(BuildLlmRequest({{{L"x", false}}}, L"English", L"m", false, false).find("temperature") == std::string::npos);
-}
 
 static void TestCloudMt() {
     CHECK(GoogleLang(L"EN-GB") == L"en" && GoogleLang(L"ZH-HANS") == L"zh-CN" && GoogleLang(L"ZH-HANT") == L"zh-TW");
@@ -2710,7 +2642,6 @@ int main() {
     TestDeepL();
     TestLanguages();
     TestGw2Text();
-    TestLlm();
     TestDeepLBatch();
     TestMumble();
     TestMyMemory();
@@ -2724,7 +2655,6 @@ int main() {
     TestGuessLanguage();
     TestLinks();
     TestStarterWords();
-    TestModelList();
     TestVoiceCatalog();
     TestFindSpeech();
     TestCleanTranscript();

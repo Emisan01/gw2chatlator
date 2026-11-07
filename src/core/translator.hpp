@@ -1,5 +1,5 @@
 // translator.hpp — interface every translation backend implements
-// (DeepL, an OpenAI-compatible LLM endpoint — cloud or local — and later
+// (DeepL, MyMemory, Google and others, and later
 // a local classic MT model).
 #pragma once
 

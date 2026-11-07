@@ -98,8 +98,8 @@ const char kTemplate[] =
 const char kOldAppended[] =
     "\r\n; --- new in v0.3 ---\r\n"
     "[Translate]\r\n"
-    "; Translator: auto | basic | deepl | google | microsoft | libre | llm\r\n"
-    ";   auto  = DeepL, Google, Microsoft or your server if set, else the LLM if a model is set, else basic\r\n"
+    "; Translator: auto | basic | deepl | google | microsoft | libre\r\n"
+    ";   auto  = DeepL, Google, Microsoft or your server if set, else basic\r\n"
     ";   basic = MyMemory: free, no account, limited daily quota\r\n"
     "Engine=auto\r\n"
     "; Your reading language: the GW2 chat is translated into it. Empty = Windows language.\r\n"
@@ -120,15 +120,6 @@ const char kOldAppended[] =
     "; Optional: your e-mail address raises the free MyMemory quota (5,000 -> 50,000 characters/day).\r\n"
     "Email=\r\n"
     "\r\n"
-    "[LLM]\r\n"
-    "; Optional: any OpenAI-compatible language model.\r\n"
-    "; Local and free: Ollama (http://localhost:11434) or LM Studio (http://localhost:1234)\r\n"
-    "; Cloud: the provider's address + ApiKey. Leave the model empty = no LLM.\r\n"
-    "Url=http://localhost:11434\r\n"
-    "; e.g. qwen2.5:7b, llama3.1:8b, gemma2:9b\r\n"
-    "Model=\r\n"
-    "ApiKey=\r\n"
-    "TimeoutSec=60\r\n"
     "\r\n";
 
 class Ini {
@@ -184,7 +175,6 @@ Engine ParseEngine(const std::wstring& s) {
     const std::wstring v = ToLowerAscii(s);
     if (v == L"basic" || v == L"basis" || v == L"mymemory") return Engine::Basic;
     if (v == L"deepl") return Engine::DeepL;
-    if (v == L"llm") return Engine::Llm;
     if (v == L"google") return Engine::Google;
     if (v == L"microsoft") return Engine::Microsoft;
     if (v == L"supertext") return Engine::Supertext;
@@ -216,7 +206,6 @@ const wchar_t* EngineKey(Engine e) {
     switch (e) {
         case Engine::Basic: return L"basic";
         case Engine::DeepL: return L"deepl";
-        case Engine::Llm: return L"llm";
         case Engine::Google: return L"google";
         case Engine::Microsoft: return L"microsoft";
         case Engine::Supertext: return L"supertext";
@@ -287,9 +276,6 @@ void Config::Load(const std::wstring& dir) {
     msRegion = AsciiUnescape(ini.Str(L"Microsoft", L"Region", L""));
     libreUrl = AsciiUnescape(ini.Str(L"Libre", L"Url", L""));
     libreKey = UnprotectSecret(ini.Str(L"Libre", L"ApiKey", L""));
-    llmUrl = AsciiUnescape(ini.Str(L"LLM", L"Url", L"http://localhost:11434"));
-    llmModel = AsciiUnescape(ini.Str(L"LLM", L"Model", L""));
-    llmKey = UnprotectSecret(ini.Str(L"LLM", L"ApiKey", L""));
 
     writeIn = ToUpperAscii(ini.Str(L"Spelling", L"WriteIn", L""));
     // the chat used to be read in the writing language: an INI from before keeps reading that way
@@ -497,9 +483,6 @@ void Config::SaveAll() const {
     SaveValue(L"Microsoft", L"Region", AsciiEscape(msRegion));
     SaveValue(L"Libre", L"Url", AsciiEscape(libreUrl));
     SaveValue(L"Libre", L"ApiKey", ProtectSecret(libreKey));
-    SaveValue(L"LLM", L"Url", AsciiEscape(llmUrl));
-    SaveValue(L"LLM", L"Model", AsciiEscape(llmModel));
-    SaveValue(L"LLM", L"ApiKey", ProtectSecret(llmKey));
     SaveValue(L"Spelling", L"WriteIn", writeIn);
     SaveValue(L"Translate", L"ReadLang", readLang);
     SaveBool(L"Translate", L"ChatCodeNames", chatCodeNames);

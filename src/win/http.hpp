@@ -20,7 +20,7 @@ HttpResponse HttpsRequest(const wchar_t* method, const std::wstring& host, const
                           const wchar_t* extraHeaderName = nullptr, size_t maxBytes = 16u << 20,
                           int receiveTimeoutMs = 0);
 
-// Any http:// or https:// URL incl. port — e.g. a local LLM server
+// Any http:// or https:// URL incl. port — e.g. a LibreTranslate server
 // (http://localhost:11434/v1/chat/completions). `receiveTimeoutMs` covers
 // slow answers (local models loading).
 HttpResponse HttpRequestUrl(const wchar_t* method, const std::wstring& url, const std::wstring& headers,

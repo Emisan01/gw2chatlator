@@ -15,7 +15,7 @@
 
 namespace gct {
 
-enum class Engine { Auto, Basic, DeepL, Llm, Google, Microsoft, Libre, Local, Nllb, M2m, Supertext };
+enum class Engine { Auto, Basic, DeepL, Google, Microsoft, Libre, Local, Nllb, M2m, Supertext };
 enum class AutoCorrectMode { Off, Safe, Phone };
 
 struct Config {
@@ -63,8 +63,6 @@ struct Config {
     std::wstring msKey, msRegion;
     // [Libre] own translation server (LibreTranslate-compatible), any address
     std::wstring libreUrl, libreKey;
-    // [LLM]
-    std::wstring llmUrl, llmModel, llmKey;
 
     // [Spelling]
     std::wstring writeIn;  // the language you type in ("DE", "EN-GB"); empty = the keyboard layout's language
@@ -136,7 +134,7 @@ struct Config {
 
 // The window language for a choice ("" = Windows display language): one of UiLanguages, else English.
 UiLang EffectiveUiLang(const std::wstring& code);
-const wchar_t* EngineKey(Engine e);        // "auto", "basic", "deepl", "llm"
+const wchar_t* EngineKey(Engine e);        // "auto", "basic", "deepl"
 const wchar_t* AutoCorrectKey(AutoCorrectMode m);  // "off", "safe", "phone"
 
 }  // namespace gct
