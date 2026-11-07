@@ -81,7 +81,7 @@ def changed_files(base: str) -> set:
 
 TYPING_PARTS = ("spell_service", "text_prediction", "spellcheck", "word_model", "typo_memory", "slang", "my_words",
                 "kb_input", "keyboard_layout", "typing_bench")
-SMOKE_PARTS = ("kb_chatsource", "chat_events", "chat_source", "kb_chat.", "kb_window.", "kb_cost", "kb_worker.",
+SMOKE_PARTS = ("kb_chatsource", "chat_events", "chat_source", "kb_chat.", "kb_window", "kb_cost", "kb_worker.",
                "nexus_kb_smoketest")
 CODE_SUFFIXES = (".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx", ".inl")
 

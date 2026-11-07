@@ -731,6 +731,8 @@ void SwitchOptionsTab(int tab);
 
 int EscLayer();
 bool HandleEsc();
+void ProcessBufferedKeys();  // once a frame (kb_window_keys.cpp)
+void CheckAutoSend();         // once a frame (kb_window_keys.cpp)
 extern bool g_escRequested;
 extern bool g_escCapturable;
 

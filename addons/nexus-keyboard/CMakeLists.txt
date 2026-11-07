@@ -16,6 +16,8 @@ add_library(gw2keyboard_nexus SHARED
     src/kb_chat.cpp
     src/kb_chatsource.cpp
     src/kb_window.cpp
+    src/kb_window_footer.cpp
+    src/kb_window_keys.cpp
     src/kb_options.cpp
     src/kb_options_start.cpp
     src/kb_options_translator.cpp
