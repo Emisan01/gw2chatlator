@@ -3,6 +3,18 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.10.1 — 2026-11-07 (GW2Chatlator for Nexus)
+
+- **The Waypoints Map Moves:** hold the right mouse on the map in the Waypoints window and drag it, up to two window sizes from the point. A new point starts from itself.
+- **A Right Click Only Looks:** a right click on a waypoint or point of interest in the chat shows it in the Waypoints window; the left click flies, as before.
+- **M2M100 in the Translator List:** it is listed with its size when it is not installed, and choosing it leads to its download.
+- **The Graphics Card on Start:** with a local translator and an NVIDIA driver, Start has a row for it: the switch, or a button to the module while it is missing. It works from GTX 16 and RTX 20 upwards; every other card stays on the CPU.
+- **Typing:** everyday English words stay as typed in a German chat; "it doesnt matters" is no longer turned into a place name.
+- **Shift+Click:** with a code already in GW2's line from a Shift+click, no channel command is typed behind it any more; you get a hint instead.
+- **Plain Words:** the debug window and the diagnostic report say "line filter" instead of "Smart-Sieve" and "AI Telemetry". Nothing was ever sent anywhere; the words were wrong.
+- **The Waypoints Window:** it says what a point is only once, and its menu entry stands right above Text blocks.
+- **Cleaner Inside:** the unused LLM and Ollama code, LanguageTool and the old OCR reader's remains are gone, and the options window and the chat window's footer and keys have files of their own. A player can reach none of this; the add-on behaves as before.
+
 ## 2.10.0 — 2026-11-06 (GW2Chatlator for Nexus)
 
 - **A Waypoints Window:** menu ≡ → Waypoints shows GW2's map around a point, the points near it, the ones you flew to and a collection of your own, saved as numbers only. It comes up at once, before the map has loaded, and also when a flight cannot run. Only the map tiles' numbers go to GW2's public tile server.
