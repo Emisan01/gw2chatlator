@@ -78,7 +78,7 @@ bool EngineItems(const Config& edit, const LocalMtSummary& local, Engine current
     ImGui::TextDisabled("%s", UI(Tr(L"On this PC (offline)")).c_str());
     item(Engine::Nllb, local.module && local.nllb ? std::wstring() : Tr(L"install, about 600 MB"));
     item(Engine::Local, local.module && local.opus ? std::wstring() : Tr(L"choose a language pair first"));
-    if (local.module && local.m2m) item(Engine::M2m, {});  // only where its folder is: no download is offered
+    item(Engine::M2m, local.module && local.m2m ? std::wstring() : Tr(L"missing (about 470 MB)"));
     ImGui::Separator();
     ImGui::TextDisabled("%s", UI(Tr(L"With your own API key")).c_str());
     const std::wstring keyNeeded = Tr(L"key needed");
@@ -137,6 +137,7 @@ void RenderTranslatorRows(Config& edit, bool full) {
     if (picked && chosen != shown) {
         s_wantSet = false;
         if (chosen == Engine::Nllb && !nllbReady) s_confirmNllb = true;  // the size first, then OK installs and switches
+        else if (chosen == Engine::M2m && !(local.module && local.m2m)) SwitchOptionsTab(kPageTranslator);  // its box there has the download
         else if (chosen == Engine::Local && !(local.module && local.opus) && !full) SwitchOptionsTab(kPageTranslator);
         else if (NeedsKey(edit, chosen)) {
             s_wantSet = true;  // the key field below; the translator switches once the key is there
@@ -157,6 +158,13 @@ void RenderTranslatorRows(Config& edit, bool full) {
         } else how = Tr(L"Online with your API key");
     }
     RowHint(UI(how));
+    if (!full && isLocal && localReady && NvidiaDriverPresent()) {  // the card on Start too: no need to look for it
+        RowLabel(UI(Tr(L"Graphics card")));
+        if (GetFileAttributesW((AddonsDir() + L"GW2Keyboard\\gw2kb_translate_gpu.exe").c_str()) != INVALID_FILE_ATTRIBUTES)
+            Switch("usegpustart", UI(Tr(L"Calculate on the graphics card (NVIDIA)")), &edit.useGpu,
+                   UI(Tr(L"Takes about 0.7 GB of video memory with M2M100, 0.9 GB with NLLB-200. Without room it falls back to the CPU.")).c_str());
+        else if (ImGui::SmallButton(UI(Tr(L"Graphics card module")).c_str())) SwitchOptionsTab(kPageTranslator);
+    }
     if (shown == Engine::Nllb && !nllbReady && !s_confirmNllb && !g_localMtBusy) {
         ImGui::Indent(g_labelW);
         if (ImGui::Button(UI(Tr(L"Install NLLB-200 (local)")).c_str())) s_confirmNllb = true;
