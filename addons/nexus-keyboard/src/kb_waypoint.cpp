@@ -28,6 +28,9 @@ std::mutex s_mu;  // after g_mu
 bool s_open = false;
 uint32_t s_selected = 0;
 int s_zoomOut = 1;  // steps below the map's finest tiles
+float s_panX = 0.0f, s_panY = 0.0f;  // the right mouse moved the map this far from the point (map units)
+uint32_t s_panFor = 0;               // the point they belong to: a new point starts from itself
+bool s_panning = false;
 std::deque<uint32_t> s_history;  // the ones you flew to, the newest first
 std::deque<uint32_t> s_collection;  // the ones you keep, the newest first
 bool s_historyRead = false;
@@ -389,7 +392,20 @@ void DrawMap(const gct::ChatLinks::PoiView& center, bool mayFly) {
     const int finest = center.continent == 2 ? 6 : 7;  // the API's max_zoom of Tyria and the Mists
     const int zoom = std::max(0, finest - s_zoomOut);
     const float perUnit = 1.0f / static_cast<float>(1 << (finest - zoom));
-    const float left = center.x - size.x * 0.5f / perUnit, top = center.y - size.y * 0.5f / perUnit;
+    // The right mouse held moves this map, at most two window sizes from the point: the tiles stay few.
+    if (s_panFor != center.id) {
+        s_panFor = center.id;
+        s_panX = s_panY = 0.0f;
+    }
+    if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) s_panning = true;
+    if (!ImGui::IsMouseDown(ImGuiMouseButton_Right)) s_panning = false;
+    if (s_panning) {
+        const float reachX = size.x * 2.0f / perUnit, reachY = size.y * 2.0f / perUnit;
+        s_panX = std::clamp(s_panX - ImGui::GetIO().MouseDelta.x / perUnit, -reachX, reachX);
+        s_panY = std::clamp(s_panY - ImGui::GetIO().MouseDelta.y / perUnit, -reachY, reachY);
+        ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
+    }
+    const float left = center.x + s_panX - size.x * 0.5f / perUnit, top = center.y + s_panY - size.y * 0.5f / perUnit;
     const float tileUnits = 256.0f / perUnit;
     ImDrawList* dl = ImGui::GetWindowDrawList();
     dl->PushClipRect(p, ImVec2(p.x + size.x, p.y + size.y), true);
@@ -421,12 +437,13 @@ void DrawMap(const gct::ChatLinks::PoiView& center, bool mayFly) {
             hit = &poi;
         }
     }
-    const ImVec2 middle(p.x + size.x * 0.5f, p.y + size.y * 0.5f);
+    const ImVec2 middle(p.x + (center.x - left) * perUnit, p.y + (center.y - top) * perUnit);  // the point, wherever the map stands
     dl->AddCircle(middle, r * 2.2f, dark, 24, 3.5f);
     dl->AddCircle(middle, r * 2.2f, accent, 24, 2.0f);
     dl->PopClipRect();
     const float mx = mouse.x - middle.x, my = mouse.y - middle.y;
     if (!hit && hovered && mx * mx + my * my < r * r * 6.0f) hit = &center;  // the point itself always answers, map or no map
+    if (s_panning) hit = nullptr;  // moving the map, not pointing at anything
     if (hit) {
         ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
         ImGui::SetTooltip("%s\n%s", hit->name.c_str(), hit->map.c_str());
