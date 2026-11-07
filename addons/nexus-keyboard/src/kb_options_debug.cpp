@@ -402,13 +402,13 @@ void RenderDebugWindow() {
         ImGui::Separator();
 
         if (ImGui::BeginTabBar("##dbg_tabs")) {
-            if (ImGui::BeginTabItem(UI(Tr(L"Live Telemetry & Engine Status") + L"###tab_live").c_str())) {
+            if (ImGui::BeginTabItem(UI(Tr(L"Live status") + L"###tab_live").c_str())) {
                 FrameCosts fc = CostsNow();
                 const size_t qDepth = g_worker.QueueSize();
                 const int effectiveBeam = g_cfg.beamStepDown ? g_orchestrator.ComputeBeamSize(static_cast<gct::QualityMode>(g_cfg.localQuality), qDepth) : g_cfg.localQuality;
 
-                StatusRow(UI(Tr(L"Smart-Sieve")), g_orchestrator.IsPaused() ? 1 : 2,
-                          UI(g_orchestrator.IsPaused() ? Tr(L"PAUSED (Ctrl+Alt+T)") : Tr(L"Active (Filtering gamer slang & repeated text)")));
+                StatusRow(UI(Tr(L"Line filter")), 2,
+                          UI(Tr(L"Active (Filtering gamer slang & repeated text)")));
 
                 const std::wstring beam = std::to_wstring(effectiveBeam), backlog = std::to_wstring(qDepth);
                 const std::string infText = UI(effectiveBeam < g_cfg.localQuality
@@ -432,14 +432,12 @@ void RenderDebugWindow() {
                 ImGui::TextUnformatted(UI(TrF(L"Writing language: {1} → send language: {2}", {g_cfg.writeIn, SendLang()})).c_str());
 
                 ImGui::Separator();
-                ImGui::TextUnformatted(UI(Tr(L"Smart-Sieve & AI Telemetry")).c_str());
+                ImGui::TextUnformatted(UI(Tr(L"Line filter: what it saved")).c_str());
                 ImGui::BulletText("%s", UI(TrF(L"Gamer slang and short forms filtered (no CPU): {1}",
                                                {std::to_wstring(g_orchestrator.SlangFilteredCount())})).c_str());
                 ImGui::BulletText("%s", UI(TrF(L"Repeated lines from the cache: {1} (0 ms) · {2} entries",
                                                {std::to_wstring(g_orchestrator.CacheHitCount()),
                                                 std::to_wstring(g_orchestrator.CacheSize())})).c_str());
-                ImGui::BulletText("%s", UI(TrF(L"Held back while the chat was hidden: {1} lines",
-                                               {std::to_wstring(g_orchestrator.CulledCount())})).c_str());
 
                 ImGui::Separator();
                 ImGui::TextUnformatted(UI(Tr(L"Performance Profiler (Render Thread)")).c_str());

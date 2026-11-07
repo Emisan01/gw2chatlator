@@ -1,5 +1,5 @@
-// translation_orchestrator.hpp — Smart-Sieve-Manager: spam filter, repetition cache,
-// occlusion culling / priority queueing, and adaptive beam throttling.
+// translation_orchestrator.hpp — the line filter: spam filter, repetition cache,
+// visibility / priority queueing, and adaptive beam throttling.
 #pragma once
 
 #include <atomic>
@@ -103,7 +103,7 @@ public:
 
     void ClearCache() { repCache_.Clear(); }
 
-    // Telemetry accessors
+    // Counts for the debug window
     uint64_t SlangFilteredCount() const { return slangFiltered_.load(); }
     uint64_t CacheHitCount() const { return cacheHits_.load(); }
     uint64_t CulledCount() const { return culledLines_.load(); }

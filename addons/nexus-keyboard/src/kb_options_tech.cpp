@@ -478,18 +478,16 @@ std::string BuildDiagnosticReport() {
     }
     ss << "\n";
 
-    ss << "[Smart-Sieve-Manager Telemetry (0% CPU Optimization)]\n";
+    ss << "[Line filter and quality]\n";
     const size_t qDepth = g_worker.QueueSize();
     const int effectiveBeam = g_cfg.beamStepDown ? g_orchestrator.ComputeBeamSize(static_cast<gct::QualityMode>(g_cfg.localQuality), qDepth) : g_cfg.localQuality;
-    ss << "- Smart-Sieve Status: " << (g_orchestrator.IsPaused() ? "PAUSED (Panic Switch Ctrl+Alt+T)" : "ACTIVE") << "\n";
     ss << "- Configured Quality Mode: Beam " << g_cfg.localQuality << (g_cfg.beamStepDown ? " (steps down under load)" : " (never steps down)") << "\n";
     ss << "- Current Effective Beam Size: " << effectiveBeam
        << (effectiveBeam < g_cfg.localQuality ? " (Throttled due to backlog pressure)" : " (Nominal)") << "\n";
     ss << "- Worker Translation Backlog: " << qDepth << " queued jobs\n";
-    ss << "- Gamer Shorthand Filtered (0% CPU): " << g_orchestrator.SlangFilteredCount() << " expressions (gg, wp, ty, afk, etc.)\n";
-    ss << "- Repetition Cache Hits (0 ms): " << g_orchestrator.CacheHitCount() << " hits ("
-       << g_orchestrator.CacheSize() << " entries currently cached)\n";
-    ss << "- Occlusion Culled Lines: " << g_orchestrator.CulledCount() << " lines deferred while out-of-view\n\n";
+    ss << "- Gamer short forms left untranslated: " << g_orchestrator.SlangFilteredCount() << " (gg, wp, ty, afk, etc.)\n";
+    ss << "- Repeated lines from the cache: " << g_orchestrator.CacheHitCount() << " hits ("
+       << g_orchestrator.CacheSize() << " entries)\n\n";
 
     ss << "[Chat Buffer & Bridge Status]\n";
     ss << "- Events: Chat Add-on: " << (g_chatEventsPresent ? "Present in game" : "Not found in modules")

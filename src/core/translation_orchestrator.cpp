@@ -1,4 +1,4 @@
-// translation_orchestrator.cpp — Smart-Sieve-Manager implementation.
+// translation_orchestrator.cpp — the line filter.
 #include "core/translation_orchestrator.hpp"
 
 #include <algorithm>
@@ -133,7 +133,7 @@ ChatPriority TranslationOrchestrator::SieveMessage(const std::wstring& text,
         return ChatPriority::Immediate;
     }
 
-    // Filter 2: Occlusion culling / Viewport visibility
+    // Filter 2: window and channel visible
     if (!isWindowVisible || !isChannelVisibleInTab) {
         ++culledLines_;
         return ChatPriority::Low;

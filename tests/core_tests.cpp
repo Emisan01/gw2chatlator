@@ -2565,7 +2565,7 @@ static void TestTranslationOrchestrator() {
     orch.SetPaused(true);
     CHECK(orch.SieveMessage(L"wer kommt mit?", L"en", true, true, true, true, outTrans, outBy) == ChatPriority::Skip);
 
-    // 5. Telemetry counters
+    // 5. Counters
     CHECK(orch.SlangFilteredCount() == 1);
     CHECK(orch.CacheHitCount() == 1);
     CHECK(orch.CulledCount() == 2);
