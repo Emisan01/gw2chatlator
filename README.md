@@ -52,7 +52,7 @@ Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustot
   English on your PC, into other languages through your translator.
 - **Safe sending:** waits for each frame of the game, refuses to be used as a bot or spam macro. Optional, off by default:
   send right after you finish speaking – speech pause, push-to-talk release or mouse click.
-- **Start in three settings:** Options → Start – one switch for the chat's translation (also Ctrl+Alt+T), then
+- **Start in three settings:** Options → Start – one switch for the chat's translation (also a key of your own), then
   *I read in*, *I understand*, *I send* (the same choice as "Send" under the input) and the translator. The other
   pages sit in a side bar like Nexus' own: Chat, Typing help, Voice, Translator, Window, Technical. Everything applies
   at once.
@@ -71,7 +71,7 @@ Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustot
 4. To remove it again: everything it brought has a remove button – Events: Chat in Options → Technical, the voice
    module and the voice models in Options → Voice – and at the bottom of Options → Technical "Remove everything of
    GW2Chatlator …"; then Nexus → Addons → Uninstall.
-5. Translation is yours to switch on: menu ≡ → Options → Start (or Ctrl+Alt+T) – what you send in is chosen there
+5. Translation is yours to switch on: menu ≡ → Options → Start (or a key of your own) – what you send in is chosen there
    too, for typing and speaking alike.
 
 Updating: replace the DLL (or unpack the newer ZIP over the old one) (settings and learned words stay in `addons\GW2Keyboard`).
@@ -102,7 +102,8 @@ Apart from that small table, nothing is downloaded in the background.
 | Space / Tab / Shift+Tab | write the grey word / pick a word of the word bar (Space writes it) |
 | Backspace right after an autocorrection | undo it (and learn the word) |
 | Up / Down in the empty input | what you sent (this session) |
-| Ctrl+Alt+K (Nexus → Keybinds) | show / hide the window |
+| your keys (Nexus → Keybinds – none is set for you) | show / hide the window, the chat's translation on / off, into the input |
+| Nexus → Addons → GW2Chatlator | "Show the chat window" – the window back without a key |
 | your push-to-talk key (Options → Microphone) | speak while you hold it – GW2 does not get the key |
 | right-click on the microphone | speak until a pause |
 
