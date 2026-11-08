@@ -127,9 +127,12 @@ bool Switch(const char* id, const std::string& label, bool* v, const char* tip, 
     const float frameH = ImGui::GetFrameHeight();
     const float h = std::round(fs), w = std::round(h * 1.85f);
     const ImVec2 p = ImGui::GetCursorScreenPos();
+    // A long label in a narrow window wraps under itself instead of running out of the window.
+    const float wrapW = std::max(fs * 4.0f, ImGui::GetContentRegionAvail().x - w - fs * 0.6f);
+    const ImVec2 labelSize = ImGui::CalcTextSize(label.c_str(), nullptr, false, wrapW);
     ImGui::PushID(id);
-    const bool pressed =
-        ImGui::InvisibleButton("##switch", ImVec2(w + fs * 0.6f + ImGui::CalcTextSize(label.c_str()).x, frameH));
+    const bool pressed = ImGui::InvisibleButton(
+        "##switch", ImVec2(w + fs * 0.6f + labelSize.x, std::max(frameH, labelSize.y + ImGui::GetStyle().FramePadding.y * 2.0f)));
     ImGui::PopID();
     const bool hovered = ImGui::IsItemHovered();
     if (pressed && usable) *v = !*v;
@@ -139,7 +142,7 @@ bool Switch(const char* id, const std::string& label, bool* v, const char* tip, 
     dl->AddCircleFilled(ImVec2(*v ? p.x + w - h * 0.5f : p.x + h * 0.5f, y + h * 0.5f), h * 0.5f - 2.0f,
                         !usable ? IM_COL32(120, 122, 128, 255) : *v ? IM_COL32_WHITE : IM_COL32(201, 204, 210, 255), 16);
     dl->AddText(ImGui::GetFont(), fs, ImVec2(p.x + w + fs * 0.6f, p.y + ImGui::GetStyle().FramePadding.y),
-                ImGui::GetColorU32(usable ? ImGuiCol_Text : ImGuiCol_TextDisabled), label.c_str());
+                ImGui::GetColorU32(usable ? ImGuiCol_Text : ImGuiCol_TextDisabled), label.c_str(), nullptr, wrapW);
     if (hovered && tip) ImGui::SetTooltip("%s", tip);
     if (hovered && usable) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
     return pressed && usable;
@@ -297,10 +300,13 @@ bool Hero(bool on, const std::string& title, const std::string& sub, const std::
     const float fs = ImGui::GetFontSize();
     ImFont* font = ImGui::GetFont();
     const ImVec2 p = ImGui::GetCursorScreenPos();
-    const float w = std::max(ImGui::GetContentRegionAvail().x, 1.0f), h = std::round(fs * 3.3f);
+    const float w = std::max(ImGui::GetContentRegionAvail().x, 1.0f);
     const float smallPx = fs * 0.92f;
     const float rightW = std::max(font->CalcTextSizeA(smallPx, FLT_MAX, 0.0f, state1.c_str()).x,
                                   font->CalcTextSizeA(smallPx, FLT_MAX, 0.0f, state2.c_str()).x) + fs * 1.8f;
+    const float swH0 = std::round(fs * 1.125f), textW = std::max(fs * 4.0f, w - rightW - fs * 1.8f - std::round(swH0 * 1.8f));
+    const float subH = font->CalcTextSizeA(smallPx, FLT_MAX, textW, sub.c_str()).y;  // a narrow window: the grey line wraps
+    const float h = std::round(std::max(fs * 3.3f, fs * 1.75f + subH + fs * 0.45f));
     const bool pressed = ImGui::InvisibleButton("##hero", ImVec2(std::max(1.0f, w - rightW), h));
     const bool hovered = ImGui::IsItemHovered();
     if (hovered) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
@@ -315,17 +321,17 @@ bool Hero(bool on, const std::string& title, const std::string& sub, const std::
     const float tx = s.x + swW + fs * 0.9f;
     const ImVec4 clip(tx, p.y, p.x + w - rightW, p.y + h);  // long words in a narrow window: cut, never over the right
     const ImU32 text = ImGui::GetColorU32(ImGuiCol_Text);
-    dl->AddText(font, fs * 1.08f, ImVec2(tx, p.y + h * 0.5f - fs * 1.15f), text, title.c_str(), nullptr, 0.0f, &clip);
-    dl->AddText(font, fs * 1.08f, ImVec2(tx + 0.7f, p.y + h * 0.5f - fs * 1.15f), text, title.c_str(), nullptr, 0.0f, &clip);
-    dl->AddText(font, smallPx, ImVec2(tx, p.y + h * 0.5f + fs * 0.1f), ImGui::GetColorU32(ImGuiCol_TextDisabled),
-                sub.c_str(), nullptr, 0.0f, &clip);
+    dl->AddText(font, fs * 1.08f, ImVec2(tx, p.y + fs * 0.5f), text, title.c_str(), nullptr, 0.0f, &clip);
+    dl->AddText(font, fs * 1.08f, ImVec2(tx + 0.7f, p.y + fs * 0.5f), text, title.c_str(), nullptr, 0.0f, &clip);
+    dl->AddText(font, smallPx, ImVec2(tx, p.y + fs * 1.75f), ImGui::GetColorU32(ImGuiCol_TextDisabled), sub.c_str(), nullptr,
+                std::max(1.0f, p.x + w - rightW - tx), &clip);
     auto state = [&](float y, const std::string& t, bool ok) {
         const float x = p.x + w - fs * 0.8f - font->CalcTextSizeA(smallPx, FLT_MAX, 0.0f, t.c_str()).x;
         dl->AddCircleFilled(ImVec2(x - fs * 0.55f, y + smallPx * 0.55f), fs * 0.22f, ok ? kReadyGreen : kMissingOrange, 12);
         dl->AddText(font, smallPx, ImVec2(x, y), ok ? text : kMissingOrange, t.c_str());
     };
-    state(p.y + h * 0.5f - fs * 1.05f, state1, ok1);
-    state(p.y + h * 0.5f + fs * 0.1f, state2, ok2);
+    state(p.y + fs * 0.6f, state1, ok1);
+    state(p.y + fs * 1.75f, state2, ok2);
     return pressed;
 }
 
@@ -545,6 +551,7 @@ void RenderOptionsContent() {
     ImGui::SameLine(0.0f, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(fs * 1.0f, fs * 0.6f));
     if (ImGui::BeginChild("##page", ImVec2(0.0f, 0.0f), false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
+        ImGui::PushTextWrapPos(0.0f);  // a narrow window: every text of the page wraps at its edge, none is cut off
         PageHead(names[s_page], UI(PageSub(s_page)));
         switch (s_page) {
             case kPageStart: RenderStartPage(edit); break;
@@ -556,6 +563,7 @@ void RenderOptionsContent() {
             default: RenderTechnicalPage(edit); break;
         }
         while (!s_boxes.empty()) EndBox();  // never a frame left open
+        ImGui::PopTextWrapPos();
     }
     ImGui::EndChild();
     ImGui::PopStyleVar();
