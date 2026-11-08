@@ -586,7 +586,11 @@ private:
             errorKind = TranslateErrorKind::Other;
             return {};
         }
-        const bool died = process_ && WaitForSingleObject(process_, 0) == WAIT_OBJECT_0;
+        // Ended with 0: the helper's own end after its idle minutes, met by this line – no crash, the card stays (it starts
+        // again with the next line). Anything else is a crash: from now on the CPU's helper.
+        DWORD exitCode = 1;
+        const bool died = process_ && WaitForSingleObject(process_, 0) == WAIT_OBJECT_0 &&
+                          !(GetExitCodeProcess(process_, &exitCode) && exitCode == 0);
         Stop();
         if (died) LeaveCard("crash");
         error = L"The local translation timed out or its helper stopped";
