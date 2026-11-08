@@ -316,11 +316,9 @@ std::thread g_chatEventsThread;
 // before us), once after it loaded (its version) and for a Nexus without these events.
 std::atomic<bool> g_addonEventsOn{false};
 std::atomic<bool> g_chatModuleLoaded{false};  // Nexus loaded Events: Chat: read its version once on the game thread
-std::atomic<ULONGLONG> g_chatInstalledAt{0};  // our install finished: Nexus takes a new add-on in within seconds
-// ... and this time it did not. Nexus loads an add-on it meets for the first time only when its list already marks it
-// as loaded; a new one waits for the user's Load in Nexus → Addons – a restart alone does not load it (Nexus'
-// loader, seen 2026-11-08).
-std::atomic<bool> g_chatNotTakenIn{false};
+// Our install finished: for ten seconds (or until Nexus loads it) the row says Nexus is taking it in – after that, not
+// loaded means Nexus waits for the user's Load.
+std::atomic<ULONGLONG> g_chatInstalledAt{0};
 static bool ReadSignatureGuarded(const void* payload, uint32_t* sig) {
     if (!payload) return false;
     __try {
@@ -335,7 +333,6 @@ void OnAddonLoaded(void* payload) {
     if (!ReadSignatureGuarded(payload, &sig) || sig != bridge::kChatEventsSignature) return;
     TechLog('N', L"Nexus: Events: Chat loaded");
     g_chatEventsPresent = true;
-    g_chatNotTakenIn = false;
     g_chatModuleLoaded = true;
 }
 void OnAddonUnloaded(void* payload) {  // no scan after it: the module may still be mapped for a moment
@@ -352,10 +349,7 @@ bool ChatEventsPresent(bool now) {
     if (first || g_chatModuleLoaded.exchange(false)) now = true;
     first = false;
     const ULONGLONG tick = GetTickCount64();
-    if (const ULONGLONG at = g_chatInstalledAt; at && (g_chatEventsPresent || tick - at > 10000)) {
-        g_chatInstalledAt = 0;
-        g_chatNotTakenIn = !g_chatEventsPresent;
-    }
+    if (const ULONGLONG at = g_chatInstalledAt; at && (g_chatEventsPresent || tick - at > 10000)) g_chatInstalledAt = 0;
     if (!now && tick < next) return g_chatEventsPresent;
     next = tick + 3000;
     if (!now && g_addonEventsOn) {  // Nexus tells the state: only whether the file lies there (installed, not loaded)

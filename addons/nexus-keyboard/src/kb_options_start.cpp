@@ -47,12 +47,18 @@ void RenderChatModule() {
     StatusRow(UI(Tr(L"Chat module")), chatLive ? 2 : g_chatEventsInstalling || g_chatEventsFile ? 1 : 0,
               UI(chatLive ? Tr(L"ready – Events: Chat is loaded")
                  : g_chatEventsInstalling ? Tr(L"loading Events: Chat …")
-                 : g_chatEventsFile && g_chatNotTakenIn ? Tr(L"in the add-ons folder – Nexus loads a new add-on only after your OK: Nexus → Addons → Events: Chat → Load (once; not listed yet: after the next game start)")
-                 : g_chatEventsFile ? Tr(L"installed – Nexus loads it (else: Nexus → Addons → Events: Chat → Load)")
+                 : g_chatEventsFile && g_chatInstalledAt ? Tr(L"installed – Nexus is taking it in …")
+                 // Nexus loads an add-on it meets for the first time only when its own list already marks it as loaded; a
+                 // new one waits for the user's Load there – a restart alone does not load it (its loader, 2026-11-08).
+                 : g_chatEventsFile ? Tr(L"in the add-ons folder, not loaded – Nexus loads a new add-on only after your OK: Events: Chat → Load (once)")
                                     : Tr(L"Events: Chat is missing")));
     if (!chatLive && !g_chatEventsFile && !g_chatEventsInstalling) {
         ImGui::SameLine();
         if (ImGui::SmallButton(UI(Tr(L"Install Events: Chat")).c_str())) InstallChatEventsNow();
+    } else if (!chatLive && g_chatEventsFile && !g_chatEventsInstalling && !g_chatInstalledAt) {
+        ImGui::SameLine();
+        if (ImGui::SmallButton(UI(Tr(L"Open Nexus' Addons")).c_str())) OpenNexusAddons();
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Nexus' own Addons window – there: Events: Chat → Load. Not in its list yet? After the next game start it is.")).c_str());
     }  // no remove button: Events: Chat is removed in Nexus only (a file deleted behind Nexus' back stays in its list)
     ImGui::PopID();
 }

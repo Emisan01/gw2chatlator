@@ -355,6 +355,15 @@ void AddonLoad(AddonAPI_t* api) {
     Log(LOGL_INFO, "loaded");
 }
 
+// Nexus' own Addons window: its key KB_ADDONS invoked through the API (Nexus handles it on the press only, on its own
+// thread). There a new add-on gets its Load – we never load or remove another add-on ourselves.
+bool OpenNexusAddons() {
+    if (!g_api || !g_api->InputBinds_Invoke || !IsCodePointer(reinterpret_cast<const void*>(g_api->InputBinds_Invoke)))
+        return false;
+    g_api->InputBinds_Invoke("KB_ADDONS", false);
+    return true;
+}
+
 void AddonUnload() {
     g_unloading = true;  // first: every install thread stops at its next step (unload waits for them below)
     if (g_api) {
