@@ -142,6 +142,8 @@ std::wstring LocalMtJobName(LocalMtJob job) {
     return Tr(L"local translation files");
 }
 
+std::atomic<bool> s_cardOnWhenReady{false};  // the card's module asked for from Start: switch the card on once it is there
+
 void StartLocalMtJob(LocalMtJob job, std::wstring dataDir, std::string pair = {}) {
     if (g_localMtBusy.exchange(true)) return;
     if (g_localMtThread.joinable()) g_localMtThread.join();
@@ -214,7 +216,13 @@ void StartLocalMtJob(LocalMtJob job, std::wstring dataDir, std::string pair = {}
         }
         std::lock_guard<std::mutex> lock(g_mu);
         SetStatus(status, 10000);
-        // The card's module is there and the card is chosen: the card takes over now, not only at the next start.
+        // The card's module is there: asked from Start, the card is switched on only now (before, it would have restarted the
+        // CPU's helper for nothing); chosen, it takes over now, not only at the next start.
+        if (job == LocalMtJob::InstallGpu && result.code != ExtrasInstallCode::Ok) s_cardOnWhenReady = false;
+        if (job == LocalMtJob::InstallGpu && result.code == ExtrasInstallCode::Ok && s_cardOnWhenReady.exchange(false) && !g_cfg.useGpu) {
+            g_cfg.useGpu = true;
+            g_cfg.SaveValue(L"Translate", L"UseGpu", L"1");
+        }
         if (job == LocalMtJob::InstallGpu && result.code == ExtrasInstallCode::Ok && g_cfg.useGpu &&
             (g_cfg.engine == Engine::Nllb || g_cfg.engine == Engine::M2m || g_cfg.engine == Engine::Local)) {
             g_translator = MakeTranslator(g_cfg);
@@ -225,7 +233,10 @@ void StartLocalMtJob(LocalMtJob job, std::wstring dataDir, std::string pair = {}
 
 }  // namespace
 
-void InstallCardModule(const std::wstring& dataDir) { StartLocalMtJob(LocalMtJob::InstallGpu, dataDir); }
+void InstallCardModule(const std::wstring& dataDir, bool switchOn) {
+    s_cardOnWhenReady = switchOn;
+    StartLocalMtJob(LocalMtJob::InstallGpu, dataDir);
+}
 
 LocalMtSummary LocalMtNow(const std::wstring& dataDir) {
     RefreshLocalMtState(dataDir);

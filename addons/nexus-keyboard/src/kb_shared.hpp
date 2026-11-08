@@ -80,8 +80,8 @@ namespace kb {
 constexpr const char* kName = "GW2Chatlator";
 constexpr const char* kToggleBind = "KB_GW2KEYBOARD_TOGGLE";
 constexpr const char* kFocusBind = "KB_GW2KEYBOARD_FOCUS";
-constexpr const char* kTalkBind = "KB_GW2KEYBOARD_TALK";
-constexpr const char* kTranslateBind = "KB_GW2KEYBOARD_TRANSLATE";  // the chat's translation on / off  // push to talk: held while you speak
+constexpr const char* kTalkBind = "KB_GW2KEYBOARD_TALK";  // push to talk: held while you speak
+constexpr const char* kTranslateBind = "KB_GW2KEYBOARD_TRANSLATE";  // the chat's translation on / off
 // Intelligent chat buffer quotas: 2000 lines total buffer (~1.4 MB RAM).
 // Mass-traffic channels (Map, Say, System) are capped so they never purge private Whispers or Group channels.
 constexpr size_t kMaxLines = 2000;
@@ -798,7 +798,7 @@ struct LocalMtSummary {
 };
 LocalMtSummary LocalMtNow(const std::wstring& dataDir);
 void InstallLocalMtQuickSetup(const std::wstring& dataDir);
-void InstallCardModule(const std::wstring& dataDir);  // the card's helper with NVIDIA's libraries (kb_local_mt.cpp)
+void InstallCardModule(const std::wstring& dataDir, bool switchOn);  // the card's module; `switchOn`: the card on once it is there
 void InstallVoiceQuickSetup();
 // A number for the eye (Options > Technical): smoothed over about the last 20 frames, shown at most 4 times a second.
 struct Steady {

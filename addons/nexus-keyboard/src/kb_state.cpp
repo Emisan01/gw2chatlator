@@ -565,9 +565,6 @@ const std::wstring& ComposePrefix() {
     return s_cachedPrefix;
 }
 
-// The card's helper and the CUDA libraries it loads at its start (GW2Keyboard-GPU.zip, built with CUDA 12: a new CUDA
-// version changes these names). One of them missing – a broken download, a virus scanner: Windows would end the helper at
-// once, maybe with its own message box over the game – so the CPU's helper is taken right away.
 // The card's generation, from NVIDIA's own driver library (nvml.dll, in System32 with every driver), asked once on the
 // worker: the card's helper needs compute capability 7.5 or more – GTX 16, RTX 20 and up. Older cards are not offered its
 // 560 MB module. -1 not known yet, 0 no answer (no NVIDIA card, or the library missing).
@@ -602,12 +599,10 @@ void ForgetRepetitions() {
     g_orchestrator.ClearCache();
 }
 
-bool CardModuleComplete() {
-    const std::wstring dir = AddonsDir() + L"GW2Keyboard\\";
-    for (const wchar_t* f : {L"gw2kb_translate_gpu.exe", L"cublas64_12.dll", L"cublasLt64_12.dll", L"cudart64_12.dll"})
-        if (GetFileAttributesW((dir + f).c_str()) == INVALID_FILE_ATTRIBUTES) return false;
-    return true;
-}
+// The card's module whole – its helper and NVIDIA's libraries, none empty (one check, the same the Translator page shows).
+// One missing: Windows would end the helper at once, maybe with its own message box over the game – so the CPU's helper
+// is taken right away.
+bool CardModuleComplete() { return gct::GpuModulePresent(KeyboardDir()); }
 
 bool NvidiaDriverPresent() {
     static const bool s_present = [] {

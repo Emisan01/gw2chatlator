@@ -216,10 +216,8 @@ void RenderOfflineOffer(Config& edit) {
         if (cardMissing) Hint(UI(Tr(L"For NVIDIA cards from GTX 16 and RTX 20 upwards: the translator runs on the card and leaves the CPU to the game. Holds NVIDIA's libraries, so it is a large download.")));
     } else {
         Hint(UI(Tr(L"For NVIDIA cards from GTX 16 and RTX 20 upwards: the translator runs on the card and leaves the CPU to the game. Holds NVIDIA's libraries, so it is a large download.")));
-        if (ImGui::Button(UI(Tr(L"Download graphics card module")).c_str())) {
-            edit.useGpu = true;  // on once the module is there; until then, or without it, the CPU's helper runs as before
-            InstallCardModule(edit.dataDir);
-        }
+        // The card goes on once its module is there – not now: that would restart the CPU's helper for nothing.
+        if (ImGui::Button(UI(Tr(L"Download graphics card module")).c_str())) InstallCardModule(edit.dataDir, true);
     }
     EndBox();
 }

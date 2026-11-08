@@ -430,8 +430,10 @@ ExtrasInstallResult SwapLocalMtHelper(const std::wstring& kbDir, const std::wstr
 }
 
 bool GpuModulePresent(const std::wstring& kbDir) {
-    return ExistsFile(kbDir + L"\\" + kGpuHelper) && ExistsFile(kbDir + L"\\cublas64_12.dll") && ExistsFile(kbDir + L"\\cublasLt64_12.dll") &&
-           ExistsFile(kbDir + L"\\cudart64_12.dll");
+    // A file left empty or cut short (a virus scanner, a full disk) counts as missing: Windows would refuse to start the
+    // helper with a message box of its own, over the game.
+    auto whole = [&](const wchar_t* name) { return GetFileBytes(kbDir + L"\\" + name) >= 64 * 1024; };
+    return whole(kGpuHelper) && whole(L"cublas64_12.dll") && whole(L"cublasLt64_12.dll") && whole(L"cudart64_12.dll");
 }
 
 uint64_t GpuModuleBytes(const std::wstring& kbDir) {
