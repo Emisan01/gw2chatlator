@@ -151,6 +151,25 @@ int wmain(int argc, wchar_t** argv) {
     const auto lastWords = translator->Translate({{L"answer then end", false}}, L"en", L"fr");
     ok &= Check(lastWords.ok && lastWords.text == L"Bonjour", "an answer written right before the helper ended is still read");
 
+    {  // the card's helper: its idle end keeps the card, a crash (exit code not 0) still hands over to the CPU's helper
+        const auto cardDir = data / L"card";
+        std::filesystem::create_directories(cardDir, ec);
+        std::filesystem::copy_file(argv[1], cardDir / L"gw2kb_translate_gpu.exe", std::filesystem::copy_options::overwrite_existing, ec);
+        std::filesystem::copy_file(argv[1], cardDir / L"gw2kb_translate.exe", std::filesystem::copy_options::overwrite_existing, ec);
+        auto card = gct::MakeLocalMtTranslator((cardDir / L"gw2kb_translate_gpu.exe").wstring(), data.wstring());
+        const auto mark = data / L"card-idle-ended";
+        SetEnvironmentVariableW(L"GW2KB_FAKE_IDLE_MARK", mark.c_str());
+        const auto idle = card->Translate({{L"idle end", false}}, L"en", L"fr");
+        SetEnvironmentVariableW(L"GW2KB_FAKE_IDLE_MARK", nullptr);
+        ok &= Check(idle.ok && std::filesystem::exists(mark) && gct::GetLocalMtCard(card).why != "crash",
+                    "the card's helper ending after its idle minutes keeps the card");
+        const auto crash = card->Translate({{L"crash", false}}, L"en", L"fr");
+        ok &= Check(!crash.ok && gct::GetLocalMtCard(card).why == "crash", "a crash of the card's helper still hands over to the CPU's");
+        const auto cpu = card->Translate({{L"hello", false}}, L"en", L"fr");
+        ok &= Check(cpu.ok && cpu.text == L"Bonjour", "the CPU's helper answers after the card's crashed");
+        gct::StopLocalMtTranslator(card);
+    }
+
     const ULONGLONG started = GetTickCount64();
     {  // a sentence seen before does not go to the model again
         const auto one = translator->Translate({{L"One here. Two there.", false}}, L"en", L"fr");
