@@ -165,6 +165,8 @@ public tile server (`tiles.guildwars2.com`): only the tile's numbers go out.
 
 **What it learns stays local.** It learns only from the messages *you* send, never from other players' chat.
 Options → Writing → *Delete everything learned* starts from scratch.
+A word you pick from a chat line as your own GW2 term (the line's menu) is saved in your own term
+list on your PC – you can remove it again in the options, and it goes nowhere.
 
 **Nothing of other players' messages is kept or exported.** No chat log is saved; a player's language is known only
 for the session, and so are the translations of chat lines (kept in memory so the same line is never
