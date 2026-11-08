@@ -31,7 +31,7 @@ WinRect LayoutWindow(WinMode mode, const WinAnchor& a, const WinSpace& s) {
     return r;
 }
 
-WinAnchor AdoptRect(WinMode mode, const WinAnchor& a, const WinRect& now, const WinRect& was) {
+WinAnchor AdoptRect(WinMode mode, const WinAnchor& a, const WinRect& now, const WinRect& was, const WinSpace* s) {
     WinAnchor n = a;
     auto differs = [&](float x, float y) { return !a.known || std::fabs(x - y) > 0.5f; };
     if (differs(now.x, was.x)) n.left = std::round(now.x);
@@ -43,6 +43,18 @@ WinAnchor AdoptRect(WinMode mode, const WinAnchor& a, const WinRect& now, const 
     if (mode != WinMode::Button && now.x < 0 && differs(now.x, was.x) && differs(now.w, was.w)) {
         n.left = 0;
         n.width = std::ceil(now.x + now.w);
+    }
+    // The same at the other edges: the lower one past the screen's end keeps the top, the right one keeps the left edge,
+    // the top one above the screen keeps the lower edge – kept as they were, the formula pushed the larger window back in
+    // (the lower edge dragged down made the window grow upwards).
+    if (s && mode != WinMode::Button) {
+        if (now.Bottom() > s->screenBottom && !differs(now.y, was.y) && differs(now.h, was.h)) {
+            n.bottom = std::floor(s->screenBottom);
+            if (mode == WinMode::Big) n.height = std::ceil(s->screenBottom - now.y);
+        }
+        if (now.x + now.w > s->screenW && !differs(now.x, was.x) && differs(now.w, was.w)) n.width = std::floor(s->screenW - now.x);
+        if (mode == WinMode::Big && now.y < 0 && !differs(now.Bottom(), was.Bottom()) && differs(now.h, was.h))
+            n.height = std::ceil(now.Bottom());
     }
     n.known = true;
     return n;

@@ -412,6 +412,33 @@ static void TestResizePastLeftEdge() {
     CHECK(n.left == 0 && n.width == 310);  // the right edge (310) stays, the window does not grow to the right
 }
 
+static void TestResizePastOtherEdges() {
+    WinSpace s;
+    s.screenW = 1920;
+    s.screenBottom = 1080;
+    WinAnchor a;
+    a.known = true;
+    a.left = 100;
+    a.bottom = 1000;
+    a.width = 400;
+    a.height = 300;
+    const WinRect was{100, 700, 400, 300};
+    // the lower edge pulled 80 px below the screen: the top stays, the window ends at the screen's bottom
+    WinAnchor n = AdoptRect(WinMode::Big, a, WinRect{100, 700, 400, 460}, was, &s);
+    CHECK(n.bottom == 1080 && n.height == 380 && LayoutWindow(WinMode::Big, n, s).y == 700);
+    // inside the screen nothing changes against before
+    n = AdoptRect(WinMode::Big, a, WinRect{100, 700, 400, 350}, was, &s);
+    CHECK(n.bottom == 1050 && n.height == 350);
+    // the top edge pulled above the screen: the lower edge stays, the window starts at the screen's top
+    n = AdoptRect(WinMode::Big, a, WinRect{100, -50, 400, 1050}, was, &s);
+    CHECK(n.bottom == 1000 && n.height == 1000 && LayoutWindow(WinMode::Big, n, s).y == 0);
+    // the right edge pulled past the screen: the left edge stays
+    WinAnchor r = a;
+    r.left = 1500;
+    n = AdoptRect(WinMode::Big, r, WinRect{1500, 700, 520, 300}, WinRect{1500, 700, 400, 300}, &s);
+    CHECK(n.width == 420 && LayoutWindow(WinMode::Big, n, s).x == 1500);
+}
+
 static void TestBuiltinGlossary() {
     CHECK(BuiltinNames(L"de").size() > 200 && BuiltinNames(L"PL").empty());
     auto first = [](const Glossary* g, const std::wstring& text) {
@@ -2599,6 +2626,7 @@ int main() {
     TestGlossary();
     TestBuiltinGlossary();
     TestResizePastLeftEdge();
+    TestResizePastOtherEdges();
     TestGreetings();
     TestKeepFor();
     TestProtect();

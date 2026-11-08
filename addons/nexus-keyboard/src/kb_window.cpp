@@ -102,7 +102,7 @@ void PlaceWindow(WinMode mode, const WinSpace& s) {
             ImGui::SetNextWindowPos(ImVec2(now.x, now.y), ImGuiCond_Always);
         }
         if (g_winHolding && !g_winOwnDrag && std::fabs(now.h - g_winWas.h) > 0.5f) g_winSizing = true;
-        g_win = AdoptRect(g_winMode, g_win, now, g_winWas);
+        g_win = AdoptRect(g_winMode, g_win, now, g_winWas, &s);
         g_winWas = now;
     }
     if (mode != g_winMode) {  // a new mode ends every hold – ImGui's own move too: a press on the chat (a link that

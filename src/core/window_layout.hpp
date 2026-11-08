@@ -34,8 +34,9 @@ struct WinSpace {                     // what the frame knows
 WinRect LayoutWindow(WinMode mode, const WinAnchor& a, const WinSpace& s);
 // The window was moved or resized (by you, by ImGui's ini, by our own drag): `now` is its rect, `was` the one it had
 // (what we set, or last frame's). Only what changed is taken over – AdoptRect(m, a, r, r) == a, so a window grown for a
-// long input never keeps that height as yours. The first frame (a not known) takes all of it.
-WinAnchor AdoptRect(WinMode mode, const WinAnchor& a, const WinRect& now, const WinRect& was);
+// long input never keeps that height as yours. The first frame (a not known) takes all of it. With `s`, an edge resized
+// past the screen ends at the screen and the opposite edge stays where it was.
+WinAnchor AdoptRect(WinMode mode, const WinAnchor& a, const WinRect& now, const WinRect& was, const WinSpace* s = nullptr);
 // A move ended: near a screen edge (within `t` px) the corner goes onto it – for the button also onto the left edge of
 // GW2's own chat (`chatLeft`, 0 = none); never below the bottom bar, never off the screen.
 WinAnchor SnapAnchor(WinMode mode, const WinAnchor& a, const WinSpace& s, float t, float chatLeft);
