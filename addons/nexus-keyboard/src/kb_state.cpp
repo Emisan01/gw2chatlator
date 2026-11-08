@@ -561,6 +561,16 @@ const std::wstring& ComposePrefix() {
     return s_cachedPrefix;
 }
 
+// The card's helper and the CUDA libraries it loads at its start (GW2Keyboard-GPU.zip, built with CUDA 12: a new CUDA
+// version changes these names). One of them missing – a broken download, a virus scanner: Windows would end the helper at
+// once, maybe with its own message box over the game – so the CPU's helper is taken right away.
+bool CardModuleComplete() {
+    const std::wstring dir = AddonsDir() + L"GW2Keyboard\\";
+    for (const wchar_t* f : {L"gw2kb_translate_gpu.exe", L"cublas64_12.dll", L"cublasLt64_12.dll", L"cudart64_12.dll"})
+        if (GetFileAttributesW((dir + f).c_str()) == INVALID_FILE_ATTRIBUTES) return false;
+    return true;
+}
+
 bool NvidiaDriverPresent() {
     static const bool s_present = [] {
         wchar_t dir[MAX_PATH] = {};
@@ -580,7 +590,7 @@ std::shared_ptr<Translator> MakeTranslator(const Config& c) {  // the engine you
     if (c.engine == Engine::Libre && !c.libreUrl.empty()) return MakeLibreTranslator(c.libreUrl, c.libreKey);
     if (c.engine == Engine::Local || c.engine == Engine::Nllb || c.engine == Engine::M2m) {
         const std::wstring gpuHelper = AddonsDir() + L"GW2Keyboard\\gw2kb_translate_gpu.exe";
-        const bool gpu = c.useGpu && NvidiaDriverPresent() && GetFileAttributesW(gpuHelper.c_str()) != INVALID_FILE_ATTRIBUTES;
+        const bool gpu = c.useGpu && NvidiaDriverPresent() && CardModuleComplete();
         const std::wstring helper = gpu ? gpuHelper : AddonsDir() + L"GW2Keyboard\\gw2kb_translate.exe";
         auto local = c.engine == Engine::M2m ? MakeM2mTranslator(helper, c.dataDir)
                                              : MakeLocalMtTranslator(helper, c.dataDir, c.engine == Engine::Nllb);

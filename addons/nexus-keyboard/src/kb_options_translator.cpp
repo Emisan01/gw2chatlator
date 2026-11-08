@@ -160,7 +160,7 @@ void RenderTranslatorRows(Config& edit, bool full) {
     RowHint(UI(how));
     if (!full && isLocal && localReady && NvidiaDriverPresent()) {  // the card on Start too: no need to look for it
         RowLabel(UI(Tr(L"Graphics card")));
-        if (GetFileAttributesW((AddonsDir() + L"GW2Keyboard\\gw2kb_translate_gpu.exe").c_str()) != INVALID_FILE_ATTRIBUTES)
+        if (CardModuleComplete())
             Switch("usegpustart", UI(Tr(L"Calculate on the graphics card (NVIDIA)")), &edit.useGpu,
                    UI(Tr(L"Takes about 0.7 GB of video memory with M2M100, 0.9 GB with NLLB-200. Without room it falls back to the CPU.")).c_str());
         else if (ImGui::SmallButton(UI(Tr(L"Graphics card module")).c_str())) SwitchOptionsTab(kPageTranslator);
@@ -319,7 +319,7 @@ void RenderLocalAdvanced(Config& edit) {
     RowHint(UI(edit.mtThreads > 0 ? TrF(L"CPU threads now: {1} (set by hand)", {std::to_wstring(threads)})
                                   : TrF(L"CPU threads now: {1} (automatic, more with a higher beam)", {std::to_wstring(threads)})));
     if (static_cast<unsigned>(threads) * 2 > std::thread::hardware_concurrency()) RiskHint(Tr(L"More than half of your processors: the game can stutter."));
-    if (NvidiaDriverPresent() && GetFileAttributesW((AddonsDir() + L"GW2Keyboard\\gw2kb_translate_gpu.exe").c_str()) != INVALID_FILE_ATTRIBUTES) {
+    if (NvidiaDriverPresent() && CardModuleComplete()) {
         Switch("usegpu", UI(Tr(L"Calculate on the graphics card (NVIDIA)")), &edit.useGpu,
                UI(Tr(L"Takes about 0.7 GB of video memory with M2M100, 0.9 GB with NLLB-200. Without room it falls back to the CPU.")).c_str());
         std::shared_ptr<Translator> translator;
