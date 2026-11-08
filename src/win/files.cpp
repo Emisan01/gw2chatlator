@@ -41,8 +41,11 @@ bool WriteFileAtomic(const std::wstring& path, const std::string& data) {
     HANDLE h = CreateFileW(tmp.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (h == INVALID_HANDLE_VALUE) return false;
     DWORD written = 0;
-    const bool ok = data.empty() || (WriteFile(h, data.data(), static_cast<DWORD>(data.size()), &written, nullptr) &&
-                                     written == data.size());
+    // On disk before the rename: MOVEFILE_WRITE_THROUGH flushes only a move done by copying, so after a power cut the
+    // new name could stand on an empty file – the settings or your words gone.
+    const bool ok = (data.empty() || (WriteFile(h, data.data(), static_cast<DWORD>(data.size()), &written, nullptr) &&
+                                      written == data.size())) &&
+                    FlushFileBuffers(h);
     CloseHandle(h);
     if (!ok) {
         DeleteFileW(tmp.c_str());

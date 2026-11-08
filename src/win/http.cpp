@@ -259,6 +259,8 @@ bool HttpDownloadToFile(const std::wstring& url, const std::wstring& path, uint6
         if (progress && !progress(done, total)) return fail(Tr(L"Download cancelled."));
         if (end) break;
     }
+    // On disk before it gets its real name (see WriteFileAtomic): Nexus must never find a half-written add-on DLL.
+    if (!FlushFileBuffers(tmp.h)) return fail(writeFailed);
     tmp.Close();
 
     if ((expectedBytes && done != expectedBytes) || (length && done != length)) return fail(sizeWrong);
