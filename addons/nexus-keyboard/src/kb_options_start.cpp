@@ -286,6 +286,7 @@ void RenderLayoutTiles() {
             if (i == 0) {
                 Layout& l = Lay();
                 l.header = l.chat = l.preview = l.words = l.footer = l.minButton = true;
+                l.subtitles = false;
                 SaveLayout();
             } else {
                 SetProfile(i - 1, true);

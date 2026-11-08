@@ -345,6 +345,7 @@ void LoadLayout() {  // g_mu held
     g_layout.infoText = get(L"InfoText", 1) != 0;  // on at the first start: the hints explain the window
     g_layout.minButton = get(L"MinButton", 1) != 0;
     g_layout.backLine = get(L"BackLine", 1) != 0;
+    g_layout.subtitles = get(L"Subtitles", 0) != 0;
     g_layout.autoMinimize = get(L"AutoMinimize", 0) != 0;
     g_layout.minimizeAfter = std::clamp(get(L"MinimizeAfter", 10), 2, 120);
     g_layout.autoOpen = get(L"AutoOpen", 0) != 0;
@@ -411,6 +412,7 @@ void SaveLayout() {  // g_mu held
     g_cfg.SaveValue(L"NexusWindow", L"InfoText", g_layout.infoText ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"MinButton", g_layout.minButton ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"BackLine", g_layout.backLine ? L"1" : L"0");
+    g_cfg.SaveValue(L"NexusWindow", L"Subtitles", g_layout.subtitles ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"AutoMinimize", g_layout.autoMinimize ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"MinimizeAfter", std::to_wstring(g_layout.minimizeAfter));
     g_cfg.SaveValue(L"NexusWindow", L"AutoOpen", g_layout.autoOpen ? L"1" : L"0");
@@ -716,7 +718,7 @@ bool g_haveBefore = false;
 static bool IsProfile(const Layout& l, int profile) {  // 0 compact view, 1 mini mode, 2 subtitle mode
     if (profile == 0) return l.header && l.chat && !l.preview && !l.words && l.footer;
     if (profile == 1) return !l.header && !l.chat && !l.preview && !l.words && !l.footer && !l.minButton;
-    return !l.header && l.chat && !l.preview && !l.words && !l.footer && !l.minButton;
+    return l.subtitles && !l.header && l.chat && !l.preview && !l.words && !l.footer && !l.minButton;  // chosen, not only the same parts
 }
 bool ProfileOn(int profile) { return IsProfile(g_layout, profile); }  // g_mu held
 void SetProfile(int profile, bool on) {  // g_mu held
@@ -726,6 +728,7 @@ void SetProfile(int profile, bool on) {  // g_mu held
             g_layoutBefore = l;
             g_haveBefore = true;
         }
+        l.subtitles = profile == 2;  // only the subtitle mode itself sets it
         if (profile == 0) {  // compact: header, chat, input, footer – no word bar, no preview
             l.header = l.chat = l.footer = true;
             l.preview = l.words = false;
@@ -744,6 +747,7 @@ void SetProfile(int profile, bool on) {  // g_mu held
         l.words = back ? b.words : true;
         l.footer = back ? b.footer : true;
         l.minButton = back ? b.minButton : true;
+        l.subtitles = back && b.subtitles;
         g_haveBefore = false;
     }
     SaveLayout();

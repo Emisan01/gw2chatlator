@@ -172,7 +172,10 @@ void RenderWindowPage(Config& edit) {
         auto part = [&](const char* id, const std::wstring& label, bool* v, const std::wstring& tip) {
             if (col++ % 2) ImGui::SameLine(fs * 14.0f);
             const std::string t = UI(tip);
-            changed |= Switch(id, UI(label), v, tip.empty() ? nullptr : t.c_str());
+            if (Switch(id, UI(label), v, tip.empty() ? nullptr : t.c_str())) {
+                changed = true;
+                g_layout.subtitles = false;  // a part by hand: your own layout, no longer the subtitle mode
+            }
         };
         part("header", Tr(L"Header"), &g_layout.header, Tr(L"Hidden: a right-click on the window opens the menu (tabs, minimise, options)."));
         part("chat", Tr(L"Chat"), &g_layout.chat, {});

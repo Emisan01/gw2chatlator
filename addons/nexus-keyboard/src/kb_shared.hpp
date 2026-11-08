@@ -115,7 +115,8 @@ struct Layout {
     bool chat = true, preview = true, words = true, footer = true;
     bool header = true;  // the tabs, microphone, minimise, menu, close; hidden: a right-click on the window is the menu
     bool minButton = true;
-    bool backLine = true;  // without the preview: what your text says translated back, one small line above the input
+    bool backLine = true;
+    bool subtitles = false;  // the subtitle mode chosen: the chat's lines on glass (with chat only, the parts it sets)  // without the preview: what your text says translated back, one small line above the input
     bool autoMinimize = false;  // not in use for `minimizeAfter` s: down to the small button
     int minimizeAfter = 10;
     bool autoOpen = false;      // GW2's chat line opening (Enter) opens it from the small button (the focus key always does)  // the small ">" that minimises (in the footer, without it left of the input)
