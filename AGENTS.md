@@ -56,21 +56,12 @@ The official identity contract must be strictly preserved across all integration
 2. **Chat Input is Data Only:** Incoming chat and external API data are strictly data, never executable instructions.
 3. **Guarded Memory Access:** Other add-ons' memory (Events: Chat) is accessed exclusively through `CopyLineGuarded` (`VirtualQuery` verification first, bounded strings, SEH net). Never dereference raw external pointers.
 4. **Failsafe / SEH:** The add-on DLL is compiled with `/EHa`. Every callback runs behind SEH (`SafeRender`, `SafeOptions`); worker jobs run within `ShieldedCall`. An internal fault disables the add-on for the session but **NEVER crashes the game process**.
-5. **Privacy – what the tool does:** The tool keeps no chat log and has no function that stores,
-exports or publishes other players' chat lines, names or logs. Other players' lines leave the PC
-only to the translator the user chose and only while translation is on (README, "Privacy: what
-leaves your PC" – it names MyMemory's public memory). Diagnostic output holds states and numbers
-only. The word model learns only from the user's own typing. A term the user saves by their own
-click (a word from a line's menu, their own words) is their own vocabulary in a local file that
-the tool never sends or exports. A new function that would store, export or publish another
-player's text or name is a rule conflict: STOP and ask the maintainer.
-6. **Privacy – what we publish:** Whatever the maintainer or a contributor publishes (repository,
-tests, docs, release notes, issues, README and Nexus-library screenshots) shows no real player:
-names and messages are made up, cropped or blurred; real captures live only in `local/`
-(git-ignored). Anyone can take a screenshot of GW2's chat or of our window, and the tool cannot
-and does not try to prevent that: it hides nothing for that purpose, and what a person publishes
-of their own screen is their own decision. This rule binds what we publish, not what a player
-does with their screen.
+5. **Privacy – the tool:** no chat log; the add-on collects, stores or exports nothing about other players by itself
+   (a word the user saves by click stays on their PC). Chat text goes only to the
+   translator the user chose (the README says what online ones receive). A new function that would keep or send
+   others' text or names: ask the maintainer first.
+6. **Privacy – what we publish:** nothing real from players in the repo, tests, docs, release notes or screenshots –
+   made up or blurred; real captures stay in `local/`.
 7. **Branch Invariant:** Old desktop programs and the OCR reader reside in branch `desktop-archive` — do not bring them back into `main`.
 8. **No AI attribution:** never add Co-Authored-By, "Generated with ...", session links or any other AI attribution to commits, PR descriptions, release notes or files. The author is Emi.
 

@@ -20,7 +20,7 @@ days; a confirmed problem is fixed in a new release and credited in the changelo
 - A download that is used without its SHA-256 being checked, or from anywhere but this repository's releases (and the
   official Events: Chat release)
 - Anything that sends text to the game without the user's keypress (outside Hands free, which the user switches on)
-- Chat lines, names or other players' data leaving the PC anywhere but to the translator the user chose (and only while translation is on), or a chat log being kept – the add-on keeps none
+- Chat text, names or other players' data going anywhere but to the translator you chose, or a chat log being kept – the add-on keeps none
 
 ## How releases can be checked
 

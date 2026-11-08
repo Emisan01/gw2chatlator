@@ -153,11 +153,13 @@ why GW2Chatlator works like this:
 
 ## Privacy: what leaves your PC
 
-**Your voice never leaves your PC** – recognition runs locally, nothing is recorded to disk.
+**Your chat stays yours.** GW2Chatlator keeps no chat log and collects nothing about other players. What it learns
+from your typing, and every word you save yourself, stays on your PC. Text leaves your PC only to be translated, and
+only to the translator you chose: the local one never sends anything away. Online translators are third parties: they
+receive the text they translate, and we can't see what they do with it.
 
-**Text goes only to the translator you chose,** and only while translation is switched on – that includes the chat
-lines of other players you translate. MyMemory is a public translation memory that may store what it receives. API
-keys are stored encrypted for your Windows account.
+**Your voice never leaves your PC** – recognition runs locally, nothing is recorded to disk. API keys you enter are
+stored encrypted for your Windows account.
 
 **Names of chat codes:** to show a code's name and details the add-on asks GW2's public API (`api.guildwars2.com`): only
 the code's number and your reading language go out, never a chat text or a name. Waypoints come from a table in this

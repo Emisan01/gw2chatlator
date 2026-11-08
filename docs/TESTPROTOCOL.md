@@ -21,10 +21,7 @@ Quality verification is strictly stratified into three distinct levels:
 ## 2. Rules Enforced by This Protocol
 
 1. **Pre-Release First, Push After Approval:** Releases are published initially as Pre-Release (never directly as Latest). No push to remote and no public release without explicit maintainer approval (`AGENTS.md` §4).
-2. **Privacy Invariant:** No function stores, logs, exports or publishes other players'
-messages, names or chat content; diagnostic output is counts and states only. The word model
-learns exclusively from the user's own typing; a term the user saves by their own click is their
-own vocabulary and stays local (`AGENTS.md` §2).
+2. **Privacy Invariant:** Test data is made up – no real names or lines from real players.
 3. **Translation Quality:** Translation accuracy is evaluated against fixed reference datasets; changes must never degrade hit rates. No cascades of approximate fixes; exact methods only.
 4. **Window Logic & Automatics:** Automatic window behaviors remain strictly optional and switchable in settings. ImGui internals must be balanced (`PushFont`/`PopFont`, `Begin`/`End`).
 5. **No Faked Results:** Any test row not executed during a session remains marked as `skipped`, never assumed or faked as `ok`.
