@@ -147,8 +147,10 @@ POINT StoredPlace(const std::wstring& key) {
     std::lock_guard<std::mutex> lock(s_mu);
     const auto known = s_places.find(key);
     if (known != s_places.end()) return known->second;
-    const POINT at{static_cast<int>(GetPrivateProfileIntW(L"Waypoint", (key + L"X").c_str(), -1, ini.c_str())),
-                   static_cast<int>(GetPrivateProfileIntW(L"Waypoint", (key + L"Y").c_str(), -1, ini.c_str()))};
+    // [WaypointLink]: places learned on the link's third letter. The older [Waypoint] ones were learned "at its start" and
+    // could lie behind a shorter link or before its first letter – they are not read, each is taught once more.
+    const POINT at{static_cast<int>(GetPrivateProfileIntW(L"WaypointLink", (key + L"X").c_str(), -1, ini.c_str())),
+                   static_cast<int>(GetPrivateProfileIntW(L"WaypointLink", (key + L"Y").c_str(), -1, ini.c_str()))};
     s_places[key] = at;
     return at;
 }
@@ -273,7 +275,7 @@ void Flight(uint32_t id) {
         }
         s_teachUntil = GetTickCount64() + 30000;
         s_teaching = true;
-        Say(Tr(L"Click the new link in GW2's chat once yourself, at its start. I remember the place, from then on it goes by itself."), 30000);
+        Say(Tr(L"Click the new link in GW2's chat once yourself, on its third letter. I remember the place, from then on it goes by itself."), 30000);
         return;
     }
     ClientToScreen(gw2, &at);
@@ -690,8 +692,8 @@ void RenderWaypointPreview() {
         }
         TechLog('S', L"waypoint: place learned at " + std::to_wstring(place.x) + L"," + std::to_wstring(place.y));
         std::lock_guard<std::mutex> lock(g_mu);
-        g_cfg.SaveValue(L"Waypoint", (key + L"X").c_str(), std::to_wstring(place.x));
-        g_cfg.SaveValue(L"Waypoint", (key + L"Y").c_str(), std::to_wstring(place.y));
+        g_cfg.SaveValue(L"WaypointLink", (key + L"X").c_str(), std::to_wstring(place.x));
+        g_cfg.SaveValue(L"WaypointLink", (key + L"Y").c_str(), std::to_wstring(place.y));
         SetStatus(Tr(L"Place remembered. A click in the preview now does this by itself."), 8000);
     }
     uint32_t selected;
@@ -745,7 +747,7 @@ void RenderWaypointPreview() {
     }
     if (visible) {
         const float fs = ImGui::GetFontSize();
-        const std::string teachText = UI(Tr(L"Click the new link in GW2's chat once yourself, at its start. I remember the place, from then on it goes by itself."));
+        const std::string teachText = UI(Tr(L"Click the new link in GW2's chat once yourself, on its third letter. I remember the place, from then on it goes by itself."));
         const float rowH = teaching ? ImGui::CalcTextSize(teachText.c_str(), nullptr, false, ImGui::GetContentRegionAvail().x).y + ImGui::GetStyle().ItemSpacing.y
                                     : ImGui::GetTextLineHeightWithSpacing();
         // "More" as ImGui keeps it, read before it is drawn: the list has its height in the very frame you fold it.
