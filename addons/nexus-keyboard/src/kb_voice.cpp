@@ -361,7 +361,8 @@ const ModuleState& Modules() {  // looked at every 2 s (file checks), at once af
     return g_modules;
 }
 
-// The voice module from this version's GitHub release (checksum checked); only on your click or the first start.
+// The voice module from this version's GitHub release (checksum checked); on your click, or when you use the microphone
+// with voice input on and the module is missing.
 void InstallVoiceModuleNow() {
     if (g_voiceModuleInstalling.exchange(true)) return;
     if (g_voiceModuleThread.joinable()) g_voiceModuleThread.join();

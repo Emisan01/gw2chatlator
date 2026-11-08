@@ -143,9 +143,9 @@ void OnFocusKey(const char*, bool release) {
     }
 }
 
-// The first start: what GW2 Keyboard needs comes by itself – Events: Chat (Nexus loads it), the voice module and,
-// when no voice model is there yet, the small base model. Then it says what is ready and where translation is switched on.
-void FirstStart() {  // nothing is downloaded by itself: the empty chat shows the modules, each loaded on your click
+// The first start only notes that setup was shown. Nothing is downloaded by itself: the empty chat and Options → Start
+// show the modules (Events: Chat, the voice module, a voice model, the offline translator), each loaded on your click.
+void FirstStart() {
     std::lock_guard<std::mutex> lock(g_mu);
     g_nx.setupDone = true;
     SaveNexusOptions();
@@ -317,7 +317,7 @@ void AddonLoad(AddonAPI_t* api) {
         first = !g_nx.setupDone && !g_test.noSend;
     }
     gct::SetLocalMtLog([](const std::wstring& line) { TechLog('H', line); });
-    if (first) FirstStart();  // Events: Chat, the voice module, a voice model – loaded by themselves once
+    if (first) FirstStart();  // notes the first start; the modules come on your click
     if (api->GUI_Register && IsCodePointer(reinterpret_cast<const void*>(api->GUI_Register))) {
         api->GUI_Register(RT_Render, SafeRender);
         api->GUI_Register(RT_OptionsRender, SafeOptions);
