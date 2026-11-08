@@ -327,6 +327,8 @@ void RenderStartPage(Config& edit) {
         std::lock_guard<std::mutex> lock(g_mu);
         SetChatTranslation(!g_nx.translateChat);
     }
+    // The local translator first, while it is missing: it keeps every line on this PC – before MyMemory, which works online.
+    RenderOfflineOffer(edit);
     BeginBox(UI(Tr(L"Translation")));
     RenderReadRow(edit);
     RowHint(UI(Tr(L"Foreign lines appear in this language.")));
@@ -337,7 +339,6 @@ void RenderStartPage(Config& edit) {
     RowHint(UI(Tr(L"For typing and speaking – the same choice as \"Send\" in the chat window.")));
     RenderTranslatorRows(edit, false);
     EndBox();
-    RenderOfflineOffer(edit);
     RenderVoiceStart(edit);
     RenderLayoutTiles();
     BeginBox(UI(Tr(L"Window & keys")));
