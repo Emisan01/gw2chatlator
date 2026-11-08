@@ -127,10 +127,7 @@ static void ToggleChatTranslationNow() {
 }
 void OnTranslateKey(const char*, bool release) {
     if (release) return;
-    __try {
-        ToggleChatTranslationNow();
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-    }
+    ToggleChatTranslationNow();
 }
 void OnFocusKey(const char*, bool release) {
     if (release) return;
@@ -196,6 +193,32 @@ bool ShieldedCall(void (*fn)(void*), void* arg) {
         return false;
     }
 }
+// Nexus calls these from its own code – the keys, its WndProc, the events – not behind SafeRender's net: the same rule
+// for them. With /EHa catch(...) takes a C++ exception and a fault alike, and unwinding gives every lock back; our
+// add-on is off for the session, the game goes on (AGENTS §2.4).
+template <class F>
+void CallbackNet(F&& f) {
+    try {
+        f();
+    } catch (...) {
+        Log(LOGL_CRITICAL, "an error in a key, input or event callback – switched off for this session");
+        SwitchOffAfterFault();
+    }
+}
+template <void (*F)(const char*, bool)>
+void SafeKey(const char* id, bool release) {
+    if (!g_disabled) CallbackNet([&] { F(id, release); });
+}
+template <void (*F)(void*)>
+void SafeEvent(void* payload) {
+    if (!g_disabled) CallbackNet([&] { F(payload); });
+}
+UINT SafeWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {  // a fault: the message goes on to the game as it came
+    UINT out = msg;
+    if (!g_disabled) CallbackNet([&] { out = OnWndProc(hwnd, msg, wp, lp); });
+    return out;
+}
+
 void SafeRender() {
     __try {
         GuardedRender(RenderWindow);
@@ -324,10 +347,10 @@ void AddonLoad(AddonAPI_t* api) {
     }
     if (api->InputBinds_RegisterWithString && IsCodePointer(reinterpret_cast<const void*>(api->InputBinds_RegisterWithString))) {
         // No key is set by us: every one is yours to bind in Nexus → Keybinds (a key of your own stays as you set it).
-        api->InputBinds_RegisterWithString(kToggleBind, OnToggle, "(null)");
-        api->InputBinds_RegisterWithString(kTranslateBind, OnTranslateKey, "(null)");
-        api->InputBinds_RegisterWithString(kFocusBind, OnFocusKey, "(null)");
-        api->InputBinds_RegisterWithString(kTalkBind, OnTalkKey, "(null)");
+        api->InputBinds_RegisterWithString(kToggleBind, SafeKey<OnToggle>, "(null)");
+        api->InputBinds_RegisterWithString(kTranslateBind, SafeKey<OnTranslateKey>, "(null)");
+        api->InputBinds_RegisterWithString(kFocusBind, SafeKey<OnFocusKey>, "(null)");
+        api->InputBinds_RegisterWithString(kTalkBind, SafeKey<OnTalkKey>, "(null)");
     }
     // The keys' names in Nexus → Keybinds, in Nexus' languages – none is set by us, so you find them there by name, not by
     // their technical identifier.
@@ -344,12 +367,12 @@ void AddonLoad(AddonAPI_t* api) {
     }
     ApplyPushToTalkKey(g_cfg.voiceGlobalKey);
     if (api->WndProc_Register && IsCodePointer(reinterpret_cast<const void*>(api->WndProc_Register))) {
-        api->WndProc_Register(OnWndProc);
+        api->WndProc_Register(SafeWndProc);
     }
     if (api->Events_Subscribe && IsCodePointer(reinterpret_cast<const void*>(api->Events_Subscribe))) {
-        api->Events_Subscribe(bridge::kChatEventsEvent, OnChatEvents);
-        api->Events_Subscribe(EV_ADDON_LOADED, OnAddonLoaded);
-        api->Events_Subscribe(EV_ADDON_UNLOADED, OnAddonUnloaded);
+        api->Events_Subscribe(bridge::kChatEventsEvent, SafeEvent<OnChatEvents>);
+        api->Events_Subscribe(EV_ADDON_LOADED, SafeEvent<OnAddonLoaded>);
+        api->Events_Subscribe(EV_ADDON_UNLOADED, SafeEvent<OnAddonUnloaded>);
         g_addonEventsOn = true;
     }
     Log(LOGL_INFO, "loaded");
@@ -368,14 +391,14 @@ void AddonUnload() {
     g_unloading = true;  // first: every install thread stops at its next step (unload waits for them below)
     if (g_api) {
         if (g_api->Events_Unsubscribe && IsCodePointer(reinterpret_cast<const void*>(g_api->Events_Unsubscribe))) {
-            g_api->Events_Unsubscribe(bridge::kChatEventsEvent, OnChatEvents);
+            g_api->Events_Unsubscribe(bridge::kChatEventsEvent, SafeEvent<OnChatEvents>);
             if (g_closedWithX) ChatSourceSetReading(true, false);  // the X counts for this session, the next one reads again
-            g_api->Events_Unsubscribe(EV_ADDON_LOADED, OnAddonLoaded);
-            g_api->Events_Unsubscribe(EV_ADDON_UNLOADED, OnAddonUnloaded);
+            g_api->Events_Unsubscribe(EV_ADDON_LOADED, SafeEvent<OnAddonLoaded>);
+            g_api->Events_Unsubscribe(EV_ADDON_UNLOADED, SafeEvent<OnAddonUnloaded>);
             g_addonEventsOn = false;
         }
         if (g_api->WndProc_Deregister && IsCodePointer(reinterpret_cast<const void*>(g_api->WndProc_Deregister))) {
-            g_api->WndProc_Deregister(OnWndProc);
+            g_api->WndProc_Deregister(SafeWndProc);
         }
         if (g_api->InputBinds_Deregister && IsCodePointer(reinterpret_cast<const void*>(g_api->InputBinds_Deregister))) {
             g_api->InputBinds_Deregister(kToggleBind);
