@@ -47,7 +47,7 @@ void RenderChatModule() {
     StatusRow(UI(Tr(L"Chat module")), chatLive ? 2 : g_chatEventsInstalling || g_chatEventsFile ? 1 : 0,
               UI(chatLive ? Tr(L"ready – Events: Chat is loaded")
                  : g_chatEventsInstalling ? Tr(L"loading Events: Chat …")
-                 : g_chatEventsFile && g_chatNotTakenIn ? Tr(L"in the add-ons folder, but Nexus has not taken it in – restart GW2 once")
+                 : g_chatEventsFile && g_chatNotTakenIn ? Tr(L"in the add-ons folder – Nexus loads a new add-on only after your OK: Nexus → Addons → Events: Chat → Load (once; not listed yet: after the next game start)")
                  : g_chatEventsFile ? Tr(L"installed – Nexus loads it (else: Nexus → Addons → Events: Chat → Load)")
                                     : Tr(L"Events: Chat is missing")));
     if (!chatLive && !g_chatEventsFile && !g_chatEventsInstalling) {

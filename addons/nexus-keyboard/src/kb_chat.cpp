@@ -317,7 +317,10 @@ std::thread g_chatEventsThread;
 std::atomic<bool> g_addonEventsOn{false};
 std::atomic<bool> g_chatModuleLoaded{false};  // Nexus loaded Events: Chat: read its version once on the game thread
 std::atomic<ULONGLONG> g_chatInstalledAt{0};  // our install finished: Nexus takes a new add-on in within seconds
-std::atomic<bool> g_chatNotTakenIn{false};    // ... and this time it did not (a restart of GW2 loads it)
+// ... and this time it did not. Nexus loads an add-on it meets for the first time only when its list already marks it
+// as loaded; a new one waits for the user's Load in Nexus → Addons – a restart alone does not load it (Nexus'
+// loader, seen 2026-11-08).
+std::atomic<bool> g_chatNotTakenIn{false};
 static bool ReadSignatureGuarded(const void* payload, uint32_t* sig) {
     if (!payload) return false;
     __try {
@@ -395,7 +398,7 @@ void InstallChatEventsNow() {  // on your click: newest release, checksum checke
         g_chatEventsInstalling = false;
         if (r.code == ExtrasInstallCode::Ok) g_chatInstalledAt = GetTickCount64();
         std::lock_guard<std::mutex> lock(g_mu);
-        SetStatus(r.code == ExtrasInstallCode::Ok ? Tr(L"Events: Chat installed – Nexus loads it (restart GW2 if no chat arrives)")
+        SetStatus(r.code == ExtrasInstallCode::Ok ? Tr(L"Events: Chat installed – if no chat arrives, Nexus waits for your OK: Nexus → Addons → Events: Chat → Load (once)")
                   : r.code == ExtrasInstallCode::NoAnswer ? TrF(L"GitHub did not answer ({1}) – please try again later", {r.detail})
                                                           : TrF(L"Loading {1} failed: {2}", {L"Events: Chat", r.detail}),
                   12000);
