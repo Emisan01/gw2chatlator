@@ -396,6 +396,9 @@ ppk	keep	Points per kill
 cmdr	keep	Commander
 comm	keep	Commander
 commi	keep	Commander
+comms	keep	Commanders (NLLB made "Kommunikationen" of it)
+cmdrs	keep	Commanders
+commis	keep	Commanders
 
 # --- Gaming culture ---
 afk	keep	Away from keyboard

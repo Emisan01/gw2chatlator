@@ -1257,6 +1257,27 @@ void RenderWindow() {
                 }
                 break;
             }
+            // A word of this line as a GW2 term of your own (a short form the translator gets wrong, "comms"): never
+            // translated from now on, and this line comes again with it. Gone again in Options → Technical.
+            if (ImGui::BeginMenu(UI(Tr(L"A GW2 term – never translated")).c_str())) {
+                std::vector<std::wstring> words;
+                for (const Span& s : WordSpans(s_lineMenuText)) {
+                    const std::wstring w = s_lineMenuText.substr(s.start, s.length);
+                    if (w.size() < 2 || w.size() > 30 || std::all_of(w.begin(), w.end(), [](wchar_t c) { return c >= L'0' && c <= L'9'; })) continue;
+                    if (std::find(words.begin(), words.end(), w) == words.end()) words.push_back(w);
+                    if (words.size() >= 15) break;
+                }
+                for (const std::wstring& w : words) {
+                    if (!ImGui::MenuItem(U8(w).c_str())) continue;
+                    g_worker.Post([w, id = s_lineMenuId, t = s_lineMenuText, target = ReadLang()] {
+                        if (g_spell) g_spell->AddTerm(w);
+                        TranslateLine(id, t, true, false, target);
+                    });
+                    SetStatus(TrF(L"Never translated from now on: {1}", {w}), 6000);
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndMenu();
+            }
             if (!trace.empty() && ImGui::BeginMenu(UI(Tr(L"What happened?")).c_str())) {
                 ImGui::TextUnformatted(trace.c_str());
                 ImGui::EndMenu();
