@@ -634,7 +634,9 @@ std::shared_ptr<Translator> MakeTranslator(const Config& c) {  // the engine you
     if (c.engine == Engine::Libre && !c.libreUrl.empty()) return MakeLibreTranslator(c.libreUrl, c.libreKey);
     if (c.engine == Engine::Local || c.engine == Engine::Nllb || c.engine == Engine::M2m) {
         const std::wstring gpuHelper = AddonsDir() + L"GW2Keyboard\\gw2kb_translate_gpu.exe";
-        const bool gpu = c.useGpu && NvidiaDriverPresent() && CardModuleComplete();
+        // the files themselves, not the options pages' once-a-second look: right after the card's download this decides,
+        // and it may run on the worker
+        const bool gpu = c.useGpu && NvidiaDriverPresent() && gct::GpuModulePresent(KeyboardDir());
         const std::wstring helper = gpu ? gpuHelper : AddonsDir() + L"GW2Keyboard\\gw2kb_translate.exe";
         auto local = c.engine == Engine::M2m ? MakeM2mTranslator(helper, c.dataDir)
                                              : MakeLocalMtTranslator(helper, c.dataDir, c.engine == Engine::Nllb);
