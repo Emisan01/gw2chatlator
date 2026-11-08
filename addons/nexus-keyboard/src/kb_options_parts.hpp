@@ -9,7 +9,7 @@ extern float g_labelW;  // the label column's width (kb_options.cpp)
 
 // The row widgets (kb_options.cpp)
 float ControlW();
-bool Switch(const char* id, const std::string& label, bool* v, const char* tip = nullptr, bool usable = true);
+bool Switch(const char* id, const std::string& label, bool* v, const char* tip = nullptr, bool usable = true, float maxW = 0.0f);
 void RowHint(const std::string& text);
 void RiskHint(const std::wstring& text);
 bool RowCombo(const char* id, const std::vector<std::string>& items, int* sel);

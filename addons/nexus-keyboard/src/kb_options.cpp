@@ -122,13 +122,14 @@ static int s_page = kPageStart;
 float ControlW() { return std::min(ImGui::GetFontSize() * 15.0f, std::max(ImGui::GetContentRegionAvail().x, 1.0f)); }
 
 // An on/off switch with its label (a click on either flips it); not usable: dimmed, the tooltip says why.
-bool Switch(const char* id, const std::string& label, bool* v, const char* tip, bool usable) {
+bool Switch(const char* id, const std::string& label, bool* v, const char* tip, bool usable, float maxW) {
     const float fs = ImGui::GetFontSize();
     const float frameH = ImGui::GetFrameHeight();
     const float h = std::round(fs), w = std::round(h * 1.85f);
     const ImVec2 p = ImGui::GetCursorScreenPos();
     // A long label in a narrow window wraps under itself instead of running out of the window.
-    const float wrapW = std::max(fs * 4.0f, ImGui::GetContentRegionAvail().x - w - fs * 0.6f);
+    const float room = maxW > 0.0f ? std::min(maxW, ImGui::GetContentRegionAvail().x) : ImGui::GetContentRegionAvail().x;  // maxW: a column's width
+    const float wrapW = std::max(fs * 4.0f, room - w - fs * 0.6f);
     const ImVec2 labelSize = ImGui::CalcTextSize(label.c_str(), nullptr, false, wrapW);
     ImGui::PushID(id);
     const bool pressed = ImGui::InvisibleButton(

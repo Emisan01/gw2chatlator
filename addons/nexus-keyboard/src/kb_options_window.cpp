@@ -170,9 +170,12 @@ void RenderWindowPage(Config& edit) {
         bool changed = false;
         int col = 0;
         auto part = [&](const char* id, const std::wstring& label, bool* v, const std::wstring& tip) {
-            if (col++ % 2) ImGui::SameLine(fs * 14.0f);
+            const bool right = col++ % 2;
+            if (right) ImGui::SameLine(fs * 14.0f);
             const std::string t = UI(tip);
-            if (Switch(id, UI(label), v, tip.empty() ? nullptr : t.c_str())) {
+            // the left column's label wraps where the right column begins, never into it
+            const float maxW = right ? 0.0f : fs * 14.0f - ImGui::GetCursorPosX() - ImGui::GetStyle().ItemSpacing.x;
+            if (Switch(id, UI(label), v, tip.empty() ? nullptr : t.c_str(), true, maxW)) {
                 changed = true;
                 g_layout.subtitles = false;  // a part by hand: your own layout, no longer the subtitle mode
             }
