@@ -1053,6 +1053,8 @@ extern const I18nEntry kRussianStrings[] = {
      "выкл., по желанию (около {1} МБ)"},
     {L"Click the new link in GW2's chat once yourself, on its third letter. I remember the place, from then on it goes by itself.",
      "Один раз сам нажми на новую ссылку в чате GW2, на её третью букву. Я запомню место, дальше всё пойдёт само."},
+    {L"Another line came in between, so the place would be off: not remembered. Teach it again at the next waypoint.",
+     "Между делом пришла другая строка, место сместилось бы – не запомнено. Покажи его ещё раз на следующей путевой точке."},
     {L"Window layout",
      "Макет окна"},
     {L"Windows blocks the microphone for this program (privacy settings).",

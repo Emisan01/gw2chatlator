@@ -1053,6 +1053,8 @@ extern const I18nEntry kSpanishStrings[] = {
      "apagado, opcional (unos {1} MB)"},
     {L"Click the new link in GW2's chat once yourself, on its third letter. I remember the place, from then on it goes by itself.",
      "Haz clic tú una vez en el nuevo enlace del chat de GW2, sobre su tercera letra. Recuerdo el lugar; después funciona solo."},
+    {L"Another line came in between, so the place would be off: not remembered. Teach it again at the next waypoint.",
+     "Entre medias llegó otra línea, el lugar quedaría desplazado – no se recuerda. Muéstralo otra vez en el próximo punto de ruta."},
     {L"Window layout",
      "Disposición de la ventana"},
     {L"Windows blocks the microphone for this program (privacy settings).",

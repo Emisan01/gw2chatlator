@@ -1053,6 +1053,8 @@ extern const I18nEntry kTurkishStrings[] = {
      "kapalı, isteğe bağlı (yaklaşık {1} MB)"},
     {L"Click the new link in GW2's chat once yourself, on its third letter. I remember the place, from then on it goes by itself.",
      "GW2 sohbetindeki yeni bağlantıya bir kez kendin tıkla, üçüncü harfine. Yeri hatırlarım, sonrası kendiliğinden olur."},
+    {L"Another line came in between, so the place would be off: not remembered. Teach it again at the next waypoint.",
+     "Araya başka bir satır girdi, yer kayardı – hatırlanmadı. Bir sonraki geçiş noktasında yeniden göster."},
     {L"Window layout",
      "Pencere düzeni"},
     {L"Windows blocks the microphone for this program (privacy settings).",

@@ -40,6 +40,9 @@ std::set<std::string> s_askedTiles;
 
 std::thread s_thread;
 std::atomic<bool> s_busy{false}, s_stop{false}, s_through{false}, s_teaching{false}, s_lineMoved{false};
+// While you are asked to click the link: another line came since ours – it pushed our link up, a place learned now
+// would be a line too high and every click after it would miss (Emi saw that, 2026-11-08).
+std::atomic<bool> s_teachLineCame{false};
 std::atomic<bool> s_sendDone{true}, s_sendFailed{false}, s_runBroke{false};
 std::atomic<int> s_linesCame{0};  // a whisper to yourself comes back twice: "from" and "to"
 std::atomic<unsigned long long> s_teachUntil{0}, s_throughUntil{0};
@@ -274,6 +277,7 @@ void Flight(uint32_t id) {
             s_placeKey = placeKey;
         }
         s_teachUntil = GetTickCount64() + 30000;
+        s_teachLineCame = false;
         s_teaching = true;
         Say(Tr(L"Click the new link in GW2's chat once yourself, on its third letter. I remember the place, from then on it goes by itself."), 30000);
         return;
@@ -623,10 +627,13 @@ bool WaypointSwallowsMouse(UINT msg) {  // the game's thread: a press that waits
 }
 
 bool WaypointSawLine(bool whisper, const char* content) {  // from Events: Chat, every line; true: ours, not for our window
-    if (!s_busy.load() || !content) return false;
+    if (!content || (!s_busy.load() && !s_teaching.load())) return false;
     std::lock_guard<std::mutex> lock(s_mu);
     if (s_awaited.empty()) return false;
-    if (whisper && std::strstr(content, s_awaited.c_str())) {
+    const bool ours = whisper && std::strstr(content, s_awaited.c_str());
+    if (s_teaching.load() && !ours) s_teachLineCame = true;  // learning: this line pushed our link up
+    if (!s_busy.load()) return ours;
+    if (ours) {
         ++s_linesCame;
         return true;
     }
@@ -680,7 +687,13 @@ void RenderWaypointPreview() {
         s_linkClickAt = 0;
         TechLog('S', L"waypoint: that click did not open the map, not remembered");
     }
-    if (s_linkClickAt.load() && mapOpenNow) {  // your click opened GW2's map: that was the link
+    if (s_linkClickAt.load() && mapOpenNow && s_teachLineCame.exchange(false)) {  // the link, but a line had moved it up
+        s_linkClickAt = 0;
+        s_teaching = false;
+        TechLog('S', L"waypoint: a line came in between, the place is not remembered");
+        std::lock_guard<std::mutex> lock(g_mu);
+        SetStatus(Tr(L"Another line came in between, so the place would be off: not remembered. Teach it again at the next waypoint."), 10000);
+    } else if (s_linkClickAt.load() && mapOpenNow) {  // your click opened GW2's map: that was the link
         s_linkClickAt = 0;
         s_teaching = false;
         const POINT place{s_linkX.load(), s_linkY.load()};
