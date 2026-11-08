@@ -4,6 +4,7 @@
 #include "gw2_sender.hpp"
 
 #include <cstring>
+#include <functional>
 #include <vector>
 
 namespace gct {
@@ -120,31 +121,34 @@ void Tap(WORD vk, int holdMs) {
     Send({Key(vk, true)});
 }
 
-void CtrlTap(WORD vk, int holdMs) {
+// The key only if stillOk() right before it: a Ctrl+V outside GW2's line would hand the whole text to another program.
+// Ctrl goes up either way.
+bool CtrlTap(WORD vk, int holdMs, const std::function<bool()>& stillOk) {
     Send({Key(VK_CONTROL, false)});
     Sleep(holdMs);
-    Send({Key(vk, false)});
-    Sleep(holdMs);
-    Send({Key(vk, true)});
-    Sleep(holdMs);
-    Send({Key(VK_CONTROL, true)});
-}
-
-// Characters typed as keys (a chat command), each held a few frames like every key we send.
-void TypeText(const std::wstring& s, int holdMs) {
-    for (wchar_t c : s) {
-        INPUT in{};
-        in.type = INPUT_KEYBOARD;
-        in.ki.wScan = c;
-        in.ki.dwFlags = KEYEVENTF_UNICODE;
-        in.ki.dwExtraInfo = kGw2SenderExtraInfo;
-        SendInput(1, &in, sizeof(INPUT));
+    const bool ok = stillOk();
+    if (ok) {
+        Send({Key(vk, false)});
         Sleep(holdMs);
-        in.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
-        in.ki.dwExtraInfo = kGw2SenderExtraInfo;
-        SendInput(1, &in, sizeof(INPUT));
+        Send({Key(vk, true)});
         Sleep(holdMs);
     }
+    Send({Key(VK_CONTROL, true)});
+    return ok;
+}
+
+// One character typed as a key (a chat command letter by letter), held a few frames like every key we send.
+void TypeChar(wchar_t c, int holdMs) {
+    INPUT in{};
+    in.type = INPUT_KEYBOARD;
+    in.ki.wScan = c;
+    in.ki.dwFlags = KEYEVENTF_UNICODE;
+    in.ki.dwExtraInfo = kGw2SenderExtraInfo;
+    SendInput(1, &in, sizeof(INPUT));
+    Sleep(holdMs);
+    in.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
+    SendInput(1, &in, sizeof(INPUT));
+    Sleep(holdMs);
 }
 
 bool AnyKeyHeld() {
@@ -329,9 +333,18 @@ SendOutcome Run(HWND owner, const Job& job, const SendOptions& opt, MumbleLink* 
         if (!SetClipboardText(owner, what)) return Tr(L"The clipboard is blocked");
         std::wstring why = lost(true);
         if (!why.empty()) return why;
-        CtrlTap('V', opt.keyHoldMs);
+        if (!CtrlTap('V', opt.keyHoldMs, [&] { return (why = lost(true)).empty(); })) return why;
         note(step);
         settle();
+        return std::wstring();
+    };
+    // A command letter by letter, the state read before every letter like before every key: the rest of "/wiki
+    // Tequatl" never goes on in another program when the focus moves while it is typed (at 10 fps that takes seconds).
+    auto type = [&](const std::wstring& s) -> std::wstring {
+        for (wchar_t c : s) {
+            if (std::wstring why = lost(true); !why.empty()) return why;
+            TypeChar(c, opt.keyHoldMs);
+        }
         return std::wstring();
     };
     std::wstring why;
@@ -360,8 +373,7 @@ SendOutcome Run(HWND owner, const Job& job, const SendOptions& opt, MumbleLink* 
     // A command typed whole ("/wiki Tequatl", "/dance", "/sqjoin Name"): GW2 runs a typed command, a pasted one lost
     // its command word.
     if (!job.typed.empty()) {
-        if (!(why = lost(true)).empty()) return finish(why);
-        TypeText(job.typed, opt.keyHoldMs);
+        if (!(why = type(job.typed)).empty()) return finish(why);
         note(L"command");
         settle();
         if (GetForegroundWindow() != gw2) return finish(Tr(L"Focus lost – the text may still be in the chat line"));
@@ -377,8 +389,7 @@ SendOutcome Run(HWND owner, const Job& job, const SendOptions& opt, MumbleLink* 
     //    a person presses (a typed space character left "/w" plain text). For a whisper the name is pasted whole into
     //    the name field (typed letter by letter, GW2's name suggestion ate it) and Tab takes it and moves to the text.
     if (!job.command.empty()) {
-        if (!(why = lost(true)).empty()) return finish(why);
-        TypeText(job.command, opt.keyHoldMs);
+        if (!(why = type(job.command)).empty()) return finish(why);
         note(job.command.c_str());
         settle();
         if (!(why = lost(true)).empty()) return finish(why);
