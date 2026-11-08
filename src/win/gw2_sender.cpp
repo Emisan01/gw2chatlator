@@ -1,6 +1,7 @@
 // gw2_sender.cpp — clipboard round-trip + key injection into the GW2 chat.
 #include "core/i18n.hpp"
 #include "core/text.hpp"
+#include "core/type_steps.hpp"
 #include "gw2_sender.hpp"
 
 #include <cstring>
@@ -340,12 +341,14 @@ SendOutcome Run(HWND owner, const Job& job, const SendOptions& opt, MumbleLink* 
     };
     // A command letter by letter, the state read before every letter like before every key: the rest of "/wiki
     // Tequatl" never goes on in another program when the focus moves while it is typed (at 10 fps that takes seconds).
+    // When letters are in GW2's line already and the focus went elsewhere, it says they may still be there.
     auto type = [&](const std::wstring& s) -> std::wstring {
-        for (wchar_t c : s) {
-            if (std::wstring why = lost(true); !why.empty()) return why;
-            TypeChar(c, opt.keyHoldMs);
-        }
-        return std::wstring();
+        size_t sent = 0;
+        const std::wstring why = TypeWhileOk(
+            s, [&] { return lost(true); }, [&](wchar_t c) { TypeChar(c, opt.keyHoldMs); }, sent);
+        if (!why.empty() && sent > 0 && GetForegroundWindow() != gw2)
+            return Tr(L"Focus lost – the text may still be in the chat line");
+        return why;
     };
     std::wstring why;
     if (!(why = lost(false)).empty()) return finish(why);

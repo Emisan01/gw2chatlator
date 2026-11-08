@@ -43,6 +43,7 @@
 #include "core/voice.hpp"
 #include "core/voice_learn.hpp"
 #include "core/send_guard.hpp"
+#include "core/type_steps.hpp"
 #include "core/whisper_watch.hpp"
 #include "core/chat_code.hpp"
 #include "core/chat_source.hpp"
@@ -1819,6 +1820,23 @@ static void TestWhisperWatch() {
     }
 }
 
+// A command typed letter by letter stops the moment the focus is gone: exactly the letters before went out.
+static void TestTypeWhileOk() {
+    std::wstring out;
+    size_t sent = 99;
+    int looks = 0;
+    const std::wstring why = TypeWhileOk(
+        L"/wiki Tequatl", [&] { return ++looks > 3 ? std::wstring(L"lost") : std::wstring(); },
+        [&](wchar_t c) { out += c; }, sent);
+    CHECK(why == L"lost" && sent == 3 && out == L"/wi" && looks == 4);
+    out.clear();
+    CHECK(TypeWhileOk(L"/dance", [] { return std::wstring(); }, [&](wchar_t c) { out += c; }, sent).empty());
+    CHECK(sent == 6 && out == L"/dance");
+    out.clear();
+    CHECK(TypeWhileOk(L"/w", [] { return std::wstring(L"gone"); }, [&](wchar_t c) { out += c; }, sent) == L"gone");
+    CHECK(sent == 0 && out.empty());
+}
+
 static void TestSendGuard() {
     {  // a click that asks again is refused, but no strike: it must not lock the sending of a whole session
         SendGuard g;
@@ -2673,6 +2691,7 @@ int main() {
     TestChatCode();
     TestVoiceFixBook();
     TestSendGuard();
+    TestTypeWhileOk();
     TestWhisperWatch();
     TestPickVoiceCores();
     std::printf("%d passed, %d failed\n", g_pass, g_fail);
