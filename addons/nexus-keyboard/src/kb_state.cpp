@@ -771,7 +771,7 @@ Layout& Lay() { return g_layout; }
 
 // Remove everything of GW2Chatlator (Options → Technical, at the bottom, after a yes): the voice helper ends, nothing is
 // written any more (settings, learned words, my words, voice fixes), the worker drops the spelling without saving it,
-// then our whole folder <addons>\GW2Keyboard\ goes – never Events: Chat, which is removed in Nexus only (deleting its file made Nexus crash at every start). The DLL
+// then our whole folder <addons>\GW2Keyboard\ goes – never Events: Chat, which is removed in Nexus only (a file deleted behind Nexus' back stays in its list). The DLL
 // itself cannot remove itself while it runs: the notice says the last step (Nexus → Addons → Uninstall).
 bool g_wiped = false;
 std::atomic<int> g_wipeDone{0};  // 0 not asked, 1 removed, 2 something was left

@@ -53,7 +53,7 @@ void RenderChatModule() {
     if (!chatLive && !g_chatEventsFile && !g_chatEventsInstalling) {
         ImGui::SameLine();
         if (ImGui::SmallButton(UI(Tr(L"Install Events: Chat")).c_str())) InstallChatEventsNow();
-    }  // no remove button: Events: Chat is removed in Nexus only (deleting its file made Nexus crash at every start)
+    }  // no remove button: Events: Chat is removed in Nexus only (a file deleted behind Nexus' back stays in its list)
     ImGui::PopID();
 }
 
@@ -158,7 +158,7 @@ void RenderRemoveEverything() {
         if (ImGui::BeginPopupModal((UI(Tr(L"Remove everything of GW2Chatlator")) + "###removeall").c_str(), nullptr,
                                    ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::TextUnformatted(UI(Tr(L"This deletes the folder GW2Keyboard in your addons folder: settings, learned words, my words, the voice and local translation modules and their models. It cannot be undone.")).c_str());
-            // Never Events: Chat: deleting its file left Nexus crashing at every start. Nexus removes it cleanly.
+            // Never Events: Chat: a file deleted behind Nexus' back stays in its list. Nexus removes it cleanly.
             Hint(UI(Tr(L"Events: Chat stays: it is its own add-on, other add-ons may use it. To remove it: Nexus → Addons → Events: Chat → Uninstall.")));
             if (g_localMtBusy) {
                 ImGui::TextDisabled("%s", UI(Tr(L"Wait for the local translation operation to finish.")).c_str());
