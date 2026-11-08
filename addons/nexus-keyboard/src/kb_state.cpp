@@ -679,33 +679,36 @@ const std::wstring& AddonsDir() {  // the folder our DLL lies in: <GW2>\addons\ 
 std::wstring KeyboardDir() { return AddonsDir() + L"GW2Keyboard"; }
 bool g_micLocked = false;  // right-click on the microphone: on until the next right-click
 ULONGLONG g_micLockedStart = 0;
-// The two window profiles (menu and Options → Window → Window layout): presets of the window's parts. A profile is on
+// The window profiles (menu, Start and Options → Window → Window layout): presets of the window's parts. A profile is on
 // exactly while the parts are what it says – change one part and it is your own layout again (its check goes off).
 // Switching a profile off brings back the layout you had before it (this session; else every part shown).
 Layout g_layoutBefore;
 bool g_haveBefore = false;
-bool ProfileOn(int profile) {  // 0 compact view, 1 mini mode (g_mu held)
-    const Layout& l = g_layout;
-    return profile == 0 ? l.header && l.chat && !l.preview && !l.words && l.footer
-                        : !l.header && !l.chat && !l.preview && !l.words && !l.footer && !l.minButton;
+static bool IsProfile(const Layout& l, int profile) {  // 0 compact view, 1 mini mode, 2 subtitle mode
+    if (profile == 0) return l.header && l.chat && !l.preview && !l.words && l.footer;
+    if (profile == 1) return !l.header && !l.chat && !l.preview && !l.words && !l.footer && !l.minButton;
+    return !l.header && l.chat && !l.preview && !l.words && !l.footer && !l.minButton;
 }
+bool ProfileOn(int profile) { return IsProfile(g_layout, profile); }  // g_mu held
 void SetProfile(int profile, bool on) {  // g_mu held
     Layout& l = g_layout;
     if (on) {
-        if (!ProfileOn(0) && !ProfileOn(1)) {  // your own layout: kept to come back to
+        if (!ProfileOn(0) && !ProfileOn(1) && !ProfileOn(2)) {  // your own layout: kept to come back to
             g_layoutBefore = l;
             g_haveBefore = true;
         }
         if (profile == 0) {  // compact: header, chat, input, footer – no word bar, no preview
             l.header = l.chat = l.footer = true;
             l.preview = l.words = false;
-        } else {  // mini: nothing but the input
+        } else if (profile == 1) {  // mini: nothing but the input
             l.header = l.chat = l.preview = l.words = l.footer = l.minButton = false;
+        } else {  // subtitles: only the chat's lines; the input shows while you write (kb_window.cpp)
+            l.chat = true;
+            l.header = l.preview = l.words = l.footer = l.minButton = false;
         }
     } else if (ProfileOn(profile)) {
         const Layout& b = g_layoutBefore;
-        const bool back = g_haveBefore && !(profile == 0 ? b.header && b.chat && !b.preview && !b.words && b.footer
-                                                         : !b.header && !b.chat && !b.footer);
+        const bool back = g_haveBefore && !(profile == 0 ? IsProfile(b, 0) : profile == 1 ? !b.header && !b.chat && !b.footer : IsProfile(b, 2));
         l.header = back ? b.header : true;
         l.chat = back ? b.chat : true;
         l.preview = back ? b.preview : true;

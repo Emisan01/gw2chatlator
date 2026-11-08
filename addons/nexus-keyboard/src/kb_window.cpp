@@ -441,6 +441,7 @@ static void RenderMainMenu(bool& newTabNext) {
             if (const bool compact = ProfileOn(0); ImGui::MenuItem(UI(Tr(L"Compact view")).c_str(), nullptr, compact))
                 SetProfile(0, !compact);
             if (const bool mini = ProfileOn(1); ImGui::MenuItem(UI(Tr(L"Mini mode")).c_str(), nullptr, mini)) SetProfile(1, !mini);
+            if (const bool sub = ProfileOn(2); ImGui::MenuItem(UI(Tr(L"Subtitle mode")).c_str(), nullptr, sub)) SetProfile(2, !sub);
         } else {
             if (!Lay().header) {  // what the header offers: the tabs, minimise
                 if (ImGui::MenuItem(UI(Tr(L"Chat")).c_str(), nullptr, g_activeTab < 0)) LeaveWhisperTab();
@@ -458,6 +459,8 @@ static void RenderMainMenu(bool& newTabNext) {
                 ImGui::SetTooltip("%s", UI(Tr(L"Nothing but the input with its help. Three quick clicks on it minimise it; right-click in it: Menu … brings the rest back.")).c_str());
             if (const bool compact = ProfileOn(0); ImGui::MenuItem(UI(Tr(L"Compact view")).c_str(), nullptr, compact))
                 SetProfile(0, !compact);
+            if (const bool sub = ProfileOn(2); ImGui::MenuItem(UI(Tr(L"Subtitle mode")).c_str(), nullptr, sub)) SetProfile(2, !sub);
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Only the chat's lines, see-through over the game. The input shows while you write and fades after sending.")).c_str());
             if (ImGui::MenuItem(UI(Tr(L"Translate visible chat once")).c_str(), UI(MyMemoryLeftText()).c_str())) TranslateViewOnce();
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", UI(Tr(L"What you see of the chat, into the language you write in – once, by the automatic translation's rule: lines in your language, in languages you understand or too short to tell stay as they are (a click on a line translates it anyway).")).c_str());
@@ -511,7 +514,7 @@ static void RenderChat(ImGuiIO& io, std::unique_lock<std::mutex>& lock, const Im
         }
         ImGui::SameLine(0, 4);
         ImVec4 chatBg = ImGui::GetStyleColorVec4(ImGuiCol_ChildBg);  // fades with the window, like everything but text
-        chatBg.w = g_look.chatBg ? chatBg.w * std::clamp(g_cfg.opacity, 0, 255) / 255.0f : 0.0f;
+        chatBg.w = g_look.chatBg && !ProfileOn(2) ? chatBg.w * std::clamp(g_cfg.opacity, 0, 255) / 255.0f : 0.0f;
         ImGui::PushStyleColor(ImGuiCol_ChildBg, chatBg);
         ImGui::BeginChild("chat", ImVec2(0, h), false, ImGuiWindowFlags_NoScrollbar);
         ImGui::PopStyleColor();
@@ -1152,13 +1155,16 @@ void RenderWindow() {
     ImGui::SetNextWindowSize(ImVec2(520, 360), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(ImVec2(space.minW, Lay().chat ? space.minH : 16.0f), ImVec2(FLT_MAX, FLT_MAX));
     PlaceWindow(winMode, space);
-    ImGui::SetNextWindowBgAlpha(std::clamp(g_cfg.opacity, 0, 255) / 255.0f);  // up to fully see-through (the small button keeps 60)
+    const bool subtitles = ProfileOn(2);  // subtitle mode: no field, no edge – only the lines over the game
+    ImGui::SetNextWindowBgAlpha(subtitles ? 0.0f : std::clamp(g_cfg.opacity, 0, 255) / 255.0f);  // up to fully see-through (the small button keeps 60)
     ImGuiWindowFlags wflags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                               ImGuiWindowFlags_NoScrollWithMouse;
     if (WaypointPassThrough()) wflags |= ImGuiWindowFlags_NoInputs;
     // Without the chat: a thin edge only, the window is hardly more than its parts (the grey input in the end).
     if (!Lay().chat) ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
+    if (subtitles) ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
     const bool begun = ImGui::Begin("GW2Chatlator###kbmain", nullptr, wflags);
+    if (subtitles) ImGui::PopStyleVar();
     if (!Lay().chat) ImGui::PopStyleVar();
     if (!begun) {
         ImGui::End();
@@ -1623,9 +1629,15 @@ void RenderWindow() {
         io.KeysDown[escKey] = false;
         io.KeysDownDuration[escKey] = -1.0f;
     }
+    // Subtitle mode: the input is there – focus, keys and a click on it work as always – but unseen while nobody writes,
+    // nothing is sent and no message stands in it.
+    const bool unseen = ProfileOn(2) && !g_inputActive && !g_focusInput && !g_input[0] && !g_sending && !g_sendPending && !g_recording &&
+                        g_status.empty();
+    if (unseen) ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.0f);
     ImGui::PushStyleColor(ImGuiCol_Text, Bright(ImGui::GetStyleColorVec4(ImGuiCol_Text)));  // your brightness here too
     const bool enter = ImGui::InputTextMultiline("##input", g_input, sizeof(g_input), boxSize, flags, InputCallback);
     ImGui::PopStyleColor();
+    if (unseen) ImGui::PopStyleVar();
     const ImVec2 inputMin = ImGui::GetItemRectMin(), inputMax = ImGui::GetItemRectMax();
     const std::string nowFlat = Flat(g_input);
     if (nowFlat != g_flatInput) {

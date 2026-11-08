@@ -257,29 +257,31 @@ bool LayoutTile(const std::string& name, const bool parts[6], bool chosen, float
     return pressed;
 }
 
-// The window's layouts as pictures: all its parts, the compact view, the mini mode – a click takes one. Each part on its
+// The window's layouts as pictures: all its parts, the compact view, the mini mode, the subtitles – a click takes one. Each part on its
 // own is on the Window page (a part changed there: none of these is chosen, it is your own layout).
 void RenderLayoutTiles() {
-    static const bool kParts[3][6] = {{true, true, true, true, true, true}, {true, true, false, false, true, true},
-                                      {false, false, false, false, true, false}};
+    static const bool kParts[4][6] = {{true, true, true, true, true, true}, {true, true, false, false, true, true},
+                                      {false, false, false, false, true, false}, {false, true, false, false, false, false}};
     int chosen;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         const Layout& l = Lay();
-        chosen = l.header && l.chat && l.preview && l.words && l.footer ? 0 : ProfileOn(0) ? 1 : ProfileOn(1) ? 2 : -1;
+        chosen = l.header && l.chat && l.preview && l.words && l.footer ? 0 : ProfileOn(0) ? 1 : ProfileOn(1) ? 2 : ProfileOn(2) ? 3 : -1;
     }
     BeginBox(UI(Tr(L"Window layout")));
-    const std::string names[3] = {UI(Tr(L"All parts")), UI(Tr(L"Compact view")), UI(Tr(L"Mini mode"))};
+    const std::string names[4] = {UI(Tr(L"All parts")), UI(Tr(L"Compact view")), UI(Tr(L"Mini mode")), UI(Tr(L"Subtitle mode"))};
     const float fs = ImGui::GetFontSize();
     float tileW = fs * 6.0f;
     for (const std::string& n : names) tileW = std::max(tileW, ImGui::CalcTextSize(n.c_str()).x + fs * 1.4f);
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 4; ++i) {
         if (i && ImGui::GetContentRegionAvail().x > 0.0f) {
             ImGui::SameLine();
             if (ImGui::GetContentRegionAvail().x < tileW) ImGui::NewLine();  // a narrow window: the next tile below
         }
         ImGui::PushID(i);
-        if (LayoutTile(names[i], kParts[i], chosen == i, tileW) && chosen != i) {
+        const bool picked = LayoutTile(names[i], kParts[i], chosen == i, tileW);
+        if (i == 3 && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Only the chat's lines, see-through over the game. The input shows while you write and fades after sending.")).c_str());
+        if (picked && chosen != i) {
             std::lock_guard<std::mutex> lock(g_mu);
             if (i == 0) {
                 Layout& l = Lay();
