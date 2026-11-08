@@ -603,7 +603,17 @@ void ForgetRepetitions() {
 // The card's module whole – its helper and NVIDIA's libraries, none empty (one check, the same the Translator page shows).
 // One missing: Windows would end the helper at once, maybe with its own message box over the game – so the CPU's helper
 // is taken right away.
-bool CardModuleComplete() { return gct::GpuModulePresent(KeyboardDir()); }
+// Render thread only (the options pages): four file sizes, looked at once a second at most instead of every frame.
+bool CardModuleComplete() {
+    static ULONGLONG s_next = 0;
+    static bool s_present = false;
+    const ULONGLONG now = GetTickCount64();
+    if (now >= s_next) {
+        s_present = gct::GpuModulePresent(KeyboardDir());
+        s_next = now + 1000;
+    }
+    return s_present;
+}
 
 bool NvidiaDriverPresent() {
     static const bool s_present = [] {
