@@ -139,6 +139,18 @@ int wmain(int argc, wchar_t** argv) {
     const auto restarted = translator->Translate({{L"hello again", false}}, L"en", L"fr");
     ok &= Check(restarted.ok && restarted.text == L"Bonjour", "helper restarts after a crash");
 
+    {  // the helper's own end (exit code 0) just as a line came: the line goes once more to a fresh helper
+        const auto mark = data / L"idle-ended";
+        SetEnvironmentVariableW(L"GW2KB_FAKE_IDLE_MARK", mark.c_str());
+        translator->Translate({{L"crash", false}}, L"en", L"fr");  // the running helper began before the variable
+        const auto idle = translator->Translate({{L"idle end", false}}, L"en", L"fr");
+        ok &= Check(idle.ok && idle.text == L"Bonjour" && std::filesystem::exists(mark),
+                    "a line met by the helper's idle end is asked once more, without an error");
+        SetEnvironmentVariableW(L"GW2KB_FAKE_IDLE_MARK", nullptr);
+    }
+    const auto lastWords = translator->Translate({{L"answer then end", false}}, L"en", L"fr");
+    ok &= Check(lastWords.ok && lastWords.text == L"Bonjour", "an answer written right before the helper ended is still read");
+
     const ULONGLONG started = GetTickCount64();
     {  // a sentence seen before does not go to the model again
         const auto one = translator->Translate({{L"One here. Two there.", false}}, L"en", L"fr");

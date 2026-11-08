@@ -471,10 +471,16 @@ private:
                 if (!line.empty() && line.back() == '\r') line.pop_back();
                 return true;
             }
-            if (!process_ || WaitForSingleObject(process_, 0) != WAIT_TIMEOUT || GetTickCount64() >= deadline) return false;
+            // What the helper wrote is read even when it has ended since (an answer right before a crash is still one);
+            // only an empty pipe asks whether it still runs.
+            if (!process_) return false;
             DWORD available = 0;
             if (!PeekNamedPipe(read_, nullptr, 0, nullptr, &available, nullptr)) return false;
-            if (!available) { Sleep(5); continue; }
+            if (!available) {
+                if (WaitForSingleObject(process_, 0) != WAIT_TIMEOUT || GetTickCount64() >= deadline) return false;
+                Sleep(5);
+                continue;
+            }
             char buffer[4096];
             DWORD n = 0;
             if (!ReadFile(read_, buffer, std::min<DWORD>(available, sizeof(buffer)), &n, nullptr) || !n) return false;
@@ -488,8 +494,31 @@ private:
         return ReadLine(timeout, line) && ParseLocalMtMessage(line, message);
     }
 
+    // The helper has ended by itself (exit code 0: its idle minutes ran out) – no crash. waitMs: a write that failed may
+    // come a moment before the process is gone.
+    bool EndedIdle(DWORD waitMs) const {
+        DWORD code = 1;
+        return process_ && WaitForSingleObject(process_, waitMs) == WAIT_OBJECT_0 && GetExitCodeProcess(process_, &code) &&
+               code == 0;
+    }
+
+    // A line that met the helper's own end after its idle minutes (it ended with 0 and never read the line) goes once
+    // more, to a fresh helper: the gap is a few milliseconds, but the line would fail for nothing. Once only – a helper
+    // that ends with 0 again is no idle end.
     std::string Request(const std::wstring& text, const std::string& source, const std::string& target,
                         std::wstring& error, TranslateErrorKind& errorKind) {
+        bool idleEnd = false;
+        std::string out = RequestOnce(text, source, target, error, errorKind, idleEnd);
+        if (!idleEnd) return out;
+        HelperLog(L"the helper ended after its idle minutes as the line came: once more");
+        error.clear();
+        errorKind = TranslateErrorKind::None;
+        return RequestOnce(text, source, target, error, errorKind, idleEnd);
+    }
+
+    std::string RequestOnce(const std::wstring& text, const std::string& source, const std::string& target,
+                            std::wstring& error, TranslateErrorKind& errorKind, bool& idleEnd) {
+        idleEnd = false;
         const int id = ++nextId_;
         const std::string model = kind_ == LocalKind::Nllb ? "nllb" : kind_ == LocalKind::M2m ? "m2m" : "";
         LocalMtDecode decode = Decode();
@@ -507,6 +536,7 @@ private:
         DWORD written = 0;
         if (!WriteFile(write_, line.data(), static_cast<DWORD>(line.size()), &written, nullptr) ||
             written != line.size()) {
+            idleEnd = EndedIdle(500);
             Stop();
             error = L"The local translator helper stopped unexpectedly";
             errorKind = TranslateErrorKind::HelperCrashed;
@@ -588,11 +618,10 @@ private:
         }
         // Ended with 0: the helper's own end after its idle minutes, met by this line – no crash, the card stays (it starts
         // again with the next line). Anything else is a crash: from now on the CPU's helper.
-        DWORD exitCode = 1;
-        const bool died = process_ && WaitForSingleObject(process_, 0) == WAIT_OBJECT_0 &&
-                          !(GetExitCodeProcess(process_, &exitCode) && exitCode == 0);
+        const bool ended = process_ && WaitForSingleObject(process_, 0) == WAIT_OBJECT_0;
+        idleEnd = EndedIdle(0);
         Stop();
-        if (died) LeaveCard("crash");
+        if (ended && !idleEnd) LeaveCard("crash");
         error = L"The local translation timed out or its helper stopped";
         HelperLog(L"helper timed out after " + std::to_wstring(limit) + L" ms");
         errorKind = TranslateErrorKind::Timeout;

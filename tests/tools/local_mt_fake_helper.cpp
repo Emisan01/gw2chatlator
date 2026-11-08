@@ -39,11 +39,20 @@ int wmain(int argc, wchar_t** argv) {
         gct::LocalMtRequest request;
         if (!gct::ParseLocalMtRequest(line, request)) continue;
         if (request.text == "crash") return 7;
+        if (request.text == "idle end") {  // the first helper ends with 0 and leaves the line, like the idle end; the next answers
+            wchar_t mark[MAX_PATH] = {};
+            if (GetEnvironmentVariableW(L"GW2KB_FAKE_IDLE_MARK", mark, MAX_PATH) > 0 &&
+                GetFileAttributesW(mark) == INVALID_FILE_ATTRIBUTES) {
+                CloseHandle(CreateFileW(mark, GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr));
+                return 0;
+            }
+        }
         if (request.text == "timeout") Sleep(6000);
         const std::string output = request.text == "symbols" ? "\xe2\x99\xaa Bonjour \xe2\x99\xab" :
                                    request.text == "only symbols" ? "\xe2\x99\xaa \xe2\x99\xab" : "Bonjour";
         std::cout << "{\"evt\":\"result\",\"id\":" << request.id << ",\"text\":\""
                   << gct::JsonEscape(output) << "\"}\n" << std::flush;
+        if (request.text == "answer then end") return 3;  // the answer is in the pipe, the process is gone
     }
     return 0;
 }
