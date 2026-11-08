@@ -748,6 +748,8 @@ void RenderWaypointPreview() {
         const std::string teachText = UI(Tr(L"Click the new link in GW2's chat once yourself, at its start. I remember the place, from then on it goes by itself."));
         const float rowH = teaching ? ImGui::CalcTextSize(teachText.c_str(), nullptr, false, ImGui::GetContentRegionAvail().x).y + ImGui::GetStyle().ItemSpacing.y
                                     : ImGui::GetTextLineHeightWithSpacing();
+        // "More" as ImGui keeps it, read before it is drawn: the list has its height in the very frame you fold it.
+        s_moreOpen = ImGui::GetStateStorage()->GetInt(ImGui::GetID("###wpmore"), 0) != 0;
         const float footer = rowH + ImGui::GetFrameHeightWithSpacing() * (s_moreOpen ? 2.0f : 1.0f);
         const float listW = fs * 13.0f;
         const float mapH = std::max(fs * 6.0f, ImGui::GetContentRegionAvail().y - footer);
