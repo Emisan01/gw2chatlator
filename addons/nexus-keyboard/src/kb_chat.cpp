@@ -311,21 +311,6 @@ std::atomic<bool> g_chatEventsFile{false};  // Events_Chat.dll lies in the add-o
 std::atomic<bool> g_chatEventsInstalling{false};
 std::thread g_chatEventsThread;
 
-// A Nexus add-on in this process that says it is "Events: Chat" (its definition is only read). Every 3 s at most.
-void RemoveChatEventsNow() {  // game thread
-    const std::wstring dll = AddonsDir() + kChatEventsDllName;
-    const bool gone = DeleteFileW(dll.c_str()) || GetFileAttributesW(dll.c_str()) == INVALID_FILE_ATTRIBUTES;
-    if (gone) {
-        g_chatEventsFile = false;
-        g_chatEventsLive = false;  // a line still coming says it is loaded after all
-        ChatEventsPresent(true);
-    }
-    std::lock_guard<std::mutex> lock(g_mu);
-    SetStatus(gone ? Tr(L"Events: Chat removed")
-                   : Tr(L"Events: Chat is loaded – remove it in Nexus → Addons → Events: Chat (other add-ons may use it)"),
-              10000);
-}
-
 // Nexus says when an add-on loads or goes (EV_ADDON_LOADED / EV_ADDON_UNLOADED, its signature as payload): Events:
 // Chat's state at once instead of scanning every module every 3 s. The scan stays for the start (it may have loaded
 // before us), once after it loaded (its version) and for a Nexus without these events.

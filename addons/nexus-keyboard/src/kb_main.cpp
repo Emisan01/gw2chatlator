@@ -624,7 +624,7 @@ extern "C" __declspec(dllexport) int Gw2KbTestCosts(FrameCosts* out, int reset) 
 
 extern "C" __declspec(dllexport) int Gw2KbTestRemoveAll(int start) {  // nexus_kb_selftest only: 1 start, 0 ask
     if (!TestHost()) return -1;
-    if (start) RemoveEverythingNow(false);
+    if (start) RemoveEverythingNow();
     return g_wipeDone;
 }
 

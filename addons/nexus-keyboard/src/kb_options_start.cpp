@@ -53,11 +53,7 @@ void RenderChatModule(bool guide) {
     if (!chatLive && !g_chatEventsFile && !g_chatEventsInstalling) {
         ImGui::SameLine();
         if (ImGui::SmallButton(UI(Tr(L"Install Events: Chat")).c_str())) InstallChatEventsNow();
-    } else if (!guide && (chatLive || g_chatEventsFile) && !g_chatEventsInstalling) {
-        if (RemoveButton("chatevents")) RemoveChatEventsNow();
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("%s", UI(Tr(L"Events: Chat is its own add-on – other add-ons may use it too.")).c_str());
-    }
+    }  // no remove button: Events: Chat is removed in Nexus only (deleting its file made Nexus crash at every start)
     ImGui::PopID();
 }
 
@@ -161,14 +157,14 @@ void RenderRemoveEverything() {
         if (ImGui::SmallButton(UI(Tr(L"Remove everything of GW2Chatlator …")).c_str())) ImGui::OpenPopup("###removeall");
         if (ImGui::BeginPopupModal((UI(Tr(L"Remove everything of GW2Chatlator")) + "###removeall").c_str(), nullptr,
                                    ImGuiWindowFlags_AlwaysAutoResize)) {
-            static bool chatEventsToo = false;
             ImGui::TextUnformatted(UI(Tr(L"This deletes the folder GW2Keyboard in your addons folder: settings, learned words, my words, the voice and local translation modules and their models. It cannot be undone.")).c_str());
-            ImGui::Checkbox(UI(Tr(L"Events: Chat too (other add-ons may use it)")).c_str(), &chatEventsToo);
+            // Never Events: Chat: deleting its file left Nexus crashing at every start. Nexus removes it cleanly.
+            Hint(UI(Tr(L"Events: Chat stays: it is its own add-on, other add-ons may use it. To remove it: Nexus → Addons → Events: Chat → Uninstall.")));
             if (g_localMtBusy) {
                 ImGui::TextDisabled("%s", UI(Tr(L"Wait for the local translation operation to finish.")).c_str());
             } else if (ImGui::Button(UI(Tr(L"Remove everything")).c_str())) {
                 ImGui::CloseCurrentPopup();
-                RemoveEverythingNow(chatEventsToo);
+                RemoveEverythingNow();
             }
             ImGui::SameLine();
             if (ImGui::Button(UI(Tr(L"Cancel")).c_str()) || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape)))
