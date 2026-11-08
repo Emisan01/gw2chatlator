@@ -288,6 +288,691 @@ void CheckMicLockTimeout() {
     }
 }
 
+// ---- Parts of RenderWindow that stand alone: each is called at the place it was written, in the same order.
+static void RenderRenameTabPopup(std::string& s_chatTabLabel, bool& s_chatMenuFull) {
+    if (ImGui::BeginPopup("##rename_chat_tab")) {
+        ScopedPopupFont popupFont;
+        static char nameBuf[64] = {};
+        if (ImGui::IsWindowAppearing()) {
+            const std::wstring cur = !g_cfg.chatTabName.empty() ? g_cfg.chatTabName : Tr(L"Chat");
+            strncpy_s(nameBuf, U8(cur).c_str(), _TRUNCATE);
+        }
+        // Reading: apart from the language you write in and the one you send in (the "v"'s menu only).
+        if (s_chatMenuFull) {
+        ImGui::TextUnformatted(UI(Tr(L"Read the chat in")).c_str());
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+        const std::string readShown = g_cfg.readLang.empty()  // "System (Deutsch)": which language that is
+                                          ? UI(Tr(L"System")) + " (" + U8(NativeName(ReadLang())) + ")"
+                                          : U8(NativeName(g_cfg.readLang));
+        if (ImGui::BeginCombo("##readlang", readShown.c_str())) {
+            std::wstring chosen = g_cfg.readLang;
+            if (ImGui::Selectable(UI(Tr(L"System")).c_str(), chosen.empty())) chosen.clear();
+            for (const LangInfo& lg : Languages())
+                if (DrawnInOurWindow(lg) && ImGui::Selectable(U8(NativeName(lg.code)).c_str(), g_cfg.readLang == lg.code))
+                    chosen = lg.code;
+            ImGui::EndCombo();
+            if (chosen != g_cfg.readLang) {
+                g_cfg.readLang = chosen;
+                g_cfg.SaveValue(L"Translate", L"ReadLang", chosen);
+                if (g_nx.translateChat) TranslateRecentLines(false);  // only what has no translation into it yet
+            }
+        }
+        bool showOriginal = g_cfg.showOriginal;
+        if (ImGui::Checkbox(UI(Tr(L"Original under the translation")).c_str(), &showOriginal)) {
+            g_cfg.showOriginal = showOriginal;
+            g_cfg.SaveBool(L"Translate", L"ShowOriginal", showOriginal);
+        }
+        bool noJunk = g_cfg.noJunk;
+        if (ImGui::Checkbox(UI(Tr(L"Unsure: show the original")).c_str(), &noJunk)) {
+            g_cfg.noJunk = noJunk;
+            g_cfg.SaveBool(L"Translate", L"NoJunk", noJunk);
+        }
+        ImGui::Separator();
+        }
+        ImGui::TextUnformatted(UI(Tr(L"Rename tab")).c_str());
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+        const bool enter = ImGui::InputText("##chattabinput", nameBuf, sizeof(nameBuf), ImGuiInputTextFlags_EnterReturnsTrue);
+        if (enter || ImGui::Button(UI(Tr(L"Save")).c_str())) {
+            g_cfg.chatTabName = Trim(W(nameBuf));
+            g_cfg.SaveValue(L"Window", L"ChatTabName", g_cfg.chatTabName);
+            s_chatTabLabel.clear();
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ResetButton(UI(Tr(L"Reset to default")))) {
+            g_cfg.chatTabName.clear();
+            g_cfg.SaveValue(L"Window", L"ChatTabName", L"");
+            s_chatTabLabel.clear();
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+}
+
+static void RenderTabSettingsPopup() {
+    if (ImGui::BeginPopup("##tabcfg")) {
+        ScopedPopupFont popupFont;
+        const int i = g_tabSettingsOpen;
+        if (i < 0 || i >= static_cast<int>(g_tabs.size()) || !g_tabs[i].custom) {
+            ImGui::CloseCurrentPopup();
+        } else {
+            WhisperTab& t = g_tabs[i];
+            static char name[64] = {};
+            if (ImGui::IsWindowAppearing()) strncpy_s(name, U8(t.name).c_str(), _TRUNCATE);
+            bool changed = false;
+            ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+            if (ImGui::InputText(UI(Tr(L"Name") + L"##tabname").c_str(), name, sizeof(name)) && !Trim(W(name)).empty()) {
+                t.SetName(Trim(W(name)));
+                changed = true;
+            }
+            ImGui::TextUnformatted(UI(Tr(L"Shows")).c_str());
+            static const Channel kShown[] = {Channel::Say,   Channel::Map,     Channel::Party, Channel::Squad,
+                                             Channel::Team,  Channel::Guild,   Channel::Whisper, Channel::System};
+            for (int k = 0; k < 8; ++k) {
+                bool on = (t.channels & ChannelBit(kShown[k])) != 0;
+                if (k % 4) ImGui::SameLine(static_cast<float>(k % 4) * ImGui::GetFontSize() * 6.5f);
+                if (ImGui::Checkbox((UI(ChannelLabel(kShown[k])) + "##ch" + std::to_string(k)).c_str(), &on)) {
+                    t.channels = on ? (t.channels | ChannelBit(kShown[k])) : (t.channels & ~ChannelBit(kShown[k]));
+                    if (kShown[k] == Channel::System)  // lines without a channel go with the system lines
+                        t.channels = on ? (t.channels | ChannelBit(Channel::Unknown)) : (t.channels & ~ChannelBit(Channel::Unknown));
+                    changed = true;
+                }
+            }
+            static const Channel kWrite[] = {Channel::Unknown, Channel::Say, Channel::Map,  Channel::Party,
+                                             Channel::Squad,   Channel::Team, Channel::Guild};
+            ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+            if (ImGui::BeginCombo(UI(Tr(L"Write in") + L"##tabwrite").c_str(),
+                                  t.write == Channel::Unknown ? UI(Tr(L"Active channel")).c_str() : UI(ChannelLabel(t.write)).c_str())) {
+                for (Channel c : kWrite)
+                    if (ImGui::Selectable(c == Channel::Unknown ? UI(Tr(L"Active channel")).c_str() : UI(ChannelLabel(c)).c_str(),
+                                          c == t.write)) {
+                        t.write = c;
+                        changed = true;
+                        if (g_activeTab == i) {
+                            g_channel = c;
+                            g_guildSlot = 0;
+                            RequestChannelSync();
+                        }
+                    }
+                ImGui::EndCombo();
+            }
+            if (ImGui::Button(UI(Tr(L"Remove tab")).c_str())) {
+                ForgetDraft(g_tabs[i].uid);
+                g_tabs.erase(g_tabs.begin() + i);
+                if (g_activeTab == i) LeaveWhisperTab();
+                else if (i < g_activeTab) g_selectTab = --g_activeTab;
+                changed = true;
+                ImGui::CloseCurrentPopup();
+            }
+            if (changed) SaveCustomTabs();
+        }
+        ImGui::EndPopup();
+    }
+}
+
+static void RenderNewTabPopup() {
+    if (ImGui::BeginPopup("##newtab")) {  // a whisper tab of your own: whom you want to write to
+        ScopedPopupFont popupFont;
+        static char name[96] = {};
+        if (ImGui::IsWindowAppearing()) {
+            name[0] = 0;
+            ImGui::SetKeyboardFocusHere();
+        }
+        ImGui::TextUnformatted(UI(Tr(L"New whisper tab")).c_str());
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 14);
+        bool go = ImGui::InputTextWithHint("##tabname", UI(Tr(L"Character or account name")).c_str(), name, sizeof(name),
+                                           ImGuiInputTextFlags_EnterReturnsTrue);
+        ImGui::SameLine();
+        go |= ImGui::Button(UI(Tr(L"Open")).c_str());
+        if (go && !Trim(W(name)).empty()) {
+            OpenWhisperTab(W(name));
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+}
+
+static void RenderMainMenu(bool& newTabNext) {
+    if (ImGui::BeginPopup("kbmenu")) {
+        ScopedPopupFont popupFont;
+        // The mini mode (nothing but the input): only the way out – Options, Compact view, Mini mode (user, 2026-10-22).
+        if (!Lay().chat) {
+            if (ImGui::MenuItem(UI(Tr(L"Options …")).c_str())) g_showOptions = true;
+            if (const bool compact = ProfileOn(0); ImGui::MenuItem(UI(Tr(L"Compact view")).c_str(), nullptr, compact))
+                SetProfile(0, !compact);
+            if (const bool mini = ProfileOn(1); ImGui::MenuItem(UI(Tr(L"Mini mode")).c_str(), nullptr, mini)) SetProfile(1, !mini);
+        } else {
+            if (!Lay().header) {  // what the header offers: the tabs, minimise
+                if (ImGui::MenuItem(UI(Tr(L"Chat")).c_str(), nullptr, g_activeTab < 0)) LeaveWhisperTab();
+                for (int i = 0; i < static_cast<int>(g_tabs.size()); ++i)
+                    if (ImGui::MenuItem(g_tabs[i].Label(), nullptr, g_activeTab == i)) {
+                        ActivateTab(i);
+                        g_selectTab = i;  // the tab bar follows when the header comes back
+                    }
+                if (ImGui::MenuItem(UI(Tr(L"Minimize chat")).c_str())) g_minimizeRequest = true;
+                ImGui::Separator();
+            }
+            if (ImGui::MenuItem(UI(Tr(L"Options …")).c_str())) g_showOptions = true;
+            if (const bool mini = ProfileOn(1); ImGui::MenuItem(UI(Tr(L"Mini mode")).c_str(), nullptr, mini)) SetProfile(1, !mini);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", UI(Tr(L"Nothing but the input with its help. Three quick clicks on it minimise it; right-click in it: Menu … brings the rest back.")).c_str());
+            if (const bool compact = ProfileOn(0); ImGui::MenuItem(UI(Tr(L"Compact view")).c_str(), nullptr, compact))
+                SetProfile(0, !compact);
+            if (ImGui::MenuItem(UI(Tr(L"Translate visible chat once")).c_str(), UI(MyMemoryLeftText()).c_str())) TranslateViewOnce();
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", UI(Tr(L"What you see of the chat, into the language you write in – once, by the automatic translation's rule: lines in your language, in languages you understand or too short to tell stay as they are (a click on a line translates it anyway).")).c_str());
+            if (ImGui::MenuItem(UI(Tr(L"Translate the chat")).c_str(), "Ctrl+Alt+T", g_nx.translateChat)) {
+                SetChatTranslation(!g_nx.translateChat);  // the one switch (Options → Start), kept
+                SetStatus(g_nx.translateChat ? Tr(L"Chat translation on (Ctrl+Alt+T)") : Tr(L"Chat translation off (Ctrl+Alt+T)"), 4000);
+            }
+            if (ImGui::MenuItem(UI(Tr(L"New whisper tab …")).c_str())) newTabNext = true;
+            if (ImGui::MenuItem(UI(Tr(L"Waypoints") + L" …").c_str())) OpenWaypointWindow();
+            if (ImGui::MenuItem(UI(Tr(L"Text blocks …")).c_str())) g_openSnippets = true;
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", UI(Tr(L"Your own text, saved from the input – a click puts it back.")).c_str());
+            if (!g_chatEventsPresent && !g_chatEventsFile && ImGui::MenuItem(UI(Tr(L"Install Events: Chat (every channel) …")).c_str()))
+                g_showOptions = true;
+            if (ImGui::MenuItem(UI(g_showDebugWindow ? Tr(L"Close Debug Window") : Tr(L"Debug & Diagnostics …")).c_str()))
+                g_showDebugWindow = !g_showDebugWindow;
+            if (ImGui::MenuItem(UI(g_showMtLive ? Tr(L"Hide the live view") : Tr(L"Show the live view")).c_str())) g_showMtLive = !g_showMtLive;
+            ImGui::Separator();
+            if (ImGui::MenuItem(UI(Tr(L"Hide (Ctrl+Alt+K shows it again)")).c_str())) g_show = false;
+        }
+        ImGui::EndPopup();
+    }
+}
+
+static void RenderChat(ImGuiIO& io, std::unique_lock<std::mutex>& lock, const ImGuiStyle& st, bool& s_lineRightClick, uint64_t& s_lineMenuId, std::wstring& s_lineMenuText, bool& s_openLineMenu, bool& s_lineMenuOpen, const float& line, const float& lowerH) {
+    if (Lay().chat) {
+        static float scrollY = 0, scrollMax = 0, viewH = 1, dragOffset = 0;
+        static bool atBottom = true;
+        static int lastActiveTab = -999;
+        const float h = std::max(line * 2, ImGui::GetContentRegionAvail().y - lowerH);
+        const float sb = std::max(8.0f, st.ScrollbarSize * 0.8f);
+        const ImVec2 track = ImGui::GetCursorScreenPos();
+        float setScroll = -1;
+        ImGui::InvisibleButton("##chatsb", ImVec2(sb, h));
+        {
+            const float grabH = scrollMax > 0 ? std::max(sb * 2, h * viewH / (viewH + scrollMax)) : h;
+            const float grabY = track.y + (scrollMax > 0 ? (h - grabH) * scrollY / scrollMax : 0);
+            if (ImGui::IsItemActivated()) {
+                const float my = io.MousePos.y;
+                dragOffset = my >= grabY && my <= grabY + grabH ? my - grabY : grabH * 0.5f;
+            }
+            if (ImGui::IsItemActive() && scrollMax > 0)
+                setScroll = std::clamp((io.MousePos.y - dragOffset - track.y) / std::max(1.0f, h - grabH), 0.0f, 1.0f) * scrollMax;
+            if (scrollMax > 0) {
+                ImDrawList* dl = ImGui::GetWindowDrawList();
+                dl->AddRectFilled(track, ImVec2(track.x + sb, track.y + h), ImGui::GetColorU32(ImGuiCol_ScrollbarBg), sb * 0.5f);
+                const ImGuiCol gc = ImGui::IsItemActive() ? ImGuiCol_ScrollbarGrabActive
+                                    : ImGui::IsItemHovered() ? ImGuiCol_ScrollbarGrabHovered : ImGuiCol_ScrollbarGrab;
+                dl->AddRectFilled(ImVec2(track.x + 1, grabY), ImVec2(track.x + sb - 1, grabY + grabH), ImGui::GetColorU32(gc), sb * 0.5f);
+            }
+        }
+        ImGui::SameLine(0, 4);
+        ImVec4 chatBg = ImGui::GetStyleColorVec4(ImGuiCol_ChildBg);  // fades with the window, like everything but text
+        chatBg.w = g_look.chatBg ? chatBg.w * std::clamp(g_cfg.opacity, 0, 255) / 255.0f : 0.0f;
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, chatBg);
+        ImGui::BeginChild("chat", ImVec2(0, h), false, ImGuiWindowFlags_NoScrollbar);
+        ImGui::PopStyleColor();
+        ImGuiWindow* const cw = ImGui::GetCurrentWindow();
+        static float s_rowsTop = 0, s_leftAt = 0, s_slide = 0;  // the first row's place, the scroll left last frame, the slide
+        // The wheel, or anything else that scrolled up since last frame: no longer at the bottom. (Begin also cuts the
+        // scroll back when the chat gets higher or shorter – then it stands at its end and stays there.)
+        if (atBottom && cw->Scroll.y < s_leftAt - 1.0f && cw->Scroll.y < cw->ScrollMax.y - 4.0f) atBottom = false;
+        const ImVec2 childP0 = ImGui::GetWindowPos();
+        const ImVec2 childP1 = ImVec2(childP0.x + ImGui::GetWindowSize().x, childP0.y + ImGui::GetWindowSize().y);
+        const bool chatHovered = ImGui::IsMouseHoveringRect(childP0, childP1);
+        const float wheel = io.MouseWheel;
+        if (chatHovered && wheel > 0.0f) {
+            atBottom = false;
+        }
+        bool snapToBottom = false;  // another tab: its newest lines at once
+        if (g_activeTab != lastActiveTab) {
+            lastActiveTab = g_activeTab;
+            atBottom = snapToBottom = true;
+        }
+        static const std::wstring s_emptyW;
+        const WhisperTab* front = g_activeTab >= 0 && g_activeTab < static_cast<int>(g_tabs.size()) ? &g_tabs[g_activeTab] : nullptr;
+        const std::wstring& tabName = front && !front->custom ? front->nameFolded : s_emptyW;
+        const uint32_t tabChannels = front && front->custom ? front->channels : 0xFFFFFFFFu;
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,  // the space between chat lines (Window tab: Line spacing) – also the info lines, so it shows at once
+                            ImVec2(ImGui::GetStyle().ItemSpacing.x,
+                                   ImGui::GetStyle().ItemSpacing.y * std::clamp(g_cfg.chatSpacing, 0, 100) / 100.0f - ImGui::GetFontSize() * 0.2f * (100 - std::clamp(g_cfg.chatSpacing, 0, 100)) / 100.0f));
+        g_visibleLines.clear();
+        const float rowWrap = ImGui::GetContentRegionAvail().x, rowFont = ImGui::GetFontSize();
+        const float rowGap = ImGui::GetStyle().ItemSpacing.y;
+        auto inThisTab = [&](const ChatLine& l) {
+            if (!tabName.empty() && (l.channel != Channel::Whisper || l.speakerFolded != tabName)) return false;
+            return (tabChannels & ChannelBit(l.channel)) != 0;  // a tab of your own: only its channels
+        };
+        // the original under a translation (your own line: what you typed), when chosen – part of the row's size
+        auto typedOf = [&](const ChatLine& l) { return g_cfg.showOriginal && l.own ? OwnOriginal(l.text) : std::wstring(); };
+        auto originalUnderOf = [&](const ChatLine& l, const std::wstring& ownTyped) {
+            return g_cfg.showOriginal && ((!l.own && !l.translated.empty()) || !ownTyped.empty());
+        };
+        auto rowKnown = [&](const ChatLine& l) {  // measured for this width, font, spacing and text
+            return l.rowH > 0 && l.rowW == rowWrap && l.rowFont == rowFont && l.rowGap == rowGap && l.rowLen == l.rowLenNow;
+        };
+        auto drawRow = [&](ChatLine& l) {
+            const float y0 = ImGui::GetCursorPosY();
+            const std::wstring ownTyped = typedOf(l);
+            const bool originalUnder = originalUnderOf(l, ownTyped);
+            ImGui::PushID(static_cast<int>(l.id));
+            const float rowTop = ImGui::GetCursorScreenPos().y;
+            const float rowX = ImGui::GetCursorPosX();
+            if (!l.speaker.empty()) {  // the name in the channel colour – a click: whisper with that player in their tab
+                LookText(l.speakerDisplay.c_str(), NameColorOf(l.channel), false);
+                const bool canWhisper = !l.own || (l.outgoing && l.channel == Channel::Whisper);
+                if (canWhisper && ImGui::IsItemHovered()) {
+                    ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                    const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
+                    ImGui::GetWindowDrawList()->AddLine(ImVec2(a.x, b.y - 1), ImVec2(b.x, b.y - 1),
+                                                        ImGui::GetColorU32(NameColorOf(l.channel)));
+                }
+                if (canWhisper && ImGui::IsItemClicked()) OpenWhisperTab(l.speaker);
+                ImGui::SameLine(0, ImGui::CalcTextSize(" ").x);
+            }
+            const std::string& u8shown = l.translated.empty() ? l.u8text : l.u8translated;
+            const auto& segs = l.translated.empty() ? l.textSegs : l.transSegs;
+            bool clicked = false;
+            LineHit hit;  // over every piece of the text
+            if (segs.size() <= 1 && (segs.empty() || segs[0].kind == PieUI::ChatLinks::SegmentKind::Plain)) {
+                if (!l.speaker.empty()) {
+                    // Under its name one space in: one item, its wrapped lines start one space from the left, its first
+                    // line padded past the name – so it measures and wraps like any line (a width change is exact).
+                    // a space as it is drawn (ImGui::CalcTextSize rounds it up to a whole pixel: the padding fell short
+                    // of a long name by its last letters, and the text covered the colon)
+                    const float sp = std::max(1.0f, ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, 0.0f, " ").x);
+                    const float hang = ImGui::GetCursorPosX() - rowX;  // the name and its space
+                    const int pads = std::max(0, static_cast<int>(std::ceil((hang - sp) / sp)));
+                    ImGui::SetCursorPosX(rowX + sp);
+                    const float textX0 = ImGui::GetCursorScreenPos().x + pads * sp;
+                    LookText((std::string(static_cast<size_t>(pads), ' ') + u8shown).c_str(), ColorOf(l.channel), true);
+                    hit.AddLast();
+                    const ImVec2 m = ImGui::GetIO().MousePos, a = ImGui::GetItemRectMin();
+                    if (m.y < a.y + ImGui::GetTextLineHeight() && m.x < textX0)  // over the name: the name's, not the text's
+                        hit.hovered = hit.clickL = hit.clickR = false;
+                } else {
+                    LookText(u8shown.c_str(), ColorOf(l.channel), true);
+                    hit.AddLast();
+                }
+            } else {
+                clicked = RichLine(segs, ColorOf(l.channel));
+                hit.AddLast();
+            }
+            if (!l.translated.empty() && hit.hovered) {
+                if (l.u8transNote.empty()) {
+                    ImGui::SetTooltip("%s", l.u8text.c_str());
+                } else {  // the original and what the translation check found
+                    ImGui::BeginTooltip();
+                    ImGui::TextUnformatted(l.u8text.c_str());
+                    ImGui::TextColored(ImVec4(0.95f, 0.78f, 0.35f, 1.0f), "%s", l.u8transNote.c_str());
+                    ImGui::EndTooltip();
+                }
+            }
+            if (!l.own && l.transPending && l.translated.empty()) {
+                ImGui::SameLine(0, ImGui::CalcTextSize(" ").x);
+                LookText("...", ImVec4(0.6f, 0.6f, 0.6f, 0.65f), false);
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Translating...")).c_str());
+            }
+            // A click on the text of a line someone else wrote: just this line into your language.
+            if (!l.own && hit.visible) {
+                g_visibleLines.push_back(l.id);  // in view: "translate once" takes it
+                if (g_nx.translateChat && !g_orchestrator.IsPaused() && l.translated.empty() && !l.transAttempted && !l.transPending && !IsGamerInterjection(l.text)) {
+                    l.transPending = true;
+                    g_worker.Post([id = l.id, t = l.text] { TranslateLine(id, t); });
+                }
+            }
+            if (hit.clickR) s_lineRightClick = true;
+            // A click on someone's text: into your reading language. A right-click: a small menu – the reading
+            // language first, right under the pointer, any other language below; a click always translates.
+            if (!clicked && !l.own && l.translated.empty() && hit.clickL) {
+                l.transPending = true;
+                g_worker.Post([id = l.id, t = l.text] { TranslateLine(id, t, true); });
+            }
+            if (!clicked && !l.own && hit.clickR) {
+                s_lineMenuId = l.id;
+                s_lineMenuText = l.text;
+                s_openLineMenu = true;
+            }
+            if (!l.translated.empty() && !l.u8transNote.empty()) {  // a doubtful translation: marked, the reason on hover
+                ImGui::SameLine(0, ImGui::CalcTextSize(" ").x);
+                LookText("(?)", ImVec4(0.95f, 0.78f, 0.35f, 0.9f), false);
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", l.u8transNote.c_str());
+            }
+            if (originalUnder) {
+                const std::string u8orig = ownTyped.empty() ? l.u8text : U8(ownTyped);
+                LookText(u8orig.c_str(), ImVec4(0.62f, 0.62f, 0.62f, 0.8f), true);
+            }
+            if (s_lineMenuOpen && l.id == s_lineMenuId) {  // the message whose menu is open: marked across its lines
+                const float x0 = ImGui::GetWindowPos().x;
+                ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(x0, rowTop),
+                                                          ImVec2(x0 + ImGui::GetWindowWidth(), ImGui::GetCursorScreenPos().y),
+                                                          ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, 0.08f)));
+            }
+            ImGui::PopID();
+            l.rowH = ImGui::GetCursorPosY() - y0;  // what it took, for the frames it is out of view
+            l.rowW = rowWrap;
+            l.rowFont = rowFont;
+            l.rowGap = rowGap;
+            l.rowLen = l.rowLenNow;
+        };
+        // The layout first, then the drawing – like a browser, whose scroll and layout reach the screen together. A row that
+        // changed (a translation arrived, a new line, another width) is measured now by drawing it far above the window,
+        // where nothing shows and nothing can be hit. So the height is right before the first row is drawn:
+        // - at the bottom the chat stays at the bottom, in the same frame: no frame with the new text pushing the rows
+        //   down and the next one pulling them up again (that was the jumping);
+        // - scrolled up, the first row in view stays where it is (scroll anchoring), whatever changes above it.
+        if (!cw->SkipItems) {
+            float oldY = s_rowsTop, newY = s_rowsTop, shift = 0;
+            bool anchored = false, anyRow = false;
+            for (ChatLine& l : g_lines) {
+                if (!inThisTab(l)) continue;
+                anyRow = true;
+                const std::wstring ownTyped = typedOf(l);
+                l.rowLenNow = (l.translated.empty() ? l.text.size() : l.translated.size() + 1) +
+                              (originalUnderOf(l, ownTyped) ? (ownTyped.empty() ? l.text.size() : ownTyped.size()) + 1 : 0);
+                const float was = std::max(0.0f, l.rowH);
+                if (!rowKnown(l)) {
+                    const ImVec2 back = ImGui::GetCursorScreenPos();
+                    ImGui::SetCursorScreenPos(ImVec2(back.x, std::floor(cw->Pos.y) - 8000.0f));
+                    drawRow(l);
+                    ImGui::SetCursorScreenPos(back);
+                }
+                if (!anchored && oldY + was > cw->Scroll.y) {  // the first row reaching into the view
+                    anchored = true;
+                    shift = newY - oldY;
+                }
+                oldY += was;
+                newY += std::max(0.0f, l.rowH);
+            }
+            const float contentH = std::floor(newY - (anyRow ? rowGap : 0.0f));
+            const float maxY = std::max(0.0f, contentH + cw->WindowPadding.y * 2.0f - cw->Size.y);
+            const float now = cw->Scroll.y;
+            float next;
+            if (setScroll >= 0) {  // the scroll bar's handle in your hand
+                next = std::min(setScroll, maxY);
+                atBottom = setScroll >= maxY - 4;
+            } else if (atBottom) {
+                next = maxY;
+                // A few lines more at the bottom slide in over a moment, like in a messenger; a long way (another tab, a
+                // big jump) or a shorter chat at once.
+                if (!snapToBottom && maxY > now && maxY - now <= cw->Size.y) {
+                    if (std::fabs(s_slide - now) > 1.0f) s_slide = now;
+                    s_slide += (maxY - s_slide) * (1.0f - std::exp(-io.DeltaTime * 18.0f));
+                    if (maxY - s_slide >= 0.5f) next = std::floor(s_slide);
+                }
+            } else {
+                next = std::clamp(now + shift, 0.0f, maxY);
+            }
+            if (next == maxY || !atBottom || setScroll >= 0) s_slide = next;
+            ScrollNow(cw, std::floor(next));
+            cw->ScrollMax.y = maxY;
+        }
+        RenderChatSourceNotice();  // reading Events: Chat is off or paused: why, and what you can do
+        if (g_lines.empty() && g_layout.infoText) {  // nothing arrived yet: what is ready, what is missing, where translation is switched on
+            lock.unlock();
+            RenderModules(true);
+            lock.lock();
+        }
+        // Only what is in view is drawn: a measured line outside the view (plus a margin) is just a placeholder of its
+        // height – the layout stays exactly the same.
+        const float viewTop = ImGui::GetScrollY() - line * 4;
+        const float viewBottom = ImGui::GetScrollY() + ImGui::GetWindowHeight() + line * 4;
+        s_rowsTop = ImGui::GetCursorPosY();
+        for (ChatLine& l : g_lines) {
+            if (!inThisTab(l)) continue;
+            const float y0 = ImGui::GetCursorPosY();
+            if (rowKnown(l) && (y0 + l.rowH < viewTop || y0 > viewBottom)) {
+                ImGui::Dummy(ImVec2(1.0f, std::max(0.0f, l.rowH - rowGap)));
+                continue;
+            }
+            drawRow(l);
+        }
+        ImGui::PopStyleVar();  // the chat's line spacing
+        // A line's menu (right-click on someone's text): the reading language first, under the pointer; others below.
+        if (s_openLineMenu) {
+            ImGui::OpenPopup("##linemenu");
+            s_openLineMenu = false;
+        }
+        if (ImGui::BeginPopup("##linemenu")) {
+            ScopedPopupFont popupFont;
+            std::wstring pick;
+            std::wstring readName = ReadLang();
+            for (const LangInfo& lg : Languages())
+                if (PrimaryLang(lg.code) == ReadLang()) readName = NativeName(lg.code);
+            if (ImGui::MenuItem(UI(TrF(L"Translate into {1}", {readName})).c_str())) pick = ReadLang();
+            if (ImGui::BeginMenu(UI(Tr(L"Into another language")).c_str())) {
+                for (const LangInfo& lg : Languages())
+                    if (DrawnInOurWindow(lg) && ImGui::MenuItem(U8(NativeName(lg.code)).c_str())) pick = lg.code;
+                ImGui::EndMenu();
+            }
+            // what happened when this line was translated: language, translator, protected parts, time, score
+            std::string trace;
+            for (const ChatLine& x : g_lines)
+                if (x.id == s_lineMenuId) trace = x.u8trace;
+            // the model's other versions of this line: a click takes one, the one shown takes its place
+            for (ChatLine& x : g_lines) {
+                if (x.id != s_lineMenuId || x.transVariants.empty()) continue;
+                if (ImGui::BeginMenu(UI(Tr(L"Other versions")).c_str())) {
+                    for (std::wstring& version : x.transVariants) {
+                        if (!ImGui::MenuItem(U8(version).c_str())) continue;
+                        std::swap(x.translated, version);
+                        x.u8translated = U8(x.translated);
+                        x.transSegs = PieUI::ChatLinks::SegmentLine(x.u8translated);
+                        ImGui::CloseCurrentPopup();
+                        break;
+                    }
+                    ImGui::EndMenu();
+                }
+                break;
+            }
+            // A word of this line as a GW2 term of your own (a short form the translator gets wrong, "comms"): never
+            // translated from now on, and this line comes again with it. Gone again in Options → Technical.
+            if (ImGui::BeginMenu(UI(Tr(L"A GW2 term – never translated")).c_str())) {
+                std::vector<std::wstring> words;
+                for (const Span& s : WordSpans(s_lineMenuText)) {
+                    const std::wstring w = s_lineMenuText.substr(s.start, s.length);
+                    if (w.size() < 2 || w.size() > 30 || std::all_of(w.begin(), w.end(), [](wchar_t c) { return c >= L'0' && c <= L'9'; })) continue;
+                    if (std::find(words.begin(), words.end(), w) == words.end()) words.push_back(w);
+                    if (words.size() >= 15) break;
+                }
+                for (const std::wstring& w : words) {
+                    if (!ImGui::MenuItem(U8(w).c_str())) continue;
+                    g_worker.Post([w, id = s_lineMenuId, t = s_lineMenuText, target = ReadLang()] {
+                        if (g_spell) g_spell->AddTerm(w);
+                        TranslateLine(id, t, true, false, target);
+                    });
+                    SetStatus(TrF(L"Never translated from now on: {1}", {w}), 6000);
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndMenu();
+            }
+            if (!trace.empty() && ImGui::BeginMenu(UI(Tr(L"What happened?")).c_str())) {
+                ImGui::TextUnformatted(trace.c_str());
+                ImGui::EndMenu();
+            }
+            if (!pick.empty()) {
+                g_worker.Post([id = s_lineMenuId, t = s_lineMenuText, pick] { TranslateLine(id, t, true, false, pick); });
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+        s_lineMenuOpen = ImGui::IsPopupOpen("##linemenu");
+        scrollY = ImGui::GetScrollY();
+        scrollMax = ImGui::GetScrollMaxY();
+        viewH = ImGui::GetWindowHeight();
+        if (!atBottom) atBottom = scrollY >= scrollMax - 4;  // scrolled back down: it follows again
+        s_leftAt = scrollY;
+        ImGui::EndChild();
+    } else {  // no chat: the input stays the lowest line, the space above stays empty (see-through like the window)
+        const float fill = ImGui::GetContentRegionAvail().y - lowerH;
+        if (fill > 0) ImGui::Dummy(ImVec2(0, fill));
+    }
+}
+
+static void RenderLinkQuestion() {
+    if (ImGui::BeginPopupModal((UI(Tr(L"Leaving GW2Chatlator")) + "###openlink").c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ScopedPopupFont popupFont;
+        // Like Discord: where it goes, big; the whole link small; you decide.
+        ImGui::TextUnformatted(UI(Tr(L"This link goes to")).c_str());
+        ImGui::TextColored(ImVec4(0.45f, 0.7f, 1.f, 1.f), "%s", U8(LinkHost(g_openLink)).c_str());
+        ImGui::TextDisabled("%s", Fit(U8(g_openLink), ImGui::GetFontSize() * 30).c_str());
+        ImGui::Spacing();
+        ImGui::TextUnformatted(UI(Tr(L"Are you sure you want to open it?")).c_str());
+        ImGui::Spacing();
+        if (ImGui::Button(UI(Tr(L"Open link")).c_str())) {
+            SafeOpenUrl(g_openLink);
+            g_openLink.clear();
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button(UI(Tr(L"Go back")).c_str()) || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape))) {
+            g_openLink.clear();
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+}
+
+static void RenderWordBar(const ImGuiStyle& st, const bool& showWords) {
+    // ---- the word bar: three cells across the line, what Tab takes in orange
+    if (showWords) {
+        const float w = ImGui::GetContentRegionAvail().x;
+        const ImVec2 p = ImGui::GetCursorScreenPos();
+        const float h = ImGui::GetFrameHeight();
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        const bool have = g_cfg.suggestions && g_help.text == g_wFlatInput;
+        for (int i = 0; i < 3; ++i) {
+            const ImVec2 a(p.x + w * i / 3.0f, p.y), b(p.x + w * (i + 1) / 3.0f, p.y + h);
+            if (i) dl->AddLine(ImVec2(a.x, a.y + h * 0.25f), ImVec2(a.x, b.y - h * 0.25f), ImGui::GetColorU32(ImGuiCol_Separator));
+            if (!have || i >= static_cast<int>(g_help.bar.words.size())) continue;
+            const std::string word = U8(g_help.bar.words[i]);
+            ImGui::SetCursorScreenPos(a);
+            ImGui::PushID(i);
+            if (ImGui::InvisibleButton("##word", ImVec2(b.x - a.x, h))) TakeWord(g_help.bar.words[i]);
+            const bool hot = ImGui::IsItemHovered();
+            ImGui::PopID();
+            if (hot) dl->AddRectFilled(a, b, ImGui::GetColorU32(ImGuiCol_FrameBgHovered));
+            const ImVec2 size = ImGui::CalcTextSize(word.c_str());
+            const bool pick = g_pick >= 0 ? i == g_pick : i == g_help.bar.autoIndex;
+            const ImVec2 wordAt((a.x + b.x - size.x) * 0.5f, a.y + (h - size.y) * 0.5f);
+            const ImU32 accent = ImGui::GetColorU32(UiAccent());
+            dl->AddText(wordAt, pick ? accent : ImGui::GetColorU32(ImGuiCol_Text), word.c_str());
+            // on a grey theme the colour alone hardly shows which word Space takes
+            if (pick) dl->AddLine(ImVec2(wordAt.x, wordAt.y + size.y), ImVec2(wordAt.x + size.x, wordAt.y + size.y), accent);
+        }
+        ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + h + st.ItemSpacing.y));
+    }
+}
+
+static void RenderTeachPopup(bool& s_menuNext) {
+    if (ImGui::BeginPopup("##teach")) {
+        ScopedPopupFont popupFont;
+        static char typed[64] = {}, fixed[64] = {}, word[64] = {}, meaning[160] = {};
+        if (ImGui::IsWindowAppearing()) {  // the last word you typed, and what is known of it
+            const std::wstring& text = g_wFlatInput;
+            const std::vector<Span> spans = WordSpans(text);
+            const std::wstring last = !g_teachWord.empty() ? g_teachWord  // the word you right-clicked
+                                      : spans.empty() ? std::wstring() : text.substr(spans.back().start, spans.back().length);
+            typed[0] = 0;
+            strncpy_s(fixed, U8(last).c_str(), _TRUNCATE);
+            strncpy_s(word, U8(last).c_str(), _TRUNCATE);
+            strncpy_s(meaning, U8(g_myWords.MeaningOf(last)).c_str(), _TRUNCATE);
+        }
+        auto teachFix = [](const std::wstring& t, const std::wstring& f) {
+            g_worker.Post([t, f] {
+                const bool ok = g_spell && g_spell->TeachFix(t, f);
+                std::lock_guard<std::mutex> lock(g_mu);
+                SetStatus(ok ? TrF(L"Learned: {1} > {2}", {t, f}) : TrF(L"\"{1}\" is a real word – not learned as a typo", {t}), 6000);
+            });
+        };
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(UI(Tr(L"Learn your corrections")).c_str());
+        ImGui::SameLine(std::max(ImGui::GetCursorPosX(), ImGui::GetWindowContentRegionMax().x - ImGui::GetFrameHeight()));
+        if (IconButton("##teachclose", Icon::Close, false, nullptr)) ImGui::CloseCurrentPopup();  // the X: top right
+        Hint(UI(Tr(L"What you corrected yourself while typing: learned once, autocorrection writes it right next time.")));
+        int learned = -1;
+        for (size_t i = 0; i < g_selfFixes.size(); ++i) {
+            ImGui::PushID(static_cast<int>(i));
+            ImGui::AlignTextToFramePadding();
+            ImGui::Text("%s  >  %s", U8(g_selfFixes[i].typed).c_str(), U8(g_selfFixes[i].fixed).c_str());
+            ImGui::SameLine();
+            if (ImGui::SmallButton(UI(Tr(L"Learn")).c_str())) learned = static_cast<int>(i);
+            ImGui::PopID();
+        }
+        if (learned >= 0) {
+            teachFix(g_selfFixes[learned].typed, g_selfFixes[learned].fixed);
+            g_selfFixes.erase(g_selfFixes.begin() + learned);
+        }
+        if (g_selfFixes.empty()) ImGui::TextDisabled("%s", UI(Tr(L"No corrections of your own yet – or enter one:")).c_str());
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 8);
+        ImGui::InputTextWithHint("##typed", UI(Tr(L"I type")).c_str(), typed, sizeof(typed));
+        ImGui::SameLine();
+        ImGui::TextUnformatted(">");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 8);
+        ImGui::InputTextWithHint("##fixed", UI(Tr(L"I mean")).c_str(), fixed, sizeof(fixed));
+        ImGui::SameLine();
+        if (ImGui::Button(UI(Tr(L"Learn") + L"##fix").c_str()) && !Trim(W(typed)).empty() && !Trim(W(fixed)).empty()) {
+            teachFix(Trim(W(typed)), Trim(W(fixed)));
+            typed[0] = 0;
+        }
+        ImGui::Separator();
+        ImGui::TextUnformatted(UI(Tr(L"Your word or abbreviation – what it means")).c_str());
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 8);
+        ImGui::InputText("##w", word, sizeof(word));
+        ImGui::SameLine();
+        ImGui::TextUnformatted("=");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 14);
+        const bool go = ImGui::InputTextWithHint("##m", UI(Tr(L"meaning, e.g. I think")).c_str(), meaning, sizeof(meaning),
+                                                 ImGuiInputTextFlags_EnterReturnsTrue);
+        ImGui::SameLine();
+        if ((ImGui::Button(UI(Tr(L"Learn") + L"##mean").c_str()) || go) && !Trim(W(word)).empty()) {
+            const std::wstring w = Trim(W(word)), m = Trim(W(meaning));
+            if (m.empty()) g_myWords.Remove(w);
+            else g_myWords.Set(w, m);
+            SaveMyWords();
+            g_worker.Post([w] { if (g_spell) g_spell->AddUserWord(w); });
+            ++g_inputGen;  // translated again with it
+            g_inputChanged = GetTickCount64();
+            SetStatus(m.empty() ? TrF(L"\"{1}\" forgotten", {w}) : TrF(L"Learned: {1} = {2}", {w, m}), 6000);
+        }
+        Hint(UI(Tr(L"The translator gets the meaning; your text stays as you wrote it.")));
+        // A GW2 term of your own (a guild tag, a short form): into gw2-terms.txt, never translated from now on
+        ImGui::Separator();
+        static char term[64] = {};
+        ImGui::TextUnformatted(UI(Tr(L"A GW2 term – never translated")).c_str());
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 8);
+        const bool goTerm = ImGui::InputTextWithHint("##term", UI(Tr(L"e.g. a guild tag")).c_str(), term, sizeof(term),
+                                                     ImGuiInputTextFlags_EnterReturnsTrue);
+        ImGui::SameLine();
+        if ((ImGui::Button(UI(Tr(L"Learn") + L"##term").c_str()) || goTerm) && !Trim(W(term)).empty()) {
+            const std::wstring t = Trim(W(term));
+            if (WordSpans(t).size() > kMaxTermWords) {
+                SetStatus(Tr(L"A term has at most 5 words"), 6000);
+            } else {
+                g_worker.Post([t] { if (g_spell) g_spell->AddTerm(t); });
+                ++g_inputGen;  // translated again with it
+                g_inputChanged = GetTickCount64();
+                SetStatus(TrF(L"Never translated from now on: {1}", {t}), 6000);
+                term[0] = 0;
+            }
+        }
+        Hint(UI(Tr(L"Your terms are in gw2-terms.txt in the GW2Keyboard folder, next to the built-in GW2 list.")));
+        if (!Lay().header) {  // without the header (maybe nothing but the input left): the way to the menu
+            ImGui::Separator();
+            if (ImGui::Selectable(UI(Tr(L"Menu …")).c_str())) {
+                s_menuNext = true;
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        ImGui::EndPopup();
+    }
+}
+
 void RenderWindow() {
     if (!ImGui::GetCurrentContext()) return;  // failsafe: no context, no drawing
     CostFrame costFrame;  // what this frame costs on GW2's render thread, by part (Options > Technical)
@@ -636,146 +1321,15 @@ void RenderWindow() {
                                 ImGuiCond_Always, ImVec2(0.0f, up ? 1.0f : 0.0f));
     }
     if (!ImGui::IsPopupOpen("##rename_chat_tab") && !s_renameChatOpen) s_chatMenuAnchored = false;
-    if (ImGui::BeginPopup("##rename_chat_tab")) {
-        ScopedPopupFont popupFont;
-        static char nameBuf[64] = {};
-        if (ImGui::IsWindowAppearing()) {
-            const std::wstring cur = !g_cfg.chatTabName.empty() ? g_cfg.chatTabName : Tr(L"Chat");
-            strncpy_s(nameBuf, U8(cur).c_str(), _TRUNCATE);
-        }
-        // Reading: apart from the language you write in and the one you send in (the "v"'s menu only).
-        if (s_chatMenuFull) {
-        ImGui::TextUnformatted(UI(Tr(L"Read the chat in")).c_str());
-        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
-        const std::string readShown = g_cfg.readLang.empty()  // "System (Deutsch)": which language that is
-                                          ? UI(Tr(L"System")) + " (" + U8(NativeName(ReadLang())) + ")"
-                                          : U8(NativeName(g_cfg.readLang));
-        if (ImGui::BeginCombo("##readlang", readShown.c_str())) {
-            std::wstring chosen = g_cfg.readLang;
-            if (ImGui::Selectable(UI(Tr(L"System")).c_str(), chosen.empty())) chosen.clear();
-            for (const LangInfo& lg : Languages())
-                if (DrawnInOurWindow(lg) && ImGui::Selectable(U8(NativeName(lg.code)).c_str(), g_cfg.readLang == lg.code))
-                    chosen = lg.code;
-            ImGui::EndCombo();
-            if (chosen != g_cfg.readLang) {
-                g_cfg.readLang = chosen;
-                g_cfg.SaveValue(L"Translate", L"ReadLang", chosen);
-                if (g_nx.translateChat) TranslateRecentLines(false);  // only what has no translation into it yet
-            }
-        }
-        bool showOriginal = g_cfg.showOriginal;
-        if (ImGui::Checkbox(UI(Tr(L"Original under the translation")).c_str(), &showOriginal)) {
-            g_cfg.showOriginal = showOriginal;
-            g_cfg.SaveBool(L"Translate", L"ShowOriginal", showOriginal);
-        }
-        bool noJunk = g_cfg.noJunk;
-        if (ImGui::Checkbox(UI(Tr(L"Unsure: show the original")).c_str(), &noJunk)) {
-            g_cfg.noJunk = noJunk;
-            g_cfg.SaveBool(L"Translate", L"NoJunk", noJunk);
-        }
-        ImGui::Separator();
-        }
-        ImGui::TextUnformatted(UI(Tr(L"Rename tab")).c_str());
-        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
-        const bool enter = ImGui::InputText("##chattabinput", nameBuf, sizeof(nameBuf), ImGuiInputTextFlags_EnterReturnsTrue);
-        if (enter || ImGui::Button(UI(Tr(L"Save")).c_str())) {
-            g_cfg.chatTabName = Trim(W(nameBuf));
-            g_cfg.SaveValue(L"Window", L"ChatTabName", g_cfg.chatTabName);
-            s_chatTabLabel.clear();
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::SameLine();
-        if (ResetButton(UI(Tr(L"Reset to default")))) {
-            g_cfg.chatTabName.clear();
-            g_cfg.SaveValue(L"Window", L"ChatTabName", L"");
-            s_chatTabLabel.clear();
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::EndPopup();
-    }
+    RenderRenameTabPopup(s_chatTabLabel, s_chatMenuFull);
     // The settings of a tab of your own (right-click on it): name, the channels it shows, where you write from it.
     if (g_tabSettings >= 0) {
         g_tabSettingsOpen = g_tabSettings;
         g_tabSettings = -1;
         ImGui::OpenPopup("##tabcfg");
     }
-    if (ImGui::BeginPopup("##tabcfg")) {
-        ScopedPopupFont popupFont;
-        const int i = g_tabSettingsOpen;
-        if (i < 0 || i >= static_cast<int>(g_tabs.size()) || !g_tabs[i].custom) {
-            ImGui::CloseCurrentPopup();
-        } else {
-            WhisperTab& t = g_tabs[i];
-            static char name[64] = {};
-            if (ImGui::IsWindowAppearing()) strncpy_s(name, U8(t.name).c_str(), _TRUNCATE);
-            bool changed = false;
-            ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
-            if (ImGui::InputText(UI(Tr(L"Name") + L"##tabname").c_str(), name, sizeof(name)) && !Trim(W(name)).empty()) {
-                t.SetName(Trim(W(name)));
-                changed = true;
-            }
-            ImGui::TextUnformatted(UI(Tr(L"Shows")).c_str());
-            static const Channel kShown[] = {Channel::Say,   Channel::Map,     Channel::Party, Channel::Squad,
-                                             Channel::Team,  Channel::Guild,   Channel::Whisper, Channel::System};
-            for (int k = 0; k < 8; ++k) {
-                bool on = (t.channels & ChannelBit(kShown[k])) != 0;
-                if (k % 4) ImGui::SameLine(static_cast<float>(k % 4) * ImGui::GetFontSize() * 6.5f);
-                if (ImGui::Checkbox((UI(ChannelLabel(kShown[k])) + "##ch" + std::to_string(k)).c_str(), &on)) {
-                    t.channels = on ? (t.channels | ChannelBit(kShown[k])) : (t.channels & ~ChannelBit(kShown[k]));
-                    if (kShown[k] == Channel::System)  // lines without a channel go with the system lines
-                        t.channels = on ? (t.channels | ChannelBit(Channel::Unknown)) : (t.channels & ~ChannelBit(Channel::Unknown));
-                    changed = true;
-                }
-            }
-            static const Channel kWrite[] = {Channel::Unknown, Channel::Say, Channel::Map,  Channel::Party,
-                                             Channel::Squad,   Channel::Team, Channel::Guild};
-            ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
-            if (ImGui::BeginCombo(UI(Tr(L"Write in") + L"##tabwrite").c_str(),
-                                  t.write == Channel::Unknown ? UI(Tr(L"Active channel")).c_str() : UI(ChannelLabel(t.write)).c_str())) {
-                for (Channel c : kWrite)
-                    if (ImGui::Selectable(c == Channel::Unknown ? UI(Tr(L"Active channel")).c_str() : UI(ChannelLabel(c)).c_str(),
-                                          c == t.write)) {
-                        t.write = c;
-                        changed = true;
-                        if (g_activeTab == i) {
-                            g_channel = c;
-                            g_guildSlot = 0;
-                            RequestChannelSync();
-                        }
-                    }
-                ImGui::EndCombo();
-            }
-            if (ImGui::Button(UI(Tr(L"Remove tab")).c_str())) {
-                ForgetDraft(g_tabs[i].uid);
-                g_tabs.erase(g_tabs.begin() + i);
-                if (g_activeTab == i) LeaveWhisperTab();
-                else if (i < g_activeTab) g_selectTab = --g_activeTab;
-                changed = true;
-                ImGui::CloseCurrentPopup();
-            }
-            if (changed) SaveCustomTabs();
-        }
-        ImGui::EndPopup();
-    }
-    if (ImGui::BeginPopup("##newtab")) {  // a whisper tab of your own: whom you want to write to
-        ScopedPopupFont popupFont;
-        static char name[96] = {};
-        if (ImGui::IsWindowAppearing()) {
-            name[0] = 0;
-            ImGui::SetKeyboardFocusHere();
-        }
-        ImGui::TextUnformatted(UI(Tr(L"New whisper tab")).c_str());
-        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 14);
-        bool go = ImGui::InputTextWithHint("##tabname", UI(Tr(L"Character or account name")).c_str(), name, sizeof(name),
-                                           ImGuiInputTextFlags_EnterReturnsTrue);
-        ImGui::SameLine();
-        go |= ImGui::Button(UI(Tr(L"Open")).c_str());
-        if (go && !Trim(W(name)).empty()) {
-            OpenWhisperTab(W(name));
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::EndPopup();
-    }
+    RenderTabSettingsPopup();
+    RenderNewTabPopup();
     if (Lay().header) {
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - rightW);
         {  // The light: grey off, a quiet green while the chat is translated, bright while something is being translated.
@@ -810,53 +1364,7 @@ void RenderWindow() {
         ImGui::SameLine(0, gap);
         if (IconButton("##menu", Icon::Menu, false, nullptr)) ImGui::OpenPopup("kbmenu");
     }
-    if (ImGui::BeginPopup("kbmenu")) {
-        ScopedPopupFont popupFont;
-        // The mini mode (nothing but the input): only the way out – Options, Compact view, Mini mode (user, 2026-10-22).
-        if (!Lay().chat) {
-            if (ImGui::MenuItem(UI(Tr(L"Options …")).c_str())) g_showOptions = true;
-            if (const bool compact = ProfileOn(0); ImGui::MenuItem(UI(Tr(L"Compact view")).c_str(), nullptr, compact))
-                SetProfile(0, !compact);
-            if (const bool mini = ProfileOn(1); ImGui::MenuItem(UI(Tr(L"Mini mode")).c_str(), nullptr, mini)) SetProfile(1, !mini);
-        } else {
-            if (!Lay().header) {  // what the header offers: the tabs, minimise
-                if (ImGui::MenuItem(UI(Tr(L"Chat")).c_str(), nullptr, g_activeTab < 0)) LeaveWhisperTab();
-                for (int i = 0; i < static_cast<int>(g_tabs.size()); ++i)
-                    if (ImGui::MenuItem(g_tabs[i].Label(), nullptr, g_activeTab == i)) {
-                        ActivateTab(i);
-                        g_selectTab = i;  // the tab bar follows when the header comes back
-                    }
-                if (ImGui::MenuItem(UI(Tr(L"Minimize chat")).c_str())) g_minimizeRequest = true;
-                ImGui::Separator();
-            }
-            if (ImGui::MenuItem(UI(Tr(L"Options …")).c_str())) g_showOptions = true;
-            if (const bool mini = ProfileOn(1); ImGui::MenuItem(UI(Tr(L"Mini mode")).c_str(), nullptr, mini)) SetProfile(1, !mini);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("%s", UI(Tr(L"Nothing but the input with its help. Three quick clicks on it minimise it; right-click in it: Menu … brings the rest back.")).c_str());
-            if (const bool compact = ProfileOn(0); ImGui::MenuItem(UI(Tr(L"Compact view")).c_str(), nullptr, compact))
-                SetProfile(0, !compact);
-            if (ImGui::MenuItem(UI(Tr(L"Translate visible chat once")).c_str(), UI(MyMemoryLeftText()).c_str())) TranslateViewOnce();
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("%s", UI(Tr(L"What you see of the chat, into the language you write in – once, by the automatic translation's rule: lines in your language, in languages you understand or too short to tell stay as they are (a click on a line translates it anyway).")).c_str());
-            if (ImGui::MenuItem(UI(Tr(L"Translate the chat")).c_str(), "Ctrl+Alt+T", g_nx.translateChat)) {
-                SetChatTranslation(!g_nx.translateChat);  // the one switch (Options → Start), kept
-                SetStatus(g_nx.translateChat ? Tr(L"Chat translation on (Ctrl+Alt+T)") : Tr(L"Chat translation off (Ctrl+Alt+T)"), 4000);
-            }
-            if (ImGui::MenuItem(UI(Tr(L"New whisper tab …")).c_str())) newTabNext = true;
-            if (ImGui::MenuItem(UI(Tr(L"Waypoints") + L" …").c_str())) OpenWaypointWindow();
-            if (ImGui::MenuItem(UI(Tr(L"Text blocks …")).c_str())) g_openSnippets = true;
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("%s", UI(Tr(L"Your own text, saved from the input – a click puts it back.")).c_str());
-            if (!g_chatEventsPresent && !g_chatEventsFile && ImGui::MenuItem(UI(Tr(L"Install Events: Chat (every channel) …")).c_str()))
-                g_showOptions = true;
-            if (ImGui::MenuItem(UI(g_showDebugWindow ? Tr(L"Close Debug Window") : Tr(L"Debug & Diagnostics …")).c_str()))
-                g_showDebugWindow = !g_showDebugWindow;
-            if (ImGui::MenuItem(UI(g_showMtLive ? Tr(L"Hide the live view") : Tr(L"Show the live view")).c_str())) g_showMtLive = !g_showMtLive;
-            ImGui::Separator();
-            if (ImGui::MenuItem(UI(Tr(L"Hide (Ctrl+Alt+K shows it again)")).c_str())) g_show = false;
-        }
-        ImGui::EndPopup();
-    }
+    RenderMainMenu(newTabNext);
     RenderSnippets();
     if (Lay().header) {
         ImGui::SameLine();
@@ -972,359 +1480,13 @@ void RenderWindow() {
     } else {  // the big window: what its content needs at least – a long input grows it upwards, it shrinks back by itself
         g_winNeedH = ImGui::GetWindowSize().y + lowerH + line * 2 - ImGui::GetContentRegionAvail().y;
     }
-    if (Lay().chat) {
-        static float scrollY = 0, scrollMax = 0, viewH = 1, dragOffset = 0;
-        static bool atBottom = true;
-        static int lastActiveTab = -999;
-        const float h = std::max(line * 2, ImGui::GetContentRegionAvail().y - lowerH);
-        const float sb = std::max(8.0f, st.ScrollbarSize * 0.8f);
-        const ImVec2 track = ImGui::GetCursorScreenPos();
-        float setScroll = -1;
-        ImGui::InvisibleButton("##chatsb", ImVec2(sb, h));
-        {
-            const float grabH = scrollMax > 0 ? std::max(sb * 2, h * viewH / (viewH + scrollMax)) : h;
-            const float grabY = track.y + (scrollMax > 0 ? (h - grabH) * scrollY / scrollMax : 0);
-            if (ImGui::IsItemActivated()) {
-                const float my = io.MousePos.y;
-                dragOffset = my >= grabY && my <= grabY + grabH ? my - grabY : grabH * 0.5f;
-            }
-            if (ImGui::IsItemActive() && scrollMax > 0)
-                setScroll = std::clamp((io.MousePos.y - dragOffset - track.y) / std::max(1.0f, h - grabH), 0.0f, 1.0f) * scrollMax;
-            if (scrollMax > 0) {
-                ImDrawList* dl = ImGui::GetWindowDrawList();
-                dl->AddRectFilled(track, ImVec2(track.x + sb, track.y + h), ImGui::GetColorU32(ImGuiCol_ScrollbarBg), sb * 0.5f);
-                const ImGuiCol gc = ImGui::IsItemActive() ? ImGuiCol_ScrollbarGrabActive
-                                    : ImGui::IsItemHovered() ? ImGuiCol_ScrollbarGrabHovered : ImGuiCol_ScrollbarGrab;
-                dl->AddRectFilled(ImVec2(track.x + 1, grabY), ImVec2(track.x + sb - 1, grabY + grabH), ImGui::GetColorU32(gc), sb * 0.5f);
-            }
-        }
-        ImGui::SameLine(0, 4);
-        ImVec4 chatBg = ImGui::GetStyleColorVec4(ImGuiCol_ChildBg);  // fades with the window, like everything but text
-        chatBg.w = g_look.chatBg ? chatBg.w * std::clamp(g_cfg.opacity, 0, 255) / 255.0f : 0.0f;
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, chatBg);
-        ImGui::BeginChild("chat", ImVec2(0, h), false, ImGuiWindowFlags_NoScrollbar);
-        ImGui::PopStyleColor();
-        ImGuiWindow* const cw = ImGui::GetCurrentWindow();
-        static float s_rowsTop = 0, s_leftAt = 0, s_slide = 0;  // the first row's place, the scroll left last frame, the slide
-        // The wheel, or anything else that scrolled up since last frame: no longer at the bottom. (Begin also cuts the
-        // scroll back when the chat gets higher or shorter – then it stands at its end and stays there.)
-        if (atBottom && cw->Scroll.y < s_leftAt - 1.0f && cw->Scroll.y < cw->ScrollMax.y - 4.0f) atBottom = false;
-        const ImVec2 childP0 = ImGui::GetWindowPos();
-        const ImVec2 childP1 = ImVec2(childP0.x + ImGui::GetWindowSize().x, childP0.y + ImGui::GetWindowSize().y);
-        const bool chatHovered = ImGui::IsMouseHoveringRect(childP0, childP1);
-        const float wheel = io.MouseWheel;
-        if (chatHovered && wheel > 0.0f) {
-            atBottom = false;
-        }
-        bool snapToBottom = false;  // another tab: its newest lines at once
-        if (g_activeTab != lastActiveTab) {
-            lastActiveTab = g_activeTab;
-            atBottom = snapToBottom = true;
-        }
-        static const std::wstring s_emptyW;
-        const WhisperTab* front = g_activeTab >= 0 && g_activeTab < static_cast<int>(g_tabs.size()) ? &g_tabs[g_activeTab] : nullptr;
-        const std::wstring& tabName = front && !front->custom ? front->nameFolded : s_emptyW;
-        const uint32_t tabChannels = front && front->custom ? front->channels : 0xFFFFFFFFu;
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,  // the space between chat lines (Window tab: Line spacing) – also the info lines, so it shows at once
-                            ImVec2(ImGui::GetStyle().ItemSpacing.x,
-                                   ImGui::GetStyle().ItemSpacing.y * std::clamp(g_cfg.chatSpacing, 0, 100) / 100.0f - ImGui::GetFontSize() * 0.2f * (100 - std::clamp(g_cfg.chatSpacing, 0, 100)) / 100.0f));
-        g_visibleLines.clear();
-        const float rowWrap = ImGui::GetContentRegionAvail().x, rowFont = ImGui::GetFontSize();
-        const float rowGap = ImGui::GetStyle().ItemSpacing.y;
-        auto inThisTab = [&](const ChatLine& l) {
-            if (!tabName.empty() && (l.channel != Channel::Whisper || l.speakerFolded != tabName)) return false;
-            return (tabChannels & ChannelBit(l.channel)) != 0;  // a tab of your own: only its channels
-        };
-        // the original under a translation (your own line: what you typed), when chosen – part of the row's size
-        auto typedOf = [&](const ChatLine& l) { return g_cfg.showOriginal && l.own ? OwnOriginal(l.text) : std::wstring(); };
-        auto originalUnderOf = [&](const ChatLine& l, const std::wstring& ownTyped) {
-            return g_cfg.showOriginal && ((!l.own && !l.translated.empty()) || !ownTyped.empty());
-        };
-        auto rowKnown = [&](const ChatLine& l) {  // measured for this width, font, spacing and text
-            return l.rowH > 0 && l.rowW == rowWrap && l.rowFont == rowFont && l.rowGap == rowGap && l.rowLen == l.rowLenNow;
-        };
-        auto drawRow = [&](ChatLine& l) {
-            const float y0 = ImGui::GetCursorPosY();
-            const std::wstring ownTyped = typedOf(l);
-            const bool originalUnder = originalUnderOf(l, ownTyped);
-            ImGui::PushID(static_cast<int>(l.id));
-            const float rowTop = ImGui::GetCursorScreenPos().y;
-            const float rowX = ImGui::GetCursorPosX();
-            if (!l.speaker.empty()) {  // the name in the channel colour – a click: whisper with that player in their tab
-                LookText(l.speakerDisplay.c_str(), NameColorOf(l.channel), false);
-                const bool canWhisper = !l.own || (l.outgoing && l.channel == Channel::Whisper);
-                if (canWhisper && ImGui::IsItemHovered()) {
-                    ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-                    const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
-                    ImGui::GetWindowDrawList()->AddLine(ImVec2(a.x, b.y - 1), ImVec2(b.x, b.y - 1),
-                                                        ImGui::GetColorU32(NameColorOf(l.channel)));
-                }
-                if (canWhisper && ImGui::IsItemClicked()) OpenWhisperTab(l.speaker);
-                ImGui::SameLine(0, ImGui::CalcTextSize(" ").x);
-            }
-            const std::string& u8shown = l.translated.empty() ? l.u8text : l.u8translated;
-            const auto& segs = l.translated.empty() ? l.textSegs : l.transSegs;
-            bool clicked = false;
-            LineHit hit;  // over every piece of the text
-            if (segs.size() <= 1 && (segs.empty() || segs[0].kind == PieUI::ChatLinks::SegmentKind::Plain)) {
-                if (!l.speaker.empty()) {
-                    // Under its name one space in: one item, its wrapped lines start one space from the left, its first
-                    // line padded past the name – so it measures and wraps like any line (a width change is exact).
-                    // a space as it is drawn (ImGui::CalcTextSize rounds it up to a whole pixel: the padding fell short
-                    // of a long name by its last letters, and the text covered the colon)
-                    const float sp = std::max(1.0f, ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, 0.0f, " ").x);
-                    const float hang = ImGui::GetCursorPosX() - rowX;  // the name and its space
-                    const int pads = std::max(0, static_cast<int>(std::ceil((hang - sp) / sp)));
-                    ImGui::SetCursorPosX(rowX + sp);
-                    const float textX0 = ImGui::GetCursorScreenPos().x + pads * sp;
-                    LookText((std::string(static_cast<size_t>(pads), ' ') + u8shown).c_str(), ColorOf(l.channel), true);
-                    hit.AddLast();
-                    const ImVec2 m = ImGui::GetIO().MousePos, a = ImGui::GetItemRectMin();
-                    if (m.y < a.y + ImGui::GetTextLineHeight() && m.x < textX0)  // over the name: the name's, not the text's
-                        hit.hovered = hit.clickL = hit.clickR = false;
-                } else {
-                    LookText(u8shown.c_str(), ColorOf(l.channel), true);
-                    hit.AddLast();
-                }
-            } else {
-                clicked = RichLine(segs, ColorOf(l.channel));
-                hit.AddLast();
-            }
-            if (!l.translated.empty() && hit.hovered) {
-                if (l.u8transNote.empty()) {
-                    ImGui::SetTooltip("%s", l.u8text.c_str());
-                } else {  // the original and what the translation check found
-                    ImGui::BeginTooltip();
-                    ImGui::TextUnformatted(l.u8text.c_str());
-                    ImGui::TextColored(ImVec4(0.95f, 0.78f, 0.35f, 1.0f), "%s", l.u8transNote.c_str());
-                    ImGui::EndTooltip();
-                }
-            }
-            if (!l.own && l.transPending && l.translated.empty()) {
-                ImGui::SameLine(0, ImGui::CalcTextSize(" ").x);
-                LookText("...", ImVec4(0.6f, 0.6f, 0.6f, 0.65f), false);
-                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Translating...")).c_str());
-            }
-            // A click on the text of a line someone else wrote: just this line into your language.
-            if (!l.own && hit.visible) {
-                g_visibleLines.push_back(l.id);  // in view: "translate once" takes it
-                if (g_nx.translateChat && !g_orchestrator.IsPaused() && l.translated.empty() && !l.transAttempted && !l.transPending && !IsGamerInterjection(l.text)) {
-                    l.transPending = true;
-                    g_worker.Post([id = l.id, t = l.text] { TranslateLine(id, t); });
-                }
-            }
-            if (hit.clickR) s_lineRightClick = true;
-            // A click on someone's text: into your reading language. A right-click: a small menu – the reading
-            // language first, right under the pointer, any other language below; a click always translates.
-            if (!clicked && !l.own && l.translated.empty() && hit.clickL) {
-                l.transPending = true;
-                g_worker.Post([id = l.id, t = l.text] { TranslateLine(id, t, true); });
-            }
-            if (!clicked && !l.own && hit.clickR) {
-                s_lineMenuId = l.id;
-                s_lineMenuText = l.text;
-                s_openLineMenu = true;
-            }
-            if (!l.translated.empty() && !l.u8transNote.empty()) {  // a doubtful translation: marked, the reason on hover
-                ImGui::SameLine(0, ImGui::CalcTextSize(" ").x);
-                LookText("(?)", ImVec4(0.95f, 0.78f, 0.35f, 0.9f), false);
-                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", l.u8transNote.c_str());
-            }
-            if (originalUnder) {
-                const std::string u8orig = ownTyped.empty() ? l.u8text : U8(ownTyped);
-                LookText(u8orig.c_str(), ImVec4(0.62f, 0.62f, 0.62f, 0.8f), true);
-            }
-            if (s_lineMenuOpen && l.id == s_lineMenuId) {  // the message whose menu is open: marked across its lines
-                const float x0 = ImGui::GetWindowPos().x;
-                ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(x0, rowTop),
-                                                          ImVec2(x0 + ImGui::GetWindowWidth(), ImGui::GetCursorScreenPos().y),
-                                                          ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, 0.08f)));
-            }
-            ImGui::PopID();
-            l.rowH = ImGui::GetCursorPosY() - y0;  // what it took, for the frames it is out of view
-            l.rowW = rowWrap;
-            l.rowFont = rowFont;
-            l.rowGap = rowGap;
-            l.rowLen = l.rowLenNow;
-        };
-        // The layout first, then the drawing – like a browser, whose scroll and layout reach the screen together. A row that
-        // changed (a translation arrived, a new line, another width) is measured now by drawing it far above the window,
-        // where nothing shows and nothing can be hit. So the height is right before the first row is drawn:
-        // - at the bottom the chat stays at the bottom, in the same frame: no frame with the new text pushing the rows
-        //   down and the next one pulling them up again (that was the jumping);
-        // - scrolled up, the first row in view stays where it is (scroll anchoring), whatever changes above it.
-        if (!cw->SkipItems) {
-            float oldY = s_rowsTop, newY = s_rowsTop, shift = 0;
-            bool anchored = false, anyRow = false;
-            for (ChatLine& l : g_lines) {
-                if (!inThisTab(l)) continue;
-                anyRow = true;
-                const std::wstring ownTyped = typedOf(l);
-                l.rowLenNow = (l.translated.empty() ? l.text.size() : l.translated.size() + 1) +
-                              (originalUnderOf(l, ownTyped) ? (ownTyped.empty() ? l.text.size() : ownTyped.size()) + 1 : 0);
-                const float was = std::max(0.0f, l.rowH);
-                if (!rowKnown(l)) {
-                    const ImVec2 back = ImGui::GetCursorScreenPos();
-                    ImGui::SetCursorScreenPos(ImVec2(back.x, std::floor(cw->Pos.y) - 8000.0f));
-                    drawRow(l);
-                    ImGui::SetCursorScreenPos(back);
-                }
-                if (!anchored && oldY + was > cw->Scroll.y) {  // the first row reaching into the view
-                    anchored = true;
-                    shift = newY - oldY;
-                }
-                oldY += was;
-                newY += std::max(0.0f, l.rowH);
-            }
-            const float contentH = std::floor(newY - (anyRow ? rowGap : 0.0f));
-            const float maxY = std::max(0.0f, contentH + cw->WindowPadding.y * 2.0f - cw->Size.y);
-            const float now = cw->Scroll.y;
-            float next;
-            if (setScroll >= 0) {  // the scroll bar's handle in your hand
-                next = std::min(setScroll, maxY);
-                atBottom = setScroll >= maxY - 4;
-            } else if (atBottom) {
-                next = maxY;
-                // A few lines more at the bottom slide in over a moment, like in a messenger; a long way (another tab, a
-                // big jump) or a shorter chat at once.
-                if (!snapToBottom && maxY > now && maxY - now <= cw->Size.y) {
-                    if (std::fabs(s_slide - now) > 1.0f) s_slide = now;
-                    s_slide += (maxY - s_slide) * (1.0f - std::exp(-io.DeltaTime * 18.0f));
-                    if (maxY - s_slide >= 0.5f) next = std::floor(s_slide);
-                }
-            } else {
-                next = std::clamp(now + shift, 0.0f, maxY);
-            }
-            if (next == maxY || !atBottom || setScroll >= 0) s_slide = next;
-            ScrollNow(cw, std::floor(next));
-            cw->ScrollMax.y = maxY;
-        }
-        RenderChatSourceNotice();  // reading Events: Chat is off or paused: why, and what you can do
-        if (g_lines.empty() && g_layout.infoText) {  // nothing arrived yet: what is ready, what is missing, where translation is switched on
-            lock.unlock();
-            RenderModules(true);
-            lock.lock();
-        }
-        // Only what is in view is drawn: a measured line outside the view (plus a margin) is just a placeholder of its
-        // height – the layout stays exactly the same.
-        const float viewTop = ImGui::GetScrollY() - line * 4;
-        const float viewBottom = ImGui::GetScrollY() + ImGui::GetWindowHeight() + line * 4;
-        s_rowsTop = ImGui::GetCursorPosY();
-        for (ChatLine& l : g_lines) {
-            if (!inThisTab(l)) continue;
-            const float y0 = ImGui::GetCursorPosY();
-            if (rowKnown(l) && (y0 + l.rowH < viewTop || y0 > viewBottom)) {
-                ImGui::Dummy(ImVec2(1.0f, std::max(0.0f, l.rowH - rowGap)));
-                continue;
-            }
-            drawRow(l);
-        }
-        ImGui::PopStyleVar();  // the chat's line spacing
-        // A line's menu (right-click on someone's text): the reading language first, under the pointer; others below.
-        if (s_openLineMenu) {
-            ImGui::OpenPopup("##linemenu");
-            s_openLineMenu = false;
-        }
-        if (ImGui::BeginPopup("##linemenu")) {
-            ScopedPopupFont popupFont;
-            std::wstring pick;
-            std::wstring readName = ReadLang();
-            for (const LangInfo& lg : Languages())
-                if (PrimaryLang(lg.code) == ReadLang()) readName = NativeName(lg.code);
-            if (ImGui::MenuItem(UI(TrF(L"Translate into {1}", {readName})).c_str())) pick = ReadLang();
-            if (ImGui::BeginMenu(UI(Tr(L"Into another language")).c_str())) {
-                for (const LangInfo& lg : Languages())
-                    if (DrawnInOurWindow(lg) && ImGui::MenuItem(U8(NativeName(lg.code)).c_str())) pick = lg.code;
-                ImGui::EndMenu();
-            }
-            // what happened when this line was translated: language, translator, protected parts, time, score
-            std::string trace;
-            for (const ChatLine& x : g_lines)
-                if (x.id == s_lineMenuId) trace = x.u8trace;
-            // the model's other versions of this line: a click takes one, the one shown takes its place
-            for (ChatLine& x : g_lines) {
-                if (x.id != s_lineMenuId || x.transVariants.empty()) continue;
-                if (ImGui::BeginMenu(UI(Tr(L"Other versions")).c_str())) {
-                    for (std::wstring& version : x.transVariants) {
-                        if (!ImGui::MenuItem(U8(version).c_str())) continue;
-                        std::swap(x.translated, version);
-                        x.u8translated = U8(x.translated);
-                        x.transSegs = PieUI::ChatLinks::SegmentLine(x.u8translated);
-                        ImGui::CloseCurrentPopup();
-                        break;
-                    }
-                    ImGui::EndMenu();
-                }
-                break;
-            }
-            // A word of this line as a GW2 term of your own (a short form the translator gets wrong, "comms"): never
-            // translated from now on, and this line comes again with it. Gone again in Options → Technical.
-            if (ImGui::BeginMenu(UI(Tr(L"A GW2 term – never translated")).c_str())) {
-                std::vector<std::wstring> words;
-                for (const Span& s : WordSpans(s_lineMenuText)) {
-                    const std::wstring w = s_lineMenuText.substr(s.start, s.length);
-                    if (w.size() < 2 || w.size() > 30 || std::all_of(w.begin(), w.end(), [](wchar_t c) { return c >= L'0' && c <= L'9'; })) continue;
-                    if (std::find(words.begin(), words.end(), w) == words.end()) words.push_back(w);
-                    if (words.size() >= 15) break;
-                }
-                for (const std::wstring& w : words) {
-                    if (!ImGui::MenuItem(U8(w).c_str())) continue;
-                    g_worker.Post([w, id = s_lineMenuId, t = s_lineMenuText, target = ReadLang()] {
-                        if (g_spell) g_spell->AddTerm(w);
-                        TranslateLine(id, t, true, false, target);
-                    });
-                    SetStatus(TrF(L"Never translated from now on: {1}", {w}), 6000);
-                    ImGui::CloseCurrentPopup();
-                }
-                ImGui::EndMenu();
-            }
-            if (!trace.empty() && ImGui::BeginMenu(UI(Tr(L"What happened?")).c_str())) {
-                ImGui::TextUnformatted(trace.c_str());
-                ImGui::EndMenu();
-            }
-            if (!pick.empty()) {
-                g_worker.Post([id = s_lineMenuId, t = s_lineMenuText, pick] { TranslateLine(id, t, true, false, pick); });
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::EndPopup();
-        }
-        s_lineMenuOpen = ImGui::IsPopupOpen("##linemenu");
-        scrollY = ImGui::GetScrollY();
-        scrollMax = ImGui::GetScrollMaxY();
-        viewH = ImGui::GetWindowHeight();
-        if (!atBottom) atBottom = scrollY >= scrollMax - 4;  // scrolled back down: it follows again
-        s_leftAt = scrollY;
-        ImGui::EndChild();
-    } else {  // no chat: the input stays the lowest line, the space above stays empty (see-through like the window)
-        const float fill = ImGui::GetContentRegionAvail().y - lowerH;
-        if (fill > 0) ImGui::Dummy(ImVec2(0, fill));
-    }
+    RenderChat(io, lock, st, s_lineRightClick, s_lineMenuId, s_lineMenuText, s_openLineMenu, s_lineMenuOpen, line, lowerH);
     // A link from the chat opens only after your yes (http / https only).
     if (g_openLinkAsk) {
         g_openLinkAsk = false;
         ImGui::OpenPopup("###openlink");
     }
-    if (ImGui::BeginPopupModal((UI(Tr(L"Leaving GW2Chatlator")) + "###openlink").c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ScopedPopupFont popupFont;
-        // Like Discord: where it goes, big; the whole link small; you decide.
-        ImGui::TextUnformatted(UI(Tr(L"This link goes to")).c_str());
-        ImGui::TextColored(ImVec4(0.45f, 0.7f, 1.f, 1.f), "%s", U8(LinkHost(g_openLink)).c_str());
-        ImGui::TextDisabled("%s", Fit(U8(g_openLink), ImGui::GetFontSize() * 30).c_str());
-        ImGui::Spacing();
-        ImGui::TextUnformatted(UI(Tr(L"Are you sure you want to open it?")).c_str());
-        ImGui::Spacing();
-        if (ImGui::Button(UI(Tr(L"Open link")).c_str())) {
-            SafeOpenUrl(g_openLink);
-            g_openLink.clear();
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::SameLine();
-        if (ImGui::Button(UI(Tr(L"Go back")).c_str()) || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape))) {
-            g_openLink.clear();
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::EndPopup();
-    }
+    RenderLinkQuestion();
 
     CostMark(kCostInput);
     // ---- the preview: what arrives in the GW2 chat, the back-translation small under it
@@ -1421,34 +1583,7 @@ void RenderWindow() {
         ImGui::PopStyleColor();
     }
 
-    // ---- the word bar: three cells across the line, what Tab takes in orange
-    if (showWords) {
-        const float w = ImGui::GetContentRegionAvail().x;
-        const ImVec2 p = ImGui::GetCursorScreenPos();
-        const float h = ImGui::GetFrameHeight();
-        ImDrawList* dl = ImGui::GetWindowDrawList();
-        const bool have = g_cfg.suggestions && g_help.text == g_wFlatInput;
-        for (int i = 0; i < 3; ++i) {
-            const ImVec2 a(p.x + w * i / 3.0f, p.y), b(p.x + w * (i + 1) / 3.0f, p.y + h);
-            if (i) dl->AddLine(ImVec2(a.x, a.y + h * 0.25f), ImVec2(a.x, b.y - h * 0.25f), ImGui::GetColorU32(ImGuiCol_Separator));
-            if (!have || i >= static_cast<int>(g_help.bar.words.size())) continue;
-            const std::string word = U8(g_help.bar.words[i]);
-            ImGui::SetCursorScreenPos(a);
-            ImGui::PushID(i);
-            if (ImGui::InvisibleButton("##word", ImVec2(b.x - a.x, h))) TakeWord(g_help.bar.words[i]);
-            const bool hot = ImGui::IsItemHovered();
-            ImGui::PopID();
-            if (hot) dl->AddRectFilled(a, b, ImGui::GetColorU32(ImGuiCol_FrameBgHovered));
-            const ImVec2 size = ImGui::CalcTextSize(word.c_str());
-            const bool pick = g_pick >= 0 ? i == g_pick : i == g_help.bar.autoIndex;
-            const ImVec2 wordAt((a.x + b.x - size.x) * 0.5f, a.y + (h - size.y) * 0.5f);
-            const ImU32 accent = ImGui::GetColorU32(UiAccent());
-            dl->AddText(wordAt, pick ? accent : ImGui::GetColorU32(ImGuiCol_Text), word.c_str());
-            // on a grey theme the colour alone hardly shows which word Space takes
-            if (pick) dl->AddLine(ImVec2(wordAt.x, wordAt.y + size.y), ImVec2(wordAt.x + size.x, wordAt.y + size.y), accent);
-        }
-        ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + h + st.ItemSpacing.y));
-    }
+    RenderWordBar(st, showWords);
 
     // ---- the input line; momentary messages (status) appear inside it
     if (g_focusInput && !g_sending) {
@@ -1603,109 +1738,7 @@ void RenderWindow() {
         ImGui::SetNextWindowPos(right ? ImVec2(wp.x + ws.x + 1, wp.y) : ImVec2(wp.x - 1, wp.y), ImGuiCond_Appearing,
                                 right ? ImVec2(0, 0) : ImVec2(1, 0));
     }
-    if (ImGui::BeginPopup("##teach")) {
-        ScopedPopupFont popupFont;
-        static char typed[64] = {}, fixed[64] = {}, word[64] = {}, meaning[160] = {};
-        if (ImGui::IsWindowAppearing()) {  // the last word you typed, and what is known of it
-            const std::wstring& text = g_wFlatInput;
-            const std::vector<Span> spans = WordSpans(text);
-            const std::wstring last = !g_teachWord.empty() ? g_teachWord  // the word you right-clicked
-                                      : spans.empty() ? std::wstring() : text.substr(spans.back().start, spans.back().length);
-            typed[0] = 0;
-            strncpy_s(fixed, U8(last).c_str(), _TRUNCATE);
-            strncpy_s(word, U8(last).c_str(), _TRUNCATE);
-            strncpy_s(meaning, U8(g_myWords.MeaningOf(last)).c_str(), _TRUNCATE);
-        }
-        auto teachFix = [](const std::wstring& t, const std::wstring& f) {
-            g_worker.Post([t, f] {
-                const bool ok = g_spell && g_spell->TeachFix(t, f);
-                std::lock_guard<std::mutex> lock(g_mu);
-                SetStatus(ok ? TrF(L"Learned: {1} > {2}", {t, f}) : TrF(L"\"{1}\" is a real word – not learned as a typo", {t}), 6000);
-            });
-        };
-        ImGui::AlignTextToFramePadding();
-        ImGui::TextUnformatted(UI(Tr(L"Learn your corrections")).c_str());
-        ImGui::SameLine(std::max(ImGui::GetCursorPosX(), ImGui::GetWindowContentRegionMax().x - ImGui::GetFrameHeight()));
-        if (IconButton("##teachclose", Icon::Close, false, nullptr)) ImGui::CloseCurrentPopup();  // the X: top right
-        Hint(UI(Tr(L"What you corrected yourself while typing: learned once, autocorrection writes it right next time.")));
-        int learned = -1;
-        for (size_t i = 0; i < g_selfFixes.size(); ++i) {
-            ImGui::PushID(static_cast<int>(i));
-            ImGui::AlignTextToFramePadding();
-            ImGui::Text("%s  >  %s", U8(g_selfFixes[i].typed).c_str(), U8(g_selfFixes[i].fixed).c_str());
-            ImGui::SameLine();
-            if (ImGui::SmallButton(UI(Tr(L"Learn")).c_str())) learned = static_cast<int>(i);
-            ImGui::PopID();
-        }
-        if (learned >= 0) {
-            teachFix(g_selfFixes[learned].typed, g_selfFixes[learned].fixed);
-            g_selfFixes.erase(g_selfFixes.begin() + learned);
-        }
-        if (g_selfFixes.empty()) ImGui::TextDisabled("%s", UI(Tr(L"No corrections of your own yet – or enter one:")).c_str());
-        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 8);
-        ImGui::InputTextWithHint("##typed", UI(Tr(L"I type")).c_str(), typed, sizeof(typed));
-        ImGui::SameLine();
-        ImGui::TextUnformatted(">");
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 8);
-        ImGui::InputTextWithHint("##fixed", UI(Tr(L"I mean")).c_str(), fixed, sizeof(fixed));
-        ImGui::SameLine();
-        if (ImGui::Button(UI(Tr(L"Learn") + L"##fix").c_str()) && !Trim(W(typed)).empty() && !Trim(W(fixed)).empty()) {
-            teachFix(Trim(W(typed)), Trim(W(fixed)));
-            typed[0] = 0;
-        }
-        ImGui::Separator();
-        ImGui::TextUnformatted(UI(Tr(L"Your word or abbreviation – what it means")).c_str());
-        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 8);
-        ImGui::InputText("##w", word, sizeof(word));
-        ImGui::SameLine();
-        ImGui::TextUnformatted("=");
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 14);
-        const bool go = ImGui::InputTextWithHint("##m", UI(Tr(L"meaning, e.g. I think")).c_str(), meaning, sizeof(meaning),
-                                                 ImGuiInputTextFlags_EnterReturnsTrue);
-        ImGui::SameLine();
-        if ((ImGui::Button(UI(Tr(L"Learn") + L"##mean").c_str()) || go) && !Trim(W(word)).empty()) {
-            const std::wstring w = Trim(W(word)), m = Trim(W(meaning));
-            if (m.empty()) g_myWords.Remove(w);
-            else g_myWords.Set(w, m);
-            SaveMyWords();
-            g_worker.Post([w] { if (g_spell) g_spell->AddUserWord(w); });
-            ++g_inputGen;  // translated again with it
-            g_inputChanged = GetTickCount64();
-            SetStatus(m.empty() ? TrF(L"\"{1}\" forgotten", {w}) : TrF(L"Learned: {1} = {2}", {w, m}), 6000);
-        }
-        Hint(UI(Tr(L"The translator gets the meaning; your text stays as you wrote it.")));
-        // A GW2 term of your own (a guild tag, a short form): into gw2-terms.txt, never translated from now on
-        ImGui::Separator();
-        static char term[64] = {};
-        ImGui::TextUnformatted(UI(Tr(L"A GW2 term – never translated")).c_str());
-        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 8);
-        const bool goTerm = ImGui::InputTextWithHint("##term", UI(Tr(L"e.g. a guild tag")).c_str(), term, sizeof(term),
-                                                     ImGuiInputTextFlags_EnterReturnsTrue);
-        ImGui::SameLine();
-        if ((ImGui::Button(UI(Tr(L"Learn") + L"##term").c_str()) || goTerm) && !Trim(W(term)).empty()) {
-            const std::wstring t = Trim(W(term));
-            if (WordSpans(t).size() > kMaxTermWords) {
-                SetStatus(Tr(L"A term has at most 5 words"), 6000);
-            } else {
-                g_worker.Post([t] { if (g_spell) g_spell->AddTerm(t); });
-                ++g_inputGen;  // translated again with it
-                g_inputChanged = GetTickCount64();
-                SetStatus(TrF(L"Never translated from now on: {1}", {t}), 6000);
-                term[0] = 0;
-            }
-        }
-        Hint(UI(Tr(L"Your terms are in gw2-terms.txt in the GW2Keyboard folder, next to the built-in GW2 list.")));
-        if (!Lay().header) {  // without the header (maybe nothing but the input left): the way to the menu
-            ImGui::Separator();
-            if (ImGui::Selectable(UI(Tr(L"Menu …")).c_str())) {
-                s_menuNext = true;
-                ImGui::CloseCurrentPopup();
-            }
-        }
-        ImGui::EndPopup();
-    }
+    RenderTeachPopup(s_menuNext);
     if (s_menuNext) {  // opened here, at the window's level, where the menu lives
         s_menuNext = false;
         ImGui::OpenPopup("kbmenu");
