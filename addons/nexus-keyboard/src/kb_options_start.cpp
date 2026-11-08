@@ -296,7 +296,7 @@ void RenderLayoutTiles() {
     ImGui::AlignTextToFramePadding();
     ImGui::TextDisabled("%s", UI(Tr(L"Each part on its own:")).c_str());
     ImGui::SameLine();
-    if (ImGui::SmallButton((UI(Tr(L"Window")) + " \xE2\x86\x92").c_str())) SwitchOptionsTab(kPageWindow);
+    if (ImGui::SmallButton(UI(Tr(L"Window") + L" →").c_str())) SwitchOptionsTab(kPageWindow);
     EndBox();
 }
 
