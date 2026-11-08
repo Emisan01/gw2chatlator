@@ -328,6 +328,19 @@ void AddonLoad(AddonAPI_t* api) {
         api->InputBinds_RegisterWithString(kFocusBind, OnFocusKey, "(null)");
         api->InputBinds_RegisterWithString(kTalkBind, OnTalkKey, "(null)");
     }
+    // The keys' names in Nexus → Keybinds, in Nexus' languages – none is set by us, so you find them there by name, not by
+    // their technical identifier.
+    if (api->Localization_Set && IsCodePointer(reinterpret_cast<const void*>(api->Localization_Set))) {
+        static const std::pair<UiLang, const char*> kLangs[] = {{UiLang::En, "en"}, {UiLang::De, "de"}, {UiLang::Fr, "fr"}, {UiLang::Es, "es"},
+                                                                {UiLang::It, "it"}, {UiLang::Pl, "pl"}, {UiLang::Pt, "br"}, {UiLang::Ru, "ru"}};
+        static const std::pair<const char*, const wchar_t*> kKeys[] = {
+            {kToggleBind, L"Window"}, {kFocusBind, L"Input"}, {kTranslateBind, L"Translate the chat"}, {kTalkBind, L"Voice"}};
+        for (const auto& [lang, code] : kLangs)
+            for (const auto& [id, english] : kKeys) {
+                const wchar_t* said = lang == UiLang::En ? english : TranslationFor(lang, english);
+                api->Localization_Set(id, code, ("GW2Chatlator: " + ToUtf8(said ? said : english)).c_str());
+            }
+    }
     ApplyPushToTalkKey(g_cfg.voiceGlobalKey);
     if (api->WndProc_Register && IsCodePointer(reinterpret_cast<const void*>(api->WndProc_Register))) {
         api->WndProc_Register(OnWndProc);
