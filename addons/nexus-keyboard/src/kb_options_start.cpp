@@ -138,11 +138,13 @@ bool RenderVoiceModule(bool guide) {
 static bool RenderMissing(Config* edit) {
     std::wstring dataDir, voiceModel;  // only what the rows need – this runs every frame the list is in view
     bool voiceEnabled;
+    Engine engine;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         dataDir = g_cfg.dataDir;
         voiceModel = g_cfg.voiceModel;
         voiceEnabled = g_cfg.voiceEnabled;
+        engine = edit ? edit->engine : g_cfg.engine;  // on Start: the translator as the page shows it
     }
     ImGui::PushID("missing");
     bool any = false;
@@ -183,6 +185,23 @@ static bool RenderMissing(Config* edit) {
         ImGui::SameLine();
         // the card goes on once its module is there – not now: that would restart the CPU's helper for nothing
         if (ImGui::SmallButton(UI(Tr(L"Switch on") + L"##card").c_str())) InstallCardModule(dataDir, true);
+    }
+    // The translator you chose runs on this PC but its model is not there (OPUS-MT's pair, M2M100) – the switch's tile
+    // shows it orange, so it stands here too; its download is on the Translator tab. NLLB has its row above.
+    const bool nllbRow = !g_localMtBusy && !(local.module && local.nllb);
+    if (!g_localMtBusy && IsLocalEngine(engine) && !LocalModelThere(local, engine) && !(engine == Engine::Nllb && nllbRow)) {
+        any = true;
+        StatusRow(UI(Tr(L"Translator")), 0, UI(TrF(L"the model for {1} is missing", {Tr(EngineLabel(engine))})));
+        ImGui::SameLine();
+        if (ImGui::SmallButton(UI(Tr(L"Open") + L"##model").c_str())) {
+            if (edit) {
+                SwitchOptionsTab(kPageTranslator);
+            } else {
+                std::lock_guard<std::mutex> lock(g_mu);
+                g_showOptions = true;
+                g_optionsTab = kPageTranslator;
+            }
+        }
     }
     // Voice input: not there – one click loads the voice module and its model. Switched off by you with both there: no row.
     const ModuleState& m = Modules();

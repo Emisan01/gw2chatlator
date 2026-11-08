@@ -1055,6 +1055,8 @@ extern const I18nEntry kRussianStrings[] = {
      "Один раз сам нажми на новую ссылку в чате GW2, на её третью букву. Я запомню место, дальше всё пойдёт само."},
     {L"Another line came in between, so the place would be off: not remembered. Teach it again at the next waypoint.",
      "Между делом пришла другая строка, место сместилось бы – не запомнено. Покажи его ещё раз на следующей путевой точке."},
+    {L"the model for {1} is missing",
+     "нет модели для {1}"},
     {L"Window layout",
      "Макет окна"},
     {L"Windows blocks the microphone for this program (privacy settings).",

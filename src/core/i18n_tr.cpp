@@ -1055,6 +1055,8 @@ extern const I18nEntry kTurkishStrings[] = {
      "GW2 sohbetindeki yeni bağlantıya bir kez kendin tıkla, üçüncü harfine. Yeri hatırlarım, sonrası kendiliğinden olur."},
     {L"Another line came in between, so the place would be off: not remembered. Teach it again at the next waypoint.",
      "Araya başka bir satır girdi, yer kayardı – hatırlanmadı. Bir sonraki geçiş noktasında yeniden göster."},
+    {L"the model for {1} is missing",
+     "{1} için model eksik"},
     {L"Window layout",
      "Pencere düzeni"},
     {L"Windows blocks the microphone for this program (privacy settings).",

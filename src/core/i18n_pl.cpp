@@ -1055,6 +1055,8 @@ extern const I18nEntry kPolishStrings[] = {
      "Kliknij raz sam nowy link w czacie GW2, na jego trzecią literę. Zapamiętam to miejsce, potem pójdzie samo."},
     {L"Another line came in between, so the place would be off: not remembered. Teach it again at the next waypoint.",
      "W międzyczasie przyszła inna linia, miejsce byłoby przesunięte – nie zapamiętano. Pokaż je jeszcze raz przy następnym punkcie."},
+    {L"the model for {1} is missing",
+     "brak modelu dla {1}"},
     {L"Window layout",
      "Układ okna"},
     {L"Windows blocks the microphone for this program (privacy settings).",
