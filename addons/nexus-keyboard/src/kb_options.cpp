@@ -592,6 +592,8 @@ void RenderNexusOptions() {
         s_nexusOptionsFontPx.store(ImGui::GetFontSize());  // includes Nexus' per-window scale and the active Windows/game DPI scale
     if (ImGui::Button(U8(g_showOptions ? Tr(L"Close the GW2Chatlator options") : Tr(L"Open the GW2Chatlator options")).c_str()))
         g_showOptions = !g_showOptions;
+    // The chat window back without a key of yours (none is set by us): closed with its X, hidden from the menu.
+    if (ImGui::Button(U8(g_show ? Tr(L"Hide the chat window") : Tr(L"Show the chat window")).c_str())) OnToggle(nullptr, false);
 }
 
 void SuppressImplicitDebugWindow() {

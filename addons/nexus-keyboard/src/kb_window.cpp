@@ -464,9 +464,9 @@ static void RenderMainMenu(bool& newTabNext) {
             if (ImGui::MenuItem(UI(Tr(L"Translate visible chat once")).c_str(), UI(MyMemoryLeftText()).c_str())) TranslateViewOnce();
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", UI(Tr(L"What you see of the chat, into the language you write in – once, by the automatic translation's rule: lines in your language, in languages you understand or too short to tell stay as they are (a click on a line translates it anyway).")).c_str());
-            if (ImGui::MenuItem(UI(Tr(L"Translate the chat")).c_str(), "Ctrl+Alt+T", g_nx.translateChat)) {
+            if (ImGui::MenuItem(UI(Tr(L"Translate the chat")).c_str(), nullptr, g_nx.translateChat)) {
                 SetChatTranslation(!g_nx.translateChat);  // the one switch (Options → Start), kept
-                SetStatus(g_nx.translateChat ? Tr(L"Chat translation on (Ctrl+Alt+T)") : Tr(L"Chat translation off (Ctrl+Alt+T)"), 4000);
+                SetStatus(g_nx.translateChat ? Tr(L"Chat translation on") : Tr(L"Chat translation off"), 4000);
             }
             if (ImGui::MenuItem(UI(Tr(L"New whisper tab …")).c_str())) newTabNext = true;
             if (ImGui::MenuItem(UI(Tr(L"Waypoints") + L" …").c_str())) OpenWaypointWindow();
@@ -479,7 +479,7 @@ static void RenderMainMenu(bool& newTabNext) {
                 g_showDebugWindow = !g_showDebugWindow;
             if (ImGui::MenuItem(UI(g_showMtLive ? Tr(L"Hide the live view") : Tr(L"Show the live view")).c_str())) g_showMtLive = !g_showMtLive;
             ImGui::Separator();
-            if (ImGui::MenuItem(UI(Tr(L"Hide (Ctrl+Alt+K shows it again)")).c_str())) g_show = false;
+            if (ImGui::MenuItem(UI(Tr(L"Hide (Nexus → Addons → GW2Chatlator shows it again)")).c_str())) g_show = false;
         }
         ImGui::EndPopup();
     }
@@ -1498,6 +1498,13 @@ void RenderWindow() {
     // ---- the preview: what arrives in the GW2 chat, the back-translation small under it
     const bool previewCurrent = g_previewGen == g_inputGen && !g_preview.empty();
     static ULONGLONG s_inputEdited = 0;  // the last change of the text
+    // Without the preview (mini mode, compact view): what your text says once translated back, in one small grey line above
+    // the input – you still see what goes out. Options → Window → Back-translation line.
+    if (!showPreview && Lay().backLine && previewCurrent && !g_back.empty()) {
+        ImGui::PushTextWrapPos(0.0f);
+        ImGui::TextDisabled("%s", UI(g_back).c_str());
+        ImGui::PopTextWrapPos();
+    }
     if (showPreview) {
         // The same light field as the input below: the two belong together.
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));

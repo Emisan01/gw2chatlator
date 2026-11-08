@@ -344,6 +344,7 @@ void LoadLayout() {  // g_mu held
     g_layout.header = get(L"Header", 1) != 0;
     g_layout.infoText = get(L"InfoText", 1) != 0;  // on at the first start: the hints explain the window
     g_layout.minButton = get(L"MinButton", 1) != 0;
+    g_layout.backLine = get(L"BackLine", 1) != 0;
     g_layout.autoMinimize = get(L"AutoMinimize", 0) != 0;
     g_layout.minimizeAfter = std::clamp(get(L"MinimizeAfter", 10), 2, 120);
     g_layout.autoOpen = get(L"AutoOpen", 0) != 0;
@@ -409,6 +410,7 @@ void SaveLayout() {  // g_mu held
     g_cfg.SaveValue(L"NexusWindow", L"Header", g_layout.header ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"InfoText", g_layout.infoText ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"MinButton", g_layout.minButton ? L"1" : L"0");
+    g_cfg.SaveValue(L"NexusWindow", L"BackLine", g_layout.backLine ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"AutoMinimize", g_layout.autoMinimize ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"MinimizeAfter", std::to_wstring(g_layout.minimizeAfter));
     g_cfg.SaveValue(L"NexusWindow", L"AutoOpen", g_layout.autoOpen ? L"1" : L"0");

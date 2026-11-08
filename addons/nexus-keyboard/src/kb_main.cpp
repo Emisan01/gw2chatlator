@@ -96,13 +96,6 @@ UINT OnWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             // Ebene 5: ohne offene Ebene oder bei ausgeblendeter Nexus-UI geht Esc an GW2 durch
             return msg;
         }
-        // Ctrl + Alt + T: the one switch for the chat's translation (Options → Start), at once
-        if (down && (mods & (kModCtrl | kModAlt)) == (kModCtrl | kModAlt) && (vk == 'T' || vk == 't')) {
-            std::lock_guard<std::mutex> lock(g_mu);
-            SetChatTranslation(!g_nx.translateChat);
-            SetStatus(g_nx.translateChat ? Tr(L"Chat translation on (Ctrl+Alt+T)") : Tr(L"Chat translation off (Ctrl+Alt+T)"), 4000);
-            return 0;
-        }
         if (!g_pttVk || vk != g_pttVk) return msg;
         if (down) {
             if (lp & (1 << 30)) return 0;           // held: the key repeats
@@ -124,6 +117,19 @@ void OnToggle(const char*, bool release) {
     if (g_show && g_closedWithX) {
         g_closedWithX = false;
         ChatSourceSetReading(true, false);
+    }
+}
+// The chat's translation on or off, from your own key (it was Ctrl+Alt+T, fixed, until 2.10.2).
+static void ToggleChatTranslationNow() {
+    std::lock_guard<std::mutex> lock(g_mu);
+    SetChatTranslation(!g_nx.translateChat);
+    SetStatus(g_nx.translateChat ? Tr(L"Chat translation on") : Tr(L"Chat translation off"), 4000);
+}
+void OnTranslateKey(const char*, bool release) {
+    if (release) return;
+    __try {
+        ToggleChatTranslationNow();
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
     }
 }
 void OnFocusKey(const char*, bool release) {
@@ -316,7 +322,9 @@ void AddonLoad(AddonAPI_t* api) {
         api->GUI_Register(RT_OptionsRender, SafeOptions);
     }
     if (api->InputBinds_RegisterWithString && IsCodePointer(reinterpret_cast<const void*>(api->InputBinds_RegisterWithString))) {
-        api->InputBinds_RegisterWithString(kToggleBind, OnToggle, "CTRL+ALT+K");
+        // No key is set by us: every one is yours to bind in Nexus → Keybinds (a key of your own stays as you set it).
+        api->InputBinds_RegisterWithString(kToggleBind, OnToggle, "(null)");
+        api->InputBinds_RegisterWithString(kTranslateBind, OnTranslateKey, "(null)");
         api->InputBinds_RegisterWithString(kFocusBind, OnFocusKey, "(null)");
         api->InputBinds_RegisterWithString(kTalkBind, OnTalkKey, "(null)");
     }
@@ -349,6 +357,7 @@ void AddonUnload() {
             g_api->InputBinds_Deregister(kToggleBind);
             g_api->InputBinds_Deregister(kFocusBind);
             g_api->InputBinds_Deregister(kTalkBind);
+            g_api->InputBinds_Deregister(kTranslateBind);
         }
         if (g_api->GUI_Deregister && IsCodePointer(reinterpret_cast<const void*>(g_api->GUI_Deregister))) {
             g_api->GUI_Deregister(SafeRender);

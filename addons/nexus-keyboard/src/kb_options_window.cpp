@@ -181,6 +181,7 @@ void RenderWindowPage(Config& edit) {
         part("footer", Tr(L"Footer"), &g_layout.footer, {});
         part("minbtn", Tr(L"Minimize button"), &g_layout.minButton,
              Tr(L"The small > in the footer (without the footer: left of the input). Hidden: three quick clicks on the window minimise it, or the header, or the right-click menu."));
+        part("backline", Tr(L"Back-translation line"), &g_layout.backLine, Tr(L"Without the preview (mini mode, compact view): what your text says when translated back, in one small line above the input."));
         part("info", Tr(L"Info texts"), &g_layout.infoText,
              Tr(L"The grey status lines: what is going on, the modules, the counter. The grey word of the prediction stays."));
         RowLabel(UI(Tr(L"Lines of the input")));

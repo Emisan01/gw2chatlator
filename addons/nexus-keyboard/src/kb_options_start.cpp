@@ -321,8 +321,8 @@ void RenderStartPage(Config& edit) {
     const bool isLocal = IsLocalEngine(edit.engine);
     const bool localReady = local.module && LocalModelThere(local, edit.engine);
     const std::string title = UI(chatOn ? Tr(L"Chat translation is on") : Tr(L"Chat translation is off"));
-    const std::string sub = UI(chatOn ? TrF(L"Foreign lines appear in {1} · Ctrl+Alt+T switches", {NativeName(ReadingLangNow())})
-                                      : Tr(L"A click on a line translates just that one · Ctrl+Alt+T switches"));
+    const std::string sub = UI(chatOn ? TrF(L"Foreign lines appear in {1}", {NativeName(ReadingLangNow())})
+                                      : Tr(L"A click on a line translates just that one"));
     if (Hero(chatOn, title, sub, UI(Tr(L"Chat module")), chatThere, UI(running.empty() ? Tr(EngineLabel(edit.engine)) : running),
              !isLocal || localReady)) {
         std::lock_guard<std::mutex> lock(g_mu);
@@ -343,24 +343,10 @@ void RenderStartPage(Config& edit) {
     RenderLayoutTiles();
     BeginBox(UI(Tr(L"Window & keys")));
     RenderUiLanguageRow(edit);
-    auto badge = [](const char* key, const std::string& what) {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
-        ImGui::PushStyleColor(ImGuiCol_Text, UiAccent());
-        ImGui::SmallButton(key);
-        ImGui::PopStyleColor(2);
-        ImGui::SameLine(0, ImGui::GetFontSize() * 0.35f);
-        ImGui::AlignTextToFramePadding();
-        ImGui::TextDisabled("%s", what.c_str());
-    };
-    badge("Ctrl+Alt+K", UI(Tr(L"Window")));
-    ImGui::SameLine(0, ImGui::GetFontSize() * 0.9f);
-    badge("Focus", UI(Tr(L"Input")));
-    ImGui::SameLine(0, ImGui::GetFontSize() * 0.9f);
-    badge("Ctrl+Alt+T", UI(Tr(L"Translation")));
-    if (edit.voiceEnabled) {
-        ImGui::SameLine(0, ImGui::GetFontSize() * 0.9f);
-        badge("PTT", UI(Tr(L"Voice")));
-    }
+    // No key is set by us: the actions you can bind, in Nexus → Keybinds → GW2Chatlator.
+    std::wstring binds = Tr(L"Window") + L" · " + Tr(L"Input") + L" · " + Tr(L"Translation");
+    if (edit.voiceEnabled) binds += L" · " + Tr(L"Voice");
+    ImGui::TextDisabled("%s", UI(binds).c_str());
     Hint(UI(Tr(L"Keybinds: Nexus → Keybinds → GW2Chatlator.")));
     EndBox();
 }
