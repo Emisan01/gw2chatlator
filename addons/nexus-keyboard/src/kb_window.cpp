@@ -785,6 +785,7 @@ static void RenderChat(ImGuiIO& io, std::unique_lock<std::mutex>& lock, const Im
                     if (!ImGui::MenuItem(U8(w).c_str())) continue;
                     g_worker.Post([w, id = s_lineMenuId, t = s_lineMenuText, target = ReadLang()] {
                         if (g_spell) g_spell->AddTerm(w);
+                        ForgetRepetitions();
                         TranslateLine(id, t, true, false, target);
                     });
                     SetStatus(TrF(L"Never translated from now on: {1}", {w}), 6000);
@@ -957,7 +958,7 @@ static void RenderTeachPopup(bool& s_menuNext) {
             if (WordSpans(t).size() > kMaxTermWords) {
                 SetStatus(Tr(L"A term has at most 5 words"), 6000);
             } else {
-                g_worker.Post([t] { if (g_spell) g_spell->AddTerm(t); });
+                g_worker.Post([t] { if (g_spell) g_spell->AddTerm(t); ForgetRepetitions(); });
                 ++g_inputGen;  // translated again with it
                 g_inputChanged = GetTickCount64();
                 SetStatus(TrF(L"Never translated from now on: {1}", {t}), 6000);

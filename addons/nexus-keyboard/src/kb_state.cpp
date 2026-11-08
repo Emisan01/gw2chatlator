@@ -595,6 +595,13 @@ bool CardCanRunHelper() {
     return s_cardCapability.load() >= 75;
 }
 
+// A term taught or removed: lines translated before it must not come back from the repetition cache with the old words
+// ("comms" as "Kommunikationen"). Under g_mu, as the chat and the worker use the cache.
+void ForgetRepetitions() {
+    std::lock_guard<std::mutex> lock(g_mu);
+    g_orchestrator.ClearCache();
+}
+
 bool CardModuleComplete() {
     const std::wstring dir = AddonsDir() + L"GW2Keyboard\\";
     for (const wchar_t* f : {L"gw2kb_translate_gpu.exe", L"cublas64_12.dll", L"cublasLt64_12.dll", L"cudart64_12.dll"})

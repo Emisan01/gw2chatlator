@@ -611,6 +611,7 @@ bool SwapsNames();
 bool NamesSwapped();
 const std::wstring& ComposePrefix();
 std::shared_ptr<Translator> MakeTranslator(const Config& c);
+void ForgetRepetitions();  // a term taught or removed: the repetition cache empties (g_mu NOT held)
 bool CardModuleComplete();  // the card's helper with its CUDA libraries beside it
 bool CardCanRunHelper();    // the card is a GTX 16 / RTX 20 or newer (asked once, false until known)
 bool NvidiaDriverPresent();  // an NVIDIA driver on this PC: only then the helper for graphics cards is any use

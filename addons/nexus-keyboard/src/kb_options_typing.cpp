@@ -42,7 +42,7 @@ void RenderWordLists() {
     ImGui::TextUnformatted(UI(TrF(L"Your terms: {1}", {std::to_wstring(mine.size())})).c_str());
     fileButtons("terms", g_spell->TermsFile(), [] { if (g_spell) g_spell->ReloadTerms(); });
     ImGui::PushID("myterms");
-    chips(mine, [](const std::wstring& m) { g_worker.Post([m] { if (g_spell) g_spell->RemoveTerm(m); }); });
+    chips(mine, [](const std::wstring& m) { g_worker.Post([m] { if (g_spell) g_spell->RemoveTerm(m); ForgetRepetitions(); }); });
     static char addBuf[64] = {};
     ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
     const bool enter = ImGui::InputText("##addterm", addBuf, sizeof(addBuf), ImGuiInputTextFlags_EnterReturnsTrue);
@@ -50,7 +50,7 @@ void RenderWordLists() {
     if ((ImGui::SmallButton(UI(Tr(L"Add")).c_str()) || enter) && addBuf[0]) {
         const std::wstring t = Trim(W(addBuf));
         addBuf[0] = 0;
-        g_worker.Post([t] { if (g_spell) g_spell->AddTerm(t); });
+        g_worker.Post([t] { if (g_spell) g_spell->AddTerm(t); ForgetRepetitions(); });
     }
     ImGui::PopID();
     // the learned words: the most used first (40), a search finds any; "x" forgets one
