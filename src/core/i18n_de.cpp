@@ -1027,8 +1027,6 @@ extern const I18nEntry kGermanStrings[] = {
      "Jedes Teil einzeln:"},
     {L"Subtitle mode",
      "Untertitel-Modus"},
-    {L"Only the chat's lines, see-through over the game. The input shows while you write and fades after sending.",
-     "Nur die Zeilen des Chats, durchsichtig über dem Spiel. Die Eingabe erscheint, während du schreibst, und verschwindet nach dem Senden."},
     {L"Chat translation on",
      "Chat-Übersetzung an"},
     {L"Chat translation off",

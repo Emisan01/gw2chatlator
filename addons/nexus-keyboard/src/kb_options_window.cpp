@@ -154,17 +154,17 @@ void RenderWindowPage(Config& edit) {
     BeginBox(UI(Tr(L"Window layout")));
     {
         std::lock_guard<std::mutex> lock(g_mu);
-        // The two profiles first (presets of the parts below; changing a part switches them off).
+        // The profiles first, from everything to little (presets of the parts below; changing a part switches them off).
         bool compact = ProfileOn(0), mini = ProfileOn(1);
         if (Switch("compact", UI(Tr(L"Compact view")), &compact,
                    UI(Tr(L"Header, chat, input and footer – no word bar, no preview. Change a part below and it is your own layout again.")).c_str()))
             SetProfile(0, compact);
         ImGui::SameLine(fs * 14.0f);
+        bool subs = ProfileOn(2);
+        if (Switch("subtitles", UI(Tr(L"Subtitle mode")), &subs, UI(Tr(L"Only the chat's lines, see-through over the game – no info texts. A left click in the text opens the input, as Enter does; it fades after sending. Right-click: the menu.")).c_str())) SetProfile(2, subs);
         if (Switch("mini", UI(Tr(L"Mini mode")), &mini,
                    UI(Tr(L"Nothing but the input with its help. Three quick clicks on it minimise it; right-click in it: Menu … brings the rest back.")).c_str()))
             SetProfile(1, mini);
-        bool subs = ProfileOn(2);
-        if (Switch("subtitles", UI(Tr(L"Subtitle mode")), &subs, UI(Tr(L"Only the chat's lines, see-through over the game – no info texts. A left click in the text opens the input, as Enter does; it fades after sending. Right-click: the menu.")).c_str())) SetProfile(2, subs);
         ImGui::Spacing();
         // From top to bottom, as they stand in the window; each one can go – in two columns.
         bool changed = false;

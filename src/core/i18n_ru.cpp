@@ -1027,8 +1027,6 @@ extern const I18nEntry kRussianStrings[] = {
      "Каждая часть отдельно:"},
     {L"Subtitle mode",
      "Режим субтитров"},
-    {L"Only the chat's lines, see-through over the game. The input shows while you write and fades after sending.",
-     "Только строки чата, прозрачно поверх игры. Поле ввода появляется, пока вы пишете, и исчезает после отправки."},
     {L"Chat translation on",
      "Перевод чата включён"},
     {L"Chat translation off",

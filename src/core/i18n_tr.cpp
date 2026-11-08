@@ -1027,8 +1027,6 @@ extern const I18nEntry kTurkishStrings[] = {
      "Her bölüm ayrı ayrı:"},
     {L"Subtitle mode",
      "Altyazı modu"},
-    {L"Only the chat's lines, see-through over the game. The input shows while you write and fades after sending.",
-     "Yalnızca sohbet satırları, oyunun üzerinde saydam. Giriş alanı sen yazarken görünür, gönderdikten sonra kaybolur."},
     {L"Chat translation on",
      "Sohbet çevirisi açık"},
     {L"Chat translation off",

@@ -257,19 +257,21 @@ bool LayoutTile(const std::string& name, const bool parts[6], bool chosen, float
     return pressed;
 }
 
-// The window's layouts as pictures: all its parts, the compact view, the mini mode, the subtitles – a click takes one. Each part on its
+// The window's layouts as pictures, from everything to little: all its parts, the compact view, the subtitles, the mini
+// mode – a click takes one. Each part on its
 // own is on the Window page (a part changed there: none of these is chosen, it is your own layout).
 void RenderLayoutTiles() {
     static const bool kParts[4][6] = {{true, true, true, true, true, true}, {true, true, false, false, true, true},
-                                      {false, false, false, false, true, false}, {false, true, false, false, false, false}};
+                                      {false, true, false, false, false, false}, {false, false, false, false, true, false}};
+    static const int kProfile[4] = {-1, 0, 2, 1};  // the tile's profile (SetProfile): all parts, compact, subtitles, mini
     int chosen;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         const Layout& l = Lay();
-        chosen = l.header && l.chat && l.preview && l.words && l.footer ? 0 : ProfileOn(0) ? 1 : ProfileOn(1) ? 2 : ProfileOn(2) ? 3 : -1;
+        chosen = l.header && l.chat && l.preview && l.words && l.footer ? 0 : ProfileOn(0) ? 1 : ProfileOn(2) ? 2 : ProfileOn(1) ? 3 : -1;
     }
     BeginBox(UI(Tr(L"Window layout")));
-    const std::string names[4] = {UI(Tr(L"All parts")), UI(Tr(L"Compact view")), UI(Tr(L"Mini mode")), UI(Tr(L"Subtitle mode"))};
+    const std::string names[4] = {UI(Tr(L"All parts")), UI(Tr(L"Compact view")), UI(Tr(L"Subtitle mode")), UI(Tr(L"Mini mode"))};
     const float fs = ImGui::GetFontSize();
     float tileW = fs * 6.0f;
     for (const std::string& n : names) tileW = std::max(tileW, ImGui::CalcTextSize(n.c_str()).x + fs * 1.4f);
@@ -280,7 +282,8 @@ void RenderLayoutTiles() {
         }
         ImGui::PushID(i);
         const bool picked = LayoutTile(names[i], kParts[i], chosen == i, tileW);
-        if (i == 3 && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Only the chat's lines, see-through over the game. The input shows while you write and fades after sending.")).c_str());
+        if (i == 2 && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Only the chat's lines, see-through over the game – no info texts. A left click in the text opens the input, as Enter does; it fades after sending. Right-click: the menu.")).c_str());
+        if (i == 3 && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Nothing but the input with its help. Three quick clicks on it minimise it; right-click in it: Menu … brings the rest back.")).c_str());
         if (picked && chosen != i) {
             std::lock_guard<std::mutex> lock(g_mu);
             if (i == 0) {
@@ -289,7 +292,7 @@ void RenderLayoutTiles() {
                 l.subtitles = false;
                 SaveLayout();
             } else {
-                SetProfile(i - 1, true);
+                SetProfile(kProfile[i], true);
             }
         }
         ImGui::PopID();
