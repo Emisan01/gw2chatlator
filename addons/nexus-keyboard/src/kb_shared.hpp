@@ -792,6 +792,7 @@ struct LocalMtSummary {
 };
 LocalMtSummary LocalMtNow(const std::wstring& dataDir);
 void InstallLocalMtQuickSetup(const std::wstring& dataDir);
+void InstallCardModule(const std::wstring& dataDir);  // the card's helper with NVIDIA's libraries (kb_local_mt.cpp)
 void InstallVoiceQuickSetup();
 // A number for the eye (Options > Technical): smoothed over about the last 20 frames, shown at most 4 times a second.
 struct Steady {

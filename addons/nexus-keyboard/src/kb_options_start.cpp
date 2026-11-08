@@ -199,6 +199,105 @@ void RenderUiLanguageRow(Config& edit) {
 
 // ---- The pages
 
+// The offline translator and, for NVIDIA cards, its module for the card: offered here while missing – one click each, the
+// size said first. Once there, the Translation box above shows them, the card's switch too.
+void RenderOfflineOffer(Config& edit) {
+    const LocalMtSummary local = LocalMtNow(edit.dataDir);
+    const bool nllb = local.module && local.nllb;
+    const bool cardMissing = NvidiaDriverPresent() && !CardModuleComplete();
+    if (nllb && !cardMissing) return;
+    BeginBox(UI(Tr(L"On this PC (offline)")));
+    if (g_localMtBusy) {
+        ImGui::TextDisabled("%s", UI(Tr(L"Installing…")).c_str());
+    } else if (!nllb) {
+        Hint(UI(Tr(L"Local Translation installs the local neural machine translation engine and NLLB-200 multilingual model.")));
+        ImGui::TextColored(ImVec4(0.51f, 0.76f, 0.63f, 1.f), "%s", UI(Tr(L"Download size: about 600 MB · translates offline on this PC")).c_str());
+        if (ImGui::Button(UI(Tr(L"Install NLLB-200 (local)")).c_str())) InstallLocalMtQuickSetup(edit.dataDir);
+        if (cardMissing) Hint(UI(Tr(L"For NVIDIA cards from GTX 16 and RTX 20 upwards: the translator runs on the card and leaves the CPU to the game. Holds NVIDIA's libraries, so it is a large download.")));
+    } else {
+        Hint(UI(Tr(L"For NVIDIA cards from GTX 16 and RTX 20 upwards: the translator runs on the card and leaves the CPU to the game. Holds NVIDIA's libraries, so it is a large download.")));
+        if (ImGui::Button(UI(Tr(L"Download graphics card module")).c_str())) {
+            edit.useGpu = true;  // on once the module is there; until then, or without it, the CPU's helper runs as before
+            InstallCardModule(edit.dataDir);
+        }
+    }
+    EndBox();
+}
+
+// A small picture of the window, from the top: header, chat, preview, word bar, input, footer. What a layout shows is
+// filled, the rest only outlined – the window's parts are seen at once.
+void LayoutPicture(ImDrawList* dl, ImVec2 p, float w, float h, const bool parts[6], ImU32 on, ImU32 off) {
+    static const float kRows[6] = {1.2f, 4.6f, 1.2f, 1.0f, 1.4f, 1.0f};
+    const float u = h / 12.0f;
+    float y = p.y;
+    for (int i = 0; i < 6; ++i) {
+        const ImVec2 a(p.x, y), b(p.x + w, y + kRows[i] * u);
+        if (parts[i]) dl->AddRectFilled(a, b, on, u * 0.3f);
+        else dl->AddRect(a, b, off, u * 0.3f);
+        y += kRows[i] * u + u * 0.3f;
+    }
+}
+
+bool LayoutTile(const std::string& name, const bool parts[6], bool chosen, float tileW) {
+    const float fs = ImGui::GetFontSize();
+    const ImVec2 size(tileW, fs * 6.4f), p = ImGui::GetCursorScreenPos();
+    const bool pressed = ImGui::InvisibleButton("##tile", size);
+    const bool hovered = ImGui::IsItemHovered();
+    if (hovered) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    const ImU32 accent = ImGui::GetColorU32(UiAccent());
+    dl->AddRectFilled(p, ImVec2(p.x + size.x, p.y + size.y), IM_COL32(255, 255, 255, hovered ? 16 : 8), 4.0f);
+    dl->AddRect(p, ImVec2(p.x + size.x, p.y + size.y), chosen ? accent : ImGui::GetColorU32(ImGuiCol_Separator), 4.0f, 0, chosen ? 2.0f : 1.0f);
+    const float pad = fs * 0.7f;
+    LayoutPicture(dl, ImVec2(p.x + pad * 1.6f, p.y + pad), size.x - pad * 3.2f, size.y - pad - fs * 1.7f, parts,
+                  chosen ? accent : ImGui::GetColorU32(ImGuiCol_TextDisabled), ImGui::GetColorU32(ImGuiCol_Separator));
+    const float nameW = ImGui::CalcTextSize(name.c_str()).x;
+    dl->AddText(ImVec2(p.x + (size.x - nameW) * 0.5f, p.y + size.y - fs * 1.35f), ImGui::GetColorU32(chosen ? ImGuiCol_Text : ImGuiCol_TextDisabled),
+                name.c_str());
+    return pressed;
+}
+
+// The window's layouts as pictures: all its parts, the compact view, the mini mode – a click takes one. Each part on its
+// own is on the Window page (a part changed there: none of these is chosen, it is your own layout).
+void RenderLayoutTiles() {
+    static const bool kParts[3][6] = {{true, true, true, true, true, true}, {true, true, false, false, true, true},
+                                      {false, false, false, false, true, false}};
+    int chosen;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        const Layout& l = Lay();
+        chosen = l.header && l.chat && l.preview && l.words && l.footer ? 0 : ProfileOn(0) ? 1 : ProfileOn(1) ? 2 : -1;
+    }
+    BeginBox(UI(Tr(L"Window layout")));
+    const std::string names[3] = {UI(Tr(L"All parts")), UI(Tr(L"Compact view")), UI(Tr(L"Mini mode"))};
+    const float fs = ImGui::GetFontSize();
+    float tileW = fs * 6.0f;
+    for (const std::string& n : names) tileW = std::max(tileW, ImGui::CalcTextSize(n.c_str()).x + fs * 1.4f);
+    for (int i = 0; i < 3; ++i) {
+        if (i && ImGui::GetContentRegionAvail().x > 0.0f) {
+            ImGui::SameLine();
+            if (ImGui::GetContentRegionAvail().x < tileW) ImGui::NewLine();  // a narrow window: the next tile below
+        }
+        ImGui::PushID(i);
+        if (LayoutTile(names[i], kParts[i], chosen == i, tileW) && chosen != i) {
+            std::lock_guard<std::mutex> lock(g_mu);
+            if (i == 0) {
+                Layout& l = Lay();
+                l.header = l.chat = l.preview = l.words = l.footer = l.minButton = true;
+                SaveLayout();
+            } else {
+                SetProfile(i - 1, true);
+            }
+        }
+        ImGui::PopID();
+    }
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextDisabled("%s", UI(Tr(L"Each part on its own:")).c_str());
+    ImGui::SameLine();
+    if (ImGui::SmallButton((UI(Tr(L"Window")) + " \xE2\x86\x92").c_str())) SwitchOptionsTab(kPageWindow);
+    EndBox();
+}
+
 void RenderStartPage(Config& edit) {
     bool chatOn;
     std::wstring running;
@@ -237,7 +336,9 @@ void RenderStartPage(Config& edit) {
     RowHint(UI(Tr(L"For typing and speaking – the same choice as \"Send\" in the chat window.")));
     RenderTranslatorRows(edit, false);
     EndBox();
+    RenderOfflineOffer(edit);
     RenderVoiceStart(edit);
+    RenderLayoutTiles();
     BeginBox(UI(Tr(L"Window & keys")));
     RenderUiLanguageRow(edit);
     auto badge = [](const char* key, const std::string& what) {

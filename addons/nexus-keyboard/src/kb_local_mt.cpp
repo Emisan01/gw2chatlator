@@ -214,10 +214,18 @@ void StartLocalMtJob(LocalMtJob job, std::wstring dataDir, std::string pair = {}
         }
         std::lock_guard<std::mutex> lock(g_mu);
         SetStatus(status, 10000);
+        // The card's module is there and the card is chosen: the card takes over now, not only at the next start.
+        if (job == LocalMtJob::InstallGpu && result.code == ExtrasInstallCode::Ok && g_cfg.useGpu &&
+            (g_cfg.engine == Engine::Nllb || g_cfg.engine == Engine::M2m || g_cfg.engine == Engine::Local)) {
+            g_translator = MakeTranslator(g_cfg);
+            WarmUpTranslator(g_translator);
+        }
     });
 }
 
 }  // namespace
+
+void InstallCardModule(const std::wstring& dataDir) { StartLocalMtJob(LocalMtJob::InstallGpu, dataDir); }
 
 LocalMtSummary LocalMtNow(const std::wstring& dataDir) {
     RefreshLocalMtState(dataDir);
