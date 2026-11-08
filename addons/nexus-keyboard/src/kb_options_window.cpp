@@ -169,7 +169,9 @@ void RenderWindowPage(Config& edit) {
         // From top to bottom, as they stand in the window; each one can go – in two columns.
         bool changed = false;
         int col = 0;
-        auto part = [&](const char* id, const std::wstring& label, bool* v, const std::wstring& tip) {
+        // `part`: one of the window's parts – changed by hand, the layout is your own, no longer the subtitle mode. The last
+        // two switches are no parts but how the parts show (the back-translation line, the info texts): they keep it.
+        auto part = [&](const char* id, const std::wstring& label, bool* v, const std::wstring& tip, bool isPart = true) {
             const bool right = col++ % 2;
             if (right) ImGui::SameLine(fs * 14.0f);
             const std::string t = UI(tip);
@@ -177,7 +179,7 @@ void RenderWindowPage(Config& edit) {
             const float maxW = right ? 0.0f : fs * 14.0f - ImGui::GetCursorPosX() - ImGui::GetStyle().ItemSpacing.x;
             if (Switch(id, UI(label), v, tip.empty() ? nullptr : t.c_str(), true, maxW)) {
                 changed = true;
-                g_layout.subtitles = false;  // a part by hand: your own layout, no longer the subtitle mode
+                if (isPart) g_layout.subtitles = false;
             }
         };
         part("header", Tr(L"Header"), &g_layout.header, Tr(L"Hidden: a right-click on the window opens the menu (tabs, minimise, options)."));
@@ -187,9 +189,9 @@ void RenderWindowPage(Config& edit) {
         part("footer", Tr(L"Footer"), &g_layout.footer, {});
         part("minbtn", Tr(L"Minimize button"), &g_layout.minButton,
              Tr(L"The small > in the footer (without the footer: left of the input). Hidden: three quick clicks on the window minimise it, or the header, or the right-click menu."));
-        part("backline", Tr(L"Back-translation line"), &g_layout.backLine, Tr(L"Without the preview (mini mode, compact view): what your text says when translated back, in one small line above the input."));
+        part("backline", Tr(L"Back-translation line"), &g_layout.backLine, Tr(L"Without the preview (mini mode, compact view): what your text says when translated back, in one small line above the input."), false);
         part("info", Tr(L"Info texts"), &g_layout.infoText,
-             Tr(L"The grey status lines: what is going on, the modules, the counter. The grey word of the prediction stays."));
+             Tr(L"The grey status lines: what is going on, the modules, the counter. The grey word of the prediction stays."), false);
         RowLabel(UI(Tr(L"Lines of the input")));
         changed |= RowSlider("##inl", &g_layout.inputLines, 1, 8, "%d");
         if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Longer text makes the input grow (up to 8 lines) until it is sent.")).c_str());
