@@ -478,7 +478,9 @@ void InstallVoiceQuickSetup() {
         g_cfg.voiceEnabled = true;
         g_cfg.SaveBool(L"Voice", L"Enabled", true);
     }
-    InstallVoiceModuleNow();
+    // The module only when it is missing: its install always downloads and replaces the files – a running voice helper's
+    // among them – so with the module there, only the model comes.
+    if (!gct::VoiceModulePresent(KeyboardDir())) InstallVoiceModuleNow();
     Config c;
     {
         std::lock_guard<std::mutex> lock(g_mu);

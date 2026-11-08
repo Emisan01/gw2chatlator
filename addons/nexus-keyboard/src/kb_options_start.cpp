@@ -136,10 +136,13 @@ bool RenderVoiceModule(bool guide) {
 // on their tabs. `edit`: the Options page's copy of the settings (null in the chat), which must say what the switch now
 // says, else applying the page would take it back. Render thread, g_mu NOT held. Returns whether a row was shown.
 static bool RenderMissing(Config* edit) {
-    Config c;
+    std::wstring dataDir, voiceModel;  // only what the rows need – this runs every frame the list is in view
+    bool voiceEnabled;
     {
         std::lock_guard<std::mutex> lock(g_mu);
-        c = g_cfg;
+        dataDir = g_cfg.dataDir;
+        voiceModel = g_cfg.voiceModel;
+        voiceEnabled = g_cfg.voiceEnabled;
     }
     ImGui::PushID("missing");
     bool any = false;
@@ -163,7 +166,7 @@ static bool RenderMissing(Config* edit) {
         }
     }
     // The offline translator (NLLB-200), then – once it is there – its module for NVIDIA cards
-    const LocalMtSummary local = LocalMtNow(c.dataDir);
+    const LocalMtSummary local = LocalMtNow(dataDir);
     if (g_localMtBusy) {
         any = true;
         const int pct = g_localMtPct;
@@ -173,13 +176,13 @@ static bool RenderMissing(Config* edit) {
         any = true;
         StatusRow(UI(Tr(L"Offline translator")), 0, UI(Tr(L"optional – nothing leaves your PC (about 600 MB)")));
         ImGui::SameLine();
-        if (ImGui::SmallButton(UI(Tr(L"Install") + L"##nllb").c_str())) InstallLocalMtQuickSetup(c.dataDir);
+        if (ImGui::SmallButton(UI(Tr(L"Install") + L"##nllb").c_str())) InstallLocalMtQuickSetup(dataDir);
     } else if (NvidiaDriverPresent() && CardCanRunHelper() && !CardModuleComplete()) {
         any = true;
         StatusRow(UI(Tr(L"Graphics card")), 0, UI(Tr(L"optional – the translator on your NVIDIA card, the CPU stays with the game")));
         ImGui::SameLine();
         // the card goes on once its module is there – not now: that would restart the CPU's helper for nothing
-        if (ImGui::SmallButton(UI(Tr(L"Switch on") + L"##card").c_str())) InstallCardModule(c.dataDir, true);
+        if (ImGui::SmallButton(UI(Tr(L"Switch on") + L"##card").c_str())) InstallCardModule(dataDir, true);
     }
     // Voice input: not there – one click loads the voice module and its model. Switched off by you with both there: no row.
     const ModuleState& m = Modules();
@@ -187,21 +190,21 @@ static bool RenderMissing(Config* edit) {
         any = true;
         const int pct = g_downloadPct >= 0 ? g_downloadPct.load() : g_voiceModulePct.load();
         StatusRow(UI(Tr(L"Voice input")), 1, UI(TrF(L"loading … {1} %", {std::to_wstring(std::max(pct, 0))})));
-    } else if (!m.voiceModule || (c.voiceEnabled && !m.model)) {
+    } else if (!m.voiceModule || (voiceEnabled && !m.model)) {
         any = true;
         static int s_mb = 0;  // the module (about 7 MB) and the chosen or recommended model, looked up every 10 s at most
         static ULONGLONG s_mbNext = 0;
         if (GetTickCount64() >= s_mbNext) {
             s_mbNext = GetTickCount64() + 10000;
-            const VoiceCatalog catalog = LoadVoiceCatalog(c.dataDir);
-            const VoiceModelInfo* vm = catalog.Find(U8(c.voiceModel));
+            const VoiceCatalog catalog = LoadVoiceCatalog(dataDir);
+            const VoiceModelInfo* vm = catalog.Find(U8(voiceModel));
             if (!vm) vm = catalog.Recommended();
             s_mb = vm ? static_cast<int>(vm->bytes / (1024 * 1024)) + 7 : 0;
         }
         StatusRow(UI(Tr(L"Voice input")), 0,
-                  UI(c.voiceEnabled ? Tr(L"missing") : TrF(L"off, optional (about {1} MB)", {std::to_wstring(s_mb)})));
+                  UI(voiceEnabled ? Tr(L"missing") : TrF(L"off, optional (about {1} MB)", {std::to_wstring(s_mb)})));
         ImGui::SameLine();
-        if (ImGui::SmallButton(UI((c.voiceEnabled ? Tr(L"Install") : Tr(L"Switch on")) + L"##voice").c_str())) {
+        if (ImGui::SmallButton(UI((voiceEnabled ? Tr(L"Install") : Tr(L"Switch on")) + L"##voice").c_str())) {
             InstallVoiceQuickSetup();
             if (edit) edit->voiceEnabled = true;
         }
