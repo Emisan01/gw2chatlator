@@ -295,7 +295,7 @@ static void RenderRenameTabPopup(std::string& s_chatTabLabel, bool& s_chatMenuFu
         static char nameBuf[64] = {};
         if (ImGui::IsWindowAppearing()) {
             const std::wstring cur = !g_cfg.chatTabName.empty() ? g_cfg.chatTabName : Tr(L"Chat");
-            strncpy_s(nameBuf, U8(cur).c_str(), _TRUNCATE);
+            CopyUtf8(nameBuf, U8(cur));
         }
         // Reading: apart from the language you write in and the one you send in (the "v"'s menu only).
         if (s_chatMenuFull) {
@@ -358,7 +358,7 @@ static void RenderTabSettingsPopup() {
         } else {
             WhisperTab& t = g_tabs[i];
             static char name[64] = {};
-            if (ImGui::IsWindowAppearing()) strncpy_s(name, U8(t.name).c_str(), _TRUNCATE);
+            if (ImGui::IsWindowAppearing()) CopyUtf8(name, U8(t.name));
             bool changed = false;
             ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
             if (ImGui::InputText(UI(Tr(L"Name") + L"##tabname").c_str(), name, sizeof(name)) && !Trim(W(name)).empty()) {
@@ -882,9 +882,9 @@ static void RenderTeachPopup(bool& s_menuNext) {
             const std::wstring last = !g_teachWord.empty() ? g_teachWord  // the word you right-clicked
                                       : spans.empty() ? std::wstring() : text.substr(spans.back().start, spans.back().length);
             typed[0] = 0;
-            strncpy_s(fixed, U8(last).c_str(), _TRUNCATE);
-            strncpy_s(word, U8(last).c_str(), _TRUNCATE);
-            strncpy_s(meaning, U8(g_myWords.MeaningOf(last)).c_str(), _TRUNCATE);
+            CopyUtf8(fixed, U8(last));
+            CopyUtf8(word, U8(last));
+            CopyUtf8(meaning, U8(g_myWords.MeaningOf(last)));
         }
         auto teachFix = [](const std::wstring& t, const std::wstring& f) {
             g_worker.Post([t, f] {

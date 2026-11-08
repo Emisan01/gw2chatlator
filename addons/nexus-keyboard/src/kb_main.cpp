@@ -159,7 +159,7 @@ std::atomic<bool> g_faultAlerted{false};
 void PrepareFaultAlert() {
     const std::string text = UI(Tr(L"GW2Chatlator switched itself off after an error – the game goes on. Details are in "
                                    L"nexus.log; restart GW2 to use it again."));
-    strncpy_s(g_faultAlert, text.c_str(), _TRUNCATE);
+    CopyUtf8(g_faultAlert, text);
 }
 void AlertFaultOnce() {  // SEH only, no C++ objects
     __try {
@@ -527,7 +527,7 @@ extern "C" __declspec(dllexport) int Gw2KbTestVoiceRoute(int spoken, int voiceTr
     g_sendIdx = 0;  // output language in the chat window (e.g. EN-GB or DE)
     g_dictLang = PrimaryLang(SendLang()) == L"EN" ? L"DE" : L"EN";  // spoken in a different language -> translates
     const int translated = Translating() ? 1 : 0;
-    if (lang) strncpy_s(lang, 16, U8(SendLang()).c_str(), _TRUNCATE);
+    if (lang) CopyUtf8(lang, 16, U8(SendLang()));
     g_inputSpoken = wasSpoken;
     g_cfg.voiceEnabled = wasOn;
     g_cfg.voiceTranslate = wasTr;
@@ -590,7 +590,7 @@ extern "C" __declspec(dllexport) int Gw2KbTestChatSource(int cmd, ChatSourceTest
         case 2: ChatSourceResume(); break;
         case 4: ChatSourceSetReading(false, false); break;
         case 5: ChatSourceSetReading(true, false); break;
-        case 6: if (text) strncpy_s(text, 4096, ChatSourceProtocolText().c_str(), _TRUNCATE); break;
+        case 6: if (text) CopyUtf8(text, 4096, ChatSourceProtocolText()); break;
         case 7: {  // the chat tab in front, the window open (lines drawn: chat codes resolved)
             std::lock_guard<std::mutex> lock(g_mu);
             g_selectTab = -1;

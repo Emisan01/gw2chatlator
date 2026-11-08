@@ -527,7 +527,7 @@ void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
                 g_sendInFlight = false;
                 if (g_input[0] == 0) {
                     const std::string again = U8(text);
-                    strncpy_s(g_input, again.c_str(), _TRUNCATE);
+                    CopyUtf8(g_input, again);
                 } else {
                     g_history.push_front(text);  // the input holds other text by now: Up brings it back
                 }
@@ -780,7 +780,7 @@ bool SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
     if (g_test.noSend) {  // the self-test: what would go into the chat
         std::lock_guard<std::mutex> lock(g_mu);
         g_test.sentParts += static_cast<int>(parts.size());
-        strncpy_s(g_test.lastSent, ToUtf8(parts.front()).c_str(), _TRUNCATE);
+        CopyUtf8(g_test.lastSent, ToUtf8(parts.front()));
         g_sending = false;  // as after a real send
         g_sendInFlight = false;
         g_history.push_front(typed);
@@ -877,7 +877,7 @@ bool SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
         SetStatus(error, 10000);
         if (g_input[0] == 0) {  // nothing lost: the text comes back
             const std::string back = U8(typed);
-            strncpy_s(g_input, back.c_str(), _TRUNCATE);
+            CopyUtf8(g_input, back);
         }
     }
     return ok;

@@ -53,7 +53,7 @@ std::wstring& KeyOf(Config& c, Engine e) {
 // A text field in a row: shows the setting while you are not in it, takes what you wrote when you leave it.
 void RowText(const char* id, char* buf, size_t size, std::wstring& target, ImGuiInputTextFlags flags = 0,
              const char* hint = nullptr) {
-    if (ImGui::GetActiveID() != ImGui::GetID(id)) strncpy_s(buf, size, U8(target).c_str(), _TRUNCATE);
+    if (ImGui::GetActiveID() != ImGui::GetID(id)) CopyUtf8(buf, size, U8(target));
     ImGui::SetNextItemWidth(ControlW());
     if (hint) ImGui::InputTextWithHint(id, hint, buf, size, flags);
     else ImGui::InputText(id, buf, size, flags);

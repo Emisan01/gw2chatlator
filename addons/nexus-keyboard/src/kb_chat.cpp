@@ -151,7 +151,7 @@ void ShowDraftOf(uint32_t uid) {
     const std::string shown = Flat(g_input);
     const auto it = s_drafts.find(uid);
     const std::string next = it == s_drafts.end() ? std::string() : it->second;
-    strncpy_s(g_input, next.c_str(), _TRUNCATE);
+    CopyUtf8(g_input, next);
     s_draftOwner = uid;
     if (g_inputActive) {  // the box keeps its own copy while it has the keyboard: replaced through its callback
         g_edit.active = true;
@@ -208,7 +208,7 @@ void OpenWhisperTab(const std::wstring& name) {
         }
     }
     g_sendOverride = g_tabs[at].sendLang;
-    strncpy_s(g_test.sendLang, U8(g_sendOverride).c_str(), _TRUNCATE);
+    CopyUtf8(g_test.sendLang, U8(g_sendOverride));
     ShowDraftOf(g_tabs[at].uid);
     g_activeTab = g_selectTab = at;
     g_channel = Channel::Whisper;

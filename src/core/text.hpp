@@ -23,6 +23,13 @@ using WordSet = std::unordered_set<std::wstring>;
 // ---- UTF conversion (works with 16-bit and 32-bit wchar_t) ----------------
 std::string ToUtf8(const std::wstring& w);
 std::wstring FromUtf8(const std::string& s);
+// UTF-8 into a fixed buffer (always ended by 0). What does not fit is left out whole: never half a character, which
+// ImGui would show as a box and which a word saved from the field would keep.
+void CopyUtf8(char* dst, size_t size, const std::string& s);
+template <size_t N>
+void CopyUtf8(char (&dst)[N], const std::string& s) {
+    CopyUtf8(dst, N, s);
+}
 
 // Number of Unicode code points — what the GW2 chat box counts.
 size_t CodePointCount(const std::wstring& w);

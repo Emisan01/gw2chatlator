@@ -226,7 +226,7 @@ void AddSelfFix(const std::wstring& was, const std::wstring& now) {  // g_mu hel
     g_selfFixes.insert(g_selfFixes.begin(), {was, now});
     if (g_selfFixes.size() > 8) g_selfFixes.resize(8);
     g_test.selfFixes = static_cast<int>(g_selfFixes.size());
-    strncpy_s(g_test.lastFix, U8(was + L">" + now).c_str(), _TRUNCATE);
+    CopyUtf8(g_test.lastFix, U8(was + L">" + now));
 }
 
 void NoteSelfFix(const std::wstring& text) {  // g_mu held; the text changed

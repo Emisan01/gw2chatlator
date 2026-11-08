@@ -73,6 +73,19 @@ static void TestUtf() {
     CHECK(CodePointCount(L"\u4f60\u597d") == 2);
     const std::wstring bad = FromUtf8(std::string("a\xFF" "b\xE2\x82", 5));
     CHECK(bad.size() >= 3 && bad[0] == L'a' && bad[1] == 0xFFFD);
+    char two[2], three[3], four[4];
+    CopyUtf8(two, "\xC3\xA4");  // "ä" needs 2 bytes and the 0: nothing, not half of it
+    CHECK(std::string(two).empty());
+    CopyUtf8(three, "a\xC3\xA4");
+    CHECK(std::string(three) == "a");
+    CopyUtf8(three, "\xC3\xA4x");
+    CHECK(std::string(three) == "\xC3\xA4");
+    CopyUtf8(four, "\xF0\x9F\x98\x80");  // an emoji of 4 bytes
+    CHECK(std::string(four).empty());
+    CopyUtf8(four, "abc");
+    CHECK(std::string(four) == "abc");
+    CopyUtf8(four, "abcd");
+    CHECK(std::string(four) == "abc");
 }
 
 static void TestText() {

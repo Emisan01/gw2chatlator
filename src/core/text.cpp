@@ -46,6 +46,15 @@ void AppendWide(std::wstring& out, uint32_t cp) {
 
 }  // namespace
 
+void CopyUtf8(char* dst, size_t size, const std::string& s) {
+    if (!dst || size == 0) return;
+    size_t len = std::min(s.size(), size - 1);
+    if (len < s.size())  // cut: step back while the first byte left out continues a character
+        while (len > 0 && (static_cast<unsigned char>(s[len]) & 0xC0) == 0x80) --len;
+    std::copy(s.data(), s.data() + len, dst);
+    dst[len] = 0;
+}
+
 std::string ToUtf8(const std::wstring& w) {
     std::string out;
     out.reserve(w.size() * 2);
