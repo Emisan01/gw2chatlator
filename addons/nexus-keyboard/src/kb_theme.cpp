@@ -275,7 +275,7 @@ void LookText(const char* text, ImVec4 color, bool wrap) {
     // A renderer that cannot split a draw list past 65536 vertices (16-bit indices) gets no halo near that limit.
     const bool room = (ImGui::GetIO().BackendFlags & ImGuiBackendFlags_RendererHasVtxOffset) ||
                       dl->_VtxCurrentIdx + std::strlen(text) * 4 * 9 < 60000;
-    if (g_look.glow && room) {
+    if ((g_look.glow || ProfileOn(2)) && room) {  // on glass (subtitle mode) always: the text needs its outline there
         const float d = std::max(1.0f, std::round(fs / 15.0f));
         const ImU32 halo = IM_COL32(0, 0, 0, 220);
         const ImVec2 offsets[] = {ImVec2(-d, -d), ImVec2(d, -d), ImVec2(-d, d), ImVec2(d, d),

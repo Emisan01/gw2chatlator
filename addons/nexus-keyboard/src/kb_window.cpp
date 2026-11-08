@@ -504,7 +504,8 @@ static void RenderChat(ImGuiIO& io, std::unique_lock<std::mutex>& lock, const Im
             }
             if (ImGui::IsItemActive() && scrollMax > 0)
                 setScroll = std::clamp((io.MousePos.y - dragOffset - track.y) / std::max(1.0f, h - grabH), 0.0f, 1.0f) * scrollMax;
-            if (scrollMax > 0) {
+            // On glass (subtitle mode) the bar shows only while the pointer is over the window, as GW2's own chat does.
+            if (scrollMax > 0 && (!ProfileOn(2) || ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows))) {
                 ImDrawList* dl = ImGui::GetWindowDrawList();
                 dl->AddRectFilled(track, ImVec2(track.x + sb, track.y + h), ImGui::GetColorU32(ImGuiCol_ScrollbarBg), sb * 0.5f);
                 const ImGuiCol gc = ImGui::IsItemActive() ? ImGuiCol_ScrollbarGrabActive
@@ -1637,10 +1638,9 @@ void RenderWindow() {
         io.KeysDown[escKey] = false;
         io.KeysDownDuration[escKey] = -1.0f;
     }
-    // Subtitle mode: the input is there – focus, keys and a click on it work as always – but unseen while nobody writes,
-    // nothing is sent and no message stands in it.
-    const bool unseen = ProfileOn(2) && !g_inputActive && !g_focusInput && !g_input[0] && !g_sending && !g_sendPending && !g_recording &&
-                        g_status.empty();
+    // Subtitle mode: the input is there – focus, keys and a click on it work as always – but unseen while nobody writes and
+    // nothing is sent. A message stays readable: it is drawn over the box (##boxtext), as text on the glass, no frame.
+    const bool unseen = ProfileOn(2) && !g_inputActive && !g_focusInput && !g_input[0] && !g_sending && !g_sendPending && !g_recording;
     if (unseen) ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.0f);
     ImGui::PushStyleColor(ImGuiCol_Text, Bright(ImGui::GetStyleColorVec4(ImGuiCol_Text)));  // your brightness here too
     const bool enter = ImGui::InputTextMultiline("##input", g_input, sizeof(g_input), boxSize, flags, InputCallback);
