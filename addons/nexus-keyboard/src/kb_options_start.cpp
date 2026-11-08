@@ -57,7 +57,7 @@ void RenderChatModule() {
         if (ImGui::SmallButton(UI(Tr(L"Install Events: Chat")).c_str())) InstallChatEventsNow();
     } else if (!chatLive && g_chatEventsFile && !g_chatEventsInstalling && !g_chatInstalledAt) {
         ImGui::SameLine();
-        if (ImGui::SmallButton(UI(Tr(L"Open Nexus' Addons")).c_str())) OpenNexusAddons();
+        if (ImGui::SmallButton(UI(Tr(L"Load in Nexus")).c_str())) OpenNexusAddons();
         if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Nexus' own Addons window – there: Events: Chat → Load. Not in its list yet? After the next game start it is.")).c_str());
     }  // no remove button: Events: Chat is removed in Nexus only (a file deleted behind Nexus' back stays in its list)
     ImGui::PopID();
@@ -131,12 +131,90 @@ bool RenderVoiceModule(bool guide) {
     return enabled;
 }
 
-// The empty chat: what is ready, what is missing, where translation is switched on (g_mu NOT held).
-void RenderModules(bool guide) {
-    RenderChatModule();
-    RenderVoiceModule(guide);
+// What is still missing: one row per piece, one button for its next step, the same words on Start and in the empty
+// chat (Emi, 2026-11-08). Missing / loading … / ready – and a ready piece has no row; sizes, versions and removing stay
+// on their tabs. `edit`: the Options page's copy of the settings (null in the chat), which must say what the switch now
+// says, else applying the page would take it back. Render thread, g_mu NOT held. Returns whether a row was shown.
+static bool RenderMissing(Config* edit) {
+    Config c;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        c = g_cfg;
+    }
+    ImGui::PushID("missing");
+    bool any = false;
+    // Events: Chat – without it nothing of the chat is read. Nexus loads an add-on new to it only after the user's Load.
+    if (!(g_chatEventsLive || g_chatEventsPresent)) {
+        any = true;
+        const std::string name = UI(Tr(L"Chat module"));
+        if (g_chatEventsInstalling) {
+            StatusRow(name, 1, UI(Tr(L"loading …")));
+        } else if (g_chatEventsFile && g_chatInstalledAt) {
+            StatusRow(name, 1, UI(Tr(L"installed – Nexus is taking it in …")));
+        } else if (g_chatEventsFile) {
+            StatusRow(name, 1, UI(Tr(L"not loaded – Nexus waits for your OK")));
+            ImGui::SameLine();
+            if (ImGui::SmallButton(UI(Tr(L"Load in Nexus") + L"##chat").c_str())) OpenNexusAddons();
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Nexus' own Addons window – there: Events: Chat → Load. Not in its list yet? After the next game start it is.")).c_str());
+        } else {
+            StatusRow(name, 0, UI(Tr(L"missing – without it no chat is read")));
+            ImGui::SameLine();
+            if (ImGui::SmallButton(UI(Tr(L"Install") + L"##chat").c_str())) InstallChatEventsNow();
+        }
+    }
+    // The offline translator (NLLB-200), then – once it is there – its module for NVIDIA cards
+    const LocalMtSummary local = LocalMtNow(c.dataDir);
+    if (g_localMtBusy) {
+        any = true;
+        const int pct = g_localMtPct;
+        StatusRow(UI(Tr(L"Offline translator")), 1,
+                  UI(pct >= 0 ? TrF(L"loading … {1} %", {std::to_wstring(pct)}) : Tr(L"loading …")));
+    } else if (!(local.module && local.nllb)) {
+        any = true;
+        StatusRow(UI(Tr(L"Offline translator")), 0, UI(Tr(L"optional – nothing leaves your PC (about 600 MB)")));
+        ImGui::SameLine();
+        if (ImGui::SmallButton(UI(Tr(L"Install") + L"##nllb").c_str())) InstallLocalMtQuickSetup(c.dataDir);
+    } else if (NvidiaDriverPresent() && CardCanRunHelper() && !CardModuleComplete()) {
+        any = true;
+        StatusRow(UI(Tr(L"Graphics card")), 0, UI(Tr(L"optional – the translator on your NVIDIA card, the CPU stays with the game")));
+        ImGui::SameLine();
+        // the card goes on once its module is there – not now: that would restart the CPU's helper for nothing
+        if (ImGui::SmallButton(UI(Tr(L"Switch on") + L"##card").c_str())) InstallCardModule(c.dataDir, true);
+    }
+    // Voice input: not there – one click loads the voice module and its model. Switched off by you with both there: no row.
+    const ModuleState& m = Modules();
+    if (g_voiceModuleInstalling || g_downloadPct >= 0) {
+        any = true;
+        const int pct = g_downloadPct >= 0 ? g_downloadPct.load() : g_voiceModulePct.load();
+        StatusRow(UI(Tr(L"Voice input")), 1, UI(TrF(L"loading … {1} %", {std::to_wstring(std::max(pct, 0))})));
+    } else if (!m.voiceModule || (c.voiceEnabled && !m.model)) {
+        any = true;
+        static int s_mb = 0;  // the module (about 7 MB) and the chosen or recommended model, looked up every 10 s at most
+        static ULONGLONG s_mbNext = 0;
+        if (GetTickCount64() >= s_mbNext) {
+            s_mbNext = GetTickCount64() + 10000;
+            const VoiceCatalog catalog = LoadVoiceCatalog(c.dataDir);
+            const VoiceModelInfo* vm = catalog.Find(U8(c.voiceModel));
+            if (!vm) vm = catalog.Recommended();
+            s_mb = vm ? static_cast<int>(vm->bytes / (1024 * 1024)) + 7 : 0;
+        }
+        StatusRow(UI(Tr(L"Voice input")), 0,
+                  UI(c.voiceEnabled ? Tr(L"missing") : TrF(L"off, optional (about {1} MB)", {std::to_wstring(s_mb)})));
+        ImGui::SameLine();
+        if (ImGui::SmallButton(UI((c.voiceEnabled ? Tr(L"Install") : Tr(L"Switch on")) + L"##voice").c_str())) {
+            InstallVoiceQuickSetup();
+            if (edit) edit->voiceEnabled = true;
+        }
+    }
+    ImGui::PopID();
+    return any;
+}
+
+// The empty chat: what is still missing, and where translation is switched on (g_mu NOT held).
+void RenderModules() {
+    RenderMissing(nullptr);
     ImGui::PushID("modules");
-    if (guide) {
+    {
         ImGui::Spacing();
         bool chat;
         {
@@ -200,29 +278,6 @@ void RenderUiLanguageRow(Config& edit) {
 }
 
 // ---- The pages
-
-// The offline translator and, for NVIDIA cards, its module for the card: offered here while missing – one click each, the
-// size said first. Once there, the Translation box above shows them, the card's switch too.
-void RenderOfflineOffer(Config& edit) {
-    const LocalMtSummary local = LocalMtNow(edit.dataDir);
-    const bool nllb = local.module && local.nllb;
-    const bool cardMissing = NvidiaDriverPresent() && CardCanRunHelper() && !CardModuleComplete();
-    if (nllb && !cardMissing) return;
-    BeginBox(UI(Tr(L"On this PC (offline)")));
-    if (g_localMtBusy) {
-        ImGui::TextDisabled("%s", UI(Tr(L"Installing…")).c_str());
-    } else if (!nllb) {
-        Hint(UI(Tr(L"Local Translation installs the local neural machine translation engine and NLLB-200 multilingual model.")));
-        ImGui::TextColored(ImVec4(0.51f, 0.76f, 0.63f, 1.f), "%s", UI(Tr(L"Download size: about 600 MB · translates offline on this PC")).c_str());
-        if (ImGui::Button(UI(Tr(L"Install NLLB-200 (local)")).c_str())) InstallLocalMtQuickSetup(edit.dataDir);
-        if (cardMissing) Hint(UI(Tr(L"For NVIDIA cards from GTX 16 and RTX 20 upwards: the translator runs on the card and leaves the CPU to the game. Holds NVIDIA's libraries, so it is a large download.")));
-    } else {
-        Hint(UI(Tr(L"For NVIDIA cards from GTX 16 and RTX 20 upwards: the translator runs on the card and leaves the CPU to the game. Holds NVIDIA's libraries, so it is a large download.")));
-        // The card goes on once its module is there – not now: that would restart the CPU's helper for nothing.
-        if (ImGui::Button(UI(Tr(L"Download graphics card module")).c_str())) InstallCardModule(edit.dataDir, true);
-    }
-    EndBox();
-}
 
 // A small picture of the window, from the top: header, chat, preview, word bar, input, footer. What a layout shows is
 // filled, the rest only outlined – the window's parts are seen at once.
@@ -312,39 +367,44 @@ void RenderStartPage(Config& edit) {
         chatOn = g_nx.translateChat;
         running = g_translator ? g_translator->Name() : std::wstring();
     }
-    // Events: Chat, the chat reader: without it nothing of the chat is read – easy to miss at the first start, so
-    // while it is missing it stands here first, with its install button.
-    const bool chatThere = g_chatEventsLive || g_chatEventsPresent;
-    if (!chatThere) {
-        RenderChatModule();
-        if (!g_chatEventsFile && !g_chatEventsInstalling)
-            Hint(UI(Tr(L"Without Events: Chat, GW2Chatlator cannot read the chat – writing and the typing help work anyway.")));
-        ImGui::Spacing();
+    // What is still missing comes first: one row per piece with the one button for its next step – or "All ready".
+    // An orange state in the switch's tile scrolls back up here.
+    static bool s_toMissing = false;
+    if (s_toMissing) {
+        ImGui::SetScrollHereY(0.0f);
+        s_toMissing = false;
     }
+    const bool chatThere = g_chatEventsLive || g_chatEventsPresent;
+    BeginBox(UI(Tr(L"What is still missing")));
+    if (!RenderMissing(&edit)) StatusRow(UI(Tr(L"All ready")), 2, "");
+    EndBox();
     const LocalMtSummary local = LocalMtNow(edit.dataDir);
     const bool isLocal = IsLocalEngine(edit.engine);
     const bool localReady = local.module && LocalModelThere(local, edit.engine);
     const std::string title = UI(chatOn ? Tr(L"Chat translation is on") : Tr(L"Chat translation is off"));
     const std::string sub = UI(chatOn ? TrF(L"Foreign lines appear in {1}", {NativeName(ReadingLangNow())})
                                       : Tr(L"A click on a line translates just that one"));
+    bool toMissing = false;
     if (Hero(chatOn, title, sub, UI(Tr(L"Chat module")), chatThere, UI(running.empty() ? Tr(EngineLabel(edit.engine)) : running),
-             !isLocal || localReady)) {
+             !isLocal || localReady, &toMissing)) {
         std::lock_guard<std::mutex> lock(g_mu);
         SetChatTranslation(!g_nx.translateChat);
     }
-    // The local translator first, while it is missing: it keeps every line on this PC – before MyMemory, which works online.
-    RenderOfflineOffer(edit);
+    if (toMissing) s_toMissing = true;
+    // The three choices; what each means shows when the pointer is on it (the page stays short).
+    auto tip = [](const std::wstring& t) {
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(t).c_str());
+    };
     BeginBox(UI(Tr(L"Translation")));
     RenderReadRow(edit);
-    RowHint(UI(Tr(L"Foreign lines appear in this language.")));
+    tip(Tr(L"Foreign lines appear in this language."));
     RowLabel(UI(Tr(L"I understand")));
     RenderUnderstood(edit);
-    RowHint(UI(Tr(L"Lines in these languages stay as they are.")));
+    tip(Tr(L"Lines in these languages stay as they are."));
     RenderSendRow();
-    RowHint(UI(Tr(L"For typing and speaking – the same choice as \"Send\" in the chat window.")));
+    tip(Tr(L"For typing and speaking – the same choice as \"Send\" in the chat window."));
     RenderTranslatorRows(edit, false);
     EndBox();
-    RenderVoiceStart(edit);
     RenderLayoutTiles();
     BeginBox(UI(Tr(L"Window & keys")));
     RenderUiLanguageRow(edit);

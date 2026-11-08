@@ -15,7 +15,7 @@ void RiskHint(const std::wstring& text);
 bool RowCombo(const char* id, const std::vector<std::string>& items, int* sel);
 bool RowSlider(const char* id, int* v, int lo, int hi, const char* format);
 bool Hero(bool on, const std::string& title, const std::string& sub, const std::string& state1, bool ok1,
-          const std::string& state2, bool ok2);
+          const std::string& state2, bool ok2, bool* toMissing = nullptr);  // toMissing: a click on an orange state
 
 // Start and the modules (kb_options_start.cpp)
 void RenderChatModule();
@@ -36,7 +36,6 @@ void RenderSendRow();
 void RenderTranslatorPage(Config& edit);
 
 // Voice (kb_options_voice.cpp)
-void RenderVoiceStart(Config& edit);
 void RenderVoicePage(Config& edit, bool entered);
 
 // Chat and Typing (kb_options_typing.cpp)

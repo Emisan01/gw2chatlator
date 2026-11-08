@@ -787,7 +787,7 @@ void RenderRemovedNotice();
 extern bool g_wiped;
 extern std::atomic<int> g_wipeDone;
 void StatusRow(const std::string& what, int state, const std::string& text);
-void RenderModules(bool guide);
+void RenderModules();  // the empty chat: what is still missing
 bool RemoveButton(const char* id);
 void RenderLocalMtOptions(Config& edit);
 // A framed group of the options window, its title on the top line (Nexus' look).

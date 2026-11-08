@@ -721,7 +721,7 @@ static void RenderChat(ImGuiIO& io, std::unique_lock<std::mutex>& lock, const Im
         RenderChatSourceNotice();  // reading Events: Chat is off or paused: why, and what you can do
         if (g_lines.empty() && InfoTexts()) {  // nothing arrived yet: what is ready, what is missing, where translation is switched on
             lock.unlock();
-            RenderModules(true);
+            RenderModules();
             lock.lock();
         }
         // Only what is in view is drawn: a measured line outside the view (plus a margin) is just a placeholder of its

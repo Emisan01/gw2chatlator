@@ -297,7 +297,7 @@ bool NavItem(int page, const std::string& label, bool selected) {
 
 // Start's head: the one switch for the chat's translation, big, and beside it what is ready. True when clicked.
 bool Hero(bool on, const std::string& title, const std::string& sub, const std::string& state1, bool ok1,
-          const std::string& state2, bool ok2) {
+          const std::string& state2, bool ok2, bool* toMissing) {
     const float fs = ImGui::GetFontSize();
     ImFont* font = ImGui::GetFont();
     const ImVec2 p = ImGui::GetCursorScreenPos();
@@ -311,6 +311,13 @@ bool Hero(bool on, const std::string& title, const std::string& sub, const std::
     const bool pressed = ImGui::InvisibleButton("##hero", ImVec2(std::max(1.0f, w - rightW), h));
     const bool hovered = ImGui::IsItemHovered();
     if (hovered) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+    if (toMissing && (!ok1 || !ok2)) {  // an orange state: a click goes to what is still missing (the same height: no shift)
+        const ImVec2 after = ImGui::GetCursorScreenPos();
+        ImGui::SetCursorScreenPos(ImVec2(p.x + w - rightW, p.y));
+        if (ImGui::InvisibleButton("##herostate", ImVec2(rightW, h))) *toMissing = true;
+        if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+        ImGui::SetCursorScreenPos(after);
+    }
     ImDrawList* dl = ImGui::GetWindowDrawList();
     dl->AddRectFilled(p, ImVec2(p.x + w, p.y + h), IM_COL32(255, 255, 255, hovered ? 16 : 8), 4.0f);
     dl->AddRect(p, ImVec2(p.x + w, p.y + h), ImGui::GetColorU32(ImGuiCol_Separator), 4.0f);
