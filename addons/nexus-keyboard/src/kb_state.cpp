@@ -566,6 +566,33 @@ const std::wstring& ComposePrefix() {
 // The card's helper and the CUDA libraries it loads at its start (GW2Keyboard-GPU.zip, built with CUDA 12: a new CUDA
 // version changes these names). One of them missing – a broken download, a virus scanner: Windows would end the helper at
 // once, maybe with its own message box over the game – so the CPU's helper is taken right away.
+// The card's generation, from NVIDIA's own driver library (nvml.dll, in System32 with every driver), asked once on the
+// worker: the card's helper needs compute capability 7.5 or more – GTX 16, RTX 20 and up. Older cards are not offered its
+// 560 MB module. -1 not known yet, 0 no answer (no NVIDIA card, or the library missing).
+static int ReadCardCapability() {
+    HMODULE nvml = LoadLibraryExW(L"nvml.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+    if (!nvml) return 0;
+    int cc = 0;
+    const auto init = reinterpret_cast<int (*)()>(GetProcAddress(nvml, "nvmlInit_v2"));
+    const auto shutdown = reinterpret_cast<int (*)()>(GetProcAddress(nvml, "nvmlShutdown"));
+    const auto handle = reinterpret_cast<int (*)(unsigned, void**)>(GetProcAddress(nvml, "nvmlDeviceGetHandleByIndex_v2"));
+    const auto capability = reinterpret_cast<int (*)(void*, int*, int*)>(GetProcAddress(nvml, "nvmlDeviceGetCudaComputeCapability"));
+    if (init && shutdown && handle && capability && init() == 0) {
+        void* device = nullptr;
+        int major = 0, minor = 0;
+        if (handle(0, &device) == 0 && capability(device, &major, &minor) == 0) cc = major * 10 + minor;
+        shutdown();
+    }
+    FreeLibrary(nvml);
+    return cc;
+}
+static std::atomic<int> s_cardCapability{-1};
+static std::atomic<bool> s_cardAsked{false};
+bool CardCanRunHelper() {
+    if (!s_cardAsked.exchange(true)) g_worker.Post([] { s_cardCapability = ReadCardCapability(); });
+    return s_cardCapability.load() >= 75;
+}
+
 bool CardModuleComplete() {
     const std::wstring dir = AddonsDir() + L"GW2Keyboard\\";
     for (const wchar_t* f : {L"gw2kb_translate_gpu.exe", L"cublas64_12.dll", L"cublasLt64_12.dll", L"cudart64_12.dll"})

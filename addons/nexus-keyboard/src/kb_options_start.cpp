@@ -204,7 +204,7 @@ void RenderUiLanguageRow(Config& edit) {
 void RenderOfflineOffer(Config& edit) {
     const LocalMtSummary local = LocalMtNow(edit.dataDir);
     const bool nllb = local.module && local.nllb;
-    const bool cardMissing = NvidiaDriverPresent() && !CardModuleComplete();
+    const bool cardMissing = NvidiaDriverPresent() && CardCanRunHelper() && !CardModuleComplete();
     if (nllb && !cardMissing) return;
     BeginBox(UI(Tr(L"On this PC (offline)")));
     if (g_localMtBusy) {

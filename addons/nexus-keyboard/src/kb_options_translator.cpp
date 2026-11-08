@@ -158,7 +158,7 @@ void RenderTranslatorRows(Config& edit, bool full) {
         } else how = Tr(L"Online with your API key");
     }
     RowHint(UI(how));
-    if (!full && isLocal && localReady && NvidiaDriverPresent()) {  // the card on Start too: no need to look for it
+    if (!full && isLocal && localReady && NvidiaDriverPresent() && (CardModuleComplete() || CardCanRunHelper())) {  // the card on Start too: no need to look for it
         RowLabel(UI(Tr(L"Graphics card")));
         if (CardModuleComplete())
             Switch("usegpustart", UI(Tr(L"Calculate on the graphics card (NVIDIA)")), &edit.useGpu,
