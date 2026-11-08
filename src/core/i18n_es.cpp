@@ -1653,6 +1653,8 @@ extern const I18nEntry kSpanishStrings[] = {
      "Lugar recordado. Ahora un clic en la vista previa lo hace solo."},
     {L"The table of waypoints is on its way …",
      "La tabla de puntos de ruta está en camino …"},
+    {L"More",
+     "Más"},
     {L"Your last ones",
      "Tus últimos"},
     {L"Show it in GW2",

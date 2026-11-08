@@ -1653,6 +1653,8 @@ extern const I18nEntry kRussianStrings[] = {
      "Место запомнено. Теперь клик в предпросмотре сделает это сам."},
     {L"The table of waypoints is on its way …",
      "Таблица точек загружается …"},
+    {L"More",
+     "Ещё"},
     {L"Your last ones",
      "Ваши последние"},
     {L"Show it in GW2",

@@ -31,6 +31,7 @@ int s_zoomOut = 1;  // steps below the map's finest tiles
 float s_panX = 0.0f, s_panY = 0.0f;  // the right mouse moved the map this far from the point (map units)
 uint32_t s_panFor = 0;               // the point they belong to: a new point starts from itself
 bool s_panning = false;
+bool s_moreOpen = false;  // the window's "More": folded unless you open it
 std::deque<uint32_t> s_history;  // the ones you flew to, the newest first
 std::deque<uint32_t> s_collection;  // the ones you keep, the newest first
 bool s_historyRead = false;
@@ -497,20 +498,65 @@ void ReadIds(const std::wstring& path, std::deque<uint32_t>& into, size_t most) 
 }
 
 // A click on a name only shows it in the preview.
-void PoiList(const std::wstring& title, const std::vector<uint32_t>& ids, uint32_t selected) {
+// The small control at a row's right edge, apart from the name: a cross (out of the collection) or a plus (into it). Drawn,
+// not a glyph: the same in every font.
+bool RowMark(bool cross, const std::wstring& tip) {
+    const float size = ImGui::GetTextLineHeight();
+    const ImVec2 p = ImGui::GetCursorScreenPos();
+    const bool pressed = ImGui::InvisibleButton("##mark", ImVec2(size, size));
+    const bool hovered = ImGui::IsItemHovered();
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    if (hovered) dl->AddRectFilled(p, ImVec2(p.x + size, p.y + size), ImGui::GetColorU32(ImGuiCol_ButtonHovered), size * 0.2f);
+    const ImU32 col = ImGui::GetColorU32(hovered ? ImGuiCol_Text : ImGuiCol_TextDisabled);
+    const float r = size * (cross ? 0.22f : 0.28f), w = std::max(1.0f, size * 0.09f);
+    const ImVec2 m(p.x + size * 0.5f, p.y + size * 0.5f);
+    if (cross) {
+        dl->AddLine(ImVec2(m.x - r, m.y - r), ImVec2(m.x + r, m.y + r), col, w);
+        dl->AddLine(ImVec2(m.x - r, m.y + r), ImVec2(m.x + r, m.y - r), col, w);
+    } else {
+        dl->AddLine(ImVec2(m.x - r, m.y), ImVec2(m.x + r, m.y), col, w);
+        dl->AddLine(ImVec2(m.x, m.y - r), ImVec2(m.x, m.y + r), col, w);
+    }
+    if (hovered) {
+        ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+        ImGui::SetTooltip("%s", UI(tip).c_str());
+    }
+    return pressed;
+}
+
+// A list under a header that folds (with how many it holds). A click on a name shows the point; a second click on the one
+// shown brings the map back to it. At the right edge: the collection's rows a cross, the others a plus while not kept.
+void PoiList(const std::wstring& title, const std::vector<uint32_t>& ids, uint32_t selected, const std::vector<uint32_t>& collection,
+             bool isCollection) {
     if (ids.empty()) return;
-    ImGui::TextDisabled("%s", UI(title).c_str());
     ImGui::PushID(&ids);
-    for (const uint32_t id : ids) {
-        gct::ChatLinks::PoiView poi;
-        if (!g_links.Poi(id, &poi)) continue;
-        ImGui::PushID(static_cast<int>(id));
-        if (ImGui::Selectable(poi.name.c_str(), id == selected)) {
-            std::lock_guard<std::mutex> lock(s_mu);
-            s_selected = id;
+    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+    const std::string head = UI(title) + "  " + std::to_string(ids.size()) + "###head";
+    const bool open = ImGui::TreeNodeEx(head.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth |
+                                                          ImGuiTreeNodeFlags_NoTreePushOnOpen);
+    ImGui::PopStyleColor();
+    if (open) {
+        const float markW = ImGui::GetTextLineHeight();
+        const float nameW = std::max(1.0f, ImGui::GetContentRegionAvail().x - markW - ImGui::GetStyle().ItemSpacing.x);
+        for (const uint32_t id : ids) {
+            gct::ChatLinks::PoiView poi;
+            if (!g_links.Poi(id, &poi)) continue;
+            ImGui::PushID(static_cast<int>(id));
+            if (ImGui::Selectable(poi.name.c_str(), id == selected, 0, ImVec2(nameW, 0.0f))) {
+                std::lock_guard<std::mutex> lock(s_mu);
+                if (s_selected == id) s_panFor = 0;  // shown already: the map comes back to it
+                s_selected = id;
+            }
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", poi.map.c_str());
+            const bool kept = isCollection || std::find(collection.begin(), collection.end(), id) != collection.end();
+            ImGui::SameLine();
+            if (isCollection || !kept) {
+                if (RowMark(isCollection, isCollection ? Tr(L"Remove from collection") : Tr(L"Add to collection"))) ToggleCollection(id);
+            } else {
+                ImGui::Dummy(ImVec2(markW, markW));
+            }
+            ImGui::PopID();
         }
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", poi.map.c_str());
-        ImGui::PopID();
     }
     ImGui::PopID();
     ImGui::Spacing();
@@ -702,7 +748,7 @@ void RenderWaypointPreview() {
         const std::string teachText = UI(Tr(L"Click the new link in GW2's chat once yourself, at its start. I remember the place, from then on it goes by itself."));
         const float rowH = teaching ? ImGui::CalcTextSize(teachText.c_str(), nullptr, false, ImGui::GetContentRegionAvail().x).y + ImGui::GetStyle().ItemSpacing.y
                                     : ImGui::GetTextLineHeightWithSpacing();
-        const float footer = rowH + ImGui::GetFrameHeightWithSpacing();
+        const float footer = rowH + ImGui::GetFrameHeightWithSpacing() * (s_moreOpen ? 2.0f : 1.0f);
         const float listW = fs * 13.0f;
         const float mapH = std::max(fs * 6.0f, ImGui::GetContentRegionAvail().y - footer);
         gct::ChatLinks::PoiView poi;
@@ -714,8 +760,8 @@ void RenderWaypointPreview() {
         ImGui::EndChild();
         ImGui::SameLine();
         ImGui::BeginChild("##wplist", ImVec2(0.0f, mapH), true);
-        PoiList(Tr(L"Collection"), collection, selected);
-        PoiList(Tr(L"Your last ones"), history, selected);
+        PoiList(Tr(L"Collection"), collection, selected, collection, true);
+        PoiList(Tr(L"Your last ones"), history, selected, collection, false);
         ImGui::EndChild();
         if (teaching) {
             ImGui::PushStyleColor(ImGuiCol_Text, UiWarm());
@@ -732,19 +778,28 @@ void RenderWaypointPreview() {
         } else {
             ImGui::TextDisabled("%s", UI(Tr(L"Click a waypoint in the chat, or choose one from your lists.")).c_str());
         }
+        if (selected && !teaching) {  // the point shown: in or out of the collection, at the line's right edge as in the lists
+            const bool kept = std::find(collection.begin(), collection.end(), selected) != collection.end();
+            ImGui::SameLine(std::max(ImGui::GetCursorPosX(), ImGui::GetWindowContentRegionMax().x - ImGui::GetTextLineHeight()));
+            ImGui::PushID("shown");
+            if (RowMark(kept, kept ? Tr(L"Remove from collection") : Tr(L"Add to collection"))) ToggleCollection(selected);
+            ImGui::PopID();
+        }
         if (mayFly && selected) {
             if (ImGui::Button(UI(Tr(L"Show it in GW2")).c_str())) Fly(selected);
             ImGui::SameLine();
         }
-        if (selected) {
-            const bool kept = std::find(collection.begin(), collection.end(), selected) != collection.end();
-            if (ImGui::Button(UI(kept ? Tr(L"Remove from collection") : Tr(L"Add to collection")).c_str())) ToggleCollection(selected);
-            ImGui::SameLine();
-        }
-        if (mayFly && selected) {
-            if (ImGui::Button(UI(Tr(L"Teach the place again")).c_str())) {
-                s_forgetPlace = true;
-                Fly(selected);
+        // What is rarely needed stays folded: teaching the link's place again.
+        ImGui::AlignTextToFramePadding();
+        s_moreOpen = ImGui::TreeNodeEx(UI(Tr(L"More") + L"###wpmore").c_str(), ImGuiTreeNodeFlags_NoTreePushOnOpen);
+        if (s_moreOpen) {
+            if (mayFly && selected) {
+                if (ImGui::Button(UI(Tr(L"Teach the place again")).c_str())) {
+                    s_forgetPlace = true;
+                    Fly(selected);
+                }
+            } else {
+                ImGui::TextDisabled("%s", UI(Tr(L"Click a waypoint in the chat, or choose one from your lists.")).c_str());
             }
         }
     }

@@ -1653,6 +1653,8 @@ extern const I18nEntry kGermanStrings[] = {
      "Stelle gemerkt. Ein Klick in der Vorschau erledigt das jetzt von allein."},
     {L"The table of waypoints is on its way …",
      "Die Wegmarken-Tabelle ist unterwegs …"},
+    {L"More",
+     "Mehr"},
     {L"Your last ones",
      "Deine letzten"},
     {L"Show it in GW2",

@@ -1653,6 +1653,8 @@ extern const I18nEntry kPolishStrings[] = {
      "Miejsce zapamiętane. Kliknięcie w podglądzie zrobi to teraz samo."},
     {L"The table of waypoints is on its way …",
      "Tabela punktów podróży jest w drodze …"},
+    {L"More",
+     "Więcej"},
     {L"Your last ones",
      "Twoje ostatnie"},
     {L"Show it in GW2",

@@ -1653,6 +1653,8 @@ extern const I18nEntry kTurkishStrings[] = {
      "Yer hatırlandı. Artık önizlemede bir tıklama bunu kendiliğinden yapar."},
     {L"The table of waypoints is on its way …",
      "Geçiş noktası tablosu yolda …"},
+    {L"More",
+     "Daha fazla"},
     {L"Your last ones",
      "Son seçtiklerin"},
     {L"Show it in GW2",

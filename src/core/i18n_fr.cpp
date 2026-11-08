@@ -1653,6 +1653,8 @@ extern const I18nEntry kFrenchStrings[] = {
      "Endroit mémorisé. Un clic dans l'aperçu le fait désormais tout seul."},
     {L"The table of waypoints is on its way …",
      "La table des points de passage arrive …"},
+    {L"More",
+     "Plus"},
     {L"Your last ones",
      "Vos derniers"},
     {L"Show it in GW2",
