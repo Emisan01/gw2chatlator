@@ -1053,6 +1053,8 @@ extern const I18nEntry kTurkishStrings[] = {
      "eklenti klasöründe – Nexus yeni bir eklentiyi ancak onayınla yükler: Nexus → Addons → Events: Chat → Yükle (bir kez; henüz listede yoksa: oyunun bir sonraki açılışından sonra)"},
     {L"Events: Chat installed – if no chat arrives, Nexus waits for your OK: Nexus → Addons → Events: Chat → Load (once)",
      "Events: Chat kuruldu – sohbet gelmiyorsa Nexus onayını bekliyor: Nexus → Addons → Events: Chat → Yükle (bir kez)"},
+    {L"Only the chat's lines, see-through over the game – no info texts. A left click in the text opens the input, as Enter does; it fades after sending. Right-click: the menu.",
+     "Yalnızca sohbetin satırları, oyunun üstünde saydam – bilgi metinleri olmadan. Metne sol tık, Enter gibi giriş satırını açar; gönderdikten sonra kaybolur. Sağ tık: menü."},
     {L"Window layout",
      "Pencere düzeni"},
     {L"Windows blocks the microphone for this program (privacy settings).",

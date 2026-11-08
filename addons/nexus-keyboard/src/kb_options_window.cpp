@@ -164,7 +164,7 @@ void RenderWindowPage(Config& edit) {
                    UI(Tr(L"Nothing but the input with its help. Three quick clicks on it minimise it; right-click in it: Menu … brings the rest back.")).c_str()))
             SetProfile(1, mini);
         bool subs = ProfileOn(2);
-        if (Switch("subtitles", UI(Tr(L"Subtitle mode")), &subs, UI(Tr(L"Only the chat's lines, see-through over the game. The input shows while you write and fades after sending.")).c_str())) SetProfile(2, subs);
+        if (Switch("subtitles", UI(Tr(L"Subtitle mode")), &subs, UI(Tr(L"Only the chat's lines, see-through over the game – no info texts. A left click in the text opens the input, as Enter does; it fades after sending. Right-click: the menu.")).c_str())) SetProfile(2, subs);
         ImGui::Spacing();
         // From top to bottom, as they stand in the window; each one can go – in two columns.
         bool changed = false;

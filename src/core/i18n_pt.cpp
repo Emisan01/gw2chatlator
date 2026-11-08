@@ -1053,6 +1053,8 @@ extern const I18nEntry kPortugueseStrings[] = {
      "na pasta de add-ons – o Nexus só carrega um add-on novo com o seu OK: Nexus → Addons → Events: Chat → Carregar (uma vez; ainda não listado: após o próximo início do jogo)"},
     {L"Events: Chat installed – if no chat arrives, Nexus waits for your OK: Nexus → Addons → Events: Chat → Load (once)",
      "Events: Chat instalado – se o chat não chegar, o Nexus espera o seu OK: Nexus → Addons → Events: Chat → Carregar (uma vez)"},
+    {L"Only the chat's lines, see-through over the game – no info texts. A left click in the text opens the input, as Enter does; it fades after sending. Right-click: the menu.",
+     "Só as linhas do chat, transparentes sobre o jogo – sem textos informativos. Um clique esquerdo no texto abre a entrada, como Enter; ela some depois de enviar. Clique direito: o menu."},
     {L"Window layout",
      "Layout da janela"},
     {L"Windows blocks the microphone for this program (privacy settings).",

@@ -1053,6 +1053,8 @@ extern const I18nEntry kRussianStrings[] = {
      "в папке аддонов – Nexus загружает новый аддон только после твоего OK: Nexus → Addons → Events: Chat → Загрузить (один раз; ещё нет в списке: после следующего запуска игры)"},
     {L"Events: Chat installed – if no chat arrives, Nexus waits for your OK: Nexus → Addons → Events: Chat → Load (once)",
      "Events: Chat установлен – если чат не приходит, Nexus ждёт твоего OK: Nexus → Addons → Events: Chat → Загрузить (один раз)"},
+    {L"Only the chat's lines, see-through over the game – no info texts. A left click in the text opens the input, as Enter does; it fades after sending. Right-click: the menu.",
+     "Только строки чата, прозрачно поверх игры – без информационных текстов. Левый клик по тексту открывает ввод, как Enter; после отправки он исчезает. Правый клик: меню."},
     {L"Window layout",
      "Макет окна"},
     {L"Windows blocks the microphone for this program (privacy settings).",

@@ -485,6 +485,9 @@ static void RenderMainMenu(bool& newTabNext) {
     }
 }
 
+// Info texts (Options → Window): never in the subtitle mode – there the window is the chat itself and nothing else.
+static bool InfoTexts() { return g_layout.infoText && !ProfileOn(2); }
+
 static void RenderChat(ImGuiIO& io, std::unique_lock<std::mutex>& lock, const ImGuiStyle& st, bool& s_lineRightClick, uint64_t& s_lineMenuId, std::wstring& s_lineMenuText, bool& s_openLineMenu, bool& s_lineMenuOpen, const float& line, const float& lowerH) {
     if (Lay().chat) {
         static float scrollY = 0, scrollMax = 0, viewH = 1, dragOffset = 0;
@@ -715,7 +718,7 @@ static void RenderChat(ImGuiIO& io, std::unique_lock<std::mutex>& lock, const Im
             cw->ScrollMax.y = maxY;
         }
         RenderChatSourceNotice();  // reading Events: Chat is off or paused: why, and what you can do
-        if (g_lines.empty() && g_layout.infoText) {  // nothing arrived yet: what is ready, what is missing, where translation is switched on
+        if (g_lines.empty() && InfoTexts()) {  // nothing arrived yet: what is ready, what is missing, where translation is switched on
             lock.unlock();
             RenderModules(true);
             lock.lock();
@@ -1165,7 +1168,18 @@ void RenderWindow() {
     // Without the chat: a thin edge only, the window is hardly more than its parts (the grey input in the end).
     if (!Lay().chat) ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
     if (subtitles) ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    // On glass the resize corner shows only while the pointer is over the window (last frame), like the scroll bar; it
+    // works all the same.
+    static bool s_glassHovered = false;
+    const bool hideGrip = subtitles && !s_glassHovered;
+    if (hideGrip) {
+        for (const ImGuiCol c : {ImGuiCol_ResizeGrip, ImGuiCol_ResizeGripHovered, ImGuiCol_ResizeGripActive})
+            ImGui::PushStyleColor(c, ImVec4(0, 0, 0, 0));
+    }
     const bool begun = ImGui::Begin("GW2Chatlator###kbmain", nullptr, wflags);
+    if (hideGrip) ImGui::PopStyleColor(3);
+    s_glassHovered = subtitles && ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows |
+                                                         ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
     if (subtitles) ImGui::PopStyleVar();
     if (!Lay().chat) ImGui::PopStyleVar();
     if (!begun) {
@@ -1586,7 +1600,7 @@ void RenderWindow() {
                 }
             }
             if (!g_back.empty()) LookText(U8(g_back).c_str(), Bright(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled)), true);
-        } else if (g_layout.infoText) {
+        } else if (InfoTexts()) {
             ImGui::TextDisabled("%s", UI(Tr(L"translating …")).c_str());
         }
         // the fewest rows whose height (line * (rows + 0.2)) holds what was drawn
@@ -1747,6 +1761,15 @@ void RenderWindow() {
             }
         }
     }
+    // Subtitle mode: a left click in the chat's text opens the input – as Enter does when we take the keyboard. Not on
+    // what a click already does something with (a name, a chat code, a link: they show the hand), not on the scroll bar
+    // or another control, not after a drag (the window moved or was resized), not while a menu is open.
+    if (ProfileOn(2) && !inputActive && ImGui::IsMouseReleased(ImGuiMouseButton_Left) &&
+        ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && !ImGui::IsAnyItemHovered() &&
+        ImGui::GetMouseCursor() != ImGuiMouseCursor_Hand && !ImGui::IsMouseHoveringRect(inputMin, inputMax) &&
+        io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Left] < io.MouseDragThreshold * io.MouseDragThreshold &&
+        !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId))
+        g_focusInput = true;
     if (teach) {
         teach = false;
         ImGui::OpenPopup("##teach");
@@ -1797,7 +1820,7 @@ void RenderWindow() {
                 s_lastStatusWidth = availW;
                 s_lastStatusFit = Fit(UI(stW), availW);
             }
-            if (g_layout.infoText || !g_status.empty())
+            if (InfoTexts() || !g_status.empty())  // a momentary message shows in every mode
                 BoxText(textAt, clip, g_status.empty() ? ImGui::GetColorU32(ImGuiCol_TextDisabled) : ImGui::GetColorU32(UiWarm()),
                         s_lastStatusFit);
         }
@@ -1808,7 +1831,7 @@ void RenderWindow() {
                 ImGui::GetColorU32(UiWarm()), s, 0.85f);
     }
     // Compact view: what the chat will get, small in the box's last line (instead of the preview above).
-    if (!showPreview && g_input[0] && ((Translating() && (previewCurrent || g_layout.infoText)) || NamesSwapped())) {
+    if (!showPreview && g_input[0] && ((Translating() && (previewCurrent || InfoTexts())) || NamesSwapped())) {
         const std::string t = previewCurrent ? "> " + U8(g_preview) : UI(Tr(L"translating …"));
         BoxText(ImVec2(textAt.x, inputMax.y - smallLine - 1), clip, ImGui::GetColorU32(kPreview),
                 Fit(t, (inputMax.x - inputMin.x) * (g_status.empty() ? 0.95f : 0.38f)), 0.85f);
