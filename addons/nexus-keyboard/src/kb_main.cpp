@@ -237,6 +237,7 @@ void AddonLoad(AddonAPI_t* api) {
     }
     g_api = api;
     g_disabled = false;
+    g_unloading = false;
     g_chatEventsLive = false;
     ImGui::SetCurrentContext(static_cast<ImGuiContext*>(api->ImguiContext));
     if (api->ImguiMalloc && api->ImguiFree &&
@@ -355,6 +356,7 @@ void AddonLoad(AddonAPI_t* api) {
 }
 
 void AddonUnload() {
+    g_unloading = true;  // first: every install thread stops at its next step (unload waits for them below)
     if (g_api) {
         if (g_api->Events_Unsubscribe && IsCodePointer(reinterpret_cast<const void*>(g_api->Events_Unsubscribe))) {
             g_api->Events_Unsubscribe(bridge::kChatEventsEvent, OnChatEvents);

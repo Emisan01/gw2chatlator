@@ -155,7 +155,7 @@ void StartLocalMtJob(LocalMtJob job, std::wstring dataDir, std::string pair = {}
             try {
                 const auto progress = [](uint64_t done, uint64_t total) {
                     if (total) g_localMtPct = static_cast<int>(done * 100 / total);
-                    return !g_disabled.load();
+                    return KeepGoing();
                 };
                 switch (job) {
                     case LocalMtJob::InstallModule:
@@ -501,7 +501,7 @@ void InstallLocalMtQuickSetup(const std::wstring& dataDir) {
             try {
                 const auto progress = [](uint64_t done, uint64_t total) {
                     if (total) g_localMtPct = static_cast<int>(done * 100 / total);
-                    return !g_disabled.load();
+                    return KeepGoing();
                 };
                 if (!gct::LocalMtModulePresent(KeyboardDir())) {
                     result = gct::InstallLocalMtModule(KeyboardDir(), W(GCT_VERSION_STR), progress);

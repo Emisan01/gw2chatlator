@@ -371,7 +371,7 @@ void InstallVoiceModuleNow() {
         if (!Shielded([&] {
                 r = InstallVoiceModule(dir, W(GCT_VERSION_STR), [](uint64_t done, uint64_t total) {
                     if (total) g_voiceModulePct = static_cast<int>(done * 100 / total);
-                    return !g_disabled.load();
+                    return KeepGoing();
                 });
             }))
             r.code = ExtrasInstallCode::DownloadFailed;

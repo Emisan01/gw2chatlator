@@ -262,6 +262,10 @@ struct ScopedPopupFont {
 };
 extern HMODULE g_self;
 extern std::atomic<bool> g_disabled;
+extern std::atomic<bool> g_unloading;
+// An install thread goes on only while this holds: not after an error, not while Nexus unloads us. Unload waits for
+// these threads, so a model download that ignored it held the game at its end for minutes.
+inline bool KeepGoing() { return !g_disabled.load() && !g_unloading.load(); }
 // Work of a thread of ours behind the same net as the render callbacks: a fault (an access violation & co. – not a C++
 // exception, that goes on to its catch) switches our add-on off for the session (g_disabled), never the game; with /EHa
 // everything on the way is unwound (locks given back). False: it caught one.

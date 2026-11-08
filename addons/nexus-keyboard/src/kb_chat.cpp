@@ -391,7 +391,7 @@ void InstallChatEventsNow() {  // on your click: newest release, checksum checke
     if (g_chatEventsThread.joinable()) g_chatEventsThread.join();
     g_chatEventsThread = std::thread([dir = AddonsDir()] {
         ExtrasInstallResult r;
-        if (!Shielded([&] { r = InstallChatEvents(dir, [] { return g_disabled.load(); }); })) r.code = ExtrasInstallCode::DownloadFailed;
+        if (!Shielded([&] { r = InstallChatEvents(dir, [] { return !KeepGoing(); }); })) r.code = ExtrasInstallCode::DownloadFailed;
         g_chatEventsInstalling = false;
         if (r.code == ExtrasInstallCode::Ok) g_chatInstalledAt = GetTickCount64();
         std::lock_guard<std::mutex> lock(g_mu);
