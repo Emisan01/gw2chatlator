@@ -39,9 +39,9 @@ void RenderRemovedNotice() {
     ImGui::End();
 }
 
-// Events: Chat – loaded, installed, missing; install / remove (g_mu NOT held). Options > Technical, the dashboard and
+// Events: Chat – loaded, installed, missing; install (g_mu NOT held). Options > Technical, the dashboard and
 // the guide.
-void RenderChatModule(bool guide) {
+void RenderChatModule() {
     ImGui::PushID("modules");
     const bool chatLive = g_chatEventsLive || g_chatEventsPresent;
     StatusRow(UI(Tr(L"Chat module")), chatLive ? 2 : g_chatEventsInstalling || g_chatEventsFile ? 1 : 0,
@@ -127,7 +127,7 @@ bool RenderVoiceModule(bool guide) {
 
 // The empty chat: what is ready, what is missing, where translation is switched on (g_mu NOT held).
 void RenderModules(bool guide) {
-    RenderChatModule(guide);
+    RenderChatModule();
     RenderVoiceModule(guide);
     ImGui::PushID("modules");
     if (guide) {
@@ -307,7 +307,7 @@ void RenderStartPage(Config& edit) {
     // while it is missing it stands here first, with its install button.
     const bool chatThere = g_chatEventsLive || g_chatEventsPresent;
     if (!chatThere) {
-        RenderChatModule(true);
+        RenderChatModule();
         if (!g_chatEventsFile && !g_chatEventsInstalling)
             Hint(UI(Tr(L"Without Events: Chat, GW2Chatlator cannot read the chat – writing and the typing help work anyway.")));
         ImGui::Spacing();

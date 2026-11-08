@@ -260,7 +260,7 @@ void RenderTranslatorLive() {
 
 void RenderTechnicalPage(Config& edit) {
     BeginBox(UI(Tr(L"Modules")));
-    RenderChatModule(false);  // Events: Chat: loaded, install / remove – reading it follows in the details
+    RenderChatModule();  // Events: Chat: loaded, install – reading it follows in the details
     EndBox();
     BeginBox(UI(Tr(L"Debug & diagnostics")));
     if (ImGui::Button(UI(Tr(L"Copy diagnostic report to clipboard")).c_str())) {
