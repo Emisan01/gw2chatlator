@@ -87,6 +87,14 @@ static void TestUtf() {
     CHECK(std::string(four) == "abc");
     CopyUtf8(four, "abcd");
     CHECK(std::string(four) == "abc");
+    {  // a meaning of 200 bytes, all two-byte letters, into the teach window's 160: 79 whole ones, nothing broken
+        std::string meaning;
+        for (int i = 0; i < 100; ++i) meaning += "\xC3\xA4";
+        char field[160];
+        CopyUtf8(field, meaning);
+        const std::wstring back = FromUtf8(field);
+        CHECK(std::string(field).size() == 158 && back.size() == 79 && back.find(L'\xFFFD') == std::wstring::npos);
+    }
 }
 
 static void TestText() {
