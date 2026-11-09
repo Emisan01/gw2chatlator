@@ -220,6 +220,14 @@ void RenderTranslatorRows(Config& edit, bool full) {
             RowLabel(UI(Tr(L"API key")));
             RowText("##key", keyBuf, sizeof keyBuf, KeyOf(edit, shown), ImGuiInputTextFlags_Password);
         }
+        if (shown == Engine::DeepL) {  // its free way: a key ending in :fx goes to DeepL's free server by itself (deepl_translator)
+            RowHint(UI(Tr(L"Free: DeepL API Free – 500,000 characters a month with a free DeepL account (DeepL may ask for a card to check who you are, without charging it). A key ending in :fx works here as it is.")));
+            ImGui::Indent(g_labelW);
+            static const wchar_t* kDeepLApi = L"https://www.deepl.com/pro-api";
+            if (ImGui::SmallButton(UI(Tr(L"Get a free key")).c_str())) SafeOpenUrl(kDeepLApi);
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(TrF(L"Opens {1} in your browser.", {kDeepLApi})).c_str());
+            ImGui::Unindent(g_labelW);
+        }
         if (shown == Engine::Microsoft) {
             RowLabel(UI(Tr(L"Region")));
             RowText("##region", regionBuf, sizeof regionBuf, edit.msRegion);
