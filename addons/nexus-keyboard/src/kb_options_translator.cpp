@@ -221,7 +221,7 @@ void RenderTranslatorRows(Config& edit, bool full) {
             RowText("##key", keyBuf, sizeof keyBuf, KeyOf(edit, shown), ImGuiInputTextFlags_Password);
         }
         if (shown == Engine::DeepL) {  // its free way: a key ending in :fx goes to DeepL's free server by itself (deepl_translator)
-            RowHint(UI(Tr(L"Free: DeepL API Free – 500,000 characters a month with a free DeepL account (DeepL may ask for a card to check who you are, without charging it). A key ending in :fx works here as it is.")));
+            RowHint(UI(Tr(L"DeepL has a free API plan with a limited number of characters – what it includes changes, DeepL's page says it. A free key (ending in :fx) works here as it is.")));
             ImGui::Indent(g_labelW);
             static const wchar_t* kDeepLApi = L"https://www.deepl.com/pro-api";
             if (ImGui::SmallButton(UI(Tr(L"Get a free key")).c_str())) SafeOpenUrl(kDeepLApi);
