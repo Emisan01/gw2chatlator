@@ -75,7 +75,7 @@ bool EngineItems(const Config& edit, const LocalMtSummary& local, Engine current
     item(Engine::Basic, {});
     item(Engine::Auto, {});
     ImGui::Separator();
-    ImGui::TextDisabled("%s", UI(Tr(L"On this PC (offline)")).c_str());
+    ImGui::TextDisabled("%s", UI(Tr(L"Local, on this PC")).c_str());
     item(Engine::Nllb, local.module && local.nllb ? std::wstring() : Tr(L"install, about 600 MB"));
     item(Engine::Local, local.module && local.opus ? std::wstring() : Tr(L"choose a language pair first"));
     item(Engine::M2m, local.module && local.m2m ? std::wstring() : Tr(L"missing (about 470 MB)"));
@@ -197,7 +197,7 @@ void RenderTranslatorRows(Config& edit, bool full) {
         ImGui::Indent(g_labelW);
         ImGui::TextUnformatted(UI(Tr(L"Install NLLB-200 (local)")).c_str());
         Hint(UI(Tr(L"Local Translation installs the local neural machine translation engine and NLLB-200 multilingual model.")));
-        ImGui::TextColored(ImVec4(0.51f, 0.76f, 0.63f, 1.f), "%s", UI(Tr(L"Download size: about 600 MB · translates offline on this PC")).c_str());
+        ImGui::TextColored(ImVec4(0.51f, 0.76f, 0.63f, 1.f), "%s", UI(Tr(L"Download size: about 600 MB · translates locally on this PC")).c_str());
         if (ImGui::Button((UI(Tr(L"OK")) + "##nllbok").c_str())) {
             InstallLocalMtQuickSetup(edit.dataDir);  // becomes the translator once the files are there
             s_confirmNllb = false;

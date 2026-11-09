@@ -173,11 +173,11 @@ static bool RenderMissing(Config* edit) {
     if (g_localMtBusy) {
         any = true;
         const int pct = g_localMtPct;
-        StatusRow(UI(Tr(L"Offline translator")), 1,
+        StatusRow(UI(Tr(L"Local translator")), 1,
                   UI(pct >= 0 ? TrF(L"loading … {1} %", {std::to_wstring(pct)}) : Tr(L"loading …")));
     } else if (!(local.module && local.nllb)) {
         any = true;
-        StatusRow(UI(Tr(L"Offline translator")), 0, UI(Tr(L"optional – nothing leaves your PC (about 600 MB)")));
+        StatusRow(UI(Tr(L"Local translator")), 0, UI(Tr(L"optional – nothing leaves your PC (about 600 MB)")));
         ImGui::SameLine();
         if (ImGui::SmallButton(UI(Tr(L"Install") + L"##nllb").c_str())) InstallLocalMtQuickSetup(dataDir);
     } else if (NvidiaDriverPresent() && CardCanRunHelper() && !CardModuleComplete()) {
