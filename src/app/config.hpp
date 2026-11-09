@@ -81,6 +81,7 @@ struct Config {
     SendOptions send;
 
     int opacity = 255;
+    int inputOpacity = 255;  // the input field's and the preview's background, both alike (255: as the theme draws it)
     int fontPt = 15;                  // chat text size in pt (default 15 pt, 8..28)
     int uiFontPt = 15;                // UI/options font size in pt (default 15 pt, 11..24)
     std::wstring fontFace = L"segoeui";  // its font: a file in Windows\Fonts (segoeui, seguisb, tahoma – kFontFaces)

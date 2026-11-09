@@ -336,6 +336,7 @@ void Config::Load(const std::wstring& dir) {
     send.restoreDelayMs = ini.Int(L"Chat", L"RestoreDelayMs", 250, 50, 3000);
 
     opacity = ini.Int(L"Window", L"Opacity", 255, 0, 255);
+    inputOpacity = ini.Int(L"Window", L"InputOpacity", 255, 0, 255);
     fontPt = ini.Int(L"Window", L"FontPt", 15, 0, 40);
     uiFontPt = ini.Int(L"Window", L"UiFontPt", 15, 0, 40);
     if (fontPt == 0) fontPt = 15;
@@ -528,6 +529,7 @@ void Config::SaveAll() const {
     SaveValue(L"Chat", L"SendMode", copyOnly ? L"copy" : L"send");
     SaveBool(L"Chat", L"ReturnFocus", returnFocus);
     SaveValue(L"Window", L"Opacity", std::to_wstring(opacity));
+    SaveValue(L"Window", L"InputOpacity", std::to_wstring(inputOpacity));
     SaveValue(L"Window", L"FontPt", std::to_wstring(fontPt));
     SaveValue(L"Window", L"UiFontPt", std::to_wstring(uiFontPt));
     SaveValue(L"Window", L"FontFace", fontFace);

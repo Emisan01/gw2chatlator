@@ -150,6 +150,16 @@ void RenderWindowPage(Config& edit) {
         edit.opacity = g_cfg.opacity = (100 - transparency) * 255 / 100;
         g_cfg.SaveValue(L"Window", L"Opacity", std::to_wstring(g_cfg.opacity));
     }
+    // The input field and the preview: a transparency of their own, the two alike (Emi) – a dark field can weigh on a
+    // see-through window, in the mini mode above all.
+    RowLabel(UI(Tr(L"Input transparency")));
+    int inputTransparency = 100 - (std::clamp(edit.inputOpacity, 0, 255) * 100 + 127) / 255;
+    if (RowSlider("##inalpha", &inputTransparency, 0, 100, "%d %%")) {
+        std::lock_guard<std::mutex> lock(g_mu);
+        edit.inputOpacity = g_cfg.inputOpacity = (100 - inputTransparency) * 255 / 100;
+        g_cfg.SaveValue(L"Window", L"InputOpacity", std::to_wstring(g_cfg.inputOpacity));
+    }
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"The input field and the translation preview, together – the window's own transparency is the slider above.")).c_str());
     EndBox();
     BeginBox(UI(Tr(L"Window layout")));
     {
