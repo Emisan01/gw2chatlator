@@ -40,7 +40,7 @@ void RenderVoicePage(Config& edit, bool entered) {
     const std::string needsVoice = UI(Tr(L"Needs the voice module (Options → Voice)."));
     BeginBox(UI(Tr(L"Voice module")));
     Switch("voiceon", UI(Tr(L"Voice input")), &edit.voiceEnabled);
-    RenderVoiceModule(false);
+    RenderVoiceModule();
     const VoiceModels& vms = VoiceModelsNow(edit);
     const VoiceModelInfo* chosen = vms.catalog.Find(U8(edit.voiceModel));
     if (!chosen) chosen = vms.catalog.Recommended();

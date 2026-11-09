@@ -9,7 +9,6 @@
 
 namespace kb {
 
-// What is ready (chat, voice, model), with the buttons that load what is missing; `guide`: and where to go next.
 // A remove button that asks once more: the first click turns it into "Click again to remove" for 4 s.
 bool RemoveButton(const char* id) {
     static std::string s_armed;
@@ -41,8 +40,8 @@ void RenderRemovedNotice() {
     ImGui::End();
 }
 
-// Events: Chat – loaded, installed, missing; install (g_mu NOT held). Options > Technical, the dashboard and
-// the guide.
+// Events: Chat in detail – loaded, installed, missing; install, or Load in Nexus (g_mu NOT held). Options > Technical;
+// Start and the empty chat show it in "What is still missing".
 void RenderChatModule() {
     ImGui::PushID("modules");
     const bool chatLive = g_chatEventsLive || g_chatEventsPresent;
@@ -65,9 +64,9 @@ void RenderChatModule() {
     ImGui::PopID();
 }
 
-// The voice module and its model – load, unload, remove (g_mu NOT held). Options > Voice and the guide.
-// Returns whether voice input is on.
-bool RenderVoiceModule(bool guide) {
+// The voice module and its model in detail – load, unload, remove (g_mu NOT held). Options > Voice; Start and the empty
+// chat show it in "What is still missing". Returns whether voice input is on.
+bool RenderVoiceModule() {
     const ModuleState& m = Modules();
     ImGui::PushID("modules");
     bool enabled, ready;
@@ -105,12 +104,12 @@ bool RenderVoiceModule(bool guide) {
             if (ImGui::SmallButton(UI(Tr(L"Unload")).c_str())) UnloadVoiceModule();
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Ends the voice module and frees its memory; the microphone loads it again.")).c_str());
         }
-        if (!guide && m.voiceModule && !g_voiceModuleInstalling && RemoveButton("voicemodule")) RemoveVoiceModuleNow();
+        if (m.voiceModule && !g_voiceModuleInstalling && RemoveButton("voicemodule")) RemoveVoiceModuleNow();
         const int dl = g_downloadPct;
         StatusRow(UI(Tr(L"Voice model")), m.model ? 2 : dl >= 0 ? 1 : 0,
                   dl >= 0 ? UI(TrF(L"downloading … {1} %", {std::to_wstring(dl)}))
                           : m.modelName + (m.model ? "" : "  " + UI(Tr(L"missing"))));
-        if (!guide && m.model && dl < 0) {
+        if (m.model && dl < 0) {
             if (RemoveButton("voicemodels")) RemoveVoiceModelsNow();
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Removes every downloaded voice model.")).c_str());
         }
@@ -421,7 +420,7 @@ static void KeyRow(const std::wstring& action, const char* identifier) {
     RowLabel(UI(action));
     const std::string key = NexusKeyOf(identifier);
     ImGui::AlignTextToFramePadding();
-    if (key.empty()) ImGui::TextDisabled("–");
+    if (key.empty()) ImGui::TextDisabled("%s", UI(L"–").c_str());
     else ImGui::TextColored(UiAccent(), "%s", key.c_str());
     ImGui::SameLine();
     if (ImGui::SmallButton(UI(Tr(L"Set in Nexus")).c_str())) OpenNexusMenu();

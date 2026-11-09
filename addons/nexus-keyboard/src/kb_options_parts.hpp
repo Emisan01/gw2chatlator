@@ -19,7 +19,7 @@ bool Hero(bool on, const std::string& title, const std::string& sub, const std::
 
 // Start and the modules (kb_options_start.cpp)
 void RenderChatModule();
-bool RenderVoiceModule(bool guide);
+bool RenderVoiceModule();
 void RenderRemoveEverything();
 void RenderUiLanguageRow(Config& edit);
 void RenderStartPage(Config& edit);

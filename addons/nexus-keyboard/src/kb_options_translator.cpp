@@ -106,6 +106,11 @@ void RenderTranslatorRows(Config& edit, bool full) {
         s_wantSet = false;
     }
     const Engine shown = s_wantSet ? s_want : edit.engine;
+    // "Automatic" takes the first key you entered (DeepL, Google, Microsoft, Supertext, a LibreTranslate server) and only
+    // without one MyMemory – the row and its line say which (MakeTranslator).
+    const bool anyKey = !edit.deeplKey.empty() || !edit.googleKey.empty() || !edit.msKey.empty() || !edit.supertextKey.empty() ||
+                        !edit.libreUrl.empty();
+    const bool myMemory = shown == Engine::Basic || (shown == Engine::Auto && !anyKey);
     const bool isLocal = IsLocalEngine(shown);
     const bool localReady = local.module && LocalModelThere(local, shown);
     // The row says what it is (the page and its box say "Translator" already): a local module and its size, or online.
@@ -117,7 +122,7 @@ void RenderTranslatorRows(Config& edit, bool full) {
         } else if (isLocal) {
             what = Tr(L"Local module · missing");
         } else {
-            what = (shown == Engine::Basic || shown == Engine::Auto) ? Tr(L"Online · free") : Tr(L"Online · your key");
+            what = myMemory ? Tr(L"Online · free") : Tr(L"Online · your key");
         }
         RowLabel(UI(what));
     }
@@ -177,7 +182,7 @@ void RenderTranslatorRows(Config& edit, bool full) {
         else if (isLocal && local.helper.status == gct::HelperStatus::Outdated)
             how = TrF(L"Helper is outdated ({1})", {local.helper.outdatedReason});
         else if (isLocal) how = TrF(L"Local on this PC · Beam {1}", {std::to_wstring(edit.localQuality)});
-        else if (shown == Engine::Basic || shown == Engine::Auto) {
+        else if (myMemory) {
             how = MyMemoryQuotaText();
             if (how.empty()) how = Tr(L"Free and online – works without setup");
         } else how = Tr(L"Online with your API key");
