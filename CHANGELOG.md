@@ -3,6 +3,20 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.10.2 — 2026-11-09 (GW2Chatlator for Nexus)
+
+- **No Key Set by Us:** GW2Chatlator no longer presets any key – Ctrl+Alt+K (window) and Ctrl+Alt+T (translation) are gone as defaults. A key you set yourself in Nexus stays as it is. Start shows each action's key as Nexus keeps it and a button "Set in Nexus" that opens Nexus' menu; the chat window also comes back from GW2Chatlator's page in Nexus' add-ons.
+- **The Subtitle Mode:** a mode of its own for the window: only the chat's lines, see-through over the game, with an outline, no info texts. A line fades out 10 s after it came; a left click in the window brings every line back with a soft background and the input, cursor in it. Sent, it is glass again. Your window's parts stay as they are and are back when it is off.
+- **Start Is Simpler:** it begins with "What is still missing" – one row per piece with one button for its next step (the chat module, the local translator and its graphics card module, voice input), or "All ready". The translation box goes from the top: who translates (its row says "Local module · 604 MB" or "Online · …", the card's switch beside it), the language you read the chat in and the one you write in, what your messages are translated to, what you understand. The window layouts stand from everything to little.
+- **Options Sorted:** Chat and Typing are one page. The input field and the preview have a transparency of their own (Options → Window). Hints name Nexus' menus as Nexus does in your language.
+- **Events: Chat Stays in Nexus' Hands:** GW2Chatlator never deletes Events: Chat any more (removing it goes through Nexus → Addons). A new Events: Chat waits for one "Load" in Nexus; the row says so and opens Nexus' add-ons for it, instead of promising that a restart helps.
+- **A GW2 Term from Someone's Line:** the line menu takes a word of someone else's line as your GW2 term, never translated from then on, and the line is translated again at once. Only that word is saved, on your PC.
+- **Waypoints:** the waypoints window's lists fold, each row has a cross or plus at its edge. The link's place is taught on its third letter and not learned when another line pushed the link up meanwhile, so the click lands inside every link.
+- **Back-Translation as a Line:** without the preview, what your text says translated back shows in one small line above the input (optional).
+- **The Graphics Card:** its module is offered only to cards that can run it (GTX 16, RTX 20 and up), counts as missing when a file is cut short, and the card goes on only once its download is done.
+- **Steadier:** every callback Nexus calls runs behind the add-on's net, so an error switches off GW2Chatlator, never the game. Closing the game no longer waits for a download, also not on a hanging network. A command typed into GW2's line stops the moment the focus leaves GW2. Settings and words are on disk before they are renamed. A text cut to fit a field never ends in half a character. A line meeting the translator helper's idle end is asked once more.
+- **Plain Words:** the translator is called "local", not "offline". DeepL's free way is mentioned where its key goes, with a link. The privacy texts are short: no chat log, nothing collected about other players, text only to the translator you chose.
+
 ## 2.10.1 — 2026-11-07 (GW2Chatlator for Nexus)
 
 - **The Waypoints Map Moves:** hold the right mouse on the map in the Waypoints window and drag it, up to two window sizes from the point. A new point starts from itself.
