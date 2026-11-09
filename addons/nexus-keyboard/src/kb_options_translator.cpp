@@ -108,7 +108,19 @@ void RenderTranslatorRows(Config& edit, bool full) {
     const Engine shown = s_wantSet ? s_want : edit.engine;
     const bool isLocal = IsLocalEngine(shown);
     const bool localReady = local.module && LocalModelThere(local, shown);
-    RowLabel(UI(Tr(L"Translator")));
+    // The row says what it is (the page and its box say "Translator" already): a local module and its size, or online.
+    {
+        std::wstring what;
+        if (isLocal && localReady) {
+            const uint64_t bytes = shown == Engine::Nllb ? local.nllbBytes : shown == Engine::M2m ? local.m2mBytes : local.opusBytes;
+            what = TrF(L"Local module · {1} MB", {std::to_wstring(bytes / (1024 * 1024))});
+        } else if (isLocal) {
+            what = Tr(L"Local module · missing");
+        } else {
+            what = (shown == Engine::Basic || shown == Engine::Auto) ? Tr(L"Online · free") : Tr(L"Online · your key");
+        }
+        RowLabel(UI(what));
+    }
     Engine chosen = shown;
     bool picked = false;
     const float fs = ImGui::GetFontSize();
@@ -134,6 +146,19 @@ void RenderTranslatorRows(Config& edit, bool full) {
         }
         if (qi >= 0 && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(tip[qi]).c_str());
     }
+    // On Start the card's switch stands in this line when there is room, else in its own row. Its module missing: the
+    // list "What is still missing" above offers it.
+    if (!full && isLocal && localReady && NvidiaDriverPresent() && CardModuleComplete()) {
+        const std::string gpuLabel = UI(Tr(L"Calculate on the graphics card (NVIDIA)"));
+        const float need = std::round(fs * 1.125f) * 1.8f + fs * 0.6f + ImGui::CalcTextSize(gpuLabel.c_str()).x + fs;
+        ImGui::SameLine();
+        if (ImGui::GetContentRegionAvail().x < need) {
+            ImGui::NewLine();
+            RowLabel(UI(Tr(L"Graphics card")));
+        }
+        Switch("usegpustart", gpuLabel, &edit.useGpu,
+               UI(Tr(L"Takes about 0.7 GB of video memory with M2M100, 0.9 GB with NLLB-200. Without room it falls back to the CPU.")).c_str());
+    }
     if (picked && chosen != shown) {
         s_wantSet = false;
         if (chosen == Engine::Nllb && !nllbReady) s_confirmNllb = true;  // the size first, then OK installs and switches
@@ -151,20 +176,13 @@ void RenderTranslatorRows(Config& edit, bool full) {
         if (isLocal && !localReady) how = Tr(L"The translation model is missing – Options → Translator.");
         else if (isLocal && local.helper.status == gct::HelperStatus::Outdated)
             how = TrF(L"Helper is outdated ({1})", {local.helper.outdatedReason});
-        else if (isLocal) how = TrF(L"Offline on this PC · Beam {1}", {std::to_wstring(edit.localQuality)});
+        else if (isLocal) how = TrF(L"Local on this PC · Beam {1}", {std::to_wstring(edit.localQuality)});
         else if (shown == Engine::Basic || shown == Engine::Auto) {
             how = MyMemoryQuotaText();
             if (how.empty()) how = Tr(L"Free and online – works without setup");
         } else how = Tr(L"Online with your API key");
     }
     RowHint(UI(how));
-    if (!full && isLocal && localReady && NvidiaDriverPresent() && (CardModuleComplete() || CardCanRunHelper())) {  // the card on Start too: no need to look for it
-        RowLabel(UI(Tr(L"Graphics card")));
-        if (CardModuleComplete())
-            Switch("usegpustart", UI(Tr(L"Calculate on the graphics card (NVIDIA)")), &edit.useGpu,
-                   UI(Tr(L"Takes about 0.7 GB of video memory with M2M100, 0.9 GB with NLLB-200. Without room it falls back to the CPU.")).c_str());
-        else if (ImGui::SmallButton(UI(Tr(L"Graphics card module")).c_str())) SwitchOptionsTab(kPageTranslator);
-    }
     if (shown == Engine::Nllb && !nllbReady && !s_confirmNllb && !g_localMtBusy) {
         ImGui::Indent(g_labelW);
         if (ImGui::Button(UI(Tr(L"Install NLLB-200 (local)")).c_str())) s_confirmNllb = true;

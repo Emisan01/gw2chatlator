@@ -245,6 +245,9 @@ LocalMtSummary LocalMtNow(const std::wstring& dataDir) {
     out.nllb = s_state.nllbInstalled;
     out.m2m = s_state.m2mInstalled;
     out.opus = std::find(s_state.models.begin(), s_state.models.end(), true) != s_state.models.end();
+    out.nllbBytes = s_state.nllbBytes;
+    out.m2mBytes = s_state.m2mBytes;
+    for (const uint64_t b : s_state.bytes) out.opusBytes += b;
     out.helper = s_state.helperInfo;
     return out;
 }

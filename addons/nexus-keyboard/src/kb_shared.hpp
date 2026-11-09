@@ -799,6 +799,7 @@ void RowLabel(const std::string& label);  // a row "label | control" of the opti
 // background only (game thread).
 struct LocalMtSummary {
     bool module = false, nllb = false, opus = false, m2m = false;
+    uint64_t nllbBytes = 0, m2mBytes = 0, opusBytes = 0;  // on disk (OPUS-MT: all its pairs together)
     gct::HelperInfo helper;
 };
 LocalMtSummary LocalMtNow(const std::wstring& dataDir);
