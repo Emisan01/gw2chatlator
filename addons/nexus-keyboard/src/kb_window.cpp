@@ -635,7 +635,7 @@ static void RenderChat(ImGuiIO& io, std::unique_lock<std::mutex>& lock, const Im
             if (hit.clickR) s_lineRightClick = true;
             // A click on someone's text: into your reading language. A right-click: a small menu – the reading
             // language first, right under the pointer, any other language below; a click always translates.
-            if (!clicked && !l.own && l.translated.empty() && hit.clickL) {
+            if (!clicked && !l.own && l.translated.empty() && hit.clickL && !ProfileOn(2)) {  // subtitles: a click writes
                 l.transPending = true;
                 g_worker.Post([id = l.id, t = l.text] { TranslateLine(id, t, true); });
             }
@@ -1762,15 +1762,26 @@ void RenderWindow() {
             }
         }
     }
-    // Subtitle mode: a left click in the chat's text opens the input – as Enter does when we take the keyboard. Not on
-    // what a click already does something with (a name, a chat code, a link: they show the hand), not on the scroll bar
-    // or another control, not after a drag (the window moved or was resized), not while a menu is open.
-    if (ProfileOn(2) && !inputActive && ImGui::IsMouseReleased(ImGuiMouseButton_Left) &&
-        ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && !ImGui::IsAnyItemHovered() &&
-        ImGui::GetMouseCursor() != ImGuiMouseCursor_Hand && !ImGui::IsMouseHoveringRect(inputMin, inputMax) &&
-        io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Left] < io.MouseDragThreshold * io.MouseDragThreshold &&
-        !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId))
-        g_focusInput = true;
+    // Subtitle mode: a left click in the chat's text opens the input – as Enter does when we take the keyboard – and the
+    // subtitles go on. Where the press began decides: on the chat's text or glass, not on what a click already does
+    // something with (a name, a chat code, a link: they show the hand), not on the scroll bar or another control, not in a
+    // menu. Its release opens the input unless the mouse was dragged (the window moved or was resized). Read while ImGui
+    // may hold the press for moving the window (AllowWhenBlockedByActiveItem): that hold made the click get lost.
+    {
+        static bool s_glassPress = false;
+        const ImGuiHoveredFlags over = ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem;
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+            s_glassPress = ProfileOn(2) && !inputActive && ImGui::IsWindowHovered(over) && !ImGui::IsAnyItemHovered() &&
+                           ImGui::GetMouseCursor() != ImGuiMouseCursor_Hand && !ImGui::IsMouseHoveringRect(inputMin, inputMax) &&
+                           !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId);
+        if (s_glassPress && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+            s_glassPress = false;
+            if (ProfileOn(2) && io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Left] < io.MouseDragThreshold * io.MouseDragThreshold) {
+                g_focusInput = true;
+                TechLog('O', L"subtitle mode: a click in the text opened the input");
+            }
+        }
+    }
     if (teach) {
         teach = false;
         ImGui::OpenPopup("##teach");
