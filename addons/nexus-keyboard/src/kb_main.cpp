@@ -14,6 +14,7 @@
 
 #include "kb_shared.hpp"
 #include "win/gw2_sender.hpp"
+#include "win/http.hpp"
 
 namespace kb {
 
@@ -389,6 +390,7 @@ bool OpenNexusAddons() {
 
 void AddonUnload() {
     g_unloading = true;  // first: every install thread stops at its next step (unload waits for them below)
+    gct::StopHttpRequests();  // and one waiting on the network ends now, not after its read's 60 s
     if (g_api) {
         if (g_api->Events_Unsubscribe && IsCodePointer(reinterpret_cast<const void*>(g_api->Events_Unsubscribe))) {
             g_api->Events_Unsubscribe(bridge::kChatEventsEvent, SafeEvent<OnChatEvents>);

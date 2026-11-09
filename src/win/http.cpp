@@ -6,6 +6,7 @@
 #include <windows.h>
 #include <winhttp.h>
 
+#include <algorithm>
 #include <mutex>
 #include <vector>
 
@@ -46,6 +47,32 @@ struct Handle {
     }
 };
 
+// The open requests, so the add-on's unload can end them at once: closing a request handle from another thread is
+// WinHTTP's own way to stop a blocking send or read (a hanging network otherwise held the game's end for up to a read's
+// 60 s). Whoever takes a handle out of this list closes it, never both – a closed handle's number may soon be another's.
+std::mutex g_openMu;
+std::vector<HINTERNET> g_open;
+bool g_stopped = false;  // StopHttpRequests ran: the unload is under way, no request starts any more
+
+struct Tracked {  // `req` in the list while it is open – declared after it, so this ends first
+    Handle& req;
+    explicit Tracked(Handle& r) : req(r) {
+        std::lock_guard<std::mutex> lock(g_openMu);
+        if (g_stopped) {  // too late: closed here, the caller's next call fails at once
+            WinHttpCloseHandle(req.h);
+            req.h = nullptr;
+            return;
+        }
+        g_open.push_back(req.h);
+    }
+    ~Tracked() {
+        std::lock_guard<std::mutex> lock(g_openMu);
+        const auto it = std::find(g_open.begin(), g_open.end(), req.h);
+        if (it != g_open.end()) g_open.erase(it);
+        else req.h = nullptr;  // StopHttpRequests closed it already
+    }
+};
+
 std::wstring TransportError(DWORD code) {
     switch (code) {
         case ERROR_WINHTTP_TIMEOUT: return Tr(L"Timeout – the server does not answer");
@@ -78,6 +105,7 @@ HttpResponse Request(const wchar_t* method, const std::wstring& host, INTERNET_P
     Handle request{WinHttpOpenRequest(connect.h, method, pathAndQuery.c_str(), nullptr, WINHTTP_NO_REFERER,
                                       WINHTTP_DEFAULT_ACCEPT_TYPES, secure ? WINHTTP_FLAG_SECURE : 0)};
     if (!request.h) return fail(GetLastError());
+    Tracked tracked{request};
     if (receiveTimeoutMs > 0) {
         const int connTimeout = std::min(receiveTimeoutMs, 2000);
         WinHttpSetTimeouts(request.h, connTimeout, connTimeout, 3000, receiveTimeoutMs);
@@ -122,6 +150,13 @@ HttpResponse Request(const wchar_t* method, const std::wstring& host, INTERNET_P
 }
 
 }  // namespace
+
+void StopHttpRequests() {
+    std::lock_guard<std::mutex> lock(g_openMu);
+    g_stopped = true;
+    for (HINTERNET h : g_open) WinHttpCloseHandle(h);
+    g_open.clear();
+}
 
 HttpResponse HttpsRequest(const wchar_t* method, const std::wstring& host, const std::wstring& pathAndQuery,
                           const std::wstring& headers, const std::string& body, const wchar_t* extraHeaderName,
@@ -199,6 +234,7 @@ bool HttpDownloadToFile(const std::wstring& url, const std::wstring& path, uint6
                                       WINHTTP_DEFAULT_ACCEPT_TYPES,
                                       uc.nScheme == INTERNET_SCHEME_HTTPS ? WINHTTP_FLAG_SECURE : 0)};
     if (!request.h) return fail(TransportError(GetLastError()));
+    Tracked tracked{request};
     // Generous receive timeout per read: a CDN may stall a few seconds on a large file. Redirects (Hugging Face ->
     // its CDN) are followed by WinHTTP itself, never from https to http.
     WinHttpSetTimeouts(request.h, 10000, 10000, 30000, 60000);

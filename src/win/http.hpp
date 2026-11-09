@@ -30,6 +30,10 @@ HttpResponse HttpRequestUrl(const wchar_t* method, const std::wstring& url, cons
 // `path` only when the status is 200, the size matches `expectedBytes` (0 = not checked) and the SHA-256 matches
 // `expectedSha256Hex` (lower-case hex; empty = not checked). progress(done, total) runs on the calling thread
 // (total 0 = unknown); returning false cancels. On failure the partial file is removed and `error` says why.
+// The add-on is being unloaded: every request and download ends now – its handle is closed, a read waiting on the
+// network returns at once with an error – and none starts after it. Once, from the unload.
+void StopHttpRequests();
+
 bool HttpDownloadToFile(const std::wstring& url, const std::wstring& path, uint64_t expectedBytes,
                         const std::string& expectedSha256Hex,
                         const std::function<bool(uint64_t done, uint64_t total)>& progress, std::wstring* error);
