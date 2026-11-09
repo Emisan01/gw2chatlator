@@ -504,6 +504,15 @@ static bool SubtitleWriting() {
     return g_inputActive || g_focusInput || g_input[0] || g_sending || g_sendPending || g_recording;
 }
 
+// The subtitle mode fades a line as GW2's own chat does (Emi, 2026-11-09): 10 s fully there, then 1.5 s down to
+// nothing. While you write – a click in the window, the focus key – every line is back; sent, they fade again.
+constexpr ULONGLONG kSubtitleShowMs = 10000, kSubtitleFadeMs = 1500;
+static float LineFade(const ChatLine& l, bool fading, ULONGLONG now) {
+    if (!fading || !l.receivedTime || now <= l.receivedTime + kSubtitleShowMs) return 1.0f;
+    const ULONGLONG past = now - l.receivedTime - kSubtitleShowMs;
+    return past >= kSubtitleFadeMs ? 0.0f : 1.0f - static_cast<float>(past) / static_cast<float>(kSubtitleFadeMs);
+}
+
 static void RenderChat(ImGuiIO& io, std::unique_lock<std::mutex>& lock, const ImGuiStyle& st, bool& s_lineRightClick, uint64_t& s_lineMenuId, std::wstring& s_lineMenuText, bool& s_openLineMenu, bool& s_lineMenuOpen, const float& line, const float& lowerH) {
     if (Shown().chat) {
         static float scrollY = 0, scrollMax = 0, viewH = 1, dragOffset = 0;
@@ -744,14 +753,21 @@ static void RenderChat(ImGuiIO& io, std::unique_lock<std::mutex>& lock, const Im
         const float viewTop = ImGui::GetScrollY() - line * 4;
         const float viewBottom = ImGui::GetScrollY() + ImGui::GetWindowHeight() + line * 4;
         s_rowsTop = ImGui::GetCursorPosY();
+        const bool fading = ProfileOn(2) && !SubtitleWriting();
+        const ULONGLONG fadeNow = GetTickCount64();
         for (ChatLine& l : g_lines) {
             if (!inThisTab(l)) continue;
             const float y0 = ImGui::GetCursorPosY();
-            if (rowKnown(l) && (y0 + l.rowH < viewTop || y0 > viewBottom)) {
+            const float fade = LineFade(l, fading, fadeNow);
+            // out of view – or faded out on the glass: only its height, nothing to see or to click (no hand over a name
+            // nobody sees)
+            if (rowKnown(l) && (fade <= 0.0f || y0 + l.rowH < viewTop || y0 > viewBottom)) {
                 ImGui::Dummy(ImVec2(1.0f, std::max(0.0f, l.rowH - rowGap)));
                 continue;
             }
+            if (fade < 1.0f) ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * fade);
             drawRow(l);
+            if (fade < 1.0f) ImGui::PopStyleVar();
         }
         ImGui::PopStyleVar();  // the chat's line spacing
         // A line's menu (right-click on someone's text): the reading language first, under the pointer; others below.

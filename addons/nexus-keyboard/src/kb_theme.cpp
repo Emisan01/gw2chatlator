@@ -277,7 +277,7 @@ void LookText(const char* text, ImVec4 color, bool wrap) {
                       dl->_VtxCurrentIdx + std::strlen(text) * 4 * 9 < 60000;
     if ((g_look.glow || ProfileOn(2)) && room) {  // on glass (subtitle mode) always: the text needs its outline there
         const float d = std::max(1.0f, std::round(fs / 15.0f));
-        const ImU32 halo = IM_COL32(0, 0, 0, 220);
+        const ImU32 halo = ImGui::GetColorU32(ImVec4(0.0f, 0.0f, 0.0f, 220.0f / 255.0f));  // fades with the text (style alpha)
         const ImVec2 offsets[] = {ImVec2(-d, -d), ImVec2(d, -d), ImVec2(-d, d), ImVec2(d, d),
                                   ImVec2(-d, 0),  ImVec2(d, 0),  ImVec2(0, -d), ImVec2(0, d)};
         for (const ImVec2& o : offsets) dl->AddText(font, fs, ImVec2(p.x + o.x, p.y + o.y), halo, text, nullptr, wrapW);
