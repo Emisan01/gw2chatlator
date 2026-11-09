@@ -502,9 +502,9 @@ private:
                code == 0;
     }
 
-    // A line that met the helper's own end after its idle minutes (it ended with 0 and never read the line) goes once
-    // more, to a fresh helper: the gap is a few milliseconds, but the line would fail for nothing. Once only – a helper
-    // that ends with 0 again is no idle end.
+    // A line that met the helper's own end after its idle minutes (it ended with 0, no answer came) goes once more, to a
+    // fresh helper: the gap is a few milliseconds, but the line would fail for nothing. Once only – a helper that ends
+    // with 0 again is no idle end.
     std::string Request(const std::wstring& text, const std::string& source, const std::string& target,
                         std::wstring& error, TranslateErrorKind& errorKind) {
         bool idleEnd = false;
