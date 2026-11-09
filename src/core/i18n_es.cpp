@@ -1071,6 +1071,8 @@ extern const I18nEntry kSpanishStrings[] = {
      "Transparencia de la entrada"},
     {L"The input field and the translation preview, together – the window's own transparency is the slider above.",
      "El campo de entrada y la vista previa de la traducción, juntos – la de la ventana es el control de arriba."},
+    {L"The subtitle mode shows the chat and its input – your parts stay as they are and are back when it is off.",
+     "El modo subtítulos muestra el chat y su entrada – tus partes se quedan como están y vuelven cuando se apaga."},
     {L"Window layout",
      "Disposición de la ventana"},
     {L"Windows blocks the microphone for this program (privacy settings).",

@@ -1071,6 +1071,8 @@ extern const I18nEntry kRussianStrings[] = {
      "Прозрачность ввода"},
     {L"The input field and the translation preview, together – the window's own transparency is the slider above.",
      "Поле ввода и предпросмотр перевода вместе – прозрачность окна задаёт ползунок выше."},
+    {L"The subtitle mode shows the chat and its input – your parts stay as they are and are back when it is off.",
+     "Режим субтитров показывает чат и его поле ввода – твои части остаются как есть и вернутся, когда он выключен."},
     {L"Window layout",
      "Макет окна"},
     {L"Windows blocks the microphone for this program (privacy settings).",

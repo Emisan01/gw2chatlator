@@ -65,7 +65,7 @@ void RenderFooter() {  // g_mu held
     const float iconH = ImGui::GetFrameHeight();
 
     // Native minimize button (bottom-left corner of the window)
-    if (Lay().minButton) {
+    if (Shown().minButton) {
         if (ImGui::Button(">##minchat", ImVec2(iconH, iconH))) MinimizeWindow();
         if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Minimize chat")).c_str());
         ImGui::SameLine();

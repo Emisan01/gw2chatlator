@@ -37,7 +37,7 @@ std::wstring GhostRest(const std::wstring& text, bool* correction) {
         return b.phrase.empty() ? b.words[0] : b.phrase;
     // Without the word bar nothing shows what Tab would take: its highlighted completion becomes the grey word (Tab takes
     // it, Space writes it then). Space alone still keeps a valid word as typed – no surprises.
-    if (!Lay().words && b.kind != WordSuggestions::Kind::Next && b.autoIndex >= 0 &&
+    if (!Shown().words && b.kind != WordSuggestions::Kind::Next && b.autoIndex >= 0 &&
         b.autoIndex < static_cast<int>(b.words.size()) && b.replace.end() == text.size() && text.back() != L' ') {
         const std::wstring& word = b.words[b.autoIndex];
         const std::wstring typed = text.substr(b.replace.start, b.replace.length);

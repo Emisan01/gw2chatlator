@@ -179,19 +179,18 @@ void RenderWindowPage(Config& edit) {
         // From top to bottom, as they stand in the window; each one can go – in two columns.
         bool changed = false;
         int col = 0;
-        // `part`: one of the window's parts – changed by hand, the layout is your own, no longer the subtitle mode. The last
-        // two switches are no parts but how the parts show (the back-translation line, the info texts): they keep it.
+        // `part`: one of the window's parts – grey while the subtitle mode is on (it shows the chat and its input over them;
+        // they stay as they are). The last two switches are no parts but how they show (back-translation line, info texts).
+        const bool subtitleMode = g_layout.subtitles;
         auto part = [&](const char* id, const std::wstring& label, bool* v, const std::wstring& tip, bool isPart = true) {
             const bool right = col++ % 2;
             if (right) ImGui::SameLine(fs * 14.0f);
             const std::string t = UI(tip);
             // the left column's label wraps where the right column begins, never into it
             const float maxW = right ? 0.0f : fs * 14.0f - ImGui::GetCursorPosX() - ImGui::GetStyle().ItemSpacing.x;
-            if (Switch(id, UI(label), v, tip.empty() ? nullptr : t.c_str(), true, maxW)) {
-                changed = true;
-                if (isPart) g_layout.subtitles = false;
-            }
+            if (Switch(id, UI(label), v, tip.empty() ? nullptr : t.c_str(), !(isPart && subtitleMode), maxW)) changed = true;
         };
+        if (subtitleMode) Hint(UI(Tr(L"The subtitle mode shows the chat and its input – your parts stay as they are and are back when it is off.")));
         part("header", Tr(L"Header"), &g_layout.header, Tr(L"Hidden: a right-click on the window opens the menu (tabs, minimise, options)."));
         part("chat", Tr(L"Chat"), &g_layout.chat, {});
         part("preview", Tr(L"Translation preview"), &g_layout.preview, {});

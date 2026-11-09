@@ -1071,6 +1071,8 @@ extern const I18nEntry kFrenchStrings[] = {
      "Transparence de la saisie"},
     {L"The input field and the translation preview, together – the window's own transparency is the slider above.",
      "Le champ de saisie et l'aperçu de la traduction, ensemble – celle de la fenêtre est le curseur au-dessus."},
+    {L"The subtitle mode shows the chat and its input – your parts stay as they are and are back when it is off.",
+     "Le mode sous-titres montre le chat et sa saisie – tes éléments restent tels quels et reviennent quand il est désactivé."},
     {L"Window layout",
      "Disposition de la fenêtre"},
     {L"Windows blocks the microphone for this program (privacy settings).",

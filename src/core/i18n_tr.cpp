@@ -1071,6 +1071,8 @@ extern const I18nEntry kTurkishStrings[] = {
      "Giriş saydamlığı"},
     {L"The input field and the translation preview, together – the window's own transparency is the slider above.",
      "Giriş alanı ve çeviri önizlemesi birlikte – pencereninki yukarıdaki kaydırıcıdır."},
+    {L"The subtitle mode shows the chat and its input – your parts stay as they are and are back when it is off.",
+     "Altyazı modu sohbeti ve giriş alanını gösterir – parçaların olduğu gibi kalır, kapatınca geri gelir."},
     {L"Window layout",
      "Pencere düzeni"},
     {L"Windows blocks the microphone for this program (privacy settings).",

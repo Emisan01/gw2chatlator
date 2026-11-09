@@ -1071,6 +1071,8 @@ extern const I18nEntry kPolishStrings[] = {
      "Przezroczystość pola wpisywania"},
     {L"The input field and the translation preview, together – the window's own transparency is the slider above.",
      "Pole wpisywania i podgląd tłumaczenia razem – przezroczystość okna to suwak powyżej."},
+    {L"The subtitle mode shows the chat and its input – your parts stay as they are and are back when it is off.",
+     "Tryb napisów pokazuje czat i jego pole wpisywania – twoje części zostają, jak są, i wracają, gdy go wyłączysz."},
     {L"Window layout",
      "Układ okna"},
     {L"Windows blocks the microphone for this program (privacy settings).",

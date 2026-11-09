@@ -847,6 +847,9 @@ void CheckMicLockTimeout();
 bool ProfileOn(int profile);
 void SetProfile(int profile, bool on);
 Layout& Lay();
+// What the window shows: your parts – in the subtitle mode only the chat and its input, your parts kept as they are.
+// Read it for drawing; Lay() is what you set.
+Layout Shown();
 void Hint(const std::string& text);
 void RenderOptionsWindow();
 void RenderDebugWindow();

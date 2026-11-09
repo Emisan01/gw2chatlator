@@ -730,32 +730,37 @@ ULONGLONG g_micLockedStart = 0;
 // Switching a profile off brings back the layout you had before it (this session; else every part shown).
 Layout g_layoutBefore;
 bool g_haveBefore = false;
+// The subtitle mode is a mode of its own (Emi, 2026-11-09): over your parts it shows only the chat and its input, and
+// your parts stay as they are – nothing changed by hand ends it, and off they are simply back (Shown).
 static bool IsProfile(const Layout& l, int profile) {  // 0 compact view, 1 mini mode, 2 subtitle mode
+    if (profile == 2) return l.subtitles;
+    if (l.subtitles) return false;
     if (profile == 0) return l.header && l.chat && !l.preview && !l.words && l.footer;
-    if (profile == 1) return !l.header && !l.chat && !l.preview && !l.words && !l.footer && !l.minButton;
-    return l.subtitles && !l.header && l.chat && !l.preview && !l.words && !l.footer && !l.minButton;  // chosen, not only the same parts
+    return !l.header && !l.chat && !l.preview && !l.words && !l.footer && !l.minButton;
 }
 bool ProfileOn(int profile) { return IsProfile(g_layout, profile); }  // g_mu held
 void SetProfile(int profile, bool on) {  // g_mu held
     Layout& l = g_layout;
+    if (profile == 2) {  // the subtitle mode: its own switch, the parts untouched
+        l.subtitles = on;
+        SaveLayout();
+        return;
+    }
     if (on) {
-        if (!ProfileOn(0) && !ProfileOn(1) && !ProfileOn(2)) {  // your own layout: kept to come back to
+        if (!ProfileOn(0) && !ProfileOn(1)) {  // your own layout (the subtitle mode too): kept to come back to
             g_layoutBefore = l;
             g_haveBefore = true;
         }
-        l.subtitles = profile == 2;  // only the subtitle mode itself sets it
+        l.subtitles = false;
         if (profile == 0) {  // compact: header, chat, input, footer – no word bar, no preview
             l.header = l.chat = l.footer = true;
             l.preview = l.words = false;
-        } else if (profile == 1) {  // mini: nothing but the input
+        } else {  // mini: nothing but the input
             l.header = l.chat = l.preview = l.words = l.footer = l.minButton = false;
-        } else {  // subtitles: only the chat's lines; the input shows while you write (kb_window.cpp)
-            l.chat = true;
-            l.header = l.preview = l.words = l.footer = l.minButton = false;
         }
     } else if (ProfileOn(profile)) {
         const Layout& b = g_layoutBefore;
-        const bool back = g_haveBefore && !(profile == 0 ? IsProfile(b, 0) : profile == 1 ? !b.header && !b.chat && !b.footer : IsProfile(b, 2));
+        const bool back = g_haveBefore && !(profile == 0 ? IsProfile(b, 0) : !b.header && !b.chat && !b.footer);
         l.header = back ? b.header : true;
         l.chat = back ? b.chat : true;
         l.preview = back ? b.preview : true;
@@ -768,6 +773,14 @@ void SetProfile(int profile, bool on) {  // g_mu held
     SaveLayout();
 }
 Layout& Lay() { return g_layout; }
+Layout Shown() {
+    Layout s = g_layout;
+    if (s.subtitles) {  // the chat and its input over your parts, which stay as they are
+        s.header = s.preview = s.words = s.footer = s.minButton = false;
+        s.chat = true;
+    }
+    return s;
+}
 
 // Remove everything of GW2Chatlator (Options → Technical, at the bottom, after a yes): the voice helper ends, nothing is
 // written any more (settings, learned words, my words, voice fixes), the worker drops the spelling without saving it,

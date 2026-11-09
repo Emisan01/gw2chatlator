@@ -346,7 +346,7 @@ void RenderLayoutTiles() {
     {
         std::lock_guard<std::mutex> lock(g_mu);
         const Layout& l = Lay();
-        chosen = l.header && l.chat && l.preview && l.words && l.footer ? 0 : ProfileOn(0) ? 1 : ProfileOn(2) ? 2 : ProfileOn(1) ? 3 : -1;
+        chosen = ProfileOn(2) ? 2 : l.header && l.chat && l.preview && l.words && l.footer ? 0 : ProfileOn(0) ? 1 : ProfileOn(1) ? 3 : -1;
     }
     BeginBox(UI(Tr(L"Window layout")));
     const std::string names[4] = {UI(Tr(L"All parts")), UI(Tr(L"Compact view")), UI(Tr(L"Subtitle mode")), UI(Tr(L"Mini mode"))};

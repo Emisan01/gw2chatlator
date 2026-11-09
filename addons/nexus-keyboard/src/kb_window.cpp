@@ -436,14 +436,14 @@ static void RenderMainMenu(bool& newTabNext) {
     if (ImGui::BeginPopup("kbmenu")) {
         ScopedPopupFont popupFont;
         // The mini mode (nothing but the input): only the way out – Options, Compact view, Mini mode (user, 2026-10-22).
-        if (!Lay().chat) {
+        if (!Shown().chat) {
             if (ImGui::MenuItem(UI(Tr(L"Options …")).c_str())) g_showOptions = true;
             if (const bool compact = ProfileOn(0); ImGui::MenuItem(UI(Tr(L"Compact view")).c_str(), nullptr, compact))
                 SetProfile(0, !compact);
             if (const bool sub = ProfileOn(2); ImGui::MenuItem(UI(Tr(L"Subtitle mode")).c_str(), nullptr, sub)) SetProfile(2, !sub);
             if (const bool mini = ProfileOn(1); ImGui::MenuItem(UI(Tr(L"Mini mode")).c_str(), nullptr, mini)) SetProfile(1, !mini);
         } else {
-            if (!Lay().header) {  // what the header offers: the tabs, minimise
+            if (!Shown().header) {  // what the header offers: the tabs, minimise
                 if (ImGui::MenuItem(UI(Tr(L"Chat")).c_str(), nullptr, g_activeTab < 0)) LeaveWhisperTab();
                 for (int i = 0; i < static_cast<int>(g_tabs.size()); ++i)
                     if (ImGui::MenuItem(g_tabs[i].Label(), nullptr, g_activeTab == i)) {
@@ -505,7 +505,7 @@ static bool SubtitleWriting() {
 }
 
 static void RenderChat(ImGuiIO& io, std::unique_lock<std::mutex>& lock, const ImGuiStyle& st, bool& s_lineRightClick, uint64_t& s_lineMenuId, std::wstring& s_lineMenuText, bool& s_openLineMenu, bool& s_lineMenuOpen, const float& line, const float& lowerH) {
-    if (Lay().chat) {
+    if (Shown().chat) {
         static float scrollY = 0, scrollMax = 0, viewH = 1, dragOffset = 0;
         static bool atBottom = true;
         static int lastActiveTab = -999;
@@ -986,7 +986,7 @@ static void RenderTeachPopup(bool& s_menuNext) {
             }
         }
         Hint(UI(Tr(L"Your terms are in gw2-terms.txt in the GW2Keyboard folder, next to the built-in GW2 list.")));
-        if (!Lay().header) {  // without the header (maybe nothing but the input left): the way to the menu
+        if (!Shown().header) {  // without the header (maybe nothing but the input left): the way to the menu
             ImGui::Separator();
             if (ImGui::Selectable(UI(Tr(L"Menu …")).c_str())) {
                 s_menuNext = true;
@@ -1161,7 +1161,7 @@ void RenderWindow() {
     }
 
     // Without the chat the window is exactly its parts (fitted below, down to nothing but the input).
-    const WinMode winMode = Lay().chat ? WinMode::Big : WinMode::Fitted;
+    const WinMode winMode = Shown().chat ? WinMode::Big : WinMode::Fitted;
     // The input's height this frame is known already: the window's height follows in the same frame, no frame with the
     // rows below the input hanging out of the window.
     {
@@ -1174,7 +1174,7 @@ void RenderWindow() {
     }
     const WinSpace space = WindowSpace(minBtn);
     ImGui::SetNextWindowSize(ImVec2(520, 360), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSizeConstraints(ImVec2(space.minW, Lay().chat ? space.minH : 16.0f), ImVec2(FLT_MAX, FLT_MAX));
+    ImGui::SetNextWindowSizeConstraints(ImVec2(space.minW, Shown().chat ? space.minH : 16.0f), ImVec2(FLT_MAX, FLT_MAX));
     PlaceWindow(winMode, space);
     const bool subtitles = ProfileOn(2);  // subtitle mode: no field, no edge – only the lines over the game
     const bool glassActive = subtitles && SubtitleWriting();  // writing on the glass: a soft background, half see-through
@@ -1184,7 +1184,7 @@ void RenderWindow() {
                               ImGuiWindowFlags_NoScrollWithMouse;
     if (WaypointPassThrough()) wflags |= ImGuiWindowFlags_NoInputs;
     // Without the chat: a thin edge only, the window is hardly more than its parts (the grey input in the end).
-    if (!Lay().chat) ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
+    if (!Shown().chat) ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
     if (subtitles) ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
     // On glass the resize corner shows only while the pointer is over the window (last frame), like the scroll bar; it
     // works all the same.
@@ -1199,7 +1199,7 @@ void RenderWindow() {
     s_glassHovered = subtitles && ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows |
                                                          ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
     if (subtitles) ImGui::PopStyleVar();
-    if (!Lay().chat) ImGui::PopStyleVar();
+    if (!Shown().chat) ImGui::PopStyleVar();
     if (!begun) {
         ImGui::End();
         return;
@@ -1233,7 +1233,7 @@ void RenderWindow() {
     const float icon = ImGui::GetFrameHeight();
     const float gap = std::round(icon * 0.6f);
     const float micPillW = std::floor(icon * 1.15f) + 1.0f + std::floor(icon * 0.75f);
-    const float cornerW = Lay().header ? std::floor(ImGui::GetFontSize() * 0.8f) : 0.0f;  // the corner top right has its place
+    const float cornerW = Shown().header ? std::floor(ImGui::GetFontSize() * 0.8f) : 0.0f;  // the corner top right has its place
     const float ledW = std::round(icon * 0.7f);  // the translation light
     const float rightW = ledW + st.ItemSpacing.x + (g_cfg.voiceEnabled ? micPillW + gap : 0) + icon + gap + icon + st.ItemSpacing.x + icon + cornerW;
     const float tabsW = std::max(60.0f, ImGui::GetContentRegionAvail().x - rightW - gap);
@@ -1250,7 +1250,7 @@ void RenderWindow() {
     static ImVec2 s_chatMenuMin, s_chatMenuMax;  // the "v" beside the chat tab: its menu opens above it
     static bool s_chatMenuAnchored = false;
     static bool s_chatMenuFull = false;  // from the "v": the whole menu; a right-click on the tab: only its name
-    if (Lay().header) {
+    if (Shown().header) {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         ImGui::BeginChild("##hdr", ImVec2(tabsW, icon), false,
                           ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBackground);
@@ -1370,7 +1370,7 @@ void RenderWindow() {
     }
     RenderTabSettingsPopup();
     RenderNewTabPopup();
-    if (Lay().header) {
+    if (Shown().header) {
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - rightW);
         {  // The light: grey off, a quiet green while the chat is translated, bright while something is being translated.
            // A click translates the chat in view once, a right-click switches translating new lines on or off.
@@ -1406,7 +1406,7 @@ void RenderWindow() {
     }
     RenderMainMenu(newTabNext);
     RenderSnippets();
-    if (Lay().header) {
+    if (Shown().header) {
         ImGui::SameLine();
         if (IconButton("##close", Icon::Close, false, nullptr)) {  // the tool off: no window, no reading; its key brings both back
             g_show = false;
@@ -1470,7 +1470,7 @@ void RenderWindow() {
             SaveLayout();
         }
     }
-    const bool showPreview = Lay().preview, showWords = Lay().words;
+    const bool showPreview = Shown().preview, showWords = Shown().words;
     const float smallLine = ImGui::GetFontSize() * 0.85f + 2;
     // The input grows with what you write (its soft-wrapped lines) up to 8 lines and falls back once it is sent. A small
     // extra line at its bottom: the translation in compact view (only while something is translated).
@@ -1483,8 +1483,8 @@ void RenderWindow() {
     const int previewRows = std::clamp(g_previewRows, g_layout.previewLines, std::max(8, g_layout.previewLines));
     const float lowerH = (showPreview ? line * (previewRows + 0.2f) + st.ItemSpacing.y : 0) +
                          (showWords ? ImGui::GetFrameHeightWithSpacing() : 0) +
-                         (Lay().footer ? ImGui::GetFrameHeightWithSpacing() : 0) + boxH + st.ItemSpacing.y;
-    if (!Lay().chat) {  // no chat: the window is exactly as high as its parts – the layout keeps its bottom where it is
+                         (Shown().footer ? ImGui::GetFrameHeightWithSpacing() : 0) + boxH + st.ItemSpacing.y;
+    if (!Shown().chat) {  // no chat: the window is exactly as high as its parts – the layout keeps its bottom where it is
         // + the thin bottom edge (above); never below ImGui's own minimum (the layout rounds to whole pixels).
         const float want = std::ceil(std::max(ImGui::GetCursorPosY() + lowerH - st.ItemSpacing.y + 4.0f, st.WindowMinSize.y));
         g_winFittedH = want;
@@ -1637,7 +1637,7 @@ void RenderWindow() {
         ImGui::SetKeyboardFocusHere();
         g_focusInput = false;
     }
-    if (!Lay().footer && Lay().minButton) {  // no footer: its minimise button stands left of the input, at its bottom
+    if (!Shown().footer && Shown().minButton) {  // no footer: its minimise button stands left of the input, at its bottom
         const float btn = ImGui::GetFrameHeight(), rowY = ImGui::GetCursorPosY();
         ImGui::SetCursorPosY(rowY + std::max(0.0f, boxH - btn));
         if (ImGui::Button(">##mininput", ImVec2(btn, btn))) g_minimizeRequest = true;
@@ -1758,7 +1758,7 @@ void RenderWindow() {
             ImGui::OpenPopup("kbmenu");
         }
     }
-    else if (!Lay().header && !s_lineRightClick && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) &&
+    else if (!Shown().header && !s_lineRightClick && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) &&
              ImGui::IsMouseReleased(ImGuiMouseButton_Right) && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId))
         ImGui::OpenPopup("kbmenu");  // without the header the window's own right-click is the menu
     if (!ImGui::IsMouseDown(ImGuiMouseButton_Right) && !ImGui::IsMouseReleased(ImGuiMouseButton_Right))
@@ -1772,7 +1772,7 @@ void RenderWindow() {
         static ImVec2 s_firstAt;
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
             ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) &&
-            (!Lay().chat || (!ImGui::IsMouseHoveringRect(inputMin, inputMax) && !ImGui::IsAnyItemHovered())) &&
+            (!Shown().chat || (!ImGui::IsMouseHoveringRect(inputMin, inputMax) && !ImGui::IsAnyItemHovered())) &&
             !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId)) {
             const ULONGLONG now = GetTickCount64();
             const float radius = ImGui::GetFontSize() * 2;
@@ -1881,7 +1881,7 @@ void RenderWindow() {
 
     CostMark(kCostFooter);
     // ---- the footer: channel | write | send · translator | auto | counter
-    if (Lay().footer) {
+    if (Shown().footer) {
         ScopedFont footerFont;
         footerFont.Apply(uf, uiPx);
         RenderFooter();
