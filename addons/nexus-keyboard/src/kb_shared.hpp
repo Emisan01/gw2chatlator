@@ -721,7 +721,8 @@ const std::wstring& AddonsDir();
 bool ChatEventsPresent(bool now = false);  // `now`: scan the modules at once (else Nexus' add-on events, or every 3 s)
 extern std::atomic<bool> g_addonEventsOn;   // Nexus' EV_ADDON_LOADED / EV_ADDON_UNLOADED are subscribed
 extern std::atomic<ULONGLONG> g_chatInstalledAt;  // our install of Events: Chat finished this long ago (0: none waiting)
-bool OpenNexusAddons();  // Nexus' own Addons window, through its own key: where a new add-on gets its Load
+bool OpenNexusAddons();
+bool OpenNexusMenu();  // Nexus' own menu, through its key: where Keybinds lie  // Nexus' own Addons window, through its own key: where a new add-on gets its Load
 void OnAddonLoaded(void* payload);
 void OnAddonUnloaded(void* payload);
 void InstallChatEventsNow();

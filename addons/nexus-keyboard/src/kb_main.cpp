@@ -388,6 +388,14 @@ bool OpenNexusAddons() {
     return true;
 }
 
+// Nexus' own menu (its key KB_MENU, handled on the press only): where Keybinds lie – a key for our actions is set there.
+bool OpenNexusMenu() {
+    if (!g_api || !g_api->InputBinds_Invoke || !IsCodePointer(reinterpret_cast<const void*>(g_api->InputBinds_Invoke)))
+        return false;
+    g_api->InputBinds_Invoke("KB_MENU", false);
+    return true;
+}
+
 void AddonUnload() {
     g_unloading = true;  // first: every install thread stops at its next step (unload waits for them below)
     gct::StopHttpRequests();  // and one waiting on the network ends now, not after its read's 60 s

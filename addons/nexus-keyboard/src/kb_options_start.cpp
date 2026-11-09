@@ -2,6 +2,8 @@
 
 #include "kb_shared.hpp"
 #include "kb_options_parts.hpp"
+#include "core/json.hpp"
+#include "win/files.hpp"
 #include "win/local_mt_packages.hpp"
 #include "voice_module.hpp"
 
@@ -381,6 +383,52 @@ void RenderLayoutTiles() {
     EndBox();
 }
 
+// The key Nexus keeps for one of our actions, read from its own InputBinds.json – only read, never written: the keys are
+// yours to set in Nexus. Empty when none is set. Looked at every 2 s at most while Start is open.
+static std::string NexusKeyOf(const char* identifier) {
+    static std::vector<std::pair<std::string, std::string>> s_keys;
+    static ULONGLONG s_next = 0;
+    if (GetTickCount64() >= s_next) {
+        s_next = GetTickCount64() + 2000;
+        s_keys.clear();
+        std::string raw;
+        JsonValue binds;
+        if (ReadFileBytes(AddonsDir() + L"Nexus\\InputBinds.json", raw) && ParseJson(raw, binds) && binds.IsArray()) {
+            for (const JsonValue& b : binds.arr) {
+                const std::string id = b.GetString("Identifier");
+                const JsonValue* type = b.Get("Type");
+                const JsonValue* code = b.Get("Code");
+                if (id.rfind("KB_GW2KEYBOARD_", 0) != 0 || !type || !code || type->n != 1 || code->n <= 0 || code->n > 0xFFFF)
+                    continue;  // 1: a key; 0: none set
+                const unsigned scan = static_cast<unsigned>(code->n);
+                wchar_t name[64] = {};
+                const LONG lp = static_cast<LONG>(((scan & 0xFFu) << 16) | ((scan & 0xFF00u) ? (1u << 24) : 0u));
+                if (GetKeyNameTextW(lp, name, 64) <= 0) continue;
+                std::wstring key = (b.GetBool("Ctrl") ? L"Ctrl+" : L"") + std::wstring(b.GetBool("Alt") ? L"Alt+" : L"") +
+                                   (b.GetBool("Shift") ? L"Shift+" : L"") + name;
+                s_keys.emplace_back(id, ToUtf8(key));
+            }
+        }
+    }
+    for (const auto& [id, key] : s_keys)
+        if (id == identifier) return key;
+    return std::string();
+}
+
+// One action's row: its name, the key you gave it in Nexus (or "–"), and the way to Nexus' Keybinds.
+static void KeyRow(const std::wstring& action, const char* identifier) {
+    ImGui::PushID(identifier);
+    RowLabel(UI(action));
+    const std::string key = NexusKeyOf(identifier);
+    ImGui::AlignTextToFramePadding();
+    if (key.empty()) ImGui::TextDisabled("–");
+    else ImGui::TextColored(UiAccent(), "%s", key.c_str());
+    ImGui::SameLine();
+    if (ImGui::SmallButton(UI(Tr(L"Set in Nexus")).c_str())) OpenNexusMenu();
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Opens Nexus' menu – there: Keybinds → GW2Chatlator. We set no key; the one you choose stays yours.")).c_str());
+    ImGui::PopID();
+}
+
 void RenderStartPage(Config& edit) {
     bool chatOn;
     std::wstring running;
@@ -452,11 +500,11 @@ void RenderStartPage(Config& edit) {
     RenderLayoutTiles();
     BeginBox(UI(Tr(L"Window & keys")));
     RenderUiLanguageRow(edit);
-    // No key is set by us: the actions you can bind, in Nexus → Keybinds → GW2Chatlator.
-    std::wstring binds = Tr(L"Window") + L" · " + Tr(L"Input") + L" · " + Tr(L"Translation");
-    if (edit.voiceEnabled) binds += L" · " + Tr(L"Voice");
-    ImGui::TextDisabled("%s", UI(binds).c_str());
-    Hint(UI(Tr(L"Keybinds: Nexus → Keybinds → GW2Chatlator.")));
+    // No key is set by us (Emi): each action, the key you gave it in Nexus, and a button to Nexus' Keybinds.
+    KeyRow(Tr(L"Window"), kToggleBind);
+    KeyRow(Tr(L"Input"), kFocusBind);
+    KeyRow(Tr(L"Translation"), kTranslateBind);
+    if (edit.voiceEnabled) KeyRow(Tr(L"Voice"), kTalkBind);
     EndBox();
 }
 
