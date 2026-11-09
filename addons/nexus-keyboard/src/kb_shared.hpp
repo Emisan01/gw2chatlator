@@ -763,7 +763,8 @@ extern std::atomic<int> g_localMtPct;
 extern std::thread g_localMtThread;
 extern std::thread g_localMtProbeThread;
 // The options window's pages, top to bottom in its side bar (g_optionsTab and SwitchOptionsTab take these).
-enum OptionsPage { kPageStart, kPageChat, kPageTyping, kPageVoice, kPageTranslator, kPageWindow, kPageTechnical, kPageCount };
+// Typing is part of Chat since 2026-11-09 (Emi): what you write and how lines show, on one page.
+enum OptionsPage { kPageStart, kPageChat, kPageVoice, kPageTranslator, kPageWindow, kPageTechnical, kPageCount };
 extern int g_optionsTab;
 std::wstring KeyboardDir();
 

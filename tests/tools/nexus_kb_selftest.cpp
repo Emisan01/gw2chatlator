@@ -339,7 +339,7 @@ int wmain(int argc, wchar_t** argv) {
         }
         if (src && GetEnvironmentVariableW(L"GW2KB_SHOT_TECH", nullptr, 0)) src(8, nullptr, nullptr);  // Options > Technical
         const bool shotSnippets = src && GetEnvironmentVariableW(L"GW2KB_SHOT_SNIPPETS", nullptr, 0) > 0;  // text blocks
-        wchar_t optTab[8] = {};  // GW2KB_SHOT_OPTIONS=<tab>: the options open on that tab (0 General … 6 Technical)
+        wchar_t optTab[8] = {};  // GW2KB_SHOT_OPTIONS=<tab>: the options open on that tab (0 Start … 5 Technical)
         if (src && GetEnvironmentVariableW(L"GW2KB_SHOT_OPTIONS", optTab, 8)) {
             char tab[8] = {};
             WideCharToMultiByte(CP_UTF8, 0, optTab, -1, tab, sizeof tab, nullptr, nullptr);

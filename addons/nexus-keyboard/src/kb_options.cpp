@@ -246,11 +246,6 @@ void DrawPageIcon(ImDrawList* dl, ImVec2 c, float s, int page, ImU32 col) {
         case kPageChat:  // a speech bubble
             poly({P(3, 4.5f), P(17, 4.5f), P(17, 13.5f), P(8, 13.5f), P(4.5f, 16.5f), P(4.5f, 13.5f), P(3, 13.5f)});
             break;
-        case kPageTyping:  // a keyboard
-            dl->AddRect(P(2, 5), P(18, 15), col, 1.5f * s, ImDrawCornerFlags_All, t);
-            for (float x : {5.0f, 8.0f, 11.0f, 14.0f}) dl->AddRectFilled(P(x, 7.8f), P(x + 1.3f, 9.1f), col);
-            dl->AddLine(P(6, 11.8f), P(14, 11.8f), col, t);
-            break;
         case kPageVoice:
             DrawVectorMicIcon(dl, c, s * 1.2f, col);
             break;
@@ -494,7 +489,6 @@ std::wstring PageName(int page) {
     switch (page) {
         case kPageStart: return Tr(L"Start");
         case kPageChat: return Tr(L"Chat");
-        case kPageTyping: return Tr(L"Typing");
         case kPageVoice: return Tr(L"Voice");
         case kPageTranslator: return Tr(L"Translator");
         case kPageWindow: return Tr(L"Window");
@@ -505,8 +499,7 @@ std::wstring PageName(int page) {
 std::wstring PageSub(int page) {
     switch (page) {
         case kPageStart: return Tr(L"Three settings – then it runs.");
-        case kPageChat: return Tr(L"How lines appear and where Enter goes.");
-        case kPageTyping: return Tr(L"Suggestions and spelling while you type.");
+        case kPageChat: return Tr(L"How lines appear, where Enter goes, and the help while you type.");
         case kPageVoice: return Tr(L"Voice module and microphone – runs on this PC.");
         case kPageTranslator: return Tr(L"Who translates – on this PC or online.");
         case kPageWindow: return Tr(L"How the chat window looks and what it shows.");
@@ -563,8 +556,10 @@ void RenderOptionsContent() {
         PageHead(names[s_page], UI(PageSub(s_page)));
         switch (s_page) {
             case kPageStart: RenderStartPage(edit); break;
-            case kPageChat: RenderChatPage(edit); break;
-            case kPageTyping: RenderTypingPage(edit); break;
+            case kPageChat:  // the chat and, below it, the help while you type
+                RenderChatPage(edit);
+                RenderTypingPage(edit);
+                break;
             case kPageVoice: RenderVoicePage(edit, entered); break;
             case kPageTranslator: RenderTranslatorPage(edit); break;
             case kPageWindow: RenderWindowPage(edit); break;
