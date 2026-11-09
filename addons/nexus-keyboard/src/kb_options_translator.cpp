@@ -235,7 +235,7 @@ void RenderTranslatorRows(Config& edit, bool full) {
 
 // "I read in": the same setting as in the chat tab's menu.
 void RenderReadRow(Config& edit) {
-    RowLabel(UI(Tr(L"I read in")));
+    RowLabel(UI(Tr(L"I read the chat in")));
     ImGui::SetNextItemWidth(ControlW());
     const std::string shown = edit.readLang.empty()  // "System (Deutsch)": which language that is
                                   ? UI(Tr(L"System")) + " (" + U8(NativeName(ReadingLangNow())) + ")"
@@ -298,7 +298,7 @@ void RenderUnderstood(Config& edit) {
 
 // "I send": the footer's "Send" for everything but a whisper tab with its own – for typing and speaking alike.
 void RenderSendRow() {
-    RowLabel(UI(Tr(L"I send")));
+    RowLabel(UI(Tr(L"Translate to")));
     std::lock_guard<std::mutex> lock(g_mu);
     const int n = static_cast<int>(g_cfg.writeLangs.size());
     const std::string shown = g_sendIdx >= 0 && g_sendIdx < n ? U8(NativeName(g_cfg.writeLangs[static_cast<size_t>(g_sendIdx)]))

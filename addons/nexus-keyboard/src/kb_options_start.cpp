@@ -417,15 +417,37 @@ void RenderStartPage(Config& edit) {
     auto tip = [](const std::wstring& t) {
         if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(t).c_str());
     };
+    // From the top (Emi, 2026-11-09): who translates, the language you read the chat in and the one you write in (one
+    // setting at first – the writing follows the reading until you choose it on its own, also on the Chat page), what
+    // your messages are translated to, and what stays as it is.
     BeginBox(UI(Tr(L"Translation")));
+    RenderTranslatorRows(edit, false);
+    const std::wstring readBefore = edit.readLang;
     RenderReadRow(edit);
     tip(Tr(L"Foreign lines appear in this language."));
+    if (edit.readLang != readBefore && edit.writeIn == readBefore) edit.writeIn = edit.readLang;  // still one setting: it follows
+    {
+        const std::string writeLabel = UI(Tr(L"I write in"));
+        const float comboW = ImGui::GetFontSize() * 8.0f;
+        ImGui::SameLine();
+        if (ImGui::GetContentRegionAvail().x < ImGui::CalcTextSize(writeLabel.c_str()).x + comboW + ImGui::GetFontSize()) {
+            ImGui::NewLine();  // a narrow window: its own row
+            RowLabel(writeLabel);
+            ImGui::SetNextItemWidth(ControlW());
+        } else {
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextDisabled("%s", writeLabel.c_str());
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(comboW);
+        }
+        LanguageCombo("##writestart", edit.writeIn, Tr(L"System") + L" (" + NativeName(TypingLang()) + L")");
+        tip(Tr(L"The language you type in – the typing help and the translation start from it. It follows the chat's language until you choose it on its own."));
+    }
+    RenderSendRow();
+    tip(Tr(L"For typing and speaking – the same choice as \"Send\" in the chat window."));
     RowLabel(UI(Tr(L"I understand")));
     RenderUnderstood(edit);
     tip(Tr(L"Lines in these languages stay as they are."));
-    RenderSendRow();
-    tip(Tr(L"For typing and speaking – the same choice as \"Send\" in the chat window."));
-    RenderTranslatorRows(edit, false);
     EndBox();
     RenderLayoutTiles();
     BeginBox(UI(Tr(L"Window & keys")));
