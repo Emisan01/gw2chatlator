@@ -489,6 +489,13 @@ static void RenderMainMenu(bool& newTabNext) {
 // Info texts (Options → Window): never in the subtitle mode – there the window is the chat itself and nothing else.
 static bool InfoTexts() { return g_layout.infoText && !ProfileOn(2); }
 
+// The subtitle mode always has its input, as the mini mode with the chat would: glass while nobody writes; a left click
+// in it, your focus key or your writing make it active – a soft background behind the lines and the input under them, a
+// shade darker for contrast, the cursor in it (Emi, 2026-11-09). Sent, or left with Esc: glass again.
+static bool SubtitleWriting() {
+    return g_inputActive || g_focusInput || g_input[0] || g_sending || g_sendPending || g_recording;
+}
+
 static void RenderChat(ImGuiIO& io, std::unique_lock<std::mutex>& lock, const ImGuiStyle& st, bool& s_lineRightClick, uint64_t& s_lineMenuId, std::wstring& s_lineMenuText, bool& s_openLineMenu, bool& s_lineMenuOpen, const float& line, const float& lowerH) {
     if (Lay().chat) {
         static float scrollY = 0, scrollMax = 0, viewH = 1, dragOffset = 0;
@@ -1162,7 +1169,9 @@ void RenderWindow() {
     ImGui::SetNextWindowSizeConstraints(ImVec2(space.minW, Lay().chat ? space.minH : 16.0f), ImVec2(FLT_MAX, FLT_MAX));
     PlaceWindow(winMode, space);
     const bool subtitles = ProfileOn(2);  // subtitle mode: no field, no edge – only the lines over the game
-    ImGui::SetNextWindowBgAlpha(subtitles ? 0.0f : std::clamp(g_cfg.opacity, 0, 255) / 255.0f);  // up to fully see-through (the small button keeps 60)
+    const bool glassActive = subtitles && SubtitleWriting();  // writing on the glass: a soft background, half see-through
+    ImGui::SetNextWindowBgAlpha(!subtitles ? std::clamp(g_cfg.opacity, 0, 255) / 255.0f  // up to fully see-through (the small button keeps 60)
+                                           : glassActive ? 0.5f : 0.0f);
     ImGuiWindowFlags wflags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                               ImGuiWindowFlags_NoScrollWithMouse;
     if (WaypointPassThrough()) wflags |= ImGuiWindowFlags_NoInputs;
@@ -1655,11 +1664,17 @@ void RenderWindow() {
     }
     // Subtitle mode: the input is there – focus, keys and a click on it work as always – but unseen while nobody writes and
     // nothing is sent. A message stays readable: it is drawn over the box (##boxtext), as text on the glass, no frame.
-    const bool unseen = ProfileOn(2) && !g_inputActive && !g_focusInput && !g_input[0] && !g_sending && !g_sendPending && !g_recording;
+    const bool unseen = ProfileOn(2) && !SubtitleWriting();
+    const bool glassInput = ProfileOn(2) && !unseen;  // writing on the glass: the field a shade darker than the background
     if (unseen) ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.0f);
+    if (glassInput) {
+        ImVec4 field = ImGui::GetStyleColorVec4(ImGuiCol_FrameBg);
+        field = ImVec4(field.x * 0.55f, field.y * 0.55f, field.z * 0.55f, std::max(field.w, 0.9f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, field);
+    }
     ImGui::PushStyleColor(ImGuiCol_Text, Bright(ImGui::GetStyleColorVec4(ImGuiCol_Text)));  // your brightness here too
     const bool enter = ImGui::InputTextMultiline("##input", g_input, sizeof(g_input), boxSize, flags, InputCallback);
-    ImGui::PopStyleColor();
+    ImGui::PopStyleColor(glassInput ? 2 : 1);
     if (unseen) ImGui::PopStyleVar();
     const ImVec2 inputMin = ImGui::GetItemRectMin(), inputMax = ImGui::GetItemRectMax();
     const std::string nowFlat = Flat(g_input);
