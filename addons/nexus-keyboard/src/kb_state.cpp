@@ -220,8 +220,52 @@ void TechLogToFile(std::wstring path) {
     s_techFile = std::move(path);
 }
 
+// The session protocol ([Debug] Protocol=1, for development): every entry of the logbook also goes into a file, with
+// the time of day – what was set, which view, which language a text was taken for, what failed. Never a text, never
+// a name: states, codes and counts only (it may be shown to others). The helper's own lines ('H') stay out of it.
+static std::wstring s_protocolFile;
+static void ProtocolLine(const std::wstring& text) {  // s_techMu held
+    FILE* file = nullptr;
+    if (_wfopen_s(&file, s_protocolFile.c_str(), L"ab") != 0 || !file) return;
+    SYSTEMTIME t;
+    GetLocalTime(&t);
+    char stamp[24];
+    sprintf_s(stamp, "%02u:%02u:%02u.%03u ", t.wHour, t.wMinute, t.wSecond, t.wMilliseconds);
+    const std::string line = stamp + U8(text) + "\n";
+    fwrite(line.data(), 1, line.size(), file);
+    fclose(file);
+}
+void ProtocolToFile(std::wstring path) {
+    std::lock_guard<std::mutex> lock(s_techMu);
+    WIN32_FILE_ATTRIBUTE_DATA info{};
+    if (GetFileAttributesExW(path.c_str(), GetFileExInfoStandard, &info) && (info.nFileSizeHigh || info.nFileSizeLow > 2u * 1024 * 1024))
+        MoveFileExW(path.c_str(), (path + L".old").c_str(), MOVEFILE_REPLACE_EXISTING);  // it never grows without end
+    s_protocolFile = std::move(path);
+    SYSTEMTIME t;
+    GetLocalTime(&t);
+    wchar_t day[16];
+    swprintf_s(day, L"%04u-%02u-%02u", t.wYear, t.wMonth, t.wDay);
+    ProtocolLine(std::wstring(L"== session ") + GCT_BUILD_DISPLAY_WSTR + L", " + day);
+}
+// One line of what is set right now, after `why` changed it (g_mu held).
+void LogState(const wchar_t* why) {
+    const Layout& l = g_layout;
+    const std::wstring parts = std::wstring(l.header ? L"H" : L"-") + (l.chat ? L"C" : L"-") + (l.preview ? L"P" : L"-") +
+                               (l.words ? L"W" : L"-") + (l.footer ? L"F" : L"-") + (l.minButton ? L"M" : L"-");
+    static const wchar_t* const kView[] = {L"parts", L"compact", L"mini", L"subtitles"};
+    const std::wstring send = SendLang();
+    TechLog('O', std::wstring(L"state after ") + why + L": translator " + (g_translator ? g_translator->Name() : std::wstring(L"-")) +
+                     L", beam " + std::to_wstring(g_cfg.localQuality) + L", versions " + std::to_wstring(g_cfg.versions) +
+                     L", card " + (g_cfg.useGpu ? L"1" : L"0") + L", typing " + (g_cfg.writeIn.empty() ? L"system(" + TypingLang() + L")" : g_cfg.writeIn) +
+                     L", reading " + (g_cfg.readLang.empty() ? std::wstring(L"-") : g_cfg.readLang) +
+                     L", send " + (send.empty() ? std::wstring(L"as written") : send) + (g_sendOverride.empty() ? L"" : L" (tab)") +
+                     L", view " + kView[std::clamp(static_cast<int>(l.view), 0, 3)] + L", own parts " + parts +
+                     L", chat translation " + (g_nx.translateChat ? L"1" : L"0"));
+}
+
 void TechLog(char area, std::wstring text) {
     std::lock_guard<std::mutex> lock(s_techMu);
+    if (area != 'H' && !s_protocolFile.empty()) ProtocolLine(std::wstring(1, static_cast<wchar_t>(area)) + L" " + text);
     if (area == 'S' && !s_techFile.empty()) {
         FILE* file = nullptr;
         if (_wfopen_s(&file, s_techFile.c_str(), L"ab") == 0 && file) {
@@ -746,6 +790,7 @@ bool ProfileOn(int profile) { return g_layout.view == ViewOf(profile); }  // g_m
 void SetProfile(int profile, bool on) {  // g_mu held
     g_layout.view = gct::SwitchView(g_layout.view, ViewOf(profile), on);
     SaveLayout();
+    LogState(L"a view's switch");
 }
 Layout& Lay() { return g_layout; }
 Layout Shown() {

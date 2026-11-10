@@ -115,6 +115,7 @@ UINT OnWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 void OnToggle(const char*, bool release) {
     if (release) return;
     g_show = !g_show;
+    TechLog('O', g_show ? L"window: shown" : L"window: hidden");
     if (g_show && g_closedWithX) {
         g_closedWithX = false;
         ChatSourceSetReading(true, false);
@@ -321,6 +322,10 @@ void AddonLoad(AddonAPI_t* api) {
     {
         std::lock_guard<std::mutex> lock(g_mu);
         if (GetPrivateProfileIntW(L"Debug", L"SendLog", 0, g_cfg.iniPath.c_str())) TechLogToFile(g_cfg.dataDir + L"\\send-steps.log");
+        if (GetPrivateProfileIntW(L"Debug", L"Protocol", 0, g_cfg.iniPath.c_str())) {
+            ProtocolToFile(g_cfg.dataDir + L"\\session-protocol.log");
+            LogState(L"the start");
+        }
         g_links.Start(api, [](std::function<void()> job) {
             if (!g_test.noSend) g_worker.PostLookup(std::move(job));  // the self-test asks nobody
         }, g_cfg.dataDir);
@@ -397,6 +402,7 @@ bool OpenNexusMenu() {
 }
 
 void AddonUnload() {
+    TechLog('O', L"== end of the session");
     g_unloading = true;  // first: every install thread stops at its next step (unload waits for them below)
     gct::StopHttpRequests();  // and one waiting on the network ends now, not after its read's 60 s
     if (g_api) {

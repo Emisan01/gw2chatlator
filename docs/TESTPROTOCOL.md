@@ -16,6 +16,13 @@ Quality verification is strictly stratified into three distinct levels:
 | **B. Semi-automatic** | Standalone headless harnesses | `nexus_kb_selftest`, `nexus_kb_smoketest`, `local_mt_translator_selftest`: lifecycle, worker lanes, config roundtrip outside GW2 | `pass` / `fail` |
 | **C. Manual In-Game** | Maintainer eye-test in GW2 | Real visual aesthetics, feel, latency under heavy chat load, Nexus interaction, live audio hardware | `ok` / `defect` / `skipped` |
 
+**Level C with a protocol (development):** with `[Debug] Protocol=1` in `gw2-chat-translator.ini` the add-on writes
+`GW2Keyboard\session-protocol.log` while you play: what was set and when, every view's switch with your own parts, the
+language and the cause of every input error, translator runs, whisper tabs bound to an account – states, codes and
+counts only, never a text, never a name. After the session `python tools/session_check.py` reads the last one and
+checks what it can (a view's switch never changes your parts, every error names its languages); the rest of a row
+stays the maintainer's eye. The file starts anew above 2 MB.
+
 ---
 
 ## 2. Rules Enforced by This Protocol

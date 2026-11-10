@@ -26,6 +26,7 @@ void SendLanguageItems(bool tabAware) {
             g_sendIdx = static_cast<int>(i);
             RememberSend();
         }
+        LogState(L"the send language");
         chosen();
     };
     const bool tabChoice = inTab && !g_sendOverride.empty();
@@ -226,6 +227,7 @@ void RenderFooter() {  // g_mu held
         if (chosen != g_cfg.writeIn) {
             g_cfg.writeIn = chosen;
             g_cfg.SaveValue(L"Spelling", L"WriteIn", chosen);
+            LogState(L"the typing language (footer)");
             g_worker.Post([] {  // spelling and learned words follow the language you write in
                 FreeWorkerState();
                 InitSpelling();

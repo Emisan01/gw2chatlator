@@ -448,6 +448,8 @@ void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
                     swprintf(timeBuf, 64, L"%04u-%02u-%02u %02u:%02u:%02u", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
                     g_lastErrorTime = timeBuf;
                     g_lastErrorGen = gen;
+                    TechLog('O', std::wstring(L"input error: ") + TranslateErrorKindName(r.errorKind) + L", " + source + L" > " + target +
+                                     L" (typing " + typing + L", detected " + (sure.empty() ? std::wstring(L"-") : sure) + L")");
                 }
             }
         }

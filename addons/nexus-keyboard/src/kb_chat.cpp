@@ -196,6 +196,8 @@ static void BindWhisperTabs(const ChatLine& l) {
     WhisperTab& keep = g_tabs[b.keep];
     if (keep.nameFolded != l.speakerFolded) keep.SetName(Trim(l.speaker));
     if (b.keep == g_activeTab) g_whisperTo = keep.name;
+    TechLog('C', std::wstring(L"whisper tab: account known, ") + std::to_wstring(keep.peer.names.size()) + L" character(s)" +
+                     (b.drop >= 0 ? L", a second tab of the player folded in" : L""));
     if (b.drop < 0) return;
     if (keep.sendLang.empty()) keep.sendLang = g_tabs[b.drop].sendLang;
     ForgetDraft(g_tabs[b.drop].uid);

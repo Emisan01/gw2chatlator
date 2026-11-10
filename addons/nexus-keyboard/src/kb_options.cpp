@@ -434,8 +434,13 @@ void ApplyOptions(Config& edit, Config& opened) {
         const bool readChanged = next.readLang != old.readLang || next.understoodLangs != old.understoodLangs ||
                                  next.skipTypingLang != old.skipTypingLang;
         const bool uiChanged = next.uiLang != old.uiLang;
+        std::wstring changedNames;  // which settings, never their values (keys are among them)
+#define KB_NAME(f) if (!(next.f == old.f)) changedNames += std::wstring(changedNames.empty() ? L"" : L", ") + L#f;
+        KB_OPTIONS(KB_NAME)
+#undef KB_NAME
         g_cfg = next;
         g_cfg.SaveAll();
+        if (!changedNames.empty()) TechLog('O', L"options changed: " + changedNames);
         if (uiChanged) {
             SetUiLang(g_cfg.uiLang);
             PrepareFaultAlert();  // the alert after a fault in the language chosen now
@@ -463,6 +468,7 @@ void ApplyOptions(Config& edit, Config& opened) {
             SetStatus(TrF(L"Quality set: beam {1} – the visible chat is translated again", {std::to_wstring(g_cfg.localQuality)}), 4000);
         else if (decodeChanged && !versionsChanged)
             SetStatus(Tr(L"M2M100 settings set – the visible chat is translated again"), 4000);
+        if (!changedNames.empty()) LogState(L"the options");
         edit = opened = g_cfg;
     }
     if (typingChanged) g_worker.Post([] {

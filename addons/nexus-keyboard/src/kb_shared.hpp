@@ -457,6 +457,8 @@ struct TechEntry {
 void TechLog(char area, std::wstring text);
 std::vector<TechEntry> TechLogNow();
 void TechLogClear();
+void ProtocolToFile(std::wstring path);  // [Debug] Protocol=1: the whole logbook into session-protocol.log (kb_state.cpp)
+void LogState(const wchar_t* why);       // what is set right now, one logbook line (g_mu held)
 void TechLogToFile(std::wstring path);  // [Debug] SendLog=1: the send steps also go to a file (steps only, never a text or a name)
 
 // GW2's own threads, from Windows' numbers (no game memory): the busiest are measured once a second while the palette is open.
