@@ -144,15 +144,15 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once, std::w
         return;
     }
     const std::wstring els = DetectLanguage(text);  // on this PC (Windows), no translator asked
-    what.detected = SureLanguage(text, els);
     {
         std::lock_guard<std::mutex> lock(g_mu);
+        tr = g_translator;
+        what.detected = SureLanguageForModel(text, els, LocalMtModel(tr));
         if (!what.detected.empty())  // what this player writes in (answering them in it)
             for (const ChatLine& l : g_lines)
                 if (l.id == id && !l.speaker.empty()) g_playerLang[CaseFold(Trim(l.speaker))] = what.detected;
         const bool windowVisible = (g_show && (g_inMap || g_test.forceMap) && !g_mapOpen && !g_collapsed);
         what.chatOn = g_nx.translateChat && (asked || once || (windowVisible && !g_orchestrator.IsPaused()));
-        tr = g_translator;
         what.target = forceTarget.empty() ? ReadLang() : forceTarget;
         understood = g_cfg.understoodLangs;
         what.skipTarget = g_cfg.skipTypingLang;

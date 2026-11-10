@@ -291,6 +291,30 @@ static void TestLocalMtProtocol() {
     }
     CHECK(!LocalMtRoute(L"af", L"en", {"nllb-200"}).empty());
     CHECK(NllbLanguageTag("unknown").empty());
+    {  // A chat line whose detected language has no tag in the chosen local model stays unsure: not translated by
+       // itself, while a click still translates; online translators ("") stay untouched.
+        CHECK(LocalModelHasLanguage("nllb", L"af") && LocalModelHasLanguage("nllb", L"eu") && !LocalModelHasLanguage("nllb", L"haw"));
+        CHECK(LocalModelHasLanguage("m2m", L"af") && !LocalModelHasLanguage("m2m", L"eu") && !LocalModelHasLanguage("m2m", L"haw"));
+        CHECK(LocalModelHasLanguage("opus", L"de") && LocalModelHasLanguage("opus", L"en-GB") && !LocalModelHasLanguage("opus", L"af"));
+        CHECK(LocalModelHasLanguage("", L"haw") && !LocalModelHasLanguage("", L""));
+        CHECK(SureLanguageForModel(L"aloha kakahiaka pehea oe", L"haw", "nllb").empty());
+        CHECK(SureLanguageForModel(L"aloha kakahiaka pehea oe", L"haw", "") == L"haw");
+        CHECK(SureLanguageForModel(L"kaixo lagunak zer moduz", L"eu", "nllb") == L"eu");
+        CHECK(SureLanguageForModel(L"kaixo lagunak zer moduz", L"eu", "m2m").empty());
+        CHECK(SureLanguageForModel(L"ons gaan nou na die baas", L"af", "nllb") == L"af");
+        CHECK(SureLanguageForModel(L"ons gaan nou na die baas", L"af", "opus").empty());
+        CHECK(SureLanguageForModel(L"wer kommt mit zum großen Boss", L"haw", "nllb") == L"DE");
+        LineToTranslate line;
+        line.chatOn = true;
+        line.target = L"DE";
+        line.detected = SureLanguageForModel(L"aloha kakahiaka pehea oe", L"haw", "nllb");
+        CHECK(!ShouldTranslate(line));
+        line.trigger = TranslateTrigger::LineClick;
+        CHECK(ShouldTranslate(line));
+        line.trigger = TranslateTrigger::Auto;
+        line.detected = SureLanguageForModel(L"aloha kakahiaka pehea oe", L"haw", "");
+        CHECK(ShouldTranslate(line));
+    }
     {
         CHECK(CpuPercent(5'000'000, 10'000'000, 4) == 12.5f);  // half a second of one processor in a second, of four
         CHECK(CpuPercent(1, 0, 4) == 0.0f && CpuPercent(1, 1, 0) == 0.0f && CpuPercent(9, 1, 1) == 100.0f);

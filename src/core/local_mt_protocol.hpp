@@ -90,6 +90,11 @@ bool ParseLocalMtMessage(const std::string& line, LocalMtMessage& out);
 std::string NllbLanguageTag(const std::string& langCode);
 // Returns M2M100's tag (e.g. "__de__") for an ISO/DeepL language code, or "" for a language the model does not have.
 std::string M2mLanguageTag(const std::string& langCode);
+// Whether the chosen translator has a tag for `lang` (`model`: "nllb", "m2m", "opus", or "" for online translators,
+// which are left untouched).
+bool LocalModelHasLanguage(const std::string& model, const std::wstring& lang);
+// `SureLanguage` when the chosen translator has a tag for the language, else "" (unsure: not translated by itself).
+std::wstring SureLanguageForModel(const std::wstring& text, const std::wstring& els, const std::string& model);
 
 // Returns one direct pair or a two-step route through English. Pair IDs are lowercase, e.g. "de-en".
 std::vector<std::string> LocalMtRoute(const std::wstring& source, const std::wstring& target,

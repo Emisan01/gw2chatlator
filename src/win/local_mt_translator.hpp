@@ -53,6 +53,8 @@ uint64_t LocalMtHelperCpu(const std::shared_ptr<Translator>& translator);
 // What differs from neutral, for the tag a translation carries (" · rep 1.10 · ngram 3"); empty when nothing does.
 std::wstring LocalMtDecodeNote(const std::shared_ptr<Translator>& translator);
 bool IsLocalMtTranslator(const std::shared_ptr<Translator>& translator);
+// The local model's name ("nllb", "m2m", "opus"), or "" for an online translator.
+std::string LocalMtModel(const std::shared_ptr<Translator>& translator);
 // Raw translation (Technical tab, for comparing): the parts between protected ones go to the model as written, no
 // sentence split, no extra tries, no clean-up of its output.
 void SetLocalMtRaw(const std::shared_ptr<Translator>& translator, bool raw);

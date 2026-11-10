@@ -51,6 +51,9 @@ public:
     std::wstring Name() const override {
         return kind_ == LocalKind::Nllb ? Tr(L"NLLB-200 (local)") : kind_ == LocalKind::M2m ? Tr(L"M2M100 (local)") : Tr(L"OPUS-MT (local)");
     }
+    const char* Model() const {
+        return kind_ == LocalKind::Nllb ? "nllb" : kind_ == LocalKind::M2m ? "m2m" : "opus";
+    }
 
     void StopForRemoval() {
         std::lock_guard<std::mutex> lock(mu_);
@@ -800,6 +803,11 @@ void SetLocalMtRaw(const std::shared_ptr<Translator>& translator, bool raw) {
 
 bool IsLocalMtTranslator(const std::shared_ptr<Translator>& translator) {
     return std::dynamic_pointer_cast<LocalMtTranslator>(translator) != nullptr;
+}
+
+std::string LocalMtModel(const std::shared_ptr<Translator>& translator) {
+    auto local = std::dynamic_pointer_cast<LocalMtTranslator>(translator);
+    return local ? local->Model() : std::string();
 }
 
 LocalMtCard GetLocalMtCard(const std::shared_ptr<Translator>& translator) {

@@ -287,6 +287,27 @@ std::string NllbLanguageTag(const std::string& langCode) {
     return {};
 }
 
+bool LocalModelHasLanguage(const std::string& model, const std::wstring& lang) {
+    const std::string code = Code(lang);
+    if (code.empty()) return false;
+    if (model.empty()) return true;
+    if (model == "nllb") return !NllbLanguageTag(code).empty();
+    if (model == "m2m") return !M2mLanguageTag(code).empty();
+    if (model == "opus") {
+        if (code == "en") return true;
+        const std::string pair = code + "-en";
+        for (const LocalMtModelInfo& m : LocalMtModelCatalog())
+            if (pair == m.pair) return true;
+        return false;
+    }
+    return false;
+}
+
+std::wstring SureLanguageForModel(const std::wstring& text, const std::wstring& els, const std::string& model) {
+    const std::wstring sure = SureLanguage(text, LocalModelHasLanguage(model, els) ? els : std::wstring());
+    return LocalModelHasLanguage(model, sure) ? sure : std::wstring();
+}
+
 std::vector<std::string> LocalMtRoute(const std::wstring& source, const std::wstring& target,
                                       const std::vector<std::string>& installedPairs) {
     const std::string src = Code(source), tgt = Code(target);
