@@ -601,6 +601,47 @@ extern "C" __declspec(dllexport) void Gw2KbTestMini(int on) {  // nexus_kb_selft
     SetProfile(1, on != 0);
 }
 
+// nexus_kb_selftest: version choice without the preview field (step 1: mini view + 3 versions, step 0: query, step 2: clean up).
+extern "C" __declspec(dllexport) int Gw2KbTestCompactVersions(int step, char* previewOut, char* backOut) {
+    if (!TestHost()) return -1;
+    std::lock_guard<std::mutex> lock(g_mu);
+    if (step == 1) {
+        SetProfile(1, true);
+        g_sendOverride = PrimaryLang(TypingLang()) == L"EN" ? L"DE" : L"EN";
+        g_edit.active = false;
+        CopyUtf8(g_input, "Wir warten am Wegpunkt");
+        g_flatInput = g_lastInput = g_input;
+        g_wFlatInput = W(g_flatInput);
+        g_inputChanged = 0;
+        g_previewGen = ++g_inputGen;
+        g_previewVersions = {L"We wait at the waypoint", L"Waiting at the waypoint", L"We are waiting at the waypoint"};
+        g_previewBacks = {L"Wir warten am Wegpunkt", L"Warten am Wegpunkt", L"Wir warten gerade am Wegpunkt"};
+        g_previewPick = 0;
+        g_preview = g_previewVersions[0];
+        g_back = g_previewBacks[0];
+        return 0;
+    }
+    if (step == 2) {
+        SetProfile(1, false);
+        g_sendOverride.clear();
+        g_edit = {true, 0, std::strlen(g_input), ""};
+        g_input[0] = '\0';
+        g_flatInput.clear();
+        g_wFlatInput.clear();
+        g_lastInput.clear();
+        g_inputChanged = 0;
+        g_preview.clear();
+        g_back.clear();
+        g_previewVersions.clear();
+        g_previewBacks.clear();
+        g_previewPick = 0;
+        return 0;
+    }
+    if (previewOut) CopyUtf8(previewOut, 128, U8(g_preview));
+    if (backOut) CopyUtf8(backOut, 128, U8(g_back));
+    return static_cast<int>(g_previewPick) + (g_collapsed ? 100 : 0);
+}
+
 extern "C" __declspec(dllexport) void Gw2KbTestNativeField(int on) {  // nexus_kb_selftest: the native Windows input field on / off
     if (!TestHost()) return;
     {

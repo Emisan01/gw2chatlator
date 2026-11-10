@@ -988,6 +988,48 @@ int wmain(int argc, wchar_t** argv) {
             if (!nativeOk) std::printf("FAIL: native field did not send through StartSend or did not close\n");
             ok = ok && nativeOk;
         }
+        // Version choice without the preview field (compact, mini, subtitles): the chosen version's number before
+        // "> translation" in the input box's small line; each click steps to the next version, the back-translation
+        // line follows, and three quick clicks on it in mini mode never minimise the window.
+        if (auto compactVers = reinterpret_cast<int (*)(int, char*, char*)>(GetProcAddress(dll, "Gw2KbTestCompactVersions"))) {
+            compactVers(1, nullptr, nullptr);
+            frames(5);
+            ImGuiWindow* box = nullptr;
+            if (ImGuiContext* ctx = ImGui::GetCurrentContext()) {
+                for (int i = 0; i < ctx->Windows.Size; ++i)
+                    if (ctx->Windows[i] && std::strstr(ctx->Windows[i]->Name, "##boxtext")) box = ctx->Windows[i];
+            }
+            ImGuiIO& io = ImGui::GetIO();
+            auto clickVersion = [&] {
+                if (!box) return;
+                io.MousePos = ImVec2(box->Pos.x + ImGui::GetStyle().FramePadding.x + 3.0f, box->Pos.y + box->Size.y - 4.0f);
+                frames(1);
+                io.MouseDown[0] = true;
+                frames(1);
+                io.MouseDown[0] = false;
+                frames(2);
+            };
+            char prev1[128] = {}, back1[128] = {}, prev2[128] = {}, back2[128] = {}, prev0[128] = {}, back0[128] = {};
+            clickVersion();
+            const int s1 = compactVers(0, prev1, back1);
+            clickVersion();
+            const int s2 = compactVers(0, prev2, back2);
+            clickVersion();
+            const int s0 = compactVers(0, prev0, back0);
+            io.MousePos = ImVec2(-1000, -1000);
+            compactVers(2, nullptr, nullptr);
+            frames(3);
+            std::printf("compact versions: 1->%d (%s | %s) -> %d (%s | %s) -> %d (%s | %s)\n",
+                        s1, prev1, back1, s2, prev2, back2, s0, prev0, back0);
+            const bool versOk = box != nullptr && s1 == 1 && std::strcmp(prev1, "Waiting at the waypoint") == 0 &&
+                                std::strcmp(back1, "Warten am Wegpunkt") == 0 && s2 == 2 &&
+                                std::strcmp(prev2, "We are waiting at the waypoint") == 0 &&
+                                std::strcmp(back2, "Wir warten gerade am Wegpunkt") == 0 && s0 == 0 &&
+                                std::strcmp(prev0, "We wait at the waypoint") == 0 &&
+                                std::strcmp(back0, "Wir warten am Wegpunkt") == 0;
+            if (!versOk) std::printf("FAIL: compact version choice did not step through versions / back-translations\n");
+            ok = ok && versOk;
+        }
         // Answering in their language: a French line, then a click on the name – that tab sends in French.
         bridge::ChatEventsMessage fr{};
         fr.type = bridge::ChatEventsType::Map;

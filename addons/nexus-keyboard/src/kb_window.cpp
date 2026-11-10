@@ -1491,6 +1491,8 @@ void RenderWindow() {
     // The translator's error on the text in the input shows in the preview's place even where the layout has none –
     // for as long as that text stands there; your layout is not changed for it.
     const bool showPreview = Shown().preview || InputErrorNow(), showWords = Shown().words && !g_layout.nativeField;
+    const bool previewCurrent = g_previewGen == g_inputGen && !g_preview.empty();
+    const bool showBackLine = !showPreview && Lay().backLine && previewCurrent && !g_back.empty();
     const float smallLine = ImGui::GetFontSize() * 0.85f + 2;
     // The input grows with what you write (its soft-wrapped lines) up to 8 lines and falls back once it is sent. A small
     // extra line at its bottom: the translation in compact view (only while something is translated).
@@ -1502,6 +1504,7 @@ void RenderWindow() {
     // The preview grows with its wrapped lines like the input (what it needed last frame), up to 8.
     const int previewRows = std::clamp(g_previewRows, g_layout.previewLines, std::max(8, g_layout.previewLines));
     const float lowerH = (showPreview ? line * (previewRows + 0.2f) + st.ItemSpacing.y : 0) +
+                         (showBackLine ? line : 0) +
                          (showWords ? ImGui::GetFrameHeightWithSpacing() : 0) +
                          (Shown().footer ? ImGui::GetFrameHeightWithSpacing() : 0) + boxH + st.ItemSpacing.y;
     if (!Shown().chat) {  // no chat: the window is exactly as high as its parts – the layout keeps its bottom where it is
@@ -1550,11 +1553,10 @@ void RenderWindow() {
 
     CostMark(kCostInput);
     // ---- the preview: what arrives in the GW2 chat, the back-translation small under it
-    const bool previewCurrent = g_previewGen == g_inputGen && !g_preview.empty();
     static ULONGLONG s_inputEdited = 0;  // the last change of the text
     // Without the preview (mini mode, compact view): what your text says once translated back, in one small grey line above
     // the input – you still see what goes out. Options → Window → Back-translation line.
-    if (!showPreview && Lay().backLine && previewCurrent && !g_back.empty()) {
+    if (showBackLine) {
         ImGui::PushTextWrapPos(0.0f);
         ImGui::TextDisabled("%s", UI(g_back).c_str());
         ImGui::PopTextWrapPos();
@@ -1799,6 +1801,24 @@ void RenderWindow() {
         ImGui::OpenPopup("kbmenu");  // without the header the window's own right-click is the menu
     if (!ImGui::IsMouseDown(ImGuiMouseButton_Right) && !ImGui::IsMouseReleased(ImGuiMouseButton_Right))
         s_lineRightClick = false;
+    const ImVec4 clip(inputMin.x, inputMin.y, inputMax.x, inputMax.y);
+    const ImVec2 textAt(inputMin.x + st.FramePadding.x, inputMin.y + st.FramePadding.y);
+    // Without the preview (compact, mini, subtitles): the chosen version's number before "> translation" in the box's
+    // small line; a click on it steps to the next version, and the back-translation line follows.
+    const bool compactChoose = !showPreview && !unseen && g_input[0] && Translating() && previewCurrent &&
+                               g_previewVersions.size() > 1 && g_previewPick < g_previewVersions.size() &&
+                               g_previewVersions[g_previewPick] == g_preview;
+    const float verY = inputMax.y - smallLine - 1;
+    const float verHitW = compactChoose
+                              ? ImGui::GetFont()
+                                    ->CalcTextSizeA(ImGui::GetFontSize() * 0.85f, FLT_MAX, 0.0f,
+                                                    (std::to_string(g_previewPick + 1) + " >").c_str())
+                                    .x
+                              : 0.0f;
+    const bool versionHovered = compactChoose &&
+                                ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) &&
+                                !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId) &&
+                                ImGui::IsMouseHoveringRect(ImVec2(textAt.x, verY - 1), ImVec2(textAt.x + verHitW, inputMax.y));
     // The normal window: the mouse in the input is text only – a press, held or not, selects (user, 2026-10-22); the
     // window moves by ImGui elsewhere. Only the mini mode's fitted window moves on a held press (its fitting above).
     // Three quick left clicks on the window (not in the input – there clicks place the caret and pick words –, not on a
@@ -1809,7 +1829,7 @@ void RenderWindow() {
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
             ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) &&
             (!Shown().chat || (!ImGui::IsMouseHoveringRect(inputMin, inputMax) && !ImGui::IsAnyItemHovered())) &&
-            !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId)) {
+            !versionHovered && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId)) {
             const ULONGLONG now = GetTickCount64();
             const float radius = ImGui::GetFontSize() * 2;
             if (now - s_clicks[2] > 700 || std::abs(io.MousePos.x - s_firstAt.x) > radius || std::abs(io.MousePos.y - s_firstAt.y) > radius) {
@@ -1861,8 +1881,6 @@ void RenderWindow() {
         s_menuNext = false;
         ImGui::OpenPopup("kbmenu");
     }
-    const ImVec4 clip(inputMin.x, inputMin.y, inputMax.x, inputMax.y);
-    const ImVec2 textAt(inputMin.x + st.FramePadding.x, inputMin.y + st.FramePadding.y);
     // The whole message looked at again: a finished word the autocorrection would write differently is underlined – the
     // pointer on it shows the correction, a click writes it. The text never changes by itself.
     const std::vector<MarkBox> marks = (unseen || useNativeField) ? std::vector<MarkBox>() : InputMarkBoxes(textAt);
@@ -1875,6 +1893,18 @@ void RenderWindow() {
         ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
         ImGui::SetTooltip("%s", UI(L"→ " + g_help.marks[marks[markHovered].index].fix).c_str());
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) TakeMark(marks[markHovered].index);
+    }
+    if (versionHovered) {
+        ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+            const size_t next = (g_previewPick + 1) % g_previewVersions.size();
+            g_previewPick = next;
+            g_preview = g_previewVersions[next];
+            g_back = next < g_previewBacks.size() ? g_previewBacks[next] : std::wstring();
+            if (g_back.empty() && g_cfg.backTranslate)
+                g_worker.Post([gen = g_inputGen, next, version = g_previewVersions[next]] { BackTranslateVersion(gen, next, version); });
+            g_focusInput = true;
+        }
     }
     // What is drawn into the box: a see-through child right above it, on the window's own level, so menus and other windows
     // cover it. It takes no mouse: clicks go to the box.
@@ -1931,9 +1961,20 @@ void RenderWindow() {
     }
     // Compact view: what the chat will get, small in the box's last line (instead of the preview above).
     if (!showPreview && g_input[0] && ((Translating() && (previewCurrent || InfoTexts())) || NamesSwapped())) {
+        const float avail = (inputMax.x - inputMin.x) * (g_status.empty() ? 0.95f : 0.38f);
         const std::string t = previewCurrent ? "> " + U8(g_preview) : UI(Tr(L"translating …"));
-        BoxText(ImVec2(textAt.x, inputMax.y - smallLine - 1), clip, ImGui::GetColorU32(kPreview),
-                Fit(t, (inputMax.x - inputMin.x) * (g_status.empty() ? 0.95f : 0.38f)), 0.85f);
+        if (compactChoose) {
+            const std::string verNow = std::to_string(g_previewPick + 1);
+            const float nowW = ImGui::GetFont()
+                                   ->CalcTextSizeA(ImGui::GetFontSize() * 0.85f, FLT_MAX, 0.0f, (verNow + " ").c_str())
+                                   .x;
+            BoxText(ImVec2(textAt.x, verY), clip,
+                    ImGui::GetColorU32(versionHovered ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : UiAccent()), verNow, 0.85f);
+            BoxText(ImVec2(textAt.x + nowW, verY), clip, ImGui::GetColorU32(kPreview),
+                    Fit(t, std::max(0.0f, avail - nowW)), 0.85f);
+        } else {
+            BoxText(ImVec2(textAt.x, verY), clip, ImGui::GetColorU32(kPreview), Fit(t, avail), 0.85f);
+        }
     }
     ImGui::EndChild();
     ImGui::SetCursorScreenPos(belowBox);
