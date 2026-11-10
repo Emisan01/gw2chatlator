@@ -443,10 +443,28 @@ def main():
         if not typing_bench.exists():
             print(f"    [FAIL] Binary not found: {typing_bench}")
             sys.exit(1)
-        ok, out, dur = run_step("Typing Benchmark Determinism (no surprise in any language)", [str(typing_bench)],
-                                expect_substr="no surprise in any language", timeout=900)
+        # The same 600 messages per language as before, each language as its own process, side by side (one after the
+        # other they took 133 s). Every language the bench names must report "no surprise".
+        print("[*] Running: Typing Benchmark Determinism (no surprise in any language) ...", flush=True)
+        t0 = time.time()
+        langs = subprocess.run([str(typing_bench), "--langs"], capture_output=True, text=True).stdout.split()
+        procs = [(l, subprocess.Popen([str(typing_bench), "600", l], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                      text=True, errors="replace")) for l in langs]
+        bad = []
+        for l, p in procs:
+            try:
+                o = p.communicate(timeout=900)[0]
+            except subprocess.TimeoutExpired:
+                p.kill()
+                o = "timeout"
+            if p.returncode != 0 or "1 languages, no surprise in any language" not in o:
+                bad.append(l)
+                print(f"    [FAIL] {l}:\n" + "\n".join(o.splitlines()[-8:]))
+        dur = round(time.time() - t0, 2)
+        ok = len(langs) >= 7 and not bad
+        print(f"    [{'PASS' if ok else 'FAIL'}] {len(langs)} languages, each in its own process ({dur}s)")
         gate_results.append({"gate": 5, "name": "Typing Benchmark Determinism", "status": "PASS" if ok else "FAIL", "duration_sec": dur, "exit_code": 0 if ok else 1})
-        test_metrics["typing_bench"] = "7 languages, no surprise" if ok else "FAIL"
+        test_metrics["typing_bench"] = f"{len(langs)} languages, no surprise" if ok else "FAIL"
         if not ok: sys.exit(1)
 
     # Gate 6: Localization check

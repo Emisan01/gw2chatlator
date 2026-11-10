@@ -358,10 +358,26 @@ int wmain(int argc, wchar_t** argv) {
                           {L"fr", L"fr-FR", kFrench, std::size(kFrench)},        {L"es", L"es-ES", kSpanish, std::size(kSpanish)},
                           {L"pl", L"pl-PL", kPolish, std::size(kPolish)},        {L"pt", L"pt-BR", kPortuguese, std::size(kPortuguese)},
                           {L"ru", L"ru-RU", kRussian, std::size(kRussian)}};
+    // typing_bench --langs: the languages, one per line. typing_bench 600 de: only that one – the release gate runs
+    // each language as its own process, side by side (one after the other they took 133 s).
+    if (argc > 1 && std::wstring(argv[1]) == L"--langs") {
+        for (const Lang& l : langs) std::printf("%ls\n", l.lang);
+        return 0;
+    }
+    const std::wstring only = argc > 2 ? argv[2] : L"";
     int surprises = 0;
-    for (const Lang& l : langs) surprises += Run(l.lang, l.tag, l.lines, l.count, messages);
+    size_t ran = 0;
+    for (const Lang& l : langs) {
+        if (!only.empty() && only != l.lang) continue;
+        surprises += Run(l.lang, l.tag, l.lines, l.count, messages);
+        ++ran;
+    }
+    if (ran == 0) {
+        std::printf("typing_bench: no such language\n");
+        return 2;
+    }
     // One line for the gate: a surprise in any language fails it (the exit code says so too).
-    std::printf("\ntyping_bench: %zu languages, %s\n", std::size(langs),
+    std::printf("\ntyping_bench: %zu languages, %s\n", ran,
                 surprises == 0 ? "no surprise in any language" : (std::to_string(surprises) + " SURPRISES").c_str());
     return surprises == 0 ? 0 : 1;
 }

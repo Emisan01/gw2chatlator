@@ -842,7 +842,12 @@ int wmain(int argc, wchar_t** argv) {
                     int failedAt = -1;
                     const char* what = "";
                     const char* from = "";
-                    for (int step = 0; step < 400 && failedAt < 0; ++step) {
+                    // 100 steps by default (the formula itself is in core_tests: nothing accumulates); GW2KB_TEST_STEPS
+                    // asks for more when the window logic was touched (400 took 41 of the self-test's 97 s).
+                    wchar_t stepsText[16] = {};
+                    const int steps = GetEnvironmentVariableW(L"GW2KB_TEST_STEPS", stepsText, 16)
+                                          ? std::clamp(_wtoi(stepsText), 10, 5000) : 100;
+                    for (int step = 0; step < steps && failedAt < 0; ++step) {
                         const ImVec4 r = rect();
                         const bool button = r.z < 80;  // the minimised button
                         from = button ? "the button" : miniOn ? "the mini window" : "the big window";
@@ -907,7 +912,7 @@ int wmain(int argc, wchar_t** argv) {
                     frames(3);
                     if (miniOn) miniMode(0);
                     frames(5);
-                    std::printf("corner over 400 random steps: %.0f,%.0f%s\n", c0.x, c0.y, failedAt < 0 ? " – stood still" : "");
+                    std::printf("corner over %d random steps: %.0f,%.0f%s\n", steps, c0.x, c0.y, failedAt < 0 ? " – stood still" : "");
                     if (failedAt >= 0)
                         std::printf("FAIL: step %d (%s, from %s) moved the window's corner to %.0f,%.0f\n", failedAt, what, from,
                                     cFail.x, cFail.y);

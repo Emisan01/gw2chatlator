@@ -287,8 +287,7 @@ void WordModel::PublishSnapshotLocked() {
 
 void WordModel::AddWord(const std::wstring& word, double weight, bool countCase) {
     std::unique_lock<std::shared_mutex> lk(mu_);
-    AddWordInternal(word, weight, countCase);
-    PublishSnapshotLocked();
+    AddWordInternal(word, weight, countCase);  // marks the snapshot dirty: the next reader publishes it (GetSnapshot)
 }
 
 void WordModel::AddWordInternal(const std::wstring& word, double weight, bool countCase) {

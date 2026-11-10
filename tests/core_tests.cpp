@@ -2723,73 +2723,83 @@ static void TestTranslationOrchestrator() {
     CHECK(orch.CulledCount() == 2);
 }
 
+// Each test, timed: one above half a second says so (the suite stays fast; a measurement belongs in a bench).
+#define RUN(test)                                                                        \
+    do {                                                                                 \
+        const auto runT0 = std::chrono::steady_clock::now();                             \
+        test();                                                                          \
+        const long long runMs = std::chrono::duration_cast<std::chrono::milliseconds>(   \
+                                    std::chrono::steady_clock::now() - runT0).count();   \
+        if (runMs >= 500) std::printf("slow: %s %lld ms\n", #test, runMs);              \
+    } while (0)
+
 int main() {
-    TestTranslationOrchestrator();
-    TestEquations2();
-    TestEquations();
-    TestWindowLayout();
-    TestChatSource();
-    TestContrast();
-    TestUtf();
-    TestCloudMt();
-    TestMyWords();
-    TestSnippets();
-    TestSureLanguage();
-    TestWordTriples();
-    TestWordModelWeights();
-    TestPhraseMemory();
-    TestWordCase();
-    TestLooksLikeSlip();
-    TestTypoMemory();
-    TestGw2Abbreviations();
-    TestText();
-    TestChat();
-    TestHotkey();
-    TestJson();
-    TestLocalMtProtocol();
-    TestLangs();
-    TestGlossary();
-    TestBuiltinGlossary();
-    TestResizePastLeftEdge();
-    TestResizePastOtherEdges();
-    TestGreetings();
-    TestKeepFor();
-    TestProtect();
-    TestTranslationCheck();
-    TestChatCommands();
-    TestTermsFile();
-    TestBuiltinTerms();
-    TestDeepL();
-    TestLanguages();
-    TestGw2Text();
-    TestDeepLBatch();
-    TestMumble();
-    TestMyMemory();
-    TestBatchQuota();
-    TestAsciiEscape();
-    TestI18n();
-    TestWordModel();
-    TestNames();
-    TestEmoticons();
-    TestTypingSlips();
-    TestGuessLanguage();
-    TestLinks();
-    TestStarterWords();
-    TestVoiceCatalog();
-    TestFindSpeech();
-    TestCleanTranscript();
-    TestSplitLive();
-    TestWhisperSettings();
-    TestToMono16k();
-    TestVoiceLearn();
-    TestChatCode();
-    TestVoiceFixBook();
-    TestSendGuard();
-    TestTypeWhileOk();
-    TestWhisperWatch();
-    TestWhisperPeer();
-    TestWindowView();
-    TestPickVoiceCores();
+    RUN(TestTranslationOrchestrator);
+    RUN(TestEquations2);
+    RUN(TestEquations);
+    RUN(TestWindowLayout);
+    RUN(TestChatSource);
+    RUN(TestContrast);
+    RUN(TestUtf);
+    RUN(TestCloudMt);
+    RUN(TestMyWords);
+    RUN(TestSnippets);
+    RUN(TestSureLanguage);
+    RUN(TestWordTriples);
+    RUN(TestWordModelWeights);
+    RUN(TestPhraseMemory);
+    RUN(TestWordCase);
+    RUN(TestLooksLikeSlip);
+    RUN(TestTypoMemory);
+    RUN(TestGw2Abbreviations);
+    RUN(TestText);
+    RUN(TestChat);
+    RUN(TestHotkey);
+    RUN(TestJson);
+    RUN(TestLocalMtProtocol);
+    RUN(TestLangs);
+    RUN(TestGlossary);
+    RUN(TestBuiltinGlossary);
+    RUN(TestResizePastLeftEdge);
+    RUN(TestResizePastOtherEdges);
+    RUN(TestGreetings);
+    RUN(TestKeepFor);
+    RUN(TestProtect);
+    RUN(TestTranslationCheck);
+    RUN(TestChatCommands);
+    RUN(TestTermsFile);
+    RUN(TestBuiltinTerms);
+    RUN(TestDeepL);
+    RUN(TestLanguages);
+    RUN(TestGw2Text);
+    RUN(TestDeepLBatch);
+    RUN(TestMumble);
+    RUN(TestMyMemory);
+    RUN(TestBatchQuota);
+    RUN(TestAsciiEscape);
+    RUN(TestI18n);
+    RUN(TestWordModel);
+    RUN(TestNames);
+    RUN(TestEmoticons);
+    RUN(TestTypingSlips);
+    RUN(TestGuessLanguage);
+    RUN(TestLinks);
+    RUN(TestStarterWords);
+    RUN(TestVoiceCatalog);
+    RUN(TestFindSpeech);
+    RUN(TestCleanTranscript);
+    RUN(TestSplitLive);
+    RUN(TestWhisperSettings);
+    RUN(TestToMono16k);
+    RUN(TestVoiceLearn);
+    RUN(TestChatCode);
+    RUN(TestVoiceFixBook);
+    RUN(TestSendGuard);
+    RUN(TestTypeWhileOk);
+    RUN(TestWhisperWatch);
+    RUN(TestWhisperPeer);
+    RUN(TestWindowView);
+    RUN(TestPickVoiceCores);
     std::printf("%d passed, %d failed\n", g_pass, g_fail);
     return g_fail == 0 ? 0 : 1;
 }
