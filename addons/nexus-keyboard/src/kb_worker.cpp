@@ -372,12 +372,17 @@ void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
     const auto inputStarted = std::chrono::steady_clock::now();
     std::shared_ptr<Translator> tr;
     std::wstring target, typing;
+    std::vector<std::wstring> own;  // your languages: what a text of yours can be in (core/own_language)
     bool translating, swapping;
     int quality;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         if (gen != g_inputGen && !(sendId != 0 && sendId == g_pendingSend.id)) return;  // no longer the newest text
         tr = g_translator;
+        own = g_cfg.writeLangs;
+        own.insert(own.end(), g_cfg.understoodLangs.begin(), g_cfg.understoodLangs.end());
+        own.push_back(TypingLang());
+        own.push_back(L"EN");  // English terms and whole English lines stand in every chat
         quality = g_cfg.localQuality;  // what you write gets the quality you chose, whatever the chat just ran at
         target = SendLang();
         typing = VoiceFirst() && !g_dictLang.empty() ? g_dictLang : TypingLang();  // what you said: its language
@@ -394,9 +399,21 @@ void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
     std::wstring result = body;
     // What you really wrote in: the detection when it is sure ("lege ihn hier ab" is too short to be sure), else your
     // typing language. Written in another language than "Send", it is translated even when "Write" and "Send" are the
-    // same (English typed with French at both).
-    const std::wstring sure = SureLanguage(body, DetectLanguage(body));
+    // same (English typed with French at both). Only one of your own languages can be the answer: Windows' guess for
+    // a short mixed line was Afrikaans, which the local model does not have (core/own_language, detect_bench).
+    own.push_back(typing);
+    own.push_back(target);
+    const std::wstring windows = DetectLanguage(body);
+    const OwnLanguageAnswer answer = OwnLanguage(body, own, windows);
+    const std::wstring& sure = answer.lang;
     const std::wstring source = sure.empty() ? typing : sure;
+    {  // the session protocol: each time the language a text of yours is taken for changes (codes only)
+        static std::wstring s_said;
+        const std::wstring now = source + L" (rule " + std::to_wstring(answer.rule) + L", Windows " +
+                                 (windows.empty() ? std::wstring(L"-") : windows) + L", typing " + typing + L")";
+        if (now != s_said) TechLog('O', L"input language: " + now);
+        s_said = now;
+    }
     if (!translating && swapping && !sure.empty() && PrimaryLang(sure) != PrimaryLang(target)) translating = true;
     std::wstring error, doubt;  // doubt: the translation check found something (said, sending stays yours)
     std::vector<std::wstring> others;  // other versions to choose from

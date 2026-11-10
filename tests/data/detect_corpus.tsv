@@ -1,0 +1,44 @@
+# detect_corpus.tsv – made-up lines a player types (never a real message), with the language they are in.
+# language <tab> text. German lines carry English terms, as chat does; used by detect_bench only.
+DE	Oh fable is verfügbar
+DE	Ich will fertig werden mit meinem tool, ein paar sachen kann es schon
+DE	ja, wie immer, alle chars abklappern
+DE	Aber so wie es grad regnet ist auch nicht normal
+DE	Keine ahnung wie ich einkaufen soll xd
+DE	Hier regnets voll durch seit gestern
+DE	wer kommt mit zum worldboss in fünf minuten
+DE	hat jemand lust auf fraktale heute abend
+DE	ich brauch noch zwei leute für den raid
+DE	kannst du mich bitte rezzen ich liege beim boss
+DE	das war ein richtig guter run danke an alle
+DE	mein build ist noch nicht fertig sorry
+DE	ich geh kurz afk bin gleich wieder da
+DE	wo ist der nächste wegpunkt ich finde ihn nicht
+DE	lol das war knapp fast wären wir gewiped
+DE	nice loot heute endlich mal was gutes
+DE	ok dann bis morgen gute nacht zusammen
+DE	der skill hat einen viel zu langen cooldown
+DE	wir treffen uns am eingang vom dungeon
+DE	hast du noch platz im squad für einen heiler
+DE	ich muss erst noch meine daily quests machen
+DE	sorry mein internet ist heute echt schlecht
+EN	can you res me please i am down at the boss
+EN	anyone up for fractals tonight
+EN	the boss will die fast if we stack
+EN	thanks for the run that was really good
+EN	where is the next waypoint i cannot find it
+EN	i need two more people for the raid
+EN	my build is not ready yet sorry
+EN	be right back in five minutes
+EN	does anyone have a spare key for the chest
+EN	good night everyone see you tomorrow
+EN	we meet at the entrance of the dungeon
+EN	is there room in the squad for a healer
+FR	quelqu'un pour le boss mondial ce soir
+FR	merci pour le groupe c'était très bien
+FR	je reviens dans cinq minutes
+FR	où est le prochain point de passage
+ES	alguien para las fractales esta noche
+ES	gracias por el grupo estuvo muy bien
+ES	vuelvo en cinco minutos
+ES	dónde está el siguiente punto de ruta

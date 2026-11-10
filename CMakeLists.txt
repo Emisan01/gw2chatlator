@@ -165,6 +165,10 @@ if(GCT_BUILD_TESTS)
     add_executable(typing_bench tests/tools/typing_bench.cpp src/app/spell_service.cpp src/win/spellcheck.cpp)
     target_link_libraries(typing_bench PRIVATE gct_win)
     list(APPEND GCT_TOOL_TARGETS typing_bench)
+    # Which language your own text is taken for while you type it (Windows' detection, your own languages).
+    add_executable(detect_bench tests/tools/detect_bench.cpp)
+    target_link_libraries(detect_bench PRIVATE gct_win)
+    list(APPEND GCT_TOOL_TARGETS detect_bench)
     if(GCT_WHISPER)
         # The voice recognizer on 16 kHz WAV recordings (local\voice, never committed).
         add_executable(voice_bench tests/tools/voice_bench.cpp src/kbd/whisper_engine.cpp)

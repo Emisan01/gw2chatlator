@@ -40,6 +40,7 @@
 #include "core/whisper_watch.hpp"
 #include "core/whisper_peer.hpp"
 #include "core/window_view.hpp"
+#include "core/own_language.hpp"
 #include "core/soft_wrap.hpp"
 #include "core/send_route.hpp"
 #include "core/translation_check.hpp"

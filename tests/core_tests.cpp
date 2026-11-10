@@ -47,6 +47,7 @@
 #include "core/whisper_watch.hpp"
 #include "core/whisper_peer.hpp"
 #include "core/window_view.hpp"
+#include "core/own_language.hpp"
 #include "core/chat_code.hpp"
 #include "core/chat_source.hpp"
 #include "core/window_layout.hpp"
@@ -1476,6 +1477,34 @@ static void TestSureLanguage() {
 }
 
 
+// The language of your own text: only one of your languages can be the answer (made-up lines).
+static void TestOwnLanguage() {
+    const std::vector<std::wstring> own{L"DE", L"EN-GB", L"FR", L"ES"};
+    // Windows' guess outside your languages never counts (the fault this came from: Afrikaans); the letters say German.
+    OwnLanguageAnswer r = OwnLanguage(L"Oh fable is verfügbar", own, L"AF");
+    CHECK(r.lang == L"DE" && r.rule == 3);
+    CHECK(OwnLanguage(L"Oh fable is available", own, L"AF").lang.empty());  // nothing says which of yours: unsure
+    CHECK(OwnLanguage(L"vuelvo en cinco minutos", own, L"AF").lang.empty());
+    // Windows' guess, one of yours: taken – three words or more, as before.
+    r = OwnLanguage(L"can you rez me please", own, L"EN");
+    CHECK(r.lang == L"EN" && r.rule == 2);
+    CHECK(OwnLanguage(L"wer kommt mit zum boss", own, L"de").lang == L"DE");
+    CHECK(OwnLanguage(L"ok np", own, L"EN").lang.empty());
+    // Telltale letters and words: only for one of your languages.
+    CHECK(OwnLanguage(L"merci", own, L"").lang == L"FR");
+    CHECK(OwnLanguage(L"mañana vamos", own, L"").lang == L"ES");
+    const std::vector<std::wstring> two{L"DE", L"EN"};
+    CHECK(OwnLanguage(L"mañana vamos", two, L"ES").lang.empty());
+    CHECK(OwnLanguage(L"merci", two, L"").lang.empty());
+    // Another script decides at once, yours or not.
+    r = OwnLanguage(L"привет всем", two, L"");
+    CHECK(r.lang == L"RU" && r.rule == 1);
+    // No language of your own given: always unsure for Latin text.
+    CHECK(OwnLanguage(L"wer kommt mit zum boss", {}, L"DE").lang.empty());
+    CHECK(OwnLanguageHas(own, L"en") && OwnLanguageHas(own, L"EN-US") && !OwnLanguageHas(own, L"AF") && !OwnLanguageHas(own, L""));
+}
+
+
 // ---- voice input (core/voice) ----------------------------------------------
 static void TestVoiceCatalog() {
     VoiceCatalog cat;
@@ -2745,6 +2774,7 @@ int main() {
     RUN(TestMyWords);
     RUN(TestSnippets);
     RUN(TestSureLanguage);
+    RUN(TestOwnLanguage);
     RUN(TestWordTriples);
     RUN(TestWordModelWeights);
     RUN(TestPhraseMemory);
