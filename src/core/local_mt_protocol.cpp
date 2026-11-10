@@ -247,53 +247,43 @@ std::string M2mLanguageTag(const std::string& langCode) {
 }
 
 std::string NllbLanguageTag(const std::string& langCode) {
-    const std::string code = Lower(langCode);
-    if (code == "de" || code == "de-de") return "deu_Latn";
-    if (code == "en" || code == "en-us" || code == "en-gb") return "eng_Latn";
-    if (code == "fr" || code == "fr-fr") return "fra_Latn";
-    if (code == "es" || code == "es-es") return "spa_Latn";
-    if (code == "it" || code == "it-it") return "ita_Latn";
-    if (code == "pl") return "pol_Latn";
-    if (code == "pt" || code == "pt-pt" || code == "pt-br") return "por_Latn";
-    if (code == "ru") return "rus_Cyrl";
-    if (code == "tr") return "tur_Latn";
-    if (code == "uk" || code == "ukr") return "ukr_Cyrl";
-    if (code == "nl") return "nld_Latn";
-    if (code == "hu") return "hun_Latn";
-    if (code == "nb" || code == "no") return "nob_Latn";
-    if (code == "da") return "dan_Latn";
-    if (code == "sv") return "swe_Latn";
-    if (code == "cs") return "ces_Latn";
-    if (code == "ro") return "ron_Latn";
-    if (code == "el") return "ell_Grek";
-    if (code == "ar") return "ara_Arab";
-    if (code == "he") return "heb_Hebr";
-    if (code == "ko") return "kor_Hang";
-    if (code == "ja") return "jpn_Jpan";
-    if (code == "zh" || code == "zh-hans" || code == "zh-cn") return "zho_Hans";
+    std::string code = Lower(langCode);
     if (code == "zh-hant" || code == "zh-tw") return "zho_Hant";
-    if (code == "fi") return "fin_Latn";
-    if (code == "bg") return "bul_Cyrl";
-    if (code == "hr") return "hrv_Latn";
-    if (code == "sk") return "slk_Latn";
-    if (code == "sl") return "slv_Latn";
-    if (code == "et") return "est_Latn";
-    if (code == "lv") return "lvs_Latn";
-    if (code == "lt") return "lit_Latn";
-    if (code == "id") return "ind_Latn";
-    if (code == "ms") return "zsm_Latn";
-    if (code == "vi") return "vie_Latn";
-    if (code == "th") return "tha_Thai";
-    if (code == "hi") return "hin_Deva";
-    if (code == "ca" || code == "ca-es") return "cat_Latn";
-    if (code == "sr") return "srp_Cyrl";
-    if (code == "bs") return "bos_Latn";
-    if (code == "mk") return "mkd_Cyrl";
-    if (code == "sq") return "als_Latn";
-    if (code == "eu") return "eus_Latn";
-    if (code == "gl") return "glg_Latn";
-    if (code == "is") return "isl_Latn";
     if (code.size() >= 8 && code[3] == '_') return code;
+    code = code.substr(0, code.find('-'));
+    if (code == "ukr") code = "uk";
+    if (code == "no") code = "nb";
+    static const std::pair<const char*, const char*> kTags[] = {
+        {"af", "afr_Latn"}, {"ak", "aka_Latn"}, {"am", "amh_Ethi"}, {"ar", "arb_Arab"}, {"as", "asm_Beng"},
+        {"ay", "ayr_Latn"}, {"ba", "bak_Cyrl"}, {"be", "bel_Cyrl"}, {"bg", "bul_Cyrl"}, {"bm", "bam_Latn"},
+        {"bn", "ben_Beng"}, {"bo", "bod_Tibt"}, {"bs", "bos_Latn"}, {"ca", "cat_Latn"}, {"cs", "ces_Latn"},
+        {"cy", "cym_Latn"}, {"da", "dan_Latn"}, {"de", "deu_Latn"}, {"dz", "dzo_Tibt"}, {"ee", "ewe_Latn"},
+        {"el", "ell_Grek"}, {"en", "eng_Latn"}, {"eo", "epo_Latn"}, {"es", "spa_Latn"}, {"et", "est_Latn"},
+        {"eu", "eus_Latn"}, {"fa", "pes_Arab"}, {"ff", "fuv_Latn"}, {"fi", "fin_Latn"}, {"fj", "fij_Latn"},
+        {"fo", "fao_Latn"}, {"fr", "fra_Latn"}, {"ga", "gle_Latn"}, {"gd", "gla_Latn"}, {"gl", "glg_Latn"},
+        {"gn", "grn_Latn"}, {"gu", "guj_Gujr"}, {"ha", "hau_Latn"}, {"he", "heb_Hebr"}, {"hi", "hin_Deva"},
+        {"hr", "hrv_Latn"}, {"ht", "hat_Latn"}, {"hu", "hun_Latn"}, {"hy", "hye_Armn"}, {"id", "ind_Latn"},
+        {"ig", "ibo_Latn"}, {"is", "isl_Latn"}, {"it", "ita_Latn"}, {"ja", "jpn_Jpan"}, {"jv", "jav_Latn"},
+        {"ka", "kat_Geor"}, {"kg", "kon_Latn"}, {"ki", "kik_Latn"}, {"kk", "kaz_Cyrl"}, {"km", "khm_Khmr"},
+        {"kn", "kan_Knda"}, {"ko", "kor_Hang"}, {"ky", "kir_Cyrl"}, {"lb", "ltz_Latn"}, {"lg", "lug_Latn"},
+        {"li", "lim_Latn"}, {"ln", "lin_Latn"}, {"lo", "lao_Laoo"}, {"lt", "lit_Latn"}, {"lv", "lvs_Latn"},
+        {"mg", "plt_Latn"}, {"mi", "mri_Latn"}, {"mk", "mkd_Cyrl"}, {"ml", "mal_Mlym"}, {"mn", "khk_Cyrl"},
+        {"mr", "mar_Deva"}, {"ms", "zsm_Latn"}, {"mt", "mlt_Latn"}, {"my", "mya_Mymr"}, {"nb", "nob_Latn"},
+        {"ne", "npi_Deva"}, {"nl", "nld_Latn"}, {"nn", "nno_Latn"}, {"ny", "nya_Latn"}, {"oc", "oci_Latn"},
+        {"om", "gaz_Latn"}, {"or", "ory_Orya"}, {"pa", "pan_Guru"}, {"pl", "pol_Latn"}, {"ps", "pbt_Arab"},
+        {"pt", "por_Latn"}, {"qu", "quy_Latn"}, {"rn", "run_Latn"}, {"ro", "ron_Latn"}, {"ru", "rus_Cyrl"},
+        {"rw", "kin_Latn"}, {"sa", "san_Deva"}, {"sc", "srd_Latn"}, {"sd", "snd_Arab"}, {"sg", "sag_Latn"},
+        {"si", "sin_Sinh"}, {"sk", "slk_Latn"}, {"sl", "slv_Latn"}, {"sm", "smo_Latn"}, {"sn", "sna_Latn"},
+        {"so", "som_Latn"}, {"sq", "als_Latn"}, {"sr", "srp_Cyrl"}, {"ss", "ssw_Latn"}, {"st", "sot_Latn"},
+        {"su", "sun_Latn"}, {"sv", "swe_Latn"}, {"sw", "swh_Latn"}, {"ta", "tam_Taml"}, {"te", "tel_Telu"},
+        {"tg", "tgk_Cyrl"}, {"th", "tha_Thai"}, {"ti", "tir_Ethi"}, {"tk", "tuk_Latn"}, {"tl", "tgl_Latn"},
+        {"tn", "tsn_Latn"}, {"tr", "tur_Latn"}, {"ts", "tso_Latn"}, {"tt", "tat_Cyrl"}, {"tw", "twi_Latn"},
+        {"ug", "uig_Arab"}, {"uk", "ukr_Cyrl"}, {"ur", "urd_Arab"}, {"uz", "uzn_Latn"}, {"vi", "vie_Latn"},
+        {"wo", "wol_Latn"}, {"xh", "xho_Latn"}, {"yi", "ydd_Hebr"}, {"yo", "yor_Latn"}, {"zh", "zho_Hans"},
+        {"zu", "zul_Latn"},
+    };
+    for (const auto& [iso, tag] : kTags)
+        if (code == iso) return tag;
     return {};
 }
 
