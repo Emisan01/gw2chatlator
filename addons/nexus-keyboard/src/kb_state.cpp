@@ -290,7 +290,8 @@ HWND g_gameHwnd = nullptr;
 TranslateErrorKind g_lastErrorKind = TranslateErrorKind::None;
 std::wstring g_lastErrorTime = L"-";
 bool g_myMemorySessionFallback = false;
-bool g_forcePreviewForHardError = false;
+uint64_t g_lastErrorGen = 0;
+bool InputErrorNow() { return g_lastErrorKind != TranslateErrorKind::None && g_lastErrorGen == g_inputGen; }
 bool g_inputActive = false;
 
 bool g_escRequested = false;

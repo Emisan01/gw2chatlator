@@ -547,7 +547,10 @@ extern HWND g_gameHwnd;
 extern TranslateErrorKind g_lastErrorKind;
 extern std::wstring g_lastErrorTime;
 extern bool g_myMemorySessionFallback;
-extern bool g_forcePreviewForHardError;
+// The translator's error belongs to the text it failed on (g_lastErrorGen): shown, and holding an automatic send
+// back, only while that text stands in the input – never over another text, and it changes no setting (g_mu held).
+extern uint64_t g_lastErrorGen;
+bool InputErrorNow();
 
 // Hands Free & Auto-Enter: sends automatically on end of speech once translation is ready
 void RequestAutoEnter();

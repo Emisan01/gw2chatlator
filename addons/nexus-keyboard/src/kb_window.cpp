@@ -1478,14 +1478,9 @@ void RenderWindow() {
     // ---- the chat (the newest at the bottom): name white – a click opens a whisper tab –, text in the channel colour,
     // the scroll bar at the left like GW2's own chat
     const float line = ImGui::GetTextLineHeightWithSpacing();
-    if (g_forcePreviewForHardError) {
-        g_forcePreviewForHardError = false;
-        if (!Lay().preview) {
-            Lay().preview = true;
-            SaveLayout();
-        }
-    }
-    const bool showPreview = Shown().preview, showWords = Shown().words;
+    // The translator's error on the text in the input shows in the preview's place even where the layout has none –
+    // for as long as that text stands there; your layout is not changed for it.
+    const bool showPreview = Shown().preview || InputErrorNow(), showWords = Shown().words;
     const float smallLine = ImGui::GetFontSize() * 0.85f + 2;
     // The input grows with what you write (its soft-wrapped lines) up to 8 lines and falls back once it is sent. A small
     // extra line at its bottom: the translation in compact view (only while something is translated).
@@ -1558,7 +1553,7 @@ void RenderWindow() {
         // The same field as the input below: the two belong together, with one transparency.
         ImGui::PushStyleColor(ImGuiCol_ChildBg, FieldColor());
         ImGui::BeginChild("preview", ImVec2(0, line * (previewRows + 0.2f)), false);
-        if (g_lastErrorKind != TranslateErrorKind::None) {
+        if (InputErrorNow()) {
             std::wstring cause;
             switch (g_lastErrorKind) {
                 case TranslateErrorKind::UnsupportedPair: cause = Tr(L"Language pair not supported by engine"); break;
@@ -1576,7 +1571,6 @@ void RenderWindow() {
             if (ImGui::Button((UI(Tr(L"→ MyMemory")) + "##btn_mymem").c_str())) {
                 g_myMemorySessionFallback = true;
                 g_lastErrorKind = TranslateErrorKind::None;
-                g_forcePreviewForHardError = false;
                 CancelAutoEnter();
                 const Config cfg = g_cfg;
                 g_worker.Post([cfg] {

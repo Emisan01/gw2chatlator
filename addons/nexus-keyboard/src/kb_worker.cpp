@@ -436,7 +436,6 @@ void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
                 if (!raw && doubt.empty() && r.scored && r.score < kUnsureScore)  // as in the chat ("kkkbl" -> "¿Qué es esto?")
                     doubt = Tr(L"Maybe inaccurate: the local model was unsure");
                 std::lock_guard<std::mutex> lock(g_mu);
-                g_forcePreviewForHardError = false;
                 g_lastErrorKind = TranslateErrorKind::None;
             } else {
                 error = r.error;
@@ -448,7 +447,7 @@ void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
                     wchar_t timeBuf[64];
                     swprintf(timeBuf, 64, L"%04u-%02u-%02u %02u:%02u:%02u", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
                     g_lastErrorTime = timeBuf;
-                    g_forcePreviewForHardError = true;
+                    g_lastErrorGen = gen;
                 }
             }
         }

@@ -262,7 +262,6 @@ void RenderFooter() {  // g_mu held
         const std::string fbLabel = UI(Tr(L"MyMemory (fallback)"));
         if (ImGui::Button((fbLabel + "##fbchip").c_str())) {
             g_myMemorySessionFallback = false;
-            g_forcePreviewForHardError = false;
             const Config cfg = g_cfg;
             g_worker.Post([cfg] {
                 auto tr = MakeTranslator(cfg);

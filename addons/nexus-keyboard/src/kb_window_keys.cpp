@@ -146,7 +146,7 @@ void CheckAutoSend() {
     static ULONGLONG s_lastAutoSend = 0;
     const ULONGLONG now = GetTickCount64();
     if (Translating() && !SendOriginal() && !IsPlainCommand(g_wFlatInput)) {  // a command goes as it is, no waiting
-        if (g_lastErrorKind != TranslateErrorKind::None) {
+        if (InputErrorNow()) {
             CancelAutoEnter();
             SetStatus(Tr(L"Auto-send cancelled: translation failed"), 6000);
             return;
