@@ -1836,6 +1836,19 @@ void RenderWindow() {
     }
     const ImVec4 clip(inputMin.x, inputMin.y, inputMax.x, inputMax.y);
     const ImVec2 textAt(inputMin.x + st.FramePadding.x, inputMin.y + st.FramePadding.y);
+    // The whole message looked at again: a finished word the autocorrection would write differently is underlined – the
+    // pointer on it shows the correction, a click writes it. The text never changes by itself.
+    const std::vector<MarkBox> marks = unseen ? std::vector<MarkBox>() : InputMarkBoxes(textAt);
+    int markHovered = -1;
+    if (!marks.empty() && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) &&
+        !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId))
+        for (size_t i = 0; i < marks.size(); ++i)
+            if (ImGui::IsMouseHoveringRect(marks[i].a, marks[i].b)) markHovered = static_cast<int>(i);
+    if (markHovered >= 0) {
+        ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+        ImGui::SetTooltip("%s", UI(L"→ " + g_help.marks[marks[markHovered].index].fix).c_str());
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) TakeMark(marks[markHovered].index);
+    }
     // What is drawn into the box: a see-through child right above it, on the window's own level, so menus and other windows
     // cover it. It takes no mouse: clicks go to the box.
     const ImVec2 belowBox = ImGui::GetCursorScreenPos();
@@ -1843,6 +1856,17 @@ void RenderWindow() {
     ImGui::BeginChild("##boxtext", ImVec2(inputMax.x - inputMin.x, inputMax.y - inputMin.y), false,
                       ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar |
                           ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings);
+    if (!marks.empty()) {
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        dl->PushClipRect(ImVec2(clip.x, clip.y), ImVec2(clip.z, clip.w), true);
+        const float thick = std::max(1.5f, ImGui::GetFontSize() / 11.0f);
+        for (size_t i = 0; i < marks.size(); ++i) {
+            ImVec4 c = UiAccent();
+            c.w = static_cast<int>(i) == markHovered ? 1.0f : 0.75f;
+            dl->AddLine(ImVec2(marks[i].a.x, marks[i].b.y - 1.0f), ImVec2(marks[i].b.x, marks[i].b.y - 1.0f), ImGui::GetColorU32(c), thick);
+        }
+        dl->PopClipRect();
+    }
     if (const std::wstring rest = GhostRest(g_wFlatInput); !rest.empty() && inputActive) {  // what Space / Tab writes
         // In the line where the text ends, clipped to the box.
         const size_t inLen = std::strlen(g_input);

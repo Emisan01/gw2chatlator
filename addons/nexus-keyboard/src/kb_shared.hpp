@@ -365,7 +365,15 @@ struct TypingHelp {  // the worker's answer for one text + caret
     size_t caret = 0;
     WordSuggestions bar;
     WordChoices choices;
+    std::vector<WordMark> marks;  // finished words the autocorrection would write differently (underlined, a click fixes)
 };
+// Where a mark stands in the input box (screen), for drawing and for the click (kb_input.cpp; g_mu held, chat font).
+struct MarkBox {
+    ImVec2 a, b;
+    size_t index = 0;  // into g_help.marks
+};
+std::vector<MarkBox> InputMarkBoxes(const ImVec2& textAt);
+void TakeMark(size_t index);  // the marked word becomes its correction
 
 extern std::mutex g_mu;
 extern Config g_cfg;

@@ -747,6 +747,29 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
 // Space writes no word of the dictionary or the lists over it; Tab still offers them, your own learned words still come.
 constexpr size_t kMaxUnfinished = 4;
 
+std::vector<WordMark> SpellService::Marks(const std::wstring& text, AutoCorrectMode mode) const {
+    std::vector<WordMark> out;
+    if (mode == AutoCorrectMode::Off) return out;
+    const std::vector<Span> safe = ProtectedSpans(text);
+    for (const Span& s : WordSpans(text)) {
+        if (s.end() >= text.size()) break;  // the word still being typed: Space and the grey word look after it
+        if (s.start > 0 && text[s.start - 1] == L'/') continue;  // a command ("/wiki")
+        if (std::any_of(safe.begin(), safe.end(), [&](const Span& p) { return s.start < p.end() && p.start < s.end(); })) continue;
+        const std::wstring word = text.substr(s.start, s.length);
+        if (word.size() < 2 || HasDigit(word)) continue;
+        if (const std::wstring name = NameFor(word); !name.empty()) {
+            if (name != word) out.push_back({s, name});
+        } else {
+            std::wstring prev, prev2;
+            WordsBefore(text, s.start, &prev, &prev2);
+            const auto fix = AutoCorrection(word, mode, prev, prev2);
+            if (fix && !fix->empty() && CaseFold(*fix) != CaseFold(word)) out.push_back({s, *fix});
+        }
+        if (out.size() >= 8) break;
+    }
+    return out;
+}
+
 WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCorrectMode mode) const {
     WordChoices c;
     if (mode == AutoCorrectMode::Off || caret > text.size()) return c;

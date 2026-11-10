@@ -275,11 +275,22 @@ int Run(const wchar_t* lang, const wchar_t* tag, const Line* lines, size_t count
     for (const Line* l = lines; l < lines + count; ++l) total += l->weight;
     unsigned seed = 12345;
     Stats block, all;
+    double markMs = 0;
     for (int m = 1; m <= messages; ++m) {
         seed = seed * 1103515245u + 12345u;
         int pick = static_cast<int>((seed >> 8) % static_cast<unsigned>(total));
         const Line* l = lines;
         while (pick >= l->weight) pick -= (l++)->weight;
+        {  // the whole message looked at again (the marks in the input): a correctly written message gets none
+            const std::wstring whole = std::wstring(l->text) + L" ";
+            const auto t0 = std::chrono::steady_clock::now();
+            const std::vector<WordMark> marks = sp.Marks(whole, AutoCorrectMode::Phone);
+            markMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+            for (const WordMark& mark : marks) {
+                ++block.surprises;
+                ++block.surpriseList[L"marked: " + whole.substr(mark.span.start, mark.span.length) + L" -> " + mark.fix];
+            }
+        }
         TypeMessage(sp, l->text, AutoCorrectMode::Phone, block);
         if (m % 100 == 0 || m == messages) {
             std::printf("%5d-%-6d %7.1f%% %9d %9.0f%% %8d %6d %6d %6d\n", m - (m - 1) % 100, m,
@@ -296,6 +307,16 @@ int Run(const wchar_t* lang, const wchar_t* tag, const Line* lines, size_t count
     std::printf("total: %.1f %% key presses saved, %d surprises\n", 100.0 * (1.0 - static_cast<double>(all.keys) / all.letters),
                 all.surprises);
     for (const auto& [k, v] : all.surpriseList) std::printf("  surprise %3dx  %s\n", v, ToUtf8(k).c_str());
+    std::printf("marks: %.3f ms per message looked at again\n", markMs / messages);
+    // And the other way round, where Windows has a dictionary: a slip a comma let through is marked with its word,
+    // the word still being typed never.
+    if (spell && std::wstring(lang) == L"de") {
+        const std::vector<WordMark> marks = sp.Marks(L"das ist shon, gut und shon", AutoCorrectMode::Phone);
+        const bool found = marks.size() == 1 && marks[0].span.start == 8 && marks[0].fix == L"schon";
+        std::printf("marks: \"das ist shon, gut und shon\" -> %zu mark(s)%s\n", marks.size(),
+                    found ? ", shon -> schon" : " – expected one, shon -> schon");
+        if (!found) ++all.surprises;
+    }
     return all.surprises;
 }
 

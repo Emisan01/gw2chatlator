@@ -46,6 +46,12 @@ struct WordChoices {
     bool Changes() const { return highlight >= 0 && !(firstIsTyped && highlight == 0); }
 };
 
+// A word of the message the autocorrection would write differently, and how.
+struct WordMark {
+    Span span;
+    std::wstring fix;
+};
+
 class SpellService {
 public:
     // `tags` from SpellTagCandidates; `userWordsPath` is created on first add.
@@ -93,6 +99,12 @@ public:
     std::optional<std::wstring> AutoCorrection(const std::wstring& word, AutoCorrectMode mode,
                                                const std::wstring& prev = std::wstring(),
                                                const std::wstring& prev2 = std::wstring()) const;
+
+    // The whole message, looked at again: every finished word the autocorrection would change – by the same rule as
+    // Space (AutoCorrection, a name you taught), nothing looser. An offer: the text is never changed by it. Space only
+    // sees the word it ends; a word ended by a comma, pasted, spoken or changed in the middle never met it. Not the
+    // word still being typed, not chat codes, commands or a "/w Name, " prefix; at most 8.
+    std::vector<WordMark> Marks(const std::wstring& text, AutoCorrectMode mode) const;
 
     // The word bar for the text and caret position.
     WordSuggestions Suggestions(const std::wstring& text, size_t caret, AutoCorrectMode mode) const;

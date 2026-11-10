@@ -62,6 +62,48 @@ void TakeWord(const std::wstring& word) {
     if (g_spell) g_worker.Post([text, start = r.start, word] { if (g_spell) g_spell->Chose(text, start, word, true); });
 }
 
+// The marks of the whole message (SpellService::Marks) as boxes in the input: each word's line by the soft breaks,
+// its place by the text's width. A word broken over two lines or below the box's last line gets none.
+std::vector<MarkBox> InputMarkBoxes(const ImVec2& textAt) {
+    std::vector<MarkBox> out;
+    const std::wstring& text = g_wFlatInput;
+    if (g_help.text != text || g_help.marks.empty()) return out;
+    const size_t rawLen = std::strlen(g_input);
+    const float lh = ImGui::GetTextLineHeight();
+    for (size_t i = 0; i < g_help.marks.size(); ++i) {
+        const Span& s = g_help.marks[i].span;
+        if (s.end() > text.size()) continue;
+        const size_t from = RawOffset(g_input, rawLen, U8Offset(text, s.start));
+        const size_t to = RawOffset(g_input, rawLen, U8Offset(text, s.end()));
+        if (from >= to || to > rawLen || std::memchr(g_input + from, '\n', to - from)) continue;
+        const char* lineStart = g_input + from;
+        while (lineStart > g_input && lineStart[-1] != '\n') --lineStart;
+        const int line = static_cast<int>(std::count(g_input, g_input + from, '\n'));
+        if (line >= g_boxLines) continue;
+        const float x0 = from > static_cast<size_t>(lineStart - g_input) ? ImGui::CalcTextSize(lineStart, g_input + from).x : 0.0f;
+        const float x1 = ImGui::CalcTextSize(lineStart, g_input + to).x;
+        out.push_back({ImVec2(textAt.x + x0, textAt.y + line * lh), ImVec2(textAt.x + x1, textAt.y + (line + 1) * lh), i});
+    }
+    return out;
+}
+
+// A click on a marked word: its correction is written in its place (through g_edit, like a word of the bar) and
+// counts as a choice of yours for the learning.
+void TakeMark(size_t index) {
+    const std::wstring& text = g_wFlatInput;
+    if (g_help.text != text || index >= g_help.marks.size()) return;
+    const WordMark m = g_help.marks[index];
+    if (m.span.end() > text.size()) return;
+    g_edit.active = true;
+    g_edit.startByte = U8Offset(text, m.span.start);
+    g_edit.lenBytes = U8Offset(text, m.span.end()) - g_edit.startByte;
+    g_edit.insert = U8(m.fix);
+    g_focusInput = true;
+    ++g_keys.wordClicked;
+    TechLog('K', L"a marked word corrected by a click");
+    if (g_spell) g_worker.Post([text, start = m.span.start, word = m.fix] { if (g_spell) g_spell->Chose(text, start, word, true); });
+}
+
 // Space at the end of a word: the word picked with Tab, else the grey one (what Space writes – only
 // strong choices); the change comes in through g_edit, the space with it. False: just a space.
 bool SpaceWrites() {

@@ -675,6 +675,7 @@ void ComputeTyping() {
     h.caret = caret;
     h.bar = g_spell->Suggestions(text, caret, mode);
     h.choices = g_spell->Choices(text, caret, mode);
+    h.marks = g_spell->Marks(text, mode);  // the whole message once more: what a comma, a paste or an edit let through
     std::lock_guard<std::mutex> lock(g_mu);
     if (g_wFlatInput == text) g_help = std::move(h);
 }
