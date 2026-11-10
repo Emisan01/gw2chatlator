@@ -504,6 +504,8 @@ void RenderStartPage(Config& edit) {
     KeyRow(Tr(L"Input"), kFocusBind);
     KeyRow(Tr(L"Translation"), kTranslateBind);
     if (edit.voiceEnabled) KeyRow(Tr(L"Voice"), kTalkBind);
+    // The chat window back without a key and without the way through Nexus (Emi): closed with its X, hidden from the menu.
+    if (ImGui::Button(UI(g_show ? Tr(L"Hide the chat window") : Tr(L"Show the chat window")).c_str())) OnToggle(nullptr, false);
     EndBox();
 }
 
