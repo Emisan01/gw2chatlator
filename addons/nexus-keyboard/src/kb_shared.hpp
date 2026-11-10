@@ -39,6 +39,7 @@
 #include "core/send_guard.hpp"
 #include "core/whisper_watch.hpp"
 #include "core/whisper_peer.hpp"
+#include "core/window_view.hpp"
 #include "core/soft_wrap.hpp"
 #include "core/send_route.hpp"
 #include "core/translation_check.hpp"
@@ -117,7 +118,8 @@ struct Layout {
     bool header = true;  // the tabs, microphone, minimise, menu, close; hidden: a right-click on the window is the menu
     bool minButton = true;
     bool backLine = true;
-    bool subtitles = false;  // the subtitle mode chosen: the chat's lines on glass (with chat only, the parts it sets)  // without the preview: what your text says translated back, one small line above the input
+    // The view over your parts (core/window_view): compact, mini or subtitles show their own, yours stay as they are.
+    gct::WindowView view = gct::WindowView::Parts;
     bool autoMinimize = false;  // not in use for `minimizeAfter` s: down to the small button
     int minimizeAfter = 10;
     bool autoOpen = false;      // GW2's chat line opening (Enter) opens it from the small button (the focus key always does)  // the small ">" that minimises (in the footer, without it left of the input)
@@ -850,7 +852,7 @@ void CheckMicLockTimeout();
 bool ProfileOn(int profile);
 void SetProfile(int profile, bool on);
 Layout& Lay();
-// What the window shows: your parts – in the subtitle mode only the chat and its input, your parts kept as they are.
+// What the window shows: your parts – under a view (compact, mini, subtitles) what it shows, your parts kept as they are.
 // Read it for drawing; Lay() is what you set.
 Layout Shown();
 void Hint(const std::string& text);

@@ -346,7 +346,16 @@ void LoadLayout() {  // g_mu held
     g_layout.infoText = get(L"InfoText", 1) != 0;  // on at the first start: the hints explain the window
     g_layout.minButton = get(L"MinButton", 1) != 0;
     g_layout.backLine = get(L"BackLine", 1) != 0;
-    g_layout.subtitles = get(L"Subtitles", 0) != 0;
+    if (const int view = get(L"View", -1); view >= 0) {
+        g_layout.view = static_cast<gct::WindowView>(std::clamp(view, 0, 3));
+    } else if (get(L"Subtitles", 0) != 0) {  // settings from before the views stood over the parts
+        g_layout.view = gct::WindowView::Subtitles;
+    } else {
+        gct::WindowParts p{g_layout.header, g_layout.chat, g_layout.preview, g_layout.words, g_layout.footer, g_layout.minButton};
+        g_layout.view = gct::ViewOfOldParts(p);
+        g_layout.header = p.header, g_layout.chat = p.chat, g_layout.preview = p.preview;
+        g_layout.words = p.words, g_layout.footer = p.footer, g_layout.minButton = p.minButton;
+    }
     g_layout.autoMinimize = get(L"AutoMinimize", 0) != 0;
     g_layout.minimizeAfter = std::clamp(get(L"MinimizeAfter", 10), 2, 120);
     g_layout.autoOpen = get(L"AutoOpen", 0) != 0;
@@ -413,7 +422,8 @@ void SaveLayout() {  // g_mu held
     g_cfg.SaveValue(L"NexusWindow", L"InfoText", g_layout.infoText ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"MinButton", g_layout.minButton ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"BackLine", g_layout.backLine ? L"1" : L"0");
-    g_cfg.SaveValue(L"NexusWindow", L"Subtitles", g_layout.subtitles ? L"1" : L"0");
+    g_cfg.SaveValue(L"NexusWindow", L"View", std::to_wstring(static_cast<int>(g_layout.view)));
+    g_cfg.SaveValue(L"NexusWindow", L"Subtitles", g_layout.view == gct::WindowView::Subtitles ? L"1" : L"0");  // read by 2.10.x
     g_cfg.SaveValue(L"NexusWindow", L"AutoMinimize", g_layout.autoMinimize ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"MinimizeAfter", std::to_wstring(g_layout.minimizeAfter));
     g_cfg.SaveValue(L"NexusWindow", L"AutoOpen", g_layout.autoOpen ? L"1" : L"0");
@@ -725,60 +735,23 @@ const std::wstring& AddonsDir() {  // the folder our DLL lies in: <GW2>\addons\ 
 std::wstring KeyboardDir() { return AddonsDir() + L"GW2Keyboard"; }
 bool g_micLocked = false;  // right-click on the microphone: on until the next right-click
 ULONGLONG g_micLockedStart = 0;
-// The window profiles (menu, Start and Options → Window → Window layout): presets of the window's parts. A profile is on
-// exactly while the parts are what it says – change one part and it is your own layout again (its check goes off).
-// Switching a profile off brings back the layout you had before it (this session; else every part shown).
-Layout g_layoutBefore;
-bool g_haveBefore = false;
-// The subtitle mode is a mode of its own (Emi, 2026-11-09): over your parts it shows only the chat and its input, and
-// your parts stay as they are – nothing changed by hand ends it, and off they are simply back (Shown).
-static bool IsProfile(const Layout& l, int profile) {  // 0 compact view, 1 mini mode, 2 subtitle mode
-    if (profile == 2) return l.subtitles;
-    if (l.subtitles) return false;
-    if (profile == 0) return l.header && l.chat && !l.preview && !l.words && l.footer;
-    return !l.header && !l.chat && !l.preview && !l.words && !l.footer && !l.minButton;
+// The window's views (menu, Start and Options → Window → Window layout), all three by one rule (core/window_view): a
+// view stands over your parts and shows its own; your parts stay as they are – from any view to any other nothing is
+// lost, and off they are simply back (Shown). One view at a time.
+static gct::WindowView ViewOf(int profile) {  // 0 compact view, 1 mini mode, 2 subtitle mode
+    return profile == 0 ? gct::WindowView::Compact : profile == 1 ? gct::WindowView::Mini : gct::WindowView::Subtitles;
 }
-bool ProfileOn(int profile) { return IsProfile(g_layout, profile); }  // g_mu held
+bool ProfileOn(int profile) { return g_layout.view == ViewOf(profile); }  // g_mu held
 void SetProfile(int profile, bool on) {  // g_mu held
-    Layout& l = g_layout;
-    if (profile == 2) {  // the subtitle mode: its own switch, the parts untouched
-        l.subtitles = on;
-        SaveLayout();
-        return;
-    }
-    if (on) {
-        if (!ProfileOn(0) && !ProfileOn(1)) {  // your own layout (the subtitle mode too): kept to come back to
-            g_layoutBefore = l;
-            g_haveBefore = true;
-        }
-        l.subtitles = false;
-        if (profile == 0) {  // compact: header, chat, input, footer – no word bar, no preview
-            l.header = l.chat = l.footer = true;
-            l.preview = l.words = false;
-        } else {  // mini: nothing but the input
-            l.header = l.chat = l.preview = l.words = l.footer = l.minButton = false;
-        }
-    } else if (ProfileOn(profile)) {
-        const Layout& b = g_layoutBefore;
-        const bool back = g_haveBefore && !(profile == 0 ? IsProfile(b, 0) : !b.header && !b.chat && !b.footer);
-        l.header = back ? b.header : true;
-        l.chat = back ? b.chat : true;
-        l.preview = back ? b.preview : true;
-        l.words = back ? b.words : true;
-        l.footer = back ? b.footer : true;
-        l.minButton = back ? b.minButton : true;
-        l.subtitles = back && b.subtitles;
-        g_haveBefore = false;
-    }
+    g_layout.view = gct::SwitchView(g_layout.view, ViewOf(profile), on);
     SaveLayout();
 }
 Layout& Lay() { return g_layout; }
 Layout Shown() {
     Layout s = g_layout;
-    if (s.subtitles) {  // the chat and its input over your parts, which stay as they are
-        s.header = s.preview = s.words = s.footer = s.minButton = false;
-        s.chat = true;
-    }
+    const gct::WindowParts p = gct::ShownParts({s.header, s.chat, s.preview, s.words, s.footer, s.minButton}, s.view);
+    s.header = p.header, s.chat = p.chat, s.preview = p.preview;
+    s.words = p.words, s.footer = p.footer, s.minButton = p.minButton;
     return s;
 }
 

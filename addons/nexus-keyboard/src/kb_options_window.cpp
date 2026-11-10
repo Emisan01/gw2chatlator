@@ -164,10 +164,10 @@ void RenderWindowPage(Config& edit) {
     BeginBox(UI(Tr(L"Window layout")));
     {
         std::lock_guard<std::mutex> lock(g_mu);
-        // The profiles first, from everything to little (presets of the parts below; changing a part switches them off).
+        // The views first, from everything to little: each stands over the parts below, which stay as they are.
         bool compact = ProfileOn(0), mini = ProfileOn(1);
         if (Switch("compact", UI(Tr(L"Compact view")), &compact,
-                   UI(Tr(L"Header, chat, input and footer – no word bar, no preview. Change a part below and it is your own layout again.")).c_str()))
+                   UI(Tr(L"Header, chat, input and footer – no word bar, no preview.")).c_str()))
             SetProfile(0, compact);
         ImGui::SameLine(fs * 14.0f);
         bool subs = ProfileOn(2);
@@ -179,9 +179,9 @@ void RenderWindowPage(Config& edit) {
         // From top to bottom, as they stand in the window; each one can go – in two columns.
         bool changed = false;
         int col = 0;
-        // `part`: one of the window's parts – grey while the subtitle mode is on (it shows the chat and its input over them;
-        // they stay as they are). The last two switches are no parts but how they show (back-translation line, info texts).
-        const bool subtitleMode = g_layout.subtitles;
+        // `part`: one of the window's parts – grey while a view is on (it shows its own over them; they stay as they
+        // are). The last two switches are no parts but how they show (back-translation line, info texts).
+        const bool subtitleMode = g_layout.view != gct::WindowView::Parts;
         auto part = [&](const char* id, const std::wstring& label, bool* v, const std::wstring& tip, bool isPart = true) {
             const bool right = col++ % 2;
             if (right) ImGui::SameLine(fs * 14.0f);
@@ -190,7 +190,7 @@ void RenderWindowPage(Config& edit) {
             const float maxW = right ? 0.0f : fs * 14.0f - ImGui::GetCursorPosX() - ImGui::GetStyle().ItemSpacing.x;
             if (Switch(id, UI(label), v, tip.empty() ? nullptr : t.c_str(), !(isPart && subtitleMode), maxW)) changed = true;
         };
-        if (subtitleMode) Hint(UI(Tr(L"The subtitle mode shows the chat and its input – your parts stay as they are and are back when it is off.")));
+        if (subtitleMode) Hint(UI(Tr(L"This view shows its own parts – yours stay as they are and are back when it is off.")));
         part("header", Tr(L"Header"), &g_layout.header, Tr(L"Hidden: a right-click on the window opens the menu (tabs, minimise, options)."));
         part("chat", Tr(L"Chat"), &g_layout.chat, {});
         part("preview", Tr(L"Translation preview"), &g_layout.preview, {});

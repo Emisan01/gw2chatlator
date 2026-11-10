@@ -46,6 +46,7 @@
 #include "core/type_steps.hpp"
 #include "core/whisper_watch.hpp"
 #include "core/whisper_peer.hpp"
+#include "core/window_view.hpp"
 #include "core/chat_code.hpp"
 #include "core/chat_source.hpp"
 #include "core/window_layout.hpp"
@@ -1797,6 +1798,46 @@ static void TestPickVoiceCores() {
 }
 
 
+// The window's views stand over your parts: from any to any other nothing is lost.
+static void TestWindowView() {
+    auto same = [](const WindowParts& a, const WindowParts& b) {
+        return a.header == b.header && a.chat == b.chat && a.preview == b.preview && a.words == b.words &&
+               a.footer == b.footer && a.minButton == b.minButton;
+    };
+    const WindowParts own{true, true, true, false, true, false};  // your layout: no word bar, no minimise button
+    WindowView v = WindowView::Parts;
+    CHECK(same(ShownParts(own, v), own));
+    // the walk that lost the layout: compact -> subtitles -> mini -> off
+    v = SwitchView(v, WindowView::Compact, true);
+    CHECK(same(ShownParts(own, v), {true, true, false, false, true, false}));  // your minimise button stays yours
+    v = SwitchView(v, WindowView::Subtitles, true);
+    CHECK(same(ShownParts(own, v), {false, true, false, false, false, false}));
+    v = SwitchView(v, WindowView::Mini, true);
+    CHECK(same(ShownParts(own, v), {false, false, false, false, false, false}));
+    v = SwitchView(v, WindowView::Compact, false);  // another view's switch off: nothing happens
+    CHECK(v == WindowView::Mini);
+    v = SwitchView(v, WindowView::Mini, false);
+    CHECK(v == WindowView::Parts && same(ShownParts(own, v), own));
+    // every pair, there and off again: always your parts
+    for (int a = 1; a <= 3; ++a)
+        for (int b = 1; b <= 3; ++b) {
+            WindowView w = SwitchView(WindowView::Parts, static_cast<WindowView>(a), true);
+            w = SwitchView(w, static_cast<WindowView>(b), true);
+            CHECK(w == static_cast<WindowView>(b));
+            w = SwitchView(w, static_cast<WindowView>(b), false);
+            CHECK(w == WindowView::Parts);
+        }
+    // settings from before: parts that spell a view become it and look the same; off, everything it hid is back
+    WindowParts oldCompact{true, true, false, false, true, false};
+    const WindowParts shownBefore = oldCompact;
+    CHECK(ViewOfOldParts(oldCompact) == WindowView::Compact);
+    CHECK(same(ShownParts(oldCompact, WindowView::Compact), shownBefore) && oldCompact.preview && oldCompact.words);
+    WindowParts oldMini{false, false, false, false, false, false};
+    CHECK(ViewOfOldParts(oldMini) == WindowView::Mini && same(oldMini, WindowParts{}));
+    WindowParts mine = own;
+    CHECK(ViewOfOldParts(mine) == WindowView::Parts && same(mine, own));
+}
+
 // A whisper tab is a player's, not a character's (made-up names).
 static void TestWhisperPeer() {
     auto tab = [](const wchar_t* name) {
@@ -2747,6 +2788,7 @@ int main() {
     TestTypeWhileOk();
     TestWhisperWatch();
     TestWhisperPeer();
+    TestWindowView();
     TestPickVoiceCores();
     std::printf("%d passed, %d failed\n", g_pass, g_fail);
     return g_fail == 0 ? 0 : 1;
