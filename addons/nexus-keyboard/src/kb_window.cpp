@@ -564,9 +564,8 @@ static void RenderChat(ImGuiIO& io, std::unique_lock<std::mutex>& lock, const Im
             lastActiveTab = g_activeTab;
             atBottom = snapToBottom = true;
         }
-        static const std::wstring s_emptyW;
         const WhisperTab* front = g_activeTab >= 0 && g_activeTab < static_cast<int>(g_tabs.size()) ? &g_tabs[g_activeTab] : nullptr;
-        const std::wstring& tabName = front && !front->custom ? front->nameFolded : s_emptyW;
+        const gct::WhisperPeer* tabPeer = front && !front->custom ? &front->peer : nullptr;
         const uint32_t tabChannels = front && front->custom ? front->channels : 0xFFFFFFFFu;
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,  // the space between chat lines (Window tab: Line spacing) – also the info lines, so it shows at once
                             ImVec2(ImGui::GetStyle().ItemSpacing.x,
@@ -575,7 +574,7 @@ static void RenderChat(ImGuiIO& io, std::unique_lock<std::mutex>& lock, const Im
         const float rowWrap = ImGui::GetContentRegionAvail().x, rowFont = ImGui::GetFontSize();
         const float rowGap = ImGui::GetStyle().ItemSpacing.y;
         auto inThisTab = [&](const ChatLine& l) {
-            if (!tabName.empty() && (l.channel != Channel::Whisper || l.speakerFolded != tabName)) return false;
+            if (tabPeer && (l.channel != Channel::Whisper || !tabPeer->Shows(l.speakerFolded, l.accountFolded))) return false;
             return (tabChannels & ChannelBit(l.channel)) != 0;  // a tab of your own: only its channels
         };
         // the original under a translation (your own line: what you typed), when chosen – part of the row's size

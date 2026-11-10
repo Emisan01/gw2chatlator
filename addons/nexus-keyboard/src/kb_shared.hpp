@@ -38,6 +38,7 @@
 #include "core/protect.hpp"
 #include "core/send_guard.hpp"
 #include "core/whisper_watch.hpp"
+#include "core/whisper_peer.hpp"
 #include "core/soft_wrap.hpp"
 #include "core/send_route.hpp"
 #include "core/translation_check.hpp"
@@ -181,6 +182,7 @@ constexpr size_t kMaxWhisperTabs = 5;
 struct WhisperTab {
     std::wstring name;
     std::wstring nameFolded;
+    gct::WhisperPeer peer;  // the player behind it: their account once a whisper told it, their characters (memory only)
     bool unread = false;
     std::wstring sendLang;  // what you send from it ("" = like the chat tab, "=" = as written, else a code)
     // A tab of your own (right-click on the header): a copy of the chat with the channels you choose, writing into
@@ -337,6 +339,7 @@ struct ChatLine {
     std::vector<std::wstring> transVariants;  // the model's other versions of `translated` (memory only)
     std::string u8trace;                // what happened when it was translated ("What happened?"), memory only
     std::wstring speakerFolded;
+    std::wstring accountFolded;  // a whisper's account as Events: Chat gave it (memory only): its tab follows the player
 
     // Pre-parsed/pre-encoded cache for 0-allocation rendering on the main thread
     std::string speakerDisplay;
@@ -669,7 +672,7 @@ void OnTalkKey(const char*, bool release);
 UINT OnWndProc(HWND, UINT msg, WPARAM wp, LPARAM lp);
 void ApplyPushToTalkKey(const std::wstring& key);
 bool AllowAutoTranslate();
-void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text);
+void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text, const char* account = nullptr);
 void OnChatEvents(void* args);
 void OpenWhisperTab(const std::wstring& name);
 void ActivateCustomTab(int i, bool focus = true);

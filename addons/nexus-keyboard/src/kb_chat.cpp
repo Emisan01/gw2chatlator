@@ -61,7 +61,9 @@ static void TrimChatLines() {  // g_mu held
 
 // ---------------------------------------------------------------------------------------------------------------
 // Game thread: a line arrives – copy it, queue its translation.
-void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
+static void BindWhisperTabs(const ChatLine& l);
+
+void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text, const char* account) {
     if (!text || !*text) return;
     TechLog('C', L"line in: " + ChannelLabel(ch) + (outgoing ? L", yours, " : L", ") + std::to_wstring(std::strlen(text)) + L" bytes");
     ChatLine l;
@@ -73,6 +75,11 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
     if (l.text.empty()) return;
     if (l.text.size() > 600) l.text.resize(600);
     l.speakerFolded = CaseFold(Trim(l.speaker));
+    if (ch == Channel::Whisper && account && *account) {  // ":Name.1234" as GW2 writes it; kept for whispers only
+        std::wstring a = Trim(SanitizeChatText(W(account)));
+        if (!a.empty() && a[0] == L':') a.erase(0, 1);
+        if (a.size() <= 64) l.accountFolded = CaseFold(a);
+    }
     l.speakerDisplay = l.speaker.empty() ? std::string() : UI((l.outgoing ? L"> " : L"") + l.speaker + L":");
     l.u8text = U8(l.text);
     l.textSegs = PieUI::ChatLinks::SegmentLine(l.u8text);
@@ -124,11 +131,14 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text) {
 
         g_lines.push_back(std::move(l));
         TrimChatLines();
+        // Someone else's whisper tells their account: their tab is the player's from now on, whichever character.
+        // Never from a line of your own – whose account that one carries is not ours to guess.
+        if (ch == Channel::Whisper && !own) BindWhisperTabs(g_lines.back());
         for (size_t i = 0; i < g_tabs.size(); ++i) {  // a tab not in front that shows this line: marked
             if (static_cast<int>(i) == g_activeTab) continue;
             const WhisperTab& t = g_tabs[i];
             if (t.custom ? (t.channels & ChannelBit(ch)) != 0
-                         : ch == Channel::Whisper && t.nameFolded == g_lines.back().speakerFolded)
+                         : ch == Channel::Whisper && t.peer.Shows(g_lines.back().speakerFolded, g_lines.back().accountFolded))
                 g_tabs[i].unread = true;
         }
     }
@@ -174,14 +184,44 @@ void ForgetDraft(uint32_t uid) {
     if (s_draftOwner == uid) s_draftOwner = kNoDraft;  // the input showed that tab's text: kept nowhere
 }
 
+// A whisper from someone else: the tab of that player learns the account and follows them to the character they are
+// on now (its name, and whom you write to). A second tab of the same player, opened under another character before
+// the account was known, folds into it – the one in front stays, with what you were writing. g_mu held.
+static void BindWhisperTabs(const ChatLine& l) {
+    if (l.accountFolded.empty() || l.speakerFolded.empty()) return;
+    std::vector<gct::WhisperPeer*> peers;
+    for (WhisperTab& t : g_tabs) peers.push_back(t.custom ? nullptr : &t.peer);
+    const gct::WhisperBinding b = gct::BindWhisper(peers, g_activeTab, l.speakerFolded, l.accountFolded);
+    if (b.keep < 0) return;
+    WhisperTab& keep = g_tabs[b.keep];
+    if (keep.nameFolded != l.speakerFolded) keep.SetName(Trim(l.speaker));
+    if (b.keep == g_activeTab) g_whisperTo = keep.name;
+    if (b.drop < 0) return;
+    if (keep.sendLang.empty()) keep.sendLang = g_tabs[b.drop].sendLang;
+    ForgetDraft(g_tabs[b.drop].uid);
+    g_tabs.erase(g_tabs.begin() + b.drop);
+    if (g_activeTab > b.drop) --g_activeTab;
+    if (g_selectTab > b.drop) --g_selectTab;
+    if (g_tabSettings == b.drop) g_tabSettings = -1;
+    else if (g_tabSettings > b.drop) --g_tabSettings;
+}
+
 // A click on a name: that player's whisper tab (opened, or brought to the front); writing goes to them. g_mu held.
 void OpenWhisperTab(const std::wstring& name) {
     const std::wstring who = Trim(name);
     if (who.empty()) return;
     const std::wstring whoFolded = CaseFold(who);
+    std::wstring account;  // known from a whisper of theirs in the chat
+    for (auto l = g_lines.rbegin(); l != g_lines.rend() && account.empty(); ++l)
+        if (l->channel == Channel::Whisper && !l->own && l->speakerFolded == whoFolded) account = l->accountFolded;
     int at = -1;
-    for (size_t i = 0; i < g_tabs.size(); ++i)
-        if (!g_tabs[i].custom && g_tabs[i].nameFolded == whoFolded) at = static_cast<int>(i);
+    for (size_t i = 0; i < g_tabs.size() && at < 0; ++i)  // the player's tab, under whichever character it was opened
+        if (!g_tabs[i].custom && (g_tabs[i].peer.Has(whoFolded) || (!account.empty() && g_tabs[i].peer.account == account)))
+            at = static_cast<int>(i);
+    if (at >= 0 && g_tabs[at].nameFolded != whoFolded && !account.empty() && g_tabs[at].peer.account == account) {
+        g_tabs[at].peer.Add(whoFolded);
+        g_tabs[at].SetName(who);  // the character clicked is whom you write to
+    }
     if (at < 0) {
         const size_t whispers = std::count_if(g_tabs.begin(), g_tabs.end(), [](const WhisperTab& t) { return !t.custom; });
         if (whispers >= kMaxWhisperTabs) {  // the oldest whisper tab goes
@@ -194,6 +234,8 @@ void OpenWhisperTab(const std::wstring& name) {
         }
         WhisperTab t;
         t.SetName(who);
+        t.peer.Add(whoFolded);
+        t.peer.account = account;
         t.uid = g_nextTabUid++;
         g_tabs.push_back(t);
         at = static_cast<int>(g_tabs.size()) - 1;

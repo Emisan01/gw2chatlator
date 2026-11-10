@@ -45,6 +45,7 @@
 #include "core/send_guard.hpp"
 #include "core/type_steps.hpp"
 #include "core/whisper_watch.hpp"
+#include "core/whisper_peer.hpp"
 #include "core/chat_code.hpp"
 #include "core/chat_source.hpp"
 #include "core/window_layout.hpp"
@@ -1796,6 +1797,50 @@ static void TestPickVoiceCores() {
 }
 
 
+// A whisper tab is a player's, not a character's (made-up names).
+static void TestWhisperPeer() {
+    auto tab = [](const wchar_t* name) {
+        WhisperPeer p;
+        p.Add(name);
+        return p;
+    };
+    {  // the account is learned from their whisper; their next character lands in the same tab
+        WhisperPeer a = tab(L"ana sample"), other = tab(L"ben made up");
+        std::vector<WhisperPeer*> tabs{nullptr, &a, &other};  // a tab of your own first: never touched
+        CHECK(!a.Shows(L"ana second", L"ana.1234"));  // not known yet: only the character it was opened for
+        WhisperBinding b = BindWhisper(tabs, -1, L"ana sample", L"ana.1234");
+        CHECK(b.keep == 1 && b.drop == -1 && a.account == L"ana.1234");
+        CHECK(a.Shows(L"ana second", L"ana.1234"));   // another character, the same account
+        CHECK(!a.Shows(L"ben made up", L"ben.5678")); // someone else
+        CHECK(!other.Shows(L"ana second", L"ana.1234") && other.account.empty());
+        b = BindWhisper(tabs, -1, L"ana second", L"ana.1234");
+        CHECK(b.keep == 1 && b.drop == -1 && a.Has(L"ana second"));
+        CHECK(a.Shows(L"ana sample", L""));  // a line without an account (your own answer to the first character)
+    }
+    {  // two tabs opened under two characters of one player: one stays, with both names
+        WhisperPeer a = tab(L"ana sample"), b2 = tab(L"ana second");
+        std::vector<WhisperPeer*> tabs{&a, &b2};
+        BindWhisper(tabs, -1, L"ana sample", L"ana.1234");
+        const WhisperBinding b = BindWhisper(tabs, -1, L"ana second", L"ana.1234");
+        CHECK(b.keep == 0 && b.drop == 1 && a.Has(L"ana second") && a.Has(L"ana sample"));
+    }
+    {  // the one in front stays: what you are writing is in it
+        WhisperPeer a = tab(L"ana sample"), b2 = tab(L"ana second");
+        std::vector<WhisperPeer*> tabs{&a, &b2};
+        BindWhisper(tabs, -1, L"ana sample", L"ana.1234");
+        const WhisperBinding b = BindWhisper(tabs, 1, L"ana second", L"ana.1234");
+        CHECK(b.keep == 1 && b.drop == 0 && b2.account == L"ana.1234" && b2.Has(L"ana sample"));
+    }
+    {  // no account, no tab of theirs, another player's tab of that name: nothing changes
+        WhisperPeer a = tab(L"ana sample");
+        std::vector<WhisperPeer*> tabs{&a};
+        CHECK(BindWhisper(tabs, 0, L"ana sample", L"").keep == -1 && a.account.empty());
+        CHECK(BindWhisper(tabs, 0, L"ben made up", L"ben.5678").keep == -1 && a.account.empty());
+        a.account = L"ana.1234";
+        CHECK(BindWhisper(tabs, 0, L"ana sample", L"other.9999").keep == -1 && a.account == L"ana.1234");
+    }
+}
+
 static void TestWhisperWatch() {
     {  // it comes back as a whisper: nothing to say, and it is done with
         WhisperWatch w;
@@ -2701,6 +2746,7 @@ int main() {
     TestSendGuard();
     TestTypeWhileOk();
     TestWhisperWatch();
+    TestWhisperPeer();
     TestPickVoiceCores();
     std::printf("%d passed, %d failed\n", g_pass, g_fail);
     return g_fail == 0 ? 0 : 1;

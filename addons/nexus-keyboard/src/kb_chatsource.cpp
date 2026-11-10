@@ -153,7 +153,7 @@ void Dispatch(const gct::ChatSourceLine& l) {
         default: return;
     }
     AddLine(ch, l.type == gct::kSrcWhisper && (l.flags & bridge::kChatEventsWhisperFromMe) != 0,
-            l.nameNull ? "" : l.name, l.content);
+            l.nameNull ? "" : l.name, l.content, l.accountNull ? nullptr : l.account);
 }
 
 }  // namespace
