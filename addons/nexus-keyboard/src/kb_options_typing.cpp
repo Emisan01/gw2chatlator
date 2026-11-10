@@ -125,6 +125,19 @@ void RenderTypingPage(Config& edit) {
     int ac = static_cast<int>(edit.autoCorrect);
     if (RowCombo("##ac", {UI(Tr(L"Off")), UI(Tr(L"Safe")), UI(Tr(L"Like a phone keyboard"))}, &ac))
         edit.autoCorrect = static_cast<AutoCorrectMode>(ac);
+    {
+        bool turnedOff = false;
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            const std::string tip = UI(Tr(L"Requires GW2 in windowed fullscreen. Our own typing help (grey word, word bar, marks) rests in this field. A program like Grammarly that reads in it sends the text to its provider — that is its business, not ours."));
+            if (Switch("nativefield", UI(Tr(L"A Windows text field for the input (for Grammarly & co.)")), &g_layout.nativeField, tip.c_str())) {
+                SaveLayout();
+                TechLog('O', std::wstring(L"native field ") + (g_layout.nativeField ? L"on" : L"off"));
+                turnedOff = !g_layout.nativeField;
+            }
+        }
+        if (turnedOff) StopNativeField();
+    }
     EndBox();
     BeginBox(UI(Tr(L"Learning")));
     RowLabel(UI(Tr(L"Learn")));

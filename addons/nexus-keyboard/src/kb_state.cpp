@@ -404,6 +404,7 @@ void LoadLayout() {  // g_mu held
     g_layout.autoMinimize = get(L"AutoMinimize", 0) != 0;
     g_layout.minimizeAfter = std::clamp(get(L"MinimizeAfter", 10), 2, 120);
     g_layout.autoOpen = get(L"AutoOpen", 0) != 0;
+    g_layout.nativeField = get(L"NativeField", 0) != 0;
     g_layout.inputLines = std::clamp(get(L"InputLines", 1), 1, 8);
     g_layout.previewLines = std::clamp(get(L"PreviewLines", 1), 1, 8);
     g_look.glow = get(L"Glow", 1) != 0;
@@ -472,6 +473,7 @@ void SaveLayout() {  // g_mu held
     g_cfg.SaveValue(L"NexusWindow", L"AutoMinimize", g_layout.autoMinimize ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"MinimizeAfter", std::to_wstring(g_layout.minimizeAfter));
     g_cfg.SaveValue(L"NexusWindow", L"AutoOpen", g_layout.autoOpen ? L"1" : L"0");
+    g_cfg.SaveValue(L"NexusWindow", L"NativeField", g_layout.nativeField ? L"1" : L"0");
     g_cfg.SaveValue(L"NexusWindow", L"InputLines", std::to_wstring(g_layout.inputLines));
     g_cfg.SaveValue(L"NexusWindow", L"PreviewLines", std::to_wstring(g_layout.previewLines));
     g_cfg.SaveValue(L"NexusWindow", L"Glow", g_look.glow ? L"1" : L"0");

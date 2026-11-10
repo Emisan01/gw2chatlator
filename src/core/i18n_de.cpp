@@ -1711,6 +1711,10 @@ extern const I18nEntry kGermanStrings[] = {
      "Klick: GW2s Karte fährt dorthin. Rechtsklick: nur ansehen."},
     {L"A Shift+click's code stands in GW2's chat line, in another channel than this one. Send or clear it there first; your text stays here.",
      "In GW2s Chatzeile steht ein Code aus einem Shift+Klick, in einem anderen Kanal als hier. Schick oder lösche ihn dort zuerst; dein Text bleibt hier."},
+    {L"A Windows text field for the input (for Grammarly & co.)",
+     "Ein Windows-Textfeld für die Eingabe (für Grammarly & Co.)"},
+    {L"Requires GW2 in windowed fullscreen. Our own typing help (grey word, word bar, marks) rests in this field. A program like Grammarly that reads in it sends the text to its provider — that is its business, not ours.",
+     "Braucht GW2 im Vollbild im Fenster. Unsere eigene Tipphilfe (graues Wort, Wortleiste, Marken) ruht in diesem Feld. Ein Programm wie Grammarly, das darin mitliest, schickt den Text an seinen Anbieter – das ist seine Sache, nicht unsere."},
 };
 extern const size_t kGermanCount = sizeof(kGermanStrings) / sizeof(kGermanStrings[0]);
 

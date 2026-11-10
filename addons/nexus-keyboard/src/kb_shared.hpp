@@ -125,6 +125,7 @@ struct Layout {
     int minimizeAfter = 10;
     bool autoOpen = false;      // GW2's chat line opening (Enter) opens it from the small button (the focus key always does)  // the small ">" that minimises (in the footer, without it left of the input)
     bool infoText = false;  // the grey status lines (what is going on, modules, counter); never the prediction's grey word
+    bool nativeField = false;  // a real Windows text field (RichEdit) over the input for Grammarly & co.
     int inputLines = 1;    // the input box at least: one line, it grows with its wrapped lines (user, 2026-10-22)
     int previewLines = 1;  // the translation and its back-translation at least – grows the same way
 };
@@ -887,6 +888,12 @@ std::string BuildDiagnosticReport();
 void SafeOpenUrl(const std::wstring& rawLink);
 void BoxText(const ImVec2& at, const ImVec4& clip, ImU32 color, const std::string& text, float scale = 1.0f);
 std::wstring WordAtMouse(const ImVec2& textAt);
+extern std::atomic<bool> g_nativeEnter;
+void UpdateNativeField(int x, int y, int w, int h, bool visible, int fontPx, COLORREF bg, COLORREF fg, bool wantFocus);
+void HideNativeField();
+void UnfocusNativeField();
+void StopNativeField();
+bool NativeFieldHasFocus();
 void KickSave();
 void RenderWindow();
 std::wstring FormatSeconds(int ms);
