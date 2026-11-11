@@ -240,6 +240,7 @@ void Flight(uint32_t id) {
         LetGoOfKeyboard();
         const bool sent = SendNow({line}, line, std::wstring());  // through GW2's own chat line: so the link stands in GW2's own chat
         std::lock_guard<std::mutex> lock(g_mu);
+        g_focusInput = false;  // waypoint whisper does not hand keyboard back to our input
         if (!g_history.empty() && g_history.front() == line) g_history.pop_front();  // not for your Up key
         if (ToUtf8(line) == g_input) g_input[0] = 0;  // a send that failed gives its text back: this one was never yours
         g_syncedChannel.clear();  // GW2's line now stands in this whisper: the next message from the footer's channel sets it again
@@ -275,6 +276,7 @@ void Flight(uint32_t id) {
         {
             std::lock_guard<std::mutex> lock(s_mu);
             s_placeKey = placeKey;
+            s_open = true;  // teaching needed: show preview window
         }
         s_teachUntil = GetTickCount64() + 30000;
         s_teachLineCame = false;
@@ -294,8 +296,8 @@ void Flight(uint32_t id) {
     POINT was{};
     GetCursorPos(&was);
     {
-        MumbleLink line;
-        const MumbleState ms = line.Read();
+        MumbleLink ml;
+        const MumbleState ms = ml.Read();
         TechLog('S', L"waypoint: click at " + std::to_wstring(at.x) + L"," + std::to_wstring(at.y) +
                          (ms.live && ms.TextboxHasFocus() ? L", GW2's line open" : L", GW2's line shut"));
     }
@@ -321,6 +323,10 @@ void Flight(uint32_t id) {
     if (std::abs(now.x - at.x) <= 2 && std::abs(now.y - at.y) <= 2) MoveCursor(was);  // not hit and not moved by you: back
     TechLog('S', L"waypoint: clicked, the map did not open");
     Say(Tr(L"The map did not open: the link was not hit. Teach the place again in the preview; GW2's chat must show whispers and stand at its end."), 12000);
+    {
+        std::lock_guard<std::mutex> lock(s_mu);
+        s_open = true;  // missed: show preview window so user can teach again
+    }
 }
 
 void SaveLists(const std::wstring& dataDir) {  // on the worker; only the points' public numbers
@@ -588,7 +594,7 @@ void FlyToWaypoint(uint32_t id) {  // a click on a waypoint in the chat; g_mu he
     {
         std::lock_guard<std::mutex> lock(s_mu);
         s_selected = id;
-        s_open = true;
+        s_open = false;  // GW2's own flight; preview window stays closed unless teaching/failed
     }
     s_flyRequest = id;
 }
@@ -702,12 +708,23 @@ void RenderWaypointPreview() {
             std::lock_guard<std::mutex> lock(s_mu);
             key = s_placeKey;
             s_places[key] = place;
+            s_open = false;
         }
         TechLog('S', L"waypoint: place learned at " + std::to_wstring(place.x) + L"," + std::to_wstring(place.y));
         std::lock_guard<std::mutex> lock(g_mu);
         g_cfg.SaveValue(L"WaypointLink", (key + L"X").c_str(), std::to_wstring(place.x));
         g_cfg.SaveValue(L"WaypointLink", (key + L"Y").c_str(), std::to_wstring(place.y));
         SetStatus(Tr(L"Place remembered. A click in the preview now does this by itself."), 8000);
+    }
+    const bool teaching = s_teaching.load() && GetTickCount64() <= s_teachUntil.load();  // no new run: your click on the link comes first
+    bool mayFly;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        mayFly = !s_busy.load() && !teaching;
+    }
+    if (const uint32_t wanted = s_flyRequest.exchange(0); wanted && mayFly) {
+        Fly(wanted);
+        return;
     }
     uint32_t selected;
     std::vector<uint32_t> history, collection;
@@ -716,18 +733,12 @@ void RenderWaypointPreview() {
         if (!s_open) s_previewL = s_previewT = s_previewR = s_previewB = 0;
         if (!s_open || WaypointPassThrough() || s_hidePreview) return;
     }
-    const bool teaching = s_teaching.load() && GetTickCount64() <= s_teachUntil.load();  // no new run: your click on the link comes first
-    bool mayFly, onMap, namesOn;
+    bool onMap, namesOn;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         ReadStored(g_cfg.dataDir);
         namesOn = g_cfg.chatCodeNames;
-        mayFly = !s_busy.load() && !teaching;
         onMap = (g_inMap || g_test.forceMap) && !g_mapOpen;
-    }
-    if (const uint32_t wanted = s_flyRequest.exchange(0); wanted && mayFly) {
-        Fly(wanted);
-        return;
     }
     if (!onMap) return;  // as our chat: never on a loading screen or at the character choice, never over GW2's open map
     {
