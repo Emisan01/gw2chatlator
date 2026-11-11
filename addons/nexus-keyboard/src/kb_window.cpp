@@ -2,6 +2,8 @@
 // Its footer is in kb_window_footer.cpp, Esc and the kept keys in kb_window_keys.cpp.
 
 #include "kb_shared.hpp"
+
+#include <set>
 #include "core/window_layout.hpp"
 #include "imgui/imgui_internal.h"  // FindWindowByName, MovingWindow
 
@@ -1893,6 +1895,21 @@ void RenderWindow() {
         ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
         ImGui::SetTooltip("%s", UI(L"→ " + g_help.marks[marks[markHovered].index].fix).c_str());
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) TakeMark(marks[markHovered].index);
+    }
+    // The "Strong" level does not wait for a click: a word standing wrong – ended by a comma, pasted, changed in the
+    // middle – is replaced while you go on writing, one per frame. Each word once per message: written again the same
+    // way, it is meant, and only its mark stays.
+    {
+        static std::set<std::wstring> s_corrected;
+        if (g_wFlatInput.empty()) s_corrected.clear();
+        if (g_cfg.autoCorrect == AutoCorrectMode::Strong && inputActive && !g_edit.active && g_help.text == g_wFlatInput)
+            for (size_t i = 0; i < g_help.marks.size(); ++i) {
+                const Span& s = g_help.marks[i].span;
+                if (s.end() > g_wFlatInput.size()) continue;
+                if (!s_corrected.insert(CaseFold(g_wFlatInput.substr(s.start, s.length))).second) continue;
+                TakeMark(i, false);
+                break;
+            }
     }
     if (versionHovered) {
         ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);

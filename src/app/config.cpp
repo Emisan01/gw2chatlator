@@ -168,6 +168,7 @@ AutoCorrectMode ParseAutoCorrect(const std::wstring& s, AutoCorrectMode def) {
     if (v == L"off" || v == L"0") return AutoCorrectMode::Off;
     if (v == L"safe") return AutoCorrectMode::Safe;
     if (v == L"phone") return AutoCorrectMode::Phone;
+    if (v == L"strong") return AutoCorrectMode::Strong;
     return def;
 }
 
@@ -191,6 +192,7 @@ const wchar_t* AutoCorrectKey(AutoCorrectMode m) {
     switch (m) {
         case AutoCorrectMode::Off: return L"off";
         case AutoCorrectMode::Safe: return L"safe";
+        case AutoCorrectMode::Strong: return L"strong";
         default: return L"phone";
     }
 }

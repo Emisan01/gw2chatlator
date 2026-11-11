@@ -258,6 +258,8 @@ void TypeMessage(SpellService& sp, const std::wstring& message, AutoCorrectMode 
     sp.Learn(message);
 }
 
+AutoCorrectMode g_mode = AutoCorrectMode::Phone;
+
 // Returns the surprises of this language (the gate wants none in any language).
 int Run(const wchar_t* lang, const wchar_t* tag, const Line* lines, size_t count, int messages) {
     wchar_t tmp[MAX_PATH];
@@ -284,14 +286,14 @@ int Run(const wchar_t* lang, const wchar_t* tag, const Line* lines, size_t count
         {  // the whole message looked at again (the marks in the input): a correctly written message gets none
             const std::wstring whole = std::wstring(l->text) + L" ";
             const auto t0 = std::chrono::steady_clock::now();
-            const std::vector<WordMark> marks = sp.Marks(whole, AutoCorrectMode::Phone);
+            const std::vector<WordMark> marks = sp.Marks(whole, g_mode);
             markMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
             for (const WordMark& mark : marks) {
                 ++block.surprises;
                 ++block.surpriseList[L"marked: " + whole.substr(mark.span.start, mark.span.length) + L" -> " + mark.fix];
             }
         }
-        TypeMessage(sp, l->text, AutoCorrectMode::Phone, block);
+        TypeMessage(sp, l->text, g_mode, block);
         if (m % 100 == 0 || m == messages) {
             std::printf("%5d-%-6d %7.1f%% %9d %9.0f%% %8d %6d %6d %6d\n", m - (m - 1) % 100, m,
                         100.0 * (1.0 - static_cast<double>(block.keys) / block.letters), block.surprises,
@@ -316,6 +318,12 @@ int Run(const wchar_t* lang, const wchar_t* tag, const Line* lines, size_t count
         std::printf("marks: \"das ist shon, gut und shon\" -> %zu mark(s)%s\n", marks.size(),
                     found ? ", shon -> schon" : " – expected one, shon -> schon");
         if (!found) ++all.surprises;
+        // What the levels do with a sentence typed carelessly (made up): how many words each would correct.
+        const std::wstring careless = L"ich glaube das ist ein fehlr und nohc ein wort falsh gschrieben aber egl ";
+        const auto phone = sp.Marks(careless, AutoCorrectMode::Phone), strong = sp.Marks(careless, AutoCorrectMode::Strong);
+        std::printf("marks, a careless sentence: phone keyboard %zu, strong %zu:", phone.size(), strong.size());
+        for (const WordMark& m : strong) std::printf(" %s>%s", ToUtf8(careless.substr(m.span.start, m.span.length)).c_str(), ToUtf8(m.fix).c_str());
+        std::printf("\n");
     }
     return all.surprises;
 }
@@ -386,6 +394,9 @@ int wmain(int argc, wchar_t** argv) {
         return 0;
     }
     const std::wstring only = argc > 2 ? argv[2] : L"";
+    // typing_bench 600 de strong: the "Strong" level instead of "Like a phone keyboard" – a measurement of what it
+    // costs (correct words it changes), no gate.
+    if (argc > 3 && std::wstring(argv[3]) == L"strong") g_mode = AutoCorrectMode::Strong;
     int surprises = 0;
     size_t ran = 0;
     for (const Lang& l : langs) {

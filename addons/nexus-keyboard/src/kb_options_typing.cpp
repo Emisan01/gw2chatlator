@@ -123,8 +123,10 @@ void RenderTypingPage(Config& edit) {
     Switch("spell", UI(Tr(L"Spell checking (Windows, offline)")), &edit.spellEnabled);
     RowLabel(UI(Tr(L"Autocorrection")));
     int ac = static_cast<int>(edit.autoCorrect);
-    if (RowCombo("##ac", {UI(Tr(L"Off")), UI(Tr(L"Safe")), UI(Tr(L"Like a phone keyboard"))}, &ac))
+    if (RowCombo("##ac", {UI(Tr(L"Off")), UI(Tr(L"Safe")), UI(Tr(L"Like a phone keyboard")), UI(Tr(L"Strong"))}, &ac))
         edit.autoCorrect = static_cast<AutoCorrectMode>(ac);
+    if (edit.autoCorrect == AutoCorrectMode::Strong)
+        RowHint(UI(Tr(L"Every word the dictionary does not know becomes its first suggestion when you go on writing – Backspace takes it back. Words still standing wrong are underlined; a click corrects them. GW2 terms, names and what you taught stay. It needs Windows' dictionary for the language you write in.")));
     {
         bool turnedOff = false;
         {

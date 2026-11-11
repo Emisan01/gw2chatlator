@@ -553,7 +553,8 @@ std::optional<std::wstring> SpellService::AutoCorrection(const std::wstring& wor
     if (mode == AutoCorrectMode::Off || word.size() < 2 || IsKnown(word)) return std::nullopt;
     if (IsValidWord(word)) return std::nullopt;  // a real word (also small-written nouns) is never changed
     // One of your typical typos: you meant this word before (profile or a kept correction).
-    if (mode == AutoCorrectMode::Phone)
+    const bool phone = mode == AutoCorrectMode::Phone || mode == AutoCorrectMode::Strong;
+    if (phone)
         if (const std::wstring known = KnownFix(word); !known.empty()) return known;
     if (checker_.Ready()) {
         for (const SpellIssue& issue : checker_.Check(word)) {
@@ -562,17 +563,30 @@ std::optional<std::wstring> SpellService::AutoCorrection(const std::wstring& wor
                 return issue.replacement;  // Windows' own sure fix ("teh" -> "the"), never a different word
         }
     }
-    if (mode != AutoCorrectMode::Phone) return std::nullopt;
+    if (!phone) return std::nullopt;
     // Only words the dictionary rejects – without a dictionary any new word would look like a slip: no correction.
     if (!checker_.Ready() || !IsMisspelled(word)) return std::nullopt;
     const std::wstring fix =
         ChooseCorrection(word, checker_.Ready() ? CheckerSuggest(word) : std::vector<std::wstring>(), model_, prev, prev2);
-    if (fix.empty() || fix == word || !LettersOnly(fix) || CaseFold(fix) == CaseFold(word)) return std::nullopt;
     // Only a slip of the fingers (a key next door, two letters swapped, a doubled or left-out letter inside the
-    // word) – a changed ending is grammar or another language ("habs", "with"), never corrected.
-    if (model_.Knows(fix) ? !LooksLikeSlip(WordKey(word), WordKey(fix), layout_, false) : !DictionarySlip(word, fix))
-        return std::nullopt;
-    return fix;
+    // word) – a changed ending is grammar or another language ("habs", "with"), never corrected. "Strong" goes on
+    // from there: whatever the dictionary rejects becomes its first idea.
+    const bool usable = !fix.empty() && fix != word && LettersOnly(fix) && CaseFold(fix) != CaseFold(word);
+    if (usable && (model_.Knows(fix) ? LooksLikeSlip(WordKey(word), WordKey(fix), layout_, false) : DictionarySlip(word, fix)))
+        return fix;
+    if (mode == AutoCorrectMode::Strong)
+        if (const std::wstring first = DictionaryFirst(word); !first.empty()) return first;
+    return std::nullopt;
+}
+
+std::wstring SpellService::DictionaryFirst(const std::wstring& typed) const {
+    if (!checker_.Ready() || typed.size() < 2 || !IsMisspelled(typed)) return {};
+    for (const std::wstring& s : CheckerSuggest(typed)) {
+        if (s.find(L' ') != std::wstring::npos || !LettersOnly(s)) continue;
+        if (CaseFold(s) == CaseFold(typed) || EditDistance(WordKey(typed), WordKey(s), 4) > 3) return {};
+        return MatchCase(typed, s);
+    }
+    return {};
 }
 
 // The two words before `pos` in the same sentence ("kommst du |" -> "du", "kommst"); empty after . ! ?
@@ -716,7 +730,7 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
         }
     }
     // A typo the phone logic would fix gets the first, highlighted place.
-    if (mode == AutoCorrectMode::Phone && partial.size() >= 4 && words.empty()) {
+    if ((mode == AutoCorrectMode::Phone || mode == AutoCorrectMode::Strong) && partial.size() >= 4 && words.empty()) {
         if (auto fix = AutoCorrection(partial, mode, prev, p2)) {
             s.kind = WordSuggestions::Kind::Correction;
             s.words.push_back(*fix);
@@ -873,8 +887,10 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
             for (const std::wstring& w : CheckerSuggest(typed)) {
                 if (w.find(L' ') != std::wstring::npos || !LettersOnly(w)) continue;
                 fixes.push_back(w);
-                // The dictionary's idea is only taken by Space when it is one slip of the fingers away.
-                if (DictionarySlip(typed, w)) strong.push_back(w);
+                // The dictionary's idea is only taken by Space when it is one slip of the fingers away – on the
+                // "Strong" level its first idea always.
+                if (DictionarySlip(typed, w) || (mode == AutoCorrectMode::Strong && WordKey(w) == WordKey(DictionaryFirst(typed))))
+                    strong.push_back(w);
             }
     }
 
@@ -902,7 +918,7 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
     if (c.words.empty()) return {};
     if (c.firstIsTyped) {
         c.highlight = 0;
-    } else if (mode == AutoCorrectMode::Phone) {
+    } else if (mode == AutoCorrectMode::Phone || mode == AutoCorrectMode::Strong) {
         // The first of your own words or clear slips; the rest waits for Tab.
         c.highlight = -1;
         for (size_t i = 0; i < c.words.size() && c.highlight < 0; ++i)

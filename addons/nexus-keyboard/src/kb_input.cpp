@@ -89,7 +89,7 @@ std::vector<MarkBox> InputMarkBoxes(const ImVec2& textAt) {
 
 // A click on a marked word: its correction is written in its place (through g_edit, like a word of the bar) and
 // counts as a choice of yours for the learning.
-void TakeMark(size_t index) {
+void TakeMark(size_t index, bool byClick) {
     const std::wstring& text = g_wFlatInput;
     if (g_help.text != text || index >= g_help.marks.size()) return;
     const WordMark m = g_help.marks[index];
@@ -98,10 +98,14 @@ void TakeMark(size_t index) {
     g_edit.startByte = U8Offset(text, m.span.start);
     g_edit.lenBytes = U8Offset(text, m.span.end()) - g_edit.startByte;
     g_edit.insert = U8(m.fix);
-    g_focusInput = true;
-    ++g_keys.wordClicked;
-    TechLog('K', L"a marked word corrected by a click");
-    if (g_spell) g_worker.Post([text, start = m.span.start, word = m.fix] { if (g_spell) g_spell->Chose(text, start, word, true); });
+    if (byClick) {
+        g_focusInput = true;
+        ++g_keys.wordClicked;
+    } else {
+        ++g_keys.spaceWrote;
+    }
+    TechLog('K', byClick ? L"a marked word corrected by a click" : L"a word standing wrong corrected (Strong)");
+    if (g_spell) g_worker.Post([text, start = m.span.start, word = m.fix, byClick] { if (g_spell) g_spell->Chose(text, start, word, byClick); });
 }
 
 // Space at the end of a word: the word picked with Tab, else the grey one (what Space writes – only

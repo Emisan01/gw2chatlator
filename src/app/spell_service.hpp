@@ -151,6 +151,9 @@ private:
     // away ("shon" -> "schon"; "habs" -> "Harbs" or "shon" -> "Sohn" never).
     bool DictionarySlip(const std::wstring& typed, const std::wstring& fix) const;
     bool IsMisspelled(const std::wstring& word) const;
+    // The "Strong" level: the dictionary's first idea for a word it rejects – one word, letters only, at most three
+    // changes away (a word typed beyond that stays: nothing near enough to be meant). "" none.
+    std::wstring DictionaryFirst(const std::wstring& typed) const;
     // The Windows spell checker is a COM call; the word bar asks on every key
     // press, so answers per word are kept until the language changes.
     bool CheckerRejects(const std::wstring& word) const;

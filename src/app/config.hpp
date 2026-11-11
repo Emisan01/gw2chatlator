@@ -16,7 +16,9 @@
 namespace gct {
 
 enum class Engine { Auto, Basic, DeepL, Google, Microsoft, Libre, Local, Nllb, M2m, Supertext };
-enum class AutoCorrectMode { Off, Safe, Phone };
+// Strong: Phone, and every other word the dictionary rejects becomes its first suggestion (for whoever types fast
+// and counts on the correction; a surprise now and then is the price – Backspace takes it back).
+enum class AutoCorrectMode { Off, Safe, Phone, Strong };
 
 struct Config {
     std::wstring dataDir;

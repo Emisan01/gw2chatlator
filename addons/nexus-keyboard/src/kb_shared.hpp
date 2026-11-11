@@ -374,7 +374,7 @@ struct MarkBox {
     size_t index = 0;  // into g_help.marks
 };
 std::vector<MarkBox> InputMarkBoxes(const ImVec2& textAt);
-void TakeMark(size_t index);  // the marked word becomes its correction
+void TakeMark(size_t index, bool byClick = true);  // the marked word becomes its correction (false: the "Strong" level, by itself)
 
 extern std::mutex g_mu;
 extern Config g_cfg;
