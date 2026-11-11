@@ -433,7 +433,6 @@ void AddonUnload() {
     if (g_voiceModuleThread.joinable()) g_voiceModuleThread.join();
     if (g_localMtThread.joinable()) g_localMtThread.join();
     if (g_localMtProbeThread.joinable()) g_localMtProbeThread.join();
-    StopNativeField();
     WaypointStop();
     g_links.Stop();
     ReleaseTextFont();  // no call into a gone DLL
@@ -640,16 +639,6 @@ extern "C" __declspec(dllexport) int Gw2KbTestCompactVersions(int step, char* pr
     if (previewOut) CopyUtf8(previewOut, 128, U8(g_preview));
     if (backOut) CopyUtf8(backOut, 128, U8(g_back));
     return static_cast<int>(g_previewPick) + (g_collapsed ? 100 : 0);
-}
-
-extern "C" __declspec(dllexport) void Gw2KbTestNativeField(int on) {  // nexus_kb_selftest: the native Windows input field on / off
-    if (!TestHost()) return;
-    {
-        std::lock_guard<std::mutex> lock(g_mu);
-        g_layout.nativeField = on != 0;
-    }
-    TechLog('O', std::wstring(L"native field ") + (on ? L"on" : L"off"));
-    if (!on) StopNativeField();
 }
 
 extern "C" __declspec(dllexport) int Gw2KbTestAutoMinimize(int seconds) {  // nexus_kb_selftest: -1 ask, 0 off; 1 = small

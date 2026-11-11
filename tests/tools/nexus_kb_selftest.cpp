@@ -960,34 +960,6 @@ int wmain(int argc, wchar_t** argv) {
                 ok = ok && voiceOk;
             }
         }
-        // Native Windows input field ("Fallen field"): switched on, a window of its class appears with its edit child;
-        // text + VK_RETURN goes out through StartSend (sentParts, lastSent); switched off, the window is gone.
-        if (auto nativeField = reinterpret_cast<void (*)(int)>(GetProcAddress(dll, "Gw2KbTestNativeField"))) {
-            const int partsBefore = th->sentParts;
-            nativeField(1);
-            HWND win = nullptr, edit = nullptr;
-            for (int i = 0; i < 40 && (!win || !edit); ++i) {
-                frames(1);
-                win = FindWindowW(L"GW2ChatlatorInputField", nullptr);
-                if (win) edit = GetWindow(win, GW_CHILD);
-            }
-            if (edit) {
-                SendMessageW(edit, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(L"Hello from native field"));
-                SendMessageW(edit, WM_KEYDOWN, VK_RETURN, 0);
-            }
-            frames(15);
-            const int sent = th->sentParts - partsBefore;
-            const std::string last = th->lastSent;
-            nativeField(0);
-            frames(2);
-            const HWND afterOff = FindWindowW(L"GW2ChatlatorInputField", nullptr);
-            std::printf("native field: window %s, sent +%d (%s), after off %s\n",
-                        win ? "found" : "MISSING", sent, last.c_str(), afterOff ? "STILL THERE" : "gone");
-            const bool nativeOk = win != nullptr && edit != nullptr && sent == 1 &&
-                                  last.find("Hello from native field") != std::string::npos && afterOff == nullptr;
-            if (!nativeOk) std::printf("FAIL: native field did not send through StartSend or did not close\n");
-            ok = ok && nativeOk;
-        }
         // Version choice without the preview field (compact, mini, subtitles): the chosen version's number before
         // "> translation" in the input box's small line; each click steps to the next version, the back-translation
         // line follows, and three quick clicks on it in mini mode never minimise the window.

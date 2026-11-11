@@ -1715,10 +1715,6 @@ extern const I18nEntry kTurkishStrings[] = {
      "Tık: GW2 haritası oraya gider. Sağ tık: yalnızca bak."},
     {L"A Shift+click's code stands in GW2's chat line, in another channel than this one. Send or clear it there first; your text stays here.",
      "Shift+tık kodu GW2 sohbet satırında, buradakinden farklı bir kanalda duruyor. Önce orada gönder veya sil; metnin burada kalır."},
-    {L"A Windows text field for the input (for Grammarly & co.)",
-     "Giriş için bir Windows metin alanı (Grammarly vb. için)"},
-    {L"Requires GW2 in windowed fullscreen. Our own typing help (grey word, word bar, marks) rests in this field. A program like Grammarly that reads in it sends the text to its provider — that is its business, not ours.",
-     "GW2'nin pencereli tam ekranda olmasını gerektirir. Kendi yazım yardımımız (gri kelime, kelime çubuğu, işaretler) bu alanda dinlenir. İçini okuyan Grammarly gibi bir program metni kendi sağlayıcısına gönderir — bu bizim değil, onun işidir."},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

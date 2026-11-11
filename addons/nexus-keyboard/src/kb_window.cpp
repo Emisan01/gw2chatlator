@@ -1016,23 +1016,13 @@ static void RenderTeachPopup(bool& s_menuNext) {
 
 void RenderWindow() {
     if (!ImGui::GetCurrentContext()) return;  // failsafe: no context, no drawing
-    bool nativeFieldDrawn = false;
-    struct NativeFieldGuard {
-        bool* drawn;
-        ~NativeFieldGuard() {
-            if (!*drawn) HideNativeField();
-        }
-    } nativeFieldGuard{&nativeFieldDrawn};
     CostFrame costFrame;  // what this frame costs on GW2's render thread, by part (Options > Technical)
     g_lastRenderFrameTime = GetTickCount64();
     {
         std::lock_guard<std::mutex> lock(g_mu);
         ProcessBufferedKeys();
     }
-    if (g_letGoKeyboard.exchange(false)) {
-        ImGui::SetWindowFocus(nullptr);  // the worker types into GW2 now
-        UnfocusNativeField();
-    }
+    if (g_letGoKeyboard.exchange(false)) ImGui::SetWindowFocus(nullptr);  // the worker types into GW2 now
     bool escReq = false;
     {
         std::lock_guard<std::mutex> lock(g_mu);
@@ -1492,7 +1482,7 @@ void RenderWindow() {
     const float line = ImGui::GetTextLineHeightWithSpacing();
     // The translator's error on the text in the input shows in the preview's place even where the layout has none –
     // for as long as that text stands there; your layout is not changed for it.
-    const bool showPreview = Shown().preview || InputErrorNow(), showWords = Shown().words && !g_layout.nativeField;
+    const bool showPreview = Shown().preview || InputErrorNow(), showWords = Shown().words;
     const bool previewCurrent = g_previewGen == g_inputGen && !g_preview.empty();
     const bool showBackLine = !showPreview && Lay().backLine && previewCurrent && !g_back.empty();
     const float smallLine = ImGui::GetFontSize() * 0.85f + 2;
@@ -1656,20 +1646,9 @@ void RenderWindow() {
     RenderWordBar(st, showWords);
 
     // ---- the input line; momentary messages (status) appear inside it
-    const bool useNativeField = g_layout.nativeField;
-    bool wantNativeFocus = false;
     if (g_focusInput && !g_sending) {
-        if (useNativeField) wantNativeFocus = true;
-        else ImGui::SetKeyboardFocusHere();
+        ImGui::SetKeyboardFocusHere();
         g_focusInput = false;
-    }
-    if (useNativeField && g_edit.active) {
-        g_edit.active = false;
-        std::string s = Flat(g_input);
-        const size_t from = std::min(g_edit.startByte, s.size());
-        const size_t len = std::min(g_edit.lenBytes, s.size() - from);
-        s.replace(from, len, g_edit.insert);
-        CopyUtf8(g_input, s);
     }
     if (!Shown().footer && Shown().minButton) {  // no footer: its minimise button stands left of the input, at its bottom
         const float btn = ImGui::GetFrameHeight(), rowY = ImGui::GetCursorPosY();
@@ -1719,12 +1698,7 @@ void RenderWindow() {
         ImGui::PushStyleColor(ImGuiCol_FrameBg, field);
     }
     ImGui::PushStyleColor(ImGuiCol_Text, Bright(ImGui::GetStyleColorVec4(ImGuiCol_Text)));  // your brightness here too
-    bool enter = false;
-    if (useNativeField) {
-        ImGui::Dummy(boxSize);
-    } else {
-        enter = ImGui::InputTextMultiline("##input", g_input, sizeof(g_input), boxSize, flags, InputCallback);
-    }
+    const bool enter = ImGui::InputTextMultiline("##input", g_input, sizeof(g_input), boxSize, flags, InputCallback);
     ImGui::PopStyleColor(2);
     if (unseen) ImGui::PopStyleVar();
     const ImVec2 inputMin = ImGui::GetItemRectMin(), inputMax = ImGui::GetItemRectMax();
@@ -1733,9 +1707,8 @@ void RenderWindow() {
         g_flatInput = nowFlat;
         g_wFlatInput = W(nowFlat);
     }
-    const bool inputActive = useNativeField ? NativeFieldHasFocus() : ImGui::IsItemActive();
+    const bool inputActive = ImGui::IsItemActive();
     g_inputActive = inputActive;
-    if (inputActive) g_keyboardFree = false;
     if (showClearBtn) {
         ImGui::SameLine(0, clearGap);
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
@@ -1885,7 +1858,7 @@ void RenderWindow() {
     }
     // The whole message looked at again: a finished word the autocorrection would write differently is underlined – the
     // pointer on it shows the correction, a click writes it. The text never changes by itself.
-    const std::vector<MarkBox> marks = (unseen || useNativeField) ? std::vector<MarkBox>() : InputMarkBoxes(textAt);
+    const std::vector<MarkBox> marks = unseen ? std::vector<MarkBox>() : InputMarkBoxes(textAt);
     int markHovered = -1;
     if (!marks.empty() && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) &&
         !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId))
@@ -1941,7 +1914,7 @@ void RenderWindow() {
         }
         dl->PopClipRect();
     }
-    if (const std::wstring rest = useNativeField ? std::wstring() : GhostRest(g_wFlatInput); !rest.empty() && inputActive) {  // what Space / Tab writes
+    if (const std::wstring rest = GhostRest(g_wFlatInput); !rest.empty() && inputActive) {  // what Space / Tab writes
         // In the line where the text ends, clipped to the box.
         const size_t inLen = std::strlen(g_input);
         const char* lastLine = std::strrchr(g_input, '\n');
@@ -2028,35 +2001,8 @@ void RenderWindow() {
         g_inputChanged = 0;
         g_worker.PostFront([gen = g_inputGen, t = SanitizeChatText(g_wFlatInput)] { TranslateInput(gen, t); });
     }
-    if (enter || g_nativeEnter.exchange(false)) StartSend();
+    if (enter) StartSend();
     CheckAutoSend();
-    if (useNativeField) {
-        if (g_focusInput && !g_sending && !g_sendInFlight) {
-            wantNativeFocus = true;
-            g_focusInput = false;
-        }
-        nativeFieldDrawn = true;
-        POINT origin{0, 0};
-        if (g_gameHwnd) ClientToScreen(g_gameHwnd, &origin);
-        const int nx = origin.x + static_cast<int>(std::lround(inputMin.x));
-        const int ny = origin.y + static_cast<int>(std::lround(inputMin.y));
-        const int nw = std::max(1, static_cast<int>(std::lround(inputMax.x - inputMin.x)));
-        const int nh = std::max(1, static_cast<int>(std::lround(inputMax.y - inputMin.y)));
-        const ImVec4 winBg = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
-        const ImVec4 frm = FieldColor();
-        const ImVec4 txt = Bright(ImGui::GetStyleColorVec4(ImGuiCol_Text));
-        const float a = std::clamp(frm.w, 0.0f, 1.0f);
-        const float baseR = winBg.w > 0.05f ? winBg.x : 0.08f;
-        const float baseG = winBg.w > 0.05f ? winBg.y : 0.08f;
-        const float baseB = winBg.w > 0.05f ? winBg.z : 0.09f;
-        const auto toByte = [](float v) { return static_cast<BYTE>(std::clamp(v, 0.0f, 1.0f) * 255.0f + 0.5f); };
-        const COLORREF bgRef = RGB(toByte(baseR * (1.0f - a) + frm.x * a),
-                                   toByte(baseG * (1.0f - a) + frm.y * a),
-                                   toByte(baseB * (1.0f - a) + frm.z * a));
-        const COLORREF fgRef = RGB(toByte(txt.x), toByte(txt.y), toByte(txt.z));
-        UpdateNativeField(nx, ny, nw, nh, !unseen && !g_mapOpen, static_cast<int>(std::lround(chatPx)), bgRef, fgRef,
-                          wantNativeFocus);
-    }
     lock.unlock();
     ImGui::End();
     RenderDiscordVoiceMenu();
