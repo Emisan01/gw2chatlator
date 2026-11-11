@@ -600,6 +600,12 @@ extern "C" __declspec(dllexport) void Gw2KbTestMini(int on) {  // nexus_kb_selft
     SetProfile(1, on != 0);
 }
 
+extern "C" __declspec(dllexport) void Gw2KbTestSubtitles(int on) {  // nexus_kb_selftest: subtitle mode on / off
+    if (!TestHost()) return;
+    std::lock_guard<std::mutex> lock(g_mu);
+    SetProfile(2, on != 0);
+}
+
 // nexus_kb_selftest: version choice without the preview field (step 1: mini view + 3 versions, step 0: query, step 2: clean up).
 extern "C" __declspec(dllexport) int Gw2KbTestCompactVersions(int step, char* previewOut, char* backOut) {
     if (!TestHost()) return -1;

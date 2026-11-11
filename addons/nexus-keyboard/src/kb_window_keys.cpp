@@ -85,6 +85,7 @@ int EscLayer() {
 
     // 4: Eingabefeld hat Fokus
     if (g_edit.active || g_focusInput) return 4;
+    if (ProfileOn(2) && SubtitleIsOpen()) return 4;
     if (ImGui::GetCurrentContext() && ImGui::GetActiveID() != 0) return 4;
 
     // 5: sonst
@@ -124,10 +125,19 @@ bool HandleEsc() {
             std::lock_guard<std::mutex> lock(g_mu);
             g_focusInput = false;
             g_edit.active = false;
+            if (ProfileOn(2)) {
+                g_input[0] = '\0';
+                g_flatInput.clear();
+                g_wFlatInput.clear();
+                g_preview.clear();
+                g_previewGen = ++g_inputGen;
+                g_back.clear();
+            }
         }
         if (ImGui::GetCurrentContext()) {
             ImGui::ClearActiveID();
         }
+        SubtitleClose(L"by Esc");
         if (g_gameHwnd) {
             SetFocus(g_gameHwnd);
         }

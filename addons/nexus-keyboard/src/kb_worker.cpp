@@ -896,8 +896,12 @@ bool SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
         SetStatus(copyOnly ? Tr(L"Copied – paste it into the GW2 chat with Ctrl+V") : L"");
         g_history.push_front(typed);
         while (g_history.size() > kHistoryMax) g_history.pop_back();
-        // "keep typing" – but not in the subtitle mode: there the input closes after sending and the glass is the chat again
-        if (g_cfg.returnFocus && !ProfileOn(2)) g_focusInput = true;
+        // "keep typing" keeps focus; without it, subtitle mode closes after sending
+        if (g_cfg.returnFocus) {
+            g_focusInput = true;
+        } else if (ProfileOn(2)) {
+            SubtitleClose(L"after send");
+        }
     } else {
         SetStatus(error, 10000);
         if (g_input[0] == 0) {  // nothing lost: the text comes back

@@ -76,6 +76,7 @@ struct TestHooks {  // as in kb_main.cpp
     std::atomic<bool>* bufferingKeys = nullptr;
     std::atomic<bool>* sendInFlight = nullptr;
     std::atomic<ULONGLONG>* bufferingStartTime = nullptr;
+    float inputAlpha = 1.0f;
 };
 void Free(void* p, void*) { std::free(p); }
 
@@ -415,6 +416,7 @@ int wmain(int argc, wchar_t** argv) {
         io.KeyMap[ImGuiKey_Backspace] = VK_BACK;
         io.KeyMap[ImGuiKey_UpArrow] = VK_UP;
         io.KeyMap[ImGuiKey_DownArrow] = VK_DOWN;
+        io.KeyMap[ImGuiKey_Escape] = VK_ESCAPE;
         auto frames = [](int n) {
             for (int i = 0; i < n; ++i) {
                 Frame();
@@ -851,6 +853,69 @@ int wmain(int argc, wchar_t** argv) {
                                    std::fabs(t1.x - t0.x) < 1 && std::fabs(t1.y - t0.y) < 1;
                 if (!moved) std::printf("FAIL: the mini window did not follow the mouse or moved while selecting text\n");
                 ok = ok && moved;
+            }
+            // Subtitle mode: a left click in the glass opens the input and keeps it open without flickering (UI-22).
+            if (auto subsMode = reinterpret_cast<void (*)(int)>(GetProcAddress(dll, "Gw2KbTestSubtitles"))) {
+                subsMode(1);
+                frames(5);
+                ImGuiWindow* mw = ImGui::FindWindowByName("GW2Chatlator###kbmain");
+                const ImVec2 wp = mw ? mw->Pos : ImVec2(300, 500);
+                const ImVec2 ws = mw ? mw->SizeFull : ImVec2(520, 250);
+                ImGuiIO& io = ImGui::GetIO();
+                const ImGuiID inputId = mw ? mw->GetID("##input") : 0;
+
+                // Click into the glass/text area
+                io.MousePos = ImVec2(wp.x + ws.x * 0.5f, wp.y + 60.0f);
+                frames(1);
+                io.MouseDown[0] = true;
+                frames(1);
+                io.MouseDown[0] = false;
+                frames(1);
+
+                // Over 10 frames: field must be active and inputAlpha > 0.0f in every frame from the 2nd frame on
+                bool fieldActiveAll = true;
+                bool alphaVisibleAll = true;
+                for (int f = 0; f < 10; ++f) {
+                    frames(1);
+                    if (f >= 1) {
+                        const bool active = (ImGui::GetActiveID() == inputId);
+                        if (!active) fieldActiveAll = false;
+                        if (th->inputAlpha <= 0.0f) alphaVisibleAll = false;
+                    }
+                }
+                // Text typing works
+                type("Subtitles typing test");
+                frames(3);
+                const bool textEntered = (std::strstr(th->input, "Subtitles typing test") != nullptr);
+
+                // Esc closes subtitle input
+                press(VK_ESCAPE);
+                frames(3);
+                const bool escClosed = (th->inputAlpha <= 0.0f) && (ImGui::GetActiveID() != inputId);
+
+                // Another click opens it again
+                io.MousePos = ImVec2(wp.x + ws.x * 0.5f, wp.y + 60.0f);
+                frames(1);
+                io.MouseDown[0] = true;
+                frames(1);
+                io.MouseDown[0] = false;
+                frames(3);
+                const bool reopened = (th->inputAlpha > 0.0f) && (ImGui::GetActiveID() == inputId);
+
+                // Clean up
+                press(VK_ESCAPE);
+                frames(2);
+                th->input[0] = '\0';
+                io.MousePos = ImVec2(-1000, -1000);
+                subsMode(0);
+                frames(5);
+
+                std::printf("subtitles glass click: active %s, alpha visible %s, typing %s, esc closed %s, reopen %s\n",
+                            fieldActiveAll ? "yes" : "no", alphaVisibleAll ? "yes" : "no",
+                            textEntered ? "yes" : "no", escClosed ? "yes" : "no", reopened ? "yes" : "no");
+                const bool subsOk = fieldActiveAll && alphaVisibleAll && textEntered && escClosed && reopened;
+                if (!subsOk) std::printf("FAIL: subtitle input did not open or stay open on glass click\n");
+                ok = ok && subsOk;
             }
             // Minimise when not in use: the input had the focus, a click into the game, then nothing for the set time –
             // the window goes down to the small button; the focus key opens it again.

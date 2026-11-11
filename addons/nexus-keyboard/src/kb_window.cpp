@@ -499,11 +499,30 @@ static ImVec4 FieldColor() {
     return c;
 }
 
+namespace {
+bool s_subtitleOpen = false;
+bool s_subtitleWasActive = false;
+int s_subtitleFocusFrames = 0;
+}  // namespace
+
+void SubtitleClose(const wchar_t* reason) {
+    if (s_subtitleOpen) {
+        s_subtitleOpen = false;
+        s_subtitleWasActive = false;
+        s_subtitleFocusFrames = 0;
+        TechLog('O', (std::wstring(L"subtitle mode: closed ") + reason).c_str());
+    }
+}
+
+bool SubtitleIsOpen() {
+    return s_subtitleOpen;
+}
+
 // The subtitle mode always has its input, as the mini mode with the chat would: glass while nobody writes; a left click
 // in it, your focus key or your writing make it active – a soft background behind the lines and the input under them, a
 // shade darker for contrast, the cursor in it (Emi, 2026-11-09). Sent, or left with Esc: glass again.
 static bool SubtitleWriting() {
-    return g_inputActive || g_focusInput || g_input[0] || g_sending || g_sendPending || g_recording;
+    return s_subtitleOpen || g_inputActive || g_focusInput || g_input[0] || g_sending || g_sendPending || g_recording;
 }
 
 // The subtitle mode fades a line as GW2's own chat does (Emi, 2026-11-09): 10 s fully there, then 1.5 s down to
@@ -1629,8 +1648,33 @@ void RenderWindow() {
 
     // ---- the input line; momentary messages (status) appear inside it
     if (g_focusInput && !g_sending) {
+        if (ProfileOn(2) && !s_subtitleOpen) {
+            s_subtitleOpen = true;
+            TechLog('O', L"subtitle mode: opened by focus request");
+        }
         ImGui::SetKeyboardFocusHere();
         g_focusInput = false;
+    }
+    if (ProfileOn(2) && s_subtitleOpen) {
+        const ImGuiID inputId = ImGui::GetID("##input");
+        const bool active = (ImGui::GetActiveID() == inputId);
+        if (!active) {
+            if (++s_subtitleFocusFrames <= 30) {
+                ImGui::SetKeyboardFocusHere();
+            } else {
+                s_subtitleOpen = false;
+                s_subtitleFocusFrames = 0;
+                TechLog('O', L"subtitle mode: closed after 30 frames without focus");
+            }
+        } else {
+            s_subtitleFocusFrames = 0;
+        }
+    } else {
+        s_subtitleFocusFrames = 0;
+    }
+    if (ProfileOn(2) && g_recording && !s_subtitleOpen) {
+        s_subtitleOpen = true;
+        TechLog('O', L"subtitle mode: opened by voice recording");
     }
     if (!Shown().footer && Shown().minButton) {  // no footer: its minimise button stands left of the input, at its bottom
         const float btn = ImGui::GetFrameHeight(), rowY = ImGui::GetCursorPosY();
@@ -1657,10 +1701,23 @@ void RenderWindow() {
     const int escKey = ImGui::GetKeyIndex(ImGuiKey_Escape);
     if (escKey >= 0 && io.KeysDown[escKey]) {
         ImGuiID inputId = ImGui::GetID("##input");
-        if (ImGui::GetActiveID() == inputId) {
+        if (ImGui::GetActiveID() == inputId || (ProfileOn(2) && s_subtitleOpen)) {
             ImGui::ClearActiveID();
             g_focusInput = false;
             g_edit.active = false;
+            if (ProfileOn(2)) {
+                if (s_subtitleOpen) {
+                    s_subtitleOpen = false;
+                    s_subtitleWasActive = false;
+                    TechLog('O', L"subtitle mode: closed by Esc");
+                }
+                g_input[0] = '\0';
+                g_flatInput.clear();
+                g_wFlatInput.clear();
+                g_preview.clear();
+                g_previewGen = ++g_inputGen;
+                g_back.clear();
+            }
             if (g_gameHwnd) SetFocus(g_gameHwnd);
         }
         io.KeysDown[escKey] = false;
@@ -1670,6 +1727,7 @@ void RenderWindow() {
     // nothing is sent. A message stays readable: it is drawn over the box (##boxtext), as text on the glass, no frame.
     const bool unseen = ProfileOn(2) && !SubtitleWriting();
     const bool glassInput = ProfileOn(2) && !unseen;  // writing on the glass: the field a shade darker than the background
+    g_test.inputAlpha = unseen ? 0.0f : 1.0f;
     if (unseen) ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.0f);
     {
         ImVec4 field = FieldColor();  // your input transparency; on the glass a shade darker and firmer, for contrast
@@ -1714,6 +1772,23 @@ void RenderWindow() {
     const ImGuiID inputId = ImGui::GetID("##input");
     const bool inputActive = (ImGui::GetActiveID() == inputId) || ImGui::IsItemActive();
     g_inputActive = inputActive;
+    if (ProfileOn(2)) {
+        if (inputActive) {
+            if (!s_subtitleOpen) {
+                s_subtitleOpen = true;
+                TechLog('O', L"subtitle mode: opened because input became active");
+            }
+            s_subtitleWasActive = true;
+        } else if (s_subtitleWasActive && s_subtitleOpen && g_input[0] == '\0') {
+            s_subtitleOpen = false;
+            s_subtitleWasActive = false;
+            TechLog('O', L"subtitle mode: closed because empty field lost focus");
+        }
+        if (!s_subtitleOpen) s_subtitleWasActive = false;
+    } else {
+        s_subtitleOpen = false;
+        s_subtitleWasActive = false;
+    }
     if (showClearBtn) {
         ImGui::SameLine(0, clearGap);
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
@@ -1840,6 +1915,7 @@ void RenderWindow() {
         if (s_glassPress && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
             s_glassPress = false;
             if (ProfileOn(2) && io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Left] < io.MouseDragThreshold * io.MouseDragThreshold) {
+                s_subtitleOpen = true;
                 g_focusInput = true;
                 TechLog('O', L"subtitle mode: a click in the text opened the input");
             }
@@ -2006,7 +2082,13 @@ void RenderWindow() {
         g_inputChanged = 0;
         g_worker.PostFront([gen = g_inputGen, t = SanitizeChatText(g_wFlatInput)] { TranslateInput(gen, t); });
     }
-    if (enter) StartSend();
+    if (enter) {
+        StartSend();
+        if (ProfileOn(2) && !g_cfg.returnFocus) {
+            s_subtitleOpen = false;
+            TechLog('O', L"subtitle mode: closed after send");
+        }
+    }
     CheckAutoSend();
     lock.unlock();
     ImGui::End();

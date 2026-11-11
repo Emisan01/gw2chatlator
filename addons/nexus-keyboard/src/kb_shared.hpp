@@ -297,6 +297,7 @@ struct TestHooks {
     std::atomic<bool>* bufferingKeys = nullptr;
     std::atomic<bool>* sendInFlight = nullptr;
     std::atomic<ULONGLONG>* bufferingStartTime = nullptr;
+    float inputAlpha = 1.0f;
 };
 extern TestHooks g_test;
 extern bool g_showOptions;
@@ -869,6 +870,8 @@ extern ULONGLONG g_micLockedStart;
 void CheckMicLockTimeout();
 bool ProfileOn(int profile);
 void SetProfile(int profile, bool on);
+void SubtitleClose(const wchar_t* reason);
+bool SubtitleIsOpen();
 Layout& Lay();
 // What the window shows: your parts – under a view (compact, mini, subtitles) what it shows, your parts kept as they are.
 // Read it for drawing; Lay() is what you set.
