@@ -521,6 +521,49 @@ int wmain(int argc, wchar_t** argv) {
             press(VK_DOWN);  // the history stays as the next steps expect it
             frames(3);
         }
+        {  // Without focus, resizing the window narrower re-wraps the input to more lines; wider again, fewer lines; flat text unchanged.
+            auto flatOf = [](const char* s) {
+                std::string f;
+                for (const char* p = s; *p; ++p) {
+                    if (*p == '\r') { if (p[1] == '\n') ++p; continue; }
+                    f += *p == '\n' ? ' ' : *p;
+                }
+                return f;
+            };
+            auto linesOf = [](const char* s) { return 1 + static_cast<int>(std::count(s, s + std::strlen(s), '\n')); };
+            ImGuiWindow* mw = ImGui::FindWindowByName("GW2Chatlator###kbmain");
+            const ImVec2 keepSz = mw ? mw->SizeFull : ImVec2(520, 360);
+            ImGui::SetWindowSize("GW2Chatlator###kbmain", ImVec2(650.0f, keepSz.y));
+            frames(5);
+            *th->focus = true;
+            frames(3);
+            const char* sample = "The quick brown fox jumps over the lazy dog and runs across the wide open fields towards the distant mountains in the sunset.";
+            type(sample);
+            frames(5);
+            ImGui::ClearActiveID();
+            frames(5);
+            const std::string flat0 = flatOf(th->input);
+            const int lines0 = linesOf(th->input);
+            ImGui::SetWindowSize("GW2Chatlator###kbmain", ImVec2(400.0f, keepSz.y));
+            frames(5);
+            const std::string flatNarrow = flatOf(th->input);
+            const int linesNarrow = linesOf(th->input);
+            ImGui::SetWindowSize("GW2Chatlator###kbmain", ImVec2(650.0f, keepSz.y));
+            frames(5);
+            const std::string flatWide = flatOf(th->input);
+            const int linesWide = linesOf(th->input);
+            std::printf("rewrap without focus: %d lines -> narrower %d lines -> wider %d lines (flat unchanged: %s)\n",
+                        lines0, linesNarrow, linesWide, (flatNarrow == flat0 && flatWide == flat0) ? "yes" : "no");
+            const bool rewrapOk = linesNarrow > lines0 && linesWide == lines0 && flatNarrow == flat0 && flatWide == flat0;
+            if (!rewrapOk) std::printf("FAIL: the input did not re-wrap when the window width changed without focus\n");
+            ok = ok && rewrapOk;
+            *th->focus = true;
+            frames(3);
+            for (size_t k = 0; k < std::strlen(sample) + 10; ++k) press(VK_BACK);
+            frames(5);
+            ImGui::SetWindowSize("GW2Chatlator###kbmain", keepSz);
+            frames(5);
+        }
         // The window stays where it was put – idle, while chat arrives, while typing (it once kept sliding up).
         {
             auto pos = [] {

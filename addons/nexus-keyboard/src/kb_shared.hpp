@@ -725,6 +725,8 @@ void LookText(const char* text, ImVec4 color, bool wrap);
 std::wstring GhostRest(const std::wstring& text, bool* correction = nullptr);
 void TakeWord(const std::wstring& word);
 bool SpaceWrites();
+std::string SoftWrapInput(const std::string& flat, float wrapWidth);
+void RewrapInactiveInput();
 int InputCallback(ImGuiInputTextCallbackData* d);
 void StartSend();
 std::wstring NativeName(const std::wstring& code);

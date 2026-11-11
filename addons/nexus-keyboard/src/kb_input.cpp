@@ -151,6 +151,54 @@ static void CountKeys() {
         }
 }
 
+namespace {
+std::string s_lastWrapSeen;
+float s_lastWrapWidth = 0.0f;
+}  // namespace
+
+std::string SoftWrapInput(const std::string& flat, float wrapWidth) {
+    if (wrapWidth <= 0.0f) return flat;
+    std::string out;
+    size_t lineStart = 0, lastSpace = std::string::npos;
+    for (size_t i = 0; i < flat.size();) {
+        size_t n = 1;  // one character (UTF-8)
+        while (i + n < flat.size() && (static_cast<unsigned char>(flat[i + n]) & 0xC0) == 0x80) ++n;
+        if (flat[i] == ' ') lastSpace = out.size();
+        out.append(flat, i, n);
+        i += n;
+        if (ImGui::CalcTextSize(out.data() + lineStart, out.data() + out.size()).x <= wrapWidth) continue;
+        if (lastSpace != std::string::npos && lastSpace >= lineStart) {
+            out[lastSpace] = '\n';
+            lineStart = lastSpace + 1;
+            lastSpace = std::string::npos;
+        } else if (out.size() - n > lineStart) {  // no space in this line: break before this letter
+            out.insert(out.size() - n, "\r\n");
+            lineStart = out.size() - n;
+        }
+    }
+    return out;
+}
+
+void RewrapInactiveInput() {
+    if (g_wrapWidth <= 0.0f) return;
+    if (!g_input[0]) {
+        s_lastWrapSeen.clear();
+        s_lastWrapWidth = g_wrapWidth;
+        return;
+    }
+    if (s_lastWrapSeen == g_input && std::fabs(g_wrapWidth - s_lastWrapWidth) <= 0.5f) return;
+    const std::string out = SoftWrapInput(Flat(g_input), g_wrapWidth);
+    const int outLines = 1 + static_cast<int>(std::count(out.begin(), out.end(), '\n'));
+    const bool waitForRoom = outLines > g_boxLines && g_boxLines < std::max(8, Lay().inputLines);
+    if (waitForRoom) {
+        g_wrapWantLines = outLines;
+        return;
+    }
+    if (out != g_input) CopyUtf8(g_input, out);
+    s_lastWrapSeen = g_input;
+    s_lastWrapWidth = g_wrapWidth;
+}
+
 int InputCallback(ImGuiInputTextCallbackData* d) {
     switch (d->EventFlag) {
         case ImGuiInputTextFlags_CallbackCharFilter: {
@@ -183,8 +231,6 @@ int InputCallback(ImGuiInputTextCallbackData* d) {
             // Soft line breaks: the text is broken to the box's width (only when it or the width changed) – at the last space of a line,
             // or inside a word that is longer than the line (a code, a link). The caret keeps its place in the text.
             if (g_wrapWidth > 0) {
-                static std::string lastSeen;
-                static float lastWidth = 0.0f;
                 std::string raw(d->Buf, d->BufTextLen);
                 int cursor = d->CursorPos;
                 for (size_t i = 0; i < raw.size(); ++i)  // Backspace took the line end of a broken word: the letter before
@@ -196,28 +242,11 @@ int InputCallback(ImGuiInputTextCallbackData* d) {
                         cursor = static_cast<int>(start);
                         break;
                     }
-                if (raw != lastSeen || std::fabs(g_wrapWidth - lastWidth) > 0.5f) {
-                    lastWidth = g_wrapWidth;
+                if (raw != s_lastWrapSeen || std::fabs(g_wrapWidth - s_lastWrapWidth) > 0.5f) {
+                    s_lastWrapWidth = g_wrapWidth;
                     const std::string flat = Flat(raw.c_str());
                     const size_t flatCursor = Flat(raw.substr(0, std::min<size_t>(cursor, raw.size())).c_str()).size();
-                    std::string out;
-                    size_t lineStart = 0, lastSpace = std::string::npos;
-                    for (size_t i = 0; i < flat.size();) {
-                        size_t n = 1;  // one character (UTF-8)
-                        while (i + n < flat.size() && (static_cast<unsigned char>(flat[i + n]) & 0xC0) == 0x80) ++n;
-                        if (flat[i] == ' ') lastSpace = out.size();
-                        out.append(flat, i, n);
-                        i += n;
-                        if (ImGui::CalcTextSize(out.data() + lineStart, out.data() + out.size()).x <= g_wrapWidth) continue;
-                        if (lastSpace != std::string::npos && lastSpace >= lineStart) {
-                            out[lastSpace] = '\n';
-                            lineStart = lastSpace + 1;
-                            lastSpace = std::string::npos;
-                        } else if (out.size() - n > lineStart) {  // no space in this line: break before this letter
-                            out.insert(out.size() - n, "\r\n");
-                            lineStart = out.size() - n;
-                        }
-                    }
+                    const std::string out = SoftWrapInput(flat, g_wrapWidth);
                     // The box first, then the line break: broken at once, the box (one line too low this frame) would
                     // scroll its text up and next frame back – the jump at a line's end. So one more line asks for
                     // the room now (the caret's character still fits: the width keeps a scroll bar's reserve) and the
@@ -237,7 +266,7 @@ int InputCallback(ImGuiInputTextCallbackData* d) {
                         d->InsertChars(0, out.c_str());
                         d->CursorPos = d->SelectionStart = d->SelectionEnd = static_cast<int>(std::min(at, out.size()));
                     }
-                    if (!waitForRoom) lastSeen = out;
+                    if (!waitForRoom) s_lastWrapSeen = out;
                 }
             }
             const std::string now = Flat(std::string(d->Buf, d->BufTextLen).c_str());

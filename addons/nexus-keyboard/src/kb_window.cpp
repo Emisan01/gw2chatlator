@@ -1647,6 +1647,7 @@ void RenderWindow() {
     const float inputW = showClearBtn ? std::max(50.0f, inputAvailW - clearBtnW - clearGap) : inputAvailW;
     const ImVec2 boxSize(inputW, boxH);
     g_wrapWidth = inputW - st.FramePadding.x * 2 - st.ScrollbarSize - 4;
+    if (ImGui::GetActiveID() != ImGui::GetID("##input")) RewrapInactiveInput();
     const ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CtrlEnterForNewLine |
                                       ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_CallbackCharFilter |
                                       ImGuiInputTextFlags_CallbackAlways |
@@ -1710,7 +1711,8 @@ void RenderWindow() {
         g_flatInput = nowFlat;
         g_wFlatInput = W(nowFlat);
     }
-    const bool inputActive = ImGui::IsItemActive();
+    const ImGuiID inputId = ImGui::GetID("##input");
+    const bool inputActive = (ImGui::GetActiveID() == inputId) || ImGui::IsItemActive();
     g_inputActive = inputActive;
     if (showClearBtn) {
         ImGui::SameLine(0, clearGap);
