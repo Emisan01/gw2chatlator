@@ -3,6 +3,17 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.10.3 — 2026-11-11 (GW2Chatlator for Nexus)
+
+- **Subtitle Mode Stays Open:** a left click in the subtitles window opens the input field smoothly without flickering or disappearing; the field stays visible and focused until closed by Esc, sending, or clicking away from an empty field.
+- **Window Resize Soft Wrap:** resizing the window narrower while the input field does not have focus re-wraps the text to more lines so line ends remain visible and the box grows up to 8 lines.
+- **Text Selection in Mini Mode:** dragging the mouse inside the input field while text is present selects text and never moves the window; dragging from an edge or outside the input continues to move or resize the window.
+- **Windows Dictionary Notice:** Options → Typing shows a warning when Windows lacks a dictionary for your chosen typing language, with a direct button to open Windows' language settings.
+- **Autocorrection Level "Strong":** replaces wrong words automatically as you continue typing.
+- **Version Cycling in Compact Views:** in views without the preview field (compact, mini, subtitles), the version number before the translated line can be clicked to cycle through available versions and back-translations.
+- **Safer Language Detection:** chat lines recognized as languages without local model tags are treated as unsure rather than failing with an error; clicking the line still attempts translation.
+- **Expanded Local Model Languages:** the local translator language table now covers all supported two-letter language codes with valid NLLB-200 tags.
+
 ## 2.10.2 — 2026-11-09 (GW2Chatlator for Nexus)
 
 - **No Key Set by Us:** GW2Chatlator no longer presets any key – Ctrl+Alt+K (window) and Ctrl+Alt+T (translation) are gone as defaults. A key you set yourself in Nexus stays as it is. Start shows each action's key as Nexus keeps it and a button "Set in Nexus" that opens Nexus' menu; the chat window also comes back from GW2Chatlator's page in Nexus' add-ons.
