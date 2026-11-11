@@ -775,12 +775,38 @@ int wmain(int argc, wchar_t** argv) {
                 io.MouseDown[0] = false;
                 frames(2);
                 const ImVec2 m1 = wpos();
+                // With text in the input, a held drag starting inside the input selects text and never moves the window.
+                *th->focus = true;
+                frames(3);
+                type("Hallo");
+                frames(3);
+                const ImVec2 t0 = wpos(), ts = wsize();
+                io.MousePos = ImVec2(t0.x + ts.x * 0.5f, t0.y + ts.y * 0.5f);
+                io.MouseDown[0] = true;
+                frames(1);
+                Sleep(320);
+                frames(1);
+                for (int k = 0; k < 10; ++k) {
+                    io.MousePos.x += 6;
+                    io.MousePos.y -= 4;
+                    frames(1);
+                }
+                io.MouseDown[0] = false;
+                frames(2);
+                const ImVec2 t1 = wpos();
+                *th->focus = true;
+                frames(2);
+                const int partsBefore = th->sentParts;
+                press(VK_RETURN);
+                for (int k = 0; k < 400 && (th->sentParts == partsBefore || th->input[0]); ++k) frames(1);
                 io.MousePos = ImVec2(-1000, -1000);
                 mini(0);
                 frames(5);
-                std::printf("mini mode, hold and drag: %.0f,%.0f -> %.0f,%.0f (%.0fx%.0f)\n", m0.x, m0.y, m1.x, m1.y, ms.x, ms.y);
-                const bool moved = std::fabs((m1.x - m0.x) - 60) < 8 && std::fabs((m1.y - m0.y) + 40) < 8;
-                if (!moved) std::printf("FAIL: the mini window did not follow the mouse\n");
+                std::printf("mini mode, hold and drag: %.0f,%.0f -> %.0f,%.0f (%.0fx%.0f), with text in input: %.0f,%.0f -> %.0f,%.0f\n",
+                            m0.x, m0.y, m1.x, m1.y, ms.x, ms.y, t0.x, t0.y, t1.x, t1.y);
+                const bool moved = std::fabs((m1.x - m0.x) - 60) < 8 && std::fabs((m1.y - m0.y) + 40) < 8 &&
+                                   std::fabs(t1.x - t0.x) < 1 && std::fabs(t1.y - t0.y) < 1;
+                if (!moved) std::printf("FAIL: the mini window did not follow the mouse or moved while selecting text\n");
                 ok = ok && moved;
             }
             // Minimise when not in use: the input had the focus, a click into the game, then nothing for the set time –

@@ -1514,24 +1514,6 @@ void RenderWindow() {
                 SaveLayout();
             }
         }
-        // Held down for a moment, then dragged: the whole window moves (not only at its edges) – a quick drag still
-        // selects text. Not when the press was on an edge (that resizes).
-        const ImVec2 mp = ImGui::GetIO().MousePos;
-        const float edge = 6.0f;
-        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
-            ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) &&
-            mp.y > p.y + edge && mp.y < p.y + sz.y - edge && mp.x > p.x + edge && mp.x < p.x + sz.x - edge)
-            g_ownDownAt = GetTickCount64();
-        if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
-            g_ownDownAt = 0;
-            g_ownMoving = false;
-        } else if (g_ownDownAt && !g_ownMoving && !g_winSizing && GetTickCount64() - g_ownDownAt > 250 &&
-                   ImGui::IsMouseDragging(ImGuiMouseButton_Left, DragThreshold())) {
-            g_ownMoving = true;
-        }
-        if (g_ownMoving) {
-            DragWindow(ImGui::GetIO().MouseDelta);
-        }
     } else {  // the big window: what its content needs at least – a long input grows it upwards, it shrinks back by itself
         g_winNeedH = ImGui::GetWindowSize().y + lowerH + line * 2 - ImGui::GetContentRegionAvail().y;
     }
@@ -1702,6 +1684,27 @@ void RenderWindow() {
     ImGui::PopStyleColor(2);
     if (unseen) ImGui::PopStyleVar();
     const ImVec2 inputMin = ImGui::GetItemRectMin(), inputMax = ImGui::GetItemRectMax();
+    if (!Shown().chat) {
+        // Held down for a moment, then dragged: the whole window moves (not only at its edges) – when the input has
+        // text, a press inside the input selects text and never moves the window. Not when the press was on an edge (that resizes).
+        const ImVec2 p = ImGui::GetWindowPos(), sz = ImGui::GetWindowSize(), mp = ImGui::GetIO().MousePos;
+        const float edge = 6.0f;
+        const bool inInputWithText = g_input[0] != 0 && ImGui::IsMouseHoveringRect(inputMin, inputMax);
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !inInputWithText &&
+            ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) &&
+            mp.y > p.y + edge && mp.y < p.y + sz.y - edge && mp.x > p.x + edge && mp.x < p.x + sz.x - edge)
+            g_ownDownAt = GetTickCount64();
+        if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+            g_ownDownAt = 0;
+            g_ownMoving = false;
+        } else if (g_ownDownAt && !g_ownMoving && !g_winSizing && GetTickCount64() - g_ownDownAt > 250 &&
+                   ImGui::IsMouseDragging(ImGuiMouseButton_Left, DragThreshold())) {
+            g_ownMoving = true;
+        }
+        if (g_ownMoving) {
+            DragWindow(ImGui::GetIO().MouseDelta);
+        }
+    }
     const std::string nowFlat = Flat(g_input);
     if (nowFlat != g_flatInput) {
         g_flatInput = nowFlat;
