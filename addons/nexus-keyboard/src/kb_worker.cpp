@@ -25,7 +25,7 @@ void InitSpelling() {
         std::lock_guard<std::mutex> lock(g_mu);
         typing = TypingLocale();
     }
-    if (c.spellEnabled) {
+    if (c.spellEnabled || c.autoCorrect != AutoCorrectMode::Off) {
         std::vector<std::wstring> tags = SpellTagCandidates(PrimaryLang(typing), typing);
         if (c.writeIn.empty())
             for (const std::wstring& t : SpellTagCandidates(PrimaryLang(locale), locale)) tags.push_back(t);
@@ -34,6 +34,11 @@ void InitSpelling() {
     EnsureDir(c.LearnedDir());
     g_spell->UseLearnedLanguage(PrimaryLang(typing), c.LearnedDir());
     g_spell->SetLearnChoices(c.learnWords);
+    g_spellDictReady.store(g_spell->Ready());
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_spellDictLocale = typing;
+    }
     g_mumbleWorker = new MumbleLink();
 }
 

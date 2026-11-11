@@ -1715,6 +1715,10 @@ extern const I18nEntry kRussianStrings[] = {
      "Клик: карта GW2 летит туда. Правый клик: только посмотреть."},
     {L"A Shift+click's code stands in GW2's chat line, in another channel than this one. Send or clear it there first; your text stays here.",
      "Код от Shift+клика стоит в строке чата GW2, в другом канале. Сначала отправьте или удалите его там; ваш текст останется здесь."},
+    {L"Windows has no dictionary for {1} – no correction in this language. Add it in Windows: Settings > Time & language > Language & region > {1} > Language options > Basic typing.",
+     "В Windows нет словаря для {1} – исправление на этом языке не работает. Добавьте его в Windows: Параметры > Время и язык > Язык и регион > {1} > Языковые параметры > Основные параметры ввода."},
+    {L"Open Windows' language settings",
+     "Открыть языковые параметры Windows"},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

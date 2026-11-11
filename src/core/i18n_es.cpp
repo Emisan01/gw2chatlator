@@ -1715,6 +1715,10 @@ extern const I18nEntry kSpanishStrings[] = {
      "Clic: el mapa de GW2 va allí. Clic derecho: solo mirar."},
     {L"A Shift+click's code stands in GW2's chat line, in another channel than this one. Send or clear it there first; your text stays here.",
      "El código de un Mayús+clic está en la línea de chat de GW2, en otro canal que aquí. Envíalo o bórralo allí primero; tu texto se queda aquí."},
+    {L"Windows has no dictionary for {1} – no correction in this language. Add it in Windows: Settings > Time & language > Language & region > {1} > Language options > Basic typing.",
+     "Windows no tiene diccionario para {1} – no hay corrección en este idioma. Añádelo en Windows: Configuración > Hora e idioma > Idioma y región > {1} > Opciones de idioma > Escritura básica."},
+    {L"Open Windows' language settings",
+     "Abrir la configuración de idioma de Windows"},
 };
 extern const size_t kSpanishCount = sizeof(kSpanishStrings) / sizeof(kSpanishStrings[0]);
 

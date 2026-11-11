@@ -67,6 +67,8 @@ std::string UI(std::wstring w) {
 thread_local Lane g_workerLane = Lane::Unknown;
 Worker g_worker;
 SpellService* g_spell = nullptr;
+std::atomic<bool> g_spellDictReady{true};
+std::wstring g_spellDictLocale;
 SendGuard g_guard;
 WhisperWatch g_whisperWatch;
 MumbleLink* g_mumbleWorker = nullptr;

@@ -410,7 +410,8 @@ void ApplyOptions(Config& edit, Config& opened) {
 #undef KB_TAKE
         next.uiLang = EffectiveUiLang(next.uiLangCode);
         const Config& old = g_cfg;
-        typingChanged = next.writeIn != old.writeIn || next.spellEnabled != old.spellEnabled;
+        typingChanged = next.writeIn != old.writeIn || next.spellEnabled != old.spellEnabled ||
+                        (next.autoCorrect != AutoCorrectMode::Off) != (old.autoCorrect != AutoCorrectMode::Off);
         learnChanged = next.learnWords != old.learnWords || next.learnLater != old.learnLater;
         voiceChanged = next.voiceEnabled != old.voiceEnabled;
 #define KB_TUNED(f) voiceTuned = voiceTuned || !(next.f == old.f);

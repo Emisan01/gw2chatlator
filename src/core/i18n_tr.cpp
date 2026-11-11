@@ -1715,6 +1715,10 @@ extern const I18nEntry kTurkishStrings[] = {
      "Tık: GW2 haritası oraya gider. Sağ tık: yalnızca bak."},
     {L"A Shift+click's code stands in GW2's chat line, in another channel than this one. Send or clear it there first; your text stays here.",
      "Shift+tık kodu GW2 sohbet satırında, buradakinden farklı bir kanalda duruyor. Önce orada gönder veya sil; metnin burada kalır."},
+    {L"Windows has no dictionary for {1} – no correction in this language. Add it in Windows: Settings > Time & language > Language & region > {1} > Language options > Basic typing.",
+     "Windows'ta {1} için sözlük yok – bu dilde düzeltme yapılmaz. Windows'ta ekleyin: Ayarlar > Zaman ve dil > Dil ve bölge > {1} > Dil seçenekleri > Temel yazma."},
+    {L"Open Windows' language settings",
+     "Windows dil ayarlarını aç"},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

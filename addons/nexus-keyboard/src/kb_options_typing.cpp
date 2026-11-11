@@ -121,6 +121,27 @@ void RenderTypingPage(Config& edit) {
     RowHint(UI(Tr(L"Only suggestions and the dictionary – the language of your text is recognized.")));
     Switch("sugg", UI(Tr(L"Word suggestions while typing")), &edit.suggestions);
     Switch("spell", UI(Tr(L"Spell checking (Windows, offline)")), &edit.spellEnabled);
+    {
+        std::wstring dictLocale;
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            dictLocale = g_spellDictLocale;
+        }
+        if (dictLocale.empty()) {
+            static bool s_asked = false;
+            if (!s_asked) {
+                s_asked = true;
+                g_worker.Post([] { if (!g_spell) InitSpelling(); });
+            }
+        } else if ((edit.spellEnabled || edit.autoCorrect != AutoCorrectMode::Off) && !g_spellDictReady.load()) {
+            const std::wstring lang = NativeName(dictLocale);
+            RiskHint(TrF(L"Windows has no dictionary for {1} – no correction in this language. Add it in Windows: Settings > Time & language > Language & region > {1} > Language options > Basic typing.", {lang}));
+            ImGui::Indent(g_labelW);
+            if (ImGui::SmallButton(UI(Tr(L"Open Windows' language settings")).c_str()))
+                ShellExecuteW(nullptr, L"open", L"ms-settings:regionlanguage", nullptr, nullptr, SW_SHOWNORMAL);
+            ImGui::Unindent(g_labelW);
+        }
+    }
     RowLabel(UI(Tr(L"Autocorrection")));
     int ac = static_cast<int>(edit.autoCorrect);
     if (RowCombo("##ac", {UI(Tr(L"Off")), UI(Tr(L"Safe")), UI(Tr(L"Like a phone keyboard")), UI(Tr(L"Strong"))}, &ac))

@@ -323,6 +323,8 @@ namespace kb {
 
 // Only the worker touches these (no lock needed).
 extern SpellService* g_spell;
+extern std::atomic<bool> g_spellDictReady;
+extern std::wstring g_spellDictLocale;  // g_mu: the TypingLocale() last checked by InitSpelling()
 extern SendGuard g_guard;
 extern WhisperWatch g_whisperWatch;  // g_mu
 extern MumbleLink* g_mumbleWorker;
