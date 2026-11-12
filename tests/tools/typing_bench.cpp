@@ -333,7 +333,14 @@ int Run(const wchar_t* lang, const wchar_t* tag, const Line* lines, size_t count
 // (prints what was learned, incl. the typos found – your texts stay on your PC, keep them in local/).
 void Probe(int argc, wchar_t** argv) {
     const bool profile = std::wstring(argv[1]) == L"--profile";
-    const std::wstring tag = argv[2];
+    std::wstring tag = argv[2];
+    if (tag == L"en") tag = L"en-US";
+    else if (tag == L"de") tag = L"de-DE";
+    else if (tag == L"fr") tag = L"fr-FR";
+    else if (tag == L"es") tag = L"es-ES";
+    else if (tag == L"pl") tag = L"pl-PL";
+    else if (tag == L"pt") tag = L"pt-BR";
+    else if (tag == L"ru") tag = L"ru-RU";
     const std::wstring lang = tag.substr(0, 2);
     wchar_t tmp[MAX_PATH];
     GetTempPathW(MAX_PATH, tmp);
@@ -342,8 +349,9 @@ void Probe(int argc, wchar_t** argv) {
     DeleteFileW((dir + L"\\learned_" + lang + L".txt").c_str());
     DeleteFileW((dir + L"\\typos_" + lang + L".txt").c_str());
     SpellService sp;
-    sp.Init({tag, lang}, dir + L"\\words.txt");
+    const bool spell = sp.Init({tag, lang}, dir + L"\\words.txt");
     sp.UseLearnedLanguage(lang, dir);
+    std::printf("probe: %ls (%ls, Windows spell checker: %s)\n", lang.c_str(), tag.c_str(), spell ? "yes" : "no");
     int first = 3;
     if (profile && argc > 3) {
         std::string data;
@@ -355,17 +363,26 @@ void Probe(int argc, wchar_t** argv) {
         std::printf("%s\n", sp.Typos().Serialize().c_str());
         first = 4;
     }
+    if (first < argc) {
+        const std::wstring arg = argv[first];
+        if (arg == L"strong") { g_mode = AutoCorrectMode::Strong; ++first; }
+        else if (arg == L"fallen" || arg == L"fallenangel") { g_mode = AutoCorrectMode::FallenAngel; ++first; }
+        else if (arg == L"phone") { g_mode = AutoCorrectMode::Phone; ++first; }
+        else if (arg == L"off") { g_mode = AutoCorrectMode::Off; ++first; }
+    }
     for (int i = first; i < argc; ++i) {
         const std::wstring text = argv[i];
         const auto t0 = GetTickCount64();
-        const WordSuggestions s = sp.Suggestions(text, text.size(), AutoCorrectMode::Phone);
-        const WordChoices c = sp.Choices(text, text.size(), AutoCorrectMode::Phone);
-        std::wstring bar, ch;
+        const WordSuggestions s = sp.Suggestions(text, text.size(), g_mode);
+        const WordChoices c = sp.Choices(text, text.size(), g_mode);
+        const std::vector<WordMark> marks = sp.Marks(text + L" ", g_mode);
+        std::wstring bar, ch, mstr;
         for (const std::wstring& w : s.words) bar += L"[" + w + L"] ";
         for (size_t k = 0; k < c.words.size(); ++k)
             ch += (static_cast<int>(k) == c.highlight ? L"*" : L"") + c.words[k] + L" ";
-        std::printf("%-16s bar: %-40s grey/Tab: %s (%llu ms)\n", ToUtf8(text).c_str(), ToUtf8(bar).c_str(),
-                    ToUtf8(ch).c_str(), GetTickCount64() - t0);
+        for (const auto& m : marks) mstr += text.substr(m.span.start, m.span.length) + L"->" + m.fix + L" ";
+        std::printf("%-16s bar: %-30s grey/Tab: %-25s marks: %-20s (%llu ms)\n", ToUtf8(text).c_str(), ToUtf8(bar).c_str(),
+                    ToUtf8(ch).c_str(), ToUtf8(mstr).c_str(), GetTickCount64() - t0);
     }
 }
 
@@ -396,7 +413,10 @@ int wmain(int argc, wchar_t** argv) {
     const std::wstring only = argc > 2 ? argv[2] : L"";
     // typing_bench 600 de strong: the "Strong" level instead of "Like a phone keyboard" – a measurement of what it
     // costs (correct words it changes), no gate.
-    if (argc > 3 && std::wstring(argv[3]) == L"strong") g_mode = AutoCorrectMode::Strong;
+    if (argc > 3) {
+        if (std::wstring(argv[3]) == L"strong") g_mode = AutoCorrectMode::Strong;
+        else if (std::wstring(argv[3]) == L"fallen" || std::wstring(argv[3]) == L"fallenangel") g_mode = AutoCorrectMode::FallenAngel;
+    }
     int surprises = 0;
     size_t ran = 0;
     for (const Lang& l : langs) {

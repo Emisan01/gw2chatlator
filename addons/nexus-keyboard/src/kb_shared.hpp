@@ -377,6 +377,7 @@ struct MarkBox {
 };
 std::vector<MarkBox> InputMarkBoxes(const ImVec2& textAt);
 void TakeMark(size_t index, bool byClick = true);  // the marked word becomes its correction (false: the "Strong" level, by itself)
+void TakeAllMarks(bool byClick = true);  // corrects all marked words from end to start (Fallen Angel / Fix All)
 
 extern std::mutex g_mu;
 extern Config g_cfg;

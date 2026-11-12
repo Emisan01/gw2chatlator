@@ -108,6 +108,29 @@ void TakeMark(size_t index, bool byClick) {
     if (g_spell) g_worker.Post([text, start = m.span.start, word = m.fix, byClick] { if (g_spell) g_spell->Chose(text, start, word, byClick); });
 }
 
+// Corrects all marked words in the message from back to front (Fallen Angel / Fix All).
+void TakeAllMarks(bool byClick) {
+    const std::wstring& text = g_wFlatInput;
+    if (g_help.text != text || g_help.marks.empty()) return;
+    std::wstring result = text;
+    for (int i = static_cast<int>(g_help.marks.size()) - 1; i >= 0; --i) {
+        const WordMark& m = g_help.marks[i];
+        if (m.fix.empty() || m.span.end() > result.size()) continue;
+        result.replace(m.span.start, m.span.length, m.fix);
+        if (byClick) ++g_keys.wordClicked;
+        else ++g_keys.spaceWrote;
+        if (g_spell) g_worker.Post([text, start = m.span.start, word = m.fix, byClick] { if (g_spell) g_spell->Chose(text, start, word, byClick); });
+    }
+    if (result != text) {
+        g_edit.active = true;
+        g_edit.startByte = 0;
+        g_edit.lenBytes = U8(text).size();
+        g_edit.insert = U8(result);
+        if (byClick) g_focusInput = true;
+        TechLog('K', L"all marked words corrected (Fallen Angel / Fix All)");
+    }
+}
+
 // Space at the end of a word: the word picked with Tab, else the grey one (what Space writes – only
 // strong choices); the change comes in through g_edit, the space with it. False: just a space.
 bool SpaceWrites() {

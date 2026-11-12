@@ -3,6 +3,15 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.10.6 — 2026-11-12 (GW2Chatlator for Nexus)
+
+- **Fallen Angel Mode (Maximum Autocorrect & Typo Repair):**
+  - Dedicated "Fallen Angel" mode introduced for fast, phonetic typing assistance, toggleable directly from the main window menu (`##menu` and right-click) or in Options → Typing.
+  - Short 2-letter and 3-letter typos (`yu` → `you`, `al` → `all`, `im` → `I'm`, `ur` → `your`, `ned` → `need`, `shoul` → `should`, `dont` → `don't`) are immediately detected and prioritized at position 0 of the word bar for effortless Space-accept.
+  - "Fix All" Error Badge: clicking the red error badge beside the input box repairs all misspelled words in the message simultaneously from back to front.
+  - Everyday lowercase English proper nouns, days of the week, and months (`monday`, `friday`, `january`, `english`, etc.) are recognized as valid in chat, preventing false red squiggly underlines.
+  - Next-word suggestions no longer inject greeting starter words (`hi`, `hey`, `ty`) in the middle of sentences.
+
 ## 2.10.5 — 2026-11-12 (GW2Chatlator for Nexus)
 
 - **Offline Typing Assistance & Spell Checking Restored:**

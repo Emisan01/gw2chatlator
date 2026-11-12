@@ -1719,6 +1719,14 @@ extern const I18nEntry kSpanishStrings[] = {
      "Windows no tiene diccionario para {1} – no hay corrección en este idioma. Añádelo en Windows: Configuración > Hora e idioma > Idioma y región > {1} > Opciones de idioma > Escritura básica."},
     {L"Open Windows' language settings",
      "Abrir la configuración de idioma de Windows"},
+    {L"Fallen Angel",
+     "Fallen Angel"},
+    {L"Fallen Angel mode",
+     "Modo Fallen Angel"},
+    {L"Fix all {1} errors",
+     "Corregir los {1} errores"},
+    {L"Fallen Angel: Maximum autocorrect & typo repair (Fallen's mode). Automatically repairs common and 2+ letter typos (yu -> you, al -> all, ned -> need, dont -> don't), prioritizes corrections on the word bar, and enables one-click full sentence repair.",
+     "Fallen Angel: Autocorrección y reparación máxima (modo de Fallen). Repara automáticamente errores comunes y cortos (yu -> you, al -> all, ned -> need, dont -> don't), prioriza correcciones en la barra de palabras y permite reparar frases con un clic."},
 };
 extern const size_t kSpanishCount = sizeof(kSpanishStrings) / sizeof(kSpanishStrings[0]);
 

@@ -878,6 +878,54 @@ static void TestTypingSlips() {
     CHECK(IsKeepWord(BuiltinSpellIgnore(), L"ohje"));
 }
 
+static void TestChatContractionsAndFallenAngel() {
+    // English chat contractions (case preservation)
+    CHECK(EnglishChatContraction(L"im") == L"I'm");
+    CHECK(EnglishChatContraction(L"Im") == L"I'm");
+    CHECK(EnglishChatContraction(L"IM") == L"I'M");
+    CHECK(EnglishChatContraction(L"ive") == L"I've");
+    CHECK(EnglishChatContraction(L"Ive") == L"I've");
+    CHECK(EnglishChatContraction(L"IVE") == L"I'VE");
+    CHECK(EnglishChatContraction(L"dont") == L"don't");
+    CHECK(EnglishChatContraction(L"Dont") == L"Don't");
+    CHECK(EnglishChatContraction(L"DONT") == L"DON'T");
+    CHECK(EnglishChatContraction(L"cant") == L"can't");
+    CHECK(EnglishChatContraction(L"Cant") == L"Can't");
+    CHECK(EnglishChatContraction(L"CANT") == L"CAN'T");
+    CHECK(EnglishChatContraction(L"wont") == L"won't");
+    CHECK(EnglishChatContraction(L"Wont") == L"Won't");
+    CHECK(EnglishChatContraction(L"didnt") == L"didn't");
+    CHECK(EnglishChatContraction(L"youre") == L"you're");
+    CHECK(EnglishChatContraction(L"youll") == L"you'll");
+    CHECK(EnglishChatContraction(L"theyll") == L"they'll");
+    CHECK(EnglishChatContraction(L"whats") == L"what's");
+    CHECK(EnglishChatContraction(L"hello").empty());
+
+    // Fallen Angel high-frequency short-word typo repair (case preservation)
+    CHECK(FallenAngelFix(L"al") == L"all");
+    CHECK(FallenAngelFix(L"Al") == L"All");
+    CHECK(FallenAngelFix(L"AL") == L"ALL");
+    CHECK(FallenAngelFix(L"yu") == L"you");
+    CHECK(FallenAngelFix(L"Yu") == L"You");
+    CHECK(FallenAngelFix(L"YU") == L"YOU");
+    CHECK(FallenAngelFix(L"ned") == L"need");
+    CHECK(FallenAngelFix(L"Ned") == L"Need");
+    CHECK(FallenAngelFix(L"shoul") == L"should");
+    CHECK(FallenAngelFix(L"Shoul") == L"Should");
+    CHECK(FallenAngelFix(L"wory") == L"worry");
+    CHECK(FallenAngelFix(L"Wory") == L"Worry");
+    CHECK(FallenAngelFix(L"hello").empty());
+
+    // Slang / informal days & months & languages accepted in CommonChatEnglish
+    const auto& chatEn = CommonChatEnglish();
+    CHECK(chatEn.count(L"monday"));
+    CHECK(chatEn.count(L"friday"));
+    CHECK(chatEn.count(L"sunday"));
+    CHECK(chatEn.count(L"january"));
+    CHECK(chatEn.count(L"english"));
+    CHECK(chatEn.count(L"german"));
+}
+
 
 
 static void TestGw2Text() {
@@ -2865,6 +2913,7 @@ int main() {
     RUN(TestNames);
     RUN(TestEmoticons);
     RUN(TestTypingSlips);
+    RUN(TestChatContractionsAndFallenAngel);
     RUN(TestGuessLanguage);
     RUN(TestLinks);
     RUN(TestStarterWords);

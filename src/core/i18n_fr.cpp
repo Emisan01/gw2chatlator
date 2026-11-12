@@ -1719,6 +1719,14 @@ extern const I18nEntry kFrenchStrings[] = {
      "Windows n'a pas de dictionnaire pour {1} – aucune correction dans cette langue. Ajoutez-le dans Windows : Paramètres > Heure et langue > Langue et région > {1} > Options linguistiques > Saisie de base."},
     {L"Open Windows' language settings",
      "Ouvrir les paramètres de langue de Windows"},
+    {L"Fallen Angel",
+     "Fallen Angel"},
+    {L"Fallen Angel mode",
+     "Mode Fallen Angel"},
+    {L"Fix all {1} errors",
+     "Corriger les {1} erreurs"},
+    {L"Fallen Angel: Maximum autocorrect & typo repair (Fallen's mode). Automatically repairs common and 2+ letter typos (yu -> you, al -> all, ned -> need, dont -> don't), prioritizes corrections on the word bar, and enables one-click full sentence repair.",
+     "Fallen Angel: Autocorrection et réparation maximale (mode de Fallen). Répare automatiquement les fautes courantes et courtes (yu -> you, al -> all, ned -> need, dont -> don't), priorise les corrections sur la barre de mots et permet la réparation de phrases en un clic."},
 };
 extern const size_t kFrenchCount = sizeof(kFrenchStrings) / sizeof(kFrenchStrings[0]);
 

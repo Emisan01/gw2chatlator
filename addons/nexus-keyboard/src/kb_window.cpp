@@ -444,6 +444,21 @@ static void RenderMainMenu(bool& newTabNext) {
                 SetProfile(0, !compact);
             if (const bool sub = ProfileOn(2); ImGui::MenuItem(UI(Tr(L"Subtitle mode")).c_str(), nullptr, sub)) SetProfile(2, !sub);
             if (const bool mini = ProfileOn(1); ImGui::MenuItem(UI(Tr(L"Mini mode")).c_str(), nullptr, mini)) SetProfile(1, !mini);
+            const bool fallen = g_cfg.autoCorrect == AutoCorrectMode::FallenAngel;
+            if (ImGui::MenuItem(UI(Tr(L"Fallen Angel mode")).c_str(), nullptr, fallen)) {
+                {
+                    std::lock_guard<std::mutex> lock(g_mu);
+                    g_cfg.autoCorrect = fallen ? AutoCorrectMode::Phone : AutoCorrectMode::FallenAngel;
+                    g_cfg.SaveValue(L"Spelling", L"AutoCorrectMode", AutoCorrectKey(g_cfg.autoCorrect));
+                    LogState(L"Fallen Angel mode");
+                }
+                g_worker.Post([] {
+                    if (!g_spell) InitSpelling();
+                    ComputeTyping();
+                });
+            }
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", UI(Tr(L"Fallen Angel: Maximum autocorrect & typo repair (Fallen's mode). Automatically repairs common and 2+ letter typos (yu -> you, al -> all, ned -> need, dont -> don't), prioritizes corrections on the word bar, and enables one-click full sentence repair.")).c_str());
         } else {
             if (!Shown().header) {  // what the header offers: the tabs, minimise
                 if (ImGui::MenuItem(UI(Tr(L"Chat")).c_str(), nullptr, g_activeTab < 0)) LeaveWhisperTab();
@@ -464,6 +479,21 @@ static void RenderMainMenu(bool& newTabNext) {
             if (const bool mini = ProfileOn(1); ImGui::MenuItem(UI(Tr(L"Mini mode")).c_str(), nullptr, mini)) SetProfile(1, !mini);
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", UI(Tr(L"Nothing but the input with its help. Three quick clicks on it minimise it; right-click in it: Menu … brings the rest back.")).c_str());
+            const bool fallen = g_cfg.autoCorrect == AutoCorrectMode::FallenAngel;
+            if (ImGui::MenuItem(UI(Tr(L"Fallen Angel mode")).c_str(), nullptr, fallen)) {
+                {
+                    std::lock_guard<std::mutex> lock(g_mu);
+                    g_cfg.autoCorrect = fallen ? AutoCorrectMode::Phone : AutoCorrectMode::FallenAngel;
+                    g_cfg.SaveValue(L"Spelling", L"AutoCorrectMode", AutoCorrectKey(g_cfg.autoCorrect));
+                    LogState(L"Fallen Angel mode");
+                }
+                g_worker.Post([] {
+                    if (!g_spell) InitSpelling();
+                    ComputeTyping();
+                });
+            }
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", UI(Tr(L"Fallen Angel: Maximum autocorrect & typo repair (Fallen's mode). Automatically repairs common and 2+ letter typos (yu -> you, al -> all, ned -> need, dont -> don't), prioritizes corrections on the word bar, and enables one-click full sentence repair.")).c_str());
             if (ImGui::MenuItem(UI(Tr(L"Translate visible chat once")).c_str(), UI(MyMemoryLeftText()).c_str())) TranslateViewOnce();
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", UI(Tr(L"What you see of the chat, into the language you write in – once, by the automatic translation's rule: lines in your language, in languages you understand or too short to tell stay as they are (a click on a line translates it anyway).")).c_str());
@@ -1803,13 +1833,17 @@ void RenderWindow() {
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.75f, 0.15f, 0.15f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
         if (ImGui::Button((badgeText + "##markbadge").c_str(), ImVec2(badgeW, boxH))) {
-            TakeMark(0, true);
+            TakeAllMarks(true);
         }
         ImGui::PopStyleColor(4);
         ImGui::PopStyleVar(2);
         if (ImGui::IsItemHovered()) {
             ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-            ImGui::SetTooltip("%s", UI(L"→ " + g_help.marks[0].fix).c_str());
+            if (g_help.marks.size() == 1) {
+                ImGui::SetTooltip("%s", UI(L"→ " + g_help.marks[0].fix).c_str());
+            } else {
+                ImGui::SetTooltip("%s", UI(TrF(L"Fix all {1} errors", {std::to_wstring(g_help.marks.size())})).c_str());
+            }
         }
     }
     if (showClearBtn) {
@@ -1979,7 +2013,8 @@ void RenderWindow() {
     {
         static std::set<std::wstring> s_corrected;
         if (g_wFlatInput.empty()) s_corrected.clear();
-        if (g_cfg.autoCorrect == AutoCorrectMode::Strong && inputActive && !g_edit.active && g_help.text == g_wFlatInput)
+        const bool autoFix = g_cfg.autoCorrect == AutoCorrectMode::Strong || g_cfg.autoCorrect == AutoCorrectMode::FallenAngel;
+        if (autoFix && inputActive && !g_edit.active && g_help.text == g_wFlatInput)
             for (size_t i = 0; i < g_help.marks.size(); ++i) {
                 const Span& s = g_help.marks[i].span;
                 if (s.end() > g_wFlatInput.size()) continue;

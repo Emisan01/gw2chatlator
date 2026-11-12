@@ -1719,6 +1719,14 @@ extern const I18nEntry kGermanStrings[] = {
      "Windows hat kein Wörterbuch für {1} – keine Korrektur in dieser Sprache. Füge es in Windows hinzu: Einstellungen > Zeit und Sprache > Sprache und Region > {1} > Sprachoptionen > Einfache Eingabe."},
     {L"Open Windows' language settings",
      "Windows-Spracheinstellungen öffnen"},
+    {L"Fallen Angel",
+     "Fallen Angel"},
+    {L"Fallen Angel mode",
+     "Fallen-Angel-Modus"},
+    {L"Fix all {1} errors",
+     "Alle {1} Fehler korrigieren"},
+    {L"Fallen Angel: Maximum autocorrect & typo repair (Fallen's mode). Automatically repairs common and 2+ letter typos (yu -> you, al -> all, ned -> need, dont -> don't), prioritizes corrections on the word bar, and enables one-click full sentence repair.",
+     "Fallen Angel: Maximale Autokorrektur & Tippfehler-Reparatur (Fallens Modus). Repariert gängige und kurze Tippfehler (yu -> you, al -> all, ned -> need, dont -> don't) automatisch, priorisiert Korrekturen auf der Wortleiste und ermöglicht Ein-Klick-Satzkorrektur."},
 };
 extern const size_t kGermanCount = sizeof(kGermanStrings) / sizeof(kGermanStrings[0]);
 

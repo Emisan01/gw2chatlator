@@ -2,6 +2,7 @@
 // never touch, so only terms that read the same in every language). Players add their own terms in gw2-terms.txt
 // and words for the spell check via the right-click menu.
 #include "slang.hpp"
+#include "word_model.hpp"
 
 #include <algorithm>
 #include <initializer_list>
@@ -201,6 +202,9 @@ const wchar_t* const kChatEnglish[] = {
     L"trying", L"turn", L"up", L"us", L"use", L"used", L"very", L"wait", L"want", L"wanted", L"was", L"way", L"we",
     L"well", L"went", L"were", L"what", L"when", L"where", L"which", L"while", L"who", L"why", L"will",
     L"with", L"without", L"work", L"would", L"yeah", L"yes", L"yet", L"you", L"your", L"yours",
+    L"monday", L"tuesday", L"wednesday", L"thursday", L"friday", L"saturday", L"sunday",
+    L"january", L"february", L"march", L"april", L"may", L"june", L"july", L"august", L"september", L"october", L"november", L"december",
+    L"english", L"german", L"french", L"spanish",
 };
 
 // The everyday words of a chat in the other UI languages (written for these lists): without a Windows dictionary a
@@ -283,6 +287,59 @@ static std::wstring ContractionStem(const std::wstring& word) {
 }
 
 bool IsGermanContraction(const std::wstring& word) { return !ContractionStem(word).empty(); }
+
+std::wstring EnglishChatContraction(const std::wstring& word) {
+    const std::wstring k = CaseFold(word);
+    static const std::pair<const wchar_t*, const wchar_t*> kContractions[] = {
+        {L"im", L"I'm"},
+        {L"ive", L"I've"},
+        {L"dont", L"don't"},
+        {L"cant", L"can't"},
+        {L"wont", L"won't"},
+        {L"didnt", L"didn't"},
+        {L"isnt", L"isn't"},
+        {L"arent", L"aren't"},
+        {L"couldnt", L"couldn't"},
+        {L"shouldnt", L"shouldn't"},
+        {L"wouldnt", L"wouldn't"},
+        {L"doesnt", L"doesn't"},
+        {L"hasnt", L"hasn't"},
+        {L"havent", L"haven't"},
+        {L"wasnt", L"wasn't"},
+        {L"werent", L"weren't"},
+        {L"youre", L"you're"},
+        {L"theyre", L"they're"},
+        {L"youll", L"you'll"},
+        {L"theyll", L"they'll"},
+        {L"weve", L"we've"},
+        {L"youve", L"you've"},
+        {L"theyve", L"they've"},
+        {L"whats", L"what's"},
+        {L"thats", L"that's"},
+        {L"theres", L"there's"},
+        {L"heres", L"here's"},
+        {L"hows", L"how's"},
+    };
+    for (const auto& [from, to] : kContractions) {
+        if (k == from) return MatchCase(word, to);
+    }
+    return {};
+}
+
+std::wstring FallenAngelFix(const std::wstring& word) {
+    const std::wstring k = CaseFold(word);
+    static const std::pair<const wchar_t*, const wchar_t*> kFallen[] = {
+        {L"al", L"all"},
+        {L"yu", L"you"},
+        {L"ned", L"need"},
+        {L"shoul", L"should"},
+        {L"wory", L"worry"},
+    };
+    for (const auto& [from, to] : kFallen) {
+        if (k == from) return MatchCase(word, to);
+    }
+    return {};
+}
 
 std::wstring GreetingFor(const std::wstring& line, const std::wstring& target) {
     static const WordSet hello = [] {

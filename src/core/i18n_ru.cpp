@@ -1719,6 +1719,14 @@ extern const I18nEntry kRussianStrings[] = {
      "В Windows нет словаря для {1} – исправление на этом языке не работает. Добавьте его в Windows: Параметры > Время и язык > Язык и регион > {1} > Языковые параметры > Основные параметры ввода."},
     {L"Open Windows' language settings",
      "Открыть языковые параметры Windows"},
+    {L"Fallen Angel",
+     "Fallen Angel"},
+    {L"Fallen Angel mode",
+     "Режим Fallen Angel"},
+    {L"Fix all {1} errors",
+     "Исправить все {1} ошибок"},
+    {L"Fallen Angel: Maximum autocorrect & typo repair (Fallen's mode). Automatically repairs common and 2+ letter typos (yu -> you, al -> all, ned -> need, dont -> don't), prioritizes corrections on the word bar, and enables one-click full sentence repair.",
+     "Fallen Angel: Максимальное автоисправление и устранение опечаток (режим Fallen). Автоматически исправляет частые и короткие опечатки (yu -> you, al -> all, ned -> need, dont -> don't), отдает приоритет исправлениям на панели слов и позволяет исправлять всё предложение в один клик."},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

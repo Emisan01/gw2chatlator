@@ -58,6 +58,12 @@ const WordSet& CommonChatWords(const std::wstring& lang);
 // that goes to the translator; what you see and send stays as written.
 bool IsGermanContraction(const std::wstring& word);
 
+// Common informal contractions without apostrophes ("im" -> "I'm", "dont" -> "don't", "cant" -> "can't").
+std::wstring EnglishChatContraction(const std::wstring& word);
+
+// High-frequency short-word typo corrections for Fallen Angel mode ("al" -> "all", "yu" -> "you", "ned" -> "need", "shoul" -> "should").
+std::wstring FallenAngelFix(const std::wstring& word);
+
 // A line that is nothing but a greeting ("Hola", "Selam!", "hi :)"): the greeting in the target language ("Hallo");
 // empty for anything else. A model invents a whole sentence for a lone greeting ("Hola" -> "Hey, das ist alles").
 std::wstring GreetingFor(const std::wstring& line, const std::wstring& target);

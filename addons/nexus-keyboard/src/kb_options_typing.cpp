@@ -144,10 +144,12 @@ void RenderTypingPage(Config& edit) {
     }
     RowLabel(UI(Tr(L"Autocorrection")));
     int ac = static_cast<int>(edit.autoCorrect);
-    if (RowCombo("##ac", {UI(Tr(L"Off")), UI(Tr(L"Safe")), UI(Tr(L"Like a phone keyboard")), UI(Tr(L"Strong"))}, &ac))
+    if (RowCombo("##ac", {UI(Tr(L"Off")), UI(Tr(L"Safe")), UI(Tr(L"Like a phone keyboard")), UI(Tr(L"Strong")), UI(Tr(L"Fallen Angel"))}, &ac))
         edit.autoCorrect = static_cast<AutoCorrectMode>(ac);
     if (edit.autoCorrect == AutoCorrectMode::Strong)
         RowHint(UI(Tr(L"Every word the dictionary does not know becomes its first suggestion when you go on writing – Backspace takes it back. Words still standing wrong are underlined; a click corrects them. GW2 terms, names and what you taught stay. It needs Windows' dictionary for the language you write in.")));
+    else if (edit.autoCorrect == AutoCorrectMode::FallenAngel)
+        RowHint(UI(Tr(L"Fallen Angel: Maximum autocorrect & typo repair (Fallen's mode). Automatically repairs common and 2+ letter typos (yu -> you, al -> all, ned -> need, dont -> don't), prioritizes corrections on the word bar, and enables one-click full sentence repair.")));
     EndBox();
     BeginBox(UI(Tr(L"Learning")));
     RowLabel(UI(Tr(L"Learn")));

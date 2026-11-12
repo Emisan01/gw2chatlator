@@ -1719,6 +1719,14 @@ extern const I18nEntry kTurkishStrings[] = {
      "Windows'ta {1} için sözlük yok – bu dilde düzeltme yapılmaz. Windows'ta ekleyin: Ayarlar > Zaman ve dil > Dil ve bölge > {1} > Dil seçenekleri > Temel yazma."},
     {L"Open Windows' language settings",
      "Windows dil ayarlarını aç"},
+    {L"Fallen Angel",
+     "Fallen Angel"},
+    {L"Fallen Angel mode",
+     "Fallen Angel modu"},
+    {L"Fix all {1} errors",
+     "{1} hatanın tümünü düzelt"},
+    {L"Fallen Angel: Maximum autocorrect & typo repair (Fallen's mode). Automatically repairs common and 2+ letter typos (yu -> you, al -> all, ned -> need, dont -> don't), prioritizes corrections on the word bar, and enables one-click full sentence repair.",
+     "Fallen Angel: Maksimum otomatik düzeltme ve yazım hatası onarımı (Fallen modu). Yaygın ve kısa yazım hatalarını (yu -> you, al -> all, ned -> need, dont -> don't) otomatik olarak onarır, kelime çubuğundaki düzeltmelere öncelik verir ve tek tıklamayla cümle onarımı sağlar."},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

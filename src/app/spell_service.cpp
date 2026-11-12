@@ -430,7 +430,7 @@ bool SpellService::TeachFix(const std::wstring& typed, const std::wstring& fix) 
 }
 
 std::wstring SpellService::KnownFix(const std::wstring& typed) const {
-    if (typed.size() < 3 || IsValidWord(typed)) return {};
+    if (typed.size() < 2 || IsValidWord(typed)) return {};
     auto snap = std::atomic_load(&typosSnap_);
     const std::wstring fix = snap ? snap->FixFor(typed) : std::wstring();
     if (fix.empty()) return {};
@@ -553,10 +553,18 @@ bool SpellService::IsValidWord(const std::wstring& w) const {
 
 std::optional<std::wstring> SpellService::AutoCorrection(const std::wstring& word, AutoCorrectMode mode,
                                                          const std::wstring& prev, const std::wstring& prev2) const {
-    if (mode == AutoCorrectMode::Off || word.size() < 2 || IsKnown(word)) return std::nullopt;
-    if (IsValidWord(word)) return std::nullopt;  // a real word (also small-written nouns) is never changed
+    if (mode == AutoCorrectMode::Off || word.size() < 2) return std::nullopt;
+    const bool fallen = mode == AutoCorrectMode::FallenAngel;
+    const bool heavy = mode == AutoCorrectMode::Strong || fallen;
+    const bool phone = mode == AutoCorrectMode::Phone || heavy;
+    if (phone && (learnedLang_ == L"en" || fallen)) {
+        if (const std::wstring c = EnglishChatContraction(word); !c.empty()) return c;
+    }
+    if (fallen) {
+        if (const std::wstring f = FallenAngelFix(word); !f.empty()) return f;
+    }
+    if (IsKnown(word) || IsValidWord(word)) return std::nullopt;  // a real word (also small-written nouns) is never changed
     // One of your typical typos: you meant this word before (profile or a kept correction).
-    const bool phone = mode == AutoCorrectMode::Phone || mode == AutoCorrectMode::Strong;
     if (phone)
         if (const std::wstring known = KnownFix(word); !known.empty()) return known;
     if (checker_.Ready()) {
@@ -577,7 +585,7 @@ std::optional<std::wstring> SpellService::AutoCorrection(const std::wstring& wor
     const bool usable = !fix.empty() && fix != word && LettersOnly(fix) && CaseFold(fix) != CaseFold(word);
     if (usable && (model_.Knows(fix) ? LooksLikeSlip(WordKey(word), WordKey(fix), layout_, false) : DictionarySlip(word, fix)))
         return fix;
-    if (mode == AutoCorrectMode::Strong)
+    if (heavy)
         if (const std::wstring first = DictionaryFirst(word); !first.empty()) return first;
     return std::nullopt;
 }
@@ -668,7 +676,7 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
             words = model_.Next(prev, 3, p2);
         } else {
             words = model_.Next(prev, 3, p2);
-            if (words.size() < 3) {
+            if (words.size() < 3 && prev.empty()) {
                 for (const std::wstring& w : Gw2StarterWords(learnedLang_))
                     if (words.size() < 3 && WordKey(w) != WordKey(prev) &&
                         std::none_of(words.begin(), words.end(), [&](const std::wstring& x) { return WordKey(x) == WordKey(w); }))
@@ -704,6 +712,25 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
     if (HasDigit(partial)) return s;
     const std::wstring prev = wordBefore(start);
     s.replace = {start, end - start};
+    const bool fallen = mode == AutoCorrectMode::FallenAngel;
+    const bool heavy = mode == AutoCorrectMode::Strong || fallen;
+    const bool phone = mode == AutoCorrectMode::Phone || heavy;
+    if (phone && (learnedLang_ == L"en" || fallen)) {
+        if (const std::wstring c = EnglishChatContraction(partial); !c.empty()) {
+            s.kind = WordSuggestions::Kind::Correction;
+            s.words = {c};
+            s.autoIndex = 0;
+            return s;
+        }
+    }
+    if (fallen) {
+        if (const std::wstring f = FallenAngelFix(partial); !f.empty()) {
+            s.kind = WordSuggestions::Kind::Correction;
+            s.words = {f};
+            s.autoIndex = 0;
+            return s;
+        }
+    }
     if (const std::wstring known = KnownFix(partial); !known.empty()) {  // one of your typical typos
         s.kind = WordSuggestions::Kind::Correction;
         s.words = {known};
@@ -747,23 +774,26 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
             return s;
         }
     }
-    // A typo the phone logic would fix gets the first, highlighted place.
-    if ((mode == AutoCorrectMode::Phone || mode == AutoCorrectMode::Strong) && partial.size() >= 4 && words.empty()) {
+    // A typo the correction logic would fix gets the first, highlighted place.
+    const size_t minLen = heavy ? 2 : 4;
+    if ((mode == AutoCorrectMode::Phone || heavy) && partial.size() >= minLen && (words.empty() || IsMisspelled(partial))) {
         if (auto fix = AutoCorrection(partial, mode, prev, p2)) {
             s.kind = WordSuggestions::Kind::Correction;
-            s.words.push_back(*fix);
+            s.words = {*fix};
             s.autoIndex = 0;
             for (const std::wstring& w : checker_.Ready() ? CheckerSuggest(partial) : std::vector<std::wstring>())
                 if (s.words.size() < 3 && w != *fix && w.find(L' ') == std::wstring::npos) s.words.push_back(w);
             return s;
         }
     }
-    if (words.empty() && checker_.Ready() && partial.size() >= 3 && IsMisspelled(partial)) {
+    const size_t minCheckLen = heavy ? 2 : 3;
+    if (words.empty() && checker_.Ready() && partial.size() >= minCheckLen && IsMisspelled(partial)) {
         for (const std::wstring& w : CheckerSuggest(partial))
             if (words.size() < 3 && w.find(L' ') == std::wstring::npos) words.push_back(w);
         if (!words.empty()) {
             s.kind = WordSuggestions::Kind::Correction;
             s.words = words;
+            if (heavy) s.autoIndex = 0;
             return s;
         }
     }
@@ -818,6 +848,26 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
         c.words = {name, typed};
         c.highlight = 0;
         return c;
+    }
+
+    const bool fallen = mode == AutoCorrectMode::FallenAngel;
+    const bool heavy = mode == AutoCorrectMode::Strong || fallen;
+    const bool phone = mode == AutoCorrectMode::Phone || heavy;
+
+    // Fast-path: Explicit contractions and high-frequency Fallen Angel fixes override dictionary words (e.g. "cant" -> "can't", "al" -> "all").
+    if (phone && (learnedLang_ == L"en" || fallen)) {
+        if (const std::wstring contr = EnglishChatContraction(typed); !contr.empty()) {
+            c.words = {contr, typed};
+            c.highlight = 0;
+            return c;
+        }
+    }
+    if (fallen) {
+        if (const std::wstring f = FallenAngelFix(typed); !f.empty()) {
+            c.words = {f, typed};
+            c.highlight = 0;
+            return c;
+        }
     }
 
     // The word before (for completions that usually follow it).
@@ -884,30 +934,33 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
         fixes.push_back(known);
         strong.push_back(known);
     }
-    if (!valid && typed.size() >= 3) {
-        // The whole hand one key off: the strongest hint there is.
-        for (const std::wstring& v : HandShiftVariants(typed, layout_))
-            if (LettersOnly(v) && (model_.Knows(v) || (checker_.Ready() && !CheckerRejects(v)))) {
-                fixes.push_back(MatchCase(typed, v));
-                strong.push_back(fixes.back());
+    const size_t minLen = heavy ? 2 : 3;
+    if (!valid && typed.size() >= minLen) {
+        if (typed.size() >= 3) {
+            // The whole hand one key off: the strongest hint there is.
+            for (const std::wstring& v : HandShiftVariants(typed, layout_))
+                if (LettersOnly(v) && (model_.Knows(v) || (checker_.Ready() && !CheckerRejects(v)))) {
+                    fixes.push_back(MatchCase(typed, v));
+                    strong.push_back(fixes.back());
+                }
+            // Without a dictionary every new word looks like a slip of a known one ("many" -> "maybe"): offered only.
+            // With one, Space writes it only when it looks like a slip of the fingers ("gehts" stays, "shon" -> "schon").
+            for (const std::wstring& w : model_.NearSlip(typed, layout_, 3)) {
+                fixes.push_back(w);
+                if (checker_.Ready() && LooksLikeSlip(WordKey(typed), WordKey(w), layout_, false)) strong.push_back(w);
             }
-        // Without a dictionary every new word looks like a slip of a known one ("many" -> "maybe"): offered only.
-        // With one, Space writes it only when it looks like a slip of the fingers ("gehts" stays, "shon" -> "schon").
-        for (const std::wstring& w : model_.NearSlip(typed, layout_, 3)) {
-            fixes.push_back(w);
-            if (checker_.Ready() && LooksLikeSlip(WordKey(typed), WordKey(w), layout_, false)) strong.push_back(w);
-        }
-        for (const std::wstring& w : model_.CompleteFuzzy(typed, prev, 2, neighbors_, p2)) {
-            fixes.push_back(w);
-            if (checker_.Ready()) strong.push_back(w);
+            for (const std::wstring& w : model_.CompleteFuzzy(typed, prev, 2, neighbors_, p2)) {
+                fixes.push_back(w);
+                if (checker_.Ready()) strong.push_back(w);
+            }
         }
         if (checker_.Ready())
             for (const std::wstring& w : CheckerSuggest(typed)) {
                 if (w.find(L' ') != std::wstring::npos || !LettersOnly(w)) continue;
                 fixes.push_back(w);
                 // The dictionary's idea is only taken by Space when it is one slip of the fingers away – on the
-                // "Strong" level its first idea always.
-                if (DictionarySlip(typed, w) || (mode == AutoCorrectMode::Strong && WordKey(w) == WordKey(DictionaryFirst(typed))))
+                // "Strong" / "Fallen Angel" level its first idea always.
+                if (DictionarySlip(typed, w) || (heavy && WordKey(w) == WordKey(DictionaryFirst(typed))))
                     strong.push_back(w);
             }
     }
@@ -926,17 +979,19 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
     // An unfinished word ("Tequ") wants its completion; a finished word with
     // a slip ("helo", "jsööp") its correction.
     if (!known.empty()) add(known);  // what you meant the last times comes first
-    if (!completions.empty()) {
-        for (const std::wstring& w : completions) add(w);
+    if (heavy && !valid && !fixes.empty()) {
         for (const std::wstring& w : fixes) add(w);
+        for (const std::wstring& w : completions) add(w);
     } else {
+        if (!completions.empty())
+            for (const std::wstring& w : completions) add(w);
         for (const std::wstring& w : fixes) add(w);
     }
     if (c.words.size() <= 1 && c.firstIsTyped) return {};  // nothing to choose
     if (c.words.empty()) return {};
     if (c.firstIsTyped) {
         c.highlight = 0;
-    } else if (mode == AutoCorrectMode::Phone || mode == AutoCorrectMode::Strong) {
+    } else if (mode == AutoCorrectMode::Phone || heavy) {
         // The first of your own words or clear slips; the rest waits for Tab.
         c.highlight = -1;
         for (size_t i = 0; i < c.words.size() && c.highlight < 0; ++i)

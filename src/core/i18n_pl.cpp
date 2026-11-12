@@ -1719,6 +1719,14 @@ extern const I18nEntry kPolishStrings[] = {
      "System Windows nie ma słownika dla {1} – brak korekty w tym języku. Dodaj go w systemie Windows: Ustawienia > Czas i język > Język i region > {1} > Opcje języka > Podstawowe pisanie."},
     {L"Open Windows' language settings",
      "Otwórz ustawienia języka systemu Windows"},
+    {L"Fallen Angel",
+     "Fallen Angel"},
+    {L"Fallen Angel mode",
+     "Tryb Fallen Angel"},
+    {L"Fix all {1} errors",
+     "Popraw wszystkie {1} błędy"},
+    {L"Fallen Angel: Maximum autocorrect & typo repair (Fallen's mode). Automatically repairs common and 2+ letter typos (yu -> you, al -> all, ned -> need, dont -> don't), prioritizes corrections on the word bar, and enables one-click full sentence repair.",
+     "Fallen Angel: Maksymalna autokorekta i naprawa literówek (tryb Fallena). Automatycznie naprawia typowe i krótkie literówki (yu -> you, al -> all, ned -> need, dont -> don't), priorytetyzuje poprawki na pasku słów i pozwala na naprawę całego zdania jednym kliknięciem."},
 };
 extern const size_t kPolishCount = sizeof(kPolishStrings) / sizeof(kPolishStrings[0]);
 
