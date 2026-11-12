@@ -23,8 +23,9 @@ inline WindowParts ShownParts(WindowParts own, WindowView view) {
         case WindowView::Mini:  // nothing but the input
             own = {false, false, false, false, false, false};
             break;
-        case WindowView::Subtitles:  // the chat's lines and their input
-            own = {false, true, false, false, false, false};
+        case WindowView::Subtitles:  // the chat's lines and their input (keeps user's word bar setting when writing)
+            own.header = own.preview = own.footer = own.minButton = false;
+            own.chat = true;
             break;
         case WindowView::Parts: break;
     }

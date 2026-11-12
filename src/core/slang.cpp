@@ -171,9 +171,9 @@ void AddMyTerms(WordSet& keep, const std::vector<std::wstring>& mine) {
 
 // The most common English words of a chat (written for this list, everyday vocabulary).
 const wchar_t* const kChatEnglish[] = {
-    L"doesnt", L"feels", L"helps", L"knows", L"longer", L"matter", L"matters", L"seems", L"silver", L"wants", L"wasnt",
+    L"feels", L"helps", L"knows", L"longer", L"matter", L"matters", L"seems", L"silver", L"wants",
     L"able", L"admit", L"avoid", L"beside", L"bored", L"bother", L"broke", L"broken", L"choose", L"died", L"dirty",
-    L"drunk", L"entire", L"felt", L"fire", L"flag", L"gave", L"glad", L"glider", L"guess", L"hadnt", L"happened",
+    L"drunk", L"entire", L"felt", L"fire", L"flag", L"gave", L"glad", L"glider", L"guess", L"happened",
     L"hear", L"helping", L"hide", L"hint", L"huge", L"idea", L"less", L"liked", L"losing", L"mass", L"meet", L"mind",
     L"missing", L"month", L"often", L"past", L"planned", L"prove", L"rise", L"seeing", L"self", L"sending", L"shall",
     L"shut", L"sign", L"sort", L"stays", L"step", L"swim", L"taking", L"tend", L"took", L"under", L"wash", L"ways",
@@ -181,13 +181,13 @@ const wchar_t* const kChatEnglish[] = {
     L"a", L"about", L"after", L"again", L"all", L"almost", L"also", L"always", L"am", L"an", L"and", L"any",
     L"anyone", L"anything", L"are", L"around", L"as", L"ask", L"at", L"away", L"back", L"bad", L"be", L"because",
     L"been", L"before", L"being", L"best", L"better", L"big", L"boss", L"both", L"bring", L"busy", L"but", L"buy",
-    L"by", L"call", L"came", L"can", L"cant", L"come", L"coming", L"could", L"cool", L"damn", L"day", L"did",
-    L"didnt", L"do", L"does", L"doesnt", L"doing", L"done", L"dont", L"down", L"each", L"easy", L"else", L"enough",
+    L"by", L"call", L"came", L"can", L"come", L"coming", L"could", L"cool", L"damn", L"day", L"did",
+    L"do", L"does", L"doing", L"done", L"down", L"each", L"easy", L"else", L"enough",
     L"even", L"ever", L"every", L"everyone", L"fast", L"few", L"fine", L"first", L"for", L"found", L"free",
     L"friend", L"friends", L"from", L"fun", L"funny", L"get", L"gets", L"getting", L"give", L"go", L"goes", L"going",
     L"gone", L"good", L"got", L"great", L"guys", L"had", L"happy", L"has", L"have", L"having", L"he", L"hello",
-    L"help", L"her", L"here", L"hey", L"hi", L"him", L"his", L"hold", L"home", L"how", L"i", L"if", L"im", L"in",
-    L"into", L"is", L"isnt", L"it", L"its", L"just", L"keep", L"kill", L"kind", L"know", L"last", L"late", L"later",
+    L"help", L"her", L"here", L"hey", L"hi", L"him", L"his", L"hold", L"home", L"how", L"i", L"if", L"in",
+    L"into", L"is", L"it", L"its", L"just", L"keep", L"kill", L"kind", L"know", L"last", L"late", L"later",
     L"learn", L"leave", L"left", L"let", L"lets", L"like", L"little", L"long", L"look", L"looking", L"lost", L"lot",
     L"lots", L"love", L"made", L"make", L"many", L"maybe", L"me", L"mean", L"mine", L"more", L"most", L"much",
     L"must", L"my", L"need", L"never", L"new", L"next", L"nice", L"night", L"no", L"not", L"nothing", L"now", L"of",
@@ -195,12 +195,12 @@ const wchar_t* const kChatEnglish[] = {
     L"over", L"party", L"people", L"play", L"player", L"players", L"please", L"point", L"pretty", L"quick", L"quite",
     L"ready", L"real", L"really", L"right", L"run", L"same", L"say", L"see", L"seem", L"send", L"sent", L"she",
     L"should", L"show", L"since", L"so", L"some", L"someone", L"something", L"soon", L"sorry", L"start", L"still",
-    L"stop", L"stuff", L"sure", L"take", L"talk", L"team", L"tell", L"than", L"thank", L"thanks", L"that", L"thats",
+    L"stop", L"stuff", L"sure", L"take", L"talk", L"team", L"tell", L"than", L"thank", L"thanks", L"that",
     L"the", L"their", L"them", L"then", L"there", L"these", L"they", L"thing", L"things", L"think", L"this",
     L"those", L"though", L"thought", L"through", L"time", L"to", L"today", L"together", L"tomorrow", L"too", L"try",
     L"trying", L"turn", L"up", L"us", L"use", L"used", L"very", L"wait", L"want", L"wanted", L"was", L"way", L"we",
-    L"well", L"went", L"were", L"what", L"whats", L"when", L"where", L"which", L"while", L"who", L"why", L"will",
-    L"with", L"without", L"wont", L"work", L"would", L"yeah", L"yes", L"yet", L"you", L"your", L"yours", L"youre",
+    L"well", L"went", L"were", L"what", L"when", L"where", L"which", L"while", L"who", L"why", L"will",
+    L"with", L"without", L"work", L"would", L"yeah", L"yes", L"yet", L"you", L"your", L"yours",
 };
 
 // The everyday words of a chat in the other UI languages (written for these lists): without a Windows dictionary a

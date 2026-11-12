@@ -3,6 +3,15 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.10.5 — 2026-11-12 (GW2Chatlator for Nexus)
+
+- **Offline Typing Assistance & Spell Checking Restored:**
+  - Common informal contractions with missing apostrophes (`dont`, `cant`, `didnt`, `doesnt`, `wont`, `im`, `youre`, `thats`, etc.) are now correctly detected as spelling errors in English and repaired to `don't`, `can't`, `didn't`, etc.
+  - Fixed an English proper-noun casing issue in `IsValidWord` where lowercase typos such as `yu` and `ned` were erroneously validated as proper names (`Yu`, `Ned`); they are now recognized as typos and corrected to `you` and `need`.
+  - Misspelled words are now highlighted with distinct red squiggly underlines.
+  - A red circular error badge appears next to the input box showing the number of typos in the message; clicking it or clicking any underlined word applies the correction directly.
+  - In Subtitle Mode, the live word suggestions bar now renders while writing, providing continuous next-word predictions as sentences are typed.
+
 ## 2.10.4 — 2026-11-12 (GW2Chatlator for Nexus)
 
 - **Waypoint Camera Flight Restored:** left-clicking a waypoint link in the chat initiates GW2's native camera pan directly without opening the waypoint preview window or stealing input focus. Right-clicking still opens the preview window to inspect nearby points and map tiles.

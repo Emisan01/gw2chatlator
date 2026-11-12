@@ -543,9 +543,12 @@ bool SpellService::IsValidWord(const std::wstring& w) const {
     if (IsKnown(w)) return true;
     if (!checker_.Ready()) return model_.Knows(w);
     if (!CheckerRejects(w)) return true;
-    std::wstring other = w;
-    other[0] = std::iswupper(w[0]) ? CaseFoldChar(w[0]) : static_cast<wchar_t>(std::towupper(w[0]));
-    return !CheckerRejects(other);
+    if (learnedLang_ == L"de") {  // in German nouns are capitalized; typing them lowercase is common in chat
+        std::wstring other = w;
+        other[0] = std::iswupper(w[0]) ? CaseFoldChar(w[0]) : static_cast<wchar_t>(std::towupper(w[0]));
+        return !CheckerRejects(other);
+    }
+    return false;
 }
 
 std::optional<std::wstring> SpellService::AutoCorrection(const std::wstring& word, AutoCorrectMode mode,
@@ -660,24 +663,39 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
         std::wstring p1, p2;
         WordsBefore(text, caret, &p1, &p2);
         const std::wstring sure = model_.NextSure(prev, p2);
-        if (!sure.empty()) s.words = model_.Next(prev, 3, p2);
-        if (!s.words.empty()) {
-            s.kind = WordSuggestions::Kind::Next;
-            s.replace = {caret, 0};
-            // Only a repeated, clear winner is shown; one-off message sequences made noisy predictions.
-            if (WordKey(sure) != WordKey(s.words[0])) {
-                const auto it = std::find_if(s.words.begin(), s.words.end(), [&](const std::wstring& w) {
-                    return WordKey(w) == WordKey(sure);
-                });
-                if (it == s.words.end()) s.words.insert(s.words.begin(), sure);
-                else std::rotate(s.words.begin(), it, it + 1);
-                if (s.words.size() > 3) s.words.resize(3);
+        std::vector<std::wstring> words;
+        if (!sure.empty()) {
+            words = model_.Next(prev, 3, p2);
+        } else {
+            words = model_.Next(prev, 3, p2);
+            if (words.size() < 3) {
+                for (const std::wstring& w : Gw2StarterWords(learnedLang_))
+                    if (words.size() < 3 && WordKey(w) != WordKey(prev) &&
+                        std::none_of(words.begin(), words.end(), [&](const std::wstring& x) { return WordKey(x) == WordKey(w); }))
+                        words.push_back(w);
             }
-            s.autoIndex = 0;
-            // A phrase you write again and again: the whole sure rest.
-            const std::vector<std::wstring> rest = model_.ContinueSure(prev, p2);
-            if (rest.size() >= 2)
-                for (const std::wstring& w : rest) s.phrase += (s.phrase.empty() ? L"" : L" ") + w;
+        }
+        if (!words.empty()) {
+            s.kind = WordSuggestions::Kind::Next;
+            s.words = std::move(words);
+            s.replace = {caret, 0};
+            if (!sure.empty()) {
+                if (WordKey(sure) != WordKey(s.words[0])) {
+                    const auto it = std::find_if(s.words.begin(), s.words.end(), [&](const std::wstring& w) {
+                        return WordKey(w) == WordKey(sure);
+                    });
+                    if (it == s.words.end()) s.words.insert(s.words.begin(), sure);
+                    else std::rotate(s.words.begin(), it, it + 1);
+                    if (s.words.size() > 3) s.words.resize(3);
+                }
+                s.autoIndex = 0;
+                // A phrase you write again and again: the whole sure rest.
+                const std::vector<std::wstring> rest = model_.ContinueSure(prev, p2);
+                if (rest.size() >= 2)
+                    for (const std::wstring& w : rest) s.phrase += (s.phrase.empty() ? L"" : L" ") + w;
+            } else {
+                s.autoIndex = -1;  // suggested on the word bar, but not auto-accepted until chosen
+            }
         }
         return s;
     }

@@ -1499,9 +1499,11 @@ void RenderWindow() {
     // ---- the chat (the newest at the bottom): name white – a click opens a whisper tab –, text in the channel colour,
     // the scroll bar at the left like GW2's own chat
     const float line = ImGui::GetTextLineHeightWithSpacing();
+    // Subtitle mode: unseen while nobody writes and nothing is sent
+    const bool unseen = ProfileOn(2) && !SubtitleWriting();
     // The translator's error on the text in the input shows in the preview's place even where the layout has none –
     // for as long as that text stands there; your layout is not changed for it.
-    const bool showPreview = Shown().preview || InputErrorNow(), showWords = Shown().words;
+    const bool showPreview = (Shown().preview || InputErrorNow()) && !unseen, showWords = Shown().words && !unseen;
     const bool previewCurrent = g_previewGen == g_inputGen && !g_preview.empty();
     const bool showBackLine = !showPreview && Lay().backLine && previewCurrent && !g_back.empty();
     const float smallLine = ImGui::GetFontSize() * 0.85f + 2;
@@ -1687,8 +1689,12 @@ void RenderWindow() {
     const bool showClearBtn = (g_input[0] != 0 || g_recording);
     const float clearBtnW = std::floor(ImGui::GetFontSize() * 0.9f);
     const float clearGap = 3.0f;
+    const bool showMarkBadge = !unseen && !g_help.marks.empty() && g_help.text == g_wFlatInput;
+    const std::string badgeText = showMarkBadge ? std::to_string(g_help.marks.size()) : "";
+    const float badgeW = showMarkBadge ? std::max(clearBtnW, ImGui::CalcTextSize(badgeText.c_str()).x + 8.0f) : 0.0f;
+    const float rightSideW = (showClearBtn ? clearBtnW + clearGap : 0.0f) + (showMarkBadge ? badgeW + clearGap : 0.0f);
     const float inputAvailW = ImGui::GetContentRegionAvail().x;
-    const float inputW = showClearBtn ? std::max(50.0f, inputAvailW - clearBtnW - clearGap) : inputAvailW;
+    const float inputW = rightSideW > 0.0f ? std::max(50.0f, inputAvailW - rightSideW) : inputAvailW;
     const ImVec2 boxSize(inputW, boxH);
     g_wrapWidth = inputW - st.FramePadding.x * 2 - st.ScrollbarSize - 4;
     if (ImGui::GetActiveID() != ImGui::GetID("##input")) RewrapInactiveInput();
@@ -1725,7 +1731,6 @@ void RenderWindow() {
     }
     // Subtitle mode: the input is there – focus, keys and a click on it work as always – but unseen while nobody writes and
     // nothing is sent. A message stays readable: it is drawn over the box (##boxtext), as text on the glass, no frame.
-    const bool unseen = ProfileOn(2) && !SubtitleWriting();
     const bool glassInput = ProfileOn(2) && !unseen;  // writing on the glass: the field a shade darker than the background
     g_test.inputAlpha = unseen ? 0.0f : 1.0f;
     if (unseen) ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.0f);
@@ -1788,6 +1793,24 @@ void RenderWindow() {
     } else {
         s_subtitleOpen = false;
         s_subtitleWasActive = false;
+    }
+    if (showMarkBadge) {
+        ImGui::SameLine(0, clearGap);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, badgeW * 0.5f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.85f, 0.22f, 0.22f, 0.90f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.95f, 0.30f, 0.30f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.75f, 0.15f, 0.15f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+        if (ImGui::Button((badgeText + "##markbadge").c_str(), ImVec2(badgeW, boxH))) {
+            TakeMark(0, true);
+        }
+        ImGui::PopStyleColor(4);
+        ImGui::PopStyleVar(2);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+            ImGui::SetTooltip("%s", UI(L"→ " + g_help.marks[0].fix).c_str());
+        }
     }
     if (showClearBtn) {
         ImGui::SameLine(0, clearGap);
@@ -1987,11 +2010,23 @@ void RenderWindow() {
     if (!marks.empty()) {
         ImDrawList* dl = ImGui::GetWindowDrawList();
         dl->PushClipRect(ImVec2(clip.x, clip.y), ImVec2(clip.z, clip.w), true);
-        const float thick = std::max(1.5f, ImGui::GetFontSize() / 11.0f);
+        const float thick = std::max(1.2f, ImGui::GetFontSize() / 12.0f);
         for (size_t i = 0; i < marks.size(); ++i) {
-            ImVec4 c = UiAccent();
-            c.w = static_cast<int>(i) == markHovered ? 1.0f : 0.75f;
-            dl->AddLine(ImVec2(marks[i].a.x, marks[i].b.y - 1.0f), ImVec2(marks[i].b.x, marks[i].b.y - 1.0f), ImGui::GetColorU32(c), thick);
+            const ImU32 col = static_cast<int>(i) == markHovered ? IM_COL32(255, 75, 75, 255) : IM_COL32(230, 65, 65, 210);
+            const float yBase = marks[i].b.y - 1.5f;
+            const float xStart = marks[i].a.x;
+            const float xEnd = marks[i].b.x;
+            const float step = 3.0f;
+            float cx = xStart;
+            bool up = false;
+            while (cx < xEnd) {
+                const float nx = std::min(cx + step, xEnd);
+                const float cy = up ? yBase - 1.5f : yBase;
+                const float ny = up ? yBase : yBase - 1.5f;
+                dl->AddLine(ImVec2(cx, cy), ImVec2(nx, ny), col, thick);
+                cx = nx;
+                up = !up;
+            }
         }
         dl->PopClipRect();
     }
