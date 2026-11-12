@@ -3,6 +3,10 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.10.4 — 2026-11-12 (GW2Chatlator for Nexus)
+
+- **Waypoint Camera Flight Restored:** left-clicking a waypoint link in the chat initiates GW2's native camera pan directly without opening the waypoint preview window or stealing input focus. Right-clicking still opens the preview window to inspect nearby points and map tiles.
+
 ## 2.10.3 — 2026-11-11 (GW2Chatlator for Nexus)
 
 - **Subtitle Mode Stays Open:** a left click in the subtitles window opens the input field smoothly without flickering or disappearing; the field stays visible and focused until closed by Esc, sending, or clicking away from an empty field.
