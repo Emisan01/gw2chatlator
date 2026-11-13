@@ -145,16 +145,16 @@ void RenderTypingPage(Config& edit) {
     }
     RowLabel(UI(Tr(L"Autocorrection")));
     int ac = static_cast<int>(edit.autoCorrect);
-    if (ac < 0 || ac > 3) ac = 2;
+    if (ac < 0 || ac > 4) ac = 2;
     static bool s_showConsentDialog = false;
 
-    if (edit.fallenAngel) {
-        ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.45f);
-    }
-    if (RowCombo("##ac", {UI(Tr(L"Off")), UI(Tr(L"Safe")), UI(Tr(L"Like a phone keyboard")), UI(Tr(L"Strong"))}, &ac)) {
+    if (RowCombo("##ac", {UI(Tr(L"Off")), UI(Tr(L"Safe")), UI(Tr(L"Like a phone keyboard")), UI(Tr(L"Strong")), UI(Tr(L"Fallen Angel"))}, &ac)) {
         edit.autoCorrect = static_cast<AutoCorrectMode>(ac);
-        if (edit.autoCorrect == AutoCorrectMode::Strong) {
+        edit.fallenAngel = (edit.autoCorrect == AutoCorrectMode::FallenAngel);
+        if (edit.autoCorrect == AutoCorrectMode::FallenAngel) {
+            edit.useLanguageTool = true;
+        }
+        if (edit.autoCorrect == AutoCorrectMode::Strong || edit.autoCorrect == AutoCorrectMode::FallenAngel) {
             const std::wstring normUrl = NormalizeLanguageToolUrl(edit.languageToolUrl);
             const bool isLocalHost = normUrl.find(L"localhost") != std::wstring::npos || normUrl.find(L"127.0.0.1") != std::wstring::npos;
             if (!isLocalHost && edit.languageToolConsent.empty()) {
@@ -162,24 +162,22 @@ void RenderTypingPage(Config& edit) {
             }
         }
     }
-    if (edit.fallenAngel) {
-        ImGui::PopStyleVar();
-        ImGui::PopItemFlag();
-        RowHint(UI(Tr(L"Fallen Angel mode is on")));
-    } else {
-        if (edit.autoCorrect == AutoCorrectMode::Off) {
-            RowHint(UI(Tr(L"No words are corrected automatically.")));
-        } else if (edit.autoCorrect == AutoCorrectMode::Safe) {
-            RowHint(UI(Tr(L"Only Windows' sure spelling fixes are applied.")));
-        } else if (edit.autoCorrect == AutoCorrectMode::Phone) {
-            RowHint(UI(Tr(L"Misspelled words are corrected when you press Space.")));
-        } else if (edit.autoCorrect == AutoCorrectMode::Strong) {
-            RowHint(UI(Tr(L"Every word the dictionary does not know becomes its first suggestion when you go on writing – Backspace takes it back. Words still standing wrong are underlined; a click corrects them. GW2 terms, names and what you taught stay. It needs Windows' dictionary for the language you write in.")));
-        }
+
+    if (edit.autoCorrect == AutoCorrectMode::Off) {
+        RowHint(UI(Tr(L"No words are corrected automatically.")));
+    } else if (edit.autoCorrect == AutoCorrectMode::Safe) {
+        RowHint(UI(Tr(L"Only Windows' sure spelling fixes are applied.")));
+    } else if (edit.autoCorrect == AutoCorrectMode::Phone) {
+        RowHint(UI(Tr(L"Misspelled words are corrected when you press Space.")));
+    } else if (edit.autoCorrect == AutoCorrectMode::Strong) {
+        RowHint(UI(Tr(L"Every word the dictionary does not know becomes its first suggestion when you go on writing – Backspace takes it back. Words still standing wrong are underlined; a click corrects them. GW2 terms, names and what you taught stay. It needs Windows' dictionary for the language you write in.")));
+    } else if (edit.autoCorrect == AutoCorrectMode::FallenAngel) {
+        RowHint(UI(Tr(L"Full automatic correction & phrasing repair with LanguageTool. Changes are underlined in green; a click reverts.")));
     }
-    if (Switch("fallen_angel", UI(Tr(L"Fallen Angel mode")), &edit.fallenAngel,
-               UI(Tr(L"Full automatic correction & phrasing repair with LanguageTool. Changes are underlined in green; a click reverts.")).c_str())) {
-        if (edit.fallenAngel) {
+
+    if (Switch("languagetool", UI(Tr(L"Grammar check (LanguageTool)")), &edit.useLanguageTool,
+               UI(Tr(L"Checks grammar, subject-verb agreement, and phrasing in real time (free public API or your own local server). Underlines grammar mistakes in amber; click the badge to fix all.")).c_str())) {
+        if (edit.useLanguageTool) {
             const std::wstring normUrl = NormalizeLanguageToolUrl(edit.languageToolUrl);
             const bool isLocalHost = normUrl.find(L"localhost") != std::wstring::npos || normUrl.find(L"127.0.0.1") != std::wstring::npos;
             if (!isLocalHost && edit.languageToolConsent.empty()) {
@@ -212,6 +210,7 @@ void RenderTypingPage(Config& edit) {
         if (ImGui::Button(UI(Tr(L"Offline only")).c_str(), ImVec2(ImGui::GetFontSize() * 7.0f, 0))) {
             edit.languageToolConsent = L"offline";
             edit.SaveValue(L"Spelling", L"LanguageToolConsent", L"offline");
+            edit.useLanguageTool = false;
             s_showConsentDialog = false;
             ImGui::CloseCurrentPopup();
         }

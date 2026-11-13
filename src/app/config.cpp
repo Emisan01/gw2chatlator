@@ -330,9 +330,9 @@ void Config::Load(const std::wstring& dir) {
     autoCorrect = ParseAutoCorrect(ini.Str(L"Spelling", L"AutoCorrectMode", L""),
                                    ini.Bool(L"Spelling", L"AutoCorrect", true) ? AutoCorrectMode::Phone
                                                                                : AutoCorrectMode::Off);
-    if (autoCorrect == AutoCorrectMode::FallenAngel) {
+    if (autoCorrect == AutoCorrectMode::FallenAngel || fallenAngel) {
+        autoCorrect = AutoCorrectMode::FallenAngel;
         fallenAngel = true;
-        autoCorrect = AutoCorrectMode::Strong;
     }
     suggestions = ini.Bool(L"Spelling", L"Suggestions", true);
     learnWords = ini.Bool(L"Spelling", L"Learn", true);
@@ -536,7 +536,7 @@ void Config::SaveAll() const {
     SaveValue(L"Voice", L"VoiceChatApps", AsciiEscape(voiceChatApps));
     SaveBool(L"Spelling", L"Enabled", spellEnabled);
     SaveBool(L"Spelling", L"LanguageTool", useLanguageTool);
-    SaveBool(L"Spelling", L"FallenAngel", fallenAngel);
+    SaveBool(L"Spelling", L"FallenAngel", autoCorrect == AutoCorrectMode::FallenAngel || fallenAngel);
     SaveValue(L"Spelling", L"LanguageToolUrl", languageToolUrl);
     SaveValue(L"Spelling", L"LanguageToolConsent", languageToolConsent);
     SaveValue(L"Spelling", L"AutoCorrectMode", AutoCorrectKey(autoCorrect));
@@ -556,6 +556,7 @@ void Config::SaveAll() const {
 }
 
 bool Config::LanguageToolActive() const {
+    if (!useLanguageTool) return false;
     const AutoCorrectMode m = EffectiveAutoCorrect();
     if (m != AutoCorrectMode::Strong && m != AutoCorrectMode::FallenAngel) return false;
     const std::wstring normUrl = NormalizeLanguageToolUrl(languageToolUrl);

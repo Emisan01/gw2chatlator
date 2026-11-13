@@ -71,7 +71,7 @@ struct Config {
     std::wstring languageToolUrl = L"https://api.languagetool.org";
     std::wstring languageToolConsent;  // Server URL the user consented to ("offline" = offline only)
     AutoCorrectMode autoCorrect = AutoCorrectMode::Phone;
-    AutoCorrectMode EffectiveAutoCorrect() const { return fallenAngel ? AutoCorrectMode::FallenAngel : autoCorrect; }
+    AutoCorrectMode EffectiveAutoCorrect() const { return (fallenAngel || autoCorrect == AutoCorrectMode::FallenAngel) ? AutoCorrectMode::FallenAngel : autoCorrect; }
     bool LanguageToolActive() const;
     bool suggestions = true;     // word bar above the input (completions, next word)
     bool learnWords = true;      // learn from what you send
