@@ -1746,8 +1746,8 @@ extern const I18nEntry kRussianStrings[] = {
     {L"was: {1} → {2}\nClick: revert (undo)\nRight-click: keep word",
      "было: {1} → {2}\nКлик: отменить\nПравый клик: сохранить слово"},
 
-    {L"Fallen Angel mode is on (menu ≡)",
-     "Режим Fallen Angel включен (меню ≡)"},
+    {L"Fallen Angel mode is on",
+     "Режим Fallen Angel включен"},
     {L"LanguageTool Server",
      "Сервер LanguageTool"},
     {L"Misspelled words are corrected when you press Space.",

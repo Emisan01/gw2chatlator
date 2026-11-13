@@ -165,7 +165,7 @@ void RenderTypingPage(Config& edit) {
     if (edit.fallenAngel) {
         ImGui::PopStyleVar();
         ImGui::PopItemFlag();
-        RowHint(UI(Tr(L"Fallen Angel mode is on (menu ≡)")));
+        RowHint(UI(Tr(L"Fallen Angel mode is on")));
     } else {
         if (edit.autoCorrect == AutoCorrectMode::Off) {
             RowHint(UI(Tr(L"No words are corrected automatically.")));
@@ -175,6 +175,16 @@ void RenderTypingPage(Config& edit) {
             RowHint(UI(Tr(L"Misspelled words are corrected when you press Space.")));
         } else if (edit.autoCorrect == AutoCorrectMode::Strong) {
             RowHint(UI(Tr(L"Every word the dictionary does not know becomes its first suggestion when you go on writing – Backspace takes it back. Words still standing wrong are underlined; a click corrects them. GW2 terms, names and what you taught stay. It needs Windows' dictionary for the language you write in.")));
+        }
+    }
+    if (Switch("fallen_angel", UI(Tr(L"Fallen Angel mode")), &edit.fallenAngel,
+               UI(Tr(L"Full automatic correction & phrasing repair with LanguageTool. Changes are underlined in green; a click reverts.")).c_str())) {
+        if (edit.fallenAngel) {
+            const std::wstring normUrl = NormalizeLanguageToolUrl(edit.languageToolUrl);
+            const bool isLocalHost = normUrl.find(L"localhost") != std::wstring::npos || normUrl.find(L"127.0.0.1") != std::wstring::npos;
+            if (!isLocalHost && edit.languageToolConsent.empty()) {
+                s_showConsentDialog = true;
+            }
         }
     }
 

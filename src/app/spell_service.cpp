@@ -554,7 +554,7 @@ bool SpellService::IsValidWord(const std::wstring& w) const {
 std::optional<std::wstring> SpellService::AutoCorrection(const std::wstring& word, AutoCorrectMode mode,
                                                          const std::wstring& prev, const std::wstring& prev2) const {
     if (mode == AutoCorrectMode::Off || word.size() < 2) return std::nullopt;
-    const bool heavy = mode == AutoCorrectMode::Strong;
+    const bool heavy = mode == AutoCorrectMode::Strong || mode == AutoCorrectMode::FallenAngel;
     const bool phone = mode == AutoCorrectMode::Phone || heavy;
     if (phone && learnedLang_ == L"en") {
         if (const std::wstring c = EnglishChatContraction(word); !c.empty()) return c;
@@ -708,7 +708,7 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
     if (HasDigit(partial)) return s;
     const std::wstring prev = wordBefore(start);
     s.replace = {start, end - start};
-    const bool heavy = mode == AutoCorrectMode::Strong;
+    const bool heavy = mode == AutoCorrectMode::Strong || mode == AutoCorrectMode::FallenAngel;
     const bool phone = mode == AutoCorrectMode::Phone || heavy;
     if (phone && learnedLang_ == L"en") {
         if (const std::wstring c = EnglishChatContraction(partial); !c.empty()) {
@@ -769,14 +769,14 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
             s.words = {*fix};
             s.autoIndex = 0;
             for (const std::wstring& w : checker_.Ready() ? CheckerSuggest(partial) : std::vector<std::wstring>())
-                if (s.words.size() < 3 && w != *fix && w.find(L' ') == std::wstring::npos) s.words.push_back(w);
+                if (s.words.size() < 3 && w != *fix) s.words.push_back(w);
             return s;
         }
     }
     const size_t minCheckLen = heavy ? 2 : 3;
     if (words.empty() && checker_.Ready() && partial.size() >= minCheckLen && IsMisspelled(partial)) {
         for (const std::wstring& w : CheckerSuggest(partial))
-            if (words.size() < 3 && w.find(L' ') == std::wstring::npos) words.push_back(w);
+            if (words.size() < 3) words.push_back(w);
         if (!words.empty()) {
             s.kind = WordSuggestions::Kind::Correction;
             s.words = words;
@@ -837,7 +837,7 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
         return c;
     }
 
-    const bool heavy = mode == AutoCorrectMode::Strong;
+    const bool heavy = mode == AutoCorrectMode::Strong || mode == AutoCorrectMode::FallenAngel;
     const bool phone = mode == AutoCorrectMode::Phone || heavy;
 
     // Fast-path: Explicit contractions override dictionary words (e.g. "cant" -> "can't").
@@ -935,7 +935,7 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
         }
         if (checker_.Ready())
             for (const std::wstring& w : CheckerSuggest(typed)) {
-                if (w.find(L' ') != std::wstring::npos || !LettersOnly(w)) continue;
+                if (!LettersOnly(w)) continue;
                 fixes.push_back(w);
                 // The dictionary's idea is only taken by Space when it is one slip of the fingers away – on the
                 // "Strong" / "Fallen Angel" level its first idea always.

@@ -1746,8 +1746,8 @@ extern const I18nEntry kTurkishStrings[] = {
     {L"was: {1} → {2}\nClick: revert (undo)\nRight-click: keep word",
      "önceki: {1} → {2}\nTık: geri al\nSağ tık: sözcüğü koru"},
 
-    {L"Fallen Angel mode is on (menu ≡)",
-     "Fallen Angel modu açık (menü ≡)"},
+    {L"Fallen Angel mode is on",
+     "Fallen Angel modu açık"},
     {L"LanguageTool Server",
      "LanguageTool Sunucusu"},
     {L"Misspelled words are corrected when you press Space.",

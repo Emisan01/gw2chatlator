@@ -839,7 +839,7 @@ std::wstring ChooseCorrection(const std::wstring& word, const std::vector<std::w
     };
     std::vector<Cand> cands;
     auto consider = [&](const std::wstring& c, int rank) {
-        if (c.empty() || c.find(L' ') != std::wstring::npos || c.find(L'-') != std::wstring::npos) return;
+        if (c.empty() || c.find(L'-') != std::wstring::npos) return;
         const std::wstring ck = WordKey(c);
         if (ck == key) return;
         if (ck[0] != key[0] && !FirstTwoSwapped(ck, key)) return;

@@ -1746,8 +1746,8 @@ extern const I18nEntry kPolishStrings[] = {
     {L"was: {1} → {2}\nClick: revert (undo)\nRight-click: keep word",
      "było: {1} → {2}\nKlik: cofnij\nPrawy klik: zachowaj słowo"},
 
-    {L"Fallen Angel mode is on (menu ≡)",
-     "Tryb Fallen Angel jest włączony (menu ≡)"},
+    {L"Fallen Angel mode is on",
+     "Tryb Fallen Angel jest włączony"},
     {L"LanguageTool Server",
      "Serwer LanguageTool"},
     {L"Misspelled words are corrected when you press Space.",

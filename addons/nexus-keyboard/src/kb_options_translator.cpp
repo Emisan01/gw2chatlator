@@ -155,6 +155,7 @@ void RenderTranslatorRows(Config& edit, bool full) {
     // On Start the card's switch stands in this box when an NVIDIA card is ready.
     if (!full && ((isLocal && localReady) || (shown == Engine::Auto && isEffectiveLocal && effectiveLocalReady)) &&
         NvidiaDriverPresent() && CardModuleComplete()) {
+        RowLabel(UI(Tr(L"Graphics card")));
         Switch("usegpu_start", UI(Tr(L"Calculate on the graphics card (NVIDIA)")), &edit.useGpu,
                UI(Tr(L"Accelerate translation by NVIDIA graphics card. Takes about 0.7 GB of video memory with M2M100, 0.9 GB with NLLB-200. Without room it falls back to the CPU.")).c_str());
     }
@@ -345,6 +346,7 @@ void RenderLocalAdvanced(Config& edit) {
                                   : TrF(L"CPU threads now: {1} (automatic, more with a higher beam)", {std::to_wstring(threads)})));
     if (static_cast<unsigned>(threads) * 2 > std::thread::hardware_concurrency()) RiskHint(Tr(L"More than half of your processors: the game can stutter."));
     if (NvidiaDriverPresent() && CardModuleComplete()) {
+        RowLabel(UI(Tr(L"Graphics card")));
         Switch("usegpu", UI(Tr(L"Calculate on the graphics card (NVIDIA)")), &edit.useGpu,
                UI(Tr(L"Takes about 0.7 GB of video memory with M2M100, 0.9 GB with NLLB-200. Without room it falls back to the CPU.")).c_str());
         std::shared_ptr<Translator> translator;

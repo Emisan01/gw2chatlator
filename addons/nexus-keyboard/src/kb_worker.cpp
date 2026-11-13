@@ -726,6 +726,24 @@ void CheckGrammar(uint64_t gen, std::wstring text) {
     static std::wstring s_cachedLtText;
     static LtResult s_cachedLtResult;
 
+    std::wstring serverUrl;
+    std::wstring typing;
+    std::vector<std::wstring> own;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        serverUrl = g_cfg.languageToolUrl;
+        typing = TypingLang();
+        own.push_back(typing);
+        own.push_back(L"en");
+        for (const auto& l : g_cfg.writeLangs) own.push_back(l);
+        if (!g_cfg.sendLang.empty() && g_cfg.sendLang != L"=") own.push_back(g_cfg.sendLang);
+    }
+
+    const std::wstring windows = DetectLanguage(text);
+    const OwnLanguageAnswer answer = OwnLanguage(text, own, windows);
+    std::wstring lang = answer.lang.empty() ? typing : answer.lang;
+    if (lang.empty()) lang = L"auto";
+
     LtResult r;
     if (text == s_cachedLtText && s_cachedLtResult.ok) {
         r = s_cachedLtResult;
@@ -737,24 +755,6 @@ void CheckGrammar(uint64_t gen, std::wstring text) {
             SetStatus(Tr(L"LanguageTool: rate limit reached (20/min)"), 3000);
             return;
         }
-
-        std::wstring serverUrl;
-        std::wstring typing;
-        std::vector<std::wstring> own;
-        {
-            std::lock_guard<std::mutex> lock(g_mu);
-            serverUrl = g_cfg.languageToolUrl;
-            typing = TypingLang();
-            own.push_back(typing);
-            own.push_back(L"en");
-            for (const auto& l : g_cfg.writeLangs) own.push_back(l);
-            if (!g_cfg.sendLang.empty() && g_cfg.sendLang != L"=") own.push_back(g_cfg.sendLang);
-        }
-
-        const std::wstring windows = DetectLanguage(text);
-        const OwnLanguageAnswer answer = OwnLanguage(text, own, windows);
-        std::wstring lang = answer.lang.empty() ? typing : answer.lang;
-        if (lang.empty()) lang = L"auto";
 
         r = CheckWithLanguageTool(serverUrl, text, lang, typing);
         if (!r.ok) {
@@ -770,8 +770,8 @@ void CheckGrammar(uint64_t gen, std::wstring text) {
 
     std::vector<Span> chatCodes = FindChatCodes(text);
     std::vector<LtMatch> filteredMatches;
-    for (const LtMatch& m : r.matches) {
-        if (m.replacements.empty() || m.span.end() > text.size()) continue;
+    for (LtMatch m : r.matches) {
+        if (m.span.end() > text.size()) continue;
         bool inCode = false;
         for (const Span& cc : chatCodes) {
             if (m.span.start < cc.end() && cc.start < m.span.end()) {
@@ -786,6 +786,47 @@ void CheckGrammar(uint64_t gen, std::wstring text) {
             const auto keep = g_spell->KeepWordsSnapshot();
             if (keep && keep->find(CaseFold(matchedText)) != keep->end()) continue;
         }
+
+        if (m.replacements.empty()) {
+            // Check for repeated leading consonant (e.g. "hhabitseven" -> "habitseven")
+            if (matchedText.size() >= 3 && matchedText[0] == matchedText[1] && towlower(matchedText[0]) != L'l') {
+                const std::wstring collapsed = matchedText.substr(1);
+                LtResult rSub = CheckWithLanguageTool(serverUrl, collapsed, lang, typing);
+                if (rSub.ok) {
+                    for (const auto& sm : rSub.matches) {
+                        if (!sm.replacements.empty()) {
+                            m.replacements = sm.replacements;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (m.replacements.empty()) continue;
+
+        if (m.replacements.size() > 1) {
+            std::wstring nextWord;
+            size_t nb = m.span.end();
+            while (nb < text.size() && (text[nb] == L' ' || text[nb] == L'\t')) ++nb;
+            size_t ne = nb;
+            while (ne < text.size() && IsWordChar(text[ne])) ++ne;
+            if (ne > nb) nextWord = CaseFold(text.substr(nb, ne - nb));
+
+            std::stable_sort(m.replacements.begin(), m.replacements.end(), [&](const std::wstring& a, const std::wstring& b) {
+                const size_t spA = a.rfind(L' ');
+                const size_t spB = b.rfind(L' ');
+                if (spA != std::wstring::npos && spB != std::wstring::npos && !nextWord.empty()) {
+                    const std::wstring lastA = CaseFold(a.substr(spA + 1));
+                    const std::wstring lastB = CaseFold(b.substr(spB + 1));
+                    const bool advA = (lastA == L"even" || lastA == L"still" || lastA == L"not" || lastA == L"already");
+                    const bool advB = (lastB == L"even" || lastB == L"still" || lastB == L"not" || lastB == L"already");
+                    if (advA != advB) return advA;
+                }
+                return false;
+            });
+        }
+
         filteredMatches.push_back(m);
     }
 

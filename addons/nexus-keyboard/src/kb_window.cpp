@@ -444,16 +444,6 @@ static void RenderMainMenu(bool& newTabNext) {
                 SetProfile(0, !compact);
             if (const bool sub = ProfileOn(2); ImGui::MenuItem(UI(Tr(L"Subtitle mode")).c_str(), nullptr, sub)) SetProfile(2, !sub);
             if (const bool mini = ProfileOn(1); ImGui::MenuItem(UI(Tr(L"Mini mode")).c_str(), nullptr, mini)) SetProfile(1, !mini);
-            const bool fallen = g_cfg.fallenAngel;
-            if (ImGui::MenuItem(UI(Tr(L"Fallen Angel mode")).c_str(), nullptr, fallen) || g_testToggleFallenAngel) {
-                g_testToggleFallenAngel = false;
-                g_cfg.fallenAngel = !fallen;
-                g_cfg.SaveBool(L"Spelling", L"FallenAngel", g_cfg.fallenAngel);
-                LogState(L"Fallen Angel mode");
-                g_worker.PostInteractive(ComputeTyping);
-            }
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("%s", UI(Tr(L"Full automatic correction & phrasing repair with LanguageTool. Changes are underlined in green; a click reverts.")).c_str());
         } else {
             if (!Shown().header) {  // what the header offers: the tabs, minimise
                 if (ImGui::MenuItem(UI(Tr(L"Chat")).c_str(), nullptr, g_activeTab < 0)) LeaveWhisperTab();
@@ -474,16 +464,6 @@ static void RenderMainMenu(bool& newTabNext) {
             if (const bool mini = ProfileOn(1); ImGui::MenuItem(UI(Tr(L"Mini mode")).c_str(), nullptr, mini)) SetProfile(1, !mini);
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", UI(Tr(L"Nothing but the input with its help. Three quick clicks on it minimise it; right-click in it: Menu … brings the rest back.")).c_str());
-            const bool fallen = g_cfg.fallenAngel;
-            if (ImGui::MenuItem(UI(Tr(L"Fallen Angel mode")).c_str(), nullptr, fallen) || g_testToggleFallenAngel) {
-                g_testToggleFallenAngel = false;
-                g_cfg.fallenAngel = !fallen;
-                g_cfg.SaveBool(L"Spelling", L"FallenAngel", g_cfg.fallenAngel);
-                LogState(L"Fallen Angel mode");
-                g_worker.PostInteractive(ComputeTyping);
-            }
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("%s", UI(Tr(L"Full automatic correction & phrasing repair with LanguageTool. Changes are underlined in green; a click reverts.")).c_str());
             if (ImGui::MenuItem(UI(Tr(L"Translate visible chat once")).c_str(), UI(MyMemoryLeftText()).c_str())) TranslateViewOnce();
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", UI(Tr(L"What you see of the chat, into the language you write in – once, by the automatic translation's rule: lines in your language, in languages you understand or too short to tell stay as they are (a click on a line translates it anyway).")).c_str());
@@ -1284,6 +1264,13 @@ void RenderWindow() {
     ImFont* uf = g_uiFont.load();
     ImFont* tf = g_textFont.load();
     std::unique_lock<std::mutex> lock(g_mu);
+    if (g_testToggleFallenAngel) {
+        g_testToggleFallenAngel = false;
+        g_cfg.fallenAngel = !g_cfg.fallenAngel;
+        g_cfg.SaveBool(L"Spelling", L"FallenAngel", g_cfg.fallenAngel);
+        LogState(L"Fallen Angel mode");
+        g_worker.PostInteractive(ComputeTyping);
+    }
     if (g_statusUntil && GetTickCount64() > g_statusUntil) {
         g_status.clear();
         g_statusUntil = 0;
@@ -1467,7 +1454,7 @@ void RenderWindow() {
         }
         if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Minimize chat")).c_str());
         ImGui::SameLine(0, gap);
-        if (IconButton("##menu", Icon::Menu, false, nullptr) || g_testToggleFallenAngel) ImGui::OpenPopup("kbmenu");
+        if (IconButton("##menu", Icon::Menu, false, nullptr)) ImGui::OpenPopup("kbmenu");
     }
     RenderMainMenu(newTabNext);
     RenderSnippets();
@@ -2054,7 +2041,7 @@ void RenderWindow() {
     {
         static std::set<std::wstring> s_corrected;
         if (g_wFlatInput.empty()) s_corrected.clear();
-        const bool autoFix = g_cfg.autoCorrect == AutoCorrectMode::Strong;
+        const bool autoFix = g_cfg.EffectiveAutoCorrect() == AutoCorrectMode::Strong || g_cfg.EffectiveAutoCorrect() == AutoCorrectMode::FallenAngel;
         if (autoFix && inputActive && !g_edit.active && g_help.text == g_wFlatInput)
             for (size_t i = 0; i < g_help.marks.size(); ++i) {
                 if (g_help.marks[i].isGrammar || g_help.marks[i].wasReplaced) continue;
