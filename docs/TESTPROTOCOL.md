@@ -21,7 +21,7 @@ Quality verification is strictly stratified into three distinct levels:
 language and the cause of every input error, translator runs, whisper tabs bound to an account – states, codes and
 counts only, never a text, never a name. After the session `python tools/session_check.py` reads the last one and
 checks what it can (a view's switch never changes your parts, every error names its languages); the rest of a row
-stays the maintainer's eye. The file starts anew above 2 MB.
+stays the maintainer's eye. Dead functions (severity 2 findings) cause `session_check.py` to report FAIL. In `verify_release.py --full`, heavy typing and translation benchmarks run only when their scoped areas changed since the last release tag, and `--session <path>` appends the session check to the verification receipt. The file starts anew above 2 MB.
 
 ---
 

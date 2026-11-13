@@ -81,9 +81,16 @@ def changed_files(base: str) -> set:
 
 TYPING_PARTS = ("spell_service", "text_prediction", "spellcheck", "word_model", "typo_memory", "slang", "my_words",
                 "kb_input", "keyboard_layout", "typing_bench")
+TRANSLATION_PARTS = ("local_mt_", "translation_check", "protect_chat", "translation_bench",
+                     "gw2_terms", "gw2_names", "gw2_words", "translation_corpus", "kb_local_mt")
 SMOKE_PARTS = ("kb_chatsource", "chat_events", "chat_source", "kb_chat.", "kb_window", "kb_cost", "kb_worker.",
                "nexus_kb_smoketest")
 CODE_SUFFIXES = (".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx", ".inl")
+
+def last_version_tag() -> str:
+    r = subprocess.run(["git", "describe", "--tags", "--abbrev=0", "--match", "v*"],
+                       cwd=ROOT, capture_output=True, text=True)
+    return r.stdout.strip() if r.returncode == 0 else ""
 
 def changed_cmake_lines(base: str) -> str:
     paths = ["CMakeLists.txt", "addons/nexus-keyboard/CMakeLists.txt"]
@@ -117,6 +124,8 @@ def gates_for(files: set, cmake_changes: str = "") -> set:
             need.add("local_mt_selftest")
         if any(k in f for k in TYPING_PARTS):
             need.add("typing")
+        if any(k in f for k in TRANSLATION_PARTS):
+            need.add("translation")
         if any(k in f for k in SMOKE_PARTS):
             need.add("smoke")
         if f.startswith("src/core/i18n_") or f.startswith("addons/nexus-keyboard/src/kb_options") or \
@@ -138,6 +147,8 @@ def gates_for(files: set, cmake_changes: str = "") -> set:
         need.add("local_mt_selftest")
     if re.search(r"typing_bench|text_prediction|spell_service|spellcheck|word_model", cmake):
         need.add("typing")
+    if re.search(r"translation_bench|local_mt|protect_chat", cmake):
+        need.add("translation")
     if re.search(r"nexus_kb_smoketest|kb_chatsource|chat_events|chat_source|kb_window|kb_worker", cmake):
         need.add("smoke")
     if re.search(r"gct_core|src/core/|src/win/|gw2keyboard_nexus|gw2chatlator", cmake):
@@ -334,6 +345,12 @@ def main():
     is_full = "--full" in sys.argv
     allow_dirty = "--allow-dirty" in sys.argv
 
+    session_arg = None
+    if "--session" in sys.argv:
+        at = sys.argv.index("--session")
+        if at + 1 < len(sys.argv) and not sys.argv[at + 1].startswith("-"):
+            session_arg = sys.argv[at + 1]
+
     commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
     status = subprocess.run(["git", "status", "--porcelain"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
     is_clean = len(status) == 0
@@ -346,6 +363,17 @@ def main():
     print("==================================================================")
     print("      GW2Chatlator — Release Quality Verification Protocol        ")
     print("==================================================================")
+
+    tag_needed = set()
+    tag = last_version_tag()
+    if is_full:
+        if tag:
+            tag_files = changed_files(tag)
+            tag_cmake = changed_cmake_lines(tag)
+            tag_needed = gates_for(tag_files, tag_cmake)
+            print(f"[*] Full release audit: changes since {tag} ({len(tag_files)} files) -> scoped benchmarks: {', '.join(sorted(tag_needed)) or 'none'}")
+        else:
+            tag_needed = {"typing", "translation"}
 
     only = None
     plan = "--plan" in sys.argv
@@ -439,7 +467,8 @@ def main():
 
     # Gate 5: Typing benchmark determinism
     typing_bench = ROOT / "build" / "Release" / "typing_bench.exe"
-    if wanted("typing"):
+    run_typing = ("typing" in tag_needed) if is_full else wanted("typing")
+    if run_typing:
         if not typing_bench.exists():
             print(f"    [FAIL] Binary not found: {typing_bench}")
             sys.exit(1)
@@ -466,6 +495,9 @@ def main():
         gate_results.append({"gate": 5, "name": "Typing Benchmark Determinism", "status": "PASS" if ok else "FAIL", "duration_sec": dur, "exit_code": 0 if ok else 1})
         test_metrics["typing_bench"] = f"{len(langs)} languages, no surprise" if ok else "FAIL"
         if not ok: sys.exit(1)
+    else:
+        print("[-] Skipped: Gate 5 Typing Benchmark Determinism (no typing changes since last release)")
+        test_metrics["typing_bench"] = "skipped (no changes since last release)"
 
     # Gate 6: Localization check
     i18n_script = ROOT / "tools" / "i18n_check.py"
@@ -519,7 +551,8 @@ def main():
     bench_data = os.environ.get("GCT_BENCH_DATA", "")
     bench = ROOT / "build" / "Release" / "translation_bench.exe"
     bench_helper = RELEASE_DIR / "GW2Keyboard" / "gw2kb_translate.exe"
-    if only is None:
+    run_trans = ("translation" in tag_needed) if is_full else (only is None or "translation" in only)
+    if run_trans:
         if bench_data and (Path(bench_data) / "translate" / "nllb-200").is_dir() and bench.exists() and bench_helper.exists():
             ok, out, dur = run_step("Translation Quality Bench (NLLB-200, made-up corpus)",
                                     [str(bench), str(bench_helper), bench_data,
@@ -533,6 +566,9 @@ def main():
         else:
             print("[*] Translation Quality Bench: skipped – set GCT_BENCH_DATA to a GW2Keyboard folder with NLLB-200")
             test_metrics["translation_bench"] = "skipped (no model)"
+    else:
+        print("[-] Skipped: Translation Quality Bench (no translation changes since last release)")
+        test_metrics["translation_bench"] = "skipped (no changes since last release)"
 
     if only is not None:
         print("\n==================================================================")
@@ -568,6 +604,21 @@ def main():
                 "sha256": sha256_file(fpath)
             }
 
+    session_data = None
+    if session_arg:
+        sess_cmd = [sys.executable, str(ROOT / "tools" / "session_check.py"), session_arg]
+        sess_proc = subprocess.run(sess_cmd, capture_output=True, text=True, errors="replace")
+        session_data = {
+            "path": session_arg,
+            "status": "PASS" if sess_proc.returncode == 0 else "FAIL",
+            "exit_code": sess_proc.returncode,
+            "output": sess_proc.stdout.strip()
+        }
+        print(f"[*] Session Protocol Verification ({session_arg}): {session_data['status']}")
+        if sess_proc.returncode != 0:
+            print(sess_proc.stdout)
+            sys.exit(1)
+
     receipt = {
         "schema": "1.0",
         "version": version,
@@ -577,6 +628,7 @@ def main():
         "artifacts": artifacts_data,
         "gates": gate_results,
         "test_metrics": test_metrics,
+        "session_check": session_data,
         "tools": {
             "python": sys.version.split()[0],
             "cmake": subprocess.run(["cmake", "--version"], capture_output=True, text=True).stdout.split("\n")[0],

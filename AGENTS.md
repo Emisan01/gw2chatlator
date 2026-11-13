@@ -90,7 +90,7 @@ src/core/                Pure C++17 portable logic (NO windows.h): text, json, i
 - CMake edits select checks by changed targets.
 
 ### Release Norm (8-Gate Verification)
-1. **Gate Audit once:** All eight gates run once on the build that goes into the maintainer's in-game test (`python tools/verify_release.py --full`: clean tree, builds from HEAD, writes the receipt `build/dist/verification.json`). No repeat at push time; `--check-receipt` (seconds, no build) confirms the receipt still matches HEAD and the files on disk.
+1. **Gate Audit once:** All eight gates run once on the build that goes into the maintainer's in-game test (`python tools/verify_release.py --full`: clean tree, builds from HEAD, writes the receipt `build/dist/verification.json`). In `--full`, heavy benchmarks (`typing_bench`, `translation_bench`) run only when their scoped files changed since the last release tag. Dead functions (severity 2 findings in session protocols) fail `session_check.py`, and `--session <path>` appends session verification to the audit receipt. No repeat at push time; `--check-receipt` (seconds, no build) confirms the receipt still matches HEAD and the files on disk.
 2. **Pre-Release Staging:** New versions are published initially as `Pre-Release` — never directly as `Latest`.
 3. **In-Game Eye-Test:** The maintainer tests the locally built DLL. His OK covers exactly that commit and that DLL; anything changed or rebuilt afterwards needs a new OK.
 4. **Push on OK:** The maintainer's OK after the local in-game test is the trigger. That state is pushed as is, without re-applying the protocols. No push or release without this explicit OK.

@@ -71,6 +71,18 @@ def check(session) -> bool:
                 ok = False
         elif text.startswith("O options changed") or text.startswith("O window:"):
             print(f"   {clock} {text[2:]}")
+        elif text.startswith("Q "):
+            m_q = re.match(r"Q health:\s*(\w+)\s*(\d+)", text)
+            if m_q:
+                kind, sev = m_q.groups()
+                sev = int(sev)
+                if sev == 2:
+                    print(f"   FAIL {clock}: health finding {kind} (severity {sev})")
+                    ok = False
+                else:
+                    print(f"   {clock} health: {kind} (severity {sev})")
+            else:
+                print(f"   {clock} {text[2:]}")
     for clock, why, state in states:
         print(f"   {clock} after {why}: {state}")
     for clock, text in errors:
