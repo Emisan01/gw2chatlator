@@ -388,6 +388,8 @@ void SwitchOptionsTab(int tab) {
     X(localQuality) X(useGpu) X(beamStepDown) X(beamStepUp) X(thinkAlong) X(versions) X(mtThreads) X(m2m.patience) X(m2m.lengthPenalty) X(m2m.coveragePenalty) X(m2m.repetitionPenalty)   \
     X(m2m.noRepeatNgram) X(m2m.disableUnk) X(m2mCompute) X(basicEmail) X(deeplKey) X(googleKey) X(msKey) X(msRegion) X(supertextKey) X(libreUrl) X(libreKey)   \
     X(uiLangCode) X(spellEnabled) X(autoCorrect) X(suggestions) X(learnWords) X(learnLater) X(returnFocus)            \
+    X(useLanguageTool) X(languageToolUrl) X(languageToolConsent)                                                       \
+    X(useLanguageTool) X(languageToolUrl) X(languageToolConsent)                                                       \
     X(copyOnly) X(focusOnGameChat) X(send.autoTiming) X(send.keyHoldMs) X(send.stepDelayMs) KB_VOICE_OPTIONS(X)
 
 namespace {
@@ -411,6 +413,7 @@ void ApplyOptions(Config& edit, Config& opened) {
         next.uiLang = EffectiveUiLang(next.uiLangCode);
         const Config& old = g_cfg;
         typingChanged = next.writeIn != old.writeIn || next.spellEnabled != old.spellEnabled ||
+                        next.useLanguageTool != old.useLanguageTool ||
                         (next.autoCorrect != AutoCorrectMode::Off) != (old.autoCorrect != AutoCorrectMode::Off);
         learnChanged = next.learnWords != old.learnWords || next.learnLater != old.learnLater;
         voiceChanged = next.voiceEnabled != old.voiceEnabled;

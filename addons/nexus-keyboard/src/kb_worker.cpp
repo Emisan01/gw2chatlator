@@ -656,6 +656,14 @@ void BackTranslateVersion(uint64_t gen, size_t pick, std::wstring version) {
     if (g_previewPick == pick) g_back = g_previewBacks[pick];
 }
 
+namespace {
+struct GrammarCache {
+    std::wstring text;
+    std::vector<WordMark> marks;
+};
+GrammarCache s_grammarCache;
+}  // namespace
+
 // The word bar, the grey completion and what Space writes, for the newest text + caret.
 void ComputeTyping() {
     if (g_workerLane != Lane::Interactive) {
@@ -682,42 +690,78 @@ void ComputeTyping() {
     h.choices = g_spell->Choices(text, caret, mode);
     h.marks = g_spell->Marks(text, mode);  // the whole message once more: what a comma, a paste or an edit let through
     std::lock_guard<std::mutex> lock(g_mu);
-    if (g_wFlatInput == text) g_help = std::move(h);
+    if (g_wFlatInput == text) {
+        if (g_cfg.LanguageToolActive() && !s_grammarCache.marks.empty()) {
+            h.marks = MergeGrammarMarks(h.marks, text, s_grammarCache.text, s_grammarCache.marks);
+        }
+        g_help = std::move(h);
+    }
 }
 
 void CheckGrammar(uint64_t gen, std::wstring text) {
     AssertNotInteractiveLane("CheckGrammar");
     {
         std::lock_guard<std::mutex> lock(g_mu);
-        if (gen != g_inputGen || g_wFlatInput != text || !g_cfg.useLanguageTool) return;
+        if (gen != g_inputGen || g_wFlatInput != text || !g_cfg.LanguageToolActive()) return;
     }
     if (text.size() < 4 || (!text.empty() && text[0] == L'/')) return;
     const std::vector<Span> spans = WordSpans(text);
     if (spans.size() < 2) return;
 
-    static RateLimiter s_ltLimiter(20);
-    const uint64_t nowMs = GetTickCount64();
-    if (!s_ltLimiter.Allow(nowMs)) {
-        TechLog('K', L"LanguageTool rate limit reached (20/min)");
-        return;
-    }
+    bool expected = false;
+    if (!g_ltInFlight.compare_exchange_strong(expected, true)) return;
+    g_ltInFlightText = text;
+    struct InFlightGuard {
+        ~InFlightGuard() {
+            g_ltInFlight = false;
+            g_ltInFlightText.clear();
+        }
+    } inFlightGuard;
 
-    std::wstring serverUrl;
-    std::wstring lang;
-    {
-        std::lock_guard<std::mutex> lock(g_mu);
-        serverUrl = g_cfg.languageToolUrl;
-        lang = TypingLang();
-    }
+    static std::wstring s_cachedLtText;
+    static LtResult s_cachedLtResult;
 
-    const LtResult r = CheckWithLanguageTool(serverUrl, text, lang);
-    if (!r.ok) {
-        if (!r.error.empty()) TechLog('K', (L"LanguageTool: " + r.error).c_str());
-        return;
+    LtResult r;
+    if (text == s_cachedLtText && s_cachedLtResult.ok) {
+        r = s_cachedLtResult;
+    } else {
+        static RateLimiter s_ltLimiter(20);
+        const uint64_t nowMs = GetTickCount64();
+        if (!s_ltLimiter.Allow(nowMs)) {
+            TechLog('K', L"LanguageTool rate limit reached (20/min)");
+            SetStatus(Tr(L"LanguageTool: rate limit reached (20/min)"), 3000);
+            return;
+        }
+
+        std::wstring serverUrl;
+        std::wstring typing;
+        std::vector<std::wstring> own;
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            serverUrl = g_cfg.languageToolUrl;
+            typing = TypingLang();
+            own.push_back(typing);
+            own.push_back(L"en");
+            for (const auto& l : g_cfg.writeLangs) own.push_back(l);
+            if (!g_cfg.sendLang.empty() && g_cfg.sendLang != L"=") own.push_back(g_cfg.sendLang);
+        }
+
+        const std::wstring windows = DetectLanguage(text);
+        const OwnLanguageAnswer answer = OwnLanguage(text, own, windows);
+        std::wstring lang = answer.lang.empty() ? typing : answer.lang;
+        if (lang.empty()) lang = L"auto";
+
+        r = CheckWithLanguageTool(serverUrl, text, lang, typing);
+        if (!r.ok) {
+            if (!r.error.empty()) TechLog('K', (L"LanguageTool: " + r.error).c_str());
+            return;
+        }
+        s_cachedLtText = text;
+        s_cachedLtResult = r;
     }
 
     std::vector<Span> chatCodes = FindChatCodes(text);
-    std::vector<WordMark> grammarMarks;
+    std::vector<LtMatch> filteredMatches;
     for (const LtMatch& m : r.matches) {
         if (m.replacements.empty() || m.span.end() > text.size()) continue;
         bool inCode = false;
@@ -734,40 +778,40 @@ void CheckGrammar(uint64_t gen, std::wstring text) {
             const auto keep = g_spell->KeepWordsSnapshot();
             if (keep && keep->find(CaseFold(matchedText)) != keep->end()) continue;
         }
-
-        WordMark wm;
-        wm.span = m.span;
-        wm.fix = m.replacements.front();
-        wm.isGrammar = m.IsGrammar();
-        wm.message = m.message;
-        wm.shortMessage = m.shortMessage;
-        grammarMarks.push_back(std::move(wm));
+        filteredMatches.push_back(m);
     }
 
-    if (grammarMarks.empty()) return;
+    AutoCorrectMode acMode;
+    std::set<std::wstring> revertedWords;
+    std::set<std::wstring> revertedRules;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        acMode = g_cfg.EffectiveAutoCorrect();
+        revertedWords = g_revertedWords;
+        revertedRules = g_revertedRules;
+    }
 
     std::lock_guard<std::mutex> lock(g_mu);
-    if (gen != g_inputGen || g_wFlatInput != text) return;
+    if (!CanKeepGrammarMarks(text, g_wFlatInput)) return;
 
-    std::vector<WordMark> merged = g_help.marks;
-    for (const auto& gm : grammarMarks) {
-        auto it = std::find_if(merged.begin(), merged.end(), [&](const WordMark& ex) {
-            return (ex.span.start < gm.span.end() && gm.span.start < ex.span.end());
-        });
-        if (it != merged.end()) {
-            if (!it->isGrammar && gm.isGrammar) {
-                it->isGrammar = true;
-                it->message = gm.message;
-                it->shortMessage = gm.shortMessage;
-            }
-        } else {
-            merged.push_back(gm);
-        }
+    LtApplyResult applied = ApplyLanguageToolMatches(g_wFlatInput, text, filteredMatches, acMode, revertedWords, revertedRules);
+    if (applied.replacedCount > 0 && applied.text != g_wFlatInput) {
+        const std::wstring beforeText = g_wFlatInput;
+        const std::string newU8 = ToUtf8(applied.text);
+        g_edit.active = true;
+        g_edit.startByte = 0;
+        g_edit.lenBytes = U8(beforeText).size();
+        g_edit.insert = newU8;
+        g_wFlatInput = applied.text;
+        g_flatInput = newU8;
+        CopyUtf8(g_input, newU8);
+        g_undo = {true, newU8, ToUtf8(beforeText), beforeText};
+        ++g_inputGen;
+        g_inputChanged = GetTickCount64();
     }
-    std::sort(merged.begin(), merged.end(), [](const WordMark& a, const WordMark& b) {
-        return a.span.start < b.span.start;
-    });
-    g_help.marks = std::move(merged);
+    s_grammarCache.text = applied.text;
+    s_grammarCache.marks = applied.marks;
+    g_help.marks = MergeGrammarMarks(g_help.marks, g_wFlatInput, s_grammarCache.text, s_grammarCache.marks);
     TechLog('K', L"LanguageTool grammar marks applied");
 }
 

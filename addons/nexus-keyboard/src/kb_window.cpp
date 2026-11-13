@@ -444,37 +444,16 @@ static void RenderMainMenu(bool& newTabNext) {
                 SetProfile(0, !compact);
             if (const bool sub = ProfileOn(2); ImGui::MenuItem(UI(Tr(L"Subtitle mode")).c_str(), nullptr, sub)) SetProfile(2, !sub);
             if (const bool mini = ProfileOn(1); ImGui::MenuItem(UI(Tr(L"Mini mode")).c_str(), nullptr, mini)) SetProfile(1, !mini);
-            const bool fallen = g_cfg.autoCorrect == AutoCorrectMode::FallenAngel;
-            if (ImGui::MenuItem(UI(Tr(L"Fallen Angel mode")).c_str(), nullptr, fallen)) {
-                {
-                    std::lock_guard<std::mutex> lock(g_mu);
-                    g_cfg.autoCorrect = fallen ? AutoCorrectMode::Phone : AutoCorrectMode::FallenAngel;
-                    if (!fallen) {
-                        g_cfg.useLanguageTool = true;
-                        g_cfg.SaveBool(L"Spelling", L"LanguageTool", true);
-                    }
-                    g_cfg.SaveValue(L"Spelling", L"AutoCorrectMode", AutoCorrectKey(g_cfg.autoCorrect));
-                    LogState(L"Fallen Angel mode");
-                }
-                g_worker.Post([] {
-                    if (!g_spell) InitSpelling();
-                    ComputeTyping();
-                });
+            const bool fallen = g_cfg.fallenAngel;
+            if (ImGui::MenuItem(UI(Tr(L"Fallen Angel mode")).c_str(), nullptr, fallen) || g_testToggleFallenAngel) {
+                g_testToggleFallenAngel = false;
+                g_cfg.fallenAngel = !fallen;
+                g_cfg.SaveBool(L"Spelling", L"FallenAngel", g_cfg.fallenAngel);
+                LogState(L"Fallen Angel mode");
+                g_worker.PostInteractive(ComputeTyping);
             }
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("%s", UI(Tr(L"Fallen Angel: Maximum autocorrect & typo repair (Fallen's mode). Automatically repairs common and 2+ letter typos (yu -> you, al -> all, ned -> need, dont -> don't), prioritizes corrections on the word bar, and enables one-click full sentence repair.")).c_str());
-            const bool lt = g_cfg.useLanguageTool;
-            if (ImGui::MenuItem(UI(Tr(L"Grammar check (LanguageTool)")).c_str(), nullptr, lt)) {
-                {
-                    std::lock_guard<std::mutex> lock(g_mu);
-                    g_cfg.useLanguageTool = !lt;
-                    g_cfg.SaveBool(L"Spelling", L"LanguageTool", g_cfg.useLanguageTool);
-                    LogState(L"Grammar check");
-                }
-                g_worker.Post([] { ComputeTyping(); });
-            }
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("%s", UI(Tr(L"Real-time grammar and phrasing check with LanguageTool. Underlines grammar slips in amber; click the badge to fix all.")).c_str());
+                ImGui::SetTooltip("%s", UI(Tr(L"Full automatic correction & phrasing repair with LanguageTool. Changes are underlined in green; a click reverts.")).c_str());
         } else {
             if (!Shown().header) {  // what the header offers: the tabs, minimise
                 if (ImGui::MenuItem(UI(Tr(L"Chat")).c_str(), nullptr, g_activeTab < 0)) LeaveWhisperTab();
@@ -495,37 +474,16 @@ static void RenderMainMenu(bool& newTabNext) {
             if (const bool mini = ProfileOn(1); ImGui::MenuItem(UI(Tr(L"Mini mode")).c_str(), nullptr, mini)) SetProfile(1, !mini);
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", UI(Tr(L"Nothing but the input with its help. Three quick clicks on it minimise it; right-click in it: Menu … brings the rest back.")).c_str());
-            const bool fallen = g_cfg.autoCorrect == AutoCorrectMode::FallenAngel;
-            if (ImGui::MenuItem(UI(Tr(L"Fallen Angel mode")).c_str(), nullptr, fallen)) {
-                {
-                    std::lock_guard<std::mutex> lock(g_mu);
-                    g_cfg.autoCorrect = fallen ? AutoCorrectMode::Phone : AutoCorrectMode::FallenAngel;
-                    if (!fallen) {
-                        g_cfg.useLanguageTool = true;
-                        g_cfg.SaveBool(L"Spelling", L"LanguageTool", true);
-                    }
-                    g_cfg.SaveValue(L"Spelling", L"AutoCorrectMode", AutoCorrectKey(g_cfg.autoCorrect));
-                    LogState(L"Fallen Angel mode");
-                }
-                g_worker.Post([] {
-                    if (!g_spell) InitSpelling();
-                    ComputeTyping();
-                });
+            const bool fallen = g_cfg.fallenAngel;
+            if (ImGui::MenuItem(UI(Tr(L"Fallen Angel mode")).c_str(), nullptr, fallen) || g_testToggleFallenAngel) {
+                g_testToggleFallenAngel = false;
+                g_cfg.fallenAngel = !fallen;
+                g_cfg.SaveBool(L"Spelling", L"FallenAngel", g_cfg.fallenAngel);
+                LogState(L"Fallen Angel mode");
+                g_worker.PostInteractive(ComputeTyping);
             }
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("%s", UI(Tr(L"Fallen Angel: Maximum autocorrect & typo repair (Fallen's mode). Automatically repairs common and 2+ letter typos (yu -> you, al -> all, ned -> need, dont -> don't), prioritizes corrections on the word bar, and enables one-click full sentence repair.")).c_str());
-            const bool lt = g_cfg.useLanguageTool;
-            if (ImGui::MenuItem(UI(Tr(L"Grammar check (LanguageTool)")).c_str(), nullptr, lt)) {
-                {
-                    std::lock_guard<std::mutex> lock(g_mu);
-                    g_cfg.useLanguageTool = !lt;
-                    g_cfg.SaveBool(L"Spelling", L"LanguageTool", g_cfg.useLanguageTool);
-                    LogState(L"Grammar check");
-                }
-                g_worker.Post([] { ComputeTyping(); });
-            }
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("%s", UI(Tr(L"Real-time grammar and phrasing check with LanguageTool. Underlines grammar slips in amber; click the badge to fix all.")).c_str());
+                ImGui::SetTooltip("%s", UI(Tr(L"Full automatic correction & phrasing repair with LanguageTool. Changes are underlined in green; a click reverts.")).c_str());
             if (ImGui::MenuItem(UI(Tr(L"Translate visible chat once")).c_str(), UI(MyMemoryLeftText()).c_str())) TranslateViewOnce();
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", UI(Tr(L"What you see of the chat, into the language you write in – once, by the automatic translation's rule: lines in your language, in languages you understand or too short to tell stay as they are (a click on a line translates it anyway).")).c_str());
@@ -1500,7 +1458,7 @@ void RenderWindow() {
         }
         if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Minimize chat")).c_str());
         ImGui::SameLine(0, gap);
-        if (IconButton("##menu", Icon::Menu, false, nullptr)) ImGui::OpenPopup("kbmenu");
+        if (IconButton("##menu", Icon::Menu, false, nullptr) || g_testToggleFallenAngel) ImGui::OpenPopup("kbmenu");
     }
     RenderMainMenu(newTabNext);
     RenderSnippets();
@@ -2043,14 +2001,43 @@ void RenderWindow() {
         const size_t markIdx = marks[markHovered].index;
         if (markIdx < g_help.marks.size()) {
             const auto& m = g_help.marks[markIdx];
-            if (m.isGrammar && !m.message.empty()) {
+            if (m.wasReplaced) {
+                std::wstring tip = TrF(L"was: {1} → {2}\nClick: revert (undo)\nRight-click: keep word", {m.original, m.fix});
+                ImGui::SetTooltip("%s", UI(tip).c_str());
+            } else if (m.isGrammar && !m.message.empty()) {
                 std::wstring tip = m.message + L"\n→ " + m.fix;
                 ImGui::SetTooltip("%s", UI(tip).c_str());
             } else {
                 ImGui::SetTooltip("%s", UI(L"→ " + m.fix).c_str());
             }
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                if (m.wasReplaced) {
+                    if (m.span.start + m.span.length <= g_wFlatInput.size()) {
+                        const std::wstring beforeText = g_wFlatInput;
+                        g_wFlatInput.replace(m.span.start, m.span.length, m.original);
+                        g_flatInput = ToUtf8(g_wFlatInput);
+                        g_edit.active = true;
+                        g_edit.startByte = 0;
+                        g_edit.lenBytes = U8(beforeText).size();
+                        g_edit.insert = g_flatInput;
+                        CopyUtf8(g_input, g_flatInput);
+                        g_revertedWords.insert(CaseFold(m.original));
+                        if (!m.ruleId.empty()) g_revertedRules.insert(m.ruleId);
+                        ++g_inputGen;
+                        g_inputChanged = GetTickCount64();
+                        g_focusInput = true;
+                    }
+                } else {
+                    TakeMark(marks[markHovered].index);
+                }
+            }
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) && m.wasReplaced) {
+                const std::wstring w = m.original;
+                g_worker.Post([w] { if (g_spell) g_spell->AddUserWord(w); });
+                g_revertedWords.insert(w);
+                SetStatus(TrF(L"Kept \"{1}\"", {w}), 3000);
+            }
         }
-        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) TakeMark(marks[markHovered].index);
     }
     // The "Strong" level does not wait for a click: a word standing wrong – ended by a comma, pasted, changed in the
     // middle – is replaced while you go on writing, one per frame. Each word once per message: written again the same
@@ -2058,9 +2045,10 @@ void RenderWindow() {
     {
         static std::set<std::wstring> s_corrected;
         if (g_wFlatInput.empty()) s_corrected.clear();
-        const bool autoFix = g_cfg.autoCorrect == AutoCorrectMode::Strong || g_cfg.autoCorrect == AutoCorrectMode::FallenAngel;
+        const bool autoFix = g_cfg.autoCorrect == AutoCorrectMode::Strong;
         if (autoFix && inputActive && !g_edit.active && g_help.text == g_wFlatInput)
             for (size_t i = 0; i < g_help.marks.size(); ++i) {
+                if (g_help.marks[i].isGrammar || g_help.marks[i].wasReplaced) continue;
                 const Span& s = g_help.marks[i].span;
                 if (s.end() > g_wFlatInput.size()) continue;
                 if (!s_corrected.insert(CaseFold(g_wFlatInput.substr(s.start, s.length))).second) continue;
@@ -2094,8 +2082,11 @@ void RenderWindow() {
         for (size_t i = 0; i < marks.size(); ++i) {
             const size_t markIdx = marks[i].index;
             const bool isGrammar = markIdx < g_help.marks.size() && g_help.marks[markIdx].isGrammar;
+            const bool wasReplaced = markIdx < g_help.marks.size() && g_help.marks[markIdx].wasReplaced;
             const bool isHovered = static_cast<int>(i) == markHovered;
-            const ImU32 col = isGrammar
+            const ImU32 col = wasReplaced
+                                  ? (isHovered ? IM_COL32(80, 240, 120, 255) : IM_COL32(50, 205, 90, 220))
+                                  : isGrammar
                                   ? (isHovered ? IM_COL32(255, 190, 40, 255) : IM_COL32(245, 160, 25, 215))
                                   : (isHovered ? IM_COL32(255, 75, 75, 255) : IM_COL32(230, 65, 65, 210));
             const float yBase = marks[i].b.y - 1.5f;
@@ -2204,16 +2195,36 @@ void RenderWindow() {
     }
     static uint64_t s_lastGrammarGen = 0;
     if (g_flatInput.empty()) s_lastGrammarGen = 0;
-    if (g_cfg.useLanguageTool && !g_flatInput.empty() && (wordEnded || (g_inputChanged && GetTickCount64() - g_inputChanged > 350)) &&
-        s_lastGrammarGen != g_inputGen) {
+    // Check grammar only after a typing pause (~900 ms) on the dedicated lookup worker lane
+    if (g_cfg.LanguageToolActive() && !g_flatInput.empty() && s_inputEdited &&
+        (GetTickCount64() - s_inputEdited >= 900) && s_lastGrammarGen != g_inputGen) {
         s_lastGrammarGen = g_inputGen;
-        g_worker.Post([gen = g_inputGen, t = g_wFlatInput] { CheckGrammar(gen, t); });
+        g_worker.PostLookup([gen = g_inputGen, t = g_wFlatInput] { CheckGrammar(gen, t); });
+    }
+    if (g_sendAfterCheck.pending) {
+        const uint64_t nowMs = GetTickCount64();
+        if (!g_ltInFlight || g_inputGen != g_sendAfterCheck.gen || (nowMs - g_sendAfterCheck.startMs >= 1500)) {
+            g_sendAfterCheck.pending = false;
+            StartSend();
+            if (ProfileOn(2) && !g_cfg.returnFocus) {
+                s_subtitleOpen = false;
+                TechLog('O', L"subtitle mode: closed after send");
+            }
+        } else {
+            SetStatus(Tr(L"checking …"), 200);
+        }
     }
     if (enter) {
-        StartSend();
-        if (ProfileOn(2) && !g_cfg.returnFocus) {
-            s_subtitleOpen = false;
-            TechLog('O', L"subtitle mode: closed after send");
+        const bool fallenAngelOn = g_cfg.fallenAngel || g_cfg.autoCorrect == AutoCorrectMode::FallenAngel;
+        if (fallenAngelOn && g_cfg.LanguageToolActive() && g_ltInFlight && g_ltInFlightText == g_wFlatInput) {
+            g_sendAfterCheck = {true, g_inputGen, GetTickCount64()};
+            SetStatus(Tr(L"checking …"), 1500);
+        } else {
+            StartSend();
+            if (ProfileOn(2) && !g_cfg.returnFocus) {
+                s_subtitleOpen = false;
+                TechLog('O', L"subtitle mode: closed after send");
+            }
         }
     }
     CheckAutoSend();

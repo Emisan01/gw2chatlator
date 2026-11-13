@@ -456,15 +456,17 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID) {
     return TRUE;
 }
 
+namespace kb {
 // The test exports work only outside the game (nexus_kb_selftest, the smoke test): inside GW2 no other add-on can reach
 // our input or our sending through them.
-static bool TestHost() {
+bool TestHost() {
     wchar_t path[MAX_PATH] = {};
     GetModuleFileNameW(nullptr, path, MAX_PATH);
     const wchar_t* name = wcsrchr(path, L'\\');
     name = name ? name + 1 : path;
     return _wcsicmp(name, L"Gw2-64.exe") != 0 && _wcsicmp(name, L"Gw2.exe") != 0;
 }
+}  // namespace kb
 
 extern "C" __declspec(dllexport) void* Gw2KbTestHooks() {  // nexus_kb_selftest only
     if (!TestHost()) return nullptr;
@@ -473,6 +475,7 @@ extern "C" __declspec(dllexport) void* Gw2KbTestHooks() {  // nexus_kb_selftest 
     g_test.bufferingKeys = &g_bufferingKeys;
     g_test.sendInFlight = &g_sendInFlight;
     g_test.bufferingStartTime = &g_bufferingStartTime;
+    g_test.testToggleFallenAngel = &g_testToggleFallenAngel;
     return &g_test;
 }
 

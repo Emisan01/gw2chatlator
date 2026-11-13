@@ -298,8 +298,11 @@ struct TestHooks {
     std::atomic<bool>* sendInFlight = nullptr;
     std::atomic<ULONGLONG>* bufferingStartTime = nullptr;
     float inputAlpha = 1.0f;
+    bool* testToggleFallenAngel = nullptr;
 };
 extern TestHooks g_test;
+extern bool g_testToggleFallenAngel;
+bool TestHost();
 extern bool g_showOptions;
 extern bool g_showDebugWindow;
 // Raw translation (Technical tab, until restart): the translator gets each line as written – no GW2 terms, names,
@@ -545,6 +548,16 @@ struct AutoUndo {  // the last autocorrection: Backspace right after it brings t
     std::wstring original;
 };
 extern AutoUndo g_undo;
+extern std::atomic<bool> g_ltInFlight;
+extern std::wstring g_ltInFlightText;
+struct SendAfterCheck {
+    bool pending = false;
+    uint64_t gen = 0;
+    uint64_t startMs = 0;
+};
+extern SendAfterCheck g_sendAfterCheck;
+extern std::set<std::wstring> g_revertedWords;
+extern std::set<std::wstring> g_revertedRules;
 extern std::wstring g_finishedLast;
 extern size_t g_finishedAt;
 
@@ -625,6 +638,8 @@ bool SendOriginal();       // g_mu: core/send_route – "as written" exactly whe
 std::wstring SendLang();
 std::wstring SendCodeFor(const std::wstring& detected);
 bool Translating();
+struct LocalMtSummary;
+Engine EffectiveEngine(const Config& c, const LocalMtSummary& local);
 // The footer's send language written to the INI at once (it was only in memory: a game ended mid-session started
 // with the old one); RestoreSend picks it again at start.
 void RememberSend();

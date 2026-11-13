@@ -4,6 +4,7 @@
 #include "kb_options_parts.hpp"
 #include "core/slang.hpp"
 #include "core/word_model.hpp"
+#include "imgui/imgui_internal.h"
 
 namespace kb {
 
@@ -144,27 +145,67 @@ void RenderTypingPage(Config& edit) {
     }
     RowLabel(UI(Tr(L"Autocorrection")));
     int ac = static_cast<int>(edit.autoCorrect);
-    if (RowCombo("##ac", {UI(Tr(L"Off")), UI(Tr(L"Safe")), UI(Tr(L"Like a phone keyboard")), UI(Tr(L"Strong")), UI(Tr(L"Fallen Angel"))}, &ac))
+    if (ac < 0 || ac > 3) ac = 2;
+    static bool s_showConsentDialog = false;
+
+    if (edit.fallenAngel) {
+        ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.45f);
+    }
+    if (RowCombo("##ac", {UI(Tr(L"Off")), UI(Tr(L"Safe")), UI(Tr(L"Like a phone keyboard")), UI(Tr(L"Strong"))}, &ac)) {
         edit.autoCorrect = static_cast<AutoCorrectMode>(ac);
-    if (edit.autoCorrect == AutoCorrectMode::Strong)
-        RowHint(UI(Tr(L"Every word the dictionary does not know becomes its first suggestion when you go on writing – Backspace takes it back. Words still standing wrong are underlined; a click corrects them. GW2 terms, names and what you taught stay. It needs Windows' dictionary for the language you write in.")));
-    else if (edit.autoCorrect == AutoCorrectMode::FallenAngel)
-        RowHint(UI(Tr(L"Fallen Angel: Maximum autocorrect & typo repair (Fallen's mode). Automatically repairs common and 2+ letter typos (yu -> you, al -> all, ned -> need, dont -> don't), prioritizes corrections on the word bar, and enables one-click full sentence repair.")));
-    EndBox();
-    BeginBox(UI(Tr(L"Grammar & Phrasing")));
-    Switch("lt", UI(Tr(L"Grammar check (LanguageTool / Grammarly-like)")), &edit.useLanguageTool);
-    if (edit.useLanguageTool) {
-        static char ltUrlBuf[128] = {};
-        if (!ltUrlBuf[0] && !edit.languageToolUrl.empty()) {
-            std::string u = U8(edit.languageToolUrl);
-            std::snprintf(ltUrlBuf, sizeof(ltUrlBuf), "%s", u.c_str());
+        if (edit.autoCorrect == AutoCorrectMode::Strong) {
+            const std::wstring normUrl = NormalizeLanguageToolUrl(edit.languageToolUrl);
+            const bool isLocalHost = normUrl.find(L"localhost") != std::wstring::npos || normUrl.find(L"127.0.0.1") != std::wstring::npos;
+            if (!isLocalHost && edit.languageToolConsent.empty()) {
+                s_showConsentDialog = true;
+            }
         }
-        RowLabel(UI(Tr(L"Server URL")));
-        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 18);
-        if (ImGui::InputText("##lturl", ltUrlBuf, sizeof(ltUrlBuf))) {
-            edit.languageToolUrl = W(ltUrlBuf);
+    }
+    if (edit.fallenAngel) {
+        ImGui::PopStyleVar();
+        ImGui::PopItemFlag();
+        RowHint(UI(Tr(L"Fallen Angel mode is on (menu ≡)")));
+    } else {
+        if (edit.autoCorrect == AutoCorrectMode::Off) {
+            RowHint(UI(Tr(L"No words are corrected automatically.")));
+        } else if (edit.autoCorrect == AutoCorrectMode::Safe) {
+            RowHint(UI(Tr(L"Only Windows' sure spelling fixes are applied.")));
+        } else if (edit.autoCorrect == AutoCorrectMode::Phone) {
+            RowHint(UI(Tr(L"Misspelled words are corrected when you press Space.")));
+        } else if (edit.autoCorrect == AutoCorrectMode::Strong) {
+            RowHint(UI(Tr(L"Every word the dictionary does not know becomes its first suggestion when you go on writing – Backspace takes it back. Words still standing wrong are underlined; a click corrects them. GW2 terms, names and what you taught stay. It needs Windows' dictionary for the language you write in.")));
         }
-        RowHint(UI(Tr(L"Checks grammar, subject-verb agreement, and phrasing in real time (free public API or your own local server). Underlines grammar mistakes in amber; click the badge to fix all.")));
+    }
+
+    if (s_showConsentDialog) {
+        ImGui::OpenPopup((UI(Tr(L"Privacy Notice")) + "##lt_consent").c_str());
+    }
+
+    if (ImGui::BeginPopupModal((UI(Tr(L"Privacy Notice")) + "##lt_consent").c_str(), &s_showConsentDialog, ImGuiWindowFlags_AlwaysAutoResize)) {
+        const std::wstring normUrl = NormalizeLanguageToolUrl(edit.languageToolUrl);
+        const std::wstring notice = TrF(L"Strong uses LanguageTool online for grammar: your own text (never other players' lines) goes to {1}.", {normUrl});
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 25.0f);
+        ImGui::TextWrapped("%s", UI(notice).c_str());
+        ImGui::PopTextWrapPos();
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        if (ImGui::Button(UI(Tr(L"OK")).c_str(), ImVec2(ImGui::GetFontSize() * 6.0f, 0))) {
+            edit.languageToolConsent = normUrl;
+            edit.SaveValue(L"Spelling", L"LanguageToolConsent", normUrl);
+            s_showConsentDialog = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button(UI(Tr(L"Offline only")).c_str(), ImVec2(ImGui::GetFontSize() * 7.0f, 0))) {
+            edit.languageToolConsent = L"offline";
+            edit.SaveValue(L"Spelling", L"LanguageToolConsent", L"offline");
+            s_showConsentDialog = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
     }
     EndBox();
     BeginBox(UI(Tr(L"Learning")));

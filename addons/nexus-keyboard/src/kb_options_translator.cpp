@@ -106,18 +106,19 @@ void RenderTranslatorRows(Config& edit, bool full) {
         s_wantSet = false;
     }
     const Engine shown = s_wantSet ? s_want : edit.engine;
-    // "Automatic" takes the first key you entered (DeepL, Google, Microsoft, Supertext, a LibreTranslate server) and only
-    // without one MyMemory – the row and its line say which (MakeTranslator).
-    const bool anyKey = !edit.deeplKey.empty() || !edit.googleKey.empty() || !edit.msKey.empty() || !edit.supertextKey.empty() ||
-                        !edit.libreUrl.empty();
-    const bool myMemory = shown == Engine::Basic || (shown == Engine::Auto && !anyKey);
+    const Engine effective = EffectiveEngine(edit, local);
+    const bool isEffectiveLocal = IsLocalEngine(effective);
+    const bool effectiveLocalReady = local.module && LocalModelThere(local, effective);
+    // "Automatic" takes local models first (NLLB/M2M), else the first key you entered (DeepL, Google, etc.), else MyMemory.
+    const bool myMemory = shown == Engine::Basic || (shown == Engine::Auto && effective == Engine::Basic);
     const bool isLocal = IsLocalEngine(shown);
     const bool localReady = local.module && LocalModelThere(local, shown);
     // The row says what it is (the page and its box say "Translator" already): a local module and its size, or online.
     {
         std::wstring what;
-        if (isLocal && localReady) {
-            const uint64_t bytes = shown == Engine::Nllb ? local.nllbBytes : shown == Engine::M2m ? local.m2mBytes : local.opusBytes;
+        if ((isLocal && localReady) || (shown == Engine::Auto && isEffectiveLocal && effectiveLocalReady)) {
+            const Engine target = (shown == Engine::Auto) ? effective : shown;
+            const uint64_t bytes = target == Engine::Nllb ? local.nllbBytes : target == Engine::M2m ? local.m2mBytes : local.opusBytes;
             what = TrF(L"Local module · {1} MB", {std::to_wstring(bytes / (1024 * 1024))});
         } else if (isLocal) {
             what = Tr(L"Local module · missing");
@@ -129,7 +130,7 @@ void RenderTranslatorRows(Config& edit, bool full) {
     Engine chosen = shown;
     bool picked = false;
     const float fs = ImGui::GetFontSize();
-    const bool quality = isLocal && localReady;
+    const bool quality = (isLocal && localReady) || (shown == Engine::Auto && isEffectiveLocal && effectiveLocalReady);
     ImGui::SetNextItemWidth(quality ? std::max(fs * 6.0f, ControlW() - fs * 7.5f) : ControlW());
     if (ImGui::BeginCombo("##engine", UI(Tr(EngineLabel(shown))).c_str())) {
         picked = EngineItems(edit, local, shown, &chosen);
@@ -151,18 +152,11 @@ void RenderTranslatorRows(Config& edit, bool full) {
         }
         if (qi >= 0 && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(tip[qi]).c_str());
     }
-    // On Start the card's switch stands in this line when there is room, else in its own row. Its module missing: the
-    // list "What is still missing" above offers it.
-    if (!full && isLocal && localReady && NvidiaDriverPresent() && CardModuleComplete()) {
-        const std::string gpuLabel = UI(Tr(L"Calculate on the graphics card (NVIDIA)"));
-        const float need = std::round(fs * 1.125f) * 1.8f + fs * 0.6f + ImGui::CalcTextSize(gpuLabel.c_str()).x + fs;
-        ImGui::SameLine();
-        if (ImGui::GetContentRegionAvail().x < need) {
-            ImGui::NewLine();
-            RowLabel(UI(Tr(L"Graphics card")));
-        }
-        Switch("usegpustart", gpuLabel, &edit.useGpu,
-               UI(Tr(L"Takes about 0.7 GB of video memory with M2M100, 0.9 GB with NLLB-200. Without room it falls back to the CPU.")).c_str());
+    // On Start the card's switch stands in this box when an NVIDIA card is ready.
+    if (!full && ((isLocal && localReady) || (shown == Engine::Auto && isEffectiveLocal && effectiveLocalReady)) &&
+        NvidiaDriverPresent() && CardModuleComplete()) {
+        Switch("usegpu_start", UI(Tr(L"Calculate on the graphics card (NVIDIA)")), &edit.useGpu,
+               UI(Tr(L"Accelerate translation by NVIDIA graphics card. Takes about 0.7 GB of video memory with M2M100, 0.9 GB with NLLB-200. Without room it falls back to the CPU.")).c_str());
     }
     if (picked && chosen != shown) {
         s_wantSet = false;

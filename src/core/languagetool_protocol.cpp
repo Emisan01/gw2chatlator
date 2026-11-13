@@ -102,12 +102,178 @@ std::wstring NormalizeLanguageToolUrl(const std::wstring& in) {
     return u + L"/v2/check";
 }
 
+bool CanKeepGrammarMarks(const std::wstring& checkedText, const std::wstring& newText) {
+    if (checkedText.empty() || newText.size() < checkedText.size()) return false;
+    return newText.compare(0, checkedText.size(), checkedText) == 0;
+}
+
+std::vector<WordMark> MergeGrammarMarks(const std::vector<WordMark>& spellMarks,
+                                       const std::wstring& text,
+                                       const std::wstring& cachedText,
+                                       const std::vector<WordMark>& cachedMarks) {
+    std::vector<WordMark> merged = spellMarks;
+    if (!CanKeepGrammarMarks(cachedText, text)) return merged;
+
+    for (const auto& gm : cachedMarks) {
+        if (gm.span.end() > cachedText.size() || gm.span.end() > text.size()) continue;
+        if (text.compare(gm.span.start, gm.span.length, cachedText, gm.span.start, gm.span.length) != 0) continue;
+
+        auto it = std::find_if(merged.begin(), merged.end(), [&](const WordMark& sm) {
+            return sm.span.Overlaps(gm.span);
+        });
+        if (it != merged.end()) {
+            if (gm.isGrammar) {
+                *it = gm;
+            }
+        } else {
+            merged.push_back(gm);
+        }
+    }
+    std::sort(merged.begin(), merged.end(), [](const WordMark& a, const WordMark& b) {
+        return a.span.start < b.span.start;
+    });
+    return merged;
+}
+
+LtApplyResult ApplyLanguageToolMatches(const std::wstring& currentText,
+                                      const std::wstring& checkedText,
+                                      const std::vector<LtMatch>& matches,
+                                      AutoCorrectMode mode,
+                                      const std::set<std::wstring>& revertedWords,
+                                      const std::set<std::wstring>& revertedRules) {
+    LtApplyResult result;
+    result.text = currentText;
+    if (mode == AutoCorrectMode::Off || mode == AutoCorrectMode::Safe || mode == AutoCorrectMode::Phone) {
+        return result;
+    }
+    if (!CanKeepGrammarMarks(checkedText, currentText)) return result;
+
+    struct ValidMatch {
+        LtMatch m;
+        bool shouldReplace = false;
+    };
+    std::vector<ValidMatch> valid;
+    valid.reserve(matches.size());
+
+    for (const auto& m : matches) {
+        if (m.span.end() > checkedText.size() || m.span.end() > currentText.size()) continue;
+        const std::wstring orig = checkedText.substr(m.span.start, m.span.length);
+        if (currentText.compare(m.span.start, m.span.length, orig) != 0) continue;
+
+        bool replace = false;
+        if (!m.replacements.empty()) {
+            const std::wstring folded = CaseFold(orig);
+            const bool wordReverted = revertedWords.find(folded) != revertedWords.end();
+            const bool ruleReverted = !m.ruleId.empty() && revertedRules.find(m.ruleId) != revertedRules.end();
+            if (!wordReverted && !ruleReverted) {
+                if (mode == AutoCorrectMode::FallenAngel) {
+                    replace = true;
+                } else if (mode == AutoCorrectMode::Strong) {
+                    replace = m.Spelling() && m.replacements.size() == 1;
+                }
+            }
+        }
+        valid.push_back({m, replace});
+    }
+
+    struct AppliedChange {
+        size_t origStart;
+        size_t origLen;
+        std::wstring orig;
+        std::wstring rep;
+        bool isGrammar;
+        std::wstring ruleId;
+        std::wstring message;
+    };
+    std::vector<AppliedChange> applied;
+
+    std::vector<ValidMatch> toReplace;
+    for (const auto& vm : valid) {
+        if (vm.shouldReplace) toReplace.push_back(vm);
+    }
+    // Sort descending by start position to replace in-place from back to front
+    std::sort(toReplace.begin(), toReplace.end(), [](const ValidMatch& a, const ValidMatch& b) {
+        return a.m.span.start > b.m.span.start;
+    });
+
+    std::wstring newText = currentText;
+    for (const auto& vm : toReplace) {
+        const size_t start = vm.m.span.start;
+        const size_t len = vm.m.span.length;
+        const std::wstring orig = checkedText.substr(start, len);
+        const std::wstring rep = vm.m.replacements.front();
+        if (orig == rep) continue;
+
+        newText.replace(start, len, rep);
+        applied.push_back({start, len, orig, rep, vm.m.IsGrammar(), vm.m.ruleId, vm.m.message});
+    }
+
+    result.text = newText;
+    result.replacedCount = applied.size();
+
+    // Sort ascending by origStart to map positions into newText
+    std::sort(applied.begin(), applied.end(), [](const AppliedChange& a, const AppliedChange& b) {
+        return a.origStart < b.origStart;
+    });
+
+    auto mapPos = [&](size_t origPos) {
+        size_t pos = origPos;
+        for (const auto& app : applied) {
+            if (app.origStart + app.origLen <= origPos) {
+                pos += (app.rep.length() - app.origLen);
+            }
+        }
+        return pos;
+    };
+
+    // Marks for auto-applied changes (green underline)
+    for (const auto& app : applied) {
+        WordMark wm;
+        wm.span = {mapPos(app.origStart), app.rep.length()};
+        wm.fix = app.rep;
+        wm.original = app.orig;
+        wm.wasReplaced = true;
+        wm.isGrammar = app.isGrammar;
+        wm.ruleId = app.ruleId;
+        wm.message = app.message;
+        result.marks.push_back(std::move(wm));
+    }
+
+    // Marks for unreplaced items (red/amber underline)
+    for (const auto& vm : valid) {
+        if (vm.shouldReplace) continue;
+        WordMark wm;
+        wm.span = {mapPos(vm.m.span.start), vm.m.span.length};
+        wm.fix = vm.m.replacements.empty() ? L"" : vm.m.replacements.front();
+        wm.wasReplaced = false;
+        wm.isGrammar = vm.m.IsGrammar();
+        wm.ruleId = vm.m.ruleId;
+        wm.message = vm.m.message;
+        wm.shortMessage = vm.m.shortMessage;
+        result.marks.push_back(std::move(wm));
+    }
+
+    std::sort(result.marks.begin(), result.marks.end(), [](const WordMark& a, const WordMark& b) {
+        return a.span.start < b.span.start;
+    });
+
+    return result;
+}
+
 bool RateLimiter::Allow(unsigned long long nowMs) {
     sent_.erase(std::remove_if(sent_.begin(), sent_.end(), [&](unsigned long long t) { return nowMs - t >= 60000; }),
                 sent_.end());
     if (static_cast<int>(sent_.size()) >= perMinute_) return false;
     sent_.push_back(nowMs);
     return true;
+}
+
+unsigned long long RateLimiter::WaitMs(unsigned long long nowMs) {
+    sent_.erase(std::remove_if(sent_.begin(), sent_.end(), [&](unsigned long long t) { return nowMs - t >= 60000; }),
+                sent_.end());
+    if (static_cast<int>(sent_.size()) < perMinute_) return 0;
+    const unsigned long long oldest = sent_.front();
+    return (oldest + 60000 > nowMs) ? (oldest + 60000 - nowMs) : 0;
 }
 
 }  // namespace gct

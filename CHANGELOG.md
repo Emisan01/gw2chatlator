@@ -3,6 +3,33 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.10.8 — 2026-11-13 (GW2Chatlator for Nexus)
+
+- **LanguageTool Privacy Consent Notice:**
+  - Added an explicit privacy consent modal popup when first enabling Strong mode or Fallen Angel (`[Spelling] LanguageToolConsent`).
+  - In accordance with privacy invariants, clearly informs the player that only their own typed text (never incoming chat from other players) is sent to the configured LanguageTool server for analysis.
+  - Localhost and 127.0.0.1 setups run immediately without requiring a cloud privacy prompt.
+- **Fallen Angel Seamless Auto-Correction & Revert:**
+  - Integrated LanguageTool corrections directly into Fallen Angel mode: grammar, spelling and conjoined-word splitting (e.g. `hhabitseven` → `habits even`) apply automatically from back to front without prompting.
+  - Automatically modified spans receive green wavy underlines. Hovering over a green mark displays `"was: {original} → {fixed}\nClick: revert (undo)\nRight-click: keep word"`.
+  - Left-clicking a green mark reverts the word to its original form and remembers it for the session so it won't be replaced again.
+  - Right-clicking saves the original word permanently to your personal dictionary (`my-words.txt`).
+  - Hitting Backspace immediately after an auto-correction reverts the last change.
+  - Fallen Angel is toggled exclusively in the window menu ≡ (`[Spelling] FallenAngel=1`), cleanly decoupled from the autocorrection level dropdown (which shows disabled with a hint when Fallen Angel is on).
+- **Core Bug Fixes (Game Thread Safety & Buffer Sync):**
+  - Enter in Fallen Angel mode is now non-blocking: frame-by-frame check awaits in-flight grammar results up to 1500 ms without holding the lock or calling `Sleep()`, completely eliminating game freeze.
+  - Grammar and spelling replacements are dispatched through `g_edit`, keeping ImGui's internal text buffer and cursor position perfectly synchronized and preventing corrections from being overwritten on subsequent keystrokes.
+- **Streamlined Options (Chat & Typing Help):**
+  - Cleaned up Options → Chat → Typing help: "I write in", "Word suggestions while typing", "Spell checking (Windows, offline)", and 4 autocorrection levels ("Off", "Safe", "Like a phone keyboard", "Strong").
+  - Removed redundant "Grammar & Phrasing" box; LanguageTool Server URL moved to Options → Technical.
+- **Master Translator OFF Switch & Footer Controls:**
+  - Toggling translation OFF in the dashboard or selecting `Off (no translation)` in the footer dropdown menu completely deactivates translation for outgoing messages (`SendOriginal` enabled, no calls to MyMemory or local MT).
+  - The send language footer button displays `Translation: Off` (`Off` when narrow) in disabled gray text when translation is inactive.
+  - Selecting any target language from the footer dropdown instantly restores translation.
+- **Automatic Engine Selection & GPU Acceleration Switch:**
+  - Options → Start automatically prioritizes locally installed neural models (`NLLB-200`, `M2M-100`, `OPUS-MT`) over online services when set to `Automatic`, indicating `Local module · {MB} MB`.
+  - Upgraded GPU toggle in Options → Start and Options → Translator to a green switch matching "Chat translation is on": "Calculate on the graphics card (NVIDIA)".
+
 ## 2.10.7 — 2026-11-13 (GW2Chatlator for Nexus)
 
 - **LanguageTool Grammar & Phrasing Integration (In-Game Grammarly):**

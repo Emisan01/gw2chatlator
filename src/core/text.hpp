@@ -17,6 +17,21 @@ struct Span {
     bool Overlaps(const Span& o) const { return start < o.end() && o.start < end(); }
 };
 
+// Autocorrection levels (Off, Safe, Phone, Strong, FallenAngel).
+enum class AutoCorrectMode { Off, Safe, Phone, Strong, FallenAngel };
+
+// A word or phrase of the message the autocorrection or grammar check would write differently, and how.
+struct WordMark {
+    Span span;
+    std::wstring fix;
+    bool isGrammar = false;
+    std::wstring message;
+    std::wstring shortMessage;
+    bool wasReplaced = false;
+    std::wstring original;
+    std::wstring ruleId;
+};
+
 // Set of case-folded words (see CaseFold).
 using WordSet = std::unordered_set<std::wstring>;
 

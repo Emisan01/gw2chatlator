@@ -339,7 +339,7 @@ LtResult CheckWithLanguageTool(const std::wstring& serverUrl, const std::wstring
     const HttpResponse http =
         HttpRequestUrl(L"POST", NormalizeLanguageToolUrl(serverUrl),
                        L"Content-Type: application/x-www-form-urlencoded\r\nAccept: application/json\r\n",
-                       BuildLanguageToolForm(text, lang, motherTongue), 5000);
+                       BuildLanguageToolForm(text, lang, motherTongue), 3000);
     LtResult r;
     if (!http.transportOk) {
         r.error = L"LanguageTool: " + http.error;

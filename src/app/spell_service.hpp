@@ -46,15 +46,6 @@ struct WordChoices {
     bool Changes() const { return highlight >= 0 && !(firstIsTyped && highlight == 0); }
 };
 
-// A word or phrase of the message the autocorrection would write differently, and how.
-struct WordMark {
-    Span span;
-    std::wstring fix;
-    bool isGrammar = false;
-    std::wstring message;
-    std::wstring shortMessage;
-};
-
 class SpellService {
 public:
     // `tags` from SpellTagCandidates; `userWordsPath` is created on first add.

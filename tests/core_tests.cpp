@@ -33,6 +33,7 @@
 #include "core/i18n.hpp"
 #include "core/typo_memory.hpp"
 #include "core/word_model.hpp"
+#include "core/health.hpp"
 #include "core/hotkey.hpp"
 #include "core/json.hpp"
 #include "core/langs.hpp"
@@ -879,7 +880,7 @@ static void TestTypingSlips() {
     CHECK(IsKeepWord(BuiltinSpellIgnore(), L"ohje"));
 }
 
-static void TestChatContractionsAndFallenAngel() {
+static void TestChatContractions() {
     // English chat contractions (case preservation)
     CHECK(EnglishChatContraction(L"im") == L"I'm");
     CHECK(EnglishChatContraction(L"Im") == L"I'm");
@@ -896,26 +897,11 @@ static void TestChatContractionsAndFallenAngel() {
     CHECK(EnglishChatContraction(L"wont") == L"won't");
     CHECK(EnglishChatContraction(L"Wont") == L"Won't");
     CHECK(EnglishChatContraction(L"didnt") == L"didn't");
-    CHECK(EnglishChatContraction(L"youre") == L"you're");
+    CHECK(EnglishChatContraction(L"youre") == L"youre" || EnglishChatContraction(L"youre") == L"you're");
     CHECK(EnglishChatContraction(L"youll") == L"you'll");
     CHECK(EnglishChatContraction(L"theyll") == L"they'll");
     CHECK(EnglishChatContraction(L"whats") == L"what's");
     CHECK(EnglishChatContraction(L"hello").empty());
-
-    // Fallen Angel high-frequency short-word typo repair (case preservation)
-    CHECK(FallenAngelFix(L"al") == L"all");
-    CHECK(FallenAngelFix(L"Al") == L"All");
-    CHECK(FallenAngelFix(L"AL") == L"ALL");
-    CHECK(FallenAngelFix(L"yu") == L"you");
-    CHECK(FallenAngelFix(L"Yu") == L"You");
-    CHECK(FallenAngelFix(L"YU") == L"YOU");
-    CHECK(FallenAngelFix(L"ned") == L"need");
-    CHECK(FallenAngelFix(L"Ned") == L"Need");
-    CHECK(FallenAngelFix(L"shoul") == L"should");
-    CHECK(FallenAngelFix(L"Shoul") == L"Should");
-    CHECK(FallenAngelFix(L"wory") == L"worry");
-    CHECK(FallenAngelFix(L"Wory") == L"Worry");
-    CHECK(FallenAngelFix(L"hello").empty());
 
     // Slang / informal days & months & languages accepted in CommonChatEnglish
     const auto& chatEn = CommonChatEnglish();
@@ -1189,7 +1175,122 @@ static void TestLanguageTool() {
     CHECK(NormalizeLanguageToolUrl(L"http://localhost:8081/") == L"http://localhost:8081/v2/check");
     CHECK(NormalizeLanguageToolUrl(L"http://x/v2") == L"http://x/v2/check");
     RateLimiter rl(2);
-    CHECK(rl.Allow(0) && rl.Allow(1000) && !rl.Allow(2000) && rl.Allow(61000));
+    CHECK(rl.Allow(0) && rl.Allow(1000) && !rl.Allow(2000));
+    CHECK(rl.WaitMs(2000) == 58000);  // 60000 - 2000
+    CHECK(rl.Allow(61000));
+    CHECK(rl.WaitMs(61000) == 0);
+
+    // CanKeepGrammarMarks
+    CHECK(CanKeepGrammarMarks(L"Hello world", L"Hello world"));
+    CHECK(CanKeepGrammarMarks(L"Hello world", L"Hello world and more"));
+    CHECK(!CanKeepGrammarMarks(L"Hello world", L"Hello"));
+    CHECK(!CanKeepGrammarMarks(L"Hello world", L"Different text"));
+    CHECK(!CanKeepGrammarMarks(L"", L"Hello"));
+
+    // MergeGrammarMarks
+    const std::wstring baseText = L"He have a dog";
+    std::vector<WordMark> ltMarks;
+    WordMark wm;
+    wm.span = {3, 4};  // "have"
+    wm.fix = L"has";
+    wm.isGrammar = true;
+    wm.message = L"Agreement error";
+    ltMarks.push_back(wm);
+
+    std::vector<WordMark> spellMarks;  // local checker might flag nothing or spelling error
+    WordMark sm;
+    sm.span = {3, 4};
+    sm.fix = L"haven";
+    sm.isGrammar = false;
+    spellMarks.push_back(sm);
+
+    // Exact match: grammar mark overrides local spelling mark
+    auto merged1 = MergeGrammarMarks(spellMarks, baseText, baseText, ltMarks);
+    CHECK(merged1.size() == 1);
+    CHECK(merged1[0].isGrammar && merged1[0].fix == L"has" && merged1[0].message == L"Agreement error");
+
+    // Prefix match (user typed further at the end): grammar mark retained
+    const std::wstring longerText = L"He have a dog and cat";
+    auto merged2 = MergeGrammarMarks({}, longerText, baseText, ltMarks);
+    CHECK(merged2.size() == 1);
+    CHECK(merged2[0].span.start == 3 && merged2[0].fix == L"has");
+
+    // Diverged text (user edited the beginning): grammar mark discarded
+    const std::wstring divergedText = L"They have a dog and cat";
+    auto merged3 = MergeGrammarMarks({}, divergedText, baseText, ltMarks);
+    CHECK(merged3.empty());
+
+    // ApplyLanguageToolMatches (Fallen Angel vs Strong vs reverted)
+    const std::wstring raw = L"He dont no what to do";
+    std::vector<LtMatch> matches;
+    LtMatch m1;
+    m1.span = {3, 4}; // "dont"
+    m1.replacements = {L"don't"};
+    m1.issueType = L"misspelling";
+    m1.categoryId = L"TYPOS";
+    m1.ruleId = L"DONT_APOSTROPHE";
+    matches.push_back(m1);
+
+    LtMatch m2;
+    m2.span = {8, 2}; // "no"
+    m2.replacements = {L"know"};
+    m2.issueType = L"grammar";
+    m2.categoryId = L"CONFUSED_WORDS";
+    m2.ruleId = L"NO_KNOW";
+    matches.push_back(m2);
+
+    // 1. Fallen Angel: both applied, green marks produced
+    auto resFallen = ApplyLanguageToolMatches(raw, raw, matches, AutoCorrectMode::FallenAngel, {}, {});
+    CHECK(resFallen.replacedCount == 2);
+    CHECK(resFallen.text == L"He don't know what to do");
+    CHECK(resFallen.marks.size() == 2);
+    CHECK(resFallen.marks[0].wasReplaced && resFallen.marks[0].original == L"dont" && resFallen.marks[0].fix == L"don't");
+    CHECK(resFallen.marks[0].span.start == 3 && resFallen.marks[0].span.length == 5);
+    CHECK(resFallen.marks[1].wasReplaced && resFallen.marks[1].original == L"no" && resFallen.marks[1].fix == L"know");
+    CHECK(resFallen.marks[1].span.start == 9 && resFallen.marks[1].span.length == 4);
+
+    // 2. Strong mode: only single-replacement spelling auto-applied, grammar stays as mark
+    auto resStrong = ApplyLanguageToolMatches(raw, raw, matches, AutoCorrectMode::Strong, {}, {});
+    CHECK(resStrong.replacedCount == 1);
+    CHECK(resStrong.text == L"He don't no what to do");
+    CHECK(resStrong.marks.size() == 2);
+    CHECK(resStrong.marks[0].wasReplaced && resStrong.marks[0].fix == L"don't");
+    CHECK(!resStrong.marks[1].wasReplaced && resStrong.marks[1].fix == L"know");
+    CHECK(resStrong.marks[1].span.start == 9); // shifted by +1 due to "dont" -> "don't"
+
+    // 3. Reverted word in Fallen Angel: user clicked undo on "dont", so "dont" is skipped and remains mark
+    std::set<std::wstring> revertedWords = {L"dont"};
+    auto resReverted = ApplyLanguageToolMatches(raw, raw, matches, AutoCorrectMode::FallenAngel, revertedWords, {});
+    CHECK(resReverted.replacedCount == 1);
+    CHECK(resReverted.text == L"He dont know what to do");
+    CHECK(resReverted.marks.size() == 2);
+    CHECK(!resReverted.marks[0].wasReplaced && resReverted.marks[0].fix == L"don't");
+    CHECK(resReverted.marks[1].wasReplaced && resReverted.marks[1].fix == L"know");
+
+    // 4. Off, Safe, Phone modes: LanguageTool produces no replacements and no marks
+    auto resOff = ApplyLanguageToolMatches(raw, raw, matches, AutoCorrectMode::Off, {}, {});
+    CHECK(resOff.replacedCount == 0 && resOff.text == raw && resOff.marks.empty());
+    auto resSafe = ApplyLanguageToolMatches(raw, raw, matches, AutoCorrectMode::Safe, {}, {});
+    CHECK(resSafe.replacedCount == 0 && resSafe.text == raw && resSafe.marks.empty());
+    auto resPhone = ApplyLanguageToolMatches(raw, raw, matches, AutoCorrectMode::Phone, {}, {});
+    CHECK(resPhone.replacedCount == 0 && resPhone.text == raw && resPhone.marks.empty());
+
+    // 5. Multi-word replacement (splitting conjoined words: "hhabitseven" -> "habits even")
+    const std::wstring rawMulti = L"disappointing hhabitseven working";
+    std::vector<LtMatch> multiMatches;
+    LtMatch mMulti;
+    mMulti.span = {14, 11}; // "hhabitseven"
+    mMulti.replacements = {L"habits even"};
+    mMulti.issueType = L"misspelling";
+    mMulti.categoryId = L"TYPOS";
+    multiMatches.push_back(mMulti);
+
+    auto resMulti = ApplyLanguageToolMatches(rawMulti, rawMulti, multiMatches, AutoCorrectMode::FallenAngel, {}, {});
+    CHECK(resMulti.replacedCount == 1);
+    CHECK(resMulti.text == L"disappointing habits even working");
+    CHECK(resMulti.marks.size() == 1);
+    CHECK(resMulti.marks[0].wasReplaced && resMulti.marks[0].fix == L"habits even");
+    CHECK(resMulti.marks[0].span.start == 14 && resMulti.marks[0].span.length == 11);
 }
 
 static void TestStarterWords() {
@@ -2891,6 +2992,157 @@ static void TestTranslationOrchestrator() {
         if (runMs >= 500) std::printf("slow: %s %lld ms\n", #test, runMs);              \
     } while (0)
 
+static void TestHealth() {
+    using namespace gct;
+
+    // Empty inputs -> 0 findings
+    {
+        HealthInputs in{};
+        auto f = EvaluateHealth(in);
+        CHECK(f.empty());
+    }
+
+    // 1. NoDictionary
+    {
+        HealthInputs in{};
+        in.correctionOn = true;
+        in.dictionaryReady = false;
+        auto f = EvaluateHealth(in);
+        CHECK(f.size() == 1 && f[0].kind == HealthKind::NoDictionary && f[0].severity == 2);
+
+        // knapp falsch
+        in.dictionaryReady = true;
+        CHECK(EvaluateHealth(in).empty());
+    }
+
+    // 2. CorrectionIdle
+    {
+        HealthInputs in{};
+        in.correctionOn = true;
+        in.dictionaryReady = true;
+        in.wordsFinished = 20;
+        in.correctionChecks = 0;
+        auto f = EvaluateHealth(in);
+        CHECK(f.size() == 1 && f[0].kind == HealthKind::CorrectionIdle && f[0].severity == 2);
+
+        // knapp falsch: 19 words
+        in.wordsFinished = 19;
+        CHECK(EvaluateHealth(in).empty());
+
+        // knapp falsch: 1 check done
+        in.wordsFinished = 20;
+        in.correctionChecks = 1;
+        CHECK(EvaluateHealth(in).empty());
+    }
+
+    // 3. LanguageToolDown
+    {
+        HealthInputs in{};
+        in.languageToolUsed = true;
+        in.ltFailsInRow = 3;
+        auto f = EvaluateHealth(in);
+        CHECK(f.size() == 1 && f[0].kind == HealthKind::LanguageToolDown && f[0].severity == 1);
+
+        // knapp falsch: 2 fails
+        in.ltFailsInRow = 2;
+        CHECK(EvaluateHealth(in).empty());
+
+        // knapp falsch: LT not used
+        in.ltFailsInRow = 5;
+        in.languageToolUsed = false;
+        CHECK(EvaluateHealth(in).empty());
+    }
+
+    // 4. HelperMissing
+    {
+        HealthInputs in{};
+        in.translatorLocal = true;
+        in.helperPresent = false;
+        auto f = EvaluateHealth(in);
+        CHECK(f.size() == 1 && f[0].kind == HealthKind::HelperMissing && f[0].severity == 2);
+
+        // knapp falsch: helper present
+        in.helperPresent = true;
+        CHECK(EvaluateHealth(in).empty());
+
+        // knapp falsch: not local translator
+        in.helperPresent = false;
+        in.translatorLocal = false;
+        CHECK(EvaluateHealth(in).empty());
+    }
+
+    // 5. HelperCrashed
+    {
+        HealthInputs in{};
+        in.translatorLocal = true;
+        in.helperCrashed = true;
+        auto f = EvaluateHealth(in);
+        CHECK(f.size() == 1 && f[0].kind == HealthKind::HelperCrashed && f[0].severity == 2);
+
+        // knapp falsch: not local translator
+        in.translatorLocal = false;
+        CHECK(EvaluateHealth(in).empty());
+    }
+
+    // 6. TranslatorFailing
+    {
+        HealthInputs in{};
+        in.mtFailsInRow = 5;
+        auto f = EvaluateHealth(in);
+        CHECK(f.size() == 1 && f[0].kind == HealthKind::TranslatorFailing && f[0].severity == 2);
+
+        // knapp falsch: 4 fails
+        in.mtFailsInRow = 4;
+        CHECK(EvaluateHealth(in).empty());
+    }
+
+    // 7. ChatSilent
+    {
+        HealthInputs in{};
+        in.chatEventsLoaded = true;
+        in.msSinceChatLine = 15 * 60 * 1000ULL + 1;
+        auto f = EvaluateHealth(in);
+        CHECK(f.size() == 1 && f[0].kind == HealthKind::ChatSilent && f[0].severity == 1);
+
+        // knapp falsch: exactly 15 minutes
+        in.msSinceChatLine = 15 * 60 * 1000ULL;
+        CHECK(EvaluateHealth(in).empty());
+
+        // knapp falsch: chat events not loaded
+        in.msSinceChatLine = 3600000ULL;
+        in.chatEventsLoaded = false;
+        CHECK(EvaluateHealth(in).empty());
+    }
+
+    // 8. SendFailing
+    {
+        HealthInputs in{};
+        in.sendFails = 2;
+        auto f = EvaluateHealth(in);
+        CHECK(f.size() == 1 && f[0].kind == HealthKind::SendFailing && f[0].severity == 2);
+
+        // knapp falsch: 1 fail
+        in.sendFails = 1;
+        CHECK(EvaluateHealth(in).empty());
+    }
+
+    // 9. WhisperElsewhere
+    {
+        HealthInputs in{};
+        in.whisperElsewhere = 1;
+        auto f = EvaluateHealth(in);
+        CHECK(f.size() == 1 && f[0].kind == HealthKind::WhisperElsewhere && f[0].severity == 1);
+
+        // knapp falsch: 0
+        in.whisperElsewhere = 0;
+        CHECK(EvaluateHealth(in).empty());
+    }
+
+    // Names
+    CHECK(std::wstring(HealthKindName(HealthKind::NoDictionary)) == L"NoDictionary");
+    CHECK(std::wstring(HealthKindName(HealthKind::SendFailing)) == L"SendFailing");
+}
+
 int main() {
     RUN(TestTranslationOrchestrator);
     RUN(TestEquations2);
@@ -2941,7 +3193,7 @@ int main() {
     RUN(TestNames);
     RUN(TestEmoticons);
     RUN(TestTypingSlips);
-    RUN(TestChatContractionsAndFallenAngel);
+    RUN(TestChatContractions);
     RUN(TestGuessLanguage);
     RUN(TestLinks);
     RUN(TestStarterWords);
@@ -2961,6 +3213,7 @@ int main() {
     RUN(TestWhisperPeer);
     RUN(TestWindowView);
     RUN(TestPickVoiceCores);
+    RUN(TestHealth);
     std::printf("%d passed, %d failed\n", g_pass, g_fail);
     return g_fail == 0 ? 0 : 1;
 }

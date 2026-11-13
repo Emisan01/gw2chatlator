@@ -16,9 +16,6 @@
 namespace gct {
 
 enum class Engine { Auto, Basic, DeepL, Google, Microsoft, Libre, Local, Nllb, M2m, Supertext };
-// Strong: Phone, and every other word the dictionary rejects becomes its first suggestion (for whoever types fast
-// and counts on the correction; a surprise now and then is the price – Backspace takes it back).
-enum class AutoCorrectMode { Off, Safe, Phone, Strong, FallenAngel };
 
 struct Config {
     std::wstring dataDir;
@@ -70,8 +67,12 @@ struct Config {
     std::wstring writeIn;  // the language you type in ("DE", "EN-GB"); empty = the keyboard layout's language
     bool spellEnabled = true;
     bool useLanguageTool = false;
+    bool fallenAngel = false;  // Fallen Angel mode (menu ≡)
     std::wstring languageToolUrl = L"https://api.languagetool.org";
+    std::wstring languageToolConsent;  // Server URL the user consented to ("offline" = offline only)
     AutoCorrectMode autoCorrect = AutoCorrectMode::Phone;
+    AutoCorrectMode EffectiveAutoCorrect() const { return fallenAngel ? AutoCorrectMode::FallenAngel : autoCorrect; }
+    bool LanguageToolActive() const;
     bool suggestions = true;     // word bar above the input (completions, next word)
     bool learnWords = true;      // learn from what you send
     bool learnLater = false;     // ... not while playing: collected, learned when you choose ([Spelling] LearnLater)

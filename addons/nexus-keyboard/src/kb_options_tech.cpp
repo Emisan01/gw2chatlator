@@ -284,6 +284,16 @@ void RenderTechnicalPage(Config& edit) {
                   6000);
     }
     Hint(UI(Tr(L"For comparing: the translator gets each line exactly as written, its result is shown as it comes. Chat codes and links stay protected. Not saved.")));
+    char ltUrlBuf[256] = {};
+    const std::string u = U8(edit.languageToolUrl);
+    std::snprintf(ltUrlBuf, sizeof(ltUrlBuf), "%s", u.c_str());
+    RowLabel(UI(Tr(L"LanguageTool Server")));
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 18);
+    if (ImGui::InputText("##lturl", ltUrlBuf, sizeof(ltUrlBuf))) {
+        edit.languageToolUrl = W(ltUrlBuf);
+        edit.SaveValue(L"Spelling", L"LanguageToolUrl", edit.languageToolUrl);
+    }
+    RowHint(UI(Tr(L"Server for grammar checking: default https://api.languagetool.org, or your own local server (e.g. http://localhost:8081).")));
     EndBox();
     RenderWordLists();
     BeginBox(UI(Tr(L"Status")));

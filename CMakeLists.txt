@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(GW2KeyboardNexus VERSION 2.10.7 LANGUAGES CXX)
+project(GW2KeyboardNexus VERSION 2.10.8 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -72,6 +72,7 @@ add_library(gct_core STATIC
     src/core/window_layout.cpp
     src/core/soft_wrap.cpp
     src/core/translation_orchestrator.cpp
+    src/core/health.cpp
 )
 target_include_directories(gct_core PUBLIC src)
 

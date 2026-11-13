@@ -11,6 +11,7 @@
 #include <mutex>
 #include <tuple>
 
+#include "core/languagetool_protocol.hpp"
 #include "core/text.hpp"
 #include "win/files.hpp"
 
@@ -322,11 +323,17 @@ void Config::Load(const std::wstring& dir) {
     voiceChatPause = ini.Bool(L"Voice", L"PauseForVoiceChat", true);
     spellEnabled = ini.Bool(L"Spelling", L"Enabled", true);
     useLanguageTool = ini.Bool(L"Spelling", L"LanguageTool", false);
+    fallenAngel = ini.Bool(L"Spelling", L"FallenAngel", false);
     languageToolUrl = ini.Str(L"Spelling", L"LanguageToolUrl", L"https://api.languagetool.org");
+    languageToolConsent = ini.Str(L"Spelling", L"LanguageToolConsent", L"");
     // v0.4 had AutoCorrect=1/0 (Windows' sure fixes only).
     autoCorrect = ParseAutoCorrect(ini.Str(L"Spelling", L"AutoCorrectMode", L""),
                                    ini.Bool(L"Spelling", L"AutoCorrect", true) ? AutoCorrectMode::Phone
                                                                                : AutoCorrectMode::Off);
+    if (autoCorrect == AutoCorrectMode::FallenAngel) {
+        fallenAngel = true;
+        autoCorrect = AutoCorrectMode::Strong;
+    }
     suggestions = ini.Bool(L"Spelling", L"Suggestions", true);
     learnWords = ini.Bool(L"Spelling", L"Learn", true);
     learnLater = ini.Bool(L"Spelling", L"LearnLater", false);
@@ -529,7 +536,9 @@ void Config::SaveAll() const {
     SaveValue(L"Voice", L"VoiceChatApps", AsciiEscape(voiceChatApps));
     SaveBool(L"Spelling", L"Enabled", spellEnabled);
     SaveBool(L"Spelling", L"LanguageTool", useLanguageTool);
+    SaveBool(L"Spelling", L"FallenAngel", fallenAngel);
     SaveValue(L"Spelling", L"LanguageToolUrl", languageToolUrl);
+    SaveValue(L"Spelling", L"LanguageToolConsent", languageToolConsent);
     SaveValue(L"Spelling", L"AutoCorrectMode", AutoCorrectKey(autoCorrect));
     SaveBool(L"Spelling", L"Suggestions", suggestions);
     SaveBool(L"Spelling", L"Learn", learnWords);
@@ -544,6 +553,15 @@ void Config::SaveAll() const {
     SaveValue(L"Window", L"ChatTabName", chatTabName);
     SaveValue(L"Window", L"LineSpacing", std::to_wstring(chatSpacing));
     SaveBool(L"Window", L"FocusOnGameChat", focusOnGameChat);
+}
+
+bool Config::LanguageToolActive() const {
+    const AutoCorrectMode m = EffectiveAutoCorrect();
+    if (m != AutoCorrectMode::Strong && m != AutoCorrectMode::FallenAngel) return false;
+    const std::wstring normUrl = NormalizeLanguageToolUrl(languageToolUrl);
+    const bool isLocal = normUrl.find(L"localhost") != std::wstring::npos || normUrl.find(L"127.0.0.1") != std::wstring::npos;
+    if (isLocal) return true;
+    return !languageToolConsent.empty() && languageToolConsent != L"offline";
 }
 
 }  // namespace gct

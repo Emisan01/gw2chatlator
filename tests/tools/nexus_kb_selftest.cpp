@@ -77,6 +77,7 @@ struct TestHooks {  // as in kb_main.cpp
     std::atomic<bool>* sendInFlight = nullptr;
     std::atomic<ULONGLONG>* bufferingStartTime = nullptr;
     float inputAlpha = 1.0f;
+    bool* testToggleFallenAngel = nullptr;
 };
 void Free(void* p, void*) { std::free(p); }
 
@@ -1147,6 +1148,31 @@ int wmain(int argc, wchar_t** argv) {
         frames(5);
         std::printf("reply language for Jean Invented: %s\n", th->sendLang);
         ok = ok && std::strcmp(th->sendLang, "FR") == 0;
+
+        // Fallen Angel mode menu item toggle test (Punkt 0):
+        // Triggering the menu item action inside RenderMainMenu under g_mu must not deadlock and must toggle FallenAngel in INI.
+        if (th->testToggleFallenAngel) {
+            const int iniBefore = GetPrivateProfileIntW(L"Spelling", L"FallenAngel", 0, g_iniPath.c_str());
+            *th->testToggleFallenAngel = true;
+            frames(2);
+            Sleep(550);
+            frames(2);
+            Sleep(50);
+            const int iniAfter1 = GetPrivateProfileIntW(L"Spelling", L"FallenAngel", 0, g_iniPath.c_str());
+            *th->testToggleFallenAngel = true;
+            frames(2);
+            Sleep(550);
+            frames(2);
+            Sleep(50);
+            const int iniAfter2 = GetPrivateProfileIntW(L"Spelling", L"FallenAngel", 0, g_iniPath.c_str());
+            ChatSourceTest stToggle{};
+            if (src) src(0, &stToggle, nullptr);
+            std::printf("menu ≡ Fallen Angel toggle: before %d -> toggle1 %d -> toggle2 %d, add-on %s\n",
+                        iniBefore, iniAfter1, iniAfter2, stToggle.disabled ? "OFF" : "alive");
+            const bool toggleOk = (iniAfter1 != iniBefore) && (iniAfter2 == iniBefore) && !stToggle.disabled;
+            if (!toggleOk) std::printf("FAIL: Fallen Angel menu item toggle failed or crashed the add-on\n");
+            ok = ok && toggleOk;
+        }
     }
     // The chat source guard (2): what an update of Events: Chat could hand over – a changed layout, unreadable memory,
     // a guard page, endless strings, thousands of random lines – and chat codes in view. Nothing may take the process

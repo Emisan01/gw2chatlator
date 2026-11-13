@@ -30,6 +30,7 @@ std::atomic<bool> g_keyboardFree{true};  // ImGui does not hold the keyboard (ke
 std::atomic<int> g_fps{0};
 bool g_show = true;
 TestHooks g_test;
+bool g_testToggleFallenAngel = false;
 bool g_showOptions = false;  // our own options window (menu ≡ / the button on the Nexus page)
 bool g_showDebugWindow = false;  // dedicated debug & diagnostic inspection window
 
@@ -320,6 +321,11 @@ int g_boxLines = 4;  // the input's lines this frame: your setting, more while a
 int g_wrapWantLines = 0;
 int g_pick = -1;  // Tab / Shift+Tab move through the word bar; Space writes the picked word
 AutoUndo g_undo;
+std::atomic<bool> g_ltInFlight{false};
+std::wstring g_ltInFlightText;
+SendAfterCheck g_sendAfterCheck;
+std::set<std::wstring> g_revertedWords;
+std::set<std::wstring> g_revertedRules;
 std::wstring g_finishedLast;  // learning mode: the last word when a space last followed it (see NoteSelfFix)
 size_t g_finishedAt = 0;
 bool g_voiceReady = false;       // the helper said "ready"
@@ -550,6 +556,13 @@ bool VoiceFirst() { return g_inputSpoken && g_cfg.voiceEnabled && g_cfg.voiceTra
 
 // The message's route (core/send_route: one pure function, its equations in core_tests). g_mu held.
 gct::SendRoute CurrentRoute(bool asSpokenWithSwitch = false) {
+    const bool voiceRoute = (asSpokenWithSwitch || g_inputSpoken) && (asSpokenWithSwitch || g_cfg.voiceEnabled) && (asSpokenWithSwitch || g_cfg.voiceTranslate);
+    if (!g_nx.translateChat && !TestHost() && !voiceRoute) {
+        gct::SendRoute r;
+        r.translating = false;
+        r.lang.clear();
+        return r;
+    }
     gct::SendState s;
     s.spoken = asSpokenWithSwitch || g_inputSpoken;
     s.voiceOn = asSpokenWithSwitch || g_cfg.voiceEnabled;
@@ -574,7 +587,7 @@ std::wstring SendCodeFor(const std::wstring& detected) {
     if (p == L"ZH") return L"ZH-HANS";
     return p;
 }
-bool Translating() { return CurrentRoute().translating; }
+bool Translating() { return (g_nx.translateChat || TestHost() || VoiceFirst()) && CurrentRoute().translating; }
 std::atomic<bool> g_mtLoading{false};
 void RememberSend() {
     const size_t n = g_cfg.writeLangs.size();
@@ -681,25 +694,40 @@ bool NvidiaDriverPresent() {
     return s_present;
 }
 
+Engine EffectiveEngine(const Config& c, const LocalMtSummary& local) {
+    if (c.engine != Engine::Auto) return c.engine;
+    if (local.module && local.nllb) return Engine::Nllb;
+    if (local.module && local.m2m) return Engine::M2m;
+    if (local.module && local.opus) return Engine::Local;
+    if (!c.deeplKey.empty()) return Engine::DeepL;
+    if (!c.googleKey.empty()) return Engine::Google;
+    if (!c.msKey.empty()) return Engine::Microsoft;
+    if (!c.supertextKey.empty()) return Engine::Supertext;
+    if (!c.libreUrl.empty()) return Engine::Libre;
+    return Engine::Basic;
+}
+
 std::shared_ptr<Translator> MakeTranslator(const Config& c) {  // the engine you set, else the best key you have
     if (g_myMemorySessionFallback) return MakeMyMemoryTranslator(c.basicEmail);
-    if (c.engine == Engine::Basic) return MakeMyMemoryTranslator(c.basicEmail);
-    if (c.engine == Engine::DeepL && !c.deeplKey.empty()) return MakeDeepLTranslator(c.deeplKey);
-    if (c.engine == Engine::Google && !c.googleKey.empty()) return MakeGoogleTranslator(c.googleKey);
-    if (c.engine == Engine::Microsoft && !c.msKey.empty()) return MakeMicrosoftTranslator(c.msKey, c.msRegion);
-    if (c.engine == Engine::Supertext && !c.supertextKey.empty()) return MakeSupertextTranslator(c.supertextKey);
-    if (c.engine == Engine::Libre && !c.libreUrl.empty()) return MakeLibreTranslator(c.libreUrl, c.libreKey);
-    if (c.engine == Engine::Local || c.engine == Engine::Nllb || c.engine == Engine::M2m) {
+    const LocalMtSummary local = LocalMtNow(c.dataDir);
+    const Engine eng = EffectiveEngine(c, local);
+    if (eng == Engine::Basic) return MakeMyMemoryTranslator(c.basicEmail);
+    if (eng == Engine::DeepL && !c.deeplKey.empty()) return MakeDeepLTranslator(c.deeplKey);
+    if (eng == Engine::Google && !c.googleKey.empty()) return MakeGoogleTranslator(c.googleKey);
+    if (eng == Engine::Microsoft && !c.msKey.empty()) return MakeMicrosoftTranslator(c.msKey, c.msRegion);
+    if (eng == Engine::Supertext && !c.supertextKey.empty()) return MakeSupertextTranslator(c.supertextKey);
+    if (eng == Engine::Libre && !c.libreUrl.empty()) return MakeLibreTranslator(c.libreUrl, c.libreKey);
+    if (eng == Engine::Local || eng == Engine::Nllb || eng == Engine::M2m) {
         const std::wstring gpuHelper = AddonsDir() + L"GW2Keyboard\\gw2kb_translate_gpu.exe";
         // the files themselves, not the options pages' once-a-second look: right after the card's download this decides,
         // and it may run on the worker
         const bool gpu = c.useGpu && NvidiaDriverPresent() && gct::GpuModulePresent(KeyboardDir());
         const std::wstring helper = gpu ? gpuHelper : AddonsDir() + L"GW2Keyboard\\gw2kb_translate.exe";
-        auto local = c.engine == Engine::M2m ? MakeM2mTranslator(helper, c.dataDir)
-                                             : MakeLocalMtTranslator(helper, c.dataDir, c.engine == Engine::Nllb);
-        if (c.engine == Engine::M2m) SetLocalMtDecode(local, c.m2m);
-        SetLocalMtVersions(local, c.versions);
-        return local;
+        auto localMt = eng == Engine::M2m ? MakeM2mTranslator(helper, c.dataDir)
+                                          : MakeLocalMtTranslator(helper, c.dataDir, eng == Engine::Nllb);
+        if (eng == Engine::M2m) SetLocalMtDecode(localMt, c.m2m);
+        SetLocalMtVersions(localMt, c.versions);
+        return localMt;
     }
     if (!c.deeplKey.empty()) return MakeDeepLTranslator(c.deeplKey);
     if (!c.googleKey.empty()) return MakeGoogleTranslator(c.googleKey);

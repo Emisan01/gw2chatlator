@@ -5,6 +5,7 @@
 // (unlimited, private). Portable request/response code; the HTTP call is in
 // win/online_translators.
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -47,12 +48,42 @@ LtResult ParseLanguageToolResponse(const std::string& body, const std::wstring& 
 // "/v2" or "/v2/check") -> full check URL.
 std::wstring NormalizeLanguageToolUrl(const std::wstring& base);
 
+// Returns true if cached grammar marks from `checkedText` are still valid for `newText`.
+// Valid when newText begins with checkedText (user continuing to type at the end) or is identical.
+bool CanKeepGrammarMarks(const std::wstring& checkedText, const std::wstring& newText);
+
+// Merges spelling marks from local checker and grammar marks from LanguageTool.
+// Grammar marks from `cachedMarks` are retained if CanKeepGrammarMarks(cachedText, text).
+// Overlapping spans: grammar marks take priority, keeping grammar message and explanation.
+std::vector<WordMark> MergeGrammarMarks(const std::vector<WordMark>& spellMarks,
+                                       const std::wstring& text,
+                                       const std::wstring& cachedText,
+                                       const std::vector<WordMark>& cachedMarks);
+
+struct LtApplyResult {
+    std::wstring text;
+    std::vector<WordMark> marks;
+    size_t replacedCount = 0;
+};
+
+// Applies LanguageTool matches to `currentText` according to `mode`.
+// Matches are applied from back to front so indices remain valid.
+// `revertedWords` and `revertedRules` prevent re-applying changes the user undid.
+LtApplyResult ApplyLanguageToolMatches(const std::wstring& currentText,
+                                      const std::wstring& checkedText,
+                                      const std::vector<LtMatch>& matches,
+                                      AutoCorrectMode mode,
+                                      const std::set<std::wstring>& revertedWords,
+                                      const std::set<std::wstring>& revertedRules);
+
 // The public server allows 20 requests per minute per IP; this keeps us below.
 class RateLimiter {
 public:
     RateLimiter(int perMinute) : perMinute_(perMinute) {}
     // True if a request may go out at time `nowMs` (and records it).
     bool Allow(unsigned long long nowMs);
+    // Milliseconds to wait until the next request is allowed (0 if allowed now).
+    unsigned long long WaitMs(unsigned long long nowMs);
 
 private:
     int perMinute_;

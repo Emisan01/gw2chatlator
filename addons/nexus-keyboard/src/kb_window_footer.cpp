@@ -19,6 +19,7 @@ void SendLanguageItems(bool tabAware) {
         ImGui::CloseCurrentPopup();
     };
     auto choose = [&](size_t i) {
+        if (!g_nx.translateChat) SetChatTranslation(true);
         if (inTab) {  // this player's tab only
             g_tabs[g_activeTab].sendLang = i == n ? std::wstring(L"=") : g_cfg.writeLangs[i];
             g_sendOverride = g_tabs[g_activeTab].sendLang;
@@ -30,12 +31,18 @@ void SendLanguageItems(bool tabAware) {
         chosen();
     };
     const bool tabChoice = inTab && !g_sendOverride.empty();
+    const bool isOff = !g_nx.translateChat;
+    if (ImGui::Selectable(UI(Tr(L"Off (no translation)")).c_str(), isOff)) {
+        if (!isOff) SetChatTranslation(false);
+        chosen();
+        return;
+    }
     if (SendableInGw2(TypingLang())) {
-        const bool current = tabChoice ? g_sendOverride == L"=" : g_sendIdx == static_cast<int>(n);
+        const bool current = !isOff && (tabChoice ? g_sendOverride == L"=" : g_sendIdx == static_cast<int>(n));
         if (ImGui::Selectable(UI(Tr(L"as written")).c_str(), current)) choose(n);
     }
     for (size_t i = 0; i < n; ++i) {
-        const bool current = tabChoice ? g_sendOverride == g_cfg.writeLangs[i] : g_sendIdx == static_cast<int>(i);
+        const bool current = !isOff && (tabChoice ? g_sendOverride == g_cfg.writeLangs[i] : g_sendIdx == static_cast<int>(i));
         if (ImGui::Selectable(U8(NativeName(g_cfg.writeLangs[i])).c_str(), current)) choose(i);
     }
     ImGui::Separator();
@@ -43,6 +50,7 @@ void SendLanguageItems(bool tabAware) {
         if (!l.latinScript || std::find(g_cfg.writeLangs.begin(), g_cfg.writeLangs.end(), l.code) != g_cfg.writeLangs.end())
             continue;
         if (ImGui::Selectable(U8(NativeName(l.code)).c_str(), false)) {
+            if (!g_nx.translateChat) SetChatTranslation(true);
             g_cfg.writeLangs.insert(g_cfg.writeLangs.begin(), l.code);
             g_cfg.SaveAll();
             if (inTab) {
@@ -82,6 +90,7 @@ void RenderFooter() {  // g_mu held
         std::wstring writeIn;
         std::wstring sendLang;
         bool sendOrig = false;
+        bool translateChat = false;
         std::string labelFull, labelNarrow;
         std::string labelBtnFull, labelBtnNarrow;
         std::string writeFull, writeNarrow;
@@ -98,7 +107,7 @@ void RenderFooter() {  // g_mu held
     const std::wstring sendLang = SendLang();
     const float curFontPx = ImGui::GetFontSize();
     if (s_fc.uiLang != g_cfg.uiLang || s_fc.fontSize != curFontPx || s_fc.channel != g_channel || s_fc.guildSlot != g_guildSlot || s_fc.whisperTo != g_whisperTo ||
-        s_fc.writeIn != g_cfg.writeIn || s_fc.sendLang != sendLang || s_fc.sendOrig != sendOrig) {
+        s_fc.writeIn != g_cfg.writeIn || s_fc.sendLang != sendLang || s_fc.sendOrig != sendOrig || s_fc.translateChat != g_nx.translateChat) {
         s_fc.uiLang = g_cfg.uiLang;
         s_fc.fontSize = curFontPx;
         s_fc.channel = g_channel;
@@ -107,6 +116,7 @@ void RenderFooter() {  // g_mu held
         s_fc.writeIn = g_cfg.writeIn;
         s_fc.sendLang = sendLang;
         s_fc.sendOrig = sendOrig;
+        s_fc.translateChat = g_nx.translateChat;
 
         s_fc.labelFull = g_channel == Channel::Unknown ? UI(Tr(L"Active channel")) : UI(ChannelLabel(g_channel));
         if (g_channel == Channel::Guild && g_guildSlot > 0) s_fc.labelFull = "G" + std::to_string(g_guildSlot);
@@ -125,10 +135,14 @@ void RenderFooter() {  // g_mu held
         s_fc.writeBtnNarrow = s_fc.writeNarrow + "##writebtn";
 
         const std::wstring sendText = NativeName(sendLang);
-        // The selected mode is already clear from the selector; omit the redundant "Send:" prefix and keep
-        // "as written" the same length in both footer layouts.
-        s_fc.sendFull = sendOrig ? UI(Tr(L"as written")) : UI(TrF(L"Send: {1}", {sendText}));
-        s_fc.sendNarrow = sendOrig ? UI(Tr(L"as written")) : "> " + U8(ToUpperAscii(PrimaryLang(sendLang)));
+        // When master translator is OFF, display "Translation: Off" grayed out.
+        if (!g_nx.translateChat) {
+            s_fc.sendFull = UI(Tr(L"Translation: Off"));
+            s_fc.sendNarrow = UI(Tr(L"Off"));
+        } else {
+            s_fc.sendFull = sendOrig ? UI(Tr(L"as written")) : UI(TrF(L"Send: {1}", {sendText}));
+            s_fc.sendNarrow = sendOrig ? UI(Tr(L"as written")) : "> " + U8(ToUpperAscii(PrimaryLang(sendLang)));
+        }
         s_fc.sendBtnFull = s_fc.sendFull + "##sendbtn";
         s_fc.sendBtnNarrow = s_fc.sendNarrow + "##sendbtn";
 
@@ -244,9 +258,13 @@ void RenderFooter() {  // g_mu held
     const ImVec2 sendBtnPos = ImGui::GetCursorScreenPos();
     const float sendBtnW = narrow ? s_fc.sendWNarrow : s_fc.sendWFull;
     const std::string& sendBtnLabel = narrow ? s_fc.sendBtnNarrow : s_fc.sendBtnFull;
-    ImGui::PushStyleColor(ImGuiCol_Text, UiAccent());
+    const ImVec4 sendColor = !g_nx.translateChat ? ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled) : UiAccent();
+    ImGui::PushStyleColor(ImGuiCol_Text, sendColor);
     const bool sendLeft = ImGui::Button(sendBtnLabel.c_str(), ImVec2(sendBtnW, iconH));
     ImGui::PopStyleColor();
+    if (!g_nx.translateChat && ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("%s", UI(Tr(L"Translation is switched off. Click to enable or select language.")).c_str());
+    }
     const bool sendRight = ImGui::IsItemHovered() && ImGui::IsMouseClicked(1);
     if (sendLeft || sendRight) {
         ImGui::OpenPopup("##send_popup");

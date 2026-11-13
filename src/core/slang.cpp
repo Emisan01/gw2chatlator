@@ -326,21 +326,6 @@ std::wstring EnglishChatContraction(const std::wstring& word) {
     return {};
 }
 
-std::wstring FallenAngelFix(const std::wstring& word) {
-    const std::wstring k = CaseFold(word);
-    static const std::pair<const wchar_t*, const wchar_t*> kFallen[] = {
-        {L"al", L"all"},
-        {L"yu", L"you"},
-        {L"ned", L"need"},
-        {L"shoul", L"should"},
-        {L"wory", L"worry"},
-    };
-    for (const auto& [from, to] : kFallen) {
-        if (k == from) return MatchCase(word, to);
-    }
-    return {};
-}
-
 std::wstring GreetingFor(const std::wstring& line, const std::wstring& target) {
     static const WordSet hello = [] {
         WordSet s;

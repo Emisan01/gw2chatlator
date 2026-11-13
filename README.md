@@ -116,6 +116,7 @@ Apart from that small table, nothing is downloaded in the background.
 | **DeepL, Google, Microsoft** | own key (free contingents) | very good | Options → Translator |
 | **Supertext** | own key, paid (as of November 2026: EUR 4.90 a month plus EUR 20 per million characters) | not measured yet | Options → Translator |
 | **LibreTranslate** | own server, free | decent | your own address |
+| **LanguageTool** (optional grammar check) | free (public API) or own server | phrasing & grammar | Disabled by default. Text you type is sent to api.languagetool.org (or your own server) for grammar checking. Other players' chat lines are never sent. |
 | **Local MT (OPUS-MT, NLLB-200, M2M100)** | free | offline after download | Options → Translator: fast Helsinki-NLP pair models or Meta's universal models, on the CPU or, optionally, on an NVIDIA card |
 
 The optional local translator runs CTranslate2 outside GW2. It downloads nothing until you request the helper or a

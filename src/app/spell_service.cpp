@@ -554,14 +554,10 @@ bool SpellService::IsValidWord(const std::wstring& w) const {
 std::optional<std::wstring> SpellService::AutoCorrection(const std::wstring& word, AutoCorrectMode mode,
                                                          const std::wstring& prev, const std::wstring& prev2) const {
     if (mode == AutoCorrectMode::Off || word.size() < 2) return std::nullopt;
-    const bool fallen = mode == AutoCorrectMode::FallenAngel;
-    const bool heavy = mode == AutoCorrectMode::Strong || fallen;
+    const bool heavy = mode == AutoCorrectMode::Strong;
     const bool phone = mode == AutoCorrectMode::Phone || heavy;
-    if (phone && (learnedLang_ == L"en" || fallen)) {
+    if (phone && learnedLang_ == L"en") {
         if (const std::wstring c = EnglishChatContraction(word); !c.empty()) return c;
-    }
-    if (fallen) {
-        if (const std::wstring f = FallenAngelFix(word); !f.empty()) return f;
     }
     if (IsKnown(word) || IsValidWord(word)) return std::nullopt;  // a real word (also small-written nouns) is never changed
     // One of your typical typos: you meant this word before (profile or a kept correction).
@@ -712,21 +708,12 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
     if (HasDigit(partial)) return s;
     const std::wstring prev = wordBefore(start);
     s.replace = {start, end - start};
-    const bool fallen = mode == AutoCorrectMode::FallenAngel;
-    const bool heavy = mode == AutoCorrectMode::Strong || fallen;
+    const bool heavy = mode == AutoCorrectMode::Strong;
     const bool phone = mode == AutoCorrectMode::Phone || heavy;
-    if (phone && (learnedLang_ == L"en" || fallen)) {
+    if (phone && learnedLang_ == L"en") {
         if (const std::wstring c = EnglishChatContraction(partial); !c.empty()) {
             s.kind = WordSuggestions::Kind::Correction;
             s.words = {c};
-            s.autoIndex = 0;
-            return s;
-        }
-    }
-    if (fallen) {
-        if (const std::wstring f = FallenAngelFix(partial); !f.empty()) {
-            s.kind = WordSuggestions::Kind::Correction;
-            s.words = {f};
             s.autoIndex = 0;
             return s;
         }
@@ -850,21 +837,13 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
         return c;
     }
 
-    const bool fallen = mode == AutoCorrectMode::FallenAngel;
-    const bool heavy = mode == AutoCorrectMode::Strong || fallen;
+    const bool heavy = mode == AutoCorrectMode::Strong;
     const bool phone = mode == AutoCorrectMode::Phone || heavy;
 
-    // Fast-path: Explicit contractions and high-frequency Fallen Angel fixes override dictionary words (e.g. "cant" -> "can't", "al" -> "all").
-    if (phone && (learnedLang_ == L"en" || fallen)) {
+    // Fast-path: Explicit contractions override dictionary words (e.g. "cant" -> "can't").
+    if (phone && learnedLang_ == L"en") {
         if (const std::wstring contr = EnglishChatContraction(typed); !contr.empty()) {
             c.words = {contr, typed};
-            c.highlight = 0;
-            return c;
-        }
-    }
-    if (fallen) {
-        if (const std::wstring f = FallenAngelFix(typed); !f.empty()) {
-            c.words = {f, typed};
             c.highlight = 0;
             return c;
         }
