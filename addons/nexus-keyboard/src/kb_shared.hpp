@@ -663,6 +663,7 @@ int TranslateRecentLines(bool once = false);
 // again.
 std::wstring TranslatorTag(const std::shared_ptr<Translator>& tr, int beam);
 void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId = 0);  // sendId: g_pendingSend's
+void CheckGrammar(uint64_t gen, std::wstring text);  // LanguageTool grammar check
 void ComputeTyping();
 std::wstring GuardRefusal(SendGuard::Reason reason);  // what the status says when the guard refuses a line
 bool SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring learnText, std::wstring channel = {});

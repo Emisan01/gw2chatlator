@@ -1727,6 +1727,20 @@ extern const I18nEntry kFrenchStrings[] = {
      "Corriger les {1} erreurs"},
     {L"Fallen Angel: Maximum autocorrect & typo repair (Fallen's mode). Automatically repairs common and 2+ letter typos (yu -> you, al -> all, ned -> need, dont -> don't), prioritizes corrections on the word bar, and enables one-click full sentence repair.",
      "Fallen Angel: Autocorrection et réparation maximale (mode de Fallen). Répare automatiquement les fautes courantes et courtes (yu -> you, al -> all, ned -> need, dont -> don't), priorise les corrections sur la barre de mots et permet la réparation de phrases en un clic."},
+    {L"too many requests – the public server allows 20 per minute",
+     "trop de requêtes – le serveur public autorise 20 par minute"},
+    {L"Grammar & Phrasing",
+     "Grammaire et style"},
+    {L"Grammar check (LanguageTool)",
+     "Vérification grammaticale (LanguageTool)"},
+    {L"Grammar check (LanguageTool / Grammarly-like)",
+     "Vérification grammaticale (LanguageTool / type Grammarly)"},
+    {L"Real-time grammar and phrasing check with LanguageTool. Underlines grammar slips in amber; click the badge to fix all.",
+     "Vérification de grammaire et style en temps réel avec LanguageTool. Souligne les erreurs en ambre ; cliquez sur le badge pour tout corriger."},
+    {L"Server URL",
+     "URL du serveur"},
+    {L"Checks grammar, subject-verb agreement, and phrasing in real time (free public API or your own local server). Underlines grammar mistakes in amber; click the badge to fix all.",
+     "Vérifie la grammaire, les accords et le style en temps réel (API publique gratuite ou serveur local). Souligne les erreurs en ambre ; cliquez sur le badge pour tout corriger."},
 };
 extern const size_t kFrenchCount = sizeof(kFrenchStrings) / sizeof(kFrenchStrings[0]);
 

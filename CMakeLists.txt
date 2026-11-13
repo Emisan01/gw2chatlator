@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(GW2KeyboardNexus VERSION 2.10.6 LANGUAGES CXX)
+project(GW2KeyboardNexus VERSION 2.10.7 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -47,6 +47,7 @@ add_library(gct_core STATIC
     src/core/translation_check.cpp
     src/core/deepl_protocol.cpp
     src/core/mymemory_protocol.cpp
+    src/core/languagetool_protocol.cpp
     src/core/channel.cpp
     src/core/chat_code.cpp
     src/core/names.cpp

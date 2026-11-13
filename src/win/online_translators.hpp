@@ -7,8 +7,12 @@
 #include <vector>
 
 #include "core/translator.hpp"
+#include "core/languagetool_protocol.hpp"
 
 namespace gct {
+
+LtResult CheckWithLanguageTool(const std::wstring& serverUrl, const std::wstring& text, const std::wstring& lang,
+                               const std::wstring& motherTongue = L"");
 
 std::shared_ptr<Translator> MakeMyMemoryTranslator(const std::wstring& email);
 // Google Cloud Translation (key from console.cloud.google.com) and Microsoft Translator (key + Azure region).

@@ -1727,6 +1727,20 @@ extern const I18nEntry kSpanishStrings[] = {
      "Corregir los {1} errores"},
     {L"Fallen Angel: Maximum autocorrect & typo repair (Fallen's mode). Automatically repairs common and 2+ letter typos (yu -> you, al -> all, ned -> need, dont -> don't), prioritizes corrections on the word bar, and enables one-click full sentence repair.",
      "Fallen Angel: Autocorrección y reparación máxima (modo de Fallen). Repara automáticamente errores comunes y cortos (yu -> you, al -> all, ned -> need, dont -> don't), prioriza correcciones en la barra de palabras y permite reparar frases con un clic."},
+    {L"too many requests – the public server allows 20 per minute",
+     "demasiadas solicitudes – el servidor público permite 20 por minuto"},
+    {L"Grammar & Phrasing",
+     "Gramática y estilo"},
+    {L"Grammar check (LanguageTool)",
+     "Corrección gramatical (LanguageTool)"},
+    {L"Grammar check (LanguageTool / Grammarly-like)",
+     "Corrección gramatical (LanguageTool / tipo Grammarly)"},
+    {L"Real-time grammar and phrasing check with LanguageTool. Underlines grammar slips in amber; click the badge to fix all.",
+     "Comprobación gramatical y de estilo en tiempo real con LanguageTool. Subraya los fallos en ámbar; clic en la insignia para corregir todo."},
+    {L"Server URL",
+     "URL del servidor"},
+    {L"Checks grammar, subject-verb agreement, and phrasing in real time (free public API or your own local server). Underlines grammar mistakes in amber; click the badge to fix all.",
+     "Comprueba gramática, concordancia y estilo en tiempo real (API pública gratuita o servidor local). Subraya los errores en ámbar; clic en la insignia para corregir todo."},
 };
 extern const size_t kSpanishCount = sizeof(kSpanishStrings) / sizeof(kSpanishStrings[0]);
 

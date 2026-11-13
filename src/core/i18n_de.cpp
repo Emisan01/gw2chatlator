@@ -1727,6 +1727,20 @@ extern const I18nEntry kGermanStrings[] = {
      "Alle {1} Fehler korrigieren"},
     {L"Fallen Angel: Maximum autocorrect & typo repair (Fallen's mode). Automatically repairs common and 2+ letter typos (yu -> you, al -> all, ned -> need, dont -> don't), prioritizes corrections on the word bar, and enables one-click full sentence repair.",
      "Fallen Angel: Maximale Autokorrektur & Tippfehler-Reparatur (Fallens Modus). Repariert gängige und kurze Tippfehler (yu -> you, al -> all, ned -> need, dont -> don't) automatisch, priorisiert Korrekturen auf der Wortleiste und ermöglicht Ein-Klick-Satzkorrektur."},
+    {L"too many requests – the public server allows 20 per minute",
+     "zu viele Anfragen – der öffentliche Server erlaubt 20 pro Minute"},
+    {L"Grammar & Phrasing",
+     "Grammatik & Formulierung"},
+    {L"Grammar check (LanguageTool)",
+     "Grammatikprüfung (LanguageTool)"},
+    {L"Grammar check (LanguageTool / Grammarly-like)",
+     "Grammatikprüfung (LanguageTool / wie Grammarly)"},
+    {L"Real-time grammar and phrasing check with LanguageTool. Underlines grammar slips in amber; click the badge to fix all.",
+     "Echtzeit-Grammatik- und Formulierungstest mit LanguageTool. Hebt Grammatikfehler bernsteinfarben hervor; Klick auf den Badge korrigiert alle."},
+    {L"Server URL",
+     "Server-URL"},
+    {L"Checks grammar, subject-verb agreement, and phrasing in real time (free public API or your own local server). Underlines grammar mistakes in amber; click the badge to fix all.",
+     "Prüft Grammatik, Subjekt-Verb-Kongruenz und Formulierung in Echtzeit (kostenlose öffentliche API oder eigener lokaler Server). Hebt Grammatikfehler bernsteinfarben hervor; Klick auf den Badge korrigiert alle."},
 };
 extern const size_t kGermanCount = sizeof(kGermanStrings) / sizeof(kGermanStrings[0]);
 

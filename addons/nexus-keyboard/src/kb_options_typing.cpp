@@ -151,6 +151,22 @@ void RenderTypingPage(Config& edit) {
     else if (edit.autoCorrect == AutoCorrectMode::FallenAngel)
         RowHint(UI(Tr(L"Fallen Angel: Maximum autocorrect & typo repair (Fallen's mode). Automatically repairs common and 2+ letter typos (yu -> you, al -> all, ned -> need, dont -> don't), prioritizes corrections on the word bar, and enables one-click full sentence repair.")));
     EndBox();
+    BeginBox(UI(Tr(L"Grammar & Phrasing")));
+    Switch("lt", UI(Tr(L"Grammar check (LanguageTool / Grammarly-like)")), &edit.useLanguageTool);
+    if (edit.useLanguageTool) {
+        static char ltUrlBuf[128] = {};
+        if (!ltUrlBuf[0] && !edit.languageToolUrl.empty()) {
+            std::string u = U8(edit.languageToolUrl);
+            std::snprintf(ltUrlBuf, sizeof(ltUrlBuf), "%s", u.c_str());
+        }
+        RowLabel(UI(Tr(L"Server URL")));
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 18);
+        if (ImGui::InputText("##lturl", ltUrlBuf, sizeof(ltUrlBuf))) {
+            edit.languageToolUrl = W(ltUrlBuf);
+        }
+        RowHint(UI(Tr(L"Checks grammar, subject-verb agreement, and phrasing in real time (free public API or your own local server). Underlines grammar mistakes in amber; click the badge to fix all.")));
+    }
+    EndBox();
     BeginBox(UI(Tr(L"Learning")));
     RowLabel(UI(Tr(L"Learn")));
     int learn = !edit.learnWords ? 2 : edit.learnLater ? 1 : 0;

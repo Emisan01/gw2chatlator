@@ -321,6 +321,8 @@ void Config::Load(const std::wstring& dir) {
     voiceGlobalKey = ini.Str(L"Voice", L"KeyAnywhere", L"");
     voiceChatPause = ini.Bool(L"Voice", L"PauseForVoiceChat", true);
     spellEnabled = ini.Bool(L"Spelling", L"Enabled", true);
+    useLanguageTool = ini.Bool(L"Spelling", L"LanguageTool", false);
+    languageToolUrl = ini.Str(L"Spelling", L"LanguageToolUrl", L"https://api.languagetool.org");
     // v0.4 had AutoCorrect=1/0 (Windows' sure fixes only).
     autoCorrect = ParseAutoCorrect(ini.Str(L"Spelling", L"AutoCorrectMode", L""),
                                    ini.Bool(L"Spelling", L"AutoCorrect", true) ? AutoCorrectMode::Phone
@@ -526,6 +528,8 @@ void Config::SaveAll() const {
     SaveBool(L"Voice", L"PauseForVoiceChat", voiceChatPause);
     SaveValue(L"Voice", L"VoiceChatApps", AsciiEscape(voiceChatApps));
     SaveBool(L"Spelling", L"Enabled", spellEnabled);
+    SaveBool(L"Spelling", L"LanguageTool", useLanguageTool);
+    SaveValue(L"Spelling", L"LanguageToolUrl", languageToolUrl);
     SaveValue(L"Spelling", L"AutoCorrectMode", AutoCorrectKey(autoCorrect));
     SaveBool(L"Spelling", L"Suggestions", suggestions);
     SaveBool(L"Spelling", L"Learn", learnWords);

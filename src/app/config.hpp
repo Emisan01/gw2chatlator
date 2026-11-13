@@ -69,6 +69,8 @@ struct Config {
     // [Spelling]
     std::wstring writeIn;  // the language you type in ("DE", "EN-GB"); empty = the keyboard layout's language
     bool spellEnabled = true;
+    bool useLanguageTool = false;
+    std::wstring languageToolUrl = L"https://api.languagetool.org";
     AutoCorrectMode autoCorrect = AutoCorrectMode::Phone;
     bool suggestions = true;     // word bar above the input (completions, next word)
     bool learnWords = true;      // learn from what you send

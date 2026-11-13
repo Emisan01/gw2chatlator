@@ -1727,6 +1727,20 @@ extern const I18nEntry kTurkishStrings[] = {
      "{1} hatanın tümünü düzelt"},
     {L"Fallen Angel: Maximum autocorrect & typo repair (Fallen's mode). Automatically repairs common and 2+ letter typos (yu -> you, al -> all, ned -> need, dont -> don't), prioritizes corrections on the word bar, and enables one-click full sentence repair.",
      "Fallen Angel: Maksimum otomatik düzeltme ve yazım hatası onarımı (Fallen modu). Yaygın ve kısa yazım hatalarını (yu -> you, al -> all, ned -> need, dont -> don't) otomatik olarak onarır, kelime çubuğundaki düzeltmelere öncelik verir ve tek tıklamayla cümle onarımı sağlar."},
+    {L"too many requests – the public server allows 20 per minute",
+     "çok fazla istek – genel sunucu dakikada 20 isteğe izin verir"},
+    {L"Grammar & Phrasing",
+     "Dilbilgisi ve İfade"},
+    {L"Grammar check (LanguageTool)",
+     "Dilbilgisi denetimi (LanguageTool)"},
+    {L"Grammar check (LanguageTool / Grammarly-like)",
+     "Dilbilgisi denetimi (LanguageTool / Grammarly benzeri)"},
+    {L"Real-time grammar and phrasing check with LanguageTool. Underlines grammar slips in amber; click the badge to fix all.",
+     "LanguageTool ile gerçek zamanlı dilbilgisi ve ifade denetimi. Hataları kehribar rengiyle altını çizer; tümünü düzeltmek için rozete tıklayın."},
+    {L"Server URL",
+     "Sunucu URL'si"},
+    {L"Checks grammar, subject-verb agreement, and phrasing in real time (free public API or your own local server). Underlines grammar mistakes in amber; click the badge to fix all.",
+     "Dilbilgisini, uyumu ve ifadeyi gerçek zamanlı denetler (ücretsiz genel API veya yerel sunucunuz). Dilbilgisi hatalarını kehribar rengiyle çizer; tümünü düzeltmek için rozete tıklayın."},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

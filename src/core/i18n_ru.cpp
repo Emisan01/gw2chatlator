@@ -1727,6 +1727,20 @@ extern const I18nEntry kRussianStrings[] = {
      "Исправить все {1} ошибок"},
     {L"Fallen Angel: Maximum autocorrect & typo repair (Fallen's mode). Automatically repairs common and 2+ letter typos (yu -> you, al -> all, ned -> need, dont -> don't), prioritizes corrections on the word bar, and enables one-click full sentence repair.",
      "Fallen Angel: Максимальное автоисправление и устранение опечаток (режим Fallen). Автоматически исправляет частые и короткие опечатки (yu -> you, al -> all, ned -> need, dont -> don't), отдает приоритет исправлениям на панели слов и позволяет исправлять всё предложение в один клик."},
+    {L"too many requests – the public server allows 20 per minute",
+     "слишком много запросов — публичный сервер разрешает 20 в минуту"},
+    {L"Grammar & Phrasing",
+     "Грамматика и стиль"},
+    {L"Grammar check (LanguageTool)",
+     "Проверка грамматики (LanguageTool)"},
+    {L"Grammar check (LanguageTool / Grammarly-like)",
+     "Проверка грамматики (LanguageTool / аналог Grammarly)"},
+    {L"Real-time grammar and phrasing check with LanguageTool. Underlines grammar slips in amber; click the badge to fix all.",
+     "Проверка грамматики и стиля в реальном времени с LanguageTool. Подчёркивает ошибки янтарным; нажмите на значок, чтобы исправить всё."},
+    {L"Server URL",
+     "URL сервера"},
+    {L"Checks grammar, subject-verb agreement, and phrasing in real time (free public API or your own local server). Underlines grammar mistakes in amber; click the badge to fix all.",
+     "Проверяет грамматику, согласование и стиль в реальном времени (бесплатный публичный API или локальный сервер). Подчёркивает ошибки янтарным; клик по значку исправляет всё."},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

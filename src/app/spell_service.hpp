@@ -46,10 +46,13 @@ struct WordChoices {
     bool Changes() const { return highlight >= 0 && !(firstIsTyped && highlight == 0); }
 };
 
-// A word of the message the autocorrection would write differently, and how.
+// A word or phrase of the message the autocorrection would write differently, and how.
 struct WordMark {
     Span span;
     std::wstring fix;
+    bool isGrammar = false;
+    std::wstring message;
+    std::wstring shortMessage;
 };
 
 class SpellService {

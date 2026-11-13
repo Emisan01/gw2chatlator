@@ -449,6 +449,10 @@ static void RenderMainMenu(bool& newTabNext) {
                 {
                     std::lock_guard<std::mutex> lock(g_mu);
                     g_cfg.autoCorrect = fallen ? AutoCorrectMode::Phone : AutoCorrectMode::FallenAngel;
+                    if (!fallen) {
+                        g_cfg.useLanguageTool = true;
+                        g_cfg.SaveBool(L"Spelling", L"LanguageTool", true);
+                    }
                     g_cfg.SaveValue(L"Spelling", L"AutoCorrectMode", AutoCorrectKey(g_cfg.autoCorrect));
                     LogState(L"Fallen Angel mode");
                 }
@@ -459,6 +463,18 @@ static void RenderMainMenu(bool& newTabNext) {
             }
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", UI(Tr(L"Fallen Angel: Maximum autocorrect & typo repair (Fallen's mode). Automatically repairs common and 2+ letter typos (yu -> you, al -> all, ned -> need, dont -> don't), prioritizes corrections on the word bar, and enables one-click full sentence repair.")).c_str());
+            const bool lt = g_cfg.useLanguageTool;
+            if (ImGui::MenuItem(UI(Tr(L"Grammar check (LanguageTool)")).c_str(), nullptr, lt)) {
+                {
+                    std::lock_guard<std::mutex> lock(g_mu);
+                    g_cfg.useLanguageTool = !lt;
+                    g_cfg.SaveBool(L"Spelling", L"LanguageTool", g_cfg.useLanguageTool);
+                    LogState(L"Grammar check");
+                }
+                g_worker.Post([] { ComputeTyping(); });
+            }
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", UI(Tr(L"Real-time grammar and phrasing check with LanguageTool. Underlines grammar slips in amber; click the badge to fix all.")).c_str());
         } else {
             if (!Shown().header) {  // what the header offers: the tabs, minimise
                 if (ImGui::MenuItem(UI(Tr(L"Chat")).c_str(), nullptr, g_activeTab < 0)) LeaveWhisperTab();
@@ -484,6 +500,10 @@ static void RenderMainMenu(bool& newTabNext) {
                 {
                     std::lock_guard<std::mutex> lock(g_mu);
                     g_cfg.autoCorrect = fallen ? AutoCorrectMode::Phone : AutoCorrectMode::FallenAngel;
+                    if (!fallen) {
+                        g_cfg.useLanguageTool = true;
+                        g_cfg.SaveBool(L"Spelling", L"LanguageTool", true);
+                    }
                     g_cfg.SaveValue(L"Spelling", L"AutoCorrectMode", AutoCorrectKey(g_cfg.autoCorrect));
                     LogState(L"Fallen Angel mode");
                 }
@@ -494,6 +514,18 @@ static void RenderMainMenu(bool& newTabNext) {
             }
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", UI(Tr(L"Fallen Angel: Maximum autocorrect & typo repair (Fallen's mode). Automatically repairs common and 2+ letter typos (yu -> you, al -> all, ned -> need, dont -> don't), prioritizes corrections on the word bar, and enables one-click full sentence repair.")).c_str());
+            const bool lt = g_cfg.useLanguageTool;
+            if (ImGui::MenuItem(UI(Tr(L"Grammar check (LanguageTool)")).c_str(), nullptr, lt)) {
+                {
+                    std::lock_guard<std::mutex> lock(g_mu);
+                    g_cfg.useLanguageTool = !lt;
+                    g_cfg.SaveBool(L"Spelling", L"LanguageTool", g_cfg.useLanguageTool);
+                    LogState(L"Grammar check");
+                }
+                g_worker.Post([] { ComputeTyping(); });
+            }
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", UI(Tr(L"Real-time grammar and phrasing check with LanguageTool. Underlines grammar slips in amber; click the badge to fix all.")).c_str());
             if (ImGui::MenuItem(UI(Tr(L"Translate visible chat once")).c_str(), UI(MyMemoryLeftText()).c_str())) TranslateViewOnce();
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", UI(Tr(L"What you see of the chat, into the language you write in – once, by the automatic translation's rule: lines in your language, in languages you understand or too short to tell stay as they are (a click on a line translates it anyway).")).c_str());
@@ -1828,9 +1860,13 @@ void RenderWindow() {
         ImGui::SameLine(0, clearGap);
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, badgeW * 0.5f);
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.85f, 0.22f, 0.22f, 0.90f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.95f, 0.30f, 0.30f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.75f, 0.15f, 0.15f, 1.0f));
+        const bool anySpelling = std::any_of(g_help.marks.begin(), g_help.marks.end(), [](const WordMark& m) { return !m.isGrammar; });
+        const ImVec4 bCol = anySpelling ? ImVec4(0.85f, 0.22f, 0.22f, 0.90f) : ImVec4(0.92f, 0.58f, 0.12f, 0.90f);
+        const ImVec4 bHov = anySpelling ? ImVec4(0.95f, 0.30f, 0.30f, 1.0f) : ImVec4(1.0f, 0.65f, 0.18f, 1.0f);
+        const ImVec4 bAct = anySpelling ? ImVec4(0.75f, 0.15f, 0.15f, 1.0f) : ImVec4(0.80f, 0.48f, 0.08f, 1.0f);
+        ImGui::PushStyleColor(ImGuiCol_Button, bCol);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, bHov);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, bAct);
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
         if (ImGui::Button((badgeText + "##markbadge").c_str(), ImVec2(badgeW, boxH))) {
             TakeAllMarks(true);
@@ -2004,7 +2040,16 @@ void RenderWindow() {
             if (ImGui::IsMouseHoveringRect(marks[i].a, marks[i].b)) markHovered = static_cast<int>(i);
     if (markHovered >= 0) {
         ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-        ImGui::SetTooltip("%s", UI(L"→ " + g_help.marks[marks[markHovered].index].fix).c_str());
+        const size_t markIdx = marks[markHovered].index;
+        if (markIdx < g_help.marks.size()) {
+            const auto& m = g_help.marks[markIdx];
+            if (m.isGrammar && !m.message.empty()) {
+                std::wstring tip = m.message + L"\n→ " + m.fix;
+                ImGui::SetTooltip("%s", UI(tip).c_str());
+            } else {
+                ImGui::SetTooltip("%s", UI(L"→ " + m.fix).c_str());
+            }
+        }
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) TakeMark(marks[markHovered].index);
     }
     // The "Strong" level does not wait for a click: a word standing wrong – ended by a comma, pasted, changed in the
@@ -2047,7 +2092,12 @@ void RenderWindow() {
         dl->PushClipRect(ImVec2(clip.x, clip.y), ImVec2(clip.z, clip.w), true);
         const float thick = std::max(1.2f, ImGui::GetFontSize() / 12.0f);
         for (size_t i = 0; i < marks.size(); ++i) {
-            const ImU32 col = static_cast<int>(i) == markHovered ? IM_COL32(255, 75, 75, 255) : IM_COL32(230, 65, 65, 210);
+            const size_t markIdx = marks[i].index;
+            const bool isGrammar = markIdx < g_help.marks.size() && g_help.marks[markIdx].isGrammar;
+            const bool isHovered = static_cast<int>(i) == markHovered;
+            const ImU32 col = isGrammar
+                                  ? (isHovered ? IM_COL32(255, 190, 40, 255) : IM_COL32(245, 160, 25, 215))
+                                  : (isHovered ? IM_COL32(255, 75, 75, 255) : IM_COL32(230, 65, 65, 210));
             const float yBase = marks[i].b.y - 1.5f;
             const float xStart = marks[i].a.x;
             const float xEnd = marks[i].b.x;
@@ -2151,6 +2201,13 @@ void RenderWindow() {
         (Translating() || SwapsNames())) {
         g_inputChanged = 0;
         g_worker.PostFront([gen = g_inputGen, t = SanitizeChatText(g_wFlatInput)] { TranslateInput(gen, t); });
+    }
+    static uint64_t s_lastGrammarGen = 0;
+    if (g_flatInput.empty()) s_lastGrammarGen = 0;
+    if (g_cfg.useLanguageTool && !g_flatInput.empty() && (wordEnded || (g_inputChanged && GetTickCount64() - g_inputChanged > 350)) &&
+        s_lastGrammarGen != g_inputGen) {
+        s_lastGrammarGen = g_inputGen;
+        g_worker.Post([gen = g_inputGen, t = g_wFlatInput] { CheckGrammar(gen, t); });
     }
     if (enter) {
         StartSend();

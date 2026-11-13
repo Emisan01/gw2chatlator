@@ -685,6 +685,92 @@ void ComputeTyping() {
     if (g_wFlatInput == text) g_help = std::move(h);
 }
 
+void CheckGrammar(uint64_t gen, std::wstring text) {
+    AssertNotInteractiveLane("CheckGrammar");
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        if (gen != g_inputGen || g_wFlatInput != text || !g_cfg.useLanguageTool) return;
+    }
+    if (text.size() < 4 || (!text.empty() && text[0] == L'/')) return;
+    const std::vector<Span> spans = WordSpans(text);
+    if (spans.size() < 2) return;
+
+    static RateLimiter s_ltLimiter(20);
+    const uint64_t nowMs = GetTickCount64();
+    if (!s_ltLimiter.Allow(nowMs)) {
+        TechLog('K', L"LanguageTool rate limit reached (20/min)");
+        return;
+    }
+
+    std::wstring serverUrl;
+    std::wstring lang;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        serverUrl = g_cfg.languageToolUrl;
+        lang = TypingLang();
+    }
+
+    const LtResult r = CheckWithLanguageTool(serverUrl, text, lang);
+    if (!r.ok) {
+        if (!r.error.empty()) TechLog('K', (L"LanguageTool: " + r.error).c_str());
+        return;
+    }
+
+    std::vector<Span> chatCodes = FindChatCodes(text);
+    std::vector<WordMark> grammarMarks;
+    for (const LtMatch& m : r.matches) {
+        if (m.replacements.empty() || m.span.end() > text.size()) continue;
+        bool inCode = false;
+        for (const Span& cc : chatCodes) {
+            if (m.span.start < cc.end() && cc.start < m.span.end()) {
+                inCode = true;
+                break;
+            }
+        }
+        if (inCode) continue;
+
+        const std::wstring matchedText = text.substr(m.span.start, m.span.length);
+        if (g_spell) {
+            const auto keep = g_spell->KeepWordsSnapshot();
+            if (keep && keep->find(CaseFold(matchedText)) != keep->end()) continue;
+        }
+
+        WordMark wm;
+        wm.span = m.span;
+        wm.fix = m.replacements.front();
+        wm.isGrammar = m.IsGrammar();
+        wm.message = m.message;
+        wm.shortMessage = m.shortMessage;
+        grammarMarks.push_back(std::move(wm));
+    }
+
+    if (grammarMarks.empty()) return;
+
+    std::lock_guard<std::mutex> lock(g_mu);
+    if (gen != g_inputGen || g_wFlatInput != text) return;
+
+    std::vector<WordMark> merged = g_help.marks;
+    for (const auto& gm : grammarMarks) {
+        auto it = std::find_if(merged.begin(), merged.end(), [&](const WordMark& ex) {
+            return (ex.span.start < gm.span.end() && gm.span.start < ex.span.end());
+        });
+        if (it != merged.end()) {
+            if (!it->isGrammar && gm.isGrammar) {
+                it->isGrammar = true;
+                it->message = gm.message;
+                it->shortMessage = gm.shortMessage;
+            }
+        } else {
+            merged.push_back(gm);
+        }
+    }
+    std::sort(merged.begin(), merged.end(), [](const WordMark& a, const WordMark& b) {
+        return a.span.start < b.span.start;
+    });
+    g_help.marks = std::move(merged);
+    TechLog('K', L"LanguageTool grammar marks applied");
+}
+
 // Enter: the parts go into the GW2 chat – only now, on your Enter (invariants 1–3).
 namespace {
 std::mutex g_ownMu;  // own: the UI reads it while drawing, the worker writes it while sending

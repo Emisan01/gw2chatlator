@@ -1727,6 +1727,20 @@ extern const I18nEntry kPolishStrings[] = {
      "Popraw wszystkie {1} błędy"},
     {L"Fallen Angel: Maximum autocorrect & typo repair (Fallen's mode). Automatically repairs common and 2+ letter typos (yu -> you, al -> all, ned -> need, dont -> don't), prioritizes corrections on the word bar, and enables one-click full sentence repair.",
      "Fallen Angel: Maksymalna autokorekta i naprawa literówek (tryb Fallena). Automatycznie naprawia typowe i krótkie literówki (yu -> you, al -> all, ned -> need, dont -> don't), priorytetyzuje poprawki na pasku słów i pozwala na naprawę całego zdania jednym kliknięciem."},
+    {L"too many requests – the public server allows 20 per minute",
+     "zbyt wiele żądań – serwer publiczny zezwala na 20 na minutę"},
+    {L"Grammar & Phrasing",
+     "Gramatyka i styl"},
+    {L"Grammar check (LanguageTool)",
+     "Sprawdzanie gramatyki (LanguageTool)"},
+    {L"Grammar check (LanguageTool / Grammarly-like)",
+     "Sprawdzanie gramatyki (LanguageTool / jak Grammarly)"},
+    {L"Real-time grammar and phrasing check with LanguageTool. Underlines grammar slips in amber; click the badge to fix all.",
+     "Sprawdzanie gramatyki i stylu w czasie rzeczywistym z LanguageTool. Podkreśla błędy na bursztynowo; kliknij odznakę, aby naprawić wszystko."},
+    {L"Server URL",
+     "Adres URL serwera"},
+    {L"Checks grammar, subject-verb agreement, and phrasing in real time (free public API or your own local server). Underlines grammar mistakes in amber; click the badge to fix all.",
+     "Sprawdza gramatykę, zgodność i styl w czasie rzeczywistym (bezpłatne publiczne API lub własny serwer lokalny). Podkreśla błędy na bursztynowo; kliknij odznakę, aby naprawić wszystko."},
 };
 extern const size_t kPolishCount = sizeof(kPolishStrings) / sizeof(kPolishStrings[0]);
 

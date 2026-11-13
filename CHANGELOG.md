@@ -3,6 +3,16 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.10.7 — 2026-11-13 (GW2Chatlator for Nexus)
+
+- **LanguageTool Grammar & Phrasing Integration (In-Game Grammarly):**
+  - Integrated LanguageTool grammar checking directly into the chat input, identifying sentence-level syntax errors, subject-verb agreement mismatches, wrong prepositions, and phrasing slips in real time.
+  - Grammar mistakes are distinguished with warm amber wavy underlines (distinct from red typo underlines), with detailed rule explanations displayed on hover.
+  - One-click error repair: clicking the error badge beside the input box repairs both spelling and grammar mistakes across the entire sentence simultaneously.
+  - Dedicated configuration section in Options → Typing: toggle LanguageTool on/off and configure a custom server URL (defaults to free public API `https://api.languagetool.org` or your own local LanguageTool server).
+  - Main menu and Fallen Angel mode integration: activating Fallen Angel mode automatically enables LanguageTool grammar checking for comprehensive chat assistance.
+  - Fully asynchronous, debounced execution with smart rate limiting (20 requests/minute on public server) ensuring zero render-thread overhead and uninterrupted 60+ FPS gameplay.
+
 ## 2.10.6 — 2026-11-12 (GW2Chatlator for Nexus)
 
 - **Fallen Angel Mode (Maximum Autocorrect & Typo Repair):**
