@@ -1173,6 +1173,22 @@ int wmain(int argc, wchar_t** argv) {
             if (!toggleOk) std::printf("FAIL: Fallen Angel menu item toggle failed or crashed the add-on\n");
             ok = ok && toggleOk;
         }
+
+        // Health check selftest (Schritt 3):
+        // Fake missing dictionary, trigger evaluation -> NoDictionary finding in g_health, add-on alive.
+        if (auto testHealth = reinterpret_cast<int (*)(int)>(GetProcAddress(dll, "Gw2KbTestHealth"))) {
+            const int noDict = testHealth(1);
+            frames(3);
+            ChatSourceTest stHealth{};
+            if (src) src(0, &stHealth, nullptr);
+            std::printf("health check: fake NoDictionary -> %d findings, add-on %s\n",
+                        noDict, stHealth.disabled ? "OFF" : "alive");
+            const bool healthOk = (noDict > 0) && !stHealth.disabled;
+            if (!healthOk) std::printf("FAIL: health check did not report NoDictionary or crashed add-on\n");
+            ok = ok && healthOk;
+            testHealth(2);
+            frames(3);
+        }
     }
     // The chat source guard (2): what an update of Events: Chat could hand over – a changed layout, unreadable memory,
     // a guard page, endless strings, thousands of random lines – and chat codes in view. Nothing may take the process

@@ -551,6 +551,27 @@ extern "C" __declspec(dllexport) void Gw2KbTestNewTab(uint32_t channels, bool se
     if (settings) g_tabSettings = at;
 }
 
+extern "C" __declspec(dllexport) int Gw2KbTestHealth(int action) {  // nexus_kb_selftest only
+    if (!TestHost()) return -1;
+    if (action == 1) {
+        g_testFakeNoDictionary = true;
+        RunHealthCheck();
+        int found = 0;
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            for (const auto& f : g_health) {
+                if (f.kind == gct::HealthKind::NoDictionary) ++found;
+            }
+        }
+        return found;
+    } else if (action == 2) {
+        g_testFakeNoDictionary = false;
+        RunHealthCheck();
+        return 0;
+    }
+    return 0;
+}
+
 // nexus_kb_selftest only: a fault in a worker job while it holds g_mu (step 1); step 0: the add-on is off (1) and g_mu
 // is free again (2) – the fault did not take the process down, nothing stays locked.
 extern "C" __declspec(dllexport) int Gw2KbTestFault(int step) {

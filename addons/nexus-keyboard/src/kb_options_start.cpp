@@ -229,6 +229,64 @@ static bool RenderMissing(Config* edit) {
             if (edit) edit->voiceEnabled = true;
         }
     }
+    // Health findings (Gesundheitskern: severity 2 warning, severity 1 notice)
+    std::vector<gct::HealthFinding> health;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        health = g_health;
+    }
+    for (const auto& f : health) {
+        if (f.kind == gct::HealthKind::NoDictionary) {
+            any = true;
+            StatusRow(UI(Tr(L"Spell checking")), 0, UI(Tr(L"no Windows dictionary installed")));
+            ImGui::SameLine();
+            if (ImGui::SmallButton(UI(Tr(L"Open Windows' language settings") + L"##health").c_str()))
+                ShellExecuteW(nullptr, L"open", L"ms-settings:regionlanguage", nullptr, nullptr, SW_SHOWNORMAL);
+        } else if (f.kind == gct::HealthKind::CorrectionIdle) {
+            any = true;
+            StatusRow(UI(Tr(L"Spell checking")), 0, UI(Tr(L"no words checked despite typing")));
+        } else if (f.kind == gct::HealthKind::LanguageToolDown) {
+            any = true;
+            StatusRow(UI(Tr(L"LanguageTool")), 1, UI(Tr(L"server not responding")));
+            ImGui::SameLine();
+            if (ImGui::SmallButton(UI(Tr(L"Offline only") + L"##health").c_str())) {
+                if (edit) {
+                    edit->languageToolConsent = L"offline";
+                    edit->SaveValue(L"Spelling", L"LanguageToolConsent", L"offline");
+                } else {
+                    std::lock_guard<std::mutex> lock(g_mu);
+                    g_cfg.languageToolConsent = L"offline";
+                    g_cfg.SaveValue(L"Spelling", L"LanguageToolConsent", L"offline");
+                }
+            }
+        } else if (f.kind == gct::HealthKind::HelperMissing && !nllbRow) {
+            any = true;
+            StatusRow(UI(Tr(L"Local translator")), 0, UI(Tr(L"helper missing")));
+            ImGui::SameLine();
+            if (ImGui::SmallButton(UI(Tr(L"Install") + L"##hlp").c_str()))
+                InstallLocalMtQuickSetup(dataDir);
+        } else if (f.kind == gct::HealthKind::HelperCrashed) {
+            any = true;
+            StatusRow(UI(Tr(L"Local translator")), 0, UI(Tr(L"helper crashed")));
+            ImGui::SameLine();
+            if (ImGui::SmallButton(UI(Tr(L"Restart") + L"##hlp").c_str())) {
+                std::lock_guard<std::mutex> lock(g_mu);
+                g_lastErrorKind = TranslateErrorKind::None;
+            }
+        } else if (f.kind == gct::HealthKind::TranslatorFailing) {
+            any = true;
+            StatusRow(UI(Tr(L"Translator")), 0, UI(Tr(L"repeated errors")));
+        } else if (f.kind == gct::HealthKind::ChatSilent && (g_chatEventsLive || g_chatEventsPresent)) {
+            any = true;
+            StatusRow(UI(Tr(L"Chat module")), 1, UI(Tr(L"no chat lines for 15 minutes")));
+        } else if (f.kind == gct::HealthKind::SendFailing) {
+            any = true;
+            StatusRow(UI(Tr(L"Sending")), 0, UI(Tr(L"sending to game chat failed")));
+        } else if (f.kind == gct::HealthKind::WhisperElsewhere) {
+            any = true;
+            StatusRow(UI(Tr(L"Whisper")), 1, UI(Tr(L"landed in wrong channel")));
+        }
+    }
     ImGui::PopID();
     return any;
 }

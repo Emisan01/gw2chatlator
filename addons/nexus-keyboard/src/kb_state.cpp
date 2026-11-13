@@ -1006,17 +1006,17 @@ FrameCosts CostsNow() {
 std::wstring HealthStatusText(gct::HealthKind kind) {
     switch (kind) {
         case gct::HealthKind::NoDictionary:
-            return Tr(L"Spell checking: no Windows dictionary installed");
+            return Tr(L"Spell checking") + L": " + Tr(L"no Windows dictionary installed");
         case gct::HealthKind::CorrectionIdle:
-            return Tr(L"Spell checking: no words checked");
+            return Tr(L"Spell checking") + L": " + Tr(L"no words checked despite typing");
         case gct::HealthKind::HelperMissing:
-            return Tr(L"Translator: local helper missing");
+            return Tr(L"Local translator") + L": " + Tr(L"helper missing");
         case gct::HealthKind::HelperCrashed:
-            return Tr(L"Translator: local helper crashed");
+            return Tr(L"Local translator") + L": " + Tr(L"helper crashed");
         case gct::HealthKind::TranslatorFailing:
-            return Tr(L"Translator: repeated errors");
+            return Tr(L"Translator") + L": " + Tr(L"repeated errors");
         case gct::HealthKind::SendFailing:
-            return Tr(L"Sending to chat failed");
+            return Tr(L"Sending") + L": " + Tr(L"sending to game chat failed");
         default:
             return {};
     }
