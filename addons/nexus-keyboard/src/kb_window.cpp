@@ -1128,6 +1128,15 @@ void RenderWindow() {
             chatWasOpen = chatOpen;
         }
     }
+    {
+        // Periodic health evaluation (once per minute on worker lane)
+        static ULONGLONG nextHealth = 0;
+        const ULONGLONG now = GetTickCount64();
+        if (now > nextHealth) {
+            nextHealth = now + 60000;
+            TriggerHealthCheck();
+        }
+    }
     {  // Behind everything else at the game's start: word lists and the translation model only once a map stands and the
        // game has had 10 s to settle, or at once when you use the window. Before a map nothing of it can be seen anyway.
         static ULONGLONG s_mapSince = 0;

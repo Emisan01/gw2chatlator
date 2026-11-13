@@ -211,6 +211,7 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once, std::w
         const TranslateResult r = LocalMtVersions(tr) > 1 ? ask() : g_transCache.Through({text, SourceCode(detected), target, by}, ask, &fromModel);
         modelRun = r.run;
         if (!r.ok || r.text.empty()) {  // never silent: the status says why (a missing language pack, the quota …)
+            ++g_healthMtFailsInRow;
             clearPending(true);
             if (!r.error.empty()) {
                 std::lock_guard<std::mutex> lock(g_mu);
@@ -218,6 +219,7 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once, std::w
             }
             return;
         }
+        g_healthMtFailsInRow = 0;
         t = SanitizeChatText(r.text);
         if (!raw) others = OtherVersions(r, t, p.segments, target);
         // The same check for every translator: nothing lost, nothing cut short. A doubtful translation is shown
@@ -451,6 +453,7 @@ void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
             liveRuns.back().queueMs = queuedMs;
             liveRuns.back().prepMs = std::chrono::duration_cast<std::chrono::milliseconds>(t0 - inputStarted).count();
             if (r.ok) {
+                g_healthMtFailsInRow = 0;
                 result = r.text;
                 if (!raw) others = OtherVersions(r, SanitizeChatText(r.text), p.segments, target);
                 liveRuns.back().versions = static_cast<int>(others.size());
@@ -460,6 +463,7 @@ void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
                 std::lock_guard<std::mutex> lock(g_mu);
                 g_lastErrorKind = TranslateErrorKind::None;
             } else {
+                ++g_healthMtFailsInRow;
                 error = r.error;
                 if (r.errorKind != TranslateErrorKind::None) {
                     std::lock_guard<std::mutex> lock(g_mu);
@@ -682,6 +686,7 @@ void ComputeTyping() {
         context = g_context;
     }
     if (!g_spell || !g_cfg.suggestions) return;
+    ++g_healthCorrectionChecks;
     g_spell->SetContext(std::move(context));
     TypingHelp h;
     h.text = text;
@@ -753,9 +758,12 @@ void CheckGrammar(uint64_t gen, std::wstring text) {
 
         r = CheckWithLanguageTool(serverUrl, text, lang, typing);
         if (!r.ok) {
+            ++g_healthLtFailsInRow;
             if (!r.error.empty()) TechLog('K', (L"LanguageTool: " + r.error).c_str());
             return;
         }
+        g_healthLtFailsInRow = 0;
+        ++g_healthLtRequests;
         s_cachedLtText = text;
         s_cachedLtResult = r;
     }
@@ -1023,6 +1031,7 @@ bool SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
     g_sendInFlight = false;
     g_bufferingStartTime = GetTickCount64();  // the key buffer's 3 s count from here: a long send never lets keys through
     if (ok) {
+        g_healthSendFails = 0;
         SetStatus(copyOnly ? Tr(L"Copied – paste it into the GW2 chat with Ctrl+V") : L"");
         g_history.push_front(typed);
         while (g_history.size() > kHistoryMax) g_history.pop_back();
@@ -1033,6 +1042,7 @@ bool SendNow(std::vector<std::wstring> parts, std::wstring typed, std::wstring l
             SubtitleClose(L"after send");
         }
     } else {
+        ++g_healthSendFails;
         SetStatus(error, 10000);
         if (g_input[0] == 0) {  // nothing lost: the text comes back
             const std::string back = U8(typed);
@@ -1133,6 +1143,58 @@ void StartSend() {  // Enter (g_mu held)
         SetStatus(Tr(L"translating and sending …"), 0);
         g_worker.PostFront([gen = g_inputGen, text, id = g_pendingSend.id] { TranslateInput(gen, text, id); });
     }
+}
+
+void RunHealthCheck() {
+    AssertNotInteractiveLane("RunHealthCheck");
+    gct::HealthInputs in;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        in.correctionOn = g_cfg.autoCorrect != AutoCorrectMode::Off;
+        in.typingLang = TypingLang();
+        in.dictionaryReady = g_spellDictReady.load() && !g_testFakeNoDictionary;
+        in.wordsFinished = g_healthWordsFinished.exchange(0);
+        in.correctionChecks = g_healthCorrectionChecks.exchange(0);
+        in.languageToolUsed = g_cfg.LanguageToolActive();
+        in.ltRequests = g_healthLtRequests.exchange(0);
+        in.ltFailsInRow = g_healthLtFailsInRow.load();
+
+        LocalMtSummary summary = LocalMtNow(g_cfg.dataDir);
+        in.translatorLocal = (g_translator && IsLocalMtTranslator(g_translator)) || IsLocalEngine(g_cfg.engine) || (g_cfg.engine == Engine::Auto);
+        in.helperPresent = summary.module;
+        in.helperCrashed = (g_lastErrorKind == TranslateErrorKind::HelperCrashed) || (summary.helper.status == gct::HelperStatus::Failed);
+        in.mtFailsInRow = g_healthMtFailsInRow.load();
+
+        in.chatEventsLoaded = g_chatEventsPresent.load() || g_chatEventsLive.load();
+        const ULONGLONG lastChat = g_lastChatLineTime.load();
+        const ULONGLONG now = GetTickCount64();
+        static const ULONGLONG s_sessionStart = GetTickCount64();
+        in.msSinceChatLine = (lastChat > 0 && now >= lastChat) ? (now - lastChat) : (now >= s_sessionStart ? (now - s_sessionStart) : 0);
+
+        in.sendFails = g_healthSendFails.load();
+        in.whisperElsewhere = g_healthWhisperElsewhere.exchange(0);
+    }
+
+    std::vector<gct::HealthFinding> findings = gct::EvaluateHealth(in);
+
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_health = findings;
+        for (const auto& f : findings) {
+            if (g_healthLastLogged.insert(f.kind).second) {
+                g_healthFindingsAll.insert(f.kind);
+                TechLog('Q', (std::wstring(L"health: ") + gct::HealthKindName(f.kind) + L" " + std::to_wstring(f.severity)).c_str());
+                if (f.severity == 2) {
+                    std::wstring txt = HealthStatusText(f.kind);
+                    if (!txt.empty()) SetStatus(txt, 8000);
+                }
+            }
+        }
+    }
+}
+
+void TriggerHealthCheck() {
+    g_worker.PostLookup([] { RunHealthCheck(); });
 }
 
 }  // namespace kb

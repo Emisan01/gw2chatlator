@@ -18,11 +18,14 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <string>
 #include <thread>
+#include <vector>
 #include "chat_events.hpp"
 #include "app/config.hpp"
 #include "app/spell_service.hpp"
+#include "core/health.hpp"
 #include "core/chat_code.hpp"
 #include "core/contrast.hpp"
 #include "core/cpu_use.hpp"
@@ -308,6 +311,22 @@ extern bool g_showDebugWindow;
 // Raw translation (Technical tab, until restart): the translator gets each line as written – no GW2 terms, names,
 // tags, sentence split, extra tries, clean-up or quality check; chat codes and links stay protected. For comparing.
 extern std::atomic<bool> g_rawTranslate;
+extern std::atomic<int> g_healthWordsFinished;
+extern std::atomic<int> g_healthCorrectionChecks;
+extern std::atomic<int> g_healthLtRequests;
+extern std::atomic<int> g_healthLtFailsInRow;
+extern std::atomic<int> g_healthMtFailsInRow;
+extern std::atomic<int> g_healthSendFails;
+extern std::atomic<int> g_healthWhisperElsewhere;
+extern std::atomic<ULONGLONG> g_lastChatLineTime;
+extern std::vector<gct::HealthFinding> g_health;
+extern std::set<gct::HealthKind> g_healthFindingsAll;
+extern std::set<gct::HealthKind> g_healthLastLogged;
+extern bool g_testFakeNoDictionary;
+void TriggerHealthCheck();
+void RunHealthCheck();
+std::wstring HealthStatusText(gct::HealthKind kind);
+bool IsLocalEngine(Engine e);
 void SuppressImplicitDebugWindow();
 void Log(ELogLevel level, const char* text);
 bool IsCodePointer(const void* ptr);

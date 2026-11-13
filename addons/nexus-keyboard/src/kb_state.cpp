@@ -31,6 +31,18 @@ std::atomic<int> g_fps{0};
 bool g_show = true;
 TestHooks g_test;
 bool g_testToggleFallenAngel = false;
+bool g_testFakeNoDictionary = false;
+std::atomic<int> g_healthWordsFinished{0};
+std::atomic<int> g_healthCorrectionChecks{0};
+std::atomic<int> g_healthLtRequests{0};
+std::atomic<int> g_healthLtFailsInRow{0};
+std::atomic<int> g_healthMtFailsInRow{0};
+std::atomic<int> g_healthSendFails{0};
+std::atomic<int> g_healthWhisperElsewhere{0};
+std::atomic<ULONGLONG> g_lastChatLineTime{0};
+std::vector<gct::HealthFinding> g_health;
+std::set<gct::HealthKind> g_healthFindingsAll;
+std::set<gct::HealthKind> g_healthLastLogged;
 bool g_showOptions = false;  // our own options window (menu ≡ / the button on the Nexus page)
 bool g_showDebugWindow = false;  // dedicated debug & diagnostic inspection window
 
@@ -989,6 +1001,25 @@ FrameCosts CostsNow() {
     c.lines = g_cost.lines;
     c.lineUs = c.lines ? static_cast<double>(g_cost.lineTicks) / 1000.0 / static_cast<double>(c.lines) : 0;
     return c;
+}
+
+std::wstring HealthStatusText(gct::HealthKind kind) {
+    switch (kind) {
+        case gct::HealthKind::NoDictionary:
+            return Tr(L"Spell checking: no Windows dictionary installed");
+        case gct::HealthKind::CorrectionIdle:
+            return Tr(L"Spell checking: no words checked");
+        case gct::HealthKind::HelperMissing:
+            return Tr(L"Translator: local helper missing");
+        case gct::HealthKind::HelperCrashed:
+            return Tr(L"Translator: local helper crashed");
+        case gct::HealthKind::TranslatorFailing:
+            return Tr(L"Translator: repeated errors");
+        case gct::HealthKind::SendFailing:
+            return Tr(L"Sending to chat failed");
+        default:
+            return {};
+    }
 }
 
 }  // namespace kb

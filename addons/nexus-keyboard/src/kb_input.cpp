@@ -347,6 +347,9 @@ void NoteSelfFix(const std::wstring& text) {  // g_mu held; the text changed
         if (g_finishedAt == words.size() - 1 && !g_finishedLast.empty() && words.back() != g_finishedLast)
             AddSelfFix(g_finishedLast, words.back());
         if (words.size() - 1 >= g_finishedAt || g_finishedLast.empty()) {  // a word deleted whole: it waits for its retyping
+            if (words.back() != g_finishedLast || words.size() - 1 > g_finishedAt) {
+                ++g_healthWordsFinished;
+            }
             g_finishedLast = words.back();
             g_finishedAt = words.size() - 1;
         }

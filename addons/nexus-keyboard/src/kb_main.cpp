@@ -402,6 +402,19 @@ bool OpenNexusMenu() {
 }
 
 void AddonUnload() {
+    {
+        std::wstring summary = L"health summary:";
+        std::lock_guard<std::mutex> lock(g_mu);
+        if (g_healthFindingsAll.empty()) {
+            summary += L" all ok";
+        } else {
+            for (gct::HealthKind k : g_healthFindingsAll) {
+                summary += L" ";
+                summary += gct::HealthKindName(k);
+            }
+        }
+        TechLog('Q', summary.c_str());
+    }
     TechLog('O', L"== end of the session");
     g_unloading = true;  // first: every install thread stops at its next step (unload waits for them below)
     gct::StopHttpRequests();  // and one waiting on the network ends now, not after its read's 60 s

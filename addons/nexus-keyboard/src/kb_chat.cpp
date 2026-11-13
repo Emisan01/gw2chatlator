@@ -93,7 +93,9 @@ void AddLine(Channel ch, bool outgoing, const char* speaker, const char* text, c
         brake = LimitedContingent();
         l.own = own;
         l.receivedTime = GetTickCount64();
+        g_lastChatLineTime = l.receivedTime;
         if (own && g_whisperWatch.WentElsewhere(l.text, ch == Channel::Whisper, l.receivedTime)) {
+            ++g_healthWhisperElsewhere;
             g_syncedChannel.clear();  // GW2's line is not where we thought: the next message sets it again
             SetStatus(TrF(L"That whisper landed in {1}, not with the player – check GW2's chat line.", {ChannelLabel(ch)}), 15000);
         }
