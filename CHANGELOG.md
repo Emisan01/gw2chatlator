@@ -15,13 +15,17 @@ diagnosis show it.
   - Left-clicking a green mark reverts the word to its original form and remembers it for the session so it won't be replaced again.
   - Right-clicking saves the original word permanently to your personal dictionary (`my-words.txt`).
   - Hitting Backspace immediately after an auto-correction reverts the last change.
-  - Fallen Angel is toggled exclusively in the window menu ≡ (`[Spelling] FallenAngel=1`), cleanly decoupled from the autocorrection level dropdown (which shows disabled with a hint when Fallen Angel is on).
+  - Fallen Angel is integrated directly as the 5th level in the Autocorrection dropdown, with LanguageTool toggled via its dedicated switch directly below.
 - **Core Bug Fixes (Game Thread Safety & Buffer Sync):**
   - Enter in Fallen Angel mode is now non-blocking: frame-by-frame check awaits in-flight grammar results up to 1500 ms without holding the lock or calling `Sleep()`, completely eliminating game freeze.
   - Grammar and spelling replacements are dispatched through `g_edit`, keeping ImGui's internal text buffer and cursor position perfectly synchronized and preventing corrections from being overwritten on subsequent keystrokes.
 - **Streamlined Options (Chat & Typing Help):**
-  - Cleaned up Options → Chat → Typing help: "I write in", "Word suggestions while typing", "Spell checking (Windows, offline)", and 4 autocorrection levels ("Off", "Safe", "Like a phone keyboard", "Strong").
+  - Cleaned up Options → Chat → Typing help: "I write in", "Word suggestions while typing", "Spell checking (Windows, offline)", 5 autocorrection levels ("Off", "Safe", "Like a phone keyboard", "Strong", "Fallen Angel"), and a dedicated "Grammar check (LanguageTool)" toggle switch.
   - Removed redundant "Grammar & Phrasing" box; LanguageTool Server URL moved to Options → Technical.
+- **Proactive Health Monitoring & In-Game Self-Diagnostics:**
+  - Integrated a deterministic pure C++17 health core evaluating 9 operational invariants every 60 seconds on a background worker.
+  - Live findings (missing language dictionary, crashed MT helper, offline LanguageTool server, silent chat events, or send failures) surface in Options → Start under "What is still missing" with actionable remediation buttons.
+  - Severity-2 dead function alerts are broadcast once via window status and flagged as FAIL during session protocol checks.
 - **Master Translator OFF Switch & Footer Controls:**
   - Toggling translation OFF in the dashboard or selecting `Off (no translation)` in the footer dropdown menu completely deactivates translation for outgoing messages (`SendOriginal` enabled, no calls to MyMemory or local MT).
   - The send language footer button displays `Translation: Off` (`Off` when narrow) in disabled gray text when translation is inactive.
