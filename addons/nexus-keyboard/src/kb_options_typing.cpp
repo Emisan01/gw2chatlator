@@ -8,6 +8,45 @@
 
 namespace kb {
 
+void ApplyAutoCorrectChoice(Config& cfg, int level, bool persistAndApply, bool* showConsentDialog) {
+    level = std::clamp(level, 0, 4);
+    cfg.autoCorrect = static_cast<AutoCorrectMode>(level);
+    cfg.fallenAngel = (cfg.autoCorrect == AutoCorrectMode::FallenAngel);
+    if (cfg.autoCorrect == AutoCorrectMode::FallenAngel) {
+        cfg.useLanguageTool = true;
+    }
+    if (cfg.autoCorrect == AutoCorrectMode::Strong || cfg.autoCorrect == AutoCorrectMode::FallenAngel) {
+        const std::wstring normUrl = NormalizeLanguageToolUrl(cfg.languageToolUrl);
+        const bool isLocalHost = normUrl.find(L"localhost") != std::wstring::npos || normUrl.find(L"127.0.0.1") != std::wstring::npos;
+        if (!isLocalHost && cfg.languageToolConsent.empty() && showConsentDialog) {
+            *showConsentDialog = true;
+        }
+    }
+    if (persistAndApply) {
+        cfg.SaveBool(L"Spelling", L"FallenAngel", cfg.fallenAngel);
+        cfg.SaveValue(L"Spelling", L"AutoCorrectMode", AutoCorrectKey(cfg.autoCorrect));
+        cfg.SaveBool(L"Spelling", L"UseLanguageTool", cfg.useLanguageTool);
+        LogState(L"Autocorrection");
+        g_worker.PostInteractive(ComputeTyping);
+    }
+}
+
+void ApplyGrammarCheckChoice(Config& cfg, bool enabled, bool persistAndApply, bool* showConsentDialog) {
+    cfg.useLanguageTool = enabled;
+    if (cfg.useLanguageTool) {
+        const std::wstring normUrl = NormalizeLanguageToolUrl(cfg.languageToolUrl);
+        const bool isLocalHost = normUrl.find(L"localhost") != std::wstring::npos || normUrl.find(L"127.0.0.1") != std::wstring::npos;
+        if (!isLocalHost && cfg.languageToolConsent.empty() && showConsentDialog) {
+            *showConsentDialog = true;
+        }
+    }
+    if (persistAndApply) {
+        cfg.SaveBool(L"Spelling", L"UseLanguageTool", cfg.useLanguageTool);
+        LogState(L"Grammar check (LanguageTool)");
+        g_worker.PostInteractive(ComputeTyping);
+    }
+}
+
 // The word lists (Technical tab): how many entries each holds – the built-in ones compiled in, yours and the learned
 // ones to look at and correct here. Typo patterns only counted: correcting them by hand would fight what typing learns.
 void RenderWordLists() {
@@ -149,18 +188,7 @@ void RenderTypingPage(Config& edit) {
     static bool s_showConsentDialog = false;
 
     if (RowCombo("##ac", {UI(Tr(L"Off")), UI(Tr(L"Safe")), UI(Tr(L"Like a phone keyboard")), UI(Tr(L"Strong")), UI(Tr(L"Fallen Angel"))}, &ac)) {
-        edit.autoCorrect = static_cast<AutoCorrectMode>(ac);
-        edit.fallenAngel = (edit.autoCorrect == AutoCorrectMode::FallenAngel);
-        if (edit.autoCorrect == AutoCorrectMode::FallenAngel) {
-            edit.useLanguageTool = true;
-        }
-        if (edit.autoCorrect == AutoCorrectMode::Strong || edit.autoCorrect == AutoCorrectMode::FallenAngel) {
-            const std::wstring normUrl = NormalizeLanguageToolUrl(edit.languageToolUrl);
-            const bool isLocalHost = normUrl.find(L"localhost") != std::wstring::npos || normUrl.find(L"127.0.0.1") != std::wstring::npos;
-            if (!isLocalHost && edit.languageToolConsent.empty()) {
-                s_showConsentDialog = true;
-            }
-        }
+        ApplyAutoCorrectChoice(edit, ac, false, &s_showConsentDialog);
     }
 
     if (edit.autoCorrect == AutoCorrectMode::Off) {
@@ -177,13 +205,7 @@ void RenderTypingPage(Config& edit) {
 
     if (Switch("languagetool", UI(Tr(L"Grammar check (LanguageTool)")), &edit.useLanguageTool,
                UI(Tr(L"Checks grammar, subject-verb agreement, and phrasing in real time (free public API or your own local server). Underlines grammar mistakes in amber; click the badge to fix all.")).c_str())) {
-        if (edit.useLanguageTool) {
-            const std::wstring normUrl = NormalizeLanguageToolUrl(edit.languageToolUrl);
-            const bool isLocalHost = normUrl.find(L"localhost") != std::wstring::npos || normUrl.find(L"127.0.0.1") != std::wstring::npos;
-            if (!isLocalHost && edit.languageToolConsent.empty()) {
-                s_showConsentDialog = true;
-            }
-        }
+        ApplyGrammarCheckChoice(edit, edit.useLanguageTool, false, &s_showConsentDialog);
     }
 
     if (s_showConsentDialog) {

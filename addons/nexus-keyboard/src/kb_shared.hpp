@@ -772,6 +772,8 @@ extern bool g_collapsed;
 void MinimizeWindow();
 float FooterHeight();
 void RenderFooter();
+void ApplyAutoCorrectChoice(Config& cfg, int level, bool persistAndApply, bool* showConsentDialog = nullptr);
+void ApplyGrammarCheckChoice(Config& cfg, bool enabled, bool persistAndApply, bool* showConsentDialog = nullptr);
 
 // ---- "Events: Chat": is it there, and installing it the way the Nexus library would.
 extern std::atomic<bool> g_chatEventsPresent;
