@@ -1218,6 +1218,19 @@ int wmain(int argc, wchar_t** argv) {
             const bool d5Ok = (acStrong == 3) && (std::wcscmp(iniStrong, L"strong") == 0) && (acRestored == acBefore);
             if (!d5Ok) std::printf("FAIL: typing menu ⋮ level change or INI persistence failed\n");
             ok = ok && d5Ok;
+
+            // Consent request from typing menu ⋮ without saved consent (N3):
+            const int ltReq = src(16, nullptr, nullptr);
+            const int ltOk = src(17, nullptr, nullptr);
+            const int ltOffline = src(18, nullptr, nullptr);
+            src(14, nullptr, const_cast<char*>(std::to_string(acBefore).c_str()));
+            frames(2);
+            Sleep(550);
+            frames(2);
+            std::printf("typing menu ⋮ consent: req=%d okActive=%d offlineActive=%d\n", ltReq, ltOk, ltOffline);
+            const bool n3Ok = (ltReq == 1) && (ltOk == 1) && (ltOffline == 0);
+            if (!n3Ok) std::printf("FAIL: typing menu ⋮ consent flow did not match expected LanguageToolActive() states\n");
+            ok = ok && n3Ok;
         }
 
         // Health check selftest (Schritt 3):

@@ -31,6 +31,7 @@ std::atomic<int> g_fps{0};
 bool g_show = true;
 TestHooks g_test;
 bool g_testToggleFallenAngel = false;
+bool g_requestLtConsent = false;
 bool g_testFakeNoDictionary = false;
 std::atomic<int> g_healthWordsFinished{0};
 std::atomic<int> g_healthCorrectionChecks{0};

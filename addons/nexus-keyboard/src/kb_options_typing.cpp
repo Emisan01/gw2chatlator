@@ -49,6 +49,12 @@ void ApplyGrammarCheckChoice(Config& cfg, bool enabled, bool persistAndApply, bo
     }
 }
 
+void RequestLanguageToolConsent() {
+    g_requestLtConsent = true;
+    g_showOptions = true;
+    g_optionsTab = kPageChat;
+}
+
 // The word lists (Technical tab): how many entries each holds – the built-in ones compiled in, yours and the learned
 // ones to look at and correct here. Typo patterns only counted: correcting them by hand would fight what typing learns.
 void RenderWordLists() {
@@ -187,10 +193,9 @@ void RenderTypingPage(Config& edit) {
     RowLabel(UI(Tr(L"Autocorrection")));
     int ac = static_cast<int>(edit.autoCorrect);
     if (ac < 0 || ac > 4) ac = 2;
-    static bool s_showConsentDialog = false;
 
     if (RowCombo("##ac", {UI(Tr(L"Off")), UI(Tr(L"Safe")), UI(Tr(L"Like a phone keyboard")), UI(Tr(L"Strong")), UI(Tr(L"Fallen Angel"))}, &ac)) {
-        ApplyAutoCorrectChoice(edit, ac, false, &s_showConsentDialog);
+        ApplyAutoCorrectChoice(edit, ac, false, &g_requestLtConsent);
     }
 
     if (edit.autoCorrect == AutoCorrectMode::Off) {
@@ -207,14 +212,14 @@ void RenderTypingPage(Config& edit) {
 
     if (Switch("languagetool", UI(Tr(L"Grammar check (LanguageTool)")), &edit.useLanguageTool,
                UI(Tr(L"Checks grammar, subject-verb agreement, and phrasing in real time (free public API or your own local server). Underlines grammar mistakes in amber; click the badge to fix all.")).c_str())) {
-        ApplyGrammarCheckChoice(edit, edit.useLanguageTool, false, &s_showConsentDialog);
+        ApplyGrammarCheckChoice(edit, edit.useLanguageTool, false, &g_requestLtConsent);
     }
 
-    if (s_showConsentDialog) {
+    if (g_requestLtConsent) {
         ImGui::OpenPopup((UI(Tr(L"Privacy Notice")) + "##lt_consent").c_str());
     }
 
-    if (ImGui::BeginPopupModal((UI(Tr(L"Privacy Notice")) + "##lt_consent").c_str(), &s_showConsentDialog, ImGuiWindowFlags_AlwaysAutoResize)) {
+    if (ImGui::BeginPopupModal((UI(Tr(L"Privacy Notice")) + "##lt_consent").c_str(), &g_requestLtConsent, ImGuiWindowFlags_AlwaysAutoResize)) {
         const std::wstring normUrl = NormalizeLanguageToolUrl(edit.languageToolUrl);
         const std::wstring notice = TrF(L"Strong uses LanguageTool online for grammar: your own text (never other players' lines) goes to {1}.", {normUrl});
         ImGui::PushTextWrapPos(ImGui::GetFontSize() * 25.0f);
@@ -227,7 +232,9 @@ void RenderTypingPage(Config& edit) {
         if (ImGui::Button(UI(Tr(L"OK")).c_str(), ImVec2(ImGui::GetFontSize() * 6.0f, 0))) {
             edit.languageToolConsent = normUrl;
             edit.SaveValue(L"Spelling", L"LanguageToolConsent", normUrl);
-            s_showConsentDialog = false;
+            g_cfg.languageToolConsent = normUrl;
+            g_requestLtConsent = false;
+            g_worker.Post([] { Config::FlushWrites(); });
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
@@ -235,7 +242,10 @@ void RenderTypingPage(Config& edit) {
             edit.languageToolConsent = L"offline";
             edit.SaveValue(L"Spelling", L"LanguageToolConsent", L"offline");
             edit.useLanguageTool = false;
-            s_showConsentDialog = false;
+            g_cfg.languageToolConsent = L"offline";
+            g_cfg.useLanguageTool = false;
+            g_requestLtConsent = false;
+            g_worker.Post([] { Config::FlushWrites(); });
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();

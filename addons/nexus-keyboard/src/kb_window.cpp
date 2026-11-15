@@ -1901,7 +1901,7 @@ void RenderWindow() {
                 g_focusInput = true;
             }
             if (needConsent) {
-                g_showOptions = true;
+                RequestLanguageToolConsent();
             }
             ImGui::EndPopup();
         }

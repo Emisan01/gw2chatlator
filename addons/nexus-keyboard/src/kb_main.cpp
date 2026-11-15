@@ -759,6 +759,30 @@ extern "C" __declspec(dllexport) int Gw2KbTestChatSource(int cmd, ChatSourceTest
             break;
         }
         case 15: return static_cast<int>(g_cfg.autoCorrect);
+        case 16: {
+            std::lock_guard<std::mutex> lock(g_mu);
+            g_cfg.languageToolConsent.clear();
+            g_requestLtConsent = false;
+            bool needConsent = false;
+            ApplyAutoCorrectChoice(g_cfg, 4, true, &needConsent);
+            if (needConsent) RequestLanguageToolConsent();
+            return (g_requestLtConsent && g_showOptions && g_optionsTab == kPageChat) ? 1 : 0;
+        }
+        case 17: {
+            std::lock_guard<std::mutex> lock(g_mu);
+            g_cfg.languageToolConsent = NormalizeLanguageToolUrl(g_cfg.languageToolUrl);
+            g_requestLtConsent = false;
+            g_showOptions = false;
+            return g_cfg.LanguageToolActive() ? 1 : 0;
+        }
+        case 18: {
+            std::lock_guard<std::mutex> lock(g_mu);
+            g_cfg.languageToolConsent = L"offline";
+            g_cfg.useLanguageTool = false;
+            g_requestLtConsent = false;
+            g_showOptions = false;
+            return g_cfg.LanguageToolActive() ? 1 : 0;
+        }
         default: break;
     }
     if (state) ChatSourceTestState(state);
