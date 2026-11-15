@@ -1790,6 +1790,8 @@ extern const I18nEntry kPortugueseStrings[] = {
      "Sair"},
     {L"everything off",
      "tudo desligado"},
+    {L"Channel",
+     "Canal"},
 };
 extern const size_t kPortugueseCount = sizeof(kPortugueseStrings) / sizeof(kPortugueseStrings[0]);
 

@@ -1790,6 +1790,8 @@ extern const I18nEntry kGermanStrings[] = {
      "Beenden"},
     {L"everything off",
      "alles aus"},
+    {L"Channel",
+     "Kanal"},
 };
 extern const size_t kGermanCount = sizeof(kGermanStrings) / sizeof(kGermanStrings[0]);
 

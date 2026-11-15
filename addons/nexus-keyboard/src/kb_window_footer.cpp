@@ -66,16 +66,55 @@ void SendLanguageItems(bool tabAware) {
     }
 }
 
-// The footer chips: channel | "Write: German" | "Send: English (UK) · MyMemory" (orange) | auto | counter.
+float FooterHeight() {
+    const ImGuiStyle& st = ImGui::GetStyle();
+    const float fs = ImGui::GetFontSize();
+    const float capFs = std::max(8.0f, std::round(fs * 0.75f));
+    return std::ceil(st.FramePadding.y * 2.0f + capFs + 1.0f + ImGui::GetTextLineHeight());
+}
+
+static bool FooterField(const char* id, const char* caption, const char* value, const ImVec4& valueColor, float width) {
+    const ImGuiStyle& st = ImGui::GetStyle();
+    const float h = FooterHeight();
+    const ImVec2 pos = ImGui::GetCursorScreenPos();
+    const bool clicked = ImGui::InvisibleButton(id, ImVec2(width, h));
+    const bool hovered = ImGui::IsItemHovered();
+    const bool active = ImGui::IsItemActive();
+    const ImU32 bg = ImGui::GetColorU32(active ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    dl->AddRectFilled(pos, ImVec2(pos.x + width, pos.y + h), bg, st.FrameRounding);
+    if (st.FrameBorderSize > 0.0f) {
+        dl->AddRect(pos, ImVec2(pos.x + width, pos.y + h), ImGui::GetColorU32(ImGuiCol_Border), st.FrameRounding, 0, st.FrameBorderSize);
+    }
+    ImFont* font = ImGui::GetFont();
+    const float fs = ImGui::GetFontSize();
+    const float capFs = std::max(8.0f, std::round(fs * 0.75f));
+    const float x = pos.x + st.FramePadding.x + 4.0f;
+    const float yCap = pos.y + st.FramePadding.y;
+    const float yVal = yCap + capFs + 1.0f;
+    dl->AddText(font, capFs, ImVec2(x, yCap), ImGui::GetColorU32(ImGuiCol_TextDisabled), caption);
+    dl->AddText(font, fs, ImVec2(x, yVal), ImGui::GetColorU32(valueColor), value);
+    return clicked;
+}
+
+// The footer chips: channel | write | send · translator | auto | counter.
 void RenderFooter() {  // g_mu held
     static const Channel kChannels[] = {Channel::Unknown, Channel::Say,   Channel::Map,  Channel::Party,
                                         Channel::Squad,   Channel::Guild, Channel::Team, Channel::Whisper};
-    auto chipWidth = [](const std::string& s) { return ImGui::CalcTextSize(s.c_str()).x + ImGui::GetFrameHeight() + 12; };
+    auto fieldWidth = [](const std::string& cap, const std::string& val) {
+        ImFont* font = ImGui::GetFont();
+        const float fs = ImGui::GetFontSize();
+        const float capFs = std::max(8.0f, std::round(fs * 0.75f));
+        const float cw = font->CalcTextSizeA(capFs, FLT_MAX, 0.0f, cap.c_str()).x;
+        const float vw = ImGui::CalcTextSize(val.c_str()).x;
+        return std::ceil(std::max(cw, vw) + ImGui::GetStyle().FramePadding.x * 2.0f + 8.0f);
+    };
     const float iconH = ImGui::GetFrameHeight();
+    const float fieldH = FooterHeight();
 
     // Native minimize button (bottom-left corner of the window)
     if (Shown().minButton) {
-        if (ImGui::Button(">##minchat", ImVec2(iconH, iconH))) MinimizeWindow();
+        if (ImGui::Button(">##minchat", ImVec2(iconH, fieldH))) MinimizeWindow();
         if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Minimize chat")).c_str());
         ImGui::SameLine();
     }
@@ -91,12 +130,10 @@ void RenderFooter() {  // g_mu held
         std::wstring sendLang;
         bool sendOrig = false;
         bool translateChat = false;
+        std::string capChannel;
         std::string labelFull, labelNarrow;
-        std::string labelBtnFull, labelBtnNarrow;
         std::string writeFull, writeNarrow;
-        std::string writeBtnFull, writeBtnNarrow;
         std::string sendFull, sendNarrow;
-        std::string sendBtnFull, sendBtnNarrow;
         float labelWFull = 0, labelWNarrow = 0;
         float writeWFull = 0, writeWNarrow = 0;
         float sendWFull = 0, sendWNarrow = 0;
@@ -118,6 +155,7 @@ void RenderFooter() {  // g_mu held
         s_fc.sendOrig = sendOrig;
         s_fc.translateChat = g_nx.translateChat;
 
+        s_fc.capChannel = UI(Tr(L"Channel"));
         s_fc.labelFull = g_channel == Channel::Unknown ? UI(Tr(L"Active channel")) : UI(ChannelLabel(g_channel));
         if (g_channel == Channel::Guild && g_guildSlot > 0) s_fc.labelFull = "G" + std::to_string(g_guildSlot);
         if (g_channel == Channel::Whisper && !g_whisperTo.empty()) {
@@ -125,14 +163,10 @@ void RenderFooter() {  // g_mu held
             else s_fc.labelFull += " " + U8(g_whisperTo);
         }
         s_fc.labelNarrow = g_channel == Channel::Unknown ? UI(Tr(L"Active")) : s_fc.labelFull;
-        s_fc.labelBtnFull = s_fc.labelFull + "##chbtn";
-        s_fc.labelBtnNarrow = s_fc.labelNarrow + "##chbtn";
 
         s_fc.writeFull = UI(TrF(L"Typing help: {1}", {g_cfg.writeIn.empty() ? Tr(L"System") + L" (" + NativeName(TypingLang()) + L")"
                                                                   : NativeName(g_cfg.writeIn)}));
         s_fc.writeNarrow = g_cfg.writeIn.empty() ? std::string("Win") : U8(ToUpperAscii(PrimaryLang(g_cfg.writeIn)));
-        s_fc.writeBtnFull = s_fc.writeFull + "##writebtn";
-        s_fc.writeBtnNarrow = s_fc.writeNarrow + "##writebtn";
 
         const std::wstring sendText = NativeName(sendLang);
         // When master translator is OFF, display "Translation: Off" grayed out.
@@ -143,27 +177,24 @@ void RenderFooter() {  // g_mu held
             s_fc.sendFull = sendOrig ? UI(Tr(L"as written")) : UI(TrF(L"Send: {1}", {sendText}));
             s_fc.sendNarrow = sendOrig ? UI(Tr(L"as written")) : "> " + U8(ToUpperAscii(PrimaryLang(sendLang)));
         }
-        s_fc.sendBtnFull = s_fc.sendFull + "##sendbtn";
-        s_fc.sendBtnNarrow = s_fc.sendNarrow + "##sendbtn";
 
-        s_fc.labelWFull = chipWidth(s_fc.labelFull);
-        s_fc.labelWNarrow = chipWidth(s_fc.labelNarrow);
-        s_fc.writeWFull = chipWidth(s_fc.writeFull);
-        s_fc.writeWNarrow = chipWidth(s_fc.writeNarrow);
-        s_fc.sendWFull = chipWidth(s_fc.sendFull);
-        s_fc.sendWNarrow = chipWidth(s_fc.sendNarrow);
+        s_fc.labelWFull = fieldWidth(s_fc.capChannel, s_fc.labelFull);
+        s_fc.labelWNarrow = fieldWidth(s_fc.capChannel, s_fc.labelNarrow);
+        s_fc.writeWFull = fieldWidth("", s_fc.writeFull);
+        s_fc.writeWNarrow = fieldWidth("", s_fc.writeNarrow);
+        s_fc.sendWFull = fieldWidth("", s_fc.sendFull);
+        s_fc.sendWNarrow = fieldWidth("", s_fc.sendNarrow);
         s_fc.totalNeedFull = iconH + s_fc.labelWFull + s_fc.writeWFull + s_fc.sendWFull +
                              ImGui::GetFrameHeight() * 5 + ImGui::CalcTextSize("000/199").x;
     }
 
     const bool narrow = s_fc.totalNeedFull > ImGui::GetContentRegionAvail().x;
-    const std::string& chBtnLabel = narrow ? s_fc.labelBtnNarrow : s_fc.labelBtnFull;
+    const std::string& chVal = narrow ? s_fc.labelNarrow : s_fc.labelFull;
     const float chBtnW = narrow ? s_fc.labelWNarrow : s_fc.labelWFull;
 
     const ImVec2 chBtnPos = ImGui::GetCursorScreenPos();
-    ImGui::PushStyleColor(ImGuiCol_Text, NameColorOf(g_channel == Channel::Unknown ? Channel::Say : g_channel));
-    const bool chLeft = ImGui::Button(chBtnLabel.c_str(), ImVec2(chBtnW, iconH));
-    ImGui::PopStyleColor();
+    const ImVec4 chColor = NameColorOf(g_channel == Channel::Unknown ? Channel::Say : g_channel);
+    const bool chLeft = FooterField("##chbtn", s_fc.capChannel.c_str(), chVal.c_str(), chColor, chBtnW);
     const bool chRight = ImGui::IsItemHovered() && ImGui::IsMouseClicked(1);
 
     if (chLeft || chRight) {
@@ -216,8 +247,9 @@ void RenderFooter() {  // g_mu held
     ImGui::SameLine();
     const ImVec2 writeBtnPos = ImGui::GetCursorScreenPos();
     const float writeBtnW = narrow ? s_fc.writeWNarrow : s_fc.writeWFull;
-    const std::string& writeBtnLabel = narrow ? s_fc.writeBtnNarrow : s_fc.writeBtnFull;
-    const bool writeLeft = ImGui::Button(writeBtnLabel.c_str(), ImVec2(writeBtnW, iconH));
+    const std::string& writeVal = narrow ? s_fc.writeNarrow : s_fc.writeFull;
+    const ImVec4 textColor = ImGui::GetStyleColorVec4(ImGuiCol_Text);
+    const bool writeLeft = FooterField("##writebtn", "", writeVal.c_str(), textColor, writeBtnW);
     const bool writeRight = ImGui::IsItemHovered() && ImGui::IsMouseClicked(1);
     if (writeLeft || writeRight) {
         ImGui::OpenPopup("##write_popup");
@@ -257,11 +289,9 @@ void RenderFooter() {  // g_mu held
     ImGui::SameLine();
     const ImVec2 sendBtnPos = ImGui::GetCursorScreenPos();
     const float sendBtnW = narrow ? s_fc.sendWNarrow : s_fc.sendWFull;
-    const std::string& sendBtnLabel = narrow ? s_fc.sendBtnNarrow : s_fc.sendBtnFull;
+    const std::string& sendVal = narrow ? s_fc.sendNarrow : s_fc.sendFull;
     const ImVec4 sendColor = !g_nx.translateChat ? ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled) : UiAccent();
-    ImGui::PushStyleColor(ImGuiCol_Text, sendColor);
-    const bool sendLeft = ImGui::Button(sendBtnLabel.c_str(), ImVec2(sendBtnW, iconH));
-    ImGui::PopStyleColor();
+    const bool sendLeft = FooterField("##sendbtn", "", sendVal.c_str(), sendColor, sendBtnW);
     if (!g_nx.translateChat && ImGui::IsItemHovered()) {
         ImGui::SetTooltip("%s", UI(Tr(L"Translation is switched off. Click to enable or select language.")).c_str());
     }
@@ -330,7 +360,7 @@ void RenderFooter() {  // g_mu held
     // The info texts again: in the box they are often gone before you have read them.
     const ImVec2 infoBtnPos = ImGui::GetCursorScreenPos();
     ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-    if (ImGui::Button("i##infolog", ImVec2(iconH, iconH))) ImGui::OpenPopup("##infolog_popup");
+    if (ImGui::Button("i##infolog", ImVec2(iconH, fieldH))) ImGui::OpenPopup("##infolog_popup");
     ImGui::PopStyleColor();
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Info texts of this session")).c_str());
     const float infoW = ImGui::GetFontSize() * 26.0f;
