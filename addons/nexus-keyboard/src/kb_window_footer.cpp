@@ -179,7 +179,7 @@ void RenderFooter() {  // g_mu held
         } else {
             s_fc.capSend = UI(Tr(L"Goes out as"));
             s_fc.sendFull = sendOrig ? UI(Tr(L"as written")) : U8(sendText);
-            s_fc.sendNarrow = sendOrig ? UI(Tr(L"as written")) : "> " + U8(ToUpperAscii(PrimaryLang(sendLang)));
+            s_fc.sendNarrow = sendOrig ? UI(Tr(L"as written")) : U8(ToUpperAscii(PrimaryLang(sendLang)));
         }
 
         s_fc.labelWFull = fieldWidth(s_fc.capChannel, s_fc.labelFull);
