@@ -824,6 +824,57 @@ int TestTypingStages(int mask) {
     return bits;
 }
 
+int TestGrammarLanguage(int port) {
+    if (port <= 0) return 0;
+    std::wstring savedWriteIn, savedUrl, savedConsent, savedFlat;
+    bool savedLt = false;
+    uint64_t gen = 0;
+    const std::wstring probeText = L"Ich warte beim World Boss auf meinen Revenant";
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        savedWriteIn = g_cfg.writeIn;
+        savedLt = g_cfg.useLanguageTool;
+        savedUrl = g_cfg.languageToolUrl;
+        savedConsent = g_cfg.languageToolConsent;
+        savedFlat = g_wFlatInput;
+        g_cfg.writeIn = L"DE";
+        g_cfg.useLanguageTool = true;
+        g_cfg.languageToolUrl = L"http://127.0.0.1:" + std::to_wstring(port);
+        g_cfg.languageToolConsent.clear();
+        g_wFlatInput = probeText;
+        g_flatInput = ToUtf8(probeText);
+        CopyUtf8(g_input, g_flatInput);
+        gen = ++g_inputGen;
+    }
+    std::atomic<bool> done{false};
+    g_worker.Post([gen, probeText, &done] {
+        CheckGrammar(gen, probeText);
+        done.store(true);
+    });
+    for (int i = 0; i < 300 && !done.load(); ++i) Sleep(10);
+    bool hasTechK = false;
+    for (const TechEntry& te : TechLogNow()) {
+        if (te.area == 'K' && te.text.find(L"de-DE") != std::wstring::npos) {
+            hasTechK = true;
+            break;
+        }
+    }
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_cfg.writeIn = savedWriteIn;
+        g_cfg.useLanguageTool = savedLt;
+        g_cfg.languageToolUrl = savedUrl;
+        g_cfg.languageToolConsent = savedConsent;
+        g_wFlatInput = savedFlat;
+        g_flatInput = ToUtf8(savedFlat);
+        CopyUtf8(g_input, g_flatInput);
+        ++g_inputGen;
+        s_grammarCache = {};
+        g_help = {};
+    }
+    return (done.load() && hasTechK) ? 1 : 0;
+}
+
 void CheckGrammar(uint64_t gen, std::wstring text) {
     AssertNotInteractiveLane("CheckGrammar");
     {
@@ -845,28 +896,22 @@ void CheckGrammar(uint64_t gen, std::wstring text) {
     } inFlightGuard;
 
     static std::wstring s_cachedLtText;
+    static std::wstring s_cachedLtLang;
     static LtResult s_cachedLtResult;
 
     std::wstring serverUrl;
     std::wstring typing;
-    std::vector<std::wstring> own;
     {
         std::lock_guard<std::mutex> lock(g_mu);
         serverUrl = g_cfg.languageToolUrl;
         typing = TypingLang();
-        own.push_back(typing);
-        own.push_back(L"en");
-        for (const auto& l : g_cfg.writeLangs) own.push_back(l);
-        if (!g_cfg.sendLang.empty() && g_cfg.sendLang != L"=") own.push_back(g_cfg.sendLang);
     }
 
-    const std::wstring windows = DetectLanguage(text);
-    const OwnLanguageAnswer answer = OwnLanguage(text, own, windows);
-    std::wstring lang = answer.lang.empty() ? typing : answer.lang;
-    if (lang.empty()) lang = L"auto";
+    const std::wstring lang = typing.empty() ? std::wstring(L"auto") : typing;
+    const std::wstring ltLang = LanguageToolLang(lang);
 
     LtResult r;
-    if (text == s_cachedLtText && s_cachedLtResult.ok) {
+    if (text == s_cachedLtText && lang == s_cachedLtLang && s_cachedLtResult.ok) {
         r = s_cachedLtResult;
     } else {
         static RateLimiter s_ltLimiter(20);
@@ -877,6 +922,7 @@ void CheckGrammar(uint64_t gen, std::wstring text) {
             return;
         }
 
+        TechLog('K', (L"LanguageTool check (" + ltLang + L")").c_str());
         r = CheckWithLanguageTool(serverUrl, text, lang, typing);
         if (!r.ok) {
             ++g_healthLtFailsInRow;
@@ -886,6 +932,7 @@ void CheckGrammar(uint64_t gen, std::wstring text) {
         g_healthLtFailsInRow = 0;
         ++g_healthLtRequests;
         s_cachedLtText = text;
+        s_cachedLtLang = lang;
         s_cachedLtResult = r;
     }
 

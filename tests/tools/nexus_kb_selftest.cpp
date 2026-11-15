@@ -2,7 +2,11 @@
 // context, a stand-in Nexus API, a few frames drawn, a chat line raised the way "Events: Chat" does, then unloaded.
 // Catches crashes before they could happen inside GW2. Usage: nexus_kb_selftest.exe <path to GW2Chatlator.dll>
 
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #include <windows.h>
+#include <thread>
+#pragma comment(lib, "ws2_32.lib")
 
 #include <cstdio>
 #include <cstdlib>
@@ -1275,6 +1279,68 @@ int wmain(int argc, wchar_t** argv) {
             }
             std::printf("E3 pipeline 8 combinations + choices/completion separation: %s\n", stagesOk ? "OK" : "FAIL");
             ok = ok && stagesOk;
+
+            // E6: CheckGrammar sends TypingLang() ('de-DE' when writeIn='DE') even with English game words, logs 'K'.
+            bool e6Ok = false;
+            WSADATA wsa{};
+            if (WSAStartup(MAKEWORD(2, 2), &wsa) == 0) {
+                SOCKET srv = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+                sockaddr_in addr{};
+                addr.sin_family = AF_INET;
+                addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+                addr.sin_port = 0;
+                int alen = sizeof(addr);
+                if (srv != INVALID_SOCKET && bind(srv, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == 0 &&
+                    getsockname(srv, reinterpret_cast<sockaddr*>(&addr), &alen) == 0 && listen(srv, 1) == 0) {
+                    const int port = ntohs(addr.sin_port);
+                    std::string captured;
+                    std::thread ltStub([&] {
+                        SOCKET cli = accept(srv, nullptr, nullptr);
+                        if (cli != INVALID_SOCKET) {
+                            DWORD rto = 2000;
+                            setsockopt(cli, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&rto), sizeof(rto));
+                            char buf[4096];
+                            size_t hdrEnd = std::string::npos;
+                            int contentLen = -1;
+                            for (;;) {
+                                int n = recv(cli, buf, sizeof(buf), 0);
+                                if (n <= 0) break;
+                                captured.append(buf, n);
+                                if (hdrEnd == std::string::npos) {
+                                    hdrEnd = captured.find("\r\n\r\n");
+                                    if (hdrEnd != std::string::npos) {
+                                        std::string hdrLower = captured.substr(0, hdrEnd);
+                                        for (char& ch : hdrLower) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+                                        size_t clPos = hdrLower.find("content-length:");
+                                        if (clPos != std::string::npos) contentLen = std::atoi(hdrLower.c_str() + clPos + 15);
+                                    }
+                                }
+                                if (hdrEnd != std::string::npos && contentLen >= 0 &&
+                                    captured.size() >= hdrEnd + 4 + static_cast<size_t>(contentLen)) break;
+                            }
+                            const std::string body = "{\"language\":{\"code\":\"de-DE\"},\"matches\":[]}";
+                            const std::string resp = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: " +
+                                std::to_string(body.size()) + "\r\nConnection: close\r\n\r\n" + body;
+                            send(cli, resp.data(), static_cast<int>(resp.size()), 0);
+                            closesocket(cli);
+                        }
+                    });
+                    char pbuf[16];
+                    std::snprintf(pbuf, sizeof(pbuf), "%d", port);
+                    const int techOk = src(21, nullptr, pbuf);
+                    closesocket(srv);
+                    if (ltStub.joinable()) ltStub.join();
+                    const bool wireDe = captured.find("language=de-DE") != std::string::npos;
+                    e6Ok = (techOk == 1) && wireDe;
+                    std::printf("E6 LanguageTool language (writeIn=DE + English terms): techK=%d, wireDe=%d\n",
+                                techOk, wireDe ? 1 : 0);
+                } else {
+                    if (srv != INVALID_SOCKET) closesocket(srv);
+                }
+                WSACleanup();
+            }
+            if (!e6Ok) std::printf("FAIL: E6 CheckGrammar did not send de-DE or log 'K'\n");
+            ok = ok && e6Ok;
         }
 
         // Health check selftest (Schritt 3):

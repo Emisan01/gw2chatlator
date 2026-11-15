@@ -784,6 +784,7 @@ extern "C" __declspec(dllexport) int Gw2KbTestChatSource(int cmd, ChatSourceTest
             return g_cfg.LanguageToolActive() ? 1 : 0;
         }
         case 19: return TestTypingStages(text ? std::atoi(text) : -1);
+        case 21: return TestGrammarLanguage(text ? std::atoi(text) : 0);
         case 20: {  // E4: legacy FallenAngel=1 INI migrates into autoCorrect and stops writing FallenAngel.
             wchar_t tmpDir[MAX_PATH]{};
             GetTempPathW(MAX_PATH, tmpDir);
