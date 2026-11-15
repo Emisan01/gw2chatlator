@@ -1788,14 +1788,8 @@ extern const I18nEntry kPolishStrings[] = {
      "wszystko wyłączone"},
     {L"Channel",
      "Kanał"},
-    {L"I write in",
-     "Piszę po"},
     {L"Goes out as",
      "Wychodzi jako"},
-    {L"Translation",
-     "Tłumaczenie"},
-    {L"off",
-     "wyłączone"},
 };
 extern const size_t kPolishCount = sizeof(kPolishStrings) / sizeof(kPolishStrings[0]);
 

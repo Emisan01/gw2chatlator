@@ -1788,14 +1788,8 @@ extern const I18nEntry kSpanishStrings[] = {
      "todo desactivado"},
     {L"Channel",
      "Canal"},
-    {L"I write in",
-     "Escribo en"},
     {L"Goes out as",
      "Sale como"},
-    {L"Translation",
-     "Traducción"},
-    {L"off",
-     "desactivada"},
 };
 extern const size_t kSpanishCount = sizeof(kSpanishStrings) / sizeof(kSpanishStrings[0]);
 

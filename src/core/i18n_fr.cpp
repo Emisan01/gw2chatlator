@@ -1788,14 +1788,8 @@ extern const I18nEntry kFrenchStrings[] = {
      "tout désactiver"},
     {L"Channel",
      "Canal"},
-    {L"I write in",
-     "J'écris en"},
     {L"Goes out as",
      "Sort en"},
-    {L"Translation",
-     "Traduction"},
-    {L"off",
-     "désactivée"},
 };
 extern const size_t kFrenchCount = sizeof(kFrenchStrings) / sizeof(kFrenchStrings[0]);
 

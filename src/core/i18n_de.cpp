@@ -328,7 +328,7 @@ extern const I18nEntry kGermanStrings[] = {
     {L"I understand",
      "Ich verstehe"},
     {L"I write in",
-     "Ich schreibe auf"},
+     "Ich schreibe"},
     {L"Inference",
      "Inferenz"},
     {L"Inference quality & speed",
@@ -1788,14 +1788,8 @@ extern const I18nEntry kGermanStrings[] = {
      "alles aus"},
     {L"Channel",
      "Kanal"},
-    {L"I write in",
-     "Ich schreibe"},
     {L"Goes out as",
      "Geht raus als"},
-    {L"Translation",
-     "Übersetzung"},
-    {L"off",
-     "aus"},
 };
 extern const size_t kGermanCount = sizeof(kGermanStrings) / sizeof(kGermanStrings[0]);
 

@@ -1788,14 +1788,8 @@ extern const I18nEntry kItalianStrings[] = {
      "tutto spento"},
     {L"Channel",
      "Canale"},
-    {L"I write in",
-     "Scrivo in"},
     {L"Goes out as",
      "Esce come"},
-    {L"Translation",
-     "Traduzione"},
-    {L"off",
-     "spenta"},
 };
 extern const size_t kItalianCount = sizeof(kItalianStrings) / sizeof(kItalianStrings[0]);
 

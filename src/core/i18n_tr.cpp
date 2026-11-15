@@ -1788,14 +1788,8 @@ extern const I18nEntry kTurkishStrings[] = {
      "her şey kapalı"},
     {L"Channel",
      "Kanal"},
-    {L"I write in",
-     "Yazdığım dil"},
     {L"Goes out as",
      "Çıkış dili"},
-    {L"Translation",
-     "Çeviri"},
-    {L"off",
-     "kapalı"},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

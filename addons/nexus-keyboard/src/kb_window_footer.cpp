@@ -188,11 +188,14 @@ void RenderFooter() {  // g_mu held
         s_fc.writeWNarrow = fieldWidth(s_fc.capWrite, s_fc.writeNarrow);
         s_fc.sendWFull = fieldWidth(s_fc.capSend, s_fc.sendFull);
         s_fc.sendWNarrow = fieldWidth(s_fc.capSend, s_fc.sendNarrow);
-        s_fc.totalNeedFull = iconH + s_fc.labelWFull + s_fc.writeWFull + s_fc.sendWFull +
-                             ImGui::GetFrameHeight() * 5 + ImGui::CalcTextSize("000/199").x;
+        const float sp = ImGui::GetStyle().ItemSpacing.x;
+        const float gripRoom = std::max(0.0f, ImGui::GetFontSize() * 1.05f - ImGui::GetStyle().WindowPadding.x);
+        s_fc.totalNeedFull = s_fc.labelWFull + s_fc.writeWFull + s_fc.sendWFull + sp * 5.0f +
+                             ImGui::CalcTextSize("000/199").x + iconH + gripRoom;
     }
 
-    const bool narrow = s_fc.totalNeedFull > ImGui::GetContentRegionAvail().x;
+    const bool narrow = (s_fc.totalNeedFull + (Shown().minButton ? iconH + ImGui::GetStyle().ItemSpacing.x : 0.0f)) >
+                        ImGui::GetContentRegionAvail().x;
     const std::string& chVal = narrow ? s_fc.labelNarrow : s_fc.labelFull;
     const float chBtnW = narrow ? s_fc.labelWNarrow : s_fc.labelWFull;
 

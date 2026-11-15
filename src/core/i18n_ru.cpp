@@ -1788,14 +1788,8 @@ extern const I18nEntry kRussianStrings[] = {
      "всё выкл."},
     {L"Channel",
      "Канал"},
-    {L"I write in",
-     "Я пишу на"},
     {L"Goes out as",
      "Отправка на"},
-    {L"Translation",
-     "Перевод"},
-    {L"off",
-     "выкл."},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 
