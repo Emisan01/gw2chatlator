@@ -830,7 +830,21 @@ static void TestLanguages() {
     CHECK(FindLanguage(L"en-US") && std::wstring(FindLanguage(L"en-US")->code) == L"EN-US");
     CHECK(FindLanguage(L"zh-TW") && std::wstring(FindLanguage(L"zh-TW")->code) == L"ZH-HANT");
     CHECK(FindLanguage(L"zh") && std::wstring(FindLanguage(L"zh")->code) == L"ZH-HANS");
-    CHECK(FindLanguage(L"ar-SA") && !FindLanguage(L"ar-SA")->latinScript);
+    CHECK(FindLanguage(L"ar-SA") && FindLanguage(L"ar-SA")->rtl && !FindLanguage(L"ar-SA")->gw2Shows && !FindLanguage(L"ar-SA")->weDraw);
+    CHECK(SendableInGw2(L"ZH-HANS") && SendableInGw2(L"ZH-HANT"));
+    CHECK(!SendableInGw2(L"AR") && !SendableInGw2(L"HE") && !SendableInGw2(L"RU") && !SendableInGw2(L"EL"));
+    for (const LangInfo& l : Languages()) {
+        const std::wstring c = l.code;
+        const bool isRtl = (c == L"AR" || c == L"HE");
+        const bool isNonLatinDraw = (c == L"EL" || c == L"BG" || c == L"RU" || c == L"UK");
+        const bool isCjkOther = (c == L"HI" || c == L"TH" || c == L"JA" || c == L"KO");
+        const bool isZh = (c == L"ZH-HANS" || c == L"ZH-HANT");
+        const bool expGw2 = !isRtl && !isNonLatinDraw && !isCjkOther;
+        const bool expDraw = !isRtl && !isCjkOther && !isZh;
+        CHECK(l.rtl == isRtl && l.gw2Shows == expGw2 && l.weDraw == expDraw);
+        CHECK(DrawnInOurWindow(l) == (expDraw && !isRtl));
+        CHECK(SendableInGw2(l.code) == (expGw2 && !isRtl));
+    }
     CHECK(!FindLanguage(L"xx"));
     CHECK(SourceCode(L"EN-GB") == L"EN");
 }

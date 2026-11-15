@@ -47,7 +47,7 @@ void SendLanguageItems(bool tabAware) {
     }
     ImGui::Separator();
     for (const LangInfo& l : Languages()) {  // more languages: the chosen one becomes the first
-        if (!l.latinScript || std::find(g_cfg.writeLangs.begin(), g_cfg.writeLangs.end(), l.code) != g_cfg.writeLangs.end())
+        if (!l.gw2Shows || l.rtl || std::find(g_cfg.writeLangs.begin(), g_cfg.writeLangs.end(), l.code) != g_cfg.writeLangs.end())
             continue;
         if (ImGui::Selectable(U8(NativeName(l.code)).c_str(), false)) {
             if (!g_nx.translateChat) SetChatTranslation(true);
