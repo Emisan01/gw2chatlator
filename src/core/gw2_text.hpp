@@ -14,6 +14,13 @@ std::wstring UnsupportedScript(const std::wstring& text);
 // (Arabic, Hebrew ...). Used to align lines and the input field.
 bool IsRtlText(const std::wstring& text);
 
+// True if our ImGui chat/preview font ranges (kb_theme kRanges) can draw `codePoint`.
+bool OurFontCanDraw(uint32_t codePoint);
+
+// If `text` contains any non-whitespace character our font cannot draw (e.g. Chinese/Japanese/Arabic),
+// returns a readable notice like "Chinese – 12 characters" instead of boxes; otherwise returns `text` unchanged.
+std::wstring DisplayForOurFont(const std::wstring& text, const std::wstring& langHint = L"");
+
 // Splits a message into chat lines of at most `maxCodePoints`, preferring
 // sentence ends, then word boundaries. `prefix` (e.g. "/p ") is repeated in
 // front of every part and counted.

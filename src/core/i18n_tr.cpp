@@ -1790,6 +1790,10 @@ extern const I18nEntry kTurkishStrings[] = {
      "Kanal"},
     {L"Goes out as",
      "Çıkış dili"},
+    {L"Other script",
+     "Diğer yazı"},
+    {L"{1} – {2} characters",
+     "{1} – {2} karakter"},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

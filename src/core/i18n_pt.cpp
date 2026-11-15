@@ -1790,6 +1790,10 @@ extern const I18nEntry kPortugueseStrings[] = {
      "Canal"},
     {L"Goes out as",
      "Sai como"},
+    {L"Other script",
+     "Outra escrita"},
+    {L"{1} – {2} characters",
+     "{1} – {2} caracteres"},
 };
 extern const size_t kPortugueseCount = sizeof(kPortugueseStrings) / sizeof(kPortugueseStrings[0]);
 

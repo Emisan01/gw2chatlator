@@ -1790,6 +1790,10 @@ extern const I18nEntry kFrenchStrings[] = {
      "Canal"},
     {L"Goes out as",
      "Sort en"},
+    {L"Other script",
+     "Autre écriture"},
+    {L"{1} – {2} characters",
+     "{1} – {2} caractères"},
 };
 extern const size_t kFrenchCount = sizeof(kFrenchStrings) / sizeof(kFrenchStrings[0]);
 

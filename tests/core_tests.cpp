@@ -972,6 +972,14 @@ static void TestGw2Text() {
     CHECK(fits);
     CHECK(!parts.empty() && parts[0] == L"/p Das ist der erste Satz.");
     CHECK(SplitForChat(L"kurz", L"", 199).size() == 1);
+    // G3: DisplayForOurFont keeps drawable scripts verbatim and replaces undrawable scripts with a clear notice.
+    CHECK(OurFontCanDraw('A') && OurFontCanDraw(0x041F) && OurFontCanDraw(0x0393) && OurFontCanDraw(0x2013));
+    CHECK(!OurFontCanDraw(0x4E2D) && !OurFontCanDraw(0x3042) && !OurFontCanDraw(0x0645));
+    CHECK(DisplayForOurFont(L"Hallöchen Привет Γεια – ok") == L"Hallöchen Привет Γεια – ok");
+    CHECK(DisplayForOurFont(L"我们在传送点等你们。", L"ZH-HANS") == L"Chinese – 10 characters");
+    CHECK(DisplayForOurFont(L"こんにちは世界") == L"Japanese – 7 characters");
+    CHECK(DisplayForOurFont(L"안녕하세요") == L"Korean – 5 characters");
+    CHECK(DisplayForOurFont(L"مرحبا") == L"Arabic – 5 characters");
 }
 
 static void TestDeepLBatch() {

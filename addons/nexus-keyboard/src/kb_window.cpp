@@ -638,11 +638,18 @@ static void RenderChat(ImGuiIO& io, std::unique_lock<std::mutex>& lock, const Im
                 if (canWhisper && ImGui::IsItemClicked()) OpenWhisperTab(l.speaker);
                 ImGui::SameLine(0, ImGui::CalcTextSize(" ").x);
             }
-            const std::string& u8shown = l.translated.empty() ? l.u8text : l.u8translated;
+            const std::wstring dispOrig = DisplayForOurFont(l.text);
+            const bool hidOrig = dispOrig != l.text;
+            const std::wstring dispTrans = l.translated.empty() ? std::wstring() : DisplayForOurFont(l.translated);
+            const bool hidTrans = !l.translated.empty() && dispTrans != l.translated;
+            const bool hideMain = l.translated.empty() ? hidOrig : hidTrans;
+            const std::string u8hidMain = hideMain ? U8(l.translated.empty() ? dispOrig : dispTrans) : std::string();
+            const std::string& u8shown = hideMain ? u8hidMain : (l.translated.empty() ? l.u8text : l.u8translated);
+            const std::string u8origTip = hidOrig ? U8(dispOrig) : l.u8text;
             const auto& segs = l.translated.empty() ? l.textSegs : l.transSegs;
             bool clicked = false;
             LineHit hit;  // over every piece of the text
-            if (segs.size() <= 1 && (segs.empty() || segs[0].kind == PieUI::ChatLinks::SegmentKind::Plain)) {
+            if (hideMain || (segs.size() <= 1 && (segs.empty() || segs[0].kind == PieUI::ChatLinks::SegmentKind::Plain))) {
                 if (!l.speaker.empty()) {
                     // Under its name one space in: one item, its wrapped lines start one space from the left, its first
                     // line padded past the name – so it measures and wraps like any line (a width change is exact).
@@ -668,10 +675,10 @@ static void RenderChat(ImGuiIO& io, std::unique_lock<std::mutex>& lock, const Im
             }
             if (!l.translated.empty() && hit.hovered) {
                 if (l.u8transNote.empty()) {
-                    ImGui::SetTooltip("%s", l.u8text.c_str());
+                    ImGui::SetTooltip("%s", u8origTip.c_str());
                 } else {  // the original and what the translation check found
                     ImGui::BeginTooltip();
-                    ImGui::TextUnformatted(l.u8text.c_str());
+                    ImGui::TextUnformatted(u8origTip.c_str());
                     ImGui::TextColored(ImVec4(0.95f, 0.78f, 0.35f, 1.0f), "%s", l.u8transNote.c_str());
                     ImGui::EndTooltip();
                 }
@@ -707,8 +714,8 @@ static void RenderChat(ImGuiIO& io, std::unique_lock<std::mutex>& lock, const Im
                 if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", l.u8transNote.c_str());
             }
             if (originalUnder) {
-                const std::string u8orig = ownTyped.empty() ? l.u8text : U8(ownTyped);
-                LookText(u8orig.c_str(), ImVec4(0.62f, 0.62f, 0.62f, 0.8f), true);
+                const std::wstring& origW = ownTyped.empty() ? l.text : ownTyped;
+                LookText(U8(DisplayForOurFont(origW)).c_str(), ImVec4(0.62f, 0.62f, 0.62f, 0.8f), true);
             }
             if (s_lineMenuOpen && l.id == s_lineMenuId) {  // the message whose menu is open: marked across its lines
                 const float x0 = ImGui::GetWindowPos().x;
@@ -1622,9 +1629,11 @@ void RenderWindow() {
             const std::wstring typed = SanitizeChatText(g_wFlatInput);
             const std::wstring own = SplitChatCommand(typed).prefix;
             if (NamesSwapped())  // the same language: names surely in the lists already the send language's
-                LookText(U8((own.empty() ? ComposePrefix() : own) + g_preview).c_str(), Bright(kPreview), true);
+                LookText(U8((own.empty() ? ComposePrefix() : own) + DisplayForOurFont(g_preview, SendLang())).c_str(),
+                         Bright(kPreview), true);
             else
-                LookText(U8((own.empty() ? ComposePrefix() : std::wstring()) + typed).c_str(), Bright(kPreview), true);
+                LookText(U8((own.empty() ? ComposePrefix() : std::wstring()) + DisplayForOurFont(typed, TypingLang())).c_str(),
+                         Bright(kPreview), true);
         } else if (previewCurrent || !g_preview.empty()) {
             // While the next translation is on its way the last one stays, dimmed: the field keeps its size and the chat
             // above it stays where it is (a "translating …" in between shrank it at every key).
@@ -1633,7 +1642,9 @@ void RenderWindow() {
             // Versions to choose from: each one to read and click, a number before it, the one that goes out lit.
             const bool choose = previewCurrent && g_previewVersions.size() > 1 && g_previewPick < g_previewVersions.size() &&
                                 g_previewVersions[g_previewPick] == g_preview;
-            if (!choose) LookText(U8((own.empty() ? ComposePrefix() : own) + g_preview).c_str(), Bright(shade), true);
+            if (!choose)
+                LookText(U8((own.empty() ? ComposePrefix() : own) + DisplayForOurFont(g_preview, SendLang())).c_str(),
+                         Bright(shade), true);
             if (choose) {
                 const float numberW = ImGui::GetFrameHeight();
                 for (size_t i = 0; i < g_previewVersions.size(); ++i) {
@@ -1643,7 +1654,8 @@ void RenderWindow() {
                     if (on) ImGui::PopStyleColor();
                     ImGui::SameLine(numberW);
                     ImGui::BeginGroup();
-                    LookText(U8(g_previewVersions[i]).c_str(), Bright(on ? kPreview : ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled)), true);
+                    LookText(U8(DisplayForOurFont(g_previewVersions[i], SendLang())).c_str(),
+                             Bright(on ? kPreview : ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled)), true);
                     ImGui::EndGroup();
                     if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
                     clicked = ImGui::IsItemClicked() || clicked;
@@ -2194,7 +2206,8 @@ void RenderWindow() {
     // Compact view: what the chat will get, small in the box's last line (instead of the preview above).
     if (!showPreview && g_input[0] && ((Translating() && (previewCurrent || InfoTexts())) || NamesSwapped())) {
         const float avail = (inputMax.x - inputMin.x) * (g_status.empty() ? 0.95f : 0.38f);
-        const std::string t = previewCurrent ? "> " + U8(g_preview) : UI(Tr(L"translating …"));
+        const std::string t =
+            previewCurrent ? "> " + U8(DisplayForOurFont(g_preview, SendLang())) : UI(Tr(L"translating …"));
         if (compactChoose) {
             const std::string verNow = std::to_string(g_previewPick + 1);
             const float nowW = ImGui::GetFont()

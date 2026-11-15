@@ -1412,6 +1412,9 @@ int wmain(int argc, wchar_t** argv) {
                         gotPrev = src(23, nullptr, prevUtf8);
                     }
                     int hanziCount = 0;
+                    char dispUtf8[4096] = {};
+                    const int gotDisp = gotPrev ? src(24, nullptr, dispUtf8) : 0;
+                    bool dispNoticeOk = false;
                     if (gotPrev) {
                         const int wlen = MultiByteToWideChar(CP_UTF8, 0, prevUtf8, -1, nullptr, 0);
                         std::wstring prevW(wlen > 0 ? static_cast<size_t>(wlen) : 0, L'\0');
@@ -1419,6 +1422,16 @@ int wmain(int argc, wchar_t** argv) {
                         for (wchar_t ch : prevW) {
                             if (ch >= 0x4E00 && ch <= 0x9FFF) ++hanziCount;
                         }
+                    }
+                    if (gotDisp) {
+                        const int dlen = MultiByteToWideChar(CP_UTF8, 0, dispUtf8, -1, nullptr, 0);
+                        std::wstring dispW(dlen > 0 ? static_cast<size_t>(dlen - 1) : 0, L'\0');
+                        if (dlen > 1) MultiByteToWideChar(CP_UTF8, 0, dispUtf8, -1, &dispW[0], dlen);
+                        bool hasHigh = false;
+                        for (wchar_t ch : dispW) {
+                            if (ch > 0x25FF) hasHigh = true;
+                        }
+                        dispNoticeOk = !hasHigh && dispW.find(L"10") != std::wstring::npos;
                     }
                     const int partsBefore = th->sentParts;
                     press(VK_RETURN);
@@ -1450,11 +1463,11 @@ int wmain(int argc, wchar_t** argv) {
                     frames(2);
                     closesocket(srv);
                     if (libreStub.joinable()) libreStub.join();
-                    g2Ok = (setupOk == 1) && sawZhTarget.load() && (gotPrev == 1) && (hanziCount >= 8) &&
+                    g2Ok = (setupOk == 1) && sawZhTarget.load() && (gotPrev == 1) && (hanziCount >= 8) && dispNoticeOk &&
                            (partsAfter1 == partsBefore + 1) && sentZh && inputCleared && guardBlocked5th;
-                    std::printf("G2 send to ZH-HANS: setup=%d, reqs=%d, zhTarget=%d, hanzi=%d, sent1=%d, cleared=%d, guard5thBlocked=%d (parts %d -> %d)\n",
-                                setupOk, reqCount.load(), sawZhTarget.load() ? 1 : 0, hanziCount, sentZh ? 1 : 0,
-                                inputCleared ? 1 : 0, guardBlocked5th ? 1 : 0, partsBefore, partsAfterRepeats);
+                    std::printf("G2/G3 send to ZH-HANS: setup=%d, reqs=%d, zhTarget=%d, hanzi=%d, notice='%s'(%d), sent1=%d, cleared=%d, guard5thBlocked=%d (parts %d -> %d)\n",
+                                setupOk, reqCount.load(), sawZhTarget.load() ? 1 : 0, hanziCount, dispUtf8,
+                                dispNoticeOk ? 1 : 0, sentZh ? 1 : 0, inputCleared ? 1 : 0, guardBlocked5th ? 1 : 0, partsBefore, partsAfterRepeats);
                     if (!sawZhTarget.load()) std::printf("G2 debug firstReq: %s\n", firstReq.c_str());
                 } else {
                     if (srv != INVALID_SOCKET) closesocket(srv);

@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "i18n.hpp"
+#include "langs.hpp"
 #include "text.hpp"
 
 namespace gct {
@@ -55,6 +56,46 @@ bool IsRtlText(const std::wstring& text) {
         if (IsStrongLtr(c)) return false;
     }
     return false;
+}
+
+bool OurFontCanDraw(uint32_t c) {
+    if (c == '\t' || c == '\n' || c == '\r') return true;
+    return (c >= 0x0020 && c <= 0x024F) || (c >= 0x0370 && c <= 0x03FF) || (c >= 0x0400 && c <= 0x04FF) ||
+           (c >= 0x1E00 && c <= 0x1EFF) || (c >= 0x2000 && c <= 0x206F) || (c >= 0x20A0 && c <= 0x20CF) ||
+           (c >= 0x2190 && c <= 0x21FF) || (c >= 0x2200 && c <= 0x22FF) || (c >= 0x25A0 && c <= 0x25FF);
+}
+
+std::wstring DisplayForOurFont(const std::wstring& text, const std::wstring& langHint) {
+    bool undrawn = false;
+    bool hasKana = false;
+    const wchar_t* scriptName = nullptr;
+    for (wchar_t ch : text) {
+        const uint32_t c = static_cast<uint32_t>(ch);
+        if (c >= 0x3040 && c <= 0x30FF) hasKana = true;
+        if (OurFontCanDraw(c)) continue;
+        undrawn = true;
+        if (!scriptName) {
+            for (const ScriptRange& r : kScripts) {
+                if (c >= r.from && c <= r.to) {
+                    scriptName = r.name;
+                    break;
+                }
+            }
+        }
+    }
+    if (!undrawn) return text;
+    const std::wstring p = PrimaryLang(langHint);
+    std::wstring script;
+    if (hasKana || p == L"JA") script = Tr(L"Japanese");
+    else if (scriptName) script = Tr(scriptName);
+    else if (p == L"KO") script = Tr(L"Korean");
+    else if (p == L"ZH") script = Tr(L"Chinese");
+    else if (p == L"AR") script = Tr(L"Arabic");
+    else if (p == L"HE") script = Tr(L"Hebrew");
+    else if (p == L"HI") script = Tr(L"Devanagari");
+    else if (p == L"TH") script = Tr(L"Thai");
+    else script = Tr(L"Other script");
+    return TrF(L"{1} – {2} characters", {script, std::to_wstring(CodePointCount(text))});
 }
 
 std::vector<std::wstring> SplitForChat(const std::wstring& text, const std::wstring& prefix, size_t maxCodePoints) {

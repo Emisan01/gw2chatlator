@@ -872,6 +872,14 @@ extern "C" __declspec(dllexport) int Gw2KbTestChatSource(int cmd, ChatSourceTest
             }
             return 0;
         }
+        case 24: {  // G3: rendered UTF-8 notice for g_preview when font cannot draw it (or input string)
+            std::lock_guard<std::mutex> lock(g_mu);
+            if (text && g_previewGen == g_inputGen && !g_preview.empty()) {
+                CopyUtf8(text, 4096, ToUtf8(DisplayForOurFont(g_preview, SendLang())));
+                return 1;
+            }
+            return 0;
+        }
         case 20: {  // E4: legacy FallenAngel=1 INI migrates into autoCorrect and stops writing FallenAngel.
             wchar_t tmpDir[MAX_PATH]{};
             GetTempPathW(MAX_PATH, tmpDir);
