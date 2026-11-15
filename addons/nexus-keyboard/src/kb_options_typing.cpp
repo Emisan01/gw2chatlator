@@ -11,7 +11,6 @@ namespace kb {
 void ApplyAutoCorrectChoice(Config& cfg, int level, bool persistAndApply, bool* showConsentDialog) {
     level = std::clamp(level, 0, 4);
     cfg.autoCorrect = static_cast<AutoCorrectMode>(level);
-    cfg.fallenAngel = (cfg.autoCorrect == AutoCorrectMode::FallenAngel);
     if (cfg.autoCorrect == AutoCorrectMode::FallenAngel) {
         cfg.useLanguageTool = true;
     }
@@ -23,7 +22,6 @@ void ApplyAutoCorrectChoice(Config& cfg, int level, bool persistAndApply, bool* 
         }
     }
     if (persistAndApply) {
-        cfg.SaveBool(L"Spelling", L"FallenAngel", cfg.fallenAngel);
         cfg.SaveValue(L"Spelling", L"AutoCorrectMode", AutoCorrectKey(cfg.autoCorrect));
         cfg.SaveBool(L"Spelling", L"UseLanguageTool", cfg.useLanguageTool);
         LogState(L"Autocorrection");

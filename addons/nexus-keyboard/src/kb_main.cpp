@@ -784,6 +784,34 @@ extern "C" __declspec(dllexport) int Gw2KbTestChatSource(int cmd, ChatSourceTest
             return g_cfg.LanguageToolActive() ? 1 : 0;
         }
         case 19: return TestTypingStages(text ? std::atoi(text) : -1);
+        case 20: {  // E4: legacy FallenAngel=1 INI migrates into autoCorrect and stops writing FallenAngel.
+            wchar_t tmpDir[MAX_PATH]{};
+            GetTempPathW(MAX_PATH, tmpDir);
+            const std::wstring dirTmp = std::wstring(tmpDir) + L"gw2kb_e4_migrate_test";
+            CreateDirectoryW(dirTmp.c_str(), nullptr);
+            const std::wstring iniTmp = dirTmp + L"\\gw2-chat-translator.ini";
+            DeleteFileW(iniTmp.c_str());
+            WritePrivateProfileStringW(L"Spelling", L"FallenAngel", L"1", iniTmp.c_str());
+            WritePrivateProfileStringW(L"Spelling", L"AutoCorrectMode", L"phone", iniTmp.c_str());
+            WritePrivateProfileStringW(nullptr, nullptr, nullptr, iniTmp.c_str());
+
+            Config c;
+            c.Load(dirTmp);
+            const bool migrated = (c.autoCorrect == AutoCorrectMode::FallenAngel);
+            c.autoCorrect = AutoCorrectMode::Phone;
+            c.SaveAll();
+            Config::FlushWrites();
+
+            Config c2;
+            c2.Load(dirTmp);
+            const bool stayedPhone = (c2.autoCorrect == AutoCorrectMode::Phone);
+            wchar_t legacyBuf[32]{};
+            GetPrivateProfileStringW(L"Spelling", L"FallenAngel", L"<absent>", legacyBuf, 32, iniTmp.c_str());
+            const bool keyGone = (std::wstring(legacyBuf) == L"<absent>");
+            DeleteFileW(iniTmp.c_str());
+            RemoveDirectoryW(dirTmp.c_str());
+            return (migrated && stayedPhone && keyGone) ? 1 : 0;
+        }
         default: break;
     }
     if (state) ChatSourceTestState(state);

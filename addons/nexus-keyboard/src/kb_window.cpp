@@ -1279,8 +1279,10 @@ void RenderWindow() {
     std::unique_lock<std::mutex> lock(g_mu);
     if (g_testToggleFallenAngel) {
         g_testToggleFallenAngel = false;
-        g_cfg.fallenAngel = !g_cfg.fallenAngel;
-        g_cfg.SaveBool(L"Spelling", L"FallenAngel", g_cfg.fallenAngel);
+        g_cfg.autoCorrect = (g_cfg.autoCorrect == AutoCorrectMode::FallenAngel)
+            ? AutoCorrectMode::Phone
+            : AutoCorrectMode::FallenAngel;
+        g_cfg.SaveValue(L"Spelling", L"AutoCorrectMode", AutoCorrectKey(g_cfg.autoCorrect));
         LogState(L"Fallen Angel mode");
         g_worker.PostInteractive(ComputeTyping);
     }
@@ -2093,7 +2095,7 @@ void RenderWindow() {
     {
         static std::set<std::wstring> s_corrected;
         if (g_wFlatInput.empty()) s_corrected.clear();
-        const bool autoFix = g_cfg.EffectiveAutoCorrect() == AutoCorrectMode::Strong || g_cfg.EffectiveAutoCorrect() == AutoCorrectMode::FallenAngel;
+        const bool autoFix = g_cfg.autoCorrect == AutoCorrectMode::Strong || g_cfg.autoCorrect == AutoCorrectMode::FallenAngel;
         if (autoFix && inputActive && !g_edit.active && g_help.text == g_wFlatInput)
             for (size_t i = 0; i < g_help.marks.size(); ++i) {
                 if (g_help.marks[i].isGrammar || g_help.marks[i].wasReplaced) continue;
@@ -2263,8 +2265,7 @@ void RenderWindow() {
         }
     }
     if (enter) {
-        const bool fallenAngelOn = g_cfg.fallenAngel || g_cfg.autoCorrect == AutoCorrectMode::FallenAngel;
-        if (fallenAngelOn && g_cfg.LanguageToolActive() && g_ltInFlight && g_ltInFlightText == g_wFlatInput) {
+        if (g_cfg.autoCorrect == AutoCorrectMode::FallenAngel && g_cfg.LanguageToolActive() && g_ltInFlight && g_ltInFlightText == g_wFlatInput) {
             g_sendAfterCheck = {true, g_inputGen, GetTickCount64()};
             SetStatus(Tr(L"checking …"), 1500);
         } else {

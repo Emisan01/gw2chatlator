@@ -67,11 +67,9 @@ struct Config {
     std::wstring writeIn;  // the language you type in ("DE", "EN-GB"); empty = the keyboard layout's language
     bool spellEnabled = true;
     bool useLanguageTool = false;
-    bool fallenAngel = false;  // Fallen Angel mode (menu ≡)
     std::wstring languageToolUrl = L"https://api.languagetool.org";
     std::wstring languageToolConsent;  // Server URL the user consented to ("offline" = offline only)
     AutoCorrectMode autoCorrect = AutoCorrectMode::Phone;
-    AutoCorrectMode EffectiveAutoCorrect() const { return (fallenAngel || autoCorrect == AutoCorrectMode::FallenAngel) ? AutoCorrectMode::FallenAngel : autoCorrect; }
     bool LanguageToolActive() const;
     bool suggestions = true;     // word bar above the input (completions, next word)
     bool learnWords = true;      // learn from what you send

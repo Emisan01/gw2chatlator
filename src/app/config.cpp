@@ -323,16 +323,22 @@ void Config::Load(const std::wstring& dir) {
     voiceChatPause = ini.Bool(L"Voice", L"PauseForVoiceChat", true);
     spellEnabled = ini.Bool(L"Spelling", L"Enabled", true);
     useLanguageTool = ini.Bool(L"Spelling", L"LanguageTool", false);
-    fallenAngel = ini.Bool(L"Spelling", L"FallenAngel", false);
+    const std::wstring oldFaRaw = ini.Str(L"Spelling", L"FallenAngel", L"");
+    const bool oldFaOn = ini.Bool(L"Spelling", L"FallenAngel", false);
     languageToolUrl = ini.Str(L"Spelling", L"LanguageToolUrl", L"https://api.languagetool.org");
     languageToolConsent = ini.Str(L"Spelling", L"LanguageToolConsent", L"");
     // v0.4 had AutoCorrect=1/0 (Windows' sure fixes only).
     autoCorrect = ParseAutoCorrect(ini.Str(L"Spelling", L"AutoCorrectMode", L""),
                                    ini.Bool(L"Spelling", L"AutoCorrect", true) ? AutoCorrectMode::Phone
                                                                                : AutoCorrectMode::Off);
-    if (autoCorrect == AutoCorrectMode::FallenAngel || fallenAngel) {
+    if (oldFaOn) {
         autoCorrect = AutoCorrectMode::FallenAngel;
-        fallenAngel = true;
+    }
+    if (!oldFaRaw.empty()) {
+        // Migrate legacy key once and remove it from disk so subsequent mode switches stay persisted.
+        SaveValue(L"Spelling", L"AutoCorrectMode", AutoCorrectKey(autoCorrect));
+        WritePrivateProfileStringW(L"Spelling", L"FallenAngel", nullptr, iniPath.c_str());
+        WritePrivateProfileStringW(nullptr, nullptr, nullptr, iniPath.c_str());
     }
     suggestions = ini.Bool(L"Spelling", L"Suggestions", true);
     learnWords = ini.Bool(L"Spelling", L"Learn", true);
@@ -536,7 +542,6 @@ void Config::SaveAll() const {
     SaveValue(L"Voice", L"VoiceChatApps", AsciiEscape(voiceChatApps));
     SaveBool(L"Spelling", L"Enabled", spellEnabled);
     SaveBool(L"Spelling", L"LanguageTool", useLanguageTool);
-    SaveBool(L"Spelling", L"FallenAngel", autoCorrect == AutoCorrectMode::FallenAngel || fallenAngel);
     SaveValue(L"Spelling", L"LanguageToolUrl", languageToolUrl);
     SaveValue(L"Spelling", L"LanguageToolConsent", languageToolConsent);
     SaveValue(L"Spelling", L"AutoCorrectMode", AutoCorrectKey(autoCorrect));

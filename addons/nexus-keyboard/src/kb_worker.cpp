@@ -776,7 +776,7 @@ int TestTypingStages(int mask) {
     const bool wantLt = (mask & 4) != 0;
     const bool phoneMode = (mask & 8) != 0;
     const int inputKind = (mask >> 4) & 3;
-    std::wstring text = L"teh helo, Th";
+    std::wstring text = L"teh was are, Th";
     if (inputKind == 1) text = L"teh";
     else if (inputKind == 2) text = L"Thank";
     {
@@ -791,9 +791,9 @@ int TestTypingStages(int mask) {
         CopyUtf8(g_input, g_flatInput);
         if (inputKind == 0) {
             WordMark gm;
-            gm.span = {0, 3};
-            gm.fix = L"the";
-            gm.original = L"teh";
+            gm.span = {8, 3};
+            gm.fix = L"good";
+            gm.original = L"are";
             gm.isGrammar = true;
             gm.ruleId = L"TEST_GRAMMAR";
             gm.message = L"Grammar test mark";
@@ -956,7 +956,7 @@ void CheckGrammar(uint64_t gen, std::wstring text) {
     std::set<std::wstring> revertedRules;
     {
         std::lock_guard<std::mutex> lock(g_mu);
-        acMode = g_cfg.EffectiveAutoCorrect();
+        acMode = g_cfg.autoCorrect;
         revertedWords = g_revertedWords;
         revertedRules = g_revertedRules;
     }

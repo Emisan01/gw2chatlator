@@ -1149,28 +1149,43 @@ int wmain(int argc, wchar_t** argv) {
         std::printf("reply language for Jean Invented: %s\n", th->sendLang);
         ok = ok && std::strcmp(th->sendLang, "FR") == 0;
 
-        // Fallen Angel mode menu item toggle test (Punkt 0):
-        // Triggering the menu item action inside RenderMainMenu under g_mu must not deadlock and must toggle FallenAngel in INI.
+        // Fallen Angel mode menu item toggle test (Punkt 0 + E4):
+        // Triggering the menu item action inside RenderMainMenu under g_mu must not deadlock,
+        // must toggle [Spelling] AutoCorrectMode between phone and fallenangel, and must not write FallenAngel.
         if (th->testToggleFallenAngel) {
-            const int iniBefore = GetPrivateProfileIntW(L"Spelling", L"FallenAngel", 0, g_iniPath.c_str());
+            auto readAcMode = [&] {
+                wchar_t buf[32]{};
+                GetPrivateProfileStringW(L"Spelling", L"AutoCorrectMode", L"", buf, 32, g_iniPath.c_str());
+                return std::wstring(buf);
+            };
+            auto hasLegacyFa = [&] {
+                wchar_t buf[32]{};
+                GetPrivateProfileStringW(L"Spelling", L"FallenAngel", L"<absent>", buf, 32, g_iniPath.c_str());
+                return std::wstring(buf) != L"<absent>";
+            };
+            const std::wstring iniBefore = readAcMode();
             *th->testToggleFallenAngel = true;
             frames(2);
             Sleep(550);
             frames(2);
             Sleep(50);
-            const int iniAfter1 = GetPrivateProfileIntW(L"Spelling", L"FallenAngel", 0, g_iniPath.c_str());
+            const std::wstring iniAfter1 = readAcMode();
             *th->testToggleFallenAngel = true;
             frames(2);
             Sleep(550);
             frames(2);
             Sleep(50);
-            const int iniAfter2 = GetPrivateProfileIntW(L"Spelling", L"FallenAngel", 0, g_iniPath.c_str());
+            const std::wstring iniAfter2 = readAcMode();
             ChatSourceTest stToggle{};
             if (src) src(0, &stToggle, nullptr);
-            std::printf("menu ≡ Fallen Angel toggle: before %d -> toggle1 %d -> toggle2 %d, add-on %s\n",
-                        iniBefore, iniAfter1, iniAfter2, stToggle.disabled ? "OFF" : "alive");
-            const bool toggleOk = (iniAfter1 != iniBefore) && (iniAfter2 == iniBefore) && !stToggle.disabled;
-            if (!toggleOk) std::printf("FAIL: Fallen Angel menu item toggle failed or crashed the add-on\n");
+            const bool legacyAbsent = !hasLegacyFa();
+            const int legacyMigrateOk = src ? src(20, nullptr, nullptr) : 0;
+            std::printf("menu Fallen Angel toggle: '%ls' -> '%ls' -> '%ls', legacyAbsent=%d, e4Migrate=%d, add-on %s\n",
+                        iniBefore.c_str(), iniAfter1.c_str(), iniAfter2.c_str(),
+                        legacyAbsent ? 1 : 0, legacyMigrateOk, stToggle.disabled ? "OFF" : "alive");
+            const bool toggleOk = (iniAfter1 == L"fallenangel") && (iniAfter2 == L"phone") &&
+                                  legacyAbsent && (legacyMigrateOk == 1) && !stToggle.disabled;
+            if (!toggleOk) std::printf("FAIL: Fallen Angel AutoCorrectMode toggle/migration failed or crashed add-on\n");
             ok = ok && toggleOk;
         }
 
