@@ -770,6 +770,7 @@ std::wstring NativeName(const std::wstring& code);
 
 extern bool g_collapsed;
 void MinimizeWindow();
+float FooterHeight();
 void RenderFooter();
 
 // ---- "Events: Chat": is it there, and installing it the way the Nexus library would.

@@ -1541,7 +1541,7 @@ void RenderWindow() {
     const float lowerH = (showPreview ? line * (previewRows + 0.2f) + st.ItemSpacing.y : 0) +
                          (showBackLine ? line : 0) +
                          (showWords ? ImGui::GetFrameHeightWithSpacing() : 0) +
-                         (Shown().footer ? ImGui::GetFrameHeightWithSpacing() : 0) + boxH + st.ItemSpacing.y;
+                         (Shown().footer ? FooterHeight() + st.ItemSpacing.y : 0) + boxH + st.ItemSpacing.y;
     if (!Shown().chat) {  // no chat: the window is exactly as high as its parts – the layout keeps its bottom where it is
         // + the thin bottom edge (above); never below ImGui's own minimum (the layout rounds to whole pixels).
         const float want = std::ceil(std::max(ImGui::GetCursorPosY() + lowerH - st.ItemSpacing.y + 4.0f, st.WindowMinSize.y));
