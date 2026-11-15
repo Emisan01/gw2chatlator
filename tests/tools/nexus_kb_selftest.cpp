@@ -1343,6 +1343,128 @@ int wmain(int argc, wchar_t** argv) {
             ok = ok && e6Ok;
         }
 
+        // G2: Sending to ZH-HANS via LibreTranslate loopback -> preview holds Chinese codepoints, Enter + SendGuard work cleanly.
+        if (ok && src) {
+            bool g2Ok = false;
+            WSADATA wsa{};
+            if (WSAStartup(MAKEWORD(2, 2), &wsa) == 0) {
+                SOCKET srv = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+                sockaddr_in addr{};
+                addr.sin_family = AF_INET;
+                addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+                addr.sin_port = 0;
+                int alen = sizeof(addr);
+                if (srv != INVALID_SOCKET && bind(srv, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == 0 &&
+                    getsockname(srv, reinterpret_cast<sockaddr*>(&addr), &alen) == 0 && listen(srv, 4) == 0) {
+                    const int port = ntohs(addr.sin_port);
+                    std::atomic<int> reqCount{0};
+                    std::atomic<bool> sawZhTarget{false};
+                    std::string firstReq;
+                    std::thread libreStub([&] {
+                        for (;;) {
+                            SOCKET cli = accept(srv, nullptr, nullptr);
+                            if (cli == INVALID_SOCKET) break;
+                            DWORD rto = 2000;
+                            setsockopt(cli, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&rto), sizeof(rto));
+                            std::string req;
+                            char buf[4096];
+                            size_t hdrEnd = std::string::npos;
+                            int contentLen = -1;
+                            for (;;) {
+                                int n = recv(cli, buf, sizeof(buf), 0);
+                                if (n <= 0) break;
+                                req.append(buf, n);
+                                if (hdrEnd == std::string::npos) {
+                                    hdrEnd = req.find("\r\n\r\n");
+                                    if (hdrEnd != std::string::npos) {
+                                        std::string hdrLower = req.substr(0, hdrEnd);
+                                        for (char& ch : hdrLower) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+                                        size_t clPos = hdrLower.find("content-length:");
+                                        if (clPos != std::string::npos) contentLen = std::atoi(hdrLower.c_str() + clPos + 15);
+                                    }
+                                }
+                                if (hdrEnd != std::string::npos && contentLen >= 0 &&
+                                    req.size() >= hdrEnd + 4 + static_cast<size_t>(contentLen)) break;
+                            }
+                            if (firstReq.empty()) firstReq = req;
+                            if (req.find("\"target\":\"zh\"") != std::string::npos) sawZhTarget.store(true);
+                            ++reqCount;
+                            // "我们在传送点等你们。" in UTF-8
+                            const std::string body =
+                                "{\"translatedText\":[\"\xE6\x88\x91\xE4\xBB\xAC\xE5\x9C\xA8\xE4\xBC\xA0\xE9\x80\x81\xE7\x82\xB9\xE7\xAD\x89\xE4\xBD\xA0\xE4\xBB\xAC\xE3\x80\x82\"]}";
+                            const std::string resp = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: " +
+                                std::to_string(body.size()) + "\r\nConnection: close\r\n\r\n" + body;
+                            send(cli, resp.data(), static_cast<int>(resp.size()), 0);
+                            closesocket(cli);
+                        }
+                    });
+                    char pbuf[16];
+                    std::snprintf(pbuf, sizeof(pbuf), "%d", port);
+                    const int setupOk = src(22, nullptr, pbuf);
+                    frames(3);
+                    *th->focus = true;
+                    frames(2);
+                    type("Wir warten am Wegpunkt.");
+                    char prevUtf8[4096] = {};
+                    int gotPrev = 0;
+                    for (int w = 0; w < 120 && !gotPrev; ++w) {
+                        frames(1);
+                        gotPrev = src(23, nullptr, prevUtf8);
+                    }
+                    int hanziCount = 0;
+                    if (gotPrev) {
+                        const int wlen = MultiByteToWideChar(CP_UTF8, 0, prevUtf8, -1, nullptr, 0);
+                        std::wstring prevW(wlen > 0 ? static_cast<size_t>(wlen) : 0, L'\0');
+                        if (wlen > 0) MultiByteToWideChar(CP_UTF8, 0, prevUtf8, -1, &prevW[0], wlen);
+                        for (wchar_t ch : prevW) {
+                            if (ch >= 0x4E00 && ch <= 0x9FFF) ++hanziCount;
+                        }
+                    }
+                    const int partsBefore = th->sentParts;
+                    press(VK_RETURN);
+                    for (int w = 0; w < 40 && th->sentParts == partsBefore; ++w) frames(1);
+                    const int partsAfter1 = th->sentParts;
+                    const bool sentZh = std::strstr(th->lastSent, "\xE6\x88\x91\xE4\xBB\xAC\xE5\x9C\xA8\xE4\xBC\xA0\xE9\x80\x81\xE7\x82\xB9") != nullptr;
+                    const bool inputCleared = th->input[0] == '\0';
+                    // Repeat 3 more allowed times (total 4 == kRepeatMax), then 5th must be blocked by SendGuard with input kept.
+                    for (int rep = 2; rep <= 5; ++rep) {
+                        *th->focus = true;
+                        frames(2);
+                        press(VK_UP);
+                        frames(2);
+                        const int beforeRep = th->sentParts;
+                        press(VK_RETURN);
+                        if (rep <= 4) {
+                            for (int w = 0; w < 60 && th->sentParts == beforeRep; ++w) frames(1);
+                        } else {
+                            frames(15);
+                        }
+                    }
+                    const int partsAfterRepeats = th->sentParts;
+                    const bool guardBlocked5th = (partsAfterRepeats == partsBefore + 4) && (th->input[0] != '\0');
+                    // Clear recalled blocked input & restore G2 test state
+                    *th->focus = true;
+                    frames(2);
+                    for (int i = 0; i < 30 && th->input[0]; ++i) press(VK_BACK);
+                    src(22, nullptr, nullptr);
+                    frames(2);
+                    closesocket(srv);
+                    if (libreStub.joinable()) libreStub.join();
+                    g2Ok = (setupOk == 1) && sawZhTarget.load() && (gotPrev == 1) && (hanziCount >= 8) &&
+                           (partsAfter1 == partsBefore + 1) && sentZh && inputCleared && guardBlocked5th;
+                    std::printf("G2 send to ZH-HANS: setup=%d, reqs=%d, zhTarget=%d, hanzi=%d, sent1=%d, cleared=%d, guard5thBlocked=%d (parts %d -> %d)\n",
+                                setupOk, reqCount.load(), sawZhTarget.load() ? 1 : 0, hanziCount, sentZh ? 1 : 0,
+                                inputCleared ? 1 : 0, guardBlocked5th ? 1 : 0, partsBefore, partsAfterRepeats);
+                    if (!sawZhTarget.load()) std::printf("G2 debug firstReq: %s\n", firstReq.c_str());
+                } else {
+                    if (srv != INVALID_SOCKET) closesocket(srv);
+                }
+                WSACleanup();
+            }
+            if (!g2Ok) std::printf("FAIL: G2 ZH-HANS preview / SendGuard selftest failed\n");
+            ok = ok && g2Ok;
+        }
+
         // Health check selftest (Schritt 3):
         // Fake missing dictionary, trigger evaluation -> NoDictionary finding in g_health, add-on alive.
         if (auto testHealth = reinterpret_cast<int (*)(int)>(GetProcAddress(dll, "Gw2KbTestHealth"))) {

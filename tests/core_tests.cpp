@@ -847,6 +847,32 @@ static void TestLanguages() {
     }
     CHECK(!FindLanguage(L"xx"));
     CHECK(SourceCode(L"EN-GB") == L"EN");
+    // G2: RouteMessage accepts sendable ZH-HANS and never selects !SendableInGw2 targets/fallbacks.
+    {
+        const std::vector<std::wstring> wl = {L"AR", L"RU", L"ZH-HANS"};
+        SendState st;
+        st.typingLang = L"DE";
+        st.writeLangs = &wl;
+        st.sendIdx = 2;
+        const SendRoute zh = RouteMessage(st);
+        CHECK(zh.lang == L"ZH-HANS" && zh.translating);
+        st.sendIdx = 0;  // AR is blocked -> cleared; DE is sendable so stays "as written"
+        const SendRoute arBlocked = RouteMessage(st);
+        CHECK(arBlocked.lang.empty() && !arBlocked.translating);
+        st.typingLang = L"AR";  // AR cannot go out -> skips AR and RU, falls back to ZH-HANS
+        const SendRoute arFallback = RouteMessage(st);
+        CHECK(arFallback.lang == L"ZH-HANS" && arFallback.translating);
+        const std::vector<std::wstring> onlyBlocked = {L"RU"};
+        st.writeLangs = &onlyBlocked;
+        const SendRoute enFallback = RouteMessage(st);
+        CHECK(enFallback.lang == L"EN-GB" && enFallback.translating);
+        // SendGuard treats Chinese text identically to any other script.
+        SendGuard sg;
+        for (int i = 0; i < SendGuard::kRepeatMax; ++i)
+            CHECK(sg.Check(L"我们在传送点等你们。", false, false, 1000 + i * 100).allow);
+        const SendGuard::Verdict v5 = sg.Check(L"我们在传送点等你们。", false, false, 2000);
+        CHECK(!v5.allow && v5.reason == SendGuard::Reason::Repeat && !v5.nowLocked);
+    }
 }
 
 // German QWERTZ letter rows as KeyLayout (what keyboard_layout.cpp builds from Windows).

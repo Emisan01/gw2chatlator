@@ -785,6 +785,93 @@ extern "C" __declspec(dllexport) int Gw2KbTestChatSource(int cmd, ChatSourceTest
         }
         case 19: return TestTypingStages(text ? std::atoi(text) : -1);
         case 21: return TestGrammarLanguage(text ? std::atoi(text) : 0);
+        case 22: {  // G2: setup (>0 port) or restore (0) ZH-HANS LibreTranslate loopback send test
+            struct SavedG2 {
+                bool active = false;
+                Config cfg;
+                std::shared_ptr<Translator> translator;
+                int sendIdx = 0;
+                std::wstring sendOverride;
+                int activeTab = -1;
+                bool translateChat = true;
+                gct::SendGuard guard;
+            };
+            static SavedG2 s_saved;
+            const int port = text ? std::atoi(text) : 0;
+            std::lock_guard<std::mutex> lock(g_mu);
+            if (port > 0) {
+                if (!s_saved.active) {
+                    s_saved.active = true;
+                    s_saved.cfg = g_cfg;
+                    s_saved.translator = g_translator;
+                    s_saved.sendIdx = g_sendIdx;
+                    s_saved.sendOverride = g_sendOverride;
+                    s_saved.activeTab = g_activeTab;
+                    s_saved.translateChat = g_nx.translateChat;
+                    s_saved.guard = g_guard;
+                }
+                g_cfg.engine = Engine::Libre;
+                g_cfg.libreUrl = L"http://127.0.0.1:" + std::to_wstring(port);
+                g_cfg.writeIn = L"DE";
+                g_cfg.autoCorrect = AutoCorrectMode::Off;
+                g_cfg.backTranslate = false;
+                g_cfg.useLanguageTool = false;
+                auto it = std::find(g_cfg.writeLangs.begin(), g_cfg.writeLangs.end(), std::wstring(L"ZH-HANS"));
+                if (it == g_cfg.writeLangs.end()) {
+                    g_cfg.writeLangs.push_back(L"ZH-HANS");
+                    it = g_cfg.writeLangs.end() - 1;
+                }
+                LeaveWhisperTab();
+                g_sendIdx = static_cast<int>(it - g_cfg.writeLangs.begin());
+                SetChatTranslation(true);
+                g_guard = gct::SendGuard{};
+                g_translator = MakeTranslator(g_cfg);
+                g_input[0] = 0;
+                g_flatInput.clear();
+                g_wFlatInput.clear();
+                g_lastInput.clear();
+                g_preview.clear();
+                g_back.clear();
+                g_previewVersions.clear();
+                g_previewBacks.clear();
+                g_previewPick = 0;
+                ++g_inputGen;
+                g_inputChanged = 0;
+                g_focusInput = true;
+                return (SendableInGw2(L"ZH-HANS") && Translating() && SendLang() == L"ZH-HANS" && g_translator) ? 1 : 0;
+            }
+            if (s_saved.active) {
+                g_cfg = s_saved.cfg;
+                g_translator = s_saved.translator;
+                g_sendIdx = s_saved.sendIdx;
+                if (s_saved.activeTab >= 0) ActivateTab(s_saved.activeTab);
+                else LeaveWhisperTab();
+                g_sendOverride = s_saved.sendOverride;
+                SetChatTranslation(s_saved.translateChat);
+                g_guard = s_saved.guard;
+                s_saved = {};
+                g_input[0] = 0;
+                g_flatInput.clear();
+                g_wFlatInput.clear();
+                g_lastInput.clear();
+                g_preview.clear();
+                g_back.clear();
+                g_previewVersions.clear();
+                g_previewBacks.clear();
+                g_previewPick = 0;
+                ++g_inputGen;
+                g_inputChanged = 0;
+            }
+            return 1;
+        }
+        case 23: {  // G2/G3: read current UTF-8 g_preview when fresh for g_inputGen
+            std::lock_guard<std::mutex> lock(g_mu);
+            if (text && g_previewGen == g_inputGen && !g_preview.empty()) {
+                CopyUtf8(text, 4096, ToUtf8(g_preview));
+                return 1;
+            }
+            return 0;
+        }
         case 20: {  // E4: legacy FallenAngel=1 INI migrates into autoCorrect and stops writing FallenAngel.
             wchar_t tmpDir[MAX_PATH]{};
             GetTempPathW(MAX_PATH, tmpDir);

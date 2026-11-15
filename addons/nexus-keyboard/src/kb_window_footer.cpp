@@ -42,6 +42,7 @@ void SendLanguageItems(bool tabAware) {
         if (ImGui::Selectable(UI(Tr(L"as written")).c_str(), current)) choose(n);
     }
     for (size_t i = 0; i < n; ++i) {
+        if (!SendableInGw2(g_cfg.writeLangs[i])) continue;
         const bool current = !isOff && (tabChoice ? g_sendOverride == g_cfg.writeLangs[i] : g_sendIdx == static_cast<int>(i));
         if (ImGui::Selectable(U8(NativeName(g_cfg.writeLangs[i])).c_str(), current)) choose(i);
     }

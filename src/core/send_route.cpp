@@ -18,10 +18,19 @@ SendRoute RouteMessage(const SendState& s) {
     } else if (footerLang) {
         r.lang = langs[static_cast<size_t>(s.sendIdx)];
     }
+    if (!r.lang.empty() && !SendableInGw2(r.lang)) r.lang.clear();
     const std::wstring& source = voiceFirst && !s.dictLang.empty() ? s.dictLang : s.typingLang;
-    // Written (or said) in a script GW2's chat cannot show: never "as written" – into the first of yours (user,
-    // 2026-10-22: Cyrillic or Greek to write in, translated into what GW2 shows).
-    if (r.lang.empty() && !SendableInGw2(source)) r.lang = langs.empty() ? std::wstring(L"EN-GB") : langs.front();
+    // Written (or said) in a script GW2's chat cannot show: never "as written" – into the first sendable of yours
+    // (or EN-GB). Cyrillic/Greek can be written, Chinese/Latin can go out into GW2.
+    if (r.lang.empty() && !SendableInGw2(source)) {
+        for (const std::wstring& l : langs) {
+            if (SendableInGw2(l)) {
+                r.lang = l;
+                break;
+            }
+        }
+        if (r.lang.empty()) r.lang = L"EN-GB";
+    }
     r.translating = !r.lang.empty() && PrimaryLang(r.lang) != PrimaryLang(source);
     return r;
 }
