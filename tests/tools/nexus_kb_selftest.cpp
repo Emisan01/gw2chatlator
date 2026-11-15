@@ -1174,6 +1174,28 @@ int wmain(int argc, wchar_t** argv) {
             ok = ok && toggleOk;
         }
 
+        // Quit menu item + hotkey restore test (B2):
+        // QuitTool() hides window and stops reading; OnToggle hotkey restores both.
+        if (src) {
+            ChatSourceTest stBefore{}, stQuit{}, stRestored{};
+            const int showBefore = src(13, &stBefore, nullptr);
+            src(11, &stQuit, nullptr);
+            frames(2);
+            const int showAfterQuit = src(13, &stQuit, nullptr);
+            src(12, &stRestored, nullptr);
+            frames(2);
+            const int showAfterHotkey = src(13, &stRestored, nullptr);
+            std::printf("menu Quit + hotkey: before(show=%d read=%d) -> quit(show=%d read=%d) -> hotkey(show=%d read=%d)\n",
+                        showBefore, stBefore.reading ? 1 : 0,
+                        showAfterQuit, stQuit.reading ? 1 : 0,
+                        showAfterHotkey, stRestored.reading ? 1 : 0);
+            const bool quitOk = (showBefore == 1 && stBefore.reading) &&
+                                (showAfterQuit == 0 && !stQuit.reading) &&
+                                (showAfterHotkey == 1 && stRestored.reading);
+            if (!quitOk) std::printf("FAIL: Quit / hotkey restore did not match expected state\n");
+            ok = ok && quitOk;
+        }
+
         // Health check selftest (Schritt 3):
         // Fake missing dictionary, trigger evaluation -> NoDictionary finding in g_health, add-on alive.
         if (auto testHealth = reinterpret_cast<int (*)(int)>(GetProcAddress(dll, "Gw2KbTestHealth"))) {

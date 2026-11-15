@@ -743,6 +743,15 @@ extern "C" __declspec(dllexport) int Gw2KbTestChatSource(int cmd, ChatSourceTest
             if (cmd == 8) g_optionsTab = text && *text ? std::atoi(text) : kPageTechnical;  // a tab by its number, else Technical
             break;
         }
+        case 11: {
+            std::lock_guard<std::mutex> lock(g_mu);
+            QuitTool();
+            break;
+        }
+        case 12: OnToggle(nullptr, false); break;
+        case 13:
+            if (state) ChatSourceTestState(state);
+            return g_show ? 1 : 0;
         default: break;
     }
     if (state) ChatSourceTestState(state);
