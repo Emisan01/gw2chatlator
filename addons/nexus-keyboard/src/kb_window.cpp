@@ -1710,13 +1710,14 @@ void RenderWindow() {
     }
     const bool showClearBtn = (g_input[0] != 0 || g_recording);
     const float clearBtnW = std::floor(ImGui::GetFontSize() * 0.9f);
+    const float moreBtnW = clearBtnW;
     const float clearGap = 3.0f;
     const bool showMarkBadge = !unseen && !g_help.marks.empty() && g_help.text == g_wFlatInput;
     const std::string badgeText = showMarkBadge ? std::to_string(g_help.marks.size()) : "";
     const float badgeW = showMarkBadge ? std::max(clearBtnW, ImGui::CalcTextSize(badgeText.c_str()).x + 8.0f) : 0.0f;
-    const float rightSideW = (showClearBtn ? clearBtnW + clearGap : 0.0f) + (showMarkBadge ? badgeW + clearGap : 0.0f);
+    const float rightSideW = (showMarkBadge ? badgeW + clearGap : 0.0f) + (showClearBtn ? clearBtnW + clearGap : 0.0f) + moreBtnW + clearGap;
     const float inputAvailW = ImGui::GetContentRegionAvail().x;
-    const float inputW = rightSideW > 0.0f ? std::max(50.0f, inputAvailW - rightSideW) : inputAvailW;
+    const float inputW = std::max(50.0f, inputAvailW - rightSideW);
     const ImVec2 boxSize(inputW, boxH);
     g_wrapWidth = inputW - st.FramePadding.x * 2 - st.ScrollbarSize - 4;
     if (ImGui::GetActiveID() != ImGui::GetID("##input")) RewrapInactiveInput();
@@ -1858,6 +1859,51 @@ void RenderWindow() {
         ImGui::PopStyleVar();
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("%s", UI(Tr(L"Clear text")).c_str());
+        }
+    }
+    {
+        ImGui::SameLine(0, clearGap);
+        const ImVec2 morePos = ImGui::GetCursorScreenPos();
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
+        if (ImGui::Button("##typingbtn", ImVec2(moreBtnW, boxH))) {
+            ImGui::OpenPopup("##typing_popup");
+        }
+        ImGui::PopStyleVar();
+        const ImVec2 bMin = ImGui::GetItemRectMin(), bMax = ImGui::GetItemRectMax();
+        const ImVec2 c((bMin.x + bMax.x) * 0.5f, (bMin.y + bMax.y) * 0.5f);
+        const float r = std::max(1.2f, ImGui::GetFontSize() * 0.08f);
+        const float dy = std::max(3.5f, ImGui::GetFontSize() * 0.24f);
+        const ImU32 dotCol = ImGui::GetColorU32(ImGuiCol_Text);
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        dl->AddCircleFilled(ImVec2(c.x, c.y - dy), r, dotCol);
+        dl->AddCircleFilled(ImVec2(c.x, c.y), r, dotCol);
+        dl->AddCircleFilled(ImVec2(c.x, c.y + dy), r, dotCol);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("%s", UI(Tr(L"Typing help")).c_str());
+        }
+        ImGui::SetNextWindowPos(ImVec2(morePos.x + moreBtnW, morePos.y - 4.0f), ImGuiCond_Always, ImVec2(1.0f, 1.0f));
+        if (ImGui::BeginPopup("##typing_popup")) {
+            ScopedPopupFont popupFont;
+            ImGui::TextDisabled("%s", UI(Tr(L"Autocorrection")).c_str());
+            static const wchar_t* const kLevels[5] = {L"Off", L"Safe", L"Like a phone keyboard", L"Strong", L"Fallen Angel"};
+            const int cur = std::clamp(static_cast<int>(g_cfg.autoCorrect), 0, 4);
+            bool needConsent = false;
+            for (int lv = 0; lv < 5; ++lv) {
+                if (ImGui::MenuItem(UI(Tr(kLevels[lv])).c_str(), nullptr, cur == lv)) {
+                    ApplyAutoCorrectChoice(g_cfg, lv, true, &needConsent);
+                    g_focusInput = true;
+                }
+            }
+            ImGui::Separator();
+            const bool lt = g_cfg.useLanguageTool;
+            if (ImGui::MenuItem(UI(Tr(L"Grammar check (LanguageTool)")).c_str(), nullptr, lt)) {
+                ApplyGrammarCheckChoice(g_cfg, !lt, true, &needConsent);
+                g_focusInput = true;
+            }
+            if (needConsent) {
+                g_showOptions = true;
+            }
+            ImGui::EndPopup();
         }
     }
     // Minimise when not in use: nobody wrote, pointed at it or talked for a while – down to the small button.
