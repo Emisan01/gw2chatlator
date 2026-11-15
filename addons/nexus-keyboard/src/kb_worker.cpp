@@ -953,46 +953,7 @@ void CheckGrammar(uint64_t gen, std::wstring text) {
 
         const std::wstring matchedText = text.substr(m.span.start, m.span.length);
         if (keepSet && keepSet->find(CaseFold(matchedText)) != keepSet->end()) continue;
-
-        if (m.replacements.empty()) {
-            // Check for repeated leading consonant (e.g. "hhabitseven" -> "habitseven")
-            if (matchedText.size() >= 3 && matchedText[0] == matchedText[1] && towlower(matchedText[0]) != L'l') {
-                const std::wstring collapsed = matchedText.substr(1);
-                LtResult rSub = CheckWithLanguageTool(serverUrl, collapsed, lang, typing);
-                if (rSub.ok) {
-                    for (const auto& sm : rSub.matches) {
-                        if (!sm.replacements.empty()) {
-                            m.replacements = sm.replacements;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
         if (m.replacements.empty()) continue;
-
-        if (m.replacements.size() > 1) {
-            std::wstring nextWord;
-            size_t nb = m.span.end();
-            while (nb < text.size() && (text[nb] == L' ' || text[nb] == L'\t')) ++nb;
-            size_t ne = nb;
-            while (ne < text.size() && IsWordChar(text[ne])) ++ne;
-            if (ne > nb) nextWord = CaseFold(text.substr(nb, ne - nb));
-
-            std::stable_sort(m.replacements.begin(), m.replacements.end(), [&](const std::wstring& a, const std::wstring& b) {
-                const size_t spA = a.rfind(L' ');
-                const size_t spB = b.rfind(L' ');
-                if (spA != std::wstring::npos && spB != std::wstring::npos && !nextWord.empty()) {
-                    const std::wstring lastA = CaseFold(a.substr(spA + 1));
-                    const std::wstring lastB = CaseFold(b.substr(spB + 1));
-                    const bool advA = (lastA == L"even" || lastA == L"still" || lastA == L"not" || lastA == L"already");
-                    const bool advB = (lastB == L"even" || lastB == L"still" || lastB == L"not" || lastB == L"already");
-                    if (advA != advB) return advA;
-                }
-                return false;
-            });
-        }
 
         filteredMatches.push_back(m);
     }
