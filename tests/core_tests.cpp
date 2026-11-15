@@ -1294,6 +1294,43 @@ static void TestLanguageTool() {
     CHECK(resMulti.marks.size() == 1);
     CHECK(resMulti.marks[0].wasReplaced && resMulti.marks[0].fix == L"habits even");
     CHECK(resMulti.marks[0].span.start == 14 && resMulti.marks[0].span.length == 11);
+
+    // 6. E5 Style match in Fallen Angel: marked only, never auto-replaced
+    const std::wstring rawStyle = L"He very good today ";
+    LtMatch mStyle;
+    mStyle.span = {3, 9}; // "very good"
+    mStyle.replacements = {L"excellent"};
+    mStyle.issueType = L"style";
+    mStyle.categoryId = L"STYLE";
+    auto resStyle = ApplyLanguageToolMatches(rawStyle, rawStyle, {mStyle}, AutoCorrectMode::FallenAngel, {}, {});
+    CHECK(resStyle.replacedCount == 0 && resStyle.text == rawStyle);
+    CHECK(resStyle.marks.size() == 1 && !resStyle.marks[0].wasReplaced && resStyle.marks[0].fix == L"excellent");
+
+    // 7. E5 Last word without trailing space/punctuation: marked only, never replaced mid-typing
+    const std::wstring rawTyping = L"He dont";
+    auto resTyping = ApplyLanguageToolMatches(rawTyping, rawTyping, {m1}, AutoCorrectMode::FallenAngel, {}, {});
+    CHECK(resTyping.replacedCount == 0 && resTyping.text == rawTyping);
+    CHECK(resTyping.marks.size() == 1 && !resTyping.marks[0].wasReplaced);
+    const std::wstring rawPunct = L"He dont.";
+    auto resPunct = ApplyLanguageToolMatches(rawPunct, rawPunct, {m1}, AutoCorrectMode::FallenAngel, {}, {});
+    CHECK(resPunct.replacedCount == 1 && resPunct.text == L"He don't.");
+
+    // 8. E5 Grammar match mid-sentence: auto-replaced when followed by space
+    const std::wstring rawGram = L"We is here ";
+    LtMatch mGram;
+    mGram.span = {3, 2}; // "is"
+    mGram.replacements = {L"are"};
+    mGram.issueType = L"grammar";
+    mGram.categoryId = L"GRAMMAR";
+    auto resGram = ApplyLanguageToolMatches(rawGram, rawGram, {mGram}, AutoCorrectMode::FallenAngel, {}, {});
+    CHECK(resGram.replacedCount == 1 && resGram.text == L"We are here ");
+    CHECK(resGram.marks.size() == 1 && resGram.marks[0].wasReplaced && resGram.marks[0].original == L"is");
+
+    // 9. E5 KeepWord list: protected/own words remain marks even in Fallen Angel
+    const WordSet keepSet = {L"dont", L"no"};
+    auto resKeep = ApplyLanguageToolMatches(raw, raw, matches, AutoCorrectMode::FallenAngel, {}, {}, &keepSet);
+    CHECK(resKeep.replacedCount == 0 && resKeep.text == raw);
+    CHECK(resKeep.marks.size() == 2 && !resKeep.marks[0].wasReplaced && !resKeep.marks[1].wasReplaced);
 }
 
 static void TestStarterWords() {

@@ -74,7 +74,8 @@ LtApplyResult ApplyLanguageToolMatches(const std::wstring& currentText,
                                       const std::vector<LtMatch>& matches,
                                       AutoCorrectMode mode,
                                       const std::set<std::wstring>& revertedWords,
-                                      const std::set<std::wstring>& revertedRules);
+                                      const std::set<std::wstring>& revertedRules,
+                                      const WordSet* keepWords = nullptr);
 
 // The public server allows 20 requests per minute per IP; this keeps us below.
 class RateLimiter {

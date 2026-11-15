@@ -140,7 +140,8 @@ LtApplyResult ApplyLanguageToolMatches(const std::wstring& currentText,
                                       const std::vector<LtMatch>& matches,
                                       AutoCorrectMode mode,
                                       const std::set<std::wstring>& revertedWords,
-                                      const std::set<std::wstring>& revertedRules) {
+                                      const std::set<std::wstring>& revertedRules,
+                                      const WordSet* keepWords) {
     LtApplyResult result;
     result.text = currentText;
     if (!CanKeepGrammarMarks(checkedText, currentText)) return result;
@@ -162,9 +163,16 @@ LtApplyResult ApplyLanguageToolMatches(const std::wstring& currentText,
             const std::wstring folded = CaseFold(orig);
             const bool wordReverted = revertedWords.find(folded) != revertedWords.end();
             const bool ruleReverted = !m.ruleId.empty() && revertedRules.find(m.ruleId) != revertedRules.end();
-            if (!wordReverted && !ruleReverted) {
+            const bool kept = keepWords && keepWords->find(folded) != keepWords->end();
+            if (!wordReverted && !ruleReverted && !kept) {
                 if (mode == AutoCorrectMode::FallenAngel) {
-                    replace = true;
+                    const size_t after = m.span.end();
+                    const bool followedByBreak =
+                        after < currentText.size() &&
+                        (currentText[after] == L' ' || currentText[after] == L'\t' ||
+                         (!IsWordChar(currentText[after]) && currentText[after] != L'\'' &&
+                          currentText[after] != 0x2019 && currentText[after] != L'-'));
+                    replace = (m.Spelling() || m.IsGrammar()) && followedByBreak;
                 } else if (mode == AutoCorrectMode::Strong) {
                     replace = m.Spelling() && m.replacements.size() == 1;
                 }

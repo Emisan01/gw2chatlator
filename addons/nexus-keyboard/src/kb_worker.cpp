@@ -890,6 +890,8 @@ void CheckGrammar(uint64_t gen, std::wstring text) {
     }
 
     std::vector<Span> chatCodes = FindChatCodes(text);
+    const std::shared_ptr<const WordSet> keepSnap = g_spell ? g_spell->KeepWordsSnapshot() : nullptr;
+    const WordSet* keepSet = keepSnap ? keepSnap.get() : &BuiltinKeepWords();
     std::vector<LtMatch> filteredMatches;
     for (LtMatch m : r.matches) {
         if (m.span.end() > text.size()) continue;
@@ -903,10 +905,7 @@ void CheckGrammar(uint64_t gen, std::wstring text) {
         if (inCode) continue;
 
         const std::wstring matchedText = text.substr(m.span.start, m.span.length);
-        if (g_spell) {
-            const auto keep = g_spell->KeepWordsSnapshot();
-            if (keep && keep->find(CaseFold(matchedText)) != keep->end()) continue;
-        }
+        if (keepSet && keepSet->find(CaseFold(matchedText)) != keepSet->end()) continue;
 
         if (m.replacements.empty()) {
             // Check for repeated leading consonant (e.g. "hhabitseven" -> "habitseven")
@@ -964,7 +963,7 @@ void CheckGrammar(uint64_t gen, std::wstring text) {
     std::lock_guard<std::mutex> lock(g_mu);
     if (!CanKeepGrammarMarks(text, g_wFlatInput)) return;
 
-    LtApplyResult applied = ApplyLanguageToolMatches(g_wFlatInput, text, filteredMatches, acMode, revertedWords, revertedRules);
+    LtApplyResult applied = ApplyLanguageToolMatches(g_wFlatInput, text, filteredMatches, acMode, revertedWords, revertedRules, keepSet);
     if (applied.replacedCount > 0 && applied.text != g_wFlatInput) {
         const std::wstring beforeText = g_wFlatInput;
         const std::string newU8 = ToUtf8(applied.text);
@@ -978,6 +977,11 @@ void CheckGrammar(uint64_t gen, std::wstring text) {
         g_undo = {true, newU8, ToUtf8(beforeText), beforeText};
         ++g_inputGen;
         g_inputChanged = GetTickCount64();
+        for (const WordMark& wm : applied.marks) {
+            if (wm.wasReplaced) {
+                SetStatus(wm.original + L" \u2192 " + wm.fix, 3000);
+            }
+        }
     }
     s_grammarCache.text = applied.text;
     s_grammarCache.marks = applied.marks;
