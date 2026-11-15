@@ -1786,6 +1786,10 @@ extern const I18nEntry kRussianStrings[] = {
      "сбой отправки в чат игры"},
     {L"server not responding",
      "сервер не отвечает"},
+    {L"Quit",
+     "Выход"},
+    {L"everything off",
+     "всё выкл."},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

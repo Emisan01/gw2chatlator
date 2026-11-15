@@ -1786,6 +1786,10 @@ extern const I18nEntry kTurkishStrings[] = {
      "oyun sohbetine gönderme başarısız oldu"},
     {L"server not responding",
      "sunucu yanıt vermiyor"},
+    {L"Quit",
+     "Çıkış"},
+    {L"everything off",
+     "her şey kapalı"},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

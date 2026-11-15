@@ -1786,6 +1786,10 @@ extern const I18nEntry kSpanishStrings[] = {
      "error al enviar al chat del juego"},
     {L"server not responding",
      "el servidor no responde"},
+    {L"Quit",
+     "Salir"},
+    {L"everything off",
+     "todo desactivado"},
 };
 extern const size_t kSpanishCount = sizeof(kSpanishStrings) / sizeof(kSpanishStrings[0]);
 

@@ -1786,6 +1786,10 @@ extern const I18nEntry kFrenchStrings[] = {
      "échec de l'envoi au chat du jeu"},
     {L"server not responding",
      "le serveur ne répond pas"},
+    {L"Quit",
+     "Quitter"},
+    {L"everything off",
+     "tout désactiver"},
 };
 extern const size_t kFrenchCount = sizeof(kFrenchStrings) / sizeof(kFrenchStrings[0]);
 

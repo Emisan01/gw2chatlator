@@ -490,6 +490,13 @@ static void RenderMainMenu(bool& newTabNext) {
             ImGui::Separator();
             if (ImGui::MenuItem(UI(Tr(L"Hide (Nexus → Addons → GW2Chatlator shows it again)")).c_str())) g_show = false;
         }
+        ImGui::Separator();
+        ImGui::PushStyleColor(ImGuiCol_Text, UiWarm());
+        const bool quitClicked = ImGui::MenuItem(UI(Tr(L"Quit")).c_str(), UI(Tr(L"everything off")).c_str());
+        ImGui::PopStyleColor();
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", UI(Tr(L"Off: hides the window and stops reading the chat. Your hotkey for the window switches it on again.")).c_str());
+        if (quitClicked) QuitTool();
         ImGui::EndPopup();
     }
 }

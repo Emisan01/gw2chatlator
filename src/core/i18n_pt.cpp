@@ -1786,6 +1786,10 @@ extern const I18nEntry kPortugueseStrings[] = {
      "falha ao enviar para o bate-papo do jogo"},
     {L"server not responding",
      "servidor não está respondendo"},
+    {L"Quit",
+     "Sair"},
+    {L"everything off",
+     "tudo desligado"},
 };
 extern const size_t kPortugueseCount = sizeof(kPortugueseStrings) / sizeof(kPortugueseStrings[0]);
 

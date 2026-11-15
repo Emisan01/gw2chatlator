@@ -1786,6 +1786,10 @@ extern const I18nEntry kPolishStrings[] = {
      "nie udało się wysłać na czat gry"},
     {L"server not responding",
      "serwer nie odpowiada"},
+    {L"Quit",
+     "Zakończ"},
+    {L"everything off",
+     "wszystko wyłączone"},
 };
 extern const size_t kPolishCount = sizeof(kPolishStrings) / sizeof(kPolishStrings[0]);
 
