@@ -17,6 +17,30 @@ bool HasDigit(const std::wstring& w) {
     return std::any_of(w.begin(), w.end(), [](wchar_t c) { return c >= L'0' && c <= L'9'; });
 }
 
+bool IsSinglePlainWord(const std::wstring& w) {
+    if (w.empty() || HasDigit(w)) return false;
+    for (wchar_t c : w)
+        if (std::iswdigit(c) || (!IsWordChar(c) && c != L'\'' && c != 0x2019)) return false;
+    return true;
+}
+
+bool IsTwoWordSplit(const std::wstring& w, bool (*lettersOnly)(const std::wstring&)) {
+    const size_t sp = w.find(L' ');
+    if (sp == std::wstring::npos || w.find(L' ', sp + 1) != std::wstring::npos) return false;
+    return lettersOnly(w.substr(0, sp)) && lettersOnly(w.substr(sp + 1));
+}
+
+bool HasExactTwoWordSplit(const std::wstring& typed, const std::vector<std::wstring>& sug,
+                          bool (*lettersOnly)(const std::wstring&)) {
+    const std::wstring key = WordKey(typed);
+    for (const std::wstring& w : sug) {
+        if (!IsTwoWordSplit(w, lettersOnly)) continue;
+        const size_t sp = w.find(L' ');
+        if (WordKey(w.substr(0, sp) + w.substr(sp + 1)) == key) return true;
+    }
+    return false;
+}
+
 bool SentenceStart(const std::wstring& text, size_t pos) {
     while (pos > 0 && (text[pos - 1] == L' ' || text[pos - 1] == L'\t')) --pos;
     while (pos > 0 && (text[pos - 1] == L'"' || text[pos - 1] == L'\'' || text[pos - 1] == 0x201C ||
@@ -408,17 +432,17 @@ void SpellService::ForgetAll() {
 bool SpellService::DictionarySlip(const std::wstring& typed, const std::wstring& fix) const {
     // Only the dictionary's first idea – the one it finds most likely ("shon": "schon", not the swap "Sohn").
     if (!checker_.Ready()) return false;
-    for (const std::wstring& s : CheckerSuggest(typed)) {
-        if (s.find(L' ') != std::wstring::npos || !LettersOnly(s)) continue;
-        const std::wstring t = WordKey(typed), f = WordKey(fix);
-        if (WordKey(s) != f) return false;
-        // A letter "left out" in the last two places changes the ending: another language or grammar ("matters", not "matteres").
-        size_t same = 0;
-        while (same < t.size() && same < f.size() && t[same] == f[same]) ++same;
-        if (f.size() == t.size() + 1 && same + 2 >= f.size()) return false;
-        return LooksLikeSlip(t, f, layout_, false);
-    }
-    return false;
+    const std::vector<std::wstring> sug = CheckerSuggest(typed);
+    if (sug.empty() || HasExactTwoWordSplit(typed, sug, &SpellService::LettersOnly)) return false;
+    const std::wstring& s = sug.front();
+    if (!IsSinglePlainWord(s)) return false;
+    const std::wstring t = WordKey(typed), f = WordKey(fix);
+    if (WordKey(s) != f) return false;
+    // A letter "left out" in the last two places changes the ending: another language or grammar ("matters", not "matteres").
+    size_t same = 0;
+    while (same < t.size() && same < f.size() && t[same] == f[same]) ++same;
+    if (f.size() == t.size() + 1 && same + 2 >= f.size()) return false;
+    return LooksLikeSlip(t, f, layout_, false);
 }
 
 bool SpellService::TeachFix(const std::wstring& typed, const std::wstring& fix) {
@@ -573,12 +597,14 @@ std::optional<std::wstring> SpellService::AutoCorrection(const std::wstring& wor
     if (!phone) return std::nullopt;
     // Only words the dictionary rejects – without a dictionary any new word would look like a slip: no correction.
     if (!checker_.Ready() || !IsMisspelled(word)) return std::nullopt;
-    const std::wstring fix =
-        ChooseCorrection(word, checker_.Ready() ? CheckerSuggest(word) : std::vector<std::wstring>(), model_, prev, prev2);
+    const std::vector<std::wstring> sug = CheckerSuggest(word);
+    if (sug.empty() || !IsSinglePlainWord(sug.front()) || HasExactTwoWordSplit(word, sug, &SpellService::LettersOnly))
+        return std::nullopt;
+    const std::wstring fix = ChooseCorrection(word, sug, model_, prev, prev2);
     // Only a slip of the fingers (a key next door, two letters swapped, a doubled or left-out letter inside the
     // word) – a changed ending is grammar or another language ("habs", "with"), never corrected. "Strong" goes on
     // from there: whatever the dictionary rejects becomes its first idea.
-    const bool usable = !fix.empty() && fix != word && LettersOnly(fix) && CaseFold(fix) != CaseFold(word);
+    const bool usable = !fix.empty() && fix != word && IsSinglePlainWord(fix) && CaseFold(fix) != CaseFold(word);
     if (usable && (model_.Knows(fix) ? LooksLikeSlip(WordKey(word), WordKey(fix), layout_, false) : DictionarySlip(word, fix)))
         return fix;
     if (heavy)
@@ -588,12 +614,12 @@ std::optional<std::wstring> SpellService::AutoCorrection(const std::wstring& wor
 
 std::wstring SpellService::DictionaryFirst(const std::wstring& typed) const {
     if (!checker_.Ready() || typed.size() < 2 || !IsMisspelled(typed)) return {};
-    for (const std::wstring& s : CheckerSuggest(typed)) {
-        if (s.find(L' ') != std::wstring::npos || !LettersOnly(s)) continue;
-        if (CaseFold(s) == CaseFold(typed) || EditDistance(WordKey(typed), WordKey(s), 4) > 3) return {};
-        return MatchCase(typed, s);
-    }
-    return {};
+    const std::vector<std::wstring> sug = CheckerSuggest(typed);
+    if (sug.empty() || HasExactTwoWordSplit(typed, sug, &SpellService::LettersOnly)) return {};
+    const std::wstring& s = sug.front();
+    if (!IsSinglePlainWord(s)) return {};
+    if (CaseFold(s) == CaseFold(typed) || EditDistance(WordKey(typed), WordKey(s), 4) > 3) return {};
+    return MatchCase(typed, s);
 }
 
 // The two words before `pos` in the same sentence ("kommst du |" -> "du", "kommst"); empty after . ! ?
@@ -780,7 +806,9 @@ WordSuggestions SpellService::Suggestions(const std::wstring& text, size_t caret
         if (!words.empty()) {
             s.kind = WordSuggestions::Kind::Correction;
             s.words = words;
-            if (heavy) s.autoIndex = 0;
+            if (heavy && IsSinglePlainWord(words.front()) &&
+                !HasExactTwoWordSplit(partial, CheckerSuggest(partial), &SpellService::LettersOnly))
+                s.autoIndex = 0;
             return s;
         }
     }
@@ -933,15 +961,17 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
                 if (checker_.Ready()) strong.push_back(w);
             }
         }
-        if (checker_.Ready())
+        if (checker_.Ready()) {
             for (const std::wstring& w : CheckerSuggest(typed)) {
-                if (!LettersOnly(w)) continue;
+                const bool single = LettersOnly(w);
+                if (!single && !IsTwoWordSplit(w, &SpellService::LettersOnly)) continue;
                 fixes.push_back(w);
                 // The dictionary's idea is only taken by Space when it is one slip of the fingers away – on the
-                // "Strong" / "Fallen Angel" level its first idea always.
-                if (DictionarySlip(typed, w) || (heavy && WordKey(w) == WordKey(DictionaryFirst(typed))))
+                // "Strong" / "Fallen Angel" level its first plain-word idea always; multi-word offers are Tab/click only.
+                if (single && (DictionarySlip(typed, w) || (heavy && WordKey(w) == WordKey(DictionaryFirst(typed)))))
                     strong.push_back(w);
             }
+        }
     }
 
     auto add = [&](const std::wstring& w) {
