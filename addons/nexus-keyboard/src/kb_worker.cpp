@@ -25,7 +25,7 @@ void InitSpelling() {
         std::lock_guard<std::mutex> lock(g_mu);
         typing = TypingLocale();
     }
-    if (c.spellEnabled || c.autoCorrect != AutoCorrectMode::Off) {
+    if (c.suggestions || c.spellEnabled || c.autoCorrect != AutoCorrectMode::Off) {
         std::vector<std::wstring> tags = SpellTagCandidates(PrimaryLang(typing), typing);
         if (c.writeIn.empty())
             for (const std::wstring& t : SpellTagCandidates(PrimaryLang(locale), locale)) tags.push_back(t);
@@ -676,6 +676,8 @@ void ComputeTyping() {
     std::wstring text;
     size_t caret;
     AutoCorrectMode mode;
+    bool wantSuggestions = false;
+    bool wantSpell = false;
     std::vector<std::wstring> context;
     {
         std::lock_guard<std::mutex> lock(g_mu);
@@ -683,17 +685,22 @@ void ComputeTyping() {
         text = g_wFlatInput;
         caret = text.size();  // the help works at the end of the line (where you type)
         mode = g_cfg.autoCorrect;
+        wantSuggestions = g_cfg.suggestions;
+        wantSpell = g_cfg.spellEnabled || mode != AutoCorrectMode::Off;
         context = g_context;
     }
-    if (!g_spell || !g_cfg.suggestions) return;
+    if (!g_spell) return;
     ++g_healthCorrectionChecks;
     g_spell->SetContext(std::move(context));
     TypingHelp h;
     h.text = text;
     h.caret = caret;
-    h.bar = g_spell->Suggestions(text, caret, mode);
-    h.choices = g_spell->Choices(text, caret, mode);
-    h.marks = g_spell->Marks(text, mode);  // the whole message once more: what a comma, a paste or an edit let through
+    if (wantSuggestions) h.bar = g_spell->Suggestions(text, caret, mode);
+    if (wantSpell) {
+        if (mode != AutoCorrectMode::Off) h.choices = g_spell->Choices(text, caret, mode, wantSuggestions);
+        const AutoCorrectMode markMode = mode == AutoCorrectMode::Off ? AutoCorrectMode::Phone : mode;
+        h.marks = g_spell->Marks(text, markMode);  // the whole message once more: what a comma, a paste or an edit let through
+    }
     std::lock_guard<std::mutex> lock(g_mu);
     if (g_wFlatInput == text) {
         if (g_cfg.LanguageToolActive() && !s_grammarCache.marks.empty()) {
@@ -701,6 +708,120 @@ void ComputeTyping() {
         }
         g_help = std::move(h);
     }
+}
+
+int TestTypingStages(int mask) {
+    struct SavedState {
+        bool active = false;
+        bool suggestions = true;
+        bool spellEnabled = true;
+        AutoCorrectMode autoCorrect = AutoCorrectMode::Phone;
+        bool useLanguageTool = false;
+        std::wstring consent;
+        std::wstring writeIn;
+    };
+    static SavedState s_saved;
+    auto waitSpelling = [&] {
+        std::atomic<bool> done{false};
+        g_worker.Post([&done] {
+            FreeWorkerState();
+            InitSpelling();
+            done.store(true);
+        });
+        for (int i = 0; i < 500 && !done.load(); ++i) Sleep(10);
+    };
+    if (mask < 0) {
+        if (s_saved.active) {
+            bool needInit = false;
+            {
+                std::lock_guard<std::mutex> lock(g_mu);
+                needInit = g_cfg.writeIn != s_saved.writeIn;
+                g_cfg.suggestions = s_saved.suggestions;
+                g_cfg.spellEnabled = s_saved.spellEnabled;
+                g_cfg.autoCorrect = s_saved.autoCorrect;
+                g_cfg.useLanguageTool = s_saved.useLanguageTool;
+                g_cfg.languageToolConsent = s_saved.consent;
+                g_cfg.writeIn = s_saved.writeIn;
+                g_wFlatInput.clear();
+                g_flatInput.clear();
+                g_input[0] = '\0';
+                s_grammarCache = {};
+                g_help = {};
+            }
+            if (needInit) waitSpelling();
+            s_saved.active = false;
+        }
+        return 0;
+    }
+    if (!s_saved.active) {
+        bool needInit = false;
+        {
+            std::lock_guard<std::mutex> lock(g_mu);
+            s_saved.active = true;
+            s_saved.suggestions = g_cfg.suggestions;
+            s_saved.spellEnabled = g_cfg.spellEnabled;
+            s_saved.autoCorrect = g_cfg.autoCorrect;
+            s_saved.useLanguageTool = g_cfg.useLanguageTool;
+            s_saved.consent = g_cfg.languageToolConsent;
+            s_saved.writeIn = g_cfg.writeIn;
+            if (!g_spell || PrimaryLang(TypingLocale()) != L"en") {
+                g_cfg.writeIn = L"en";
+                needInit = true;
+            }
+        }
+        if (needInit) waitSpelling();
+    }
+    const bool wantSug = (mask & 1) != 0;
+    const bool wantSpell = (mask & 2) != 0;
+    const bool wantLt = (mask & 4) != 0;
+    const bool phoneMode = (mask & 8) != 0;
+    const int inputKind = (mask >> 4) & 3;
+    std::wstring text = L"teh helo, Th";
+    if (inputKind == 1) text = L"teh";
+    else if (inputKind == 2) text = L"Thank";
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_cfg.suggestions = wantSug;
+        g_cfg.spellEnabled = wantSpell;
+        g_cfg.autoCorrect = phoneMode ? AutoCorrectMode::Phone : AutoCorrectMode::Off;
+        g_cfg.useLanguageTool = wantLt;
+        g_cfg.languageToolConsent = wantLt ? L"http://127.0.0.1:8081" : L"offline";
+        g_wFlatInput = text;
+        g_flatInput = ToUtf8(text);
+        CopyUtf8(g_input, g_flatInput);
+        if (inputKind == 0) {
+            WordMark gm;
+            gm.span = {0, 3};
+            gm.fix = L"the";
+            gm.original = L"teh";
+            gm.isGrammar = true;
+            gm.ruleId = L"TEST_GRAMMAR";
+            gm.message = L"Grammar test mark";
+            s_grammarCache.text = text;
+            s_grammarCache.marks = {gm};
+        } else {
+            s_grammarCache = {};
+        }
+        g_help = {};
+    }
+    std::atomic<bool> done{false};
+    g_worker.PostInteractive([&done] {
+        ComputeTyping();
+        done.store(true);
+    });
+    for (int i = 0; i < 300 && !done.load(); ++i) Sleep(10);
+    std::lock_guard<std::mutex> lock(g_mu);
+    int bits = 0;
+    if (!g_help.bar.words.empty()) bits |= 1;
+    bool hasSpell = false, hasGrammar = false;
+    for (const WordMark& m : g_help.marks) {
+        if (m.isGrammar) hasGrammar = true;
+        else hasSpell = true;
+    }
+    if (hasSpell) bits |= 2;
+    if (!g_help.choices.words.empty()) bits |= 4;
+    if (hasGrammar) bits |= 8;
+    return bits;
 }
 
 void CheckGrammar(uint64_t gen, std::wstring text) {

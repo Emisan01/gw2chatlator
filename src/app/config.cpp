@@ -557,8 +557,6 @@ void Config::SaveAll() const {
 
 bool Config::LanguageToolActive() const {
     if (!useLanguageTool) return false;
-    const AutoCorrectMode m = EffectiveAutoCorrect();
-    if (m != AutoCorrectMode::Strong && m != AutoCorrectMode::FallenAngel) return false;
     const std::wstring normUrl = NormalizeLanguageToolUrl(languageToolUrl);
     const bool isLocal = normUrl.find(L"localhost") != std::wstring::npos || normUrl.find(L"127.0.0.1") != std::wstring::npos;
     if (isLocal) return true;

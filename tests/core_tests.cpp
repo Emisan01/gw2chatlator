@@ -1267,13 +1267,16 @@ static void TestLanguageTool() {
     CHECK(!resReverted.marks[0].wasReplaced && resReverted.marks[0].fix == L"don't");
     CHECK(resReverted.marks[1].wasReplaced && resReverted.marks[1].fix == L"know");
 
-    // 4. Off, Safe, Phone modes: LanguageTool produces no replacements and no marks
+    // 4. Off, Safe, Phone modes: LanguageTool marks issues without auto-replacing
     auto resOff = ApplyLanguageToolMatches(raw, raw, matches, AutoCorrectMode::Off, {}, {});
-    CHECK(resOff.replacedCount == 0 && resOff.text == raw && resOff.marks.empty());
+    CHECK(resOff.replacedCount == 0 && resOff.text == raw && resOff.marks.size() == 2 &&
+          !resOff.marks[0].wasReplaced && !resOff.marks[1].wasReplaced);
     auto resSafe = ApplyLanguageToolMatches(raw, raw, matches, AutoCorrectMode::Safe, {}, {});
-    CHECK(resSafe.replacedCount == 0 && resSafe.text == raw && resSafe.marks.empty());
+    CHECK(resSafe.replacedCount == 0 && resSafe.text == raw && resSafe.marks.size() == 2 &&
+          !resSafe.marks[0].wasReplaced && !resSafe.marks[1].wasReplaced);
     auto resPhone = ApplyLanguageToolMatches(raw, raw, matches, AutoCorrectMode::Phone, {}, {});
-    CHECK(resPhone.replacedCount == 0 && resPhone.text == raw && resPhone.marks.empty());
+    CHECK(resPhone.replacedCount == 0 && resPhone.text == raw && resPhone.marks.size() == 2 &&
+          !resPhone.marks[0].wasReplaced && !resPhone.marks[1].wasReplaced);
 
     // 5. Multi-word replacement (splitting conjoined words: "hhabitseven" -> "habits even")
     const std::wstring rawMulti = L"disappointing hhabitseven working";

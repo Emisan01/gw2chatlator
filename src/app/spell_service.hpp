@@ -107,7 +107,7 @@ public:
     // the whole hand one key off, the dictionary's ideas). Phone mode
     // highlights the best change for a word that is not valid; Safe mode
     // highlights nothing (Tab chooses).
-    WordChoices Choices(const std::wstring& text, size_t caret, AutoCorrectMode mode) const;
+    WordChoices Choices(const std::wstring& text, size_t caret, AutoCorrectMode mode, bool includeCompletions = true) const;
 
     // Words of the chat right now (names, places, what was just asked), newest first: completions offer them right
     // after your own words. Never learned – the word model learns only from what you send.

@@ -783,6 +783,7 @@ extern "C" __declspec(dllexport) int Gw2KbTestChatSource(int cmd, ChatSourceTest
             g_showOptions = false;
             return g_cfg.LanguageToolActive() ? 1 : 0;
         }
+        case 19: return TestTypingStages(text ? std::atoi(text) : -1);
         default: break;
     }
     if (state) ChatSourceTestState(state);

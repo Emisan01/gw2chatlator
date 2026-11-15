@@ -1231,6 +1231,35 @@ int wmain(int argc, wchar_t** argv) {
             const bool n3Ok = (ltReq == 1) && (ltOk == 1) && (ltOffline == 0);
             if (!n3Ok) std::printf("FAIL: typing menu ⋮ consent flow did not match expected LanguageToolActive() states\n");
             ok = ok && n3Ok;
+
+            // 4-stage pipeline isolation test (E3): all 8 combinations of (suggestions, spellEnabled, LanguageToolActive())
+            // plus !suggestions removing bar & completions while keeping typo choices.
+            bool stagesOk = true;
+            for (int m = 0; m < 8; ++m) {
+                char buf[16];
+                std::snprintf(buf, sizeof(buf), "%d", m);
+                const int got = src(19, nullptr, buf);
+                const int want = (m & 1) | (m & 2) | ((m & 4) ? 8 : 0);  // bar=1, spellMark=2, grammarMark=8
+                if ((got & (1 | 2 | 8)) != want) {
+                    std::printf("FAIL: E3 stage combination (%d: sug=%d spell=%d lt=%d) got bits 0x%x, expected 0x%x\n",
+                                m, m & 1, (m >> 1) & 1, (m >> 2) & 1, got, want);
+                    stagesOk = false;
+                }
+            }
+            const int typoNoSug = src(19, nullptr, const_cast<char*>("26"));   // mask 8|16 = Phone + "teh" without suggestions
+            const int validNoSug = src(19, nullptr, const_cast<char*>("42"));  // mask 8|32 = Phone + "Thank" without suggestions
+            const int validWithSug = src(19, nullptr, const_cast<char*>("43")); // mask 1|8|32 = Phone + "Thank" with suggestions
+            src(19, nullptr, const_cast<char*>("-1"));
+            const bool choicesOk = (typoNoSug & 1) == 0 && (typoNoSug & 4) != 0 &&
+                                   (validNoSug & 1) == 0 && (validNoSug & 4) == 0 &&
+                                   (validWithSug & 1) != 0 && (validWithSug & 4) != 0;
+            if (!choicesOk) {
+                std::printf("FAIL: E3 choices/completion separation (typoNoSug=0x%x validNoSug=0x%x validWithSug=0x%x)\n",
+                            typoNoSug, validNoSug, validWithSug);
+                stagesOk = false;
+            }
+            std::printf("E3 pipeline 8 combinations + choices/completion separation: %s\n", stagesOk ? "OK" : "FAIL");
+            ok = ok && stagesOk;
         }
 
         // Health check selftest (Schritt 3):

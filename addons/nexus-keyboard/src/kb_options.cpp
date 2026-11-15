@@ -413,7 +413,7 @@ void ApplyOptions(Config& edit, Config& opened) {
         next.uiLang = EffectiveUiLang(next.uiLangCode);
         const Config& old = g_cfg;
         typingChanged = next.writeIn != old.writeIn || next.spellEnabled != old.spellEnabled ||
-                        next.useLanguageTool != old.useLanguageTool ||
+                        next.useLanguageTool != old.useLanguageTool || next.suggestions != old.suggestions ||
                         (next.autoCorrect != AutoCorrectMode::Off) != (old.autoCorrect != AutoCorrectMode::Off);
         learnChanged = next.learnWords != old.learnWords || next.learnLater != old.learnLater;
         voiceChanged = next.voiceEnabled != old.voiceEnabled;
@@ -478,6 +478,7 @@ void ApplyOptions(Config& edit, Config& opened) {
     if (typingChanged) g_worker.Post([] {
         FreeWorkerState();
         InitSpelling();
+        g_worker.PostInteractive(ComputeTyping);
     });
     else if (learnChanged) g_worker.Post([learn = edit.learnWords] { if (g_spell) g_spell->SetLearnChoices(learn); });
     if (pttChanged) ApplyPushToTalkKey(edit.voiceGlobalKey);

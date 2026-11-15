@@ -847,7 +847,8 @@ std::vector<WordMark> SpellService::Marks(const std::wstring& text, AutoCorrectM
     return out;
 }
 
-WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCorrectMode mode) const {
+WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCorrectMode mode,
+                                bool includeCompletions) const {
     WordChoices c;
     if (mode == AutoCorrectMode::Off || caret > text.size()) return c;
     if (caret < text.size() && IsWordChar(text[caret])) return c;  // only at the end of a word
@@ -900,41 +901,43 @@ WordChoices SpellService::Choices(const std::wstring& text, size_t caret, AutoCo
     // tests/tools/typing_bench: they turned correctly typed words into others ("tequatl" -> "gequält").
     std::vector<std::wstring> strong;
     std::vector<std::wstring> completions;
-    auto nSnap = std::atomic_load(&namesSnap_);
-    if (nSnap) {
-        for (const auto& [k, n] : *nSnap)  // names you taught come first ("Fal" -> "Fallen")
-            if (k.size() > WordKey(typed).size() && k.compare(0, WordKey(typed).size(), WordKey(typed)) == 0)
-                completions.push_back(n);
-    }
-    for (const std::wstring& w : model_.Complete(typed, prev, 3, p2)) completions.push_back(w);
-    // Without a dictionary a short word may already be finished ("an", "do"): Space completes only from 3 letters
-    // on and only when it adds 2 or more.
-    for (const std::wstring& w : completions)
-        if (checker_.Ready() || (typed.size() >= 3 && w.size() >= typed.size() + 2)) strong.push_back(w);
-    AddContextCompletions(typed, completions, 3);
-    // The language's everyday words (Windows' prediction) and the GW2 starter list. Windows' best guess is written
-    // by Space while the typed part is not a word yet ("Sch" -> "schon"), the others wait for Tab.
-    if (completions.size() < 3) {
-        bool firstPredicted = false;
-        bool first = true;
-        for (const std::wstring& w : BaseCompletions(prev, typed, 3, &firstPredicted)) {
-            if (completions.size() >= 3) break;
-            if (std::any_of(completions.begin(), completions.end(), [&](const std::wstring& x) { return WordKey(x) == WordKey(w); }))
-                continue;
-            if (first && firstPredicted && !valid && typed.size() >= 2 && typed.size() <= kMaxUnfinished && w.size() >= typed.size() + 2)
-                strong.push_back(w);
-            first = false;
-            completions.push_back(w);
+    if (includeCompletions) {
+        auto nSnap = std::atomic_load(&namesSnap_);
+        if (nSnap) {
+            for (const auto& [k, n] : *nSnap)  // names you taught come first ("Fal" -> "Fallen")
+                if (k.size() > WordKey(typed).size() && k.compare(0, WordKey(typed).size(), WordKey(typed)) == 0)
+                    completions.push_back(n);
         }
-    }
-    // Words of the chat and the starter list: shown grey (Space writes them) only while the typed part is clearly
-    // unfinished – not a word at all and the suggestion much longer ("Sch" -> "Schwarzzitadelle"). Without that, a
-    // fresh tool showed no grey word at all; "use" -> "User" (+1) stays a Tab offer.
-    // Without a dictionary "not a word" is only a guess ("an", "break" may be finished): from 3 letters, +4.
-    const size_t minTyped = checker_.Ready() ? 2 : 3, minMore = checker_.Ready() ? 3 : 4;
-    if (!valid && typed.size() >= minTyped && typed.size() <= kMaxUnfinished)
+        for (const std::wstring& w : model_.Complete(typed, prev, 3, p2)) completions.push_back(w);
+        // Without a dictionary a short word may already be finished ("an", "do"): Space completes only from 3 letters
+        // on and only when it adds 2 or more.
         for (const std::wstring& w : completions)
-            if (w.size() >= typed.size() + minMore && w.find(L' ') == std::wstring::npos) strong.push_back(w);
+            if (checker_.Ready() || (typed.size() >= 3 && w.size() >= typed.size() + 2)) strong.push_back(w);
+        AddContextCompletions(typed, completions, 3);
+        // The language's everyday words (Windows' prediction) and the GW2 starter list. Windows' best guess is written
+        // by Space while the typed part is not a word yet ("Sch" -> "schon"), the others wait for Tab.
+        if (completions.size() < 3) {
+            bool firstPredicted = false;
+            bool first = true;
+            for (const std::wstring& w : BaseCompletions(prev, typed, 3, &firstPredicted)) {
+                if (completions.size() >= 3) break;
+                if (std::any_of(completions.begin(), completions.end(), [&](const std::wstring& x) { return WordKey(x) == WordKey(w); }))
+                    continue;
+                if (first && firstPredicted && !valid && typed.size() >= 2 && typed.size() <= kMaxUnfinished && w.size() >= typed.size() + 2)
+                    strong.push_back(w);
+                first = false;
+                completions.push_back(w);
+            }
+        }
+        // Words of the chat and the starter list: shown grey (Space writes them) only while the typed part is clearly
+        // unfinished – not a word at all and the suggestion much longer ("Sch" -> "Schwarzzitadelle"). Without that, a
+        // fresh tool showed no grey word at all; "use" -> "User" (+1) stays a Tab offer.
+        // Without a dictionary "not a word" is only a guess ("an", "break" may be finished): from 3 letters, +4.
+        const size_t minTyped = checker_.Ready() ? 2 : 3, minMore = checker_.Ready() ? 3 : 4;
+        if (!valid && typed.size() >= minTyped && typed.size() <= kMaxUnfinished)
+            for (const std::wstring& w : completions)
+                if (w.size() >= typed.size() + minMore && w.find(L' ') == std::wstring::npos) strong.push_back(w);
+    }
     std::vector<std::wstring> fixes;
     const std::wstring known = valid ? std::wstring() : KnownFix(typed);  // one of your typical typos
     if (!known.empty()) {

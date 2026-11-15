@@ -143,9 +143,6 @@ LtApplyResult ApplyLanguageToolMatches(const std::wstring& currentText,
                                       const std::set<std::wstring>& revertedRules) {
     LtApplyResult result;
     result.text = currentText;
-    if (mode == AutoCorrectMode::Off || mode == AutoCorrectMode::Safe || mode == AutoCorrectMode::Phone) {
-        return result;
-    }
     if (!CanKeepGrammarMarks(checkedText, currentText)) return result;
 
     struct ValidMatch {
