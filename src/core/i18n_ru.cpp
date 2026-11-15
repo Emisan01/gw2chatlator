@@ -1737,8 +1737,6 @@ extern const I18nEntry kRussianStrings[] = {
      "Уведомление о конфиденциальности"},
     {L"Translation is switched off. Click to enable or select language.",
      "Перевод выключен. Нажмите, чтобы включить или выбрать язык."},
-    {L"Translation: Off",
-     "Перевод: Выкл."},
 {L"checking …",
      "проверка …"},
     {L"was: {1} → {2}\nClick: revert (undo)\nRight-click: keep word",
@@ -1792,6 +1790,12 @@ extern const I18nEntry kRussianStrings[] = {
      "Канал"},
     {L"I write in",
      "Я пишу на"},
+    {L"Goes out as",
+     "Отправка на"},
+    {L"Translation",
+     "Перевод"},
+    {L"off",
+     "выкл."},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

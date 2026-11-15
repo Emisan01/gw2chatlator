@@ -1737,8 +1737,6 @@ extern const I18nEntry kGermanStrings[] = {
      "Datenschutzhinweis"},
     {L"Translation is switched off. Click to enable or select language.",
      "Übersetzung ist ausgeschaltet. Klicken zum Aktivieren oder Sprache wählen."},
-    {L"Translation: Off",
-     "Übersetzung: Aus"},
 {L"checking …",
      "prüfe …"},
     {L"was: {1} → {2}\nClick: revert (undo)\nRight-click: keep word",
@@ -1792,6 +1790,12 @@ extern const I18nEntry kGermanStrings[] = {
      "Kanal"},
     {L"I write in",
      "Ich schreibe"},
+    {L"Goes out as",
+     "Geht raus als"},
+    {L"Translation",
+     "Übersetzung"},
+    {L"off",
+     "aus"},
 };
 extern const size_t kGermanCount = sizeof(kGermanStrings) / sizeof(kGermanStrings[0]);
 

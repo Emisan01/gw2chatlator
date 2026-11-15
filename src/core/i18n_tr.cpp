@@ -1737,8 +1737,6 @@ extern const I18nEntry kTurkishStrings[] = {
      "Gizlilik Bildirimi"},
     {L"Translation is switched off. Click to enable or select language.",
      "Çeviri kapalı. Etkinleştirmek veya dil seçmek için tıklayın."},
-    {L"Translation: Off",
-     "Çeviri: Kapalı"},
 {L"checking …",
      "denetleniyor …"},
     {L"was: {1} → {2}\nClick: revert (undo)\nRight-click: keep word",
@@ -1792,6 +1790,12 @@ extern const I18nEntry kTurkishStrings[] = {
      "Kanal"},
     {L"I write in",
      "Yazdığım dil"},
+    {L"Goes out as",
+     "Çıkış dili"},
+    {L"Translation",
+     "Çeviri"},
+    {L"off",
+     "kapalı"},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

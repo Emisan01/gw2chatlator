@@ -1737,8 +1737,6 @@ extern const I18nEntry kPortugueseStrings[] = {
      "Aviso de Privacidade"},
     {L"Translation is switched off. Click to enable or select language.",
      "A tradução está desativada. Clique para ativar ou selecionar idioma."},
-    {L"Translation: Off",
-     "Tradução: Desativada"},
 {L"checking …",
      "a verificar …"},
     {L"was: {1} → {2}\nClick: revert (undo)\nRight-click: keep word",
@@ -1792,6 +1790,12 @@ extern const I18nEntry kPortugueseStrings[] = {
      "Canal"},
     {L"I write in",
      "Escrevo em"},
+    {L"Goes out as",
+     "Sai como"},
+    {L"Translation",
+     "Tradução"},
+    {L"off",
+     "desligada"},
 };
 extern const size_t kPortugueseCount = sizeof(kPortugueseStrings) / sizeof(kPortugueseStrings[0]);
 

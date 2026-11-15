@@ -131,7 +131,7 @@ void RenderFooter() {  // g_mu held
         std::wstring sendLang;
         bool sendOrig = false;
         bool translateChat = false;
-        std::string capChannel, capWrite;
+        std::string capChannel, capWrite, capSend;
         std::string labelFull, labelNarrow;
         std::string writeFull, writeNarrow;
         std::string sendFull, sendNarrow;
@@ -172,12 +172,13 @@ void RenderFooter() {  // g_mu held
         s_fc.writeNarrow = U8(ToUpperAscii(PrimaryLang(typingLang)));
 
         const std::wstring sendText = NativeName(sendLang);
-        // When master translator is OFF, display "Translation: Off" grayed out.
         if (!g_nx.translateChat) {
-            s_fc.sendFull = UI(Tr(L"Translation: Off"));
-            s_fc.sendNarrow = UI(Tr(L"Off"));
+            s_fc.capSend = UI(Tr(L"Translation"));
+            s_fc.sendFull = UI(Tr(L"off"));
+            s_fc.sendNarrow = s_fc.sendFull;
         } else {
-            s_fc.sendFull = sendOrig ? UI(Tr(L"as written")) : UI(TrF(L"Send: {1}", {sendText}));
+            s_fc.capSend = UI(Tr(L"Goes out as"));
+            s_fc.sendFull = sendOrig ? UI(Tr(L"as written")) : U8(sendText);
             s_fc.sendNarrow = sendOrig ? UI(Tr(L"as written")) : "> " + U8(ToUpperAscii(PrimaryLang(sendLang)));
         }
 
@@ -185,8 +186,8 @@ void RenderFooter() {  // g_mu held
         s_fc.labelWNarrow = fieldWidth(s_fc.capChannel, s_fc.labelNarrow);
         s_fc.writeWFull = fieldWidth(s_fc.capWrite, s_fc.writeFull);
         s_fc.writeWNarrow = fieldWidth(s_fc.capWrite, s_fc.writeNarrow);
-        s_fc.sendWFull = fieldWidth("", s_fc.sendFull);
-        s_fc.sendWNarrow = fieldWidth("", s_fc.sendNarrow);
+        s_fc.sendWFull = fieldWidth(s_fc.capSend, s_fc.sendFull);
+        s_fc.sendWNarrow = fieldWidth(s_fc.capSend, s_fc.sendNarrow);
         s_fc.totalNeedFull = iconH + s_fc.labelWFull + s_fc.writeWFull + s_fc.sendWFull +
                              ImGui::GetFrameHeight() * 5 + ImGui::CalcTextSize("000/199").x;
     }
@@ -294,7 +295,7 @@ void RenderFooter() {  // g_mu held
     const float sendBtnW = narrow ? s_fc.sendWNarrow : s_fc.sendWFull;
     const std::string& sendVal = narrow ? s_fc.sendNarrow : s_fc.sendFull;
     const ImVec4 sendColor = !g_nx.translateChat ? ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled) : UiAccent();
-    const bool sendLeft = FooterField("##sendbtn", "", sendVal.c_str(), sendColor, sendBtnW);
+    const bool sendLeft = FooterField("##sendbtn", s_fc.capSend.c_str(), sendVal.c_str(), sendColor, sendBtnW);
     if (!g_nx.translateChat && ImGui::IsItemHovered()) {
         ImGui::SetTooltip("%s", UI(Tr(L"Translation is switched off. Click to enable or select language.")).c_str());
     }
