@@ -318,6 +318,37 @@ int Run(const wchar_t* lang, const wchar_t* tag, const Line* lines, size_t count
         std::printf("marks: \"das ist shon, gut und shon\" -> %zu mark(s)%s\n", marks.size(),
                     found ? ", shon -> schon" : " – expected one, shon -> schon");
         if (!found) ++all.surprises;
+        // Two-word compounds must never be auto-replaced with an unrelated single dictionary word on Space.
+        struct TwoWordCase {
+            const wchar_t* prefix;
+            const wchar_t* typed;
+            const wchar_t* split;
+        };
+        const TwoWordCase twoWordCases[] = {
+            {L"da waren ", L"zuviele", L"zu viele"},
+            {L"ich kam ", L"zuspät", L"zu spät"},
+            {L"wir sind ", L"zuzweit", L"zu zweit"},
+        };
+        for (AutoCorrectMode testMode : {AutoCorrectMode::Strong, AutoCorrectMode::FallenAngel}) {
+            const char* mname = testMode == AutoCorrectMode::Strong ? "strong" : "fallenangel";
+            for (const TwoWordCase& tc : twoWordCases) {
+                const std::wstring line = std::wstring(tc.prefix) + tc.typed;
+                const WordChoices c = sp.Choices(line, line.size(), testMode);
+                std::wstring afterWord = tc.typed;
+                if (c.Changes() && c.highlight >= 0 && c.highlight < static_cast<int>(c.words.size())) {
+                    afterWord = c.words[static_cast<size_t>(c.highlight)];
+                } else if (const auto fix = sp.AutoCorrection(tc.typed, testMode)) {
+                    afterWord = *fix;
+                }
+                const std::wstring after = std::wstring(tc.prefix) + afterWord + L" ";
+                const std::wstring wantKeep = std::wstring(tc.prefix) + tc.typed + L" ";
+                const std::wstring wantSplit = std::wstring(tc.prefix) + tc.split + L" ";
+                const bool ok = (after == wantKeep || after == wantSplit);
+                std::printf("two-word (%s): \"%s \" -> \"%s\"%s\n", mname, ToUtf8(line).c_str(), ToUtf8(after).c_str(),
+                            ok ? " (ok)" : " – FAIL (unexpected word)");
+                if (!ok) ++all.surprises;
+            }
+        }
         // What the levels do with a sentence typed carelessly (made up): how many words each would correct.
         const std::wstring careless = L"ich glaube das ist ein fehlr und nohc ein wort falsh gschrieben aber egl ";
         const auto phone = sp.Marks(careless, AutoCorrectMode::Phone), strong = sp.Marks(careless, AutoCorrectMode::Strong);
