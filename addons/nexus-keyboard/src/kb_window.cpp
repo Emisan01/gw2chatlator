@@ -1845,7 +1845,7 @@ void RenderWindow() {
     if (showClearBtn) {
         ImGui::SameLine(0, clearGap);
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
-        if (ImGui::Button("<##clear", ImVec2(clearBtnW, boxH))) {
+        if (ImGui::Button("x##clear", ImVec2(clearBtnW, boxH))) {
             g_input[0] = '\0';
             g_flatInput.clear();
             g_wFlatInput.clear();
