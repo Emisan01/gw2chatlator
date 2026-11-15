@@ -1196,6 +1196,30 @@ int wmain(int argc, wchar_t** argv) {
             ok = ok && quitOk;
         }
 
+        // Typing menu (⋮) level change + INI persistence + focus retention (D5):
+        if (src) {
+            const int acBefore = src(15, nullptr, nullptr);
+            *th->focus = true;
+            frames(3);
+            src(14, nullptr, const_cast<char*>("3"));  // Strong
+            frames(3);
+            Sleep(550);
+            frames(2);
+            const int acStrong = src(15, nullptr, nullptr);
+            wchar_t iniStrong[32] = {};
+            GetPrivateProfileStringW(L"Spelling", L"AutoCorrectMode", L"", iniStrong, 32, g_iniPath.c_str());
+            src(14, nullptr, const_cast<char*>(std::to_string(acBefore).c_str()));
+            frames(3);
+            Sleep(550);
+            frames(2);
+            const int acRestored = src(15, nullptr, nullptr);
+            std::printf("typing menu ⋮: before=%d -> strong=%d (ini=%ls) -> restored=%d\n",
+                        acBefore, acStrong, iniStrong, acRestored);
+            const bool d5Ok = (acStrong == 3) && (std::wcscmp(iniStrong, L"strong") == 0) && (acRestored == acBefore);
+            if (!d5Ok) std::printf("FAIL: typing menu ⋮ level change or INI persistence failed\n");
+            ok = ok && d5Ok;
+        }
+
         // Health check selftest (Schritt 3):
         // Fake missing dictionary, trigger evaluation -> NoDictionary finding in g_health, add-on alive.
         if (auto testHealth = reinterpret_cast<int (*)(int)>(GetProcAddress(dll, "Gw2KbTestHealth"))) {

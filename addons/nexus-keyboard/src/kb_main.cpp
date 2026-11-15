@@ -752,6 +752,13 @@ extern "C" __declspec(dllexport) int Gw2KbTestChatSource(int cmd, ChatSourceTest
         case 13:
             if (state) ChatSourceTestState(state);
             return g_show ? 1 : 0;
+        case 14: {
+            std::lock_guard<std::mutex> lock(g_mu);
+            ApplyAutoCorrectChoice(g_cfg, text ? std::atoi(text) : 0, true, nullptr);
+            g_focusInput = true;
+            break;
+        }
+        case 15: return static_cast<int>(g_cfg.autoCorrect);
         default: break;
     }
     if (state) ChatSourceTestState(state);

@@ -28,6 +28,7 @@ void ApplyAutoCorrectChoice(Config& cfg, int level, bool persistAndApply, bool* 
         cfg.SaveBool(L"Spelling", L"UseLanguageTool", cfg.useLanguageTool);
         LogState(L"Autocorrection");
         g_worker.PostInteractive(ComputeTyping);
+        g_worker.Post([] { Config::FlushWrites(); });
     }
 }
 
@@ -44,6 +45,7 @@ void ApplyGrammarCheckChoice(Config& cfg, bool enabled, bool persistAndApply, bo
         cfg.SaveBool(L"Spelling", L"UseLanguageTool", cfg.useLanguageTool);
         LogState(L"Grammar check (LanguageTool)");
         g_worker.PostInteractive(ComputeTyping);
+        g_worker.Post([] { Config::FlushWrites(); });
     }
 }
 
