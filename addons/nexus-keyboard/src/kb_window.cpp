@@ -434,6 +434,12 @@ static void RenderNewTabPopup() {
     }
 }
 
+void QuitTool() {  // g_mu held
+    g_show = false;
+    g_closedWithX = true;
+    ChatSourceSetReading(false, true);
+}
+
 static void RenderMainMenu(bool& newTabNext) {
     if (ImGui::BeginPopup("kbmenu")) {
         ScopedPopupFont popupFont;
@@ -1287,7 +1293,7 @@ void RenderWindow() {
     const float micPillW = std::floor(icon * 1.15f) + 1.0f + std::floor(icon * 0.75f);
     const float cornerW = Shown().header ? std::floor(ImGui::GetFontSize() * 0.8f) : 0.0f;  // the corner top right has its place
     const float ledW = std::round(icon * 0.7f);  // the translation light
-    const float rightW = ledW + st.ItemSpacing.x + (g_cfg.voiceEnabled ? micPillW + gap : 0) + icon + gap + icon + st.ItemSpacing.x + icon + cornerW;
+    const float rightW = ledW + st.ItemSpacing.x + (g_cfg.voiceEnabled ? micPillW + gap : 0) + icon + gap + icon + cornerW;
     const float tabsW = std::max(60.0f, ImGui::GetContentRegionAvail().x - rightW - gap);
     bool newTab = false, tabMenu = false;
     static bool s_lineRightClick = false;  // a right-click on a chat line (its menu, not the header's)
@@ -1449,7 +1455,7 @@ void RenderWindow() {
             MicControl("##hdr_mic", icon, &lock);
             ImGui::SameLine(0, gap);
         }
-        if (IconButton("##fold", Icon::Collapse, false, nullptr)) {
+        if (IconButton("##fold", Icon::Minimize, false, nullptr)) {
             MinimizeWindow();
         }
         if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Minimize chat")).c_str());
@@ -1459,13 +1465,6 @@ void RenderWindow() {
     RenderMainMenu(newTabNext);
     RenderSnippets();
     if (Shown().header) {
-        ImGui::SameLine();
-        if (IconButton("##close", Icon::Close, false, nullptr)) {  // the tool off: no window, no reading; its key brings both back
-            g_show = false;
-            g_closedWithX = true;
-            ChatSourceSetReading(false, true);
-        }
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Off: hides the window and stops reading the chat. Your hotkey for the window switches it on again.")).c_str());
         // The corner top right, like GW2's own chat: drag it and the window grows up and to the right; its left and bottom
         // stay. Quiet until the mouse is on it.
         ImGuiWindow* self = ImGui::GetCurrentWindow();

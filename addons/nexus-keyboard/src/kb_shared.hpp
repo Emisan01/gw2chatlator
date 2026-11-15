@@ -787,9 +787,10 @@ void OnAddonLoaded(void* payload);
 void OnAddonUnloaded(void* payload);
 void InstallChatEventsNow();
 
-// ---- the header's icons: microphone, menu (three lines), close, clear
-enum class Icon { Mic, MicMuted, ChevronDown, Menu, Close, Collapse, Expand, Clear };
+// ---- the header's icons: microphone, menu (three lines), close, collapse/expand, minimize, clear
+enum class Icon { Mic, MicMuted, ChevronDown, Menu, Close, Collapse, Expand, Minimize, Clear };
 bool IconButton(const char* id, Icon kind, bool active, bool* rightClick, ImU32 tint = 0);
+void QuitTool();
 std::string Fit(const std::string& s, float width);
 std::wstring StatusText();
 

@@ -326,6 +326,9 @@ bool IconButton(const char* id, Icon kind, bool active, bool* rightClick, ImU32 
             dl->AddLine(ImVec2(c.x, c.y + 2.5f * u * d), ImVec2(c.x + 5 * u, c.y - 2.5f * u * d), col, 1.6f * u);
             break;
         }
+        case Icon::Minimize:  // -: minimize chat window
+            dl->AddLine(ImVec2(c.x - 5.0f * u, c.y), ImVec2(c.x + 5.0f * u, c.y), col, 1.8f * u);
+            break;
         case Icon::Close:  // ×
             dl->AddLine(ImVec2(c.x - 4.5f * u, c.y - 4.5f * u), ImVec2(c.x + 4.5f * u, c.y + 4.5f * u), col, 1.6f * u);
             dl->AddLine(ImVec2(c.x - 4.5f * u, c.y + 4.5f * u), ImVec2(c.x + 4.5f * u, c.y - 4.5f * u), col, 1.6f * u);
