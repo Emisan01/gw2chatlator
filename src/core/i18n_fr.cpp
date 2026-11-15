@@ -1099,8 +1099,6 @@ extern const I18nEntry kFrenchStrings[] = {
      "Fonctionne quand GW2 est au premier plan ; GW2 ne reçoit pas cette touche. Le raccourci Nexus (Keybinds > GW2 Keyboard) fonctionne aussi."},
     {L"Write in",
      "Écrire en"},
-    {L"Typing help: {1}",
-     "Aide à la saisie : {1}"},
     {L"Writing language: {1} → send language: {2}",
      "Langue d'écriture : {1} → langue d'envoi : {2}"},
     {L"Writing the download failed – is the disk full?",
@@ -1792,6 +1790,8 @@ extern const I18nEntry kFrenchStrings[] = {
      "tout désactiver"},
     {L"Channel",
      "Canal"},
+    {L"I write in",
+     "J'écris en"},
 };
 extern const size_t kFrenchCount = sizeof(kFrenchStrings) / sizeof(kFrenchStrings[0]);
 

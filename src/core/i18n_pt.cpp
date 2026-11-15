@@ -1099,8 +1099,6 @@ extern const I18nEntry kPortugueseStrings[] = {
      "Funciona enquanto o GW2 está na frente; o GW2 não recebe esta tecla. O atalho do Nexus (Keybinds > GW2 Keyboard) também funciona."},
     {L"Write in",
      "Escrever em"},
-    {L"Typing help: {1}",
-     "Ajuda na escrita: {1}"},
     {L"Writing language: {1} → send language: {2}",
      "Idioma de escrita: {1} → idioma de envio: {2}"},
     {L"Writing the download failed – is the disk full?",
@@ -1792,6 +1790,8 @@ extern const I18nEntry kPortugueseStrings[] = {
      "tudo desligado"},
     {L"Channel",
      "Canal"},
+    {L"I write in",
+     "Escrevo em"},
 };
 extern const size_t kPortugueseCount = sizeof(kPortugueseStrings) / sizeof(kPortugueseStrings[0]);
 

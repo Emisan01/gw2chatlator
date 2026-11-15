@@ -1099,8 +1099,6 @@ extern const I18nEntry kTurkishStrings[] = {
      "GW2 öndeyken çalışır; GW2 bu tuşu almaz. Nexus kısayolu (Keybinds > GW2 Keyboard) da çalışır."},
     {L"Write in",
      "Yazma dili"},
-    {L"Typing help: {1}",
-     "Yazım yardımı: {1}"},
     {L"Writing language: {1} → send language: {2}",
      "Yazma dili: {1} → gönderme dili: {2}"},
     {L"Writing the download failed – is the disk full?",
@@ -1792,6 +1790,8 @@ extern const I18nEntry kTurkishStrings[] = {
      "her şey kapalı"},
     {L"Channel",
      "Kanal"},
+    {L"I write in",
+     "Yazdığım dil"},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

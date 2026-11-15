@@ -1099,8 +1099,6 @@ extern const I18nEntry kRussianStrings[] = {
      "Работает, пока GW2 на переднем плане; GW2 не получает эту клавишу. Горячая клавиша Nexus (Keybinds > GW2 Keyboard) тоже работает."},
     {L"Write in",
      "Писать на"},
-    {L"Typing help: {1}",
-     "Подсказки при вводе: {1}"},
     {L"Writing language: {1} → send language: {2}",
      "Язык ввода: {1} → язык отправки: {2}"},
     {L"Writing the download failed – is the disk full?",
@@ -1792,6 +1790,8 @@ extern const I18nEntry kRussianStrings[] = {
      "всё выкл."},
     {L"Channel",
      "Канал"},
+    {L"I write in",
+     "Я пишу на"},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

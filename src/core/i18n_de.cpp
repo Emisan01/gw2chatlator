@@ -1099,8 +1099,6 @@ extern const I18nEntry kGermanStrings[] = {
      "Wirkt, während GW2 vorne ist; GW2 bekommt diese Taste nicht. Die Nexus-Taste (Keybinds > GW2 Keyboard) geht auch."},
     {L"Write in",
      "Schreiben in"},
-    {L"Typing help: {1}",
-     "Tipphilfe: {1}"},
     {L"Writing language: {1} → send language: {2}",
      "Schreibsprache: {1} → Sendesprache: {2}"},
     {L"Writing the download failed – is the disk full?",
@@ -1792,6 +1790,8 @@ extern const I18nEntry kGermanStrings[] = {
      "alles aus"},
     {L"Channel",
      "Kanal"},
+    {L"I write in",
+     "Ich schreibe"},
 };
 extern const size_t kGermanCount = sizeof(kGermanStrings) / sizeof(kGermanStrings[0]);
 

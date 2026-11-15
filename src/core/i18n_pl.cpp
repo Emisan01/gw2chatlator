@@ -1099,8 +1099,6 @@ extern const I18nEntry kPolishStrings[] = {
      "Działa, gdy GW2 jest na pierwszym planie; GW2 nie dostaje tego klawisza. Skrót Nexus (Keybinds > GW2 Keyboard) też działa."},
     {L"Write in",
      "Pisz w języku"},
-    {L"Typing help: {1}",
-     "Pomoc w pisaniu: {1}"},
     {L"Writing language: {1} → send language: {2}",
      "Język pisania: {1} → język wysyłania: {2}"},
     {L"Writing the download failed – is the disk full?",
@@ -1792,6 +1790,8 @@ extern const I18nEntry kPolishStrings[] = {
      "wszystko wyłączone"},
     {L"Channel",
      "Kanał"},
+    {L"I write in",
+     "Piszę po"},
 };
 extern const size_t kPolishCount = sizeof(kPolishStrings) / sizeof(kPolishStrings[0]);
 

@@ -127,10 +127,11 @@ void RenderFooter() {  // g_mu held
         int guildSlot = 0;
         std::wstring whisperTo;
         std::wstring writeIn;
+        std::wstring typingLang;
         std::wstring sendLang;
         bool sendOrig = false;
         bool translateChat = false;
-        std::string capChannel;
+        std::string capChannel, capWrite;
         std::string labelFull, labelNarrow;
         std::string writeFull, writeNarrow;
         std::string sendFull, sendNarrow;
@@ -141,21 +142,24 @@ void RenderFooter() {  // g_mu held
     };
     static FooterCache s_fc;
     const bool sendOrig = SendOriginal();
+    const std::wstring typingLang = TypingLang();
     const std::wstring sendLang = SendLang();
     const float curFontPx = ImGui::GetFontSize();
     if (s_fc.uiLang != g_cfg.uiLang || s_fc.fontSize != curFontPx || s_fc.channel != g_channel || s_fc.guildSlot != g_guildSlot || s_fc.whisperTo != g_whisperTo ||
-        s_fc.writeIn != g_cfg.writeIn || s_fc.sendLang != sendLang || s_fc.sendOrig != sendOrig || s_fc.translateChat != g_nx.translateChat) {
+        s_fc.writeIn != g_cfg.writeIn || s_fc.typingLang != typingLang || s_fc.sendLang != sendLang || s_fc.sendOrig != sendOrig || s_fc.translateChat != g_nx.translateChat) {
         s_fc.uiLang = g_cfg.uiLang;
         s_fc.fontSize = curFontPx;
         s_fc.channel = g_channel;
         s_fc.guildSlot = g_guildSlot;
         s_fc.whisperTo = g_whisperTo;
         s_fc.writeIn = g_cfg.writeIn;
+        s_fc.typingLang = typingLang;
         s_fc.sendLang = sendLang;
         s_fc.sendOrig = sendOrig;
         s_fc.translateChat = g_nx.translateChat;
 
         s_fc.capChannel = UI(Tr(L"Channel"));
+        s_fc.capWrite = UI(Tr(L"I write in"));
         s_fc.labelFull = g_channel == Channel::Unknown ? UI(Tr(L"Active channel")) : UI(ChannelLabel(g_channel));
         if (g_channel == Channel::Guild && g_guildSlot > 0) s_fc.labelFull = "G" + std::to_string(g_guildSlot);
         if (g_channel == Channel::Whisper && !g_whisperTo.empty()) {
@@ -164,9 +168,8 @@ void RenderFooter() {  // g_mu held
         }
         s_fc.labelNarrow = g_channel == Channel::Unknown ? UI(Tr(L"Active")) : s_fc.labelFull;
 
-        s_fc.writeFull = UI(TrF(L"Typing help: {1}", {g_cfg.writeIn.empty() ? Tr(L"System") + L" (" + NativeName(TypingLang()) + L")"
-                                                                  : NativeName(g_cfg.writeIn)}));
-        s_fc.writeNarrow = g_cfg.writeIn.empty() ? std::string("Win") : U8(ToUpperAscii(PrimaryLang(g_cfg.writeIn)));
+        s_fc.writeFull = U8(NativeName(typingLang));
+        s_fc.writeNarrow = U8(ToUpperAscii(PrimaryLang(typingLang)));
 
         const std::wstring sendText = NativeName(sendLang);
         // When master translator is OFF, display "Translation: Off" grayed out.
@@ -180,8 +183,8 @@ void RenderFooter() {  // g_mu held
 
         s_fc.labelWFull = fieldWidth(s_fc.capChannel, s_fc.labelFull);
         s_fc.labelWNarrow = fieldWidth(s_fc.capChannel, s_fc.labelNarrow);
-        s_fc.writeWFull = fieldWidth("", s_fc.writeFull);
-        s_fc.writeWNarrow = fieldWidth("", s_fc.writeNarrow);
+        s_fc.writeWFull = fieldWidth(s_fc.capWrite, s_fc.writeFull);
+        s_fc.writeWNarrow = fieldWidth(s_fc.capWrite, s_fc.writeNarrow);
         s_fc.sendWFull = fieldWidth("", s_fc.sendFull);
         s_fc.sendWNarrow = fieldWidth("", s_fc.sendNarrow);
         s_fc.totalNeedFull = iconH + s_fc.labelWFull + s_fc.writeWFull + s_fc.sendWFull +
@@ -249,7 +252,7 @@ void RenderFooter() {  // g_mu held
     const float writeBtnW = narrow ? s_fc.writeWNarrow : s_fc.writeWFull;
     const std::string& writeVal = narrow ? s_fc.writeNarrow : s_fc.writeFull;
     const ImVec4 textColor = ImGui::GetStyleColorVec4(ImGuiCol_Text);
-    const bool writeLeft = FooterField("##writebtn", "", writeVal.c_str(), textColor, writeBtnW);
+    const bool writeLeft = FooterField("##writebtn", s_fc.capWrite.c_str(), writeVal.c_str(), textColor, writeBtnW);
     const bool writeRight = ImGui::IsItemHovered() && ImGui::IsMouseClicked(1);
     if (writeLeft || writeRight) {
         ImGui::OpenPopup("##write_popup");
