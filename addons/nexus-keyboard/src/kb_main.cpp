@@ -125,7 +125,7 @@ void OnToggle(const char*, bool release) {
 static void ToggleChatTranslationNow() {
     std::lock_guard<std::mutex> lock(g_mu);
     SetChatTranslation(!g_nx.translateChat);
-    SetStatus(g_nx.translateChat ? Tr(L"Chat translation on") : Tr(L"Chat translation off"), 4000);
+    SetStatus(g_nx.translateChat ? TrF(L"Read: {1}", {NativeName(ReadLang())}) : Tr(L"Read: off"), 4000);
 }
 void OnTranslateKey(const char*, bool release) {
     if (release) return;

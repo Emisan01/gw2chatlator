@@ -88,7 +88,7 @@ bool RenderVoiceModule() {
         const int pct = g_voiceModulePct;
         const bool running = g_voice.Running();
         StatusRow(UI(Tr(L"Voice module")), m.voiceModule ? 2 : g_voiceModuleInstalling ? 1 : 0,
-                  UI(g_voiceModuleInstalling ? TrF(L"loading … {1} %", {std::to_wstring(std::max(pct, 0))})
+                  UI(g_voiceModuleInstalling ? TrF(L"Loading … {1} %", {std::to_wstring(std::max(pct, 0))})
                      : !m.voiceModule        ? Tr(L"missing")
                      : ready                 ? Tr(L"ready – loaded")
                      : running               ? Tr(L"starting")
@@ -107,7 +107,7 @@ bool RenderVoiceModule() {
         if (m.voiceModule && !g_voiceModuleInstalling && RemoveButton("voicemodule")) RemoveVoiceModuleNow();
         const int dl = g_downloadPct;
         StatusRow(UI(Tr(L"Voice model")), m.model ? 2 : dl >= 0 ? 1 : 0,
-                  dl >= 0 ? UI(TrF(L"downloading … {1} %", {std::to_wstring(dl)}))
+                  dl >= 0 ? UI(TrF(L"Downloading … {1} %", {std::to_wstring(dl)}))
                           : m.modelName + (m.model ? "" : "  " + UI(Tr(L"missing"))));
         if (m.model && dl < 0) {
             if (RemoveButton("voicemodels")) RemoveVoiceModelsNow();
@@ -154,7 +154,7 @@ static bool RenderMissing(Config* edit) {
         any = true;
         const std::string name = UI(Tr(L"Chat module"));
         if (g_chatEventsInstalling) {
-            StatusRow(name, 1, UI(Tr(L"loading …")));
+            StatusRow(name, 1, UI(Tr(L"Loading …")));
         } else if (g_chatEventsFile && g_chatInstalledAt) {
             StatusRow(name, 1, UI(Tr(L"installed – Nexus is taking it in …")));
         } else if (g_chatEventsFile) {
@@ -174,7 +174,7 @@ static bool RenderMissing(Config* edit) {
         any = true;
         const int pct = g_localMtPct;
         StatusRow(UI(Tr(L"Local translator")), 1,
-                  UI(pct >= 0 ? TrF(L"loading … {1} %", {std::to_wstring(pct)}) : Tr(L"loading …")));
+                  UI(pct >= 0 ? TrF(L"Loading … {1} %", {std::to_wstring(pct)}) : Tr(L"Loading model …")));
     } else if (!(local.module && local.nllb)) {
         any = true;
         StatusRow(UI(Tr(L"Local translator")), 0, UI(Tr(L"optional – nothing leaves your PC (about 600 MB)")));
@@ -209,7 +209,7 @@ static bool RenderMissing(Config* edit) {
     if (g_voiceModuleInstalling || g_downloadPct >= 0) {
         any = true;
         const int pct = g_downloadPct >= 0 ? g_downloadPct.load() : g_voiceModulePct.load();
-        StatusRow(UI(Tr(L"Voice input")), 1, UI(TrF(L"loading … {1} %", {std::to_wstring(std::max(pct, 0))})));
+        StatusRow(UI(Tr(L"Voice input")), 1, UI(TrF(L"Loading … {1} %", {std::to_wstring(std::max(pct, 0))})));
     } else if (!m.voiceModule || (voiceEnabled && !m.model)) {
         any = true;
         static int s_mb = 0;  // the module (about 7 MB) and the chosen or recommended model, looked up every 10 s at most
@@ -508,9 +508,8 @@ void RenderStartPage(Config& edit) {
     const LocalMtSummary local = LocalMtNow(edit.dataDir);
     const bool isLocal = IsLocalEngine(edit.engine);
     const bool localReady = local.module && LocalModelThere(local, edit.engine);
-    const std::string title = UI(chatOn ? Tr(L"Chat translation is on") : Tr(L"Chat translation is off"));
-    const std::string sub = UI(chatOn ? TrF(L"Foreign lines appear in {1}", {NativeName(ReadingLangNow())})
-                                      : Tr(L"A click on a line translates just that one"));
+    const std::string title = UI(chatOn ? TrF(L"Read: {1}", {NativeName(ReadingLangNow())}) : Tr(L"Read: off"));
+    const std::string sub = chatOn ? std::string() : UI(Tr(L"A click on a line translates just that one"));
     bool toMissing = false;
     if (Hero(chatOn, title, sub, UI(Tr(L"Chat module")), chatThere, UI(running.empty() ? Tr(EngineLabel(edit.engine)) : running),
              !isLocal || localReady, &toMissing)) {

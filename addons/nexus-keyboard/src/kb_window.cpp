@@ -275,14 +275,14 @@ std::wstring StatusText() {  // g_mu held
     if (!g_nx.translateChat && !Translating()) {  // nothing goes to a translator: no counter of one
         if (!g_cfg.voiceEnabled) return Tr(L"Prediction only");  // the typing help is all that is on
         const std::wstring vl = VoiceLang();
-        return voiceOn && !vl.empty() ? TrF(L"Translation off · what you say: into {1}", {ToUpperAscii(PrimaryLang(vl))})
-                                      : Tr(L"Translation off");
+        return voiceOn && !vl.empty() ? TrF(L"Read: off · what you say: into {1}", {ToUpperAscii(PrimaryLang(vl))})
+                                      : Tr(L"Read: off");
     }
     if (const std::wstring q = MyMemoryQuotaText(); !q.empty()) return q;
     std::wstring route = SendOriginal() ? Tr(L"as written") : ToUpperAscii(PrimaryLang(SendLang()));
     if (Translating() && g_translator) route += L" · " + g_translator->Name();
     if (g_rawTranslate.load()) route += L" · " + Tr(L"raw");  // the raw switch: always in sight while it is on
-    if (g_mtLoading.load()) route += L" · " + Tr(L"Loading the translation model …");  // seen while it loads
+    if (g_mtLoading.load()) route += L" · " + Tr(L"Loading model …");  // seen while it loads
     return TrF(L"Send: {1}", {route});
 }
 
@@ -486,7 +486,7 @@ static void RenderMainMenu(bool& newTabNext) {
                 ImGui::SetTooltip("%s", UI(Tr(L"What you see of the chat, into the language you write in – once, by the automatic translation's rule: lines in your language, in languages you understand or too short to tell stay as they are (a click on a line translates it anyway).")).c_str());
             if (ImGui::MenuItem(UI(Tr(L"Translate the chat")).c_str(), nullptr, g_nx.translateChat)) {
                 SetChatTranslation(!g_nx.translateChat);  // the one switch (Options → Start), kept
-                SetStatus(g_nx.translateChat ? Tr(L"Chat translation on") : Tr(L"Chat translation off"), 4000);
+                SetStatus(g_nx.translateChat ? TrF(L"Read: {1}", {NativeName(ReadLang())}) : Tr(L"Read: off"), 4000);
             }
             if (ImGui::MenuItem(UI(Tr(L"New whisper tab …")).c_str())) newTabNext = true;
             if (ImGui::MenuItem(UI(Tr(L"Waypoints") + L" …").c_str())) OpenWaypointWindow();
@@ -698,7 +698,7 @@ static void RenderChat(ImGuiIO& io, std::unique_lock<std::mutex>& lock, const Im
             if (!l.own && l.transPending && l.translated.empty()) {
                 ImGui::SameLine(0, ImGui::CalcTextSize(" ").x);
                 LookText("...", ImVec4(0.6f, 0.6f, 0.6f, 0.65f), false);
-                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Translating...")).c_str());
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(Tr(L"Translating …")).c_str());
             }
             // A click on the text of a line someone else wrote: just this line into your language.
             if (!l.own && hit.visible) {
@@ -1689,7 +1689,7 @@ void RenderWindow() {
             }
             if (!g_back.empty()) LookText(U8(g_back).c_str(), Bright(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled)), true);
         } else if (InfoTexts()) {
-            ImGui::TextDisabled("%s", UI(Tr(L"translating …")).c_str());
+            ImGui::TextDisabled("%s", UI(Tr(L"Translating …")).c_str());
         }
         if (!InputErrorNow()) {
             if (const std::wstring warn = OutgoingScriptWarning(); !warn.empty())
@@ -2233,7 +2233,7 @@ void RenderWindow() {
         const float avail = (inputMax.x - inputMin.x) * (g_status.empty() ? 0.95f : 0.38f);
         const std::string t =
             previewCurrent ? "> " + U8(DisplayForOurFont(g_preview, SendLang(), LoadedFontCanDraw))
-                           : UI(Tr(L"translating …"));
+                           : UI(Tr(L"Translating …"));
         if (compactChoose) {
             const std::string verNow = std::to_string(g_previewPick + 1);
             const float nowW = ImGui::GetFont()

@@ -267,7 +267,7 @@ void RenderLocalMtOptions(Config& edit) {
     const int pct = g_localMtPct.load();
     StatusRow(UI(Tr(L"Local translation module")),
               g_localMtBusy ? 1 : s_state.module ? 2 : 0,
-              UI(g_localMtBusy && pct >= 0 ? TrF(L"loading … {1} %", {std::to_wstring(pct)})
+              UI(g_localMtBusy && pct >= 0 ? TrF(L"Loading … {1} %", {std::to_wstring(pct)})
                    : g_localMtBusy ? Tr(L"working …")
                    : s_state.module ? Tr(L"installed") : Tr(L"missing")));
     if (!s_state.module && !g_localMtBusy) {

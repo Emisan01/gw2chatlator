@@ -32,7 +32,7 @@ void SendLanguageItems(bool tabAware) {
     };
     const bool tabChoice = inTab && !g_sendOverride.empty();
     const bool isOff = !g_nx.translateChat;
-    if (ImGui::Selectable(UI(Tr(L"Off (no translation)")).c_str(), isOff)) {
+    if (ImGui::Selectable(UI(Tr(L"Read: off")).c_str(), isOff)) {
         if (!isOff) SetChatTranslation(false);
         chosen();
         return;

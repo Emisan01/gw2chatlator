@@ -315,7 +315,7 @@ void WarmUpTranslator(std::shared_ptr<Translator> tr) {
         g_mtLoading = true;
         {
             std::lock_guard<std::mutex> lock(g_mu);
-            SetStatus(Tr(L"Loading the translation model …"), 0);
+            SetStatus(Tr(L"Loading model …"), 0);
         }
         const TranslateResult r = tr->Translate({Segment{L"Hello", false}}, L"en", L"de");
         g_mtLoading = false;
@@ -1314,7 +1314,7 @@ void StartSend() {  // Enter (g_mu held)
     } else {  // the translation is not there yet: sent when it arrives
         g_sendPending = true;
         g_pendingSend = {g_pendingSend.id + 1, prefix, SendLang(), channel, Translating(), SwapsNames()};
-        SetStatus(Tr(L"translating and sending …"), 0);
+        SetStatus(Tr(L"Translating and sending …"), 0);
         g_worker.PostFront([gen = g_inputGen, text, id = g_pendingSend.id] { TranslateInput(gen, text, id); });
     }
 }
