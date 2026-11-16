@@ -858,6 +858,7 @@ void VoiceIdleUnload();
 void RemoveVoiceModuleNow();
 void RemoveVoiceModelsNow();
 void RemoveEverythingNow();
+bool UninstallAddonData();  // UI-free synchronous data cleanup for Nexus uninstall hook
 void RenderRemovedNotice();
 extern bool g_wiped;
 extern std::atomic<int> g_wipeDone;

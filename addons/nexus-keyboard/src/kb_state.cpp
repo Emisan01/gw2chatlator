@@ -850,6 +850,23 @@ Layout Shown() {
 // itself cannot remove itself while it runs: the notice says the last step (Nexus → Addons → Uninstall).
 bool g_wiped = false;
 std::atomic<int> g_wipeDone{0};  // 0 not asked, 1 removed, 2 something was left
+namespace {
+bool WipeAddonFolderSync(const std::wstring& dir, const std::shared_ptr<Translator>& localTranslator) {
+    gct::StopLocalMtTranslator(localTranslator);
+    if (g_spell) {  // the learned words would be saved on unload – they are what we remove
+        delete g_spell;
+        g_spell = nullptr;
+    }
+    bool ok = false;
+    for (int i = 0; i < 10 && !ok; ++i) {
+        ok = RemoveFolder(dir);
+        if (!ok) Sleep(300);
+    }
+    g_wipeDone = ok ? 1 : 2;
+    return ok;
+}
+}  // namespace
+
 void RemoveEverythingNow() {  // game thread
     UnloadVoiceModule();
     std::shared_ptr<Translator> localTranslator;
@@ -863,19 +880,20 @@ void RemoveEverythingNow() {  // game thread
         g_translator.reset();
     }
     Config::BlockWrites();
-    g_worker.Post([dir = KeyboardDir(), localTranslator] {
-        gct::StopLocalMtTranslator(localTranslator);
-        if (g_spell) {  // the learned words would be saved on unload – they are what we remove
-            delete g_spell;
-            g_spell = nullptr;
-        }
-        bool ok = false;
-        for (int i = 0; i < 10 && !ok; ++i) {
-            ok = RemoveFolder(dir);
-            if (!ok) Sleep(300);
-        }
-        g_wipeDone = ok ? 1 : 2;
-    });
+    g_worker.Post([dir = KeyboardDir(), localTranslator] { WipeAddonFolderSync(dir, localTranslator); });
+}
+
+bool UninstallAddonData() {  // UI-free synchronous entry point for Nexus uninstall callback
+    UnloadVoiceModule();
+    std::shared_ptr<Translator> localTranslator;
+    {
+        std::lock_guard<std::mutex> lock(g_mu);
+        g_wiped = true;
+        localTranslator = g_translator;
+        g_translator.reset();
+    }
+    Config::BlockWrites();
+    return WipeAddonFolderSync(KeyboardDir(), localTranslator);
 }
 
 // Settings changed on the game thread reach the ini on the worker, at most every half second (a slider dragged writes
