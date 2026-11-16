@@ -1398,10 +1398,24 @@ int wmain(int argc, wchar_t** argv) {
                             closesocket(cli);
                         }
                     });
+                    const bool hasMsyh = GetFileAttributesW(L"C:\\Windows\\Fonts\\msyh.ttc") != INVALID_FILE_ATTRIBUTES;
+                    char probePre[4096] = "\xE6\x88\x91\xE4\xBB\xAC\xE5\x9C\xA8\xE4\xBC\xA0\xE9\x80\x81\xE7\x82\xB9\xE7\xAD\x89\xE4\xBD\xA0\xE4\xBB\xAC\xE3\x80\x82";
+                    const int zhBefore = src(27, nullptr, probePre);
+                    const auto fPre0 = std::chrono::steady_clock::now();
+                    for (int fi = 0; fi < 20; ++fi) Frame();
+                    const double frameUsBefore = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - fPre0).count() / 20.0;
+
                     char pbuf[16];
                     std::snprintf(pbuf, sizeof(pbuf), "%d", port);
                     const int setupOk = src(22, nullptr, pbuf);
                     frames(3);
+                    const int zhDuring = src(27, nullptr, nullptr);
+                    char probeTrad[4096] = "\xE5\x80\x91\xE5\x82\xB3\xE9\xBB\x9E";  // 們傳點 (Traditional, outside CN Common)
+                    src(27, nullptr, probeTrad);
+                    const auto fPost0 = std::chrono::steady_clock::now();
+                    for (int fi = 0; fi < 20; ++fi) Frame();
+                    const double frameUsAfter = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - fPost0).count() / 20.0;
+
                     *th->focus = true;
                     frames(2);
                     type("Wir warten am Wegpunkt.");
@@ -1424,14 +1438,16 @@ int wmain(int argc, wchar_t** argv) {
                         }
                     }
                     if (gotDisp) {
-                        const int dlen = MultiByteToWideChar(CP_UTF8, 0, dispUtf8, -1, nullptr, 0);
-                        std::wstring dispW(dlen > 0 ? static_cast<size_t>(dlen - 1) : 0, L'\0');
-                        if (dlen > 1) MultiByteToWideChar(CP_UTF8, 0, dispUtf8, -1, &dispW[0], dlen);
-                        bool hasHigh = false;
-                        for (wchar_t ch : dispW) {
-                            if (ch > 0x25FF) hasHigh = true;
+                        const bool preFallbackOk = std::strstr(probePre, "10") != nullptr;
+                        const bool tradFallbackOk = std::strstr(probeTrad, "3") != nullptr;
+                        if (hasMsyh) {
+                            // YaHei CN Common loaded -> simplified preview shown directly, traditional stays fallback notice.
+                            dispNoticeOk = (zhBefore == 0) && (zhDuring == 1) && preFallbackOk && tradFallbackOk &&
+                                           (std::strcmp(dispUtf8, prevUtf8) == 0);
+                        } else {
+                            dispNoticeOk = (zhBefore == 0) && (zhDuring == 0) && preFallbackOk &&
+                                           (std::strstr(dispUtf8, "10") != nullptr);
                         }
-                        dispNoticeOk = !hasHigh && dispW.find(L"10") != std::wstring::npos;
                     }
                     const int partsBefore = th->sentParts;
                     press(VK_RETURN);
@@ -1467,9 +1483,10 @@ int wmain(int argc, wchar_t** argv) {
                     const int zhWarn = src(25, nullptr, warnZh);
                     g2Ok = (setupOk == 1) && sawZhTarget.load() && (gotPrev == 1) && (hanziCount >= 8) && dispNoticeOk &&
                            (zhWarn == 0) && (partsAfter1 == partsBefore + 1) && sentZh && inputCleared && guardBlocked5th;
-                    std::printf("G2/G3 send to ZH-HANS: setup=%d, reqs=%d, zhTarget=%d, hanzi=%d, notice='%s'(%d), sent1=%d, cleared=%d, guard5thBlocked=%d (parts %d -> %d)\n",
-                                setupOk, reqCount.load(), sawZhTarget.load() ? 1 : 0, hanziCount, dispUtf8,
-                                dispNoticeOk ? 1 : 0, sentZh ? 1 : 0, inputCleared ? 1 : 0, guardBlocked5th ? 1 : 0, partsBefore, partsAfterRepeats);
+                    std::printf("G2/G4 send to ZH-HANS: setup=%d, msyh=%d, zhFont %d->%d, frame %.1f->%.1f us, reqs=%d, zhTarget=%d, hanzi=%d, disp='%s'(%d), trad='%s', sent1=%d, cleared=%d, guard5thBlocked=%d (parts %d -> %d)\n",
+                                setupOk, hasMsyh ? 1 : 0, zhBefore, zhDuring, frameUsBefore, frameUsAfter,
+                                reqCount.load(), sawZhTarget.load() ? 1 : 0, hanziCount, dispUtf8,
+                                dispNoticeOk ? 1 : 0, probeTrad, sentZh ? 1 : 0, inputCleared ? 1 : 0, guardBlocked5th ? 1 : 0, partsBefore, partsAfterRepeats);
                     if (!sawZhTarget.load()) std::printf("G2 debug firstReq: %s\n", firstReq.c_str());
                 } else {
                     if (srv != INVALID_SOCKET) closesocket(srv);

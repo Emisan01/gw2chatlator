@@ -649,9 +649,10 @@ static void RenderChat(ImGuiIO& io, std::unique_lock<std::mutex>& lock, const Im
                 if (canWhisper && ImGui::IsItemClicked()) OpenWhisperTab(l.speaker);
                 ImGui::SameLine(0, ImGui::CalcTextSize(" ").x);
             }
-            const std::wstring dispOrig = DisplayForOurFont(l.text);
+            const std::wstring dispOrig = DisplayForOurFont(l.text, L"", LoadedFontCanDraw);
             const bool hidOrig = dispOrig != l.text;
-            const std::wstring dispTrans = l.translated.empty() ? std::wstring() : DisplayForOurFont(l.translated);
+            const std::wstring dispTrans =
+                l.translated.empty() ? std::wstring() : DisplayForOurFont(l.translated, L"", LoadedFontCanDraw);
             const bool hidTrans = !l.translated.empty() && dispTrans != l.translated;
             const bool hideMain = l.translated.empty() ? hidOrig : hidTrans;
             const std::string u8hidMain = hideMain ? U8(l.translated.empty() ? dispOrig : dispTrans) : std::string();
@@ -726,7 +727,8 @@ static void RenderChat(ImGuiIO& io, std::unique_lock<std::mutex>& lock, const Im
             }
             if (originalUnder) {
                 const std::wstring& origW = ownTyped.empty() ? l.text : ownTyped;
-                LookText(U8(DisplayForOurFont(origW)).c_str(), ImVec4(0.62f, 0.62f, 0.62f, 0.8f), true);
+                LookText(U8(DisplayForOurFont(origW, L"", LoadedFontCanDraw)).c_str(),
+                         ImVec4(0.62f, 0.62f, 0.62f, 0.8f), true);
             }
             if (s_lineMenuOpen && l.id == s_lineMenuId) {  // the message whose menu is open: marked across its lines
                 const float x0 = ImGui::GetWindowPos().x;
@@ -1290,7 +1292,9 @@ void RenderWindow() {
     }
     if (g_expandRequest) g_expandRequest = false;  // already open
     const float chatPx = PtToPx(g_cfg.fontPt > 0 ? g_cfg.fontPt : FollowPt());
-    if (g_cfg.fontPt <= 0 && chatPx != g_textFontPx) RequestTextFont(0, g_cfg.fontFace);  // the game's size changed
+    const bool wantZh = ChineseFontNeeded();
+    if ((g_cfg.fontPt <= 0 && chatPx != g_textFontPx) || wantZh != g_textFontWantZh)
+        RequestTextFont(g_cfg.fontPt, g_cfg.fontFace);  // the game's size or Chinese-font need changed
     const float uiPx = FollowUiPx();
     ImFont* uf = g_uiFont.load();
     ImFont* tf = g_textFont.load();
@@ -1640,10 +1644,12 @@ void RenderWindow() {
             const std::wstring typed = SanitizeChatText(g_wFlatInput);
             const std::wstring own = SplitChatCommand(typed).prefix;
             if (NamesSwapped())  // the same language: names surely in the lists already the send language's
-                LookText(U8((own.empty() ? ComposePrefix() : own) + DisplayForOurFont(g_preview, SendLang())).c_str(),
+                LookText(U8((own.empty() ? ComposePrefix() : own) +
+                            DisplayForOurFont(g_preview, SendLang(), LoadedFontCanDraw)).c_str(),
                          Bright(kPreview), true);
             else
-                LookText(U8((own.empty() ? ComposePrefix() : std::wstring()) + DisplayForOurFont(typed, TypingLang())).c_str(),
+                LookText(U8((own.empty() ? ComposePrefix() : std::wstring()) +
+                            DisplayForOurFont(typed, TypingLang(), LoadedFontCanDraw)).c_str(),
                          Bright(kPreview), true);
         } else if (previewCurrent || !g_preview.empty()) {
             // While the next translation is on its way the last one stays, dimmed: the field keeps its size and the chat
@@ -1654,7 +1660,8 @@ void RenderWindow() {
             const bool choose = previewCurrent && g_previewVersions.size() > 1 && g_previewPick < g_previewVersions.size() &&
                                 g_previewVersions[g_previewPick] == g_preview;
             if (!choose)
-                LookText(U8((own.empty() ? ComposePrefix() : own) + DisplayForOurFont(g_preview, SendLang())).c_str(),
+                LookText(U8((own.empty() ? ComposePrefix() : own) +
+                            DisplayForOurFont(g_preview, SendLang(), LoadedFontCanDraw)).c_str(),
                          Bright(shade), true);
             if (choose) {
                 const float numberW = ImGui::GetFrameHeight();
@@ -1665,7 +1672,7 @@ void RenderWindow() {
                     if (on) ImGui::PopStyleColor();
                     ImGui::SameLine(numberW);
                     ImGui::BeginGroup();
-                    LookText(U8(DisplayForOurFont(g_previewVersions[i], SendLang())).c_str(),
+                    LookText(U8(DisplayForOurFont(g_previewVersions[i], SendLang(), LoadedFontCanDraw)).c_str(),
                              Bright(on ? kPreview : ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled)), true);
                     ImGui::EndGroup();
                     if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
@@ -2225,7 +2232,8 @@ void RenderWindow() {
     if (!showPreview && g_input[0] && ((Translating() && (previewCurrent || InfoTexts())) || NamesSwapped())) {
         const float avail = (inputMax.x - inputMin.x) * (g_status.empty() ? 0.95f : 0.38f);
         const std::string t =
-            previewCurrent ? "> " + U8(DisplayForOurFont(g_preview, SendLang())) : UI(Tr(L"translating …"));
+            previewCurrent ? "> " + U8(DisplayForOurFont(g_preview, SendLang(), LoadedFontCanDraw))
+                           : UI(Tr(L"translating …"));
         if (compactChoose) {
             const std::string verNow = std::to_string(g_previewPick + 1);
             const float nowW = ImGui::GetFont()

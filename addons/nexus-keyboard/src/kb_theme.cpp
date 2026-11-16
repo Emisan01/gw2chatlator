@@ -2,6 +2,8 @@
 
 #include "kb_shared.hpp"
 
+#include <chrono>
+
 namespace kb {
 
 std::vector<uint32_t> g_cbaRoles;  // 0xRRGGBB per role ([NexusTheme] Colours, a theme code)
@@ -136,7 +138,50 @@ const wchar_t* ThemeKey(Theme t) {
 }
 std::atomic<ImFont*> g_textFont{nullptr};
 float g_textFontPx = 0;  // the size asked of Nexus (game thread)
-void OnTextFont(const char*, void* font) { g_textFont = static_cast<ImFont*>(font); }
+bool g_textFontWantZh = false;
+namespace {
+std::atomic<bool> s_fontAskPending{false};
+std::chrono::steady_clock::time_point s_fontAskAt{};
+int s_atlasBeforeW = 0, s_atlasBeforeH = 0;
+bool s_loggedMissingZh = false;
+
+bool IsZhCode(const std::wstring& code) { return PrimaryLang(code) == L"ZH"; }
+}  // namespace
+
+bool ChineseFontNeeded() {
+    std::lock_guard<std::mutex> lock(g_mu);
+    if (IsZhCode(ReadLang()) || IsZhCode(g_cfg.readLang) || IsZhCode(TypingLang()) || IsZhCode(g_cfg.writeIn) ||
+        IsZhCode(SendLang()) || IsZhCode(g_cfg.sendLang) || IsZhCode(g_sendOverride))
+        return true;
+    for (const std::wstring& u : g_cfg.understoodLangs)
+        if (IsZhCode(u)) return true;
+    return false;
+}
+
+bool LoadedFontCanDraw(uint32_t c) {
+    if (c == '\t' || c == '\n' || c == '\r') return true;
+    ImFont* font = g_textFont.load();
+    if (font && font->ContainerAtlas && !font->Glyphs.empty() && c <= 0xFFFF)
+        return font->FindGlyphNoFallback(static_cast<ImWchar>(c)) != nullptr;
+    return OurFontCanDraw(c);
+}
+
+void OnTextFont(const char* id, void* font) {
+    g_textFont = static_cast<ImFont*>(font);
+    if (s_fontAskPending.exchange(false)) {
+        const long long ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                 std::chrono::steady_clock::now() - s_fontAskAt)
+                                 .count();
+        int aw = 0, ah = 0;
+        if (ImGui::GetCurrentContext() && ImGui::GetIO().Fonts) {
+            aw = ImGui::GetIO().Fonts->TexWidth;
+            ah = ImGui::GetIO().Fonts->TexHeight;
+        }
+        TechLog('W', L"text font loaded (" + W(id ? id : "") + L"): " + std::to_wstring(ms) + L" ms, atlas " +
+                         std::to_wstring(s_atlasBeforeW) + L"x" + std::to_wstring(s_atlasBeforeH) + L" -> " +
+                         std::to_wstring(aw) + L"x" + std::to_wstring(ah));
+    }
+}
 float PtToPx(int pt) { return std::round(std::clamp(pt, 8, 28) * 96.0f / 72.0f); }
 const FontFace kFontFaces[3] = {{L"segoeui", "Segoe UI"}, {L"seguisb", "Segoe UI Semibold"}, {L"tahoma", "Tahoma"}};
 std::string g_textFontKey;  // the font asked of Nexus now (game thread): one name per face
@@ -145,6 +190,8 @@ void ReleaseTextFont() {
     g_textFontKey.clear();
     g_textFont = nullptr;  // until the next one arrives the window scales Nexus' font – never one Nexus may have freed
     g_textFontPx = 0;
+    g_textFontWantZh = false;
+    s_fontAskPending = false;
 }
 // "Like the game" (fontPt 0, the first use): GW2's interface size, with a 14 pt minimum so the main window is
 // readable at first use. The font slider remains free to choose a smaller or larger size afterwards.
@@ -164,32 +211,77 @@ void RequestTextFont(int pt, const std::wstring& face) {  // pt 0: like the game
     const float px = PtToPx(pt > 0 ? pt : FollowPt());
     wchar_t win[MAX_PATH] = {};
     GetWindowsDirectoryW(win, MAX_PATH);
+    const bool wantZh = ChineseFontNeeded();
+    bool useZh = wantZh;
     std::wstring stem = face;
     std::wstring file = std::wstring(win) + L"\\Fonts\\" + stem + L".ttf";
-    if (GetFileAttributesW(file.c_str()) == INVALID_FILE_ATTRIBUTES) {  // missing: Segoe UI
+    if (useZh) {
+        const std::wstring zhFile = std::wstring(win) + L"\\Fonts\\msyh.ttc";
+        if (GetFileAttributesW(zhFile.c_str()) != INVALID_FILE_ATTRIBUTES) {
+            stem = L"msyh";
+            file = zhFile;
+        } else {
+            useZh = false;
+            if (!s_loggedMissingZh) {
+                s_loggedMissingZh = true;
+                TechLog('W', L"Chinese font missing: " + zhFile);
+            }
+        }
+    }
+    if (!useZh && GetFileAttributesW(file.c_str()) == INVALID_FILE_ATTRIBUTES) {  // missing: Segoe UI
         stem = L"segoeui";
         file = std::wstring(win) + L"\\Fonts\\segoeui.ttf";
-        if (GetFileAttributesW(file.c_str()) == INVALID_FILE_ATTRIBUTES) return;
+        if (GetFileAttributesW(file.c_str()) == INVALID_FILE_ATTRIBUTES) {
+            g_textFontWantZh = wantZh;
+            return;
+        }
     }
-    // Segoe UI keeps the name it always had; another face gets its own (a released one is not asked for by that name).
+    // Segoe UI keeps the name it always had; another face (incl. msyh) gets its own.
     const std::string key = stem == L"segoeui" ? std::string(kTextFontId) : std::string(kTextFontId) + "_" + ToUtf8(stem);
     if (key == g_textFontKey) {  // the same face: only its size
         if (px != g_textFontPx && g_api->Fonts_Resize) g_api->Fonts_Resize(key.c_str(), px);
         g_textFontPx = px;
+        g_textFontWantZh = wantZh;
         return;
     }
     ReleaseTextFont();
-    {
+    static const ImWchar kRanges[] = {0x0020, 0x024F, 0x0370, 0x03FF, 0x0400, 0x04FF, 0x1E00, 0x1EFF, 0x2000, 0x206F,
+                                      0x20A0, 0x20CF, 0x2190, 0x21FF, 0x2200, 0x22FF, 0x25A0, 0x25FF, 0};
+    s_atlasBeforeW = 0;
+    s_atlasBeforeH = 0;
+    if (ImGui::GetCurrentContext() && ImGui::GetIO().Fonts) {
+        s_atlasBeforeW = ImGui::GetIO().Fonts->TexWidth;
+        s_atlasBeforeH = ImGui::GetIO().Fonts->TexHeight;
+    }
+    s_fontAskAt = std::chrono::steady_clock::now();
+    s_fontAskPending = true;
+    if (useZh) {
+        static std::vector<ImWchar> s_zhRanges;
+        if (s_zhRanges.empty()) {
+            ImFontGlyphRangesBuilder builder;
+            builder.AddRanges(kRanges);
+            if (ImGui::GetCurrentContext() && ImGui::GetIO().Fonts)
+                builder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesChineseSimplifiedCommon());
+            ImVector<ImWchar> built;
+            builder.BuildRanges(&built);
+            s_zhRanges.assign(built.begin(), built.end());
+            if (s_zhRanges.empty() || s_zhRanges.back() != 0) s_zhRanges.push_back(0);
+        }
+        static ImFontConfig zhCfg;
+        zhCfg.OversampleH = 1;
+        zhCfg.OversampleV = 1;
+        zhCfg.GlyphRanges = s_zhRanges.data();
+        g_api->Fonts_AddFromFile(key.c_str(), px, ToUtf8(file).c_str(), OnTextFont, &zhCfg);
+    } else {
         // Latin (also the extended letters and Vietnamese), Greek, Cyrillic, punctuation, arrows, symbols – what chat
         // and our window show (no Arabic: ImGui 1.80 draws it unjoined, user 2026-10-22).
-        static const ImWchar kRanges[] = {0x0020, 0x024F, 0x0370, 0x03FF, 0x0400, 0x04FF, 0x1E00, 0x1EFF, 0x2000, 0x206F,
-                                          0x20A0, 0x20CF, 0x2190, 0x21FF, 0x2200, 0x22FF, 0x25A0, 0x25FF, 0};
         static ImFontConfig cfg;
         cfg.GlyphRanges = kRanges;
         g_api->Fonts_AddFromFile(key.c_str(), px, ToUtf8(file).c_str(), OnTextFont, &cfg);
     }
     g_textFontKey = key;
     g_textFontPx = px;
+    g_textFontWantZh = wantZh;
 }
 
 // The options window's font: Segoe UI at the size of Nexus' own UI (user, 2026-10-22: the chat's size is the chat

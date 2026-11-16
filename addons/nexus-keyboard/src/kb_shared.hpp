@@ -230,9 +230,13 @@ extern AddonAPI_t* g_api;
 constexpr const char* kTextFontId = "GW2Chatlator_Text";
 extern std::atomic<ImFont*> g_textFont;
 extern float g_textFontPx;
+extern bool g_textFontWantZh;
+extern std::string g_textFontKey;
 int FollowPt();  // fontPt 0: GW2's interface size, at least 14 pt for the first-use chat UI
 void OnTextFont(const char*, void* font);
 float PtToPx(int pt);
+bool ChineseFontNeeded();  // g_mu NOT held: ZH-HANS/ZH-HANT set in any language field
+bool LoadedFontCanDraw(uint32_t codePoint);
 // The fonts to choose beside the size (user, 2026-10-22): files every Windows has, each with Latin, Greek, Cyrillic.
 struct FontFace {
     const wchar_t* file;  // in Windows\Fonts, without ".ttf"

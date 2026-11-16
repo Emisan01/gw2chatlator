@@ -983,6 +983,10 @@ static void TestGw2Text() {
     CHECK(DisplayForOurFont(L"こんにちは世界") == L"Japanese – 7 characters");
     CHECK(DisplayForOurFont(L"안녕하세요") == L"Korean – 5 characters");
     CHECK(DisplayForOurFont(L"مرحبا") == L"Arabic – 5 characters");
+    // G4.2: Custom loaded-glyph predicate overrides fallback notice when glyphs exist.
+    auto allowSimplified = [](uint32_t c) { return OurFontCanDraw(c) || c == 0x4F60 || c == 0x597D; };
+    CHECK(DisplayForOurFont(L"你好", L"ZH-HANS", allowSimplified) == L"你好");
+    CHECK(DisplayForOurFont(L"們傳", L"ZH-HANT", allowSimplified) == L"Chinese – 2 characters");
 }
 
 static void TestDeepLBatch() {

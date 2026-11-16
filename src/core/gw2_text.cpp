@@ -92,14 +92,15 @@ bool OurFontCanDraw(uint32_t c) {
            (c >= 0x2190 && c <= 0x21FF) || (c >= 0x2200 && c <= 0x22FF) || (c >= 0x25A0 && c <= 0x25FF);
 }
 
-std::wstring DisplayForOurFont(const std::wstring& text, const std::wstring& langHint) {
+std::wstring DisplayForOurFont(const std::wstring& text, const std::wstring& langHint, bool (*canDraw)(uint32_t)) {
+    bool (*const check)(uint32_t) = canDraw ? canDraw : &OurFontCanDraw;
     bool undrawn = false;
     bool hasKana = false;
     const wchar_t* scriptName = nullptr;
     for (wchar_t ch : text) {
         const uint32_t c = static_cast<uint32_t>(ch);
         if (c >= 0x3040 && c <= 0x30FF) hasKana = true;
-        if (OurFontCanDraw(c)) continue;
+        if (check(c)) continue;
         undrawn = true;
         if (!scriptName) {
             for (const ScriptRange& r : kScripts) {
