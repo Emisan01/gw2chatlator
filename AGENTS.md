@@ -60,8 +60,9 @@ The official identity contract must be strictly preserved across all integration
    (a word the user saves by click stays on their PC). Chat text goes only to the
    translator the user chose (the README says what online ones receive). A new function that would keep or send
    others' text or names: ask the maintainer first.
-6. **Privacy – what we publish:** nothing real from players in the repo, tests, docs, release notes or screenshots –
-   made up or blurred; real captures stay in `local/`.
+6. **Privacy – what we publish:** nothing real from players in the repo, tests, docs, or release notes (made up or
+   blurred; real captures stay in `local/`). **Screenshots do not belong in the repository** — they serve only as
+   development feedback in conversation (crop, blur, or make up player names when sharing externally).
 7. **Branch Invariant:** Old desktop programs and the OCR reader reside in branch `desktop-archive` — do not bring them back into `main`.
 8. **No AI attribution:** never add Co-Authored-By, "Generated with ...", session links or any other AI attribution to commits, PR descriptions, release notes or files. The author is Emi.
 
