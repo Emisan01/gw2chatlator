@@ -1794,6 +1794,8 @@ extern const I18nEntry kRussianStrings[] = {
      "Другая письменность"},
     {L"{1} – {2} characters",
      "{1} – {2} знаков"},
+    {L"GW2 chat cannot show {1}",
+     "Чат GW2 не отображает {1}"},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

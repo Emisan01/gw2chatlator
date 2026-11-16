@@ -7,8 +7,11 @@
 namespace gct {
 
 // Name of the first script in `text` the GW2 chat font most likely cannot
-// show (German, for the status line), or empty. Latin incl. accents is fine.
+// show, or empty. Latin incl. accents is fine.
 std::wstring UnsupportedScript(const std::wstring& text);
+
+// Name of the first script in `text` tested to render blank in GW2 chat (e.g. Cyrillic), or empty.
+std::wstring WarnUnsupportedInGw2(const std::wstring& text);
 
 // True if the first strongly directional character is right-to-left
 // (Arabic, Hebrew ...). Used to align lines and the input field.

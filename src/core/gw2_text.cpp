@@ -2,6 +2,7 @@
 #include "gw2_text.hpp"
 
 #include <cstdint>
+#include <cwchar>
 
 #include "i18n.hpp"
 #include "langs.hpp"
@@ -39,12 +40,38 @@ bool IsStrongLtr(uint32_t c) {
 
 }  // namespace
 
-std::wstring UnsupportedScript(const std::wstring& text) {
+const wchar_t* FirstMatchedScript(const std::wstring& text) {
     for (wchar_t ch : text) {
         const uint32_t c = static_cast<uint32_t>(ch);
         if (c < 0x0370) continue;  // Latin, Latin-1, Extended-A/B, IPA
         for (const ScriptRange& r : kScripts)
-            if (c >= r.from && c <= r.to) return Tr(r.name);
+            if (c >= r.from && c <= r.to) return r.name;
+    }
+    return nullptr;
+}
+
+bool WarnScriptInGw2(const wchar_t* name) {
+    // Tested "no" scripts in GW2 chat: adding another script is one line here.
+    static constexpr const wchar_t* kWarnInGw2[] = {
+        L"Cyrillic",
+    };
+    for (const wchar_t* w : kWarnInGw2)
+        if (std::wcscmp(name, w) == 0) return true;
+    return false;
+}
+
+std::wstring UnsupportedScript(const std::wstring& text) {
+    const wchar_t* name = FirstMatchedScript(text);
+    return name ? Tr(name) : std::wstring();
+}
+
+std::wstring WarnUnsupportedInGw2(const std::wstring& text) {
+    for (wchar_t ch : text) {
+        const uint32_t c = static_cast<uint32_t>(ch);
+        if (c < 0x0370) continue;
+        for (const ScriptRange& r : kScripts) {
+            if (c >= r.from && c <= r.to && WarnScriptInGw2(r.name)) return Tr(r.name);
+        }
     }
     return {};
 }

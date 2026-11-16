@@ -255,6 +255,17 @@ void RenderSnippets() {
 void MinimizeWindow() { g_collapsed = true; }  // the button takes the window's corner (g_mu held or main thread)
 
 // The status text (drawn in the input box): a message, else what is going on.
+std::wstring OutgoingScriptWarning() {  // g_mu held
+    if (!g_input[0]) return {};
+    const std::wstring typed = SanitizeChatText(g_wFlatInput);
+    if (IsPlainCommand(typed)) return {};
+    const bool translating = Translating() || NamesSwapped();
+    if (translating && (g_previewGen != g_inputGen || g_preview.empty())) return {};
+    const std::wstring& out = translating ? g_preview : typed;
+    const std::wstring script = WarnUnsupportedInGw2(out);
+    return script.empty() ? std::wstring() : TrF(L"GW2 chat cannot show {1}", {script});
+}
+
 std::wstring StatusText() {  // g_mu held
     if (!g_status.empty()) return g_status;
     if (g_recording) return g_micLocked ? Tr(L"Hearing you …") : Tr(L"Hearing you … release the key when you are done");
@@ -1673,6 +1684,10 @@ void RenderWindow() {
         } else if (InfoTexts()) {
             ImGui::TextDisabled("%s", UI(Tr(L"translating …")).c_str());
         }
+        if (!InputErrorNow()) {
+            if (const std::wstring warn = OutgoingScriptWarning(); !warn.empty())
+                LookText(U8(warn).c_str(), UiWarm(), true);
+        }
         // the fewest rows whose height (line * (rows + 0.2)) holds what was drawn
         const int drawnRows = std::max(1, static_cast<int>(std::ceil((ImGui::GetCursorPosY() - st.ItemSpacing.y) / line - 0.2f)));
         // It grows at once and shrinks only once the text stands still or is gone: a row coming and going with each key
@@ -2197,11 +2212,14 @@ void RenderWindow() {
                 BoxText(textAt, clip, g_status.empty() ? ImGui::GetColorU32(ImGuiCol_TextDisabled) : ImGui::GetColorU32(UiWarm()),
                         s_lastStatusFit);
         }
-    } else if (!g_status.empty()) {
-        const std::string s = Fit(UI(g_status), (inputMax.x - inputMin.x) * 0.6f);
-        const float w = ImGui::CalcTextSize(s.c_str()).x * 0.85f;
-        BoxText(ImVec2(inputMax.x - w - st.FramePadding.x - st.ScrollbarSize, inputMax.y - smallLine - 1), clip,
-                ImGui::GetColorU32(UiWarm()), s, 0.85f);
+    } else {
+        const std::wstring note = !g_status.empty() ? g_status : (!showPreview ? OutgoingScriptWarning() : std::wstring());
+        if (!note.empty()) {
+            const std::string s = Fit(UI(note), (inputMax.x - inputMin.x) * 0.6f);
+            const float w = ImGui::CalcTextSize(s.c_str()).x * 0.85f;
+            BoxText(ImVec2(inputMax.x - w - st.FramePadding.x - st.ScrollbarSize, inputMax.y - smallLine - 1), clip,
+                    ImGui::GetColorU32(UiWarm()), s, 0.85f);
+        }
     }
     // Compact view: what the chat will get, small in the box's last line (instead of the preview above).
     if (!showPreview && g_input[0] && ((Translating() && (previewCurrent || InfoTexts())) || NamesSwapped())) {

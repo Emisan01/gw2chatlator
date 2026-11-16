@@ -1794,6 +1794,8 @@ extern const I18nEntry kSpanishStrings[] = {
      "Otra escritura"},
     {L"{1} – {2} characters",
      "{1} – {2} caracteres"},
+    {L"GW2 chat cannot show {1}",
+     "El chat de GW2 no muestra {1}"},
 };
 extern const size_t kSpanishCount = sizeof(kSpanishStrings) / sizeof(kSpanishStrings[0]);
 

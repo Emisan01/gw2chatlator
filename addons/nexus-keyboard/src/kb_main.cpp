@@ -880,6 +880,58 @@ extern "C" __declspec(dllexport) int Gw2KbTestChatSource(int cmd, ChatSourceTest
             }
             return 0;
         }
+        case 25: {  // G5: read current OutgoingScriptWarning UTF-8 (1 if active, 0 if empty)
+            std::lock_guard<std::mutex> lock(g_mu);
+            const std::wstring w = OutgoingScriptWarning();
+            if (text) CopyUtf8(text, 4096, ToUtf8(w));
+            return w.empty() ? 0 : 1;
+        }
+        case 26: {  // G5/G6: temporarily switch writeIn=DE, translation off (step 1) or restore (step 0)
+            struct SavedG5 {
+                bool active = false;
+                std::wstring writeIn;
+                bool translateChat = true;
+                AutoCorrectMode ac = AutoCorrectMode::Off;
+            };
+            static SavedG5 s_g5;
+            const int step = text ? std::atoi(text) : 0;
+            std::lock_guard<std::mutex> lock(g_mu);
+            if (step == 1) {
+                if (!s_g5.active) {
+                    s_g5.active = true;
+                    s_g5.writeIn = g_cfg.writeIn;
+                    s_g5.translateChat = g_nx.translateChat;
+                    s_g5.ac = g_cfg.autoCorrect;
+                }
+                LeaveWhisperTab();
+                g_cfg.writeIn = L"DE";
+                g_cfg.autoCorrect = AutoCorrectMode::Off;
+                SetChatTranslation(false);
+                g_input[0] = 0;
+                g_flatInput.clear();
+                g_wFlatInput.clear();
+                g_lastInput.clear();
+                g_preview.clear();
+                ++g_inputGen;
+                g_inputChanged = 0;
+                g_focusInput = true;
+                return !Translating() ? 1 : 0;
+            }
+            if (s_g5.active) {
+                g_cfg.writeIn = s_g5.writeIn;
+                g_cfg.autoCorrect = s_g5.ac;
+                SetChatTranslation(s_g5.translateChat);
+                s_g5 = {};
+                g_input[0] = 0;
+                g_flatInput.clear();
+                g_wFlatInput.clear();
+                g_lastInput.clear();
+                g_preview.clear();
+                ++g_inputGen;
+                g_inputChanged = 0;
+            }
+            return 1;
+        }
         case 20: {  // E4: legacy FallenAngel=1 INI migrates into autoCorrect and stops writing FallenAngel.
             wchar_t tmpDir[MAX_PATH]{};
             GetTempPathW(MAX_PATH, tmpDir);

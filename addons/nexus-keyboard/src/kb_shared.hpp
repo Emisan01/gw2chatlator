@@ -680,6 +680,7 @@ bool UsingMyMemory();
 std::wstring Today();
 void CountMyMemory(size_t chars);
 std::wstring MyMemoryQuotaText();
+std::wstring OutgoingScriptWarning();
 std::wstring MyMemoryLeftText();
 bool LimitedContingent();
 void InitSpelling();

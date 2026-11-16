@@ -1794,6 +1794,8 @@ extern const I18nEntry kTurkishStrings[] = {
      "Diğer yazı"},
     {L"{1} – {2} characters",
      "{1} – {2} karakter"},
+    {L"GW2 chat cannot show {1}",
+     "GW2 sohbeti {1} göstermiyor"},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

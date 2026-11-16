@@ -960,6 +960,9 @@ static void TestGw2Text() {
     CHECK(UnsupportedScript(L"hi مرحبا") == L"Arabic");
     CHECK(UnsupportedScript(L"你好") == L"Chinese");
     CHECK(UnsupportedScript(L"Привет") == L"Cyrillic");
+    CHECK(WarnUnsupportedInGw2(L"Привет") == L"Cyrillic");
+    CHECK(WarnUnsupportedInGw2(L"Hallo Welt").empty());
+    CHECK(WarnUnsupportedInGw2(L"我们在传送点等你们。").empty());
     CHECK(IsRtlText(L"  مرحبا hi"));
     CHECK(!IsRtlText(L"hi مرحبا"));
 

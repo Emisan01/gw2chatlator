@@ -1463,8 +1463,10 @@ int wmain(int argc, wchar_t** argv) {
                     frames(2);
                     closesocket(srv);
                     if (libreStub.joinable()) libreStub.join();
+                    char warnZh[4096] = {};
+                    const int zhWarn = src(25, nullptr, warnZh);
                     g2Ok = (setupOk == 1) && sawZhTarget.load() && (gotPrev == 1) && (hanziCount >= 8) && dispNoticeOk &&
-                           (partsAfter1 == partsBefore + 1) && sentZh && inputCleared && guardBlocked5th;
+                           (zhWarn == 0) && (partsAfter1 == partsBefore + 1) && sentZh && inputCleared && guardBlocked5th;
                     std::printf("G2/G3 send to ZH-HANS: setup=%d, reqs=%d, zhTarget=%d, hanzi=%d, notice='%s'(%d), sent1=%d, cleared=%d, guard5thBlocked=%d (parts %d -> %d)\n",
                                 setupOk, reqCount.load(), sawZhTarget.load() ? 1 : 0, hanziCount, dispUtf8,
                                 dispNoticeOk ? 1 : 0, sentZh ? 1 : 0, inputCleared ? 1 : 0, guardBlocked5th ? 1 : 0, partsBefore, partsAfterRepeats);
@@ -1476,6 +1478,46 @@ int wmain(int argc, wchar_t** argv) {
             }
             if (!g2Ok) std::printf("FAIL: G2 ZH-HANS preview / SendGuard selftest failed\n");
             ok = ok && g2Ok;
+        }
+
+        // G5: Cyrillic outgoing text triggers "GW2 chat cannot show Cyrillic" warning while still allowing Enter send;
+        // German text triggers no warning.
+        if (ok && src) {
+            const int s5 = src(26, nullptr, const_cast<char*>("1"));
+            frames(2);
+            *th->focus = true;
+            frames(2);
+            // Send a Cyrillic string via AddInputCharacter
+            const wchar_t kRu[] = L"Привет мир";
+            for (size_t i = 0; kRu[i]; ++i) {
+                ImGui::GetIO().AddInputCharacter(static_cast<ImWchar>(kRu[i]));
+                Frame();
+                Sleep(5);
+            }
+            frames(3);
+            char warnRu[4096] = {};
+            const int hasRuWarn = src(25, nullptr, warnRu);
+            const int beforeRu = th->sentParts;
+            press(VK_RETURN);
+            for (int w = 0; w < 40 && th->sentParts == beforeRu; ++w) frames(1);
+            const bool ruSentOk = (th->sentParts == beforeRu + 1) && (th->input[0] == '\0');
+
+            // German sentence: no warning
+            *th->focus = true;
+            frames(2);
+            type("Hallo zusammen.");
+            frames(3);
+            char warnDe[4096] = {};
+            const int hasDeWarn = src(25, nullptr, warnDe);
+            for (int i = 0; i < 20 && th->input[0]; ++i) press(VK_BACK);
+            src(26, nullptr, nullptr);
+            frames(2);
+            const bool g5Ok = (s5 == 1) && (hasRuWarn == 1) && (std::strstr(warnRu, "Cyrillic") != nullptr || std::strstr(warnRu, "Kyrillisch") != nullptr) &&
+                              ruSentOk && (hasDeWarn == 0);
+            std::printf("G5 Cyrillic warning: setup=%d, warnRu=%d ('%s'), ruSent=%d, warnDe=%d\n",
+                        s5, hasRuWarn, warnRu, ruSentOk ? 1 : 0, hasDeWarn);
+            if (!g5Ok) std::printf("FAIL: G5 Cyrillic warning selftest failed\n");
+            ok = ok && g5Ok;
         }
 
         // Health check selftest (Schritt 3):
