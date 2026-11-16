@@ -35,18 +35,18 @@ const std::vector<LangInfo>& Languages() {
         {L"ID", L"Bahasa Indonesia", L"Indonesian", true, true, false},
         {L"VI", L"Ti\u1ebfng Vi\u1ec7t", L"Vietnamese", true, true, false},
         {L"LA", L"Latina", L"Latin", true, true, false},
-        {L"EL", L"\u0395\u03bb\u03bb\u03b7\u03bd\u03b9\u03ba\u03ac", L"Greek", false, true, false},
-        {L"BG", L"\u0411\u044a\u043b\u0433\u0430\u0440\u0441\u043a\u0438", L"Bulgarian", false, true, false},
-        {L"RU", L"\u0420\u0443\u0441\u0441\u043a\u0438\u0439", L"Russian", false, true, false},
-        {L"UK", L"\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430", L"Ukrainian", false, true, false},
+        {L"EL", L"\u0395\u03bb\u03bb\u03b7\u03bd\u03b9\u03ba\u03ac", L"Greek", false, true, false},                       // nicht getestet
+        {L"BG", L"\u0411\u044a\u043b\u0433\u0430\u0440\u0441\u043a\u0438", L"Bulgarian", false, true, false},                // getestet 2026-11-16: GW2 zeigt Leerraum
+        {L"RU", L"\u0420\u0443\u0441\u0441\u043a\u0438\u0439", L"Russian", false, true, false},                                // getestet 2026-11-16: GW2 zeigt Leerraum
+        {L"UK", L"\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430", L"Ukrainian", false, true, false},         // getestet 2026-11-16: GW2 zeigt Leerraum
         {L"AR", L"\u0627\u0644\u0639\u0631\u0628\u064a\u0629", L"Arabic (Modern Standard)", false, false, true},
         {L"HE", L"\u05e2\u05d1\u05e8\u05d9\u05ea", L"Hebrew", false, false, true},
-        {L"HI", L"\u0939\u093f\u0928\u094d\u0926\u0940", L"Hindi", false, false, false},
-        {L"TH", L"\u0e44\u0e17\u0e22", L"Thai", false, false, false},
-        {L"ZH-HANS", L"\u4e2d\u6587\uff08\u7b80\u4f53\uff09", L"Chinese (Simplified)", true, false, false},
-        {L"ZH-HANT", L"\u4e2d\u6587\uff08\u7e41\u9ad4\uff09", L"Chinese (Traditional)", true, false, false},
-        {L"JA", L"\u65e5\u672c\u8a9e", L"Japanese", false, false, false},
-        {L"KO", L"\ud55c\uad6d\uc5b4", L"Korean", false, false, false},
+        {L"HI", L"\u0939\u093f\u0928\u094d\u0926\u0940", L"Hindi", false, false, false},                                        // nicht getestet
+        {L"TH", L"\u0e44\u0e17\u0e22", L"Thai", false, false, false},                                                              // nicht getestet
+        {L"ZH-HANS", L"\u4e2d\u6587\uff08\u7b80\u4f53\uff09", L"Chinese (Simplified)", true, false, false},                    // getestet 2026-11-16: GW2 zeigt Vereinfachtes Chinesisch
+        {L"ZH-HANT", L"\u4e2d\u6587\uff08\u7e41\u9ad4\uff09", L"Chinese (Traditional)", true, false, false},                   // nicht getestet
+        {L"JA", L"\u65e5\u672c\u8a9e", L"Japanese", false, false, false},                                                          // nicht getestet
+        {L"KO", L"\ud55c\uad6d\uc5b4", L"Korean", false, false, false},                                                            // nicht getestet
     };
     return list;
 }
