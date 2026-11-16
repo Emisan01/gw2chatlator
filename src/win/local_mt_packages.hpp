@@ -34,4 +34,7 @@ ExtrasInstallResult InstallLocalMtModel(
     const std::wstring& dataDir, const std::string& pair, const std::wstring& version,
     const std::function<bool(uint64_t done, uint64_t total)>& progress);
 
+// Removes stale %TEMP%\gw2kb-localmt-* and gw2kb-voice-* install folders older than `maxAgeHours` (default 24h).
+size_t CleanupStaleInstallTemp(uint64_t maxAgeHours = 24);
+
 }  // namespace gct

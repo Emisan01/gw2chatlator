@@ -279,6 +279,46 @@ int wmain(int argc, wchar_t** argv) {
     }
     SetEnvironmentVariableW(L"GW2KB_FAKE_HELPER_MODE", nullptr);
 
+    // J2: CleanupStaleInstallTemp removes %TEMP%/gw2kb-localmt-* / gw2kb-voice-* older than 24h, keeps fresh ones.
+    {
+        wchar_t tempDir[MAX_PATH] = {};
+        GetTempPathW(MAX_PATH, tempDir);
+        const std::wstring pidStr = std::to_wstring(GetCurrentProcessId());
+        const auto oldMt = std::filesystem::path(tempDir) / (L"gw2kb-localmt-" + pidStr + L"-stale");
+        const auto oldVoice = std::filesystem::path(tempDir) / (L"gw2kb-voice-" + pidStr + L"-stale");
+        const auto freshMt = std::filesystem::path(tempDir) / (L"gw2kb-localmt-" + pidStr + L"-fresh");
+        std::filesystem::remove_all(oldMt, ec);
+        std::filesystem::remove_all(oldVoice, ec);
+        std::filesystem::remove_all(freshMt, ec);
+        std::filesystem::create_directories(oldMt / L"x", ec);
+        std::filesystem::create_directories(oldVoice, ec);
+        std::filesystem::create_directories(freshMt, ec);
+        {
+            std::ofstream f(oldMt / L"package.zip", std::ios::binary);
+            f << "partial";
+        }
+        FILETIME ftNow{};
+        GetSystemTimeAsFileTime(&ftNow);
+        ULARGE_INTEGER ui{{ftNow.dwLowDateTime, ftNow.dwHighDateTime}};
+        ui.QuadPart -= 25ULL * 3600ULL * 10000000ULL;
+        FILETIME ftOld{ui.LowPart, ui.HighPart};
+        for (const auto& d : {oldMt, oldVoice}) {
+            HANDLE hd = CreateFileW(d.c_str(), FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                                    nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+            if (hd != INVALID_HANDLE_VALUE) {
+                SetFileTime(hd, &ftOld, &ftOld, &ftOld);
+                CloseHandle(hd);
+            }
+        }
+        const size_t staleCleaned = gct::CleanupStaleInstallTemp(24);
+        ok &= Check(staleCleaned >= 2 && !std::filesystem::exists(oldMt) && !std::filesystem::exists(oldVoice) &&
+                        std::filesystem::exists(freshMt),
+                    "J2: stale %TEMP%/gw2kb-localmt-* and gw2kb-voice-* (>24h) removed, fresh kept");
+        std::filesystem::remove_all(oldMt, ec);
+        std::filesystem::remove_all(oldVoice, ec);
+        std::filesystem::remove_all(freshMt, ec);
+    }
+
     std::filesystem::remove_all(data, ec);
 
     if (!ok) return 1;

@@ -319,6 +319,7 @@ void AddonLoad(AddonAPI_t* api) {
     RemoveDirectoryW((g_cfg.dataDir + L"\\fonts").c_str());  // only if empty
     Config::DeferWrites(true);  // the ini is written on the worker (KickSave), never on the game thread
     g_worker.Start();
+    g_worker.Post([] { gct::CleanupStaleInstallTemp(24); });
     {
         std::lock_guard<std::mutex> lock(g_mu);
         if (GetPrivateProfileIntW(L"Debug", L"SendLog", 0, g_cfg.iniPath.c_str())) TechLogToFile(g_cfg.dataDir + L"\\send-steps.log");

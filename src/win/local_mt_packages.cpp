@@ -511,4 +511,33 @@ ExtrasInstallResult UpdateLocalMtModule(const std::wstring& kbDir, const std::ws
     return result;
 }
 
+size_t CleanupStaleInstallTemp(uint64_t maxAgeHours) {
+    wchar_t temp[MAX_PATH] = {};
+    if (!GetTempPathW(MAX_PATH, temp)) return 0;
+    const std::wstring root(temp);
+    FILETIME nowFt{};
+    GetSystemTimeAsFileTime(&nowFt);
+    ULARGE_INTEGER nowUi{{nowFt.dwLowDateTime, nowFt.dwHighDateTime}};
+    const uint64_t maxAgeTicks = maxAgeHours * 3600ULL * 10000000ULL;
+    size_t removed = 0;
+    for (const wchar_t* prefix : {L"gw2kb-localmt-", L"gw2kb-voice-"}) {
+        WIN32_FIND_DATAW fd{};
+        HANDLE h = FindFirstFileW((root + prefix + L"*").c_str(), &fd);
+        if (h == INVALID_HANDLE_VALUE) continue;
+        do {
+            if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) continue;
+            const std::wstring name = fd.cFileName;
+            if (name == L"." || name == L".." || name.rfind(prefix, 0) != 0) continue;
+            ULARGE_INTEGER modUi{{fd.ftLastWriteTime.dwLowDateTime, fd.ftLastWriteTime.dwHighDateTime}};
+            if (nowUi.QuadPart > modUi.QuadPart && (nowUi.QuadPart - modUi.QuadPart) >= maxAgeTicks) {
+                const std::wstring dir = root + name;
+                RemoveTree(dir);
+                if (!ExistsFile(dir)) ++removed;
+            }
+        } while (FindNextFileW(h, &fd));
+        FindClose(h);
+    }
+    return removed;
+}
+
 }  // namespace gct
