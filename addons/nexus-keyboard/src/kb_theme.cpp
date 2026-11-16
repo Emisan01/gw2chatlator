@@ -142,10 +142,29 @@ bool g_textFontWantZh = false;
 namespace {
 std::atomic<bool> s_fontAskPending{false};
 std::chrono::steady_clock::time_point s_fontAskAt{};
+ULONGLONG s_fontAskTick = 0;
 int s_atlasBeforeW = 0, s_atlasBeforeH = 0;
 bool s_loggedMissingZh = false;
+bool s_zhTriedMem = false;
+bool s_zhFallbackSegoe = false;
+std::string s_zhFontBytes;
 
 bool IsZhCode(const std::wstring& code) { return PrimaryLang(code) == L"ZH"; }
+
+const ImWchar* ZhRangesData(const ImWchar* baseRanges) {
+    static std::vector<ImWchar> s_zhRanges;
+    if (s_zhRanges.empty()) {
+        ImFontGlyphRangesBuilder builder;
+        builder.AddRanges(baseRanges);
+        if (ImGui::GetCurrentContext() && ImGui::GetIO().Fonts)
+            builder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesChineseSimplifiedCommon());
+        ImVector<ImWchar> built;
+        builder.BuildRanges(&built);
+        s_zhRanges.assign(built.begin(), built.end());
+        if (s_zhRanges.empty() || s_zhRanges.back() != 0) s_zhRanges.push_back(0);
+    }
+    return s_zhRanges.data();
+}
 }  // namespace
 
 bool ChineseFontNeeded() {
@@ -193,6 +212,14 @@ void ReleaseTextFont() {
     g_textFontWantZh = false;
     s_fontAskPending = false;
 }
+
+std::wstring TextFontStatusText() {
+    ImFont* f = g_textFont.load();
+    const int glyphs = (f && f->ContainerAtlas) ? f->Glyphs.Size : 0;
+    const bool hasCn = f && f->ContainerAtlas && !f->Glyphs.empty() && f->FindGlyphNoFallback(0x6211) != nullptr;
+    if (g_textFontKey.empty()) return L"-";
+    return W(g_textFontKey) + L" (" + std::to_wstring(glyphs) + L" glyphs" + (hasCn ? L", CN" : L"") + L")";
+}
 // "Like the game" (fontPt 0, the first use): GW2's interface size, with a 14 pt minimum so the main window is
 // readable at first use. The font slider remains free to choose a smaller or larger size afterwards.
 int FollowPt() {
@@ -212,7 +239,11 @@ void RequestTextFont(int pt, const std::wstring& face) {  // pt 0: like the game
     wchar_t win[MAX_PATH] = {};
     GetWindowsDirectoryW(win, MAX_PATH);
     const bool wantZh = ChineseFontNeeded();
-    bool useZh = wantZh;
+    if (!wantZh) {
+        s_zhTriedMem = false;
+        s_zhFallbackSegoe = false;
+    }
+    bool useZh = wantZh && !s_zhFallbackSegoe;
     std::wstring stem = face;
     std::wstring file = std::wstring(win) + L"\\Fonts\\" + stem + L".ttf";
     if (useZh) {
@@ -238,8 +269,8 @@ void RequestTextFont(int pt, const std::wstring& face) {  // pt 0: like the game
     }
     // Segoe UI keeps the name it always had; another face (incl. msyh) gets its own.
     const std::string key = stem == L"segoeui" ? std::string(kTextFontId) : std::string(kTextFontId) + "_" + ToUtf8(stem);
-    if (key == g_textFontKey) {  // the same face: only its size
-        if (px != g_textFontPx && g_api->Fonts_Resize) g_api->Fonts_Resize(key.c_str(), px);
+    if (key == g_textFontKey || (useZh && s_zhTriedMem && g_textFontKey == std::string(kTextFontId) + "_msyh_mem")) {
+        if (px != g_textFontPx && g_api->Fonts_Resize) g_api->Fonts_Resize(g_textFontKey.c_str(), px);
         g_textFontPx = px;
         g_textFontWantZh = wantZh;
         return;
@@ -254,23 +285,13 @@ void RequestTextFont(int pt, const std::wstring& face) {  // pt 0: like the game
         s_atlasBeforeH = ImGui::GetIO().Fonts->TexHeight;
     }
     s_fontAskAt = std::chrono::steady_clock::now();
+    s_fontAskTick = GetTickCount64();
     s_fontAskPending = true;
     if (useZh) {
-        static std::vector<ImWchar> s_zhRanges;
-        if (s_zhRanges.empty()) {
-            ImFontGlyphRangesBuilder builder;
-            builder.AddRanges(kRanges);
-            if (ImGui::GetCurrentContext() && ImGui::GetIO().Fonts)
-                builder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesChineseSimplifiedCommon());
-            ImVector<ImWchar> built;
-            builder.BuildRanges(&built);
-            s_zhRanges.assign(built.begin(), built.end());
-            if (s_zhRanges.empty() || s_zhRanges.back() != 0) s_zhRanges.push_back(0);
-        }
         static ImFontConfig zhCfg;
         zhCfg.OversampleH = 1;
         zhCfg.OversampleV = 1;
-        zhCfg.GlyphRanges = s_zhRanges.data();
+        zhCfg.GlyphRanges = ZhRangesData(kRanges);
         g_api->Fonts_AddFromFile(key.c_str(), px, ToUtf8(file).c_str(), OnTextFont, &zhCfg);
     } else {
         // Latin (also the extended letters and Vietnamese), Greek, Cyrillic, punctuation, arrows, symbols – what chat
@@ -282,6 +303,47 @@ void RequestTextFont(int pt, const std::wstring& face) {  // pt 0: like the game
     g_textFontKey = key;
     g_textFontPx = px;
     g_textFontWantZh = wantZh;
+}
+
+void EnsureTextFontLoaded() {
+    if (!g_textFontWantZh || s_zhFallbackSegoe || !g_api) return;
+    ImFont* f = g_textFont.load();
+    const bool hasCn = f && f->ContainerAtlas && !f->Glyphs.empty() && f->FindGlyphNoFallback(0x6211) != nullptr;
+    if (hasCn) return;
+    const bool timedOut = s_fontAskPending.load() && (GetTickCount64() - s_fontAskTick > 2500);
+    const bool settledNoCn = !s_fontAskPending.load() && f != nullptr;
+    if (!timedOut && !settledNoCn) return;
+    if (!s_zhTriedMem && g_api->Fonts_AddFromMemory) {
+        s_zhTriedMem = true;
+        wchar_t win[MAX_PATH] = {};
+        GetWindowsDirectoryW(win, MAX_PATH);
+        const std::wstring zhFile = std::wstring(win) + L"\\Fonts\\msyh.ttc";
+        if (ReadFileBytes(zhFile, s_zhFontBytes) && !s_zhFontBytes.empty()) {
+            const float px = g_textFontPx > 0 ? g_textFontPx : PtToPx(g_cfg.fontPt > 0 ? g_cfg.fontPt : FollowPt());
+            static const ImWchar kRanges[] = {0x0020, 0x024F, 0x0370, 0x03FF, 0x0400, 0x04FF, 0x1E00, 0x1EFF, 0x2000,
+                                              0x206F, 0x20A0, 0x20CF, 0x2190, 0x21FF, 0x2200, 0x22FF, 0x25A0, 0x25FF, 0};
+            ReleaseTextFont();
+            static ImFontConfig zhMemCfg;
+            zhMemCfg.OversampleH = 1;
+            zhMemCfg.OversampleV = 1;
+            zhMemCfg.FontDataOwnedByAtlas = false;
+            zhMemCfg.GlyphRanges = ZhRangesData(kRanges);
+            const std::string key = std::string(kTextFontId) + "_msyh_mem";
+            s_fontAskAt = std::chrono::steady_clock::now();
+            s_fontAskTick = GetTickCount64();
+            s_fontAskPending = true;
+            g_api->Fonts_AddFromMemory(key.c_str(), px, s_zhFontBytes.data(), static_cast<uint64_t>(s_zhFontBytes.size()),
+                                       OnTextFont, &zhMemCfg);
+            g_textFontKey = key;
+            g_textFontPx = px;
+            g_textFontWantZh = true;
+            TechLog('W', L"Chinese font file load had no CN glyphs -> retrying via Fonts_AddFromMemory");
+            return;
+        }
+    }
+    s_zhFallbackSegoe = true;
+    TechLog('W', L"Chinese font could not load via Nexus – keeping Segoe UI");
+    RequestTextFont(g_cfg.fontPt, g_cfg.fontFace);
 }
 
 // The options window's font: Segoe UI at the size of Nexus' own UI (user, 2026-10-22: the chat's size is the chat

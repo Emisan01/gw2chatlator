@@ -1784,6 +1784,8 @@ extern const I18nEntry kPolishStrings[] = {
      "Wczytywanie … {1} %"},
     {L"Downloading … {1} %",
      "Pobieranie … {1} %"},
+    {L"Text font: {1}",
+     "Czcionka tekstu: {1}"},
 };
 extern const size_t kPolishCount = sizeof(kPolishStrings) / sizeof(kPolishStrings[0]);
 

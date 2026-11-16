@@ -1784,6 +1784,8 @@ extern const I18nEntry kTurkishStrings[] = {
      "Yükleniyor … % {1}"},
     {L"Downloading … {1} %",
      "İndiriliyor … % {1}"},
+    {L"Text font: {1}",
+     "Metin yazı tipi: {1}"},
 };
 extern const size_t kTurkishCount = sizeof(kTurkishStrings) / sizeof(kTurkishStrings[0]);
 

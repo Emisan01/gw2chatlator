@@ -43,7 +43,7 @@ const std::vector<LangInfo>& Languages() {
         {L"HE", L"\u05e2\u05d1\u05e8\u05d9\u05ea", L"Hebrew", false, false, true},
         {L"HI", L"\u0939\u093f\u0928\u094d\u0926\u0940", L"Hindi", false, false, false},                                        // nicht getestet
         {L"TH", L"\u0e44\u0e17\u0e22", L"Thai", false, false, false},                                                              // nicht getestet
-        {L"ZH-HANS", L"\u4e2d\u6587\uff08\u7b80\u4f53\uff09", L"Chinese (Simplified)", true, false, false},                    // getestet 2026-11-16: GW2 zeigt Vereinfachtes Chinesisch
+        {L"ZH-HANS", L"\u4e2d\u6587\uff08\u7b80\u4f53\uff09", L"Chinese (Simplified)", true, true, false},                     // getestet 2026-11-16: GW2 zeigt Vereinfachtes Chinesisch; Fenster lädt msyh bei Bedarf
         {L"ZH-HANT", L"\u4e2d\u6587\uff08\u7e41\u9ad4\uff09", L"Chinese (Traditional)", true, false, false},                   // nicht getestet
         {L"JA", L"\u65e5\u672c\u8a9e", L"Japanese", false, false, false},                                                          // nicht getestet
         {L"KO", L"\ud55c\uad6d\uc5b4", L"Korean", false, false, false},                                                            // nicht getestet

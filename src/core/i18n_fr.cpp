@@ -1784,6 +1784,8 @@ extern const I18nEntry kFrenchStrings[] = {
      "Chargement … {1} %"},
     {L"Downloading … {1} %",
      "Téléchargement … {1} %"},
+    {L"Text font: {1}",
+     "Police du texte : {1}"},
 };
 extern const size_t kFrenchCount = sizeof(kFrenchStrings) / sizeof(kFrenchStrings[0]);
 

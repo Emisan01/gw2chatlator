@@ -244,6 +244,8 @@ struct FontFace {
 };
 extern const FontFace kFontFaces[3];
 void RequestTextFont(int pt, const std::wstring& face);
+void EnsureTextFontLoaded();
+std::wstring TextFontStatusText();
 void ReleaseTextFont();  // before the DLL goes, and before another face is asked for
 // The options window: Segoe UI at least 14 pt, raised further when Nexus' UI is larger; independent of chat size.
 constexpr const char* kUiFontId = "GW2Chatlator_UI";

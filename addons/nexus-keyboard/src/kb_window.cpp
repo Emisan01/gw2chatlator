@@ -1295,6 +1295,7 @@ void RenderWindow() {
     const bool wantZh = ChineseFontNeeded();
     if ((g_cfg.fontPt <= 0 && chatPx != g_textFontPx) || wantZh != g_textFontWantZh)
         RequestTextFont(g_cfg.fontPt, g_cfg.fontFace);  // the game's size or Chinese-font need changed
+    EnsureTextFontLoaded();
     const float uiPx = FollowUiPx();
     ImFont* uf = g_uiFont.load();
     ImFont* tf = g_textFont.load();

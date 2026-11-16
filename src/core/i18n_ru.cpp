@@ -1784,6 +1784,8 @@ extern const I18nEntry kRussianStrings[] = {
      "Загрузка … {1} %"},
     {L"Downloading … {1} %",
      "Загрузка … {1} %"},
+    {L"Text font: {1}",
+     "Шрифт текста: {1}"},
 };
 extern const size_t kRussianCount = sizeof(kRussianStrings) / sizeof(kRussianStrings[0]);
 

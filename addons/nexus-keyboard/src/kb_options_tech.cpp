@@ -305,6 +305,7 @@ void RenderTechnicalPage(Config& edit) {
         ImGui::Text("GW2Chatlator for Nexus %s", GCT_BUILD_DISPLAY_STR);
         ImGui::Text("%s", UI(TrF(L"Game: {1} fps → keys held {2} ms", {std::to_wstring(fps), std::to_wstring(hold)})).c_str());
         ImGui::Text("%s", UI(TrF(L"Translator: {1}", {g_translator ? g_translator->Name() : std::wstring(L"-")})).c_str());
+        ImGui::Text("%s", UI(TrF(L"Text font: {1}", {TextFontStatusText()})).c_str());
         if (const std::wstring q = MyMemoryQuotaText(); !q.empty() && g_nx.translateChat) ImGui::Text("%s", UI(q).c_str());
         RenderChatSourceDetails();  // the version of Events: Chat, reading, the counts, the last lines (no text)
         ImGui::Text("%s", UI(TrF(L"Voice: {1}", {!g_cfg.voiceEnabled ? Tr(L"off") : g_voiceReady ? Tr(L"ready – loaded")
@@ -461,6 +462,7 @@ std::string BuildDiagnosticReport() {
         default: ss << "Custom\n"; break;
     }
     ss << "- Active Translator Backend: " << (g_translator ? U8(g_translator->Name()) : "None") << "\n";
+    ss << "- Text Font: " << U8(TextFontStatusText()) << "\n";
     ss << "- Typing / Source Language: " << U8(g_cfg.writeIn) << "\n";
     ss << "- Target Send Language: " << U8(SendLang()) << " (Send Original: " << (SendOriginal() ? "Yes" : "No") << ")\n";
     ss << "- Translate Incoming Chat: " << (g_nx.translateChat ? "Enabled" : "Disabled") << "\n";

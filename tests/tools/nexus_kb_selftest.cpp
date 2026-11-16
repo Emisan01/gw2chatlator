@@ -1399,7 +1399,7 @@ int wmain(int argc, wchar_t** argv) {
                         }
                     });
                     const bool hasMsyh = GetFileAttributesW(L"C:\\Windows\\Fonts\\msyh.ttc") != INVALID_FILE_ATTRIBUTES;
-                    char probePre[4096] = "\xE6\x88\x91\xE4\xBB\xAC\xE5\x9C\xA8\xE4\xBC\xA0\xE9\x80\x81\xE7\x82\xB9\xE7\xAD\x89\xE4\xBD\xA0\xE4\xBB\xAC\xE3\x80\x82";
+                    char probePre[4096] = "\xE6\x88\x91\xE6\xAD\xA3\xE5\x9C\xA8\xE6\xB5\x8B\xE8\xAF\x95\xE4\xB8\xAD\xE6\x96\x87";
                     const int zhBefore = src(27, nullptr, probePre);
                     const auto fPre0 = std::chrono::steady_clock::now();
                     for (int fi = 0; fi < 20; ++fi) Frame();
@@ -1438,7 +1438,7 @@ int wmain(int argc, wchar_t** argv) {
                         }
                     }
                     if (gotDisp) {
-                        const bool preFallbackOk = std::strstr(probePre, "10") != nullptr;
+                        const bool preFallbackOk = std::strstr(probePre, "7") != nullptr;
                         const bool tradFallbackOk = std::strstr(probeTrad, "3") != nullptr;
                         if (hasMsyh) {
                             // YaHei CN Common loaded -> simplified preview shown directly, traditional stays fallback notice.
