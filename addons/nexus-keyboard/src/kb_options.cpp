@@ -76,8 +76,16 @@ std::wstring FormatSeconds(int ms) {  // 1234 -> "1.2"
 // A language combo over the languages our window draws (DrawnInOurWindow): `value` "" = `emptyLabel`.
 bool LanguageCombo(const char* id, std::wstring& value, const std::wstring& emptyLabel) {
     std::string current = value.empty() ? U8(emptyLabel) : U8(value);
-    for (const LangInfo& l : Languages())
-        if (PrimaryLang(l.code) == PrimaryLang(value) && !value.empty()) current = U8(NativeName(l.code) + L" (" + l.code + L")");
+    if (!value.empty()) {
+        const std::wstring pv = PrimaryLang(value);
+        for (const LangInfo& l : Languages()) {
+            if (l.code == value) {
+                current = U8(NativeName(l.code) + L" (" + l.code + L")");
+                break;
+            }
+            if (PrimaryLang(l.code) == pv) current = U8(NativeName(l.code) + L" (" + l.code + L")");
+        }
+    }
     bool changed = false;
     if (ImGui::BeginCombo(id, current.c_str())) {
         if (!emptyLabel.empty() && ImGui::Selectable(U8(emptyLabel).c_str(), value.empty())) {

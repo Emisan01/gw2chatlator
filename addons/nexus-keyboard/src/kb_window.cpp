@@ -1293,12 +1293,12 @@ void RenderWindow() {
     if (g_expandRequest) g_expandRequest = false;  // already open
     const float chatPx = PtToPx(g_cfg.fontPt > 0 ? g_cfg.fontPt : FollowPt());
     const bool wantZh = ChineseFontNeeded();
-    if ((g_cfg.fontPt <= 0 && chatPx != g_textFontPx) || wantZh != g_textFontWantZh)
-        RequestTextFont(g_cfg.fontPt, g_cfg.fontFace);  // the game's size or Chinese-font need changed
-    EnsureTextFontLoaded();
+    if (g_cfg.fontPt <= 0 && chatPx != g_textFontPx)
+        RequestTextFont(g_cfg.fontPt, g_cfg.fontFace);  // the game's size changed
+    EnsureOwnZhFont(wantZh, chatPx);
     const float uiPx = FollowUiPx();
     ImFont* uf = g_uiFont.load();
-    ImFont* tf = g_textFont.load();
+    ImFont* tf = ActiveTextFont();
     std::unique_lock<std::mutex> lock(g_mu);
     if (g_testToggleFallenAngel) {
         g_testToggleFallenAngel = false;

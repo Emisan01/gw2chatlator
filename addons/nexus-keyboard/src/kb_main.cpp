@@ -881,13 +881,13 @@ extern "C" __declspec(dllexport) int Gw2KbTestChatSource(int cmd, ChatSourceTest
             }
             return 0;
         }
-        case 27: {  // G4: probe DisplayForOurFont(W(text), L"ZH-HANS", LoadedFontCanDraw); returns 1 if msyh key active
+        case 27: {  // G4: probe DisplayForOurFont(W(text), L"ZH-HANS", LoadedFontCanDraw); returns 1 if CN glyphs loaded
             std::lock_guard<std::mutex> lock(g_mu);
             if (text && *text) {
                 const std::wstring d = DisplayForOurFont(W(text), L"ZH-HANS", LoadedFontCanDraw);
                 CopyUtf8(text, 4096, ToUtf8(d));
             }
-            return g_textFontKey.find("msyh") != std::string::npos ? 1 : 0;
+            return LoadedFontCanDraw(0x6211) ? 1 : 0;
         }
         case 25: {  // G5: read current OutgoingScriptWarning UTF-8 (1 if active, 0 if empty)
             std::lock_guard<std::mutex> lock(g_mu);

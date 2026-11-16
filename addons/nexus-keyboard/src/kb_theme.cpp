@@ -3,6 +3,7 @@
 #include "kb_shared.hpp"
 
 #include <chrono>
+#include <d3d11.h>
 
 namespace kb {
 
@@ -142,28 +143,98 @@ bool g_textFontWantZh = false;
 namespace {
 std::atomic<bool> s_fontAskPending{false};
 std::chrono::steady_clock::time_point s_fontAskAt{};
-ULONGLONG s_fontAskTick = 0;
 int s_atlasBeforeW = 0, s_atlasBeforeH = 0;
 bool s_loggedMissingZh = false;
-bool s_zhTriedMem = false;
-bool s_zhFallbackSegoe = false;
-std::string s_zhFontBytes;
+
+// Private Chinese ImFontAtlas + D3D11 SRV: Raidcore Nexus forces its own ~579-glyph range in Fonts_AddFromFile /
+// Fonts_AddFromMemory, so Simplified Chinese cannot come through Nexus' shared atlas. Building a standalone atlas for
+// msyh.ttc when Chinese is selected leaves Nexus' atlas (and other add-ons) completely untouched.
+struct RetiredOwnAtlas {
+    ImFontAtlas* atlas = nullptr;
+    ID3D11ShaderResourceView* srv = nullptr;
+    int framesLeft = 0;
+};
+ImFontAtlas* s_ownZhAtlas = nullptr;
+ImFont* s_ownZhFont = nullptr;
+ID3D11ShaderResourceView* s_ownZhSrv = nullptr;
+float s_ownZhPx = 0;
+int s_ownZhTexW = 0, s_ownZhTexH = 0;
+bool s_ownZhFailed = false;
+std::vector<RetiredOwnAtlas> s_retiredOwnAtlases;
+
+constexpr ImWchar kChatBaseRanges[] = {0x0020, 0x024F, 0x0370, 0x03FF, 0x0400, 0x04FF, 0x1E00, 0x1EFF, 0x2000, 0x206F,
+                                       0x20A0, 0x20CF, 0x2190, 0x21FF, 0x2200, 0x22FF, 0x25A0, 0x25FF, 0};
 
 bool IsZhCode(const std::wstring& code) { return PrimaryLang(code) == L"ZH"; }
 
-const ImWchar* ZhRangesData(const ImWchar* baseRanges) {
+const ImWchar* ZhRangesData(ImFontAtlas* atlas) {
     static std::vector<ImWchar> s_zhRanges;
-    if (s_zhRanges.empty()) {
+    if (s_zhRanges.empty() && atlas) {
         ImFontGlyphRangesBuilder builder;
-        builder.AddRanges(baseRanges);
-        if (ImGui::GetCurrentContext() && ImGui::GetIO().Fonts)
-            builder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesChineseSimplifiedCommon());
+        builder.AddRanges(kChatBaseRanges);
+        builder.AddRanges(atlas->GetGlyphRangesChineseSimplifiedCommon());
         ImVector<ImWchar> built;
         builder.BuildRanges(&built);
         s_zhRanges.assign(built.begin(), built.end());
         if (s_zhRanges.empty() || s_zhRanges.back() != 0) s_zhRanges.push_back(0);
     }
-    return s_zhRanges.data();
+    return s_zhRanges.empty() ? kChatBaseRanges : s_zhRanges.data();
+}
+
+void RetireActiveOwnZh() {
+    if (s_ownZhAtlas || s_ownZhSrv) {
+        s_retiredOwnAtlases.push_back({s_ownZhAtlas, s_ownZhSrv, 3});
+        s_ownZhAtlas = nullptr;
+        s_ownZhFont = nullptr;
+        s_ownZhSrv = nullptr;
+        s_ownZhTexW = 0;
+        s_ownZhTexH = 0;
+    }
+}
+
+void TickRetiredOwnZh(bool immediate) {
+    for (size_t i = 0; i < s_retiredOwnAtlases.size();) {
+        auto& r = s_retiredOwnAtlases[i];
+        if (!immediate && --r.framesLeft > 0) {
+            ++i;
+            continue;
+        }
+        if (r.srv) r.srv->Release();
+        delete r.atlas;
+        s_retiredOwnAtlases.erase(s_retiredOwnAtlases.begin() + static_cast<ptrdiff_t>(i));
+    }
+}
+
+bool UploadAtlasTextureD3D11(const unsigned char* pixels, int w, int h, ID3D11ShaderResourceView** outSrv) {
+    *outSrv = nullptr;
+    if (!g_api || !g_api->SwapChain) return true;  // headless self-test: no DX11 device, dummy TexID suffices
+    auto* sc = static_cast<IDXGISwapChain*>(g_api->SwapChain);
+    ID3D11Device* dev = nullptr;
+    if (FAILED(sc->GetDevice(__uuidof(ID3D11Device), reinterpret_cast<void**>(&dev))) || !dev) return false;
+    D3D11_TEXTURE2D_DESC desc = {};
+    desc.Width = static_cast<UINT>(w);
+    desc.Height = static_cast<UINT>(h);
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.Usage = D3D11_USAGE_IMMUTABLE;
+    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    D3D11_SUBRESOURCE_DATA init = {};
+    init.pSysMem = pixels;
+    init.SysMemPitch = static_cast<UINT>(w * 4);
+    ID3D11Texture2D* tex = nullptr;
+    bool ok = false;
+    if (SUCCEEDED(dev->CreateTexture2D(&desc, &init, &tex)) && tex) {
+        D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+        srvDesc.Format = desc.Format;
+        srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MipLevels = 1;
+        ok = SUCCEEDED(dev->CreateShaderResourceView(tex, &srvDesc, outSrv)) && *outSrv != nullptr;
+        tex->Release();
+    }
+    dev->Release();
+    return ok;
 }
 }  // namespace
 
@@ -177,9 +248,14 @@ bool ChineseFontNeeded() {
     return false;
 }
 
+ImFont* ActiveTextFont() {
+    if (g_textFontWantZh && s_ownZhFont && s_ownZhFont->IsLoaded()) return s_ownZhFont;
+    return g_textFont.load();
+}
+
 bool LoadedFontCanDraw(uint32_t c) {
     if (c == '\t' || c == '\n' || c == '\r') return true;
-    ImFont* font = g_textFont.load();
+    ImFont* font = ActiveTextFont();
     if (font && font->ContainerAtlas && !font->Glyphs.empty() && c <= 0xFFFF)
         return font->FindGlyphNoFallback(static_cast<ImWchar>(c)) != nullptr;
     return OurFontCanDraw(c);
@@ -211,9 +287,18 @@ void ReleaseTextFont() {
     g_textFontPx = 0;
     g_textFontWantZh = false;
     s_fontAskPending = false;
+    RetireActiveOwnZh();
+    TickRetiredOwnZh(true);
+    s_ownZhPx = 0;
+    s_ownZhFailed = false;
 }
 
 std::wstring TextFontStatusText() {
+    if (g_textFontWantZh && s_ownZhFont) {
+        const bool hasCn = s_ownZhFont->FindGlyphNoFallback(0x6211) != nullptr;
+        return L"own msyh (" + std::to_wstring(s_ownZhFont->Glyphs.Size) + L" glyphs, " +
+               std::to_wstring(s_ownZhTexW) + L"x" + std::to_wstring(s_ownZhTexH) + (hasCn ? L", CN)" : L")");
+    }
     ImFont* f = g_textFont.load();
     const int glyphs = (f && f->ContainerAtlas) ? f->Glyphs.Size : 0;
     const bool hasCn = f && f->ContainerAtlas && !f->Glyphs.empty() && f->FindGlyphNoFallback(0x6211) != nullptr;
@@ -238,46 +323,21 @@ void RequestTextFont(int pt, const std::wstring& face) {  // pt 0: like the game
     const float px = PtToPx(pt > 0 ? pt : FollowPt());
     wchar_t win[MAX_PATH] = {};
     GetWindowsDirectoryW(win, MAX_PATH);
-    const bool wantZh = ChineseFontNeeded();
-    if (!wantZh) {
-        s_zhTriedMem = false;
-        s_zhFallbackSegoe = false;
-    }
-    bool useZh = wantZh && !s_zhFallbackSegoe;
     std::wstring stem = face;
     std::wstring file = std::wstring(win) + L"\\Fonts\\" + stem + L".ttf";
-    if (useZh) {
-        const std::wstring zhFile = std::wstring(win) + L"\\Fonts\\msyh.ttc";
-        if (GetFileAttributesW(zhFile.c_str()) != INVALID_FILE_ATTRIBUTES) {
-            stem = L"msyh";
-            file = zhFile;
-        } else {
-            useZh = false;
-            if (!s_loggedMissingZh) {
-                s_loggedMissingZh = true;
-                TechLog('W', L"Chinese font missing: " + zhFile);
-            }
-        }
-    }
-    if (!useZh && GetFileAttributesW(file.c_str()) == INVALID_FILE_ATTRIBUTES) {  // missing: Segoe UI
+    if (GetFileAttributesW(file.c_str()) == INVALID_FILE_ATTRIBUTES) {  // missing: Segoe UI
         stem = L"segoeui";
         file = std::wstring(win) + L"\\Fonts\\segoeui.ttf";
-        if (GetFileAttributesW(file.c_str()) == INVALID_FILE_ATTRIBUTES) {
-            g_textFontWantZh = wantZh;
-            return;
-        }
+        if (GetFileAttributesW(file.c_str()) == INVALID_FILE_ATTRIBUTES) return;
     }
-    // Segoe UI keeps the name it always had; another face (incl. msyh) gets its own.
+    // Segoe UI keeps the name it always had; another face gets its own.
     const std::string key = stem == L"segoeui" ? std::string(kTextFontId) : std::string(kTextFontId) + "_" + ToUtf8(stem);
-    if (key == g_textFontKey || (useZh && s_zhTriedMem && g_textFontKey == std::string(kTextFontId) + "_msyh_mem")) {
+    if (key == g_textFontKey) {
         if (px != g_textFontPx && g_api->Fonts_Resize) g_api->Fonts_Resize(g_textFontKey.c_str(), px);
         g_textFontPx = px;
-        g_textFontWantZh = wantZh;
         return;
     }
     ReleaseTextFont();
-    static const ImWchar kRanges[] = {0x0020, 0x024F, 0x0370, 0x03FF, 0x0400, 0x04FF, 0x1E00, 0x1EFF, 0x2000, 0x206F,
-                                      0x20A0, 0x20CF, 0x2190, 0x21FF, 0x2200, 0x22FF, 0x25A0, 0x25FF, 0};
     s_atlasBeforeW = 0;
     s_atlasBeforeH = 0;
     if (ImGui::GetCurrentContext() && ImGui::GetIO().Fonts) {
@@ -285,65 +345,80 @@ void RequestTextFont(int pt, const std::wstring& face) {  // pt 0: like the game
         s_atlasBeforeH = ImGui::GetIO().Fonts->TexHeight;
     }
     s_fontAskAt = std::chrono::steady_clock::now();
-    s_fontAskTick = GetTickCount64();
     s_fontAskPending = true;
-    if (useZh) {
-        static ImFontConfig zhCfg;
-        zhCfg.OversampleH = 1;
-        zhCfg.OversampleV = 1;
-        zhCfg.GlyphRanges = ZhRangesData(kRanges);
-        g_api->Fonts_AddFromFile(key.c_str(), px, ToUtf8(file).c_str(), OnTextFont, &zhCfg);
-    } else {
-        // Latin (also the extended letters and Vietnamese), Greek, Cyrillic, punctuation, arrows, symbols – what chat
-        // and our window show (no Arabic: ImGui 1.80 draws it unjoined, user 2026-10-22).
-        static ImFontConfig cfg;
-        cfg.GlyphRanges = kRanges;
-        g_api->Fonts_AddFromFile(key.c_str(), px, ToUtf8(file).c_str(), OnTextFont, &cfg);
-    }
+    // Latin (also the extended letters and Vietnamese), Greek, Cyrillic, punctuation, arrows, symbols – what chat
+    // and our window show (no Arabic: ImGui 1.80 draws it unjoined, user 2026-10-22).
+    static ImFontConfig cfg;
+    cfg.GlyphRanges = kChatBaseRanges;
+    g_api->Fonts_AddFromFile(key.c_str(), px, ToUtf8(file).c_str(), OnTextFont, &cfg);
     g_textFontKey = key;
     g_textFontPx = px;
-    g_textFontWantZh = wantZh;
 }
 
-void EnsureTextFontLoaded() {
-    if (!g_textFontWantZh || s_zhFallbackSegoe || !g_api) return;
-    ImFont* f = g_textFont.load();
-    const bool hasCn = f && f->ContainerAtlas && !f->Glyphs.empty() && f->FindGlyphNoFallback(0x6211) != nullptr;
-    if (hasCn) return;
-    const bool timedOut = s_fontAskPending.load() && (GetTickCount64() - s_fontAskTick > 2500);
-    const bool settledNoCn = !s_fontAskPending.load() && f != nullptr;
-    if (!timedOut && !settledNoCn) return;
-    if (!s_zhTriedMem && g_api->Fonts_AddFromMemory) {
-        s_zhTriedMem = true;
-        wchar_t win[MAX_PATH] = {};
-        GetWindowsDirectoryW(win, MAX_PATH);
-        const std::wstring zhFile = std::wstring(win) + L"\\Fonts\\msyh.ttc";
-        if (ReadFileBytes(zhFile, s_zhFontBytes) && !s_zhFontBytes.empty()) {
-            const float px = g_textFontPx > 0 ? g_textFontPx : PtToPx(g_cfg.fontPt > 0 ? g_cfg.fontPt : FollowPt());
-            static const ImWchar kRanges[] = {0x0020, 0x024F, 0x0370, 0x03FF, 0x0400, 0x04FF, 0x1E00, 0x1EFF, 0x2000,
-                                              0x206F, 0x20A0, 0x20CF, 0x2190, 0x21FF, 0x2200, 0x22FF, 0x25A0, 0x25FF, 0};
-            ReleaseTextFont();
-            static ImFontConfig zhMemCfg;
-            zhMemCfg.OversampleH = 1;
-            zhMemCfg.OversampleV = 1;
-            zhMemCfg.FontDataOwnedByAtlas = false;
-            zhMemCfg.GlyphRanges = ZhRangesData(kRanges);
-            const std::string key = std::string(kTextFontId) + "_msyh_mem";
-            s_fontAskAt = std::chrono::steady_clock::now();
-            s_fontAskTick = GetTickCount64();
-            s_fontAskPending = true;
-            g_api->Fonts_AddFromMemory(key.c_str(), px, s_zhFontBytes.data(), static_cast<uint64_t>(s_zhFontBytes.size()),
-                                       OnTextFont, &zhMemCfg);
-            g_textFontKey = key;
-            g_textFontPx = px;
-            g_textFontWantZh = true;
-            TechLog('W', L"Chinese font file load had no CN glyphs -> retrying via Fonts_AddFromMemory");
-            return;
-        }
+void EnsureOwnZhFont(bool wantZh, float px) {
+    TickRetiredOwnZh(false);
+    g_textFontWantZh = wantZh;
+    if (!wantZh) {
+        RetireActiveOwnZh();
+        s_ownZhPx = 0;
+        s_ownZhFailed = false;
+        return;
     }
-    s_zhFallbackSegoe = true;
-    TechLog('W', L"Chinese font could not load via Nexus – keeping Segoe UI");
-    RequestTextFont(g_cfg.fontPt, g_cfg.fontFace);
+    if (s_ownZhFont && std::abs(s_ownZhPx - px) < 0.5f) return;
+    if (s_ownZhFailed && std::abs(s_ownZhPx - px) < 0.5f) return;
+
+    wchar_t win[MAX_PATH] = {};
+    GetWindowsDirectoryW(win, MAX_PATH);
+    const std::wstring zhFile = std::wstring(win) + L"\\Fonts\\msyh.ttc";
+    if (GetFileAttributesW(zhFile.c_str()) == INVALID_FILE_ATTRIBUTES) {
+        if (!s_loggedMissingZh) {
+            s_loggedMissingZh = true;
+            TechLog('W', L"Chinese font missing: " + zhFile);
+        }
+        s_ownZhFailed = true;
+        s_ownZhPx = px;
+        return;
+    }
+
+    const auto t0 = std::chrono::steady_clock::now();
+    auto* atlas = new ImFontAtlas();
+    ImFontConfig cfg;
+    cfg.OversampleH = 1;
+    cfg.OversampleV = 1;
+    ImFont* font = atlas->AddFontFromFileTTF(ToUtf8(zhFile).c_str(), px, &cfg, ZhRangesData(atlas));
+    unsigned char* pixels = nullptr;
+    int texW = 0, texH = 0;
+    if (font) atlas->GetTexDataAsRGBA32(&pixels, &texW, &texH);
+    if (!font || !pixels || texW <= 0 || texH <= 0 || font->FindGlyphNoFallback(0x6211) == nullptr) {
+        delete atlas;
+        s_ownZhFailed = true;
+        s_ownZhPx = px;
+        TechLog('W', L"Chinese own font build failed");
+        return;
+    }
+
+    ID3D11ShaderResourceView* srv = nullptr;
+    if (!UploadAtlasTextureD3D11(pixels, texW, texH, &srv)) {
+        delete atlas;
+        s_ownZhFailed = true;
+        s_ownZhPx = px;
+        TechLog('W', L"Chinese own font D3D11 upload failed");
+        return;
+    }
+    atlas->SetTexID(srv ? static_cast<ImTextureID>(srv) : reinterpret_cast<ImTextureID>(1));
+    atlas->ClearTexData();  // GPU holds the pixels; keep CPU RAM free
+
+    RetireActiveOwnZh();
+    s_ownZhAtlas = atlas;
+    s_ownZhFont = font;
+    s_ownZhSrv = srv;
+    s_ownZhPx = px;
+    s_ownZhTexW = texW;
+    s_ownZhTexH = texH;
+    s_ownZhFailed = false;
+    const long long ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0).count();
+    TechLog('W', L"Chinese own font loaded (msyh): " + std::to_wstring(ms) + L" ms, " + std::to_wstring(texW) +
+                     L"x" + std::to_wstring(texH) + L", " + std::to_wstring(font->Glyphs.Size) + L" glyphs");
 }
 
 // The options window's font: Segoe UI at the size of Nexus' own UI (user, 2026-10-22: the chat's size is the chat
