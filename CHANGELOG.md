@@ -3,6 +3,24 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.10.9 — 2026-11-16 (GW2Chatlator for Nexus)
+
+- **Simplified Chinese Rendering & Language Support (`ZH-HANS` & `RU`):**
+  - Simplified Chinese (`ZH-HANS`) is now selectable for reading, writing, and sending (`31` read/write languages, `28` GW2-sendable languages).
+  - When Chinese is active in any language field, GW2Chatlator renders Simplified Chinese directly in chat, preview, input, and tooltips using Microsoft YaHei (`msyh.ttc`) via a dedicated private `ImFontAtlas` and Direct3D 11 texture—completely isolated from Raidcore Nexus' shared atlas (`0 MB` overhead when Chinese is not selected).
+  - Scripts not drawable in the current font (e.g. Japanese, Korean, Thai, Arabic, Hebrew, Traditional Chinese) show a clean `Script – N characters` summary instead of missing-glyph boxes.
+  - Outgoing messages containing Cyrillic remain sendable via Enter while displaying a clear preview warning (`GW2 chat cannot show Cyrillic`).
+  - Fixed exact language matching in `Options → Start` (`LanguageCombo`) so `ZH-HANS` is never mislabeled as `ZH-HANT`.
+- **Streamlined Chat Window, Footer & Quick Typing Menu (`⋮`):**
+  - Replaced `<` clear button with `×`, added a compact quick typing-assistance menu `⋮` beside the input box (including the LanguageTool privacy prompt when enabled from there), and moved `Quit` (closes the window and pauses chat reading; hotkey restores both) into the `☰` menu.
+  - Upgraded the chat footer to crisp two-line fields (`Channel`, `I write in`, `Goes out as` / `Translation off`) that adapt cleanly across narrow window widths.
+- **Typing & Grammar Pipeline Refinement:**
+  - Separated next-word prediction, offline Windows spelling, and LanguageTool grammar checking into distinct worker stages, offered German two-word compound splits without auto-applying them, and sent `TypingLang()` directly to LanguageTool.
+- **Unified Status Labels, Privacy Docs & Helper Cleanup:**
+  - Unified status strings across the chat window, options, and worker (`Read: …`, `Send: …`, `Translating …`, `Downloading …`).
+  - Bound `gw2kb_voice.exe` and helper probes to Kill-on-Close Windows Job Objects and cleared stale `%TEMP%\gw2kb-localmt-*` and `gw2kb-voice-*` staging folders older than 24 hours on startup.
+  - Updated `README.md` with exact language counts, local-vs-online privacy boundaries, and uninstall instructions (`Options → Technical → Remove everything of GW2Chatlator`).
+
 ## 2.10.8 — 2026-11-13 (GW2Chatlator for Nexus)
 
 - **LanguageTool Privacy Consent Notice:**
