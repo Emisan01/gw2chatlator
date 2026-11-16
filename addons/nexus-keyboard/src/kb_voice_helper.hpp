@@ -2,6 +2,8 @@
 // Included by kb_shared.hpp at its place (it relies on what stands before it there) – include that, not this.
 #pragma once
 
+#include "win/process_job.hpp"
+
 namespace kb {
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -27,15 +29,33 @@ public:
         si.hStdInput = inRead;
         si.hStdOutput = outWrite;
         si.hStdError = outWrite;
+        HANDLE job = gct::CreateKillOnCloseJob();
         std::wstring cmd = L"\"" + exe + L"\" --data \"" + dataDir + L"\"";
         PROCESS_INFORMATION pi{};
+        const DWORD flags = CREATE_NO_WINDOW | BELOW_NORMAL_PRIORITY_CLASS | (job ? CREATE_SUSPENDED : 0);
         const BOOL ok = CreateProcessW(exe.c_str(), cmd.data(), nullptr, nullptr, TRUE,
-                                       CREATE_NO_WINDOW | BELOW_NORMAL_PRIORITY_CLASS, nullptr, nullptr, &si, &pi);
+                                       flags, nullptr, nullptr, &si, &pi);
         CloseHandle(inRead);
         CloseHandle(outWrite);
         if (!ok) {
+            if (job) CloseHandle(job);
             Close();
             return false;
+        }
+        if (job) {
+            if (AssignProcessToJobObject(job, pi.hProcess)) {
+                job_ = job;
+            } else {
+                CloseHandle(job);
+                job = nullptr;
+            }
+            if (ResumeThread(pi.hThread) == static_cast<DWORD>(-1)) {
+                TerminateProcess(pi.hProcess, ERROR_PROCESS_ABORTED);
+                CloseHandle(pi.hThread);
+                CloseHandle(pi.hProcess);
+                Close();
+                return false;
+            }
         }
         CloseHandle(pi.hThread);
         process_ = pi.hProcess;
@@ -63,7 +83,8 @@ private:
     void Close() {
         if (inWrite_) CloseHandle(inWrite_);
         if (process_) CloseHandle(process_);
-        inWrite_ = process_ = nullptr;
+        if (job_) CloseHandle(job_);
+        inWrite_ = process_ = job_ = nullptr;
         if (outRead_ && !reader_.joinable()) {
             CloseHandle(outRead_);
             outRead_ = nullptr;
@@ -92,7 +113,7 @@ private:
         g_voiceReady = g_recording = false;
         g_voiceLive.clear();
     }
-    HANDLE process_ = nullptr, inWrite_ = nullptr, outRead_ = nullptr;
+    HANDLE process_ = nullptr, inWrite_ = nullptr, outRead_ = nullptr, job_ = nullptr;
     std::thread reader_;
 };
 

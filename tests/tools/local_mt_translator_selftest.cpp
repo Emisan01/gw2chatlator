@@ -10,6 +10,7 @@
 #include "core/translator.hpp"
 #include "win/local_mt_packages.hpp"
 #include "win/local_mt_translator.hpp"
+#include "win/process_job.hpp"
 
 namespace {
 bool Check(bool ok, const char* label) {
@@ -65,6 +66,22 @@ HANDLE StartRunning(const std::filesystem::path& exe, HANDLE& stdinWrite) {
 }  // namespace
 
 int wmain(int argc, wchar_t** argv) {
+    if (argc >= 4 && std::wcscmp(argv[1], L"--j3-parent") == 0) {
+        HANDLE job = gct::CreateKillOnCloseJob();
+        HANDLE stdinWrite = nullptr;
+        HANDLE child = StartRunning(argv[2], stdinWrite);
+        if (!child || (job && !AssignProcessToJobObject(job, child))) return 2;
+        const DWORD childPid = GetProcessId(child);
+        {
+            std::ofstream out(argv[3], std::ios::binary | std::ios::trunc);
+            out << childPid << "\n";
+        }
+        Sleep(30000);
+        if (job) CloseHandle(job);
+        if (stdinWrite) CloseHandle(stdinWrite);
+        if (child) CloseHandle(child);
+        return 0;
+    }
     if (argc != 2) {
         std::cerr << "Usage: local_mt_translator_selftest <fake-helper.exe>\n";
         return 2;
@@ -317,6 +334,42 @@ int wmain(int argc, wchar_t** argv) {
         std::filesystem::remove_all(oldMt, ec);
         std::filesystem::remove_all(oldVoice, ec);
         std::filesystem::remove_all(freshMt, ec);
+    }
+
+    // J3: Hard-terminating the parent process kills the bound helper immediately via JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE.
+    {
+        wchar_t selfExe[MAX_PATH * 2] = {};
+        GetModuleFileNameW(nullptr, selfExe, MAX_PATH * 2);
+        const auto pidFile = data / L"j3-helper.pid";
+        std::filesystem::create_directories(data, ec);
+        std::filesystem::remove(pidFile, ec);
+        std::wstring cmd = L"\"" + std::wstring(selfExe) + L"\" --j3-parent \"" + std::wstring(argv[1]) +
+                           L"\" \"" + pidFile.wstring() + L"\"";
+        STARTUPINFOW si{};
+        si.cb = sizeof(si);
+        PROCESS_INFORMATION pi{};
+        const BOOL spawned = CreateProcessW(selfExe, cmd.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW,
+                                            nullptr, nullptr, &si, &pi);
+        DWORD helperPid = 0;
+        if (spawned) {
+            for (int w = 0; w < 60 && helperPid == 0; ++w) {
+                Sleep(50);
+                std::ifstream in(pidFile);
+                if (in) in >> helperPid;
+            }
+            HANDLE helperHandle =
+                helperPid ? OpenProcess(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, helperPid) : nullptr;
+            TerminateProcess(pi.hProcess, 99);
+            WaitForSingleObject(pi.hProcess, 2000);
+            const bool helperKilled = helperHandle && (WaitForSingleObject(helperHandle, 2000) == WAIT_OBJECT_0);
+            if (helperHandle) CloseHandle(helperHandle);
+            CloseHandle(pi.hThread);
+            CloseHandle(pi.hProcess);
+            ok &= Check(helperPid != 0 && helperKilled,
+                        "J3: hard termination of parent terminates bound helper immediately");
+        } else {
+            ok &= Check(false, "J3: failed to spawn simulated parent host");
+        }
     }
 
     std::filesystem::remove_all(data, ec);

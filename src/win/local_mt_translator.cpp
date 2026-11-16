@@ -18,6 +18,7 @@
 #include "core/local_mt_protocol.hpp"
 #include "core/text.hpp"
 #include "core/translation_check.hpp"
+#include "win/process_job.hpp"
 
 namespace gct {
 namespace {
@@ -374,15 +375,7 @@ private:
         SetHandleInformation(read_, HANDLE_FLAG_INHERIT, 0);
         HANDLE nullOut = CreateFileW(L"NUL", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, &sa, OPEN_EXISTING,
                                      FILE_ATTRIBUTE_NORMAL, nullptr);
-        HANDLE job = CreateJobObjectW(nullptr, nullptr);
-        if (job) {
-            JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits{};
-            limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
-            if (!SetInformationJobObject(job, JobObjectExtendedLimitInformation, &limits, sizeof(limits))) {
-                CloseHandle(job);
-                job = nullptr;
-            }
-        }
+        HANDLE job = CreateKillOnCloseJob();
         STARTUPINFOW si{};
         si.cb = sizeof(si);
         si.dwFlags = STARTF_USESTDHANDLES;
@@ -851,17 +844,27 @@ HelperInfo ProbeLocalMtHelper(const std::wstring& helperExe, const std::wstring&
     si.hStdOutput = childOut;
     si.hStdError = childOut;
 
+    HANDLE job = CreateKillOnCloseJob();
     std::wstring command = L"\"" + helperExe + L"\" --data \"" + dataDir + L"\"";
     PROCESS_INFORMATION pi{};
+    const DWORD flags = CREATE_NO_WINDOW | BELOW_NORMAL_PRIORITY_CLASS | (job ? CREATE_SUSPENDED : 0);
     const BOOL created = CreateProcessW(helperExe.c_str(), command.data(), nullptr, nullptr, TRUE,
-                                         CREATE_NO_WINDOW | BELOW_NORMAL_PRIORITY_CLASS, nullptr, nullptr, &si, &pi);
+                                        flags, nullptr, nullptr, &si, &pi);
     CloseHandle(childIn);
     CloseHandle(childOut);
     if (!created) {
+        if (job) CloseHandle(job);
         CloseHandle(write);
         CloseHandle(read);
         info.status = HelperStatus::Missing;
         return info;
+    }
+    if (job) {
+        if (!AssignProcessToJobObject(job, pi.hProcess)) {
+            CloseHandle(job);
+            job = nullptr;
+        }
+        ResumeThread(pi.hThread);
     }
     CloseHandle(pi.hThread);
 
@@ -896,6 +899,7 @@ HelperInfo ProbeLocalMtHelper(const std::wstring& helperExe, const std::wstring&
         TerminateProcess(pi.hProcess, 0);
     }
     CloseHandle(pi.hProcess);
+    if (job) CloseHandle(job);
     CloseHandle(read);
 
     if (!gotReady) {
