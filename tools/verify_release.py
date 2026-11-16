@@ -14,7 +14,9 @@ Measures all gates required for a release:
 
 Modes:
   --full: The one release audit. Refuses a dirty tree, configures and builds every artifact from HEAD
-          (build/ and build-localmt-omp/), runs all 8 gates, checks the binaries carry HEAD without
+          (build/ and build-localmt-omp/), runs the release core gates (Gate 1/2/3/4a/6/7/8) plus
+          change-scoped suites (local_mt_selftest, typing_bench, translation_bench when files changed
+          since last release tag; add --all-gates to force all), checks the binaries carry HEAD without
           "-dirty", runs pack_release.py and writes build/dist/verification.json.
   --check-receipt: Fast (<5s) check that the receipt is from a clean tree, its commit is HEAD (or only
                    doc files changed since), and the artifacts on disk match its hashes.
@@ -343,6 +345,7 @@ def main():
         sys.exit(check_receipt())
 
     is_full = "--full" in sys.argv
+    all_gates = "--all-gates" in sys.argv
     allow_dirty = "--allow-dirty" in sys.argv
 
     session_arg = None
@@ -367,13 +370,16 @@ def main():
     tag_needed = set()
     tag = last_version_tag()
     if is_full:
-        if tag:
+        if all_gates:
+            tag_needed = {"local_mt_selftest", "typing", "translation"}
+            print("[*] Full release audit (--all-gates): forcing all scoped suites (local_mt_selftest, typing, translation)")
+        elif tag:
             tag_files = changed_files(tag)
             tag_cmake = changed_cmake_lines(tag)
             tag_needed = gates_for(tag_files, tag_cmake)
-            print(f"[*] Full release audit: changes since {tag} ({len(tag_files)} files) -> scoped benchmarks: {', '.join(sorted(tag_needed)) or 'none'}")
+            print(f"[*] Full release audit: changes since {tag} ({len(tag_files)} files) -> scoped suites: {', '.join(sorted(tag_needed)) or 'none'}")
         else:
-            tag_needed = {"typing", "translation"}
+            tag_needed = {"local_mt_selftest", "typing", "translation"}
 
     only = None
     plan = "--plan" in sys.argv
@@ -439,7 +445,7 @@ def main():
     local_mt_fake = ROOT / "build" / "Release" / "local_mt_fake_helper.exe"
     dll = ROOT / "build" / "addons" / "nexus-keyboard" / "Release" / "GW2Chatlator.dll"
     need_nexus_selftest = wanted("nexus_selftest")
-    need_local_mt_selftest = wanted("local_mt_selftest")
+    need_local_mt_selftest = ("local_mt_selftest" in tag_needed) if is_full else wanted("local_mt_selftest")
     need_binary = wanted("binary")
     need_smoke = wanted("smoke")
 
@@ -464,6 +470,9 @@ def main():
         gate_results.append({"gate": 4, "sub": "local_mt", "name": "Local Translator Process Selftest", "status": "PASS" if ok else "FAIL", "duration_sec": dur, "exit_code": 0 if ok else 1})
         test_metrics["local_mt_selftest"] = "PASS" if ok else "FAIL"
         if not ok: sys.exit(1)
+    elif is_full:
+        print("[-] Skipped: Local Translator Process Selftest (no local-MT changes since last release)")
+        test_metrics["local_mt_selftest"] = "skipped (no changes since last release)"
 
     # Gate 5: Typing benchmark determinism
     typing_bench = ROOT / "build" / "Release" / "typing_bench.exe"
