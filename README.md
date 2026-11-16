@@ -57,7 +57,10 @@ Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustot
   pages sit in a side bar like Nexus' own: Chat, Typing help, Voice, Translator, Window, Technical. Everything applies
   at once.
 - **Failsafe:** an error switches the add-on off for the session, never the game.
-- English, Deutsch, Français, Español, Italiano, Polski, Português, Türkçe, Русский.
+- **Languages:** **Read and write** 31 languages including Russian (Cyrillic), Greek, Simplified Chinese
+  (on Windows with Microsoft YaHei), and Latin scripts; **send to GW2 chat** in 28 languages (Latin scripts
+  and Chinese – Cyrillic is excluded from *Goes out as* and shows a warning before sending because GW2 renders it
+  blank). **UI:** English, Deutsch, Français, Español, Italiano, Polski, Português, Türkçe, Русский.
 
 ## Install (one minute)
 
@@ -68,8 +71,9 @@ Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustot
    modules – **Events: Chat** (reads the chat; typing help works without it) with an "Install" button, and the voice
    module only once you switch voice input on (Options → Voice); its model comes after that, each on your
    click.
-4. To remove it again: what it brought has a remove button – the voice module and the voice models in Options → Voice
-   – and at the bottom of Options → Technical "Remove everything of GW2Chatlator …"; then Nexus → Addons → Uninstall.
+4. Before uninstalling in Nexus: Options → Technical → Remove everything of GW2Chatlator (deletes the
+   `GW2Keyboard` folder with settings and models); then Nexus → Addons → Uninstall. Individual modules (voice
+   module, voice models, local translation models) also have their own remove buttons in Options.
    Events: Chat is its own add-on and other add-ons may use it: remove it in Nexus → Addons as well, never by
    deleting its file – Nexus keeps listing a file deleted behind its back.
 5. Translation is yours to switch on: menu ≡ → Options → Start (or a key of your own) – what you send in is chosen there
@@ -155,9 +159,8 @@ why GW2Chatlator works like this:
 ## Privacy: what leaves your PC
 
 **Your chat stays yours.** GW2Chatlator keeps no chat log and collects nothing about other players. What it learns
-from your typing, and every word you save yourself, stays on your PC. Text leaves your PC only to be translated, and
-only to the translator you chose: the local one never sends anything away. Online translators are third parties: they
-receive the text they translate, and we can't see what they do with it.
+from your typing, and every word you save yourself, stays on your PC. Online translators (MyMemory and API-key services) receive the text they translate; with local translators
+(NLLB-200, OPUS-MT, M2M100), nothing leaves your PC.
 
 **Your voice never leaves your PC** – recognition runs locally, nothing is recorded to disk. API keys you enter are
 stored encrypted for your Windows account.
