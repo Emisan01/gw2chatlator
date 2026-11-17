@@ -786,6 +786,38 @@ std::wstring MyMemoryQuotaText() {  // "MyMemory 25 / 5.0k today" (g_mu held)
     return TrF(L"MyMemory {1} / {2} today", {Kilo(std::min(MyMemoryUsedToday(), MyMemoryLimit())), Kilo(MyMemoryLimit())});
 }
 
+namespace {
+std::wstring g_myMemoryOutDay;  // the day MyMemory said "used up" ("20261117"); empty: it did not (g_mu)
+}
+void NoteMyMemoryAnswer(bool quotaExceeded) {  // g_mu held
+    if (!UsingMyMemory()) return;
+    if (quotaExceeded) g_myMemoryOutDay = Today();
+    else g_myMemoryOutDay.clear();
+}
+bool MyMemoryOut() {  // g_mu held
+    if (!UsingMyMemory()) {
+        g_myMemoryOutDay.clear();
+        return false;
+    }
+    if (!g_myMemoryOutDay.empty() && g_myMemoryOutDay != Today()) g_myMemoryOutDay.clear();  // a new day
+    // MyMemory said so – or our count reached the day's free text (Emi, 2026-11-17: the moment the 5,000 are used up
+    // is the moment to offer the e-mail, whether or not the server still answers)
+    return !g_myMemoryOutDay.empty() || MyMemoryUsedToday() >= MyMemoryLimit();
+}
+bool MyMemoryHasEmail() { return !Trim(g_cfg.basicEmail).empty(); }  // g_mu held
+void GiveMyMemoryEmail(const std::wstring& mail) {  // g_mu held; as the field in Options → Translator does
+    g_cfg.basicEmail = Trim(mail);
+    g_cfg.SaveValue(L"Basic", L"Email", AsciiEscape(g_cfg.basicEmail));
+    TechLog('O', L"options changed: basicEmail (the quota button)");
+    g_translator = MakeTranslator(g_cfg);  // MyMemory asks with the address from now on
+    WarmUpTranslator(g_translator);
+    g_myMemoryOutDay.clear();
+    g_preview.clear();
+    ++g_inputGen;
+    g_inputChanged = GetTickCount64();
+    SetStatus(Tr(L"MyMemory: 50,000 characters a day from now on"), 6000);
+}
+
 std::wstring MyMemoryLeftText() {  // "4.9k left today" beside "Translate visible chat once" (g_mu held)
     if (!UsingMyMemory()) return {};
     return TrF(L"{1} left today", {Kilo(std::max(0, MyMemoryLimit() - MyMemoryUsedToday()))});

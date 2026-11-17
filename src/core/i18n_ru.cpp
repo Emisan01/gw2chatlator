@@ -5,6 +5,12 @@
 namespace gct {
 
 extern const I18nEntry kRussianStrings[] = {
+    {L"Any e-mail, even a made-up one, gives 50,000 instead of 5,000 characters a day.",
+     "Любой e-mail, даже выдуманный, даёт 50 000 вместо 5 000 символов в день."},
+    {L"Free again tomorrow.",
+     "Завтра снова доступно."},
+    {L"MyMemory: 50,000 characters a day from now on",
+     "MyMemory: теперь 50 000 символов в день"},
     {L"\"{1}\" forgotten",
      "\"{1}\" забыто"},
     {L"\"{1}\" is a real word – not learned as a typo",

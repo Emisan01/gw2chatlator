@@ -5,6 +5,12 @@
 namespace gct {
 
 extern const I18nEntry kTurkishStrings[] = {
+    {L"Any e-mail, even a made-up one, gives 50,000 instead of 5,000 characters a day.",
+     "Herhangi bir e-posta, uydurma olsa bile, günde 5.000 yerine 50.000 karakter verir."},
+    {L"Free again tomorrow.",
+     "Yarın yeniden serbest."},
+    {L"MyMemory: 50,000 characters a day from now on",
+     "MyMemory: artık günde 50.000 karakter"},
     {L"\"{1}\" forgotten",
      "\"{1}\" unutuldu"},
     {L"\"{1}\" is a real word – not learned as a typo",

@@ -687,6 +687,12 @@ bool UsingMyMemory();
 std::wstring Today();
 void CountMyMemory(size_t chars);
 std::wstring MyMemoryQuotaText();
+// MyMemory said today's free contingent is used up: the "!" beside the input stays until a translation goes through
+// again, an e-mail is given or the day changes (Emi, 2026-11-17: the status said it for 8 s, nobody saw it). g_mu.
+void NoteMyMemoryAnswer(bool quotaExceeded);
+bool MyMemoryOut();
+bool MyMemoryHasEmail();
+void GiveMyMemoryEmail(const std::wstring& mail);
 std::wstring OutgoingScriptWarning();
 std::wstring MyMemoryLeftText();
 bool LimitedContingent();

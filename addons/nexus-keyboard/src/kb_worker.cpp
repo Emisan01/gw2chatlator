@@ -213,13 +213,18 @@ void TranslateLine(uint64_t id, std::wstring text, bool asked, bool once, std::w
         if (!r.ok || r.text.empty()) {  // never silent: the status says why (a missing language pack, the quota …)
             ++g_healthMtFailsInRow;
             clearPending(true);
-            if (!r.error.empty()) {
+            {
                 std::lock_guard<std::mutex> lock(g_mu);
-                SetStatus(r.error, 8000);
+                if (r.quotaExceeded) NoteMyMemoryAnswer(true);  // the "!" beside the input stays
+                if (!r.error.empty()) SetStatus(r.error, 8000);
             }
             return;
         }
         g_healthMtFailsInRow = 0;
+        if (fromModel) {  // MyMemory answered again: the "!" goes (only a real request tells, not the cache)
+            std::lock_guard<std::mutex> lock(g_mu);
+            NoteMyMemoryAnswer(false);
+        }
         t = SanitizeChatText(r.text);
         if (!raw) others = OtherVersions(r, t, p.segments, target);
         // The same check for every translator: nothing lost, nothing cut short. A doubtful translation is shown
@@ -462,9 +467,14 @@ void TranslateInput(uint64_t gen, std::wstring text, uint64_t sendId) {
                     doubt = Tr(L"Maybe inaccurate: the local model was unsure");
                 std::lock_guard<std::mutex> lock(g_mu);
                 g_lastErrorKind = TranslateErrorKind::None;
+                NoteMyMemoryAnswer(false);
             } else {
                 ++g_healthMtFailsInRow;
                 error = r.error;
+                if (r.quotaExceeded) {
+                    std::lock_guard<std::mutex> lock(g_mu);
+                    NoteMyMemoryAnswer(true);
+                }
                 if (r.errorKind != TranslateErrorKind::None) {
                     std::lock_guard<std::mutex> lock(g_mu);
                     g_lastErrorKind = r.errorKind;

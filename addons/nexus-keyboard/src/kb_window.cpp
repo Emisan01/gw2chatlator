@@ -1752,7 +1752,9 @@ void RenderWindow() {
     const bool showMarkBadge = !unseen && !g_help.marks.empty() && g_help.text == g_wFlatInput;
     const std::string badgeText = showMarkBadge ? std::to_string(g_help.marks.size()) : "";
     const float badgeW = showMarkBadge ? std::max(clearBtnW, ImGui::CalcTextSize(badgeText.c_str()).x + 8.0f) : 0.0f;
-    const float rightSideW = (showMarkBadge ? badgeW + clearGap : 0.0f) + (showClearBtn ? clearBtnW + clearGap : 0.0f) + moreBtnW + clearGap;
+    const bool showQuotaBadge = MyMemoryOut();  // MyMemory's free text for today is used up: an "!" until it is solved
+    const float rightSideW = (showMarkBadge ? badgeW + clearGap : 0.0f) + (showQuotaBadge ? clearBtnW + clearGap : 0.0f) +
+                             (showClearBtn ? clearBtnW + clearGap : 0.0f) + moreBtnW + clearGap;
     const float inputAvailW = ImGui::GetContentRegionAvail().x;
     const float inputW = std::max(50.0f, inputAvailW - rightSideW);
     const ImVec2 boxSize(inputW, boxH);
@@ -1878,6 +1880,52 @@ void RenderWindow() {
             } else {
                 ImGui::SetTooltip("%s", UI(TrF(L"Fix all {1} errors", {std::to_wstring(g_help.marks.size())})).c_str());
             }
+        }
+    }
+    if (showQuotaBadge) {  // like the badge of the marks: round, in orange; a click tells why and takes an e-mail
+        ImGui::SameLine(0, clearGap);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, clearBtnW * 0.5f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.92f, 0.58f, 0.12f, 0.90f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.65f, 0.18f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.80f, 0.48f, 0.08f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+        if (ImGui::Button("!##quotabadge", ImVec2(clearBtnW, boxH))) ImGui::OpenPopup("##quotapopup");
+        ImGui::PopStyleColor(4);
+        ImGui::PopStyleVar(2);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+            ImGui::SetTooltip("%s", UI(Tr(L"MyMemory daily quota is used up")).c_str());
+        }
+        if (ImGui::BeginPopup("##quotapopup")) {
+            ScopedPopupFont popupFont;
+            static char s_mail[128] = {};
+            ImGui::TextUnformatted(UI(Tr(L"MyMemory daily quota is used up")).c_str());
+            if (MyMemoryHasEmail()) {  // 50,000 used up as well: nothing to enter, tomorrow it is there again
+                ImGui::TextDisabled("%s", UI(Tr(L"Free again tomorrow.")).c_str());
+            } else {
+                ImGui::TextDisabled("%s", UI(Tr(L"Any e-mail, even a made-up one, gives 50,000 instead of 5,000 characters a day.")).c_str());
+                if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
+                ImGui::SetNextItemWidth(ImGui::GetFontSize() * 14);
+                const bool mailEnter = ImGui::InputTextWithHint("##quotamail", "name@example.com", s_mail, sizeof s_mail,
+                                                                ImGuiInputTextFlags_EnterReturnsTrue);
+                const std::wstring mail = Trim(W(s_mail));
+                const size_t at = mail.find(L'@');
+                const bool looksLikeOne = at != std::wstring::npos && at > 0 && mail.find(L'.', at) != std::wstring::npos &&
+                                          mail.back() != L'.' && mail.find(L' ') == std::wstring::npos;
+                ImGui::SameLine();
+                // greyed until it looks like an address (this ImGui has no BeginDisabled)
+                if (!looksLikeOne) ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.45f);
+                const bool ok = ImGui::Button("OK##quotamail");
+                if (!looksLikeOne) ImGui::PopStyleVar();
+                if ((ok || mailEnter) && looksLikeOne) {
+                    GiveMyMemoryEmail(mail);
+                    s_mail[0] = '\0';
+                    g_focusInput = true;
+                    ImGui::CloseCurrentPopup();
+                }
+            }
+            ImGui::EndPopup();
         }
     }
     if (showClearBtn) {
