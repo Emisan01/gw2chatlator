@@ -32,11 +32,8 @@ void SendLanguageItems(bool tabAware) {
     };
     const bool tabChoice = inTab && !g_sendOverride.empty();
     const bool isOff = !g_nx.translateChat;
-    if (ImGui::Selectable(UI(Tr(L"Read: off")).c_str(), isOff)) {
-        if (!isOff) SetChatTranslation(false);
-        chosen();
-        return;
-    }
+    // no "Read: off" here (Emi, 2026-11-17): where your text goes is not whether the chat is translated – that is
+    // switched where it always was (Options → Start, the chat tab's menu, the hotkey)
     if (SendableInGw2(TypingLang())) {
         const bool current = !isOff && (tabChoice ? g_sendOverride == L"=" : g_sendIdx == static_cast<int>(n));
         if (ImGui::Selectable(UI(Tr(L"as written")).c_str(), current)) choose(n);
