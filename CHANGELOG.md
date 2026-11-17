@@ -3,6 +3,11 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.10.11 — 2026-11-17 (GW2Chatlator for Nexus)
+
+- **MyMemory Quota Button:**
+  - When today's free MyMemory text is used up, an orange `!` appears beside the input. A click explains it and takes an e-mail address – any one, even made up – which raises the free limit from 5,000 to 50,000 characters a day. Before, the status line said it for 8 seconds only.
+
 ## 2.10.10 — 2026-11-17 (GW2Chatlator for Nexus)
 
 - **Send Menu Only Chooses Where Your Text Goes:**
