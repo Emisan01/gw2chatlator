@@ -3,6 +3,11 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.10.10 — 2026-11-17 (GW2Chatlator for Nexus)
+
+- **Send Menu Only Chooses Where Your Text Goes:**
+  - Removed `Read: off` from the footer's `Goes out as` menu: the send language no longer switches the chat's translation. Chat translation is still switched in `Options → Start`, the chat tab's menu and the hotkey.
+
 ## 2.10.9 — 2026-11-16 (GW2Chatlator for Nexus)
 
 - **Simplified Chinese Rendering & Language Support (`ZH-HANS` & `RU`):**
