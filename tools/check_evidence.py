@@ -13,6 +13,12 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 EVIDENCE_SINCE = "493249e"  # the commit that brought the working modes into AGENTS.md
 NEEDS = {"feat", "fix", "perf", "refactor"}
+# Published commits that went out without the trailer (a public commit is never rewritten): each with its evidence,
+# entered on Emi's word. Short hashes, as git log prints them.
+KNOWN = {
+    "3b47b78": "2.10.10, released with the gates skipped on Emi's word; Proof – Emi's in-game test 2026-11-17: the "
+               "Goes out as menu shows as written and the languages, no Read: off (Emi, 2026-11-17)",
+}
 
 
 def needs_evidence(subject: str) -> bool:
@@ -43,7 +49,7 @@ def check_range(rev_range: str) -> list:
         if len(parts) < 3:
             continue
         sha, subject, body = parts[0], parts[1], parts[2]
-        if needs_evidence(subject) and not has_evidence(body):
+        if needs_evidence(subject) and not has_evidence(body) and sha[:7] not in KNOWN:
             missing.append(f"{sha} {subject[:90]}")
     return missing
 
