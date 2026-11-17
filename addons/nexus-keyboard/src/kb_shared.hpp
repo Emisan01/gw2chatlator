@@ -788,6 +788,11 @@ extern bool g_collapsed;
 void MinimizeWindow();
 float FooterHeight();
 void RenderFooter();
+// The chat's lines in the main window (kb_chat.cpp); the window keeps the frame around them.
+void RenderChat(ImGuiIO& io, std::unique_lock<std::mutex>& lock, const ImGuiStyle& st, bool& s_lineRightClick, uint64_t& s_lineMenuId, std::wstring& s_lineMenuText, bool& s_openLineMenu, bool& s_lineMenuOpen, const float& line, const float& lowerH);
+bool InfoTexts();        // Options → Window: the info texts, never in the subtitle mode
+bool SubtitleWriting();  // the subtitle mode while you write: its input and a soft background
+
 void ApplyAutoCorrectChoice(Config& cfg, int level, bool persistAndApply, bool* showConsentDialog = nullptr);
 void ApplyGrammarCheckChoice(Config& cfg, bool enabled, bool persistAndApply, bool* showConsentDialog = nullptr);
 extern bool g_requestLtConsent;
