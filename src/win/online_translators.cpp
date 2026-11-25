@@ -24,6 +24,20 @@ namespace gct {
 // ===========================================================================
 namespace {
 
+// A language the service is not proven to take (core/languages ServiceTakes, Kurmanji): no request, "pair not
+// supported" – never sent as another language.
+std::vector<TranslateResult> Refused(const wchar_t* service, size_t n) {
+    std::vector<TranslateResult> out(n ? n : 1);
+    for (auto& r : out) {
+        r.error = std::wstring(service) + L": " + Tr(L"Language pair not supported by engine");
+        r.errorKind = TranslateErrorKind::UnsupportedPair;
+    }
+    return out;
+}
+bool Takes(MtService s, const std::wstring& sourceLang, const std::wstring& targetLang) {
+    return ServiceTakes(s, sourceLang) && ServiceTakes(s, targetLang);
+}
+
 class MyMemoryTranslator final : public Translator {
 public:
     explicit MyMemoryTranslator(std::wstring email) : email_(Trim(email)) {}
@@ -32,6 +46,7 @@ public:
 
     TranslateResult Translate(const std::vector<Segment>& segments, const std::wstring& sourceLang,
                               const std::wstring& targetLang) override {
+        if (!Takes(MtService::MyMemory, sourceLang, targetLang)) return Refused(L"MyMemory", 1)[0];
         TranslateResult r;
         const std::wstring text = JoinSegments(segments);
         std::wstring source = sourceLang.empty() ? DetectLanguage(text) : PrimaryLang(sourceLang);
@@ -266,6 +281,7 @@ public:
                                                 const std::wstring& sourceLang,
                                                 const std::wstring& targetLang) override {
         if (items.empty()) return {};
+        if (!Takes(MtService::Supertext, sourceLang, targetLang)) return Refused(L"Supertext", items.size());
         const CloudMtPayload p = BuildSupertextPayload(items, sourceLang, targetLang);
         const std::wstring headers = L"Authorization: Supertext-Auth-Key " + key_ + L"\r\nContent-Type: application/json\r\n";
         const HttpResponse http = HttpsRequest(L"POST", L"api.supertext.com", L"/v1/translate/ai/text", headers, p.json);
@@ -300,6 +316,7 @@ public:
                                                 const std::wstring& sourceLang,
                                                 const std::wstring& targetLang) override {
         if (items.empty()) return {};
+        if (!Takes(MtService::Libre, sourceLang, targetLang)) return Refused(L"LibreTranslate", items.size());
         const CloudMtPayload p = BuildLibrePayload(items, sourceLang, targetLang, key_);
         const HttpResponse http = HttpRequestUrl(L"POST", url_, L"Content-Type: application/json\r\n", p.json, 20000);
         if (!http.transportOk)

@@ -82,6 +82,9 @@ struct TestHooks {  // as in kb_main.cpp
     std::atomic<ULONGLONG>* bufferingStartTime = nullptr;
     float inputAlpha = 1.0f;
     bool* testToggleFallenAngel = nullptr;
+    bool infoInBox = false;    // an info text stood in the input box this frame (never while there is text in it)
+    bool kebabShown = true;    // the typing menu's button was drawn this frame (not in the subtitle mode while unseen)
+    bool markNoteShown = false;  // a mark's note (LanguageTool) stood above the input this frame
 };
 void Free(void* p, void*) { std::free(p); }
 
@@ -863,6 +866,7 @@ int wmain(int argc, wchar_t** argv) {
             if (auto subsMode = reinterpret_cast<void (*)(int)>(GetProcAddress(dll, "Gw2KbTestSubtitles"))) {
                 subsMode(1);
                 frames(5);
+                const bool kebabHiddenIdle = !th->kebabShown;  // only the flowing chat: no typing menu either
                 ImGuiWindow* mw = ImGui::FindWindowByName("GW2Chatlator###kbmain");
                 const ImVec2 wp = mw ? mw->Pos : ImVec2(300, 500);
                 const ImVec2 ws = mw ? mw->SizeFull : ImVec2(520, 250);
@@ -892,6 +896,8 @@ int wmain(int argc, wchar_t** argv) {
                 type("Subtitles typing test");
                 frames(3);
                 const bool textEntered = (std::strstr(th->input, "Subtitles typing test") != nullptr);
+                const bool kebabWhileWriting = th->kebabShown;
+                const bool noInfoOverText = !th->infoInBox;  // RULE: text in the input, no info text in the box
 
                 // Esc closes subtitle input
                 press(VK_ESCAPE);
@@ -918,7 +924,12 @@ int wmain(int argc, wchar_t** argv) {
                 std::printf("subtitles glass click: active %s, alpha visible %s, typing %s, esc closed %s, reopen %s\n",
                             fieldActiveAll ? "yes" : "no", alphaVisibleAll ? "yes" : "no",
                             textEntered ? "yes" : "no", escClosed ? "yes" : "no", reopened ? "yes" : "no");
-                const bool subsOk = fieldActiveAll && alphaVisibleAll && textEntered && escClosed && reopened;
+                std::printf("subtitles typing menu: hidden while unseen %s, there while writing %s; info text over typed text: %s\n",
+                            kebabHiddenIdle ? "yes" : "no", kebabWhileWriting ? "yes" : "no", noInfoOverText ? "none" : "SHOWN");
+                if (!kebabHiddenIdle || !kebabWhileWriting) std::printf("FAIL: the typing menu does not follow the subtitle mode\n");
+                if (!noInfoOverText) std::printf("FAIL: an info text stood in the box over typed text\n");
+                const bool subsOk = fieldActiveAll && alphaVisibleAll && textEntered && escClosed && reopened &&
+                                    kebabHiddenIdle && kebabWhileWriting && noInfoOverText;
                 if (!subsOk) std::printf("FAIL: subtitle input did not open or stay open on glass click\n");
                 ok = ok && subsOk;
             }

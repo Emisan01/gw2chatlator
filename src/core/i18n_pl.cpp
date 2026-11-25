@@ -1245,6 +1245,8 @@ extern const I18nEntry kPolishStrings[] = {
      "Dodaj"},
     {L"Learned words: {1} – the most used; x forgets one",
      "Nauczone słowa: {1} – najczęstsze; x usuwa jedno"},
+    {L"Find a language",
+     "Szukaj języka"},
     {L"Find a word",
      "Szukaj słowa"},
     {L"Typo patterns learned: {1}",

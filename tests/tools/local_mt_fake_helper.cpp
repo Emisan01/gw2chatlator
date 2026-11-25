@@ -23,14 +23,17 @@ int wmain(int argc, wchar_t** argv) {
         if (wcscmp(envMode, L"old") == 0) mode = "old";
         else if (wcscmp(envMode, L"no-nllb") == 0) mode = "no-nllb";
         else if (wcscmp(envMode, L"full") == 0) mode = "full";
+        else if (wcscmp(envMode, L"no-kurdish") == 0) mode = "no-kurdish";
     }
 
     if (mode == "old") {
         std::cout << "{\"evt\":\"ready\"}\n" << std::flush;
     } else if (mode == "no-nllb") {
         std::cout << "{\"evt\":\"ready\",\"helper\":\"translate\",\"proto\":1,\"caps\":[\"opus\"],\"build\":\"test-build\"}\n" << std::flush;
-    } else {
+    } else if (mode == "no-kurdish") {  // a helper from before 2.11.0
         std::cout << "{\"evt\":\"ready\",\"helper\":\"translate\",\"proto\":1,\"caps\":[\"opus\",\"nllb\",\"threads\"],\"build\":\"test-build\"}\n" << std::flush;
+    } else {
+        std::cout << "{\"evt\":\"ready\",\"helper\":\"translate\",\"proto\":1,\"caps\":[\"opus\",\"nllb\",\"threads\",\"kurdish\"],\"build\":\"test-build\"}\n" << std::flush;
     }
 
     std::string line;

@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 
+#include "core/sorani.hpp"
 #include "core/i18n.hpp"
 #include "core/langs.hpp"
 #include "core/local_mt_protocol.hpp"
@@ -93,8 +94,41 @@ public:
         return card_;
     }
 
+    // Sorani (CKB, Emi 2026-11-25): the model reads and writes its Arabic-based alphabet (ckb_Arab), GW2 and our window
+    // show Latin. Around every way through the model: Latin Sorani goes in in its own alphabet, what comes out in
+    // Sorani – the text and its other versions – in Latin (core/sorani). Nothing else changes.
     TranslateResult Translate(const std::vector<Segment>& segments, const std::wstring& sourceLang,
                               const std::wstring& targetLang) override {
+        const bool fromSorani = ToUpperAscii(PrimaryLang(sourceLang)) == L"CKB";
+        const bool toSorani = ToUpperAscii(PrimaryLang(targetLang)) == L"CKB";
+        const bool kurmanji = ToUpperAscii(PrimaryLang(sourceLang)) == L"KMR" || ToUpperAscii(PrimaryLang(targetLang)) == L"KMR";
+        if (kurmanji) {
+            TranslateResult r = TranslateThroughModel(segments, sourceLang, targetLang);
+            if (!r.ok && helperKnown_ && !kurdish_) {  // a helper from before Kurdish: say so
+                r.error = L"The local translator helper is outdated (no Kurdish) - update it: Options > Translator";
+                r.errorKind = TranslateErrorKind::HelperMissing;
+            }
+            return r;
+        }
+        if (!fromSorani && !toSorani) return TranslateThroughModel(segments, sourceLang, targetLang);
+        std::vector<Segment> in = segments;
+        if (fromSorani)
+            for (Segment& s : in)
+                if (!s.keep) s.text = SoraniToArabic(s.text);
+        TranslateResult r = TranslateThroughModel(in, sourceLang, targetLang);
+        if (!r.ok && helperKnown_ && !kurdish_) {  // a helper from before Kurdish: say so, not the model's riddle
+            r.error = L"The local translator helper is outdated (no Kurdish) - update it: Options > Translator";
+            r.errorKind = TranslateErrorKind::HelperMissing;
+        }
+        if (toSorani && r.ok) {
+            r.text = SoraniToLatin(r.text);
+            for (std::wstring& v : r.variants) v = SoraniToLatin(v);
+        }
+        return r;
+    }
+
+    TranslateResult TranslateThroughModel(const std::vector<Segment>& segments, const std::wstring& sourceLang,
+                                          const std::wstring& targetLang) {
         TranslateResult result;
         const std::wstring original = JoinSegments(segments);
         std::wstring source = PrimaryLang(sourceLang);
@@ -433,6 +467,7 @@ private:
         info_.proto = ready.proto;
         info_.caps = ready.caps;
         info_.build = ready.build;
+        helperKnown_ = true;
 
         if (ready.proto < kMinHelperProto) {
             Stop();
@@ -449,10 +484,14 @@ private:
                                               : L"The local translator helper lacks M2M100 support: ") + info_.outdatedReason;
             return false;
         }
-        // One from before the threads came still translates, on one core: the options offer the update.
+        // One from before the threads came still translates, on one core: the options offer the update. One from
+        // before Kurdish (2.11.0, cap "kurdish": kmr_Latn, ckb_Arab) translates everything else; Kurdish asks for the
+        // update (Emi, 2026-11-25: an old one said "tokenizer files are missing or invalid").
         const bool older = !HasCap(ready, "threads");
-        info_.status = older ? HelperStatus::Outdated : HelperStatus::Ok;
-        info_.outdatedReason = older ? L"it runs on one core only" : L"";
+        kurdish_ = HasCap(ready, "kurdish");
+        const bool noKurdish = kind_ == LocalKind::Nllb && !kurdish_;
+        info_.status = older || noKurdish ? HelperStatus::Outdated : HelperStatus::Ok;
+        info_.outdatedReason = older ? L"it runs on one core only" : noKurdish ? L"no Kurdish" : L"";
         HelperLog(L"helper ready: proto " + std::to_wstring(ready.proto) + L", build " + FromUtf8(ready.build.substr(0, 7)));
         return true;
     }
@@ -724,6 +763,8 @@ private:
     std::atomic<int> nextId_{0};
     std::atomic<int> beamSize_{0};
     std::atomic<bool> raw_{false};
+    std::atomic<bool> kurdish_{true};       // the running helper knows kmr_Latn and ckb_Arab (cap "kurdish")
+    std::atomic<bool> helperKnown_{false};  // a helper said "ready" at least once
 };
 
 }  // namespace
@@ -921,6 +962,11 @@ HelperInfo ProbeLocalMtHelper(const std::wstring& helperExe, const std::wstring&
     if (forceNllb && !HasCap(ready, "nllb")) {
         info.status = HelperStatus::Outdated;
         info.outdatedReason = L"missing capability 'nllb'";
+        return info;
+    }
+    if (HasCap(ready, "nllb") && !HasCap(ready, "kurdish")) {  // NLLB from before 2.11.0: all but Kurdish – update offered
+        info.status = HelperStatus::Outdated;
+        info.outdatedReason = L"no Kurdish";
         return info;
     }
     info.status = HelperStatus::Ok;

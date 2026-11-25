@@ -25,6 +25,8 @@
 #include "core/gw2_text.hpp"
 #include "core/names.hpp"
 #include "core/languages.hpp"
+#include "core/language_names.hpp"
+#include "core/sorani.hpp"
 #include "core/local_mt_protocol.hpp"
 #include "core/mumble.hpp"
 #include "core/mymemory_protocol.hpp"
@@ -273,7 +275,7 @@ static void TestLocalMtProtocol() {
              {"gn", "grn_Latn"}, {"gu", "guj_Gujr"}, {"ha", "hau_Latn"}, {"he", "heb_Hebr"}, {"hi", "hin_Deva"},
              {"hr", "hrv_Latn"}, {"ht", "hat_Latn"}, {"hu", "hun_Latn"}, {"hy", "hye_Armn"}, {"id", "ind_Latn"},
              {"ig", "ibo_Latn"}, {"is", "isl_Latn"}, {"ja", "jpn_Jpan"}, {"jv", "jav_Latn"}, {"ka", "kat_Geor"},
-             {"kg", "kon_Latn"}, {"ki", "kik_Latn"}, {"kk", "kaz_Cyrl"}, {"km", "khm_Khmr"}, {"kn", "kan_Knda"},
+             {"kg", "kon_Latn"}, {"ki", "kik_Latn"}, {"kk", "kaz_Cyrl"}, {"km", "khm_Khmr"}, {"kmr", "kmr_Latn"}, {"kn", "kan_Knda"},
              {"ko", "kor_Hang"}, {"ky", "kir_Cyrl"}, {"lb", "ltz_Latn"}, {"lg", "lug_Latn"}, {"li", "lim_Latn"},
              {"ln", "lin_Latn"}, {"lo", "lao_Laoo"}, {"lt", "lit_Latn"}, {"lv", "lvs_Latn"}, {"mg", "plt_Latn"},
              {"mi", "mri_Latn"}, {"mk", "mkd_Cyrl"}, {"ml", "mal_Mlym"}, {"mn", "khk_Cyrl"}, {"mr", "mar_Deva"},
@@ -824,6 +826,192 @@ static void TestDeepL() {
 // ---------------------------------------------------------------------------
 // Phase 2: incoming chat
 // ---------------------------------------------------------------------------
+// The position of a name in a list sorted the way the menus sort (NameLess).
+static size_t SortedAt(std::vector<std::wstring> names, const std::wstring& name) {
+    std::stable_sort(names.begin(), names.end(), NameLess);
+    return static_cast<size_t>(std::find(names.begin(), names.end(), name) - names.begin());
+}
+
+static void TestLanguageNames() {
+    // data/language-names.tsv and src/core/language_names.inc are one table (tools/gen_language_names.py, CLDR 49)
+#ifdef GCT_SOURCE_DIR
+    std::ifstream file(std::string(GCT_SOURCE_DIR) + "/data/language-names.tsv", std::ios::binary);
+#else
+    std::ifstream file("data/language-names.tsv", std::ios::binary);
+#endif
+    CHECK(file.good());
+    std::vector<std::vector<std::wstring>> rows;
+    std::string line;
+    while (std::getline(file, line)) {
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (line.empty() || line[0] == '#') continue;
+        std::vector<std::wstring> cols;
+        for (size_t at = 0;;) {
+            const size_t tab = line.find('\t', at);
+            cols.push_back(FromUtf8(line.substr(at, tab == std::string::npos ? std::string::npos : tab - at)));
+            if (tab == std::string::npos) break;
+            at = tab + 1;
+        }
+        rows.push_back(cols);
+    }
+    const std::vector<LanguageNameRow>& table = LanguageNameTable();
+    bool same = rows.size() == table.size();
+    for (size_t i = 0; same && i < rows.size(); ++i) {
+        same = rows[i].size() == 1 + kUiLangCount && rows[i][0] == table[i].code;
+        for (size_t k = 0; same && k < kUiLangCount; ++k) same = rows[i][1 + k] == table[i].names[k];
+    }
+    if (!same) std::printf("data/language-names.tsv and src/core/language_names.inc differ - run: python tools/gen_language_names.py\n");
+    CHECK(same);
+    // complete: every catalog language has a name in every window language, and the table no code the catalog lacks
+    CHECK(table.size() == Languages().size());
+    for (const LangInfo& l : Languages())
+        for (size_t k = 0; k < kUiLangCount; ++k) CHECK(!LanguageNameIn(l.code, static_cast<UiLang>(k)).empty());
+    // Emi's examples (2026-11-25), a German window: "Norwegisch", not "Norsk"
+    CHECK(LanguageNameIn(L"NB", UiLang::De) == L"Norwegisch");
+    CHECK(LanguageNameIn(L"TR", UiLang::De) == L"Türkisch");
+    CHECK(LanguageNameIn(L"ZH-HANS", UiLang::De) == L"Chinesisch (vereinfacht)");
+    CHECK(LanguageNameIn(L"KMR", UiLang::De) == L"Kurdisch (Kurmandschi)");
+    CHECK(LanguageNameIn(L"de-AT", UiLang::Fr) == L"Allemand");  // by its primary language
+    CHECK(LanguageNameIn(L"xx", UiLang::De).empty() && LanguageNameIn(L"ku", UiLang::De).empty());
+    // a variant CLDR does not name in German: language (region), both from CLDR
+    CHECK(LanguageNameIn(L"PT-PT", UiLang::De) == L"Portugiesisch (Portugal)");
+    // capitals: fr es it pl pt ru start upper case (CLDR writes them lower); de tr en as CLDR has them (Turkish İ)
+    CHECK(LanguageNameIn(L"CS", UiLang::Fr) == L"Tchèque" && LanguageNameIn(L"PL", UiLang::Pl) == L"Polski");
+    CHECK(LanguageNameIn(L"RU", UiLang::Ru) == L"Русский");
+    CHECK(LanguageNameIn(L"EN-GB", UiLang::Tr) == L"İngiliz İngilizcesi");
+    const auto lowerFirst = [](const std::wstring& n) {
+        const wchar_t c = n.empty() ? 0 : n[0];
+        return (c >= L'a' && c <= L'z') || (c >= 0x00DF && c <= 0x00FF) || (c >= 0x0430 && c <= 0x045F);
+    };
+    for (const LanguageNameRow& row : table)
+        for (const UiLang ui : {UiLang::Fr, UiLang::Es, UiLang::It, UiLang::Pl, UiLang::Pt, UiLang::Ru})
+            CHECK(!lowerFirst(row.names[static_cast<size_t>(ui)]));
+
+    // list order: case and accents left out; equal so, the written name decides
+    CHECK(SortFold(L"Čeština") == L"cestina");                  // Čeština
+    CHECK(SortFold(L"Çekçe") == L"cekce");                       // Çekçe
+    CHECK(SortFold(L"Özbekçe") == L"ozbekce");                   // Özbekçe
+    CHECK(SortFold(L"İngilizce") == L"ingilizce" && SortFold(L"Isı") == L"isi");
+    CHECK(SortFold(L"Łaciński") == L"lacinski");                 // Łaciński
+    CHECK(SortFold(L"Șț") == L"st");                             // Romanian Ș ț
+    CHECK(SortFold(L"ЁЖ") == L"еж");                    // Ё Ж -> е ж
+    CHECK(SortFold(L"a×b") == L"a×b");                            // × stays
+    CHECK(NameLess(L"Cava", L"Çekçe") && NameLess(L"Çekçe", L"Danca"));  // Ç among the C's
+    CHECK(NameLess(L"Norveççe", L"Özbekçe") && NameLess(L"Özbekçe", L"Portekizce"));
+    CHECK(NameLess(L"C", L"Č") && !NameLess(L"Č", L"C"));
+    // whole catalogs named in de, pl, tr, ru
+    auto names = [](UiLang ui) {
+        std::vector<std::wstring> out;
+        for (const LangInfo& l : Languages()) out.push_back(LanguageNameIn(l.code, ui));
+        return out;
+    };
+    const auto tr = names(UiLang::Tr);
+    CHECK(SortedAt(tr, L"Bulgarca") < SortedAt(tr, L"Çekçe") && SortedAt(tr, L"Çekçe") < SortedAt(tr, L"Danca"));
+    const auto pl = names(UiLang::Pl);
+    CHECK(SortedAt(pl, L"Kurdyjski (kurmandżi)") < SortedAt(pl, L"Łaciński") &&
+          SortedAt(pl, L"Łaciński") < SortedAt(pl, L"Litewski"));
+    const auto ru = names(UiLang::Ru);
+    CHECK(SortedAt(ru, L"Французский") <
+          SortedAt(ru, L"Чешский"));  // Французский before Чешский
+    const auto de = names(UiLang::De);
+    CHECK(SortedAt(de, L"Dänisch") < SortedAt(de, L"Deutsch"));  // ä as a: "danisch" before "deutsch"
+    CHECK(SortedAt(de, L"Slowakisch") < SortedAt(de, L"Slowenisch"));
+}
+
+// Kurmanji (KMR, Emi 2026-11-25): local NLLB as kmr_Latn, Google "ku", Microsoft "kmr"; a plain "ku" is no Kurmanji
+// (Google's ku is Kurmanji, Microsoft's Sorani); DeepL, MyMemory, LibreTranslate, Supertext refuse it before asking.
+static void TestKurmanji() {
+    const LangInfo* k = FindLanguage(L"KMR");
+    CHECK(k && std::wstring(k->code) == L"KMR" && DrawnInOurWindow(*k) && !k->rtl);
+    CHECK(SendableInGw2(L"KMR"));  // two Kurmanji speakers write to each other as written (Emi, 2026-11-25)
+    {  // writing Kurmanji, "as written": it goes out as it is, never translated into a stand-in language
+        const std::vector<std::wstring> wl = {L"EN-GB", L"KMR"};
+        SendState st;
+        st.typingLang = L"KMR";
+        st.writeLangs = &wl;
+        st.sendIdx = static_cast<int>(wl.size());
+        const SendRoute asWritten = RouteMessage(st);
+        CHECK(asWritten.lang.empty() && !asWritten.translating);
+        st.sendIdx = 1;
+        const SendRoute toKmr = RouteMessage(st);
+        CHECK(toKmr.lang == L"KMR");
+    }
+    CHECK(NllbLanguageTag("KMR") == "kmr_Latn" && NllbLanguageTag("kmr") == "kmr_Latn");
+    CHECK(LocalModelHasLanguage("nllb", L"KMR") && !LocalModelHasLanguage("m2m", L"KMR") && !LocalModelHasLanguage("opus", L"KMR"));
+    CHECK(!LocalMtRoute(L"KMR", L"DE", {"nllb-200"}).empty() && !LocalMtRoute(L"DE", L"KMR", {"nllb-200"}).empty());
+    CHECK(LocalMtRoute(L"KMR", L"DE", {"m2m100"}).empty());
+    CHECK(GoogleLang(L"KMR") == L"ku" && MicrosoftLang(L"KMR") == L"kmr" && MicrosoftLang(L"kmr") == L"kmr");
+    CHECK(!FindLanguage(L"ku") && !FindLanguage(L"KU") && NllbLanguageTag("ku").empty());
+    CHECK(MicrosoftLang(L"KU") == L"ku" && !LocalModelHasLanguage("nllb", L"ku"));
+    CHECK(ServiceTakes(MtService::Google, L"KMR") && ServiceTakes(MtService::Microsoft, L"KMR"));
+    CHECK(!ServiceTakes(MtService::DeepL, L"KMR") && !ServiceTakes(MtService::MyMemory, L"kmr") &&
+          !ServiceTakes(MtService::Libre, L"KMR") && !ServiceTakes(MtService::Supertext, L"KMR"));
+    for (const LangInfo& l : Languages())
+        if (std::wstring(l.code) != L"KMR" && std::wstring(l.code) != L"CKB")
+            for (const MtService s : {MtService::DeepL, MtService::Google, MtService::Microsoft, MtService::Supertext,
+                                      MtService::Libre, MtService::MyMemory})
+                CHECK(ServiceTakes(s, l.code) == !l.fromModel);  // the hand-kept catalog as before; the model's: unproven
+    CHECK(ServiceTakes(MtService::DeepL, L""));  // "detect it": as before
+}
+
+// Sorani (CKB, Emi 2026-11-25): NLLB only (ckb_Arab), shown and sent in Kurdish Latin. The words are Sorani in its
+// alphabet, written as code points; each goes to Latin and back the same.
+static void TestSorani() {
+    auto ar = [](std::initializer_list<int> cps) {
+        std::wstring w;
+        for (int c : cps) w += static_cast<wchar_t>(c);
+        return w;
+    };
+    const std::wstring kurd = ar({0x06A9, 0x0648, 0x0631, 0x062F});              // کورد
+    const std::wstring were = ar({0x0648, 0x06D5, 0x0631, 0x06D5});              // وەرە
+    const std::wstring ewe = ar({0x0626, 0x06D5, 0x0648, 0x06D5});               // ئەوە
+    const std::wstring xwen = ar({0x062E, 0x0648, 0x06CE, 0x0646});              // خوێن
+    const std::wstring du = ar({0x062F, 0x0648, 0x0648});                        // دوو
+    const std::wstring yek = ar({0x06CC, 0x06D5, 0x06A9});                       // یەک
+    const std::wstring cay = ar({0x0686, 0x0627, 0x06CC});                       // چای
+    const std::wstring dil = ar({0x062F, 0x06B5});                               // دڵ
+    const std::wstring kic = ar({0x06A9, 0x0686});                               // کچ
+    const std::wstring bira = ar({0x0628, 0x0631, 0x0627});                      // برا
+    const std::wstring silaw = ar({0x0633, 0x06B5, 0x0627, 0x0648});             // سڵاو
+    const std::wstring is = ar({0x0626, 0x06CC, 0x0634});                        // ئیش
+    const std::wstring rega = ar({0x0695, 0x06CE, 0x06AF, 0x0627});              // ڕێگا
+    const std::wstring ziman = ar({0x0632, 0x0645, 0x0627, 0x0646});             // زمان
+    const std::wstring conin = ar({0x0686, 0x06C6, 0x0646, 0x0646});             // چۆنن (as NLLB wrote "how are")
+    const std::wstring cakker = ar({0x0686, 0x0627, 0x06A9, 0x06A9, 0x06D5, 0x0631});  // چاککەر: kk inside stays
+    const struct {
+        const std::wstring& arabic;
+        const wchar_t* latin;
+    } kWords[] = {{kurd, L"kurd"}, {were, L"were"}, {ewe, L"ewe"}, {xwen, L"xwên"}, {du, L"dû"},
+                  {yek, L"yek"}, {cay, L"çay"}, {dil, L"dił"}, {kic, L"kiç"}, {bira, L"bira"},
+                  {silaw, L"siław"}, {is, L"îş"}, {rega, L"řêga"}, {ziman, L"ziman"},
+                  {conin, L"çonin"}, {cakker, L"çakker"}};
+    for (const auto& w : kWords) {
+        // a word alone starts a sentence: its first letter upper case
+        std::wstring lower = SoraniToLatin(L"x " + w.arabic).substr(2);
+        if (lower != w.latin) std::printf("Sorani to Latin: got '%ls', want '%ls'%c", lower.c_str(), w.latin, 10);
+        CHECK(lower == w.latin);
+        CHECK(SoraniToArabic(w.latin) == w.arabic);
+    }
+    // a sentence: capital at its start and after a question mark, Arabic punctuation and digits in Latin
+    const std::wstring sentence = kurd + L" " + yek + static_cast<wchar_t>(0x061F) + L" " + du + L" " +
+                                  static_cast<wchar_t>(0x0662) + static_cast<wchar_t>(0x060C) + L" " + cay;
+    CHECK(SoraniToLatin(sentence) == L"Kurd yek? Dû 2, çay");
+    CHECK(SoraniToArabic(L"Kurd yek?") == kurd + L" " + yek + static_cast<wchar_t>(0x061F));
+    CHECK(SoraniToArabic(L"Dill") == dil && SoraniToArabic(L"rrêga") == rega);  // ll, rr typed for ł, ř
+    // text with no Sorani in it stays as it is
+    CHECK(SoraniToLatin(L"LFG raid 10") == L"LFG raid 10");
+    // the catalog: NLLB only, sendable as Latin, never an online service, not in the voice list
+    const LangInfo* c = FindLanguage(L"ckb");
+    CHECK(c && std::wstring(c->code) == L"CKB" && c->gw2Shows && c->weDraw && !c->rtl && !c->fromModel);
+    CHECK(NllbLanguageTag("CKB") == "ckb_Arab" && OfferedBy("nllb", *c) && !OfferedBy("m2m", *c));
+    for (const MtService s : {MtService::DeepL, MtService::Google, MtService::Microsoft, MtService::Supertext,
+                              MtService::Libre, MtService::MyMemory})
+        CHECK(!ServiceTakes(s, L"CKB"));
+    CHECK(!OfferedForSpeaking(L"CKB"));
+    CHECK(LanguageNameIn(L"CKB", UiLang::De) == L"Kurdisch (Sorani)");
+    CHECK(!FindLanguage(L"ku"));  // a plain "ku" is still neither of the two
+}
+
 static void TestLanguages() {
     CHECK(FindLanguage(L"de-AT") && std::wstring(FindLanguage(L"de-AT")->code) == L"DE");
     CHECK(FindLanguage(L"EN") && std::wstring(FindLanguage(L"EN")->code) == L"EN-GB");
@@ -834,8 +1022,21 @@ static void TestLanguages() {
     CHECK(SendableInGw2(L"ZH-HANS") && SendableInGw2(L"ZH-HANT"));
     CHECK(DrawnInOurWindow(*FindLanguage(L"ZH-HANS")) && !DrawnInOurWindow(*FindLanguage(L"ZH-HANT")));
     CHECK(!SendableInGw2(L"AR") && !SendableInGw2(L"HE") && !SendableInGw2(L"RU") && !SendableInGw2(L"EL"));
+    size_t fromModel = 0, nllbDrawn = 0;
     for (const LangInfo& l : Languages()) {
         const std::wstring c = l.code;
+        if (std::string(NllbLanguageTag(ToUtf8(c))).size() && DrawnInOurWindow(l)) ++nllbDrawn;
+        if (l.fromModel) {  // step 2: from the NLLB table – flags from its script, never sendable by itself
+            ++fromModel;
+            const std::string tag = NllbLanguageTag(ToUtf8(c));
+            CHECK(tag.size() == 8);
+            const std::string script = tag.size() == 8 ? tag.substr(4) : "";
+            CHECK(l.weDraw == (script == "Latn" || script == "Cyrl" || script == "Grek"));
+            CHECK(l.rtl == (script == "Arab" || script == "Hebr"));
+            CHECK(!l.gw2Shows && !SendableInGw2(l.code));
+            CHECK(!OfferedBy("", l) && OfferedBy("nllb", l));  // online services: unproven; NLLB: its own table
+            continue;
+        }
         const bool isRtl = (c == L"AR" || c == L"HE");
         const bool isNonLatinDraw = (c == L"EL" || c == L"BG" || c == L"RU" || c == L"UK");
         const bool isCjkOther = (c == L"HI" || c == L"TH" || c == L"JA" || c == L"KO");
@@ -846,6 +1047,16 @@ static void TestLanguages() {
         CHECK(DrawnInOurWindow(l) == (expDraw && !isRtl));
         CHECK(SendableInGw2(l.code) == (expGw2 && !isRtl));
     }
+    // step 2 (Emi, 2026-11-25): every language of the NLLB table is in the catalog; with local NLLB the lists offer at
+    // least 97 our window draws; the hand-kept catalog stays as it was
+    CHECK(fromModel >= 90 && Languages().size() == 40 + fromModel && nllbDrawn >= 97);
+    CHECK(FindLanguage(L"af") && FindLanguage(L"af")->fromModel && FindLanguage(L"sr") && FindLanguage(L"sr")->weDraw);
+    CHECK(FindLanguage(L"nn") && std::wstring(FindLanguage(L"nn")->code) == L"NB");  // Nynorsk still answered by NB
+    CHECK(!FindLanguage(L"DE")->fromModel && !FindLanguage(L"KMR")->fromModel && OfferedBy("", *FindLanguage(L"DE")));
+    CHECK(OfferedBy("m2m", *FindLanguage(L"AF")) && !OfferedBy("m2m", *FindLanguage(L"KMR")));
+    CHECK(!OfferedBy("m2m", *FindLanguage(L"AK")) && OfferedBy("nllb", *FindLanguage(L"AK")));  // Akan: NLLB only
+    // typed Serbian Cyrillic no longer goes out raw (GW2 shows Cyrillic blank): translated, as Russian always was
+    CHECK(!SendableInGw2(L"SR") && !SendableInGw2(L"RU"));
     CHECK(!FindLanguage(L"xx"));
     CHECK(SourceCode(L"EN-GB") == L"EN");
     // G2: RouteMessage accepts sendable ZH-HANS and never selects !SendableInGw2 targets/fallbacks.
@@ -2076,7 +2287,14 @@ static void TestWhisperSettings() {
     CHECK(WhisperLang(L"fil") == "tl" && WhisperLang(L"de-AT") == "de" && WhisperLang(L" ja ") == "ja");
     CHECK(WhisperLang(L"").empty() && WhisperLang(L"XX").empty() && WhisperLang(L"auto").empty());
     CHECK(WhisperLang(L"ä").empty() && WhisperLang(L"-").empty());
-    for (const auto& l : Languages()) CHECK(!WhisperLang(l.code).empty());
+    // every language of the list "Language you speak" has a whisper code; Kurmanji (not in whisper) stays out of it,
+    // every other language our window draws stays in it
+    for (const auto& l : Languages()) {
+        if (OfferedForSpeaking(l.code)) CHECK(!WhisperLang(l.code).empty());
+        if (std::wstring(l.code) != L"KMR" && std::wstring(l.code) != L"CKB" && !l.fromModel)
+            CHECK(OfferedForSpeaking(l.code) == DrawnInOurWindow(l));
+    }
+    CHECK(WhisperLang(L"KMR").empty() && !OfferedForSpeaking(L"KMR"));
 
     CHECK(WhisperAudioCtx(0) == 256);
     CHECK(WhisperAudioCtx(16000) == 256);         // 1 s
@@ -3278,6 +3496,9 @@ int main() {
     RUN(TestBuiltinTerms);
     RUN(TestDeepL);
     RUN(TestLanguages);
+    RUN(TestLanguageNames);
+    RUN(TestKurmanji);
+    RUN(TestSorani);
     RUN(TestGw2Text);
     RUN(TestDeepLBatch);
     RUN(TestMumble);

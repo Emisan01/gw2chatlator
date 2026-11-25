@@ -68,6 +68,7 @@ std::wstring GoogleLang(const std::wstring& code) {
     if (Primary(c) == L"ZH") return L"zh-CN";
     if (c == L"PT-PT") return L"pt-PT";
     if (Primary(c) == L"NB" || Primary(c) == L"NN") return L"no";
+    if (Primary(c) == L"KMR") return L"ku";  // Google's "ku" is Kurmanji (Sorani: "ckb"); a plain "KU" stays "ku"
     return Lower(Primary(c));
 }
 
@@ -78,6 +79,7 @@ std::wstring MicrosoftLang(const std::wstring& code) {
     if (Primary(c) == L"ZH") return L"zh-Hans";
     if (c == L"PT-PT") return L"pt-PT";
     if (Primary(c) == L"NO" || Primary(c) == L"NN") return L"nb";
+    if (Primary(c) == L"KMR") return L"kmr";  // Microsoft's "ku" is Sorani: Kurmanji is "kmr", never "ku"
     return Lower(Primary(c));
 }
 

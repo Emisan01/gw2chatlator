@@ -163,7 +163,7 @@ void RenderTypingPage(Config& edit) {
     BeginBox(UI(Tr(L"Typing help")));
     RowLabel(UI(Tr(L"I write in")));
     ImGui::SetNextItemWidth(ControlW());
-    LanguageCombo("##writein", edit.writeIn, Tr(L"System") + L" (" + NativeName(TypingLang()) + L")");
+    LanguageCombo("##writein", edit.writeIn, Tr(L"System") + L" (" + LanguageName(TypingLang()) + L")");
     RowHint(UI(Tr(L"Only suggestions and the dictionary – the language of your text is recognized.")));
     Switch("sugg", UI(Tr(L"Word suggestions while typing")), &edit.suggestions);
     Switch("spell", UI(Tr(L"Spell checking (Windows, offline)")), &edit.spellEnabled);
@@ -180,7 +180,7 @@ void RenderTypingPage(Config& edit) {
                 g_worker.Post([] { if (!g_spell) InitSpelling(); });
             }
         } else if ((edit.spellEnabled || edit.autoCorrect != AutoCorrectMode::Off) && !g_spellDictReady.load()) {
-            const std::wstring lang = NativeName(dictLocale);
+            const std::wstring lang = LanguageName(dictLocale);
             RiskHint(TrF(L"Windows has no dictionary for {1} – no correction in this language. Add it in Windows: Settings > Time & language > Language & region > {1} > Language options > Basic typing.", {lang}));
             ImGui::Indent(g_labelW);
             if (ImGui::SmallButton(UI(Tr(L"Open Windows' language settings")).c_str()))

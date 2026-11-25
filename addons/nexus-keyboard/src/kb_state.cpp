@@ -831,15 +831,112 @@ bool LimitedContingent() {
     return name != L"LibreTranslate" && name != L"OPUS-MT (local)";
 }
 
-// A language's own name as the font in use draws it, else its English name – never a "?" (a font without those
-// letters made "Tieng Viet" or "Cestina" look misspelled, user 2026-10-22). Render thread.
-std::wstring NativeName(const std::wstring& code) {
+// A catalog language named in the window's language (core/language_names, Unicode CLDR: "Norwegisch" in a German
+// window, not "Norsk" – Emi, 2026-11-25), asked on every call, nothing kept over a change of the window's language.
+// Its English name when there is none or the font in use lacks a letter – never a "?" (a font without those letters
+// made "Tieng Viet" or "Cestina" look misspelled, user 2026-10-22); an unknown code as it is. Render thread.
+std::wstring LanguageName(const std::wstring& code) {
     const LangInfo* l = FindLanguage(code);
     if (!l) return ToUpperAscii(code);
+    std::wstring english = LanguageNameIn(l->code, UiLang::En);
+    if (english.empty()) english = l->english;
+    const std::wstring name = LanguageNameIn(l->code, GetUiLang());
+    if (name.empty()) return english;
     if (ImFont* f = ImGui::GetCurrentContext() ? ImGui::GetFont() : nullptr)
-        for (const wchar_t* c = l->native; *c; ++c)
-            if (*c >= 0x80 && !f->FindGlyphNoFallback(static_cast<ImWchar>(*c))) return l->english;
-    return l->native;
+        for (const wchar_t c : name)
+            if (c >= 0x80 && !f->FindGlyphNoFallback(static_cast<ImWchar>(c))) return english;
+    return name;
+}
+
+// The catalog in the order of the names shown now (core/language_names NameLess: case and accents left out), sorted
+// on every call – a list never keeps the order of another window language.
+std::vector<LangInfo> LanguagesByName() {  // copies: a few pointers each
+    std::vector<std::pair<std::wstring, LangInfo>> named;
+    for (const LangInfo& l : Languages()) named.emplace_back(LanguageName(l.code), l);
+    std::stable_sort(named.begin(), named.end(), [](const auto& a, const auto& b) { return NameLess(a.first, b.first); });
+    std::vector<LangInfo> out;
+    out.reserve(named.size());
+    for (const auto& n : named) out.push_back(n.second);
+    return out;
+}
+
+// What a language list offers now (Emi, 2026-11-25, step 2): every language our window draws that the active
+// translator has – a local model all of its table, an online service the hand-kept catalog (core/languages OfferedBy).
+// By name. `model`: LocalMtModel of the translator now ("" online).
+std::vector<LangInfo> OfferedLanguages(const TranslatorOffer& offer) {
+    std::vector<LangInfo> out;
+    for (const LangInfo& l : LanguagesByName())
+        if (DrawnInOurWindow(l) && Offers(offer, l)) out.push_back(l);
+    return out;
+}
+
+TranslatorOffer OfferNow() {  // g_mu held
+    TranslatorOffer o;
+    o.model = LocalMtModel(g_translator);
+    if (o.model.empty() && g_translator) o.name = g_translator->Name();
+    return o;
+}
+TranslatorOffer OfferNowLocked() {  // g_mu NOT held: the options pages
+    std::lock_guard<std::mutex> lock(g_mu);
+    return OfferNow();
+}
+
+// A local model: its table. An online service: the hand-kept catalog, and only what the service is proven to take
+// (core/languages ServiceTakes – MyMemory no Kurmanji, Emi 2026-11-25: it was offered and then refused). The service
+// by its name as Name() gives it ("MyMemory …" in any window language).
+bool Offers(const TranslatorOffer& offer, const LangInfo& l) {
+    if (!offer.model.empty()) return OfferedBy(offer.model, l);
+    if (!OfferedBy("", l)) return false;
+    const std::wstring& n = offer.name;
+    MtService s;
+    if (n.rfind(L"MyMemory", 0) == 0) s = MtService::MyMemory;
+    else if (n == L"DeepL") s = MtService::DeepL;
+    else if (n == L"Google") s = MtService::Google;
+    else if (n == L"Microsoft") s = MtService::Microsoft;
+    else if (n == L"Supertext") s = MtService::Supertext;
+    else if (n == L"LibreTranslate") s = MtService::Libre;
+    else return true;  // no translator yet: the hand-kept catalog
+    return ServiceTakes(s, l.code);
+}
+
+// A language list with a search field on top (Emi, 2026-11-25, plan A: about 100 languages). The field has the focus
+// when the list opens; typing keeps the names that contain it, case and accents left out, or whose code starts with
+// it. `mine` first (your own languages, in their order), a line, then all the others by name. Returns the code picked
+// this frame, or "". Inside an open combo, popup or menu.
+std::wstring PickLanguage(const char* id, const std::vector<LangInfo>& offered, const std::vector<std::wstring>& mine,
+                          const std::wstring& current) {
+    static std::map<std::string, std::string> s_queries;
+    std::string& query = s_queries[id];
+    char buf[64] = {};
+    if (ImGui::IsWindowAppearing()) {
+        query.clear();
+        ImGui::SetKeyboardFocusHere();
+    }
+    std::snprintf(buf, sizeof buf, "%s", query.c_str());
+    ImGui::SetNextItemWidth(std::max(ImGui::GetContentRegionAvail().x, ImGui::GetFontSize() * 10.0f));
+    ImGui::InputTextWithHint((std::string("##find") + id).c_str(), UI(Tr(L"Find a language")).c_str(), buf, sizeof buf);
+    query = buf;
+    const std::wstring wanted = SortFold(Trim(W(query)));
+    auto matches = [&](const LangInfo& l) {
+        if (wanted.empty()) return true;
+        return SortFold(LanguageName(l.code)).find(wanted) != std::wstring::npos || SortFold(l.code).rfind(wanted, 0) == 0;
+    };
+    std::wstring picked;
+    auto row = [&](const LangInfo& l) {
+        const std::string label = U8(LanguageName(l.code)) + "##" + U8(l.code);
+        if (ImGui::Selectable(label.c_str(), current == l.code)) picked = l.code;
+    };
+    bool mineShown = false;
+    for (const std::wstring& m : mine)
+        for (const LangInfo& l : offered)
+            if (m == l.code && matches(l)) {
+                row(l);
+                mineShown = true;
+            }
+    if (mineShown) ImGui::Separator();
+    for (const LangInfo& l : offered)
+        if (std::find(mine.begin(), mine.end(), std::wstring(l.code)) == mine.end() && matches(l)) row(l);
+    return picked;
 }
 
 const std::wstring& AddonsDir() {  // the folder our DLL lies in: <GW2>\addons\ .

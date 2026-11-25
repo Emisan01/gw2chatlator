@@ -246,13 +246,13 @@ void RenderReadRow(Config& edit) {
     RowLabel(UI(Tr(L"I read the chat in")));
     ImGui::SetNextItemWidth(ControlW());
     const std::string shown = edit.readLang.empty()  // "System (Deutsch)": which language that is
-                                  ? UI(Tr(L"System")) + " (" + U8(NativeName(ReadingLangNow())) + ")"
-                                  : U8(NativeName(edit.readLang));
+                                  ? UI(Tr(L"System")) + " (" + U8(LanguageName(ReadingLangNow())) + ")"
+                                  : U8(LanguageName(edit.readLang));
     if (ImGui::BeginCombo("##readlang", shown.c_str())) {
         if (ImGui::Selectable(UI(Tr(L"System")).c_str(), edit.readLang.empty())) edit.readLang.clear();
-        for (const LangInfo& lg : Languages())
-            if (DrawnInOurWindow(lg) && ImGui::Selectable(U8(NativeName(lg.code)).c_str(), edit.readLang == lg.code))
-                edit.readLang = lg.code;
+        // every language of the active translator, by name, with a search field (step 2)
+        const std::wstring got = PickLanguage("readopt", OfferedLanguages(OfferNowLocked()), edit.writeLangs, edit.readLang);
+        if (!got.empty()) edit.readLang = got;
         ImGui::EndCombo();
     }
 }
@@ -261,8 +261,6 @@ void RenderReadRow(Config& edit) {
 // first (it follows when you change it; removable and back with + – [Translate] SkipTypingLang), then the languages
 // you understand ([Translate] Understood).
 void RenderUnderstood(Config& edit) {
-    static const wchar_t* kCommon[] = {L"EN", L"DE", L"FR", L"ES", L"IT", L"PT", L"NL", L"PL",
-                                       L"RU", L"TR"};  // what our window draws (no CJK, no Arabic)
     const std::wstring reading = ReadingLangNow();
     ImGui::BeginGroup();  // a new line of chips starts under the first, not at the label
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, ImGui::GetFontSize());
@@ -279,10 +277,10 @@ void RenderUnderstood(Config& edit) {
         return clicked;
     };
     ImGui::PushID("understood");
-    if (edit.skipTypingLang && chip(U8(NativeName(reading)) + "  x##mine")) edit.skipTypingLang = false;
+    if (edit.skipTypingLang && chip(U8(LanguageName(reading)) + "  x##mine")) edit.skipTypingLang = false;
     auto& list = edit.understoodLangs;
     for (size_t i = 0; i < list.size(); ++i)
-        if (chip(U8(NativeName(list[i])) + "  x##" + U8(list[i]))) {
+        if (chip(U8(LanguageName(list[i])) + "  x##" + U8(list[i]))) {
             list.erase(list.begin() + static_cast<std::ptrdiff_t>(i));
             break;
         }
@@ -292,11 +290,15 @@ void RenderUnderstood(Config& edit) {
     if (ImGui::BeginPopup("add")) {
         if (!edit.skipTypingLang && ImGui::Selectable(UI(TrF(L"My reading language ({1})", {reading})).c_str()))
             edit.skipTypingLang = true;
-        for (const wchar_t* code : kCommon) {
-            const bool in = std::any_of(list.begin(), list.end(), [code](const std::wstring& u) {
-                return PrimaryLang(u) == PrimaryLang(code);
-            });
-            if (!in && ImGui::Selectable((U8(NativeName(code)) + " (" + U8(code) + ")").c_str())) list.push_back(code);
+        // every language of the active translator not yet in the list, by name, with a search field (step 2)
+        std::vector<LangInfo> offered;
+        for (const LangInfo& l : OfferedLanguages(OfferNowLocked()))
+            if (std::none_of(list.begin(), list.end(), [&l](const std::wstring& u) { return PrimaryLang(u) == PrimaryLang(l.code); }))
+                offered.push_back(l);
+        const std::wstring got = PickLanguage("understood", offered, edit.writeLangs, L"");
+        if (!got.empty()) {
+            list.push_back(got);
+            ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();
     }
@@ -309,7 +311,7 @@ void RenderSendRow() {
     RowLabel(UI(Tr(L"Translate to")));
     std::lock_guard<std::mutex> lock(g_mu);
     const int n = static_cast<int>(g_cfg.writeLangs.size());
-    const std::string shown = g_sendIdx >= 0 && g_sendIdx < n ? U8(NativeName(g_cfg.writeLangs[static_cast<size_t>(g_sendIdx)]))
+    const std::string shown = g_sendIdx >= 0 && g_sendIdx < n ? U8(LanguageName(g_cfg.writeLangs[static_cast<size_t>(g_sendIdx)]))
                                                               : UI(Tr(L"as written"));
     ImGui::SetNextItemWidth(ControlW());
     ImGui::PushStyleColor(ImGuiCol_Text, UiAccent());

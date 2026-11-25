@@ -66,9 +66,9 @@ void RenderVoicePage(Config& edit, bool entered) {
     {
         std::vector<std::string> langs{UI(Tr(L"Auto-detect")), UI(Tr(L"Like I write"))};
         std::vector<std::wstring> codes{L"auto", L"write"};
-        for (const LangInfo& l : Languages()) {
-            if (!DrawnInOurWindow(l)) continue;
-            langs.push_back(U8(NativeName(l.code)));
+        for (const LangInfo& l : LanguagesByName()) {
+            if (!OfferedForSpeaking(l.code)) continue;  // whisper must know it (no Kurmanji)
+            langs.push_back(U8(LanguageName(l.code)));
             codes.push_back(l.code);
         }
         int li = 0;
@@ -89,7 +89,7 @@ void RenderVoicePage(Config& edit, bool entered) {
             ImGui::TextColored(UiWarm(), "%s", UI(Tr(L"Language not supported by speech recognition")).c_str());
             ImGui::Unindent(g_labelW);
         } else {
-            std::wstring line = TrF(L"Recognition of {1}: {2}", {NativeName(recLang), gct::VoiceQualityWord(rec.quality)});
+            std::wstring line = TrF(L"Recognition of {1}: {2}", {LanguageName(recLang), gct::VoiceQualityWord(rec.quality)});
             if (rec.quality < 2 && rec.recommended)
                 line += L"  (" + TrF(L"Recommended: {1} ({2} MB RAM)", {W(rec.recommended->name), std::to_wstring(rec.recommended->ramMb)}) + L")";
             RowHint(UI(line));

@@ -3,6 +3,7 @@
 #include "deepl_translator.hpp"
 
 #include "core/deepl_protocol.hpp"
+#include "core/languages.hpp"
 #include "core/text.hpp"
 #include "http.hpp"
 
@@ -33,6 +34,10 @@ public:
             return out;
         };
 
+        // Kurmanji is in DeepL's help, partly in its next-gen model only; the API is untested: refused before any
+        // request until a test with a key proves it (core/languages ServiceTakes)
+        if (!ServiceTakes(MtService::DeepL, sourceLang) || !ServiceTakes(MtService::DeepL, targetLang))
+            return failAll(L"DeepL: " + Tr(L"Language pair not supported by engine"), TranslateErrorKind::UnsupportedPair);
         const DeepLPayload payload = BuildDeepLPayloadBatch(items, SourceOnly(sourceLang), targetLang);
         const std::wstring host = IsDeepLFreeKey(key_) ? L"api-free.deepl.com" : L"api.deepl.com";
         const std::wstring headers =

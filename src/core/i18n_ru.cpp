@@ -1245,6 +1245,8 @@ extern const I18nEntry kRussianStrings[] = {
      "Добавить"},
     {L"Learned words: {1} – the most used; x forgets one",
      "Выученные слова: {1} – самые частые; x забывает слово"},
+    {L"Find a language",
+     "Найти язык"},
     {L"Find a word",
      "Найти слово"},
     {L"Typo patterns learned: {1}",

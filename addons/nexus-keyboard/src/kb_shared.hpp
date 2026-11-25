@@ -38,6 +38,7 @@
 #include "core/my_words.hpp"
 #include "core/voice.hpp"
 #include "core/languages.hpp"
+#include "core/language_names.hpp"
 #include "core/protect.hpp"
 #include "core/send_guard.hpp"
 #include "core/whisper_watch.hpp"
@@ -309,6 +310,9 @@ struct TestHooks {
     std::atomic<ULONGLONG>* bufferingStartTime = nullptr;
     float inputAlpha = 1.0f;
     bool* testToggleFallenAngel = nullptr;
+    bool infoInBox = false;    // an info text stood in the input box this frame (never while there is text in it)
+    bool kebabShown = true;    // the typing menu's button was drawn this frame (not in the subtitle mode while unseen)
+    bool markNoteShown = false;  // a mark's note (LanguageTool) stood above the input this frame
 };
 extern TestHooks g_test;
 extern bool g_testToggleFallenAngel;
@@ -782,7 +786,19 @@ std::string SoftWrapInput(const std::string& flat, float wrapWidth);
 void RewrapInactiveInput();
 int InputCallback(ImGuiInputTextCallbackData* d);
 void StartSend();
-std::wstring NativeName(const std::wstring& code);
+std::wstring LanguageName(const std::wstring& code);  // in the window's language; English when it cannot be drawn
+std::vector<LangInfo> LanguagesByName();
+// Step 2 (Emi, 2026-11-25): what the active translator has and our window draws, by name; a list with a search field.
+struct TranslatorOffer {
+    std::string model;  // a local model: "nllb", "m2m", "opus"; "" online
+    std::wstring name;  // an online service: its Name() ("MyMemory …", "DeepL" …)
+};
+TranslatorOffer OfferNow();        // g_mu held
+TranslatorOffer OfferNowLocked();  // g_mu NOT held
+bool Offers(const TranslatorOffer& offer, const LangInfo& l);
+std::vector<LangInfo> OfferedLanguages(const TranslatorOffer& offer);
+std::wstring PickLanguage(const char* id, const std::vector<LangInfo>& offered, const std::vector<std::wstring>& mine,
+                          const std::wstring& current);  // inside an open list: the code picked, or ""       // the catalog sorted by those names
 
 extern bool g_collapsed;
 void MinimizeWindow();

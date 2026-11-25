@@ -2,6 +2,7 @@
 #include "languages.hpp"
 
 #include "langs.hpp"
+#include "local_mt_protocol.hpp"
 #include "text.hpp"
 
 namespace gct {
@@ -35,6 +36,8 @@ const std::vector<LangInfo>& Languages() {
         {L"ID", L"Bahasa Indonesia", L"Indonesian", true, true, false},
         {L"VI", L"Ti\u1ebfng Vi\u1ec7t", L"Vietnamese", true, true, false},
         {L"LA", L"Latina", L"Latin", true, true, false},
+        {L"KMR", L"Kurdî (Kurmancî)", L"Kurdish (Kurmanji)", true, true, false},  // sendbar (Emi, 2026-11-25): ç ş wie Türkisch, ê î û wie Französisch – Spieltest MT-38 offen
+        {L"CKB", L"Kurdî (Soranî)", L"Kurdish (Sorani)", true, true, false},  // Sorani (Emi, 2026-11-25): NLLB only (ckb_Arab), shown and sent in Kurdish Latin (core/sorani)
         {L"EL", L"\u0395\u03bb\u03bb\u03b7\u03bd\u03b9\u03ba\u03ac", L"Greek", false, true, false},                       // nicht getestet
         {L"BG", L"\u0411\u044a\u043b\u0433\u0430\u0440\u0441\u043a\u0438", L"Bulgarian", false, true, false},                // getestet 2026-11-16: GW2 zeigt Leerraum
         {L"RU", L"\u0420\u0443\u0441\u0441\u043a\u0438\u0439", L"Russian", false, true, false},                                // getestet 2026-11-16: GW2 zeigt Leerraum
@@ -47,6 +50,8 @@ const std::vector<LangInfo>& Languages() {
         {L"ZH-HANT", L"\u4e2d\u6587\uff08\u7e41\u9ad4\uff09", L"Chinese (Traditional)", true, false, false},                   // nicht getestet
         {L"JA", L"\u65e5\u672c\u8a9e", L"Japanese", false, false, false},                                                          // nicht getestet
         {L"KO", L"\ud55c\uad6d\uc5b4", L"Korean", false, false, false},                                                            // nicht getestet
+        // ---- every language of the local model's table (tools/gen_language_names.py, step 2 – Emi, 2026-11-25)
+#include "language_catalog.inc"
     };
     return list;
 }
@@ -76,6 +81,19 @@ const LangInfo* FindLanguage(const std::wstring& code) {
     for (const LangInfo& l : Languages())
         if (p == PrimaryLang(l.code)) return &l;
     return nullptr;
+}
+
+bool ServiceTakes(MtService service, const std::wstring& code) {
+    const std::wstring p = ToUpperAscii(PrimaryLang(Trim(code)));
+    if (p == L"KMR") return service == MtService::Google || service == MtService::Microsoft;
+    if (p == L"CKB") return false;  // Sorani: local NLLB only, it alone has the Latin round trip (core/sorani)
+    const LangInfo* l = FindLanguage(code);
+    return !(l && l->fromModel);  // a language of the model's table: unproven at every online service
+}
+
+bool OfferedBy(const std::string& model, const LangInfo& l) {
+    if (model.empty()) return !l.fromModel;  // an online service: the hand-kept catalog
+    return LocalModelHasLanguage(model, l.code);
 }
 
 std::wstring SourceCode(const std::wstring& code) { return PrimaryLang(code); }

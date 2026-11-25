@@ -340,9 +340,10 @@ void RenderRemoveEverything() {
     ImGui::PopID();
 }
 
-// The language of this window (Start and the Window page).
-void RenderUiLanguageRow(Config& edit) {
-    RowLabel(UI(Tr(L"Language of this window")));
+// The language of this window (Start's own box and the Window page). Every language is listed by its own name
+// (Deutsch, English, Polski): whatever the window shows now, each finds theirs. `withLabel` false: the box says it.
+void RenderUiLanguageRow(Config& edit, bool withLabel) {
+    if (withLabel) RowLabel(UI(Tr(L"Language of this window")));
     std::string current = UI(Tr(L"System"));  // only the languages this window has texts in (core/i18n: UiLanguages)
     for (const UiLangInfo& l : UiLanguages())  // "System (Deutsch)": the language "System" stands for now
         if (l.lang == GetUiLang()) current += " (" + U8(l.native) + ")";
@@ -508,7 +509,7 @@ void RenderStartPage(Config& edit) {
     const LocalMtSummary local = LocalMtNow(edit.dataDir);
     const bool isLocal = IsLocalEngine(edit.engine);
     const bool localReady = local.module && LocalModelThere(local, edit.engine);
-    const std::string title = UI(chatOn ? TrF(L"Read: {1}", {NativeName(ReadingLangNow())}) : Tr(L"Read: off"));
+    const std::string title = UI(chatOn ? TrF(L"Read: {1}", {LanguageName(ReadingLangNow())}) : Tr(L"Read: off"));
     const std::string sub = chatOn ? std::string() : UI(Tr(L"A click on a line translates just that one"));
     bool toMissing = false;
     if (Hero(chatOn, title, sub, UI(Tr(L"Chat module")), chatThere, UI(running.empty() ? Tr(EngineLabel(edit.engine)) : running),
@@ -517,6 +518,11 @@ void RenderStartPage(Config& edit) {
         SetChatTranslation(!g_nx.translateChat);
     }
     if (toMissing) s_toMissing = true;
+    // The window's language in its own box, right under the reading tile (Emi, 2026-11-25): every language in every
+    // list is named in it, so it comes before the lists. Same choice as on the Window page ([Window] UiLang).
+    BeginBox(UI(Tr(L"Language of this window")));
+    RenderUiLanguageRow(edit, false);
+    EndBox();
     // The three choices; what each means shows when the pointer is on it (the page stays short).
     auto tip = [](const std::wstring& t) {
         if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", UI(t).c_str());
@@ -544,7 +550,7 @@ void RenderStartPage(Config& edit) {
             ImGui::SameLine();
             ImGui::SetNextItemWidth(comboW);
         }
-        LanguageCombo("##writestart", edit.writeIn, Tr(L"System") + L" (" + NativeName(TypingLang()) + L")");
+        LanguageCombo("##writestart", edit.writeIn, Tr(L"System") + L" (" + LanguageName(TypingLang()) + L")");
         tip(Tr(L"The language you type in – the typing help and the translation start from it. It follows the chat's language until you choose it on its own."));
     }
     RenderSendRow();
@@ -555,7 +561,6 @@ void RenderStartPage(Config& edit) {
     EndBox();
     RenderLayoutTiles();
     BeginBox(UI(Tr(L"Window & keys")));
-    RenderUiLanguageRow(edit);
     // No key is set by us (Emi): each action, the key you gave it in Nexus, and a button to Nexus' Keybinds.
     KeyRow(Tr(L"Window"), kToggleBind);
     KeyRow(Tr(L"Input"), kFocusBind);

@@ -515,7 +515,7 @@ int wmain(int argc, wchar_t** argv) {
                                                : ctranslate2::ComputeType::INT8;
     }
     g_lastRequest = GetTickCount64();
-    std::string readyMsg = "{\"evt\":\"ready\",\"helper\":\"translate\",\"proto\":1,\"caps\":[\"opus\",\"nllb\",\"m2m\",\"score\",\"threads\"],\"build\":\"";
+    std::string readyMsg = "{\"evt\":\"ready\",\"helper\":\"translate\",\"proto\":1,\"caps\":[\"opus\",\"nllb\",\"m2m\",\"score\",\"threads\",\"kurdish\"],\"build\":\"";
     readyMsg += GCT_GIT_BUILD_ID;
     readyMsg += "\"}";
     Emit(readyMsg);

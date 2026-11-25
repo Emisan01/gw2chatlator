@@ -284,14 +284,15 @@ static void RenderRenameTabPopup(std::string& s_chatTabLabel, bool& s_chatMenuFu
         ImGui::TextUnformatted(UI(Tr(L"Read the chat in")).c_str());
         ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
         const std::string readShown = g_cfg.readLang.empty()  // "System (Deutsch)": which language that is
-                                          ? UI(Tr(L"System")) + " (" + U8(NativeName(ReadLang())) + ")"
-                                          : U8(NativeName(g_cfg.readLang));
+                                          ? UI(Tr(L"System")) + " (" + U8(LanguageName(ReadLang())) + ")"
+                                          : U8(LanguageName(g_cfg.readLang));
         if (ImGui::BeginCombo("##readlang", readShown.c_str())) {
             std::wstring chosen = g_cfg.readLang;
             if (ImGui::Selectable(UI(Tr(L"System")).c_str(), chosen.empty())) chosen.clear();
-            for (const LangInfo& lg : Languages())
-                if (DrawnInOurWindow(lg) && ImGui::Selectable(U8(NativeName(lg.code)).c_str(), g_cfg.readLang == lg.code))
-                    chosen = lg.code;
+            // every language of the active translator, by name, with a search field (step 2)
+            const std::wstring got = PickLanguage("readhead", OfferedLanguages(OfferNow()), g_cfg.writeLangs,
+                                                  g_cfg.readLang);
+            if (!got.empty()) chosen = got;
             ImGui::EndCombo();
             if (chosen != g_cfg.readLang) {
                 g_cfg.readLang = chosen;
@@ -455,7 +456,7 @@ static void RenderMainMenu(bool& newTabNext) {
                 ImGui::SetTooltip("%s", UI(Tr(L"What you see of the chat, into the language you write in – once, by the automatic translation's rule: lines in your language, in languages you understand or too short to tell stay as they are (a click on a line translates it anyway).")).c_str());
             if (ImGui::MenuItem(UI(Tr(L"Translate the chat")).c_str(), nullptr, g_nx.translateChat)) {
                 SetChatTranslation(!g_nx.translateChat);  // the one switch (Options → Start), kept
-                SetStatus(g_nx.translateChat ? TrF(L"Read: {1}", {NativeName(ReadLang())}) : Tr(L"Read: off"), 4000);
+                SetStatus(g_nx.translateChat ? TrF(L"Read: {1}", {LanguageName(ReadLang())}) : Tr(L"Read: off"), 4000);
             }
             if (ImGui::MenuItem(UI(Tr(L"New whisper tab …")).c_str())) newTabNext = true;
             if (ImGui::MenuItem(UI(Tr(L"Waypoints") + L" …").c_str())) OpenWaypointWindow();
@@ -1367,7 +1368,8 @@ void RenderWindow() {
     const bool showMarkBadge = !unseen && !g_help.marks.empty() && g_help.text == g_wFlatInput;
     const std::string badgeText = showMarkBadge ? std::to_string(g_help.marks.size()) : "";
     const float badgeW = showMarkBadge ? std::max(clearBtnW, ImGui::CalcTextSize(badgeText.c_str()).x + 8.0f) : 0.0f;
-    const bool showQuotaBadge = MyMemoryOut();  // MyMemory's free text for today is used up: an "!" until it is solved
+    // MyMemory's free text for today is used up: an "!" until it is solved – not in the subtitle mode while unseen
+    const bool showQuotaBadge = !unseen && MyMemoryOut();
     const float rightSideW = (showMarkBadge ? badgeW + clearGap : 0.0f) + (showQuotaBadge ? clearBtnW + clearGap : 0.0f) +
                              (showClearBtn ? clearBtnW + clearGap : 0.0f) + moreBtnW + clearGap;
     const float inputAvailW = ImGui::GetContentRegionAvail().x;
@@ -1561,7 +1563,11 @@ void RenderWindow() {
             ImGui::SetTooltip("%s", UI(Tr(L"Clear text")).c_str());
         }
     }
-    {
+    g_test.kebabShown = !unseen;
+    if (unseen) {  // subtitle mode, nobody writing: like the field and the badges, not there – its place kept (no jump)
+        ImGui::SameLine(0, clearGap);
+        ImGui::Dummy(ImVec2(moreBtnW, boxH));
+    } else {
         ImGui::SameLine(0, clearGap);
         const ImVec2 morePos = ImGui::GetCursorScreenPos();
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
@@ -1744,19 +1750,33 @@ void RenderWindow() {
         !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId))
         for (size_t i = 0; i < marks.size(); ++i)
             if (ImGui::IsMouseHoveringRect(marks[i].a, marks[i].b)) markHovered = static_cast<int>(i);
+    // A mark's note (LanguageTool's explanation, the correction) follows the info text's rule (Emi, 2026-11-25): never
+    // over your text. While you type it is not there – only a pointer moved onto the word after the last key asks for
+    // it – and it stands above the input box, never on it.
+    static ULONGLONG s_pointerMovedAt = 0;
+    if (io.MouseDelta.x != 0.0f || io.MouseDelta.y != 0.0f) s_pointerMovedAt = GetTickCount64();
+    const bool markNoteAsked = s_pointerMovedAt > s_inputEdited;
+    g_test.markNoteShown = false;
+    auto markNote = [&](const std::wstring& tip, float x) {
+        if (!markNoteAsked) return;
+        g_test.markNoteShown = true;
+        ImGui::SetNextWindowPos(ImVec2(x, inputMin.y - 4.0f), ImGuiCond_Always, ImVec2(0.0f, 1.0f));
+        ImGui::BeginTooltip();
+        ImGui::TextUnformatted(UI(tip).c_str());
+        ImGui::EndTooltip();
+    };
     if (markHovered >= 0) {
         ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
         const size_t markIdx = marks[markHovered].index;
         if (markIdx < g_help.marks.size()) {
             const auto& m = g_help.marks[markIdx];
+            const float noteX = marks[markHovered].a.x;
             if (m.wasReplaced) {
-                std::wstring tip = TrF(L"was: {1} → {2}\nClick: revert (undo)\nRight-click: keep word", {m.original, m.fix});
-                ImGui::SetTooltip("%s", UI(tip).c_str());
+                markNote(TrF(L"was: {1} → {2}\nClick: revert (undo)\nRight-click: keep word", {m.original, m.fix}), noteX);
             } else if (m.isGrammar && !m.message.empty()) {
-                std::wstring tip = m.message + L"\n→ " + m.fix;
-                ImGui::SetTooltip("%s", UI(tip).c_str());
+                markNote(m.message + L"\n→ " + m.fix, noteX);
             } else {
-                ImGui::SetTooltip("%s", UI(L"→ " + m.fix).c_str());
+                markNote(L"→ " + m.fix, noteX);
             }
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                 if (m.wasReplaced) {
@@ -1864,7 +1884,10 @@ void RenderWindow() {
             BoxText(ImVec2(textAt.x + typed.x, textAt.y + lineNo * ImGui::GetTextLineHeight()), clip,
                     ImGui::GetColorU32(ImGuiCol_TextDisabled), UI(rest));
     }
-    // Status: in the empty box where you would write; while you write, a momentary message small at the bottom right.
+    // Status: in the empty box where you would write. RULE (Emi, 2026-11-25): while there is text in the input, the
+    // info text shows nothing in the box – no status, no warning, no "Translating …" – no exception. Your text is never
+    // overlaid; a message waits until the box is empty again (or shows on its own if it ends before).
+    g_test.infoInBox = false;
     if (!g_input[0]) {
         if (g_recording && !showPreview && !g_voiceLive.empty())
             BoxText(textAt, clip, ImGui::GetColorU32(kPreview), U8(g_voiceLive));
@@ -1879,25 +1902,18 @@ void RenderWindow() {
                 s_lastStatusWidth = availW;
                 s_lastStatusFit = Fit(UI(stW), availW);
             }
-            if (InfoTexts() || !g_status.empty())  // a momentary message shows in every mode
+            if (InfoTexts() || !g_status.empty()) {  // a momentary message shows in every mode
+                g_test.infoInBox = true;
                 BoxText(textAt, clip, g_status.empty() ? ImGui::GetColorU32(ImGuiCol_TextDisabled) : ImGui::GetColorU32(UiWarm()),
                         s_lastStatusFit);
-        }
-    } else {
-        const std::wstring note = !g_status.empty() ? g_status : (!showPreview ? OutgoingScriptWarning() : std::wstring());
-        if (!note.empty()) {
-            const std::string s = Fit(UI(note), (inputMax.x - inputMin.x) * 0.6f);
-            const float w = ImGui::CalcTextSize(s.c_str()).x * 0.85f;
-            BoxText(ImVec2(inputMax.x - w - st.FramePadding.x - st.ScrollbarSize, inputMax.y - smallLine - 1), clip,
-                    ImGui::GetColorU32(UiWarm()), s, 0.85f);
+            }
         }
     }
-    // Compact view: what the chat will get, small in the box's last line (instead of the preview above).
-    if (!showPreview && g_input[0] && ((Translating() && (previewCurrent || InfoTexts())) || NamesSwapped())) {
-        const float avail = (inputMax.x - inputMin.x) * (g_status.empty() ? 0.95f : 0.38f);
-        const std::string t =
-            previewCurrent ? "> " + U8(DisplayForOurFont(g_preview, SendLang(), LoadedFontCanDraw))
-                           : UI(Tr(L"Translating …"));
+    // Compact view: what the chat will get, small in its own reserved last line of the box (instead of the preview
+    // above) – the translation itself, not an info text: only once it is there, never a "Translating …" (the rule above).
+    if (!showPreview && g_input[0] && previewCurrent && (Translating() || NamesSwapped())) {
+        const float avail = (inputMax.x - inputMin.x) * 0.95f;
+        const std::string t = "> " + U8(DisplayForOurFont(g_preview, SendLang(), LoadedFontCanDraw));
         if (compactChoose) {
             const std::string verNow = std::to_string(g_previewPick + 1);
             const float nowW = ImGui::GetFont()

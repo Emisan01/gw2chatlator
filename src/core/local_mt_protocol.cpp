@@ -256,7 +256,7 @@ std::string NllbLanguageTag(const std::string& langCode) {
     static const std::pair<const char*, const char*> kTags[] = {
         {"af", "afr_Latn"}, {"ak", "aka_Latn"}, {"am", "amh_Ethi"}, {"ar", "arb_Arab"}, {"as", "asm_Beng"},
         {"ay", "ayr_Latn"}, {"ba", "bak_Cyrl"}, {"be", "bel_Cyrl"}, {"bg", "bul_Cyrl"}, {"bm", "bam_Latn"},
-        {"bn", "ben_Beng"}, {"bo", "bod_Tibt"}, {"bs", "bos_Latn"}, {"ca", "cat_Latn"}, {"cs", "ces_Latn"},
+        {"bn", "ben_Beng"}, {"bo", "bod_Tibt"}, {"bs", "bos_Latn"}, {"ca", "cat_Latn"}, {"ckb", "ckb_Arab"}, {"cs", "ces_Latn"},
         {"cy", "cym_Latn"}, {"da", "dan_Latn"}, {"de", "deu_Latn"}, {"dz", "dzo_Tibt"}, {"ee", "ewe_Latn"},
         {"el", "ell_Grek"}, {"en", "eng_Latn"}, {"eo", "epo_Latn"}, {"es", "spa_Latn"}, {"et", "est_Latn"},
         {"eu", "eus_Latn"}, {"fa", "pes_Arab"}, {"ff", "fuv_Latn"}, {"fi", "fin_Latn"}, {"fj", "fij_Latn"},
@@ -265,6 +265,7 @@ std::string NllbLanguageTag(const std::string& langCode) {
         {"hr", "hrv_Latn"}, {"ht", "hat_Latn"}, {"hu", "hun_Latn"}, {"hy", "hye_Armn"}, {"id", "ind_Latn"},
         {"ig", "ibo_Latn"}, {"is", "isl_Latn"}, {"it", "ita_Latn"}, {"ja", "jpn_Jpan"}, {"jv", "jav_Latn"},
         {"ka", "kat_Geor"}, {"kg", "kon_Latn"}, {"ki", "kik_Latn"}, {"kk", "kaz_Cyrl"}, {"km", "khm_Khmr"},
+        {"kmr", "kmr_Latn"},  // Kurmanji: the catalog's KMR (the model card of nllb-200); a plain "ku" is no language here
         {"kn", "kan_Knda"}, {"ko", "kor_Hang"}, {"ky", "kir_Cyrl"}, {"lb", "ltz_Latn"}, {"lg", "lug_Latn"},
         {"li", "lim_Latn"}, {"ln", "lin_Latn"}, {"lo", "lao_Laoo"}, {"lt", "lit_Latn"}, {"lv", "lvs_Latn"},
         {"mg", "plt_Latn"}, {"mi", "mri_Latn"}, {"mk", "mkd_Cyrl"}, {"ml", "mal_Mlym"}, {"mn", "khk_Cyrl"},

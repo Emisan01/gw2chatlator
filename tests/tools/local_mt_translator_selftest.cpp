@@ -104,8 +104,15 @@ int wmain(int argc, wchar_t** argv) {
     SetEnvironmentVariableW(L"GW2KB_FAKE_HELPER_MODE", L"full");
     const auto probeFull = gct::ProbeLocalMtHelper(argv[1], data.wstring());
     ok &= Check(probeFull.status == gct::HelperStatus::Ok && probeFull.proto == 1 &&
-                probeFull.caps.size() == 3 && probeFull.build == "test-build",
+                probeFull.caps.size() == 4 && probeFull.build == "test-build",
                 "probe full helper returns Status::Ok, proto 1, caps, build");
+
+    // an NLLB helper from before 2.11.0 (no cap "kurdish"): outdated, the options offer the update (Emi, 2026-11-25)
+    SetEnvironmentVariableW(L"GW2KB_FAKE_HELPER_MODE", L"no-kurdish");
+    const auto probeNoKurdish = gct::ProbeLocalMtHelper(argv[1], data.wstring());
+    ok &= Check(probeNoKurdish.status == gct::HelperStatus::Outdated &&
+                    probeNoKurdish.outdatedReason.find(L"Kurdish") != std::wstring::npos,
+                "probe NLLB helper without kurdish returns Outdated(no Kurdish)");
 
     SetEnvironmentVariableW(L"GW2KB_FAKE_HELPER_MODE", L"old");
     const auto probeOld = gct::ProbeLocalMtHelper(argv[1], data.wstring());

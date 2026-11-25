@@ -33,6 +33,8 @@ add_library(gct_core STATIC
     src/core/hotkey.cpp
     src/core/langs.cpp
     src/core/languages.cpp
+    src/core/language_names.cpp
+    src/core/sorani.cpp
     src/core/glossary.cpp
     src/core/protect.cpp
     src/core/slang.cpp

@@ -38,16 +38,21 @@ void SendLanguageItems(bool tabAware) {
         const bool current = !isOff && (tabChoice ? g_sendOverride == L"=" : g_sendIdx == static_cast<int>(n));
         if (ImGui::Selectable(UI(Tr(L"as written")).c_str(), current)) choose(n);
     }
+    // your languages, then more: only what the active translator has (MyMemory: no Kurmanji)
+    const TranslatorOffer offer = OfferNow();
     for (size_t i = 0; i < n; ++i) {
         if (!SendableInGw2(g_cfg.writeLangs[i])) continue;
+        if (const LangInfo* li = FindLanguage(g_cfg.writeLangs[i]); li && !Offers(offer, *li)) continue;
         const bool current = !isOff && (tabChoice ? g_sendOverride == g_cfg.writeLangs[i] : g_sendIdx == static_cast<int>(i));
-        if (ImGui::Selectable(U8(NativeName(g_cfg.writeLangs[i])).c_str(), current)) choose(i);
+        if (ImGui::Selectable(U8(LanguageName(g_cfg.writeLangs[i])).c_str(), current)) choose(i);
     }
     ImGui::Separator();
-    for (const LangInfo& l : Languages()) {  // more languages: the chosen one becomes the first
-        if (!l.gw2Shows || l.rtl || std::find(g_cfg.writeLangs.begin(), g_cfg.writeLangs.end(), l.code) != g_cfg.writeLangs.end())
+    // more languages, by name: what GW2 shows and the active translator has (step 2) – the chosen one becomes the first
+    for (const LangInfo& l : LanguagesByName()) {
+        if (!l.gw2Shows || l.rtl || !Offers(offer, l) ||
+            std::find(g_cfg.writeLangs.begin(), g_cfg.writeLangs.end(), l.code) != g_cfg.writeLangs.end())
             continue;
-        if (ImGui::Selectable(U8(NativeName(l.code)).c_str(), false)) {
+        if (ImGui::Selectable(U8(LanguageName(l.code)).c_str(), false)) {
             if (!g_nx.translateChat) SetChatTranslation(true);
             g_cfg.writeLangs.insert(g_cfg.writeLangs.begin(), l.code);
             g_cfg.SaveAll();
@@ -166,10 +171,10 @@ void RenderFooter() {  // g_mu held
         }
         s_fc.labelNarrow = g_channel == Channel::Unknown ? UI(Tr(L"Active")) : s_fc.labelFull;
 
-        s_fc.writeFull = U8(NativeName(typingLang));
+        s_fc.writeFull = U8(LanguageName(typingLang));
         s_fc.writeNarrow = U8(ToUpperAscii(PrimaryLang(typingLang)));
 
-        const std::wstring sendText = NativeName(sendLang);
+        const std::wstring sendText = LanguageName(sendLang);
         if (!g_nx.translateChat) {
             s_fc.capSend = UI(Tr(L"Translation"));
             s_fc.sendFull = UI(Tr(L"off"));
@@ -268,12 +273,13 @@ void RenderFooter() {  // g_mu held
             chosen.clear();
             ImGui::CloseCurrentPopup();
         }
-        for (const LangInfo& l : Languages()) {
-            // every language our window draws – Cyrillic, Greek too: sent, it is always translated (send_route)
-            if (DrawnInOurWindow(l) && ImGui::Selectable(U8(NativeName(l.code)).c_str(), g_cfg.writeIn == l.code)) {
-                chosen = l.code;
-                ImGui::CloseCurrentPopup();
-            }
+        // every language of the active translator our window draws – Cyrillic, Greek too: sent, it is always
+        // translated (send_route); by name, with a search field (step 2)
+        const std::wstring got = PickLanguage("writefoot", OfferedLanguages(OfferNow()), g_cfg.writeLangs,
+                                              g_cfg.writeIn);
+        if (!got.empty()) {
+            chosen = got;
+            ImGui::CloseCurrentPopup();
         }
         if (chosen != g_cfg.writeIn) {
             g_cfg.writeIn = chosen;

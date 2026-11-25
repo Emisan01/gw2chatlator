@@ -6,6 +6,7 @@
 
 #include "core/i18n.hpp"
 #include "core/json.hpp"
+#include "core/languages.hpp"
 #include "core/text.hpp"
 
 namespace gct {
@@ -444,6 +445,11 @@ std::string WhisperLang(const std::wstring& code) {
     for (const char* w : kWhisper)
         if (primary == w) return primary;
     return {};
+}
+
+bool OfferedForSpeaking(const std::wstring& code) {
+    const LangInfo* l = FindLanguage(code);
+    return l && DrawnInOurWindow(*l) && !WhisperLang(l->code).empty();
 }
 
 int WhisperAudioCtx(size_t samples) {

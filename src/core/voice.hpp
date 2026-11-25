@@ -106,6 +106,10 @@ LiveText SplitLive(const std::wstring& previous, const std::wstring& newest);
 // "pt"; "" (= let whisper detect) for empty or unknown codes.
 std::string WhisperLang(const std::wstring& code);
 
+// The list "Language you speak" offers a catalog language: our window draws it and whisper knows it (Kurmanji is not
+// in whisper 1.9.5: it stays out of that list, Emi 2026-11-25).
+bool OfferedForSpeaking(const std::wstring& code);
+
 // Whisper's encoder context for a recording: 50 frames per second plus a margin, at least 256, at most 1500 (= the
 // full 30 s window). Shorter contexts are much faster for short push-to-talk clips.
 int WhisperAudioCtx(size_t samples);

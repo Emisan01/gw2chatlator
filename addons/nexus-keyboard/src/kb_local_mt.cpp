@@ -257,7 +257,7 @@ std::string PairLabel(const gct::LocalMtModelInfo& model) {
     const std::string pair(model.pair);
     const size_t dash = pair.find('-');
     if (dash == std::string::npos) return pair;
-    return U8(NativeName(W(pair.substr(0, dash)))) + " -> " + U8(NativeName(W(pair.substr(dash + 1))));
+    return U8(LanguageName(W(pair.substr(0, dash)))) + " -> " + U8(LanguageName(W(pair.substr(dash + 1))));
 }
 }  // namespace
 

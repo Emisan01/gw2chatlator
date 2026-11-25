@@ -251,7 +251,7 @@ void OpenWhisperTab(const std::wstring& name) {
         if (lang != g_playerLang.end() && PrimaryLang(lang->second) != TypingLang()) {
             g_tabs[at].sendLang = SendCodeFor(lang->second);
             SetStatus(TrF(L"{1} writes in {2} – your answers go out in it (Send: change it)",
-                          {g_tabs[at].name, NativeName(g_tabs[at].sendLang)}), 8000);
+                          {g_tabs[at].name, LanguageName(g_tabs[at].sendLang)}), 8000);
         }
     }
     g_sendOverride = g_tabs[at].sendLang;
@@ -872,11 +872,15 @@ void RenderChat(ImGuiIO& io, std::unique_lock<std::mutex>& lock, const ImGuiStyl
             std::wstring pick;
             std::wstring readName = ReadLang();
             for (const LangInfo& lg : Languages())
-                if (PrimaryLang(lg.code) == ReadLang()) readName = NativeName(lg.code);
+                if (PrimaryLang(lg.code) == ReadLang()) readName = LanguageName(lg.code);
             if (ImGui::MenuItem(UI(TrF(L"Translate into {1}", {readName})).c_str())) pick = ReadLang();
             if (ImGui::BeginMenu(UI(Tr(L"Into another language")).c_str())) {
-                for (const LangInfo& lg : Languages())
-                    if (DrawnInOurWindow(lg) && ImGui::MenuItem(U8(NativeName(lg.code)).c_str())) pick = lg.code;
+                // every language of the active translator, by name, with a search field (step 2)
+                const std::wstring got = PickLanguage("lineinto", OfferedLanguages(OfferNow()), g_cfg.writeLangs, L"");
+                if (!got.empty()) {
+                    pick = got;
+                    ImGui::CloseCurrentPopup();
+                }
                 ImGui::EndMenu();
             }
             // what happened when this line was translated: language, translator, protected parts, time, score

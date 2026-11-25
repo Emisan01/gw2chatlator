@@ -1,0 +1,188 @@
+"""Language names in the window's languages, from Unicode CLDR (via Babel) -> data/language-names.tsv and
+src/core/language_names.inc, compiled into the add-on; and the catalog rows of the local model's languages ->
+src/core/language_catalog.inc (step 2: every language of the NLLB table, with its script's flags).
+
+The codes are the catalog's (src/core/languages.cpp, Languages()); the columns are the window languages in the order of
+UiLang (src/core/i18n.hpp). Nothing is written by hand except the Kurmanji names below: CLDR has none for it. Babel and
+CLDR are needed here only, never at run time.
+
+  python tools/gen_language_names.py          write both files (only when they change)
+  python tools/gen_language_names.py --check  exit 1 when a file does not match what CLDR gives
+
+Needs: pip install babel==2.19.0 (CLDR 49).
+"""
+import pathlib
+import re
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+CATALOG = ROOT / "src" / "core" / "languages.cpp"
+TSV = ROOT / "data" / "language-names.tsv"
+INC = ROOT / "src" / "core" / "language_names.inc"
+UI_LANGS = ("en", "de", "fr", "es", "it", "pl", "pt", "tr", "ru")  # UiLang: En, De, Fr, Es, It, Pl, Pt, Tr, Ru
+CAPITALISE = {"fr", "es", "it", "pl", "pt", "ru"}  # CLDR writes these in lower case; de, tr, en stay as they are
+
+# A catalog code as CLDR names it. NB is "Norwegian" in every window: the catalog offers one Norwegian.
+CLDR_ID = {"EN-GB": "en_GB", "EN-US": "en_US", "PT-BR": "pt_BR", "PT-PT": "pt_PT", "ZH-HANS": "zh_Hans",
+           "ZH-HANT": "zh_Hant", "NB": "no"}
+
+# ---- Written by hand: Kurmanji (KMR). CLDR has no name for it in any of these languages ("ku" is "Kurdish", "ckb"
+# "Central Kurdish"). UNCHECKED – a Kurdish speaker should look at them; least sure: tr, pl, pt. (Emi, 2026-11-25)
+BY_HAND = {
+    "KMR": {"en": "Kurdish (Kurmanji)", "de": "Kurdisch (Kurmandschi)", "fr": "Kurde (kurmandji)",
+            "es": "Kurdo (kurmanji)", "it": "Curdo (kurmanji)", "pl": "Kurdyjski (kurmandżi)",
+            "pt": "Curdo (kurmanji)", "tr": "Kürtçe (Kurmançça)", "ru": "Курдский (курманджи)"},
+    # Sorani (CKB): CLDR says "Central Kurdish"; Emi wants the pair "Kurdisch (Sorani)" / "Kurdisch (Kurmandschi)"
+    "CKB": {"en": "Kurdish (Sorani)", "de": "Kurdisch (Sorani)", "fr": "Kurde (sorani)", "es": "Kurdo (sorani)",
+            "it": "Curdo (sorani)", "pl": "Kurdyjski (sorani)", "pt": "Curdo (sorani)", "tr": "Kürtçe (Soranice)",
+            "ru": "Курдский (сорани)"},
+}
+# ---- end of the hand-written block
+
+
+def hand_codes():
+    """The hand-kept catalog (languages.cpp, before the generated rows)."""
+    text = CATALOG.read_text(encoding="utf-8")
+    body = text[text.index("Languages() {"):text.index("return list;")]
+    codes = re.findall(r'^\s*\{L"([A-Z][A-Z-]*)",', body, re.M)
+    if len(codes) != len(set(codes)) or not codes:
+        raise SystemExit(f"{CATALOG}: no codes or a code twice")
+    return codes
+
+
+# ---- Step 2 (Emi, 2026-11-25): every language of the local model's table is in the catalog. Script, flags and own
+# name come from the NLLB tag and CLDR; nothing by hand. Such a language is never sendable by itself (its letters are
+# unproven in GW2's chat) and never offered by an online service (unproven there) – core/languages.
+NLLB = ROOT / "src" / "core" / "local_mt_protocol.cpp"
+CATALOG_INC = ROOT / "src" / "core" / "language_catalog.inc"
+DRAWN = {"Latn", "Cyrl", "Grek"}  # what our window's font draws (Simplified Chinese is in the hand-kept catalog)
+RTL = {"Arab", "Hebr", "Thaa", "Syrc", "Nkoo"}
+# codes the hand-kept catalog already answers (FindLanguage: no/nn -> NB, iw -> HE, zh-* / en-* / pt-*)
+ALIASES = {"no": "NB", "nn": "NB", "iw": "HE"}
+
+
+def nllb_tags():
+    text = NLLB.read_text(encoding="utf-8")
+    body = text[text.index("NllbLanguageTag(const std::string& langCode)"):]
+    body = body[:body.index("return {};")]
+    tags = re.findall(r'\{"([a-z]+)", "([a-z]{3}_[A-Za-z]{4})"\}', body)
+    if len(tags) < 100:
+        raise SystemExit(f"{NLLB}: the NLLB table was not found")
+    return tags
+
+
+def model_rows():
+    from babel import Locale
+    english = Locale.parse("en")
+    hand = hand_codes()
+    hand_primary = {c.split("-")[0] for c in hand}
+    rows = []
+    for iso, tag in nllb_tags():
+        code = iso.upper()
+        if code in hand or code in hand_primary or iso in ALIASES:
+            continue
+        script = tag[-4:]
+        eng = english.languages.get(iso)
+        if not eng:
+            raise SystemExit(f"no English name in CLDR for {iso} ({tag})")
+        try:
+            own = Locale.parse(iso).languages.get(iso) or eng
+        except Exception:  # no locale data for it in CLDR: its English name
+            own = eng
+        rows.append((code, own, eng, script in DRAWN, script in RTL))
+    return rows
+
+
+def catalog_codes():
+    return hand_codes() + [r[0] for r in model_rows()]
+
+
+def render_catalog(rows):
+    lines = ["// Generated by tools/gen_language_names.py from the NLLB table (local_mt_protocol.cpp) and Unicode CLDR 49 -\n",
+             "// run the script, never edit by hand. code, own name, English name, gw2Shows, weDraw, rtl, fromModel.\n"]
+    for code, own, eng, drawn, rtl in rows:
+        lines.append("{" + ", ".join([literal(code), literal(own), literal(eng), "false", "true" if drawn else "false",
+                                      "true" if rtl else "false", "true"]) + "},\n")
+    return "".join(lines)
+
+
+def cldr_name(code, ui):
+    from babel import Locale
+    loc = Locale.parse(ui)
+    ident = CLDR_ID.get(code, code.lower())
+    name = loc.languages.get(ident)
+    if not name and "_" in ident:  # a variant CLDR does not name here: language (region), both from CLDR
+        lang, region = ident.split("_", 1)
+        base, where = loc.languages.get(lang), loc.territories.get(region)
+        if base and where:
+            name = f"{base} ({where})"
+    return name
+
+
+def capitalise(name, ui):
+    return name[:1].upper() + name[1:] if ui in CAPITALISE and name else name
+
+
+def table():
+    rows, missing = [], []
+    for code in catalog_codes():
+        names = []
+        for ui in UI_LANGS:
+            name = BY_HAND.get(code, {}).get(ui) or cldr_name(code, ui)
+            if not name:
+                missing.append(f"{code} in {ui}")
+                name = ""
+            names.append(capitalise(name, ui))
+        rows.append((code, names))
+    if missing:
+        raise SystemExit("no name in CLDR for: " + ", ".join(missing) + " - add it to BY_HAND, marked unchecked")
+    return rows
+
+
+def literal(s):
+    out = []
+    for ch in s:
+        if ch in '\\"':
+            out.append("\\" + ch)
+        elif 0x20 <= ord(ch) < 0x7F:
+            out.append(ch)
+        elif ord(ch) <= 0xFFFF:
+            out.append(f"\\u{ord(ch):04X}")
+        else:  # our window and ImGui 1.80 know 16-bit characters only
+            raise SystemExit(f"a character above U+FFFF in {s!r}")
+    return 'L"' + "".join(out) + '"'
+
+
+def render_tsv(rows):
+    head = ("# Generated by tools/gen_language_names.py from Unicode CLDR 49 (Babel) - run the script, never edit by hand.\n"
+            "# Hand-written and unchecked: KMR (CLDR has no Kurmanji name).\n"
+            "# code\t" + "\t".join(UI_LANGS) + "\n")
+    return head + "".join(code + "\t" + "\t".join(names) + "\n" for code, names in rows)
+
+
+def render_inc(rows):
+    lines = ["// Generated by tools/gen_language_names.py from Unicode CLDR 49 - run the script, never edit by hand.\n",
+             "// One row per catalog code; the names in the order of UiLang (en de fr es it pl pt tr ru).\n"]
+    for code, names in rows:
+        lines.append("{" + literal(code) + ", {" + ", ".join(literal(n) for n in names) + "}},\n")
+    return "".join(lines)
+
+
+def main():
+    check = "--check" in sys.argv
+    rows = table()
+    wanted = {TSV: render_tsv(rows), INC: render_inc(rows), CATALOG_INC: render_catalog(model_rows())}
+    stale = [p for p, t in wanted.items() if not p.exists() or p.read_text(encoding="utf-8") != t]
+    if check:
+        for p in stale:
+            print(f"{p.relative_to(ROOT)} is not what CLDR gives - run: python tools/gen_language_names.py")
+        return 1 if stale else 0
+    for p in stale:
+        p.write_text(wanted[p], encoding="utf-8", newline="\n")
+        print(f"wrote {p.relative_to(ROOT)}")
+    print(f"{len(rows)} languages x {len(UI_LANGS)} window languages")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

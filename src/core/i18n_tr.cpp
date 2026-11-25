@@ -1245,6 +1245,8 @@ extern const I18nEntry kTurkishStrings[] = {
      "Ekle"},
     {L"Learned words: {1} – the most used; x forgets one",
      "Öğrenilen kelimeler: {1} – en sık kullanılanlar; x birini unutur"},
+    {L"Find a language",
+     "Dil ara"},
     {L"Find a word",
      "Kelime ara"},
     {L"Typo patterns learned: {1}",

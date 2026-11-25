@@ -21,7 +21,7 @@ bool Hero(bool on, const std::string& title, const std::string& sub, const std::
 void RenderChatModule();
 bool RenderVoiceModule();
 void RenderRemoveEverything();
-void RenderUiLanguageRow(Config& edit);
+void RenderUiLanguageRow(Config& edit, bool withLabel = true);
 void RenderStartPage(Config& edit);
 
 // Translator (kb_options_translator.cpp)

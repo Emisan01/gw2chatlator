@@ -80,10 +80,10 @@ bool LanguageCombo(const char* id, std::wstring& value, const std::wstring& empt
         const std::wstring pv = PrimaryLang(value);
         for (const LangInfo& l : Languages()) {
             if (l.code == value) {
-                current = U8(NativeName(l.code) + L" (" + l.code + L")");
+                current = U8(LanguageName(l.code) + L" (" + l.code + L")");
                 break;
             }
-            if (PrimaryLang(l.code) == pv) current = U8(NativeName(l.code) + L" (" + l.code + L")");
+            if (PrimaryLang(l.code) == pv) current = U8(LanguageName(l.code) + L" (" + l.code + L")");
         }
     }
     bool changed = false;
@@ -92,13 +92,11 @@ bool LanguageCombo(const char* id, std::wstring& value, const std::wstring& empt
             value.clear();
             changed = true;
         }
-        for (const LangInfo& l : Languages()) {
-            if (!DrawnInOurWindow(l)) continue;
-            const std::string n = U8(NativeName(l.code) + L" (" + l.code + L")");
-            if (ImGui::Selectable(n.c_str(), value == l.code)) {
-                value = l.code;
-                changed = true;
-            }
+        // every language of the active translator, by name, with a search field (step 2)
+        const std::wstring got = PickLanguage(id, OfferedLanguages(OfferNowLocked()), {}, value);
+        if (!got.empty()) {
+            value = got;
+            changed = true;
         }
         ImGui::EndCombo();
     }
