@@ -57,10 +57,11 @@ Checked by VirusTotal: [the 1.8.0 DLL – 0 of 71 scanners](https://www.virustot
   pages sit in a side bar like Nexus' own: Chat, Typing help, Voice, Translator, Window, Technical. Everything applies
   at once.
 - **Failsafe:** an error switches the add-on off for the session, never the game.
-- **Languages:** **Read and write** 31 languages including Russian (Cyrillic), Greek, Simplified Chinese
-  (on Windows with Microsoft YaHei), and Latin scripts; **send to GW2 chat** in 28 languages (Latin scripts
-  and Chinese – Cyrillic is excluded from *Goes out as* and shows a warning before sending because GW2 renders it
-  blank). **UI:** English, Deutsch, Français, Español, Italiano, Polski, Português, Türkçe, Русский.
+- **Languages:** **Read and write** 100 languages with the local NLLB-200 model (Latin scripts, Cyrillic, Greek,
+  Simplified Chinese on Windows with Microsoft YaHei), 32 with an online translator; every list is named in the
+  window's language, sorted by name and has a search field. **Send to GW2 chat** in 30 languages (Latin scripts and
+  Chinese, including Kurdish – Kurmanji and Sorani, the latter written in the Kurdish Latin alphabet; Cyrillic is
+  excluded from *Goes out as* and shows a warning before sending because GW2 renders it blank). **UI:** English, Deutsch, Français, Español, Italiano, Polski, Português, Türkçe, Русский.
 
 ## Install (one minute)
 

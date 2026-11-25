@@ -3,6 +3,22 @@
 The version lives in `CMakeLists.txt` (`project(... VERSION x.y.z)`); the exe, the technical page and the
 diagnosis show it.
 
+## 2.11.0 — 2026-11-25 (GW2Chatlator for Nexus)
+
+- **Languages Named in Your Window's Language:**
+  - Every language list (header menu, Options → Start, footer, "I understand", a line's right-click menu) names the languages in the window's language – "Norwegisch", "Tschechisch", "Chinesisch (vereinfacht)" in a German window – from Unicode CLDR 49 (`tools/gen_language_names.py`, licence in `THIRD_PARTY_NOTICES.txt`). Sorted by name with case and accents left out; a name the font cannot draw is English, never "?".
+  - "Language of this window" has its own box on Options → Start, right under the reading tile.
+- **About 100 Languages with NLLB, a Search Field in Every List:**
+  - The lists offer every language the active translator has and the window draws: 100 with local NLLB-200, fewer with M2M100, the checked 32 with an online service. A search field on top keeps what matches; your own languages come first.
+  - "Goes out as" offers only languages GW2 shows and the active translator has; a language new from the model's table is never sent by itself.
+- **Kurdish – Kurmanji and Sorani:**
+  - Kurdish (Kurmanji, KMR): read, write and send – local NLLB (kmr_Latn), Google, Microsoft; "as written" for Kurmanji writers.
+  - Kurdish (Sorani, CKB): read, write and send with local NLLB (ckb_Arab); shown and sent in the Kurdish Latin alphabet (ř, ł), since GW2 shows no Arabic script; Latin Sorani you type goes to the model in its own alphabet.
+  - Services not proven for Kurdish (DeepL, MyMemory, LibreTranslate, Supertext) say "not supported" and never send another language. The translation helpers now report Kurdish; an older one is shown as outdated with its update.
+- **Typing Undisturbed:**
+  - While there is text in the input, no info text stands in the box – no status, no warning, no "Translating …". Notes of LanguageTool and spelling marks show only when you move the pointer onto a marked word after typing, above the input, never over your text.
+  - Subtitle mode: idle, only the flowing chat – the typing menu ⋮ and the MyMemory ! hide like every other part; clicked in, everything is there.
+
 ## 2.10.11 — 2026-11-17 (GW2Chatlator for Nexus)
 
 - **MyMemory Quota Button:**
